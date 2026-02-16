@@ -51,6 +51,8 @@ const KPI_UI_KEYS = [
 const KPI_UI_KEY_SET = new Set(KPI_UI_KEYS);
 const DATE_RANGE_UI_KEYS = ['today', 'yesterday', '7days', '14days', '30days', 'custom'];
 const DATE_RANGE_UI_KEY_SET = new Set(DATE_RANGE_UI_KEYS);
+const DASHBOARD_KPI_POSITION_KEYS = ['top', 'lower'];
+const DASHBOARD_KPI_POSITION_KEY_SET = new Set(DASHBOARD_KPI_POSITION_KEYS);
 const HEADER_KPI_STRIP_PAGE_KEYS = [
   'dashboard',
   'live',
@@ -72,11 +74,10 @@ const HEADER_KPI_STRIP_PAGE_KEYS = [
 const HEADER_KPI_STRIP_PAGE_KEY_SET = new Set(HEADER_KPI_STRIP_PAGE_KEYS);
 
 const CHART_UI_KEYS = [
-  'dash-chart-revenue',
-  'dash-chart-orders',
-  'dash-chart-conv',
-  'dash-chart-sessions',
-  'dash-chart-adspend',
+  'dash-chart-overview-30d',
+  'dash-chart-finishes-30d',
+  'dash-chart-countries-30d',
+  'dash-chart-kexo-score-today',
   'live-online-chart',
   'sales-overview-chart',
   'date-overview-chart',
@@ -92,11 +93,10 @@ const CHART_KPI_BUNDLE_KEYS = ['dashboardCards', 'headerStrip', 'yearlySnapshot'
 const CHART_KPI_BUNDLE_KEY_SET = new Set(CHART_KPI_BUNDLE_KEYS);
 
 const CHART_ALLOWED_MODES = Object.freeze({
-  'dash-chart-revenue': ['area', 'line', 'bar', 'multi-line-labels'],
-  'dash-chart-orders': ['area', 'line', 'bar', 'multi-line-labels'],
-  'dash-chart-conv': ['area', 'line', 'bar', 'multi-line-labels'],
-  'dash-chart-sessions': ['area', 'line', 'bar', 'multi-line-labels'],
-  'dash-chart-adspend': ['area', 'line', 'bar', 'multi-line-labels'],
+  'dash-chart-overview-30d': ['bar', 'line', 'area', 'multi-line-labels'],
+  'dash-chart-finishes-30d': ['pie'],
+  'dash-chart-countries-30d': ['pie'],
+  'dash-chart-kexo-score-today': ['pie'],
   'live-online-chart': ['map-animated', 'map-flat'],
   'sales-overview-chart': ['area', 'line', 'bar', 'multi-line-labels'],
   'date-overview-chart': ['area', 'line', 'bar', 'multi-line-labels'],
@@ -174,19 +174,19 @@ function defaultKpiUiConfigV1() {
         { key: 'items', label: 'Items ordered', enabled: true },
       ],
       dashboard: [
-        { key: 'revenue', label: 'Revenue', enabled: true },
-        { key: 'orders', label: 'Orders', enabled: true },
-        { key: 'conv', label: 'Conversion Rate', enabled: true },
-        { key: 'aov', label: 'Average Order Value', enabled: true },
-        { key: 'sessions', label: 'Sessions', enabled: true },
-        { key: 'bounce', label: 'Bounce Rate', enabled: true },
-        { key: 'returning', label: 'Returning', enabled: true },
-        { key: 'roas', label: 'ADS ROAS', enabled: true },
-        { key: 'kexo_score', label: 'Kexo Score', enabled: true },
-        { key: 'cogs', label: 'COGS', enabled: true },
-        { key: 'fulfilled', label: 'Fulfilled', enabled: true },
-        { key: 'returns', label: 'Returns', enabled: true },
-        { key: 'items', label: 'Items ordered', enabled: true },
+        { key: 'revenue', label: 'Revenue', enabled: true, position: 'top' },
+        { key: 'orders', label: 'Orders', enabled: true, position: 'top' },
+        { key: 'conv', label: 'Conversion Rate', enabled: true, position: 'top' },
+        { key: 'aov', label: 'Average Order Value', enabled: true, position: 'top' },
+        { key: 'sessions', label: 'Sessions', enabled: true, position: 'lower' },
+        { key: 'bounce', label: 'Bounce Rate', enabled: true, position: 'lower' },
+        { key: 'returning', label: 'Returning', enabled: true, position: 'lower' },
+        { key: 'roas', label: 'ADS ROAS', enabled: true, position: 'lower' },
+        { key: 'kexo_score', label: 'Kexo Score', enabled: true, position: 'lower' },
+        { key: 'cogs', label: 'COGS', enabled: true, position: 'lower' },
+        { key: 'fulfilled', label: 'Fulfilled', enabled: true, position: 'lower' },
+        { key: 'returns', label: 'Returns', enabled: true, position: 'lower' },
+        { key: 'items', label: 'Items ordered', enabled: true, position: 'lower' },
       ],
     },
     dateRanges: [
@@ -208,11 +208,10 @@ function defaultChartsUiConfigV1() {
     // Guardrail: charts + KPI bundle UI defaults are user-owned via Settings and normalized below.
     // Keep these defaults/allowed lists aligned with kexo-chart-defs.js and settings-page.js.
     charts: [
-      withStyle({ key: 'dash-chart-revenue', label: 'Dashboard · Revenue', enabled: true, mode: 'area', colors: ['#3eb3ab'], advancedApexOverride: {} }),
-      withStyle({ key: 'dash-chart-orders', label: 'Dashboard · Orders', enabled: true, mode: 'area', colors: ['#3b82f6'], advancedApexOverride: {} }),
-      withStyle({ key: 'dash-chart-conv', label: 'Dashboard · Conversion Rate', enabled: true, mode: 'area', colors: ['#8b5cf6', '#5c6ac4'], advancedApexOverride: {} }),
-      withStyle({ key: 'dash-chart-sessions', label: 'Dashboard · Sessions', enabled: true, mode: 'area', colors: ['#f59e0b'], advancedApexOverride: {} }),
-      withStyle({ key: 'dash-chart-adspend', label: 'Dashboard · Revenue vs Ad Spend', enabled: true, mode: 'area', colors: ['#3eb3ab', '#ef4444'], advancedApexOverride: {} }),
+      withStyle({ key: 'dash-chart-overview-30d', label: 'Dashboard · 30 Day Overview', enabled: true, mode: 'bar', colors: ['#3eb3ab', '#ef4444'], advancedApexOverride: {} }),
+      withStyle({ key: 'dash-chart-finishes-30d', label: 'Dashboard · Finishes (30 Days)', enabled: true, mode: 'pie', colors: ['#f59e34', '#94a3b8', '#8b5cf6', '#4b94e4'], advancedApexOverride: {} }),
+      withStyle({ key: 'dash-chart-countries-30d', label: 'Dashboard · Countries (30 Days)', enabled: true, mode: 'pie', colors: ['#4b94e4', '#3eb3ab', '#f59e34', '#8b5cf6', '#ef4444'], advancedApexOverride: {} }),
+      withStyle({ key: 'dash-chart-kexo-score-today', label: 'Dashboard · Kexo Score (Today)', enabled: true, mode: 'pie', colors: ['#4b94e4', '#e5e7eb'], advancedApexOverride: {} }),
       withStyle({ key: 'live-online-chart', label: 'Dashboard · Live Online', enabled: true, mode: 'map-flat', colors: ['#16a34a'], advancedApexOverride: {} }),
       withStyle({ key: 'sales-overview-chart', label: 'Dashboard · Sales Trend', enabled: true, mode: 'area', colors: ['#0d9488'], advancedApexOverride: {} }),
       withStyle({ key: 'date-overview-chart', label: 'Dashboard · Sessions & Orders Trend', enabled: true, mode: 'area', colors: ['#4b94e4', '#f59e34'], advancedApexOverride: {} }),
@@ -943,9 +942,25 @@ function normalizeChartsUiConfigV1(raw) {
   };
 }
 
-function normalizeKpiList(rawList, defaults) {
+function normalizeDashboardKpiPosition(raw, fallback) {
+  const fb = DASHBOARD_KPI_POSITION_KEY_SET.has(String(fallback || '').trim().toLowerCase()) ? String(fallback).trim().toLowerCase() : 'lower';
+  const pos = raw == null ? '' : String(raw).trim().toLowerCase();
+  if (DASHBOARD_KPI_POSITION_KEY_SET.has(pos)) return pos;
+  return fb;
+}
+
+function normalizeKpiList(rawList, defaults, opts) {
+  const options = opts && typeof opts === 'object' ? opts : {};
+  const withPosition = normalizeBool(options.withPosition, false);
   const byKey = {};
-  for (const d of defaults) byKey[d.key] = { key: d.key, label: d.label, enabled: !!d.enabled };
+  for (const d of defaults) {
+    byKey[d.key] = {
+      key: d.key,
+      label: d.label,
+      enabled: !!d.enabled,
+      position: normalizeDashboardKpiPosition(d.position, 'lower'),
+    };
+  }
   const out = [];
   const seen = new Set();
   if (Array.isArray(rawList)) {
@@ -955,17 +970,21 @@ function normalizeKpiList(rawList, defaults) {
       if (!KPI_UI_KEY_SET.has(key)) continue;
       if (seen.has(key)) continue;
       const def = byKey[key] || { key, label: key, enabled: true };
-      out.push({
+      const normalized = {
         key,
         label: normalizeText(item.label, def.label),
         enabled: normalizeBool(item.enabled, def.enabled),
-      });
+      };
+      if (withPosition) normalized.position = normalizeDashboardKpiPosition(item.position, def.position);
+      out.push(normalized);
       seen.add(key);
     }
   }
   for (const d of defaults) {
     if (seen.has(d.key)) continue;
-    out.push({ key: d.key, label: d.label, enabled: !!d.enabled });
+    const normalized = { key: d.key, label: d.label, enabled: !!d.enabled };
+    if (withPosition) normalized.position = normalizeDashboardKpiPosition(d.position, 'lower');
+    out.push(normalized);
   }
   return out;
 }
@@ -1025,7 +1044,7 @@ function normalizeKpiUiConfigV1(raw) {
   const headerStripPages = normalizeHeaderKpiStripPages(headerStrip.pages, def.headerStrip.pages);
   const kpis = obj.kpis && typeof obj.kpis === 'object' ? obj.kpis : {};
   const header = normalizeKpiList(kpis.header, def.kpis.header);
-  const dash = normalizeKpiList(kpis.dashboard, def.kpis.dashboard);
+  const dash = normalizeKpiList(kpis.dashboard, def.kpis.dashboard, { withPosition: true });
   const dateRanges = normalizeDateRangeList(obj.dateRanges, def.dateRanges);
   return {
     v: 1,
@@ -1801,24 +1820,6 @@ async function getThemeVarsCss(req, res) {
       // NOTE: HTML uses data-kexo-chart-key="<key>" on the wrapper we want to hide.
       rules.push(`[data-kexo-chart-key="${key}"]{display:none!important;}`);
     });
-
-    // Dashboard overview: when one of a pair is disabled, expand the remaining chart to full width.
-    function enabled(key) {
-      const k = String(key || '').trim().toLowerCase();
-      const it = (cfg && Array.isArray(cfg.charts)) ? cfg.charts.find((x) => x && String(x.key || '').trim().toLowerCase() === k) : null;
-      return !(it && it.enabled === false);
-    }
-    function maybeFullWidth(a, b) {
-      const aOn = enabled(a);
-      const bOn = enabled(b);
-      if (aOn && !bOn) {
-        rules.push(`[data-kexo-chart-key="${String(a).trim().toLowerCase()}"]{flex:0 0 auto!important;width:100%!important;max-width:100%!important;}`);
-      } else if (bOn && !aOn) {
-        rules.push(`[data-kexo-chart-key="${String(b).trim().toLowerCase()}"]{flex:0 0 auto!important;width:100%!important;max-width:100%!important;}`);
-      }
-    }
-    maybeFullWidth('dash-chart-revenue', 'dash-chart-orders');
-    maybeFullWidth('dash-chart-conv', 'dash-chart-sessions');
 
     // Optional: hide ALL charts on mobile. This is controlled by the html class so it can
     // toggle at runtime (no reload) and so per-chart disabled rules still work normally.

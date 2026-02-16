@@ -1153,19 +1153,19 @@
           { key: 'items', label: 'Items ordered', enabled: true },
         ],
         dashboard: [
-          { key: 'revenue', label: 'Revenue', enabled: true },
-          { key: 'orders', label: 'Orders', enabled: true },
-          { key: 'conv', label: 'Conversion Rate', enabled: true },
-          { key: 'aov', label: 'Average Order Value', enabled: true },
-          { key: 'sessions', label: 'Sessions', enabled: true },
-          { key: 'bounce', label: 'Bounce Rate', enabled: true },
-          { key: 'returning', label: 'Returning', enabled: true },
-          { key: 'roas', label: 'ADS ROAS', enabled: true },
-          { key: 'kexo_score', label: 'Kexo Score', enabled: true },
-          { key: 'cogs', label: 'COGS', enabled: true },
-          { key: 'fulfilled', label: 'Fulfilled', enabled: true },
-          { key: 'returns', label: 'Returns', enabled: true },
-          { key: 'items', label: 'Items ordered', enabled: true },
+          { key: 'revenue', label: 'Revenue', enabled: true, position: 'top' },
+          { key: 'orders', label: 'Orders', enabled: true, position: 'top' },
+          { key: 'conv', label: 'Conversion Rate', enabled: true, position: 'top' },
+          { key: 'aov', label: 'Average Order Value', enabled: true, position: 'top' },
+          { key: 'sessions', label: 'Sessions', enabled: true, position: 'lower' },
+          { key: 'bounce', label: 'Bounce Rate', enabled: true, position: 'lower' },
+          { key: 'returning', label: 'Returning', enabled: true, position: 'lower' },
+          { key: 'roas', label: 'ADS ROAS', enabled: true, position: 'lower' },
+          { key: 'kexo_score', label: 'Kexo Score', enabled: true, position: 'lower' },
+          { key: 'cogs', label: 'COGS', enabled: true, position: 'lower' },
+          { key: 'fulfilled', label: 'Fulfilled', enabled: true, position: 'lower' },
+          { key: 'returns', label: 'Returns', enabled: true, position: 'lower' },
+          { key: 'items', label: 'Items ordered', enabled: true, position: 'lower' },
         ],
       },
       dateRanges: [
@@ -1181,11 +1181,10 @@
 
   function defaultChartsUiConfigV1() {
     var baseCharts = [
-      { key: 'dash-chart-revenue', label: 'Dashboard · Revenue', enabled: true, mode: 'area', colors: ['#3eb3ab'], advancedApexOverride: {} },
-      { key: 'dash-chart-orders', label: 'Dashboard · Orders', enabled: true, mode: 'area', colors: ['#3b82f6'], advancedApexOverride: {} },
-      { key: 'dash-chart-conv', label: 'Dashboard · Conversion Rate', enabled: true, mode: 'area', colors: ['#8b5cf6', '#5c6ac4'], advancedApexOverride: {} },
-      { key: 'dash-chart-sessions', label: 'Dashboard · Sessions', enabled: true, mode: 'area', colors: ['#f59e0b'], advancedApexOverride: {} },
-      { key: 'dash-chart-adspend', label: 'Dashboard · Revenue vs Ad Spend', enabled: true, mode: 'area', colors: ['#3eb3ab', '#ef4444'], advancedApexOverride: {} },
+      { key: 'dash-chart-overview-30d', label: 'Dashboard · 30 Day Overview', enabled: true, mode: 'bar', colors: ['#3eb3ab', '#ef4444'], advancedApexOverride: {} },
+      { key: 'dash-chart-finishes-30d', label: 'Dashboard · Finishes (30 Days)', enabled: true, mode: 'pie', colors: ['#f59e34', '#94a3b8', '#8b5cf6', '#4b94e4'], advancedApexOverride: {} },
+      { key: 'dash-chart-countries-30d', label: 'Dashboard · Countries (30 Days)', enabled: true, mode: 'pie', colors: ['#4b94e4', '#3eb3ab', '#f59e34', '#8b5cf6', '#ef4444'], advancedApexOverride: {} },
+      { key: 'dash-chart-kexo-score-today', label: 'Dashboard · Kexo Score (Today)', enabled: true, mode: 'pie', colors: ['#4b94e4', '#e5e7eb'], advancedApexOverride: {} },
       { key: 'live-online-chart', label: 'Dashboard · Live Online', enabled: true, mode: 'map-flat', colors: ['#16a34a'], advancedApexOverride: {} },
       { key: 'sales-overview-chart', label: 'Dashboard · Sales Trend', enabled: true, mode: 'area', colors: ['#0d9488'], advancedApexOverride: {} },
       { key: 'date-overview-chart', label: 'Dashboard · Sessions & Orders Trend', enabled: true, mode: 'area', colors: ['#4b94e4', '#f59e34'], advancedApexOverride: {} },
@@ -1322,7 +1321,7 @@
   };
 
   var CHARTS_GROUPS = [
-    { id: 'dashboard', label: 'Dashboard charts', keys: ['dash-chart-revenue', 'dash-chart-orders', 'dash-chart-conv', 'dash-chart-sessions', 'dash-chart-adspend', 'live-online-chart', 'sales-overview-chart', 'date-overview-chart'] },
+    { id: 'dashboard', label: 'Dashboard charts', keys: ['dash-chart-overview-30d', 'dash-chart-finishes-30d', 'dash-chart-countries-30d', 'dash-chart-kexo-score-today', 'live-online-chart', 'sales-overview-chart', 'date-overview-chart'] },
     { id: 'acquisition', label: 'Acquisition charts', keys: ['attribution-chart', 'devices-chart'] },
     { id: 'insights', label: 'Insights charts', keys: ['products-chart', 'abandoned-carts-chart', 'countries-map-chart'] },
     { id: 'integrations', label: 'Integration charts', keys: ['ads-overview-chart'] },
@@ -3649,20 +3648,36 @@
     });
   }
 
+  function defaultDashboardKpiPositionForKey(key) {
+    var k = String(key || '').trim().toLowerCase();
+    if (!k) return 'top';
+    if (k === 'cogs' || k === 'fulfilled' || k === 'returns' || k === 'items') return 'lower';
+    return 'top';
+  }
+
+  function normalizeDashboardKpiPosition(pos, key) {
+    var raw = String(pos || '').trim().toLowerCase();
+    if (raw === 'top' || raw === 'lower') return raw;
+    return defaultDashboardKpiPositionForKey(key);
+  }
+
   function renderKpiTable(rootId, items, kind) {
     var root = document.getElementById(rootId);
     if (!root) return;
     var rows = Array.isArray(items) ? items : [];
+    var showPosition = String(kind || '').trim().toLowerCase() === 'dashboard';
+    var tableColumns = [
+      { header: 'On', headerClass: 'w-1' },
+      { header: 'Label', headerClass: '' },
+    ];
+    if (showPosition) tableColumns.push({ header: 'Position', headerClass: 'w-1' });
+    tableColumns.push({ header: 'Key', headerClass: 'text-muted' });
+    tableColumns.push({ header: 'Order', headerClass: 'text-end w-1' });
     var html;
     if (typeof window.buildKexoSettingsTable === 'function') {
       html = window.buildKexoSettingsTable({
         tableClass: 'table table-sm table-vcenter mb-0',
-        columns: [
-          { header: 'On', headerClass: 'w-1' },
-          { header: 'Label', headerClass: '' },
-          { header: 'Key', headerClass: 'text-muted' },
-          { header: 'Order', headerClass: 'text-end w-1' }
-        ],
+        columns: tableColumns,
         rows: rows,
         renderRow: function (it) {
           if (!it) return '';
@@ -3670,9 +3685,17 @@
           if (!key) return '';
           var label = it.label != null ? String(it.label) : key;
           var enabled = !!it.enabled;
+          var position = normalizeDashboardKpiPosition(it.position, key);
+          var positionCell = showPosition
+            ? '<td><select class="form-select form-select-sm" data-field="position">' +
+                '<option value="top"' + (position === 'top' ? ' selected' : '') + '>Top grid</option>' +
+                '<option value="lower"' + (position === 'lower' ? ' selected' : '') + '>Lower grid</option>' +
+              '</select></td>'
+            : '';
           return '<tr data-kpi-key="' + escapeHtml(key) + '">' +
             '<td><label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-field="enabled" ' + (enabled ? 'checked' : '') + '></label></td>' +
             '<td><input type="text" class="form-control form-control-sm" data-field="label" value="' + escapeHtml(label) + '"></td>' +
+            positionCell +
             '<td class="text-muted small">' + escapeHtml(key) + '</td>' +
             '<td class="text-end"><div class="btn-group btn-group-sm" role="group" aria-label="Reorder">' +
               '<button type="button" class="btn btn-outline-secondary" data-action="up" aria-label="Move up">\u2191</button>' +
@@ -3684,16 +3707,24 @@
     } else {
       html = '<div class="table-responsive">' +
         '<table class="table table-sm table-vcenter mb-0">' +
-        '<thead><tr><th class="w-1">On</th><th>Label</th><th class="text-muted">Key</th><th class="text-end w-1">Order</th></tr></thead><tbody>';
+        '<thead><tr><th class="w-1">On</th><th>Label</th>' + (showPosition ? '<th class="w-1">Position</th>' : '') + '<th class="text-muted">Key</th><th class="text-end w-1">Order</th></tr></thead><tbody>';
       rows.forEach(function (it) {
         if (!it) return;
         var key = String(it.key || '').trim().toLowerCase();
         if (!key) return;
         var label = it.label != null ? String(it.label) : key;
         var enabled = !!it.enabled;
+        var position = normalizeDashboardKpiPosition(it.position, key);
+        var positionCell = showPosition
+          ? '<td><select class="form-select form-select-sm" data-field="position">' +
+              '<option value="top"' + (position === 'top' ? ' selected' : '') + '>Top grid</option>' +
+              '<option value="lower"' + (position === 'lower' ? ' selected' : '') + '>Lower grid</option>' +
+            '</select></td>'
+          : '';
         html += '<tr data-kpi-key="' + escapeHtml(key) + '">' +
           '<td><label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-field="enabled" ' + (enabled ? 'checked' : '') + '></label></td>' +
           '<td><input type="text" class="form-control form-control-sm" data-field="label" value="' + escapeHtml(label) + '"></td>' +
+          positionCell +
           '<td class="text-muted small">' + escapeHtml(key) + '</td>' +
           '<td class="text-end"><div class="btn-group btn-group-sm" role="group" aria-label="Reorder">' +
             '<button type="button" class="btn btn-outline-secondary" data-action="up" aria-label="Move up">\u2191</button>' +
@@ -3767,20 +3798,26 @@
     wireReorderButtons(root);
   }
 
-  function readKpiTable(rootId) {
+  function readKpiTable(rootId, kind) {
     var root = document.getElementById(rootId);
     if (!root) return [];
+    var includePosition = String(kind || '').trim().toLowerCase() === 'dashboard';
     var out = [];
     root.querySelectorAll('tr[data-kpi-key]').forEach(function (tr) {
       var key = (tr.getAttribute('data-kpi-key') || '').trim().toLowerCase();
       if (!key) return;
       var enabledEl = tr.querySelector('input[data-field="enabled"]');
       var labelEl = tr.querySelector('input[data-field="label"]');
-      out.push({
+      var row = {
         key: key,
         enabled: !!(enabledEl && enabledEl.checked),
         label: labelEl && labelEl.value != null ? String(labelEl.value).trim() : key,
-      });
+      };
+      if (includePosition) {
+        var positionEl = tr.querySelector('select[data-field="position"]');
+        row.position = normalizeDashboardKpiPosition(positionEl && positionEl.value, key);
+      }
+      out.push(row);
     });
     return out;
   }
@@ -3892,8 +3929,8 @@
         pages: readHeaderStripPagesFromDom(),
       },
       kpis: {
-        dashboard: readKpiTable('settings-kpis-dashboard-root'),
-        header: readKpiTable('settings-kpis-header-root'),
+        dashboard: readKpiTable('settings-kpis-dashboard-root', 'dashboard'),
+        header: readKpiTable('settings-kpis-header-root', 'header'),
       },
       dateRanges: readDateRangesTable('settings-date-ranges-root'),
     };

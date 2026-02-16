@@ -22,18 +22,12 @@
 <body class="" data-page="dashboard">
     <!--#include partials/header.html-->
     <!--#include partials/page-body-start.html-->
-          <div class="page-header mb-3">
-            <div class="row align-items-center">
-              <div class="col">
-                <div class="page-pretitle">Dashboard</div>
-                <h2 class="page-title">Overview</h2>
-              </div>
-            </div>
-          </div>
 <div id="tab-panel-dashboard" class="main-tab-panel active" role="tabpanel" aria-labelledby="nav-tab-dashboard">
 
+    <div class="row g-3 mb-3 kexo-overview-top-layout">
+      <div class="col-12 col-xl-5 col-xxl-4">
     <!-- Enhanced KPI Cards -->
-    <div class="row g-3 mb-3" id="dash-kpi-grid">
+    <div class="row g-3" id="dash-kpi-grid">
       <!-- Revenue Card with Trend -->
       <div class="col-sm-6 col-lg-3">
         <div class="card">
@@ -286,6 +280,57 @@
         </div>
       </div>
     </div>
+      </div>
+      <div class="col-12 col-xl-7 col-xxl-8">
+        <div class="row g-3 mb-3 kexo-overview-mini-row">
+          <div class="col-12 col-md-4" data-kexo-chart-key="dash-chart-finishes-30d">
+            <div class="card h-100">
+              <div class="card-header">
+                <h3 class="card-title">Finishes</h3>
+                <input type="text" class="form-control form-control-sm kexo-overview-range-input" value="30 Days" disabled>
+              </div>
+              <div class="card-body">
+                <div id="dash-chart-finishes-30d" style="height:180px"></div>
+              </div>
+            </div>
+          </div>
+          <div class="col-12 col-md-4" data-kexo-chart-key="dash-chart-countries-30d">
+            <div class="card h-100">
+              <div class="card-header">
+                <h3 class="card-title">Countries</h3>
+                <input type="text" class="form-control form-control-sm kexo-overview-range-input" value="30 Days" disabled>
+              </div>
+              <div class="card-body">
+                <div id="dash-chart-countries-30d" style="height:180px"></div>
+              </div>
+            </div>
+          </div>
+          <div class="col-12 col-md-4" data-kexo-chart-key="dash-chart-kexo-score-today">
+            <div class="card h-100">
+              <div class="card-header">
+                <h3 class="card-title">Kexo Score</h3>
+                <input type="text" class="form-control form-control-sm kexo-overview-range-input" value="Today" disabled>
+              </div>
+              <div class="card-body">
+                <div id="dash-chart-kexo-score-today" style="height:180px"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="row g-3">
+          <div class="col-12" data-kexo-chart-key="dash-chart-overview-30d">
+            <div class="card">
+              <div class="card-header">
+                <h3 class="card-title">30 Day Overview</h3>
+              </div>
+              <div class="card-body">
+                <div id="dash-chart-overview-30d" style="height:300px"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <div class="row g-3 mb-3">
       <div class="col-lg-6">
@@ -304,66 +349,6 @@
           </div>
           <div id="dash-top-countries-mount" data-kexo-table="dash-top-countries"></div>
           <div class="card-footer d-flex align-items-center justify-content-center is-hidden" id="dash-top-countries-pagination" aria-label="Top countries pagination"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Charts + tables (wired to /api/dashboard-series via app.js) -->
-    <div class="row g-3 mb-3">
-      <div class="col-lg-6" data-kexo-chart-key="dash-chart-revenue">
-        <div class="card">
-          <div class="card-header">
-            <h3 class="card-title">Revenue</h3>
-          </div>
-          <div class="card-body">
-            <div id="dash-chart-revenue" style="height:200px"></div>
-          </div>
-        </div>
-      </div>
-      <div class="col-lg-6" data-kexo-chart-key="dash-chart-orders">
-        <div class="card">
-          <div class="card-header">
-            <h3 class="card-title">Orders</h3>
-          </div>
-          <div class="card-body">
-            <div id="dash-chart-orders" style="height:200px"></div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="row g-3 mb-3">
-      <div class="col-lg-6" data-kexo-chart-key="dash-chart-conv">
-        <div class="card">
-          <div class="card-header">
-            <h3 class="card-title">Conversion Rate</h3>
-          </div>
-          <div class="card-body">
-            <div id="dash-chart-conv" style="height:200px"></div>
-          </div>
-        </div>
-      </div>
-      <div class="col-lg-6" data-kexo-chart-key="dash-chart-sessions">
-        <div class="card">
-          <div class="card-header">
-            <h3 class="card-title">Sessions</h3>
-          </div>
-          <div class="card-body">
-            <div id="dash-chart-sessions" style="height:200px"></div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="row g-3 mb-3" id="dash-adspend-row" style="display:none" data-kexo-chart-key="dash-chart-adspend">
-      <div class="col-12">
-        <div class="card">
-          <div class="card-header">
-            <h3 class="card-title">Revenue vs Ad Spend</h3>
-          </div>
-          <div class="card-body">
-            <div id="dash-chart-adspend" style="height:200px"></div>
-          </div>
         </div>
       </div>
     </div>

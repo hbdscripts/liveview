@@ -18,6 +18,7 @@ const pkg = require('../../package.json');
 const shopifyQl = require('../shopifyQl');
 const adsService = require('../ads/adsService');
 const { isMasterRequest } = require('../authz');
+const { warnOnReject } = require('../shared/warnReject');
 
 const PIXEL_API_VERSION = '2024-01';
 
@@ -241,11 +242,10 @@ async function configStatus(req, res, next) {
     if (s === 'shared_ttl' || s === 'shared' || s === 'sharedttl') pixelSessionMode = 'shared_ttl';
   } catch (_) {}
   const DEFAULT_CHART_KEYS = [
-    'dash-chart-revenue',
-    'dash-chart-orders',
-    'dash-chart-conv',
-    'dash-chart-sessions',
-    'dash-chart-adspend',
+    'dash-chart-overview-30d',
+    'dash-chart-finishes-30d',
+    'dash-chart-countries-30d',
+    'dash-chart-kexo-score-today',
     'live-online-chart',
     'sales-overview-chart',
     'date-overview-chart',
@@ -530,7 +530,7 @@ async function configStatus(req, res, next) {
     if (overviewRangeKey === 'today') {
       try { await salesTruth.ensureReconciled(shop, overviewBounds.start, overviewBounds.end, overview.truthScope); } catch (_) {}
     } else {
-      salesTruth.ensureReconciled(shop, overviewBounds.start, overviewBounds.end, overview.truthScope).catch(() => {});
+      salesTruth.ensureReconciled(shop, overviewBounds.start, overviewBounds.end, overview.truthScope).catch(warnOnReject('[configStatus] ensureReconciled'));
     }
   }
   if (shop && tables.orders_shopify) {

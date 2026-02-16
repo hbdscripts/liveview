@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-16 (sale sound save reliability + upload error handling)
+Last updated: 2026-02-16 (overview grid refresh + KPI position mapping)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -110,7 +110,7 @@ KEXO “5-color” accents:
 Rendered templates live under `server/public/**` and are served by `server/index.js` via `sendPage()` (includes + cache-control + asset versioning).
 
 Dashboard:
-- `/dashboard/overview` → `server/public/dashboard/overview.html` (`data-page="dashboard"`) — top tables now include CR%
+- `/dashboard/overview` → `server/public/dashboard/overview.html` (`data-page="dashboard"`) — left KPI block (top 4) + right mini chart grid (Finishes/Countries/Kexo Score pies + 30 Day Overview revenue/cost bar); legacy page-title row is removed on this page.
 - `/dashboard/live` → `server/public/dashboard/live.html` — desktop shows a Latest sales card beside the map (last 5 sales)
 - `/dashboard/sales` → `server/public/dashboard/sales.html`
 - `/dashboard/table` → `server/public/dashboard/table.html`
@@ -260,7 +260,7 @@ Guardrail:
 Chart hiding (no flicker):
 - Chart wrappers/cards in HTML carry `data-kexo-chart-key="<chartKey>"`.
 - `GET /theme-vars.css` injects `display:none!important` for disabled charts so they disappear before first paint.
-- Dashboard paired charts expand to full width when their partner is disabled (CSS injected server-side).
+- Overview cards in the right chart grid hide pre-paint via the same chart-key CSS path.
 
 Libraries:
 - ApexCharts for most charts
@@ -276,12 +276,12 @@ KPI/date-range UI config:
 - Applied by: `server/public/app.js` to:
   - condensed KPI strip order/labels/visibility + display options
   - condensed KPI strip show/hide per page (settings-managed)
-  - dashboard KPI card order/labels/visibility
+  - dashboard KPI card order/labels/visibility + `position` (`top` or `lower`)
   - date range menu labels/availability
 - KPI visual styling (sparkline type/curve/width/height, delta typography/icon sizing/colors, up/down/same/compare colors) is now sourced from `charts_ui_config_v1.kpiBundles` rather than fixed CSS values.
 - First-paint behavior:
   - `app.js` hydrates KPI UI config from localStorage (`kexo:kpi-ui-config:v1`) and applies it before `/api/settings` resolves.
-  - `/theme-vars.css` also injects CSS to pre-hide disabled condensed KPI chips and disabled Dashboard KPI cards (`#dash-kpi-grid`) to reduce refresh flicker.
+  - `/theme-vars.css` also injects CSS to pre-hide disabled condensed KPI chips and disabled Dashboard KPI cards (`#dash-kpi-grid` + `#dash-kpi-grid-lower`) to reduce refresh flicker.
 
 KPI data:
 - `GET /api/kpis` (server cached; also localStorage warm-paint to avoid empty chips on navigation)
@@ -381,6 +381,14 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-16 (latest)
+- Dashboard overview layout refresh:
+  - `/dashboard/overview` now renders a composite top layout: left KPI block and right chart grid with 3 mini pies (`dash-chart-finishes-30d`, `dash-chart-countries-30d`, `dash-chart-kexo-score-today`) above a full-width `dash-chart-overview-30d` Revenue vs Cost chart.
+  - Removed the legacy Overview page header title row from `server/public/dashboard/overview.html` (kept shared sticky top strip/nav/date controls).
+  - New overview chart runtime fetch path in `client/app/14-dashboard.js` (`/api/dashboard-series?range=30d`, `/api/shopify-finishes?range=30d`, `/api/kexo-score?range=today`, `/api/business-snapshot?mode=range&preset=last_30_days`) with short-lived client cache.
+  - KPI layout config now supports `position` (`top` | `lower`) in `kpi_ui_config_v1`; Settings → Layout → KPIs exposes a Position selector and runtime enforces max 4 visible top KPIs (overflow auto-routes to lower grid).
+  - Updated chart/settings metadata (`kexo-chart-defs`, settings defaults/normalization, chart groups) and diagnostics definitions (`server/trackerDefinitions.js`, `server/routes/configStatus.js`) for the new overview cards.
 
 2026-02-16 (latest)
 - Sale notification sound save/upload hardening:

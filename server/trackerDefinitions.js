@@ -4,7 +4,7 @@
  * Goal: keep reporting consistent and auditable. When adding/changing a dashboard table or metric,
  * update this manifest so /api/config-status can surface what each UI element is using.
  */
-const DEFINITIONS_VERSION = 39;
+const DEFINITIONS_VERSION = 40;
 const LAST_UPDATED = '2026-02-16';
 
 /**
@@ -147,6 +147,88 @@ const TRACKER_TABLE_DEFINITIONS = [
       { name: 'Bands', value: '20 / 40 / 60 / 80 / 100 thresholds' },
       { name: 'Fail-open', value: 'Unavailable metrics excluded; weights renormalized' },
     ],
+    respectsReporting: { ordersSource: true, sessionsSource: true },
+    requires: { dbTables: ['sessions'], shopifyToken: false },
+  },
+  {
+    id: 'dashboard_overview_30_day_chart',
+    page: 'Overview',
+    name: '30 Day Overview chart (Revenue + Cost)',
+    ui: { elementIds: ['dash-chart-overview-30d'] },
+    endpoint: {
+      method: 'GET',
+      path: '/api/business-snapshot',
+      params: ['mode=range', 'preset=last_30_days', 'force=1 (optional)'],
+    },
+    sources: [
+      { kind: 'db', tables: ['settings'], note: 'Profit rule toggles and integration cost switches used in total Cost series' },
+      { kind: 'db', tables: ['orders_shopify', 'orders_shopify_line_items', 'customer_order_facts'], note: 'Revenue + COGS + order/customer context' },
+      { kind: 'db', tables: ['google_ads_spend_hourly'], note: 'Optional cost component when Google Ads cost toggle is enabled' },
+      { kind: 'shopify', note: 'Optional Shopify Payments transaction/shopping fees when enabled in Profit Rules' },
+      { kind: 'fx', note: 'Revenue/cost normalized to GBP for chart series' },
+    ],
+    columns: [
+      { name: 'Revenue', value: 'seriesComparison.current.revenueGbp[] (daily)' },
+      { name: 'Cost', value: 'seriesComparison.current.costGbp[] (daily)' },
+    ],
+    math: [
+      { name: 'Cost model', value: 'COGS + enabled profit deductions + optional integration costs (Google Ads, Transaction Fees, Shopify Fees)' },
+      { name: 'Window', value: 'Rolling last 30 days in admin timezone' },
+    ],
+    respectsReporting: { ordersSource: false, sessionsSource: false },
+    requires: { dbTables: ['settings', 'orders_shopify', 'orders_shopify_line_items'], shopifyToken: true },
+  },
+  {
+    id: 'dashboard_overview_finishes_pie_chart',
+    page: 'Overview',
+    name: 'Finishes pie chart (30 days)',
+    ui: { elementIds: ['dash-chart-finishes-30d'] },
+    endpoint: { method: 'GET', path: '/api/shopify-finishes', params: ['shop=...', 'range=30d', 'force=1 (optional)'] },
+    sources: [
+      { kind: 'db', tables: ['orders_shopify_line_items'], note: 'Paid truth line-item revenue grouped by normalized finish from variant_title' },
+      { kind: 'fx', note: 'Revenue converted to GBP before pie segments are built' },
+    ],
+    columns: [
+      { name: 'Segments', value: 'Gold | Silver | Vermeil | Solid Silver (top finish groups by revenue)' },
+      { name: 'Values', value: 'Revenue (GBP)' },
+    ],
+    math: [],
+    respectsReporting: { ordersSource: false, sessionsSource: false },
+    requires: { dbTables: ['orders_shopify_line_items'], shopifyToken: false },
+  },
+  {
+    id: 'dashboard_overview_countries_pie_chart',
+    page: 'Overview',
+    name: 'Countries pie chart (top 5 by sales, 30 days)',
+    ui: { elementIds: ['dash-chart-countries-30d'] },
+    endpoint: { method: 'GET', path: '/api/dashboard-series', params: ['range=30d', 'force=1 (optional)'] },
+    sources: [
+      { kind: 'db', tables: ['orders_shopify'], note: 'Paid truth orders grouped by order country for topCountries[]' },
+      { kind: 'fx', note: 'Revenue converted to GBP for ranking and chart values' },
+    ],
+    columns: [
+      { name: 'Segments', value: 'Top 5 countries by revenue in range' },
+      { name: 'Values', value: 'topCountries[].revenue (GBP)' },
+    ],
+    math: [],
+    respectsReporting: { ordersSource: false, sessionsSource: false },
+    requires: { dbTables: ['orders_shopify'], shopifyToken: false },
+  },
+  {
+    id: 'dashboard_overview_kexo_score_pie_chart',
+    page: 'Overview',
+    name: 'Kexo Score pie chart (today)',
+    ui: { elementIds: ['dash-chart-kexo-score-today'] },
+    endpoint: { method: 'GET', path: '/api/kexo-score', params: ['range=today', 'force=1 (optional)'] },
+    sources: [
+      { kind: 'db', tables: ['sessions', 'orders_shopify', 'purchases'], note: 'Kexo score inputs (traffic + conversion + revenue + optional ROAS)' },
+      { kind: 'db', tables: ['google_ads_spend_hourly'], note: 'Optional ads components when integration exists' },
+    ],
+    columns: [
+      { name: 'Score', value: 'kexoScore.score (0-100)' },
+      { name: 'Remaining', value: '100 - score (for pie remainder segment)' },
+    ],
+    math: [],
     respectsReporting: { ordersSource: true, sessionsSource: true },
     requires: { dbTables: ['sessions'], shopifyToken: false },
   },

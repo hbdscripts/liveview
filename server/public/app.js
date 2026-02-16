@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 4197b0c8c6adba0c
+// checksum: 4712bf6c09181fb6
 
 (function () {
 const API = '';
@@ -9066,7 +9066,9 @@ const API = '';
       if (!grid || !cfg || cfg.v !== 1) return;
       var list = cfg && cfg.kpis && Array.isArray(cfg.kpis.dashboard) ? cfg.kpis.dashboard : null;
       if (!list) return;
-      var lowerKeys = new Set(['cogs', 'fulfilled', 'returns', 'items']);
+      var legacyLowerKeys = new Set(['cogs', 'fulfilled', 'returns', 'items']);
+      var maxTopVisible = 4;
+      var topVisibleCount = 0;
 
       var idByKey = {
         revenue: 'dash-kpi-revenue',
@@ -9118,7 +9120,11 @@ const API = '';
         }
         var enabled = item.enabled !== false;
         col.classList.toggle('is-user-disabled', !enabled);
-        if (lowerGrid && lowerKeys.has(key)) fragLower.appendChild(col);
+        var pos = item.position != null ? String(item.position).trim().toLowerCase() : '';
+        var wantsLower = (pos === 'lower') || (pos !== 'top' && legacyLowerKeys.has(key));
+        if (!wantsLower && enabled && topVisibleCount >= maxTopVisible) wantsLower = true;
+        if (!wantsLower && enabled) topVisibleCount += 1;
+        if (lowerGrid && wantsLower) fragLower.appendChild(col);
         else fragPrimary.appendChild(col);
         seen.add(col);
       });
@@ -9126,7 +9132,10 @@ const API = '';
         if (!col || seen.has(col)) return;
         col.classList.remove('is-user-disabled');
         var key = keyByCol.get(col) || '';
-        if (lowerGrid && lowerKeys.has(key)) fragLower.appendChild(col);
+        var wantsLower = legacyLowerKeys.has(key);
+        if (!wantsLower && topVisibleCount >= maxTopVisible) wantsLower = true;
+        if (!wantsLower) topVisibleCount += 1;
+        if (lowerGrid && wantsLower) fragLower.appendChild(col);
         else fragPrimary.appendChild(col);
       });
       grid.appendChild(fragPrimary);
@@ -15022,6 +15031,10 @@ const API = '';
       var dashCompareFetchedAt = 0;
       var dashCompareSeriesInFlight = null;
       var dashCharts = {};
+      var overviewMiniCache = null;
+      var overviewMiniFetchedAt = 0;
+      var overviewMiniInFlight = null;
+      var OVERVIEW_MINI_CACHE_MS = 2 * 60 * 1000;
       var _primaryRgbDash = getComputedStyle(document.documentElement).getPropertyValue('--tblr-primary-rgb').trim() || '32,107,196';
       var DASH_ACCENT = 'rgb(' + _primaryRgbDash + ')';
       var DASH_ACCENT_LIGHT = 'rgba(' + _primaryRgbDash + ',0.12)';
@@ -15280,6 +15293,253 @@ const API = '';
           console.error('[dashboard] chart render error:', chartId, err);
           return null;
         }
+      }
+
+      function destroyDashChart(chartId) {
+        try {
+          if (dashCharts && dashCharts[chartId] && typeof dashCharts[chartId].destroy === 'function') {
+            dashCharts[chartId].destroy();
+          }
+        } catch (_) {}
+        try { delete dashCharts[chartId]; } catch (_) {}
+      }
+
+      function normalizeOverviewMetric(v) {
+        var n = (typeof v === 'number') ? v : Number(v);
+        return Number.isFinite(n) ? n : 0;
+      }
+
+      function renderOverviewChartEmpty(chartId, text) {
+        var chartEl = document.getElementById(chartId);
+        if (!chartEl) return;
+        if (!isChartEnabledByUiConfig(chartId)) {
+          destroyDashChart(chartId);
+          chartEl.innerHTML = '';
+          return;
+        }
+        destroyDashChart(chartId);
+        chartEl.innerHTML = '<div class="kexo-overview-chart-empty">' + escapeHtml(text || 'No data available') + '</div>';
+      }
+
+      function renderOverviewPieChart(chartId, labels, values, opts) {
+        var chartEl = document.getElementById(chartId);
+        if (!chartEl || typeof ApexCharts === 'undefined') return;
+        if (!isChartEnabledByUiConfig(chartId)) {
+          destroyDashChart(chartId);
+          chartEl.innerHTML = '';
+          return;
+        }
+        var safeLabels = [];
+        var safeValues = [];
+        var srcLabels = Array.isArray(labels) ? labels : [];
+        var srcValues = Array.isArray(values) ? values : [];
+        for (var i = 0; i < srcLabels.length; i++) {
+          var label = srcLabels[i] != null ? String(srcLabels[i]).trim() : '';
+          var n = normalizeOverviewMetric(srcValues[i]);
+          if (!label || n <= 0) continue;
+          safeLabels.push(label);
+          safeValues.push(n);
+        }
+        if (!safeValues.length) {
+          renderOverviewChartEmpty(chartId, 'No data available');
+          return;
+        }
+        destroyDashChart(chartId);
+        var fallbackColors = (opts && Array.isArray(opts.colors) && opts.colors.length)
+          ? opts.colors
+          : [DASH_ACCENT, DASH_BLUE, DASH_ORANGE, DASH_PURPLE, '#ef4444'];
+        var colors = chartColorsFromUiConfig(chartId, fallbackColors);
+        var valueFormatter = (opts && typeof opts.valueFormatter === 'function')
+          ? opts.valueFormatter
+          : function(v) { return formatRevenue(normalizeOverviewMetric(v)) || '\u2014'; };
+        var chartType = opts && opts.donut ? 'donut' : 'pie';
+        var apexOpts = {
+          chart: {
+            type: chartType,
+            height: (opts && Number.isFinite(Number(opts.height))) ? Number(opts.height) : 180,
+            fontFamily: 'Inter, sans-serif',
+            toolbar: { show: false },
+            animations: { enabled: true, easing: 'easeinout', speed: 280 },
+            zoom: { enabled: false }
+          },
+          series: safeValues,
+          labels: safeLabels,
+          colors: colors,
+          legend: { show: true, position: 'bottom', fontSize: '11px' },
+          stroke: { show: true, width: 1, colors: ['#fff'] },
+          dataLabels: {
+            enabled: true,
+            formatter: function(val) {
+              var n = normalizeOverviewMetric(val);
+              return n ? n.toFixed(0) + '%' : '';
+            },
+          },
+          tooltip: { y: { formatter: valueFormatter } },
+          noData: { text: 'No data available', style: { fontSize: '13px', color: '#626976' } }
+        };
+        if (chartType === 'donut') {
+          apexOpts.plotOptions = { pie: { donut: { size: '66%' } } };
+        }
+        try {
+          var chartOverride = chartAdvancedOverrideFromUiConfig(chartId, 'pie');
+          if (chartOverride && isPlainObject(chartOverride) && Object.keys(chartOverride).length) {
+            apexOpts = deepMergeOptions(apexOpts, chartOverride);
+          }
+        } catch (_) {}
+        try {
+          var chart = new ApexCharts(chartEl, apexOpts);
+          chart.render();
+          dashCharts[chartId] = chart;
+        } catch (err) {
+          captureChartError(err, 'dashboardPieChartRender', { chartId: chartId });
+          console.error('[dashboard] pie chart render error:', chartId, err);
+        }
+      }
+
+      function renderOverviewRevenueCostChart(snapshotPayload) {
+        var chartId = 'dash-chart-overview-30d';
+        if (!isChartEnabledByUiConfig(chartId)) {
+          destroyDashChart(chartId);
+          var hiddenEl = document.getElementById(chartId);
+          if (hiddenEl) hiddenEl.innerHTML = '';
+          return;
+        }
+        var current = snapshotPayload && snapshotPayload.seriesComparison && snapshotPayload.seriesComparison.current
+          ? snapshotPayload.seriesComparison.current
+          : null;
+        var labelsYmd = current && Array.isArray(current.labelsYmd) ? current.labelsYmd : [];
+        var revenueGbp = current && Array.isArray(current.revenueGbp) ? current.revenueGbp : [];
+        var costGbp = current && Array.isArray(current.costGbp) ? current.costGbp : [];
+        var len = Math.max(labelsYmd.length, revenueGbp.length, costGbp.length);
+        if (!len) {
+          renderOverviewChartEmpty(chartId, 'No data available');
+          return;
+        }
+        var labels = [];
+        var revenue = [];
+        var cost = [];
+        for (var i = 0; i < len; i++) {
+          var ymd = labelsYmd[i] != null ? String(labelsYmd[i]) : '';
+          labels.push(ymd ? shortDate(ymd) : String(i + 1));
+          revenue.push(normalizeOverviewMetric(revenueGbp[i]));
+          cost.push(normalizeOverviewMetric(costGbp[i]));
+        }
+        makeChart(chartId, labels, [{
+          label: 'Revenue',
+          data: revenue,
+          borderColor: DASH_ACCENT,
+          backgroundColor: DASH_ACCENT_LIGHT,
+          fill: true,
+          borderWidth: 2
+        }, {
+          label: 'Cost',
+          data: cost,
+          borderColor: '#ef4444',
+          backgroundColor: 'rgba(239,68,68,0.14)',
+          fill: true,
+          borderWidth: 2
+        }], { currency: true, chartType: 'bar' });
+      }
+
+      function fetchOverviewJson(url, force, timeoutMs) {
+        return fetchWithTimeout(url, { credentials: 'same-origin', cache: force ? 'no-store' : 'default' }, timeoutMs || 25000)
+          .then(function(r) { return (r && r.ok) ? r.json() : null; })
+          .catch(function() { return null; });
+      }
+
+      function renderOverviewMiniCharts(payload) {
+        var finishesRows = payload && payload.finishes && Array.isArray(payload.finishes.finishes) ? payload.finishes.finishes : [];
+        var finishLabels = [];
+        var finishValues = [];
+        finishesRows.forEach(function(row) {
+          if (!row || typeof row !== 'object') return;
+          var label = row.finish != null ? String(row.finish).trim() : '';
+          var val = normalizeOverviewMetric(row.revenueGbp != null ? row.revenueGbp : row.revenue);
+          if (!label || val <= 0) return;
+          finishLabels.push(label);
+          finishValues.push(val);
+        });
+        renderOverviewPieChart('dash-chart-finishes-30d', finishLabels, finishValues, {
+          colors: ['#f59e34', '#94a3b8', '#8b5cf6', '#4b94e4', '#3eb3ab', '#ef4444'],
+          valueFormatter: function(v) { return formatRevenue(normalizeOverviewMetric(v)) || '\u2014'; },
+          height: 180
+        });
+
+        var countriesRows = payload && payload.countries && Array.isArray(payload.countries.topCountries) ? payload.countries.topCountries : [];
+        var topCountries = countriesRows.slice(0, 5);
+        var countryLabels = [];
+        var countryValues = [];
+        topCountries.forEach(function(row) {
+          if (!row || typeof row !== 'object') return;
+          var cc = row.country != null ? String(row.country).trim().toUpperCase() : '';
+          var label = cc ? ((typeof countryLabelFull === 'function') ? countryLabelFull(cc) : cc) : '';
+          var val = normalizeOverviewMetric(row.revenue);
+          if (!label || val <= 0) return;
+          countryLabels.push(label);
+          countryValues.push(val);
+        });
+        renderOverviewPieChart('dash-chart-countries-30d', countryLabels, countryValues, {
+          colors: ['#4b94e4', '#3eb3ab', '#f59e34', '#8b5cf6', '#ef4444'],
+          valueFormatter: function(v) { return formatRevenue(normalizeOverviewMetric(v)) || '\u2014'; },
+          height: 180
+        });
+
+        var rawScore = payload && payload.kexoScore && payload.kexoScore.score != null ? Number(payload.kexoScore.score) : NaN;
+        var hasScore = Number.isFinite(rawScore);
+        var score = hasScore ? Math.max(0, Math.min(100, rawScore)) : null;
+        var scoreLabels = hasScore ? ['Score', 'Remaining'] : [];
+        var scoreValues = hasScore ? [score, Math.max(0, 100 - score)] : [];
+        renderOverviewPieChart('dash-chart-kexo-score-today', scoreLabels, scoreValues, {
+          donut: true,
+          colors: ['#4b94e4', '#e5e7eb'],
+          valueFormatter: function(v) { return normalizeOverviewMetric(v).toFixed(1); },
+          height: 180
+        });
+
+        renderOverviewRevenueCostChart(payload ? payload.snapshot : null);
+      }
+
+      function fetchOverviewMiniData(options) {
+        var opts = options && typeof options === 'object' ? options : {};
+        var force = !!opts.force;
+        var fresh = overviewMiniCache && overviewMiniFetchedAt && (Date.now() - overviewMiniFetchedAt) < OVERVIEW_MINI_CACHE_MS;
+        if (!force && fresh) {
+          renderOverviewMiniCharts(overviewMiniCache);
+          return Promise.resolve(overviewMiniCache);
+        }
+        if (overviewMiniInFlight && !force) return overviewMiniInFlight;
+
+        var stamp = Date.now();
+        var shop = getShopParam() || shopForSalesFallback || '';
+        var seriesUrl = API + '/api/dashboard-series?range=30d' + (force ? ('&force=1&_=' + stamp) : '');
+        var snapshotUrl = API + '/api/business-snapshot?mode=range&preset=last_30_days' + (force ? ('&force=1&_=' + stamp) : '');
+        var finishesUrl = API + '/api/shopify-finishes?range=30d' + (shop ? ('&shop=' + encodeURIComponent(shop)) : '') + (force ? ('&force=1&_=' + stamp) : '');
+        var scoreUrl = API + '/api/kexo-score?range=today' + (force ? ('&force=1&_=' + stamp) : '');
+
+        overviewMiniInFlight = Promise.all([
+          fetchOverviewJson(seriesUrl, force, 25000),
+          fetchOverviewJson(snapshotUrl, force, 30000),
+          fetchOverviewJson(finishesUrl, force, 25000),
+          fetchOverviewJson(scoreUrl, force, 25000),
+        ]).then(function(parts) {
+          var payload = {
+            countries: parts[0] || null,
+            snapshot: parts[1] || null,
+            finishes: parts[2] || null,
+            kexoScore: parts[3] || null,
+          };
+          overviewMiniCache = payload;
+          overviewMiniFetchedAt = Date.now();
+          renderOverviewMiniCharts(payload);
+          return payload;
+        }).catch(function(err) {
+          try { if (typeof window.kexoCaptureError === 'function') window.kexoCaptureError(err, { context: 'dashboardOverviewMiniCharts', page: PAGE }); } catch (_) {}
+          renderOverviewMiniCharts(overviewMiniCache || null);
+          return overviewMiniCache || null;
+        }).finally(function() {
+          overviewMiniInFlight = null;
+        });
+        return overviewMiniInFlight;
       }
 
       function renderDashboard(data) {
@@ -15605,79 +15865,7 @@ const API = '';
           try { if (typeof renderCondensedSparklines === 'function') renderCondensedSparklines(sparklineSeries); } catch (_) {}
         });
 
-        var bucket = data && data.bucket ? String(data.bucket) : 'day';
-        var labels = chartSeries.map(function(d) {
-          return bucket === 'hour' ? shortHourLabel(d.date) : shortDate(d.date);
-        });
-
-        makeChart('dash-chart-revenue', labels, [{
-          label: 'Revenue',
-          data: chartSeries.map(function(d) { return d.revenue; }),
-          borderColor: DASH_ACCENT,
-          backgroundColor: DASH_ACCENT_LIGHT,
-          fill: true,
-          borderWidth: 2
-        }], { currency: true, chartType: 'area', areaOpacityFrom: 0.58, areaOpacityTo: 0.18 });
-
-        makeChart('dash-chart-orders', labels, [{
-          label: 'Orders',
-          data: chartSeries.map(function(d) { return d.orders; }),
-          borderColor: DASH_BLUE,
-          backgroundColor: DASH_BLUE_LIGHT,
-          fill: true,
-          borderWidth: 2
-        }], { chartType: 'area', areaOpacityFrom: 0.58, areaOpacityTo: 0.18 });
-
-        var hasShopifyConv = chartSeries.some(function(d) { return d.shopifyConvRate != null; });
-        var convDatasets = [{
-          label: 'Kexo Conv Rate',
-          data: chartSeries.map(function(d) { return d.convRate; }),
-          borderColor: DASH_PURPLE,
-          backgroundColor: DASH_PURPLE_LIGHT,
-          fill: true,
-          borderWidth: 2
-        }];
-        if (hasShopifyConv) {
-          convDatasets.push({
-            label: 'Shopify Conv Rate',
-            data: chartSeries.map(function(d) { return d.shopifyConvRate; }),
-            borderColor: '#5c6ac4',
-            backgroundColor: 'rgba(92,106,196,0.10)',
-            fill: false,
-            borderWidth: 2,
-            borderDash: [5, 3]
-          });
-        }
-        makeChart('dash-chart-conv', labels, convDatasets, { pct: true, chartType: 'area', areaOpacityFrom: 0.58, areaOpacityTo: 0.18 });
-
-        makeChart('dash-chart-sessions', labels, [{
-          label: 'Sessions',
-          data: chartSeries.map(function(d) { return d.sessions; }),
-          borderColor: DASH_ORANGE,
-          backgroundColor: DASH_ORANGE_LIGHT,
-          fill: true,
-          borderWidth: 2
-        }], { chartType: 'area', areaOpacityFrom: 0.58, areaOpacityTo: 0.18 });
-
-        var hasAdSpend = chartSeries.some(function(d) { return d.adSpend > 0; });
-        var adRow = el('dash-adspend-row');
-        if (adRow) adRow.style.display = hasAdSpend ? '' : 'none';
-        if (hasAdSpend) {
-          makeChart('dash-chart-adspend', labels, [{
-            label: 'Revenue',
-            data: chartSeries.map(function(d) { return d.revenue; }),
-            borderColor: DASH_ACCENT,
-            backgroundColor: 'transparent',
-            borderWidth: 2
-          }, {
-            label: 'Ad Spend',
-            data: chartSeries.map(function(d) { return d.adSpend; }),
-            borderColor: '#ef4444',
-            backgroundColor: 'rgba(239,68,68,0.08)',
-            fill: true,
-            borderWidth: 2
-          }], { currency: true });
-        }
+        renderOverviewMiniCharts(overviewMiniCache || null);
 
         var prodTbody = el('dash-top-products') ? el('dash-top-products').querySelector('tbody') : null;
         if (prodTbody) {
@@ -16044,67 +16232,6 @@ const API = '';
         });
       }
 
-      function renderKexoScoreSummaryCard(payload, rangeKey) {
-        var safeRange = (rangeKey == null ? '' : String(rangeKey)).trim().toLowerCase() || 'today';
-        var hasData = !!(payload && payload.ok);
-        var summary = hasData && payload.summary ? String(payload.summary).trim() : '';
-        var keyDrivers = hasData && Array.isArray(payload.key_drivers) ? payload.key_drivers : [];
-        var recommendation = hasData && payload.recommendation ? String(payload.recommendation).trim() : '';
-        var html = '';
-        if (summary) {
-          html += '<p class="kexo-score-summary-text mb-2">' + escapeHtml(summary) + '</p>';
-        }
-        if (keyDrivers.length) {
-          html += '<ul class="kexo-score-summary-drivers list-unstyled small mb-2">';
-          keyDrivers.slice(0, 4).forEach(function(item) {
-            html += '<li>' + escapeHtml(String(item == null ? '' : item).trim()) + '</li>';
-          });
-          html += '</ul>';
-        }
-        if (recommendation) {
-          html += '<p class="kexo-score-summary-recommendation small mb-2"><strong>Where to focus:</strong> ' + escapeHtml(recommendation) + '</p>';
-        }
-        if (!summary && !keyDrivers.length && !recommendation) {
-          html += '<p class="kexo-score-summary-loading text-muted small mb-2">Summary unavailable.</p>';
-        }
-        html += '<button type="button" class="btn btn-sm btn-ghost-secondary kexo-score-summary-refresh" data-range="' + escapeHtml(safeRange) + '" aria-label="Refresh summary">Refresh</button>';
-        return html;
-      }
-
-      function fetchAndRenderKexoScoreSummary(rangeKey, force) {
-        var container = document.getElementById('kexo-score-modal-summary');
-        if (!container) return;
-        var rk = (rangeKey == null ? '' : String(rangeKey)).trim().toLowerCase() || 'today';
-        container.innerHTML = '<p class="kexo-score-summary-loading text-muted small mb-0">Loading summary...</p>';
-        var url = API + '/api/kexo-score-summary?range=' + encodeURIComponent(rk) + (force ? '&force=1' : '');
-        return fetchWithTimeout(url, { credentials: 'same-origin', cache: force ? 'no-store' : 'default' }, 15000)
-          .then(function(r) { return (r && r.ok) ? r.json() : null; })
-          .then(function(payload) {
-            var currentContainer = document.getElementById('kexo-score-modal-summary');
-            if (!currentContainer) return;
-            currentContainer.innerHTML = renderKexoScoreSummaryCard(payload, rk);
-            var refreshBtn = currentContainer.querySelector('.kexo-score-summary-refresh');
-            if (refreshBtn) {
-              refreshBtn.addEventListener('click', function() {
-                var nextRange = (refreshBtn.getAttribute('data-range') || rk).trim().toLowerCase() || 'today';
-                fetchAndRenderKexoScoreSummary(nextRange, true);
-              });
-            }
-          })
-          .catch(function() {
-            var currentContainer = document.getElementById('kexo-score-modal-summary');
-            if (!currentContainer) return;
-            currentContainer.innerHTML = renderKexoScoreSummaryCard(null, rk);
-            var refreshBtn = currentContainer.querySelector('.kexo-score-summary-refresh');
-            if (refreshBtn) {
-              refreshBtn.addEventListener('click', function() {
-                var nextRange = (refreshBtn.getAttribute('data-range') || rk).trim().toLowerCase() || 'today';
-                fetchAndRenderKexoScoreSummary(nextRange, true);
-              });
-            }
-          });
-      }
-
       function openKexoScoreModal() {
         var modal = document.getElementById('kexo-score-modal');
         var body = document.getElementById('kexo-score-modal-body');
@@ -16177,13 +16304,9 @@ const API = '';
         }
 
         var data = _kexoScoreCache;
-        var rangeKey = (_kexoScoreRangeKey == null ? '' : String(_kexoScoreRangeKey)).trim().toLowerCase() || 'today';
-        var summaryBlock = '<div id="kexo-score-modal-summary" class="kexo-score-summary-card mb-3" aria-live="polite">' +
-          '<p class="kexo-score-summary-loading text-muted small mb-0">Loading summary...</p>' +
-        '</div>';
         applyKexoScoreModalSummary(data);
         if (!data || !Array.isArray(data.components) || data.components.length === 0) {
-          body.innerHTML = summaryBlock + '<div class="kexo-score-breakdown-empty text-muted">No score data. Select a date range and refresh.</div>';
+          body.innerHTML = '<div class="kexo-score-breakdown-empty text-muted">No score data. Select a date range and refresh.</div>';
         } else {
           var metricOrder = ['revenue', 'orders', 'itemsOrdered', 'conversion', 'roas'];
           var rankByKey = {};
@@ -16212,14 +16335,12 @@ const API = '';
               '</div>' +
             '</div>';
           }).join('');
-          body.innerHTML = summaryBlock + body.innerHTML;
         }
         disposeKexoScorePopovers(modal);
         initKexoScorePopovers(modal);
         modal.classList.remove('is-hidden');
         modal.setAttribute('aria-hidden', 'false');
         requestAnimationFrame(function() { animateKexoScoreBreakdownBars(body); });
-        fetchAndRenderKexoScoreSummary(rangeKey, false);
       }
 
       function closeKexoScoreModal() {
@@ -16274,6 +16395,7 @@ const API = '';
         });
         var url = API + '/api/dashboard-series?range=' + encodeURIComponent(rangeKey) + (force ? ('&force=1&_=' + Date.now()) : '');
         fetchKexoScore(rangeKey);
+        fetchOverviewMiniData({ force: force });
         fetchWithTimeout(url, { credentials: 'same-origin', cache: force ? 'no-store' : 'default' }, 30000)
           .then(function(r) { return (r && r.ok) ? r.json() : null; })
           .then(function(data) {
@@ -16319,6 +16441,7 @@ const API = '';
         } catch (_) {}
         if (!force && dashCache && dashLastRangeKey === rk) {
           renderDashboard(dashCache);
+          fetchOverviewMiniData({ force: false });
           return;
         }
         fetchDashboardData(rk, force, { silent: silent });
