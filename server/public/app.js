@@ -1,3 +1,6 @@
+// @generated from client/app - do not edit. Run: npm run build:app
+// checksum: 263bb382ef7e00b8
+
 (function () {
 const API = '';
     const PAGE = (document.body && document.body.getAttribute('data-page')) || '';
@@ -126,7 +129,7 @@ const API = '';
     try { window.__kexoWithSilentOverlay = kexoWithSilentOverlay; } catch (_) {}
     try { window.__kexoSilentOverlayActive = kexoSilentOverlayActive; } catch (_) {}
 
-    // ── Admin preview mode (UI-only) ────────────────────────────────────────
+    // ?????? Admin preview mode (UI-only) ????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
     // Preview is an admin tool: it affects client UI gating only and cannot bypass server auth.
     const PREVIEW_LS_KEY = 'kexo:preview:v1';
     function normalizePreviewTier(raw) {
@@ -173,7 +176,7 @@ const API = '';
     }
     function isAdminLikeRole(raw) {
       var r = raw == null ? '' : String(raw).trim().toLowerCase();
-      // Backwards-compatible while Master→Admin migration rolls out.
+      // Backwards-compatible while Master???Admin migration rolls out.
       return r === 'admin' || r === 'master';
     }
     function isRealAdminViewer(me) {
@@ -307,6 +310,19 @@ const API = '';
       'best-geo-products-table': 'live',
       'ads-root': 'live',
     });
+
+    var _kexoCleanupFns = [];
+    function registerCleanup(fn) {
+      if (typeof fn === 'function') _kexoCleanupFns.push(fn);
+    }
+    function runCleanup() {
+      _kexoCleanupFns.forEach(function(f) { try { f(); } catch (_) {} });
+      _kexoCleanupFns.length = 0;
+    }
+    try {
+      window.addEventListener('beforeunload', runCleanup);
+      window.addEventListener('pagehide', runCleanup);
+    } catch (_) {}
 
     (function initKexoTableMounts() {
       function run() {
@@ -470,7 +486,7 @@ const API = '';
     (function primePageBodyLoader() {
       if (!isPageLoaderEnabled(PAGE)) return;
       // Tool pages compare-conversion-rate, shipping-cr, click-order-lookup don't use the report
-      // build system and never call finish() — skip showing the loader so it doesn't cover content.
+      // build system and never call finish() ??? skip showing the loader so it doesn't cover content.
       var toolPagesNoLoader = ['compare-conversion-rate', 'shipping-cr', 'click-order-lookup', 'snapshot'];
       var pageKey = String(PAGE || '').trim().toLowerCase();
       if (toolPagesNoLoader.indexOf(pageKey) >= 0) return;
@@ -690,7 +706,7 @@ const API = '';
 
     // Desktop date picker is mounted into the page header right slot.
 
-    // ── Page progress bar (Tabler turbo-style) ──
+    // ?????? Page progress bar (Tabler turbo-style) ??????
     var _progressEl = null;
     var _progressBarEl = null;
     var _progressActive = 0;
@@ -741,12 +757,12 @@ const API = '';
     let statsCache = {};
     let attributionCache = null;
     let devicesCache = null;
-    // Acquisition → Attribution (tree/table + chart state)
+    // Acquisition ??? Attribution (tree/table + chart state)
     let attributionExpandedChannels = null; // null = first render, default all open
     let attributionExpandedSources = null; // null = first render, default all open
     let attributionChartInstance = null;
     let attributionChartData = null;
-    // Acquisition → Devices (tree/table + chart state)
+    // Acquisition ??? Devices (tree/table + chart state)
     let devicesExpanded = null; // null = first render, default all open
     let devicesChartInstance = null;
     let devicesChartData = null;
@@ -1529,7 +1545,7 @@ const API = '';
         if (classKey !== 'live' && gridCount === 2 && getViewportBucket() !== 'mobile') max = Math.min(max, 150);
         if (gridCount >= 3) min = Math.max(min, 100);
 
-        // Optional per-table overrides from Settings → Layout → Tables.
+        // Optional per-table overrides from Settings ??? Layout ??? Tables.
         try {
           var tableId = getWrapTableId(wrap);
           var ui = getTablesUiTableCfg(tableId, page);
@@ -2718,7 +2734,7 @@ const API = '';
       if (s.utm_medium != null && String(s.utm_medium).trim() !== '') lines.push('utm_medium: ' + String(s.utm_medium).trim());
       if (s.utm_campaign != null && String(s.utm_campaign).trim() !== '') lines.push('utm_campaign: ' + String(s.utm_campaign).trim());
       if (s.utm_content != null && String(s.utm_content).trim() !== '') lines.push('utm_content: ' + String(s.utm_content).trim());
-      if (lines.length === 0) return '—';
+      if (lines.length === 0) return '???';
       return lines.join('\n');
     }
 
@@ -2817,7 +2833,7 @@ const API = '';
       if (info.platform && info.platform !== 'unknown') titleParts.push(titleize(info.platform));
       if (info.model) titleParts.push(titleize(info.model));
       if (info.deviceType && info.deviceType !== 'unknown') titleParts.push(titleize(info.deviceType));
-      const title = titleParts.length ? titleParts.join(' · ') : (s && s.device != null ? String(s.device) : 'Unknown');
+      const title = titleParts.length ? titleParts.join(' ?? ') : (s && s.device != null ? String(s.device) : 'Unknown');
       const t = title ? ' title="' + escapeHtml(String(title)) + '"' : '';
 
       return '' +
@@ -3386,7 +3402,7 @@ const API = '';
           '</div>' +
           '<div class="fraud-analysis">' +
             '<div class="mb-2" style="font-weight:500">Analysis</div>' +
-            '<div class="fraud-summary">' + escapeHtml(summary || '—') + '</div>' +
+            '<div class="fraud-summary">' + escapeHtml(summary || '???') + '</div>' +
             (reasonsHtml ? ('<div class="mt-2">' + reasonsHtml + '</div>') : '') +
             (rec ? ('<div class="mt-2 text-muted"><span style="font-weight:500">Suggested action:</span> ' + escapeHtml(rec) + '</div>') : '') +
           '</div>' +
@@ -3630,7 +3646,7 @@ const API = '';
     }
 
     function formatRevenueTableHtml(num) {
-      if (num == null || typeof num !== 'number' || !Number.isFinite(num)) return '—';
+      if (num == null || typeof num !== 'number' || !Number.isFinite(num)) return '???';
       if (isIconMode()) return '\u00A3' + Math.round(num).toLocaleString('en-GB');
       if (num % 1 === 0) return '\u00A3' + num.toLocaleString('en-GB');
       let fixed = null;
@@ -4367,7 +4383,7 @@ const API = '';
         const createdAt = sale.createdAt != null ? sale.createdAt : null;
         setSaleToastContent({
           countryCode: cc || 'XX',
-          productTitle: product || (document.getElementById('sale-toast-product') ? document.getElementById('sale-toast-product').textContent : '—'),
+          productTitle: product || (document.getElementById('sale-toast-product') ? document.getElementById('sale-toast-product').textContent : '???'),
           amountGbp: (amount != null && Number.isFinite(amount)) ? amount : null,
           productHandle: productHandle || '',
           productThumbUrl: productThumbUrl || '',
@@ -4862,7 +4878,7 @@ const API = '';
       }).join('');
     }
 
-    // ── Product Type Tables (Necklaces, Bracelets, Earrings, Sets, Charms, Extras) ──
+    // ?????? Product Type Tables (Necklaces, Bracelets, Earrings, Sets, Charms, Extras) ??????
     function setHiddenById(id, hidden) {
       var el = document.getElementById(id);
       if (!el) return;
@@ -4921,11 +4937,11 @@ const API = '';
       var pageRows = rows.slice(start, start + pageSize);
       const mainBase = getMainBaseUrl();
       tbody.innerHTML = pageRows.map(function(r) {
-        var title = r && r.title ? String(r.title) : '—';
+        var title = r && r.title ? String(r.title) : '???';
         var orders = r && r.orders != null ? Number(r.orders) : 0;
         var sessions = r && r.sessions != null ? Number(r.sessions) : 0;
-        var rev = r && r.revenueGbp != null ? formatRevenueTableHtml(r.revenueGbp) : '—';
-        var cr = r && r.cr != null ? pct(r.cr) : '—';
+        var rev = r && r.revenueGbp != null ? formatRevenueTableHtml(r.revenueGbp) : '???';
+        var cr = r && r.cr != null ? pct(r.cr) : '???';
         var handle = r && r.handle ? String(r.handle) : '';
         var productId = (r && r.product_id) ? String(r.product_id).replace(/^gid:\/\/shopify\/Product\//i, '').trim() : '';
         var productUrl = (mainBase && handle) ? (mainBase + '/products/' + encodeURIComponent(handle)) : '#';
@@ -5349,7 +5365,7 @@ const API = '';
                   '<div style="display:flex;align-items:center;margin-bottom:4px;">' + thumb +
                     '<div style="font-weight:600;font-size:12px;line-height:1.2;">' + escapeHtml(row.title) + '</div>' +
                   '</div>' +
-                  '<div style="font-size:12px;color:#475569;">Revenue: <strong style="color:#0f172a;">' + escapeHtml(formatRevenue(row.revenue) || '—') + '</strong></div>' +
+                  '<div style="font-size:12px;color:#475569;">Revenue: <strong style="color:#0f172a;">' + escapeHtml(formatRevenue(row.revenue) || '???') + '</strong></div>' +
                 '</div>';
               }
             },
@@ -5404,7 +5420,7 @@ const API = '';
                 var last = w && w.globals && Array.isArray(w.globals.labels) ? (w.globals.labels.length - 1) : -1;
                 if (dp !== last) return '';
               } catch (_) { return ''; }
-              return formatRevenue(Number(val)) || '—';
+              return formatRevenue(Number(val)) || '???';
             },
             style: { fontSize: '10px' },
             background: { enabled: true, borderRadius: 4, padding: 3, opacity: 0.85 },
@@ -5425,7 +5441,7 @@ const API = '';
             forceNiceScale: true,
             labels: {
               style: { fontSize: '11px' },
-              formatter: function(value) { return formatRevenue(Number(value)) || '—'; }
+              formatter: function(value) { return formatRevenue(Number(value)) || '???'; }
             }
           },
           tooltip: {
@@ -5440,7 +5456,7 @@ const API = '';
                 '<div style="display:flex;align-items:center;margin-bottom:4px;">' + thumb +
                   '<div style="font-weight:600;font-size:12px;line-height:1.2;">' + escapeHtml(row.title) + '</div>' +
                 '</div>' +
-                '<div style="font-size:12px;color:#475569;">Revenue: <strong style="color:#0f172a;">' + escapeHtml(formatRevenue(row.revenue) || '—') + '</strong></div>' +
+                '<div style="font-size:12px;color:#475569;">Revenue: <strong style="color:#0f172a;">' + escapeHtml(formatRevenue(row.revenue) || '???') + '</strong></div>' +
               '</div>';
             }
           },
@@ -5682,7 +5698,7 @@ const API = '';
     }
 
     function formatSessions(n) {
-      if (n == null || typeof n !== 'number') return '—';
+      if (n == null || typeof n !== 'number') return '???';
       return n.toLocaleString();
     }
 
@@ -5801,9 +5817,9 @@ const API = '';
         const iso = (r.country_code || 'XX').toUpperCase().slice(0, 2);
         const label = countryLabelFull(iso);
         const flag = flagImg(iso, label);
-        const revenue = r && r.revenue != null ? formatRevenueTableHtml(r.revenue) : '—';
-        const aov = r && r.aov != null ? formatRevenueTableHtml(r.aov) : '—';
-        const cr = r && r.conversion != null ? pct(r.conversion) : '—';
+        const revenue = r && r.revenue != null ? formatRevenueTableHtml(r.revenue) : '???';
+        const aov = r && r.aov != null ? formatRevenueTableHtml(r.aov) : '???';
+        const cr = r && r.conversion != null ? pct(r.conversion) : '???';
         return '<div class="grid-row" role="row">' +
           '<div class="grid-cell" role="cell"><span class="country-cell">' + flag + '<span class="country-label"><span class="country-name">' + escapeHtml(label) + '</span></span></span></div>' +
           '<div class="grid-cell" role="cell">' + revenue + '</div>' +
@@ -5818,7 +5834,7 @@ const API = '';
       if (!grid) return;
       const rows = (data && Array.isArray(data.finishes)) ? data.finishes : [];
       if (rows.length === 0) {
-        const msg = finishesLoading ? 'Loading finishes…' : 'No data';
+        const msg = finishesLoading ? 'Loading finishes???' : 'No data';
         grid.innerHTML = '<div class="aov-card aov-card-empty">' + escapeHtml(msg) + '</div>';
         return;
       }
@@ -5844,10 +5860,10 @@ const API = '';
       grid.innerHTML = ordered.map(function(r) {
         const label = (r && r.label != null) ? String(r.label) : '';
         const revenue = (r && r.revenueGbp != null) ? Number(r.revenueGbp) : null;
-        const value = (revenue != null && Number.isFinite(revenue)) ? formatRevenueTableHtml(revenue) : '—';
+        const value = (revenue != null && Number.isFinite(revenue)) ? formatRevenueTableHtml(revenue) : '???';
         const cr = crPillHtml(r && r.cr);
         return '<div class="aov-card">' +
-          '<div class="aov-card-left">' + iconFor(r && r.key) + '<span class="aov-card-name">' + escapeHtml(label || '—') + '</span></div>' +
+          '<div class="aov-card-left">' + iconFor(r && r.key) + '<span class="aov-card-name">' + escapeHtml(label || '???') + '</span></div>' +
           '<div class="aov-card-value"><span class="aov-card-value-main">' + value + '</span>' + cr + '</div>' +
         '</div>';
       }).join('');
@@ -5858,7 +5874,7 @@ const API = '';
       if (!grid) return;
       const rows = (data && Array.isArray(data.lengths)) ? data.lengths : [];
       if (rows.length === 0) {
-        const msg = lengthsLoading ? 'Loading lengths…' : 'No data';
+        const msg = lengthsLoading ? 'Loading lengths???' : 'No data';
         grid.innerHTML = '<div class="aov-card aov-card-empty">' + escapeHtml(msg) + '</div>';
         return;
       }
@@ -5871,10 +5887,10 @@ const API = '';
         const inches = (r && r.inches != null) ? Number(r.inches) : null;
         const label = (r && r.label != null) ? String(r.label) : (inches != null && Number.isFinite(inches) ? (String(inches) + '"') : '');
         const revenue = (r && r.revenueGbp != null) ? Number(r.revenueGbp) : null;
-        const value = (revenue != null && Number.isFinite(revenue)) ? formatRevenueTableHtml(revenue) : '—';
+        const value = (revenue != null && Number.isFinite(revenue)) ? formatRevenueTableHtml(revenue) : '???';
         const cr = crPillHtml(r && r.cr);
-        const icon = '<span class="length-icon" aria-hidden="true"><span class="length-icon-text">' + escapeHtml(label || '—') + '</span></span>';
-        const sr = '<span class="aov-card-name sr-only">' + escapeHtml((label || '—') + ' Inches') + '</span>';
+        const icon = '<span class="length-icon" aria-hidden="true"><span class="length-icon-text">' + escapeHtml(label || '???') + '</span></span>';
+        const sr = '<span class="aov-card-name sr-only">' + escapeHtml((label || '???') + ' Inches') + '</span>';
         return '<div class="aov-card aov-card--length">' +
           '<div class="aov-card-left">' + icon + sr + '</div>' +
           '<div class="aov-card-value"><span class="aov-card-value-main">' + value + '</span>' + cr + '</div>' +
@@ -6091,7 +6107,7 @@ const API = '';
         const label = countryLabel(code);
         const conversion = pct(r.conversion);
         const salesCount = r.converted != null ? Number(r.converted) : 0;
-        const clicks = r.total != null ? formatSessions(r.total) : '—';
+        const clicks = r.total != null ? formatSessions(r.total) : '???';
         const revenue = formatRevenueTableHtml(r.revenue);
         const flag = flagImg(code, label);
         const labelHtml = '<span class="country-label">' + escapeHtml(label) + '</span>';
@@ -6457,8 +6473,8 @@ const API = '';
               );
               return;
             }
-            const revHtml = formatRevenue(Number(rev) || 0) || '—';
-            const ordHtml = ord ? (formatSessions(ord) + ' orders') : '—';
+            const revHtml = formatRevenue(Number(rev) || 0) || '???';
+            const ordHtml = ord ? (formatSessions(ord) + ' orders') : '???';
             setVectorMapTooltipContent(
               tooltip,
               '<div style="min-width:180px">' +
@@ -6535,14 +6551,14 @@ const API = '';
       tbody.innerHTML = pageRows.map(r => {
         const iso = (r.country_code || 'XX').toUpperCase().slice(0, 2);
         const label = countryLabel(iso);
-        const productTitle = (r.product_title && String(r.product_title).trim()) ? String(r.product_title).trim() : '—';
+        const productTitle = (r.product_title && String(r.product_title).trim()) ? String(r.product_title).trim() : '???';
         const productHandle = (r && r.product_handle != null) ? String(r.product_handle).trim() : '';
         const productId = (r && r.product_id) ? String(r.product_id).replace(/^gid:\/\/shopify\/Product\//i, '').trim() : '';
         const mainBase = getMainBaseUrl();
         const productUrl = (mainBase && productHandle) ? (mainBase + '/products/' + encodeURIComponent(productHandle)) : '#';
         const conversion = pct(r.conversion);
         const salesCount = r.converted != null ? Number(r.converted) : 0;
-        const clicks = r.total != null ? formatSessions(r.total) : '—';
+        const clicks = r.total != null ? formatSessions(r.total) : '???';
         const revenue = formatRevenueTableHtml(r.revenue);
         const flag = flagImg(iso, label);
         const normalizedHandle = productHandle ? String(productHandle).trim().toLowerCase() : '';
@@ -6622,15 +6638,15 @@ const API = '';
     function formatYmdRangeLabel(startYmd, endYmd) {
       if (!startYmd || !endYmd) return '';
       if (startYmd === endYmd) return formatYmdShort(startYmd);
-      // Same month? Compact as "5–7 Feb"
+      // Same month? Compact as "5???7 Feb"
       if (startYmd.slice(0, 7) === endYmd.slice(0, 7)) {
         var d1 = parseInt(startYmd.slice(8, 10), 10);
         var d2 = parseInt(endYmd.slice(8, 10), 10);
         var suffix = formatYmdShort(endYmd);
-        // suffix is "7 Feb" — replace the day part
-        return d1 + '–' + suffix;
+        // suffix is "7 Feb" ??? replace the day part
+        return d1 + '???' + suffix;
       }
-      return formatYmdShort(startYmd) + ' – ' + formatYmdShort(endYmd);
+      return formatYmdShort(startYmd) + ' ??? ' + formatYmdShort(endYmd);
     }
 
     function formatYmdShort(ymd) {
@@ -6723,7 +6739,7 @@ const API = '';
         });
       } catch (_) {}
 
-      // Active item highlight: custom ranges map to the "Custom…" item.
+      // Active item highlight: custom ranges map to the "Custom???" item.
       let active = '';
       try { active = String(sel.value || '').trim(); } catch (_) { active = ''; }
       const isCustom = isCustomRangeKey(active) || isCustomDayRangeKey(active);
@@ -7205,7 +7221,7 @@ const API = '';
       }
       const startYmd = a <= b ? a : b;
       const endYmd = a <= b ? b : a;
-      summaryEl.textContent = 'Selected: ' + (formatYmdRangeLabel(startYmd, endYmd) || (startYmd + ' – ' + endYmd));
+      summaryEl.textContent = 'Selected: ' + (formatYmdRangeLabel(startYmd, endYmd) || (startYmd + ' ??? ' + endYmd));
       if (clearBtn) clearBtn.disabled = false;
       if (applyBtn) applyBtn.disabled = false;
     }
@@ -7356,8 +7372,8 @@ const API = '';
 
     // Treat small changes as "stable" (blue/flat) instead of flipping colors.
     // KPI deltas often jitter in short windows (Today/1h), so we use a deadband.
-    const KPI_STABLE_RATIO = 0.05; // ±5% relative change
-    const KPI_STABLE_PCT = 5; // ±5 percentage points (already-percent deltas)
+    const KPI_STABLE_RATIO = 0.05; // ??5% relative change
+    const KPI_STABLE_PCT = 5; // ??5 percentage points (already-percent deltas)
     const DASHBOARD_NEUTRAL_DELTA_KEYS = new Set(['cogs', 'fulfilled', 'returns', 'items']);
     const DASHBOARD_NEUTRAL_TONE_HEX = '#999';
 
@@ -8326,7 +8342,7 @@ const API = '';
         chipWidth = widthFor(visibleCount);
       }
 
-      // If we can’t satisfy the floor (extremely narrow), show 1 chip at whatever width we have.
+      // If we can???t satisfy the floor (extremely narrow), show 1 chip at whatever width we have.
       if (!Number.isFinite(chipWidth) || chipWidth <= 0) return;
 
       const w = Math.max(0, Math.round(chipWidth * 100) / 100);
@@ -8357,7 +8373,7 @@ const API = '';
       });
     }
 
-    // ── KPI + date range UI config (stored in /api/settings) ───────────────
+    // ?????? KPI + date range UI config (stored in /api/settings) ?????????????????????????????????????????????
     var uiSettingsCache = null;
     var uiSettingsFetchedAt = 0;
     var uiSettingsInFlight = null;
@@ -8489,7 +8505,7 @@ const API = '';
       var raw = (cfg && cfg.v === 1 && cfg.kpiBundles && typeof cfg.kpiBundles === 'object')
         ? cfg.kpiBundles[key]
         : null;
-      // Guardrail: KPI sparkline/palette/delta style is user-managed in Settings → Layout → Charts.
+      // Guardrail: KPI sparkline/palette/delta style is user-managed in Settings ??? Layout ??? Charts.
       // Keep runtime reading from charts_ui_config_v1; do not hardcode replacement colors/sizes here.
       return normalizeChartsKpiBundle(key, raw);
     }
@@ -9482,7 +9498,7 @@ const API = '';
       }
 
       // Silent mode: keep the page visible, but still show the header date-range spinner.
-      // Also respect per-page loader enable (Admin → Controls). Admin is always disabled.
+      // Also respect per-page loader enable (Admin ??? Controls). Admin is always disabled.
       var allowOverlay = true;
       try { allowOverlay = isPageLoaderEnabled(PAGE); } catch (_) { allowOverlay = true; }
       try { if (kexoSilentOverlayActive && typeof kexoSilentOverlayActive === 'function' && kexoSilentOverlayActive()) allowOverlay = false; } catch (_) {}
@@ -9579,7 +9595,7 @@ const API = '';
         });
     }
 
-    // ── KPI local cache (prevents empty KPI boxes during fast navigation) ──
+    // ?????? KPI local cache (prevents empty KPI boxes during fast navigation) ??????
     function safeReadLocalStorageJson(key) {
       try {
         const raw = localStorage.getItem(key);
@@ -9892,22 +9908,22 @@ const API = '';
       }
 
       function channelLabel(r) {
-        if (!r) return '—';
+        if (!r) return '???';
         if (r.label != null && String(r.label).trim() !== '') return String(r.label);
         if (r.channel_key != null && String(r.channel_key).trim() !== '') return String(r.channel_key);
-        return '—';
+        return '???';
       }
       function sourceLabel(r) {
-        if (!r) return '—';
+        if (!r) return '???';
         if (r.label != null && String(r.label).trim() !== '') return String(r.label);
         if (r.source_key != null && String(r.source_key).trim() !== '') return String(r.source_key);
-        return '—';
+        return '???';
       }
       function variantLabel(r) {
-        if (!r) return '—';
+        if (!r) return '???';
         if (r.label != null && String(r.label).trim() !== '') return String(r.label);
         if (r.variant_key != null && String(r.variant_key).trim() !== '') return String(r.variant_key);
-        return '—';
+        return '???';
       }
 
       function metric(r, key) {
@@ -9976,20 +9992,20 @@ const API = '';
         const chKey = channelKey(ch);
         const chOpen = isChannelOpen(chKey);
         const chLabel = channelLabel(ch);
-        const chCr = (ch && typeof ch.conversion_pct === 'number') ? pct(ch.conversion_pct) : '—';
-        const chOrders = (ch && typeof ch.orders === 'number') ? formatSessions(ch.orders) : '—';
-        const chSessions = (ch && typeof ch.sessions === 'number') ? formatSessions(ch.sessions) : '—';
-        const chRev = (ch && typeof ch.revenue_gbp === 'number') ? formatRevenueTableHtml(ch.revenue_gbp) : '—';
+        const chCr = (ch && typeof ch.conversion_pct === 'number') ? pct(ch.conversion_pct) : '???';
+        const chOrders = (ch && typeof ch.orders === 'number') ? formatSessions(ch.orders) : '???';
+        const chSessions = (ch && typeof ch.sessions === 'number') ? formatSessions(ch.sessions) : '???';
+        const chRev = (ch && typeof ch.revenue_gbp === 'number') ? formatRevenueTableHtml(ch.revenue_gbp) : '???';
         html += '<div class="grid-row traffic-type-parent attribution-channel-parent" role="row" data-channel="' + escapeHtml(chKey) + '">' +
           '<div class="grid-cell" role="cell">' +
             '<button type="button" class="traffic-type-toggle attribution-channel-toggle" data-channel="' + escapeHtml(chKey) + '" aria-expanded="' + (chOpen ? 'true' : 'false') + '">' +
               '<span>' + escapeHtml(chLabel) + '</span>' +
             '</button>' +
           '</div>' +
-          '<div class="grid-cell" role="cell">' + escapeHtml(chSessions || '—') + '</div>' +
-          '<div class="grid-cell" role="cell">' + escapeHtml(chOrders || '—') + '</div>' +
-          '<div class="grid-cell" role="cell">' + escapeHtml(chCr || '—') + '</div>' +
-          '<div class="grid-cell" role="cell">' + (chRev || '—') + '</div>' +
+          '<div class="grid-cell" role="cell">' + escapeHtml(chSessions || '???') + '</div>' +
+          '<div class="grid-cell" role="cell">' + escapeHtml(chOrders || '???') + '</div>' +
+          '<div class="grid-cell" role="cell">' + escapeHtml(chCr || '???') + '</div>' +
+          '<div class="grid-cell" role="cell">' + (chRev || '???') + '</div>' +
         '</div>';
 
         const sources = ch && Array.isArray(ch.sources) ? ch.sources.slice() : [];
@@ -10009,10 +10025,10 @@ const API = '';
           const srcOpen = chOpen && isSourceOpen(chKey, sKey);
           const sLabel = sourceLabel(src);
           const sIcon = iconSpecHtml(src && src.icon_spec != null ? src.icon_spec : null, sLabel);
-          const sCr = (src && typeof src.conversion_pct === 'number') ? pct(src.conversion_pct) : '—';
-          const sOrders = (src && typeof src.orders === 'number') ? formatSessions(src.orders) : '—';
-          const sSessions = (src && typeof src.sessions === 'number') ? formatSessions(src.sessions) : '—';
-          const sRev = (src && typeof src.revenue_gbp === 'number') ? formatRevenueTableHtml(src.revenue_gbp) : '—';
+          const sCr = (src && typeof src.conversion_pct === 'number') ? pct(src.conversion_pct) : '???';
+          const sOrders = (src && typeof src.orders === 'number') ? formatSessions(src.orders) : '???';
+          const sSessions = (src && typeof src.sessions === 'number') ? formatSessions(src.sessions) : '???';
+          const sRev = (src && typeof src.revenue_gbp === 'number') ? formatRevenueTableHtml(src.revenue_gbp) : '???';
           html += '<div class="grid-row traffic-type-child attribution-source-row' + (chOpen ? '' : ' is-hidden') + '" role="row" data-parent="' + escapeHtml(chKey) + '" data-channel="' + escapeHtml(chKey) + '" data-source="' + escapeHtml(sKey) + '">' +
             '<div class="grid-cell" role="cell">' +
               '<button type="button" class="traffic-type-toggle attribution-source-toggle" data-channel="' + escapeHtml(chKey) + '" data-source="' + escapeHtml(sKey) + '" aria-expanded="' + (srcOpen ? 'true' : 'false') + '">' +
@@ -10020,10 +10036,10 @@ const API = '';
                 '<span>' + escapeHtml(sLabel) + '</span>' +
               '</button>' +
             '</div>' +
-            '<div class="grid-cell" role="cell">' + escapeHtml(sSessions || '—') + '</div>' +
-            '<div class="grid-cell" role="cell">' + escapeHtml(sOrders || '—') + '</div>' +
-            '<div class="grid-cell" role="cell">' + escapeHtml(sCr || '—') + '</div>' +
-            '<div class="grid-cell" role="cell">' + (sRev || '—') + '</div>' +
+            '<div class="grid-cell" role="cell">' + escapeHtml(sSessions || '???') + '</div>' +
+            '<div class="grid-cell" role="cell">' + escapeHtml(sOrders || '???') + '</div>' +
+            '<div class="grid-cell" role="cell">' + escapeHtml(sCr || '???') + '</div>' +
+            '<div class="grid-cell" role="cell">' + (sRev || '???') + '</div>' +
           '</div>';
 
           const variants = src && Array.isArray(src.variants) ? src.variants.slice() : [];
@@ -10043,20 +10059,20 @@ const API = '';
             const vKey = variantKey(v);
             const vLabel = variantLabel(v);
             const vIcon = iconSpecHtml(v && v.icon_spec != null ? v.icon_spec : null, vLabel);
-            const vCr = (v && typeof v.conversion_pct === 'number') ? pct(v.conversion_pct) : '—';
-            const vOrders = (v && typeof v.orders === 'number') ? formatSessions(v.orders) : '—';
-            const vSessions = (v && typeof v.sessions === 'number') ? formatSessions(v.sessions) : '—';
-            const vRev = (v && typeof v.revenue_gbp === 'number') ? formatRevenueTableHtml(v.revenue_gbp) : '—';
+            const vCr = (v && typeof v.conversion_pct === 'number') ? pct(v.conversion_pct) : '???';
+            const vOrders = (v && typeof v.orders === 'number') ? formatSessions(v.orders) : '???';
+            const vSessions = (v && typeof v.sessions === 'number') ? formatSessions(v.sessions) : '???';
+            const vRev = (v && typeof v.revenue_gbp === 'number') ? formatRevenueTableHtml(v.revenue_gbp) : '???';
             const ownerKind = v && v.owner_kind != null ? String(v.owner_kind).trim().toLowerCase() : '';
             const ownerBadge = ownerKind && ownerKind !== 'house'
               ? (' <span class="text-muted small">(' + escapeHtml(ownerKind) + ')</span>')
               : '';
             html += '<div class="grid-row traffic-type-child attribution-variant-row' + (srcOpen ? '' : ' is-hidden') + '" role="row" data-parent="' + escapeHtml(parentKey) + '" data-channel="' + escapeHtml(chKey) + '" data-source="' + escapeHtml(sKey) + '">' +
               '<div class="grid-cell" role="cell"><span style="display:inline-flex;align-items:center;gap:8px;padding-left:18px">' + (vIcon || '') + '<span>' + escapeHtml(vLabel) + '</span>' + ownerBadge + '</span></div>' +
-              '<div class="grid-cell" role="cell">' + escapeHtml(vSessions || '—') + '</div>' +
-              '<div class="grid-cell" role="cell">' + escapeHtml(vOrders || '—') + '</div>' +
-              '<div class="grid-cell" role="cell">' + escapeHtml(vCr || '—') + '</div>' +
-              '<div class="grid-cell" role="cell">' + (vRev || '—') + '</div>' +
+              '<div class="grid-cell" role="cell">' + escapeHtml(vSessions || '???') + '</div>' +
+              '<div class="grid-cell" role="cell">' + escapeHtml(vOrders || '???') + '</div>' +
+              '<div class="grid-cell" role="cell">' + escapeHtml(vCr || '???') + '</div>' +
+              '<div class="grid-cell" role="cell">' + (vRev || '???') + '</div>' +
             '</div>';
           });
         });
@@ -10134,7 +10150,7 @@ const API = '';
       });
 
       function deviceLabel(r) {
-        if (!r) return '—';
+        if (!r) return '???';
         const k = r.device_type != null ? String(r.device_type).trim().toLowerCase() : '';
         return k || 'unknown';
       }
@@ -10204,10 +10220,10 @@ const API = '';
         const dKey = deviceLabel(g);
         const open = isDeviceOpen(dKey);
         const label = dKey;
-        const cr = (g && typeof g.conversion_pct === 'number') ? pct(g.conversion_pct) : '—';
-        const orders = (g && typeof g.orders === 'number') ? formatSessions(g.orders) : '—';
-        const sessions = (g && typeof g.sessions === 'number') ? formatSessions(g.sessions) : '—';
-        const rev = (g && typeof g.revenue_gbp === 'number') ? formatRevenueTableHtml(g.revenue_gbp) : '—';
+        const cr = (g && typeof g.conversion_pct === 'number') ? pct(g.conversion_pct) : '???';
+        const orders = (g && typeof g.orders === 'number') ? formatSessions(g.orders) : '???';
+        const sessions = (g && typeof g.sessions === 'number') ? formatSessions(g.sessions) : '???';
+        const rev = (g && typeof g.revenue_gbp === 'number') ? formatRevenueTableHtml(g.revenue_gbp) : '???';
         html += '<div class="grid-row traffic-type-parent devices-parent" role="row" data-device-type="' + escapeHtml(dKey) + '">' +
           '<div class="grid-cell" role="cell">' +
             '<button type="button" class="traffic-type-toggle devices-toggle" data-device-type="' + escapeHtml(dKey) + '" aria-expanded="' + (open ? 'true' : 'false') + '">' +
@@ -10215,10 +10231,10 @@ const API = '';
               '<span>' + escapeHtml(label) + '</span>' +
             '</button>' +
           '</div>' +
-          '<div class="grid-cell" role="cell">' + escapeHtml(sessions || '—') + '</div>' +
-          '<div class="grid-cell" role="cell">' + escapeHtml(orders || '—') + '</div>' +
-          '<div class="grid-cell" role="cell">' + escapeHtml(cr || '—') + '</div>' +
-          '<div class="grid-cell" role="cell">' + (rev || '—') + '</div>' +
+          '<div class="grid-cell" role="cell">' + escapeHtml(sessions || '???') + '</div>' +
+          '<div class="grid-cell" role="cell">' + escapeHtml(orders || '???') + '</div>' +
+          '<div class="grid-cell" role="cell">' + escapeHtml(cr || '???') + '</div>' +
+          '<div class="grid-cell" role="cell">' + (rev || '???') + '</div>' +
         '</div>';
 
         const kids = g && Array.isArray(g.platforms) ? g.platforms.slice() : [];
@@ -10236,16 +10252,16 @@ const API = '';
         kids.forEach(function(c) {
           const platform = c && c.platform != null ? String(c.platform).trim().toLowerCase() : 'other';
           const clabel = platform || 'other';
-          const ccr = (c && typeof c.conversion_pct === 'number') ? pct(c.conversion_pct) : '—';
-          const corders = (c && typeof c.orders === 'number') ? formatSessions(c.orders) : '—';
-          const csessions = (c && typeof c.sessions === 'number') ? formatSessions(c.sessions) : '—';
-          const crev = (c && typeof c.revenue_gbp === 'number') ? formatRevenueTableHtml(c.revenue_gbp) : '—';
+          const ccr = (c && typeof c.conversion_pct === 'number') ? pct(c.conversion_pct) : '???';
+          const corders = (c && typeof c.orders === 'number') ? formatSessions(c.orders) : '???';
+          const csessions = (c && typeof c.sessions === 'number') ? formatSessions(c.sessions) : '???';
+          const crev = (c && typeof c.revenue_gbp === 'number') ? formatRevenueTableHtml(c.revenue_gbp) : '???';
           html += '<div class="grid-row traffic-type-child devices-child' + (open ? '' : ' is-hidden') + '" role="row" data-parent="' + escapeHtml(dKey) + '">' +
             '<div class="grid-cell" role="cell"><span style="display:inline-flex;align-items:center;gap:8px">' + trafficTypePlatformIcon(platform) + '<span>' + escapeHtml(clabel) + '</span></span></div>' +
-            '<div class="grid-cell" role="cell">' + escapeHtml(csessions || '—') + '</div>' +
-            '<div class="grid-cell" role="cell">' + escapeHtml(corders || '—') + '</div>' +
-            '<div class="grid-cell" role="cell">' + escapeHtml(ccr || '—') + '</div>' +
-            '<div class="grid-cell" role="cell">' + (crev || '—') + '</div>' +
+            '<div class="grid-cell" role="cell">' + escapeHtml(csessions || '???') + '</div>' +
+            '<div class="grid-cell" role="cell">' + escapeHtml(corders || '???') + '</div>' +
+            '<div class="grid-cell" role="cell">' + escapeHtml(ccr || '???') + '</div>' +
+            '<div class="grid-cell" role="cell">' + (crev || '???') + '</div>' +
           '</div>';
         });
       });
@@ -10833,8 +10849,8 @@ const API = '';
         chartCfg = {
           series: [{ name: 'Revenue', data: rows.map(function(r) { return Number(r && r.revenue) || 0; }) }],
           colors: ['#0d9488'],
-          yFormatter: function(v) { return formatRevenue(Number(v)) || '—'; },
-          tooltipFormatter: function(v) { return formatRevenue(Number(v)) || '—'; },
+          yFormatter: function(v) { return formatRevenue(Number(v)) || '???'; },
+          tooltipFormatter: function(v) { return formatRevenue(Number(v)) || '???'; },
         };
       } else {
         chartCfg = {
@@ -11537,7 +11553,7 @@ const API = '';
           '<span class="side-panel-label">Lookup</span>' +
           '<span class="side-panel-value">' +
             '<a href="' + escapeHtml(href) + '" target="_blank" rel="noopener">Open in Lookup</a>' +
-            (loading ? '<span class="muted ms-2">Loading IDs…</span>' : '') +
+            (loading ? '<span class="muted ms-2">Loading IDs???</span>' : '') +
           '</span>' +
         '</div>';
 
@@ -11716,7 +11732,7 @@ const API = '';
           { k: 'Kexo order key', v: r.purchase_key, copy: true },
           { k: 'Visitor ID', v: r.visitor_id, copy: false },
         ].filter(function (x) { return x && x.v != null && String(x.v).trim() !== ''; });
-        if (!rows.length) return '<div class="text-muted">—</div>';
+        if (!rows.length) return '<div class="text-muted">???</div>';
 
         if (mode === 'drawer') {
           return rows.map(function (row) {
@@ -11745,7 +11761,7 @@ const API = '';
           if (!path && e.product_handle) path = '/products/' + (e.product_handle || '');
           if (path && !path.startsWith('/')) path = '/' + path;
           var pathLabel = path || (e.product_handle || '');
-          var text = (formatTs(e.ts) || '—') + ' ' + esc(e.type) + ' ' + esc(pathLabel) + (e.qty_delta != null ? (' Δ' + esc(e.qty_delta)) : '');
+          var text = (formatTs(e.ts) || '???') + ' ' + esc(e.type) + ' ' + esc(pathLabel) + (e.qty_delta != null ? (' ??' + esc(e.qty_delta)) : '');
           return '<li><span>' + text + '</span></li>';
         }).join('');
         return '<ul class="side-panel-events kexo-lookup-events">' + items + '</ul>';
@@ -11781,7 +11797,7 @@ const API = '';
         if (mode === 'drawer') {
           return '' +
             gauge +
-            '<div class="side-panel-detail-row"><span class="side-panel-label">Summary</span><span class="side-panel-value">' + esc(picked.summary || '—') + '</span></div>' +
+            '<div class="side-panel-detail-row"><span class="side-panel-label">Summary</span><span class="side-panel-value">' + esc(picked.summary || '???') + '</span></div>' +
             (reasonsHtml ? ('<div class="kexo-fraud-reasons-wrap">' + reasonsHtml + '</div>') : '') +
             '<div class="mt-2">' + flagsHtml + '</div>' +
             '<div class="mt-2">' + evidenceDetails + '</div>';
@@ -11791,7 +11807,7 @@ const API = '';
           gauge +
           '<div class="mt-2">' +
             '<div class="text-muted small">Summary</div>' +
-            '<div>' + esc(picked.summary || '—') + '</div>' +
+            '<div>' + esc(picked.summary || '???') + '</div>' +
             (reasonsHtml ? ('<div class="mt-2">' + reasonsHtml + '</div>') : '') +
             '<div class="mt-2">' + flagsHtml + '</div>' +
             '<div class="mt-2">' + evidenceDetails + '</div>' +
@@ -11837,15 +11853,15 @@ const API = '';
           var sessionMini = '';
           try {
             if (session && typeof session === 'object') {
-              var started = formatTs(session.started_at) || '—';
-              var seen = formatTs(session.last_seen) || '—';
+              var started = formatTs(session.started_at) || '???';
+              var seen = formatTs(session.last_seen) || '???';
               var cartQty = (session.cart_qty != null) ? String(session.cart_qty) : '0';
               sessionMini = '' +
                 '<div class="side-panel-detail-row"><span class="side-panel-label">Started</span><span class="side-panel-value">' + esc(started) + '</span></div>' +
                 '<div class="side-panel-detail-row"><span class="side-panel-label">Seen</span><span class="side-panel-value">' + esc(seen) + '</span></div>' +
                 '<div class="side-panel-detail-row"><span class="side-panel-label">Cart qty</span><span class="side-panel-value">' + esc(cartQty) + '</span></div>';
               if (session.has_purchased) {
-                var sale = formatMoney(session.order_total, session.order_currency) || '—';
+                var sale = formatMoney(session.order_total, session.order_currency) || '???';
                 sessionMini += '<div class="side-panel-detail-row"><span class="side-panel-label">Sale</span><span class="side-panel-value">' + esc(sale) + (session.purchased_at ? (' <span class="text-muted">(' + esc(formatTs(session.purchased_at) || '') + ')</span>') : '') + '</span></div>';
               }
             }
@@ -11872,19 +11888,19 @@ const API = '';
         html += section('Resolved IDs', renderIdsHtml(resolved, 'page'));
         html += section('Activity', renderActivityHtml(events, 'page'));
         if (session) {
-          var utm = [session.utm_source, session.utm_medium, session.utm_campaign, session.utm_content].filter(Boolean).join(' · ');
-          var attrib = [session.attribution_channel, session.attribution_source, session.attribution_variant].filter(Boolean).join(' · ');
+          var utm = [session.utm_source, session.utm_medium, session.utm_campaign, session.utm_content].filter(Boolean).join(' ?? ');
+          var attrib = [session.attribution_channel, session.attribution_source, session.attribution_variant].filter(Boolean).join(' ?? ');
           if (session.attribution_confidence) attrib = attrib ? (attrib + ' (' + session.attribution_confidence + ')') : String(session.attribution_confidence);
           var sRows = [
-            { k: 'Started', v: formatTs(session.started_at) || '—' },
-            { k: 'Last seen', v: formatTs(session.last_seen) || '—' },
-            { k: 'Country', v: session.country_code || '—' },
-            { k: 'Device', v: session.device || '—' },
-            { k: 'UA device/platform', v: ((session.ua_device_type || '') + ' / ' + (session.ua_platform || '') + (session.ua_model ? (' / ' + session.ua_model) : '')).trim() || '—' },
-            { k: 'Attribution', v: attrib || '—' },
-            { k: 'Entry URL', v: session.entry_url || '—' },
-            { k: 'Referrer', v: session.referrer || '—' },
-            { k: 'UTM', v: utm || '—' },
+            { k: 'Started', v: formatTs(session.started_at) || '???' },
+            { k: 'Last seen', v: formatTs(session.last_seen) || '???' },
+            { k: 'Country', v: session.country_code || '???' },
+            { k: 'Device', v: session.device || '???' },
+            { k: 'UA device/platform', v: ((session.ua_device_type || '') + ' / ' + (session.ua_platform || '') + (session.ua_model ? (' / ' + session.ua_model) : '')).trim() || '???' },
+            { k: 'Attribution', v: attrib || '???' },
+            { k: 'Entry URL', v: session.entry_url || '???' },
+            { k: 'Referrer', v: session.referrer || '???' },
+            { k: 'UTM', v: utm || '???' },
           ];
           var body = sRows.map(function (r) {
             return '<tr><th style="width:180px">' + esc(r.k) + '</th><td><code>' + esc(r.v) + '</code></td></tr>';
@@ -11895,11 +11911,11 @@ const API = '';
           var pHtml = purchases.slice(0, 5).map(function (p) {
             if (!p || typeof p !== 'object') return '';
             var rows = [
-              { k: 'Purchase key', v: p.purchase_key || '—' },
-              { k: 'Purchased at', v: formatTs(p.purchased_at) || '—' },
-              { k: 'Order ID', v: p.order_id || '—' },
-              { k: 'Checkout token', v: p.checkout_token || '—' },
-              { k: 'Total', v: (p.order_total != null ? String(p.order_total) : '—') + (p.order_currency ? (' ' + p.order_currency) : '') },
+              { k: 'Purchase key', v: p.purchase_key || '???' },
+              { k: 'Purchased at', v: formatTs(p.purchased_at) || '???' },
+              { k: 'Order ID', v: p.order_id || '???' },
+              { k: 'Checkout token', v: p.checkout_token || '???' },
+              { k: 'Total', v: (p.order_total != null ? String(p.order_total) : '???') + (p.order_currency ? (' ' + p.order_currency) : '') },
             ];
             var body = rows.map(function (r) {
               return '<tr><th style="width:180px">' + esc(r.k) + '</th><td><code>' + esc(r.v) + '</code></td></tr>';
@@ -12034,7 +12050,7 @@ const API = '';
                   if (info.platform && info.platform !== 'unknown') parts2.push(titleize(info.platform));
                   if (info.model) parts2.push(titleize(info.model));
                   if (info.deviceType && info.deviceType !== 'unknown') parts2.push(titleize(info.deviceType));
-                  deviceLabel = parts2.length ? parts2.join(' · ') : '';
+                  deviceLabel = parts2.length ? parts2.join(' ?? ') : '';
                 } catch (_) { deviceLabel = ''; }
 
                 var tailParts = [];
@@ -12084,7 +12100,7 @@ const API = '';
                 var fullUrl = '';
                 try { fullUrl = buildFullEntryUrlForCopy(session) || ''; } catch (_) { fullUrl = ''; }
                 var copyUrl = fullUrl || entryUrl;
-                var html = '<div class="side-panel-source-text">' + escapeHtml(String(srcText || '—')).replace(/\n/g, '<br>') + '</div>';
+                var html = '<div class="side-panel-source-text">' + escapeHtml(String(srcText || '???')).replace(/\n/g, '<br>') + '</div>';
                 if (copyUrl) {
                   html += '<div class="side-panel-source-actions"><a href="#" class="kexo-copy-link" data-kexo-copy="' + escapeHtml(copyUrl) + '">Copy URL</a></div>';
                 }
@@ -12108,7 +12124,7 @@ const API = '';
       if (panel && !panel.classList.contains('is-hidden')) closeSidePanel();
     });
 
-    // Session table pagination (live/sales/date) — delegated
+    // Session table pagination (live/sales/date) ??? delegated
     (function initSessionTablePagination() {
       var wrap = document.getElementById('table-pagination');
       if (!wrap) return;
@@ -12128,7 +12144,7 @@ const API = '';
     setupBestSellersSort();
     setupAllTableSorts();
 
-    // Card-table pagination — event delegation on containers
+    // Card-table pagination ??? event delegation on containers
     (function initTopTablePagination() {
       function bindDelegate(prefix, goToPage) {
         var wrap = document.getElementById(prefix + '-pagination');
@@ -12212,7 +12228,7 @@ const API = '';
         btn.classList.add('spinning');
         btn.disabled = true;
       }
-      setDiagnosticsActionMsg('Reconciling Shopify truth (7d)…', true);
+      setDiagnosticsActionMsg('Reconciling Shopify truth (7d)???', true);
       const p = fetch(getReconcileSalesUrl({ force: true }), {
         method: 'POST',
         credentials: 'same-origin',
@@ -12270,14 +12286,14 @@ const API = '';
         configStatusEl.innerHTML =
           '<div class="d-flex align-items-center gap-2 text-secondary">' +
             '<div class="spinner-border spinner-border-sm text-primary" role="status" aria-hidden="true"></div>' +
-            '<div>Loading diagnostics…</div>' +
+            '<div>Loading diagnostics???</div>' +
           '</div>' +
           '<div id="settings-diagnostics-loading-step" class="text-secondary small mt-2">\u2014</div>';
         diagnosticsStepEl = configStatusEl.querySelector('#settings-diagnostics-loading-step');
         if (diagnosticsStepEl) diagnosticsStepEl.textContent = 'Connecting to diagnostics services';
       }
       if (compareOpen && compareStatusEl) {
-        compareStatusEl.innerHTML = '<div class="kpi-compare-loading"><div class="report-build-wrap"><div class="spinner-border text-primary" role="status"></div><div class="report-build-title">building KPI comparison</div><div class="report-build-step">—</div></div></div>';
+        compareStatusEl.innerHTML = '<div class="kpi-compare-loading"><div class="report-build-wrap"><div class="spinner-border text-primary" role="status"></div><div class="report-build-title">building KPI comparison</div><div class="report-build-step">???</div></div></div>';
         compareStepEl = compareStatusEl.querySelector('.report-build-step');
         if (compareStepEl) compareStepEl.textContent = 'Loading KPI sources';
       }
@@ -12505,7 +12521,7 @@ const API = '';
             const metaBits = [];
             if (ver) metaBits.push('v' + ver);
             if (last) metaBits.push('Last updated ' + last);
-            if (metaBits.length) out += '<div class="dm-def-meta">' + escapeHtml(metaBits.join(' · ')) + '</div>';
+            if (metaBits.length) out += '<div class="dm-def-meta">' + escapeHtml(metaBits.join(' ?? ')) + '</div>';
             if (note) out += '<div class="dm-def-note">' + escapeHtml(note) + '</div>';
 
             if (!pages.length) {
@@ -12556,7 +12572,7 @@ const API = '';
                 out +=   '<summary>';
                 out +=     '<div style="min-width:0;">';
                 out +=       '<div class="dm-def-details-name">' + escapeHtml(name) + '</div>';
-                out +=       '<div class="dm-def-details-sub">' + escapeHtml(summaryBits.join(' · ')) + '</div>';
+                out +=       '<div class="dm-def-details-sub">' + escapeHtml(summaryBits.join(' ?? ')) + '</div>';
                 out +=     '</div>';
                 out +=     '<div class="dm-def-details-chips">' + chips.join('') + '</div>';
                 out +=   '</summary>';
@@ -12579,7 +12595,7 @@ const API = '';
                 const nowBits = [];
                 if (rOrders && reporting && reporting.ordersSource) nowBits.push('ordersSource=' + reporting.ordersSource);
                 if (rSessions && reporting && reporting.sessionsSource) nowBits.push('sessionsSource=' + reporting.sessionsSource);
-                out += line2('Respects reporting', code2(respectsBits.join(' · ') + (nowBits.length ? (' · now ' + nowBits.join(', ')) : '')));
+                out += line2('Respects reporting', code2(respectsBits.join(' ?? ') + (nowBits.length ? (' ?? now ' + nowBits.join(', ')) : '')));
 
                 const sources = (d && Array.isArray(d.sources)) ? d.sources : [];
                 if (sources.length) {
@@ -12590,8 +12606,8 @@ const API = '';
                     const st = (s && Array.isArray(s.tables)) ? s.tables : [];
                     const note2 = (s && s.note) ? String(s.note) : '';
                     let line = '<strong>' + escapeHtml(kind) + '</strong>';
-                    if (st.length) line += ' · ' + escapeHtml(st.join(', '));
-                    if (note2) line += ' — ' + escapeHtml(note2);
+                    if (st.length) line += ' ?? ' + escapeHtml(st.join(', '));
+                    if (note2) line += ' ??? ' + escapeHtml(note2);
                     out += '<li>' + line + '</li>';
                   }
                   out += '</ul>';
@@ -12606,8 +12622,8 @@ const API = '';
                     const cv = (col && col.value != null) ? String(col.value) : '';
                     const cf = (col && col.formula != null) ? String(col.formula) : '';
                     let line = '<strong>' + escapeHtml(cn) + '</strong>';
-                    if (cv) line += ' · ' + escapeHtml(cv);
-                    if (cf) line += ' · <code class="dm-code">' + escapeHtml(cf) + '</code>';
+                    if (cv) line += ' ?? ' + escapeHtml(cv);
+                    if (cf) line += ' ?? <code class="dm-code">' + escapeHtml(cf) + '</code>';
                     out += '<li>' + line + '</li>';
                   }
                   out += '</ul>';
@@ -12620,7 +12636,7 @@ const API = '';
                   for (const m of math) {
                     const mn = (m && m.name) ? String(m.name) : 'Note';
                     const mv = (m && m.value != null) ? String(m.value) : '';
-                    out += '<li><strong>' + escapeHtml(mn) + '</strong>' + (mv ? (' · ' + escapeHtml(mv)) : '') + '</li>';
+                    out += '<li><strong>' + escapeHtml(mn) + '</strong>' + (mv ? (' ?? ' + escapeHtml(mv)) : '') + '</li>';
                   }
                   out += '</ul>';
                 }
@@ -12801,7 +12817,7 @@ const API = '';
 
           const copyIcon = '<i class="fa-light fa-copy" data-icon-key="diag-copy" aria-hidden="true"></i>';
 
-          // Settings → Diagnostics (Tabler accordion, no tabs/custom dm-* classes)
+          // Settings ??? Diagnostics (Tabler accordion, no tabs/custom dm-* classes)
           function badgeLt(text, tone) {
             var cls = 'bg-secondary-lt';
             if (tone === 'ok') cls = 'bg-success-lt';
@@ -13052,7 +13068,7 @@ const API = '';
           if (db && db.tables) {
             var t = db.tables;
             var bits = [];
-            function add(name, ok) { bits.push(name + (ok ? ' ✓' : ' ✗')); }
+            function add(name, ok) { bits.push(name + (ok ? ' ???' : ' ???')); }
             add('settings', !!t.settings);
             add('shop_sessions', !!t.shop_sessions);
             add('visitors', !!t.visitors);
@@ -13209,17 +13225,17 @@ const API = '';
               let diffText = '';
               if (compareKey === 'sessions') {
                 const d = (kexoSessionsToday != null && shopifySessionsToday != null) ? (kexoSessionsToday - shopifySessionsToday) : null;
-                diffText = (d != null) ? ('Δ Sessions ' + fmtSignedCount(d)) : '';
+                diffText = (d != null) ? ('?? Sessions ' + fmtSignedCount(d)) : '';
               } else if (compareKey === 'aov') {
                 const d = (pixelAov != null && truthAov != null) ? (pixelAov - truthAov) : null;
-                diffText = (d != null) ? ('Δ AOV ' + fmtSignedMoney(d)) : '';
+                diffText = (d != null) ? ('?? AOV ' + fmtSignedMoney(d)) : '';
               } else {
                 const d = (kexoCr != null && shopifyCr != null) ? (kexoCr - shopifyCr) : null;
-                diffText = (d != null) ? ('Δ CR ' + fmtSignedPp(d)) : '';
+                diffText = (d != null) ? ('?? CR ' + fmtSignedPp(d)) : '';
               }
 
               if (compareUpdatedEl) {
-                compareUpdatedEl.textContent = 'Updated ' + formatTs(updatedAtMs) + (diffText ? (' · ' + diffText) : '');
+                compareUpdatedEl.textContent = 'Updated ' + formatTs(updatedAtMs) + (diffText ? (' ?? ' + diffText) : '');
               }
 
               const ordersHtml = (truthOrders != null) ? escapeHtml(String(truthOrders)) : '\u2014';
@@ -13246,7 +13262,7 @@ const API = '';
                 cmpHtml +=   '</div>';
               } else {
                 cmpHtml +=   '<div class="kpi-compare-card">';
-                cmpHtml +=     compareBrand('Shopify', SHOPIFY_LOGO_URL, 'ShopifyQL sessions · conversion_rate');
+                cmpHtml +=     compareBrand('Shopify', SHOPIFY_LOGO_URL, 'ShopifyQL sessions ?? conversion_rate');
                 cmpHtml +=     '<div class="kpi-compare-metrics">' +
                                  compareMetric('CR% (Shopify)', fmtPct(shopifyCr)) +
                                  compareMetric('Sessions (today)', fmtSessions(shopifySessionsToday)) +
@@ -13255,7 +13271,7 @@ const API = '';
                                '</div>';
                 cmpHtml +=   '</div>';
                 cmpHtml +=   '<div class="kpi-compare-card">';
-                cmpHtml +=     compareBrand('Kexo', KEXO_LOGO_URL, 'Human sessions · bot signals');
+                cmpHtml +=     compareBrand('Kexo', KEXO_LOGO_URL, 'Human sessions ?? bot signals');
                 cmpHtml +=     '<div class="kpi-compare-metrics">' +
                                  compareMetric('CR% (truth)', fmtPct(kexoCr)) +
                                  compareMetric('Sessions (human, today)', fmtSessions(kexoSessionsToday)) +
@@ -13303,7 +13319,7 @@ const API = '';
                     setMsg('Nothing to copy', false);
                     return;
                   }
-                  setMsg('Copying…', true);
+                  setMsg('Copying???', true);
                   if (navigator && navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
                     navigator.clipboard.writeText(text)
                       .then(function() { setMsg('Copied (' + text.length + ' chars)', true); })
@@ -13379,7 +13395,7 @@ const API = '';
             const refreshMonthBtn = document.getElementById('ga-refresh-month-btn');
             if (statusBtn) {
               statusBtn.onclick = function() {
-                setGaMsg('Fetching status…', true);
+                setGaMsg('Fetching status???', true);
                 fetchJson((API || '') + '/api/ads/status', { credentials: 'same-origin', cache: 'no-store' })
                   .then(function(r) {
                     setGaOutput({ endpoint: 'GET /api/ads/status', status: r.status, ok: r.ok, body: r.json || r.text });
@@ -13393,7 +13409,7 @@ const API = '';
             }
             if (summaryBtn) {
               summaryBtn.onclick = function() {
-                setGaMsg('Fetching summary…', true);
+                setGaMsg('Fetching summary???', true);
                 fetchJson((API || '') + '/api/ads/summary?range=7d', { credentials: 'same-origin', cache: 'no-store' })
                   .then(function(r) {
                     setGaOutput({ endpoint: 'GET /api/ads/summary?range=7d', status: r.status, ok: r.ok, body: r.json || r.text });
@@ -13406,7 +13422,7 @@ const API = '';
               };
             }
             function doRefresh(rangeKey) {
-              setGaMsg('Refreshing ' + rangeKey + '…', true);
+              setGaMsg('Refreshing ' + rangeKey + '???', true);
               fetchJson((API || '') + '/api/ads/refresh?range=' + encodeURIComponent(rangeKey), {
                 method: 'POST',
                 credentials: 'same-origin',
@@ -13434,7 +13450,7 @@ const API = '';
                 const enabled = !!toggle.checked;
                 const nextMode = enabled ? 'shared_ttl' : 'legacy';
                 toggle.disabled = true;
-                if (msgEl) msgEl.textContent = 'Saving…';
+                if (msgEl) msgEl.textContent = 'Saving???';
                 fetch(API + '/api/settings', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
@@ -13452,7 +13468,7 @@ const API = '';
                   .then(function() {
                     const shop = getShopParam();
                     if (shop && /\.myshopify\.com$/i.test(shop)) {
-                      if (msgEl) msgEl.textContent = 'Saved. Syncing pixel settings…';
+                      if (msgEl) msgEl.textContent = 'Saved. Syncing pixel settings???';
                       return fetch(API + '/api/pixel/ensure?shop=' + encodeURIComponent(shop), { credentials: 'same-origin', cache: 'no-store' })
                         .then(function(r) { return r.ok ? r.json() : null; })
                         .catch(function() { return null; });
@@ -13524,11 +13540,11 @@ const API = '';
       const reconcileBtn = document.getElementById('config-reconcile-btn');
       const rangeSel = document.getElementById('diagnostics-overview-range');
       if (rangeSel) rangeSel.addEventListener('change', function() {
-        setDiagnosticsActionMsg('Loading overview…', true);
+        setDiagnosticsActionMsg('Loading overview???', true);
         try { refreshConfigStatus({ force: true, preserveView: true }); } catch (_) {}
       });
       if (refreshBtn) refreshBtn.addEventListener('click', function() {
-        setDiagnosticsActionMsg('Refreshing diagnostics…', true);
+        setDiagnosticsActionMsg('Refreshing diagnostics???', true);
         try { refreshConfigStatus({ force: true, preserveView: true }); } catch (_) {}
       });
       if (reconcileBtn) reconcileBtn.addEventListener('click', function() { try { reconcileSalesTruth({}); } catch (_) {} });
@@ -14109,7 +14125,7 @@ const API = '';
           if (tabSales) tabSales.setAttribute('aria-selected', tab === 'sales' ? 'true' : 'false');
           if (tabDate) tabDate.setAttribute('aria-selected', tab === 'date' ? 'true' : 'false');
           if (tabTools) tabTools.setAttribute('aria-selected', tab === 'tools' ? 'true' : 'false');
-          // Dashboard dropdown — highlight parent li.nav-item when a child page is active
+          // Dashboard dropdown ??? highlight parent li.nav-item when a child page is active
           var isDashboardChild = (tab === 'dashboard' || tab === 'spy' || tab === 'sales' || tab === 'date');
           var dashboardToggle = document.querySelector('.nav-item.dropdown .dropdown-toggle[href="#navbar-dashboard-menu"]');
           var dashboardDropdownItem = dashboardToggle ? dashboardToggle.closest('.nav-item') : null;
@@ -14435,7 +14451,7 @@ const API = '';
             '  opacity: 1 !important;',
             '  color: #fff !important;',
             '}',
-            '/* Override active accent icon when dropdown open (focused) — icon back to white */',
+            '/* Override active accent icon when dropdown open (focused) ??? icon back to white */',
             '.kexo-desktop-nav-list .nav-item.dropdown.kexo-dropdown-open.active .nav-link > .kexo-nav-svg,',
             '.kexo-desktop-nav-list .nav-item.dropdown.kexo-dropdown-open.active .nav-link > i[class*="fa-"] {',
             '  color: #fff !important;',
@@ -14704,7 +14720,7 @@ const API = '';
     // except for /dashboard/live and /dashboard/sales (which use a dedicated 10s poller).
     _intervals.push(setInterval(tickTimeOnSite, 30000));
 
-    // ── Tab resume + deploy drift guard ─────────────────────────────────────
+    // ?????? Tab resume + deploy drift guard ???????????????????????????????????????????????????????????????????????????????????????????????????????????????
     // In Safari/iOS (and some embed contexts) long-idle tabs can resume with a "white page"
     // or broken JS/CSS if a deploy happened while the tab was backgrounded. We expose an
     // assetVersion signal via /api/version; if it changes while hidden, hard-reload on resume.
@@ -14809,7 +14825,7 @@ const API = '';
             if (Number.isFinite(n)) amountGbp = n;
           }
           if (amountGbp != null && Number.isFinite(amountGbp)) {
-            setSaleToastContent({ countryCode: cc || 'XX', productTitle: (productTitle || curTitle || '—'), amountGbp });
+            setSaleToastContent({ countryCode: cc || 'XX', productTitle: (productTitle || curTitle || '???'), amountGbp });
           }
         } catch (_) {}
       }
@@ -14852,8 +14868,8 @@ const API = '';
     }
     initEventSource();
 
-    // ── Cleanup on page unload ──
-    window.addEventListener('beforeunload', function() {
+    // ?????? Cleanup on page unload (centralized via registerCleanup in core) ??????
+    registerCleanup(function() {
       _intervals.forEach(function(id) { clearInterval(id); });
       _intervals.length = 0;
       if (liveSalesPollTimer) { try { clearTimeout(liveSalesPollTimer); } catch (_) {} liveSalesPollTimer = null; }
@@ -14874,7 +14890,7 @@ const API = '';
       });
     });
 
-    // ── Dashboard tab logic ──────────────────────────────────────────────
+    // ?????? Dashboard tab logic ??????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
     (function initDashboard() {
       var dashLoading = false;
       var dashLastRangeKey = null;
@@ -15637,7 +15653,7 @@ const API = '';
             if (d == null) d = 0;
             var abs = Math.abs(d);
             var s = fmtGbp(abs);
-            if (s === '\u2014') s = '£0.00';
+            if (s === '\u2014') s = '??0.00';
             if (d > 0) return '+' + s;
             if (d < 0) return '-' + s;
             return s;
@@ -15940,9 +15956,11 @@ const API = '';
         }
 
         var data = _kexoScoreCache;
+        var rangeKey = (_kexoScoreRangeKey && String(_kexoScoreRangeKey).trim()) || 'today';
         applyKexoScoreModalSummary(data);
         if (!data || !Array.isArray(data.components) || data.components.length === 0) {
-          body.innerHTML = '<div class="kexo-score-breakdown-empty text-muted">No score data. Select a date range and refresh.</div>';
+          body.innerHTML = '<div id="kexo-score-modal-summary" class="kexo-score-summary-card mb-3" aria-live="polite"></div>' +
+            '<div class="kexo-score-breakdown-empty text-muted">No score data. Select a date range and refresh.</div>';
         } else {
           var metricOrder = ['revenue', 'orders', 'itemsOrdered', 'conversion', 'roas'];
           var rankByKey = {};
@@ -15954,7 +15972,9 @@ const API = '';
             var bRank = rankByKey[normalizeScoreMetricKey(b && b.key)];
             return aRank - bRank;
           });
-          body.innerHTML = rows.map(function(c) {
+          var summaryBlock = '<div id="kexo-score-modal-summary" class="kexo-score-summary-card mb-3" aria-live="polite">' +
+            '<div class="kexo-score-summary-loading text-muted small">Loading summary…</div></div>';
+          body.innerHTML = summaryBlock + rows.map(function(c) {
             var label = (c.label && String(c.label).trim()) ? String(c.label) : (c.key || '');
             var score = typeof c.score === 'number' && Number.isFinite(c.score) ? Math.max(0, Math.min(100, c.score)) : 0;
             var barClass = kexoScoreBarClass(score);
@@ -15977,6 +15997,49 @@ const API = '';
         modal.classList.remove('is-hidden');
         modal.setAttribute('aria-hidden', 'false');
         requestAnimationFrame(function() { animateKexoScoreBreakdownBars(body); });
+        fetchAndRenderKexoScoreSummary(rangeKey);
+      }
+
+      function fetchAndRenderKexoScoreSummary(rangeKey, force) {
+        var container = document.getElementById('kexo-score-modal-summary');
+        if (!container) return;
+        var rk = (rangeKey != null && String(rangeKey).trim()) ? String(rangeKey).trim() : 'today';
+        var url = API + '/api/kexo-score-summary?range=' + encodeURIComponent(rk);
+        if (force) url += '&force=1';
+        (typeof fetchWithTimeout === 'function' ? fetchWithTimeout(url, { credentials: 'same-origin', cache: 'default' }, 15000) : fetch(url, { credentials: 'same-origin', cache: 'default' }))
+          .then(function(r) { return (r && r.ok) ? r.json() : null; })
+          .then(function(payload) {
+            if (!container) return;
+            if (!payload || !payload.ok) {
+              container.innerHTML = '<div class="kexo-score-summary-loading text-muted small">Summary unavailable.</div>';
+              return;
+            }
+            var summary = (payload.summary && String(payload.summary).trim()) ? String(payload.summary).trim() : '';
+            var drivers = Array.isArray(payload.key_drivers) ? payload.key_drivers : [];
+            var rec = (payload.recommendation && String(payload.recommendation).trim()) ? String(payload.recommendation).trim() : '';
+            var html = '';
+            if (summary) html += '<p class="kexo-score-summary-text mb-2">' + escapeHtml(summary) + '</p>';
+            if (drivers.length) {
+              html += '<ul class="kexo-score-summary-drivers list-unstyled small mb-2">';
+              drivers.slice(0, 4).forEach(function(d) {
+                html += '<li>' + escapeHtml(String(d).trim()) + '</li>';
+              });
+              html += '</ul>';
+            }
+            if (rec) html += '<p class="kexo-score-summary-recommendation small mb-2"><strong>Where to focus:</strong> ' + escapeHtml(rec) + '</p>';
+            html += '<button type="button" class="btn btn-sm btn-ghost-secondary kexo-score-summary-refresh" data-range="' + escapeHtml(rk) + '" aria-label="Refresh summary">Refresh</button>';
+            container.innerHTML = html;
+            var refreshBtn = container.querySelector('.kexo-score-summary-refresh');
+            if (refreshBtn) {
+              refreshBtn.addEventListener('click', function() {
+                var dataRange = refreshBtn.getAttribute('data-range');
+                if (dataRange) fetchAndRenderKexoScoreSummary(dataRange, true);
+              });
+            }
+          })
+          .catch(function() {
+            if (container) container.innerHTML = '<div class="kexo-score-summary-loading text-muted small">Summary unavailable.</div>';
+          });
       }
 
       function closeKexoScoreModal() {
@@ -16126,7 +16189,7 @@ const API = '';
       }, 60000));
     })();
 
-    // ── User avatar: fetch /api/me and populate ────────────────────────
+    // ?????? User avatar: fetch /api/me and populate ????????????????????????????????????????????????????????????????????????
     (function initUserAvatar() {
       try {
         var avatarEl = document.getElementById('user-avatar');
@@ -16153,7 +16216,7 @@ const API = '';
       } catch (_) {}
     })();
 
-    // ── Online badge: populate website name from store config ────────────
+    // ?????? Online badge: populate website name from store config ????????????????????????????????????
     (function initOnlineBadgeWebsite() {
       try {
         var el = document.getElementById('kexo-online-website');
@@ -16169,7 +16232,7 @@ const API = '';
       } catch (_) {}
     })();
 
-    // ── Footer action buttons ──────────────────────────────────────────
+    // ?????? Footer action buttons ??????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
     (function initFooterActions() {
       function proxyClick(footerSel, headerId) {
         document.querySelectorAll(footerSel).forEach(function(btn) {
@@ -16202,7 +16265,7 @@ const API = '';
       }
     })();
 
-    // ── Footer diagnostics strip (status tags from config-status) ───────
+    // ?????? Footer diagnostics strip (status tags from config-status) ?????????????????????
     (function initFooterDiagnostics() {
       var wrap = document.getElementById('kexo-footer-diagnostics');
       var tagsEl = document.getElementById('kexo-footer-diagnostics-tags');
@@ -16241,7 +16304,7 @@ const API = '';
               var statusCls = it.ok ? 'kexo-status-indicator--online' : 'kexo-status-indicator--offline';
               var esc = function(s) { return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); };
               html += '<div class="kexo-footer-diagnostics-tag">';
-              html += '<a href="/admin?tab=diagnostics" class="kexo-footer-diagnostics-tag-link" title="' + esc(it.label) + ' ' + esc(it.status) + ' – click for diagnostics">';
+              html += '<a href="/admin?tab=diagnostics" class="kexo-footer-diagnostics-tag-link" title="' + esc(it.label) + ' ' + esc(it.status) + ' ??? click for diagnostics">';
               html += '<span class="kexo-footer-diagnostics-label">' + esc(it.label) + '</span>';
               html += '</a>';
               html += '<span class="kexo-footer-diagnostics-status">';
@@ -16272,7 +16335,7 @@ const API = '';
       });
     })();
 
-    // ── Shared Product Insights modal ───────────────────────────────────
+    // ?????? Shared Product Insights modal ?????????????????????????????????????????????????????????????????????????????????????????????????????????
     (function initProductInsightsModal() {
       if (window.__productInsightsModalInit) return;
       window.__productInsightsModalInit = true;
@@ -16376,7 +16439,7 @@ const API = '';
                 '</div>' +
               '</div>' +
               '<div class="modal-body">' +
-                '<div id="product-insights-status" class="text-muted">Loading…</div>' +
+                '<div id="product-insights-status" class="text-muted">Loading???</div>' +
                 '<div id="product-insights-body" style="display:none">' +
                   '<div class="row g-3">' +
                     '<div class="col-12 col-lg-5" id="product-insights-col-left">' +
@@ -16546,19 +16609,19 @@ const API = '';
 
       function fmtNum(n) {
         var x = (typeof n === 'number') ? n : Number(n);
-        if (!isFinite(x)) return '—';
+        if (!isFinite(x)) return '???';
         try { return x.toLocaleString('en-GB'); } catch (_) { return String(Math.round(x)); }
       }
 
       function fmtMoneyGbp(n) {
         var x = (typeof n === 'number') ? n : Number(n);
-        if (!isFinite(x)) return '—';
-        try { return '£' + x.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); } catch (_) { return '£' + x.toFixed(2); }
+        if (!isFinite(x)) return '???';
+        try { return '??' + x.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); } catch (_) { return '??' + x.toFixed(2); }
       }
 
       function fmtPct(n) {
         var x = (typeof n === 'number') ? n : Number(n);
-        if (!isFinite(x)) return '—';
+        if (!isFinite(x)) return '???';
         return x.toFixed(2) + '%';
       }
 
@@ -16957,13 +17020,13 @@ const API = '';
             return '<tr><td>' + escapeHtml(label) + '</td><td class="w-1 fw-bold text-end">' + escapeHtml(value) + '</td></tr>';
           }
           if (isPage) {
-            var sessions = metrics && metrics.sessions != null ? fmtNum(metrics.sessions) : '—';
-            var pageViews = metrics && metrics.pageViews != null ? fmtNum(metrics.pageViews) : '—';
-            var purchasedSessions = metrics && metrics.purchasedSessions != null ? fmtNum(metrics.purchasedSessions) : '—';
-            var checkoutStartedSessions = metrics && metrics.checkoutStartedSessions != null ? fmtNum(metrics.checkoutStartedSessions) : '—';
-            var revenue2 = metrics && metrics.revenueGbp != null ? fmtMoneyGbp(metrics.revenueGbp) : '—';
-            var cr2 = metrics && metrics.cr != null ? fmtPct(metrics.cr) : '—';
-            var rps = metrics && metrics.revPerSession != null ? fmtMoneyGbp(metrics.revPerSession) : '—';
+            var sessions = metrics && metrics.sessions != null ? fmtNum(metrics.sessions) : '???';
+            var pageViews = metrics && metrics.pageViews != null ? fmtNum(metrics.pageViews) : '???';
+            var purchasedSessions = metrics && metrics.purchasedSessions != null ? fmtNum(metrics.purchasedSessions) : '???';
+            var checkoutStartedSessions = metrics && metrics.checkoutStartedSessions != null ? fmtNum(metrics.checkoutStartedSessions) : '???';
+            var revenue2 = metrics && metrics.revenueGbp != null ? fmtMoneyGbp(metrics.revenueGbp) : '???';
+            var cr2 = metrics && metrics.cr != null ? fmtPct(metrics.cr) : '???';
+            var rps = metrics && metrics.revPerSession != null ? fmtMoneyGbp(metrics.revPerSession) : '???';
             mt.innerHTML =
               row('Revenue', revenue2) +
               row('Purchased sessions', purchasedSessions) +
@@ -16973,22 +17036,22 @@ const API = '';
               row('Purchase rate', cr2) +
               row('Revenue / Session', rps);
           } else {
-            var revenue = metrics && metrics.revenueGbp != null ? fmtMoneyGbp(metrics.revenueGbp) : '—';
-            var units = metrics && metrics.units != null ? fmtNum(metrics.units) : '—';
-            var views = metrics && metrics.views != null ? fmtNum(metrics.views) : '—';
-            var atc = metrics && metrics.addToCart != null ? fmtNum(metrics.addToCart) : '—';
-            var cs = metrics && metrics.checkoutStarted != null ? fmtNum(metrics.checkoutStarted) : '—';
-            var atcRate = metrics && metrics.atcRate != null ? fmtPct(metrics.atcRate) : '—';
-            var clicks = metrics && metrics.clicks != null ? fmtNum(metrics.clicks) : '—';
-            var conv = metrics && metrics.orders != null ? fmtNum(metrics.orders) : '—';
-            var cr = metrics && metrics.cr != null ? fmtPct(metrics.cr) : '—';
-            var rpc = metrics && metrics.revPerClick != null ? fmtMoneyGbp(metrics.revPerClick) : '—';
-            var rpv = metrics && metrics.revPerView != null ? fmtMoneyGbp(metrics.revPerView) : '—';
-            var totalSales = details && details.totalSalesLifetime != null ? fmtNum(details.totalSalesLifetime) : '—';
-            var totalRev = details && details.totalRevenueLifetimeGbp != null ? fmtMoneyGbp(details.totalRevenueLifetimeGbp) : '—';
-            var cogs = details && details.costOfGoodsLifetimeGbp != null ? fmtMoneyGbp(details.costOfGoodsLifetimeGbp) : '—';
-            var stockUnits = details && details.inventoryUnits != null ? fmtNum(details.inventoryUnits) : '—';
-            var stockVariants = details && details.inStockVariants != null ? fmtNum(details.inStockVariants) : '—';
+            var revenue = metrics && metrics.revenueGbp != null ? fmtMoneyGbp(metrics.revenueGbp) : '???';
+            var units = metrics && metrics.units != null ? fmtNum(metrics.units) : '???';
+            var views = metrics && metrics.views != null ? fmtNum(metrics.views) : '???';
+            var atc = metrics && metrics.addToCart != null ? fmtNum(metrics.addToCart) : '???';
+            var cs = metrics && metrics.checkoutStarted != null ? fmtNum(metrics.checkoutStarted) : '???';
+            var atcRate = metrics && metrics.atcRate != null ? fmtPct(metrics.atcRate) : '???';
+            var clicks = metrics && metrics.clicks != null ? fmtNum(metrics.clicks) : '???';
+            var conv = metrics && metrics.orders != null ? fmtNum(metrics.orders) : '???';
+            var cr = metrics && metrics.cr != null ? fmtPct(metrics.cr) : '???';
+            var rpc = metrics && metrics.revPerClick != null ? fmtMoneyGbp(metrics.revPerClick) : '???';
+            var rpv = metrics && metrics.revPerView != null ? fmtMoneyGbp(metrics.revPerView) : '???';
+            var totalSales = details && details.totalSalesLifetime != null ? fmtNum(details.totalSalesLifetime) : '???';
+            var totalRev = details && details.totalRevenueLifetimeGbp != null ? fmtMoneyGbp(details.totalRevenueLifetimeGbp) : '???';
+            var cogs = details && details.costOfGoodsLifetimeGbp != null ? fmtMoneyGbp(details.costOfGoodsLifetimeGbp) : '???';
+            var stockUnits = details && details.inventoryUnits != null ? fmtNum(details.inventoryUnits) : '???';
+            var stockVariants = details && details.inStockVariants != null ? fmtNum(details.inStockVariants) : '???';
             mt.innerHTML =
               row('Clicks', clicks) +
               row('Conversions', conv) +
@@ -16998,7 +17061,7 @@ const API = '';
               row('Views (pixel)', views) +
               row('Add to cart', atc) +
               row('Checkout started', cs) +
-              row('View → Cart rate', atcRate) +
+              row('View ??? Cart rate', atcRate) +
               row('Revenue / Click', rpc) +
               row('Revenue / View', rpv) +
               row('In stock (units)', stockUnits) +
@@ -17020,7 +17083,7 @@ const API = '';
               var flag = flagImg(iso, name);
               var conv = (r && r.orders != null) ? (Number(r.orders) || 0) : 0;
               var rev = (r && r.revenueGbp != null) ? Number(r.revenueGbp) : null;
-              var revText = (rev != null && isFinite(rev)) ? fmtMoneyGbp(rev) : '—';
+              var revText = (rev != null && isFinite(rev)) ? fmtMoneyGbp(rev) : '???';
               return '' +
                 '<div class="d-flex align-items-center justify-content-between">' +
                   '<div class="d-flex align-items-center gap-2 min-w-0">' +
@@ -17045,7 +17108,7 @@ const API = '';
 
       function load() {
         ensureDom();
-        setStatus('Loading…');
+        setStatus('Loading???');
 
         var shop = null;
         try { shop = getShopParam() || shopForSalesFallback || null; } catch (_) { shop = null; }
@@ -17138,5 +17201,6 @@ const API = '';
       // Expose for debugging / future use
       window.__openProductInsights = openProduct;
     })();
+
 
 })();

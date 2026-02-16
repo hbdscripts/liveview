@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-16 (Google Ads hide paused toggle)
+Last updated: 2026-02-16 (Kexo Score AI Summary)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -287,6 +287,7 @@ KPI data:
 - `GET /api/kpis` (server cached; also localStorage warm-paint to avoid empty chips on navigation)
 - `GET /api/kpis-expanded-extra` for Shopify-derived extras (COGS, returns, items ordered, etc.)
 - `GET /api/kexo-score?range=...` for Kexo Score (0–100) and component breakdown; used by the dashboard Kexo Score ring card and breakdown modal.
+- `GET /api/kexo-score-summary?range=...&force=0|1` for Kexo Score modal AI summary: deterministic context (product/attribution/ads movers) + optional OpenAI narration; cached per range (3 min TTL); fail-open to deterministic when AI disabled/unavailable. Route: `server/routes/kexoScoreSummary.js`; context builder: `server/kexoScoreSummary.js`; AI narrative: `server/kexoScoreAiNarrative.js` (KEXO_AI_ENABLED, KEXO_AI_MODEL in config).
 
 ---
 
@@ -394,6 +395,12 @@ Ops/reliability:
   - Added defensive error logging in auth middleware fallback paths (`server/middleware/dashboardAuth.js`, `server/middleware/requireMaster.js`) to avoid silent authorization failures.
   - Improved background scheduler observability in `server/index.js` by replacing empty `.catch(() => {})` wrappers with tagged warnings.
   - Migration `050_acquisition_attribution` Postgres schema execution now uses `db.exec(pgSchema)` instead of fragile semicolon splitting.
+
+2026-02-16 (latest)
+- Kexo Score AI Summary (modal):
+  - Summary block at top of Kexo Score breakdown modal: short paragraph, 2–4 key driver bullets, "Where to focus" recommendation; auto-fetches on modal open; optional Refresh button (force=1). Styling in `custom.css` (`.kexo-score-summary-card`).
+  - Backend: deterministic context from product/attribution/ads movers (same bounds as `getKexoScore`); optional OpenAI narration (strict JSON, no invented facts); deterministic fallback when AI disabled/unavailable. Config: `KEXO_AI_ENABLED` (default false), `KEXO_AI_MODEL` (default gpt-4o-mini).
+  - Tests: `test/kexo-score.test.js` includes buildSummaryContext shape and generateAiNarrative stable shape.
 
 2026-02-16 (latest)
 - Kexo Score modal simplification + scoring sensitivity pass:

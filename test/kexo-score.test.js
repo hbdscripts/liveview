@@ -65,3 +65,55 @@ test('getKexoScore returns shape { score, band, components, rangeKey } and band 
 
   try { fs.rmSync(tmpDir, { recursive: true }); } catch (_) {}
 });
+
+test('buildSummaryContext returns { ok, context, drivers } with expected shape', async () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'kexo-summary-test-'));
+  process.env.SQLITE_DB_PATH = path.join(tmpDir, 'kexo_summary.test.sqlite');
+  delete process.env.DB_URL;
+  delete process.env.ADS_DB_URL;
+
+  const { getDb } = require('../server/db');
+  const { up: up001 } = require('../server/migrations/001_initial');
+  const { up: up002 } = require('../server/migrations/002_shop_sessions');
+  const { up: up004 } = require('../server/migrations/004_session_stats_fields');
+  const { up: up007 } = require('../server/migrations/007_first_path');
+  const { up: up009 } = require('../server/migrations/009_cf_traffic');
+  const { up: up011 } = require('../server/migrations/011_entry_url');
+  const { up: up017 } = require('../server/migrations/017_sales_truth_and_evidence');
+
+  await up001();
+  await up002();
+  await up004();
+  await up007();
+  await up009();
+  await up011();
+  await up017();
+
+  const kexoScoreSummary = require('../server/kexoScoreSummary');
+  const result = await kexoScoreSummary.buildSummaryContext({ rangeKey: '7d' });
+
+  assert.ok(result && typeof result === 'object', 'returns object');
+  assert.equal(result.ok, true, 'ok is true');
+  assert.ok(result.context && typeof result.context === 'object', 'context is object');
+  assert.ok(Array.isArray(result.context.components), 'context.components is array');
+  assert.ok(result.context.range && typeof result.context.range === 'object', 'context.range');
+  assert.ok(result.drivers && typeof result.drivers === 'object', 'drivers is object');
+  assert.ok(Array.isArray(result.drivers.product), 'drivers.product is array');
+  assert.ok(Array.isArray(result.drivers.attribution), 'drivers.attribution is array');
+  assert.ok(Array.isArray(result.drivers.ads), 'drivers.ads is array');
+
+  try { fs.rmSync(tmpDir, { recursive: true }); } catch (_) {}
+});
+
+test('generateAiNarrative returns stable shape (deterministic when AI disabled)', async () => {
+  const kexoScoreAiNarrative = require('../server/kexoScoreAiNarrative');
+  const narrative = await kexoScoreAiNarrative.generateAiNarrative({
+    context: { components: [{ key: 'revenue', label: 'Revenue', value: 1000, previous: 800 }], rangeKey: '7d' },
+    drivers: { product: [], attribution: [], ads: [] },
+  });
+  assert.ok(narrative && typeof narrative === 'object', 'returns object');
+  assert.ok(typeof narrative.summary === 'string', 'summary is string');
+  assert.ok(Array.isArray(narrative.key_drivers), 'key_drivers is array');
+  assert.ok(typeof narrative.recommendation === 'string', 'recommendation is string');
+  assert.ok(narrative.links === undefined || Array.isArray(narrative.links), 'links optional array');
+});

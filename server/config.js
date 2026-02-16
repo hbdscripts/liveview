@@ -85,6 +85,10 @@ const config = {
   fraudIpSalt: (getEnv('FRAUD_IP_SALT', '') || '').trim(),
   /** Fraud: enable optional AI narrative generation (never blocks UI). */
   fraudAiEnabled: getBool('FRAUD_AI_ENABLED', false),
+  /** Kexo Score: enable optional AI summary in score modal (never blocks UI). */
+  kexoAiEnabled: getBool('KEXO_AI_ENABLED', false),
+  /** Kexo Score AI model (e.g. gpt-4o-mini). */
+  kexoAiModel: (getEnv('KEXO_AI_MODEL', '') || '').trim() || 'gpt-4o-mini',
   /** Fraud AI provider secret (do not store in DB). */
   openaiApiKey: (getEnv('OPENAI_API_KEY', '') || '').trim(),
   dashboardSecret: getEnv('DASHBOARD_SECRET', ''),
