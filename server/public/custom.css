@@ -396,20 +396,10 @@ a {
   outline-offset: -2px;
 }
 
-/* Smooth non-janky row updates (Live/Sales polling) */
-.grid-body .grid-row.kexo-row-insert {
-  animation: kexoRowInsert 0.32s ease-out both;
-}
+/* Row updates: no flash animation (was kexoRowInsert / kexoRowUpdate) */
+.grid-body .grid-row.kexo-row-insert,
 .grid-body .grid-row.kexo-row-update {
-  animation: kexoRowUpdate 0.42s ease-out both;
-}
-@keyframes kexoRowInsert {
-  from { opacity: 0; transform: translateY(-6px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-@keyframes kexoRowUpdate {
-  0% { background: rgba(var(--tblr-primary-rgb), 0.10); }
-  100% { background: transparent; }
+  animation: none;
 }
 
 /* Deploy drift: show a dot on refresh buttons */
@@ -762,6 +752,7 @@ body.side-panel-open {
 #sessions-table.grid-table .grid-body .grid-row .grid-cell.compliance-cell .compliance-status-icon.is-search {
   width: 15px;
   height: 15px;
+  font-size: 15px;
   vertical-align: middle;
   display: inline-block;
   margin-left: 10px;
@@ -777,7 +768,7 @@ body.side-panel-open {
   height: 15px;
   vertical-align: middle;
   display: inline-block;
-  margin-left: 10px;
+  margin: 0;
   object-fit: contain;
 }
 
@@ -1830,6 +1821,9 @@ body[data-page="abandoned-carts"] .page-body-loader-overlay .page-loader-progres
   background-color: var(--kexo-accent-2, #3eb3ab) !important;
   background-image: none !important;
 }
+body[data-page="attribution"] .page-body-loader-overlay .page-loader-progress .progress-bar,
+body[data-page="devices"] .page-body-loader-overlay .page-loader-progress .progress-bar,
+/* Legacy aliases kept for older tabs/routes. */
 body[data-page="channels"] .page-body-loader-overlay .page-loader-progress .progress-bar,
 body[data-page="type"] .page-body-loader-overlay .page-loader-progress .progress-bar {
   background-color: var(--kexo-accent-3, #f59e34) !important;

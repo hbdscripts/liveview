@@ -2295,11 +2295,11 @@ const API = '';
       if (n == null) return '\u2014';
       var s = Math.floor((Date.now() - n) / 1000);
       if (s < 0) return 'now';
-      if (s < 60) return s + (s === 1 ? 'sec' : 'secs');
-      if (s < 3600) return Math.floor(s / 60) + 'min';
-      if (s < 86400) return Math.floor(s / 3600) + 'hr';
+      if (s < 60) return s + 's';
+      if (s < 3600) return Math.floor(s / 60) + 'm';
+      if (s < 86400) return Math.floor(s / 3600) + 'h';
       var d = Math.floor(s / 86400);
-      return d + (d === 1 ? 'day' : 'days');
+      return d + 'd';
     }
 
     var storeBaseUrlFallback = '';
@@ -14283,7 +14283,17 @@ const API = '';
         try { window.setTab = setTab; } catch (_) {}
 
         if (PAGE) {
-          var pageTab = PAGE === 'live' ? 'spy' : PAGE === 'snapshot' ? 'snapshot' : PAGE === 'countries' ? 'stats' : PAGE === 'sales' ? 'sales' : PAGE === 'date' ? 'date' : (PAGE === 'compare-conversion-rate' || PAGE === 'shipping-cr' || PAGE === 'click-order-lookup') ? 'tools' : PAGE;
+          var pageTab = PAGE === 'live' ? 'spy'
+            : PAGE === 'snapshot' ? 'snapshot'
+            : PAGE === 'countries' ? 'stats'
+            : PAGE === 'sales' ? 'sales'
+            : PAGE === 'date' ? 'date'
+            : PAGE === 'channels' ? 'attribution'
+            : PAGE === 'type' ? 'devices'
+            : PAGE === 'attribution' ? 'attribution'
+            : PAGE === 'devices' ? 'devices'
+            : (PAGE === 'compare-conversion-rate' || PAGE === 'shipping-cr' || PAGE === 'click-order-lookup') ? 'tools'
+            : PAGE;
           setTab(pageTab);
           return;
         }
@@ -14848,6 +14858,17 @@ const API = '';
       _intervals.length = 0;
       if (liveSalesPollTimer) { try { clearTimeout(liveSalesPollTimer); } catch (_) {} liveSalesPollTimer = null; }
       if (_eventSource) { try { _eventSource.close(); } catch (_) {} _eventSource = null; }
+      if (_condensedStripResizeObserver) {
+        try { _condensedStripResizeObserver.disconnect(); } catch (_) {}
+        _condensedStripResizeObserver = null;
+      }
+      try {
+        document.querySelectorAll('.table-scroll-wrap, .country-table-wrap, .grid-table, .table-responsive').forEach(function(wrap) {
+          try { if (wrap && wrap._dragScrollObserver && typeof wrap._dragScrollObserver.disconnect === 'function') wrap._dragScrollObserver.disconnect(); } catch (_) {}
+          try { if (wrap && wrap._stickyResizeObserver && typeof wrap._stickyResizeObserver.disconnect === 'function') wrap._stickyResizeObserver.disconnect(); } catch (_) {}
+          try { if (wrap && wrap._stickyResizeMutationObserver && typeof wrap._stickyResizeMutationObserver.disconnect === 'function') wrap._stickyResizeMutationObserver.disconnect(); } catch (_) {}
+        });
+      } catch (_) {}
       Object.keys(_fetchAbortControllers).forEach(function(k) {
         try { _fetchAbortControllers[k].abort(); } catch (_) {}
       });
