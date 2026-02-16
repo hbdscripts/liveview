@@ -3975,46 +3975,14 @@ const API = '';
 
     var complianceHelpGlobalBound = false;
     function ensureComplianceHeaderUi() {
+      // Compliance header help UI removed (keep header cell empty).
       var table = document.getElementById('sessions-table');
       if (!table || !table.querySelector) return;
       var th = table.querySelector('.grid-row--header .grid-cell.compliance-cell');
       if (!th) return;
       if (th.getAttribute('data-compliance-header') === '1') return;
       th.setAttribute('data-compliance-header', '1');
-      th.innerHTML = '' +
-        '<button type="button" class="compliance-header-btn" data-compliance-help-toggle="1" aria-label="Compliance help" title="Compliance help">' +
-          '<i class="fa-light fa-shield-check" data-icon-key="table-icon-compliance-header" aria-hidden="true"></i>' +
-        '</button>' +
-        '<div class="compliance-help-popover" data-compliance-help-popover="1" role="tooltip" aria-hidden="true">' +
-          'Sales & compliance checks will show up below. Click the icons below for more details' +
-        '</div>';
-      try {
-        th.addEventListener('click', function(e) {
-          var target = e && e.target ? e.target : null;
-          var btn = target && target.closest ? target.closest('[data-compliance-help-toggle="1"]') : null;
-          if (!btn) return;
-          try { e.preventDefault(); } catch (_) {}
-          try { e.stopPropagation(); } catch (_) {}
-          var pop = th.querySelector('[data-compliance-help-popover="1"]');
-          if (!pop) return;
-          var open = pop.classList.contains('is-open');
-          pop.classList.toggle('is-open', !open);
-          pop.setAttribute('aria-hidden', open ? 'true' : 'false');
-        });
-      } catch (_) {}
-      if (!complianceHelpGlobalBound) {
-        complianceHelpGlobalBound = true;
-        try {
-          document.addEventListener('click', function(e) {
-            var pop = document.querySelector('#sessions-table .grid-row--header .grid-cell.compliance-cell [data-compliance-help-popover="1"]');
-            if (!pop || !pop.classList.contains('is-open')) return;
-            var cell = pop.closest ? pop.closest('.grid-cell.compliance-cell') : null;
-            if (cell && e && e.target && cell.contains(e.target)) return;
-            try { pop.classList.remove('is-open'); } catch (_) {}
-            try { pop.setAttribute('aria-hidden', 'true'); } catch (_) {}
-          }, true);
-        } catch (_) {}
-      }
+      th.innerHTML = '';
     }
 
     function complianceCellHtml(sessionId, options) {
@@ -4022,6 +3990,7 @@ const API = '';
       if (!sid) return '';
       var opts = options && typeof options === 'object' ? options : {};
       var hasSale = !!opts.hasSale;
+      var hasEval = !!opts.hasEval;
       var triggered = !!opts.triggered;
       var score = opts.score != null ? Number(opts.score) : null;
       var scoreText = (typeof score === 'number' && Number.isFinite(score)) ? String(Math.trunc(score)) : '';
@@ -4031,9 +4000,13 @@ const API = '';
       var saleIcon = hasSale
         ? '<i class="fa-solid fa-sterling-sign compliance-sale-icon" data-icon-key="table-icon-converted-sale" aria-hidden="true"></i>'
         : '';
-      var statusIcon = triggered
-        ? '<i class="fa-light fa-triangle-exclamation compliance-status-icon is-warn" data-icon-key="table-icon-compliance-warning" aria-hidden="true"></i>'
-        : '<i class="fa-light fa-circle-check compliance-status-icon is-ok" data-icon-key="table-icon-compliance-check" aria-hidden="true"></i>';
+      var statusIcon = '';
+      if (hasEval) {
+        statusIcon = triggered
+          ? '<i class="fa-light fa-triangle-exclamation compliance-status-icon is-warn" data-icon-key="table-icon-compliance-warning" aria-hidden="true"></i>'
+          : '<i class="fa-light fa-circle-check compliance-status-icon is-ok" data-icon-key="table-icon-compliance-check" aria-hidden="true"></i>';
+      }
+      if (!saleIcon && !statusIcon) return '';
       return '' +
         '<span class="compliance-icons" aria-label="' + escapeHtml(title) + '" title="' + escapeHtml(title) + '">' +
           saleIcon +
@@ -4062,14 +4035,15 @@ const API = '';
           var cell = row.querySelector('.grid-cell.compliance-cell');
           if (!cell) return;
           var m = markers && markers[sid] ? markers[sid] : null;
+          var hasEval = !!(m && (m.has_eval === true || m.hasEval === true));
           var triggered = !!(m && m.triggered === true);
           var score = m && m.score != null ? Number(m.score) : null;
           var hasSale = false;
           try { hasSale = row.classList && row.classList.contains('converted'); } catch (_) { hasSale = false; }
-          var sig = (hasSale ? '1' : '0') + '|' + (triggered ? '1' : '0') + '|' + (score != null && Number.isFinite(score) ? String(Math.trunc(score)) : '');
+          var sig = (hasSale ? '1' : '0') + '|' + (hasEval ? '1' : '0') + '|' + (triggered ? '1' : '0') + '|' + (score != null && Number.isFinite(score) ? String(Math.trunc(score)) : '');
           if (cell.getAttribute('data-compliance-sig') === sig) return;
           try { cell.setAttribute('data-compliance-sig', sig); } catch (_) {}
-          cell.innerHTML = complianceCellHtml(sid, { hasSale: hasSale, triggered: triggered, score: score });
+          cell.innerHTML = complianceCellHtml(sid, { hasSale: hasSale, hasEval: hasEval, triggered: triggered, score: score });
         });
       }).catch(function() {});
     }

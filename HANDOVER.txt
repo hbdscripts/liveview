@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-16 (Snapshot fee labels + diagnostics details)
+Last updated: 2026-02-16 (Compliance icons only when fraud score exists)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -394,6 +394,11 @@ Ops/reliability:
 - Fraud meter UI (drawer + lookup):
   - Replaced the fraud half-donut gauge with a KPI-chip style **Fraud Meter** (Low/Medium/High + % + full-width “% safe” progress bar).
   - Removed dashed separators from the session drawer (events/meta/lookup blocks) for a cleaner look (`server/public/custom.css`).
+
+2026-02-16 (latest)
+- Compliance column: hide icons unless we have a fraud evaluation:
+  - Removed the Compliance header help button/popover.
+  - Sessions table now shows compliance check/warn only when a fraud evaluation exists for that session; the converted sale icon is unchanged.
 
 2026-02-16 (latest)
 - Header Online badge → direct link (no dropdown):

@@ -79,7 +79,7 @@ router.get('/markers', async (req, res) => {
   const ok = await fraudService.tablesOk().catch(() => false);
   if (!ok) {
     const out = {};
-    ids.forEach((id) => { out[id] = { triggered: false, score: 0, flags: [] }; });
+    ids.forEach((id) => { out[id] = { ok: true, available: false, has_eval: false, triggered: false, score: null, flags: [] }; });
     return res.json(out);
   }
 
@@ -109,6 +109,9 @@ router.get('/markers', async (req, res) => {
         if (!r || r.entity_id == null) return;
         const id = String(r.entity_id);
         byId.set(id, {
+          ok: true,
+          available: true,
+          has_eval: true,
           triggered: Number(r.triggered) === 1,
           score: r.score != null ? Math.max(0, Math.min(100, Math.trunc(Number(r.score) || 0))) : 0,
           flags: Array.isArray(safeJsonParse(r.flags_json, [])) ? safeJsonParse(r.flags_json, []) : [],
@@ -116,14 +119,14 @@ router.get('/markers', async (req, res) => {
       });
 
       missing.forEach((id) => {
-        const v = byId.get(id) || { triggered: false, score: 0, flags: [] };
+        const v = byId.get(id) || { ok: true, available: true, has_eval: false, triggered: false, score: null, flags: [] };
         out[id] = v;
         cacheSet(entityType + ':' + id, v);
       });
     } catch (err) {
       Sentry.captureException(err, { extra: { route: 'fraud.markers', entityType } });
       // Fail-open: treat as no markers.
-      missing.forEach((id) => { out[id] = { triggered: false, score: 0, flags: [] }; });
+      missing.forEach((id) => { out[id] = { ok: false, available: true, has_eval: false, triggered: false, score: null, flags: [] }; });
     }
   }
 
