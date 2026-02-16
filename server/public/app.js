@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 603537c511fd357d
+// checksum: b4d66cbd030eff6e
 
 (function () {
 const API = '';
@@ -6913,14 +6913,26 @@ const API = '';
 
     function mountDesktopDatePickerIntoPageHeader() {
       try {
+        const sourceLi = document.querySelector('.kexo-desktop-nav .kexo-nav-date-slot');
         if (document.body) {
           const page = String(document.body.getAttribute('data-page') || '');
+          const dateBtn = document.getElementById('kexo-date-display');
+          const dateWrap = dateBtn && dateBtn.closest ? dateBtn.closest('.kexo-topbar-date') : null;
           if (page === 'settings' || page === 'snapshot') return;
+          if (page === 'dashboard') {
+            if (sourceLi && dateWrap && dateWrap.parentElement !== sourceLi) {
+              sourceLi.appendChild(dateWrap);
+            }
+            try { if (sourceLi) sourceLi.style.display = 'none'; } catch (_) {}
+            try { if (dateWrap) dateWrap.style.display = 'none'; } catch (_) {}
+            return;
+          }
+          try { if (sourceLi) sourceLi.style.display = ''; } catch (_) {}
+          try { if (dateWrap) dateWrap.style.display = ''; } catch (_) {}
         }
         const dateBtn = document.getElementById('kexo-date-display');
         const dateWrap = dateBtn && dateBtn.closest ? dateBtn.closest('.kexo-topbar-date') : null;
         if (!dateWrap) return;
-        const sourceLi = document.querySelector('.kexo-desktop-nav .kexo-nav-date-slot');
         const headerRow = document.querySelector('.page-header .row.align-items-center') || document.querySelector('.page-header .row');
         const canRelocate = !!headerRow;
 
@@ -15609,15 +15621,13 @@ const API = '';
         var stamp = Date.now();
         var seriesUrl = API + '/api/dashboard-series?range=30d' + (force ? ('&force=1&_=' + stamp) : '');
         var snapshotUrl = API + '/api/business-snapshot?mode=range&preset=last_30_days' + (force ? ('&force=1&_=' + stamp) : '');
-        var finishesUrl = shop
-          ? (API + '/api/shopify-finishes?range=30d&shop=' + encodeURIComponent(shop) + (force ? ('&force=1&_=' + stamp) : ''))
-          : null;
+        var finishesUrl = API + '/api/shopify-finishes?range=30d' + (shop ? ('&shop=' + encodeURIComponent(shop)) : '') + (force ? ('&force=1&_=' + stamp) : '');
         var scoreUrl = API + '/api/kexo-score?range=today' + (force ? ('&force=1&_=' + stamp) : '');
 
         overviewMiniInFlight = Promise.all([
           fetchOverviewJson(seriesUrl, force, 25000),
           fetchOverviewJson(snapshotUrl, force, 30000),
-          finishesUrl ? fetchOverviewJson(finishesUrl, force, 25000) : Promise.resolve(null),
+          fetchOverviewJson(finishesUrl, force, 25000),
           fetchOverviewJson(scoreUrl, force, 25000),
         ]).then(function(parts) {
           var payload = {

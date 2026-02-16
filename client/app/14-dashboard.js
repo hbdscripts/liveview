@@ -583,15 +583,13 @@
         var stamp = Date.now();
         var seriesUrl = API + '/api/dashboard-series?range=30d' + (force ? ('&force=1&_=' + stamp) : '');
         var snapshotUrl = API + '/api/business-snapshot?mode=range&preset=last_30_days' + (force ? ('&force=1&_=' + stamp) : '');
-        var finishesUrl = shop
-          ? (API + '/api/shopify-finishes?range=30d&shop=' + encodeURIComponent(shop) + (force ? ('&force=1&_=' + stamp) : ''))
-          : null;
+        var finishesUrl = API + '/api/shopify-finishes?range=30d' + (shop ? ('&shop=' + encodeURIComponent(shop)) : '') + (force ? ('&force=1&_=' + stamp) : '');
         var scoreUrl = API + '/api/kexo-score?range=today' + (force ? ('&force=1&_=' + stamp) : '');
 
         overviewMiniInFlight = Promise.all([
           fetchOverviewJson(seriesUrl, force, 25000),
           fetchOverviewJson(snapshotUrl, force, 30000),
-          finishesUrl ? fetchOverviewJson(finishesUrl, force, 25000) : Promise.resolve(null),
+          fetchOverviewJson(finishesUrl, force, 25000),
           fetchOverviewJson(scoreUrl, force, 25000),
         ]).then(function(parts) {
           var payload = {

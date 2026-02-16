@@ -410,6 +410,8 @@ Ops/reliability:
   - Overview mini-data cache now keys by resolved shop (`getShopForSales`) so finishes data refetches automatically once shop context becomes available.
   - Overview finishes pie now reads `label/key` from `/api/shopify-finishes` rows (not `finish`), fixing false empty/no-data states when finish revenue exists.
   - Dashboard page now hides the shared date picker control (`.kexo-nav-date-slot` / `.kexo-page-header-date-col`) so no page-level date box appears behind the sticky header.
+  - Overview mini fetch now always calls `/api/shopify-finishes?range=30d` (adds `shop` param only when available) so server-side shop fallback can still return finishes data when the client has no shop query.
+  - Dashboard date picker is also hard-hidden in JS mount logic for `data-page="dashboard"` (`mountDesktopDatePickerIntoPageHeader`) to avoid any stale/relocated date-control flashes.
 
 2026-02-16 (latest)
 - Dashboard overview layout refresh:
