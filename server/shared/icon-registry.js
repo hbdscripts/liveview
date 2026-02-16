@@ -123,6 +123,7 @@ const ICON_GLYPH_DEFAULTS = Object.freeze({
   'footer-last-sale-show': 'fa-eye',
   'footer-last-sale-hide': 'fa-eye-slash',
   'footer-back-to-top': 'fa-arrow-up',
+  'footer-notes': 'fa-pen',
   'side-panel-close': 'fa-xmark',
   'side-panel-activity': 'fa-list',
   'side-panel-details': 'fa-user',

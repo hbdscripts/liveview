@@ -1136,11 +1136,15 @@
         return m && m[1] ? normalizeHandle(m[1]) : '';
       }
 
+      var path = '';
+      try { path = (s && s.first_path != null && s.first_path !== '' ? s.first_path : (s && s.last_path != null ? s.last_path : '')).trim(); } catch (_) { path = ''; }
+      if (path && !path.startsWith('/')) path = '/' + path;
+      try { if (/^https?:\/\//i.test(path)) path = new URL(path).pathname || '/'; } catch (_) {}
+      path = (path || '').split('#')[0].split('?')[0].replace(/\/+$/, '') || '/';
       var label = (s && s.landing_title != null) ? String(s.landing_title).trim() : '';
-      var handle = normalizeHandle(s && s.first_product_handle) ||
-                   normalizeHandle(s && s.last_product_handle) ||
-                   handleFromPath(s && s.first_path) ||
-                   handleFromPath(s && s.last_path);
+      var display = label || path || '\u2014';
+      var handle = handleFromPath(s && s.first_path) || handleFromPath(s && s.last_path);
+      if (!handle) handle = '';
       var mainBase = getMainBaseUrl();
       var productUrl = (mainBase && handle) ? (mainBase + '/products/' + encodeURIComponent(handle)) : '';
 
@@ -1150,16 +1154,10 @@
           '<a class="kexo-product-link js-product-modal-link" href="' + escapeHtml(productUrl) + '" target="_blank" rel="noopener"' +
             ' data-product-handle="' + escapeHtml(handle) + '"' +
             ' data-product-title="' + escapeHtml(title) + '"' +
-          '>' + escapeHtml(title) + '</a>' +
+          '>' + escapeHtml(display) + '</a>' +
         '</div>';
       }
 
-      var path = '';
-      try { path = (s && s.first_path != null && s.first_path !== '' ? s.first_path : (s && s.last_path != null ? s.last_path : '')).trim(); } catch (_) { path = ''; }
-      if (path && !path.startsWith('/')) path = '/' + path;
-      try { if (/^https?:\/\//i.test(path)) path = new URL(path).pathname || '/'; } catch (_) {}
-      path = (path || '').split('#')[0].split('?')[0].replace(/\/+$/, '') || '/';
-      var display = label || path || '\u2014';
       return '<div class="last-action-cell">' + escapeHtml(display) + '</div>';
     }
 
@@ -1501,10 +1499,32 @@
         '</span>';
     }
 
+    var liveComplianceMarkersCache = {};
+    function getComplianceCellHtmlFromState(hasSale, hasEval, triggered, score) {
+      var scoreText = (typeof score === 'number' && Number.isFinite(score)) ? String(Math.trunc(score)) : '';
+      var title = hasEval
+        ? (triggered
+          ? ('Compliance warning' + (scoreText ? (' (score ' + scoreText + ')') : ''))
+          : ('Compliance passed' + (scoreText ? (' (score ' + scoreText + ')') : '')))
+        : 'Compliance';
+      var saleIcon = hasSale
+        ? '<i class="fa-solid fa-sterling-sign compliance-sale-icon" data-icon-key="table-icon-converted-sale" aria-hidden="true"></i>'
+        : '';
+      var statusIcon = '';
+      if (hasEval) {
+        statusIcon = triggered
+          ? '<i class="fa-light fa-triangle-exclamation compliance-status-icon is-warn" data-icon-key="table-icon-compliance-warning" aria-hidden="true"></i>'
+          : '<i class="fa-light fa-circle-check compliance-status-icon is-ok" data-icon-key="table-icon-compliance-check" aria-hidden="true"></i>';
+      } else {
+        statusIcon = '<i class="fa-light fa-magnifying-glass compliance-status-icon is-search" data-icon-key="table-icon-compliance-search" aria-hidden="true"></i>';
+      }
+      return '<span class="compliance-icons" aria-label="' + escapeHtml(title) + '" title="' + escapeHtml(title) + '">' + saleIcon + statusIcon + '</span>';
+    }
+
     function renderRow(s) {
       const countryCode = s.country_code || 'XX';
       const visits = (s.returning_count != null ? s.returning_count : 0) + 1;
-      const visitsLabel = visits === 1 ? '1 visit' : visits + ' visits';
+      const visitsLabel = String(visits);
       const cartValueNum = s.cart_value != null ? Number(s.cart_value) : NaN;
       const cartVal = s.has_purchased ? '' : ((s.cart_value != null && !Number.isNaN(cartValueNum))
         ? formatMoney(Math.floor(cartValueNum), s.cart_currency)
@@ -1513,14 +1533,11 @@
       const cartOrSaleCell = s.has_purchased
         ? '<span class="cart-value-sale">' + escapeHtml(saleVal) + '</span>'
         : cartVal;
-      const saleIcon = s.has_purchased
-        ? '<i class="fa-solid fa-sterling-sign compliance-sale-icon" data-icon-key="table-icon-converted-sale" aria-hidden="true"></i>'
-        : '';
-      const complianceCellHtml =
-        '<span class="compliance-icons" aria-label="Compliance" title="Compliance">' +
-          saleIcon +
-          '<i class="fa-light fa-circle-check compliance-status-icon" data-icon-key="table-icon-compliance-check" aria-hidden="true"></i>' +
-        '</span>';
+      const cached = liveComplianceMarkersCache[s.session_id];
+      const hasEval = cached ? !!cached.hasEval : false;
+      const triggered = cached ? !!cached.triggered : false;
+      const score = (cached && cached.score != null) ? Number(cached.score) : null;
+      const complianceCellHtml = getComplianceCellHtmlFromState(!!s.has_purchased, hasEval, triggered, score);
       const fromCell = flagImg(countryCode);
       let consentDebug = '';
       if (s && s.meta_json) {
@@ -1854,39 +1871,14 @@
       if (!th) return;
       if (th.getAttribute('data-compliance-header') === '1') return;
       th.setAttribute('data-compliance-header', '1');
-      th.innerHTML = '<img src="/assets/logos/new/kexo_tablehead_small.png" alt="" class="compliance-header-icon" width="15" height="15">';
+      th.innerHTML = '<i class="compliance-header-icon" data-icon-key="table-icon-compliance-header" aria-hidden="true"></i>';
     }
 
     function complianceCellHtml(sessionId, options) {
       var sid = sessionId != null ? String(sessionId) : '';
       if (!sid) return '';
       var opts = options && typeof options === 'object' ? options : {};
-      var hasSale = !!opts.hasSale;
-      var hasEval = !!opts.hasEval;
-      var triggered = !!opts.triggered;
-      var score = opts.score != null ? Number(opts.score) : null;
-      var scoreText = (typeof score === 'number' && Number.isFinite(score)) ? String(Math.trunc(score)) : '';
-      var title = hasEval
-        ? (triggered
-          ? ('Compliance warning' + (scoreText ? (' (score ' + scoreText + ')') : ''))
-          : ('Compliance passed' + (scoreText ? (' (score ' + scoreText + ')') : '')))
-        : 'Compliance';
-      var saleIcon = hasSale
-        ? '<i class="fa-solid fa-sterling-sign compliance-sale-icon" data-icon-key="table-icon-converted-sale" aria-hidden="true"></i>'
-        : '';
-      var statusIcon = '';
-      if (hasEval) {
-        statusIcon = triggered
-          ? '<i class="fa-light fa-triangle-exclamation compliance-status-icon is-warn" data-icon-key="table-icon-compliance-warning" aria-hidden="true"></i>'
-          : '<i class="fa-light fa-circle-check compliance-status-icon is-ok" data-icon-key="table-icon-compliance-check" aria-hidden="true"></i>';
-      } else {
-        statusIcon = '<i class="fa-light fa-magnifying-glass compliance-status-icon is-search" data-icon-key="table-icon-compliance-search" aria-hidden="true"></i>';
-      }
-      return '' +
-        '<span class="compliance-icons" aria-label="' + escapeHtml(title) + '" title="' + escapeHtml(title) + '">' +
-          saleIcon +
-          statusIcon +
-        '</span>';
+      return getComplianceCellHtmlFromState(!!opts.hasSale, !!opts.hasEval, !!opts.triggered, opts.score != null ? Number(opts.score) : null);
     }
 
     function refreshComplianceMarkersForSessionsTable() {
@@ -1913,6 +1905,7 @@
           var hasEval = !!(m && (m.has_eval === true || m.hasEval === true));
           var triggered = !!(m && m.triggered === true);
           var score = m && m.score != null ? Number(m.score) : null;
+          try { liveComplianceMarkersCache[sid] = { hasEval: hasEval, triggered: triggered, score: score }; } catch (_) {}
           var hasSale = false;
           try { hasSale = row.classList && row.classList.contains('converted'); } catch (_) { hasSale = false; }
           var sig = (hasSale ? '1' : '0') + '|' + (hasEval ? '1' : '0') + '|' + (triggered ? '1' : '0') + '|' + (score != null && Number.isFinite(score) ? String(Math.trunc(score)) : '');

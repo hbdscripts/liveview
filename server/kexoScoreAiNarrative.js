@@ -44,6 +44,7 @@ function extractJsonObject(text) {
 
 /**
  * Build deterministic summary from context/drivers (no AI).
+ * Avoids repeating metric deltas already visible in bars; surfaces 2–4 strongest drivers from product/attribution/ads; recommendation keyed to dominant negative driver.
  * @param {{ context?: object, drivers?: object }} payload
  * @returns {{ summary: string, key_drivers: string[], recommendation: string, links: string[] }}
  */
@@ -53,53 +54,84 @@ function buildDeterministicSummary({ context, drivers } = {}) {
   const attribution = (drivers && drivers.attribution) || [];
   const ads = (drivers && drivers.ads) || [];
 
-  const bullets = [];
-  for (const c of components.slice(0, 4)) {
-    const cur = c.value != null ? Number(c.value) : null;
-    const prev = c.previous != null ? Number(c.previous) : null;
-    if (cur != null && prev != null && prev !== 0) {
-      const pct = Math.round(((cur - prev) / prev) * 100);
-      const dir = pct >= 0 ? 'up' : 'down';
-      bullets.push(`${c.label} is ${dir} ${Math.abs(pct)}% vs prior period.`);
-    }
+  const key_drivers = [];
+  const fmtDeltaGbp = (d) => {
+    const n = Number(d);
+    if (!Number.isFinite(n)) return '';
+    const sign = n >= 0 ? '+' : '';
+    return ` (${sign}£${Math.abs(Math.round(n))} vs prior)`;
+  };
+  const fmtDeltaNum = (d) => {
+    const n = Number(d);
+    if (!Number.isFinite(n)) return '';
+    const sign = n >= 0 ? '+' : '';
+    return ` (${sign}${Math.round(n)} vs prior)`;
+  };
+  const productWithDelta = product
+    .filter((p) => (p.deltaRevenue != null || p.deltaOrders != null))
+    .map((p) => ({
+      ...p,
+      absDelta: Math.abs(Number(p.deltaRevenue) || 0) || Math.abs(Number(p.deltaOrders) || 0),
+    }))
+    .sort((a, b) => b.absDelta - a.absDelta);
+  for (const p of productWithDelta.slice(0, 2)) {
+    const name = (p.title || p.product_id || 'Product').toString().trim().slice(0, 60);
+    const d = p.deltaRevenue != null ? p.deltaRevenue : p.deltaOrders;
+    key_drivers.push(`Product: ${name}${p.deltaRevenue != null ? fmtDeltaGbp(p.deltaRevenue) : fmtDeltaNum(p.deltaOrders)}`);
   }
-  if (product.length) {
-    const topDown = product.filter((p) => (p.deltaRevenue || 0) < 0).slice(0, 2);
-    if (topDown.length) {
-      bullets.push(`Product revenue down: ${topDown.map((p) => (p.title || p.product_id || '')).slice(0, 1).join(', ')}.`);
-    }
+  const attrWithDelta = attribution
+    .filter((a) => (a.deltaRevenue != null || a.deltaOrders != null))
+    .map((a) => ({ ...a, absDelta: Math.abs(Number(a.deltaRevenue) || 0) }))
+    .sort((a, b) => b.absDelta - a.absDelta);
+  for (const a of attrWithDelta.slice(0, 1)) {
+    const name = (a.variant || a.channel || 'Attribution').toString().trim().slice(0, 50);
+    key_drivers.push(`Attribution: ${name}${a.deltaRevenue != null ? fmtDeltaGbp(a.deltaRevenue) : fmtDeltaNum(a.deltaOrders)}`);
   }
-  if (attribution.length) {
-    const top = attribution.filter((a) => (a.deltaRevenue || 0) !== 0).slice(0, 1);
-    if (top.length) {
-      bullets.push(`Attribution: ${top[0].variant} revenue ${(top[0].deltaRevenue || 0) >= 0 ? 'up' : 'down'} vs prior.`);
-    }
+  const adsWithDelta = ads
+    .filter((a) => (a.deltaRevenue != null || a.deltaRoas != null))
+    .map((a) => ({ ...a, absDelta: Math.abs(Number(a.deltaRevenue) || 0) }))
+    .sort((a, b) => b.absDelta - a.absDelta);
+  for (const a of adsWithDelta.slice(0, 1)) {
+    const name = (a.campaign_name || a.campaign_id || 'Ads').toString().trim().slice(0, 50);
+    const delta = a.deltaRevenue != null ? fmtDeltaGbp(a.deltaRevenue) : (a.deltaRoas != null ? fmtDeltaNum(a.deltaRoas) : '');
+    key_drivers.push(`Ads: ${name}${delta}`);
   }
-  if (ads.length) {
-    const top = ads.filter((a) => (a.deltaRevenue || 0) !== 0).slice(0, 1);
-    if (top.length) {
-      bullets.push(`Ads: ${top[0].campaign_name || top[0].campaign_id} revenue ${(top[0].deltaRevenue || 0) >= 0 ? 'up' : 'down'}.`);
-    }
+  const finalDrivers = key_drivers.slice(0, 4);
+  if (!finalDrivers.length) {
+    finalDrivers.push('Compare current vs prior period in the breakdown below.');
   }
-  const key_drivers = bullets.length ? bullets.slice(0, 4) : ['Compare current vs prior period in the breakdown below.'];
 
+  let dominantNegative = null;
+  if (productWithDelta.length && (Number(productWithDelta[0].deltaRevenue) || 0) < 0) {
+    dominantNegative = 'product';
+  } else if (attrWithDelta.length && (Number(attrWithDelta[0].deltaRevenue) || 0) < 0) {
+    dominantNegative = 'attribution';
+  } else if (adsWithDelta.length && (Number(adsWithDelta[0].deltaRevenue) || 0) < 0) {
+    dominantNegative = 'ads';
+  }
   const scoreComp = components.find((c) => c.key === 'revenue') || components[0];
-  const rec = scoreComp && scoreComp.changeScore != null
-    ? (scoreComp.changeScore < 45
-      ? 'Focus on top product and attribution movers below; consider promotions or inventory for declining products.'
-      : scoreComp.changeScore > 55
-        ? 'Momentum is positive; double down on top-performing products and channels.'
-        : 'Review product and attribution breakdown to find quick wins.')
-    : 'Review the metric breakdown and product/attribution movers below.';
+  const scorePct = scoreComp && scoreComp.changeScore != null ? Number(scoreComp.changeScore) : null;
+  let recommendation = 'Review the metric breakdown and product/attribution movers below.';
+  if (dominantNegative === 'product') {
+    recommendation = 'Focus on top product movers; consider promotions or inventory for declining products.';
+  } else if (dominantNegative === 'attribution') {
+    recommendation = 'Focus on attribution movers; review channel and source performance.';
+  } else if (dominantNegative === 'ads') {
+    recommendation = 'Review ads performance; adjust bids or creative for underperforming campaigns.';
+  } else if (scorePct != null) {
+    if (scorePct < 45) recommendation = 'Focus on top product and attribution movers below; consider promotions or inventory for declining products.';
+    else if (scorePct > 55) recommendation = 'Momentum is positive; double down on top-performing products and channels.';
+    else recommendation = 'Review product and attribution breakdown to find quick wins.';
+  }
 
-  const summary = key_drivers.length
-    ? `Kexo Score summary: ${key_drivers[0].toLowerCase()} ${key_drivers.length > 1 ? ' ' + key_drivers.slice(1, 2).join(' ') : ''}.`
+  const summary = finalDrivers.length
+    ? `Strongest movers: ${finalDrivers[0].toLowerCase()}${finalDrivers.length > 1 ? '; ' + finalDrivers.slice(1, 2).join('; ') : ''}.`
     : 'Summary based on current vs prior period.';
 
   return {
     summary,
-    key_drivers,
-    recommendation: rec,
+    key_drivers: finalDrivers,
+    recommendation,
     links: [],
   };
 }

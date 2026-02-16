@@ -602,7 +602,8 @@
     if (key.indexOf('admin-tab-') === 0 || key === 'nav-item-admin') return 'admin';
     if (key.indexOf('nav-toggle-') === 0 || key.indexOf('nav-item-') === 0 || key === 'topnav-date-chevron' || key === 'online-status-indicator' || key === 'nav-dropdown-arrow') return 'header-nav';
     if (key.indexOf('footer-') === 0) return 'footer';
-    if (key.indexOf('table-icon-') === 0 || key.indexOf('table-short-') === 0 || key === 'table-builder-icon' || key === 'table-sticky-resize-handle') return 'tables';
+    if (key.indexOf('table-icon-') === 0 || key.indexOf('table-short-') === 0) return 'mobile-icons';
+    if (key === 'table-builder-icon' || key === 'table-sticky-resize-handle') return 'tables';
     if (key.indexOf('card-title-') === 0 || key.indexOf('card-collapse-') === 0 || key.indexOf('dash-kpi-delta-') === 0 || key.indexOf('chart-type-') === 0 || key === 'chart-builder-icon') return 'cards';
     if (key.indexOf('side-panel-') === 0 || key.indexOf('kpi-compare-') === 0 || key.indexOf('pagination-') === 0 || key.indexOf('live-') === 0 || key.indexOf('breakdown-') === 0 || key.indexOf('type-device-') === 0 || key.indexOf('type-platform-') === 0 || key.indexOf('ads-') === 0 || key === 'diag-copy') return 'runtime';
     return 'misc';
@@ -611,6 +612,7 @@
   function iconGroupLabel(groupId) {
     if (groupId === 'header-nav') return 'Header & Nav';
     if (groupId === 'footer') return 'Footer';
+    if (groupId === 'mobile-icons') return 'Mobile icons';
     if (groupId === 'tables') return 'Tables';
     if (groupId === 'cards') return 'Cards & Charts';
     if (groupId === 'runtime') return 'Panels, Modals & Runtime';
@@ -662,7 +664,7 @@
       groups[groupId].push(glyphInputCard(themeKey));
     });
 
-    var order = ['header-nav', 'footer', 'tables', 'cards', 'runtime', 'admin', 'misc'];
+    var order = ['header-nav', 'footer', 'mobile-icons', 'tables', 'cards', 'runtime', 'admin', 'misc'];
     var accordionId = 'theme-icons-accordion';
     var html = '<div class="accordion settings-layout-accordion" id="' + accordionId + '">';
     var itemIdx = 0;

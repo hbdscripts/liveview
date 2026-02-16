@@ -34,6 +34,7 @@
                   </a>
                 </div>
               </div>
+              <button type="button" class="kexo-footer-action btn btn-ghost-secondary kexo-admin-only d-none" id="footer-notes-btn" aria-label="Admin notes"><i class="fa-jelly-filled fa-pen" data-icon-key="footer-notes"></i></button>
               <button type="button" class="kexo-footer-action btn btn-ghost-secondary" id="back-to-top-btn" aria-label="Back to top"><i class="fa-jelly-filled fa-arrow-up" data-icon-key="footer-back-to-top"></i></button>
             </div>
           </div>
@@ -46,3 +47,23 @@
           </div>
         </div>
       </footer>
+      <div class="modal modal-blur fade" id="admin-notes-modal" tabindex="-1" aria-hidden="true" aria-label="Admin notes">
+        <div class="modal-dialog modal-dialog-centered">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h3 class="modal-title">Notes</h3>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <form id="admin-notes-form" class="mb-3">
+                <div class="mb-2">
+                  <label for="admin-notes-body" class="form-label visually-hidden">New note</label>
+                  <textarea class="form-control" id="admin-notes-body" name="body" rows="2" placeholder="Add a note…" maxlength="4096"></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary btn-sm">Add</button>
+              </form>
+              <div id="admin-notes-list" class="small text-secondary"></div>
+            </div>
+          </div>
+        </div>
+      </div>

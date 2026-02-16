@@ -89,8 +89,9 @@
 
     <div id="snapshot-content">
       <div class="card mb-3 snapshot-group-card" data-snapshot-group="revenue-cost">
-        <div class="card-header d-flex align-items-center">
+        <div class="card-header d-flex align-items-center flex-wrap gap-2">
           <h3 class="card-title mb-0">Revenue &amp; Cost</h3>
+          <button type="button" class="btn btn-sm btn-ghost-secondary snapshot-show-graph-btn ms-auto" data-snapshot-graph="revenueCost" aria-label="Show graph">Show graph</button>
         </div>
         <div class="card-body">
           <div class="snapshot-group-loading" id="snapshot-revenue-cost-loading" aria-live="polite">
@@ -117,7 +118,7 @@
                 <tbody id="snapshot-revenue-cost-table-body"></tbody>
               </table>
             </div>
-            <div class="snapshot-chart-wrap mt-3">
+            <div class="snapshot-chart-wrap snapshot-chart-wrap--hidden mt-3 is-hidden" data-snapshot-graph-wrap="revenueCost">
               <div id="snapshot-chart-revenue-cost" class="snapshot-chart" role="img" aria-label="Revenue and cost trend chart"></div>
             </div>
           </div>
@@ -127,7 +128,9 @@
       <div class="card mb-3 snapshot-group-card" data-snapshot-group="performance">
         <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
           <h3 class="card-title mb-0">Performance</h3>
-          <div class="snapshot-chart-picker ms-auto">
+          <div class="d-flex align-items-center gap-2 ms-auto">
+          <button type="button" class="btn btn-sm btn-ghost-secondary snapshot-show-graph-btn" data-snapshot-graph="performance" aria-label="Show graph">Show graph</button>
+          <div class="snapshot-chart-picker">
             <label class="form-label mb-0 small text-muted" for="snapshot-performance-metric-select">Chart</label>
             <select id="snapshot-performance-metric-select" class="form-select form-select-sm snapshot-chart-select" aria-label="Performance chart metric">
               <option value="sessions">Sessions</option>
@@ -137,6 +140,7 @@
               <option value="clicks">Clicks</option>
               <option value="roas">ROAS</option>
             </select>
+          </div>
           </div>
         </div>
         <div class="card-body">
@@ -164,7 +168,7 @@
                 <tbody id="snapshot-performance-table-body"></tbody>
               </table>
             </div>
-            <div class="snapshot-chart-wrap mt-3">
+            <div class="snapshot-chart-wrap snapshot-chart-wrap--hidden mt-3 is-hidden" data-snapshot-graph-wrap="performance">
               <div id="snapshot-chart-performance" class="snapshot-chart" role="img" aria-label="Performance trend chart"></div>
             </div>
           </div>
@@ -172,8 +176,9 @@
       </div>
 
       <div class="card mb-3 snapshot-group-card" data-snapshot-group="customers">
-        <div class="card-header d-flex align-items-center">
+        <div class="card-header d-flex align-items-center flex-wrap gap-2">
           <h3 class="card-title mb-0">Customers</h3>
+          <button type="button" class="btn btn-sm btn-ghost-secondary snapshot-show-graph-btn ms-auto" data-snapshot-graph="customers" aria-label="Show graph">Show graph</button>
         </div>
         <div class="card-body">
           <div class="snapshot-group-loading" id="snapshot-customers-loading" aria-live="polite">
@@ -200,7 +205,7 @@
                 <tbody id="snapshot-customers-table-body"></tbody>
               </table>
             </div>
-            <div class="snapshot-chart-wrap mt-3">
+            <div class="snapshot-chart-wrap snapshot-chart-wrap--hidden mt-3 is-hidden" data-snapshot-graph-wrap="customers">
               <div id="snapshot-chart-customers" class="snapshot-chart" role="img" aria-label="New and returning customers trend chart"></div>
             </div>
           </div>

@@ -65,6 +65,7 @@ const requireMaster = require('./middleware/requireMaster');
 const adminUsersApi = require('./routes/adminUsers');
 const adminControlsApi = require('./routes/adminControls');
 const adminFraudApi = require('./routes/adminFraud');
+const adminNotesApi = require('./routes/adminNotes');
 const { getBrowserRegistryPayload } = require('./shared/icon-registry');
 
 const app = express();
@@ -204,6 +205,7 @@ app.use('/api/tools', toolsRouter);
 app.use('/api/admin', requireMaster.middleware, adminUsersApi);
 app.use('/api/admin', requireMaster.middleware, adminControlsApi);
 app.use('/api/admin', requireMaster.middleware, adminFraudApi);
+app.use('/api/admin', requireMaster.middleware, adminNotesApi);
 const pkg = require(path.join(__dirname, '..', 'package.json'));
 app.get('/api/me', me);
 app.get('/api/store-base-url', (req, res) => {
@@ -605,6 +607,7 @@ const { up: up047 } = require('./migrations/047_affiliate_attribution_and_fraud'
 const { up: up048 } = require('./migrations/048_sessions_bs_network');
 const { up: up049 } = require('./migrations/049_sessions_utm_term');
 const { up: up050 } = require('./migrations/050_acquisition_attribution');
+const { up: up051 } = require('./migrations/051_admin_notes');
 const backup = require('./backup');
 const { writeAudit } = require('./audit');
 const { runAdsMigrations } = require('./ads/adsMigrate');
@@ -660,6 +663,7 @@ const APP_MIGRATIONS = [
   ['048_sessions_bs_network', up048],
   ['049_sessions_utm_term', up049],
   ['050_acquisition_attribution', up050],
+  ['051_admin_notes', up051],
 ];
 
 async function ensureAppMigrationsTable(db) {

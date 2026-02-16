@@ -22,6 +22,7 @@
     profitModalOpen: false,
     profitModalBackdrop: null,
     compactNumbers: true,
+    showGraphs: { revenueCost: false, performance: false, customers: false },
   };
 
   const PRESETS = new Set([
@@ -724,10 +725,33 @@
     renderRevenueCostTable(data);
     renderPerformanceTable(data);
     renderCustomersTable(data);
-    renderRevenueCostChart(data);
-    renderPerformanceChart(data);
-    renderCustomersChart(data);
+    if (state.showGraphs.revenueCost) renderRevenueCostChart(data);
+    if (state.showGraphs.performance) renderPerformanceChart(data);
+    if (state.showGraphs.customers) renderCustomersChart(data);
     setAllGroups('ready');
+  }
+
+  function toggleSnapshotGraph(key) {
+    const wrap = document.querySelector('[data-snapshot-graph-wrap="' + key + '"]');
+    const btn = document.querySelector('.snapshot-show-graph-btn[data-snapshot-graph="' + key + '"]');
+    if (!wrap || !btn) return;
+    state.showGraphs[key] = !state.showGraphs[key];
+    if (state.showGraphs[key]) {
+      wrap.classList.remove('is-hidden');
+      btn.textContent = 'Hide graph';
+      if (state.data && state.data.ok) {
+        if (key === 'revenueCost') renderRevenueCostChart(state.data);
+        else if (key === 'performance') renderPerformanceChart(state.data);
+        else if (key === 'customers') renderCustomersChart(state.data);
+      }
+    } else {
+      if (state.charts[key] && typeof state.charts[key].destroy === 'function') {
+        try { state.charts[key].destroy(); } catch (_) {}
+        state.charts[key] = null;
+      }
+      wrap.classList.add('is-hidden');
+      btn.textContent = 'Show graph';
+    }
   }
 
   function updateRoundingToggleUi() {
@@ -1272,9 +1296,15 @@
     if (perfSelect) {
       perfSelect.addEventListener('change', function onPerformanceMetricChange() {
         state.performanceMetric = String(perfSelect.value || 'sessions');
-        if (state.data && state.data.ok) renderPerformanceChart(state.data);
+        if (state.showGraphs.performance && state.data && state.data.ok) renderPerformanceChart(state.data);
       });
     }
+    document.querySelectorAll('.snapshot-show-graph-btn').forEach(function(btn) {
+      var key = btn && btn.getAttribute && btn.getAttribute('data-snapshot-graph');
+      if (!key) return;
+      btn.addEventListener('click', function() { toggleSnapshotGraph(key); });
+      if (state.showGraphs[key]) btn.textContent = 'Hide graph'; else btn.textContent = 'Show graph';
+    });
     if (roundingToggle) {
       roundingToggle.addEventListener('click', function onRoundingToggle(event) {
         if (event && typeof event.preventDefault === 'function') event.preventDefault();

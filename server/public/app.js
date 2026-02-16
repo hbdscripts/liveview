@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 3a5c9eff613a0162
+// checksum: 603537c511fd357d
 
 (function () {
 const API = '';
@@ -14127,7 +14127,10 @@ const API = '';
           attribution: 'nav-item-channels',
           devices: 'nav-item-type',
           ads: 'nav-item-ads',
-          tools: 'nav-item-tools'
+          tools: 'nav-item-tools',
+          'click-order-lookup': 'nav-item-tools',
+          'compare-conversion-rate': 'nav-item-tools',
+          'shipping-cr': 'nav-item-tools'
         };
         function syncPageHeaderCategoryIcon() {
           // Inject the active top-menu category icon into the page header (next to pretitle/title),
@@ -14223,10 +14226,14 @@ const API = '';
           navLinks.forEach(function(link) {
             var isActive = link.getAttribute('data-nav') === navKey;
             link.setAttribute('aria-current', isActive ? 'page' : 'false');
-            // Apply active to the parent li.nav-item (Tabler pattern), not the link itself
             var parentItem = link.closest('.nav-item');
             if (parentItem) {
-              if (isActive) parentItem.classList.add('active'); else parentItem.classList.remove('active');
+              if (isActive) parentItem.classList.add('active');
+              else {
+                var menu = parentItem.querySelector('.dropdown-menu');
+                var hasCurrent = menu && menu.querySelector('.dropdown-item[aria-current="page"]');
+                if (!hasCurrent) parentItem.classList.remove('active');
+              }
             }
             link.classList.remove('active');
           });
@@ -14423,7 +14430,7 @@ const API = '';
             : PAGE === 'type' ? 'devices'
             : PAGE === 'attribution' ? 'attribution'
             : PAGE === 'devices' ? 'devices'
-            : (PAGE === 'compare-conversion-rate' || PAGE === 'shipping-cr' || PAGE === 'click-order-lookup') ? 'tools'
+            : (PAGE === 'compare-conversion-rate' || PAGE === 'shipping-cr' || PAGE === 'click-order-lookup') ? PAGE
             : PAGE;
           setTab(pageTab);
           return;
@@ -15536,7 +15543,10 @@ const API = '';
         var finishValues = [];
         finishesRows.forEach(function(row) {
           if (!row || typeof row !== 'object') return;
-          var label = row.finish != null ? String(row.finish).trim() : '';
+          var label = '';
+          if (row.label != null && String(row.label).trim()) label = String(row.label).trim();
+          else if (row.finish != null && String(row.finish).trim()) label = String(row.finish).trim();
+          else if (row.key != null && String(row.key).trim()) label = String(row.key).trim().replace(/_/g, ' ');
           var val = normalizeOverviewMetric(row.revenueGbp != null ? row.revenueGbp : row.revenue);
           if (!label || val <= 0) return;
           finishLabels.push(label);

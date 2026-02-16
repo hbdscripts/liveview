@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-16 (UX fixes: Kexo Score popover/summary, mobile table icons, admin notes, snapshot show-graph, tools nav, visits rename, etc.)
+Last updated: 2026-02-16 (overview date-control hide + finishes pie data mapping fix)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -388,12 +388,28 @@ Ops/reliability:
 ## Changelog (high-signal)
 
 2026-02-16 (latest)
+- UX fixes + admin Notes:
+  - Kexo Score: popover container set to modal (no orphan on close), close button in popover, summary block at top of modal with loading/refresh and `/api/kexo-score-summary`.
+  - Mobile table headers: icon-only on mobile (max-width 768px) via `.th-label-long`/`.th-label-short` swap in `custom.css`; new Settings → Icons group "Mobile icons" for table-short-* and table-icon-*; Compliance header uses themeable `table-icon-compliance-header`.
+  - Variants 3-grid: scoped CSS for `body[data-page="variants"]` so last row does not stick/overflow (align-content/align-self/min-height).
+  - Live View: compliance icon no longer flashes; marker cache keyed by session_id, placeholder until markers load (`client/app/04-rows-sticky.js`).
+  - Product modal: only `/products/<handle>` landing paths open Product Insights; non-product paths (e.g. `/pages/order-tracker`) no longer use last_product_handle for link.
+  - Page header: pages without date (Settings/Admin) use ghost date col (visibility:hidden, pointer-events:none) so triple-layout connector/arrow style is preserved.
+  - Sessions table: "History" renamed to "Visits"; visit counts rendered as plain numbers.
+  - Admin Notes: `admin_notes` table (migration 051), `GET/POST /api/admin/notes`, footer pen icon (admin-gated), modal to submit/view notes; icon key `footer-notes` in registry.
+  - Snapshot: charts hidden by default; per-card "Show graph" buttons; render/destroy on toggle.
+  - Tools nav: unique `data-nav` per tool (click-order-lookup, compare-conversion-rate, shipping-cr); only current tool highlighted.
+  - Kexo Score deterministic summary: driver-focused (product/attribution/ads movers with deltas), recommendation from dominant negative driver; no restating bar deltas.
+
+2026-02-16 (latest)
 - Dashboard overview hotfix pass:
   - Increased top KPI capacity from 4 to 6 in runtime routing (still position-based via `kpi_ui_config_v1`), and defaulted `sessions` + `bounce` to `position: top` for new/default KPI config.
   - Fixed overview pie-chart render bug where stale "No data available" DOM could remain under newly rendered charts (now clears chart container before Apex render).
   - Added overview mini chart sizing improvements: taller pie/main chart containers in CSS plus runtime height detection from container dimensions.
   - Added resize-aware rerendering for overview mini charts via `ResizeObserver` + cached data signature checks.
   - Overview mini-data cache now keys by resolved shop (`getShopForSales`) so finishes data refetches automatically once shop context becomes available.
+  - Overview finishes pie now reads `label/key` from `/api/shopify-finishes` rows (not `finish`), fixing false empty/no-data states when finish revenue exists.
+  - Dashboard page now hides the shared date picker control (`.kexo-nav-date-slot` / `.kexo-page-header-date-col`) so no page-level date box appears behind the sticky header.
 
 2026-02-16 (latest)
 - Dashboard overview layout refresh:

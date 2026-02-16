@@ -55,6 +55,7 @@ const { up: up047 } = require('./migrations/047_affiliate_attribution_and_fraud'
 const { up: up048 } = require('./migrations/048_sessions_bs_network');
 const { up: up049 } = require('./migrations/049_sessions_utm_term');
 const { up: up050 } = require('./migrations/050_acquisition_attribution');
+const { up: up051 } = require('./migrations/051_admin_notes');
 const { runAdsMigrations } = require('./ads/adsMigrate');
 
 const APP_MIGRATIONS = [
@@ -108,6 +109,7 @@ const APP_MIGRATIONS = [
   ['048_sessions_bs_network', up048],
   ['049_sessions_utm_term', up049],
   ['050_acquisition_attribution', up050],
+  ['051_admin_notes', up051],
 ];
 
 async function ensureAppMigrationsTable(db) {
