@@ -28,6 +28,7 @@ const SNAPSHOT_MIN_MONTH = '2025-01';
 const SNAPSHOT_MIN_START_YMD = '2025-01-01';
 
 const SHOPIFY_ADMIN_API_VERSION = '2024-01';
+const SHOPIFY_PAYMENTS_API_VERSION = '2025-10';
 const VARIANT_COST_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 const SHOP_NAME_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 const COGS_RANGE_CACHE_TTL_MS = 10 * 60 * 1000;
@@ -76,8 +77,9 @@ async function shopifyFetchWithRetry(url, accessToken, { maxRetries = 6 } = {}) 
   }
 }
 
-async function shopifyGraphqlWithRetry(shop, accessToken, query, variables, { maxRetries = 6 } = {}) {
-  const url = `https://${shop}/admin/api/${SHOPIFY_ADMIN_API_VERSION}/graphql.json`;
+async function shopifyGraphqlWithRetry(shop, accessToken, query, variables, { maxRetries = 6, apiVersion = SHOPIFY_ADMIN_API_VERSION } = {}) {
+  const safeVersion = String(apiVersion || SHOPIFY_ADMIN_API_VERSION).trim() || SHOPIFY_ADMIN_API_VERSION;
+  const url = `https://${shop}/admin/api/${safeVersion}/graphql.json`;
   let attempt = 0;
   while (true) {
     attempt += 1;
@@ -440,9 +442,9 @@ function isLikelyAppBillTransaction(tx) {
   return false;
 }
 
-async function runShopifyAdminGraphql(shop, accessToken, query, variables) {
+async function runShopifyAdminGraphql(shop, accessToken, query, variables, { apiVersion } = {}) {
   try {
-    const res = await shopifyGraphqlWithRetry(shop, accessToken, query, variables, { maxRetries: 6 });
+    const res = await shopifyGraphqlWithRetry(shop, accessToken, query, variables, { maxRetries: 6, apiVersion });
     const text = await res.text().catch(() => '');
     let json = null;
     try { json = text ? JSON.parse(text) : null; } catch (_) { json = null; }
@@ -496,7 +498,7 @@ async function fetchShopifyPaymentsBalanceTransactions(shop, accessToken, search
       first: 250,
       after,
       query: searchQuery || null,
-    });
+    }, { apiVersion: SHOPIFY_PAYMENTS_API_VERSION });
     if (!rsp.ok) return { ok: false, rows: [], error: rsp.error || 'Shopify Payments query failed' };
     const account = rsp.data && rsp.data.shopifyPaymentsAccount ? rsp.data.shopifyPaymentsAccount : null;
     if (!account || !account.balanceTransactions) return { ok: false, rows: [], error: 'Shopify Payments account unavailable' };
@@ -522,6 +524,7 @@ async function readShopifyBalanceCostsGbp(shop, accessToken, sinceYmd, untilYmd,
   if (!safeShop || !accessToken || !since || !until || since > until) {
     return {
       available: false,
+      error: 'missing_shop_or_token_or_range',
       paymentFeesTotalGbp: 0,
       klarnaFeesTotalGbp: 0,
       appBillsTotalGbp: 0,
@@ -538,6 +541,7 @@ async function readShopifyBalanceCostsGbp(shop, accessToken, sinceYmd, untilYmd,
     const value = cached.value;
     return {
       available: !!value.available,
+      error: value.error || '',
       paymentFeesTotalGbp: Number(value.paymentFeesTotalGbp) || 0,
       klarnaFeesTotalGbp: Number(value.klarnaFeesTotalGbp) || 0,
       appBillsTotalGbp: Number(value.appBillsTotalGbp) || 0,
@@ -549,6 +553,7 @@ async function readShopifyBalanceCostsGbp(shop, accessToken, sinceYmd, untilYmd,
 
   const empty = {
     available: false,
+    error: '',
     paymentFeesTotalGbp: 0,
     klarnaFeesTotalGbp: 0,
     appBillsTotalGbp: 0,
@@ -564,7 +569,10 @@ async function readShopifyBalanceCostsGbp(shop, accessToken, sinceYmd, untilYmd,
     fx.getRatesToGbp().catch(() => ({})),
   ]);
 
-  if (!allResp.ok) return empty;
+  if (!allResp.ok) {
+    empty.error = allResp.error || 'shopify_payments_lookup_failed';
+    return empty;
+  }
 
   const paymentAllByYmd = new Map();
   const appBillsByYmd = new Map();
@@ -599,6 +607,7 @@ async function readShopifyBalanceCostsGbp(shop, accessToken, sinceYmd, untilYmd,
   const appBillsTotalGbp = round2(sumAmountMap(appBillsByYmd)) || 0;
   const value = {
     available: true,
+    error: '',
     paymentFeesTotalGbp,
     klarnaFeesTotalGbp,
     appBillsTotalGbp,
@@ -2124,10 +2133,10 @@ async function getBusinessSnapshot(options = {}) {
       costBreakdownNow.push({ label: String(line.label), amountGbp: round2(amt) || 0 });
     }
   }
-  if (adsSpendNowCost > 0) costBreakdownNow.push({ label: 'Google Ads spend', amountGbp: round2(adsSpendNowCost) || 0 });
-  if (appBillsNowCost > 0) costBreakdownNow.push({ label: 'Shopify app bills', amountGbp: round2(appBillsNowCost) || 0 });
-  if (paymentFeesNowCost > 0) costBreakdownNow.push({ label: 'Transaction fees (excl. Klarna)', amountGbp: round2(paymentFeesNowCost) || 0 });
-  if (klarnaFeesNowCost > 0) costBreakdownNow.push({ label: 'Klarna fees', amountGbp: round2(klarnaFeesNowCost) || 0 });
+  if (includeGoogleAdsSpend || adsSpendNowCost > 0) costBreakdownNow.push({ label: 'Google Ads spend', amountGbp: round2(adsSpendNowCost) || 0 });
+  if (includeShopifyAppBills || appBillsNowCost > 0) costBreakdownNow.push({ label: 'Shopify app bills', amountGbp: round2(appBillsNowCost) || 0 });
+  if (includePaymentFees || paymentFeesNowCost > 0) costBreakdownNow.push({ label: 'Transaction fees (excl. Klarna)', amountGbp: round2(paymentFeesNowCost) || 0 });
+  if (includeKlarnaFees || klarnaFeesNowCost > 0) costBreakdownNow.push({ label: 'Klarna fees', amountGbp: round2(klarnaFeesNowCost) || 0 });
 
   const costBreakdownPrevious = [];
   if (cogsPrev != null) costBreakdownPrevious.push({ label: 'Cost of Goods', amountGbp: round2(cogsPrev) || 0 });
@@ -2139,10 +2148,10 @@ async function getBusinessSnapshot(options = {}) {
       costBreakdownPrevious.push({ label: String(line.label), amountGbp: round2(amt) || 0 });
     }
   }
-  if (adsSpendPrevCost > 0) costBreakdownPrevious.push({ label: 'Google Ads spend', amountGbp: round2(adsSpendPrevCost) || 0 });
-  if (appBillsPrevCost > 0) costBreakdownPrevious.push({ label: 'Shopify app bills', amountGbp: round2(appBillsPrevCost) || 0 });
-  if (paymentFeesPrevCost > 0) costBreakdownPrevious.push({ label: 'Transaction fees (excl. Klarna)', amountGbp: round2(paymentFeesPrevCost) || 0 });
-  if (klarnaFeesPrevCost > 0) costBreakdownPrevious.push({ label: 'Klarna fees', amountGbp: round2(klarnaFeesPrevCost) || 0 });
+  if (includeGoogleAdsSpend || adsSpendPrevCost > 0) costBreakdownPrevious.push({ label: 'Google Ads spend', amountGbp: round2(adsSpendPrevCost) || 0 });
+  if (includeShopifyAppBills || appBillsPrevCost > 0) costBreakdownPrevious.push({ label: 'Shopify app bills', amountGbp: round2(appBillsPrevCost) || 0 });
+  if (includePaymentFees || paymentFeesPrevCost > 0) costBreakdownPrevious.push({ label: 'Transaction fees (excl. Klarna)', amountGbp: round2(paymentFeesPrevCost) || 0 });
+  if (includeKlarnaFees || klarnaFeesPrevCost > 0) costBreakdownPrevious.push({ label: 'Klarna fees', amountGbp: round2(klarnaFeesPrevCost) || 0 });
 
   const nowCostSeries = buildCostDailySeries({
     chartDays,
@@ -2379,6 +2388,16 @@ async function getBusinessSnapshot(options = {}) {
       shopifyPayments: (shopifyCostsNow && shopifyCostsNow.available) || (shopifyCostsPrev && shopifyCostsPrev.available)
         ? 'shopifyPaymentsAccount.balanceTransactions'
         : 'unavailable_or_scope_missing',
+      shopifyPaymentsDetail: {
+        current: {
+          available: !!(shopifyCostsNow && shopifyCostsNow.available),
+          error: shopifyCostsNow && shopifyCostsNow.error ? String(shopifyCostsNow.error) : null,
+        },
+        previous: {
+          available: !!(shopifyCostsPrev && shopifyCostsPrev.available),
+          error: shopifyCostsPrev && shopifyCostsPrev.error ? String(shopifyCostsPrev.error) : null,
+        },
+      },
       timeZone,
       rangeYmd: { since: startYmd || null, until: endYmd || null },
       compareRangeYmd: { since: compareStartYmd || null, until: compareEndYmd || null },

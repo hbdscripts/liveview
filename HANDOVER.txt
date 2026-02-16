@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-16 (default logos: login kexo_login.png, header kexo_new.png, footer logo_foot.png)
+Last updated: 2026-02-16 (Snapshot fee lookup status + always-visible toggled rows)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -377,6 +377,11 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-16 (latest)
+- Snapshot cost breakdown follow-up (fees/bills visibility):
+  - Snapshot now keeps integration breakdown rows visible when toggled even if value is `£0.00` (Google Ads, Shopify app bills, transaction fees ex Klarna, Klarna fees), so users can see exactly which cost groups are enabled.
+  - Shopify Payments fee/bill lookup now uses a dedicated newer Admin GraphQL API version path and exposes lookup status/errors in `sources.shopifyPaymentsDetail` for easier diagnostics when scopes/data are unavailable.
 
 2026-02-16 (latest)
 - Header KPI chip bar labels now mirror true deltas:
