@@ -94,4 +94,3 @@ These metrics power the Insights → Abandoned Carts page (`/insights/abandoned-
       - `cart_sessions_started_in_range` counts sessions where `started_at` is within `[startMs, endMs)` and `cart_qty > 0`.
     - Checkout mode: `abandoned_pct = abandoned / checkout_sessions_started_in_range * 100`
       - `checkout_sessions_started_in_range` counts sessions where `checkout_started_at` is within `[startMs, endMs)`.
-

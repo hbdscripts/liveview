@@ -215,6 +215,12 @@ async function runAdsMigrations() {
         await db.exec('CREATE INDEX IF NOT EXISTS idx_aoa_campaign_visitor_network ON ads_orders_attributed(campaign_id, visitor_network)');
       },
     },
+    {
+      id: '011_ads_campaign_status',
+      up: async () => {
+        await db.exec(`ALTER TABLE google_ads_spend_hourly ADD COLUMN IF NOT EXISTS campaign_status TEXT`);
+      },
+    },
   ];
 
   let applied = 0;

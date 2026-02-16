@@ -20,6 +20,7 @@ let _lineItemsTableOk = null; // null unknown, true exists, false missing
 let _shippingOptionsTableOk = null; // null unknown, true exists, false missing
 let _ordersHasAcquisitionColumns = null; // null unknown, true exists, false missing
 let _ordersHasAcquisitionColumnsInFlight = null;
+let _reconcileInFlight = new Map(); // key -> Promise
 
 async function ordersHasAcquisitionColumns(db) {
   if (_ordersHasAcquisitionColumns === true) return true;
@@ -1867,9 +1868,25 @@ async function getTruthHealth(shop, scope = 'today') {
 async function ensureReconciled(shop, startMs, endMs, scope) {
   const safeShop = resolveShopForSales(shop);
   if (!safeShop) return { ok: false, skipped: true, reason: 'no_shop' };
-  const gate = await shouldReconcile(safeShop, scope);
-  if (!gate.ok) return { ok: true, skipped: true, reason: gate.reason, state: gate.state };
-  return reconcileRange(safeShop, startMs, endMs, scope);
+  const scopeKey = String(scope || 'today').slice(0, 64);
+  const rangeStart = Number(startMs) || 0;
+  const rangeEnd = Number(endMs) || 0;
+  const inflightKey = `${safeShop}|${scopeKey}|${rangeStart}|${rangeEnd}`;
+
+  if (_reconcileInFlight.has(inflightKey)) {
+    return _reconcileInFlight.get(inflightKey);
+  }
+
+  const run = (async () => {
+    const gate = await shouldReconcile(safeShop, scopeKey);
+    if (!gate.ok) return { ok: true, skipped: true, reason: gate.reason, state: gate.state };
+    return reconcileRange(safeShop, rangeStart, rangeEnd, scopeKey);
+  })().finally(() => {
+    _reconcileInFlight.delete(inflightKey);
+  });
+
+  _reconcileInFlight.set(inflightKey, run);
+  return run;
 }
 
 module.exports = {

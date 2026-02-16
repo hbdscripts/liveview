@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-16 (Kexo Score modal metric set + trend-sensitive scoring)
+Last updated: 2026-02-16 (Google Ads paused campaign styling)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -378,6 +378,17 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-16 (latest)
+- Google Ads: paused campaigns now render greyed out (50% opacity) in `/integrations/google-ads` (campaign status is persisted in Ads DB and returned in `/api/ads/summary`).
+
+2026-02-16 (latest)
+- Reliability hardening pass:
+  - Added app migration bookkeeping (`app_migrations`) to both startup migration flow (`server/index.js`) and manual migration flow (`server/migrate.js`) so already-applied app migrations are skipped deterministically.
+  - Fixed `/api/worst-products` reconcile warmup path to await truth reconciliation for all ranges (not just `today`) before report reads.
+  - Added defensive error logging in auth middleware fallback paths (`server/middleware/dashboardAuth.js`, `server/middleware/requireMaster.js`) to avoid silent authorization failures.
+  - Improved background scheduler observability in `server/index.js` by replacing empty `.catch(() => {})` wrappers with tagged warnings.
+  - Migration `050_acquisition_attribution` Postgres schema execution now uses `db.exec(pgSchema)` instead of fragile semicolon splitting.
 
 2026-02-16 (latest)
 - Kexo Score modal simplification + scoring sensitivity pass:

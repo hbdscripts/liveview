@@ -362,7 +362,10 @@ function middleware(req, res, next) {
       if (reason) url += '&error=' + encodeURIComponent(reason);
       res.redirect(302, url);
     })
-    .catch(function() {
+    .catch(function(err) {
+      try {
+        console.warn('[dashboardAuth] allowWithUserGate failed:', err && err.message ? String(err.message).slice(0, 220) : err);
+      } catch (_) {}
       const isApi = req.path.startsWith('/api/');
       if (isApi) return res.status(401).json({ error: 'Unauthorized' });
       res.redirect(302, '/app/login');

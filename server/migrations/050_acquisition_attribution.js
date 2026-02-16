@@ -245,10 +245,8 @@ async function up() {
   const db = getDb();
 
   if (isPostgres()) {
-    const statements = pgSchema.split(';').map((s) => s.trim()).filter(Boolean);
-    for (const stmt of statements) {
-      await db.run(stmt + ';');
-    }
+    // Execute full schema in one pass; avoids fragile semicolon splitting.
+    await db.exec(pgSchema);
   } else {
     await db.exec(sqliteSchema);
   }

@@ -138,8 +138,9 @@ async function getSummary(options = {}) {
         COALESCE(SUM(impressions), 0) AS impressions,
         COALESCE(SUM(conversions), 0) AS conversions,
         COALESCE(SUM(conversions_value_gbp), 0) AS conversions_value_gbp,
-        MAX(campaign_name) AS campaign_name,
-        MAX(adgroup_name) AS adgroup_name
+        (ARRAY_AGG(campaign_name ORDER BY updated_at DESC NULLS LAST) FILTER (WHERE campaign_name IS NOT NULL AND TRIM(campaign_name) != ''))[1] AS campaign_name,
+        (ARRAY_AGG(adgroup_name ORDER BY updated_at DESC NULLS LAST) FILTER (WHERE adgroup_name IS NOT NULL AND TRIM(adgroup_name) != ''))[1] AS adgroup_name,
+        (ARRAY_AGG(campaign_status ORDER BY updated_at DESC NULLS LAST) FILTER (WHERE campaign_status IS NOT NULL AND TRIM(campaign_status) != ''))[1] AS campaign_status
       FROM google_ads_spend_hourly
       WHERE hour_ts >= TO_TIMESTAMP(?/1000.0) AND hour_ts < TO_TIMESTAMP(?/1000.0)${spendFilterSql}
       GROUP BY provider, campaign_id, adgroup_id
@@ -154,6 +155,7 @@ async function getSummary(options = {}) {
       campaignMap.set(key, {
         campaignId: key,
         campaignName: '',
+        campaignStatus: '',
         revenue: 0,
         orders: 0,
         spend: 0,
@@ -219,6 +221,7 @@ async function getSummary(options = {}) {
     const im = Number.isFinite(impressions) ? impressions : 0;
 
     if (r.campaign_name && !camp.campaignName) camp.campaignName = String(r.campaign_name);
+    if (r.campaign_status && !camp.campaignStatus) camp.campaignStatus = String(r.campaign_status);
     if (r.adgroup_name && !ag.adgroupName) ag.adgroupName = String(r.adgroup_name);
 
     camp.spend += sp;
@@ -256,6 +259,7 @@ async function getSummary(options = {}) {
     campaigns.push({
       campaignId: c.campaignId,
       campaignName: c.campaignName || '',
+      campaignStatus: c.campaignStatus || '',
       revenue: Math.round(c.revenue * 100) / 100,
       orders: Math.floor(c.orders || 0),
       spend: Math.round(c.spend * 100) / 100,

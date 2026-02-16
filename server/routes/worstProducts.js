@@ -310,11 +310,8 @@ async function getWorstProducts(req, res) {
         // Best-effort: keep truth cache warm for this range (throttled).
         const tReconcile0 = Date.now();
         const truthScope = salesTruth.scopeForRangeKey(range, 'range');
-        if (range === 'today') {
-          try { await salesTruth.ensureReconciled(shop, start, end, truthScope); } catch (_) {}
-        } else {
-          salesTruth.ensureReconciled(shop, start, end, truthScope).catch(() => {});
-        }
+        // Await reconciliation for all ranges so report reads don't race stale truth data.
+        try { await salesTruth.ensureReconciled(shop, start, end, truthScope); } catch (_) {}
         msReconcile = Date.now() - tReconcile0;
       }
 

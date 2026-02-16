@@ -293,7 +293,7 @@ async function syncGoogleAdsSpendHourly(options = {}) {
     if (!startYmd || !endYmd) return { ok: false, error: 'Failed to compute date range in account time zone' };
 
     const query =
-      "SELECT segments.date, segments.hour, campaign.id, campaign.name, campaign.advertising_channel_type, metrics.cost_micros, metrics.clicks, metrics.impressions, metrics.conversions, metrics.conversions_value " +
+      "SELECT segments.date, segments.hour, campaign.id, campaign.name, campaign.status, campaign.advertising_channel_type, metrics.cost_micros, metrics.clicks, metrics.impressions, metrics.conversions, metrics.conversions_value " +
       "FROM campaign " +
       `WHERE segments.date >= '${startYmd}' AND segments.date <= '${endYmd}' AND campaign.status != 'REMOVED'`;
 
@@ -320,6 +320,7 @@ async function syncGoogleAdsSpendHourly(options = {}) {
 
     const campaignId = camp && camp.id != null ? String(camp.id) : '';
     const campaignName = camp && camp.name != null ? String(camp.name) : '';
+    const campaignStatus = camp && camp.status ? String(camp.status) : '';
     const channelType = camp && camp.advertisingChannelType ? String(camp.advertisingChannelType) : '';
     const adgroupId = '_all_';
     const adgroupName = '';
@@ -345,6 +346,7 @@ async function syncGoogleAdsSpendHourly(options = {}) {
       hourUtcMs,
       campaignId,
       campaignName: '',
+      campaignStatus: '',
       adgroupId,
       adgroupName: '',
       costMicros: 0,
@@ -355,6 +357,7 @@ async function syncGoogleAdsSpendHourly(options = {}) {
       conversionsValueGbp: 0,
     };
     if (campaignName && !cur.campaignName) cur.campaignName = campaignName;
+    if (campaignStatus && !cur.campaignStatus) cur.campaignStatus = campaignStatus;
     if (adgroupName && !cur.adgroupName) cur.adgroupName = adgroupName;
     cur.costMicros += cost;
     cur.spendGbp += (typeof spendGbp === 'number' && Number.isFinite(spendGbp)) ? spendGbp : 0;
@@ -377,8 +380,8 @@ async function syncGoogleAdsSpendHourly(options = {}) {
 
     await adsDb.run(
       `
-        INSERT INTO google_ads_spend_hourly (provider, hour_ts, customer_id, campaign_id, adgroup_id, cost_micros, spend_gbp, clicks, impressions, campaign_name, adgroup_name, conversions, conversions_value_gbp, updated_at)
-        VALUES (?, TO_TIMESTAMP(?/1000.0), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO google_ads_spend_hourly (provider, hour_ts, customer_id, campaign_id, adgroup_id, cost_micros, spend_gbp, clicks, impressions, campaign_name, campaign_status, adgroup_name, conversions, conversions_value_gbp, updated_at)
+        VALUES (?, TO_TIMESTAMP(?/1000.0), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT (provider, hour_ts, campaign_id, adgroup_id) DO UPDATE SET
           customer_id = EXCLUDED.customer_id,
           cost_micros = EXCLUDED.cost_micros,
@@ -386,12 +389,13 @@ async function syncGoogleAdsSpendHourly(options = {}) {
           clicks = EXCLUDED.clicks,
           impressions = EXCLUDED.impressions,
           campaign_name = COALESCE(NULLIF(EXCLUDED.campaign_name, ''), google_ads_spend_hourly.campaign_name),
+          campaign_status = COALESCE(NULLIF(EXCLUDED.campaign_status, ''), google_ads_spend_hourly.campaign_status),
           adgroup_name = COALESCE(NULLIF(EXCLUDED.adgroup_name, ''), google_ads_spend_hourly.adgroup_name),
           conversions = EXCLUDED.conversions,
           conversions_value_gbp = EXCLUDED.conversions_value_gbp,
           updated_at = EXCLUDED.updated_at
       `,
-      ['google_ads', v.hourUtcMs, customerId, v.campaignId, v.adgroupId, costMicros, spendGbp, clicks, impressions, v.campaignName || '', v.adgroupName || '', conv, convVal, now]
+      ['google_ads', v.hourUtcMs, customerId, v.campaignId, v.adgroupId, costMicros, spendGbp, clicks, impressions, v.campaignName || '', v.campaignStatus || '', v.adgroupName || '', conv, convVal, now]
     );
     upserts++;
   }

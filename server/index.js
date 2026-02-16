@@ -69,6 +69,12 @@ const { getBrowserRegistryPayload } = require('./shared/icon-registry');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+function warnBackgroundFailure(tag, err) {
+  try {
+    console.warn(tag, err && err.message ? String(err.message).slice(0, 220) : err);
+  } catch (_) {}
+}
+
 // Health check (for Railway/proxy – no auth, no redirects)
 app.get('/health', (req, res) => {
   res.status(200).send('OK');
@@ -585,63 +591,99 @@ const backup = require('./backup');
 const { writeAudit } = require('./audit');
 const { runAdsMigrations } = require('./ads/adsMigrate');
 
+const APP_MIGRATIONS = [
+  ['001_initial', up001],
+  ['002_shop_sessions', up002],
+  ['003_cart_order_money', up003],
+  ['004_session_stats_fields', up004],
+  ['005_utm_campaign', up005],
+  ['006_utm_source_medium_content', up006],
+  ['007_first_path', up007],
+  ['008_purchases', up008],
+  ['009_cf_traffic', up009],
+  ['010_referrer', up010],
+  ['011_entry_url', up011],
+  ['012_bot_block_counts', up012],
+  ['013_session_is_returning', up013],
+  ['014_dedupe_legacy_purchases', up014],
+  ['015_backfill_session_is_returning', up015],
+  ['016_dedupe_h_purchases', up016],
+  ['017_sales_truth_and_evidence', up017],
+  ['018_orders_shopify_returning_fields', up018],
+  ['019_customer_order_facts', up019],
+  ['020_bot_block_counts_updated_at', up020],
+  ['021_sessions_traffic_fields', up021],
+  ['022_report_indexes', up022],
+  ['023_reconcile_snapshots', up023],
+  ['024_shopify_sessions_snapshots', up024],
+  ['025_orders_shopify_line_items', up025],
+  ['026_report_cache', up026],
+  ['027_traffic_source_maps', up027],
+  ['028_backfill_purchases_from_evidence', up028],
+  ['029_dedupe_traffic_source_meta_labels', up029],
+  ['030_canonicalize_built_in_traffic_sources', up030],
+  ['031_orders_shopify_line_items_variant_title_index', up031],
+  ['032_sessions_bs_ads_fields', up032],
+  ['033_sessions_landing_composite_index', up033],
+  ['034_perf_indexes_more', up034],
+  ['035_growth_retention_indexes', up035],
+  ['036_tools_compare_cr_indexes', up036],
+  ['037_perf_composite_indexes_wal', up037],
+  ['038_perf_indexes_events_traffic', up038],
+  ['039_active_sessions_last_seen_started_at_index', up039],
+  ['040_orders_shopify_processed_at_paid_index', up040],
+  ['041_orders_shopify_shipping_options', up041],
+  ['042_orders_shopify_shipping_options_set_and_paid_price', up042],
+  ['043_business_snapshot_perf_indexes', up043],
+  ['044_backfill_first_product_handle', up044],
+  ['045_users', up045],
+  ['046_rename_master_to_admin', up046],
+  ['047_affiliate_attribution_and_fraud', up047],
+  ['048_sessions_bs_network', up048],
+  ['049_sessions_utm_term', up049],
+  ['050_acquisition_attribution', up050],
+];
+
+async function ensureAppMigrationsTable(db) {
+  await db.run(
+    `CREATE TABLE IF NOT EXISTS app_migrations (
+      id TEXT PRIMARY KEY,
+      applied_at BIGINT NOT NULL
+    )`
+  );
+}
+
+async function isAppMigrationApplied(db, id) {
+  const row = await db.get('SELECT id FROM app_migrations WHERE id = ?', [id]);
+  return !!row;
+}
+
+async function markAppMigrationApplied(db, id) {
+  const now = Date.now();
+  await db.run(
+    'INSERT INTO app_migrations (id, applied_at) VALUES (?, ?) ON CONFLICT (id) DO NOTHING',
+    [id, now]
+  );
+}
+
+async function runAppMigrations(db) {
+  await ensureAppMigrationsTable(db);
+  for (const [id, up] of APP_MIGRATIONS) {
+    const applied = await isAppMigrationApplied(db, id);
+    if (applied) continue;
+    await up();
+    await markAppMigrationApplied(db, id);
+  }
+}
+
 async function migrateAndStart() {
   // Open DB early so backups can inspect/operate.
-  getDb();
+  const db = getDb();
 
   // Required: backup before introducing the Sales Truth schema (first deploy only).
   const preBackup = await backup.backupBeforeTruthSchemaCreate();
 
-  await up001();
-  await up002();
-  await up003();
-  await up004();
-  await up005();
-  await up006();
-  await up007();
-  await up008();
-  await up009();
-  await up010();
-  await up011();
-  await up012();
-  await up013();
-  await up014();
-  await up015();
-  await up016();
-  await up017();
-  await up018();
-  await up019();
-  await up020();
-  await up021();
-  await up022();
-  await up023();
-  await up024();
-  await up025();
-  await up026();
-  await up027();
-  await up028();
-  await up029();
-  await up030();
-  await up031();
-  await up032();
-  await up033();
-  await up034();
-  await up035();
-  await up036();
-  await up037();
-  await up038();
-  await up039();
-  await up040();
-  await up041();
-  await up042();
-  await up043();
-  await up044();
-  await up045();
-  await up046();
-  await up047();
-  await up048();
-  await up049();
-  await up050();
+  await runAppMigrations(db);
 
   try {
     const r = await runAdsMigrations();
@@ -673,7 +715,9 @@ async function migrateAndStart() {
         const tz = store.resolveAdminTimeZone();
         const nowMs = Date.now();
         const bounds = store.getRangeBounds('today', nowMs, tz);
-        salesTruth.ensureReconciled(shop, bounds.start, bounds.end, 'today').catch(() => {});
+        salesTruth.ensureReconciled(shop, bounds.start, bounds.end, 'today').catch((err) => {
+          warnBackgroundFailure('[truth-sync] startup reconcile failed:', err);
+        });
       } catch (_) {}
     }, 1000);
 
@@ -683,7 +727,9 @@ async function migrateAndStart() {
       if (process.env.DISABLE_FRAUD_BACKFILL === '1' || process.env.DISABLE_FRAUD_BACKFILL === 'true') return;
       try {
         const fraudBackfill = require('./fraud/backfillFromEvidence');
-        fraudBackfill.runOnce({ reason: 'startup' }).catch(() => {});
+        fraudBackfill.runOnce({ reason: 'startup' }).catch((err) => {
+          warnBackgroundFailure('[fraud-backfill] startup run failed:', err);
+        });
       } catch (_) {}
     }, 5000);
 
@@ -711,7 +757,11 @@ async function migrateAndStart() {
         }
       }
       // Backfill a wider window shortly after boot (throttled inside salesTruth).
-      setTimeout(() => { runOnce('30d').catch(() => {}); }, 20 * 1000);
+      setTimeout(() => {
+        runOnce('30d').catch((err) => {
+          warnBackgroundFailure('[truth-sync] warmup run failed:', err);
+        });
+      }, 20 * 1000);
     })();
 
     // Daily backups (fail-open). Retain last 7.
@@ -733,8 +783,16 @@ async function migrateAndStart() {
         }
       }
       // Run shortly after boot, then every 24h.
-      setTimeout(() => { runOnce().catch(() => {}); }, 15000);
-      setInterval(() => { runOnce().catch(() => {}); }, DAY_MS);
+      setTimeout(() => {
+        runOnce().catch((err) => {
+          warnBackgroundFailure('[backup] startup daily run failed:', err);
+        });
+      }, 15000);
+      setInterval(() => {
+        runOnce().catch((err) => {
+          warnBackgroundFailure('[backup] scheduled daily run failed:', err);
+        });
+      }, DAY_MS);
     })();
   });
 }
@@ -876,23 +934,67 @@ setInterval(() => {
   }
 
   // Bootstrap: backfill a wider window once, then keep recent spend fresh.
-  setTimeout(() => { runSpendSync('7d').catch(() => {}); }, 30 * 1000);
-  setInterval(() => { runSpendSync('3d').catch(() => {}); }, SPEND_SYNC_MS);
+  setTimeout(() => {
+    runSpendSync('7d').catch((err) => {
+      warnBackgroundFailure('[ads-sync] spend bootstrap failed:', err);
+    });
+  }, 30 * 1000);
+  setInterval(() => {
+    runSpendSync('3d').catch((err) => {
+      warnBackgroundFailure('[ads-sync] spend scheduled failed:', err);
+    });
+  }, SPEND_SYNC_MS);
 
   // Geo (country) metrics: less frequent; keep recent window fresh.
-  setTimeout(() => { runGeoSync('7d').catch(() => {}); }, 60 * 1000);
-  setInterval(() => { runGeoSync('7d').catch(() => {}); }, GEO_SYNC_MS);
+  setTimeout(() => {
+    runGeoSync('7d').catch((err) => {
+      warnBackgroundFailure('[ads-sync] geo bootstrap failed:', err);
+    });
+  }, 60 * 1000);
+  setInterval(() => {
+    runGeoSync('7d').catch((err) => {
+      warnBackgroundFailure('[ads-sync] geo scheduled failed:', err);
+    });
+  }, GEO_SYNC_MS);
 
   // Device metrics: less frequent; keep recent window fresh.
-  setTimeout(() => { runDeviceSync('7d').catch(() => {}); }, 70 * 1000);
-  setInterval(() => { runDeviceSync('7d').catch(() => {}); }, DEVICE_SYNC_MS);
+  setTimeout(() => {
+    runDeviceSync('7d').catch((err) => {
+      warnBackgroundFailure('[ads-sync] device bootstrap failed:', err);
+    });
+  }, 70 * 1000);
+  setInterval(() => {
+    runDeviceSync('7d').catch((err) => {
+      warnBackgroundFailure('[ads-sync] device scheduled failed:', err);
+    });
+  }, DEVICE_SYNC_MS);
 
   // GCLID → campaign cache: less frequent (used for attribution fallbacks).
-  setTimeout(() => { runGclidBackfill('7d').catch(() => {}); }, 45 * 1000);
-  setInterval(() => { runGclidBackfill('7d').catch(() => {}); }, GCLID_BACKFILL_MS);
+  setTimeout(() => {
+    runGclidBackfill('7d').catch((err) => {
+      warnBackgroundFailure('[ads-sync] gclid bootstrap failed:', err);
+    });
+  }, 45 * 1000);
+  setInterval(() => {
+    runGclidBackfill('7d').catch((err) => {
+      warnBackgroundFailure('[ads-sync] gclid scheduled failed:', err);
+    });
+  }, GCLID_BACKFILL_MS);
 
   // Order attribution into Ads DB: keep today's orders fresh frequently; backfill weekly window less often.
-  setTimeout(() => { runOrderAttribution('7d', 'ads_sync_boot_7d').catch(() => {}); }, 75 * 1000);
-  setInterval(() => { runOrderAttribution('today', 'ads_sync_today').catch(() => {}); }, ATTR_SYNC_MS);
-  setInterval(() => { runOrderAttribution('7d', 'ads_sync_7d').catch(() => {}); }, ATTR_BACKFILL_MS);
+  setTimeout(() => {
+    runOrderAttribution('7d', 'ads_sync_boot_7d').catch((err) => {
+      warnBackgroundFailure('[ads-sync] attribution bootstrap failed:', err);
+    });
+  }, 75 * 1000);
+  setInterval(() => {
+    runOrderAttribution('today', 'ads_sync_today').catch((err) => {
+      warnBackgroundFailure('[ads-sync] attribution today failed:', err);
+    });
+  }, ATTR_SYNC_MS);
+  setInterval(() => {
+    runOrderAttribution('7d', 'ads_sync_7d').catch((err) => {
+      warnBackgroundFailure('[ads-sync] attribution 7d failed:', err);
+    });
+  }, ATTR_BACKFILL_MS);
 })();
