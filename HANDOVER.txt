@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-16 (Session drawer header icons + Copy Entry URL)
+Last updated: 2026-02-16 (snapshot global page loader locked off)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -377,6 +377,11 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-16 (latest)
+- Snapshot loader fix (stuck page-body overlay):
+  - `server/public/app.js` now hard-disables the global page-body loader for `snapshot` (`defaultPageLoaderEnabledV1`, `normalizePageLoaderEnabledV1`, `isPageLoaderEnabled`) and includes `snapshot` in the prime-time no-loader list.
+  - Reason: `/insights/snapshot` uses its own in-card loading states (`server/public/pages/insightsSnapshot.js`) and does not run the report-build overlay finish path, so the global overlay could remain indefinitely.
 
 2026-02-16 (latest)
 - Snapshot page migration (Business Snapshot modal retired):

@@ -39,7 +39,8 @@ const API = '';
           live: true,
           sales: true,
           date: true,
-          snapshot: true,
+          // Snapshot uses its own in-card loaders and never calls report-build finish().
+          snapshot: false,
           countries: true,
           products: true,
           variants: true,
@@ -73,6 +74,7 @@ const API = '';
       });
       out.pages.settings = false;
       out.pages.admin = false;
+      out.pages.snapshot = false;
       return out;
     }
 
@@ -98,6 +100,7 @@ const API = '';
       if (!k) return true;
       if (k === 'settings') return false;
       if (k === 'admin') return false;
+      if (k === 'snapshot') return false;
       var cfg = pageLoaderEnabledV1;
       var pages = cfg && cfg.pages && typeof cfg.pages === 'object' ? cfg.pages : null;
       if (!pages) return true;
@@ -467,7 +470,7 @@ const API = '';
       if (!isPageLoaderEnabled(PAGE)) return;
       // Tool pages compare-conversion-rate, shipping-cr, click-order-lookup don't use the report
       // build system and never call finish() — skip showing the loader so it doesn't cover content.
-      var toolPagesNoLoader = ['compare-conversion-rate', 'shipping-cr', 'click-order-lookup'];
+      var toolPagesNoLoader = ['compare-conversion-rate', 'shipping-cr', 'click-order-lookup', 'snapshot'];
       var pageKey = String(PAGE || '').trim().toLowerCase();
       if (toolPagesNoLoader.indexOf(pageKey) >= 0) return;
       var pageBody = document.querySelector('.page-body');
