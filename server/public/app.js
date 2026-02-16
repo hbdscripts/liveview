@@ -15858,10 +15858,27 @@ const API = '';
           if (!Number.isFinite(n)) return '\u2014';
           var k = String(key || '').trim().toLowerCase();
           if (k === 'revenue') return (typeof formatRevenue0 === 'function') ? formatRevenue0(n) : ('\u00a3' + n.toFixed(0));
-          if (k === 'sessions') return (typeof formatSessions === 'function') ? formatSessions(n) : Math.round(n).toLocaleString();
-          if (k === 'conversion' || k === 'bounce' || k === 'ctr') return (typeof pct === 'function') ? pct(n) : (n.toFixed(1) + '%');
+          if (k === 'orders' || k === 'itemsordered' || k === 'items_ordered') return Math.round(n).toLocaleString();
+          if (k === 'conversion') return (typeof pct === 'function') ? pct(n) : (n.toFixed(1) + '%');
           if (k === 'roas') return n.toFixed(2) + 'x';
           return Math.round(n * 10) / 10;
+        }
+
+        function fmtComponentDeltaPct(rawCur, rawPrev) {
+          var cur = Number(rawCur);
+          var prev = Number(rawPrev);
+          if (!Number.isFinite(cur) || !Number.isFinite(prev)) return '';
+          if (Math.abs(prev) < 1e-9) return '';
+          var delta = ((cur - prev) / Math.abs(prev)) * 100;
+          var rounded = Math.round(delta * 10) / 10;
+          var sign = rounded > 0 ? '+' : '';
+          return sign + rounded.toFixed(1) + '%';
+        }
+
+        function normalizeScoreMetricKey(rawKey) {
+          var k = String(rawKey || '').trim().toLowerCase();
+          if (k === 'itemsordered' || k === 'items_ordered') return 'itemsOrdered';
+          return k;
         }
 
         function kexoScoreBarClass(scorePct) {
@@ -15901,53 +15918,32 @@ const API = '';
           });
         }
 
-        function buildMetricComparePopoverText(valueStr, prevStr, prev2Str, levelScore, changeScore) {
-          var lines = 'Current: ' + String(valueStr) + '\n' +
-            'Previous: ' + String(prevStr) + '\n' +
-            'Day before: ' + String(prev2Str);
-          if (typeof levelScore === 'number' && Number.isFinite(levelScore) && typeof changeScore === 'number' && Number.isFinite(changeScore)) {
-            lines += '\n\nLevel: ' + levelScore.toFixed(0) + ' · Change: ' + changeScore.toFixed(0);
-          }
-          return lines;
-        }
-
-        function buildMetricCompareTooltipButton(label, popoverText) {
-          var aria = 'Show compare values for ' + String(label || 'this metric');
-          var safeContentAttr = escapeHtml(String(popoverText || '')).replace(/\n/g, '&#10;');
-          return '' +
-            '<button' +
-              ' type="button"' +
-              ' class="kexo-score-info-btn"' +
-              ' data-kexo-score-popover="1"' +
-              ' data-bs-toggle="popover"' +
-              ' data-bs-trigger="click"' +
-              ' data-bs-placement="top"' +
-              ' data-bs-container="body"' +
-              ' data-bs-custom-class="kexo-score-popover"' +
-              ' data-bs-content="' + safeContentAttr + '"' +
-              ' aria-label="' + escapeHtml(aria) + '">' +
-              '<i class="fa-jelly fa-question" data-icon-key="kexo-score-help" aria-hidden="true"></i>' +
-            '</button>';
-        }
-
         var data = _kexoScoreCache;
         applyKexoScoreModalSummary(data);
         if (!data || !Array.isArray(data.components) || data.components.length === 0) {
           body.innerHTML = '<div class="kexo-score-breakdown-empty text-muted">No score data. Select a date range and refresh.</div>';
         } else {
-          body.innerHTML = data.components.map(function(c) {
+          var metricOrder = ['revenue', 'orders', 'itemsOrdered', 'conversion', 'roas'];
+          var rankByKey = {};
+          metricOrder.forEach(function(key, idx) { rankByKey[key] = idx; });
+          var rows = data.components.filter(function(c) {
+            return Object.prototype.hasOwnProperty.call(rankByKey, normalizeScoreMetricKey(c && c.key));
+          }).sort(function(a, b) {
+            var aRank = rankByKey[normalizeScoreMetricKey(a && a.key)];
+            var bRank = rankByKey[normalizeScoreMetricKey(b && b.key)];
+            return aRank - bRank;
+          });
+          body.innerHTML = rows.map(function(c) {
             var label = (c.label && String(c.label).trim()) ? String(c.label) : (c.key || '');
             var score = typeof c.score === 'number' && Number.isFinite(c.score) ? Math.max(0, Math.min(100, c.score)) : 0;
             var barClass = kexoScoreBarClass(score);
             var valueStr = fmtComponentValue(c.key, c.value);
-            var prevStr = fmtComponentValue(c.key, c.previous);
-            var prev2Str = fmtComponentValue(c.key, c.previous2);
-            var popoverText = buildMetricComparePopoverText(valueStr, prevStr, prev2Str, c.levelScore, c.changeScore);
-            var infoButton = buildMetricCompareTooltipButton(label, popoverText);
+            var deltaStr = fmtComponentDeltaPct(c.value, c.previous);
+            var detail = deltaStr ? (String(valueStr) + ' | ' + String(deltaStr) + ' vs previous') : String(valueStr);
             return '<div class="kexo-score-breakdown-row mb-3">' +
               '<div class="kexo-score-breakdown-head mb-1">' +
                 '<span class="kexo-score-breakdown-label">' + escapeHtml(label) + '</span>' +
-                infoButton +
+                '<span class="kexo-score-breakdown-value">' + escapeHtml(detail) + '</span>' +
               '</div>' +
               '<div class="progress">' +
                 '<div class="progress-bar ' + barClass + '" role="progressbar" style="width:0%" data-target-pct="' + score.toFixed(1) + '" aria-valuenow="' + score + '" aria-valuemin="0" aria-valuemax="100">' + score.toFixed(0) + '</div>' +
@@ -15993,35 +15989,6 @@ const API = '';
         }
         if (closeBtn) closeBtn.addEventListener('click', closeKexoScoreModal);
         if (modalEl) modalEl.addEventListener('click', function(e) { if (e.target === modalEl) closeKexoScoreModal(); });
-        var bodyEl = document.getElementById('kexo-score-modal-body');
-        if (bodyEl) {
-          bodyEl.addEventListener('click', function(e) {
-            var btn = e.target && e.target.closest && e.target.closest('[data-kexo-score-popover="1"]');
-            if (!btn) return;
-            e.preventDefault();
-            e.stopPropagation();
-            var Popover = window.bootstrap && window.bootstrap.Popover;
-            if (!Popover) return;
-            var all = (modalEl && modalEl.querySelectorAll) ? modalEl.querySelectorAll('[data-kexo-score-popover="1"]') : [];
-            all.forEach(function(other) {
-              if (other === btn) return;
-              try {
-                var inst = Popover.getInstance(other);
-                if (inst) inst.hide();
-              } catch (_) {}
-            });
-            try {
-              var instance = Popover.getOrCreateInstance(btn, {
-                trigger: 'click',
-                placement: btn.getAttribute('data-bs-placement') || 'top',
-                html: false,
-                container: btn.getAttribute('data-bs-container') || 'body',
-                customClass: btn.getAttribute('data-bs-custom-class') || 'kexo-score-popover',
-              });
-              instance.toggle();
-            } catch (_) {}
-          });
-        }
         document.addEventListener('keydown', function(e) {
           if (e.key !== 'Escape') return;
           if (!modalEl || modalEl.classList.contains('is-hidden')) return;

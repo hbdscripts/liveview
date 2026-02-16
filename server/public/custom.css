@@ -2262,12 +2262,20 @@ html[data-bs-theme="dark"] .report-build-wrap {
   outline: none;
 }
 #kexo-score-modal .kexo-score-info-btn i {
-  font-size: 12px;
-  line-height: 1;
+  font-size: 8px;
+  border-radius: 100px;
+  border: 1px solid #ccc;
+  height: 20px;
+  width: 20px;
+  display: inline-block;
+  vertical-align: middle;
+  line-height: 18px;
+  text-align: center;
 }
 .kexo-score-breakdown-head {
-  display: inline-flex;
+  display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 0.35rem;
 }
 .popover.kexo-score-popover {
@@ -2317,6 +2325,8 @@ html[data-bs-theme="dark"] .report-build-wrap {
   font-weight: 500;
 }
 .kexo-score-breakdown-value {
+  margin-left: auto;
+  font-size: 12px;
   color: var(--tblr-muted, #6c757d);
 }
 .kexo-score-breakdown-empty {

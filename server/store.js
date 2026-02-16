@@ -3586,21 +3586,49 @@ async function getKexoScore(options = {}) {
     }
   }
 
+  async function getItemsOrderedCount(startMs, endMs) {
+    const shop = salesTruth.resolveShopForSales('');
+    if (!shop) return null;
+    const start = Number(startMs);
+    const end = Number(endMs);
+    if (!Number.isFinite(start) || !Number.isFinite(end) || !(end > start)) return null;
+    try {
+      const db = getDb();
+      const row = config.dbUrl
+        ? await db.get(
+          `SELECT COALESCE(SUM(li.quantity), 0) AS total
+           FROM orders_shopify_line_items li
+           WHERE li.shop = $1
+             AND li.order_created_at >= $2 AND li.order_created_at < $3
+             AND (li.order_test IS NULL OR li.order_test = 0)
+             AND li.order_cancelled_at IS NULL
+             AND li.order_financial_status = 'paid'`,
+          [shop, start, end]
+        )
+        : await db.get(
+          `SELECT COALESCE(SUM(li.quantity), 0) AS total
+           FROM orders_shopify_line_items li
+           WHERE li.shop = ?
+             AND li.order_created_at >= ? AND li.order_created_at < ?
+             AND (li.order_test IS NULL OR li.order_test = 0)
+             AND li.order_cancelled_at IS NULL
+             AND li.order_financial_status = 'paid'`,
+          [shop, start, end]
+        );
+      const v = row ? Number(row.total) : null;
+      return Number.isFinite(v) ? Math.max(0, Math.round(v)) : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
   async function metricsForWindow(startMs, endMs, windowRangeKey) {
     const windowOpts = { ...opts, rangeKey: windowRangeKey };
-    const [sales, convertedCount, trafficBreakdown, bounce, adSpend, adsClicksImpr] = await Promise.all([
+    const [sales, convertedCount, itemsOrderedCount, trafficBreakdown, adSpend, adsClicksImpr] = await Promise.all([
       getSalesTotal(startMs, endMs, windowOpts),
       getConvertedCount(startMs, endMs, windowOpts),
+      getItemsOrderedCount(startMs, endMs),
       getSessionCounts(startMs, endMs, windowOpts),
-      reportCache.getOrComputeJson(
-        {
-          shop: '', endpoint: 'kpis_slow_bounce', rangeKey: windowRangeKey,
-          rangeStartTs: startMs, rangeEndTs: endMs,
-          params: { trafficMode, rangeKey: windowRangeKey },
-          ttlMs: 10 * 60 * 1000, force,
-        },
-        () => getBounceRate(startMs, endMs, windowOpts)
-      ).then((r) => (r && r.ok ? r.data : null)),
       getAdSpendGbp(startMs, endMs),
       getAdsClicksImpressions(startMs, endMs),
     ]);
@@ -3611,17 +3639,14 @@ async function getKexoScore(options = {}) {
     const roas = (typeof sales === 'number' && Number.isFinite(sales) && typeof adSpend === 'number' && Number.isFinite(adSpend) && adSpend > 0)
       ? Math.round((sales / adSpend) * 100) / 100
       : null;
-    const ctr = (adsClicksImpr && adsClicksImpr.impressions > 0 && Number.isFinite(adsClicksImpr.clicks))
-      ? Math.round((adsClicksImpr.clicks / adsClicksImpr.impressions) * 10000) / 100
-      : null;
     return {
       sales: typeof sales === 'number' && Number.isFinite(sales) ? sales : null,
+      orders: typeof convertedCount === 'number' && Number.isFinite(convertedCount) ? Math.max(0, Math.round(convertedCount)) : null,
+      itemsOrdered: typeof itemsOrderedCount === 'number' && Number.isFinite(itemsOrderedCount) ? Math.max(0, Math.round(itemsOrderedCount)) : null,
       sessions,
       conversion,
-      bounce: typeof bounce === 'number' && Number.isFinite(bounce) ? bounce : null,
       adSpend: typeof adSpend === 'number' && Number.isFinite(adSpend) ? adSpend : null,
       roas,
-      ctr,
       clicks: adsClicksImpr && Number.isFinite(adsClicksImpr.clicks) ? adsClicksImpr.clicks : null,
       impressions: adsClicksImpr && Number.isFinite(adsClicksImpr.impressions) ? adsClicksImpr.impressions : null,
     };
@@ -3643,13 +3668,14 @@ async function getKexoScore(options = {}) {
     const denomPrev2 = Math.max(Math.abs(prev2 ?? 0), 1e-9);
     const signal = prev != null && cur != null ? (cur - prev) / denomPrev : 0;
     const momentum = prev != null && prev2 != null ? (prev - prev2) / denomPrev2 : 0;
-    const combined = 0.7 * signal + 0.3 * momentum;
+    // Trend-heavy by design: a ~10% drop should land clearly below neutral.
+    const combined = 0.85 * signal + 0.15 * momentum;
     const raw = invert ? -combined : combined;
     const clamped = Math.max(-1, Math.min(1, raw));
-    return Math.round((50 + 50 * clamped) * 10) / 10;
+    return Math.round((50 + 100 * clamped) * 10) / 10;
   }
 
-  /** Absolute health 0–100 from current value (rate metrics only); revenue/sessions return 50 (neutral). */
+  /** Absolute health 0–100 from current value (rate metrics only); count/revenue metrics return 50 (neutral). */
   function levelScore(value, key) {
     const v = typeof value === 'number' && Number.isFinite(value) ? value : null;
     if (v == null) return null;
@@ -3658,17 +3684,6 @@ async function getKexoScore(options = {}) {
       if (v <= 0) return 0;
       if (v >= 5) return 100;
       return Math.round((v / 5) * 100 * 10) / 10;
-    }
-    if (k === 'bounce') {
-      const healthy = 100 - v;
-      if (healthy <= 0) return 0;
-      if (healthy >= 80) return 100;
-      return Math.round((healthy / 80) * 100 * 10) / 10;
-    }
-    if (k === 'ctr') {
-      if (v <= 0) return 0;
-      if (v >= 3) return 100;
-      return Math.round((v / 3) * 100 * 10) / 10;
     }
     if (k === 'roas') {
       if (v <= 0) return 0;
@@ -3679,12 +3694,11 @@ async function getKexoScore(options = {}) {
   }
 
   const KEXO_SCORE_COMPONENTS = [
-    { key: 'revenue', label: 'Revenue', weight: 25, getCur: (m) => m.sales, getPrev: (m) => m && m.sales, getPrev2: (m) => m && m.sales, invert: false, wLevel: 0, wChange: 1 },
-    { key: 'conversion', label: 'Conversion rate', weight: 25, getCur: (m) => m.conversion, getPrev: (m) => m && m.conversion, getPrev2: (m) => m && m.conversion, invert: false, wLevel: 0.5, wChange: 0.5 },
-    { key: 'bounce', label: 'Bounce rate', weight: 15, getCur: (m) => m.bounce, getPrev: (m) => m && m.bounce, getPrev2: (m) => m && m.bounce, invert: true, wLevel: 0.5, wChange: 0.5 },
-    { key: 'sessions', label: 'Sessions', weight: 20, getCur: (m) => m.sessions, getPrev: (m) => m && m.sessions, getPrev2: (m) => m && m.sessions, invert: false, wLevel: 0, wChange: 1 },
-    { key: 'roas', label: 'Ads ROAS', weight: 15, getCur: (m) => m.roas, getPrev: (m) => m && m.roas, getPrev2: (m) => m && m.roas, invert: false, adsOnly: true, wLevel: 0.5, wChange: 0.5 },
-    { key: 'ctr', label: 'Ads CTR', weight: 10, getCur: (m) => m.ctr, getPrev: (m) => m && m.ctr, getPrev2: (m) => m && m.ctr, invert: false, adsOnly: true, wLevel: 0.5, wChange: 0.5 },
+    { key: 'revenue', label: 'Revenue', weight: 30, getCur: (m) => m.sales, getPrev: (m) => m && m.sales, getPrev2: (m) => m && m.sales, invert: false, wLevel: 0, wChange: 1 },
+    { key: 'orders', label: 'Orders', weight: 25, getCur: (m) => m.orders, getPrev: (m) => m && m.orders, getPrev2: (m) => m && m.orders, invert: false, wLevel: 0, wChange: 1 },
+    { key: 'itemsOrdered', label: 'Items Ordered', weight: 20, getCur: (m) => m.itemsOrdered, getPrev: (m) => m && m.itemsOrdered, getPrev2: (m) => m && m.itemsOrdered, invert: false, wLevel: 0, wChange: 1 },
+    { key: 'conversion', label: 'Conversion Rate', weight: 15, getCur: (m) => m.conversion, getPrev: (m) => m && m.conversion, getPrev2: (m) => m && m.conversion, invert: false, wLevel: 0.25, wChange: 0.75 },
+    { key: 'roas', label: 'ADS ROAS', weight: 10, getCur: (m) => m.roas, getPrev: (m) => m && m.roas, getPrev2: (m) => m && m.roas, invert: false, adsOnly: true, wLevel: 0.25, wChange: 0.75 },
   ];
 
   const adsIntegrated = (current && (current.roas != null || (current.clicks != null && current.impressions != null && current.impressions > 0)));
