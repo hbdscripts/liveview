@@ -1245,6 +1245,7 @@
       const sourceLi = document.querySelector('.kexo-desktop-nav .kexo-nav-date-slot');
       const headerRow = document.querySelector('.page-header .row.align-items-center') || document.querySelector('.page-header .row');
       if (!dateWrap || !headerRow) return;
+      headerRow.classList.add('kexo-page-header-layout-triple');
 
       let dateCol = headerRow.querySelector('.kexo-page-header-date-col');
       if (!dateCol) {
@@ -1260,7 +1261,18 @@
     } catch (_) {}
   }
 
+  function moveSnapshotMenuItemToBottom() {
+    try {
+      const menu = document.getElementById('navbar-insights-menu');
+      const item = document.getElementById('nav-tab-snapshot');
+      if (!menu || !item) return;
+      if (item.parentElement !== menu) return;
+      menu.appendChild(item);
+    } catch (_) {}
+  }
+
   async function init() {
+    moveSnapshotMenuItemToBottom();
     restoreSnapshotHeaderDateLayout();
     bindUi();
     const initial = parseQueryState();

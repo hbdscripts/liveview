@@ -2368,10 +2368,14 @@ async function getBusinessSnapshot(options = {}) {
         + (includeShopifyAppBills ? appBillsPrevAll : 0)
         + (includePaymentFees ? paymentFeesPrevAll : 0)
         + (includeKlarnaFees ? shopifyFeesPrevAll : 0);
+      const cogsNowForProfit = cogsNow != null ? (Number(cogsNow) || 0) : 0;
+      const cogsPrevForProfit = cogsPrev != null ? (Number(cogsPrev) || 0) : 0;
+      const totalCostNowForProfit = cogsNowForProfit + deductionsNow;
+      const totalCostPrevForProfit = cogsPrevForProfit + deductionsPrev;
       const revNow = Number(revenue) || 0;
       const revPrev = Number(revenuePrev) || 0;
-      const estNow = round2(revNow - deductionsNow);
-      const estPrev = round2(revPrev - deductionsPrev);
+      const estNow = round2(revNow - totalCostNowForProfit);
+      const estPrev = round2(revPrev - totalCostPrevForProfit);
       const marginNow = revNow > 0 ? round1((Number(estNow) / revNow) * 100) : null;
       const marginPrev = revPrev > 0 ? round1((Number(estPrev) / revPrev) * 100) : null;
       profitSection.visible = true;

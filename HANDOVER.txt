@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-16 (Fraud meter shows check/warn icon + compliance padding)
+Last updated: 2026-02-16 (Snapshot header triple layout + profit math includes COGS)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -377,6 +377,13 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-16 (latest)
+- Snapshot header/menu/profit follow-up:
+  - Snapshot page header now uses the same triple-layout structure as other pages (left pretitle + middle title + right date column), while hiding only the date input button itself.
+  - Snapshot runtime now appends the Insights `Snapshot` dropdown item to the bottom of the Insights menu on this page.
+  - Snapshot Estimated/Net Profit now subtracts COGS in addition to enabled deductions/integration costs (aligns profit rows with Revenue vs Cost math expectations).
+  - Snapshot cache ui-version bumped to `snapshot-page-v5`.
 
 2026-02-16 (latest)
 - Snapshot fee bucket + header UX adjustment:

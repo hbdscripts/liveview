@@ -166,7 +166,7 @@ const TRACKER_TABLE_DEFINITIONS = [
       { name: 'UI mode', value: 'Preset/custom date range UX with explicit current and compare ranges' },
     ],
     math: [
-      { name: 'Estimated profit', value: 'Revenue - SUM(applicable rule deductions) in deterministic sort order' },
+      { name: 'Estimated profit', value: 'Revenue - (COGS + applicable rule deductions + enabled integration costs)' },
       { name: 'Margin %', value: 'EstimatedProfit / Revenue × 100 (null-safe)' },
       { name: 'Cost (chart line)', value: 'COGS + enabled Profit Rule deductions + optional integration costs (Google Ads, Transaction Fees, Shopify Fees)' },
       { name: 'Unknown country handling', value: 'Only All-country rules apply when order country is unknown' },
