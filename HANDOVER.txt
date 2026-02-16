@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-16 (overview date-control hide + finishes pie data mapping fix)
+Last updated: 2026-02-16 (Kexo Score summary toggle: hidden by default, Show summary + X)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -386,6 +386,9 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-16 (latest)
+- Kexo Score modal summary toggle: summary hidden by default; "Show summary" button reveals it; X in summary card header hides it again (`client/app/14-dashboard.js`, `server/public/app.js`).
 
 2026-02-16 (latest)
 - UX fixes + admin Notes:

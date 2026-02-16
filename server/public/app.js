@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: b4d66cbd030eff6e
+// checksum: 4a9356a259d264c5
 
 (function () {
 const API = '';
@@ -16474,7 +16474,36 @@ const API = '';
             '</div>';
           }).join('');
         }
-        body.innerHTML = '<div id="kexo-score-summary-wrap" class="kexo-score-summary-card mb-3">' + summaryHtml + '</div><div id="kexo-score-breakdown">' + breakdownHtml + '</div>';
+        body.innerHTML =
+          '<div class="kexo-score-summary-toggle-row mb-3">' +
+            '<button type="button" class="btn btn-sm btn-ghost-secondary" id="kexo-score-show-summary-btn" aria-label="Show summary">Show summary</button>' +
+          '</div>' +
+          '<div id="kexo-score-summary-section" class="kexo-score-summary-card mb-3 is-hidden" role="region" aria-label="Kexo Score summary">' +
+            '<div class="kexo-score-summary-card-header d-flex align-items-center justify-content-between mb-2">' +
+              '<span class="fw-medium">Summary</span>' +
+              '<button type="button" class="btn btn-icon btn-ghost-secondary kexo-score-summary-close" aria-label="Close summary"><i class="fa-light fa-xmark" aria-hidden="true"></i></button>' +
+            '</div>' +
+            '<div id="kexo-score-summary-wrap">' + summaryHtml + '</div>' +
+          '</div>' +
+          '<div id="kexo-score-breakdown">' + breakdownHtml + '</div>';
+        (function initSummaryToggle() {
+          var showBtn = document.getElementById('kexo-score-show-summary-btn');
+          var section = document.getElementById('kexo-score-summary-section');
+          var closeBtn = section && section.querySelector('.kexo-score-summary-close');
+          if (showBtn && section) {
+            showBtn.addEventListener('click', function() {
+              section.classList.remove('is-hidden');
+              showBtn.closest('.kexo-score-summary-toggle-row').classList.add('is-hidden');
+            });
+          }
+          if (closeBtn && section) {
+            closeBtn.addEventListener('click', function() {
+              section.classList.add('is-hidden');
+              var row = document.querySelector('.kexo-score-summary-toggle-row');
+              if (row) row.classList.remove('is-hidden');
+            });
+          }
+        })();
         (function fetchAndRenderSummary(force) {
           var wrap = document.getElementById('kexo-score-summary-wrap');
           if (!wrap) return;
