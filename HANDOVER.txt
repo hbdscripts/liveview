@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-16 (Kexo Score AI Summary)
+Last updated: 2026-02-16 (perf/leak audit)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -381,6 +381,15 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-16 (latest)
+- Perf/leak audit (lag, speed, leak fix plan):
+  - Table hot path: single sort per render, chunked row patching (requestAnimationFrame for >15 rows), debounced sticky-column observer callbacks (`client/app/04-rows-sticky.js`).
+  - Loader UX: table pages use non-blocking overlay (`.report-building-sessions` keeps content visible/scrollable); sessions fetch timeout 15s with fail-open (`client/app/08-condensed-kpis.js`, `server/public/custom.css`).
+  - Lifecycle: bfcache restore re-inits SSE, pollers, and doc observers (`reinitLiveStreamsAndPollers` on pageshow persisted); doc-level observers in sticky/grid modules disconnect on cleanup and re-init on restore (`client/app/13-live-sales.js`, `01-core.js`, `03-grid-drag-table.js`, `04-rows-sticky.js`). Cleanup list no longer cleared so next pagehide still runs.
+  - Backend: shipping backfill job pruning (TTL 1h), max 2 concurrent jobs, duplicate-range reject (`server/routes/tools.js`). Devices observed endpoint cap/pagination (`limit` query, default 500, max 2000) (`server/routes/devices.js`). Dashboard trending product metadata fetch only for top candidate IDs (`server/routes/dashboardSeries.js`).
+  - Observability: tagged warnings for onlineCount fetch, fraud/compliance marker fetches; `window.__kexoPerfMetrics` (lastTableRenderMs, lastSessionsFetchMs, sessionsFetchTimeoutCount); `GET /api/tools/shipping-cr/backfill/metrics` (activeCount, totalJobs).
+  - Tests: bundle size ceiling (2.5 MB), manifest/cleanup guardrails (registerCleanup, initStickyDocObserver), table hot-path guardrails (PATCH_CHUNK_YIELD_THRESHOLD, single sort) (`test/app-bundle.test.js`).
 
 2026-02-16 (latest)
 - Frontend app bundle: `server/public/app.js` is generated from `client/app/*.js`; run `npm run build:app`. Tests: `test/app-bundle.test.js` (checksum), `test/attribution-write-auth.test.js` (403 for non-admin on POST prefs/config/map), `test/salesTruth-transaction.test.js` (db.transaction rollback invariant).

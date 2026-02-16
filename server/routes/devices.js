@@ -35,9 +35,13 @@ function normalizeCount(v) {
   return Math.max(0, Math.trunc(n));
 }
 
+const OBSERVED_DEVICES_LIMIT_DEFAULT = 500;
+const OBSERVED_DEVICES_LIMIT_MAX = 2000;
+
 async function getObservedDevices(req, res) {
   const minClicks = clampInt(req && req.query ? req.query.minClicks : null, { min: 1, max: 1000000, fallback: 2 });
   const includeUnknown = !!(req && req.query && (req.query.includeUnknown === '1' || req.query.includeUnknown === 'true'));
+  const limit = clampInt(req && req.query && req.query.limit != null ? req.query.limit : OBSERVED_DEVICES_LIMIT_DEFAULT, { min: 1, max: OBSERVED_DEVICES_LIMIT_MAX, fallback: OBSERVED_DEVICES_LIMIT_DEFAULT });
 
   const db = getDb();
   try {
@@ -75,7 +79,7 @@ async function getObservedDevices(req, res) {
         if (clicks < minClicks) return;
         out.push({ key, clicks });
       });
-      return out;
+      return out.slice(0, limit);
     }
 
     res.setHeader('Cache-Control', 'no-store');

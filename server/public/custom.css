@@ -1792,6 +1792,14 @@ body:not([data-page="settings"]) .table-responsive table thead th {
   display: none !important;
 }
 
+/* Table pages (sessions): keep content visible and scrollable; overlay non-blocking */
+.page-body.report-building.report-building-sessions > :not(.page-body-loader-overlay) {
+  display: block !important;
+}
+.page-body.report-building.report-building-sessions .page-body-loader-overlay {
+  pointer-events: none;
+}
+
 .page-body-loader-overlay {
   position: absolute;
   inset: 0;

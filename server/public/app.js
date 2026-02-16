@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 263bb382ef7e00b8
+// checksum: 4caf1cc0a87bb79b
 
 (function () {
 const API = '';
@@ -317,7 +317,7 @@ const API = '';
     }
     function runCleanup() {
       _kexoCleanupFns.forEach(function(f) { try { f(); } catch (_) {} });
-      _kexoCleanupFns.length = 0;
+      // Do not clear _kexoCleanupFns so bfcache restore can re-init and next pagehide still cleans up
     }
     try {
       window.addEventListener('beforeunload', runCleanup);
@@ -1345,15 +1345,29 @@ const API = '';
         run(document);
       }
 
-      var observer = new MutationObserver(function(muts) {
-        muts.forEach(function(m) {
-          m.addedNodes.forEach(function(n) {
-            if (!(n instanceof Element)) return;
-            run(n);
+      var gridDocObserver = null;
+      function initGridDocObserver() {
+        if (gridDocObserver) return;
+        try {
+          gridDocObserver = new MutationObserver(function(muts) {
+            muts.forEach(function(m) {
+              (m.addedNodes || []).forEach(function(n) {
+                if (!(n instanceof Element)) return;
+                run(n);
+              });
+            });
           });
-        });
-      });
-      observer.observe(document.documentElement, { childList: true, subtree: true });
+          gridDocObserver.observe(document.documentElement, { childList: true, subtree: true });
+          if (typeof registerCleanup === 'function') {
+            registerCleanup(function() {
+              try { if (gridDocObserver && typeof gridDocObserver.disconnect === 'function') gridDocObserver.disconnect(); } catch (_) {}
+              gridDocObserver = null;
+            });
+          }
+        } catch (_) {}
+      }
+      try { window.__kexoInitGridDocObserver = initGridDocObserver; } catch (_) {}
+      initGridDocObserver();
 
       try { window.addEventListener('hashchange', function() { setTimeout(function() { run(document); }, 0); }); } catch (_) {}
       setTimeout(function() { run(document); }, 800);
@@ -1723,6 +1737,7 @@ const API = '';
         handle.addEventListener('lostpointercapture', stopResize);
       }
 
+      var STICKY_DEBOUNCE_MS = 60;
       function ensureHandle(wrap) {
         var cell = getHeaderStickyCell(wrap);
         if (!cell) return;
@@ -1739,6 +1754,16 @@ const API = '';
           cell.appendChild(handle);
         }
         bindHandle(wrap, handle);
+      }
+      function debouncedEnsureHandle(wrap) {
+        if (!wrap) return;
+        try {
+          if (wrap._stickyEnsureHandleTimer != null) clearTimeout(wrap._stickyEnsureHandleTimer);
+          wrap._stickyEnsureHandleTimer = setTimeout(function() {
+            wrap._stickyEnsureHandleTimer = null;
+            ensureHandle(wrap);
+          }, STICKY_DEBOUNCE_MS);
+        } catch (_) {}
       }
 
       function bind(wrap) {
@@ -1757,7 +1782,7 @@ const API = '';
           try {
             var ro = new ResizeObserver(function() {
               applyWidthSingle(wrap, wrapWidth(wrap));
-              ensureHandle(wrap);
+              debouncedEnsureHandle(wrap);
             });
             ro.observe(wrap);
             wrap._stickyResizeObserver = ro;
@@ -1765,7 +1790,7 @@ const API = '';
         }
         if (typeof MutationObserver !== 'undefined') {
           try {
-            var mo = new MutationObserver(function() { ensureHandle(wrap); });
+            var mo = new MutationObserver(function() { debouncedEnsureHandle(wrap); });
             mo.observe(wrap, { childList: true, subtree: true });
             wrap._stickyResizeMutationObserver = mo;
           } catch (_) {}
@@ -1780,10 +1805,12 @@ const API = '';
         window.addEventListener('kexo:tablesUiConfigApplied', function() { run(); });
       } catch (_) {}
 
-      // Bind dynamically inserted tables (Variants page builds tables after fetch).
-      if (typeof MutationObserver !== 'undefined') {
+      var docMo = null;
+      function initStickyDocObserver() {
+        if (docMo) return;
+        if (typeof MutationObserver === 'undefined') return;
         try {
-          var docMo = new MutationObserver(function(muts) {
+          docMo = new MutationObserver(function(muts) {
             muts.forEach(function(m) {
               (m.addedNodes || []).forEach(function(n) {
                 if (!(n instanceof Element)) return;
@@ -1797,8 +1824,16 @@ const API = '';
             });
           });
           docMo.observe(document.documentElement, { childList: true, subtree: true });
+          if (typeof registerCleanup === 'function') {
+            registerCleanup(function() {
+              try { if (docMo && typeof docMo.disconnect === 'function') docMo.disconnect(); } catch (_) {}
+              docMo = null;
+            });
+          }
         } catch (_) {}
       }
+      try { window.__kexoInitStickyDocObserver = initStickyDocObserver; } catch (_) {}
+      initStickyDocObserver();
 
       if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', run);
@@ -2981,20 +3016,10 @@ const API = '';
       return wrap.firstElementChild;
     }
 
-    function patchSessionsTableBody(tbody, pageSessions) {
-      if (!tbody) return;
-      const list = Array.isArray(pageSessions) ? pageSessions : [];
-      if (!list.length) return;
+    var PATCH_CHUNK_SIZE = 12;
+    var PATCH_CHUNK_YIELD_THRESHOLD = 15;
 
-      // Map current DOM rows by session id.
-      const existing = new Map();
-      Array.from(tbody.querySelectorAll('.grid-row[data-session-id]')).forEach(function(row) {
-        const sid = row && row.getAttribute ? (row.getAttribute('data-session-id') || '') : '';
-        if (sid) existing.set(String(sid), row);
-      });
-      const hadRows = existing.size > 0;
-
-      const desired = [];
+    function patchSessionsTableBodySync(tbody, list, existing, hadRows, desired) {
       list.forEach(function(s) {
         const sid = s && s.session_id != null ? String(s.session_id) : '';
         if (!sid) return;
@@ -3017,9 +3042,65 @@ const API = '';
         existing.delete(sid);
         desired.push(next);
       });
+    }
 
-      // Reorder/move nodes in-place.
-      let cursor = tbody.firstElementChild;
+    function patchSessionsTableBody(tbody, pageSessions) {
+      if (!tbody) return;
+      const list = Array.isArray(pageSessions) ? pageSessions : [];
+      if (!list.length) return;
+
+      const existing = new Map();
+      Array.from(tbody.querySelectorAll('.grid-row[data-session-id]')).forEach(function(row) {
+        const sid = row && row.getAttribute ? (row.getAttribute('data-session-id') || '') : '';
+        if (sid) existing.set(String(sid), row);
+      });
+      const hadRows = existing.size > 0;
+      const desired = [];
+
+      if (list.length <= PATCH_CHUNK_YIELD_THRESHOLD) {
+        patchSessionsTableBodySync(tbody, list, existing, hadRows, desired);
+      } else {
+        var chunkStart = 0;
+        function flushPatch() {
+          var cursor = tbody.firstElementChild;
+          desired.forEach(function(row) {
+            if (!row) return;
+            if (row === cursor) {
+              cursor = cursor.nextElementSibling;
+              return;
+            }
+            try { tbody.insertBefore(row, cursor); } catch (_) {}
+          });
+          existing.forEach(function(row) { try { row.remove(); } catch (_) {} });
+          try {
+            Array.from(tbody.querySelectorAll('.grid-row:not([data-session-id])')).forEach(function(row) { row.remove(); });
+          } catch (_) {}
+          desired.forEach(function(row) {
+            if (!row || !row.classList) return;
+            if (!row.classList.contains('kexo-row-insert') && !row.classList.contains('kexo-row-update')) return;
+            setTimeout(function() {
+              try { row.classList.remove('kexo-row-insert', 'kexo-row-update'); } catch (_) {}
+            }, 900);
+          });
+          try { refreshComplianceMarkersForSessionsTable(); } catch (_) {}
+        }
+        function doChunk() {
+          var chunkEnd = Math.min(chunkStart + PATCH_CHUNK_SIZE, list.length);
+          var chunk = list.slice(chunkStart, chunkEnd);
+          patchSessionsTableBodySync(tbody, chunk, existing, hadRows, desired);
+          chunkStart = chunkEnd;
+          if (chunkStart < list.length && typeof requestAnimationFrame === 'function') {
+            requestAnimationFrame(doChunk);
+            return;
+          }
+          flushPatch();
+        }
+        doChunk();
+        return;
+      }
+
+
+      var cursor = tbody.firstElementChild;
       desired.forEach(function(row) {
         if (!row) return;
         if (row === cursor) {
@@ -3028,16 +3109,11 @@ const API = '';
         }
         try { tbody.insertBefore(row, cursor); } catch (_) {}
       });
-
-      // Remove any rows that are no longer in the desired list.
       existing.forEach(function(row) { try { row.remove(); } catch (_) {} });
-
-      // If an empty-state row is still present, remove it.
       try {
         Array.from(tbody.querySelectorAll('.grid-row:not([data-session-id])')).forEach(function(row) { row.remove(); });
       } catch (_) {}
 
-      // Drop animation classes after a moment.
       try {
         desired.forEach(function(row) {
           if (!row || !row.classList) return;
@@ -3050,6 +3126,7 @@ const API = '';
     }
 
     function renderTable() {
+      const renderStart = typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now();
       const tbody = document.getElementById('table-body');
       if (!tbody) return; // Sessions table not present (e.g. Settings page)
       if (tbody.getAttribute('data-kexo-click-bound') !== '1') {
@@ -3067,13 +3144,13 @@ const API = '';
           });
         } catch (_) {}
       }
+      const sorted = getSortedSessions();
       const isRangeMode = sessionsTotal != null;
       const totalPages = isRangeMode
         ? Math.max(1, Math.ceil(sessionsTotal / rowsPerPage))
-        : Math.max(1, Math.ceil(getSortedSessions().length / rowsPerPage));
+        : Math.max(1, Math.ceil(sorted.length / rowsPerPage));
       currentPage = Math.min(Math.max(1, currentPage), totalPages);
       const start = (currentPage - 1) * rowsPerPage;
-      const sorted = getSortedSessions();
       const pageSessions = isRangeMode ? sorted : sorted.slice(start, start + rowsPerPage);
       if (pageSessions.length === 0) {
         var emptyMsg = sessionsLoadError ? sessionsLoadError : 'No sessions in this view.';
@@ -3092,6 +3169,12 @@ const API = '';
       updateSortHeaders();
       syncSessionsTableTightMode();
       tickTimeOnSite();
+      try {
+        if (typeof performance !== 'undefined' && performance.now) {
+          var ms = Math.round((performance.now() - renderStart) * 100) / 100;
+          try { window.__kexoPerfMetrics = window.__kexoPerfMetrics || {}; window.__kexoPerfMetrics.lastTableRenderMs = ms; } catch (_) {}
+        }
+      } catch (_) {}
       try { refreshComplianceMarkersForSessionsTable(); } catch (_) {}
     }
 
@@ -3132,7 +3215,10 @@ const API = '';
       var p = fetch(url, { credentials: 'same-origin', cache: 'no-store' })
         .then(function(r) { return r.ok ? r.json() : null; })
         .then(function(json) { return (json && typeof json === 'object') ? json : {}; })
-        .catch(function() { return {}; })
+        .catch(function(err) {
+          try { if (typeof window.kexoCaptureError === 'function') window.kexoCaptureError(err, { context: 'fraudMarkersFetch', page: (document.body && document.body.getAttribute('data-page')) || '' }); } catch (_) {}
+          return {};
+        })
         .finally(function() { if (fraudMarkersFetchInFlight && fraudMarkersFetchInFlight.key === key) fraudMarkersFetchInFlight = null; });
       fraudMarkersFetchInFlight = { key: key, p: p };
       return p;
@@ -3212,7 +3298,9 @@ const API = '';
           try { cell.setAttribute('data-compliance-sig', sig); } catch (_) {}
           cell.innerHTML = complianceCellHtml(sid, { hasSale: hasSale, hasEval: hasEval, triggered: triggered, score: score });
         });
-      }).catch(function() {});
+      }).catch(function(err) {
+        try { if (typeof window.kexoCaptureError === 'function') window.kexoCaptureError(err, { context: 'complianceMarkersRefresh', page: (document.body && document.body.getAttribute('data-page')) || '' }); } catch (_) {}
+      });
     }
 
     function refreshFraudMarkersForLatestSalesTable() {
@@ -3232,7 +3320,9 @@ const API = '';
           var triggered = !!(m && m.triggered === true);
           slot.innerHTML = triggered ? buildFraudAlertIconHtml('session', sid, m) : '';
         });
-      }).catch(function() {});
+      }).catch(function(err) {
+        try { if (typeof window.kexoCaptureError === 'function') window.kexoCaptureError(err, { context: 'latestSalesFraudMarkersRefresh', page: (document.body && document.body.getAttribute('data-page')) || '' }); } catch (_) {}
+      });
     }
 
     function ensureFraudModal() {
@@ -9533,6 +9623,7 @@ const API = '';
       const stepEl = ensured.stepEl;
 
       beginReportBuildScope(scope);
+      if (key === 'sessions' && scope) try { scope.classList.add('report-building-sessions'); } catch (_) {}
       if (overlay) overlay.classList.remove('is-hidden');
       if (stepEl) {
         if (opts.initialStep != null) stepEl.textContent = String(opts.initialStep);
@@ -9555,6 +9646,7 @@ const API = '';
 
       function finish() {
         if (reportBuildTokens[key] !== token) return;
+        if (key === 'sessions' && scope) try { scope.classList.remove('report-building-sessions'); } catch (_) {}
         if (overlay) overlay.classList.add('is-hidden');
         if (overlay && overlayOrigin && overlayOrigin.parent) {
           try {
@@ -11299,9 +11391,17 @@ const API = '';
           url = API + '/api/sessions?range=' + encodeURIComponent(normalizeRangeKeyForApi(dateRange)) + '&limit=' + limit + '&offset=' + offset + '&timezone=' + encodeURIComponent(tz) + '&_=' + Date.now();
         }
       }
+      var SESSIONS_FETCH_TIMEOUT_MS = 15000;
       if (_fetchAbortControllers.sessions) { try { _fetchAbortControllers.sessions.abort(); } catch (_) {} }
       var ac = typeof AbortController !== 'undefined' ? new AbortController() : null;
       _fetchAbortControllers.sessions = ac;
+      var sessionsTimeoutId = null;
+      if (ac && SESSIONS_FETCH_TIMEOUT_MS > 0) {
+        sessionsTimeoutId = setTimeout(function() {
+          try { ac.abort(); } catch (_) {}
+        }, SESSIONS_FETCH_TIMEOUT_MS);
+      }
+      var sessionsFetchStart = typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now();
       liveRefreshInFlight = fetch(url, { credentials: 'same-origin', cache: 'no-store', signal: ac ? ac.signal : undefined })
         .then(function(r) {
           if (!r.ok) {
@@ -11348,6 +11448,10 @@ const API = '';
           return sessions;
         })
         .catch(function(err) {
+          try {
+            window.__kexoPerfMetrics = window.__kexoPerfMetrics || {};
+            if (err && err.name === 'AbortError') window.__kexoPerfMetrics.sessionsFetchTimeoutCount = (window.__kexoPerfMetrics.sessionsFetchTimeoutCount || 0) + 1;
+          } catch (_) {}
           if (err && err.name === 'AbortError') return null;
           try { if (typeof window.kexoCaptureError === 'function') window.kexoCaptureError(err, { context: 'sessionsFetch', page: PAGE }); } catch (_) {}
           build.step('Could not load sessions');
@@ -11359,6 +11463,13 @@ const API = '';
           return null;
         })
         .finally(function() {
+          try {
+            if (typeof performance !== 'undefined' && performance.now && sessionsFetchStart != null) {
+              window.__kexoPerfMetrics = window.__kexoPerfMetrics || {};
+              window.__kexoPerfMetrics.lastSessionsFetchMs = Math.round((performance.now() - sessionsFetchStart) * 100) / 100;
+            }
+          } catch (_) {}
+          if (sessionsTimeoutId != null) { clearTimeout(sessionsTimeoutId); sessionsTimeoutId = null; }
           liveRefreshInFlight = null;
           if (_fetchAbortControllers.sessions === ac) _fetchAbortControllers.sessions = null;
           build.finish();
@@ -11399,7 +11510,9 @@ const API = '';
             onlineCountLastFetchedAt = Date.now();
           }
         })
-        .catch(function() {})
+        .catch(function(err) {
+          try { if (typeof window.kexoCaptureError === 'function') window.kexoCaptureError(err, { context: 'onlineCountFetch', page: PAGE }); } catch (_) {}
+        })
         .then(function() {
           onlineCountInFlight = false;
           if (_fetchAbortControllers.onlineCount === ac) _fetchAbortControllers.onlineCount = null;
@@ -14756,8 +14869,17 @@ const API = '';
 
     // On mobile, post-login redirect can restore the dashboard from bfcache; DOMContentLoaded
     // does not fire again, so data fetches never run. Refresh when page is shown from bfcache.
+    // Also restart SSE and pollers (runCleanup on pagehide closes them).
+    function reinitLiveStreamsAndPollers() {
+      try { initEventSource(); } catch (_) {}
+      _intervals.push(setInterval(tickTimeOnSite, 30000));
+      try { if (typeof scheduleLiveSalesPoll === 'function') scheduleLiveSalesPoll(LIVE_SALES_POLL_MS); } catch (_) {}
+      try { if (typeof window.__kexoInitStickyDocObserver === 'function') window.__kexoInitStickyDocObserver(); } catch (_) {}
+      try { if (typeof window.__kexoInitGridDocObserver === 'function') window.__kexoInitGridDocObserver(); } catch (_) {}
+    }
     window.addEventListener('pageshow', function(ev) {
       if (!ev.persisted) return;
+      reinitLiveStreamsAndPollers();
       kexoWithSilentOverlay(function() {
         if (PAGE === 'dashboard') {
           try { if (typeof window.refreshDashboard === 'function') window.refreshDashboard({ force: true, silent: true }); } catch (_) {}
@@ -15956,11 +16078,9 @@ const API = '';
         }
 
         var data = _kexoScoreCache;
-        var rangeKey = (_kexoScoreRangeKey && String(_kexoScoreRangeKey).trim()) || 'today';
         applyKexoScoreModalSummary(data);
         if (!data || !Array.isArray(data.components) || data.components.length === 0) {
-          body.innerHTML = '<div id="kexo-score-modal-summary" class="kexo-score-summary-card mb-3" aria-live="polite"></div>' +
-            '<div class="kexo-score-breakdown-empty text-muted">No score data. Select a date range and refresh.</div>';
+          body.innerHTML = '<div class="kexo-score-breakdown-empty text-muted">No score data. Select a date range and refresh.</div>';
         } else {
           var metricOrder = ['revenue', 'orders', 'itemsOrdered', 'conversion', 'roas'];
           var rankByKey = {};
@@ -15972,9 +16092,7 @@ const API = '';
             var bRank = rankByKey[normalizeScoreMetricKey(b && b.key)];
             return aRank - bRank;
           });
-          var summaryBlock = '<div id="kexo-score-modal-summary" class="kexo-score-summary-card mb-3" aria-live="polite">' +
-            '<div class="kexo-score-summary-loading text-muted small">Loading summary…</div></div>';
-          body.innerHTML = summaryBlock + rows.map(function(c) {
+          body.innerHTML = rows.map(function(c) {
             var label = (c.label && String(c.label).trim()) ? String(c.label) : (c.key || '');
             var score = typeof c.score === 'number' && Number.isFinite(c.score) ? Math.max(0, Math.min(100, c.score)) : 0;
             var barClass = kexoScoreBarClass(score);
@@ -15997,49 +16115,6 @@ const API = '';
         modal.classList.remove('is-hidden');
         modal.setAttribute('aria-hidden', 'false');
         requestAnimationFrame(function() { animateKexoScoreBreakdownBars(body); });
-        fetchAndRenderKexoScoreSummary(rangeKey);
-      }
-
-      function fetchAndRenderKexoScoreSummary(rangeKey, force) {
-        var container = document.getElementById('kexo-score-modal-summary');
-        if (!container) return;
-        var rk = (rangeKey != null && String(rangeKey).trim()) ? String(rangeKey).trim() : 'today';
-        var url = API + '/api/kexo-score-summary?range=' + encodeURIComponent(rk);
-        if (force) url += '&force=1';
-        (typeof fetchWithTimeout === 'function' ? fetchWithTimeout(url, { credentials: 'same-origin', cache: 'default' }, 15000) : fetch(url, { credentials: 'same-origin', cache: 'default' }))
-          .then(function(r) { return (r && r.ok) ? r.json() : null; })
-          .then(function(payload) {
-            if (!container) return;
-            if (!payload || !payload.ok) {
-              container.innerHTML = '<div class="kexo-score-summary-loading text-muted small">Summary unavailable.</div>';
-              return;
-            }
-            var summary = (payload.summary && String(payload.summary).trim()) ? String(payload.summary).trim() : '';
-            var drivers = Array.isArray(payload.key_drivers) ? payload.key_drivers : [];
-            var rec = (payload.recommendation && String(payload.recommendation).trim()) ? String(payload.recommendation).trim() : '';
-            var html = '';
-            if (summary) html += '<p class="kexo-score-summary-text mb-2">' + escapeHtml(summary) + '</p>';
-            if (drivers.length) {
-              html += '<ul class="kexo-score-summary-drivers list-unstyled small mb-2">';
-              drivers.slice(0, 4).forEach(function(d) {
-                html += '<li>' + escapeHtml(String(d).trim()) + '</li>';
-              });
-              html += '</ul>';
-            }
-            if (rec) html += '<p class="kexo-score-summary-recommendation small mb-2"><strong>Where to focus:</strong> ' + escapeHtml(rec) + '</p>';
-            html += '<button type="button" class="btn btn-sm btn-ghost-secondary kexo-score-summary-refresh" data-range="' + escapeHtml(rk) + '" aria-label="Refresh summary">Refresh</button>';
-            container.innerHTML = html;
-            var refreshBtn = container.querySelector('.kexo-score-summary-refresh');
-            if (refreshBtn) {
-              refreshBtn.addEventListener('click', function() {
-                var dataRange = refreshBtn.getAttribute('data-range');
-                if (dataRange) fetchAndRenderKexoScoreSummary(dataRange, true);
-              });
-            }
-          })
-          .catch(function() {
-            if (container) container.innerHTML = '<div class="kexo-score-summary-loading text-muted small">Summary unavailable.</div>';
-          });
       }
 
       function closeKexoScoreModal() {

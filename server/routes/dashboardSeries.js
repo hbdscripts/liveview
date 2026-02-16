@@ -12,6 +12,7 @@ const salesTruth = require('../salesTruth');
 const fx = require('../fx');
 const reportCache = require('../reportCache');
 const productMetaCache = require('../shopifyProductMetaCache');
+const { warnOnReject } = require('../shared/warnReject');
 
 const DASHBOARD_TOP_TABLE_MAX_ROWS = 10;
 const DASHBOARD_TRENDING_MAX_ROWS = 10;
@@ -528,12 +529,24 @@ async function fetchTrendingProducts(db, shop, nowBounds, prevBounds, filter) {
     });
   });
 
-  // Fetch product thumbnails
+  // Top candidates first (max rows we will return); fetch meta only for these.
+  const up = base
+    .filter(function(r) { return r.deltaRevenue > 0.005; })
+    .sort(function(a, b) { return b.deltaRevenue - a.deltaRevenue; })
+    .slice(0, DASHBOARD_TRENDING_MAX_ROWS);
+  const down = base
+    .filter(function(r) { return r.deltaRevenue < -0.005; })
+    .sort(function(a, b) { return a.deltaRevenue - b.deltaRevenue; })
+    .slice(0, DASHBOARD_TRENDING_MAX_ROWS);
+  const candidateIds = new Set();
+  up.forEach(function(r) { if (r.product_id) candidateIds.add(String(r.product_id).trim()); });
+  down.forEach(function(r) { if (r.product_id) candidateIds.add(String(r.product_id).trim()); });
+
   let token = null;
   try { token = await salesTruth.getAccessToken(shop); } catch (_) {}
-  const productIds = token ? base.map(r => r.product_id).filter(Boolean) : [];
   const metaMap = new Map();
-  if (token && productIds.length) {
+  if (token && candidateIds.size) {
+    const productIds = Array.from(candidateIds);
     const metaPairs = await Promise.all(productIds.map(async function(pid) {
       try {
         const meta = await productMetaCache.getProductMeta(shop, token, pid);
@@ -550,7 +563,7 @@ async function fetchTrendingProducts(db, shop, nowBounds, prevBounds, filter) {
   }
 
   base.forEach(function(r) {
-    const meta = metaMap.get(r.product_id);
+    const meta = metaMap.get(r.product_id ? String(r.product_id).trim() : '');
     r.thumb_url = meta && meta.thumb_url ? String(meta.thumb_url) : null;
     r.handle = meta && meta.handle ? String(meta.handle) : null;
     if ((!r.title || r.title === 'Unknown') && meta && meta.title) r.title = String(meta.title);
@@ -560,9 +573,11 @@ async function fetchTrendingProducts(db, shop, nowBounds, prevBounds, filter) {
     }
   });
 
-  // Attach sessions + CR% (orders / sessions) for the current period.
   try {
-    const handles = uniqueNonEmpty(base.map(r => normalizeHandleKey(r && r.handle != null ? String(r.handle) : ''))).filter(Boolean);
+    const handles = uniqueNonEmpty(
+      base.filter(function(r) { return candidateIds.has(r.product_id ? String(r.product_id).trim() : ''); })
+        .map(function(r) { return normalizeHandleKey(r && r.handle != null ? String(r.handle) : ''); })
+    ).filter(Boolean);
     const sessionsNowByHandle = handles.length
       ? await fetchSessionCountsByProductHandle(db, nowBounds.start, nowBounds.end, handles, filter)
       : new Map();
@@ -579,14 +594,6 @@ async function fetchTrendingProducts(db, shop, nowBounds, prevBounds, filter) {
     });
   } catch (_) {}
 
-  const up = base
-    .filter(function(r) { return r.deltaRevenue > 0.005; })
-    .sort(function(a, b) { return b.deltaRevenue - a.deltaRevenue; })
-    .slice(0, DASHBOARD_TRENDING_MAX_ROWS);
-  const down = base
-    .filter(function(r) { return r.deltaRevenue < -0.005; })
-    .sort(function(a, b) { return a.deltaRevenue - b.deltaRevenue; })
-    .slice(0, DASHBOARD_TRENDING_MAX_ROWS);
   return { trendingUp: up, trendingDown: down };
 }
 
@@ -704,7 +711,7 @@ async function computeDashboardSeries(days, nowMs, timeZone, trafficMode) {
   if (shop) {
     try {
       const today = store.getRangeBounds('today', Date.now(), timeZone);
-      salesTruth.ensureReconciled(shop, today.start, today.end, 'today').catch(() => {});
+      salesTruth.ensureReconciled(shop, today.start, today.end, 'today').catch(warnOnReject('[dashboardSeries] ensureReconciled'));
     } catch (_) {}
   }
 
@@ -1177,7 +1184,7 @@ async function computeDashboardSeriesForBounds(bounds, nowMs, timeZone, trafficM
   if (shop) {
     try {
       const today = store.getRangeBounds('today', Date.now(), timeZone);
-      salesTruth.ensureReconciled(shop, today.start, today.end, 'today').catch(() => {});
+      salesTruth.ensureReconciled(shop, today.start, today.end, 'today').catch(warnOnReject('[dashboardSeries] ensureReconciled'));
     } catch (_) {}
   }
 

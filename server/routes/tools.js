@@ -5,11 +5,23 @@ const salesTruth = require('../salesTruth');
 const compareCr = require('../tools/compareCr');
 const shippingCr = require('../tools/shippingCr');
 const clickOrderLookup = require('../tools/clickOrderLookup');
+const { warnOnReject } = require('../shared/warnReject');
 
 const router = express.Router();
 
 // In-memory backfill jobs (best-effort). Intended for one-off historical catch-up.
 const shippingCrBackfillJobs = new Map(); // jobId -> job
+const MAX_ACTIVE_BACKFILL_JOBS = 2;
+const BACKFILL_JOB_TTL_MS = 60 * 60 * 1000; // 1 hour; prune finished jobs older than this
+
+function pruneShippingCrBackfillJobs() {
+  const now = Date.now();
+  for (const [id, job] of shippingCrBackfillJobs.entries()) {
+    if (job.done && job.finished_at != null && (now - job.finished_at) > BACKFILL_JOB_TTL_MS) {
+      shippingCrBackfillJobs.delete(id);
+    }
+  }
+}
 
 function safeYmd(v) {
   const s = v != null ? String(v).trim() : '';
@@ -224,6 +236,23 @@ router.post('/shipping-cr/backfill/start', async (req, res) => {
 
     const stepDays = clampInt(req && req.body && req.body.step_days != null ? req.body.step_days : 7, 7, 1, 31);
 
+    pruneShippingCrBackfillJobs();
+    const runningCount = Array.from(shippingCrBackfillJobs.values()).filter((j) => j.running).length;
+    if (runningCount >= MAX_ACTIVE_BACKFILL_JOBS) {
+      return res.status(429).json({ ok: false, error: 'too_many_jobs', message: 'Max concurrent backfill jobs reached.' });
+    }
+    const normStart = startYmd <= endYmd ? startYmd : endYmd;
+    const normEnd = startYmd <= endYmd ? endYmd : startYmd;
+    for (const j of shippingCrBackfillJobs.values()) {
+      if (j.shop !== safeShop || j.start_ymd !== normStart || j.end_ymd !== normEnd) continue;
+      if (j.running) {
+        return res.status(409).json({ ok: false, error: 'duplicate_range', message: 'A backfill for this range is already running.' });
+      }
+      if (j.done && j.finished_at != null && (Date.now() - j.finished_at) < 60000) {
+        return res.status(409).json({ ok: false, error: 'duplicate_range', message: 'Same range was just finished; wait before retrying.' });
+      }
+    }
+
     const jobId = 'shipcr_' + Date.now().toString(36) + '_' + randomId().slice(0, 8);
     const totalDays = (() => {
       try {
@@ -240,8 +269,8 @@ router.post('/shipping-cr/backfill/start', async (req, res) => {
     const job = {
       job_id: jobId,
       shop: safeShop,
-      start_ymd: startYmd <= endYmd ? startYmd : endYmd,
-      end_ymd: startYmd <= endYmd ? endYmd : startYmd,
+      start_ymd: normStart,
+      end_ymd: normEnd,
       step_days: stepDays,
       progress_total: totalChunks,
       progress_done: 0,
@@ -257,7 +286,7 @@ router.post('/shipping-cr/backfill/start', async (req, res) => {
     shippingCrBackfillJobs.set(jobId, job);
 
     setImmediate(() => {
-      runShippingCrBackfillJob(job).catch(() => {});
+      runShippingCrBackfillJob(job).catch(warnOnReject('[tools] runShippingCrBackfillJob'));
     });
 
     res.json({
@@ -272,6 +301,16 @@ router.post('/shipping-cr/backfill/start', async (req, res) => {
   } catch (err) {
     Sentry.captureException(err, { extra: { route: 'tools.shipping-cr.backfill.start' } });
     console.error('[tools.shipping-cr.backfill.start]', err);
+    res.status(500).json({ ok: false, error: 'Internal error' });
+  }
+});
+
+router.get('/shipping-cr/backfill/metrics', (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  try {
+    const activeCount = Array.from(shippingCrBackfillJobs.values()).filter((j) => j.running).length;
+    res.json({ ok: true, activeCount, totalJobs: shippingCrBackfillJobs.size });
+  } catch (err) {
     res.status(500).json({ ok: false, error: 'Internal error' });
   }
 });
