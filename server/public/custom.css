@@ -759,6 +759,13 @@ body.side-panel-open {
 #sessions-table.grid-table .grid-body .grid-row .grid-cell.compliance-cell .compliance-status-icon.is-ok {
   color: var(--tblr-success, #2fb344);
 }
+#sessions-table.grid-table .grid-body .grid-row .grid-cell.compliance-cell .compliance-status-icon.is-search {
+  width: 15px;
+  height: 15px;
+  vertical-align: middle;
+  display: inline-block;
+  margin-left: 10px;
+}
 
 #sessions-table.grid-table .grid-row--header .grid-cell.compliance-cell {
   display: flex;
@@ -766,9 +773,11 @@ body.side-panel-open {
   justify-content: center;
 }
 #sessions-table.grid-table .grid-row--header .grid-cell.compliance-cell .compliance-header-icon {
-  width: 20px;
-  height: 20px;
-  display: block;
+  width: 15px;
+  height: 15px;
+  vertical-align: middle;
+  display: inline-block;
+  margin-left: 10px;
   object-fit: contain;
 }
 
@@ -3754,6 +3763,14 @@ body[data-page="snapshot"] #kexo-date-display {
   display: inline-flex;
   align-items: center;
   gap: .25rem;
+}
+.page-header .row.align-items-center.kexo-page-header-layout-triple .page-pretitle {
+  color: #555;
+  font-size: 16px;
+  letter-spacing: 0.1px;
+  font-weight: 500;
+  text-transform: capitalize;
+  line-height: 20px;
 }
 
 /* Desktop page header layout (when JS enables it):

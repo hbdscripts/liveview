@@ -63,6 +63,7 @@
     if (key.indexOf('header-') === 0) return 'fa-jelly-filled';
     if (key === 'nav-dropdown-arrow') return 'fa-solid';
     if (key.indexOf('nav-item-') === 0) return 'fa-jelly';
+    if (key === 'table-icon-compliance-search') return 'fa-light';
     if (key.indexOf('table-icon-') === 0) return 'fa-jelly-filled';
     if (key.indexOf('table-short-') === 0) return 'fa-solid';
     if (key.indexOf('card-title-') === 0) return 'fa-jelly-filled';
