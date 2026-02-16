@@ -117,3 +117,80 @@ test('generateAiNarrative returns stable shape (deterministic when AI disabled)'
   assert.ok(typeof narrative.recommendation === 'string', 'recommendation is string');
   assert.ok(narrative.links === undefined || Array.isArray(narrative.links), 'links optional array');
 });
+
+function createMockRes() {
+  return {
+    statusCode: 200,
+    headers: {},
+    body: null,
+    setHeader(key, value) { this.headers[String(key).toLowerCase()] = value; },
+    status(code) { this.statusCode = code; return this; },
+    json(payload) { this.body = payload; return this; },
+  };
+}
+
+test('kexo-score-summary route passes force flag to reportCache and returns stable payload', async () => {
+  const route = require('../server/routes/kexoScoreSummary');
+  const reportCache = require('../server/reportCache');
+  const kexoScoreSummary = require('../server/kexoScoreSummary');
+  const kexoScoreAiNarrative = require('../server/kexoScoreAiNarrative');
+
+  const originalGetOrCompute = reportCache.getOrComputeJson;
+  const originalBuild = kexoScoreSummary.buildSummaryContext;
+  const originalGenerate = kexoScoreAiNarrative.generateAiNarrative;
+
+  let capturedOpts = null;
+  try {
+    reportCache.getOrComputeJson = async (opts, computeFn) => {
+      capturedOpts = opts;
+      return { ok: true, cacheHit: false, data: await computeFn() };
+    };
+    kexoScoreSummary.buildSummaryContext = async () => ({
+      ok: true,
+      context: { rangeKey: 'today', range: { start: 1, end: 2 }, compare: null, components: [] },
+      drivers: { product: [], attribution: [], ads: [] },
+    });
+    kexoScoreAiNarrative.generateAiNarrative = async () => ({
+      ok: true,
+      summary: 'Deterministic summary',
+      key_drivers: ['Driver A'],
+      recommendation: 'Focus here',
+      links: [],
+    });
+
+    const req = { query: { range: 'today', force: '1' } };
+    const res = createMockRes();
+    await route.getKexoScoreSummary(req, res);
+
+    assert.ok(capturedOpts && capturedOpts.force === true, 'force propagated to report cache');
+    assert.equal(res.statusCode, 200, 'responds with HTTP 200 on success');
+    assert.ok(res.body && res.body.ok === true, 'payload ok=true');
+    assert.equal(res.body.summary, 'Deterministic summary', 'summary returned');
+  } finally {
+    reportCache.getOrComputeJson = originalGetOrCompute;
+    kexoScoreSummary.buildSummaryContext = originalBuild;
+    kexoScoreAiNarrative.generateAiNarrative = originalGenerate;
+  }
+});
+
+test('kexo-score-summary route returns 500 when computed payload is ok=false', async () => {
+  const route = require('../server/routes/kexoScoreSummary');
+  const reportCache = require('../server/reportCache');
+  const originalGetOrCompute = reportCache.getOrComputeJson;
+
+  try {
+    reportCache.getOrComputeJson = async () => ({
+      ok: true,
+      cacheHit: true,
+      data: { ok: false, error: 'build failed' },
+    });
+    const req = { query: { range: 'today' } };
+    const res = createMockRes();
+    await route.getKexoScoreSummary(req, res);
+
+    assert.equal(res.statusCode, 500, 'payload failures return 500');
+    assert.ok(res.body && res.body.ok === false, 'payload ok=false returned');
+  } finally {
+    reportCache.getOrComputeJson = originalGetOrCompute;
+  }
+});

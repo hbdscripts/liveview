@@ -16044,6 +16044,67 @@ const API = '';
         });
       }
 
+      function renderKexoScoreSummaryCard(payload, rangeKey) {
+        var safeRange = (rangeKey == null ? '' : String(rangeKey)).trim().toLowerCase() || 'today';
+        var hasData = !!(payload && payload.ok);
+        var summary = hasData && payload.summary ? String(payload.summary).trim() : '';
+        var keyDrivers = hasData && Array.isArray(payload.key_drivers) ? payload.key_drivers : [];
+        var recommendation = hasData && payload.recommendation ? String(payload.recommendation).trim() : '';
+        var html = '';
+        if (summary) {
+          html += '<p class="kexo-score-summary-text mb-2">' + escapeHtml(summary) + '</p>';
+        }
+        if (keyDrivers.length) {
+          html += '<ul class="kexo-score-summary-drivers list-unstyled small mb-2">';
+          keyDrivers.slice(0, 4).forEach(function(item) {
+            html += '<li>' + escapeHtml(String(item == null ? '' : item).trim()) + '</li>';
+          });
+          html += '</ul>';
+        }
+        if (recommendation) {
+          html += '<p class="kexo-score-summary-recommendation small mb-2"><strong>Where to focus:</strong> ' + escapeHtml(recommendation) + '</p>';
+        }
+        if (!summary && !keyDrivers.length && !recommendation) {
+          html += '<p class="kexo-score-summary-loading text-muted small mb-2">Summary unavailable.</p>';
+        }
+        html += '<button type="button" class="btn btn-sm btn-ghost-secondary kexo-score-summary-refresh" data-range="' + escapeHtml(safeRange) + '" aria-label="Refresh summary">Refresh</button>';
+        return html;
+      }
+
+      function fetchAndRenderKexoScoreSummary(rangeKey, force) {
+        var container = document.getElementById('kexo-score-modal-summary');
+        if (!container) return;
+        var rk = (rangeKey == null ? '' : String(rangeKey)).trim().toLowerCase() || 'today';
+        container.innerHTML = '<p class="kexo-score-summary-loading text-muted small mb-0">Loading summary...</p>';
+        var url = API + '/api/kexo-score-summary?range=' + encodeURIComponent(rk) + (force ? '&force=1' : '');
+        return fetchWithTimeout(url, { credentials: 'same-origin', cache: force ? 'no-store' : 'default' }, 15000)
+          .then(function(r) { return (r && r.ok) ? r.json() : null; })
+          .then(function(payload) {
+            var currentContainer = document.getElementById('kexo-score-modal-summary');
+            if (!currentContainer) return;
+            currentContainer.innerHTML = renderKexoScoreSummaryCard(payload, rk);
+            var refreshBtn = currentContainer.querySelector('.kexo-score-summary-refresh');
+            if (refreshBtn) {
+              refreshBtn.addEventListener('click', function() {
+                var nextRange = (refreshBtn.getAttribute('data-range') || rk).trim().toLowerCase() || 'today';
+                fetchAndRenderKexoScoreSummary(nextRange, true);
+              });
+            }
+          })
+          .catch(function() {
+            var currentContainer = document.getElementById('kexo-score-modal-summary');
+            if (!currentContainer) return;
+            currentContainer.innerHTML = renderKexoScoreSummaryCard(null, rk);
+            var refreshBtn = currentContainer.querySelector('.kexo-score-summary-refresh');
+            if (refreshBtn) {
+              refreshBtn.addEventListener('click', function() {
+                var nextRange = (refreshBtn.getAttribute('data-range') || rk).trim().toLowerCase() || 'today';
+                fetchAndRenderKexoScoreSummary(nextRange, true);
+              });
+            }
+          });
+      }
+
       function openKexoScoreModal() {
         var modal = document.getElementById('kexo-score-modal');
         var body = document.getElementById('kexo-score-modal-body');
@@ -16116,9 +16177,13 @@ const API = '';
         }
 
         var data = _kexoScoreCache;
+        var rangeKey = (_kexoScoreRangeKey == null ? '' : String(_kexoScoreRangeKey)).trim().toLowerCase() || 'today';
+        var summaryBlock = '<div id="kexo-score-modal-summary" class="kexo-score-summary-card mb-3" aria-live="polite">' +
+          '<p class="kexo-score-summary-loading text-muted small mb-0">Loading summary...</p>' +
+        '</div>';
         applyKexoScoreModalSummary(data);
         if (!data || !Array.isArray(data.components) || data.components.length === 0) {
-          body.innerHTML = '<div class="kexo-score-breakdown-empty text-muted">No score data. Select a date range and refresh.</div>';
+          body.innerHTML = summaryBlock + '<div class="kexo-score-breakdown-empty text-muted">No score data. Select a date range and refresh.</div>';
         } else {
           var metricOrder = ['revenue', 'orders', 'itemsOrdered', 'conversion', 'roas'];
           var rankByKey = {};
@@ -16147,12 +16212,14 @@ const API = '';
               '</div>' +
             '</div>';
           }).join('');
+          body.innerHTML = summaryBlock + body.innerHTML;
         }
         disposeKexoScorePopovers(modal);
         initKexoScorePopovers(modal);
         modal.classList.remove('is-hidden');
         modal.setAttribute('aria-hidden', 'false');
         requestAnimationFrame(function() { animateKexoScoreBreakdownBars(body); });
+        fetchAndRenderKexoScoreSummary(rangeKey, false);
       }
 
       function closeKexoScoreModal() {

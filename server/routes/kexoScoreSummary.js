@@ -61,7 +61,10 @@ async function getKexoScoreSummary(req, res) {
     );
 
     if (!cached || !cached.ok) {
-      return res.status(cached && cached.data && cached.data.error ? 500 : 200).json(cached && cached.data ? cached.data : { ok: false });
+      return res.status(500).json(cached && cached.data ? cached.data : { ok: false, error: 'cache_error' });
+    }
+    if (!cached.data || cached.data.ok === false) {
+      return res.status(500).json(cached.data || { ok: false, error: 'summary_unavailable' });
     }
     res.json(cached.data);
   } catch (err) {
