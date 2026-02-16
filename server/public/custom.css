@@ -2065,28 +2065,70 @@ html[data-bs-theme="dark"] .report-build-wrap {
   font-variant-numeric: tabular-nums;
 }
 
-/* Kexo Score in header: miniature, white number, no background, progress wheel only */
+/* Kexo Score in header: miniature, hollow ring, track = header colour + opacity */
 .kexo-header-score-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   padding: 0;
-  margin: 0 0.5rem 0 0;
+  margin: 0 0.35rem 0 0;
   border: none;
   background: transparent;
   cursor: pointer;
   color: inherit;
+  flex-shrink: 0;
 }
 .kexo-header-score-btn:hover {
   opacity: 0.9;
 }
 .kexo-score-ring-wrap--header {
+  --kexo-score-track: color-mix(in srgb, black 25%, var(--kexo-header-top-bg, #fff));
   width: 36px;
   height: 36px;
   background: transparent;
+  position: relative;
+}
+/* Full hollow ring: track (header colour + opacity) */
+.kexo-score-ring-wrap--header::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 3px solid var(--kexo-score-track);
+  background: transparent;
+  pointer-events: none;
+}
+/* Progress segment: hollow ring (5 colours 0→score%), thin stroke */
+.kexo-score-ring--header {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 0deg,
+    var(--kexo-accent-1, #4b94e4) 0deg,
+    var(--kexo-accent-2, #3eb3ab) 72deg,
+    var(--kexo-accent-3, #f59e34) 144deg,
+    var(--kexo-accent-4, #8b5cf6) 216deg,
+    var(--kexo-accent-5, #ef4444) 288deg
+  );
+  --kexo-score-pct: 0;
+  mask: conic-gradient(from 0deg, black 0deg, black calc(var(--kexo-score-pct) * 3.6deg), transparent calc(var(--kexo-score-pct) * 3.6deg));
+  -webkit-mask: conic-gradient(from 0deg, black 0deg, black calc(var(--kexo-score-pct) * 3.6deg), transparent calc(var(--kexo-score-pct) * 3.6deg));
+  pointer-events: none;
 }
 .kexo-score-ring--header::before {
-  background: transparent;
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border-radius: 50%;
+  background: var(--kexo-header-top-bg, #fff);
+}
+.kexo-score-ring-wrap--header .kexo-score-ring-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1;
 }
 .kexo-score-num--header {
   font-size: 0.75rem;
@@ -3028,6 +3070,11 @@ body.kexo-report-loading #kexo-date-display::after {
 }
 .kexo-desktop-top-strip-center {
   justify-content: center;
+  position: relative;
+  z-index: 1;
+}
+.kexo-desktop-top-strip-center .kexo-desktop-brand-link {
+  flex-shrink: 0;
 }
 .kexo-desktop-top-strip-right {
   justify-content: flex-end;

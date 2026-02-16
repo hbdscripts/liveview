@@ -1079,6 +1079,7 @@
       options: {
         condensed: { showDelta: true, showProgress: true, showSparkline: true },
         dashboard: { showDelta: true },
+        header: { showKexoScore: true },
       },
       headerStrip: {
         pages: {
@@ -3778,10 +3779,15 @@
     var optCondProg = document.getElementById('settings-kpi-opt-condensed-progress');
     var optCondSpark = document.getElementById('settings-kpi-opt-condensed-sparkline');
     var optDashDelta = document.getElementById('settings-kpi-opt-dashboard-delta');
+    var optHeaderKexoScore = document.getElementById('settings-kpi-opt-header-kexo-score');
     if (optCondDelta) optCondDelta.checked = condensed.showDelta !== false;
     if (optCondProg) optCondProg.checked = condensed.showProgress !== false;
     if (optCondSpark) optCondSpark.checked = condensed.showSparkline !== false;
     if (optDashDelta) optDashDelta.checked = dashboard.showDelta !== false;
+    if (optHeaderKexoScore) {
+      var headerOpt = options.header && typeof options.header === 'object' ? options.header : {};
+      optHeaderKexoScore.checked = headerOpt.showKexoScore !== false;
+    }
 
     // Header KPI strip visibility per page.
     var defPages = (def.headerStrip && def.headerStrip.pages && typeof def.headerStrip.pages === 'object') ? def.headerStrip.pages : {};
@@ -3827,6 +3833,7 @@
     var optCondProg = document.getElementById('settings-kpi-opt-condensed-progress');
     var optCondSpark = document.getElementById('settings-kpi-opt-condensed-sparkline');
     var optDashDelta = document.getElementById('settings-kpi-opt-dashboard-delta');
+    var optHeaderKexoScore = document.getElementById('settings-kpi-opt-header-kexo-score');
     return {
       v: 1,
       options: {
@@ -3837,6 +3844,9 @@
         },
         dashboard: {
           showDelta: !!(optDashDelta && optDashDelta.checked),
+        },
+        header: {
+          showKexoScore: !!(optHeaderKexoScore && optHeaderKexoScore.checked),
         },
       },
       headerStrip: {

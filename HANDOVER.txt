@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-16 (Sticky tables + compliance icons)
+Last updated: 2026-02-16 (Kexo Score header wheel + header toggle)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -378,6 +378,13 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-16 (latest)
+- Kexo Score header follow-up:
+  - Header wheel now uses a hollow ring style with a dedicated unfilled track that follows header color treatment (darkened/opacity).
+  - Header wheel/modal wiring audited and kept in shared header partial so it works consistently across pages.
+  - Added independent KPI setting toggle: `options.header.showKexoScore` (Settings → Layout → KPIs → Header), so header wheel can be disabled without disabling dashboard KPI card.
+  - Fixed dashboard KPI UI mapping regression by restoring `kexo_score` in `applyDashboardKpiUiConfig` key map.
 
 2026-02-16 (latest)
 - Kexo Score dashboard KPI:

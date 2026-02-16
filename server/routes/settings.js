@@ -134,6 +134,9 @@ function defaultKpiUiConfigV1() {
       dashboard: {
         showDelta: true,
       },
+      header: {
+        showKexoScore: true,
+      },
     },
     headerStrip: {
       pages: {
@@ -1017,6 +1020,7 @@ function normalizeKpiUiConfigV1(raw) {
   const options = obj.options && typeof obj.options === 'object' ? obj.options : {};
   const condensed = options.condensed && typeof options.condensed === 'object' ? options.condensed : {};
   const dashboard = options.dashboard && typeof options.dashboard === 'object' ? options.dashboard : {};
+  const headerOptions = options.header && typeof options.header === 'object' ? options.header : {};
   const headerStrip = obj.headerStrip && typeof obj.headerStrip === 'object' ? obj.headerStrip : {};
   const headerStripPages = normalizeHeaderKpiStripPages(headerStrip.pages, def.headerStrip.pages);
   const kpis = obj.kpis && typeof obj.kpis === 'object' ? obj.kpis : {};
@@ -1033,6 +1037,9 @@ function normalizeKpiUiConfigV1(raw) {
       },
       dashboard: {
         showDelta: normalizeBool(dashboard.showDelta, def.options.dashboard.showDelta),
+      },
+      header: {
+        showKexoScore: normalizeBool(headerOptions.showKexoScore, def.options.header.showKexoScore),
       },
     },
     headerStrip: {

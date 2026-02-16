@@ -9736,6 +9736,15 @@ const API = '';
       } catch (_) {}
     }
 
+    function applyHeaderKexoScoreUiConfig(cfg) {
+      try {
+        var btn = document.getElementById('header-kexo-score-wrap');
+        if (!btn || !cfg || cfg.v !== 1) return;
+        var show = !(cfg.options && cfg.options.header && cfg.options.header.showKexoScore === false);
+        btn.style.display = show ? '' : 'none';
+      } catch (_) {}
+    }
+
     function applyCondensedKpiUiConfig(cfg) {
       var strip = document.getElementById('kexo-condensed-kpis');
       if (!strip || !cfg || cfg.v !== 1) return;
@@ -9829,6 +9838,7 @@ const API = '';
         fulfilled: 'dash-kpi-fulfilled',
         returns: 'dash-kpi-returns',
         items: 'dash-kpi-items',
+        kexo_score: 'dash-kpi-kexo-score',
       };
       var colByKey = {};
       var keyByCol = new Map();
@@ -9913,6 +9923,7 @@ const API = '';
       try { window.__kexoKpiUiConfigV1 = cfg; } catch (_) {}
       try { safeWriteLocalStorageJson(KPI_UI_CFG_LS_KEY, cfg); } catch (_) {}
       try { applyHeaderKpiStripVisibilityByPage(cfg); } catch (_) {}
+      try { applyHeaderKexoScoreUiConfig(cfg); } catch (_) {}
       try { applyCondensedKpiUiConfig(cfg); } catch (_) {}
       try { applyDashboardKpiUiConfig(cfg); } catch (_) {}
       try { syncDateSelectOptions(); } catch (_) {}
