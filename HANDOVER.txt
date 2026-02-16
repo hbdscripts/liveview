@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-16 (drawer header flag-only + hyphen meta)
+Last updated: 2026-02-16 (Kexo Score dashboard KPI + breakdown modal)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -84,7 +84,7 @@ Goal: a generic, network-agnostic affiliate abuse/fraud detector that is safe to
 
 Desktop chrome (shared header across pages via `server/public/partials/header.html`):
 - Top strip: live visitor count (left), centered logo, Settings dropdown (right). On new sale, a Tabler-style `tblr-banner` overlays the strip with gradient, "New Sale: Product Name" + price (10s auto-close; MP3 cha-ching).
-- Main nav row below: grouped dropdown menus (Dashboard, Insights, Traffic, Integrations, Tools) + date range selector on the right.
+- Main nav row below: grouped dropdown menus (Dashboard, Insights, Acquisition, Integrations, Tools) + date range selector on the right.
 - KPI strip: condensed KPI chips shown on most pages. Visibility is configurable per page via Settings → Layout → KPIs. It sits inside the sticky header wrapper so it stays pinned while scrolling.
 - Page header: the per-page title row (category icon + pretitle + title + date control) stays inside the page body (not sticky). Layout is driven by `app.js` + `custom.css` (icon inside subtitle; title centered; date right) with segmented 2px connector lines around the title on simple pages.
 
@@ -122,9 +122,9 @@ Insights:
 - `/insights/variants` → `server/public/insights/variants.html`
 - `/insights/abandoned-carts` → `server/public/insights/abandoned-carts.html`
 
-Traffic:
-- `/traffic/channels` → `server/public/traffic/channels.html`
-- `/traffic/device` → `server/public/traffic/device.html`
+Acquisition:
+- `/acquisition/attribution` → `server/public/acquisition/attribution.html`
+- `/acquisition/devices` → `server/public/acquisition/devices.html`
 
 Integrations:
 - `/integrations/google-ads` → `server/public/integrations/google-ads.html`
@@ -169,7 +169,7 @@ Settings tabs:
 - Kexo UI: theme editor (colors/fonts/icons/header/sale notification) — formerly Theme. Subtab Sale Notification: choose sale sound (presets Kexo 1–4; or custom URL/upload). Stored in `asset_overrides.saleSound`.
 - Assets: upload/override favicon + logos (R2-backed) — plan-gated for normal accounts (Upgrade required)
 - Integrations: Pixel + Google Ads status/actions
-- Sources: Sources v2 rule editor (UTMs + entry params + referrer + affiliate attribution) with FA/SVG/upload icons + legacy v1 mapping (collapsible)
+- Attribution mapping: Attribution config + observed token mapping editor (`server/public/attribution-mapping-settings.js`) backed by `/api/attribution/config`, `/api/attribution/observed`, and `/api/attribution/map`.
 - Insights: tab shell for Products/Countries plus active Variants mapping manager (custom table/rule editor)
 - Layout:
 - Tables: accordion-based per-page table config (name/order/grid, rows-per-page options/default, optional sticky column min/max). **Insights · Variants** is a single accordion that controls all user-defined variant tables on /insights/variants (rows 5/10, sticky min/max).
@@ -183,7 +183,7 @@ Admin-only (moved out of `/settings`):
 
 Settings API:
 - `GET/POST /api/settings` in `server/routes/settings.js`
-- Returned payload includes (among other fields): `reporting`, `kpiUiConfig`, `chartsUiConfig`, `tablesUiConfig`, `insightsVariantsConfig`, `trafficSourcesConfig`
+- Returned payload includes (among other fields): `reporting`, `kpiUiConfig`, `chartsUiConfig`, `tablesUiConfig`, `insightsVariantsConfig`
 - New: `pageLoaderEnabled` (per-page loader overlay toggles; stored under `page_loader_enabled_v1`)
 - Assets helpers:
   - `GET /api/asset-overrides` (read `asset_overrides`)
@@ -286,6 +286,7 @@ KPI/date-range UI config:
 KPI data:
 - `GET /api/kpis` (server cached; also localStorage warm-paint to avoid empty chips on navigation)
 - `GET /api/kpis-expanded-extra` for Shopify-derived extras (COGS, returns, items ordered, etc.)
+- `GET /api/kexo-score?range=...` for Kexo Score (0–100) and component breakdown; used by the dashboard Kexo Score ring card and breakdown modal.
 
 ---
 
@@ -377,6 +378,20 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-16 (latest)
+- Kexo Score dashboard KPI:
+  - New dashboard KPI card on `/dashboard/overview`: ring fill (Kexo 5 colors) + centered 0–100 score; click opens breakdown modal with per-metric progress bars and current/previous/day-before values.
+  - Backend: `store.getKexoScore({ rangeKey })` computes three aligned windows (current, previous, previous2; same-time-of-day for today), weighted component scores (revenue, conversion, bounce, sessions; optional ROAS + Ads CTR when ads integrated), band 20/40/60/80/100.
+  - API: `GET /api/kexo-score?range=...` (report cache 120s); route in `server/routes/kexoScore.js`, registered in `server/index.js`.
+  - Settings: Kexo Score added to dashboard KPI list (reorderable/hideable); `trackerDefinitions.js` includes `dashboard_kexo_score` definition.
+  - Test: `test/kexo-score.test.js` asserts return shape and band.
+
+2026-02-16 (latest)
+- Acquisition + attribution cutover completed:
+  - Removed legacy Traffic frontend assets (`server/public/traffic/channels.html`, `server/public/traffic/device.html`) and legacy Sources v2 settings script (`server/public/traffic-sources-v2-settings.js`).
+  - Kept route redirects in place (`/traffic/channels` → `/acquisition/attribution`, `/traffic/device` → `/acquisition/devices`) while switching runtime/default config references to Acquisition chart/table keys.
+  - Updated diagnostics/config-status defaults and table checks to attribution tables (`attribution_*`) and Acquisition chart keys (`attribution-chart`, `devices-chart`).
 
 2026-02-16 (latest)
 - Snapshot profit/deductions alignment:

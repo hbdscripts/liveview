@@ -16,39 +16,39 @@
   <link rel="stylesheet" href="/diagnostics-modal.css" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
   <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js" defer></script>
-  <title>Kexo · Device &amp; Platform</title>
+  <title>Kexo · Attribution</title>
   <script src="https://cdn.jsdelivr.net/npm/apexcharts@4.7.0/dist/apexcharts.min.js" defer></script>
 </head>
-<body class="" data-page="type">
+<body class="" data-page="attribution">
     <!--#include partials/header.html-->
     <!--#include partials/page-body-start.html-->
           <div class="page-header mb-3">
             <div class="row align-items-center">
               <div class="col">
-                <div class="page-pretitle">Traffic</div>
-                <h2 class="page-title">Device &amp; Platform</h2>
+                <div class="page-pretitle">Acquisition</div>
+                <h2 class="page-title">Attribution</h2>
               </div>
             </div>
           </div>
-<div id="tab-panel-type" class="main-tab-panel" role="tabpanel" aria-labelledby="nav-tab-type">
+<div id="tab-panel-attribution" class="main-tab-panel" role="tabpanel" aria-labelledby="nav-tab-attribution">
   <div class="stats-row-wrap">
     <!-- Chart Card -->
-    <div class="card mb-3" data-kexo-chart-key="type-chart">
+    <div class="card mb-3" data-kexo-chart-key="attribution-chart">
       <div class="card-header">
-        <h3 class="card-title">Device &amp; Platform Performance</h3>
+        <h3 class="card-title">Attribution performance</h3>
       </div>
       <div class="card-body">
-        <div class="dash-chart-wrap" id="type-chart" style="min-height:320px"></div>
+        <div class="dash-chart-wrap" id="attribution-chart" style="min-height:320px"></div>
       </div>
     </div>
 
-    <!-- Traffic Type Table Card -->
-    <div class="stats-card card" id="traffic-types-card" data-table-class="live" data-table-zone="type-main" data-table-id="traffic-types-table">
+    <!-- Attribution Table Card -->
+    <div class="stats-card card" id="attribution-card" data-table-class="live" data-table-zone="attribution-main" data-table-id="attribution-table">
       <div class="card-header">
-        <h3 class="card-title" data-kexo-table-title="1">Device &amp; Platform</h3>
+        <h3 class="card-title" data-kexo-table-title="1">Attribution</h3>
       </div>
-      <div id="traffic-types-mount" data-kexo-table="traffic-types-table"></div>
-      <div class="card-footer d-flex align-items-center justify-content-center is-hidden" id="traffic-types-pagination" aria-label="Type pagination"></div>
+      <div id="attribution-mount" data-kexo-table="attribution-table"></div>
+      <div class="card-footer d-flex align-items-center justify-content-center is-hidden" id="attribution-pagination" aria-label="Attribution pagination"></div>
     </div>
   </div>
   </div>
@@ -107,3 +107,4 @@
   <script src="/theme-settings.js" defer></script>
 </body>
 </html>
+

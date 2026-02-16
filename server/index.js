@@ -23,9 +23,7 @@ const shopifySessions = require('./routes/shopifySessions');
 const statsRouter = require('./routes/stats');
 const kpisRouter = require('./routes/kpis');
 const kpisExpandedExtra = require('./routes/kpisExpandedExtra');
-const trafficRouter = require('./routes/traffic');
-const trafficSourceMaps = require('./routes/trafficSourceMaps');
-const trafficSourcesV2 = require('./routes/trafficSourcesV2');
+const kexoScoreRouter = require('./routes/kexoScore');
 const pixelRouter = require('./routes/pixel');
 const shopifySales = require('./routes/shopifySales');
 const salesDiagnostics = require('./routes/salesDiagnostics');
@@ -45,6 +43,7 @@ const worstProducts = require('./routes/worstProducts');
 const productInsights = require('./routes/productInsights');
 const pageInsights = require('./routes/pageInsights');
 const devicesRouter = require('./routes/devices');
+const attributionRouter = require('./routes/attribution');
 const abandonedCarts = require('./routes/abandonedCarts');
 const adsRouter = require('./routes/ads');
 const toolsRouter = require('./routes/tools');
@@ -121,6 +120,14 @@ app.get('/api/asset-overrides', assets.getAssetOverrides);
 app.get('/api/footer-logo', assets.getFooterLogo);
 app.post('/api/assets/upload', assets.uploadSingle, assets.postUploadAsset);
 app.get('/api/devices/observed', devicesRouter.getObservedDevices);
+app.get('/api/devices/report', devicesRouter.getDevicesReport);
+app.get('/api/attribution/report', attributionRouter.getAttributionReport);
+app.get('/api/attribution/prefs', attributionRouter.getAttributionPrefs);
+app.post('/api/attribution/prefs', attributionRouter.postAttributionPrefs);
+app.get('/api/attribution/config', attributionRouter.getAttributionConfig);
+app.post('/api/attribution/config', attributionRouter.postAttributionConfig);
+app.get('/api/attribution/observed', attributionRouter.getAttributionObserved);
+app.post('/api/attribution/map', attributionRouter.postAttributionMap);
 // Server-injected theme variables (prevents first-paint header flash).
 app.get('/theme-vars.css', settings.getThemeVarsCss);
 app.get('/icon-registry.js', (req, res) => {
@@ -136,16 +143,7 @@ app.post('/api/bot-blocked', require('./routes/botBlocked').postBotBlocked);
 app.get('/api/stats', statsRouter.getStats);
 app.get('/api/kpis', kpisRouter.getKpis);
 app.get('/api/kpis-expanded-extra', kpisExpandedExtra.getKpisExpandedExtra);
-app.get('/api/traffic', trafficRouter.getTraffic);
-app.post('/api/traffic-prefs', trafficRouter.setTrafficPrefs);
-app.get('/api/traffic-source-meta', trafficSourceMaps.getTrafficSourceMeta);
-app.get('/api/traffic-source-maps', trafficSourceMaps.getTrafficSourceMaps);
-app.post('/api/traffic-source-maps/map', trafficSourceMaps.mapTokenToSource);
-app.post('/api/traffic-source-maps/meta', trafficSourceMaps.upsertSourceMeta);
-app.post('/api/traffic-source-maps/backfill', trafficSourceMaps.backfillTokens);
-app.get('/api/traffic-sources-v2/suggestions', trafficSourcesV2.getTrafficSourcesV2Suggestions);
-app.post('/api/traffic-sources-v2/suggestions/apply', trafficSourcesV2.postApplyTrafficSourcesV2Suggestions);
-app.get('/api/traffic-sources-v2/diagnostics', trafficSourcesV2.getTrafficSourcesV2Diagnostics);
+app.get('/api/kexo-score', kexoScoreRouter.getKexoScore);
 app.get('/api/sales-diagnostics', salesDiagnostics.getSalesDiagnostics);
 app.get('/api/reconcile-sales', requireMaster.middleware, reconcileSales.reconcileSales);
 app.post('/api/reconcile-sales', requireMaster.middleware, reconcileSales.reconcileSales);
@@ -442,9 +440,9 @@ insightsPagesRouter.get('/products', (req, res) => sendPage(res, 'insights/produ
 insightsPagesRouter.get('/variants', (req, res) => sendPage(res, 'insights/variants.html'));
 insightsPagesRouter.get('/abandoned-carts', (req, res) => sendPage(res, 'insights/abandoned-carts.html'));
 
-const trafficPagesRouter = express.Router();
-trafficPagesRouter.get('/channels', (req, res) => sendPage(res, 'traffic/channels.html'));
-trafficPagesRouter.get('/device', (req, res) => sendPage(res, 'traffic/device.html'));
+const acquisitionPagesRouter = express.Router();
+acquisitionPagesRouter.get('/attribution', (req, res) => sendPage(res, 'acquisition/attribution.html'));
+acquisitionPagesRouter.get('/devices', (req, res) => sendPage(res, 'acquisition/devices.html'));
 
 const integrationsPagesRouter = express.Router();
 integrationsPagesRouter.get('/google-ads', (req, res) => sendPage(res, 'integrations/google-ads.html'));
@@ -457,8 +455,15 @@ toolsPagesRouter.get('/click-order-lookup', (req, res) => sendPage(res, 'tools/c
 // Base folder routes should canonicalize to leaf pages (avoid automatic /path -> /path/ redirects).
 app.get('/dashboard', redirectWithQuery(301, '/dashboard/overview'));
 app.get('/dashboard/', redirectWithQuery(301, '/dashboard/overview'));
-app.get('/traffic', redirectWithQuery(301, '/traffic/channels'));
-app.get('/traffic/', redirectWithQuery(301, '/traffic/channels'));
+app.get('/acquisition', redirectWithQuery(301, '/acquisition/attribution'));
+app.get('/acquisition/', redirectWithQuery(301, '/acquisition/attribution'));
+// Legacy Traffic routes -> Acquisition
+app.get('/traffic', redirectWithQuery(301, '/acquisition/attribution'));
+app.get('/traffic/', redirectWithQuery(301, '/acquisition/attribution'));
+app.get('/traffic/channels', redirectWithQuery(301, '/acquisition/attribution'));
+app.get('/traffic/channels/', redirectWithQuery(301, '/acquisition/attribution'));
+app.get('/traffic/device', redirectWithQuery(301, '/acquisition/devices'));
+app.get('/traffic/device/', redirectWithQuery(301, '/acquisition/devices'));
 app.get('/integrations', redirectWithQuery(301, '/integrations/google-ads'));
 app.get('/integrations/', redirectWithQuery(301, '/integrations/google-ads'));
 app.get('/tools', redirectWithQuery(301, '/tools/compare-conversion-rate'));
@@ -466,7 +471,7 @@ app.get('/tools/', redirectWithQuery(301, '/tools/compare-conversion-rate'));
 
 app.use('/dashboard', dashboardPagesRouter);
 app.use('/insights', insightsPagesRouter);
-app.use('/traffic', trafficPagesRouter);
+app.use('/acquisition', acquisitionPagesRouter);
 app.use('/integrations', integrationsPagesRouter);
 app.use('/tools', toolsPagesRouter);
 app.get('/tools/ads', redirectWithQuery(301, '/integrations/google-ads'));
@@ -482,8 +487,8 @@ app.get('/countries', redirectWithQuery(301, '/insights/countries'));
 app.get('/products', redirectWithQuery(301, '/insights/products'));
 app.get('/variants', redirectWithQuery(301, '/insights/variants'));
 app.get('/abandoned-carts', redirectWithQuery(301, '/insights/abandoned-carts'));
-app.get('/channels', redirectWithQuery(301, '/traffic/channels'));
-app.get('/type', redirectWithQuery(301, '/traffic/device'));
+app.get('/channels', redirectWithQuery(301, '/acquisition/attribution'));
+app.get('/type', redirectWithQuery(301, '/acquisition/devices'));
 app.get('/ads', redirectWithQuery(301, '/integrations/google-ads'));
 app.get('/compare-conversion-rate', redirectWithQuery(301, '/tools/compare-conversion-rate'));
 app.get('/shipping-cr', redirectWithQuery(301, '/tools/shipping-cr'));
@@ -575,6 +580,7 @@ const { up: up046 } = require('./migrations/046_rename_master_to_admin');
 const { up: up047 } = require('./migrations/047_affiliate_attribution_and_fraud');
 const { up: up048 } = require('./migrations/048_sessions_bs_network');
 const { up: up049 } = require('./migrations/049_sessions_utm_term');
+const { up: up050 } = require('./migrations/050_acquisition_attribution');
 const backup = require('./backup');
 const { writeAudit } = require('./audit');
 const { runAdsMigrations } = require('./ads/adsMigrate');
@@ -635,6 +641,7 @@ async function migrateAndStart() {
   await up047();
   await up048();
   await up049();
+  await up050();
 
   try {
     const r = await runAdsMigrations();

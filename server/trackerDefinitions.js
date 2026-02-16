@@ -4,8 +4,8 @@
  * Goal: keep reporting consistent and auditable. When adding/changing a dashboard table or metric,
  * update this manifest so /api/config-status can surface what each UI element is using.
  */
-const DEFINITIONS_VERSION = 38;
-const LAST_UPDATED = '2026-02-15';
+const DEFINITIONS_VERSION = 39;
+const LAST_UPDATED = '2026-02-16';
 
 /**
  * NOTE: Keep this as data (not executable logic) so it remains easy to review.
@@ -124,6 +124,30 @@ const TRACKER_TABLE_DEFINITIONS = [
         shopify_sessions: ['shopify_sessions_snapshots'],
       },
     },
+    requires: { dbTables: ['sessions'], shopifyToken: false },
+  },
+  {
+    id: 'dashboard_kexo_score',
+    page: 'Dashboard',
+    name: 'Kexo Score (dashboard KPI)',
+    ui: { elementIds: ['dash-kpi-kexo-score', 'dash-kpi-kexo-score-card', 'kexo-score-modal'] },
+    endpoint: { method: 'GET', path: '/api/kexo-score', params: ['range=today|yesterday|3d|7d|14d|30d|month|d:YYYY-MM-DD|r:...', 'force=1 (optional)'] },
+    sources: [
+      { kind: 'db', tables: ['sessions'], note: 'Sessions, bounce (human-only)' },
+      { kind: 'db', tables: ['orders_shopify', 'purchases'], note: 'Revenue, conversion, ROAS (truth + pixel dedupe)' },
+      { kind: 'db', tables: ['google_ads_spend_hourly'], note: 'Optional: ads spend + clicks/impressions when ADS_DB_URL set' },
+    ],
+    columns: [
+      { name: 'Score', value: '0–100 weighted composite (direction-aware signal + momentum)' },
+      { name: 'Components', value: 'Revenue, conversion, bounce (inverse), sessions; optional ROAS + Ads CTR when ads integrated' },
+      { name: 'Breakdown modal', value: 'Per-metric progress bars with current / previous / day-before values' },
+    ],
+    math: [
+      { name: 'Windows', value: 'Current, previous, previous2 (same duration; today uses same-time-of-day)' },
+      { name: 'Bands', value: '20 / 40 / 60 / 80 / 100 thresholds' },
+      { name: 'Fail-open', value: 'Unavailable metrics excluded; weights renormalized' },
+    ],
+    respectsReporting: { ordersSource: true, sessionsSource: true },
     requires: { dbTables: ['sessions'], shopifyToken: false },
   },
   {

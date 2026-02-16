@@ -224,9 +224,12 @@ async function configStatus(req, res, next) {
     shopify_sessions_snapshots: await tableExists('shopify_sessions_snapshots'),
     audit_log: await tableExists('audit_log'),
     bot_block_counts: await tableExists('bot_block_counts'),
-    traffic_source_meta: await tableExists('traffic_source_meta'),
-    traffic_source_rules: await tableExists('traffic_source_rules'),
-    traffic_source_tokens: await tableExists('traffic_source_tokens'),
+    attribution_channels: await tableExists('attribution_channels'),
+    attribution_sources: await tableExists('attribution_sources'),
+    attribution_variants: await tableExists('attribution_variants'),
+    attribution_rules: await tableExists('attribution_rules'),
+    attribution_observed: await tableExists('attribution_observed'),
+    attribution_allowlist: await tableExists('attribution_allowlist'),
   };
 
   let reporting = { ordersSource: 'orders_shopify', sessionsSource: 'sessions' };
@@ -247,8 +250,8 @@ async function configStatus(req, res, next) {
     'sales-overview-chart',
     'date-overview-chart',
     'ads-overview-chart',
-    'channels-chart',
-    'type-chart',
+    'attribution-chart',
+    'devices-chart',
     'products-chart',
     'countries-map-chart',
   ];

@@ -152,28 +152,28 @@
         { key: 'rev', label: 'Value', sortable: false, cellClass: 'text-end', iconKey: 'table-icon-revenue' }
       ]
     },
-    'traffic-sources-table': {
+    'attribution-table': {
       wrapClass: 'country-table-wrap',
       tableClass: 'by-country-table',
-      ariaLabel: 'Traffic sources',
-      bodyId: 'traffic-sources-body',
-      emptyMessage: 'Open Settings (footer) → Traffic to choose channels.',
+      ariaLabel: 'Attribution',
+      bodyId: 'attribution-body',
+      emptyMessage: 'No attribution data.',
       columns: [
-        { key: 'source', label: 'Source', iconKey: 'table-short-source' },
+        { key: 'attribution', label: 'Attribution', iconKey: 'table-short-source' },
         { key: 'sessions', label: 'Sessions', iconKey: 'table-icon-sessions' },
         { key: 'orders', label: 'Orders', iconKey: 'table-icon-orders' },
         { key: 'cr', label: 'CR%', iconKey: 'table-icon-cr' },
         { key: 'rev', label: 'Rev', iconKey: 'table-icon-revenue' }
       ]
     },
-    'traffic-types-table': {
+    'devices-table': {
       wrapClass: 'country-table-wrap',
       tableClass: 'by-country-table',
-      ariaLabel: 'Traffic types',
-      bodyId: 'traffic-types-body',
-      emptyMessage: 'Open Settings (footer) → Traffic to choose device types.',
+      ariaLabel: 'Devices',
+      bodyId: 'devices-body',
+      emptyMessage: 'No device data.',
       columns: [
-        { key: 'type', label: 'Type', iconKey: 'table-short-type' },
+        { key: 'device', label: 'Device', iconKey: 'table-short-type' },
         { key: 'sessions', label: 'Sessions', iconKey: 'table-icon-sessions' },
         { key: 'orders', label: 'Orders', iconKey: 'table-icon-orders' },
         { key: 'cr', label: 'CR%', iconKey: 'table-icon-cr' },
@@ -189,27 +189,6 @@
         { key: 'orders', label: 'Orders', iconKey: 'table-icon-variants-orders' },
         { key: 'cr', label: 'CR%', iconKey: 'table-icon-variants-cr' },
         { key: 'rev', label: 'Rev', iconKey: 'table-icon-variants-revenue', defaultSort: 'rev' }
-      ]
-    },
-    'tsm-sources-grid': {
-      wrapClass: '',
-      tableClass: 'tsm-table tsm-sources-grid',
-      ariaLabel: 'Mapped sources',
-      columns: [
-        { key: '', label: 'Source', sortable: false },
-        { key: '', label: 'Key', sortable: false },
-        { key: '', label: 'Icon URL', sortable: false },
-        { key: '', label: '', sortable: false }
-      ]
-    },
-    'tsm-tokens-grid': {
-      wrapClass: '',
-      tableClass: 'tsm-table tsm-tokens-grid',
-      ariaLabel: 'Tokens',
-      columns: [
-        { key: '', label: 'Token', sortable: false },
-        { key: '', label: 'Seen', sortable: false },
-        { key: '', label: 'Map / existing', sortable: false }
       ]
     },
     'ads-campaigns-table': {

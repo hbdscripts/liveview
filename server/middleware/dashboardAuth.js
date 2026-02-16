@@ -74,6 +74,8 @@ function isProtectedPath(pathname) {
       pathname.startsWith('/api/settings') || pathname === '/api/config-status' ||
       pathname.startsWith('/api/assets') || pathname === '/api/asset-overrides' ||
       pathname === '/api/stats' || pathname.startsWith('/api/pixel') ||
+      pathname.startsWith('/api/attribution') ||
+      pathname.startsWith('/api/devices') ||
       pathname.startsWith('/api/tools') ||
       pathname.startsWith('/api/shopify-') || pathname === '/api/worst-products' ||
       pathname === '/api/insights-variants' || pathname.startsWith('/api/insights-variants-suggestions') ||
@@ -82,7 +84,7 @@ function isProtectedPath(pathname) {
       pathname.startsWith('/api/ads') ||
       pathname.startsWith('/api/fraud') ||
       pathname.startsWith('/api/admin') ||
-      pathname.startsWith('/api/traffic') || pathname === '/api/latest-sale' ||
+      pathname === '/api/latest-sale' ||
       pathname === '/api/latest-sales' ||
       pathname === '/api/available-days') return true;
   const protectedPages = new Set([
@@ -95,6 +97,9 @@ function isProtectedPath(pathname) {
     '/insights/countries',
     '/insights/products',
     '/insights/variants',
+    '/acquisition',
+    '/acquisition/attribution',
+    '/acquisition/devices',
     '/traffic',
     '/traffic/channels',
     '/traffic/device',

@@ -16,39 +16,39 @@
   <link rel="stylesheet" href="/diagnostics-modal.css" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
   <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js" defer></script>
-  <title>Kexo · Channels</title>
+  <title>Kexo · Devices</title>
   <script src="https://cdn.jsdelivr.net/npm/apexcharts@4.7.0/dist/apexcharts.min.js" defer></script>
 </head>
-<body class="" data-page="channels">
+<body class="" data-page="devices">
     <!--#include partials/header.html-->
     <!--#include partials/page-body-start.html-->
           <div class="page-header mb-3">
             <div class="row align-items-center">
               <div class="col">
-                <div class="page-pretitle">Traffic</div>
-                <h2 class="page-title">Channels</h2>
+                <div class="page-pretitle">Acquisition</div>
+                <h2 class="page-title">Devices</h2>
               </div>
             </div>
           </div>
-<div id="tab-panel-channels" class="main-tab-panel" role="tabpanel" aria-labelledby="nav-tab-channels">
+<div id="tab-panel-devices" class="main-tab-panel" role="tabpanel" aria-labelledby="nav-tab-devices">
   <div class="stats-row-wrap">
     <!-- Chart Card -->
-    <div class="card mb-3" data-kexo-chart-key="channels-chart">
+    <div class="card mb-3" data-kexo-chart-key="devices-chart">
       <div class="card-header">
-        <h3 class="card-title">Channel Performance</h3>
+        <h3 class="card-title">Device performance</h3>
       </div>
       <div class="card-body">
-        <div class="dash-chart-wrap" id="channels-chart" style="min-height:320px"></div>
+        <div class="dash-chart-wrap" id="devices-chart" style="min-height:320px"></div>
       </div>
     </div>
 
-    <!-- Channels Table Card -->
-    <div class="stats-card card" id="traffic-sources-card" data-table-class="live" data-table-zone="channels-main" data-table-id="traffic-sources-table">
+    <!-- Devices Table Card -->
+    <div class="stats-card card" id="devices-card" data-table-class="live" data-table-zone="devices-main" data-table-id="devices-table">
       <div class="card-header">
-        <h3 class="card-title" data-kexo-table-title="1">Channels</h3>
+        <h3 class="card-title" data-kexo-table-title="1">Devices</h3>
       </div>
-      <div id="traffic-sources-mount" data-kexo-table="traffic-sources-table"></div>
-      <div class="card-footer d-flex align-items-center justify-content-center is-hidden" id="traffic-sources-pagination" aria-label="Channels pagination"></div>
+      <div id="devices-mount" data-kexo-table="devices-table"></div>
+      <div class="card-footer d-flex align-items-center justify-content-center is-hidden" id="devices-pagination" aria-label="Devices pagination"></div>
     </div>
   </div>
   </div>
@@ -107,3 +107,4 @@
   <script src="/theme-settings.js" defer></script>
 </body>
 </html>
+

@@ -54,6 +54,7 @@ const { up: up046 } = require('./migrations/046_rename_master_to_admin');
 const { up: up047 } = require('./migrations/047_affiliate_attribution_and_fraud');
 const { up: up048 } = require('./migrations/048_sessions_bs_network');
 const { up: up049 } = require('./migrations/049_sessions_utm_term');
+const { up: up050 } = require('./migrations/050_acquisition_attribution');
 const { runAdsMigrations } = require('./ads/adsMigrate');
 
 async function main() {
@@ -108,6 +109,7 @@ async function main() {
   await up047();
   await up048();
   await up049();
+  await up050();
 
   try {
     const r = await runAdsMigrations();

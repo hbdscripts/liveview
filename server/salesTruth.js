@@ -7,6 +7,7 @@
 const config = require('./config');
 const fx = require('./fx');
 const { getDb, isPostgres } = require('./db');
+const { deriveAttribution } = require('./attribution/deriveAttribution');
 const { writeAudit } = require('./audit');
 const backup = require('./backup');
 const fraudLinker = require('./fraud/linker');
@@ -17,6 +18,36 @@ const CUSTOMER_FACTS_NULL_RECHECK_TTL_MS = 6 * 60 * 60 * 1000;
 let lastPreReconcileBackupAt = 0;
 let _lineItemsTableOk = null; // null unknown, true exists, false missing
 let _shippingOptionsTableOk = null; // null unknown, true exists, false missing
+let _ordersHasAcquisitionColumns = null; // null unknown, true exists, false missing
+let _ordersHasAcquisitionColumnsInFlight = null;
+
+async function ordersHasAcquisitionColumns(db) {
+  if (_ordersHasAcquisitionColumns === true) return true;
+  if (_ordersHasAcquisitionColumns === false) return false;
+  if (_ordersHasAcquisitionColumnsInFlight) return _ordersHasAcquisitionColumnsInFlight;
+
+  _ordersHasAcquisitionColumnsInFlight = Promise.resolve()
+    .then(() => db.get('SELECT device_key, attribution_variant FROM orders_shopify LIMIT 1'))
+    .then(() => {
+      _ordersHasAcquisitionColumns = true;
+      return true;
+    })
+    .catch((err) => {
+      const msg = String(err && err.message ? err.message : err);
+      // Postgres: column "device_key" does not exist
+      // SQLite: no such column: device_key
+      if (/(device_key|attribution_variant)/i.test(msg) && /(does not exist|no such column|has no column)/i.test(msg)) {
+        _ordersHasAcquisitionColumns = false;
+        return false;
+      }
+      throw err;
+    })
+    .finally(() => {
+      _ordersHasAcquisitionColumnsInFlight = null;
+    });
+
+  return _ordersHasAcquisitionColumnsInFlight;
+}
 
 function truthy(v) {
   return v === true || v === 1 || v === '1' || (typeof v === 'string' && v.trim().toLowerCase() === 'true');
@@ -89,6 +120,159 @@ function normalizeVariantTitle(v) {
   const s = typeof v === 'string' ? v.trim() : '';
   if (!s) return null;
   return s.toLowerCase() === 'default title' ? null : s;
+}
+
+function safeParseUrl(urlRaw) {
+  const raw = typeof urlRaw === 'string' ? urlRaw.trim() : '';
+  if (!raw) return null;
+  try {
+    return new URL(raw);
+  } catch (_) {
+    try {
+      return new URL('https://' + raw);
+    } catch (_) {
+      return null;
+    }
+  }
+}
+
+function extractUtmFromUrl(entryUrl) {
+  const u = safeParseUrl(entryUrl);
+  if (!u) return { utm_source: '', utm_medium: '', utm_campaign: '', utm_content: '', utm_term: '' };
+  function pick(key) {
+    try {
+      const v = u.searchParams.get(key);
+      return v != null ? String(v).trim().slice(0, 256) : '';
+    } catch (_) {
+      return '';
+    }
+  }
+  return {
+    utm_source: pick('utm_source').toLowerCase(),
+    utm_medium: pick('utm_medium').toLowerCase(),
+    utm_campaign: pick('utm_campaign').toLowerCase(),
+    utm_content: pick('utm_content').toLowerCase(),
+    utm_term: pick('utm_term').toLowerCase(),
+  };
+}
+
+function parseTrafficTypeFromUaString(uaRaw) {
+  const ua = typeof uaRaw === 'string' ? uaRaw.trim().toLowerCase() : '';
+  if (!ua) return { ua_device_type: 'unknown', ua_platform: 'other' };
+
+  const isTablet = ua.includes('ipad') || ua.includes('tablet');
+  const isMobile = !isTablet && (ua.includes('mobi') || ua.includes('iphone') || ua.includes('android'));
+  const uaDeviceType = isTablet ? 'tablet' : (isMobile ? 'mobile' : 'desktop');
+
+  let uaPlatform = 'other';
+  if (ua.includes('iphone') || ua.includes('ipad') || ua.includes('ios')) uaPlatform = 'ios';
+  else if (ua.includes('android')) uaPlatform = 'android';
+  else if (ua.includes('windows')) uaPlatform = 'windows';
+  else if (ua.includes('cros') || ua.includes('chrome os')) uaPlatform = 'chromeos';
+  else if (ua.includes('mac os') || ua.includes('macintosh')) uaPlatform = 'mac';
+  else if (ua.includes('linux')) uaPlatform = 'linux';
+
+  return { ua_device_type: uaDeviceType, ua_platform: uaPlatform };
+}
+
+function deviceKeyFromUaString(uaRaw) {
+  const p = parseTrafficTypeFromUaString(uaRaw);
+  const t = p && p.ua_device_type ? String(p.ua_device_type).trim().toLowerCase() : 'unknown';
+  const plat = p && p.ua_platform ? String(p.ua_platform).trim().toLowerCase() : 'other';
+  return `${t || 'unknown'}:${plat || 'other'}`;
+}
+
+function safeJsonParse(raw) {
+  if (!raw || typeof raw !== 'string') return null;
+  try {
+    return JSON.parse(raw);
+  } catch (_) {
+    return null;
+  }
+}
+
+async function ensureOrderAcquisitionFields(row) {
+  const r = row && typeof row === 'object' ? row : null;
+  if (!r || !r.shop || !r.order_id) return;
+
+  const db = getDb();
+  let ok = false;
+  try {
+    ok = await ordersHasAcquisitionColumns(db);
+  } catch (_) {
+    ok = false;
+  }
+  if (!ok) return;
+
+  const order = safeJsonParse(r.raw_json || '');
+  if (!order) return;
+
+  const entryUrl =
+    (order.landing_site != null ? String(order.landing_site) : '') ||
+    (order.landingSite != null ? String(order.landingSite) : '') ||
+    (order.landing_site_ref != null ? String(order.landing_site_ref) : '') ||
+    (order.landingSiteRef != null ? String(order.landingSiteRef) : '') ||
+    '';
+  const referrer =
+    (order.referring_site != null ? String(order.referring_site) : '') ||
+    (order.referringSite != null ? String(order.referringSite) : '') ||
+    '';
+  const utm = extractUtmFromUrl(entryUrl);
+
+  const uaString =
+    (order?.client_details?.user_agent != null ? String(order.client_details.user_agent) : '') ||
+    (order?.clientDetails?.userAgent != null ? String(order.clientDetails.userAgent) : '') ||
+    '';
+  const deviceKey = deviceKeyFromUaString(uaString);
+
+  let derived = null;
+  try {
+    derived = await deriveAttribution({
+      now_ms: r.created_at != null ? Number(r.created_at) : Date.now(),
+      entry_url: entryUrl,
+      referrer,
+      utm_source: utm.utm_source,
+      utm_medium: utm.utm_medium,
+      utm_campaign: utm.utm_campaign,
+      utm_content: utm.utm_content,
+      utm_term: utm.utm_term,
+    });
+  } catch (_) {
+    derived = null;
+  }
+
+  const channel = derived && derived.channel ? String(derived.channel) : null;
+  const source = derived && derived.source ? String(derived.source) : null;
+  const variant = derived && derived.variant ? String(derived.variant) : null;
+  const ownerKind = derived && derived.owner_kind ? String(derived.owner_kind) : null;
+  const partnerId = derived && derived.partner_id ? String(derived.partner_id) : null;
+  const network = derived && derived.network ? String(derived.network) : null;
+  const confidence = derived && derived.confidence ? String(derived.confidence) : null;
+  let evidenceJson = null;
+  try {
+    evidenceJson = derived && derived.evidence_json != null ? JSON.stringify(derived.evidence_json) : null;
+  } catch (_) {
+    evidenceJson = null;
+  }
+
+  try {
+    await db.run(
+      `
+        UPDATE orders_shopify SET
+          device_key = COALESCE(device_key, ?),
+          attribution_channel = COALESCE(attribution_channel, ?),
+          attribution_source = COALESCE(attribution_source, ?),
+          attribution_variant = COALESCE(attribution_variant, ?),
+          attribution_owner_kind = COALESCE(attribution_owner_kind, ?),
+          attribution_partner_id = COALESCE(attribution_partner_id, ?),
+          attribution_network = COALESCE(attribution_network, ?),
+          attribution_confidence = COALESCE(attribution_confidence, ?),
+          attribution_evidence_json = COALESCE(attribution_evidence_json, ?)
+        WHERE shop = ? AND order_id = ?
+      `,
+      [deviceKey, channel, source, variant, ownerKind, partnerId, network, confidence, evidenceJson, r.shop, r.order_id]
+    );
+  } catch (_) {}
 }
 
 async function lineItemsTableOk() {
@@ -825,6 +1009,7 @@ async function upsertOrder(row) {
   const existing = await getExistingOrderMeta(row.shop, row.order_id);
   if (!existing) {
     await insertOrder(row);
+    await ensureOrderAcquisitionFields(row);
     return { inserted: 1, updated: 0 };
   }
   const prevUpdated = existing.updated_at != null ? Number(existing.updated_at) : null;
@@ -843,10 +1028,12 @@ async function upsertOrder(row) {
   const shouldUpdate = missingDerived || missingAddressFields || missingAttributionFields || (prevUpdated == null || nextUpdated == null ? true : nextUpdated !== prevUpdated);
   if (shouldUpdate) {
     await updateOrder(row);
+    await ensureOrderAcquisitionFields(row);
     return { inserted: 0, updated: 1 };
   }
   // Still refresh synced_at so health reflects recent success.
   await getDb().run('UPDATE orders_shopify SET synced_at = ? WHERE shop = ? AND order_id = ?', [row.synced_at, row.shop, row.order_id]);
+  await ensureOrderAcquisitionFields(row);
   return { inserted: 0, updated: 0 };
 }
 

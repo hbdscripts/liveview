@@ -45,8 +45,8 @@ const API = '';
           products: true,
           variants: true,
           'abandoned-carts': true,
-          channels: true,
-          type: true,
+          attribution: true,
+          devices: true,
           ads: true,
           'compare-conversion-rate': true,
           'shipping-cr': true,
@@ -72,6 +72,9 @@ const API = '';
         if (!Object.prototype.hasOwnProperty.call(pages, key)) return;
         out.pages[key] = pages[key] === false ? false : true;
       });
+      // Backwards compatibility: legacy Traffic pages.
+      if (typeof out.pages.attribution !== 'boolean' && typeof pages.channels === 'boolean') out.pages.attribution = pages.channels !== false;
+      if (typeof out.pages.devices !== 'boolean' && typeof pages.type === 'boolean') out.pages.devices = pages.type !== false;
       out.pages.settings = false;
       out.pages.admin = false;
       out.pages.snapshot = false;
@@ -738,8 +741,17 @@ const API = '';
     let sessions = [];
     let sessionsLoadError = null;
     let statsCache = {};
-    let trafficCache = null;
-    let trafficTypeExpanded = null; // device -> boolean (Traffic Type tree) — null = first render, default all open
+    let attributionCache = null;
+    let devicesCache = null;
+    // Acquisition → Attribution (tree/table + chart state)
+    let attributionExpandedChannels = null; // null = first render, default all open
+    let attributionExpandedSources = null; // null = first render, default all open
+    let attributionChartInstance = null;
+    let attributionChartData = null;
+    // Acquisition → Devices (tree/table + chart state)
+    let devicesExpanded = null; // null = first render, default all open
+    let devicesChartInstance = null;
+    let devicesChartData = null;
     let dateRange = PAGE === 'sales' ? 'sales' : PAGE === 'date' ? 'today' : PAGE === 'dashboard' ? 'today' : PAGE === 'abandoned-carts' ? 'today' : 'live';
     let customRangeStartYmd = null; // YYYY-MM-DD (admin TZ)
     let customRangeEndYmd = null; // YYYY-MM-DD (admin TZ)
@@ -1117,7 +1129,7 @@ const API = '';
       var STORAGE_PREFIX = 'kexo:table-collapse:v1';
       var CARD_SELECTOR = '.card';
       var TABLE_CONTENT_SELECTOR = '.table-scroll-wrap, .country-table-wrap, .table-responsive, .grid-table, table';
-      var CHART_CONTENT_SELECTOR = '.dash-chart-wrap, [id^="dash-chart-"], #live-online-chart, #sessions-overview-chart, #ads-overview-chart, #channels-chart, #type-chart, #products-chart, #countries-map-chart';
+      var CHART_CONTENT_SELECTOR = '.dash-chart-wrap, [id^="dash-chart-"], #live-online-chart, #sessions-overview-chart, #ads-overview-chart, #attribution-chart, #devices-chart, #products-chart, #countries-map-chart';
       var HEADER_SELECTOR = '.card-header';
 
       function getPageScope() {
@@ -1796,7 +1808,8 @@ const API = '';
     let lastSessionsMode = null; // 'live' or 'range' - helps avoid Online count flicker when switching modes
     let lastStatsFetchedAt = 0;
     let lastKpisFetchedAt = 0;
-    let lastTrafficFetchedAt = 0;
+    let lastAttributionFetchedAt = 0;
+    let lastDevicesFetchedAt = 0;
     let lastProductsFetchedAt = 0;
     let kpiCache = null;
     let kpiCacheRange = '';
@@ -1807,13 +1820,14 @@ const API = '';
     let liveSalesPendingPayload = null;
     let liveSalesPendingAt = 0;
     let statsRefreshInFlight = null;
-    let trafficRefreshInFlight = null;
+    let attributionRefreshInFlight = null;
+    let devicesRefreshInFlight = null;
     let productsRefreshInFlight = null;
     let kpisRefreshInFlight = null;
     let kpisRefreshRangeKey = '';
     let configStatusRefreshInFlight = null;
     let activeKpiCompareKey = 'conv';
-    let reportBuildTokens = { stats: 0, breakdown: 0, products: 0, traffic: 0, sessions: 0, diagnostics: 0, kpiCompare: 0, dashboard: 0 };
+    let reportBuildTokens = { stats: 0, breakdown: 0, products: 0, attribution: 0, devices: 0, sessions: 0, diagnostics: 0, kpiCompare: 0, dashboard: 0 };
     var _intervals = [];
     var _eventSource = null;
     var _fetchAbortControllers = {};
@@ -1878,8 +1892,8 @@ const API = '';
     let bestGeoProductsPage = 1;
     let bestSellersPage = 1;
     let bestVariantsPage = 1;
-    let trafficSourcesPage = 1;
-    let trafficTypesPage = 1;
+    let attributionPage = 1;
+    let devicesPage = 1;
     let dashTopProductsPage = 1;
     let dashTopCountriesPage = 1;
     let dashTrendingUpPage = 1;
@@ -1891,16 +1905,16 @@ const API = '';
       bestGeoProducts: { by: 'rev', dir: 'desc' },
       aov: { by: 'aov', dir: 'desc' },
       bestVariants: { by: 'rev', dir: 'desc' },
-      trafficSources: { by: 'rev', dir: 'desc' },
-      trafficTypes: { by: 'rev', dir: 'desc' },
+      attribution: { by: 'rev', dir: 'desc' },
+      devices: { by: 'rev', dir: 'desc' },
     };
     const TABLE_SORT_DEFAULTS = {
       country: { country: 'asc', cr: 'desc', sales: 'desc', clicks: 'desc', rev: 'desc' },
       bestGeoProducts: { country: 'asc', cr: 'desc', sales: 'desc', clicks: 'desc', rev: 'desc' },
       aov: { aov: 'desc' },
       bestVariants: { variant: 'asc', sales: 'desc', clicks: 'desc', rev: 'desc', cr: 'desc' },
-      trafficSources: { source: 'asc', cr: 'desc', orders: 'desc', sessions: 'desc', rev: 'desc' },
-      trafficTypes: { type: 'asc', cr: 'desc', orders: 'desc', sessions: 'desc', rev: 'desc' },
+      attribution: { attribution: 'asc', cr: 'desc', orders: 'desc', sessions: 'desc', rev: 'desc' },
+      devices: { device: 'asc', cr: 'desc', orders: 'desc', sessions: 'desc', rev: 'desc' },
     };
 
     function rerenderDashboardFromCache() {
@@ -1944,14 +1958,14 @@ const API = '';
         renderBestGeoProducts(statsCache || {});
         return;
       }
-      if (id === 'traffic-sources-table') {
-        trafficSourcesPage = 1;
-        renderTrafficTables(trafficCache || {});
+      if (id === 'attribution-table') {
+        attributionPage = 1;
+        try { renderAttributionTables(attributionCache || {}); } catch (_) {}
         return;
       }
-      if (id === 'traffic-types-table') {
-        trafficTypesPage = 1;
-        renderTrafficTables(trafficCache || {});
+      if (id === 'devices-table') {
+        devicesPage = 1;
+        try { renderDevicesTables(devicesCache || {}); } catch (_) {}
         return;
       }
       if (id === 'dash-top-products') {
@@ -2315,7 +2329,8 @@ const API = '';
             if (shopForSalesFallback) {
               if (activeMainTab === 'products' && typeof refreshProducts === 'function') refreshProducts({ force: false });
               if (activeMainTab === 'stats' && typeof refreshStats === 'function') refreshStats({ force: false });
-              if ((activeMainTab === 'channels' || activeMainTab === 'type') && typeof refreshTraffic === 'function') refreshTraffic({ force: false });
+              if (activeMainTab === 'attribution' && typeof refreshAttribution === 'function') refreshAttribution({ force: false });
+              if (activeMainTab === 'devices' && typeof refreshDevices === 'function') refreshDevices({ force: false });
             }
           }
           storeBaseUrlLoaded = true;
@@ -2573,19 +2588,20 @@ const API = '';
 
     function sourceSortKey(s) {
       try {
-        const mapped = getMappedSourceKeysForSession(s);
-        if (mapped && mapped.length) {
-          const key0 = String(mapped[0] || '').trim().toLowerCase();
-          if (key0) return trafficSourceLabelForKey(key0, key0) || key0;
-        }
+        const variant = s && (s.attribution_variant ?? s.attributionVariant) != null ? String(s.attribution_variant ?? s.attributionVariant).trim() : '';
+        if (variant) return variant.toLowerCase();
+        const source = s && (s.attribution_source ?? s.attributionSource) != null ? String(s.attribution_source ?? s.attributionSource).trim() : '';
+        if (source) return source.toLowerCase();
+        const channel = s && (s.attribution_channel ?? s.attributionChannel) != null ? String(s.attribution_channel ?? s.attributionChannel).trim() : '';
+        if (channel) return channel.toLowerCase();
       } catch (_) {}
-      if (isGoogleAdsSource(s)) return 'Google Ads';
+      // Fallback: derive from UTMs/referrer (best-effort; older rows may not have attribution yet).
+      if (isGoogleAdsSource(s)) return 'google ads';
       const friendly = sourceFriendlyLabel(s);
-      if (friendly === 'Google') return 'Google';
-      if (friendly) return friendly;
-      if (sourceUtmString(s)) return 'Other';
-      if (s.referrer && String(s.referrer).trim()) return 'Other';
-      return 'Direct';
+      if (friendly) return friendly.toLowerCase();
+      if (sourceUtmString(s)) return 'other';
+      if (s && s.referrer && String(s.referrer).trim()) return 'other';
+      return 'direct';
     }
 
     const SOURCE_GOOGLE_IMG = hotImg('https://cdn.shopify.com/s/files/1/0847/7261/8587/files/google.png?v=1770086632');
@@ -2596,7 +2612,7 @@ const API = '';
     const SOURCE_BING_IMG = hotImg('https://cdn.shopify.com/s/files/1/0847/7261/8587/files/bing.png?v=1770141094');
     const SOURCE_LIVEVIEW_SOURCE_IMG = hotImg('https://cdn.shopify.com/s/files/1/0847/7261/8587/files/liveview-source-logo.png?v=1770141081');
 
-    // Traffic source mapping (server-configurable)
+    /* Legacy traffic source mapping (server-configurable) removed.
     const TRAFFIC_SOURCE_MAP_ALLOWED_PARAMS = [
       'utm_source',
       'utm_medium',
@@ -3455,6 +3471,7 @@ const API = '';
       }
     }
 
+    */
     function sourceCell(s) {
       function icon(src, alt, title, extraClass) {
         const cls = (extraClass ? (extraClass + ' ') : '') + 'source-icon-img';
@@ -3476,56 +3493,43 @@ const API = '';
         return '<i class="' + escapeHtml(spec) + ' source-icon-fa' + escapeHtml(extra) + '"' + t + ' aria-hidden="true"></i>';
       }
 
-      // v2: single resolved source (label + iconSpec) from rules engine.
-      const v2Key = s && (s.traffic_source_v2_key ?? s.trafficSourceV2Key ?? s.traffic_source_v2 ?? s.trafficSourceV2);
-      if (v2Key) {
-        const label = s && (s.traffic_source_v2_label ?? s.trafficSourceV2Label) ? String(s.traffic_source_v2_label ?? s.trafficSourceV2Label) : String(v2Key);
-        const iconSpec = s && (s.traffic_source_v2_icon_spec ?? s.trafficSourceV2IconSpec) ? String(s.traffic_source_v2_icon_spec ?? s.trafficSourceV2IconSpec) : '';
-        const html = iconFromSpec(iconSpec || 'fa-light fa-link', label, '');
-        return html ? ('<span class="source-icons">' + html + '</span>') : '';
+      // Acquisition attribution: use persisted `attribution_*` fields (single source of truth).
+      const variant = s && (s.attribution_variant ?? s.attributionVariant) != null ? String(s.attribution_variant ?? s.attributionVariant).trim().toLowerCase() : '';
+      const channel = s && (s.attribution_channel ?? s.attributionChannel) != null ? String(s.attribution_channel ?? s.attributionChannel).trim().toLowerCase() : '';
+      const source = s && (s.attribution_source ?? s.attributionSource) != null ? String(s.attribution_source ?? s.attributionSource).trim().toLowerCase() : '';
+      const confidence = s && (s.attribution_confidence ?? s.attributionConfidence) != null ? String(s.attribution_confidence ?? s.attributionConfidence).trim().toLowerCase() : '';
+
+      const labelRaw = variant || (channel && source ? (channel + ' / ' + source) : (channel || source || 'unknown'));
+      const title = confidence ? (labelRaw + ' (' + confidence + ')') : labelRaw;
+      const head = (variant ? variant.split(':')[0] : channel) || '';
+
+      let spec = '';
+      let extraClass = '';
+      if (head === 'google_ads' || head === 'google_organic' || head === 'google') {
+        spec = SOURCE_GOOGLE_IMG;
+        if (head === 'google_ads') extraClass = 'source-googleads-img';
+      } else if (head === 'bing_ads' || head === 'bing_organic' || head === 'bing') {
+        spec = SOURCE_BING_IMG;
+      } else if (head === 'omnisend' || head === 'klaviyo' || head === 'email') {
+        spec = SOURCE_OMNISEND_IMG;
+      } else if (head.indexOf('meta') >= 0 || head === 'facebook' || head === 'instagram') {
+        spec = 'fa-brands fa-facebook';
+      } else if (head.indexOf('tiktok') >= 0) {
+        spec = 'fa-brands fa-tiktok';
+      } else if (head.indexOf('pinterest') >= 0) {
+        spec = 'fa-brands fa-pinterest';
+      } else if (head.indexOf('affiliate') >= 0 || channel === 'affiliate') {
+        spec = 'fa-light fa-handshake';
+      } else if (head === 'direct' || channel === 'direct') {
+        spec = SOURCE_DIRECT_IMG;
+      } else if (head) {
+        spec = SOURCE_UNKNOWN_IMG;
+      } else {
+        spec = SOURCE_UNKNOWN_IMG;
       }
 
-      // Show source icons driven by Traffic sources + mapping:
-      // - If a session matches multiple mapping rules, show multiple icons side-by-side.
-      // - Otherwise, show the derived `sessions.traffic_source_key` (includes Direct/no-referrer).
-      // This avoids legacy hard-coded UTM/referrer icon heuristics and prevents duplicates.
-      const keys = [];
-      const seen = new Set();
-      function addKey(v) {
-        const k = v != null ? String(v).trim().toLowerCase() : '';
-        if (!k) return;
-        if (seen.has(k)) return;
-        seen.add(k);
-        keys.push(k);
-      }
-
-      try {
-        const mapped = getMappedSourceKeysForSession(s);
-        (Array.isArray(mapped) ? mapped : []).forEach(addKey);
-      } catch (_) {}
-
-      if (!keys.length) {
-        // Fallback: use stored source_key (so icon/meta changes go live even when no UTM-token mapping exists).
-        let k = s && (s.traffic_source_key ?? s.trafficSourceKey ?? s.source_key ?? s.sourceKey);
-        const kk = k != null ? String(k).trim().toLowerCase() : '';
-        if (kk === 'other') {
-          const ref = s && s.referrer != null ? String(s.referrer).toLowerCase() : '';
-          if (ref.includes('heybigday.com') || ref.includes('hbdjewellery.com')) k = 'direct';
-        }
-        addKey(k);
-      }
-
-      if (!keys.length) return '';
-
-      const out = [];
-      keys.forEach(function(key) {
-        const label = trafficSourceLabelForKey(key, key);
-        const metaIcon = trafficSourceIconUrlForKey(key);
-        const src = metaIcon || trafficSourceBuiltInIconSrc(key) || SOURCE_UNKNOWN_IMG;
-        const extra = key === 'google_ads' ? 'source-googleads-img' : '';
-        out.push(icon(src, label, label, extra));
-      });
-      return out.length ? ('<span class="source-icons">' + out.join('') + '</span>') : '';
+      const html = iconFromSpec(spec || 'fa-light fa-circle-question', title, extraClass);
+      return html ? ('<span class="source-icons"><span class="visually-hidden">' + escapeHtml(String(title || '')) + '</span>' + html + '</span>') : '';
     }
 
     function buildFullEntryUrlForCopy(s) {
@@ -6528,11 +6532,13 @@ const API = '';
         if (bestVariantsCache) renderBestVariants(bestVariantsCache);
         else fetchBestVariants();
       });
-      setupTableSortHeaders(document.getElementById('traffic-sources-table'), tableSortState.trafficSources, TABLE_SORT_DEFAULTS.trafficSources, function() {
-        renderTrafficTables(trafficCache || {});
+      setupTableSortHeaders(document.getElementById('attribution-table'), tableSortState.attribution, TABLE_SORT_DEFAULTS.attribution, function(info) {
+        if (info && info.columnChanged) attributionPage = 1;
+        renderAttributionTables(attributionCache || {});
       });
-      setupTableSortHeaders(document.getElementById('traffic-types-table'), tableSortState.trafficTypes, TABLE_SORT_DEFAULTS.trafficTypes, function() {
-        renderTrafficTables(trafficCache || {});
+      setupTableSortHeaders(document.getElementById('devices-table'), tableSortState.devices, TABLE_SORT_DEFAULTS.devices, function(info) {
+        if (info && info.columnChanged) devicesPage = 1;
+        renderDevicesTables(devicesCache || {});
       });
     }
 
@@ -7966,6 +7972,8 @@ const API = '';
       aovPage = 1;
       bestSellersPage = 1;
       bestVariantsPage = 1;
+      attributionPage = 1;
+      devicesPage = 1;
       currentPage = 1;
       syncDateSelectOptions();
       // Reset caches when range changes.
@@ -7977,10 +7985,12 @@ const API = '';
       bestVariantsCache = null;
       abandonedCartsChartKey = '';
       abandonedCartsTopCacheKey = '';
-      trafficCache = null;
+      attributionCache = null;
+      devicesCache = null;
       lastStatsFetchedAt = 0;
       lastProductsFetchedAt = 0;
-      lastTrafficFetchedAt = 0;
+      lastAttributionFetchedAt = 0;
+      lastDevicesFetchedAt = 0;
       updateNextUpdateUi();
 
       // Top KPI grid refreshes independently (every minute). On range change, force a refresh immediately.
@@ -7993,8 +8003,10 @@ const API = '';
         try { if (typeof refreshDashboard === 'function') refreshDashboard({ force: true }); } catch (_) {}
       } else if (activeMainTab === 'stats') {
         refreshStats({ force: false });
-      } else if (activeMainTab === 'channels' || activeMainTab === 'type') {
-        refreshTraffic({ force: false });
+      } else if (activeMainTab === 'attribution') {
+        try { refreshAttribution({ force: false }); } catch (_) {}
+      } else if (activeMainTab === 'devices') {
+        try { refreshDevices({ force: false }); } catch (_) {}
       } else if (activeMainTab === 'products') {
         refreshProducts({ force: false });
       } else if (activeMainTab === 'variants') {
@@ -9619,8 +9631,12 @@ const API = '';
             refreshProducts({ force: true });
             return;
           }
-          if (activeMainTab === 'channels' || activeMainTab === 'type') {
-            refreshTraffic({ force: true });
+          if (activeMainTab === 'attribution') {
+            try { refreshAttribution({ force: true }); } catch (_) {}
+            return;
+          }
+          if (activeMainTab === 'devices') {
+            try { refreshDevices({ force: true }); } catch (_) {}
             return;
           }
           if (activeMainTab === 'ads') {
@@ -10151,12 +10167,8 @@ const API = '';
       if (k === 'stats') return 'Preparing country report';
       if (k === 'products') return 'Preparing product report';
       if (k === 'dashboard') return 'Preparing dashboard overview';
-      if (k === 'traffic') {
-        const page = (document.body && document.body.getAttribute('data-page')) || '';
-        if (page === 'channels') return 'Preparing channels report';
-        if (page === 'type') return 'Preparing traffic type report';
-        return 'Preparing traffic report';
-      }
+      if (k === 'attribution') return 'Preparing attribution report';
+      if (k === 'devices') return 'Preparing devices report';
       if (k === 'sessions') return 'Preparing sessions table';
       if (k === 'diagnostics') return 'Preparing diagnostics';
       if (k === 'kpicompare') return 'Preparing KPI comparison';
@@ -10701,6 +10713,7 @@ const API = '';
       return productsRefreshInFlight;
     }
 
+    /* Legacy Traffic (Channels/Type) UI removed.
     function renderTrafficTables(data) {
       const sources = data && data.sources ? data.sources : null;
       const types = data && data.types ? data.types : null;
@@ -11760,23 +11773,447 @@ const API = '';
       return trafficRefreshInFlight;
     }
 
-    function saveTrafficPrefs(payload) {
-      if (!payload || typeof payload !== 'object') return Promise.resolve(null);
-      return fetch(API + '/api/traffic-prefs', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'same-origin',
-        cache: 'no-store',
-        body: JSON.stringify(payload),
-      })
-        .then(function(r) { return r.ok ? r.json() : null; })
-        .then(function(json) {
-          if (!json || json.ok !== true) return null;
-          // Re-fetch so tables match new enabled selections.
-          refreshTraffic({ force: true });
-          return json;
+    */
+    function renderAttributionTables(data) {
+      const body = document.getElementById('attribution-body');
+      if (!body) return;
+
+      const by = (tableSortState.attribution.by || 'rev').toString().trim().toLowerCase();
+      const dir = (tableSortState.attribution.dir || 'desc').toString().trim().toLowerCase() === 'asc' ? 'asc' : 'desc';
+
+      const rows = data && data.attribution && Array.isArray(data.attribution.rows) ? data.attribution.rows.slice() : [];
+      const filtered = rows.filter(function(r) {
+        const s = r && typeof r.sessions === 'number' ? r.sessions : 0;
+        const o = r && typeof r.orders === 'number' ? r.orders : 0;
+        return s >= 1 || o >= 1;
+      });
+
+      function iconSpecHtml(iconSpecRaw, labelRaw) {
+        const spec = iconSpecRaw != null ? String(iconSpecRaw).trim() : '';
+        const label = labelRaw != null ? String(labelRaw).trim() : '';
+        const t = label ? (' title="' + escapeHtml(label) + '"') : '';
+        if (!spec) return '';
+        if (/^<svg[\s>]/i.test(spec)) return '<span class="source-icons"' + t + ' aria-hidden="true">' + spec + '</span>';
+        if (/^(https?:\/\/|\/\/|\/)/i.test(spec)) {
+          const src = hotImg(spec) || spec;
+          return '<span class="source-icons"><img src="' + escapeHtml(src) + '" alt="' + escapeHtml(label) + '" class="source-icon-img" width="20" height="20"' + t + '></span>';
+        }
+        return '<span class="source-icons"><i class="' + escapeHtml(spec) + '"' + t + ' aria-hidden="true"></i></span>';
+      }
+
+      function channelLabel(r) {
+        if (!r) return '—';
+        if (r.label != null && String(r.label).trim() !== '') return String(r.label);
+        if (r.channel_key != null && String(r.channel_key).trim() !== '') return String(r.channel_key);
+        return '—';
+      }
+      function sourceLabel(r) {
+        if (!r) return '—';
+        if (r.label != null && String(r.label).trim() !== '') return String(r.label);
+        if (r.source_key != null && String(r.source_key).trim() !== '') return String(r.source_key);
+        return '—';
+      }
+      function variantLabel(r) {
+        if (!r) return '—';
+        if (r.label != null && String(r.label).trim() !== '') return String(r.label);
+        if (r.variant_key != null && String(r.variant_key).trim() !== '') return String(r.variant_key);
+        return '—';
+      }
+
+      function metric(r, key) {
+        if (!r) return null;
+        if (key === 'cr') return (typeof r.conversion_pct === 'number') ? r.conversion_pct : null;
+        if (key === 'orders') return (typeof r.orders === 'number') ? r.orders : null;
+        if (key === 'sessions') return (typeof r.sessions === 'number') ? r.sessions : null;
+        if (key === 'rev') return (typeof r.revenue_gbp === 'number') ? r.revenue_gbp : null;
+        return null;
+      }
+
+      filtered.sort(function(a, b) {
+        let primary = 0;
+        if (by === 'attribution') primary = cmpNullableText(channelLabel(a), channelLabel(b), dir);
+        else primary = cmpNullableNumber(metric(a, by), metric(b, by), dir);
+        return primary ||
+          cmpNullableNumber(metric(a, 'rev'), metric(b, 'rev'), 'desc') ||
+          cmpNullableNumber(metric(a, 'orders'), metric(b, 'orders'), 'desc') ||
+          cmpNullableNumber(metric(a, 'sessions'), metric(b, 'sessions'), 'desc') ||
+          cmpNullableText(channelLabel(a), channelLabel(b), 'asc');
+      });
+
+      if (!filtered.length) {
+        body.innerHTML = '<div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">No attribution data yet.</div></div>';
+        updateCardPagination('attribution', 1, 1);
+        updateSortHeadersInContainer(document.getElementById('attribution-table'), by, dir);
+        return;
+      }
+
+      const pageSize = getTableRowsPerPage('attribution-table', 'live');
+      const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+      attributionPage = clampPage(attributionPage, totalPages);
+      updateCardPagination('attribution', attributionPage, totalPages);
+      const pageStart = (attributionPage - 1) * pageSize;
+      const pageChannels = filtered.slice(pageStart, pageStart + pageSize);
+
+      function channelKey(r) {
+        const k = r && r.channel_key != null ? String(r.channel_key).trim().toLowerCase() : '';
+        return k || 'other';
+      }
+      function sourceKey(r) {
+        const k = r && r.source_key != null ? String(r.source_key).trim().toLowerCase() : '';
+        return k || 'other';
+      }
+      function variantKey(r) {
+        const k = r && r.variant_key != null ? String(r.variant_key).trim().toLowerCase() : '';
+        return k || 'other:house';
+      }
+
+      function isChannelOpen(key) {
+        if (attributionExpandedChannels === null) return true;
+        if (!attributionExpandedChannels || typeof attributionExpandedChannels !== 'object') return true;
+        if (!Object.prototype.hasOwnProperty.call(attributionExpandedChannels, key)) return true;
+        return !!attributionExpandedChannels[key];
+      }
+      function isSourceOpen(chKey, srcKey) {
+        if (attributionExpandedSources === null) return true;
+        if (!attributionExpandedSources || typeof attributionExpandedSources !== 'object') return true;
+        const k = chKey + '|' + srcKey;
+        if (!Object.prototype.hasOwnProperty.call(attributionExpandedSources, k)) return true;
+        return !!attributionExpandedSources[k];
+      }
+
+      let html = '';
+      pageChannels.forEach(function(ch) {
+        const chKey = channelKey(ch);
+        const chOpen = isChannelOpen(chKey);
+        const chLabel = channelLabel(ch);
+        const chCr = (ch && typeof ch.conversion_pct === 'number') ? pct(ch.conversion_pct) : '—';
+        const chOrders = (ch && typeof ch.orders === 'number') ? formatSessions(ch.orders) : '—';
+        const chSessions = (ch && typeof ch.sessions === 'number') ? formatSessions(ch.sessions) : '—';
+        const chRev = (ch && typeof ch.revenue_gbp === 'number') ? formatRevenueTableHtml(ch.revenue_gbp) : '—';
+        html += '<div class="grid-row traffic-type-parent attribution-channel-parent" role="row" data-channel="' + escapeHtml(chKey) + '">' +
+          '<div class="grid-cell" role="cell">' +
+            '<button type="button" class="traffic-type-toggle attribution-channel-toggle" data-channel="' + escapeHtml(chKey) + '" aria-expanded="' + (chOpen ? 'true' : 'false') + '">' +
+              '<span>' + escapeHtml(chLabel) + '</span>' +
+            '</button>' +
+          '</div>' +
+          '<div class="grid-cell" role="cell">' + escapeHtml(chSessions || '—') + '</div>' +
+          '<div class="grid-cell" role="cell">' + escapeHtml(chOrders || '—') + '</div>' +
+          '<div class="grid-cell" role="cell">' + escapeHtml(chCr || '—') + '</div>' +
+          '<div class="grid-cell" role="cell">' + (chRev || '—') + '</div>' +
+        '</div>';
+
+        const sources = ch && Array.isArray(ch.sources) ? ch.sources.slice() : [];
+        sources.sort(function(a, b) {
+          let primary = 0;
+          if (by === 'attribution') primary = cmpNullableText(sourceLabel(a), sourceLabel(b), dir);
+          else primary = cmpNullableNumber(metric(a, by), metric(b, by), dir);
+          return primary ||
+            cmpNullableNumber(metric(a, 'rev'), metric(b, 'rev'), 'desc') ||
+            cmpNullableNumber(metric(a, 'orders'), metric(b, 'orders'), 'desc') ||
+            cmpNullableNumber(metric(a, 'sessions'), metric(b, 'sessions'), 'desc') ||
+            cmpNullableText(sourceLabel(a), sourceLabel(b), 'asc');
+        });
+
+        sources.forEach(function(src) {
+          const sKey = sourceKey(src);
+          const srcOpen = chOpen && isSourceOpen(chKey, sKey);
+          const sLabel = sourceLabel(src);
+          const sIcon = iconSpecHtml(src && src.icon_spec != null ? src.icon_spec : null, sLabel);
+          const sCr = (src && typeof src.conversion_pct === 'number') ? pct(src.conversion_pct) : '—';
+          const sOrders = (src && typeof src.orders === 'number') ? formatSessions(src.orders) : '—';
+          const sSessions = (src && typeof src.sessions === 'number') ? formatSessions(src.sessions) : '—';
+          const sRev = (src && typeof src.revenue_gbp === 'number') ? formatRevenueTableHtml(src.revenue_gbp) : '—';
+          html += '<div class="grid-row traffic-type-child attribution-source-row' + (chOpen ? '' : ' is-hidden') + '" role="row" data-parent="' + escapeHtml(chKey) + '" data-channel="' + escapeHtml(chKey) + '" data-source="' + escapeHtml(sKey) + '">' +
+            '<div class="grid-cell" role="cell">' +
+              '<button type="button" class="traffic-type-toggle attribution-source-toggle" data-channel="' + escapeHtml(chKey) + '" data-source="' + escapeHtml(sKey) + '" aria-expanded="' + (srcOpen ? 'true' : 'false') + '">' +
+                (sIcon || '') +
+                '<span>' + escapeHtml(sLabel) + '</span>' +
+              '</button>' +
+            '</div>' +
+            '<div class="grid-cell" role="cell">' + escapeHtml(sSessions || '—') + '</div>' +
+            '<div class="grid-cell" role="cell">' + escapeHtml(sOrders || '—') + '</div>' +
+            '<div class="grid-cell" role="cell">' + escapeHtml(sCr || '—') + '</div>' +
+            '<div class="grid-cell" role="cell">' + (sRev || '—') + '</div>' +
+          '</div>';
+
+          const variants = src && Array.isArray(src.variants) ? src.variants.slice() : [];
+          variants.sort(function(a, b) {
+            let primary = 0;
+            if (by === 'attribution') primary = cmpNullableText(variantLabel(a), variantLabel(b), dir);
+            else primary = cmpNullableNumber(metric(a, by), metric(b, by), dir);
+            return primary ||
+              cmpNullableNumber(metric(a, 'rev'), metric(b, 'rev'), 'desc') ||
+              cmpNullableNumber(metric(a, 'orders'), metric(b, 'orders'), 'desc') ||
+              cmpNullableNumber(metric(a, 'sessions'), metric(b, 'sessions'), 'desc') ||
+              cmpNullableText(variantLabel(a), variantLabel(b), 'asc');
+          });
+
+          const parentKey = chKey + '|' + sKey;
+          variants.forEach(function(v) {
+            const vKey = variantKey(v);
+            const vLabel = variantLabel(v);
+            const vIcon = iconSpecHtml(v && v.icon_spec != null ? v.icon_spec : null, vLabel);
+            const vCr = (v && typeof v.conversion_pct === 'number') ? pct(v.conversion_pct) : '—';
+            const vOrders = (v && typeof v.orders === 'number') ? formatSessions(v.orders) : '—';
+            const vSessions = (v && typeof v.sessions === 'number') ? formatSessions(v.sessions) : '—';
+            const vRev = (v && typeof v.revenue_gbp === 'number') ? formatRevenueTableHtml(v.revenue_gbp) : '—';
+            const ownerKind = v && v.owner_kind != null ? String(v.owner_kind).trim().toLowerCase() : '';
+            const ownerBadge = ownerKind && ownerKind !== 'house'
+              ? (' <span class="text-muted small">(' + escapeHtml(ownerKind) + ')</span>')
+              : '';
+            html += '<div class="grid-row traffic-type-child attribution-variant-row' + (srcOpen ? '' : ' is-hidden') + '" role="row" data-parent="' + escapeHtml(parentKey) + '" data-channel="' + escapeHtml(chKey) + '" data-source="' + escapeHtml(sKey) + '">' +
+              '<div class="grid-cell" role="cell"><span style="display:inline-flex;align-items:center;gap:8px;padding-left:18px">' + (vIcon || '') + '<span>' + escapeHtml(vLabel) + '</span>' + ownerBadge + '</span></div>' +
+              '<div class="grid-cell" role="cell">' + escapeHtml(vSessions || '—') + '</div>' +
+              '<div class="grid-cell" role="cell">' + escapeHtml(vOrders || '—') + '</div>' +
+              '<div class="grid-cell" role="cell">' + escapeHtml(vCr || '—') + '</div>' +
+              '<div class="grid-cell" role="cell">' + (vRev || '—') + '</div>' +
+            '</div>';
+          });
+        });
+      });
+
+      body.innerHTML = html;
+      updateSortHeadersInContainer(document.getElementById('attribution-table'), by, dir);
+    }
+
+    function renderAttributionChart(data) {
+      const el = document.getElementById('attribution-chart');
+      if (!el) return;
+      // API currently returns an empty chart payload; render a friendly placeholder.
+      const chart = data && data.attribution && data.attribution.chart ? data.attribution.chart : null;
+      const hasSeries = !!(chart && Array.isArray(chart.series) && chart.series.length);
+      if (!hasSeries) {
+        el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:#6b7280;font-size:.875rem">No chart data yet</div>';
+        return;
+      }
+    }
+
+    function renderAttribution(data) {
+      attributionCache = data || attributionCache || null;
+      try { renderAttributionTables(attributionCache || {}); } catch (_) {}
+      try { renderAttributionChart(attributionCache || {}); } catch (_) {}
+    }
+
+    function fetchAttributionData(options = {}) {
+      const force = !!options.force;
+      let url = API + '/api/attribution/report?range=' + encodeURIComponent(getStatsRange());
+      if (force) url += (url.indexOf('?') >= 0 ? '&' : '?') + '_=' + Date.now();
+      const cacheMode = force ? 'no-store' : 'default';
+      return fetchWithTimeout(url, { credentials: 'same-origin', cache: cacheMode }, 25000)
+        .then(function(r) {
+          if (!r.ok) throw new Error('Attribution HTTP ' + r.status);
+          return r.json();
         })
-        .catch(function(err) { console.error(err); return null; });
+        .then(function(data) {
+          lastAttributionFetchedAt = Date.now();
+          renderAttribution(data && typeof data === 'object' ? data : null);
+          return data;
+        })
+        .catch(function(err) {
+          try { if (typeof window.kexoCaptureError === 'function') window.kexoCaptureError(err, { context: 'attributionFetch', page: PAGE }); } catch (_) {}
+          renderAttribution(attributionCache || null);
+          return null;
+        });
+    }
+
+    function refreshAttribution(options = {}) {
+      const force = !!options.force;
+      if (attributionRefreshInFlight) return attributionRefreshInFlight;
+      const build = startReportBuild({ key: 'attribution', title: 'Preparing attribution report' });
+      build.step('Loading attribution performance');
+      attributionRefreshInFlight = fetchAttributionData({ force })
+        .finally(function() {
+          attributionRefreshInFlight = null;
+          build.finish();
+        });
+      return attributionRefreshInFlight;
+    }
+
+    function renderDevicesTables(data) {
+      const body = document.getElementById('devices-body');
+      if (!body) return;
+
+      const by = (tableSortState.devices.by || 'rev').toString().trim().toLowerCase();
+      const dir = (tableSortState.devices.dir || 'desc').toString().trim().toLowerCase() === 'asc' ? 'asc' : 'desc';
+
+      const rows = data && data.devices && Array.isArray(data.devices.rows) ? data.devices.rows.slice() : [];
+      const filtered = rows.filter(function(r) {
+        const s = r && typeof r.sessions === 'number' ? r.sessions : 0;
+        const o = r && typeof r.orders === 'number' ? r.orders : 0;
+        return s >= 1 || o >= 1;
+      });
+
+      function deviceLabel(r) {
+        if (!r) return '—';
+        const k = r.device_type != null ? String(r.device_type).trim().toLowerCase() : '';
+        return k || 'unknown';
+      }
+
+      function metric(r, key) {
+        if (!r) return null;
+        if (key === 'cr') return (typeof r.conversion_pct === 'number') ? r.conversion_pct : null;
+        if (key === 'orders') return (typeof r.orders === 'number') ? r.orders : null;
+        if (key === 'sessions') return (typeof r.sessions === 'number') ? r.sessions : null;
+        if (key === 'rev') return (typeof r.revenue_gbp === 'number') ? r.revenue_gbp : null;
+        return null;
+      }
+
+      function trafficTypeDeviceIcon(device) {
+        var d = (device || '').trim().toLowerCase();
+        var s = 'width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"';
+        if (d === 'desktop') return '<i class="' + s + ' fa-light fa-desktop" data-icon-key="type-device-desktop"></i>';
+        if (d === 'mobile') return '<i class="' + s + ' fa-light fa-mobile-screen" data-icon-key="type-device-mobile"></i>';
+        if (d === 'tablet') return '<i class="' + s + ' fa-light fa-tablet-screen-button" data-icon-key="type-device-tablet"></i>';
+        return '<i class="' + s + ' fa-light fa-globe" data-icon-key="type-device-unknown"></i>';
+      }
+      function trafficTypePlatformIcon(platform) {
+        var p = (platform || '').trim().toLowerCase();
+        if (p === 'ios') return '<i class="fa-light fa-apple" data-icon-key="type-platform-ios"></i>';
+        if (p === 'mac') return '<i class="fa-light fa-apple" data-icon-key="type-platform-mac"></i>';
+        if (p === 'android') return '<i class="fa-light fa-android" data-icon-key="type-platform-android"></i>';
+        if (p === 'windows') return '<i class="fa-light fa-windows" data-icon-key="type-platform-windows"></i>';
+        if (p === 'chromeos') return '<i class="fa-brands fa-chrome" data-icon-key="type-platform-chromeos"></i>';
+        if (p === 'linux') return '<i class="fa-light fa-linux" data-icon-key="type-platform-linux"></i>';
+        return '<i class="fa-light fa-circle-question" data-icon-key="type-platform-unknown"></i>';
+      }
+
+      filtered.sort(function(a, b) {
+        let primary = 0;
+        if (by === 'device') primary = cmpNullableText(deviceLabel(a), deviceLabel(b), dir);
+        else primary = cmpNullableNumber(metric(a, by), metric(b, by), dir);
+        return primary ||
+          cmpNullableNumber(metric(a, 'rev'), metric(b, 'rev'), 'desc') ||
+          cmpNullableNumber(metric(a, 'orders'), metric(b, 'orders'), 'desc') ||
+          cmpNullableNumber(metric(a, 'sessions'), metric(b, 'sessions'), 'desc') ||
+          cmpNullableText(deviceLabel(a), deviceLabel(b), 'asc');
+      });
+
+      if (!filtered.length) {
+        body.innerHTML = '<div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">No device data yet.</div></div>';
+        updateCardPagination('devices', 1, 1);
+        updateSortHeadersInContainer(document.getElementById('devices-table'), by, dir);
+        return;
+      }
+
+      const pageSize = getTableRowsPerPage('devices-table', 'live');
+      const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+      devicesPage = clampPage(devicesPage, totalPages);
+      updateCardPagination('devices', devicesPage, totalPages);
+      const pageStart = (devicesPage - 1) * pageSize;
+      const pageGroups = filtered.slice(pageStart, pageStart + pageSize);
+
+      function isDeviceOpen(key) {
+        if (devicesExpanded === null) return true;
+        if (!devicesExpanded || typeof devicesExpanded !== 'object') return true;
+        if (!Object.prototype.hasOwnProperty.call(devicesExpanded, key)) return true;
+        return !!devicesExpanded[key];
+      }
+
+      let html = '';
+      pageGroups.forEach(function(g) {
+        const dKey = deviceLabel(g);
+        const open = isDeviceOpen(dKey);
+        const label = dKey;
+        const cr = (g && typeof g.conversion_pct === 'number') ? pct(g.conversion_pct) : '—';
+        const orders = (g && typeof g.orders === 'number') ? formatSessions(g.orders) : '—';
+        const sessions = (g && typeof g.sessions === 'number') ? formatSessions(g.sessions) : '—';
+        const rev = (g && typeof g.revenue_gbp === 'number') ? formatRevenueTableHtml(g.revenue_gbp) : '—';
+        html += '<div class="grid-row traffic-type-parent devices-parent" role="row" data-device-type="' + escapeHtml(dKey) + '">' +
+          '<div class="grid-cell" role="cell">' +
+            '<button type="button" class="traffic-type-toggle devices-toggle" data-device-type="' + escapeHtml(dKey) + '" aria-expanded="' + (open ? 'true' : 'false') + '">' +
+              '<span class="tt-device-icon" aria-hidden="true">' + trafficTypeDeviceIcon(dKey) + '</span>' +
+              '<span>' + escapeHtml(label) + '</span>' +
+            '</button>' +
+          '</div>' +
+          '<div class="grid-cell" role="cell">' + escapeHtml(sessions || '—') + '</div>' +
+          '<div class="grid-cell" role="cell">' + escapeHtml(orders || '—') + '</div>' +
+          '<div class="grid-cell" role="cell">' + escapeHtml(cr || '—') + '</div>' +
+          '<div class="grid-cell" role="cell">' + (rev || '—') + '</div>' +
+        '</div>';
+
+        const kids = g && Array.isArray(g.platforms) ? g.platforms.slice() : [];
+        kids.sort(function(a, b) {
+          let primary = 0;
+          if (by === 'device') primary = cmpNullableText((a && a.platform) ? String(a.platform) : '', (b && b.platform) ? String(b.platform) : '', dir);
+          else primary = cmpNullableNumber(metric(a, by), metric(b, by), dir);
+          return primary ||
+            cmpNullableNumber(metric(a, 'rev'), metric(b, 'rev'), 'desc') ||
+            cmpNullableNumber(metric(a, 'orders'), metric(b, 'orders'), 'desc') ||
+            cmpNullableNumber(metric(a, 'sessions'), metric(b, 'sessions'), 'desc') ||
+            cmpNullableText((a && a.platform) ? String(a.platform) : '', (b && b.platform) ? String(b.platform) : '', 'asc');
+        });
+
+        kids.forEach(function(c) {
+          const platform = c && c.platform != null ? String(c.platform).trim().toLowerCase() : 'other';
+          const clabel = platform || 'other';
+          const ccr = (c && typeof c.conversion_pct === 'number') ? pct(c.conversion_pct) : '—';
+          const corders = (c && typeof c.orders === 'number') ? formatSessions(c.orders) : '—';
+          const csessions = (c && typeof c.sessions === 'number') ? formatSessions(c.sessions) : '—';
+          const crev = (c && typeof c.revenue_gbp === 'number') ? formatRevenueTableHtml(c.revenue_gbp) : '—';
+          html += '<div class="grid-row traffic-type-child devices-child' + (open ? '' : ' is-hidden') + '" role="row" data-parent="' + escapeHtml(dKey) + '">' +
+            '<div class="grid-cell" role="cell"><span style="display:inline-flex;align-items:center;gap:8px">' + trafficTypePlatformIcon(platform) + '<span>' + escapeHtml(clabel) + '</span></span></div>' +
+            '<div class="grid-cell" role="cell">' + escapeHtml(csessions || '—') + '</div>' +
+            '<div class="grid-cell" role="cell">' + escapeHtml(corders || '—') + '</div>' +
+            '<div class="grid-cell" role="cell">' + escapeHtml(ccr || '—') + '</div>' +
+            '<div class="grid-cell" role="cell">' + (crev || '—') + '</div>' +
+          '</div>';
+        });
+      });
+
+      body.innerHTML = html;
+      updateSortHeadersInContainer(document.getElementById('devices-table'), by, dir);
+    }
+
+    function renderDevicesChart(data) {
+      const el = document.getElementById('devices-chart');
+      if (!el) return;
+      const chart = data && data.devices && data.devices.chart ? data.devices.chart : null;
+      const hasSeries = !!(chart && Array.isArray(chart.series) && chart.series.length);
+      if (!hasSeries) {
+        el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:#6b7280;font-size:.875rem">No chart data yet</div>';
+        return;
+      }
+    }
+
+    function renderDevices(data) {
+      devicesCache = data || devicesCache || null;
+      try { renderDevicesTables(devicesCache || {}); } catch (_) {}
+      try { renderDevicesChart(devicesCache || {}); } catch (_) {}
+    }
+
+    function fetchDevicesData(options = {}) {
+      const force = !!options.force;
+      let url = API + '/api/devices/report?range=' + encodeURIComponent(getStatsRange());
+      if (force) url += (url.indexOf('?') >= 0 ? '&' : '?') + '_=' + Date.now();
+      const cacheMode = force ? 'no-store' : 'default';
+      return fetchWithTimeout(url, { credentials: 'same-origin', cache: cacheMode }, 25000)
+        .then(function(r) {
+          if (!r.ok) throw new Error('Devices HTTP ' + r.status);
+          return r.json();
+        })
+        .then(function(data) {
+          lastDevicesFetchedAt = Date.now();
+          renderDevices(data && typeof data === 'object' ? data : null);
+          return data;
+        })
+        .catch(function(err) {
+          try { if (typeof window.kexoCaptureError === 'function') window.kexoCaptureError(err, { context: 'devicesFetch', page: PAGE }); } catch (_) {}
+          renderDevices(devicesCache || null);
+          return null;
+        });
+    }
+
+    function refreshDevices(options = {}) {
+      const force = !!options.force;
+      if (devicesRefreshInFlight) return devicesRefreshInFlight;
+      const build = startReportBuild({ key: 'devices', title: 'Preparing devices report' });
+      build.step('Loading device performance');
+      devicesRefreshInFlight = fetchDevicesData({ force })
+        .finally(function() {
+          devicesRefreshInFlight = null;
+          build.finish();
+        });
+      return devicesRefreshInFlight;
     }
 
     function sessionIdsEqual(a, b) {
@@ -13346,13 +13783,15 @@ const API = '';
         html += section('Activity', renderActivityHtml(events, 'page'));
         if (session) {
           var utm = [session.utm_source, session.utm_medium, session.utm_campaign, session.utm_content].filter(Boolean).join(' · ');
+          var attrib = [session.attribution_channel, session.attribution_source, session.attribution_variant].filter(Boolean).join(' · ');
+          if (session.attribution_confidence) attrib = attrib ? (attrib + ' (' + session.attribution_confidence + ')') : String(session.attribution_confidence);
           var sRows = [
             { k: 'Started', v: formatTs(session.started_at) || '—' },
             { k: 'Last seen', v: formatTs(session.last_seen) || '—' },
             { k: 'Country', v: session.country_code || '—' },
             { k: 'Device', v: session.device || '—' },
             { k: 'UA device/platform', v: ((session.ua_device_type || '') + ' / ' + (session.ua_platform || '') + (session.ua_model ? (' / ' + session.ua_model) : '')).trim() || '—' },
-            { k: 'Traffic source', v: session.traffic_source_key || '—' },
+            { k: 'Attribution', v: attrib || '—' },
             { k: 'Entry URL', v: session.entry_url || '—' },
             { k: 'Referrer', v: session.referrer || '—' },
             { k: 'UTM', v: utm || '—' },
@@ -13447,12 +13886,37 @@ const API = '';
 
                 var channelLabel = '';
                 try {
-                  var v2Label = session && (session.traffic_source_v2_label ?? session.trafficSourceV2Label);
-                  if (v2Label) channelLabel = String(v2Label);
-                  if (!channelLabel) {
-                    var k = session && (session.traffic_source_key ?? session.trafficSourceKey);
-                    if (k) channelLabel = trafficSourceLabelForKey(String(k).trim().toLowerCase(), String(k));
+                  var variantKey = session && (session.attribution_variant ?? session.attributionVariant);
+                  var channelKey = session && (session.attribution_channel ?? session.attributionChannel);
+                  var sourceKey = session && (session.attribution_source ?? session.attributionSource);
+
+                  function titleizeAttrib(v) {
+                    var s = (v || '').trim().toLowerCase();
+                    if (!s) return '';
+                    if (s === 'google_ads') return 'Google Ads';
+                    if (s === 'google_organic') return 'Google';
+                    if (s === 'bing_ads') return 'Bing Ads';
+                    if (s === 'bing_organic') return 'Bing';
+                    if (s === 'meta_ads') return 'Meta Ads';
+                    if (s === 'meta_organic') return 'Meta';
+                    if (s === 'paid_search') return 'Paid search';
+                    if (s === 'organic_search') return 'Organic search';
+                    if (s === 'paid_social') return 'Paid social';
+                    if (s === 'organic_social') return 'Organic social';
+                    if (s === 'email') return 'Email';
+                    if (s === 'sms') return 'SMS';
+                    if (s === 'direct') return 'Direct';
+                    if (s === 'affiliate') return 'Affiliate';
+                    if (s === 'other') return 'Other';
+                    return s.replace(/_/g, ' ').replace(/\b\w/g, function(m) { return m.toUpperCase(); });
                   }
+
+                  if (variantKey) {
+                    var head = String(variantKey).trim().toLowerCase().split(':')[0] || '';
+                    channelLabel = titleizeAttrib(head);
+                  }
+                  if (!channelLabel && channelKey) channelLabel = titleizeAttrib(String(channelKey));
+                  if (!channelLabel && sourceKey) channelLabel = titleizeAttrib(String(sourceKey));
                 } catch (_) { channelLabel = ''; }
 
                 var deviceLabel = '';
@@ -13593,8 +14057,8 @@ const API = '';
       bindDelegate('best-geo-products', function(pg) { bestGeoProductsPage = pg; renderBestGeoProducts(statsCache); });
       bindDelegate('best-sellers', function(pg) { bestSellersPage = pg; fetchBestSellers(); });
       bindDelegate('best-variants', function(pg) { bestVariantsPage = pg; fetchBestVariants(); });
-      bindDelegate('traffic-sources', function(pg) { trafficSourcesPage = pg; renderTrafficTables(trafficCache || {}); });
-      bindDelegate('traffic-types', function(pg) { trafficTypesPage = pg; renderTrafficTables(trafficCache || {}); });
+      bindDelegate('attribution', function(pg) { attributionPage = pg; renderAttributionTables(attributionCache || {}); });
+      bindDelegate('devices', function(pg) { devicesPage = pg; renderDevicesTables(devicesCache || {}); });
       bindDelegate('dash-top-products', function(pg) { dashTopProductsPage = pg; rerenderDashboardFromCache(); });
       bindDelegate('dash-top-countries', function(pg) { dashTopCountriesPage = pg; rerenderDashboardFromCache(); });
       bindDelegate('dash-trending-up', function(pg) { dashTrendingUpPage = pg; rerenderDashboardFromCache(); });
@@ -13667,7 +14131,8 @@ const API = '';
         .then(function(r) { return r.json(); })
         .then(function(payload) {
           try { refreshConfigStatus({ force: true, preserveView: true }); } catch (_) {}
-          try { fetchTrafficData({ force: true }); } catch (_) {}
+          try { refreshAttribution({ force: true }); } catch (_) {}
+          try { refreshDevices({ force: true }); } catch (_) {}
           var details = payload && payload.result ? payload.result : null;
           var fetched = details && typeof details.fetched === 'number' ? details.fetched : null;
           var inserted = details && typeof details.inserted === 'number' ? details.inserted : null;
@@ -13934,7 +14399,7 @@ const API = '';
               byPage[p].push(d);
             }
 
-            const preferredOrder = ['Home', 'Overview', 'Countries', 'Products', 'Traffic', 'Diagnostics', 'Other'];
+            const preferredOrder = ['Home', 'Overview', 'Countries', 'Products', 'Acquisition', 'Diagnostics', 'Other'];
             const pages = Object.keys(byPage || {});
             pages.sort(function(a, b) {
               const ia = preferredOrder.indexOf(a);
@@ -14396,20 +14861,20 @@ const API = '';
             }
           }
 
-          var trafficBody = '';
-          trafficBody += '<div class="row g-3">';
-          trafficBody +=   '<div class="col-12 col-xl-6">' + cardSm('Sessions (today)', kvTable([
+          var acquisitionBody = '';
+          acquisitionBody += '<div class="row g-3">';
+          acquisitionBody +=   '<div class="col-12 col-xl-6">' + cardSm('Sessions (today)', kvTable([
             ['Reached app', (traffic && traffic.today && typeof traffic.today.sessionsReachedApp === 'number') ? escapeHtml(formatSessions(traffic.today.sessionsReachedApp)) : '\u2014'],
             ['Human sessions', (traffic && traffic.today && typeof traffic.today.humanSessions === 'number') ? escapeHtml(formatSessions(traffic.today.humanSessions)) : '\u2014'],
             ['Bot sessions tagged', (traffic && traffic.today && typeof traffic.today.botSessionsTagged === 'number') ? escapeHtml(formatSessions(traffic.today.botSessionsTagged)) : '\u2014'],
-            ['Total traffic est.', (traffic && traffic.today && typeof traffic.today.totalTrafficEst === 'number') ? escapeHtml(formatSessions(traffic.today.totalTrafficEst)) : '\u2014'],
+            ['Total sessions est.', (traffic && traffic.today && typeof traffic.today.totalTrafficEst === 'number') ? escapeHtml(formatSessions(traffic.today.totalTrafficEst)) : '\u2014'],
           ])) + '</div>';
-          trafficBody +=   '<div class="col-12 col-xl-6">' + cardSm('Shopify vs ours', kvTable([
+          acquisitionBody +=   '<div class="col-12 col-xl-6">' + cardSm('Shopify vs ours', kvTable([
             ['Shopify sessions (today)', shopifySessionsToday != null ? escapeHtml(formatSessions(shopifySessionsToday)) : '\u2014'],
             ['Shopify CR% (today)', fmtPct(shopifyCr)],
             ['Ours CR% (truth, today)', fmtPct(kexoCr)],
           ])) + '</div>';
-          trafficBody += '</div>';
+          acquisitionBody += '</div>';
 
           var pixelBody = '';
           var installedBadge = (pixel && pixel.installed === true) ? badgeLt('Installed', 'ok') : ((pixel && pixel.installed === false) ? badgeLt('Not installed', 'bad') : badgeLt('\u2014', 'warn'));
@@ -14551,7 +15016,7 @@ const API = '';
           html += '<div class="accordion settings-layout-accordion" id="settings-diagnostics-accordion">';
           html += accordionItem('overview', 'Overview', overviewBody);
           html += accordionItem('sales', 'Sales', salesBody);
-          html += accordionItem('traffic', 'Traffic', trafficBody);
+          html += accordionItem('acquisition', 'Acquisition', acquisitionBody);
           html += accordionItem('pixel', 'Pixel', pixelBody);
           html += accordionItem('shopify', 'Shopify', shopifyBody);
           html += accordionItem('googleads', 'Google Ads', googleAdsBody);
@@ -14716,17 +15181,6 @@ const API = '';
               compareStatusEl.innerHTML = cmpHtml;
             }
           } catch (_) {}
-          try { renderTrafficPickers(trafficCache || null); } catch (_) {}
-          // On Settings page: trafficCache is never populated (no modal open). Fetch and populate Channels/Device pickers.
-          if (configStatusEl && configStatusEl.id === 'diagnostics-content') {
-            try {
-              if (document.getElementById('traffic-sources-picker') || document.getElementById('traffic-types-picker')) {
-                fetchTrafficData({ force: true }).then(function(data) {
-                  try { renderTrafficPickers(data || null); } catch (_) {}
-                }).catch(function() {});
-              }
-            } catch (_) {}
-          }
           try {
             const btn = document.getElementById('be-copy-ai-btn');
             const downloadBtn = document.getElementById('be-download-ai-json-btn');
@@ -15036,6 +15490,32 @@ const API = '';
       });
     })();
 
+    (function initKexoScoreModal() {
+      var card = document.getElementById('dash-kpi-kexo-score-card');
+      var closeBtn = document.getElementById('kexo-score-modal-close-btn');
+      var modal = document.getElementById('kexo-score-modal');
+      if (card) {
+        card.addEventListener('click', function(e) {
+          e.preventDefault();
+          if (typeof openKexoScoreModal === 'function') openKexoScoreModal();
+        });
+        card.addEventListener('keydown', function(e) {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            if (typeof openKexoScoreModal === 'function') openKexoScoreModal();
+          }
+        });
+      }
+      if (closeBtn) closeBtn.addEventListener('click', function() { if (typeof closeKexoScoreModal === 'function') closeKexoScoreModal(); });
+      if (modal) modal.addEventListener('click', function(e) { if (e.target === modal && typeof closeKexoScoreModal === 'function') closeKexoScoreModal(); });
+      document.addEventListener('keydown', function(e) {
+        if (e.key !== 'Escape') return;
+        if (!modal || modal.classList.contains('is-hidden')) return;
+        if (modal.getAttribute('aria-hidden') === 'true') return;
+        if (typeof closeKexoScoreModal === 'function') closeKexoScoreModal();
+      });
+    })();
+
     (function initTrafficTypeTree() {
       const body = document.getElementById('traffic-types-body');
       if (!body) return;
@@ -15063,6 +15543,99 @@ const API = '';
         });
       });
     })();
+
+      (function initDevicesTree() {
+        const body = document.getElementById('devices-body');
+        if (!body) return;
+        body.addEventListener('click', function(e) {
+          const target = e && e.target ? e.target : null;
+          const btn = target && target.closest ? target.closest('.devices-toggle[data-device-type]') : null;
+          if (!btn) return;
+          e.preventDefault();
+          e.stopPropagation();
+          const deviceType = (btn.getAttribute('data-device-type') || '').trim().toLowerCase();
+          if (!deviceType) return;
+          if (!devicesExpanded || typeof devicesExpanded !== 'object') {
+            devicesExpanded = {};
+            body.querySelectorAll('.devices-parent[data-device-type]').forEach(function(row) {
+              var d = (row.getAttribute('data-device-type') || '').trim().toLowerCase();
+              if (d) devicesExpanded[d] = true;
+            });
+          }
+          const nextOpen = !devicesExpanded[deviceType];
+          devicesExpanded[deviceType] = nextOpen;
+          btn.setAttribute('aria-expanded', nextOpen ? 'true' : 'false');
+          body.querySelectorAll('.grid-row.devices-child[data-parent="' + deviceType + '"]').forEach(function(tr) {
+            tr.classList.toggle('is-hidden', !nextOpen);
+          });
+        });
+      })();
+
+      (function initAttributionTree() {
+        const body = document.getElementById('attribution-body');
+        if (!body) return;
+        body.addEventListener('click', function(e) {
+          const target = e && e.target ? e.target : null;
+          const channelBtn = target && target.closest ? target.closest('.attribution-channel-toggle[data-channel]') : null;
+          if (channelBtn) {
+            e.preventDefault();
+            e.stopPropagation();
+            const chKey = (channelBtn.getAttribute('data-channel') || '').trim().toLowerCase();
+            if (!chKey) return;
+            if (!attributionExpandedChannels || typeof attributionExpandedChannels !== 'object') {
+              attributionExpandedChannels = {};
+              body.querySelectorAll('.attribution-channel-parent[data-channel]').forEach(function(row) {
+                var k = (row.getAttribute('data-channel') || '').trim().toLowerCase();
+                if (k) attributionExpandedChannels[k] = true;
+              });
+            }
+            const nextOpen = !attributionExpandedChannels[chKey];
+            attributionExpandedChannels[chKey] = nextOpen;
+            channelBtn.setAttribute('aria-expanded', nextOpen ? 'true' : 'false');
+            body.querySelectorAll('.grid-row.attribution-source-row[data-parent="' + chKey + '"]').forEach(function(tr) {
+              tr.classList.toggle('is-hidden', !nextOpen);
+            });
+            body.querySelectorAll('.grid-row.attribution-variant-row[data-channel="' + chKey + '"]').forEach(function(tr) {
+              if (!nextOpen) {
+                tr.classList.add('is-hidden');
+                return;
+              }
+              const src = (tr.getAttribute('data-source') || '').trim().toLowerCase();
+              const k = chKey + '|' + (src || 'other');
+              let srcOpen = true;
+              if (attributionExpandedSources && typeof attributionExpandedSources === 'object' && Object.prototype.hasOwnProperty.call(attributionExpandedSources, k)) {
+                srcOpen = !!attributionExpandedSources[k];
+              }
+              tr.classList.toggle('is-hidden', !srcOpen);
+            });
+            return;
+          }
+
+          const sourceBtn = target && target.closest ? target.closest('.attribution-source-toggle[data-channel][data-source]') : null;
+          if (!sourceBtn) return;
+          e.preventDefault();
+          e.stopPropagation();
+          const ch = (sourceBtn.getAttribute('data-channel') || '').trim().toLowerCase();
+          const src = (sourceBtn.getAttribute('data-source') || '').trim().toLowerCase();
+          if (!ch || !src) return;
+          if (!attributionExpandedSources || typeof attributionExpandedSources !== 'object') {
+            attributionExpandedSources = {};
+            body.querySelectorAll('.attribution-source-row[data-channel][data-source]').forEach(function(row) {
+              var c = (row.getAttribute('data-channel') || '').trim().toLowerCase();
+              var s = (row.getAttribute('data-source') || '').trim().toLowerCase();
+              if (c && s) attributionExpandedSources[c + '|' + s] = true;
+            });
+          }
+          const key = ch + '|' + src;
+          const nextOpen = !attributionExpandedSources[key];
+          attributionExpandedSources[key] = nextOpen;
+          sourceBtn.setAttribute('aria-expanded', nextOpen ? 'true' : 'false');
+          const channelOpen = !(attributionExpandedChannels && typeof attributionExpandedChannels === 'object' && Object.prototype.hasOwnProperty.call(attributionExpandedChannels, ch)) || !!attributionExpandedChannels[ch];
+          body.querySelectorAll('.grid-row.attribution-variant-row[data-parent="' + key + '"]').forEach(function(tr) {
+            tr.classList.toggle('is-hidden', !(channelOpen && nextOpen));
+          });
+        });
+      })();
 
     (function initTopBar() {
       try { saleMuted = sessionStorage.getItem(SALE_MUTED_KEY) === 'true'; } catch (_) { saleMuted = false; }
@@ -15243,10 +15816,10 @@ const API = '';
       })();
       (function initMainTabs() {
         const TAB_KEY = 'kexo-main-tab';
-        const VALID_TABS = ['dashboard', 'spy', 'sales', 'date', 'snapshot', 'stats', 'products', 'channels', 'type', 'ads', 'tools'];
-        const TAB_LABELS = { dashboard: 'Overview', spy: 'Live View', sales: 'Recent Sales', date: 'Table View', snapshot: 'Snapshot', stats: 'Countries', products: 'Products', variants: 'Variants', channels: 'Channels', type: 'Device & Platform', ads: 'Google Ads', tools: 'Conversion Rate Compare' };
-        const HASH_TO_TAB = { dashboard: 'dashboard', 'live-view': 'spy', sales: 'sales', date: 'date', countries: 'stats', products: 'products', channels: 'channels', type: 'type', ads: 'ads', 'compare-conversion-rate': 'tools' };
-        const TAB_TO_HASH = { dashboard: 'dashboard', spy: 'live-view', sales: 'sales', date: 'date', stats: 'countries', products: 'products', channels: 'channels', type: 'type', ads: 'ads', tools: 'compare-conversion-rate' };
+        const VALID_TABS = ['dashboard', 'spy', 'sales', 'date', 'snapshot', 'stats', 'products', 'attribution', 'devices', 'ads', 'tools'];
+        const TAB_LABELS = { dashboard: 'Overview', spy: 'Live View', sales: 'Recent Sales', date: 'Table View', snapshot: 'Snapshot', stats: 'Countries', products: 'Products', variants: 'Variants', attribution: 'Attribution', devices: 'Devices', ads: 'Google Ads', tools: 'Conversion Rate Compare' };
+        const HASH_TO_TAB = { dashboard: 'dashboard', 'live-view': 'spy', sales: 'sales', date: 'date', countries: 'stats', products: 'products', channels: 'attribution', type: 'devices', attribution: 'attribution', devices: 'devices', ads: 'ads', 'compare-conversion-rate': 'tools' };
+        const TAB_TO_HASH = { dashboard: 'dashboard', spy: 'live-view', sales: 'sales', date: 'date', stats: 'countries', products: 'products', attribution: 'attribution', devices: 'devices', ads: 'ads', tools: 'compare-conversion-rate' };
         const tabDashboard = document.getElementById('nav-tab-dashboard');
         const tabSpy = document.getElementById('nav-tab-spy');
         const tabStats = document.getElementById('nav-tab-stats');
@@ -15343,22 +15916,6 @@ const API = '';
         }
 
         var TAB_TO_NAV = { spy: 'live', snapshot: 'snapshot', stats: 'countries' };
-        var NAV_TO_ICON = {
-          overview: 'fa-house',
-          dashboard: 'fa-house',
-          live: 'fa-satellite-dish',
-          sales: 'fa-cart-shopping',
-          date: 'fa-table',
-          snapshot: 'fa-chart-simple',
-          countries: 'fa-globe',
-          products: 'fa-box-open',
-          variants: 'fa-bezier-curve',
-          'abandoned-carts': 'fa-cart-shopping',
-          channels: 'fa-diagram-project',
-          type: 'fa-table-cells',
-          ads: 'fa-rectangle-ad',
-          tools: 'fa-toolbox'
-        };
         var NAV_TO_ICON_KEY = {
           overview: 'nav-item-overview',
           dashboard: 'nav-item-overview',
@@ -15372,6 +15929,8 @@ const API = '';
           'abandoned-carts': 'nav-item-sales',
           channels: 'nav-item-channels',
           type: 'nav-item-type',
+          attribution: 'nav-item-channels',
+          devices: 'nav-item-type',
           ads: 'nav-item-ads',
           tools: 'nav-item-tools'
         };
@@ -15508,16 +16067,16 @@ const API = '';
             if (isInsightsChild) insightsDropdownItem.classList.add('active');
             else insightsDropdownItem.classList.remove('active');
           }
-          // Traffic dropdown
-          var isTrafficChild = (tab === 'channels' || tab === 'type');
-          var trafficToggle = document.querySelector('.nav-item.dropdown .dropdown-toggle[href="#navbar-traffic-menu"]');
-          var trafficDropdownItem = trafficToggle ? trafficToggle.closest('.nav-item') : null;
-          if (trafficToggle) {
-            trafficToggle.setAttribute('aria-current', isTrafficChild ? 'page' : 'false');
+          // Acquisition dropdown
+          var isAcquisitionChild = (tab === 'attribution' || tab === 'devices');
+          var acquisitionToggle = document.querySelector('.nav-item.dropdown .dropdown-toggle[href="#navbar-acquisition-menu"]');
+          var acquisitionDropdownItem = acquisitionToggle ? acquisitionToggle.closest('.nav-item') : null;
+          if (acquisitionToggle) {
+            acquisitionToggle.setAttribute('aria-current', isAcquisitionChild ? 'page' : 'false');
           }
-          if (trafficDropdownItem) {
-            if (isTrafficChild) trafficDropdownItem.classList.add('active');
-            else trafficDropdownItem.classList.remove('active');
+          if (acquisitionDropdownItem) {
+            if (isAcquisitionChild) acquisitionDropdownItem.classList.add('active');
+            else acquisitionDropdownItem.classList.remove('active');
           }
 
           // Integrations dropdown
@@ -15599,8 +16158,11 @@ const API = '';
           } else if (tab === 'abandoned-carts') {
             try { refreshAbandonedCarts({ force: false }); } catch (_) { fetchSessions(); }
             ensureKpis();
-          } else if (tab === 'channels' || tab === 'type') {
-            refreshTraffic({ force: false });
+          } else if (tab === 'attribution') {
+            refreshAttribution({ force: false });
+            ensureKpis();
+          } else if (tab === 'devices') {
+            refreshDevices({ force: false });
             ensureKpis();
           } else if (tab === 'ads') {
             ensureKpis();
@@ -15870,8 +16432,10 @@ const API = '';
                 try { if (typeof window.__refreshVariantsInsights === 'function') window.__refreshVariantsInsights({ force: true }); } catch (_) {}
               } else if (activeMainTab === 'abandoned-carts') {
                 try { refreshAbandonedCarts({ force: true }); } catch (_) { try { fetchSessions(); } catch (_) {} }
-              } else if (activeMainTab === 'channels' || activeMainTab === 'type') {
-                try { refreshTraffic({ force: true }); } catch (_) {}
+              } else if (activeMainTab === 'attribution') {
+                try { refreshAttribution({ force: true }); } catch (_) {}
+              } else if (activeMainTab === 'devices') {
+                try { refreshDevices({ force: true }); } catch (_) {}
               } else if (activeMainTab === 'ads') {
                 try { if (window.__adsRefresh) window.__adsRefresh({ force: true }); } catch (_) {}
               } else {
@@ -15905,9 +16469,6 @@ const API = '';
       onScroll('best-sellers-wrap', 'stats-best-sellers');
       onScroll('best-variants-wrap', 'stats-best-variants');
     })();
-
-    // Load traffic source mapping + custom icons (best-effort).
-    try { refreshTrafficSourceMeta({ force: false }); } catch (_) {}
 
     function liveSalesAutoPollEnabled() {
       return PAGE === 'live' || PAGE === 'sales';
@@ -16063,13 +16624,6 @@ const API = '';
       if (getStatsRange() !== 'today') return;
       if (document.visibilityState !== 'visible') return;
       refreshProducts({ force: false });
-    }
-
-    function onTrafficAutoRefreshTick() {
-      if (activeMainTab !== 'channels' && activeMainTab !== 'type') return;
-      if (getStatsRange() !== 'today') return;
-      if (document.visibilityState !== 'visible') return;
-      refreshTraffic({ force: false });
     }
 
     // Background polling is intentionally disabled across the site (manual refresh only),
@@ -17045,6 +17599,78 @@ const API = '';
         } catch (_) {}
       }
 
+      var _kexoScoreCache = null;
+      var _kexoScoreRangeKey = '';
+
+      function fetchKexoScore(rangeKey) {
+        rangeKey = (rangeKey == null ? '' : String(rangeKey)).trim().toLowerCase();
+        if (!rangeKey) rangeKey = 'today';
+        var url = API + '/api/kexo-score?range=' + encodeURIComponent(rangeKey);
+        return fetchWithTimeout(url, { credentials: 'same-origin', cache: 'default' }, 15000)
+          .then(function(r) { return (r && r.ok) ? r.json() : null; })
+          .then(function(scoreData) {
+            if (scoreData && PAGE === 'dashboard') {
+              _kexoScoreCache = scoreData;
+              _kexoScoreRangeKey = rangeKey;
+              renderKexoScore(scoreData);
+            }
+            return scoreData;
+          })
+          .catch(function() { return null; });
+      }
+
+      function renderKexoScore(scoreData) {
+        var numEl = document.getElementById('dash-kpi-kexo-score');
+        var ringEl = document.getElementById('dash-kpi-kexo-score-ring');
+        if (!numEl) return;
+        if (!scoreData || typeof scoreData.score !== 'number' || !Number.isFinite(scoreData.score)) {
+          numEl.textContent = '\u2014';
+          if (ringEl) ringEl.style.setProperty('--kexo-score-pct', '0');
+          return;
+        }
+        var score = Math.max(0, Math.min(100, Number(scoreData.score)));
+        numEl.textContent = score.toFixed(1);
+        if (ringEl) ringEl.style.setProperty('--kexo-score-pct', String(score));
+      }
+
+      function openKexoScoreModal() {
+        var modal = document.getElementById('kexo-score-modal');
+        var body = document.getElementById('kexo-score-modal-body');
+        if (!modal || !body) return;
+        var data = _kexoScoreCache;
+        if (!data || !Array.isArray(data.components) || data.components.length === 0) {
+          body.innerHTML = '<div class="kexo-score-breakdown-empty text-muted">No score data. Select a date range and refresh.</div>';
+        } else {
+          var rangeLabel = (data.range && String(data.range).trim()) ? String(data.range).trim() : 'Current range';
+          body.innerHTML = '<div class="kexo-score-breakdown-meta mb-3 small text-muted">' + escapeHtml(rangeLabel) + '</div>' +
+            data.components.map(function(c) {
+              var label = (c.label && String(c.label).trim()) ? String(c.label) : (c.key || '');
+              var score = typeof c.score === 'number' && Number.isFinite(c.score) ? Math.max(0, Math.min(100, c.score)) : 0;
+              var valueStr = c.value != null ? String(c.value) : '\u2014';
+              var prevStr = c.previous != null ? String(c.previous) : '\u2014';
+              var prev2Str = c.previous2 != null ? String(c.previous2) : '\u2014';
+              return '<div class="kexo-score-breakdown-row mb-3">' +
+                '<div class="d-flex justify-content-between align-items-center mb-1">' +
+                  '<span class="kexo-score-breakdown-label">' + escapeHtml(label) + '</span>' +
+                  '<span class="kexo-score-breakdown-value small">' + escapeHtml(valueStr) + ' (prev: ' + escapeHtml(prevStr) + ', before: ' + escapeHtml(prev2Str) + ')</span>' +
+                '</div>' +
+                '<div class="progress progress-thin">' +
+                  '<div class="progress-bar" role="progressbar" style="width:' + score + '%" aria-valuenow="' + score + '" aria-valuemin="0" aria-valuemax="100">' + score.toFixed(0) + '</div>' +
+                '</div>' +
+              '</div>';
+            }).join('');
+        }
+        modal.classList.remove('is-hidden');
+        modal.setAttribute('aria-hidden', 'false');
+      }
+
+      function closeKexoScoreModal() {
+        var modal = document.getElementById('kexo-score-modal');
+        if (!modal) return;
+        modal.classList.add('is-hidden');
+        modal.setAttribute('aria-hidden', 'true');
+      }
+
       function fetchDashboardData(rangeKey, force, opts) {
         if (dashLoading && !force) return;
         rangeKey = (rangeKey == null ? '' : String(rangeKey)).trim().toLowerCase();
@@ -17057,6 +17683,7 @@ const API = '';
           initialStep: 'Loading dashboard data',
         });
         var url = API + '/api/dashboard-series?range=' + encodeURIComponent(rangeKey) + (force ? ('&force=1&_=' + Date.now()) : '');
+        fetchKexoScore(rangeKey);
         fetchWithTimeout(url, { credentials: 'same-origin', cache: force ? 'no-store' : 'default' }, 30000)
           .then(function(r) { return (r && r.ok) ? r.json() : null; })
           .then(function(data) {

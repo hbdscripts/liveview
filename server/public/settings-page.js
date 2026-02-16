@@ -49,7 +49,6 @@
   var chartsUiConfigCache = null;
   var tablesUiConfigCache = null;
   var insightsVariantsConfigCache = null;
-  var trafficSourcesConfigCache = null;
   var insightsVariantsDraft = null;
   var chartsUiPanelRendered = false;
   var tablesUiPanelRendered = false;
@@ -70,7 +69,7 @@
     theme: 'settings-panel-theme',
     assets: 'settings-panel-assets',
     integrations: 'settings-panel-integrations',
-    sources: 'settings-panel-sources',
+    attribution: 'settings-panel-attribution',
     insights: 'settings-panel-insights',
     layout: 'settings-panel-layout',
   };
@@ -79,6 +78,7 @@
     var m = /[?&]tab=([^&]+)/.exec(window.location.search || '');
     if (m && m[1]) {
       var t = m[1].toLowerCase().replace(/\s+/g, '-');
+      if (t === 'sources') t = 'attribution';
       if (t === 'charts' || t === 'kpis') {
         initialLayoutSubTab = t;
         return 'layout';
@@ -97,6 +97,7 @@
 
   function getTabFromHash() {
     var hash = (window.location.hash || '').replace(/^#/, '').toLowerCase();
+    if (hash === 'sources') return 'attribution';
     if (hash === 'charts' || hash === 'kpis') {
       initialLayoutSubTab = hash;
       return 'layout';
@@ -146,10 +147,10 @@
       el.classList.toggle('active', panelKey === key);
     });
     updateUrl(key);
-    if (key === 'sources') {
+    if (key === 'attribution') {
       try {
-        if (typeof window.initTrafficSourcesV2Settings === 'function') {
-          window.initTrafficSourcesV2Settings({ rootId: 'settings-traffic-source-mapping-root', initialConfig: trafficSourcesConfigCache });
+        if (typeof window.initAttributionMappingSettings === 'function') {
+          window.initAttributionMappingSettings({ rootId: 'settings-attribution-mapping-root' });
         }
       } catch (_) {}
     }
@@ -565,7 +566,6 @@
         chartsUiConfigCache = data.chartsUiConfig || null;
         tablesUiConfigCache = data.tablesUiConfig || null;
         insightsVariantsConfigCache = data.insightsVariantsConfig || null;
-        trafficSourcesConfigCache = data.trafficSourcesConfig || null;
         var scopeMode = (data.settingsScopeMode || 'global');
         var scopeGlobal = document.getElementById('settings-scope-global');
         var scopeUser = document.getElementById('settings-scope-user');
@@ -1089,8 +1089,8 @@
           countries: true,
           products: true,
           variants: true,
-          channels: true,
-          type: true,
+          attribution: true,
+          devices: true,
           ads: true,
           'compare-conversion-rate': true,
           'shipping-cr': true,
@@ -1121,6 +1121,7 @@
           { key: 'bounce', label: 'Bounce Rate', enabled: true },
           { key: 'returning', label: 'Returning', enabled: true },
           { key: 'roas', label: 'ADS ROAS', enabled: true },
+          { key: 'kexo_score', label: 'Kexo Score', enabled: true },
           { key: 'cogs', label: 'COGS', enabled: true },
           { key: 'fulfilled', label: 'Fulfilled', enabled: true },
           { key: 'returns', label: 'Returns', enabled: true },
@@ -1149,8 +1150,8 @@
       { key: 'sales-overview-chart', label: 'Dashboard · Sales Trend', enabled: true, mode: 'area', colors: ['#0d9488'], advancedApexOverride: {} },
       { key: 'date-overview-chart', label: 'Dashboard · Sessions & Orders Trend', enabled: true, mode: 'area', colors: ['#4b94e4', '#f59e34'], advancedApexOverride: {} },
       { key: 'ads-overview-chart', label: 'Integrations · Google Ads Overview', enabled: true, mode: 'bar', colors: ['#22c55e', '#ef4444', '#4b94e4'], advancedApexOverride: {} },
-      { key: 'channels-chart', label: 'Traffic · Channels', enabled: true, mode: 'line', colors: ['#4b94e4', '#f59e34', '#3eb3ab', '#8b5cf6', '#ef4444', '#22c55e'], pieMetric: 'sessions', advancedApexOverride: {} },
-      { key: 'type-chart', label: 'Traffic · Device & Platform', enabled: true, mode: 'line', colors: ['#4b94e4', '#f59e34', '#3eb3ab', '#8b5cf6', '#ef4444', '#22c55e'], pieMetric: 'sessions', advancedApexOverride: {} },
+      { key: 'attribution-chart', label: 'Acquisition · Attribution', enabled: true, mode: 'line', colors: ['#4b94e4', '#f59e34', '#3eb3ab', '#8b5cf6', '#ef4444', '#22c55e'], pieMetric: 'sessions', advancedApexOverride: {} },
+      { key: 'devices-chart', label: 'Acquisition · Devices', enabled: true, mode: 'line', colors: ['#4b94e4', '#f59e34', '#3eb3ab', '#8b5cf6', '#ef4444', '#22c55e'], pieMetric: 'sessions', advancedApexOverride: {} },
       { key: 'products-chart', label: 'Insights · Products', enabled: true, mode: 'line', colors: ['#3eb3ab', '#4b94e4', '#f59e34', '#8b5cf6', '#ef4444', '#22c55e'], advancedApexOverride: {} },
       { key: 'abandoned-carts-chart', label: 'Insights · Abandoned Carts', enabled: true, mode: 'line', colors: ['#ef4444'], advancedApexOverride: {} },
       { key: 'countries-map-chart', label: 'Insights · Countries Map', enabled: true, mode: 'map-flat', colors: ['#3eb3ab'], advancedApexOverride: {} },
@@ -1251,17 +1252,17 @@
           ],
         },
         {
-          key: 'channels',
-          label: 'Traffic · Channels',
+          key: 'attribution',
+          label: 'Acquisition · Attribution',
           tables: [
-            { id: 'traffic-sources-table', name: 'Channels', tableClass: 'live', zone: 'channels-main', order: 1, inGrid: false, rows: { default: 20, options: [20, 30, 40, 50] }, sticky: { minWidth: null, maxWidth: null } },
+            { id: 'attribution-table', name: 'Attribution', tableClass: 'live', zone: 'attribution-main', order: 1, inGrid: false, rows: { default: 20, options: [20, 30, 40, 50] }, sticky: { minWidth: null, maxWidth: null } },
           ],
         },
         {
-          key: 'type',
-          label: 'Traffic · Device & Platform',
+          key: 'devices',
+          label: 'Acquisition · Devices',
           tables: [
-            { id: 'traffic-types-table', name: 'Device & Platform', tableClass: 'live', zone: 'type-main', order: 1, inGrid: false, rows: { default: 20, options: [20, 30, 40, 50] }, sticky: { minWidth: null, maxWidth: null } },
+            { id: 'devices-table', name: 'Devices', tableClass: 'live', zone: 'devices-main', order: 1, inGrid: false, rows: { default: 20, options: [20, 30, 40, 50] }, sticky: { minWidth: null, maxWidth: null } },
           ],
         },
         {
@@ -1282,7 +1283,7 @@
 
   var CHARTS_GROUPS = [
     { id: 'dashboard', label: 'Dashboard charts', keys: ['dash-chart-revenue', 'dash-chart-orders', 'dash-chart-conv', 'dash-chart-sessions', 'dash-chart-adspend', 'live-online-chart', 'sales-overview-chart', 'date-overview-chart'] },
-    { id: 'traffic', label: 'Traffic charts', keys: ['channels-chart', 'type-chart'] },
+    { id: 'acquisition', label: 'Acquisition charts', keys: ['attribution-chart', 'devices-chart'] },
     { id: 'insights', label: 'Insights charts', keys: ['products-chart', 'abandoned-carts-chart', 'countries-map-chart'] },
     { id: 'integrations', label: 'Integration charts', keys: ['ads-overview-chart'] },
   ];
@@ -3785,11 +3786,15 @@
     // Header KPI strip visibility per page.
     var defPages = (def.headerStrip && def.headerStrip.pages && typeof def.headerStrip.pages === 'object') ? def.headerStrip.pages : {};
     var pages = (c.headerStrip && c.headerStrip.pages && typeof c.headerStrip.pages === 'object') ? c.headerStrip.pages : {};
+    // Backwards compatibility: treat legacy Traffic keys as Acquisition keys when missing.
+    var mergedPages = Object.assign({}, pages);
+    if (typeof mergedPages.attribution !== 'boolean' && typeof mergedPages.channels === 'boolean') mergedPages.attribution = mergedPages.channels;
+    if (typeof mergedPages.devices !== 'boolean' && typeof mergedPages.type === 'boolean') mergedPages.devices = mergedPages.type;
     try {
       document.querySelectorAll('[data-kpi-header-strip-page]').forEach(function (el) {
         var k = String(el.getAttribute('data-kpi-header-strip-page') || '').trim().toLowerCase();
         if (!k) return;
-        var v = (typeof pages[k] === 'boolean') ? pages[k] : defPages[k];
+        var v = (typeof mergedPages[k] === 'boolean') ? mergedPages[k] : defPages[k];
         if (typeof v !== 'boolean') v = true;
         el.checked = v !== false;
       });

@@ -269,6 +269,22 @@
           </div>
         </div>
       </div>
+
+      <!-- Kexo Score (ring + number, click for breakdown) -->
+      <div class="col-sm-6 col-lg-3">
+        <div class="card kexo-score-card" id="dash-kpi-kexo-score-card" role="button" tabindex="0" aria-label="Kexo Score, click for breakdown">
+          <div class="card-body d-flex flex-column align-items-center justify-content-center py-3">
+            <div class="subheader mb-1">Kexo Score</div>
+            <div class="kexo-score-ring-wrap position-relative">
+              <div class="kexo-score-ring" id="dash-kpi-kexo-score-ring" aria-hidden="true"></div>
+              <div class="kexo-score-ring-center position-absolute top-50 start-50 translate-middle">
+                <span class="kexo-score-num h1 mb-0" id="dash-kpi-kexo-score">&mdash;</span>
+              </div>
+            </div>
+            <div class="text-muted small mt-1">Click for breakdown</div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div class="row g-3 mb-3">
@@ -508,6 +524,23 @@
       </div>
       <div class="kpi-compare-modal-body" id="kpi-compare-status">
         <div class="kpi-compare-loading"><div class="report-build-wrap"><div class="spinner-border text-primary" role="status"></div><div class="report-build-title">building KPI comparison</div><div class="report-build-step">&mdash;</div></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="config-modal is-hidden" id="kexo-score-modal" aria-hidden="true">
+    <div class="config-modal-card kexo-score-modal-card" role="dialog" aria-modal="true" aria-label="Kexo Score breakdown">
+      <div class="kpi-compare-modal-header">
+        <div class="kpi-compare-modal-header-left">
+          <div class="kpi-compare-kicker">Kexo Score</div>
+          <h3 class="kpi-compare-title">Score breakdown</h3>
+        </div>
+        <div class="kpi-compare-modal-actions">
+          <button type="button" class="btn btn-icon btn-ghost-secondary" id="kexo-score-modal-close-btn" aria-label="Close"><i class="fa-light fa-xmark" data-icon-key="kpi-compare-close"></i></button>
+        </div>
+      </div>
+      <div class="kpi-compare-modal-body" id="kexo-score-modal-body">
+        <div class="kexo-score-breakdown-empty text-muted">No score data. Select a date range and refresh.</div>
       </div>
     </div>
   </div>

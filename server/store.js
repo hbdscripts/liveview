@@ -12,13 +12,7 @@ const productMetaCache = require('./shopifyProductMetaCache');
 const shopifyLandingMeta = require('./shopifyLandingMeta');
 const shopifyQl = require('./shopifyQl');
 const reportCache = require('./reportCache');
-const {
-  TRAFFIC_SOURCES_CONFIG_KEY,
-  defaultTrafficSourcesConfigV1,
-  normalizeTrafficSourcesConfigV1,
-  buildTrafficSourceContext,
-  matchTrafficSource,
-} = require('./trafficSourcesConfig');
+const { deriveAttribution } = require('./attribution/deriveAttribution');
 
 const ALLOWED_EVENT_TYPES = new Set([
   'page_viewed', 'product_viewed', 'product_added_to_cart', 'product_removed_from_cart',
@@ -56,6 +50,37 @@ async function sessionsHasBsNetworkColumn(db) {
   return _sessionsHasBsNetworkColumnInFlight;
 }
 
+let _sessionsHasAcquisitionColumns = null;
+let _sessionsHasAcquisitionColumnsInFlight = null;
+
+async function sessionsHasAcquisitionColumns(db) {
+  if (_sessionsHasAcquisitionColumns === true) return true;
+  if (_sessionsHasAcquisitionColumns === false) return false;
+  if (_sessionsHasAcquisitionColumnsInFlight) return _sessionsHasAcquisitionColumnsInFlight;
+
+  _sessionsHasAcquisitionColumnsInFlight = Promise.resolve()
+    .then(() => db.get('SELECT device_key, attribution_variant FROM sessions LIMIT 1'))
+    .then(() => {
+      _sessionsHasAcquisitionColumns = true;
+      return true;
+    })
+    .catch((err) => {
+      const msg = String(err && err.message ? err.message : err);
+      // Postgres: column "device_key" does not exist
+      // SQLite: no such column: device_key
+      if (/(device_key|attribution_variant)/i.test(msg) && /(does not exist|no such column|has no column)/i.test(msg)) {
+        _sessionsHasAcquisitionColumns = false;
+        return false;
+      }
+      throw err;
+    })
+    .finally(() => {
+      _sessionsHasAcquisitionColumnsInFlight = null;
+    });
+
+  return _sessionsHasAcquisitionColumnsInFlight;
+}
+
 const WHITELIST = new Set([
   'visitor_id', 'session_id', 'event_type', 'path', 'product_handle', 'product_title',
   'variant_title', 'quantity_delta', 'price', 'cart_qty', 'cart_value', 'cart_currency',
@@ -63,7 +88,7 @@ const WHITELIST = new Set([
   'order_id', 'checkout_token',
   'country_code', 'device', 'network_speed', 'ts', 'customer_privacy_debug',
   'ua_device_type', 'ua_platform', 'ua_model',
-  'utm_campaign', 'utm_source', 'utm_medium', 'utm_content',
+  'utm_campaign', 'utm_source', 'utm_medium', 'utm_content', 'utm_term',
   'referrer',
   'entry_url',
 ]);
@@ -874,10 +899,6 @@ async function setSetting(key, value) {
   } else {
     await db.run('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', [key, String(value)]);
   }
-  try {
-    const k = key != null ? String(key).trim().toLowerCase() : '';
-    if (k === TRAFFIC_SOURCES_CONFIG_KEY) invalidateTrafficSourcesV2Cache();
-  } catch (_) {}
 }
 
 // Reporting sources (used to switch between Shopify truth vs pixel-derived reporting)
@@ -1049,6 +1070,7 @@ async function upsertSession(payload, visitorIsReturning, cfContext) {
   const utmSource = trimUtm(payload.utm_source) ?? existing?.utm_source ?? null;
   const utmMedium = trimUtm(payload.utm_medium) ?? existing?.utm_medium ?? null;
   const utmContent = trimUtm(payload.utm_content) ?? existing?.utm_content ?? null;
+  const utmTerm = trimUtm(payload.utm_term) ?? existing?.utm_term ?? null;
 
   const trimUrl = (v) => (typeof v === 'string' && v.trim() ? v.trim().slice(0, 2048) : null);
   const referrer = trimUrl(payload.referrer) ?? existing?.referrer ?? null;
@@ -1075,22 +1097,6 @@ async function upsertSession(payload, visitorIsReturning, cfContext) {
   const updateBsAdgroupId = bsExistingAdgroupId ? null : (bsFromUrl.bsAdgroupId || null);
   const updateBsAdId = bsExistingAdId ? null : (bsFromUrl.bsAdId || null);
   const updateBsNetwork = bsExistingNetwork ? null : (bsFromUrl.bsNetwork || null);
-
-  // Capture UTM tokens once per session (when we first record entry_url) so the admin UI can surface "unmapped" sources.
-  if (updateEntryUrl) {
-    const tokens = extractTrafficUtmTokens({ entryUrl: updateEntryUrl, utmSource, utmMedium, utmCampaign, utmContent });
-    await upsertTrafficSourceTokens(tokens, now);
-  }
-
-  const derivedSource = await deriveTrafficSourceKeyWithMaps({
-    utmSource,
-    utmMedium,
-    utmCampaign,
-    utmContent,
-    referrer,
-    entryUrl,
-  });
-  const trafficSourceKey = derivedSource && derivedSource.trafficSourceKey ? derivedSource.trafficSourceKey : null;
   const uaDeviceType = normalizeUaDeviceType(payload.ua_device_type);
   const uaPlatform = normalizeUaPlatform(payload.ua_platform);
   const uaModel = normalizeUaModel(payload.ua_model);
@@ -1107,8 +1113,38 @@ async function upsertSession(payload, visitorIsReturning, cfContext) {
     if (config.dbUrl) {
       if (supportsBsNetwork) {
         await db.run(`
-          INSERT INTO sessions (session_id, visitor_id, started_at, last_seen, last_path, last_product_handle, first_path, first_product_handle, cart_qty, cart_value, cart_currency, order_total, order_currency, country_code, utm_campaign, utm_source, utm_medium, utm_content, referrer, entry_url, is_checking_out, checkout_started_at, has_purchased, purchased_at, is_abandoned, abandoned_at, recovered_at, cf_known_bot, cf_verified_bot_category, cf_country, cf_colo, cf_asn, is_returning, traffic_source_key, ua_device_type, ua_platform, ua_model, bs_source, bs_campaign_id, bs_adgroup_id, bs_ad_id, bs_network)
-          VALUES ($1, $2, $3, $4, $5, $6, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, 0, NULL, NULL, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37)
+          INSERT INTO sessions (
+            session_id, visitor_id, started_at, last_seen,
+            last_path, last_product_handle,
+            first_path, first_product_handle,
+            cart_qty, cart_value, cart_currency,
+            order_total, order_currency,
+            country_code,
+            utm_campaign, utm_source, utm_medium, utm_content, utm_term,
+            referrer, entry_url,
+            is_checking_out, checkout_started_at, has_purchased, purchased_at,
+            is_abandoned, abandoned_at, recovered_at,
+            cf_known_bot, cf_verified_bot_category, cf_country, cf_colo, cf_asn,
+            is_returning,
+            ua_device_type, ua_platform, ua_model,
+            bs_source, bs_campaign_id, bs_adgroup_id, bs_ad_id, bs_network
+          )
+          VALUES (
+            ?, ?, ?, ?,
+            ?, ?,
+            ?, ?,
+            ?, ?, ?,
+            ?, ?,
+            ?,
+            ?, ?, ?, ?, ?,
+            ?, ?,
+            ?, ?, ?, ?,
+            0, NULL, NULL,
+            ?, ?, ?, ?, ?,
+            ?,
+            ?, ?, ?,
+            ?, ?, ?, ?, ?
+          )
           ON CONFLICT (session_id) DO UPDATE SET
             visitor_id = EXCLUDED.visitor_id,
             started_at = EXCLUDED.started_at,
@@ -1127,6 +1163,7 @@ async function upsertSession(payload, visitorIsReturning, cfContext) {
             utm_source = EXCLUDED.utm_source,
             utm_medium = EXCLUDED.utm_medium,
             utm_content = EXCLUDED.utm_content,
+            utm_term = EXCLUDED.utm_term,
             referrer = EXCLUDED.referrer,
             entry_url = EXCLUDED.entry_url,
             is_checking_out = EXCLUDED.is_checking_out,
@@ -1143,7 +1180,6 @@ async function upsertSession(payload, visitorIsReturning, cfContext) {
             cf_country = EXCLUDED.cf_country,
             cf_colo = EXCLUDED.cf_colo,
             cf_asn = EXCLUDED.cf_asn,
-            traffic_source_key = COALESCE(EXCLUDED.traffic_source_key, sessions.traffic_source_key),
             ua_device_type = COALESCE(EXCLUDED.ua_device_type, sessions.ua_device_type),
             ua_platform = COALESCE(EXCLUDED.ua_platform, sessions.ua_platform),
             ua_model = COALESCE(EXCLUDED.ua_model, sessions.ua_model),
@@ -1152,11 +1188,81 @@ async function upsertSession(payload, visitorIsReturning, cfContext) {
             bs_adgroup_id = COALESCE(EXCLUDED.bs_adgroup_id, sessions.bs_adgroup_id),
             bs_ad_id = COALESCE(EXCLUDED.bs_ad_id, sessions.bs_ad_id),
             bs_network = COALESCE(EXCLUDED.bs_network, sessions.bs_network)
-        `, [payload.session_id, payload.visitor_id, now, now, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, normalizedCountry, utmCampaign, utmSource, utmMedium, utmContent, referrer, entryUrl, isCheckingOut, checkoutStartedAt, hasPurchased, purchasedAt, cfKnownBot, cfVerifiedBotCategory, cfCountry, cfColo, cfAsn, isReturningSession, trafficSourceKey, uaDeviceType, uaPlatform, uaModel, bsSource, bsCampaignId, bsAdgroupId, bsAdId, bsNetwork]);
+        `, [
+          payload.session_id,
+          payload.visitor_id,
+          now,
+          now,
+          lastPath,
+          lastProductHandle,
+          lastPath,
+          lastProductHandle,
+          cartQty,
+          cartValue,
+          cartCurrency,
+          orderTotal,
+          orderCurrency,
+          normalizedCountry,
+          utmCampaign,
+          utmSource,
+          utmMedium,
+          utmContent,
+          utmTerm,
+          referrer,
+          entryUrl,
+          isCheckingOut,
+          checkoutStartedAt,
+          hasPurchased,
+          purchasedAt,
+          cfKnownBot,
+          cfVerifiedBotCategory,
+          cfCountry,
+          cfColo,
+          cfAsn,
+          isReturningSession,
+          uaDeviceType,
+          uaPlatform,
+          uaModel,
+          bsSource,
+          bsCampaignId,
+          bsAdgroupId,
+          bsAdId,
+          bsNetwork,
+        ]);
       } else {
         await db.run(`
-          INSERT INTO sessions (session_id, visitor_id, started_at, last_seen, last_path, last_product_handle, first_path, first_product_handle, cart_qty, cart_value, cart_currency, order_total, order_currency, country_code, utm_campaign, utm_source, utm_medium, utm_content, referrer, entry_url, is_checking_out, checkout_started_at, has_purchased, purchased_at, is_abandoned, abandoned_at, recovered_at, cf_known_bot, cf_verified_bot_category, cf_country, cf_colo, cf_asn, is_returning, traffic_source_key, ua_device_type, ua_platform, ua_model, bs_source, bs_campaign_id, bs_adgroup_id, bs_ad_id)
-          VALUES ($1, $2, $3, $4, $5, $6, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, 0, NULL, NULL, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36)
+          INSERT INTO sessions (
+            session_id, visitor_id, started_at, last_seen,
+            last_path, last_product_handle,
+            first_path, first_product_handle,
+            cart_qty, cart_value, cart_currency,
+            order_total, order_currency,
+            country_code,
+            utm_campaign, utm_source, utm_medium, utm_content, utm_term,
+            referrer, entry_url,
+            is_checking_out, checkout_started_at, has_purchased, purchased_at,
+            is_abandoned, abandoned_at, recovered_at,
+            cf_known_bot, cf_verified_bot_category, cf_country, cf_colo, cf_asn,
+            is_returning,
+            ua_device_type, ua_platform, ua_model,
+            bs_source, bs_campaign_id, bs_adgroup_id, bs_ad_id
+          )
+          VALUES (
+            ?, ?, ?, ?,
+            ?, ?,
+            ?, ?,
+            ?, ?, ?,
+            ?, ?,
+            ?,
+            ?, ?, ?, ?, ?,
+            ?, ?,
+            ?, ?, ?, ?,
+            0, NULL, NULL,
+            ?, ?, ?, ?, ?,
+            ?,
+            ?, ?, ?,
+            ?, ?, ?, ?
+          )
           ON CONFLICT (session_id) DO UPDATE SET
             visitor_id = EXCLUDED.visitor_id,
             started_at = EXCLUDED.started_at,
@@ -1175,6 +1281,7 @@ async function upsertSession(payload, visitorIsReturning, cfContext) {
             utm_source = EXCLUDED.utm_source,
             utm_medium = EXCLUDED.utm_medium,
             utm_content = EXCLUDED.utm_content,
+            utm_term = EXCLUDED.utm_term,
             referrer = EXCLUDED.referrer,
             entry_url = EXCLUDED.entry_url,
             is_checking_out = EXCLUDED.is_checking_out,
@@ -1191,7 +1298,6 @@ async function upsertSession(payload, visitorIsReturning, cfContext) {
             cf_country = EXCLUDED.cf_country,
             cf_colo = EXCLUDED.cf_colo,
             cf_asn = EXCLUDED.cf_asn,
-            traffic_source_key = COALESCE(EXCLUDED.traffic_source_key, sessions.traffic_source_key),
             ua_device_type = COALESCE(EXCLUDED.ua_device_type, sessions.ua_device_type),
             ua_platform = COALESCE(EXCLUDED.ua_platform, sessions.ua_platform),
             ua_model = COALESCE(EXCLUDED.ua_model, sessions.ua_model),
@@ -1199,102 +1305,272 @@ async function upsertSession(payload, visitorIsReturning, cfContext) {
             bs_campaign_id = COALESCE(EXCLUDED.bs_campaign_id, sessions.bs_campaign_id),
             bs_adgroup_id = COALESCE(EXCLUDED.bs_adgroup_id, sessions.bs_adgroup_id),
             bs_ad_id = COALESCE(EXCLUDED.bs_ad_id, sessions.bs_ad_id)
-        `, [payload.session_id, payload.visitor_id, now, now, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, normalizedCountry, utmCampaign, utmSource, utmMedium, utmContent, referrer, entryUrl, isCheckingOut, checkoutStartedAt, hasPurchased, purchasedAt, cfKnownBot, cfVerifiedBotCategory, cfCountry, cfColo, cfAsn, isReturningSession, trafficSourceKey, uaDeviceType, uaPlatform, uaModel, bsSource, bsCampaignId, bsAdgroupId, bsAdId]);
+        `, [
+          payload.session_id,
+          payload.visitor_id,
+          now,
+          now,
+          lastPath,
+          lastProductHandle,
+          lastPath,
+          lastProductHandle,
+          cartQty,
+          cartValue,
+          cartCurrency,
+          orderTotal,
+          orderCurrency,
+          normalizedCountry,
+          utmCampaign,
+          utmSource,
+          utmMedium,
+          utmContent,
+          utmTerm,
+          referrer,
+          entryUrl,
+          isCheckingOut,
+          checkoutStartedAt,
+          hasPurchased,
+          purchasedAt,
+          cfKnownBot,
+          cfVerifiedBotCategory,
+          cfCountry,
+          cfColo,
+          cfAsn,
+          isReturningSession,
+          uaDeviceType,
+          uaPlatform,
+          uaModel,
+          bsSource,
+          bsCampaignId,
+          bsAdgroupId,
+          bsAdId,
+        ]);
       }
     } else {
       if (supportsBsNetwork) {
         await db.run(`
-          INSERT INTO sessions (session_id, visitor_id, started_at, last_seen, last_path, last_product_handle, first_path, first_product_handle, cart_qty, cart_value, cart_currency, order_total, order_currency, country_code, utm_campaign, utm_source, utm_medium, utm_content, referrer, entry_url, is_checking_out, checkout_started_at, has_purchased, purchased_at, is_abandoned, abandoned_at, recovered_at, cf_known_bot, cf_verified_bot_category, cf_country, cf_colo, cf_asn, is_returning, traffic_source_key, ua_device_type, ua_platform, ua_model, bs_source, bs_campaign_id, bs_adgroup_id, bs_ad_id, bs_network)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `, [payload.session_id, payload.visitor_id, now, now, lastPath, lastProductHandle, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, normalizedCountry, utmCampaign, utmSource, utmMedium, utmContent, referrer, entryUrl, isCheckingOut, checkoutStartedAt, hasPurchased, purchasedAt, cfKnownBot, cfVerifiedBotCategory, cfCountry, cfColo, cfAsn, isReturningSession, trafficSourceKey, uaDeviceType, uaPlatform, uaModel, bsSource, bsCampaignId, bsAdgroupId, bsAdId, bsNetwork]);
+          INSERT INTO sessions (session_id, visitor_id, started_at, last_seen, last_path, last_product_handle, first_path, first_product_handle, cart_qty, cart_value, cart_currency, order_total, order_currency, country_code, utm_campaign, utm_source, utm_medium, utm_content, utm_term, referrer, entry_url, is_checking_out, checkout_started_at, has_purchased, purchased_at, is_abandoned, abandoned_at, recovered_at, cf_known_bot, cf_verified_bot_category, cf_country, cf_colo, cf_asn, is_returning, ua_device_type, ua_platform, ua_model, bs_source, bs_campaign_id, bs_adgroup_id, bs_ad_id, bs_network)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `, [payload.session_id, payload.visitor_id, now, now, lastPath, lastProductHandle, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, normalizedCountry, utmCampaign, utmSource, utmMedium, utmContent, utmTerm, referrer, entryUrl, isCheckingOut, checkoutStartedAt, hasPurchased, purchasedAt, cfKnownBot, cfVerifiedBotCategory, cfCountry, cfColo, cfAsn, isReturningSession, uaDeviceType, uaPlatform, uaModel, bsSource, bsCampaignId, bsAdgroupId, bsAdId, bsNetwork]);
       } else {
         await db.run(`
-          INSERT INTO sessions (session_id, visitor_id, started_at, last_seen, last_path, last_product_handle, first_path, first_product_handle, cart_qty, cart_value, cart_currency, order_total, order_currency, country_code, utm_campaign, utm_source, utm_medium, utm_content, referrer, entry_url, is_checking_out, checkout_started_at, has_purchased, purchased_at, is_abandoned, abandoned_at, recovered_at, cf_known_bot, cf_verified_bot_category, cf_country, cf_colo, cf_asn, is_returning, traffic_source_key, ua_device_type, ua_platform, ua_model, bs_source, bs_campaign_id, bs_adgroup_id, bs_ad_id)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `, [payload.session_id, payload.visitor_id, now, now, lastPath, lastProductHandle, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, normalizedCountry, utmCampaign, utmSource, utmMedium, utmContent, referrer, entryUrl, isCheckingOut, checkoutStartedAt, hasPurchased, purchasedAt, cfKnownBot, cfVerifiedBotCategory, cfCountry, cfColo, cfAsn, isReturningSession, trafficSourceKey, uaDeviceType, uaPlatform, uaModel, bsSource, bsCampaignId, bsAdgroupId, bsAdId]);
+          INSERT INTO sessions (session_id, visitor_id, started_at, last_seen, last_path, last_product_handle, first_path, first_product_handle, cart_qty, cart_value, cart_currency, order_total, order_currency, country_code, utm_campaign, utm_source, utm_medium, utm_content, utm_term, referrer, entry_url, is_checking_out, checkout_started_at, has_purchased, purchased_at, is_abandoned, abandoned_at, recovered_at, cf_known_bot, cf_verified_bot_category, cf_country, cf_colo, cf_asn, is_returning, ua_device_type, ua_platform, ua_model, bs_source, bs_campaign_id, bs_adgroup_id, bs_ad_id)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `, [payload.session_id, payload.visitor_id, now, now, lastPath, lastProductHandle, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, normalizedCountry, utmCampaign, utmSource, utmMedium, utmContent, utmTerm, referrer, entryUrl, isCheckingOut, checkoutStartedAt, hasPurchased, purchasedAt, cfKnownBot, cfVerifiedBotCategory, cfCountry, cfColo, cfAsn, isReturningSession, uaDeviceType, uaPlatform, uaModel, bsSource, bsCampaignId, bsAdgroupId, bsAdId]);
       }
     }
   } else {
-    const cfUpdates = [];
-    const cfParams = [];
-    const baseParamCount = config.dbUrl ? (supportsBsNetwork ? 28 : 27) : 0;
-    let p = config.dbUrl ? baseParamCount : 0;
+    const setParts = [
+      'last_seen = ?',
+      'last_path = COALESCE(?, last_path)',
+      'last_product_handle = COALESCE(?, last_product_handle)',
+      'cart_qty = ?',
+      'cart_value = COALESCE(?, cart_value)',
+      'cart_currency = COALESCE(?, cart_currency)',
+      'order_total = COALESCE(?, order_total)',
+      'order_currency = COALESCE(?, order_currency)',
+      'country_code = COALESCE(?, country_code)',
+      'utm_campaign = COALESCE(?, utm_campaign)',
+      'utm_source = COALESCE(?, utm_source)',
+      'utm_medium = COALESCE(?, utm_medium)',
+      'utm_content = COALESCE(?, utm_content)',
+      'utm_term = COALESCE(?, utm_term)',
+      'referrer = COALESCE(?, referrer)',
+      'entry_url = COALESCE(?, entry_url)',
+      'is_checking_out = ?',
+      'checkout_started_at = ?',
+      'has_purchased = ?',
+      'purchased_at = COALESCE(?, purchased_at)',
+      'ua_device_type = COALESCE(?, ua_device_type)',
+      'ua_platform = COALESCE(?, ua_platform)',
+      'ua_model = COALESCE(?, ua_model)',
+      'bs_source = COALESCE(?, bs_source)',
+      'bs_campaign_id = COALESCE(?, bs_campaign_id)',
+      'bs_adgroup_id = COALESCE(?, bs_adgroup_id)',
+      'bs_ad_id = COALESCE(?, bs_ad_id)',
+    ];
+    const params = [
+      now,
+      lastPath,
+      lastProductHandle,
+      cartQty,
+      cartValue,
+      cartCurrency,
+      orderTotal,
+      orderCurrency,
+      normalizedCountry,
+      utmCampaign,
+      utmSource,
+      utmMedium,
+      utmContent,
+      utmTerm,
+      updateReferrer,
+      updateEntryUrl,
+      isCheckingOut,
+      checkoutStartedAt,
+      hasPurchased,
+      purchasedAt,
+      uaDeviceType,
+      uaPlatform,
+      uaModel,
+      updateBsSource,
+      updateBsCampaignId,
+      updateBsAdgroupId,
+      updateBsAdId,
+    ];
+
+    if (supportsBsNetwork) {
+      setParts.push('bs_network = COALESCE(?, bs_network)');
+      params.push(updateBsNetwork);
+    }
+
     if (cfKnownBot != null) {
-      cfUpdates.push(config.dbUrl ? `cf_known_bot = $${++p}` : 'cf_known_bot = ?');
-      cfParams.push(cfKnownBot);
+      setParts.push('cf_known_bot = ?');
+      params.push(cfKnownBot);
     }
     if (cfVerifiedBotCategory !== undefined && cfVerifiedBotCategory !== null) {
-      cfUpdates.push(config.dbUrl ? `cf_verified_bot_category = $${++p}` : 'cf_verified_bot_category = ?');
-      cfParams.push(cfVerifiedBotCategory);
+      setParts.push('cf_verified_bot_category = ?');
+      params.push(cfVerifiedBotCategory);
     }
     if (cfCountry !== undefined && cfCountry !== null) {
-      cfUpdates.push(config.dbUrl ? `cf_country = $${++p}` : 'cf_country = ?');
-      cfParams.push(cfCountry);
+      setParts.push('cf_country = ?');
+      params.push(cfCountry);
     }
     if (cfColo !== undefined && cfColo !== null) {
-      cfUpdates.push(config.dbUrl ? `cf_colo = $${++p}` : 'cf_colo = ?');
-      cfParams.push(cfColo);
+      setParts.push('cf_colo = ?');
+      params.push(cfColo);
     }
     if (cfAsn !== undefined && cfAsn !== null) {
-      cfUpdates.push(config.dbUrl ? `cf_asn = $${++p}` : 'cf_asn = ?');
-      cfParams.push(cfAsn);
+      setParts.push('cf_asn = ?');
+      params.push(cfAsn);
     }
-    const cfSet = cfUpdates.length ? ', ' + cfUpdates.join(', ') : '';
-    const sessionIdPlaceholder = config.dbUrl ? '$' + (baseParamCount + 1 + cfParams.length) : '?';
-    const bsNetworkSetSql = supportsBsNetwork
-      ? (config.dbUrl ? `,\n        bs_network = COALESCE($${baseParamCount}, bs_network)` : `,\n        bs_network = COALESCE(?, bs_network)`)
-      : '';
-    if (config.dbUrl) {
-      const placeholders = [now, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, normalizedCountry, utmCampaign, utmSource, utmMedium, utmContent, updateReferrer, updateEntryUrl, isCheckingOut, checkoutStartedAt, hasPurchased, purchasedAt, trafficSourceKey, uaDeviceType, uaPlatform, uaModel, updateBsSource, updateBsCampaignId, updateBsAdgroupId, updateBsAdId];
-      if (supportsBsNetwork) placeholders.push(updateBsNetwork);
-      placeholders.push(...cfParams, payload.session_id);
-      await db.run(`
-        UPDATE sessions SET last_seen = $1, last_path = COALESCE($2, last_path), last_product_handle = COALESCE($3, last_product_handle),
-        cart_qty = $4, cart_value = COALESCE($5, cart_value), cart_currency = COALESCE($6, cart_currency),
-        order_total = COALESCE($7, order_total), order_currency = COALESCE($8, order_currency),
-        country_code = COALESCE($9, country_code), utm_campaign = COALESCE($10, utm_campaign), utm_source = COALESCE($11, utm_source), utm_medium = COALESCE($12, utm_medium), utm_content = COALESCE($13, utm_content),
-        referrer = COALESCE($14, referrer),
-        entry_url = COALESCE($15, entry_url),
-        is_checking_out = $16, checkout_started_at = $17, has_purchased = $18, purchased_at = COALESCE($19, purchased_at),
-        traffic_source_key = COALESCE($20, traffic_source_key),
-        ua_device_type = COALESCE($21, ua_device_type),
-        ua_platform = COALESCE($22, ua_platform),
-        ua_model = COALESCE($23, ua_model),
-        bs_source = COALESCE($24, bs_source),
-        bs_campaign_id = COALESCE($25, bs_campaign_id),
-        bs_adgroup_id = COALESCE($26, bs_adgroup_id),
-        bs_ad_id = COALESCE($27, bs_ad_id)${bsNetworkSetSql}
-        ${cfSet}
-        WHERE session_id = ${sessionIdPlaceholder}
-      `, placeholders);
-    } else {
-      const placeholders = [now, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, normalizedCountry, utmCampaign, utmSource, utmMedium, utmContent, updateReferrer, updateEntryUrl, isCheckingOut, checkoutStartedAt, hasPurchased, purchasedAt, trafficSourceKey, uaDeviceType, uaPlatform, uaModel, updateBsSource, updateBsCampaignId, updateBsAdgroupId, updateBsAdId];
-      if (supportsBsNetwork) placeholders.push(updateBsNetwork);
-      placeholders.push(...cfParams, payload.session_id);
-      await db.run(`
-        UPDATE sessions SET last_seen = ?, last_path = COALESCE(?, last_path), last_product_handle = COALESCE(?, last_product_handle),
-        cart_qty = ?, cart_value = COALESCE(?, cart_value), cart_currency = COALESCE(?, cart_currency),
-        order_total = COALESCE(?, order_total), order_currency = COALESCE(?, order_currency),
-        country_code = COALESCE(?, country_code), utm_campaign = COALESCE(?, utm_campaign), utm_source = COALESCE(?, utm_source), utm_medium = COALESCE(?, utm_medium), utm_content = COALESCE(?, utm_content),
-        referrer = COALESCE(?, referrer),
-        entry_url = COALESCE(?, entry_url),
-        is_checking_out = ?, checkout_started_at = ?, has_purchased = ?, purchased_at = COALESCE(?, purchased_at),
-        traffic_source_key = COALESCE(?, traffic_source_key),
-        ua_device_type = COALESCE(?, ua_device_type),
-        ua_platform = COALESCE(?, ua_platform),
-        ua_model = COALESCE(?, ua_model),
-        bs_source = COALESCE(?, bs_source),
-        bs_campaign_id = COALESCE(?, bs_campaign_id),
-        bs_adgroup_id = COALESCE(?, bs_adgroup_id),
-        bs_ad_id = COALESCE(?, bs_ad_id)${bsNetworkSetSql}
-        ${cfSet}
-        WHERE session_id = ?
-      `, placeholders);
-    }
+
+    params.push(payload.session_id);
+    await db.run(`UPDATE sessions SET ${setParts.join(', ')} WHERE session_id = ?`, params);
   }
+
+  // Persist Acquisition fields (device_key + attribution_*) at write-time (best-effort; fail-open).
+  try {
+    const ok = await sessionsHasAcquisitionColumns(db);
+    if (ok) {
+      const existingDeviceKey = existing && existing.device_key != null ? String(existing.device_key) : '';
+      const existingVariant = existing && existing.attribution_variant != null ? String(existing.attribution_variant) : '';
+      const needs = !existing || !existingDeviceKey.trim() || !existingVariant.trim();
+      if (needs) {
+        await ensureSessionAcquisitionFields({
+          sessionId: payload.session_id,
+          nowMs: now,
+          entryUrl,
+          referrer,
+          utmSource,
+          utmMedium,
+          utmCampaign,
+          utmContent,
+          utmTerm,
+          uaDeviceType,
+          uaPlatform,
+          existingUaDeviceType: existing?.ua_device_type ?? null,
+          existingUaPlatform: existing?.ua_platform ?? null,
+          existingDeviceKey,
+          existingVariant,
+        });
+      }
+    }
+  } catch (_) {}
 
   await maybeMarkAbandoned(payload.session_id);
   return { sessionId: payload.session_id, visitorId: payload.visitor_id };
+}
+
+async function ensureSessionAcquisitionFields(opts = {}) {
+  const o = opts && typeof opts === 'object' ? opts : {};
+  const sessionId = o.sessionId != null ? String(o.sessionId).trim() : '';
+  if (!sessionId) return;
+
+  const db = getDb();
+  let ok = false;
+  try {
+    ok = await sessionsHasAcquisitionColumns(db);
+  } catch (_) {
+    ok = false;
+  }
+  if (!ok) return;
+
+  const existingDeviceKey = typeof o.existingDeviceKey === 'string' ? o.existingDeviceKey.trim() : '';
+  const existingVariant = typeof o.existingVariant === 'string' ? o.existingVariant.trim() : '';
+  const needsDevice = !existingDeviceKey;
+  const needsAttribution = !existingVariant;
+  if (!needsDevice && !needsAttribution) return;
+
+  const uaDeviceTypeEffective =
+    normalizeUaDeviceType(o.uaDeviceType) ||
+    normalizeUaDeviceType(o.existingUaDeviceType) ||
+    'unknown';
+  const uaPlatformEffective =
+    normalizeUaPlatform(o.uaPlatform) ||
+    normalizeUaPlatform(o.existingUaPlatform) ||
+    'other';
+  const deviceKey = String(uaDeviceTypeEffective || 'unknown') + ':' + String(uaPlatformEffective || 'other');
+
+  const nowMs = Number.isFinite(Number(o.nowMs)) ? Number(o.nowMs) : Date.now();
+  const entryUrl = typeof o.entryUrl === 'string' ? o.entryUrl.trim().slice(0, 2048) : '';
+  const referrer = typeof o.referrer === 'string' ? o.referrer.trim().slice(0, 2048) : '';
+  const utmSource = typeof o.utmSource === 'string' ? o.utmSource.trim().slice(0, 256) : '';
+  const utmMedium = typeof o.utmMedium === 'string' ? o.utmMedium.trim().slice(0, 256) : '';
+  const utmCampaign = typeof o.utmCampaign === 'string' ? o.utmCampaign.trim().slice(0, 256) : '';
+  const utmContent = typeof o.utmContent === 'string' ? o.utmContent.trim().slice(0, 256) : '';
+  const utmTerm = typeof o.utmTerm === 'string' ? o.utmTerm.trim().slice(0, 256) : '';
+
+  let derived = null;
+  if (needsAttribution) {
+    try {
+      derived = await deriveAttribution({
+        now_ms: nowMs,
+        entry_url: entryUrl,
+        referrer,
+        utm_source: utmSource,
+        utm_medium: utmMedium,
+        utm_campaign: utmCampaign,
+        utm_content: utmContent,
+        utm_term: utmTerm,
+      });
+    } catch (_) {
+      derived = null;
+    }
+  }
+
+  const channel = derived && derived.channel ? String(derived.channel) : null;
+  const source = derived && derived.source ? String(derived.source) : null;
+  const variant = derived && derived.variant ? String(derived.variant) : null;
+  const ownerKind = derived && derived.owner_kind ? String(derived.owner_kind) : null;
+  const partnerId = derived && derived.partner_id ? String(derived.partner_id) : null;
+  const network = derived && derived.network ? String(derived.network) : null;
+  const confidence = derived && derived.confidence ? String(derived.confidence) : null;
+  let evidenceJson = null;
+  try {
+    evidenceJson = derived && derived.evidence_json != null ? JSON.stringify(derived.evidence_json) : null;
+  } catch (_) {
+    evidenceJson = null;
+  }
+
+  try {
+    await db.run(
+      `
+        UPDATE sessions SET
+          device_key = COALESCE(NULLIF(TRIM(device_key), ''), ?),
+          attribution_channel = COALESCE(NULLIF(TRIM(attribution_channel), ''), ?),
+          attribution_source = COALESCE(NULLIF(TRIM(attribution_source), ''), ?),
+          attribution_variant = COALESCE(NULLIF(TRIM(attribution_variant), ''), ?),
+          attribution_owner_kind = COALESCE(NULLIF(TRIM(attribution_owner_kind), ''), ?),
+          attribution_partner_id = COALESCE(NULLIF(TRIM(attribution_partner_id), ''), ?),
+          attribution_network = COALESCE(NULLIF(TRIM(attribution_network), ''), ?),
+          attribution_confidence = COALESCE(NULLIF(TRIM(attribution_confidence), ''), ?),
+          attribution_evidence_json = COALESCE(NULLIF(TRIM(attribution_evidence_json), ''), ?)
+        WHERE session_id = ?
+      `,
+      [deviceKey, channel, source, variant, ownerKind, partnerId, network, confidence, evidenceJson, sessionId]
+    );
+  } catch (_) {}
 }
 
 async function maybeMarkAbandoned(sessionId) {
@@ -1559,7 +1835,6 @@ async function listSessions(filter) {
     return out;
   });
   await shopifyLandingMeta.enrichSessionsWithLandingTitles(sessions);
-  await enrichSessionsWithTrafficSourcesV2(sessions);
   return sessions;
 }
 
@@ -2078,7 +2353,6 @@ async function listSessionsByRange(rangeKey, timeZone, limit, offset) {
   });
 
   await shopifyLandingMeta.enrichSessionsWithLandingTitles(sessions);
-  await enrichSessionsWithTrafficSourcesV2(sessions);
   return { sessions, total };
 }
 
@@ -3865,6 +4139,233 @@ async function getKpis(options = {}) {
   };
 }
 
+/**
+ * Kexo Score: 0-100 performance score from current vs previous vs previous2 windows.
+ * Same time-of-day alignment for 'today'; weighted component scores (revenue, conversion, bounce, sessions; optional ROAS/CTR when ads integrated).
+ * Returns score, band (20/40/60/80/100), and components array for modal breakdown.
+ */
+async function getKexoScore(options = {}) {
+  const trafficMode = options.trafficMode === 'human_only' ? 'human_only' : (config.trafficMode || 'all');
+  const force = !!options.force;
+  const now = Date.now();
+  const timeZone = resolveAdminTimeZone();
+  const reporting = await getReportingConfig();
+  const opts = { trafficMode, timeZone, reporting };
+
+  const requestedRangeRaw =
+    typeof options.rangeKey === 'string' ? options.rangeKey :
+      (typeof options.range === 'string' ? options.range : '');
+  const requestedRange = requestedRangeRaw ? String(requestedRangeRaw).trim().toLowerCase() : '';
+  const isDayKey = requestedRange && /^d:\d{4}-\d{2}-\d{2}$/.test(requestedRange);
+  const isRangeKey = requestedRange && /^r:\d{4}-\d{2}-\d{2}:\d{4}-\d{2}-\d{2}$/.test(requestedRange);
+  const allowedLegacy = new Set(['today', 'yesterday', '3d', '7d', '14d', '30d', 'month']);
+  const rangeKey = (DEFAULT_RANGE_KEYS.includes(requestedRange) || isDayKey || isRangeKey || allowedLegacy.has(requestedRange))
+    ? requestedRange
+    : 'today';
+
+  const bounds = getRangeBounds(rangeKey, now, timeZone);
+  const periodLengthMs = bounds.end - bounds.start;
+
+  function getPreviousBounds() {
+    let compareStart;
+    let compareEnd;
+    if (rangeKey === 'today') {
+      const nowParts = getTimeZoneParts(new Date(now), timeZone);
+      const yesterdayParts = addDaysToParts(nowParts, -1);
+      compareStart = startOfDayUtcMs(yesterdayParts, timeZone);
+      const sameTimeYesterday = zonedTimeToUtcMs(
+        yesterdayParts.year, yesterdayParts.month, yesterdayParts.day,
+        nowParts.hour, nowParts.minute, nowParts.second,
+        timeZone
+      );
+      const todayStart = startOfDayUtcMs(nowParts, timeZone);
+      compareEnd = Math.max(compareStart, Math.min(sameTimeYesterday, todayStart));
+    } else {
+      compareStart = bounds.start - periodLengthMs;
+      compareEnd = bounds.start;
+    }
+    if (compareStart < PLATFORM_START_MS) compareStart = PLATFORM_START_MS;
+    if (compareEnd < PLATFORM_START_MS) compareEnd = PLATFORM_START_MS;
+    if (!(compareEnd > compareStart)) return null;
+    return { start: compareStart, end: compareEnd };
+  }
+
+  function getPrevious2Bounds(prevBounds) {
+    if (!prevBounds || !(prevBounds.end > prevBounds.start)) return null;
+    const prevLength = prevBounds.end - prevBounds.start;
+    let start = prevBounds.start - prevLength;
+    let end = prevBounds.start;
+    if (start < PLATFORM_START_MS) start = PLATFORM_START_MS;
+    if (end < PLATFORM_START_MS) end = PLATFORM_START_MS;
+    if (!(end > start)) return null;
+    return { start, end };
+  }
+
+  const previousBounds = getPreviousBounds();
+  const previous2Bounds = previousBounds ? getPrevious2Bounds(previousBounds) : null;
+
+  async function getAdSpendGbp(startMs, endMs) {
+    try {
+      const adsDb = require('./ads/adsDb');
+      if (!adsDb || typeof adsDb.getAdsPool !== 'function') return null;
+      const pool = adsDb.getAdsPool();
+      if (!pool) return null;
+      const start = Number(startMs);
+      const end = Number(endMs);
+      if (!Number.isFinite(start) || !Number.isFinite(end) || !(end > start)) return null;
+      const startSec = start / 1000;
+      const endSec = end / 1000;
+      const r = await pool.query(
+        'SELECT COALESCE(SUM(spend_gbp), 0) AS spend_gbp FROM google_ads_spend_hourly WHERE hour_ts >= to_timestamp($1) AND hour_ts < to_timestamp($2)',
+        [startSec, endSec]
+      );
+      const v = r && r.rows && r.rows[0] ? Number(r.rows[0].spend_gbp) : null;
+      return (typeof v === 'number' && Number.isFinite(v)) ? Math.round(v * 100) / 100 : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  async function getAdsClicksImpressions(startMs, endMs) {
+    try {
+      const adsDb = require('./ads/adsDb');
+      if (!adsDb || typeof adsDb.getAdsPool !== 'function') return null;
+      const pool = adsDb.getAdsPool();
+      if (!pool) return null;
+      const start = Number(startMs);
+      const end = Number(endMs);
+      if (!Number.isFinite(start) || !Number.isFinite(end) || !(end > start)) return null;
+      const startSec = start / 1000;
+      const endSec = end / 1000;
+      const r = await pool.query(
+        'SELECT COALESCE(SUM(clicks), 0) AS clicks, COALESCE(SUM(impressions), 0) AS impressions FROM google_ads_spend_hourly WHERE hour_ts >= to_timestamp($1) AND hour_ts < to_timestamp($2)',
+        [startSec, endSec]
+      );
+      const row = r && r.rows && r.rows[0] ? r.rows[0] : null;
+      if (!row) return null;
+      const clicks = Number(row.clicks);
+      const impressions = Number(row.impressions);
+      return {
+        clicks: Number.isFinite(clicks) ? Math.max(0, Math.floor(clicks)) : 0,
+        impressions: Number.isFinite(impressions) ? Math.max(0, Math.floor(impressions)) : 0,
+      };
+    } catch (_) {
+      return null;
+    }
+  }
+
+  async function metricsForWindow(startMs, endMs, windowRangeKey) {
+    const windowOpts = { ...opts, rangeKey: windowRangeKey };
+    const [sales, convertedCount, trafficBreakdown, bounce, adSpend, adsClicksImpr] = await Promise.all([
+      getSalesTotal(startMs, endMs, windowOpts),
+      getConvertedCount(startMs, endMs, windowOpts),
+      getSessionCounts(startMs, endMs, windowOpts),
+      reportCache.getOrComputeJson(
+        {
+          shop: '', endpoint: 'kpis_slow_bounce', rangeKey: windowRangeKey,
+          rangeStartTs: startMs, rangeEndTs: endMs,
+          params: { trafficMode, rangeKey: windowRangeKey },
+          ttlMs: 10 * 60 * 1000, force,
+        },
+        () => getBounceRate(startMs, endMs, windowOpts)
+      ).then((r) => (r && r.ok ? r.data : null)),
+      getAdSpendGbp(startMs, endMs),
+      getAdsClicksImpressions(startMs, endMs),
+    ]);
+    const sessions = trafficBreakdown && typeof trafficBreakdown.human_sessions === 'number' ? trafficBreakdown.human_sessions : null;
+    const conversion = (sessions != null && sessions > 0 && convertedCount != null && Number.isFinite(convertedCount))
+      ? Math.round((convertedCount / sessions) * 1000) / 10
+      : null;
+    const roas = (typeof sales === 'number' && Number.isFinite(sales) && typeof adSpend === 'number' && Number.isFinite(adSpend) && adSpend > 0)
+      ? Math.round((sales / adSpend) * 100) / 100
+      : null;
+    const ctr = (adsClicksImpr && adsClicksImpr.impressions > 0 && Number.isFinite(adsClicksImpr.clicks))
+      ? Math.round((adsClicksImpr.clicks / adsClicksImpr.impressions) * 10000) / 100
+      : null;
+    return {
+      sales: typeof sales === 'number' && Number.isFinite(sales) ? sales : null,
+      sessions,
+      conversion,
+      bounce: typeof bounce === 'number' && Number.isFinite(bounce) ? bounce : null,
+      adSpend: typeof adSpend === 'number' && Number.isFinite(adSpend) ? adSpend : null,
+      roas,
+      ctr,
+      clicks: adsClicksImpr && Number.isFinite(adsClicksImpr.clicks) ? adsClicksImpr.clicks : null,
+      impressions: adsClicksImpr && Number.isFinite(adsClicksImpr.impressions) ? adsClicksImpr.impressions : null,
+    };
+  }
+
+  const [current, previous, previous2] = await Promise.all([
+    metricsForWindow(bounds.start, bounds.end, rangeKey),
+    previousBounds ? metricsForWindow(previousBounds.start, previousBounds.end, rangeKey === 'today' ? 'yesterday' : rangeKey) : Promise.resolve(null),
+    previous2Bounds ? metricsForWindow(previous2Bounds.start, previous2Bounds.end, rangeKey === 'today' ? 'yesterday_prev2' : rangeKey + '_prev2') : Promise.resolve(null),
+  ]);
+
+  function componentScore(valueCur, valuePrev, valuePrev2, invert = false) {
+    const cur = typeof valueCur === 'number' && Number.isFinite(valueCur) ? valueCur : null;
+    const prev = typeof valuePrev === 'number' && Number.isFinite(valuePrev) ? valuePrev : null;
+    const prev2 = typeof valuePrev2 === 'number' && Number.isFinite(valuePrev2) ? valuePrev2 : null;
+    if (cur == null && prev == null) return null;
+    const denomPrev = Math.max(Math.abs(prev ?? 0), 1e-9);
+    const denomPrev2 = Math.max(Math.abs(prev2 ?? 0), 1e-9);
+    const signal = prev != null && cur != null ? (cur - prev) / denomPrev : 0;
+    const momentum = prev != null && prev2 != null ? (prev - prev2) / denomPrev2 : 0;
+    const combined = 0.7 * signal + 0.3 * momentum;
+    const raw = invert ? -combined : combined;
+    const clamped = Math.max(-1, Math.min(1, raw));
+    return Math.round((50 + 50 * clamped) * 10) / 10;
+  }
+
+  const KEXO_SCORE_COMPONENTS = [
+    { key: 'revenue', label: 'Revenue', weight: 25, getCur: (m) => m.sales, getPrev: (m) => m && m.sales, getPrev2: (m) => m && m.sales, invert: false },
+    { key: 'conversion', label: 'Conversion rate', weight: 25, getCur: (m) => m.conversion, getPrev: (m) => m && m.conversion, getPrev2: (m) => m && m.conversion, invert: false },
+    { key: 'bounce', label: 'Bounce rate', weight: 15, getCur: (m) => m.bounce, getPrev: (m) => m && m.bounce, getPrev2: (m) => m && m.bounce, invert: true },
+    { key: 'sessions', label: 'Sessions', weight: 20, getCur: (m) => m.sessions, getPrev: (m) => m && m.sessions, getPrev2: (m) => m && m.sessions, invert: false },
+    { key: 'roas', label: 'Ads ROAS', weight: 15, getCur: (m) => m.roas, getPrev: (m) => m && m.roas, getPrev2: (m) => m && m.roas, invert: false, adsOnly: true },
+    { key: 'ctr', label: 'Ads CTR', weight: 10, getCur: (m) => m.ctr, getPrev: (m) => m && m.ctr, getPrev2: (m) => m && m.ctr, invert: false, adsOnly: true },
+  ];
+
+  const adsIntegrated = (current && (current.roas != null || (current.clicks != null && current.impressions != null && current.impressions > 0)));
+  const components = [];
+  let totalWeight = 0;
+  let weightedSum = 0;
+
+  for (const def of KEXO_SCORE_COMPONENTS) {
+    if (def.adsOnly && !adsIntegrated) continue;
+    const score = componentScore(def.getCur(current), def.getPrev(previous), def.getPrev2(previous2), def.invert);
+    if (score == null) continue;
+    const valueCur = def.getCur(current);
+    const valuePrev = def.getPrev(previous) ?? null;
+    const valuePrev2 = def.getPrev2(previous2) ?? null;
+    components.push({
+      key: def.key,
+      label: def.label,
+      score: Math.max(0, Math.min(100, score)),
+      value: valueCur,
+      previous: valuePrev,
+      previous2: valuePrev2,
+      weight: def.weight,
+    });
+    totalWeight += def.weight;
+    weightedSum += score * def.weight;
+  }
+
+  const finalScore = totalWeight > 0 ? Math.round((weightedSum / totalWeight) * 10) / 10 : 50;
+  const clampedScore = Math.max(0, Math.min(100, finalScore));
+  const band = clampedScore >= 80 ? 100 : clampedScore >= 60 ? 80 : clampedScore >= 40 ? 60 : clampedScore >= 20 ? 40 : 20;
+
+  return {
+    score: clampedScore,
+    band,
+    components,
+    rangeKey,
+    range: { start: bounds.start, end: bounds.end },
+    compare: previousBounds ? { start: previousBounds.start, end: previousBounds.end } : null,
+    compare2: previous2Bounds ? { start: previous2Bounds.start, end: previous2Bounds.end } : null,
+    adsIntegrated: !!adsIntegrated,
+  };
+}
+
 async function rangeHasSessions(start, end, options = {}) {
   const trafficMode = options.trafficMode || config.trafficMode || 'all';
   const filter = sessionFilterForTraffic(trafficMode);
@@ -3897,17 +4398,6 @@ module.exports = {
   getActiveSessionCount,
   getActiveSessionSeries,
   getSessionEvents,
-  // Traffic source mapping (custom sources)
-  TRAFFIC_SOURCE_MAP_ALLOWED_PARAMS,
-  getTrafficSourceMapConfigCached,
-  invalidateTrafficSourceMapCache,
-  getTrafficSourceMapVersion,
-  deriveTrafficSourceKeyWithMaps,
-  upsertTrafficSourceMeta,
-  addTrafficSourceRule,
-  makeCustomTrafficSourceKeyFromLabel,
-  backfillTrafficSourceTokensFromSessions,
-  backfillTrafficSourceKeysForRule,
   // Reporting helpers (pixel vs truth)
   getPixelSalesSummary,
   getPixelSalesTotalGbp,
@@ -3917,6 +4407,7 @@ module.exports = {
   getLatestShopifySessionsSnapshot,
   getStats,
   getKpis,
+  getKexoScore,
   getRangeBounds,
   resolveAdminTimeZone,
   // Shared SQL helpers for pixel dedupe

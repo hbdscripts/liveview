@@ -2004,6 +2004,72 @@ html[data-bs-theme="dark"] .report-build-wrap {
   gap: .5rem;
 }
 
+.config-modal.is-hidden {
+  display: none !important;
+}
+
+/* Kexo Score dashboard card: ring + number */
+.kexo-score-card {
+  cursor: pointer;
+}
+.kexo-score-ring-wrap {
+  width: 80px;
+  height: 80px;
+  flex-shrink: 0;
+  background: var(--tblr-border-color-translucent, rgba(0, 0, 0, 0.08));
+  border-radius: 50%;
+}
+.kexo-score-ring {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 0deg,
+    var(--kexo-accent-1, #4b94e4) 0deg,
+    var(--kexo-accent-2, #3eb3ab) 72deg,
+    var(--kexo-accent-3, #f59e34) 144deg,
+    var(--kexo-accent-4, #8b5cf6) 216deg,
+    var(--kexo-accent-5, #ef4444) 288deg
+  );
+  --kexo-score-pct: 0;
+  mask: conic-gradient(from 0deg, black 0deg, black calc(var(--kexo-score-pct) * 3.6deg), transparent calc(var(--kexo-score-pct) * 3.6deg));
+  -webkit-mask: conic-gradient(from 0deg, black 0deg, black calc(var(--kexo-score-pct) * 3.6deg), transparent calc(var(--kexo-score-pct) * 3.6deg));
+}
+.kexo-score-ring::before {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  border-radius: 50%;
+  background: var(--tblr-bg-surface, #fff);
+}
+.kexo-score-ring-center {
+  pointer-events: none;
+  z-index: 1;
+}
+.kexo-score-num {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Kexo Score breakdown modal */
+.kexo-score-modal-card .kpi-compare-modal-body {
+  padding: 1rem 1.5rem;
+  overflow-y: auto;
+}
+.kexo-score-breakdown-row .progress-thin,
+.kexo-score-breakdown-row .progress {
+  height: 8px;
+}
+.kexo-score-breakdown-label {
+  font-weight: 500;
+}
+.kexo-score-breakdown-value {
+  color: var(--tblr-muted, #6c757d);
+}
+.kexo-score-breakdown-empty {
+  padding: 1rem 0;
+}
+
 .snapshot-toolbar-card .form-select,
 .snapshot-toolbar-card .form-control {
   max-width: 100%;
