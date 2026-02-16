@@ -46,6 +46,7 @@ const REQUIRED_ACTIVE_ICON_KEYS = Object.freeze([
   'table-icon-compliance-header',
   'table-icon-compliance-check',
   'table-icon-compliance-warning',
+  'table-icon-compliance-search',
   'table-sticky-resize-handle',
   'fraud-alert',
 ]);
@@ -88,6 +89,7 @@ const ICON_GLYPH_DEFAULTS = Object.freeze({
   'table-icon-compliance-header': 'fa-shield-check',
   'table-icon-compliance-check': 'fa-circle-check',
   'table-icon-compliance-warning': 'fa-triangle-exclamation',
+  'table-icon-compliance-search': 'fa-magnifying-glass',
   'fraud-alert': 'fa-jelly-filled fa-triangle-exclamation',
   'table-icon-clicks': 'fa-hand-pointer',
   'table-icon-variants-variant': 'fa-shapes',

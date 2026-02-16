@@ -761,7 +761,15 @@ body.side-panel-open {
 }
 
 #sessions-table.grid-table .grid-row--header .grid-cell.compliance-cell {
-  /* Compliance header help UI removed. */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#sessions-table.grid-table .grid-row--header .grid-cell.compliance-cell .compliance-header-icon {
+  width: 20px;
+  height: 20px;
+  display: block;
+  object-fit: contain;
 }
 
 /* Lookup: copy links (IDs only) */
@@ -1039,6 +1047,12 @@ body:not([data-page="settings"]) .tools-table-wrap table thead th:first-child {
   min-width: var(--kexo-sticky-col-min-width, 72px) !important;
   width: var(--kexo-sticky-col-width, 120px) !important;
   max-width: var(--kexo-sticky-col-max-width, 360px) !important;
+  font-size: var(--table-th-font-size, 13px) !important;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  line-height: 1.4;
   white-space: nowrap;
   overflow: hidden !important;
   text-overflow: ellipsis;
@@ -2049,6 +2063,37 @@ html[data-bs-theme="dark"] .report-build-wrap {
 }
 .kexo-score-num {
   font-variant-numeric: tabular-nums;
+}
+
+/* Kexo Score in header: miniature, white number, no background, progress wheel only */
+.kexo-header-score-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  margin: 0 0.5rem 0 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: inherit;
+}
+.kexo-header-score-btn:hover {
+  opacity: 0.9;
+}
+.kexo-score-ring-wrap--header {
+  width: 36px;
+  height: 36px;
+  background: transparent;
+}
+.kexo-score-ring--header::before {
+  background: transparent;
+}
+.kexo-score-num--header {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #fff;
+  line-height: 1;
+  text-shadow: 0 0 1px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.2);
 }
 
 /* Kexo Score breakdown modal */

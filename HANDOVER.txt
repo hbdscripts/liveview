@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-16 (Kexo Score dashboard KPI + breakdown modal)
+Last updated: 2026-02-16 (Sticky tables + compliance icons)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -63,7 +63,7 @@ Goal: a generic, network-agnostic affiliate abuse/fraud detector that is safe to
 
 - Sessions tables (`/dashboard/live`, `/dashboard/sales`, `/dashboard/table`):
   - Added a narrow **Compliance** column immediately after the sticky Landing column.
-  - It always shows a check (passed) or warning (triggered) based on `/api/fraud/markers`.
+  - It shows a search icon by default; when a fraud evaluation exists it shows a check (passed) or warning (triggered) based on `/api/fraud/markers`; the £ icon appears alongside when the row is converted.
   - If the row is a sale, it also shows the sale (£) icon alongside check/warn.
   - The icons are **non-links**; clicking anywhere on the row (including the Compliance icons) opens the right-hand drawer for deep inspection.
   - Icon keys: `table-icon-compliance-header`, `table-icon-compliance-check`, `table-icon-compliance-warning`, `table-icon-converted-sale`.
@@ -429,6 +429,15 @@ Ops/reliability:
   - Snapshot Cost breakdown and Profit Settings wording now use `Transaction Fees` and `Shopify Fees` (removing customer-facing Klarna label text).
   - Snapshot now shows current/previous Shopify Payments diagnostic errors inline when fee/app-bill groups are enabled and lookups fail/warn.
   - Snapshot report cache param version bumped to `snapshot-page-v2` so updated labels/diagnostics appear without waiting on stale keys.
+
+2026-02-16 (latest)
+- Sticky tables + compliance column UX:
+  - Sticky first-column header typography now matches other table headers (font-size, font-weight, letter-spacing, color) in `server/public/custom.css`.
+  - Sticky column resize: remaining-column cap is applied only when the table is not horizontally scrollable, so mobile drag-resize works on /countries and /variants (`server/public/app.js` getBounds).
+  - Variants page dynamic table cards now use `data-table-class="product"` to align with Settings → Layout → Tables (Insights · Variants) (`server/public/variants-page.js`).
+  - Compliance column: default search icon when no fraud evaluation; replaced by check/warning when evaluation exists; £ icon shows alongside when row is converted (`server/public/app.js` complianceCellHtml).
+  - Compliance header shows 20px image `/assets/logos/new/footer/7.webp` (`server/public/app.js` ensureComplianceHeaderUi, `server/public/custom.css`).
+  - New icon key `table-icon-compliance-search` in theme icon config (`server/shared/icon-registry.js`, `server/public/theme-settings.js`).
 
 2026-02-16 (latest)
 - Snapshot Shopify Payments scope + visibility note:

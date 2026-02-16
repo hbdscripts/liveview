@@ -1560,8 +1560,8 @@ const API = '';
           if (colCount > 1) {
             var minOtherColWidth = classKey === 'live' ? 72 : 64;
             var byRemainingCols = wrapW - (minOtherColWidth * (colCount - 1));
-            /* Only cap by remaining cols when table fits; when scrollable, skip so sticky can expand */
-            if (byRemainingCols >= min + 16) max = Math.min(max, byRemainingCols);
+            var isScrollable = (wrap.scrollWidth || 0) > ((wrap.clientWidth || 0) + 1);
+            if (!isScrollable && byRemainingCols >= min + 16) max = Math.min(max, byRemainingCols);
           }
         }
         min = Math.max(ABS_MIN_WIDTH, Math.min(min, ABS_MAX_WIDTH - 16));
@@ -3987,14 +3987,13 @@ const API = '';
 
     var complianceHelpGlobalBound = false;
     function ensureComplianceHeaderUi() {
-      // Compliance header help UI removed (keep header cell empty).
       var table = document.getElementById('sessions-table');
       if (!table || !table.querySelector) return;
       var th = table.querySelector('.grid-row--header .grid-cell.compliance-cell');
       if (!th) return;
       if (th.getAttribute('data-compliance-header') === '1') return;
       th.setAttribute('data-compliance-header', '1');
-      th.innerHTML = '';
+      th.innerHTML = '<img src="/assets/logos/new/footer/7.webp" alt="" class="compliance-header-icon" width="20" height="20" style="width:20px;height:20px;vertical-align:middle;display:inline-block;">';
     }
 
     function complianceCellHtml(sessionId, options) {
@@ -4006,9 +4005,11 @@ const API = '';
       var triggered = !!opts.triggered;
       var score = opts.score != null ? Number(opts.score) : null;
       var scoreText = (typeof score === 'number' && Number.isFinite(score)) ? String(Math.trunc(score)) : '';
-      var title = triggered
-        ? ('Compliance warning' + (scoreText ? (' (score ' + scoreText + ')') : ''))
-        : ('Compliance passed' + (scoreText ? (' (score ' + scoreText + ')') : ''));
+      var title = hasEval
+        ? (triggered
+          ? ('Compliance warning' + (scoreText ? (' (score ' + scoreText + ')') : ''))
+          : ('Compliance passed' + (scoreText ? (' (score ' + scoreText + ')') : '')))
+        : 'Compliance';
       var saleIcon = hasSale
         ? '<i class="fa-solid fa-sterling-sign compliance-sale-icon" data-icon-key="table-icon-converted-sale" aria-hidden="true"></i>'
         : '';
@@ -4017,8 +4018,9 @@ const API = '';
         statusIcon = triggered
           ? '<i class="fa-light fa-triangle-exclamation compliance-status-icon is-warn" data-icon-key="table-icon-compliance-warning" aria-hidden="true"></i>'
           : '<i class="fa-light fa-circle-check compliance-status-icon is-ok" data-icon-key="table-icon-compliance-check" aria-hidden="true"></i>';
+      } else {
+        statusIcon = '<i class="fa-light fa-magnifying-glass compliance-status-icon is-search" data-icon-key="table-icon-compliance-search" aria-hidden="true"></i>';
       }
-      if (!saleIcon && !statusIcon) return '';
       return '' +
         '<span class="compliance-icons" aria-label="' + escapeHtml(title) + '" title="' + escapeHtml(title) + '">' +
           saleIcon +
@@ -7996,6 +7998,7 @@ const API = '';
       // Top KPI grid refreshes independently (every minute). On range change, force a refresh immediately.
       refreshKpis({ force: true });
       try { refreshKpiExtrasSoft(); } catch (_) {}
+      try { if (typeof window.refreshKexoScore === 'function') window.refreshKexoScore(); } catch (_) {}
       // Keep the desktop navbar "visitors" status eager on every range change.
       updateKpis();
 
@@ -15490,32 +15493,6 @@ const API = '';
       });
     })();
 
-    (function initKexoScoreModal() {
-      var card = document.getElementById('dash-kpi-kexo-score-card');
-      var closeBtn = document.getElementById('kexo-score-modal-close-btn');
-      var modal = document.getElementById('kexo-score-modal');
-      if (card) {
-        card.addEventListener('click', function(e) {
-          e.preventDefault();
-          if (typeof openKexoScoreModal === 'function') openKexoScoreModal();
-        });
-        card.addEventListener('keydown', function(e) {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            if (typeof openKexoScoreModal === 'function') openKexoScoreModal();
-          }
-        });
-      }
-      if (closeBtn) closeBtn.addEventListener('click', function() { if (typeof closeKexoScoreModal === 'function') closeKexoScoreModal(); });
-      if (modal) modal.addEventListener('click', function(e) { if (e.target === modal && typeof closeKexoScoreModal === 'function') closeKexoScoreModal(); });
-      document.addEventListener('keydown', function(e) {
-        if (e.key !== 'Escape') return;
-        if (!modal || modal.classList.contains('is-hidden')) return;
-        if (modal.getAttribute('aria-hidden') === 'true') return;
-        if (typeof closeKexoScoreModal === 'function') closeKexoScoreModal();
-      });
-    })();
-
     (function initTrafficTypeTree() {
       const body = document.getElementById('traffic-types-body');
       if (!body) return;
@@ -17609,7 +17586,7 @@ const API = '';
         return fetchWithTimeout(url, { credentials: 'same-origin', cache: 'default' }, 15000)
           .then(function(r) { return (r && r.ok) ? r.json() : null; })
           .then(function(scoreData) {
-            if (scoreData && PAGE === 'dashboard') {
+            if (scoreData) {
               _kexoScoreCache = scoreData;
               _kexoScoreRangeKey = rangeKey;
               renderKexoScore(scoreData);
@@ -17620,17 +17597,21 @@ const API = '';
       }
 
       function renderKexoScore(scoreData) {
-        var numEl = document.getElementById('dash-kpi-kexo-score');
-        var ringEl = document.getElementById('dash-kpi-kexo-score-ring');
-        if (!numEl) return;
-        if (!scoreData || typeof scoreData.score !== 'number' || !Number.isFinite(scoreData.score)) {
-          numEl.textContent = '\u2014';
-          if (ringEl) ringEl.style.setProperty('--kexo-score-pct', '0');
-          return;
+        var dashNum = document.getElementById('dash-kpi-kexo-score');
+        var dashRing = document.getElementById('dash-kpi-kexo-score-ring');
+        var headerNum = document.getElementById('header-kexo-score');
+        var headerRing = document.getElementById('header-kexo-score-ring');
+        var score = null;
+        if (scoreData && typeof scoreData.score === 'number' && Number.isFinite(scoreData.score)) {
+          score = Math.max(0, Math.min(100, Number(scoreData.score)));
         }
-        var score = Math.max(0, Math.min(100, Number(scoreData.score)));
-        numEl.textContent = score.toFixed(1);
-        if (ringEl) ringEl.style.setProperty('--kexo-score-pct', String(score));
+        var empty = score == null;
+        var text = empty ? '\u2014' : score.toFixed(1);
+        var pct = empty ? '0' : String(score);
+        if (dashNum) { dashNum.textContent = text; }
+        if (dashRing) dashRing.style.setProperty('--kexo-score-pct', pct);
+        if (headerNum) { headerNum.textContent = text; }
+        if (headerRing) headerRing.style.setProperty('--kexo-score-pct', pct);
       }
 
       function openKexoScoreModal() {
@@ -17670,6 +17651,37 @@ const API = '';
         modal.classList.add('is-hidden');
         modal.setAttribute('aria-hidden', 'true');
       }
+
+      (function initKexoScoreModalInDashboard() {
+        var card = document.getElementById('dash-kpi-kexo-score-card');
+        var headerBtn = document.getElementById('header-kexo-score-wrap');
+        var closeBtn = document.getElementById('kexo-score-modal-close-btn');
+        var modalEl = document.getElementById('kexo-score-modal');
+        function openOnClick(e) {
+          e.preventDefault();
+          openKexoScoreModal();
+        }
+        if (card) {
+          card.addEventListener('click', openOnClick);
+          card.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openKexoScoreModal(); }
+          });
+        }
+        if (headerBtn) {
+          headerBtn.addEventListener('click', openOnClick);
+          headerBtn.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openKexoScoreModal(); }
+          });
+        }
+        if (closeBtn) closeBtn.addEventListener('click', closeKexoScoreModal);
+        if (modalEl) modalEl.addEventListener('click', function(e) { if (e.target === modalEl) closeKexoScoreModal(); });
+        document.addEventListener('keydown', function(e) {
+          if (e.key !== 'Escape') return;
+          if (!modalEl || modalEl.classList.contains('is-hidden')) return;
+          if (modalEl.getAttribute('aria-hidden') === 'true') return;
+          closeKexoScoreModal();
+        });
+      })();
 
       function fetchDashboardData(rangeKey, force, opts) {
         if (dashLoading && !force) return;
@@ -17733,6 +17745,13 @@ const API = '';
         }
         fetchDashboardData(rk, force, { silent: silent });
       };
+
+      window.refreshKexoScore = function() {
+        fetchKexoScore(dashRangeKeyFromDateRange());
+      };
+      if (document.getElementById('header-kexo-score-wrap')) {
+        fetchKexoScore(dashRangeKeyFromDateRange());
+      }
 
       // Initial fetch: refreshDashboard is defined after setTab('dashboard') runs,
       // so the initial setTab call can't trigger it. Kick it off now if dashboard is active.
