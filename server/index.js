@@ -118,6 +118,7 @@ app.put('/api/settings/profit-rules', requireMaster.middleware, settings.putProf
 app.get('/api/theme-defaults', settings.getThemeDefaults);
 app.post('/api/theme-defaults', settings.postThemeDefaults);
 app.get('/api/asset-overrides', assets.getAssetOverrides);
+app.get('/api/footer-logo', assets.getFooterLogo);
 app.post('/api/assets/upload', assets.uploadSingle, assets.postUploadAsset);
 app.get('/api/devices/observed', devicesRouter.getObservedDevices);
 // Server-injected theme variables (prevents first-paint header flash).

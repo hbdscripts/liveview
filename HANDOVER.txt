@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-16 (Fraud gauge uses safety progress bar)
+Last updated: 2026-02-16 (Footer logo random rotation from assets/logos/new/footer/)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -560,7 +560,7 @@ Ops/reliability:
 - Sale sound reliability: (1) SSE first-sale no longer skipped when lastSaleAt is null — now fires toast+sound if sale is within 2 min (avoids race with hydrateLastSaleFooterFromApi). (2) Added touchstart to audio prime listeners and explicit prime on eye/footer last-sale toggle pointerdown/touchstart so sale sounds unlock on first footer interaction.
 
 2026-02-16 (latest)
-- Default logos: login `kexo_login.png`, header `kexo_new2.png`, footer `logo_foot.png`. Removed old assets (login.webp, kexo-color-*, kexo-white.png, etc.).
+- Footer logo rotation: `GET /api/footer-logo` redirects to a random image from `assets/logos/new/footer/`. Add PNG/WebP/JPG files to that folder to include them in rotation. Settings → Assets footer override still applies when set.
 
 2026-02-15 (latest)
 - Dashboard KPI sparklines + compare labels:
@@ -960,7 +960,7 @@ Ops/reliability:
   - Added Layout → Charts setting “Hide charts on mobile” (default ON) to hide all chart cards on small screens.
 - Footer redesign:
   - Layout: far left = eye + last sale; center = refresh | logo (40px) | sound; far right = back to top.
-  - Logo: `/assets/logos/new/logo_foot.png` in footer; header uses `kexo_new2.png`.
+  - Logo: footer uses `GET /api/footer-logo` (random from `assets/logos/new/footer/`); header uses `kexo_new2.png`.
   - Removed settings and theme icons from footer.
   - All footer icons use fa-jelly-filled; no hover effects on footer icons.
   - New icon keys: footer-back-to-top, footer-sound-muted (mapped in Settings → Theme → Icons).

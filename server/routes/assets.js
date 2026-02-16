@@ -3,11 +3,14 @@
  *
  * POST /api/assets/upload (multipart/form-data)
  * GET  /api/asset-overrides
+ * GET  /api/footer-logo (redirects to random image from assets/logos/new/footer/)
  *
  * Uploads go to Cloudflare R2 (S3-compatible) and return a public URL.
  * URLs are persisted separately via POST /api/settings (asset_overrides) or POST /api/theme-defaults.
  */
 const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
 const multer = require('multer');
 const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
 
@@ -176,9 +179,27 @@ async function postUploadAsset(req, res) {
   });
 }
 
+const FOOTER_LOGO_EXT = /\.(png|webp|jpe?g)$/i;
+
+function getFooterLogo(req, res) {
+  const footerDir = path.join(__dirname, '..', '..', 'assets', 'logos', 'new', 'footer');
+  let files = [];
+  try {
+    files = fs.readdirSync(footerDir).filter(function (f) {
+      return FOOTER_LOGO_EXT.test(f);
+    });
+  } catch (_) {}
+  const chosen = files.length ? files[Math.floor(Math.random() * files.length)] : null;
+  if (!chosen) {
+    return res.status(404).send('No footer logos found');
+  }
+  res.redirect(302, '/assets/logos/new/footer/' + encodeURIComponent(chosen));
+}
+
 module.exports = {
   uploadSingle: upload.single('file'),
   getAssetOverrides,
   postUploadAsset,
+  getFooterLogo,
 };
 
