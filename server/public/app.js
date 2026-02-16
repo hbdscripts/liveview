@@ -3130,7 +3130,7 @@ const API = '';
       if (!th) return;
       if (th.getAttribute('data-compliance-header') === '1') return;
       th.setAttribute('data-compliance-header', '1');
-      th.innerHTML = '<img src="/assets/logos/new/footer/7.webp" alt="" class="compliance-header-icon" width="15" height="15">';
+      th.innerHTML = '<img src="/assets/logos/new/kexo_tablehead_small.png" alt="" class="compliance-header-icon" width="15" height="15">';
     }
 
     function complianceCellHtml(sessionId, options) {
