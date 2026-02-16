@@ -13147,6 +13147,9 @@ const API = '';
         var risk = i && i.risk_level ? String(i.risk_level) : 'Unknown';
         var tone = gaugeToneFromRisk(risk);
         var label = (options && options.label) ? String(options.label) : 'Kexo Click Fraud Score';
+        var safety = Math.max(0, Math.min(100, 100 - score)); // 0 score => 100% safe
+        var barClass = (tone === 'low') ? 'bg-success' : (tone === 'high') ? 'bg-danger' : 'bg-secondary';
+        var aria = safety + '% safe (fraud score ' + score + '/100, risk ' + risk + ')';
         return '' +
           '<div class="kexo-fraud-gauge tone-' + esc(tone) + '" data-kexo-gauge="1" data-score="' + esc(String(score)) + '">' +
             '<div class="kexo-fraud-gauge-title">' + esc(label) + '</div>' +
@@ -13157,7 +13160,9 @@ const API = '';
               '</svg>' +
               '<div class="kexo-fraud-gauge-center">' +
                 '<div class="kexo-fraud-gauge-num">' + esc(String(score)) + '</div>' +
-                '<div class="kexo-fraud-gauge-risk">' + esc(String(risk || '')) + '</div>' +
+                '<div class="progress kexo-fraud-gauge-safety" role="progressbar" aria-valuenow="' + esc(String(safety)) + '" aria-valuemin="0" aria-valuemax="100" aria-label="' + esc(aria) + '">' +
+                  '<div class="progress-bar ' + esc(barClass) + '" style="width:' + esc(String(safety)) + '%"></div>' +
+                '</div>' +
               '</div>' +
             '</div>' +
           '</div>';

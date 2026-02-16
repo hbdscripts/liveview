@@ -860,10 +860,20 @@ body.side-panel-open {
   font-weight: 500;
   color: var(--tblr-body-color, #182433);
 }
-.kexo-fraud-gauge-risk {
-  font-size: 12px;
-  color: var(--tblr-secondary, #626976);
-  margin-top: .15rem;
+.kexo-fraud-gauge-safety {
+  width: 112px;
+  height: 6px;
+  margin: .35rem auto 0 auto;
+  background: rgba(100, 116, 139, .16);
+}
+.kexo-fraud-gauge-safety .progress-bar.bg-success {
+  background-color: var(--kexo-kpi-delta-up, var(--kexo-accent-2, #3eb3ab)) !important;
+}
+.kexo-fraud-gauge-safety .progress-bar.bg-secondary {
+  background-color: var(--kexo-kpi-delta-same, var(--kexo-accent-1, #4b94e4)) !important;
+}
+.kexo-fraud-gauge-safety .progress-bar.bg-danger {
+  background-color: var(--kexo-kpi-delta-down, var(--kexo-accent-4, #e4644b)) !important;
 }
 
 /* Sessions table: device cell now uses icons (platform + device type) */

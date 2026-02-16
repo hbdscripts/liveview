@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-16 (Header Online badge is a direct Live View link)
+Last updated: 2026-02-16 (Fraud gauge uses safety progress bar)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -377,6 +377,10 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-16 (latest)
+- Fraud gauge: replace risk label with safety progress bar:
+  - The Click & Order Lookup fraud half-donut now shows a KPI-style progress bar under the score (0 score => 100% green “safe”), using the same delta color variables as header KPI progress bars (`server/public/app.js`, `server/public/custom.css`).
 
 2026-02-16 (latest)
 - Header Online badge → direct link (no dropdown):
