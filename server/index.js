@@ -669,6 +669,16 @@ async function migrateAndStart() {
       } catch (_) {}
     }, 1000);
 
+    // Best-effort fraud catch-up: if purchases were backfilled/reconciled from evidence, ensure
+    // we also have fraud_evaluations rows so the drawer can show a score (fail-open).
+    setTimeout(() => {
+      if (process.env.DISABLE_FRAUD_BACKFILL === '1' || process.env.DISABLE_FRAUD_BACKFILL === 'true') return;
+      try {
+        const fraudBackfill = require('./fraud/backfillFromEvidence');
+        fraudBackfill.runOnce({ reason: 'startup' }).catch(() => {});
+      } catch (_) {}
+    }, 5000);
+
     // Warm long-range Shopify truth in the background so 7/14/30d reports are instant from our DB.
     (function warmSalesTruthRanges() {
       if (process.env.DISABLE_SCHEDULED_TRUTH_SYNC === '1' || process.env.DISABLE_SCHEDULED_TRUTH_SYNC === 'true') return;

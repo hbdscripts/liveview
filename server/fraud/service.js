@@ -12,7 +12,9 @@ const attributionCapture = require('./affiliateAttribution');
 const { scoreDeterministic } = require('./scorer');
 const aiNarrative = require('./aiNarrative');
 
-let _tablesOk = null; // null unknown, true ok, false missing
+let _tablesOk = null; // null unknown, true ok, false missing/unknown
+let _tablesOkAt = 0;
+const TABLES_OK_NEGATIVE_TTL_MS = 30 * 1000;
 let _aiInFlightBySession = new Map();
 
 function trimStr(v, maxLen) {
@@ -60,15 +62,20 @@ function computeFallbackEntityId({ sessionId, occurredAtMs, orderCurrency, order
 }
 
 async function tablesOk() {
+  const now = Date.now();
   if (_tablesOk === true) return true;
-  if (_tablesOk === false) return false;
+  if (_tablesOk === false && _tablesOkAt && (now - _tablesOkAt) >= 0 && (now - _tablesOkAt) < TABLES_OK_NEGATIVE_TTL_MS) {
+    return false;
+  }
   try {
     await getDb().get('SELECT 1 FROM fraud_evaluations LIMIT 1');
     await getDb().get('SELECT 1 FROM affiliate_attribution_sessions LIMIT 1');
     _tablesOk = true;
+    _tablesOkAt = now;
     return true;
   } catch (_) {
     _tablesOk = false;
+    _tablesOkAt = now;
     return false;
   }
 }

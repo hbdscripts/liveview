@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-16 (Profit settings tabs: Google-only integrations)
+Last updated: 2026-02-16 (Fraud scoring backfill from evidence + clearer drawer messaging)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -377,6 +377,12 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-16 (latest)
+- Fraud scoring catch-up (drawer “Fraud scoring unavailable” fix for backfilled/reconciled sales):
+  - Added a small, best-effort post-boot backfill that creates missing `fraud_evaluations` from `purchase_events` checkout-completed evidence (`server/fraud/backfillFromEvidence.js`, scheduled from `server/index.js`).
+  - Fraud table availability checks now use a short negative-cache TTL (avoid “stuck disabled until restart” after transient DB errors) in `server/fraud/service.js`, `server/fraud/linker.js`, `server/fraud/affiliateAttribution.js`.
+  - Drawer fraud block now distinguishes “system unavailable” vs “no evaluation yet” (`server/public/app.js`).
 
 2026-02-16 (latest)
 - Snapshot Profit Settings tab layout tweak:

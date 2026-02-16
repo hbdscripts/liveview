@@ -13228,8 +13228,15 @@ const API = '';
       }
 
       function renderFraudHtml(fraudBundle, mode) {
-        var picked = pickFraudEvalFromBundle(fraudBundle);
-        if (!picked) return '<div class="text-muted">Fraud scoring unavailable.</div>';
+        var b = fraudBundle && typeof fraudBundle === 'object' ? fraudBundle : null;
+        if (!b) return '<div class="text-muted">Fraud scoring unavailable.</div>';
+        if (b.ok !== true || b.available !== true) {
+          if (b.available === false) return '<div class="text-muted">Fraud system unavailable.</div>';
+          return '<div class="text-muted">Fraud data unavailable.</div>';
+        }
+
+        var picked = pickFraudEvalFromBundle(b);
+        if (!picked) return '<div class="text-muted">No fraud evaluation yet.</div>';
 
         var gauge = renderFraudGaugeHtml(picked, { label: 'Kexo Click Fraud Score' });
         var reasons = Array.isArray(picked.key_reasons) ? picked.key_reasons : [];

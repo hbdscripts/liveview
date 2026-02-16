@@ -13,7 +13,9 @@ const config = require('../config');
 const { getDb } = require('../db');
 const fraudConfig = require('./config');
 
-let _tableOk = null; // null unknown, true ok, false missing
+let _tableOk = null; // null unknown, true ok, false missing/unknown
+let _tableOkAt = 0;
+const TABLE_OK_NEGATIVE_TTL_MS = 30 * 1000;
 
 function trimStr(v, maxLen = 2048) {
   if (typeof v !== 'string') return '';
@@ -190,14 +192,17 @@ function deriveSourceKind({ utmMedium, paidClickIds, affiliateClickIds } = {}) {
 }
 
 async function tableOk() {
+  const now = Date.now();
   if (_tableOk === true) return true;
-  if (_tableOk === false) return false;
+  if (_tableOk === false && _tableOkAt && (now - _tableOkAt) >= 0 && (now - _tableOkAt) < TABLE_OK_NEGATIVE_TTL_MS) return false;
   try {
     await getDb().get('SELECT 1 FROM affiliate_attribution_sessions LIMIT 1');
     _tableOk = true;
+    _tableOkAt = now;
     return true;
   } catch (_) {
     _tableOk = false;
+    _tableOkAt = now;
     return false;
   }
 }
