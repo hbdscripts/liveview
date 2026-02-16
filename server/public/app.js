@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 4caf1cc0a87bb79b
+// checksum: 4197b0c8c6adba0c
 
 (function () {
 const API = '';
@@ -15825,14 +15825,52 @@ const API = '';
       var _kexoScoreCache = null;
       var _kexoScoreRangeKey = '';
 
+      function isElementVisiblyRendered(el) {
+        if (!el) return false;
+        try {
+          var cs = window.getComputedStyle ? window.getComputedStyle(el) : null;
+          if (cs && (cs.display === 'none' || cs.visibility === 'hidden')) return false;
+        } catch (_) {}
+        return true;
+      }
+
+      function isKexoScoreEnabledByConfig() {
+        try {
+          var cfg = (typeof kpiUiConfigV1 !== 'undefined' && kpiUiConfigV1 && kpiUiConfigV1.v === 1) ? kpiUiConfigV1 : null;
+          if (!cfg) return true;
+          var headerEnabled = !(cfg.options && cfg.options.header && cfg.options.header.showKexoScore === false);
+          var dashboardEnabled = true;
+          var list = cfg.kpis && Array.isArray(cfg.kpis.dashboard) ? cfg.kpis.dashboard : null;
+          if (list) {
+            var scoreItem = list.find(function(it) {
+              return it && String(it.key || '').trim().toLowerCase() === 'kexo_score';
+            });
+            if (scoreItem && scoreItem.enabled === false) dashboardEnabled = false;
+          }
+          return headerEnabled || dashboardEnabled;
+        } catch (_) {
+          return true;
+        }
+      }
+
+      function shouldFetchKexoScore() {
+        if (!isKexoScoreEnabledByConfig()) return false;
+        var headerBtn = document.getElementById('header-kexo-score-wrap');
+        var dashCard = document.getElementById('dash-kpi-kexo-score-card');
+        if (!headerBtn && !dashCard) return false;
+        if (!isElementVisiblyRendered(headerBtn) && !isElementVisiblyRendered(dashCard)) return false;
+        return true;
+      }
+
       function fetchKexoScore(rangeKey) {
         rangeKey = (rangeKey == null ? '' : String(rangeKey)).trim().toLowerCase();
         if (!rangeKey) rangeKey = 'today';
+        if (!shouldFetchKexoScore()) return Promise.resolve(null);
         var url = API + '/api/kexo-score?range=' + encodeURIComponent(rangeKey);
         return fetchWithTimeout(url, { credentials: 'same-origin', cache: 'default' }, 15000)
           .then(function(r) { return (r && r.ok) ? r.json() : null; })
           .then(function(scoreData) {
-            if (scoreData) {
+            if (scoreData && shouldFetchKexoScore()) {
               _kexoScoreCache = scoreData;
               _kexoScoreRangeKey = rangeKey;
               renderKexoScore(scoreData);

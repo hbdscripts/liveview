@@ -1864,6 +1864,7 @@ async function getThemeVarsCss(req, res) {
       fulfilled: 'dash-kpi-fulfilled',
       returns: 'dash-kpi-returns',
       items: 'dash-kpi-items',
+      kexo_score: 'dash-kpi-kexo-score',
     };
     const rules = [];
     disabled.forEach((k) => {
@@ -1885,6 +1886,12 @@ async function getThemeVarsCss(req, res) {
       // Dashboard cards are direct children of #dash-kpi-grid OR #dash-kpi-grid-lower and can be matched via their value id.
       rules.push(`#dash-kpi-grid > .col-sm-6:has(#${valueId}),#dash-kpi-grid-lower > .col-sm-6:has(#${valueId}){display:none!important;}`);
     });
+
+    // Header Kexo Score button visibility (hide before app.js boot to prevent flash).
+    const showHeaderKexoScore = !(cfg && cfg.v === 1 && cfg.options && cfg.options.header && cfg.options.header.showKexoScore === false);
+    if (!showHeaderKexoScore) {
+      rules.push('#header-kexo-score-wrap{display:none!important;}');
+    }
 
     if (rules.length) {
       kpisCss = ['/* KEXO: server-injected KPI visibility */', ...rules, ''].join('\n');
