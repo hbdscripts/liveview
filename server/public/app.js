@@ -17607,6 +17607,58 @@ const API = '';
           .catch(function() { return null; });
       }
 
+      function formatKexoScoreNumber(rawScore) {
+        var n = Number(rawScore);
+        if (!Number.isFinite(n)) return '\u2014';
+        var rounded = Math.round(n * 10) / 10;
+        var intRounded = Math.round(rounded);
+        if (Math.abs(rounded - intRounded) < 1e-9) return String(intRounded);
+        return rounded.toFixed(1).replace(/\.0$/, '');
+      }
+
+      function buildHeaderKexoScoreRingBg(rawScore) {
+        var score = Number(rawScore);
+        if (!Number.isFinite(score)) score = 0;
+        score = Math.max(0, Math.min(100, score));
+
+        var colors = [
+          'var(--kexo-accent-1, #4b94e4)',
+          'var(--kexo-accent-2, #3eb3ab)',
+          'var(--kexo-accent-3, #f59e34)',
+          'var(--kexo-accent-4, #8b5cf6)',
+          'var(--kexo-accent-5, #ef4444)'
+        ];
+        var track = 'var(--kexo-score-track)';
+        var segDeg = 360 / colors.length;
+        var gapDeg = 4;
+        var halfGap = gapDeg / 2;
+        var fillDeg = score * 3.6;
+        var stops = [];
+
+        for (var i = 0; i < colors.length; i += 1) {
+          var segStart = i * segDeg;
+          var segEnd = segStart + segDeg;
+          var segFillStart = segStart + halfGap;
+          var segFillEnd = segEnd - halfGap;
+          var paintedEnd = Math.min(fillDeg, segFillEnd);
+
+          stops.push('transparent ' + segStart.toFixed(2) + 'deg ' + segFillStart.toFixed(2) + 'deg');
+
+          if (paintedEnd <= segFillStart) {
+            stops.push(track + ' ' + segFillStart.toFixed(2) + 'deg ' + segFillEnd.toFixed(2) + 'deg');
+          } else if (paintedEnd >= segFillEnd) {
+            stops.push(colors[i] + ' ' + segFillStart.toFixed(2) + 'deg ' + segFillEnd.toFixed(2) + 'deg');
+          } else {
+            stops.push(colors[i] + ' ' + segFillStart.toFixed(2) + 'deg ' + paintedEnd.toFixed(2) + 'deg');
+            stops.push(track + ' ' + paintedEnd.toFixed(2) + 'deg ' + segFillEnd.toFixed(2) + 'deg');
+          }
+
+          stops.push('transparent ' + segFillEnd.toFixed(2) + 'deg ' + segEnd.toFixed(2) + 'deg');
+        }
+
+        return 'conic-gradient(from -90deg, ' + stops.join(', ') + ')';
+      }
+
       function renderKexoScore(scoreData) {
         var dashNum = document.getElementById('dash-kpi-kexo-score');
         var dashRing = document.getElementById('dash-kpi-kexo-score-ring');
@@ -17617,12 +17669,15 @@ const API = '';
           score = Math.max(0, Math.min(100, Number(scoreData.score)));
         }
         var empty = score == null;
-        var text = empty ? '\u2014' : score.toFixed(1);
+        var text = empty ? '\u2014' : formatKexoScoreNumber(score);
         var pct = empty ? '0' : String(score);
         if (dashNum) { dashNum.textContent = text; }
         if (dashRing) dashRing.style.setProperty('--kexo-score-pct', pct);
         if (headerNum) { headerNum.textContent = text; }
-        if (headerRing) headerRing.style.setProperty('--kexo-score-pct', pct);
+        if (headerRing) {
+          headerRing.style.setProperty('--kexo-score-pct', pct);
+          headerRing.style.background = buildHeaderKexoScoreRingBg(score);
+        }
       }
 
       function openKexoScoreModal() {

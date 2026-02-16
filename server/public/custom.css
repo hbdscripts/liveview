@@ -2083,45 +2083,30 @@ html[data-bs-theme="dark"] .report-build-wrap {
 }
 .kexo-score-ring-wrap--header {
   --kexo-score-track: color-mix(in srgb, black 25%, var(--kexo-header-top-bg, #fff));
+  --kexo-score-stroke: 3px;
   width: 36px;
   height: 36px;
-  background: transparent;
+  margin: -2px 0 0 0;
+  background: transparent !important;
   position: relative;
 }
-/* Full hollow ring: track (header colour + opacity) */
+/* Header ring is rendered as a stroke-only segmented ring from JS. */
 .kexo-score-ring-wrap--header::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  border: 3px solid var(--kexo-score-track);
-  background: transparent;
-  pointer-events: none;
+  content: none;
 }
-/* Progress segment: hollow ring (5 colours 0→score%), thin stroke */
+/* Stroke-only ring with transparent center (no filled background). */
 .kexo-score-ring--header {
   position: absolute;
   inset: 0;
   border-radius: 50%;
-  background: conic-gradient(
-    from 0deg,
-    var(--kexo-accent-1, #4b94e4) 0deg,
-    var(--kexo-accent-2, #3eb3ab) 72deg,
-    var(--kexo-accent-3, #f59e34) 144deg,
-    var(--kexo-accent-4, #8b5cf6) 216deg,
-    var(--kexo-accent-5, #ef4444) 288deg
-  );
+  background: conic-gradient(from -90deg, var(--kexo-score-track) 0deg, var(--kexo-score-track) 360deg);
   --kexo-score-pct: 0;
-  mask: conic-gradient(from 0deg, black 0deg, black calc(var(--kexo-score-pct) * 3.6deg), transparent calc(var(--kexo-score-pct) * 3.6deg));
-  -webkit-mask: conic-gradient(from 0deg, black 0deg, black calc(var(--kexo-score-pct) * 3.6deg), transparent calc(var(--kexo-score-pct) * 3.6deg));
+  mask: radial-gradient(farthest-side, transparent calc(100% - var(--kexo-score-stroke)), #000 calc(100% - var(--kexo-score-stroke)));
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - var(--kexo-score-stroke)), #000 calc(100% - var(--kexo-score-stroke)));
   pointer-events: none;
 }
 .kexo-score-ring--header::before {
-  content: '';
-  position: absolute;
-  inset: 3px;
-  border-radius: 50%;
-  background: var(--kexo-header-top-bg, #fff);
+  content: none;
 }
 .kexo-score-ring-wrap--header .kexo-score-ring-center {
   position: absolute;
@@ -3162,9 +3147,11 @@ body.kexo-report-loading #kexo-date-display::after {
   border: none;
   background: none;
   border-radius: var(--kexo-header-settings-radius, var(--tblr-border-radius, .375rem));
-  padding: 5px !important;
+  padding: 7px 5px !important;
   font-size: 15px;
+  border-radius: 4px;
   font-weight: 500;
+  margin: 0 5px 0 0;
   color: var(--kexo-header-settings-text-color, var(--kexo-header-top-text-color, #1f2937)) !important;
 }
 .kexo-top-strip-settings-toggle:hover,

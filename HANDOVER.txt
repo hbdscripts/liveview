@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-16 (Kexo Score modal fix + today window alignment)
+Last updated: 2026-02-16 (Kexo Score header ring style + score text formatting)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -378,6 +378,13 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-16 (latest)
+- Kexo Score header visual refinement:
+  - Score text now suppresses trailing `.0` (for example `40` instead of `40.0`) in both dashboard and header displays.
+  - Header wheel switched to stroke-only segmented rendering with visible gaps in the stroke and no filled center/background.
+  - Header ring wrap now applies `margin: -2px 0 0 0` for alignment in the top strip.
+  - Updated `.kexo-top-strip-settings-toggle` spacing/padding/radius/margin to match current header control spec.
 
 2026-02-16 (latest)
 - Kexo Score reliability + UX polish:
