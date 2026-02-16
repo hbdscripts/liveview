@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-16 (Snapshot page migration + range-mode API)
+Last updated: 2026-02-16 (Session drawer header icons + Copy Entry URL)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -72,6 +72,7 @@ Goal: a generic, network-agnostic affiliate abuse/fraud detector that is safe to
   - Copy affordances are **links** and appear **only for IDs**: Click ID, Shopify order ID, checkout token, Kexo order key.
   - Displays **Kexo Click Fraud Score** as an **animated half-donut gauge** (0–100) colored green/blue/red by risk.
   - `/tools/click-order-lookup` also shows the same Activity feed (the lookup API returns recent session `events`).
+  - Drawer header now shows inline row icons (country flag + channel/source icon(s) + device icons). Source section includes a **Copy Entry URL** link.
 
 ### Optional AI narrative (feature-flagged)
 
@@ -391,6 +392,12 @@ Ops/reliability:
   - `server/public/app.js` now assigns persistent per-sale identity keys (order ID, checkout token, click/session + purchased timestamp, createdAt) and keeps a bounded seen-key cache in localStorage (`kexo:sale-toast-seen:v1`) so the same automatic sale notification cannot fire twice across SSE/stats overlap, reconnects, or refreshes.
   - `GET /api/latest-sale` (`server/routes/latestSale.js`) now includes `sale.sessionId` when evidence links exist, and stats-origin sale toasts fetch this endpoint first so dedupe aligns with SSE click/session identity instead of only count deltas.
   - Manual replay via the header/footer eye uses `allowReplay: true`, so "show last sale" always works on demand without changing the one-time uniqueness gate used for automatic notifications.
+
+2026-02-16 (latest)
+- Session drawer polish:
+  - Side drawer header renamed to **Session Details** and now shows inline row icons (country + channel + device).
+  - Source section adds **Copy Entry URL**.
+  - Network (Verified bot category + City) rows are forced left-aligned (City remains empty unless captured via Cloudflare/Worker headers).
 
 2026-02-15 (latest)
 - Settings loader + Sale Notification preview reliability:
