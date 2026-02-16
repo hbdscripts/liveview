@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 7a31e0e422bc4a23
+// checksum: fe2b0540ee59198b
 
 (function () {
 const API = '';
@@ -8166,18 +8166,28 @@ const API = '';
       var returnsVal = extrasMain && typeof extrasMain.returns === 'number' ? extrasMain.returns : null;
       var cogsVal = extrasMain && typeof extrasMain.cogs === 'number' ? extrasMain.cogs : null;
 
-      if (el('dash-kpi-revenue')) el('dash-kpi-revenue').textContent = salesVal != null ? formatRevenue0(salesVal) : '\u2014';
-      if (el('dash-kpi-orders')) el('dash-kpi-orders').textContent = ordersVal != null ? Math.round(ordersVal).toLocaleString() : '\u2014';
-      if (el('dash-kpi-sessions')) el('dash-kpi-sessions').textContent = sessionsVal != null ? formatSessions(sessionsVal) : '\u2014';
-      if (el('dash-kpi-conv')) el('dash-kpi-conv').textContent = convVal != null ? pct(convVal) : '\u2014';
-      if (el('dash-kpi-aov')) el('dash-kpi-aov').textContent = aovVal != null ? formatRevenue0(aovVal) : '\u2014';
-      if (el('dash-kpi-bounce')) el('dash-kpi-bounce').textContent = bounceVal != null ? pct(bounceVal) : '\u2014';
-      if (el('dash-kpi-returning')) el('dash-kpi-returning').textContent = returningVal != null ? Math.round(returningVal).toLocaleString() : '\u2014';
-      if (el('dash-kpi-roas')) el('dash-kpi-roas').textContent = roasVal != null ? roasVal.toFixed(2) + 'x' : '\u2014';
-      if (el('dash-kpi-items')) el('dash-kpi-items').textContent = itemsVal != null ? Math.round(itemsVal).toLocaleString() : '\u2014';
-      if (el('dash-kpi-fulfilled')) el('dash-kpi-fulfilled').textContent = fulfilledVal != null ? Math.round(fulfilledVal).toLocaleString() : '\u2014';
-      if (el('dash-kpi-returns')) el('dash-kpi-returns').textContent = returnsVal != null ? formatNegativeCurrencyOrZero(returnsVal, true) : '\u2014';
-      if (el('dash-kpi-cogs')) el('dash-kpi-cogs').textContent = cogsVal != null ? formatRevenue0(cogsVal) : '\u2014';
+      function setDashValueText(id, textValue) {
+        var node = el(id);
+        if (!node) return;
+        if (textValue == null || textValue === '') {
+          node.innerHTML = '<span class="kpi-mini-spinner" aria-hidden="true"></span>';
+          return;
+        }
+        node.textContent = String(textValue);
+      }
+
+      setDashValueText('dash-kpi-revenue', salesVal != null ? formatRevenue0(salesVal) : null);
+      setDashValueText('dash-kpi-orders', ordersVal != null ? Math.round(ordersVal).toLocaleString() : null);
+      setDashValueText('dash-kpi-sessions', sessionsVal != null ? formatSessions(sessionsVal) : null);
+      setDashValueText('dash-kpi-conv', convVal != null ? pct(convVal) : null);
+      setDashValueText('dash-kpi-aov', aovVal != null ? formatRevenue0(aovVal) : null);
+      setDashValueText('dash-kpi-bounce', bounceVal != null ? pct(bounceVal) : null);
+      setDashValueText('dash-kpi-returning', returningVal != null ? Math.round(returningVal).toLocaleString() : null);
+      setDashValueText('dash-kpi-roas', roasVal != null ? roasVal.toFixed(2) + 'x' : null);
+      setDashValueText('dash-kpi-items', itemsVal != null ? Math.round(itemsVal).toLocaleString() : null);
+      setDashValueText('dash-kpi-fulfilled', fulfilledVal != null ? Math.round(fulfilledVal).toLocaleString() : null);
+      setDashValueText('dash-kpi-returns', returnsVal != null ? formatNegativeCurrencyOrZero(returnsVal, true) : null);
+      setDashValueText('dash-kpi-cogs', cogsVal != null ? formatRevenue0(cogsVal) : null);
 
       function renderCompareSlot(slotSuffix, values) {
         values = values || {};
@@ -8194,18 +8204,18 @@ const API = '';
         var returns = values.returns;
         var cogs = values.cogs;
 
-        if (el('dash-revenue-' + slotSuffix)) el('dash-revenue-' + slotSuffix).textContent = sales != null ? formatRevenue0(sales) : '\u2014';
-        if (el('dash-orders-' + slotSuffix)) el('dash-orders-' + slotSuffix).textContent = orders != null ? Math.round(orders).toLocaleString() : '\u2014';
-        if (el('dash-sessions-' + slotSuffix)) el('dash-sessions-' + slotSuffix).textContent = sessions != null ? formatSessions(sessions) : '\u2014';
-        if (el('dash-conv-' + slotSuffix)) el('dash-conv-' + slotSuffix).textContent = conv != null ? pct(conv) : '\u2014';
-        if (el('dash-aov-' + slotSuffix)) el('dash-aov-' + slotSuffix).textContent = aov != null ? formatRevenue0(aov) : '\u2014';
-        if (el('dash-bounce-' + slotSuffix)) el('dash-bounce-' + slotSuffix).textContent = bounce != null ? pct(bounce) : '\u2014';
-        if (el('dash-returning-' + slotSuffix)) el('dash-returning-' + slotSuffix).textContent = returning != null ? Math.round(returning).toLocaleString() : '\u2014';
-        if (el('dash-roas-' + slotSuffix)) el('dash-roas-' + slotSuffix).textContent = roas != null ? roas.toFixed(2) + 'x' : '\u2014';
-        if (el('dash-items-' + slotSuffix)) el('dash-items-' + slotSuffix).textContent = items != null ? Math.round(items).toLocaleString() : '\u2014';
-        if (el('dash-fulfilled-' + slotSuffix)) el('dash-fulfilled-' + slotSuffix).textContent = fulfilled != null ? Math.round(fulfilled).toLocaleString() : '\u2014';
-        if (el('dash-returns-' + slotSuffix)) el('dash-returns-' + slotSuffix).textContent = returns != null ? formatNegativeCurrencyOrZero(returns, true) : '\u2014';
-        if (el('dash-cogs-' + slotSuffix)) el('dash-cogs-' + slotSuffix).textContent = cogs != null ? formatRevenue0(cogs) : '\u2014';
+        setDashValueText('dash-revenue-' + slotSuffix, sales != null ? formatRevenue0(sales) : null);
+        setDashValueText('dash-orders-' + slotSuffix, orders != null ? Math.round(orders).toLocaleString() : null);
+        setDashValueText('dash-sessions-' + slotSuffix, sessions != null ? formatSessions(sessions) : null);
+        setDashValueText('dash-conv-' + slotSuffix, conv != null ? pct(conv) : null);
+        setDashValueText('dash-aov-' + slotSuffix, aov != null ? formatRevenue0(aov) : null);
+        setDashValueText('dash-bounce-' + slotSuffix, bounce != null ? pct(bounce) : null);
+        setDashValueText('dash-returning-' + slotSuffix, returning != null ? Math.round(returning).toLocaleString() : null);
+        setDashValueText('dash-roas-' + slotSuffix, roas != null ? roas.toFixed(2) + 'x' : null);
+        setDashValueText('dash-items-' + slotSuffix, items != null ? Math.round(items).toLocaleString() : null);
+        setDashValueText('dash-fulfilled-' + slotSuffix, fulfilled != null ? Math.round(fulfilled).toLocaleString() : null);
+        setDashValueText('dash-returns-' + slotSuffix, returns != null ? formatNegativeCurrencyOrZero(returns, true) : null);
+        setDashValueText('dash-cogs-' + slotSuffix, cogs != null ? formatRevenue0(cogs) : null);
       }
 
       function applyDashDelta(key, current, baseline, invert) {
@@ -15494,6 +15504,25 @@ const API = '';
         chartEl.innerHTML = '<div class="kexo-overview-chart-empty">' + escapeHtml(text || 'No data available') + '</div>';
       }
 
+      function renderOverviewChartLoading(chartId, text) {
+        var chartEl = document.getElementById(chartId);
+        if (!chartEl) return;
+        if (!isChartEnabledByUiConfig(chartId)) {
+          destroyDashChart(chartId);
+          chartEl.innerHTML = '';
+          return;
+        }
+        destroyDashChart(chartId);
+        chartEl.innerHTML = '<div class="kexo-overview-chart-empty is-loading"><span class="kpi-mini-spinner" aria-hidden="true"></span><span>' + escapeHtml(text || 'Loading...') + '</span></div>';
+      }
+
+      function showOverviewMiniLoadingState() {
+        renderOverviewChartLoading('dash-chart-finishes-30d', 'Loading finishes...');
+        renderOverviewChartLoading('dash-chart-countries-30d', 'Loading countries...');
+        renderOverviewChartLoading('dash-chart-kexo-score-today', 'Loading score...');
+        renderOverviewChartLoading('dash-chart-overview-30d', 'Loading 30 day overview...');
+      }
+
       function countryCodeToFlagEmoji(rawCode) {
         var code = rawCode == null ? '' : String(rawCode).trim().toUpperCase();
         if (!/^[A-Z]{2}$/.test(code)) return '';
@@ -15521,7 +15550,7 @@ const API = '';
           safeValues.push(n);
         }
         if (!safeValues.length) {
-          renderOverviewChartEmpty(chartId, 'No data available');
+          renderOverviewChartLoading(chartId, 'Loading chart...');
           return;
         }
         destroyDashChart(chartId);
@@ -15638,7 +15667,7 @@ const API = '';
         if (renderer !== 'wheel' && renderer !== 'pie') renderer = 'pie';
         var hasScore = Number.isFinite(Number(rawScore));
         if (!hasScore) {
-          renderOverviewChartEmpty(chartId, 'No data available');
+          renderOverviewChartLoading(chartId, 'Loading score...');
           return;
         }
         var score = Math.max(0, Math.min(100, Number(rawScore)));
@@ -15688,7 +15717,7 @@ const API = '';
         var costGbp = current && Array.isArray(current.costGbp) ? current.costGbp : [];
         var len = Math.max(labelsYmd.length, revenueGbp.length, costGbp.length);
         if (!len) {
-          renderOverviewChartEmpty(chartId, 'No data available');
+          renderOverviewChartLoading(chartId, 'Loading 30 day overview...');
           return;
         }
         var labels = [];
@@ -15801,6 +15830,10 @@ const API = '';
           return Promise.resolve(overviewMiniCache);
         }
         if (overviewMiniInFlight && !force) return overviewMiniInFlight;
+
+        if (!overviewMiniPayloadSignature || !overviewMiniCache) {
+          showOverviewMiniLoadingState();
+        }
 
         var stamp = Date.now();
         var seriesUrl = API + '/api/dashboard-series?range=30d' + (force ? ('&force=1&_=' + stamp) : '');
@@ -16457,7 +16490,10 @@ const API = '';
         var dashText = empty ? '\u2014' : formatKexoScoreNumber(score);
         var headerText = empty ? '\u2014' : String(Math.round(score));
         var pct = empty ? '0' : String(score);
-        if (dashNum) { dashNum.textContent = dashText; }
+        if (dashNum) {
+          if (empty) dashNum.innerHTML = '<span class="kpi-mini-spinner" aria-hidden="true"></span>';
+          else dashNum.textContent = dashText;
+        }
         if (dashRing) dashRing.style.setProperty('--kexo-score-pct', pct);
         if (headerNum) { headerNum.textContent = headerText; }
         if (headerRing) {

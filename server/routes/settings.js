@@ -119,6 +119,13 @@ function defaultChartStyleConfig() {
     dataLabels: 'auto',
     toolbar: false,
     animations: true,
+    pieDonut: false,
+    pieDonutSize: 66,
+    pieLabelPosition: 'auto',
+    pieLabelContent: 'percent',
+    pieLabelOffset: 16,
+    pieCountryFlags: false,
+    kexoRenderer: 'pie',
   };
 }
 
@@ -201,17 +208,26 @@ function defaultKpiUiConfigV1() {
 }
 
 function defaultChartsUiConfigV1() {
-  const withStyle = (item) => ({ ...item, style: defaultChartStyleConfig() });
+  const withStyle = (item, styleOverride) => ({ ...item, style: { ...defaultChartStyleConfig(), ...(styleOverride && typeof styleOverride === 'object' ? styleOverride : {}) } });
   return {
     v: 1,
     hideOnMobile: true,
     // Guardrail: charts + KPI bundle UI defaults are user-owned via Settings and normalized below.
     // Keep these defaults/allowed lists aligned with kexo-chart-defs.js and settings-page.js.
     charts: [
-      withStyle({ key: 'dash-chart-overview-30d', label: 'Dashboard · 30 Day Overview', enabled: true, mode: 'bar', colors: ['#3eb3ab', '#ef4444'], advancedApexOverride: {} }),
-      withStyle({ key: 'dash-chart-finishes-30d', label: 'Dashboard · Finishes (30 Days)', enabled: true, mode: 'pie', colors: ['#f59e34', '#94a3b8', '#8b5cf6', '#4b94e4'], advancedApexOverride: {} }),
-      withStyle({ key: 'dash-chart-countries-30d', label: 'Dashboard · Countries (30 Days)', enabled: true, mode: 'pie', colors: ['#4b94e4', '#3eb3ab', '#f59e34', '#8b5cf6', '#ef4444'], advancedApexOverride: {} }),
-      withStyle({ key: 'dash-chart-kexo-score-today', label: 'Dashboard · Kexo Score (Today)', enabled: true, mode: 'pie', colors: ['#4b94e4', '#e5e7eb'], advancedApexOverride: {} }),
+      withStyle({ key: 'dash-chart-overview-30d', label: 'Dashboard · 30 Day Overview', enabled: true, mode: 'bar', colors: ['#3eb3ab', '#ef4444'], advancedApexOverride: {} }, { animations: false }),
+      withStyle(
+        { key: 'dash-chart-finishes-30d', label: 'Dashboard · Finishes (30 Days)', enabled: true, mode: 'pie', colors: ['#f59e34', '#94a3b8', '#8b5cf6', '#4b94e4'], advancedApexOverride: {} },
+        { animations: false, pieDonut: true, pieDonutSize: 64, pieLabelPosition: 'outside', pieLabelContent: 'label_percent', pieLabelOffset: 18 }
+      ),
+      withStyle(
+        { key: 'dash-chart-countries-30d', label: 'Dashboard · Countries (30 Days)', enabled: true, mode: 'pie', colors: ['#4b94e4', '#3eb3ab', '#f59e34', '#8b5cf6', '#ef4444'], advancedApexOverride: {} },
+        { animations: false, pieDonut: true, pieDonutSize: 64, pieLabelPosition: 'outside', pieLabelContent: 'label_percent', pieLabelOffset: 18, pieCountryFlags: true }
+      ),
+      withStyle(
+        { key: 'dash-chart-kexo-score-today', label: 'Dashboard · Kexo Score (Today)', enabled: true, mode: 'pie', colors: ['#4b94e4', '#e5e7eb'], advancedApexOverride: {} },
+        { animations: false, pieDonut: true, pieDonutSize: 68, dataLabels: 'off', kexoRenderer: 'wheel' }
+      ),
       withStyle({ key: 'live-online-chart', label: 'Dashboard · Live Online', enabled: true, mode: 'map-flat', colors: ['#16a34a'], advancedApexOverride: {} }),
       withStyle({ key: 'sales-overview-chart', label: 'Dashboard · Sales Trend', enabled: true, mode: 'area', colors: ['#0d9488'], advancedApexOverride: {} }),
       withStyle({ key: 'date-overview-chart', label: 'Dashboard · Sessions & Orders Trend', enabled: true, mode: 'area', colors: ['#4b94e4', '#f59e34'], advancedApexOverride: {} }),
@@ -863,6 +879,9 @@ function normalizeChartStyle(raw, fallback) {
   const src = raw && typeof raw === 'object' ? raw : {};
   const curveRaw = String(src.curve != null ? src.curve : def.curve).trim().toLowerCase();
   const dataLabelsRaw = String(src.dataLabels != null ? src.dataLabels : def.dataLabels).trim().toLowerCase();
+  const pieLabelPositionRaw = String(src.pieLabelPosition != null ? src.pieLabelPosition : def.pieLabelPosition).trim().toLowerCase();
+  const pieLabelContentRaw = String(src.pieLabelContent != null ? src.pieLabelContent : def.pieLabelContent).trim().toLowerCase();
+  const kexoRendererRaw = String(src.kexoRenderer != null ? src.kexoRenderer : def.kexoRenderer).trim().toLowerCase();
   return {
     curve: ['smooth', 'straight', 'stepline'].includes(curveRaw) ? curveRaw : String(def.curve || 'smooth'),
     strokeWidth: parseBoundedNumber(src.strokeWidth, def.strokeWidth != null ? def.strokeWidth : 2.6, 0, 8),
@@ -873,6 +892,13 @@ function normalizeChartStyle(raw, fallback) {
     dataLabels: ['auto', 'on', 'off'].includes(dataLabelsRaw) ? dataLabelsRaw : String(def.dataLabels || 'auto'),
     toolbar: normalizeBool(src.toolbar, def.toolbar === true),
     animations: normalizeBool(src.animations, def.animations !== false),
+    pieDonut: normalizeBool(src.pieDonut, def.pieDonut === true),
+    pieDonutSize: Math.round(parseBoundedNumber(src.pieDonutSize, def.pieDonutSize != null ? def.pieDonutSize : 66, 30, 90)),
+    pieLabelPosition: ['auto', 'inside', 'outside'].includes(pieLabelPositionRaw) ? pieLabelPositionRaw : String(def.pieLabelPosition || 'auto'),
+    pieLabelContent: ['percent', 'label', 'label_percent'].includes(pieLabelContentRaw) ? pieLabelContentRaw : String(def.pieLabelContent || 'percent'),
+    pieLabelOffset: Math.round(parseBoundedNumber(src.pieLabelOffset, def.pieLabelOffset != null ? def.pieLabelOffset : 16, -40, 40)),
+    pieCountryFlags: normalizeBool(src.pieCountryFlags, def.pieCountryFlags === true),
+    kexoRenderer: (kexoRendererRaw === 'wheel' || kexoRendererRaw === 'pie') ? kexoRendererRaw : String(def.kexoRenderer || 'pie'),
   };
 }
 

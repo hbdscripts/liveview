@@ -1181,10 +1181,10 @@
 
   function defaultChartsUiConfigV1() {
     var baseCharts = [
-      { key: 'dash-chart-overview-30d', label: 'Dashboard · 30 Day Overview', enabled: true, mode: 'bar', colors: ['#3eb3ab', '#ef4444'], advancedApexOverride: {} },
-      { key: 'dash-chart-finishes-30d', label: 'Dashboard · Finishes (30 Days)', enabled: true, mode: 'pie', colors: ['#f59e34', '#94a3b8', '#8b5cf6', '#4b94e4'], advancedApexOverride: {} },
-      { key: 'dash-chart-countries-30d', label: 'Dashboard · Countries (30 Days)', enabled: true, mode: 'pie', colors: ['#4b94e4', '#3eb3ab', '#f59e34', '#8b5cf6', '#ef4444'], advancedApexOverride: {} },
-      { key: 'dash-chart-kexo-score-today', label: 'Dashboard · Kexo Score (Today)', enabled: true, mode: 'pie', colors: ['#4b94e4', '#e5e7eb'], advancedApexOverride: {} },
+      { key: 'dash-chart-overview-30d', label: 'Dashboard · 30 Day Overview', enabled: true, mode: 'bar', colors: ['#3eb3ab', '#ef4444'], advancedApexOverride: {}, styleOverride: { animations: false } },
+      { key: 'dash-chart-finishes-30d', label: 'Dashboard · Finishes (30 Days)', enabled: true, mode: 'pie', colors: ['#f59e34', '#94a3b8', '#8b5cf6', '#4b94e4'], advancedApexOverride: {}, styleOverride: { animations: false, pieDonut: true, pieDonutSize: 64, pieLabelPosition: 'outside', pieLabelContent: 'label_percent', pieLabelOffset: 18 } },
+      { key: 'dash-chart-countries-30d', label: 'Dashboard · Countries (30 Days)', enabled: true, mode: 'pie', colors: ['#4b94e4', '#3eb3ab', '#f59e34', '#8b5cf6', '#ef4444'], advancedApexOverride: {}, styleOverride: { animations: false, pieDonut: true, pieDonutSize: 64, pieLabelPosition: 'outside', pieLabelContent: 'label_percent', pieLabelOffset: 18, pieCountryFlags: true } },
+      { key: 'dash-chart-kexo-score-today', label: 'Dashboard · Kexo Score (Today)', enabled: true, mode: 'pie', colors: ['#4b94e4', '#e5e7eb'], advancedApexOverride: {}, styleOverride: { animations: false, pieDonut: true, pieDonutSize: 68, dataLabels: 'off', kexoRenderer: 'wheel' } },
       { key: 'live-online-chart', label: 'Dashboard · Live Online', enabled: true, mode: 'map-flat', colors: ['#16a34a'], advancedApexOverride: {} },
       { key: 'sales-overview-chart', label: 'Dashboard · Sales Trend', enabled: true, mode: 'area', colors: ['#0d9488'], advancedApexOverride: {} },
       { key: 'date-overview-chart', label: 'Dashboard · Sessions & Orders Trend', enabled: true, mode: 'area', colors: ['#4b94e4', '#f59e34'], advancedApexOverride: {} },
@@ -1196,7 +1196,8 @@
       { key: 'countries-map-chart', label: 'Insights · Countries Map', enabled: true, mode: 'map-flat', colors: ['#3eb3ab'], advancedApexOverride: {} },
     ].map(function (it) {
       var row = Object.assign({}, it);
-      row.style = defaultChartStyleConfig();
+      row.style = Object.assign(defaultChartStyleConfig(), it.styleOverride && typeof it.styleOverride === 'object' ? it.styleOverride : {});
+      delete row.styleOverride;
       return row;
     });
     return {
@@ -1377,6 +1378,13 @@
       dataLabels: 'auto',
       toolbar: false,
       animations: true,
+      pieDonut: false,
+      pieDonutSize: 66,
+      pieLabelPosition: 'auto',
+      pieLabelContent: 'percent',
+      pieLabelOffset: 16,
+      pieCountryFlags: false,
+      kexoRenderer: 'pie',
     };
   }
 
@@ -1387,6 +1395,12 @@
     if (['smooth', 'straight', 'stepline'].indexOf(curve) < 0) curve = def.curve;
     var labelsMode = String(src.dataLabels != null ? src.dataLabels : def.dataLabels).trim().toLowerCase();
     if (labelsMode !== 'on' && labelsMode !== 'off' && labelsMode !== 'auto') labelsMode = def.dataLabels;
+    var pieLabelPosition = String(src.pieLabelPosition != null ? src.pieLabelPosition : def.pieLabelPosition).trim().toLowerCase();
+    if (['auto', 'inside', 'outside'].indexOf(pieLabelPosition) < 0) pieLabelPosition = def.pieLabelPosition || 'auto';
+    var pieLabelContent = String(src.pieLabelContent != null ? src.pieLabelContent : def.pieLabelContent).trim().toLowerCase();
+    if (['percent', 'label', 'label_percent'].indexOf(pieLabelContent) < 0) pieLabelContent = def.pieLabelContent || 'percent';
+    var kexoRenderer = String(src.kexoRenderer != null ? src.kexoRenderer : def.kexoRenderer).trim().toLowerCase();
+    if (kexoRenderer !== 'wheel' && kexoRenderer !== 'pie') kexoRenderer = def.kexoRenderer || 'pie';
     return {
       curve: curve,
       strokeWidth: safeNumber(src.strokeWidth, def.strokeWidth, 0, 8),
@@ -1397,6 +1411,13 @@
       dataLabels: labelsMode,
       toolbar: !!(src.toolbar === true || (src.toolbar == null && def.toolbar)),
       animations: !(src.animations === false),
+      pieDonut: !!(src.pieDonut === true || (src.pieDonut == null && def.pieDonut)),
+      pieDonutSize: Math.round(safeNumber(src.pieDonutSize, def.pieDonutSize, 30, 90)),
+      pieLabelPosition: pieLabelPosition,
+      pieLabelContent: pieLabelContent,
+      pieLabelOffset: Math.round(safeNumber(src.pieLabelOffset, def.pieLabelOffset, -40, 40)),
+      pieCountryFlags: !!(src.pieCountryFlags === true || (src.pieCountryFlags == null && def.pieCountryFlags)),
+      kexoRenderer: kexoRenderer,
     };
   }
 
@@ -1565,6 +1586,9 @@
     var enabled = !(item && item.enabled === false);
     var pieMetric = item && item.pieMetric ? String(item.pieMetric).trim().toLowerCase() : 'sessions';
     var canPie = !!(meta && meta.pieMetric);
+    var supportsPie = modes.indexOf('pie') >= 0 || mode === 'pie';
+    var isCountriesOverview = key === 'dash-chart-countries-30d';
+    var isKexoOverview = key === 'dash-chart-kexo-score-today';
     var style = normalizeChartStyleDraft(item && item.style, defaultChartStyleConfig());
     var collapseId = 'settings-chart-item-' + key.replace(/[^a-z0-9_-]/g, '-');
     var headingId = collapseId + '-heading';
@@ -1591,6 +1615,15 @@
             '<div class="col-6 col-lg-4 col-xl-2"><label class="form-label mb-1">Labels</label><select class="form-select form-select-sm" data-chart-field="style.dataLabels"><option value="auto"' + (style.dataLabels === 'auto' ? ' selected' : '') + '>Auto</option><option value="on"' + (style.dataLabels === 'on' ? ' selected' : '') + '>On</option><option value="off"' + (style.dataLabels === 'off' ? ' selected' : '') + '>Off</option></select></div>' +
             '<div class="col-6 col-lg-4 col-xl-2 d-flex align-items-end"><label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-chart-field="style.toolbar"' + (style.toolbar ? ' checked' : '') + '><span class="form-check-label ms-2">Toolbar</span></label></div>' +
             '<div class="col-6 col-lg-4 col-xl-2 d-flex align-items-end"><label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-chart-field="style.animations"' + (style.animations ? ' checked' : '') + '><span class="form-check-label ms-2">Animations</span></label></div>' +
+          '</div></div>' +
+          '<div class="col-12"><label class="form-label mb-1">Pie / donut controls</label><div class="row g-2">' +
+            '<div class="col-6 col-lg-4 col-xl-2 d-flex align-items-end"><label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-chart-field="style.pieDonut"' + (style.pieDonut ? ' checked' : '') + (supportsPie ? '' : ' disabled') + '><span class="form-check-label ms-2">Hollow donut</span></label></div>' +
+            '<div class="col-6 col-lg-4 col-xl-2"><label class="form-label mb-1">Donut size (%)</label><input type="number" class="form-control form-control-sm" min="30" max="90" step="1" data-chart-field="style.pieDonutSize" value="' + escapeHtml(String(style.pieDonutSize)) + '"' + (supportsPie ? '' : ' disabled') + '></div>' +
+            '<div class="col-6 col-lg-4 col-xl-2"><label class="form-label mb-1">Label position</label><select class="form-select form-select-sm" data-chart-field="style.pieLabelPosition"' + (supportsPie ? '' : ' disabled') + '><option value="auto"' + (style.pieLabelPosition === 'auto' ? ' selected' : '') + '>Auto</option><option value="inside"' + (style.pieLabelPosition === 'inside' ? ' selected' : '') + '>Inside</option><option value="outside"' + (style.pieLabelPosition === 'outside' ? ' selected' : '') + '>Outside</option></select></div>' +
+            '<div class="col-6 col-lg-4 col-xl-3"><label class="form-label mb-1">Label content</label><select class="form-select form-select-sm" data-chart-field="style.pieLabelContent"' + (supportsPie ? '' : ' disabled') + '><option value="percent"' + (style.pieLabelContent === 'percent' ? ' selected' : '') + '>Percent</option><option value="label"' + (style.pieLabelContent === 'label' ? ' selected' : '') + '>Label</option><option value="label_percent"' + (style.pieLabelContent === 'label_percent' ? ' selected' : '') + '>Label + percent</option></select></div>' +
+            '<div class="col-6 col-lg-4 col-xl-2"><label class="form-label mb-1">Label offset</label><input type="number" class="form-control form-control-sm" min="-40" max="40" step="1" data-chart-field="style.pieLabelOffset" value="' + escapeHtml(String(style.pieLabelOffset)) + '"' + (supportsPie ? '' : ' disabled') + '></div>' +
+            (isCountriesOverview ? '<div class="col-12 col-md-6 col-xl-3 d-flex align-items-end"><label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-chart-field="style.pieCountryFlags"' + (style.pieCountryFlags ? ' checked' : '') + '><span class="form-check-label ms-2">Country flags in labels</span></label></div>' : '') +
+            (isKexoOverview ? '<div class="col-12 col-md-6 col-xl-3"><label class="form-label mb-1">Kexo renderer</label><select class="form-select form-select-sm" data-chart-field="style.kexoRenderer"><option value="wheel"' + (style.kexoRenderer === 'wheel' ? ' selected' : '') + '>Kexo wheel</option><option value="pie"' + (style.kexoRenderer === 'pie' ? ' selected' : '') + '>Donut pie</option></select></div>' : '') +
           '</div></div>' +
           '<div class="col-12"><label class="form-label mb-1">Series colors (hex)</label>' + renderChartColorInputs(item, meta) + '</div>' +
           '<div class="col-12"><label class="form-label mb-1">Advanced Apex override (JSON)</label><textarea class="form-control form-control-sm settings-charts-advanced-json" rows="5" data-chart-field="advancedApexOverride" spellcheck="false">' + escapeHtml(prettyJson(item && item.advancedApexOverride)) + '</textarea></div>' +
@@ -1639,10 +1672,29 @@
 
   function refreshPieMetricState(card) {
     if (!card || !card.querySelector) return;
+    var key = String(card.getAttribute('data-chart-config-key') || '').trim().toLowerCase();
+    var meta = chartMeta(key);
+    var modes = meta && Array.isArray(meta.modes) ? meta.modes : [];
+    var supportsPie = modes.indexOf('pie') >= 0;
     var modeEl = card.querySelector('[data-chart-field="mode"]');
     var metricEl = card.querySelector('[data-chart-field="pieMetric"]');
-    if (!modeEl || !metricEl || metricEl.disabled) return;
-    metricEl.disabled = String(modeEl.value || '').trim().toLowerCase() !== 'pie';
+    if (!modeEl) return;
+    if (metricEl && !metricEl.hasAttribute('disabled')) {
+      metricEl.disabled = String(modeEl.value || '').trim().toLowerCase() !== 'pie';
+    }
+    var pieEnabled = supportsPie && String(modeEl.value || '').trim().toLowerCase() === 'pie';
+    [
+      '[data-chart-field="style.pieDonut"]',
+      '[data-chart-field="style.pieDonutSize"]',
+      '[data-chart-field="style.pieLabelPosition"]',
+      '[data-chart-field="style.pieLabelContent"]',
+      '[data-chart-field="style.pieLabelOffset"]',
+      '[data-chart-field="style.pieCountryFlags"]'
+    ].forEach(function(sel) {
+      var el = card.querySelector(sel);
+      if (!el) return;
+      el.disabled = !pieEnabled;
+    });
   }
 
   function syncColorSwatches(root) {
@@ -1691,6 +1743,13 @@
       dataLabels: (card.querySelector('[data-chart-field="style.dataLabels"]') || {}).value,
       toolbar: !!(card.querySelector('[data-chart-field="style.toolbar"]') || {}).checked,
       animations: !!(card.querySelector('[data-chart-field="style.animations"]') || {}).checked,
+      pieDonut: !!(card.querySelector('[data-chart-field="style.pieDonut"]') || {}).checked,
+      pieDonutSize: (card.querySelector('[data-chart-field="style.pieDonutSize"]') || {}).value,
+      pieLabelPosition: (card.querySelector('[data-chart-field="style.pieLabelPosition"]') || {}).value,
+      pieLabelContent: (card.querySelector('[data-chart-field="style.pieLabelContent"]') || {}).value,
+      pieLabelOffset: (card.querySelector('[data-chart-field="style.pieLabelOffset"]') || {}).value,
+      pieCountryFlags: !!(card.querySelector('[data-chart-field="style.pieCountryFlags"]') || {}).checked,
+      kexoRenderer: (card.querySelector('[data-chart-field="style.kexoRenderer"]') || {}).value,
     }, def.style || defaultChartStyleConfig());
     var adv = validateApexTextarea(advancedEl, def.advancedApexOverride || {});
     var colors = [];

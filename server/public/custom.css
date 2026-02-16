@@ -2671,6 +2671,51 @@ html[data-bs-theme="dark"] .report-build-wrap {
   color: var(--tblr-muted);
   font-size: .875rem;
 }
+.kexo-overview-chart-empty.is-loading {
+  gap: .5rem;
+}
+.kexo-overview-score-wheel {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.kexo-score-ring-wrap--overview {
+  --kexo-score-track: rgba(148, 163, 184, 0.3);
+  width: 108px;
+  height: 108px;
+  background: transparent !important;
+  position: relative;
+}
+.kexo-score-ring-svg--overview {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  shape-rendering: geometricPrecision;
+}
+.kexo-score-ring-svg--overview .kexo-score-ring-track {
+  stroke: var(--kexo-score-track);
+  stroke-width: 4px;
+  stroke-linecap: butt;
+}
+.kexo-score-ring-svg--overview .kexo-score-ring-fill--1 { stroke: var(--kexo-accent-1, #4b94e4); }
+.kexo-score-ring-svg--overview .kexo-score-ring-fill--2 { stroke: var(--kexo-accent-2, #3eb3ab); }
+.kexo-score-ring-svg--overview .kexo-score-ring-fill--3 { stroke: var(--kexo-accent-3, #f59e34); }
+.kexo-score-ring-svg--overview .kexo-score-ring-fill--4 { stroke: var(--kexo-accent-4, #8b5cf6); }
+.kexo-score-ring-svg--overview .kexo-score-ring-fill--5 { stroke: var(--kexo-accent-5, #ef4444); }
+.kexo-score-ring-svg--overview .kexo-score-ring-fill {
+  stroke-width: 4px;
+  stroke-linecap: butt;
+}
+.kexo-score-num--overview {
+  font-size: 1.3rem;
+  font-weight: 500;
+  color: #0f172a;
+  line-height: 1;
+}
 .kexo-overview-mini-chart {
   height: clamp(220px, 30vh, 320px);
 }
@@ -2689,9 +2734,17 @@ html[data-bs-theme="dark"] .report-build-wrap {
   .kexo-overview-mini-chart {
     height: 240px;
   }
+  .kexo-score-ring-wrap--overview {
+    width: 96px;
+    height: 96px;
+  }
   .kexo-overview-main-chart {
     height: 360px;
   }
+}
+
+body[data-page="dashboard"] #header-kexo-score-wrap {
+  display: none !important;
 }
 
 .dash-trend-delta {

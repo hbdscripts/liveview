@@ -421,6 +421,25 @@
         chartEl.innerHTML = '<div class="kexo-overview-chart-empty">' + escapeHtml(text || 'No data available') + '</div>';
       }
 
+      function renderOverviewChartLoading(chartId, text) {
+        var chartEl = document.getElementById(chartId);
+        if (!chartEl) return;
+        if (!isChartEnabledByUiConfig(chartId)) {
+          destroyDashChart(chartId);
+          chartEl.innerHTML = '';
+          return;
+        }
+        destroyDashChart(chartId);
+        chartEl.innerHTML = '<div class="kexo-overview-chart-empty is-loading"><span class="kpi-mini-spinner" aria-hidden="true"></span><span>' + escapeHtml(text || 'Loading...') + '</span></div>';
+      }
+
+      function showOverviewMiniLoadingState() {
+        renderOverviewChartLoading('dash-chart-finishes-30d', 'Loading finishes...');
+        renderOverviewChartLoading('dash-chart-countries-30d', 'Loading countries...');
+        renderOverviewChartLoading('dash-chart-kexo-score-today', 'Loading score...');
+        renderOverviewChartLoading('dash-chart-overview-30d', 'Loading 30 day overview...');
+      }
+
       function countryCodeToFlagEmoji(rawCode) {
         var code = rawCode == null ? '' : String(rawCode).trim().toUpperCase();
         if (!/^[A-Z]{2}$/.test(code)) return '';
@@ -448,7 +467,7 @@
           safeValues.push(n);
         }
         if (!safeValues.length) {
-          renderOverviewChartEmpty(chartId, 'No data available');
+          renderOverviewChartLoading(chartId, 'Loading chart...');
           return;
         }
         destroyDashChart(chartId);
@@ -565,7 +584,7 @@
         if (renderer !== 'wheel' && renderer !== 'pie') renderer = 'pie';
         var hasScore = Number.isFinite(Number(rawScore));
         if (!hasScore) {
-          renderOverviewChartEmpty(chartId, 'No data available');
+          renderOverviewChartLoading(chartId, 'Loading score...');
           return;
         }
         var score = Math.max(0, Math.min(100, Number(rawScore)));
@@ -615,7 +634,7 @@
         var costGbp = current && Array.isArray(current.costGbp) ? current.costGbp : [];
         var len = Math.max(labelsYmd.length, revenueGbp.length, costGbp.length);
         if (!len) {
-          renderOverviewChartEmpty(chartId, 'No data available');
+          renderOverviewChartLoading(chartId, 'Loading 30 day overview...');
           return;
         }
         var labels = [];
@@ -728,6 +747,10 @@
           return Promise.resolve(overviewMiniCache);
         }
         if (overviewMiniInFlight && !force) return overviewMiniInFlight;
+
+        if (!overviewMiniPayloadSignature || !overviewMiniCache) {
+          showOverviewMiniLoadingState();
+        }
 
         var stamp = Date.now();
         var seriesUrl = API + '/api/dashboard-series?range=30d' + (force ? ('&force=1&_=' + stamp) : '');
@@ -1384,7 +1407,10 @@
         var dashText = empty ? '\u2014' : formatKexoScoreNumber(score);
         var headerText = empty ? '\u2014' : String(Math.round(score));
         var pct = empty ? '0' : String(score);
-        if (dashNum) { dashNum.textContent = dashText; }
+        if (dashNum) {
+          if (empty) dashNum.innerHTML = '<span class="kpi-mini-spinner" aria-hidden="true"></span>';
+          else dashNum.textContent = dashText;
+        }
         if (dashRing) dashRing.style.setProperty('--kexo-score-pct', pct);
         if (headerNum) { headerNum.textContent = headerText; }
         if (headerRing) {
