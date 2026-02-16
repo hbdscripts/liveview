@@ -9,6 +9,14 @@ const { getDb, isPostgres } = require('../db');
 const { signOauthSession, OAUTH_COOKIE_NAME } = require('../middleware/dashboardAuth');
 const auth = require('./auth');
 const salesTruth = require('../salesTruth');
+const users = require('../usersService');
+
+let geoip;
+try {
+  geoip = require('geoip-lite');
+} catch (_) {
+  geoip = null;
+}
 
 const SESSION_HOURS = 24;
 const appUrl = (config.shopify.appUrl || '').replace(/\/$/, '');
@@ -37,6 +45,80 @@ function stateDecode(str) {
   } catch (_) {
     return null;
   }
+}
+
+function getClientIp(req) {
+  const cfIp = req.get('cf-connecting-ip');
+  if (cfIp) return cfIp.trim();
+  const forwarded = req.get('x-forwarded-for');
+  if (forwarded) return forwarded.split(',')[0].trim();
+  return req.ip || req.connection?.remoteAddress || '';
+}
+
+function normalizeCountryCode(raw) {
+  if (!raw || typeof raw !== 'string') return '';
+  const c = raw.trim().toUpperCase();
+  if (c.length !== 2 || c === 'T1' || c === 'XX') return '';
+  return c;
+}
+
+function countryFromHeaders(req) {
+  const worker = normalizeCountryCode(req.get('x-cf-country'));
+  if (worker) return worker;
+  const cf = normalizeCountryCode(req.get('cf-ipcountry'));
+  if (cf) return cf;
+  return '';
+}
+
+function cityFromIp(ip) {
+  if (!geoip || !ip || ip === '::1' || ip === '127.0.0.1') return '';
+  try {
+    const geo = geoip.lookup(ip);
+    const city = geo && typeof geo.city === 'string' ? geo.city.trim() : '';
+    return city && city.length <= 96 ? city : (city ? city.slice(0, 96) : '');
+  } catch (_) {
+    return '';
+  }
+}
+
+function parseTrafficTypeFromUserAgent(uaRaw) {
+  const ua = (uaRaw || '').trim();
+  if (!ua) return { deviceType: '', platform: '' };
+  const s = ua.toLowerCase();
+
+  const isIphone = /\biphone\b/.test(s) || /\bipod\b/.test(s);
+  const isIpad = /\bipad\b/.test(s) || (/\bmacintosh\b/.test(s) && /\bmobile\b/.test(s) && !isIphone);
+  const isAndroid = /\bandroid\b/.test(s);
+
+  let deviceType = 'desktop';
+  if (isIpad || /\btablet\b/.test(s) || (isAndroid && !/\bmobile\b/.test(s))) deviceType = 'tablet';
+  else if (/\bmobi\b/.test(s) || isIphone || isAndroid) deviceType = 'mobile';
+
+  let platform = 'other';
+  if (isIphone || isIpad || /\bipod\b/.test(s)) platform = 'ios';
+  else if (isAndroid) platform = 'android';
+  else if (/\bwindows\b/.test(s)) platform = 'windows';
+  else if (/\bmacintosh\b|\bmac os\b|\bmac os x\b/.test(s)) platform = 'mac';
+  else if (/\bcros\b/.test(s)) platform = 'chromeos';
+  else if (/\blinux\b|\bubuntu\b|\bfedora\b/.test(s)) platform = 'linux';
+
+  return { deviceType, platform };
+}
+
+function buildMetaFromRequest(req) {
+  const ip = getClientIp(req);
+  const ua = (req.get('user-agent') || req.get('User-Agent') || '').trim();
+  const country = countryFromHeaders(req);
+  const city = cityFromIp(ip);
+  const tt = parseTrafficTypeFromUserAgent(ua);
+  return {
+    last_country: country || null,
+    last_city: city || null,
+    last_device_type: tt.deviceType || null,
+    last_platform: tt.platform || null,
+    last_user_agent: ua ? ua.slice(0, 320) : null,
+    last_ip: ip ? String(ip).slice(0, 64) : null,
+  };
 }
 
 // ---- Google OAuth ----
@@ -98,6 +180,20 @@ async function handleGoogleCallback(req, res) {
   if (!allowed) {
     console.warn('[oauth] Google email not allowed:', email);
     return res.redirect(302, '/app/login?error=email_not_allowed');
+  }
+  try {
+    const now = Date.now();
+    const meta = buildMetaFromRequest(req);
+    if (users.isBootstrapMasterEmail(email)) {
+      await users.ensureBootstrapMaster(email, { now });
+    }
+    const existing = await users.getUserByEmail(email);
+    if (!existing) {
+      await users.createPendingUser(email, null, meta, { now });
+    }
+    await users.updateLoginMeta(email, meta, { now });
+  } catch (_) {
+    // Fail-open: auth should succeed even if metadata tracking fails.
   }
   const token = signOauthSession({ email });
   if (!token) {

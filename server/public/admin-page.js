@@ -128,14 +128,17 @@
     rows.forEach(function (row) {
       var email = row && row.email ? String(row.email) : '';
       var role = row && row.role ? String(row.role).trim().toLowerCase() : '';
+      var provider = row && row.auth_provider ? String(row.auth_provider).trim().toLowerCase() : '';
       var status = row && row.status ? String(row.status).trim().toLowerCase() : '';
       var country = row && row.last_country ? String(row.last_country).trim() : '';
       var city = row && row.last_city ? String(row.last_city).trim() : '';
       var lastLogin = row && row.last_login_at != null ? Number(row.last_login_at) : 0;
+      var isShopifySession = (provider === 'shopify' || role === 'shopify');
 
       var actions = '';
-      var isAdmin = (role === 'admin' || role === 'master');
-      if (isAdmin) {
+      if (isShopifySession) {
+        actions = makeBadge('Shopify session', 'secondary');
+      } else if (role === 'admin' || role === 'master') {
         actions = makeBadge('Admin', 'primary');
       } else {
         actions =
@@ -148,11 +151,17 @@
         actions = actions + ' ' + makeBadge(status, status === 'denied' ? 'danger' : 'secondary');
       }
 
+      var countryCell = isShopifySession
+        ? '<span class="text-secondary">—</span>'
+        : (flagSpan(country, country || '—') + ' <span class="ms-1 text-secondary small">' + escapeHtml(country || '—') + '</span>');
+      var cityCell = isShopifySession ? '—' : (city || '—');
+      var emailCell = email || '—';
+
       h +=
         '<tr>' +
-          '<td><div class="admin-users-email">' + escapeHtml(email || '—') + '</div></td>' +
-          '<td>' + flagSpan(country, country || '—') + ' <span class="ms-1 text-secondary small">' + escapeHtml(country || '—') + '</span></td>' +
-          '<td>' + escapeHtml(city || '—') + '</td>' +
+          '<td><div class="admin-users-email">' + escapeHtml(emailCell) + '</div></td>' +
+          '<td>' + countryCell + '</td>' +
+          '<td>' + escapeHtml(cityCell) + '</td>' +
           '<td>' + escapeHtml(deviceLabel(row)) + '</td>' +
           '<td>' + escapeHtml(fmtTs(lastLogin)) + '</td>' +
           '<td class="text-end"><div class="admin-users-actions">' + actions + '</div></td>' +

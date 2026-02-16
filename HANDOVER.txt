@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-16 (header KPI strip always uses /api/kpis + today KPI compare windows + accurate KPI bar change labels)
+Last updated: 2026-02-16 (default logos: login kexo_login.png, header kexo_new.png, footer logo_foot.png)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -526,8 +526,8 @@ Ops/reliability:
 2026-02-15 (latest)
 - Sale sound reliability: (1) SSE first-sale no longer skipped when lastSaleAt is null — now fires toast+sound if sale is within 2 min (avoids race with hydrateLastSaleFooterFromApi). (2) Added touchstart to audio prime listeners and explicit prime on eye/footer last-sale toggle pointerdown/touchstart so sale sounds unlock on first footer interaction.
 
-2026-02-15 (latest)
-- Login page logo: swapped default from `kexo-color-dark-text.webp` to `login.webp` on `/app/login` and `/app/register`.
+2026-02-16 (latest)
+- Default logos: login `kexo_login.png`, header `kexo_new.png`, footer `logo_foot.png`. Removed old assets (login.webp, kexo-color-*, kexo-white.png, etc.).
 
 2026-02-15 (latest)
 - Dashboard KPI sparklines + compare labels:
@@ -649,7 +649,7 @@ Ops/reliability:
 - Auth pages UI refresh (Tabler templates):
   - `/app/login` now matches Tabler’s Sign in layout; bottom “social” buttons are **Google** + **Shopify** (neutral Tabler button styling, icons via inline SVG; no custom green/blue button backgrounds).
   - Added dedicated `/app/register` page matching Tabler’s Sign up layout (local email/password registration); successful signup redirects back to `/app/login?registered=1`.
-  - Login/register pages use logo: `/assets/logos/new/kexo-color-dark-text.webp`.
+  - Login/register pages use logo: `/assets/logos/new/kexo_login.png`.
 
 2026-02-14 (latest)
 - Admin accounts + approvals:
@@ -927,7 +927,7 @@ Ops/reliability:
   - Added Layout → Charts setting “Hide charts on mobile” (default ON) to hide all chart cards on small screens.
 - Footer redesign:
   - Layout: far left = eye + last sale; center = refresh | logo (40px) | sound; far right = back to top.
-  - Logo: `/assets/logos/new/kexo-color-dark-text.webp` in footer; header uses `kexo-color-light-text.webp`.
+  - Logo: `/assets/logos/new/logo_foot.png` in footer; header uses `kexo_new.png`.
   - Removed settings and theme icons from footer.
   - All footer icons use fa-jelly-filled; no hover effects on footer icons.
   - New icon keys: footer-back-to-top, footer-sound-muted (mapped in Settings → Theme → Icons).
