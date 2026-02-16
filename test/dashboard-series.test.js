@@ -76,6 +76,14 @@ test('GET /api/dashboard-series: CR% is null when sessions=0; sessions attribute
 
   db = getDb();
   const now = Date.now();
+  // Use a fixed explicit day range so the test is deterministic and doesn't depend on the
+  // current time-of-day (near-midnight "today" flakiness).
+  const store = require('../server/store');
+  const tz = store.resolveAdminTimeZone();
+  const dayKey = 'd:2025-02-02';
+  const dayBounds = store.getRangeBounds(dayKey, now, tz);
+  assert.ok(Number.isFinite(dayBounds?.start));
+  const tMid = Number(dayBounds.start) + 12 * 60 * 60 * 1000;
   const shop = 'test.myshopify.com';
 
   // Token exists so product meta can resolve handle (fetch is stubbed).
@@ -90,14 +98,14 @@ test('GET /api/dashboard-series: CR% is null when sessions=0; sessions attribute
   await db.run(
     `INSERT OR REPLACE INTO orders_shopify (shop, order_id, created_at, processed_at, financial_status, cancelled_at, test, currency, total_price, synced_at, raw_json)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [shop, 'o1', now - 2000, null, 'paid', null, 0, 'GBP', 10, now, JSON.stringify({})]
+    [shop, 'o1', tMid - 2000, null, 'paid', null, 0, 'GBP', 10, now, JSON.stringify({})]
   );
 
   await db.run(
     `INSERT OR REPLACE INTO orders_shopify_line_items
      (shop, line_item_id, order_id, order_created_at, order_financial_status, order_cancelled_at, order_test, currency, product_id, quantity, unit_price, line_revenue, title, synced_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [shop, 'li1', 'o1', now - 2000, 'paid', null, 0, 'GBP', '123', 1, 10, 10, 'Test Product', now]
+    [shop, 'li1', 'o1', tMid - 2000, 'paid', null, 0, 'GBP', '123', 1, 10, 10, 'Test Product', now]
   );
 
   const { getDashboardSeries } = require('../server/routes/dashboardSeries');
@@ -105,7 +113,7 @@ test('GET /api/dashboard-series: CR% is null when sessions=0; sessions attribute
   async function callDashboardSeries(extraQuery = {}) {
     let body;
     let status = 200;
-    const req = { query: { range: 'today', ...extraQuery } };
+    const req = { query: { range: dayKey, ...extraQuery } };
     const res = {
       setHeader() {},
       status(code) { status = code; return res; },
@@ -128,18 +136,18 @@ test('GET /api/dashboard-series: CR% is null when sessions=0; sessions attribute
   await db.run(
     `INSERT OR REPLACE INTO visitors (visitor_id, first_seen, last_seen)
      VALUES (?, ?, ?)`,
-    ['v1', now - 5000, now - 1000]
+    ['v1', tMid - 5000, tMid - 1000]
   );
   await db.run(
     `INSERT OR REPLACE INTO sessions (session_id, visitor_id, started_at, last_seen, first_path)
      VALUES (?, ?, ?, ?, ?)`,
-    ['s1', 'v1', now - 1000, now - 500, '/products/test-handle']
+    ['s1', 'v1', tMid - 1000, tMid - 500, '/products/test-handle']
   );
   // Include a page_viewed event so bounce logic can execute without empty joins.
   await db.run(
     `INSERT INTO events (session_id, ts, type, path)
      VALUES (?, ?, ?, ?)`,
-    ['s1', now - 900, 'page_viewed', '/products/test-handle']
+    ['s1', tMid - 900, 'page_viewed', '/products/test-handle']
   );
 
   const r2 = await callDashboardSeries({ force: '1' });
@@ -150,12 +158,10 @@ test('GET /api/dashboard-series: CR% is null when sessions=0; sessions attribute
   assert.equal(r2.body.topProducts[0].cr, 100);
 
   // 3) endMs clip: single-day range clipped to 3h => 15-min buckets (12 points).
-  const store = require('../server/store');
-  const tz = store.resolveAdminTimeZone();
-  const clipBounds = store.getRangeBounds('d:2025-02-02', now, tz);
+  const clipBounds = store.getRangeBounds(dayKey, now, tz);
   assert.ok(Number.isFinite(clipBounds?.start));
   const clipEndMs = Number(clipBounds.start) + 3 * 60 * 60 * 1000;
-  const r3 = await callDashboardSeries({ range: 'd:2025-02-02', endMs: String(clipEndMs), force: '1' });
+  const r3 = await callDashboardSeries({ range: dayKey, endMs: String(clipEndMs), force: '1' });
   assert.equal(r3.status, 200);
   assert.equal(r3.body.bucket, 'hour');
   assert.ok(Array.isArray(r3.body.series));
@@ -164,8 +170,8 @@ test('GET /api/dashboard-series: CR% is null when sessions=0; sessions attribute
 
   // 4) Returning sparkline buckets should classify returning orders even when
   // customer_orders_count is null (using customer_order_facts fallback).
-  const priorPaidAt = now - (24 * 60 * 60 * 1000);
-  const returningPaidAt = now - (30 * 60 * 1000);
+  const priorPaidAt = tMid - (24 * 60 * 60 * 1000);
+  const returningPaidAt = tMid - (30 * 60 * 1000);
   await db.run(
     `INSERT OR REPLACE INTO orders_shopify
      (shop, order_id, created_at, processed_at, financial_status, cancelled_at, test, currency, total_price, customer_id, customer_orders_count, synced_at, raw_json)
@@ -183,7 +189,7 @@ test('GET /api/dashboard-series: CR% is null when sessions=0; sessions attribute
      VALUES (?, ?, ?, ?)`,
     [shop, 'cust_ret_1', priorPaidAt, now]
   );
-  const r4 = await callDashboardSeries({ range: 'today', force: '1' });
+  const r4 = await callDashboardSeries({ range: dayKey, force: '1' });
   assert.equal(r4.status, 200);
   assert.ok(Array.isArray(r4.body.series));
   assert.ok(r4.body.series.some(function(pt) { return Number(pt && pt.returningCustomerOrders) > 0; }));

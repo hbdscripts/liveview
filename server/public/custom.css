@@ -2660,7 +2660,8 @@ body.kexo-report-loading #kexo-date-display::after {
   background-color: var(--kexo-kpi-delta-down, var(--kexo-accent-4, #e4644b)) !important;
 }
 
-#dash-kpi-grid > .is-user-disabled {
+#dash-kpi-grid > .is-user-disabled,
+#dash-kpi-grid-lower > .is-user-disabled {
   display: none !important;
 }
 

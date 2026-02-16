@@ -1914,8 +1914,8 @@ async function getThemeVarsCss(req, res) {
       const key = k && k.key != null ? String(k.key).trim().toLowerCase() : '';
       const valueId = dashboardValueIdByKey[key];
       if (!valueId) return;
-      // Dashboard cards are direct children of #dash-kpi-grid and can be matched via their value id.
-      rules.push(`#dash-kpi-grid > .col-sm-6:has(#${valueId}){display:none!important;}`);
+      // Dashboard cards are direct children of #dash-kpi-grid OR #dash-kpi-grid-lower and can be matched via their value id.
+      rules.push(`#dash-kpi-grid > .col-sm-6:has(#${valueId}),#dash-kpi-grid-lower > .col-sm-6:has(#${valueId}){display:none!important;}`);
     });
 
     if (rules.length) {
