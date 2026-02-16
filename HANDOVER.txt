@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-16 (Kexo Score header wheel + header toggle)
+Last updated: 2026-02-16 (Kexo Score modal fix + today window alignment)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -378,6 +378,12 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-16 (latest)
+- Kexo Score reliability + UX polish:
+  - Fixed `today` window alignment for `compare2` in `store.getKexoScore()` so “Day before” uses same-time day-before bounds (not a rolling window ending at yesterday start).
+  - Fixed Kexo Score modal rendering in `app.js`: no more `[object Object]`; ranges and values are now formatted by metric (currency, %, x-multiple, sessions).
+  - Improved Kexo Score modal styling in `custom.css` (proper header/action alignment, close button placement, thicker progress bars).
 
 2026-02-16 (latest)
 - Kexo Score header follow-up:

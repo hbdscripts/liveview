@@ -4192,6 +4192,26 @@ async function getKexoScore(options = {}) {
 
   function getPrevious2Bounds(prevBounds) {
     if (!prevBounds || !(prevBounds.end > prevBounds.start)) return null;
+
+    // For "today", align previous2 to "day-before same-time" (00:00 -> now-time two days ago),
+    // not the immediately preceding rolling window, so modal "before" values are comparable.
+    if (rangeKey === 'today') {
+      const nowParts = getTimeZoneParts(new Date(now), timeZone);
+      const dayBeforeParts = addDaysToParts(nowParts, -2);
+      let start = startOfDayUtcMs(dayBeforeParts, timeZone);
+      const sameTimeDayBefore = zonedTimeToUtcMs(
+        dayBeforeParts.year, dayBeforeParts.month, dayBeforeParts.day,
+        nowParts.hour, nowParts.minute, nowParts.second,
+        timeZone
+      );
+      const nextDayStart = startOfDayUtcMs(addDaysToParts(dayBeforeParts, 1), timeZone);
+      let end = Math.max(start, Math.min(sameTimeDayBefore, nextDayStart));
+      if (start < PLATFORM_START_MS) start = PLATFORM_START_MS;
+      if (end < PLATFORM_START_MS) end = PLATFORM_START_MS;
+      if (!(end > start)) return null;
+      return { start, end };
+    }
+
     const prevLength = prevBounds.end - prevBounds.start;
     let start = prevBounds.start - prevLength;
     let end = prevBounds.start;

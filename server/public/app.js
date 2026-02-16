@@ -17629,24 +17629,50 @@ const API = '';
         var modal = document.getElementById('kexo-score-modal');
         var body = document.getElementById('kexo-score-modal-body');
         if (!modal || !body) return;
+
+        function fmtWindow(win) {
+          var s = win && Number(win.start);
+          var e = win && Number(win.end);
+          if (!Number.isFinite(s) || !Number.isFinite(e) || !(e > s)) return '\u2014';
+          var endView = Math.max(s, e - 1);
+          try {
+            var fmt = new Intl.DateTimeFormat('en-GB', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+            return fmt.format(new Date(s)) + ' \u2192 ' + fmt.format(new Date(endView));
+          } catch (_) {
+            return new Date(s).toISOString() + ' \u2192 ' + new Date(endView).toISOString();
+          }
+        }
+
+        function fmtComponentValue(key, raw) {
+          if (raw == null) return '\u2014';
+          var n = Number(raw);
+          if (!Number.isFinite(n)) return '\u2014';
+          var k = String(key || '').trim().toLowerCase();
+          if (k === 'revenue') return (typeof formatRevenue0 === 'function') ? formatRevenue0(n) : ('\u00a3' + n.toFixed(0));
+          if (k === 'sessions') return (typeof formatSessions === 'function') ? formatSessions(n) : Math.round(n).toLocaleString();
+          if (k === 'conversion' || k === 'bounce' || k === 'ctr') return (typeof pct === 'function') ? pct(n) : (n.toFixed(1) + '%');
+          if (k === 'roas') return n.toFixed(2) + 'x';
+          return Math.round(n * 10) / 10;
+        }
+
         var data = _kexoScoreCache;
         if (!data || !Array.isArray(data.components) || data.components.length === 0) {
           body.innerHTML = '<div class="kexo-score-breakdown-empty text-muted">No score data. Select a date range and refresh.</div>';
         } else {
-          var rangeLabel = (data.range && String(data.range).trim()) ? String(data.range).trim() : 'Current range';
+          var rangeLabel = 'Current: ' + fmtWindow(data.range) + ' \u00b7 Previous: ' + fmtWindow(data.compare) + ' \u00b7 Day before: ' + fmtWindow(data.compare2);
           body.innerHTML = '<div class="kexo-score-breakdown-meta mb-3 small text-muted">' + escapeHtml(rangeLabel) + '</div>' +
             data.components.map(function(c) {
               var label = (c.label && String(c.label).trim()) ? String(c.label) : (c.key || '');
               var score = typeof c.score === 'number' && Number.isFinite(c.score) ? Math.max(0, Math.min(100, c.score)) : 0;
-              var valueStr = c.value != null ? String(c.value) : '\u2014';
-              var prevStr = c.previous != null ? String(c.previous) : '\u2014';
-              var prev2Str = c.previous2 != null ? String(c.previous2) : '\u2014';
+              var valueStr = fmtComponentValue(c.key, c.value);
+              var prevStr = fmtComponentValue(c.key, c.previous);
+              var prev2Str = fmtComponentValue(c.key, c.previous2);
               return '<div class="kexo-score-breakdown-row mb-3">' +
                 '<div class="d-flex justify-content-between align-items-center mb-1">' +
                   '<span class="kexo-score-breakdown-label">' + escapeHtml(label) + '</span>' +
-                  '<span class="kexo-score-breakdown-value small">' + escapeHtml(valueStr) + ' (prev: ' + escapeHtml(prevStr) + ', before: ' + escapeHtml(prev2Str) + ')</span>' +
+                  '<span class="kexo-score-breakdown-value small">Current: ' + escapeHtml(String(valueStr)) + ' \u00b7 Previous: ' + escapeHtml(String(prevStr)) + ' \u00b7 Day before: ' + escapeHtml(String(prev2Str)) + '</span>' +
                 '</div>' +
-                '<div class="progress progress-thin">' +
+                '<div class="progress">' +
                   '<div class="progress-bar" role="progressbar" style="width:' + score + '%" aria-valuenow="' + score + '" aria-valuemin="0" aria-valuemax="100">' + score.toFixed(0) + '</div>' +
                 '</div>' +
               '</div>';

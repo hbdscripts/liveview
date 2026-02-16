@@ -47,5 +47,21 @@ test('getKexoScore returns shape { score, band, components, rangeKey } and band 
     assert.ok(c.weight === undefined || (typeof c.weight === 'number' && c.weight >= 0), `components[${i}].weight`);
   });
 
+  // Today windows must be same-time aligned: compare2 should be day-before same-time
+  // (strictly earlier than compare.start), not a rolling window ending at compare.start.
+  const realNow = Date.now;
+  try {
+    Date.now = () => Date.UTC(2026, 1, 16, 13, 30, 0); // 2026-02-16 13:30:00 UTC
+    const today = await store.getKexoScore({ rangeKey: 'today' });
+    assert.ok(today && today.compare && today.compare2, 'today score includes compare and compare2 windows');
+    const lenCompare = Number(today.compare.end) - Number(today.compare.start);
+    const lenCompare2 = Number(today.compare2.end) - Number(today.compare2.start);
+    assert.ok(lenCompare > 0 && lenCompare2 > 0, 'compare windows have positive duration');
+    assert.ok(Math.abs(lenCompare - lenCompare2) < 1000, 'compare and compare2 durations are aligned');
+    assert.ok(Number(today.compare2.end) < Number(today.compare.start), 'compare2 ends before compare starts (day-before same-time)');
+  } finally {
+    Date.now = realNow;
+  }
+
   try { fs.rmSync(tmpDir, { recursive: true }); } catch (_) {}
 });
