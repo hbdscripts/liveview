@@ -479,47 +479,47 @@
       ]
     },
     {
-      "route": "/traffic/channels",
-      "dataPage": "channels",
-      "template": "server/public/traffic/channels.html",
+      "route": "/acquisition/attribution",
+      "dataPage": "attribution",
+      "template": "server/public/acquisition/attribution.html",
       "tables": [
         {
-          "tableId": "traffic-sources-table",
-          "mount": "#traffic-sources-mount[data-kexo-table=\"traffic-sources-table\"]",
+          "tableId": "attribution-table",
+          "mount": "#attribution-mount[data-kexo-table=\"attribution-table\"]",
           "api": {
             "method": "GET",
-            "path": "/api/traffic",
+            "path": "/api/attribution/report",
             "params": [{ "name": "range", "source": "getStatsRange()", "example": "today|7d|r:..." }],
-            "responsePath": "sources.rows[]",
-            "renderer": { "file": "server/public/app.js", "function": "refreshTraffic() + renderTrafficTables()", "notes": "Renders traffic sources (channels) table and chart." },
-            "handler": { "file": "server/routes/traffic.js", "export": "getTraffic" }
+            "responsePath": "rows[]",
+            "renderer": { "file": "server/public/app.js", "function": "renderAttributionTables()", "notes": "Renders attribution (sources) table and chart." },
+            "handler": { "file": "server/routes/attribution.js", "export": "getAttributionReport" }
           }
         }
       ],
       "charts": [
-        { "chartKey": "channels-chart", "container": "#channels-chart", "api": { "method": "GET", "path": "/api/traffic", "params": [{ "name": "range", "source": "getStatsRange()" }] } }
+        { "chartKey": "attribution-chart", "container": "#attribution-chart", "api": { "method": "GET", "path": "/api/attribution/report", "params": [{ "name": "range", "source": "getStatsRange()" }] } }
       ]
     },
     {
-      "route": "/traffic/device",
-      "dataPage": "type",
-      "template": "server/public/traffic/device.html",
+      "route": "/acquisition/devices",
+      "dataPage": "devices",
+      "template": "server/public/acquisition/devices.html",
       "tables": [
         {
-          "tableId": "traffic-types-table",
-          "mount": "#traffic-types-mount[data-kexo-table=\"traffic-types-table\"]",
+          "tableId": "devices-table",
+          "mount": "#devices-mount[data-kexo-table=\"devices-table\"]",
           "api": {
             "method": "GET",
-            "path": "/api/traffic",
+            "path": "/api/devices/report",
             "params": [{ "name": "range", "source": "getStatsRange()", "example": "today|7d|r:..." }],
-            "responsePath": "types.rows[]",
-            "renderer": { "file": "server/public/app.js", "function": "refreshTraffic() + renderTrafficTables()", "notes": "Renders traffic types (device/platform) table and chart." },
-            "handler": { "file": "server/routes/traffic.js", "export": "getTraffic" }
+            "responsePath": "rows[]",
+            "renderer": { "file": "server/public/app.js", "function": "renderDevicesTables()", "notes": "Renders devices (type/platform) table and chart." },
+            "handler": { "file": "server/routes/devices.js", "export": "getDevicesReport" }
           }
         }
       ],
       "charts": [
-        { "chartKey": "type-chart", "container": "#type-chart", "api": { "method": "GET", "path": "/api/traffic", "params": [{ "name": "range", "source": "getStatsRange()" }] } }
+        { "chartKey": "devices-chart", "container": "#devices-chart", "api": { "method": "GET", "path": "/api/devices/report", "params": [{ "name": "range", "source": "getStatsRange()" }] } }
       ]
     },
     {
@@ -663,12 +663,21 @@
     },
     {
       "method": "GET",
-      "path": "/api/traffic",
-      "handler": { "file": "server/routes/traffic.js", "export": "getTraffic" },
+      "path": "/api/attribution/report",
+      "handler": { "file": "server/routes/attribution.js", "export": "getAttributionReport" },
+      "rangeHandling": { "helper": "store.getRangeBounds()", "timezone": "store.resolveAdminTimeZone()", "bounds": "[start, end)" },
+      "cache": [{ "layer": "server/reportCache.js", "ttlMs": 300000 }],
+      "dbTables": ["sessions", "orders_shopify", "attribution_sources"],
+      "usedByPages": ["/acquisition/attribution"]
+    },
+    {
+      "method": "GET",
+      "path": "/api/devices/report",
+      "handler": { "file": "server/routes/devices.js", "export": "getDevicesReport" },
       "rangeHandling": { "helper": "store.getRangeBounds()", "timezone": "store.resolveAdminTimeZone()", "bounds": "[start, end)" },
       "cache": [{ "layer": "server/reportCache.js", "ttlMs": 300000 }],
       "dbTables": ["sessions", "orders_shopify"],
-      "usedByPages": ["/traffic/channels", "/traffic/device"]
+      "usedByPages": ["/acquisition/devices"]
     },
     {
       "method": "GET",

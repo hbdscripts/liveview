@@ -467,7 +467,7 @@
     var key = String(chartKey || '').trim().toLowerCase();
     var metric = String(pieMetric || 'sessions').trim().toLowerCase();
     if (mode === 'pie') {
-      if (key === 'channels-chart') {
+      if (key === 'attribution-chart') {
         var channels = ['Direct', 'Email', 'Paid', 'Social', 'Organic'];
         var valuesByMetric = {
           sessions: [230, 180, 120, 90, 75],
@@ -479,7 +479,7 @@
           return { name: name, data: [Number(arr[idx] || 0)] };
         });
       }
-      if (key === 'type-chart') {
+      if (key === 'devices-chart') {
         var device = ['Mobile', 'Desktop', 'Tablet'];
         var deviceByMetric = {
           sessions: [320, 170, 55],

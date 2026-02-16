@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-16 (Kexo Score SVG ring, level+change scoring, tooltip icon + click fix)
+Last updated: 2026-02-16 (Acquisition cutover complete; Traffic legacy removed)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -1461,3 +1461,4 @@ Ops/reliability:
 - Added dedicated icon keys for Insights → Variants table headers (`table-icon-variants-*`) so each column icon is individually configurable in Settings → Theme → Icons.
 - Sticky table cells, header row, and footer row (e.g. ads-totals-row) now use unified surface-secondary background with color-mix gradient; removed conflicting background overrides from custom.css, app.css, ads.js.
 - Migration 049: add sessions.utm_term (fixes NODE-1R traffic-sources-v2 diagnostics). trafficSourcesV2 fallback when column missing.
+- Acquisition cutover complete: legacy Traffic (channels/type) UI and APIs removed from app.js; settings defaults and trackerDefinitions use Acquisition · Attribution and Acquisition · Devices (attribution-chart, devices-chart, /api/attribution/report, /api/devices/report). Store no longer uses traffic_source_* maps or enrichSessionsWithTrafficSourcesV2; write-time attribution via deriveAttribution only. Tests: test/derive-attribution.test.js. Audit docs (METRICS_MAP.txt, map.json) updated to Acquisition routes.

@@ -140,8 +140,8 @@
     'type-sets-table': 'card-title-table-sets',
     'type-charms-table': 'card-title-table-charms',
     'type-extras-table': 'card-title-table-extras',
-    'traffic-sources-table': 'card-title-table-channels',
-    'traffic-types-table': 'card-title-table-device',
+    'attribution-table': 'card-title-table-channels',
+    'devices-table': 'card-title-table-device',
     'ads-root': 'card-title-table-ads'
   };
 
