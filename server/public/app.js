@@ -3552,15 +3552,23 @@ const API = '';
     }
 
     function sourceDetailForPanel(s) {
+      function truncateUrlForPanel(raw, maxChars) {
+        var txt = raw != null ? String(raw) : '';
+        var max = Number.isFinite(Number(maxChars)) ? Math.max(24, Math.trunc(Number(maxChars))) : 160;
+        if (txt.length <= max) return txt;
+        return txt.slice(0, Math.max(0, max - 5)) + '.....';
+      }
       const lines = [];
       const entry = s.entry_url && String(s.entry_url).trim();
       if (entry) {
         const full = buildFullEntryUrlForCopy(s);
+        const fullDisplay = truncateUrlForPanel(full, 180);
+        const entryDisplay = truncateUrlForPanel(entry, 180);
         if (full && full !== entry) {
-          lines.push('URL: ' + full);
-          lines.push('Entry URL (raw): ' + entry);
+          lines.push('URL: ' + fullDisplay);
+          lines.push('Entry URL (raw): ' + entryDisplay);
         } else {
-          lines.push('URL: ' + entry);
+          lines.push('URL: ' + entryDisplay);
         }
       }
       const ref = s.referrer && String(s.referrer).trim();
@@ -12921,8 +12929,7 @@ const API = '';
 
     function cfSection(title, value) {
       const v = value != null && String(value).trim() !== '' ? String(value).trim() : null;
-      const cls = v ? 'cf-row' : 'cf-row empty';
-      return '<div class="' + cls + '"><strong>' + escapeHtml(title) + ':</strong> ' + (v ? escapeHtml(v) : '\u2014') + '</div>';
+      return '<div class="cf-row"><strong>' + escapeHtml(title) + ':</strong> ' + (v ? escapeHtml(v) : '\u2014') + '</div>';
     }
 
     function buildSidePanelCf(session) {
