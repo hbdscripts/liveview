@@ -2354,6 +2354,10 @@ html[data-bs-theme="dark"] .report-build-wrap {
   border-bottom: none !important;
 }
 
+.snapshot-kpi-table thead th {
+  font-size: 10px !important;
+}
+
 .snapshot-kpi-table thead th::before,
 .snapshot-kpi-table thead th::after {
   display: none !important;

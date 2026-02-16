@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-16 (Kexo Score modal wheel + bar animation + rounded header score)
+Last updated: 2026-02-16 (Snapshot rounding toggle + compact defaults + header/menu polish)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -378,6 +378,14 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-16 (latest)
+- Snapshot readability + header/menu polish:
+  - Removed Snapshot Shopify fee diagnostics line from page UI and replaced it with a blue `Rounding Numbers. Switch?` link.
+  - Snapshot now defaults to compact number formatting (for example `£76.1K`) with one-click toggle back to full values.
+  - Snapshot KPI table header cells now render at `10px` font size.
+  - Snapshot page header keeps the left→middle→right triple layout pattern while still hiding only the date input control.
+  - Insights dropdown order updated so `Snapshot` appears at the bottom.
 
 2026-02-16 (latest)
 - Kexo Score modal scoring UX pass:

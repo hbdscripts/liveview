@@ -21,6 +21,7 @@
     editingRuleId: '',
     profitModalOpen: false,
     profitModalBackdrop: null,
+    compactNumbers: true,
   };
 
   const PRESETS = new Set([
@@ -179,12 +180,38 @@
   function fmtInt(value) {
     const n = toNumber(value);
     if (n == null) return '-';
+    if (state.compactNumbers) {
+      const abs = Math.abs(n);
+      if (abs >= 1000) {
+        const divisor = abs >= 1000000000 ? 1000000000 : (abs >= 1000000 ? 1000000 : 1000);
+        const suffix = divisor === 1000000000 ? 'B' : (divisor === 1000000 ? 'M' : 'K');
+        const scaled = abs / divisor;
+        const rounded = Math.round(scaled * 10) / 10;
+        const text = Number.isInteger(rounded)
+          ? String(rounded)
+          : String(rounded.toFixed(1)).replace(/\.0$/, '');
+        return `${n < 0 ? '-' : ''}${text}${suffix}`;
+      }
+    }
     return Math.round(n).toLocaleString('en-GB');
   }
 
   function fmtCurrency(value) {
     const n = toNumber(value);
     if (n == null) return '-';
+    if (state.compactNumbers) {
+      const abs = Math.abs(n);
+      if (abs >= 1000) {
+        const divisor = abs >= 1000000000 ? 1000000000 : (abs >= 1000000 ? 1000000 : 1000);
+        const suffix = divisor === 1000000000 ? 'B' : (divisor === 1000000 ? 'M' : 'K');
+        const scaled = abs / divisor;
+        const rounded = Math.round(scaled * 10) / 10;
+        const text = Number.isInteger(rounded)
+          ? String(rounded)
+          : String(rounded.toFixed(1)).replace(/\.0$/, '');
+        return `${n < 0 ? '-' : ''}£${text}${suffix}`;
+      }
+    }
     try {
       return new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP', maximumFractionDigits: 2 }).format(n);
     } catch (_) {
@@ -703,6 +730,24 @@
     setAllGroups('ready');
   }
 
+  function updateRoundingToggleUi() {
+    const link = document.getElementById('snapshot-rounding-toggle');
+    if (!link) return;
+    link.textContent = 'Rounding Numbers. Switch?';
+    link.setAttribute(
+      'title',
+      state.compactNumbers
+        ? 'Rounded numbers are ON. Click to show full values.'
+        : 'Rounded numbers are OFF. Click to show compact values.'
+    );
+    link.setAttribute(
+      'aria-label',
+      state.compactNumbers
+        ? 'Rounded numbers are on. Switch to full values.'
+        : 'Rounded numbers are off. Switch to rounded values.'
+    );
+  }
+
   function buildSnapshotApiUrl(force) {
     const params = new URLSearchParams();
     params.set('mode', 'range');
@@ -1216,6 +1261,7 @@
     const presetEl = document.getElementById('snapshot-preset-select');
     const applyCustomBtn = document.getElementById('snapshot-custom-apply-btn');
     const perfSelect = document.getElementById('snapshot-performance-metric-select');
+    const roundingToggle = document.getElementById('snapshot-rounding-toggle');
     const retryButtons = [
       document.getElementById('snapshot-revenue-cost-retry'),
       document.getElementById('snapshot-performance-retry'),
@@ -1227,6 +1273,14 @@
       perfSelect.addEventListener('change', function onPerformanceMetricChange() {
         state.performanceMetric = String(perfSelect.value || 'sessions');
         if (state.data && state.data.ok) renderPerformanceChart(state.data);
+      });
+    }
+    if (roundingToggle) {
+      roundingToggle.addEventListener('click', function onRoundingToggle(event) {
+        if (event && typeof event.preventDefault === 'function') event.preventDefault();
+        state.compactNumbers = !state.compactNumbers;
+        updateRoundingToggleUi();
+        if (state.data && state.data.ok === true) renderAll(state.data);
       });
     }
     retryButtons.forEach((btn) => {
@@ -1275,6 +1329,7 @@
     moveSnapshotMenuItemToBottom();
     restoreSnapshotHeaderDateLayout();
     bindUi();
+    updateRoundingToggleUi();
     const initial = parseQueryState();
     state.preset = initial.preset;
     state.since = initial.since;
