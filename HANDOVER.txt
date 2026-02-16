@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-16 (Fraud scoring backfill from evidence + clearer drawer messaging)
+Last updated: 2026-02-16 (Snapshot hides global header date picker)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -377,6 +377,11 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-16 (latest)
+- Snapshot page header date control removed:
+  - `server/public/app.js` now skips `mountDesktopDatePickerIntoPageHeader()` on `data-page="snapshot"` so Snapshot keeps only its own date-range control.
+  - `server/public/custom.css` hides global nav/header date controls on Snapshot (`.kexo-nav-date-slot`, `.kexo-page-header-date-col`).
 
 2026-02-16 (latest)
 - Fraud scoring catch-up (drawer “Fraud scoring unavailable” fix for backfilled/reconciled sales):

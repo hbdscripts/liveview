@@ -3331,7 +3331,9 @@ body.kexo-report-loading #kexo-date-display::after {
   visibility: visible !important;
 }
 body[data-page="settings"] .kexo-nav-date-slot,
-body[data-page="settings"] .kexo-page-header-date-col {
+body[data-page="settings"] .kexo-page-header-date-col,
+body[data-page="snapshot"] .kexo-nav-date-slot,
+body[data-page="snapshot"] .kexo-page-header-date-col {
   display: none !important;
 }
 .page-header .kexo-page-header-date-col {

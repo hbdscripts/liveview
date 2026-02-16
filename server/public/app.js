@@ -7687,7 +7687,10 @@ const API = '';
 
     function mountDesktopDatePickerIntoPageHeader() {
       try {
-        if (document.body && document.body.getAttribute('data-page') === 'settings') return;
+        if (document.body) {
+          const page = String(document.body.getAttribute('data-page') || '');
+          if (page === 'settings' || page === 'snapshot') return;
+        }
         const dateBtn = document.getElementById('kexo-date-display');
         const dateWrap = dateBtn && dateBtn.closest ? dateBtn.closest('.kexo-topbar-date') : null;
         if (!dateWrap) return;
