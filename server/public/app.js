@@ -13144,26 +13144,23 @@ const API = '';
       function renderFraudGaugeHtml(info, options) {
         var i = info && typeof info === 'object' ? info : null;
         var score = i && i.score != null ? Math.max(0, Math.min(100, Math.trunc(Number(i.score) || 0))) : 0;
-        var risk = i && i.risk_level ? String(i.risk_level) : 'Unknown';
-        var tone = gaugeToneFromRisk(risk);
-        var label = (options && options.label) ? String(options.label) : 'Kexo Click Fraud Score';
-        var safety = Math.max(0, Math.min(100, 100 - score)); // 0 score => 100% safe
-        var barClass = (tone === 'low') ? 'bg-success' : (tone === 'high') ? 'bg-danger' : 'bg-secondary';
-        var aria = safety + '% safe (fraud score ' + score + '/100, risk ' + risk + ')';
+        var label = (options && options.label) ? String(options.label) : 'Fraud Meter';
+        var pct = String(score) + '%';
+        var safety = Math.max(0, Math.min(100, 100 - score)); // 0 fraud => 100% safe
+        var riskLabel = (safety <= 49) ? 'High' : (safety <= 75) ? 'Medium' : 'Low';
+        var barClass = (safety <= 49) ? 'bg-danger' : (safety <= 75) ? 'bg-warning' : 'bg-success';
+        var aria = riskLabel + ' (' + pct + ' fraud score, ' + String(safety) + '% safe)';
         return '' +
-          '<div class="kexo-fraud-gauge tone-' + esc(tone) + '" data-kexo-gauge="1" data-score="' + esc(String(score)) + '">' +
-            '<div class="kexo-fraud-gauge-title">' + esc(label) + '</div>' +
-            '<div class="kexo-fraud-gauge-wrap">' +
-              '<svg class="kexo-fraud-gauge-svg" viewBox="0 0 200 110" aria-hidden="true">' +
-                '<path class="kexo-fraud-gauge-track" d="M 20 100 A 80 80 0 0 1 180 100" />' +
-                '<path class="kexo-fraud-gauge-progress" d="M 20 100 A 80 80 0 0 1 180 100" />' +
-              '</svg>' +
-              '<div class="kexo-fraud-gauge-center">' +
-                '<div class="kexo-fraud-gauge-num">' + esc(String(score)) + '</div>' +
-                '<div class="progress kexo-fraud-gauge-safety" role="progressbar" aria-valuenow="' + esc(String(safety)) + '" aria-valuemin="0" aria-valuemax="100" aria-label="' + esc(aria) + '">' +
-                  '<div class="progress-bar ' + esc(barClass) + '" style="width:' + esc(String(safety)) + '%"></div>' +
-                '</div>' +
+          '<div class="kexo-kpi-chip kexo-fraud-meter-chip" data-kexo-fraud-meter="1" aria-label="' + esc(aria) + '">' +
+            '<div class="subheader kexo-kpi-chip-label">' + esc(label) + '</div>' +
+            '<div class="d-flex align-items-baseline">' +
+              '<div class="h3 mb-0 me-2 kexo-kpi-chip-value">' + esc(riskLabel) + '</div>' +
+              '<div class="me-auto">' +
+                '<span class="kexo-kpi-chip-delta d-inline-flex align-items-center lh-1 is-flat">' + esc(pct) + '</span>' +
               '</div>' +
+            '</div>' +
+            '<div class="progress progress-sm kexo-kpi-chip-progress" role="progressbar" aria-valuenow="' + esc(String(safety)) + '" aria-valuemin="0" aria-valuemax="100">' +
+              '<div class="progress-bar ' + esc(barClass) + '" style="width:' + esc(String(safety)) + '%"></div>' +
             '</div>' +
           '</div>';
       }
@@ -13246,7 +13243,7 @@ const API = '';
         var picked = pickFraudEvalFromBundle(b);
         if (!picked) return '<div class="text-muted">No fraud evaluation yet.</div>';
 
-        var gauge = renderFraudGaugeHtml(picked, { label: 'Kexo Click Fraud Score' });
+        var gauge = renderFraudGaugeHtml(picked, { label: 'Fraud Meter' });
         var reasons = Array.isArray(picked.key_reasons) ? picked.key_reasons : [];
         var flags = Array.isArray(picked.flags) ? picked.flags : [];
         var reasonsHtml = reasons.length

@@ -588,7 +588,7 @@ html[data-bs-theme="dark"] body.kexo-update-available #footer-settings-toggle i:
   align-items: center;
   gap: 0.6rem;
   padding: 0.45rem 0;
-  border-bottom: 1px dashed rgba(var(--tblr-body-color-rgb, 24, 36, 51), 0.12);
+  border-bottom: 1px solid rgba(var(--tblr-body-color-rgb, 24, 36, 51), 0.12);
 }
 .side-panel-events li:last-child {
   border-bottom: 0;
@@ -610,7 +610,7 @@ html[data-bs-theme="dark"] body.kexo-update-available #footer-settings-toggle i:
   flex-wrap: wrap;
   gap: 0.25rem 0.5rem;
   padding: 0.35rem 0;
-  border-bottom: 1px dashed rgba(var(--tblr-body-color-rgb, 24, 36, 51), 0.1);
+  border-bottom: 1px solid rgba(var(--tblr-body-color-rgb, 24, 36, 51), 0.1);
 }
 .side-panel-detail-row:last-child {
   border-bottom: 0;
@@ -802,7 +802,7 @@ body.side-panel-open {
 }
 .kexo-lookup-drawer-block {
   padding-bottom: .6rem;
-  border-bottom: 1px dashed rgba(99, 115, 129, .25);
+  border-bottom: 1px solid rgba(99, 115, 129, .25);
 }
 .kexo-lookup-drawer-block:last-child {
   border-bottom: 0;
@@ -810,6 +810,18 @@ body.side-panel-open {
 }
 .kexo-lookup-drawer-root details summary {
   cursor: pointer;
+}
+
+/* Lookup: fraud meter (KPI-chip style) */
+.kexo-kpi-chip.kexo-fraud-meter-chip {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: none;
+  width: 100%;
+  padding: 0;
+}
+.kexo-kpi-chip-progress .progress-bar.bg-warning {
+  background-color: var(--tblr-warning, #f59e0b) !important;
 }
 
 /* Lookup: half-donut fraud score gauge */
