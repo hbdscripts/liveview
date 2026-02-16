@@ -732,7 +732,6 @@ body.side-panel-open {
   width: 100%;
   height: 100%;
   cursor: pointer;
-  padding-left: 10px;
 }
 #sessions-table.grid-table .grid-body .grid-row .grid-cell.compliance-cell .compliance-status-icon {
   font-size: .85rem;
@@ -750,12 +749,13 @@ body.side-panel-open {
   color: var(--tblr-success, #2fb344);
 }
 #sessions-table.grid-table .grid-body .grid-row .grid-cell.compliance-cell .compliance-status-icon.is-search {
-  width: 15px;
-  height: 15px;
-  font-size: 15px;
+  width: 12px;
+  height: 12px;
+  font-size: 12px;
   vertical-align: middle;
   display: inline-block;
-  margin-left: 10px;
+  color: #334155;
+  opacity: 0.8;
 }
 
 #sessions-table.grid-table .grid-row--header .grid-cell.compliance-cell {
