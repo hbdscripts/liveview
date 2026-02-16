@@ -92,8 +92,13 @@
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload || {}),
     }, 25000)
-      .then(function (r) { return r && r.ok ? r.json() : r.json().catch(function () { return null; }); })
-      .catch(function () { return null; });
+      .then(function (r) {
+        return r.json().catch(function () { return null; }).then(function (body) {
+          if (r && r.ok) return body;
+          return { ok: false, status: r && r.status, error: (body && body.error) || (r && r.status === 403 ? 'Admin only' : 'Request failed') };
+        });
+      })
+      .catch(function () { return { ok: false, status: 0, error: 'Request failed' }; });
   }
 
   function fetchConfig() {
@@ -145,10 +150,10 @@
   function renderSkeleton(root) {
     root.innerHTML = '' +
       '<div class="mb-3">' +
-        '<h4 class="mb-2">Observed tokens</h4>' +
+        '<h4 class="mb-2" title="Tokens captured from visitor sessions (UTMs, referrer host, click IDs). Filter by type, set Min seen to hide rare values, then click Use to map a token to an attribution variant.">Observed tokens</h4>' +
         '<div class="row g-2 align-items-end">' +
           '<div class="col-12 col-md-3">' +
-            '<label class="form-label" for="am-token-type">Token type</label>' +
+            '<label class="form-label" for="am-token-type" title="Filter the list: utm_source/medium/campaign, referrer_host, param_name (click IDs like gclid), param_pair, or kexo_attr (explicit URL param).">Token type</label>' +
             '<select class="form-select" id="am-token-type">' +
               '<option value="">All</option>' +
               '<option value="utm_source">utm_source</option>' +
@@ -163,15 +168,15 @@
             '</select>' +
           '</div>' +
           '<div class="col-6 col-md-2">' +
-            '<label class="form-label" for="am-min-seen">Min seen</label>' +
+            '<label class="form-label" for="am-min-seen" title="Only show tokens seen at least this many times. Increase to focus on common traffic sources.">Min seen</label>' +
             '<input class="form-control" id="am-min-seen" type="number" min="1" max="1000000" value="2" />' +
           '</div>' +
           '<div class="col-6 col-md-2">' +
-            '<label class="form-label" for="am-limit">Limit</label>' +
+            '<label class="form-label" for="am-limit" title="Max number of tokens to load. Higher values may be slower.">Limit</label>' +
             '<input class="form-control" id="am-limit" type="number" min="10" max="5000" value="500" />' +
           '</div>' +
           '<div class="col-12 col-md-auto">' +
-            '<button type="button" class="btn btn-outline-primary" data-am-action="refresh-observed">Refresh</button>' +
+            '<button type="button" class="btn btn-outline-primary" data-am-action="refresh-observed" title="Reload observed tokens from the database.">Refresh</button>' +
           '</div>' +
           '<div class="col-12 col-md-auto">' +
             '<span id="am-observed-msg" class="form-hint"></span>' +
@@ -180,10 +185,10 @@
         '<div class="table-responsive mt-2">' +
           '<table class="table table-sm table-vcenter card-table">' +
             '<thead><tr>' +
-              '<th style="width:120px">Type</th>' +
-              '<th>Value</th>' +
-              '<th class="text-end" style="width:90px">Seen</th>' +
-              '<th style="width:180px">Last seen</th>' +
+              '<th style="width:120px" title="Token type: utm_*, referrer_host, param_name, param_pair, or kexo_attr.">Type</th>' +
+              '<th title="The actual value (e.g. utm_source=google, referrer_host=twitter.com).">Value</th>' +
+              '<th class="text-end" style="width:90px" title="How many sessions had this token.">Seen</th>' +
+              '<th style="width:180px" title="Most recent session timestamp.">Last seen</th>' +
               '<th style="width:110px"></th>' +
             '</tr></thead>' +
             '<tbody id="am-observed-body">' +
@@ -194,37 +199,37 @@
       '</div>' +
 
       '<div class="card card-sm mb-3">' +
-        '<div class="card-header"><h4 class="card-title mb-0">Create mapping</h4></div>' +
+        '<div class="card-header"><h4 class="card-title mb-0" title="Map a selected token to an attribution variant. Sessions with that token will be attributed to the variant (Channel + Source + Ownership).">Create mapping</h4></div>' +
         '<div class="card-body">' +
           '<div class="row g-2">' +
             '<div class="col-12 col-md-4">' +
-              '<label class="form-label">Token</label>' +
+              '<label class="form-label" title="The token you selected from the table. Click Use on a row above to select.">Token</label>' +
               '<input class="form-control" id="am-selected-token" type="text" value="Select a token above" readonly />' +
             '</div>' +
             '<div class="col-12 col-md-4">' +
-              '<label class="form-label" for="am-variant-key">Variant key</label>' +
+              '<label class="form-label" for="am-variant-key" title="Format: source:ownership (e.g. google_ads:house, my_affiliate:affiliate). Use built-ins like google_ads:house or create custom keys.">Variant key</label>' +
               '<input class="form-control font-monospace" id="am-variant-key" list="am-variants-list" placeholder="e.g. google_ads:house" />' +
               '<datalist id="am-variants-list"></datalist>' +
             '</div>' +
             '<div class="col-12 col-md-4">' +
-              '<label class="form-label" for="am-priority">Priority</label>' +
+              '<label class="form-label" for="am-priority" title="Rule priority (lower = higher). Rules are evaluated in priority order; first match wins.">Priority</label>' +
               '<input class="form-control" id="am-priority" type="number" value="1000" min="-1000000" max="1000000" />' +
             '</div>' +
 
             '<div class="col-12 col-md-4">' +
-              '<label class="form-label" for="am-variant-label">Variant label (optional)</label>' +
+              '<label class="form-label" for="am-variant-label" title="Human-readable label for the variant (e.g. Google Ads). Shown in Acquisition reports.">Variant label (optional)</label>' +
               '<input class="form-control" id="am-variant-label" type="text" placeholder="e.g. Google Ads" />' +
             '</div>' +
             '<div class="col-6 col-md-2">' +
-              '<label class="form-label" for="am-channel-key">Channel</label>' +
+              '<label class="form-label" for="am-channel-key" title="High-level channel: paid_search, organic_search, email, affiliate, direct, other.">Channel</label>' +
               '<input class="form-control font-monospace" id="am-channel-key" type="text" placeholder="paid_search" />' +
             '</div>' +
             '<div class="col-6 col-md-2">' +
-              '<label class="form-label" for="am-source-key">Source</label>' +
+              '<label class="form-label" for="am-source-key" title="Traffic source: google, bing, meta, omnisend, direct, other.">Source</label>' +
               '<input class="form-control font-monospace" id="am-source-key" type="text" placeholder="google" />' +
             '</div>' +
             '<div class="col-12 col-md-4">' +
-              '<label class="form-label" for="am-owner-kind">Ownership</label>' +
+              '<label class="form-label" for="am-owner-kind" title="house (owned), partner (co-marketing), or affiliate (third-party). Affects reporting and fraud signals.">Ownership</label>' +
               '<select class="form-select" id="am-owner-kind">' +
                 '<option value="house" selected>house</option>' +
                 '<option value="partner">partner</option>' +
@@ -233,8 +238,8 @@
             '</div>' +
           '</div>' +
           '<div class="d-flex align-items-center gap-2 flex-wrap mt-3">' +
-            '<button type="button" class="btn btn-primary" data-am-action="map-token">Create mapping</button>' +
-            '<button type="button" class="btn btn-outline-secondary" data-am-action="clear-selected">Clear</button>' +
+            '<button type="button" class="btn btn-primary" data-am-action="map-token" title="Save this rule. New sessions with the token will be attributed to the variant.">Create mapping</button>' +
+            '<button type="button" class="btn btn-outline-secondary" data-am-action="clear-selected" title="Deselect the current token.">Clear</button>' +
             '<span id="am-map-msg" class="form-hint"></span>' +
           '</div>' +
           '<div class="text-secondary small mt-2">' +
@@ -244,12 +249,12 @@
       '</div>' +
 
       '<details class="mb-0">' +
-        '<summary class="text-secondary">Advanced: edit full config (JSON)</summary>' +
+        '<summary class="text-secondary" title="Edit the raw config (channels, sources, variants, rules, allowlist). Use Reload to discard edits, Save config to apply.">Advanced: edit full config (JSON)</summary>' +
         '<div class="mt-2">' +
           '<textarea class="form-control font-monospace" id="am-config-json" rows="14" spellcheck="false" placeholder="{\\n  &quot;channels&quot;: [],\\n  &quot;sources&quot;: [],\\n  &quot;variants&quot;: [],\\n  &quot;rules&quot;: [],\\n  &quot;allowlist&quot;: []\\n}"></textarea>' +
           '<div class="d-flex align-items-center gap-2 flex-wrap mt-2">' +
-            '<button type="button" class="btn btn-outline-primary" data-am-action="reload-config">Reload</button>' +
-            '<button type="button" class="btn btn-success" data-am-action="save-config">Save config</button>' +
+            '<button type="button" class="btn btn-outline-primary" data-am-action="reload-config" title="Discard JSON edits and reload from database.">Reload</button>' +
+            '<button type="button" class="btn btn-success" data-am-action="save-config" title="Replace the entire config with the JSON. Use with caution.">Save config</button>' +
             '<span id="am-config-msg" class="form-hint"></span>' +
           '</div>' +
           '<div class="text-secondary small mt-2">Saving replaces the config tables with the submitted payload.</div>' +
@@ -424,7 +429,7 @@
         setHint('am-config-msg', 'Saving…', true);
         saveConfig(parsed).then(function (resp) {
           if (!resp || resp.ok !== true) {
-            setHint('am-config-msg', 'Failed to save config.', false);
+            setHint('am-config-msg', resp && resp.status === 403 ? 'Admin only. You don\'t have permission to change attribution config.' : (resp && resp.error ? String(resp.error) : 'Failed to save config.'), false);
             return;
           }
           setHint('am-config-msg', 'Saved.', true);
@@ -469,7 +474,7 @@
         setHint('am-map-msg', 'Saving…', true);
         mapToken(payload).then(function (resp) {
           if (!resp || resp.ok !== true) {
-            var err = resp && resp.error ? String(resp.error) : 'Failed to map token.';
+            var err = resp && resp.status === 403 ? 'Admin only. You don\'t have permission to add mappings.' : (resp && resp.error ? String(resp.error) : 'Failed to map token.');
             setHint('am-map-msg', err, false);
             return;
           }
