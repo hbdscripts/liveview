@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-16 (today KPI compare windows use partial historical sessions)
+Last updated: 2026-02-16 (today KPI compare windows + accurate KPI bar change labels)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -377,6 +377,11 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-16 (latest)
+- Header KPI chip bar labels now mirror true deltas:
+  - `server/public/app.js` (`applyCondensedKpiDelta`) now sets the progress-bar screenreader label from the real absolute delta percentage (e.g. `131.8% change`) instead of capped bar width (`100%`).
+  - The bar still caps visual width at 100% for layout, but the reported change value now matches the KPI delta text.
 
 2026-02-16 (latest)
 - Today KPI compare windows now use matching partial session baselines:

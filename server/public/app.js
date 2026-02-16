@@ -8402,6 +8402,7 @@ const API = '';
         if (progressEl) progressEl.classList.remove('is-hidden');
         let widthPct = 0;
         let barClass = 'bg-secondary';
+        const deltaPctAbs = Number.isFinite(rawDelta) ? (Math.round(Math.abs(rawDelta) * 1000) / 10) : null;
 
         if (!isFlat) {
           widthPct = isNew ? 100 : Math.max(6, Math.min(100, Math.round(Math.abs(rawDelta) * 100)));
@@ -8411,8 +8412,16 @@ const API = '';
         barEl.style.width = String(widthPct) + '%';
         barEl.classList.add(barClass);
         barEl.setAttribute('aria-valuenow', String(widthPct));
-        barEl.setAttribute('aria-label', String(widthPct) + '% change');
-        if (srText) srText.textContent = String(widthPct) + '% change';
+        if (isNew) {
+          barEl.setAttribute('aria-label', 'New metric (baseline was 0)');
+          if (srText) srText.textContent = 'New metric (baseline was 0)';
+        } else if (deltaPctAbs != null) {
+          barEl.setAttribute('aria-label', String(deltaPctAbs) + '% change');
+          if (srText) srText.textContent = String(deltaPctAbs) + '% change';
+        } else {
+          barEl.setAttribute('aria-label', String(widthPct) + '% change');
+          if (srText) srText.textContent = String(widthPct) + '% change';
+        }
       }
     }
 
