@@ -17669,14 +17669,34 @@ const API = '';
           score = Math.max(0, Math.min(100, Number(scoreData.score)));
         }
         var empty = score == null;
-        var text = empty ? '\u2014' : formatKexoScoreNumber(score);
+        var dashText = empty ? '\u2014' : formatKexoScoreNumber(score);
+        var headerText = empty ? '\u2014' : String(Math.round(score));
         var pct = empty ? '0' : String(score);
-        if (dashNum) { dashNum.textContent = text; }
+        if (dashNum) { dashNum.textContent = dashText; }
         if (dashRing) dashRing.style.setProperty('--kexo-score-pct', pct);
-        if (headerNum) { headerNum.textContent = text; }
+        if (headerNum) { headerNum.textContent = headerText; }
         if (headerRing) {
           headerRing.style.setProperty('--kexo-score-pct', pct);
           headerRing.style.background = buildHeaderKexoScoreRingBg(score);
+        }
+        applyKexoScoreModalSummary(scoreData);
+      }
+
+      function applyKexoScoreModalSummary(scoreData) {
+        var modalScoreNum = document.getElementById('kexo-score-modal-score');
+        var modalRing = document.getElementById('kexo-score-modal-ring');
+        if (!modalScoreNum && !modalRing) return;
+        var score = null;
+        if (scoreData && typeof scoreData.score === 'number' && Number.isFinite(scoreData.score)) {
+          score = Math.max(0, Math.min(100, Number(scoreData.score)));
+        }
+        var empty = score == null;
+        var precise = empty ? '\u2014' : score.toFixed(1);
+        var pct = empty ? '0' : String(score);
+        if (modalScoreNum) modalScoreNum.textContent = precise;
+        if (modalRing) {
+          modalRing.style.setProperty('--kexo-score-pct', pct);
+          modalRing.style.background = buildHeaderKexoScoreRingBg(score);
         }
       }
 
@@ -17734,8 +17754,36 @@ const API = '';
           if (!Number.isFinite(p)) return 'bg-secondary';
           p = Math.max(0, Math.min(100, p));
           if (p <= 49) return 'bg-danger';
-          if (p <= 75) return 'bg-warning';
+          if (p <= 75) return 'bg-secondary';
           return 'bg-success';
+        }
+
+        function animateKexoScoreBreakdownBars(scope) {
+          if (!scope || !scope.querySelectorAll) return;
+          var bars = Array.from(scope.querySelectorAll('.kexo-score-breakdown-row .progress-bar[data-target-pct]'));
+          if (!bars.length) return;
+          var reduceMotion = false;
+          try { reduceMotion = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (_) {}
+          bars.forEach(function(bar, idx) {
+            var target = Number(bar.getAttribute('data-target-pct') || '0');
+            if (!Number.isFinite(target)) target = 0;
+            target = Math.max(0, Math.min(100, target));
+            if (reduceMotion) {
+              bar.style.transition = 'none';
+              bar.style.width = target + '%';
+              return;
+            }
+            bar.style.transition = 'none';
+            bar.style.width = '0%';
+            bar.offsetWidth;
+            requestAnimationFrame(function() {
+              requestAnimationFrame(function() {
+                bar.style.transition = 'width 720ms cubic-bezier(.22,.61,.36,1)';
+                bar.style.transitionDelay = String(Math.min(idx * 45, 270)) + 'ms';
+                bar.style.width = target + '%';
+              });
+            });
+          });
         }
 
         function buildMetricComparePopoverHtml(valueStr, prevStr, prev2Str) {
@@ -17757,13 +17805,14 @@ const API = '';
               ' data-bs-placement="top"' +
               ' data-bs-container="body"' +
               ' data-bs-custom-class="kexo-score-popover"' +
-              ' data-bs-content="' + escapeHtml(popoverHtml) + '"' +
+              ' data-bs-content="' + popoverHtml + '"' +
               ' aria-label="' + escapeHtml(aria) + '">' +
               '<i class="fa-light fa-circle-info" aria-hidden="true"></i>' +
             '</button>';
         }
 
         var data = _kexoScoreCache;
+        applyKexoScoreModalSummary(data);
         if (!data || !Array.isArray(data.components) || data.components.length === 0) {
           body.innerHTML = '<div class="kexo-score-breakdown-empty text-muted">No score data. Select a date range and refresh.</div>';
         } else {
@@ -17782,7 +17831,7 @@ const API = '';
                 infoButton +
               '</div>' +
               '<div class="progress">' +
-                '<div class="progress-bar ' + barClass + '" role="progressbar" style="width:' + score + '%" aria-valuenow="' + score + '" aria-valuemin="0" aria-valuemax="100">' + score.toFixed(0) + '</div>' +
+                '<div class="progress-bar ' + barClass + '" role="progressbar" style="width:0%" data-target-pct="' + score.toFixed(1) + '" aria-valuenow="' + score + '" aria-valuemin="0" aria-valuemax="100">' + score.toFixed(0) + '</div>' +
               '</div>' +
             '</div>';
           }).join('');
@@ -17791,6 +17840,7 @@ const API = '';
         initKexoScorePopovers(modal);
         modal.classList.remove('is-hidden');
         modal.setAttribute('aria-hidden', 'false');
+        requestAnimationFrame(function() { animateKexoScoreBreakdownBars(body); });
       }
 
       function closeKexoScoreModal() {

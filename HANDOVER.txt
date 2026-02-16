@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-16 (Kexo Score modal tooltip UX + branded header)
+Last updated: 2026-02-16 (Kexo Score modal wheel + bar animation + rounded header score)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -378,6 +378,13 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-16 (latest)
+- Kexo Score modal scoring UX pass:
+  - Header strip score now displays rounded integer values; modal mini wheel shows the precise score (`x.y`) after opening.
+  - Added a mini Kexo Score wheel in modal actions next to the close button.
+  - Modal component bars now animate from `0%` to target on open.
+  - Removed orange warning usage for modal score bars; mid-range bars now use KPI neutral/secondary tone so modal colors align with KPI palette.
 
 2026-02-16 (latest)
 - Kexo Score modal header + tooltip UX:
