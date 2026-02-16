@@ -485,6 +485,20 @@ html[data-bs-theme="dark"] body.kexo-update-available #footer-settings-toggle i:
   flex-wrap: wrap;
   font-size: 12px;
 }
+.side-panel-row-flag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 12px;
+  height: 12px;
+  flex: 0 0 12px;
+}
+.side-panel-row-icons-text {
+  display: inline-block;
+  font-size: 12px;
+  line-height: 1;
+  color: var(--tblr-secondary, #626976);
+}
 .side-panel-row-icon {
   display: inline-flex;
   align-items: center;

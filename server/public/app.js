@@ -13441,23 +13441,9 @@ const API = '';
 
             try {
               if (rowIconsEl) {
-                function iconItem(iconHtml, label, title) {
-                  var t = title ? String(title) : '';
-                  var lbl = label != null ? String(label).trim() : '';
-                  return '' +
-                    '<span class="side-panel-row-icon"' + (t ? (' title="' + escapeHtml(t) + '"') : '') + '>' +
-                      '<span class="side-panel-row-icon-glyph">' + (iconHtml || '') + '</span>' +
-                      (lbl ? ('<span class="side-panel-row-icon-label">' + escapeHtml(lbl) + '</span>') : '') +
-                    '</span>';
-                }
-
                 var cc = (session && (session.country_code || session.cf_country)) ? String(session.country_code || session.cf_country) : 'XX';
                 var ccUp = cc ? cc.trim().toUpperCase() : 'XX';
                 var flag = flagImg(ccUp, ccUp);
-                var src = '';
-                var dev = '';
-                try { src = sourceCell(session) || ''; } catch (_) { src = ''; }
-                try { dev = deviceCell(session) || ''; } catch (_) { dev = ''; }
 
                 var channelLabel = '';
                 try {
@@ -13497,11 +13483,14 @@ const API = '';
                   deviceLabel = parts2.length ? parts2.join(' · ') : '';
                 } catch (_) { deviceLabel = ''; }
 
-                var parts = [];
-                parts.push(iconItem(flag, ccUp && ccUp !== 'XX' ? ccUp : '', 'Country'));
-                if (src) parts.push(iconItem(src, channelLabel || '', 'Channel'));
-                if (dev) parts.push(iconItem(dev, deviceLabel || '', 'Device'));
-                rowIconsEl.innerHTML = parts.join('');
+                var tailParts = [];
+                if (channelLabel && String(channelLabel).trim()) tailParts.push(String(channelLabel).trim());
+                if (deviceLabel && String(deviceLabel).trim()) tailParts.push(String(deviceLabel).trim());
+                var tailText = tailParts.length ? tailParts.join(' - ') : '';
+
+                rowIconsEl.innerHTML =
+                  '<span class="side-panel-row-flag" title="Country">' + flag + '</span>' +
+                  (tailText ? ('<span class="side-panel-row-icons-text">' + escapeHtml(tailText) + '</span>') : '');
               }
             } catch (_) {}
 

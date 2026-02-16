@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-16 (Snapshot deductions row now includes COGS in total deducted cost)
+Last updated: 2026-02-16 (drawer header flag-only + hyphen meta)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -72,7 +72,7 @@ Goal: a generic, network-agnostic affiliate abuse/fraud detector that is safe to
   - Copy affordances are **links** and appear **only for IDs**: Click ID, Shopify order ID, checkout token, Kexo order key.
   - Displays a KPI-chip style **Fraud Meter**: **Low/Medium/High** + **score as %** + full-width progress bar showing **% safe** (= 100 - score) with a grey track (green ≥76, orange 50–75, red ≤49).
   - `/tools/click-order-lookup` also shows the same Activity feed (the lookup API returns recent session `events`).
-  - Drawer header shows inline row icons (country + channel + device) with small labels; icons/images are normalized to 12px and the header is not sticky. Source section includes **Copy URL** (copies entry URL with UTMs merged in when available).
+  - Drawer header shows **only the country flag**; channel + device are shown as plain text separated by hyphens (no channel/device icons). Header is not sticky. Source section includes **Copy URL** (copies entry URL with UTMs merged in when available).
 
 ### Optional AI narrative (feature-flagged)
 
@@ -521,7 +521,7 @@ Ops/reliability:
 
 2026-02-16 (latest)
 - Session drawer polish:
-  - Side drawer header is **Session Details** and shows inline row icons (country + channel + device) with small labels; icons/images are normalized to 12px and the header is not sticky.
+  - Side drawer header is **Session Details** and shows only the country flag; channel + device render as plain text separated by hyphens (no channel/device icons). Header is not sticky.
   - Source section adds **Copy URL** (copies the entry URL with UTMs merged in when available).
   - Network (Verified bot category + City) rows are forced left-aligned (City remains empty unless captured via Cloudflare/Worker headers).
 
