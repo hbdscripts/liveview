@@ -2094,19 +2094,28 @@ html[data-bs-theme="dark"] .report-build-wrap {
 .kexo-score-ring-wrap--header::before {
   content: none;
 }
-/* Stroke-only ring with transparent center (no filled background). */
-.kexo-score-ring--header {
+/* SVG ring (header): 5 track segments + 5 fill segments, 4px stroke. */
+.kexo-score-ring-svg--header {
   position: absolute;
   inset: 0;
-  border-radius: 50%;
-  background: conic-gradient(from -90deg, var(--kexo-score-track) 0deg, var(--kexo-score-track) 360deg);
-  --kexo-score-pct: 0;
-  mask: radial-gradient(farthest-side, transparent calc(100% - var(--kexo-score-stroke)), #000 calc(100% - var(--kexo-score-stroke)));
-  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - var(--kexo-score-stroke)), #000 calc(100% - var(--kexo-score-stroke)));
+  width: 100%;
+  height: 100%;
   pointer-events: none;
+  shape-rendering: geometricPrecision;
 }
-.kexo-score-ring--header::before {
-  content: none;
+.kexo-score-ring-svg--header .kexo-score-ring-track {
+  stroke: var(--kexo-score-track);
+  stroke-width: 4px;
+  stroke-linecap: butt;
+}
+.kexo-score-ring-svg--header .kexo-score-ring-fill--1 { stroke: var(--kexo-accent-1, #4b94e4); }
+.kexo-score-ring-svg--header .kexo-score-ring-fill--2 { stroke: var(--kexo-accent-2, #3eb3ab); }
+.kexo-score-ring-svg--header .kexo-score-ring-fill--3 { stroke: var(--kexo-accent-3, #f59e34); }
+.kexo-score-ring-svg--header .kexo-score-ring-fill--4 { stroke: var(--kexo-accent-4, #8b5cf6); }
+.kexo-score-ring-svg--header .kexo-score-ring-fill--5 { stroke: var(--kexo-accent-5, #ef4444); }
+.kexo-score-ring-svg--header .kexo-score-ring-fill {
+  stroke-width: 4px;
+  stroke-linecap: butt;
 }
 .kexo-score-ring-wrap--header .kexo-score-ring-center {
   position: absolute;
@@ -2192,23 +2201,32 @@ html[data-bs-theme="dark"] .report-build-wrap {
 }
 #kexo-score-modal .kexo-score-ring-wrap--modal {
   --kexo-score-track: rgba(148, 163, 184, 0.3);
-  --kexo-score-stroke: 3px;
   width: 56px;
   height: 56px;
   background: transparent !important;
   position: relative;
 }
-#kexo-score-modal .kexo-score-ring--modal {
+#kexo-score-modal .kexo-score-ring-svg--modal {
   position: absolute;
   inset: 0;
-  border-radius: 50%;
-  background: conic-gradient(from -90deg, var(--kexo-score-track) 0deg, var(--kexo-score-track) 360deg);
-  mask: radial-gradient(farthest-side, transparent calc(100% - var(--kexo-score-stroke)), #000 calc(100% - var(--kexo-score-stroke)));
-  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - var(--kexo-score-stroke)), #000 calc(100% - var(--kexo-score-stroke)));
+  width: 100%;
+  height: 100%;
   pointer-events: none;
+  shape-rendering: geometricPrecision;
 }
-#kexo-score-modal .kexo-score-ring--modal::before {
-  content: none;
+#kexo-score-modal .kexo-score-ring-svg--modal .kexo-score-ring-track {
+  stroke: var(--kexo-score-track);
+  stroke-width: 4px;
+  stroke-linecap: butt;
+}
+#kexo-score-modal .kexo-score-ring-svg--modal .kexo-score-ring-fill--1 { stroke: var(--kexo-accent-1, #4b94e4); }
+#kexo-score-modal .kexo-score-ring-svg--modal .kexo-score-ring-fill--2 { stroke: var(--kexo-accent-2, #3eb3ab); }
+#kexo-score-modal .kexo-score-ring-svg--modal .kexo-score-ring-fill--3 { stroke: var(--kexo-accent-3, #f59e34); }
+#kexo-score-modal .kexo-score-ring-svg--modal .kexo-score-ring-fill--4 { stroke: var(--kexo-accent-4, #8b5cf6); }
+#kexo-score-modal .kexo-score-ring-svg--modal .kexo-score-ring-fill--5 { stroke: var(--kexo-accent-5, #ef4444); }
+#kexo-score-modal .kexo-score-ring-svg--modal .kexo-score-ring-fill {
+  stroke-width: 4px;
+  stroke-linecap: butt;
 }
 #kexo-score-modal .kexo-score-num--modal {
   font-size: 0.88rem;
@@ -2223,28 +2241,28 @@ html[data-bs-theme="dark"] .report-build-wrap {
   border-radius: 0 0 10px 10px;
 }
 #kexo-score-modal .kexo-score-info-btn {
-  width: 18px;
-  height: 18px;
+  width: 22px;
+  height: 22px;
   padding: 0;
   border: none;
   border-radius: 50%;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: rgba(148, 163, 184, 0.18);
+  background: transparent;
   color: #475569;
   cursor: pointer;
   transition: background-color .15s ease, color .15s ease, transform .15s ease;
 }
 #kexo-score-modal .kexo-score-info-btn:hover,
 #kexo-score-modal .kexo-score-info-btn:focus-visible {
-  background: rgba(59, 130, 246, 0.18);
+  background: rgba(59, 130, 246, 0.12);
   color: #1d4ed8;
   transform: translateY(-1px);
   outline: none;
 }
 #kexo-score-modal .kexo-score-info-btn i {
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1;
 }
 .kexo-score-breakdown-head {

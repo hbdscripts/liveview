@@ -17616,6 +17616,37 @@ const API = '';
         return rounded.toFixed(1).replace(/\.0$/, '');
       }
 
+      var KEXO_RING_R = 16;
+      var KEXO_RING_CIRCUMFERENCE = 2 * Math.PI * KEXO_RING_R;
+      var KEXO_RING_GAP = 2;
+      var KEXO_RING_SEGMENT = (KEXO_RING_CIRCUMFERENCE - 5 * KEXO_RING_GAP) / 5;
+      var KEXO_RING_SEGMENT_AND_GAP = KEXO_RING_SEGMENT + KEXO_RING_GAP;
+      var KEXO_RING_START_OFFSET = 0.75 * KEXO_RING_CIRCUMFERENCE;
+
+      function applyKexoScoreRingSvg(svg, rawScore) {
+        if (!svg || svg.tagName !== 'svg') return;
+        var score = Number(rawScore);
+        if (!Number.isFinite(score)) score = 0;
+        score = Math.max(0, Math.min(100, score));
+        var trackCircle = svg.querySelector('.kexo-score-ring-track');
+        if (trackCircle) {
+          var trackDash = KEXO_RING_SEGMENT.toFixed(2) + ' ' + KEXO_RING_GAP.toFixed(2);
+          trackCircle.setAttribute('stroke-dasharray', trackDash + ' ' + trackDash + ' ' + trackDash + ' ' + trackDash + ' ' + trackDash);
+          trackCircle.setAttribute('stroke-dashoffset', (-KEXO_RING_START_OFFSET).toFixed(2));
+        }
+        var totalFill = (score / 100) * (5 * KEXO_RING_SEGMENT);
+        for (var i = 0; i < 5; i += 1) {
+          var segStart = KEXO_RING_START_OFFSET + i * KEXO_RING_SEGMENT_AND_GAP;
+          var fillStart = i * KEXO_RING_SEGMENT_AND_GAP;
+          var filled = Math.max(0, Math.min(KEXO_RING_SEGMENT, totalFill - fillStart));
+          var fillCircle = svg.querySelector('.kexo-score-ring-fill--' + (i + 1));
+          if (fillCircle) {
+            fillCircle.setAttribute('stroke-dasharray', filled.toFixed(2) + ' 9999');
+            fillCircle.setAttribute('stroke-dashoffset', (-segStart).toFixed(2));
+          }
+        }
+      }
+
       function buildHeaderKexoScoreRingBg(rawScore) {
         var score = Number(rawScore);
         if (!Number.isFinite(score)) score = 0;
@@ -17676,8 +17707,12 @@ const API = '';
         if (dashRing) dashRing.style.setProperty('--kexo-score-pct', pct);
         if (headerNum) { headerNum.textContent = headerText; }
         if (headerRing) {
-          headerRing.style.setProperty('--kexo-score-pct', pct);
-          headerRing.style.background = buildHeaderKexoScoreRingBg(score);
+          if (headerRing.tagName === 'svg') {
+            applyKexoScoreRingSvg(headerRing, score);
+          } else {
+            headerRing.style.setProperty('--kexo-score-pct', pct);
+            headerRing.style.background = buildHeaderKexoScoreRingBg(score);
+          }
         }
         applyKexoScoreModalSummary(scoreData);
       }
@@ -17695,8 +17730,12 @@ const API = '';
         var pct = empty ? '0' : String(score);
         if (modalScoreNum) modalScoreNum.textContent = precise;
         if (modalRing) {
-          modalRing.style.setProperty('--kexo-score-pct', pct);
-          modalRing.style.background = buildHeaderKexoScoreRingBg(score);
+          if (modalRing.tagName === 'svg') {
+            applyKexoScoreRingSvg(modalRing, score);
+          } else {
+            modalRing.style.setProperty('--kexo-score-pct', pct);
+            modalRing.style.background = buildHeaderKexoScoreRingBg(score);
+          }
         }
       }
 
@@ -17786,10 +17825,14 @@ const API = '';
           });
         }
 
-        function buildMetricComparePopoverText(valueStr, prevStr, prev2Str) {
-          return 'Current: ' + String(valueStr) + '\n' +
+        function buildMetricComparePopoverText(valueStr, prevStr, prev2Str, levelScore, changeScore) {
+          var lines = 'Current: ' + String(valueStr) + '\n' +
             'Previous: ' + String(prevStr) + '\n' +
             'Day before: ' + String(prev2Str);
+          if (typeof levelScore === 'number' && Number.isFinite(levelScore) && typeof changeScore === 'number' && Number.isFinite(changeScore)) {
+            lines += '\n\nLevel: ' + levelScore.toFixed(0) + ' · Change: ' + changeScore.toFixed(0);
+          }
+          return lines;
         }
 
         function buildMetricCompareTooltipButton(label, popoverText) {
@@ -17807,7 +17850,7 @@ const API = '';
               ' data-bs-custom-class="kexo-score-popover"' +
               ' data-bs-content="' + safeContentAttr + '"' +
               ' aria-label="' + escapeHtml(aria) + '">' +
-              '<i class="fa-light fa-circle-info" aria-hidden="true"></i>' +
+              '<i class="fa-jelly fa-question" data-icon-key="kexo-score-help" aria-hidden="true"></i>' +
             '</button>';
         }
 
@@ -17823,7 +17866,7 @@ const API = '';
             var valueStr = fmtComponentValue(c.key, c.value);
             var prevStr = fmtComponentValue(c.key, c.previous);
             var prev2Str = fmtComponentValue(c.key, c.previous2);
-            var popoverText = buildMetricComparePopoverText(valueStr, prevStr, prev2Str);
+            var popoverText = buildMetricComparePopoverText(valueStr, prevStr, prev2Str, c.levelScore, c.changeScore);
             var infoButton = buildMetricCompareTooltipButton(label, popoverText);
             return '<div class="kexo-score-breakdown-row mb-3">' +
               '<div class="kexo-score-breakdown-head mb-1">' +
@@ -17874,6 +17917,35 @@ const API = '';
         }
         if (closeBtn) closeBtn.addEventListener('click', closeKexoScoreModal);
         if (modalEl) modalEl.addEventListener('click', function(e) { if (e.target === modalEl) closeKexoScoreModal(); });
+        var bodyEl = document.getElementById('kexo-score-modal-body');
+        if (bodyEl) {
+          bodyEl.addEventListener('click', function(e) {
+            var btn = e.target && e.target.closest && e.target.closest('[data-kexo-score-popover="1"]');
+            if (!btn) return;
+            e.preventDefault();
+            e.stopPropagation();
+            var Popover = window.bootstrap && window.bootstrap.Popover;
+            if (!Popover) return;
+            var all = (modalEl && modalEl.querySelectorAll) ? modalEl.querySelectorAll('[data-kexo-score-popover="1"]') : [];
+            all.forEach(function(other) {
+              if (other === btn) return;
+              try {
+                var inst = Popover.getInstance(other);
+                if (inst) inst.hide();
+              } catch (_) {}
+            });
+            try {
+              var instance = Popover.getOrCreateInstance(btn, {
+                trigger: 'click',
+                placement: btn.getAttribute('data-bs-placement') || 'top',
+                html: false,
+                container: btn.getAttribute('data-bs-container') || 'body',
+                customClass: btn.getAttribute('data-bs-custom-class') || 'kexo-score-popover',
+              });
+              instance.toggle();
+            } catch (_) {}
+          });
+        }
         document.addEventListener('keydown', function(e) {
           if (e.key !== 'Escape') return;
           if (!modalEl || modalEl.classList.contains('is-hidden')) return;

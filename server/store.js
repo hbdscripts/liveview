@@ -4321,7 +4321,8 @@ async function getKexoScore(options = {}) {
     previous2Bounds ? metricsForWindow(previous2Bounds.start, previous2Bounds.end, rangeKey === 'today' ? 'yesterday_prev2' : rangeKey + '_prev2') : Promise.resolve(null),
   ]);
 
-  function componentScore(valueCur, valuePrev, valuePrev2, invert = false) {
+  /** Change-based score 0–100 from signal (cur vs prev) + momentum (prev vs prev2). */
+  function changeScore(valueCur, valuePrev, valuePrev2, invert = false) {
     const cur = typeof valueCur === 'number' && Number.isFinite(valueCur) ? valueCur : null;
     const prev = typeof valuePrev === 'number' && Number.isFinite(valuePrev) ? valuePrev : null;
     const prev2 = typeof valuePrev2 === 'number' && Number.isFinite(valuePrev2) ? valuePrev2 : null;
@@ -4336,13 +4337,42 @@ async function getKexoScore(options = {}) {
     return Math.round((50 + 50 * clamped) * 10) / 10;
   }
 
+  /** Absolute health 0–100 from current value (rate metrics only); revenue/sessions return 50 (neutral). */
+  function levelScore(value, key) {
+    const v = typeof value === 'number' && Number.isFinite(value) ? value : null;
+    if (v == null) return null;
+    const k = String(key || '').trim().toLowerCase();
+    if (k === 'conversion') {
+      if (v <= 0) return 0;
+      if (v >= 5) return 100;
+      return Math.round((v / 5) * 100 * 10) / 10;
+    }
+    if (k === 'bounce') {
+      const healthy = 100 - v;
+      if (healthy <= 0) return 0;
+      if (healthy >= 80) return 100;
+      return Math.round((healthy / 80) * 100 * 10) / 10;
+    }
+    if (k === 'ctr') {
+      if (v <= 0) return 0;
+      if (v >= 3) return 100;
+      return Math.round((v / 3) * 100 * 10) / 10;
+    }
+    if (k === 'roas') {
+      if (v <= 0) return 0;
+      if (v >= 5) return 100;
+      return Math.round((v / 5) * 100 * 10) / 10;
+    }
+    return 50;
+  }
+
   const KEXO_SCORE_COMPONENTS = [
-    { key: 'revenue', label: 'Revenue', weight: 25, getCur: (m) => m.sales, getPrev: (m) => m && m.sales, getPrev2: (m) => m && m.sales, invert: false },
-    { key: 'conversion', label: 'Conversion rate', weight: 25, getCur: (m) => m.conversion, getPrev: (m) => m && m.conversion, getPrev2: (m) => m && m.conversion, invert: false },
-    { key: 'bounce', label: 'Bounce rate', weight: 15, getCur: (m) => m.bounce, getPrev: (m) => m && m.bounce, getPrev2: (m) => m && m.bounce, invert: true },
-    { key: 'sessions', label: 'Sessions', weight: 20, getCur: (m) => m.sessions, getPrev: (m) => m && m.sessions, getPrev2: (m) => m && m.sessions, invert: false },
-    { key: 'roas', label: 'Ads ROAS', weight: 15, getCur: (m) => m.roas, getPrev: (m) => m && m.roas, getPrev2: (m) => m && m.roas, invert: false, adsOnly: true },
-    { key: 'ctr', label: 'Ads CTR', weight: 10, getCur: (m) => m.ctr, getPrev: (m) => m && m.ctr, getPrev2: (m) => m && m.ctr, invert: false, adsOnly: true },
+    { key: 'revenue', label: 'Revenue', weight: 25, getCur: (m) => m.sales, getPrev: (m) => m && m.sales, getPrev2: (m) => m && m.sales, invert: false, wLevel: 0, wChange: 1 },
+    { key: 'conversion', label: 'Conversion rate', weight: 25, getCur: (m) => m.conversion, getPrev: (m) => m && m.conversion, getPrev2: (m) => m && m.conversion, invert: false, wLevel: 0.5, wChange: 0.5 },
+    { key: 'bounce', label: 'Bounce rate', weight: 15, getCur: (m) => m.bounce, getPrev: (m) => m && m.bounce, getPrev2: (m) => m && m.bounce, invert: true, wLevel: 0.5, wChange: 0.5 },
+    { key: 'sessions', label: 'Sessions', weight: 20, getCur: (m) => m.sessions, getPrev: (m) => m && m.sessions, getPrev2: (m) => m && m.sessions, invert: false, wLevel: 0, wChange: 1 },
+    { key: 'roas', label: 'Ads ROAS', weight: 15, getCur: (m) => m.roas, getPrev: (m) => m && m.roas, getPrev2: (m) => m && m.roas, invert: false, adsOnly: true, wLevel: 0.5, wChange: 0.5 },
+    { key: 'ctr', label: 'Ads CTR', weight: 10, getCur: (m) => m.ctr, getPrev: (m) => m && m.ctr, getPrev2: (m) => m && m.ctr, invert: false, adsOnly: true, wLevel: 0.5, wChange: 0.5 },
   ];
 
   const adsIntegrated = (current && (current.roas != null || (current.clicks != null && current.impressions != null && current.impressions > 0)));
@@ -4352,22 +4382,31 @@ async function getKexoScore(options = {}) {
 
   for (const def of KEXO_SCORE_COMPONENTS) {
     if (def.adsOnly && !adsIntegrated) continue;
-    const score = componentScore(def.getCur(current), def.getPrev(previous), def.getPrev2(previous2), def.invert);
-    if (score == null) continue;
     const valueCur = def.getCur(current);
     const valuePrev = def.getPrev(previous) ?? null;
     const valuePrev2 = def.getPrev2(previous2) ?? null;
+    const chScore = changeScore(valueCur, valuePrev, valuePrev2, def.invert);
+    const lvlScore = levelScore(valueCur, def.key);
+    if (chScore == null && lvlScore == null) continue;
+    const wLevel = typeof def.wLevel === 'number' ? def.wLevel : 0.5;
+    const wChange = typeof def.wChange === 'number' ? def.wChange : 0.5;
+    const changePart = chScore != null ? chScore * wChange : 50 * wChange;
+    const levelPart = lvlScore != null ? lvlScore * wLevel : 50 * wLevel;
+    const score = Math.round((changePart + levelPart) * 10) / 10;
+    const clamped = Math.max(0, Math.min(100, score));
     components.push({
       key: def.key,
       label: def.label,
-      score: Math.max(0, Math.min(100, score)),
+      score: clamped,
+      levelScore: lvlScore != null ? Math.round(lvlScore * 10) / 10 : null,
+      changeScore: chScore != null ? Math.round(chScore * 10) / 10 : null,
       value: valueCur,
       previous: valuePrev,
       previous2: valuePrev2,
       weight: def.weight,
     });
     totalWeight += def.weight;
-    weightedSum += score * def.weight;
+    weightedSum += clamped * def.weight;
   }
 
   const finalScore = totalWeight > 0 ? Math.round((weightedSum / totalWeight) * 10) / 10 : 50;

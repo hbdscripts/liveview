@@ -26,7 +26,14 @@
           <div class="kexo-desktop-top-strip-right">
             <button type="button" class="kexo-header-score-btn" id="header-kexo-score-wrap" aria-label="Kexo Score, click for breakdown" title="Kexo Score">
               <div class="kexo-score-ring-wrap kexo-score-ring-wrap--header">
-                <div class="kexo-score-ring kexo-score-ring--header" id="header-kexo-score-ring" aria-hidden="true"></div>
+                <svg class="kexo-score-ring-svg kexo-score-ring-svg--header" id="header-kexo-score-ring" viewBox="0 0 40 40" aria-hidden="true">
+                  <circle class="kexo-score-ring-track" cx="20" cy="20" r="16" fill="none"/>
+                  <circle class="kexo-score-ring-fill kexo-score-ring-fill--1" cx="20" cy="20" r="16" fill="none"/>
+                  <circle class="kexo-score-ring-fill kexo-score-ring-fill--2" cx="20" cy="20" r="16" fill="none"/>
+                  <circle class="kexo-score-ring-fill kexo-score-ring-fill--3" cx="20" cy="20" r="16" fill="none"/>
+                  <circle class="kexo-score-ring-fill kexo-score-ring-fill--4" cx="20" cy="20" r="16" fill="none"/>
+                  <circle class="kexo-score-ring-fill kexo-score-ring-fill--5" cx="20" cy="20" r="16" fill="none"/>
+                </svg>
                 <div class="kexo-score-ring-center position-absolute top-50 start-50 translate-middle">
                   <span class="kexo-score-num kexo-score-num--header" id="header-kexo-score">&mdash;</span>
                 </div>
@@ -363,7 +370,7 @@
                   data-bs-custom-class="kexo-score-popover"
                   data-bs-content="Kexo Score is a weighted 0-100 health signal based on revenue, conversion rate, bounce rate, sessions, and ad metrics when connected. Higher scores mean stronger performance."
                   aria-label="What Kexo Score means">
-                  <i class="fa-light fa-circle-info" aria-hidden="true"></i>
+                  <i class="fa-jelly fa-question" data-icon-key="kexo-score-help" aria-hidden="true"></i>
                 </button>
               </div>
               <h3 class="kpi-compare-title">Score breakdown</h3>
@@ -372,7 +379,14 @@
           <div class="kpi-compare-modal-actions">
             <div class="kexo-score-modal-mini" id="kexo-score-modal-mini" aria-label="Current Kexo Score">
               <div class="kexo-score-ring-wrap kexo-score-ring-wrap--modal">
-                <div class="kexo-score-ring kexo-score-ring--modal" id="kexo-score-modal-ring" aria-hidden="true"></div>
+                <svg class="kexo-score-ring-svg kexo-score-ring-svg--modal" id="kexo-score-modal-ring" viewBox="0 0 40 40" aria-hidden="true">
+                  <circle class="kexo-score-ring-track" cx="20" cy="20" r="16" fill="none"/>
+                  <circle class="kexo-score-ring-fill kexo-score-ring-fill--1" cx="20" cy="20" r="16" fill="none"/>
+                  <circle class="kexo-score-ring-fill kexo-score-ring-fill--2" cx="20" cy="20" r="16" fill="none"/>
+                  <circle class="kexo-score-ring-fill kexo-score-ring-fill--3" cx="20" cy="20" r="16" fill="none"/>
+                  <circle class="kexo-score-ring-fill kexo-score-ring-fill--4" cx="20" cy="20" r="16" fill="none"/>
+                  <circle class="kexo-score-ring-fill kexo-score-ring-fill--5" cx="20" cy="20" r="16" fill="none"/>
+                </svg>
                 <div class="kexo-score-ring-center position-absolute top-50 start-50 translate-middle">
                   <span class="kexo-score-num kexo-score-num--modal" id="kexo-score-modal-score">&mdash;</span>
                 </div>

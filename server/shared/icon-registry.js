@@ -131,6 +131,7 @@ const ICON_GLYPH_DEFAULTS = Object.freeze({
   'kpi-compare-refresh': 'fa-rotate-right',
   'kpi-compare-close': 'fa-xmark',
   'kpi-compare-date-info': 'fa-circle-info',
+  'kexo-score-help': 'fa-jelly fa-question',
   'live-landing-entry': 'fa-circle-check',
   'live-landing-exit': 'fa-circle-check',
   'live-bought-overlay': 'fa-cart-shopping',

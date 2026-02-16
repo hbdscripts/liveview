@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-16 (Kexo Score tooltip reliability + ring spacing/size polish)
+Last updated: 2026-02-16 (Kexo Score SVG ring, level+change scoring, tooltip icon + click fix)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -380,9 +380,12 @@ Ops/reliability:
 ## Changelog (high-signal)
 
 2026-02-16 (latest)
-- Kexo Score tooltip + ring polish:
-  - Removed right margin from the header score ring and reduced perceived blur by removing the header score text shadow.
-  - Increased modal mini wheel size and score font so the in-modal score is easier to read.
+- Kexo Score SVG ring + scoring v2 + tooltips:
+  - Header and modal rings are now SVG (5 track + 5 fill segments, 4px stroke); dashboard big ring unchanged.
+  - Component score = levelScore (absolute health) + changeScore (signal+momentum); weights per metric (revenue/sessions change-only; conversion/bounce/ctr/roas level+change). API components include levelScore, changeScore for tooltips.
+  - Tooltip trigger: question icon (icon key `kexo-score-help`, configurable in Settings → Theme → Icons), no background; delegated click on modal body so per-metric popovers open reliably.
+  - Modal tooltip text shows Level · Change when available.
+- Earlier 2026-02-16: Kexo Score tooltip + ring polish (header margin, modal mini wheel size).
   - Switched score popovers to click-trigger + plain-text multiline content for more reliable interaction beside progress rows.
 
 2026-02-16 (latest)
