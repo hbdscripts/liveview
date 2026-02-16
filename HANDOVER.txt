@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-15 (Compliance drawer + lookup unification)
+Last updated: 2026-02-15 (settings loader locked off + preview runtime audio path)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -375,6 +375,12 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-15 (latest)
+- Settings loader + Sale Notification preview reliability:
+  - Settings page loader overlay is now hard-disabled across runtime + settings bootstrap + admin controls + API normalization (`server/public/app.js`, `server/public/settings-page.js`, `server/public/admin-page.js`, `server/routes/settings.js`, `server/routes/adminControls.js`).
+  - Admin Controls now shows Settings loader as locked off and does not persist it as configurable.
+  - Settings → Kexo UI → Sale Notification Preview now prefers runtime audio via `window.__kexoPreviewSaleSound` in `server/public/app.js` (same primed `saleAudio` path as live sale notifications), with fallback + visible failure messaging in `server/public/theme-settings.js`.
 
 2026-02-15 (latest)
 - Compliance drawer + Click & Order Lookup unification:

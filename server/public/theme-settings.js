@@ -2149,6 +2149,16 @@
         return;
       }
       try {
+        if (typeof window.__kexoPreviewSaleSound === 'function') {
+          var run = window.__kexoPreviewSaleSound(url);
+          if (run && typeof run.catch === 'function') {
+            run.catch(function (err) {
+              console.warn('[KEXO] Sale sound preview (runtime) failed', err);
+              setSaleMsgTemporary('Preview failed. Tap once then try again.', false, 2800);
+            });
+          }
+          return;
+        }
         var a = ensurePreviewAudio();
         if (!a) {
           setSaleMsgTemporary('Preview failed. Audio is unavailable.', false, 2600);

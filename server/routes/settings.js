@@ -1105,6 +1105,7 @@ function normalizePageLoaderEnabledV1(raw) {
     if (!Object.prototype.hasOwnProperty.call(pages, key)) continue;
     out.pages[key] = pages[key] === false ? false : true;
   }
+  out.pages.settings = false;
   out.pages.admin = false;
   return out;
 }

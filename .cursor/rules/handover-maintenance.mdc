@@ -26,3 +26,7 @@ This repo uses `HANDOVER.txt` as the canonical “current state” handover for 
 
 - Update the “Last updated” line and add a short entry under “Changelog”.
 - Prefer accurate, actionable notes over long explanations.
+
+## Sticky UX guardrail
+
+- The `settings` page must **never** show the page-body overlay loader. Treat this as locked off (not a configurable toggle) across frontend/runtime/admin controls/API normalization.

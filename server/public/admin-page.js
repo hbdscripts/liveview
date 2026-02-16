@@ -375,7 +375,8 @@
         ads: true,
         'compare-conversion-rate': true,
         'shipping-cr': true,
-        settings: true,
+        // Settings loader is locked off.
+        settings: false,
         upgrade: false,
         admin: false,
       },
@@ -394,6 +395,7 @@
       if (!Object.prototype.hasOwnProperty.call(pages, k)) return;
       out.pages[k] = pages[k] === false ? false : true;
     });
+    out.pages.settings = false;
     out.pages.admin = false;
     return out;
   }
@@ -416,8 +418,10 @@
       var key = el && el.getAttribute ? String(el.getAttribute('data-admin-loader-page') || '').trim().toLowerCase() : '';
       if (!key) return;
       if (key === 'admin') return;
+      if (key === 'settings') return;
       cfg.pages[key] = !!el.checked;
     });
+    cfg.pages.settings = false;
     cfg.pages.admin = false;
     pageLoaderEnabledDraft = cfg;
     return cfg;
@@ -430,6 +434,11 @@
       var key = el && el.getAttribute ? String(el.getAttribute('data-admin-loader-page') || '').trim().toLowerCase() : '';
       if (!key) return;
       var val = cfg.pages && Object.prototype.hasOwnProperty.call(cfg.pages, key) ? cfg.pages[key] : true;
+      if (key === 'settings') {
+        el.checked = false;
+        el.disabled = true;
+        return;
+      }
       el.checked = val !== false;
     });
   }

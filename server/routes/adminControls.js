@@ -30,7 +30,8 @@ function defaultPageLoaderEnabledV1() {
       ads: true,
       'compare-conversion-rate': true,
       'shipping-cr': true,
-      settings: true,
+      // Settings loader is intentionally locked off.
+      settings: false,
       upgrade: false,
       admin: false,
     },
@@ -55,6 +56,7 @@ function normalizePageLoaderEnabledV1(input) {
     if (!Object.prototype.hasOwnProperty.call(pages, key)) continue;
     out.pages[key] = pages[key] === false ? false : true;
   }
+  out.pages.settings = false;
   out.pages.admin = false;
   return out;
 }

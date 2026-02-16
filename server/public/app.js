@@ -49,8 +49,8 @@ const API = '';
           'compare-conversion-rate': true,
           'shipping-cr': true,
           'click-order-lookup': true,
-          // Settings should behave like other pages (configurable via Admin → Controls).
-          settings: true,
+          // Settings must never show the page overlay loader.
+          settings: false,
           // Upgrade page is a static marketing/TODO page; never show the overlay loader there.
           upgrade: false,
           // Admin must never show the overlay loader.
@@ -70,6 +70,7 @@ const API = '';
         if (!Object.prototype.hasOwnProperty.call(pages, key)) return;
         out.pages[key] = pages[key] === false ? false : true;
       });
+      out.pages.settings = false;
       out.pages.admin = false;
       return out;
     }
@@ -94,6 +95,7 @@ const API = '';
       var k = String(pageKey == null ? '' : pageKey).trim().toLowerCase();
       if (!k) k = String(PAGE || '').trim().toLowerCase();
       if (!k) return true;
+      if (k === 'settings') return false;
       if (k === 'admin') return false;
       var cfg = pageLoaderEnabledV1;
       var pages = cfg && cfg.pages && typeof cfg.pages === 'object' ? cfg.pages : null;

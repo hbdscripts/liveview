@@ -15,12 +15,8 @@
   } catch (_) {}
 
   function isSettingsPageLoaderEnabled() {
-    try {
-      if (typeof window.__kexoIsPageLoaderEnabled === 'function') {
-        return !!window.__kexoIsPageLoaderEnabled('settings');
-      }
-    } catch (_) {}
-    return true;
+    // Settings should never show the page overlay loader.
+    return false;
   }
 
   function getGlobalPageLoaderEls() {
