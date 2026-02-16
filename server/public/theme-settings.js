@@ -559,6 +559,7 @@
     if (key.indexOf('footer-') === 0) return 'Footer quick-action icon. Shows in the bottom action bar on all pages.';
     if (key.indexOf('side-panel-') === 0) return 'Session details side panel icon. Shows on /dashboard/live, /dashboard/sales, and /dashboard/table.';
     if (key.indexOf('kpi-compare-') === 0) return 'KPI compare modal icon. Shows on /dashboard/overview, /dashboard/live, /dashboard/sales, /dashboard/table, /insights/countries, /insights/products, /traffic/channels, /traffic/device, /integrations/google-ads, and /tools/ads.';
+    if (key === 'tools-click-order-lookup-search') return 'Search icon shown inside the Click & Order Lookup input on /tools/click-order-lookup.';
     if (key === 'live-landing-entry') return 'Live table entry icon. Shows in the Landing direction column on /dashboard/live.';
     if (key === 'live-landing-exit') return 'Live table exit icon. Shows in the Landing direction column on /dashboard/live.';
     if (key === 'live-bought-overlay') return 'Live table bought overlay icon. Shows in bought-state overlays on /dashboard/live.';
