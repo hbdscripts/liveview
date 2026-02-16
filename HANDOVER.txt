@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-16 (Snapshot zero-value cost rows fixed)
+Last updated: 2026-02-16 (Profit settings tabs: Google-only integrations)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -377,6 +377,11 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-16 (latest)
+- Snapshot Profit Settings tab layout tweak:
+  - In `server/public/insights/snapshot.html`, the Integrations tab now contains only the Google Ads spend toggle.
+  - Shopify app bills, transaction fees, and Klarna fee toggles were moved to the first Rules tab (page 1) under “Additional cost groups”.
 
 2026-02-16 (latest)
 - Snapshot breakdown zero-row rendering fix:
