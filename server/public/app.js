@@ -39,6 +39,7 @@ const API = '';
           live: true,
           sales: true,
           date: true,
+          snapshot: true,
           countries: true,
           products: true,
           variants: true,
@@ -1993,6 +1994,10 @@ const API = '';
     let saleSoundLastKey = '';
     let saleSoundLastAt = 0;
     const SALE_SOUND_DEDUPE_WINDOW_MS = 8000;
+    const SALE_TOAST_SEEN_STORAGE_KEY = 'kexo:sale-toast-seen:v1';
+    const SALE_TOAST_SEEN_KEY_MAX = 500;
+    let saleToastSeenKeys = new Set();
+    let saleToastSeenOrder = [];
     let saleToastActive = false;
     let saleToastToken = 0; // increments per toast trigger; prevents stale latest-sale fetch overwriting newer toasts
     let saleToastSessionId = null; // best-effort: session_id that opened the current toast (used to avoid double plays)
@@ -4915,6 +4920,149 @@ const API = '';
       }
     }
 
+    function normalizeSaleToastIdentityPart(v, maxLen = 256) {
+      if (v == null) return '';
+      const s = String(v).trim();
+      if (!s) return '';
+      const low = s.toLowerCase();
+      if (low === 'null' || low === 'undefined' || low === '[object object]') return '';
+      return s.length > maxLen ? s.slice(0, maxLen) : s;
+    }
+
+    function pushSaleToastIdentityKey(keys, key) {
+      const normalized = normalizeSaleToastIdentityPart(key, 384).toLowerCase();
+      if (!normalized) return;
+      if (keys.indexOf(normalized) >= 0) return;
+      keys.push(normalized);
+    }
+
+    function loadSaleToastSeenKeys() {
+      saleToastSeenKeys = new Set();
+      saleToastSeenOrder = [];
+      try {
+        const raw = localStorage.getItem(SALE_TOAST_SEEN_STORAGE_KEY);
+        if (!raw) return;
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed)) return;
+        parsed.slice(-SALE_TOAST_SEEN_KEY_MAX).forEach(function(entry) {
+          const key = normalizeSaleToastIdentityPart(entry, 384).toLowerCase();
+          if (!key || saleToastSeenKeys.has(key)) return;
+          saleToastSeenKeys.add(key);
+          saleToastSeenOrder.push(key);
+        });
+      } catch (_) {}
+    }
+
+    function saveSaleToastSeenKeys() {
+      try {
+        if (saleToastSeenOrder.length > SALE_TOAST_SEEN_KEY_MAX) {
+          saleToastSeenOrder = saleToastSeenOrder.slice(-SALE_TOAST_SEEN_KEY_MAX);
+          saleToastSeenKeys = new Set(saleToastSeenOrder);
+        }
+        localStorage.setItem(SALE_TOAST_SEEN_STORAGE_KEY, JSON.stringify(saleToastSeenOrder));
+      } catch (_) {}
+    }
+
+    function hasSeenSaleToastIdentity(keys) {
+      if (!Array.isArray(keys) || !keys.length) return false;
+      for (let i = 0; i < keys.length; i += 1) {
+        const key = normalizeSaleToastIdentityPart(keys[i], 384).toLowerCase();
+        if (!key) continue;
+        if (saleToastSeenKeys.has(key)) return true;
+      }
+      return false;
+    }
+
+    function rememberSaleToastIdentity(keys) {
+      if (!Array.isArray(keys) || !keys.length) return;
+      let changed = false;
+      keys.forEach(function(rawKey) {
+        const key = normalizeSaleToastIdentityPart(rawKey, 384).toLowerCase();
+        if (!key || saleToastSeenKeys.has(key)) return;
+        saleToastSeenKeys.add(key);
+        saleToastSeenOrder.push(key);
+        changed = true;
+      });
+      if (!changed) return;
+      if (saleToastSeenOrder.length > SALE_TOAST_SEEN_KEY_MAX) {
+        saleToastSeenOrder = saleToastSeenOrder.slice(-SALE_TOAST_SEEN_KEY_MAX);
+        saleToastSeenKeys = new Set(saleToastSeenOrder);
+      }
+      saveSaleToastSeenKeys();
+    }
+
+    function buildSaleToastIdentityKeys(opts) {
+      const inOpts = opts && typeof opts === 'object' ? opts : {};
+      const keys = [];
+      const explicit = normalizeSaleToastIdentityPart(inOpts.toastDedupeKey, 256);
+      if (explicit) pushSaleToastIdentityKey(keys, 'toast:' + explicit);
+      const soundKey = normalizeSaleToastIdentityPart(inOpts.soundDedupeKey, 256);
+      if (soundKey) pushSaleToastIdentityKey(keys, 'sound:' + soundKey);
+
+      const session = inOpts.session && typeof inOpts.session === 'object' ? inOpts.session : null;
+      if (session) {
+        const orderId = normalizeSaleToastIdentityPart(
+          session.order_id != null ? session.order_id : session.orderId,
+          64
+        );
+        const checkoutToken = normalizeSaleToastIdentityPart(
+          session.checkout_token != null ? session.checkout_token : session.checkoutToken,
+          128
+        );
+        const clickId = normalizeSaleToastIdentityPart(
+          session.session_id != null ? session.session_id : session.sessionId,
+          128
+        );
+        const purchasedAt = session.purchased_at != null
+          ? toMs(session.purchased_at)
+          : (session.purchasedAt != null ? toMs(session.purchasedAt) : null);
+        if (orderId) pushSaleToastIdentityKey(keys, 'order:' + orderId);
+        if (checkoutToken) pushSaleToastIdentityKey(keys, 'token:' + checkoutToken);
+        if (clickId) pushSaleToastIdentityKey(keys, 'click:' + clickId);
+        if (clickId && purchasedAt != null) pushSaleToastIdentityKey(keys, 'click-sale:' + clickId + ':' + String(purchasedAt));
+        if (purchasedAt != null) pushSaleToastIdentityKey(keys, 'sale-at:' + String(purchasedAt));
+      }
+
+      const latestSale = inOpts.latestSale && typeof inOpts.latestSale === 'object'
+        ? inOpts.latestSale
+        : (inOpts.sale && typeof inOpts.sale === 'object' ? inOpts.sale : null);
+      if (latestSale) {
+        const orderId = normalizeSaleToastIdentityPart(
+          latestSale.orderId != null ? latestSale.orderId : latestSale.order_id,
+          64
+        );
+        const checkoutToken = normalizeSaleToastIdentityPart(
+          latestSale.checkoutToken != null ? latestSale.checkoutToken : latestSale.checkout_token,
+          128
+        );
+        const clickId = normalizeSaleToastIdentityPart(
+          latestSale.sessionId != null ? latestSale.sessionId : latestSale.session_id,
+          128
+        );
+        const createdAt = latestSale.createdAt != null
+          ? toMs(latestSale.createdAt)
+          : (latestSale.created_at != null ? toMs(latestSale.created_at) : null);
+        if (orderId) pushSaleToastIdentityKey(keys, 'order:' + orderId);
+        if (checkoutToken) pushSaleToastIdentityKey(keys, 'token:' + checkoutToken);
+        if (clickId) pushSaleToastIdentityKey(keys, 'click:' + clickId);
+        if (createdAt != null) pushSaleToastIdentityKey(keys, 'sale-at:' + String(createdAt));
+      }
+
+      const payload = inOpts.payload && typeof inOpts.payload === 'object' ? inOpts.payload : null;
+      if (payload) {
+        const createdAt = payload.createdAt != null
+          ? toMs(payload.createdAt)
+          : (payload.created_at != null ? toMs(payload.created_at) : null);
+        if (createdAt != null) pushSaleToastIdentityKey(keys, 'sale-at:' + String(createdAt));
+      }
+
+      return keys;
+    }
+
+    (function initSaleToastIdentityStore() {
+      loadSaleToastSeenKeys();
+    })();
+
     function buildSaleSoundDedupeKey(opts) {
       const inOpts = opts && typeof opts === 'object' ? opts : {};
       const explicit = inOpts.soundDedupeKey != null ? String(inOpts.soundDedupeKey).trim() : '';
@@ -4977,10 +5125,20 @@ const API = '';
       const payload = opts.payload || null;
       const skipLatest = !!opts.skipLatest;
       const persist = !!opts.persist;
+      const allowReplay = !!opts.allowReplay;
+      const latestSale = opts.latestSale && typeof opts.latestSale === 'object' ? opts.latestSale : null;
+      const identityKeys = buildSaleToastIdentityKeys(opts);
+      if (!allowReplay) {
+        // Guardrail: automatic notifications must carry a stable identity, otherwise we risk duplicates.
+        if (!identityKeys.length) return;
+        if (hasSeenSaleToastIdentity(identityKeys)) return;
+        rememberSaleToastIdentity(identityKeys);
+      }
       const toastToken = ++saleToastToken; // newest toast wins
       saleToastLastPayload = null;
       saleToastSessionId = session && session.session_id != null ? String(session.session_id) : null;
       saleToastLastOrderId = null;
+      if (latestSale && latestSale.orderId != null) saleToastLastOrderId = String(latestSale.orderId);
       if (persist) {
         saleToastPinned = true;
         updateSaleToastToggle();
@@ -5037,6 +5195,9 @@ const API = '';
         if (!sale) return;
         if (toastToken !== saleToastToken) return; // stale fetch (a newer sale toast is showing)
         if (!saleToastActive) return;
+        if (!allowReplay) {
+          try { rememberSaleToastIdentity(buildSaleToastIdentityKeys({ latestSale: sale })); } catch (_) {}
+        }
         const orderId = sale.orderId != null ? String(sale.orderId) : '';
         if (orderId) saleToastLastOrderId = orderId;
         const cc = sale.countryCode ? String(sale.countryCode).toUpperCase().slice(0, 2) : 'XX';
@@ -5078,7 +5239,7 @@ const API = '';
       const placeholder = { countryCode: 'XX', productTitle: 'Loading\u2026', amountGbp: null, productHandle: '', productThumbUrl: '', createdAt: null };
       const payload = hasCache ? cached : placeholder;
       // Show banner immediately (no wait for API), then refresh when fetch completes.
-      triggerSaleToast({ origin: 'manual', payload: payload, playSound: true, skipLatest: true, persist: keep });
+      triggerSaleToast({ origin: 'manual', payload: payload, playSound: true, skipLatest: true, persist: keep, allowReplay: true });
       fetchLatestSaleForToast({ forceNew: true }).then(function(sale) {
         const next = buildSaleToastPayloadFromSale(sale);
         if (!next) return;
@@ -7947,7 +8108,21 @@ const API = '';
 
       const increased = hasSeenConvertedCountToday && conv.today > lastConvertedCountToday;
       if (increased) {
-        triggerSaleToast({ origin: 'stats', playSound: true, soundDedupeKey: 'stats:today:' + String(conv.today) });
+        const statsTodayKey = 'stats:today:' + String(conv.today);
+        fetchLatestSaleForToast({ forceNew: true })
+          .then(function(sale) {
+            if (!sale) return;
+            triggerSaleToast({
+              origin: 'stats',
+              playSound: true,
+              soundDedupeKey: statsTodayKey,
+              toastDedupeKey: statsTodayKey,
+              latestSale: sale,
+              payload: buildSaleToastPayloadFromSale(sale),
+              skipLatest: true,
+            });
+          })
+          .catch(function() {});
         // Keep Home tables in sync when a toast fires outside SSE (Today/Sales/Live).
         if (activeMainTab === 'spy' && (dateRange === 'today' || dateRange === 'sales' || dateRange === 'live' || dateRange === '1h')) {
           try { fetchSessions(); } catch (_) {}
@@ -12747,7 +12922,7 @@ const API = '';
         ['Referrer / Entry', cfSection('Referrer', s.referrer) + cfSection('Entry URL', s.entry_url)],
         ['Colo / ASN', cfSection('Colo', s.cf_colo) + cfSection('ASN', s.cf_asn)],
         ['Bot', cfSection('Known bot', s.cf_known_bot != null ? (s.cf_known_bot === 1 ? 'Yes' : 'No') : null) + cfSection('Verified bot category', s.cf_verified_bot_category)],
-        ['City', cfSection('City', null)]
+        ['City', cfSection('City', s.cf_city || s.city || null)]
       ];
       return blocks.map(function (b) { return '<div class="side-panel-cf-block"><div class="side-panel-cf-subtitle">' + escapeHtml(b[0]) + '</div>' + b[1] + '</div>'; }).join('');
     }
@@ -13204,7 +13379,9 @@ const API = '';
       document.getElementById('side-events').innerHTML = '<li class="muted">Loading\u2026</li>';
       document.getElementById('side-meta').innerHTML = '<div class="side-panel-detail-row"><span class="side-panel-value muted">Loading\u2026</span></div>';
       const sideSourceEl = document.getElementById('side-source');
-      if (sideSourceEl) sideSourceEl.textContent = '';
+      if (sideSourceEl) sideSourceEl.innerHTML = '';
+      const rowIconsEl = document.getElementById('side-row-icons');
+      if (rowIconsEl) rowIconsEl.innerHTML = '';
       document.getElementById('side-cf').innerHTML = '';
       (function fetchLookupBundle() {
         var shop = '';
@@ -13224,6 +13401,22 @@ const API = '';
 
             var session = payload.session && typeof payload.session === 'object' ? payload.session : {};
             var events = Array.isArray(payload.events) ? payload.events : [];
+
+            try {
+              if (rowIconsEl) {
+                var cc = (session && (session.country_code || session.cf_country)) ? String(session.country_code || session.cf_country) : 'XX';
+                var flag = flagImg(cc, cc);
+                var src = '';
+                var dev = '';
+                try { src = sourceCell(session) || ''; } catch (_) { src = ''; }
+                try { dev = deviceCell(session) || ''; } catch (_) { dev = ''; }
+                var parts = [];
+                parts.push('<span class="side-panel-row-icon" title="Country">' + flag + '</span>');
+                if (src) parts.push('<span class="side-panel-row-icon" title="Channel">' + src + '</span>');
+                if (dev) parts.push('<span class="side-panel-row-icon" title="Device">' + dev + '</span>');
+                rowIconsEl.innerHTML = parts.join('');
+              }
+            } catch (_) {}
 
             // Activity (newest-first), with og thumbs (same UX as legacy drawer).
             try {
@@ -13254,7 +13447,17 @@ const API = '';
               }
             } catch (_) {}
 
-            try { if (sideSourceEl) sideSourceEl.textContent = sourceDetailForPanel(session); } catch (_) {}
+            try {
+              if (sideSourceEl) {
+                var srcText = sourceDetailForPanel(session);
+                var entryUrl = session && session.entry_url != null ? String(session.entry_url).trim() : '';
+                var html = '<div class="side-panel-source-text">' + escapeHtml(String(srcText || '—')).replace(/\n/g, '<br>') + '</div>';
+                if (entryUrl) {
+                  html += '<div class="side-panel-source-actions"><a href="#" class="kexo-copy-link" data-kexo-copy="' + escapeHtml(entryUrl) + '">Copy Entry URL</a></div>';
+                }
+                sideSourceEl.innerHTML = html;
+              }
+            } catch (_) {}
             try { document.getElementById('side-cf').innerHTML = buildSidePanelCf(session); } catch (_) {}
           })
           .catch(function () {
@@ -14754,1562 +14957,6 @@ const API = '';
       });
     })();
 
-    (function initBusinessSnapshotModal() {
-      if (window.__businessSnapshotModalInit) return;
-      window.__businessSnapshotModalInit = true;
-
-      const openBtn = document.getElementById('kexo-business-snapshot-btn');
-      if (!openBtn) return;
-
-      let snapshotModal = null;
-      let rulesModal = null;
-      let selectedYear = String((new Date()).getFullYear());
-      let rulesDraft = null;
-      let editingRuleId = '';
-      let snapshotLoading = false;
-      let snapshotRequestSeq = 0;
-      let snapshotActiveRequest = 0;
-      let backdropEl = null;
-      let backdropCount = 0;
-      const SNAPSHOT_CLIENT_CACHE_TTL_MS = 10 * 60 * 1000;
-      const SNAPSHOT_LTV_DECORATIVE_ARC_PCT = 78;
-      const snapshotClientCache = new Map(); // key -> { data, fetchedAt }
-
-      function snapshotCacheKey(year) {
-        return 'yearly:' + String(year || getCurrentYearString());
-      }
-
-      function getCachedSnapshot(year) {
-        const key = snapshotCacheKey(year);
-        const cached = snapshotClientCache.get(key);
-        if (!cached) return null;
-        const age = Date.now() - Number(cached.fetchedAt || 0);
-        if (!Number.isFinite(age) || age < 0 || age > SNAPSHOT_CLIENT_CACHE_TTL_MS) {
-          snapshotClientCache.delete(key);
-          return null;
-        }
-        return cached.data || null;
-      }
-
-      function setCachedSnapshot(year, data) {
-        if (!data || data.ok !== true) return;
-        const key = snapshotCacheKey(year);
-        snapshotClientCache.set(key, { data, fetchedAt: Date.now() });
-        if (snapshotClientCache.size > 6) {
-          const keys = Array.from(snapshotClientCache.keys());
-          while (snapshotClientCache.size > 6) snapshotClientCache.delete(keys.shift());
-        }
-      }
-
-      function isIsoCountryCode(code) {
-        return /^[A-Z]{2}$/.test(String(code || '').trim().toUpperCase());
-      }
-
-      function normalizeCountryCode(code) {
-        const raw = String(code || '').trim().toUpperCase().slice(0, 2);
-        if (!raw) return '';
-        const fixed = raw === 'UK' ? 'GB' : raw;
-        return isIsoCountryCode(fixed) ? fixed : '';
-      }
-
-      function createRuleId() {
-        return 'rule_' + Date.now() + '_' + Math.floor(Math.random() * 100000);
-      }
-
-      function modalVisible(el) {
-        return !!(el && el.classList && el.classList.contains('show') && el.getAttribute('aria-hidden') !== 'true');
-      }
-
-      function updateBodyModalOpenClass() {
-        const anyOpen = modalVisible(snapshotModal) || modalVisible(rulesModal);
-        document.body.classList.toggle('modal-open', anyOpen);
-      }
-
-      function ensureBackdrop() {
-        if (backdropEl && backdropEl.parentNode) return backdropEl;
-        const el = document.createElement('div');
-        el.className = 'modal-backdrop fade show business-snapshot-backdrop';
-        el.setAttribute('aria-hidden', 'true');
-        el.addEventListener('click', function () {
-          try {
-            if (modalVisible(rulesModal)) closeModal(rulesModal);
-            else if (modalVisible(snapshotModal)) closeModal(snapshotModal);
-          } catch (_) {}
-        });
-        document.body.appendChild(el);
-        backdropEl = el;
-        return el;
-      }
-
-      function updateBackdrop() {
-        const anyOpen = modalVisible(snapshotModal) || modalVisible(rulesModal);
-        if (!anyOpen) {
-          try { backdropEl && backdropEl.remove && backdropEl.remove(); } catch (_) {}
-          backdropEl = null;
-          backdropCount = 0;
-          return;
-        }
-        const el = ensureBackdrop();
-        try { el.classList.toggle('is-dark', modalVisible(rulesModal)); } catch (_) {}
-      }
-
-      function openModal(el) {
-        if (!el) return;
-        backdropCount += 1;
-        el.style.display = 'block';
-        el.classList.add('show');
-        el.setAttribute('aria-hidden', 'false');
-        updateBodyModalOpenClass();
-        updateBackdrop();
-      }
-
-      function closeModal(el) {
-        if (!el) return;
-        el.classList.remove('show');
-        el.setAttribute('aria-hidden', 'true');
-        el.style.display = 'none';
-        try { if (el === snapshotModal) destroySnapshotCharts(); } catch (_) {}
-        backdropCount = Math.max(0, backdropCount - 1);
-        updateBodyModalOpenClass();
-        updateBackdrop();
-      }
-
-      function fmtCurrency(value) {
-        const n = value == null ? null : Number(value);
-        if (n == null || !Number.isFinite(n)) return 'Unavailable';
-        return formatRevenue(n) || 'Unavailable';
-      }
-
-      function fmtCurrencyCompact(value) {
-        const n = value == null ? null : Number(value);
-        if (n == null || !Number.isFinite(n)) return 'Unavailable';
-        const abs = Math.abs(n);
-        if (abs >= 1000000) {
-          const mil = Math.round((n / 1000000) * 10) / 10;
-          return '\u00A3' + String(mil).replace(/\.0$/, '') + 'M';
-        }
-        if (abs >= 1000) return '\u00A3' + Math.round(n / 1000) + 'K';
-        return formatRevenue0(n) || 'Unavailable';
-      }
-
-      function fmtCount(value) {
-        const n = value == null ? null : Number(value);
-        if (n == null || !Number.isFinite(n)) return 'Unavailable';
-        return formatSessions(Math.round(n));
-      }
-
-      function fmtPercent(value) {
-        const n = value == null ? null : Number(value);
-        if (n == null || !Number.isFinite(n)) return 'Unavailable';
-        return n.toFixed(1).replace(/\.0$/, '') + '%';
-      }
-
-      function getCurrentYearString() {
-        return String((new Date()).getFullYear());
-      }
-
-      function deltaInfo(current, previous, opts) {
-        const options = opts && typeof opts === 'object' ? opts : {};
-        const noDataText = String(options.noDataText || 'No data');
-        const cur = current == null ? null : Number(current);
-        const prev = previous == null ? null : Number(previous);
-        if (cur == null || !Number.isFinite(cur)) {
-          return { dir: 'flat', pct: null, short: noDataText, text: noDataText, noData: true };
-        }
-        if (prev == null || !Number.isFinite(prev)) {
-          return { dir: 'flat', pct: null, short: noDataText, text: noDataText, noData: true };
-        }
-        if (prev === 0) {
-          if (cur === 0) return { dir: 'flat', pct: 0, short: '0%', text: '0%' };
-          return { dir: cur > 0 ? 'up' : 'down', pct: null, short: noDataText, text: noDataText, noData: true };
-        }
-        const pct = ((cur - prev) / Math.abs(prev)) * 100;
-        if (!Number.isFinite(pct)) {
-          return { dir: 'flat', pct: null, short: noDataText, text: noDataText, noData: true };
-        }
-        const rounded = Math.round(pct * 10) / 10;
-        const dir = Math.abs(rounded) <= KPI_STABLE_PCT ? 'flat' : (rounded > 0 ? 'up' : 'down');
-        const sign = rounded > 0 ? '+' : '';
-        const short = sign + rounded.toFixed(1).replace(/\.0$/, '') + '%';
-        return {
-          dir,
-          pct: rounded,
-          short,
-          text: short,
-        };
-      }
-
-      function deltaIconKey(dir) {
-        if (dir === 'up') return 'dash-kpi-delta-up';
-        if (dir === 'down') return 'dash-kpi-delta-down';
-        return 'dash-kpi-delta-flat';
-      }
-
-      function deltaHtml(delta, opts) {
-        if (!delta || !delta.short) return '';
-        const options = opts && typeof opts === 'object' ? opts : {};
-        const dir = delta.dir === 'up' ? 'up' : (delta.dir === 'down' ? 'down' : 'flat');
-        const bundle = getChartsKpiBundle('yearlySnapshot');
-        const deltaStyle = bundle.deltaStyle || defaultChartsKpiDeltaStyle('yearlySnapshot');
-        const tone = chartsKpiToneColor('yearlySnapshot', dir);
-        const textColor = deltaStyle.fontColor || tone;
-        const iconColor = deltaStyle.iconColor || tone;
-        const iconKey = deltaIconKey(dir);
-        const cls = dir === 'up' ? 'is-up' : (dir === 'down' ? 'is-down' : 'is-flat');
-        const iconCls = delta.noData
-          ? 'fa-circle-info'
-          : (dir === 'up' ? 'fa-arrow-trend-up' : (dir === 'down' ? 'fa-arrow-trend-down' : 'fa-minus'));
-        const wrapClass = options.compact ? 'business-snapshot-delta-inline' : 'business-snapshot-card-delta';
-        const titleText = delta.noData ? 'No data for this period' : 'vs previous period';
-        const wrapStyle = 'font-size:' + String(deltaStyle.fontSize) + 'px;font-weight:' + String(deltaStyle.fontWeight) + ';color:' + String(textColor) + ';';
-        const iconStyle = 'font-size:' + String(deltaStyle.iconSize) + 'px;color:' + String(iconColor) + ';';
-        return '' +
-          '<div class="' + wrapClass + ' business-snapshot-delta ' + cls + '" title="' + escapeHtml(titleText) + '" style="' + escapeHtml(wrapStyle) + '">' +
-            '<i class="fa-light ' + iconCls + '" data-icon-key="' + escapeHtml(iconKey) + '" aria-hidden="true" style="' + escapeHtml(iconStyle) + '"></i>' +
-            '<span class="business-snapshot-delta-text">' + escapeHtml(delta.short) + '</span>' +
-          '</div>';
-      }
-
-      function metricInfoIconHtml(label, currentLabel, currentText, previousLabel, previousText, previousHasData) {
-        const safeLabel = escapeHtml(String(label || 'Metric'));
-        const safeCurrentLabel = escapeHtml(String(currentLabel || 'Current period'));
-        const safeCurrentText = escapeHtml(String(currentText || 'Unavailable'));
-        const safePreviousLabel = escapeHtml(String(previousLabel || 'Previous period'));
-        const safePreviousText = previousHasData
-          ? escapeHtml(String(previousText || 'Unavailable'))
-          : 'No data for this period';
-        const tooltipHtml = '' +
-          '<div class="business-snapshot-cost-rows">' +
-            '<div class="business-snapshot-cost-row"><span>' + safeCurrentLabel + '</span><span>' + safeCurrentText + '</span></div>' +
-            '<div class="business-snapshot-cost-row"><span>' + safePreviousLabel + '</span><span>' + safePreviousText + '</span></div>' +
-          '</div>';
-        return '' +
-          '<span class="business-snapshot-info" tabindex="0" role="button" aria-label="' + safeLabel + ' validation">' +
-            '<i class="fa-light fa-circle-info" aria-hidden="true"></i>' +
-            '<div class="business-snapshot-info-popover" role="tooltip">' + tooltipHtml + '</div>' +
-          '</span>';
-      }
-
-      let snapshotCharts = {};
-      let snapshotChartsSeq = 0;
-      let snapshotApexLoading = false;
-      let snapshotApexWaiters = [];
-
-      function ensureSnapshotApexCharts(cb) {
-        if (typeof ApexCharts !== 'undefined') { cb(); return; }
-        snapshotApexWaiters.push(cb);
-        if (snapshotApexLoading) return;
-        snapshotApexLoading = true;
-        try {
-          const s = document.createElement('script');
-          s.src = 'https://cdn.jsdelivr.net/npm/apexcharts@4.7.0/dist/apexcharts.min.js';
-          s.defer = true;
-          s.onload = function () {
-            snapshotApexLoading = false;
-            const q = snapshotApexWaiters.slice();
-            snapshotApexWaiters = [];
-            q.forEach(function (fn) { try { fn(); } catch (_) {} });
-          };
-          s.onerror = function () { snapshotApexLoading = false; snapshotApexWaiters = []; };
-          document.head.appendChild(s);
-        } catch (_) {
-          snapshotApexLoading = false;
-          snapshotApexWaiters = [];
-        }
-      }
-
-      function destroySnapshotCharts() {
-        try {
-          Object.keys(snapshotCharts || {}).forEach(function (k) {
-            const ch = snapshotCharts[k];
-            if (!ch) return;
-            try { ch.destroy(); } catch (_) {}
-          });
-        } catch (_) {}
-        snapshotCharts = {};
-      }
-
-      function snapshotPrimaryColor() {
-        try {
-          const rgb = getComputedStyle(document.documentElement).getPropertyValue('--tblr-primary-rgb').trim() || '32,107,196';
-          return 'rgb(' + rgb + ')';
-        } catch (_) {
-          return '#206bc4';
-        }
-      }
-
-      function normalizeSeriesNumbers(dataArr) {
-        const src = Array.isArray(dataArr) ? dataArr : [];
-        const nums = src.map(function (v) {
-          if (v == null) return null;
-          const n = (typeof v === 'number') ? v : Number(v);
-          return (typeof n === 'number' && isFinite(n)) ? n : null;
-        });
-        // Apex sparkline dislikes 1-point series.
-        if (nums.length === 1) return [nums[0], nums[0]];
-        return nums;
-      }
-
-      function renderSnapshotSparkline(elId, dataArr, opts) {
-        if (typeof ApexCharts === 'undefined') return;
-        const el = document.getElementById(elId);
-        if (!el) return;
-        const options = opts && typeof opts === 'object' ? opts : {};
-        const bundle = getChartsKpiBundle('yearlySnapshot');
-        const sparkCfg = bundle.sparkline || defaultChartsKpiSparklineConfig('yearlySnapshot');
-        let chartType = String(options.type || sparkCfg.mode || 'line').toLowerCase();
-        if (chartType !== 'line' && chartType !== 'area' && chartType !== 'bar') chartType = 'line';
-        const color = options.color || snapshotPrimaryColor();
-        const height = Number.isFinite(Number(options.height))
-          ? Number(options.height)
-          : (Number.isFinite(Number(sparkCfg.height)) ? Number(sparkCfg.height) : 56);
-        let curve = String(sparkCfg.curve || 'smooth').toLowerCase();
-        if (curve !== 'smooth' && curve !== 'straight' && curve !== 'stepline') curve = 'smooth';
-        if (chartType === 'bar') curve = 'straight';
-        const strokeWidth = Number.isFinite(Number(sparkCfg.strokeWidth)) ? Number(sparkCfg.strokeWidth) : 2.55;
-
-        let nums = normalizeSeriesNumbers(dataArr);
-        if (!nums.length) return;
-        // Replace nulls with 0 for smooth sparklines.
-        nums = nums.map(function (v) { return v == null ? 0 : v; });
-
-        // Destroy any existing instance for this element.
-        if (snapshotCharts[elId]) { try { snapshotCharts[elId].destroy(); } catch (_) {} }
-        el.innerHTML = '';
-        const animationSpeed = Number.isFinite(Number(options.animationSpeed)) ? Number(options.animationSpeed) : 520;
-
-        const base = {
-          chart: {
-            type: chartType,
-            height: height,
-            sparkline: { enabled: true },
-            animations: {
-              enabled: true,
-              easing: 'easeinout',
-              speed: animationSpeed,
-              animateGradually: { enabled: true, delay: 45 },
-              dynamicAnimation: { enabled: true, speed: 280 },
-            },
-          },
-          series: [{ name: 'Trend', data: nums }],
-          colors: [color],
-          tooltip: { enabled: false },
-          grid: { padding: { top: 0, right: 0, bottom: -3, left: 0 } },
-          dataLabels: { enabled: false },
-        };
-
-        const apexOpts = Object.assign({}, base, {
-          stroke: { show: true, width: chartType === 'bar' ? 0 : strokeWidth, curve: curve, lineCap: 'round' },
-          // ApexCharts 4.x can hide line strokes when fill opacity is 0.
-          fill: chartType === 'area'
-            ? { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.26, opacityTo: 0.04, stops: [0, 100] } }
-            : { type: 'solid', opacity: 1 },
-          plotOptions: chartType === 'bar' ? { bar: { columnWidth: '55%', borderRadius: 2 } } : {},
-          markers: { size: 0 },
-        });
-        try {
-          const override = sparkCfg.advancedApexOverride;
-          if (isPlainObject(override) && Object.keys(override).length) {
-            deepMergeOptions(apexOpts, override);
-          }
-        } catch (_) {}
-
-        function doRender() {
-          try {
-            const chart = new ApexCharts(el, apexOpts);
-            chart.render();
-            snapshotCharts[elId] = chart;
-          } catch (_) {}
-        }
-        if (typeof window.kexoWaitForContainerDimensions === 'function') {
-          window.kexoWaitForContainerDimensions(el, doRender);
-        } else { doRender(); }
-      }
-
-      function renderSnapshotRadial(elId, pct, opts) {
-        if (typeof ApexCharts === 'undefined') return;
-        const el = document.getElementById(elId);
-        if (!el) return;
-        const options = opts && typeof opts === 'object' ? opts : {};
-        const color = options.color || snapshotPrimaryColor();
-        const height = Number.isFinite(Number(options.height)) ? Number(options.height) : 72;
-        const showValue = options.showValue !== false;
-        const startAngle = Number.isFinite(Number(options.startAngle)) ? Number(options.startAngle) : -90;
-        const endAngle = Number.isFinite(Number(options.endAngle)) ? Number(options.endAngle) : 90;
-        const v = (typeof pct === 'number') ? pct : Number(pct);
-        if (!isFinite(v)) return;
-        const clamped = Math.max(0, Math.min(100, v));
-
-        if (snapshotCharts[elId]) { try { snapshotCharts[elId].destroy(); } catch (_) {} }
-        el.innerHTML = '';
-
-        try {
-          const chart = new ApexCharts(el, {
-            chart: {
-              type: 'radialBar',
-              height: height,
-              sparkline: { enabled: true },
-              animations: {
-                enabled: true,
-                easing: 'easeinout',
-                speed: 620,
-                animateGradually: { enabled: true, delay: 60 },
-                dynamicAnimation: { enabled: true, speed: 360 },
-              },
-            },
-            series: [clamped],
-            colors: [color],
-            plotOptions: {
-              radialBar: {
-                startAngle: startAngle,
-                endAngle: endAngle,
-                hollow: { size: '62%' },
-                track: { background: 'rgba(24,36,51,0.12)' },
-                dataLabels: {
-                  name: { show: false },
-                  value: {
-                    show: showValue,
-                    fontSize: '12px',
-                    fontWeight: 500,
-                    formatter: function (val) { return Math.round(val) + '%'; },
-                    offsetY: 4,
-                  }
-                },
-              }
-            },
-            stroke: { lineCap: 'round' },
-            tooltip: { enabled: false },
-          });
-          chart.render();
-          snapshotCharts[elId] = chart;
-        } catch (_) {}
-      }
-
-      function renderSnapshotCharts(data, seq) {
-        const payload = data && typeof data === 'object' ? data : {};
-        const series = payload.series && typeof payload.series === 'object' ? payload.series : {};
-        const labelsYmd = Array.isArray(series.labelsYmd) ? series.labelsYmd : [];
-        const revenue = Array.isArray(series.revenueGbp) ? series.revenueGbp : [];
-        const cost = Array.isArray(series.costGbp) ? series.costGbp : [];
-        const orders = Array.isArray(series.orders) ? series.orders : [];
-        const sessions = Array.isArray(series.sessions) ? series.sessions : [];
-        const conv = Array.isArray(series.conversionRate) ? series.conversionRate : [];
-        const aov = Array.isArray(series.aov) ? series.aov : [];
-
-        const f = payload.financial || {};
-        const perf = payload.performance || {};
-        const c = payload.customers || {};
-        const profit = f.profit || {};
-
-        const marginPct = profit && profit.marginPct && Number.isFinite(Number(profit.marginPct.value)) ? Number(profit.marginPct.value) : null;
-        const estProfitVal = profit && profit.estimatedProfit && Number.isFinite(Number(profit.estimatedProfit.value)) ? Number(profit.estimatedProfit.value) : null;
-        const netProfitVal = profit && profit.netProfit && Number.isFinite(Number(profit.netProfit.value)) ? Number(profit.netProfit.value) : null;
-        const deductionsVal = profit && profit.deductions && Number.isFinite(Number(profit.deductions.value)) ? Number(profit.deductions.value) : null;
-        const revenueVal = f.revenue && Number.isFinite(Number(f.revenue.value)) ? Number(f.revenue.value) : null;
-        const estRatio = (Number.isFinite(estProfitVal) && Number.isFinite(revenueVal) && revenueVal > 0) ? (estProfitVal / revenueVal) : null;
-        const netRatio = (Number.isFinite(netProfitVal) && Number.isFinite(revenueVal) && revenueVal > 0) ? (netProfitVal / revenueVal) : null;
-        const estSeries = (Number.isFinite(estRatio) && revenue.length) ? revenue.map(function (v) { const n = Number(v); return Number.isFinite(n) ? n * estRatio : 0; }) : [];
-        const netSeries = (Number.isFinite(netRatio) && revenue.length) ? revenue.map(function (v) { const n = Number(v); return Number.isFinite(n) ? n * netRatio : 0; }) : [];
-        const deductionsSeries = (estSeries.length && revenue.length === estSeries.length) ? revenue.map(function (v, i) {
-          const r = Number(v);
-          const p = Number(estSeries[i]);
-          if (!Number.isFinite(r) || !Number.isFinite(p)) return 0;
-          return Math.max(0, r - p);
-        }) : [];
-
-        function snapshotTrendColor(dir) {
-          return chartsKpiToneColor('yearlySnapshot', dir);
-        }
-
-        function trendColorForDelta(delta) {
-          const d = delta && delta.dir ? String(delta.dir) : 'flat';
-          return snapshotTrendColor(d);
-        }
-
-        function sparkLine(id, dataArr, delta) {
-          renderSnapshotSparkline(id, dataArr, { type: 'line', color: trendColorForDelta(delta), height: 56 });
-        }
-
-        function ensureIsoCategories(labels) {
-          const src = Array.isArray(labels) ? labels : [];
-          const cats = src.map(function (ymd) {
-            const d = String(ymd || '').slice(0, 10);
-            if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return null;
-            return d + 'T00:00:00.000Z';
-          }).filter(Boolean);
-          if (cats.length === 1) {
-            // ApexCharts doesn't love a single-point datetime category set.
-            try {
-              const t = Date.parse(cats[0]);
-              if (Number.isFinite(t)) {
-                cats.push(new Date(t + 24 * 60 * 60 * 1000).toISOString());
-              } else {
-                cats.push(cats[0]);
-              }
-            } catch (_) {
-              cats.push(cats[0]);
-            }
-          }
-          return cats;
-        }
-
-        function expandToCategoriesLen(arr, targetLen) {
-          const src = Array.isArray(arr) ? arr : [];
-          if (src.length === targetLen) return src;
-          if (!src.length) return Array(targetLen).fill(0);
-          if (src.length === 1 && targetLen >= 2) return Array(targetLen).fill(src[0]);
-          // Best-effort: pad/truncate.
-          const out = src.slice(0, targetLen);
-          while (out.length < targetLen) out.push(out[out.length - 1]);
-          return out;
-        }
-
-        function renderSnapshotRevenueCostChart(elId, labels, revenueArr, costArr) {
-          if (typeof ApexCharts === 'undefined') return;
-          const el = document.getElementById(elId);
-          if (!el) return;
-          const revNums = (normalizeSeriesNumbers(revenueArr) || []).map(function (v) { return v == null ? 0 : v; });
-          const costNums = (normalizeSeriesNumbers(costArr) || []).map(function (v) { return v == null ? 0 : v; });
-          let categories = ensureIsoCategories(labels);
-          let xaxisType = 'datetime';
-          if (!categories.length) {
-            const fallbackLen = Math.max(revNums.length, costNums.length);
-            categories = Array.from({ length: fallbackLen }, function (_, idx) { return 'P' + String(idx + 1); });
-            xaxisType = 'category';
-          }
-          if (!categories.length) return;
-          const rev = expandToCategoriesLen(revNums, categories.length);
-          const cst = expandToCategoriesLen(costNums, categories.length);
-
-          if (snapshotCharts[elId]) { try { snapshotCharts[elId].destroy(); } catch (_) {} }
-          el.innerHTML = '';
-
-          function doRender() {
-            try {
-              const revenueColor = snapshotTrendColor('up');
-              const costColor = snapshotTrendColor('down');
-              const chart = new ApexCharts(el, {
-                series: [
-                  { name: 'Revenue', data: rev },
-                  { name: 'Cost', data: cst },
-                ],
-                chart: {
-                  height: 320,
-                  type: 'area',
-                  animations: {
-                    enabled: true,
-                    easing: 'easeinout',
-                    speed: 700,
-                    animateGradually: { enabled: true, delay: 90 },
-                    dynamicAnimation: { enabled: true, speed: 360 },
-                  },
-                  toolbar: { show: false },
-                },
-                colors: [revenueColor, costColor],
-                dataLabels: { enabled: false },
-                stroke: { show: true, curve: 'smooth', width: 2.6, lineCap: 'round' },
-                fill: {
-                  type: 'gradient',
-                  gradient: {
-                    shadeIntensity: 1,
-                    opacityFrom: 0.22,
-                    opacityTo: 0.02,
-                    stops: [0, 100],
-                  },
-                },
-                markers: { size: 0 },
-                xaxis: {
-                  type: xaxisType,
-                  categories,
-                },
-                tooltip: {
-                  x: xaxisType === 'datetime' ? { format: 'dd/MM/yy' } : { show: false },
-                  y: { formatter: function (v) { return formatRevenue(Number(v)) || '\u2014'; } },
-                },
-                legend: { show: true, position: 'top', horizontalAlign: 'right' },
-                grid: { padding: { left: 0, right: 0, top: 8, bottom: 0 } },
-              });
-              chart.render();
-              snapshotCharts[elId] = chart;
-            } catch (_) {}
-          }
-          if (typeof window.kexoWaitForContainerDimensions === 'function') {
-            window.kexoWaitForContainerDimensions(el, doRender);
-          } else { doRender(); }
-        }
-
-        ensureSnapshotApexCharts(function () {
-          if (seq !== snapshotChartsSeq) return;
-          renderSnapshotRevenueCostChart('business-snapshot-chart-revenue-cost', labelsYmd, revenue, cost);
-
-          // Profit charts (line-only)
-          const estDelta = deltaInfo(profit.estimatedProfit && profit.estimatedProfit.value, profit.estimatedProfit && profit.estimatedProfit.previous);
-          const netDelta = deltaInfo(profit.netProfit && profit.netProfit.value, profit.netProfit && profit.netProfit.previous);
-          const marginDelta = deltaInfo(profit.marginPct && profit.marginPct.value, profit.marginPct && profit.marginPct.previous);
-          const deductionsDelta = deltaInfo(profit.deductions && profit.deductions.value, profit.deductions && profit.deductions.previous);
-          if (estSeries.length) sparkLine('business-snapshot-chart-profit', estSeries, estDelta);
-          if (netSeries.length) sparkLine('business-snapshot-chart-net-profit', netSeries, netDelta);
-          if (estSeries.length) sparkLine('business-snapshot-chart-margin', estSeries, marginDelta);
-          if (deductionsSeries.length) sparkLine('business-snapshot-chart-deductions-pct', deductionsSeries, deductionsDelta);
-
-          // Performance charts
-          const sessionsDelta = deltaInfo(perf.sessions && perf.sessions.value, perf.sessions && perf.sessions.previous);
-          const ordersDelta = deltaInfo(perf.orders && perf.orders.value, perf.orders && perf.orders.previous);
-          const convDelta = deltaInfo(perf.conversionRate && perf.conversionRate.value, perf.conversionRate && perf.conversionRate.previous);
-          const aovDelta = deltaInfo(perf.aov && perf.aov.value, perf.aov && perf.aov.previous);
-          sparkLine('business-snapshot-chart-sessions', sessions, sessionsDelta);
-          sparkLine('business-snapshot-chart-perf-orders', orders, ordersDelta);
-          sparkLine('business-snapshot-chart-perf-conversion', conv, convDelta);
-          sparkLine('business-snapshot-chart-perf-aov', aov, aovDelta);
-
-          // Customers charts (line-only)
-          const newCustomersDelta = deltaInfo(c.newCustomers && c.newCustomers.value, c.newCustomers && c.newCustomers.previous);
-          const returningCustomersDelta = deltaInfo(c.returningCustomers && c.returningCustomers.value, c.returningCustomers && c.returningCustomers.previous);
-          const repeatDelta = deltaInfo(c.repeatPurchaseRate && c.repeatPurchaseRate.value, c.repeatPurchaseRate && c.repeatPurchaseRate.previous);
-          const ltvDelta = deltaInfo(c.ltv && c.ltv.value, c.ltv && c.ltv.previous);
-          const repeatVal = c.repeatPurchaseRate && Number.isFinite(Number(c.repeatPurchaseRate.value)) ? Number(c.repeatPurchaseRate.value) : null;
-          const repeatSeries = (repeatVal != null && labelsYmd.length) ? labelsYmd.map(function () { return repeatVal; }) : [];
-          sparkLine('business-snapshot-chart-new-share', orders.length ? orders : [0, 0], newCustomersDelta);
-          sparkLine('business-snapshot-chart-returning-share', orders.length ? orders : [0, 0], returningCustomersDelta);
-          sparkLine('business-snapshot-chart-repeat-rate', repeatSeries.length ? repeatSeries : (conv.length ? conv : [0, 0]), repeatDelta);
-
-          const ltvValueEl = document.getElementById('business-snapshot-ltv-head-value');
-          if (ltvValueEl) ltvValueEl.textContent = fmtCurrency(c.ltv && c.ltv.value);
-          const ltvDeltaEl = document.getElementById('business-snapshot-ltv-head-delta');
-          if (ltvDeltaEl) ltvDeltaEl.innerHTML = deltaHtml(ltvDelta, { compact: true });
-          renderSnapshotRadial('business-snapshot-chart-ltv-head', SNAPSHOT_LTV_DECORATIVE_ARC_PCT, {
-            height: 126,
-            color: 'var(--kexo-accent-5, #6681e8)',
-            startAngle: -108,
-            endAngle: 108,
-            showValue: false,
-          });
-        });
-      }
-
-      function costBreakdownTooltipHtml(lines) {
-        const list = Array.isArray(lines) ? lines : [];
-        const rows = list
-          .map(function (r) {
-            const label = r && r.label != null ? String(r.label) : '';
-            const amount = r && r.amountGbp != null ? Number(r.amountGbp) : NaN;
-            if (!label) return '';
-            const amtText = Number.isFinite(amount) ? (formatRevenue(amount) || ('£' + String(amount))) : 'Unavailable';
-            return '<div class="business-snapshot-cost-row"><span>' + escapeHtml(label) + '</span><span>' + escapeHtml(amtText) + '</span></div>';
-          })
-          .filter(Boolean)
-          .join('');
-        if (!rows) {
-          return '<div class="text-muted small">No cost breakdown available.</div>';
-        }
-        return '<div class="business-snapshot-cost-rows">' + rows + '</div>';
-      }
-
-      function revenueCostTopHtml(financial) {
-        const f = financial && typeof financial === 'object' ? financial : {};
-        const revMetric = f.revenue || {};
-        const costMetric = f.cost || {};
-        const breakdownNow = Array.isArray(f.costBreakdownNow) ? f.costBreakdownNow : [];
-        const d = deltaInfo(revMetric && revMetric.value, revMetric && revMetric.previous);
-        const dHtml = deltaHtml(d);
-        const revenueText = fmtCurrencyCompact(revMetric && revMetric.value);
-        const costText = fmtCurrencyCompact(costMetric && costMetric.value);
-        const tooltipHtml = costBreakdownTooltipHtml(breakdownNow);
-        return '' +
-          '<div class="business-snapshot-top business-snapshot-stage" data-snapshot-stage="top">' +
-            '<div class="business-snapshot-top-head">' +
-              '<div class="business-snapshot-top-title-row">' +
-                '<div class="subheader d-flex align-items-center gap-2">' +
-                  'Revenue &amp; Cost' +
-                  '<span class="business-snapshot-info" tabindex="0" role="button" aria-label="Cost breakdown">' +
-                    '<i class="fa-light fa-circle-info" aria-hidden="true"></i>' +
-                    '<div class="business-snapshot-info-popover" role="tooltip">' + tooltipHtml + '</div>' +
-                  '</span>' +
-                '</div>' +
-                (dHtml ? dHtml : '') +
-              '</div>' +
-              '<div class="business-snapshot-top-metrics">' +
-                '<div class="business-snapshot-top-metric">' +
-                  '<div class="text-muted small">Revenue</div>' +
-                  '<div class="h2 mb-0">' + escapeHtml(revenueText || 'Unavailable') + '</div>' +
-                '</div>' +
-                '<div class="business-snapshot-top-metric">' +
-                  '<div class="text-muted small">Cost</div>' +
-                  '<div class="h2 mb-0">' + escapeHtml(costText || 'Unavailable') + '</div>' +
-                '</div>' +
-              '</div>' +
-            '</div>' +
-            '<div class="business-snapshot-top-chart" id="business-snapshot-chart-revenue-cost" aria-hidden="true"></div>' +
-          '</div>';
-      }
-
-      function metricCardHtml(options) {
-        const o = options && typeof options === 'object' ? options : {};
-        const label = String(o.label || 'Metric');
-        const valueText = String(o.valueText || 'Unavailable');
-        const delta = o.delta || null;
-        const tooltip = o.tooltip && typeof o.tooltip === 'object' ? o.tooltip : null;
-        const dHtml = deltaHtml(delta);
-        const c = o.chart && typeof o.chart === 'object' ? o.chart : null;
-        const chartId = c && c.id ? String(c.id) : '';
-        const chartHtml = chartId
-          ? ('<div class="business-snapshot-chart" id="' + escapeHtml(chartId) + '" aria-hidden="true"></div>')
-          : '';
-        const infoHtml = tooltip
-          ? metricInfoIconHtml(
-            label,
-            tooltip.currentLabel,
-            tooltip.currentText,
-            tooltip.previousLabel,
-            tooltip.previousText,
-            tooltip.previousHasData
-          )
-          : '';
-        return '' +
-          '<div class="col-12 col-md-6 col-xl-3">' +
-            '<div class="card h-100 business-snapshot-card">' +
-              '<div class="card-body business-snapshot-card-body">' +
-                (chartHtml ? chartHtml : '') +
-                '<div class="business-snapshot-card-content">' +
-                  '<div class="subheader d-flex align-items-center gap-2 business-snapshot-kpi-label">' +
-                    '<span>' + escapeHtml(label) + '</span>' +
-                    (infoHtml ? infoHtml : '') +
-                  '</div>' +
-                  '<div class="h2 mb-1 business-snapshot-value">' + escapeHtml(valueText || 'Unavailable') + '</div>' +
-                '</div>' +
-                (dHtml ? dHtml : '') +
-              '</div>' +
-            '</div>' +
-          '</div>';
-      }
-
-      function calloutCardHtml() {
-        return '';
-      }
-
-      function runSnapshotStagedReveal() {
-        const stageDefs = [
-          { selector: '#business-snapshot-ltv-head', stepMs: 0 },
-          { selector: '[data-snapshot-stage="top"]', stepMs: 110 },
-          { selector: '[data-snapshot-stage="profit"]', stepMs: 260 },
-          { selector: '[data-snapshot-stage="performance"]', stepMs: 430 },
-          { selector: '[data-snapshot-stage="customers"]', stepMs: 610 },
-        ];
-        stageDefs.forEach(function (def) {
-          const el = document.querySelector(def.selector);
-          if (!el || !el.classList) return;
-          el.classList.add('business-snapshot-stage');
-          el.classList.remove('is-visible');
-          el.style.setProperty('--snapshot-stage-delay', String(def.stepMs || 0) + 'ms');
-          requestAnimationFrame(function () { el.classList.add('is-visible'); });
-        });
-      }
-
-      function renderSnapshot(data) {
-        const body = document.getElementById('business-snapshot-body');
-        if (!body) return;
-        if (!data || data.ok !== true) {
-          const ltvHead = document.getElementById('business-snapshot-ltv-head');
-          if (ltvHead) ltvHead.classList.add('is-hidden');
-          body.innerHTML = '' +
-            '<div class="p-4">' +
-              '<div class="alert alert-warning d-flex align-items-center justify-content-between gap-2 mb-0">' +
-                '<div>Snapshot is unavailable right now.</div>' +
-                '<button type="button" class="btn btn-sm btn-outline-secondary" id="business-snapshot-retry-btn">Retry</button>' +
-              '</div>' +
-            '</div>';
-          const retryBtn = document.getElementById('business-snapshot-retry-btn');
-          if (retryBtn) retryBtn.addEventListener('click', function () { fetchSnapshot(true); });
-          return;
-        }
-
-        const f = data.financial || {};
-        const p = data.performance || {};
-        const c = data.customers || {};
-        const profit = f.profit || {};
-        const comparison = data.comparison || {};
-        const periodLabel = String(data.periodLabel || '').trim() || 'Current period';
-        const compareLabelRaw = String(data.compareLabel || '').trim();
-        const compareLabel = compareLabelRaw ? ('Previous year \u00B7 ' + compareLabelRaw) : 'Previous period';
-        const previousPeriodHasData = !!comparison.previousPeriodHasData;
-
-        function tooltipData(metric, type) {
-          const m = metric && typeof metric === 'object' ? metric : {};
-          const hasPrev = previousPeriodHasData && m.previous != null && Number.isFinite(Number(m.previous));
-          const formatByType = function formatByType(value) {
-            if (type === 'currency') return fmtCurrency(value);
-            if (type === 'count') return fmtCount(value);
-            return fmtPercent(value);
-          };
-          return {
-            currentLabel: periodLabel,
-            currentText: formatByType(m.value),
-            previousLabel: compareLabel,
-            previousText: formatByType(m.previous),
-            previousHasData: hasPrev,
-          };
-        }
-
-        const titleEl = document.getElementById('business-snapshot-title');
-        if (titleEl) {
-          const name = data && data.shopName != null ? String(data.shopName).trim() : '';
-          titleEl.textContent = name || 'Business Snapshot';
-        }
-
-        const subtitle = document.getElementById('business-snapshot-subtitle');
-        if (subtitle) subtitle.textContent = String(data.periodLabel || '').trim() || 'Business Snapshot';
-        selectedYear = String(data.year || selectedYear || getCurrentYearString());
-        const ltvHead = document.getElementById('business-snapshot-ltv-head');
-        if (ltvHead) ltvHead.classList.remove('is-hidden');
-
-        const chartSeq = ++snapshotChartsSeq;
-        destroySnapshotCharts();
-
-        const topBlock = revenueCostTopHtml(f);
-
-        let profitCards = '';
-        if (profit.visible) {
-          profitCards += metricCardHtml({
-            label: 'Estimated Profit',
-            valueText: fmtCurrency(profit.estimatedProfit && profit.estimatedProfit.value),
-            delta: deltaInfo(profit.estimatedProfit && profit.estimatedProfit.value, profit.estimatedProfit && profit.estimatedProfit.previous),
-            chart: { id: 'business-snapshot-chart-profit' },
-            tooltip: tooltipData(profit.estimatedProfit, 'currency'),
-          });
-          profitCards += metricCardHtml({
-            label: 'Net Profit',
-            valueText: fmtCurrency(profit.netProfit && profit.netProfit.value),
-            delta: deltaInfo(profit.netProfit && profit.netProfit.value, profit.netProfit && profit.netProfit.previous),
-            chart: { id: 'business-snapshot-chart-net-profit' },
-            tooltip: tooltipData(profit.netProfit, 'currency'),
-          });
-          profitCards += metricCardHtml({
-            label: 'Margin %',
-            valueText: fmtPercent(profit.marginPct && profit.marginPct.value),
-            delta: deltaInfo(profit.marginPct && profit.marginPct.value, profit.marginPct && profit.marginPct.previous),
-            chart: { id: 'business-snapshot-chart-margin' },
-            tooltip: tooltipData(profit.marginPct, 'percent'),
-          });
-          profitCards += metricCardHtml({
-            label: 'Deductions',
-            valueText: fmtCurrency(profit.deductions && profit.deductions.value),
-            delta: deltaInfo(profit.deductions && profit.deductions.value, profit.deductions && profit.deductions.previous),
-            chart: { id: 'business-snapshot-chart-deductions-pct' },
-            tooltip: tooltipData(profit.deductions, 'currency'),
-          });
-        }
-
-        let performanceCards = '';
-        performanceCards += metricCardHtml({
-          label: 'Sessions',
-          valueText: fmtCount(p.sessions && p.sessions.value),
-          delta: deltaInfo(p.sessions && p.sessions.value, p.sessions && p.sessions.previous),
-          chart: { id: 'business-snapshot-chart-sessions' },
-          tooltip: tooltipData(p.sessions, 'count'),
-        });
-        performanceCards += metricCardHtml({
-          label: 'Orders',
-          valueText: fmtCount(p.orders && p.orders.value),
-          delta: deltaInfo(p.orders && p.orders.value, p.orders && p.orders.previous),
-          chart: { id: 'business-snapshot-chart-perf-orders' },
-          tooltip: tooltipData(p.orders, 'count'),
-        });
-        performanceCards += metricCardHtml({
-          label: 'Conversion Rate %',
-          valueText: fmtPercent(p.conversionRate && p.conversionRate.value),
-          delta: deltaInfo(p.conversionRate && p.conversionRate.value, p.conversionRate && p.conversionRate.previous),
-          chart: { id: 'business-snapshot-chart-perf-conversion' },
-          tooltip: tooltipData(p.conversionRate, 'percent'),
-        });
-        performanceCards += metricCardHtml({
-          label: 'AOV',
-          valueText: fmtCurrency(p.aov && p.aov.value),
-          delta: deltaInfo(p.aov && p.aov.value, p.aov && p.aov.previous),
-          chart: { id: 'business-snapshot-chart-perf-aov' },
-          tooltip: tooltipData(p.aov, 'currency'),
-        });
-
-        let customersCards = '';
-        customersCards += metricCardHtml({
-          label: 'New Customers',
-          valueText: fmtCount(c.newCustomers && c.newCustomers.value),
-          delta: deltaInfo(c.newCustomers && c.newCustomers.value, c.newCustomers && c.newCustomers.previous),
-          chart: { id: 'business-snapshot-chart-new-share' },
-          tooltip: tooltipData(c.newCustomers, 'count'),
-        });
-        customersCards += metricCardHtml({
-          label: 'Returning Customers',
-          valueText: fmtCount(c.returningCustomers && c.returningCustomers.value),
-          delta: deltaInfo(c.returningCustomers && c.returningCustomers.value, c.returningCustomers && c.returningCustomers.previous),
-          chart: { id: 'business-snapshot-chart-returning-share' },
-          tooltip: tooltipData(c.returningCustomers, 'count'),
-        });
-        customersCards += metricCardHtml({
-          label: 'Repeat Purchase Rate %',
-          valueText: fmtPercent(c.repeatPurchaseRate && c.repeatPurchaseRate.value),
-          delta: deltaInfo(c.repeatPurchaseRate && c.repeatPurchaseRate.value, c.repeatPurchaseRate && c.repeatPurchaseRate.previous),
-          chart: { id: 'business-snapshot-chart-repeat-rate' },
-          tooltip: tooltipData(c.repeatPurchaseRate, 'percent'),
-        });
-
-        body.innerHTML = '' +
-          (topBlock ? topBlock : '') +
-          '<div class="business-snapshot-sections p-4">' +
-            (profit.visible
-              ? ('<div class="business-snapshot-section mb-4 business-snapshot-stage" data-snapshot-stage="profit">' +
-                  '<h3 class="card-title mb-3">Profit</h3>' +
-                  '<div class="row g-3 business-snapshot-grid">' + profitCards + '</div>' +
-                '</div>')
-              : '') +
-            '<div class="business-snapshot-section mb-4 business-snapshot-stage" data-snapshot-stage="performance">' +
-              '<h3 class="card-title mb-3">Performance</h3>' +
-              '<div class="row g-3 business-snapshot-grid">' + performanceCards + '</div>' +
-            '</div>' +
-            '<div class="business-snapshot-section business-snapshot-stage" data-snapshot-stage="customers">' +
-              '<h3 class="card-title mb-3">Customers</h3>' +
-              '<div class="row g-3 business-snapshot-grid">' + customersCards + '</div>' +
-            '</div>' +
-          '</div>';
-
-        runSnapshotStagedReveal();
-        try { renderSnapshotCharts(data, chartSeq); } catch (_) {}
-      }
-
-      function setSnapshotLoading() {
-        const body = document.getElementById('business-snapshot-body');
-        if (!body) return;
-        body.innerHTML =
-          '<div class="business-snapshot-loading py-4 px-4 text-center">' +
-            '<div class="spinner-border text-primary" role="status"></div>' +
-            '<div class="text-muted mt-2">Loading business snapshot...</div>' +
-          '</div>';
-      }
-
-      function fetchSnapshot(force, opts) {
-        const options = opts && typeof opts === 'object' ? opts : {};
-        const reqId = ++snapshotRequestSeq;
-        snapshotActiveRequest = reqId;
-        snapshotLoading = true;
-        const showLoading = options.showLoading === true || (force && options.showLoading !== false);
-        if (showLoading) setSnapshotLoading();
-        const year = String(selectedYear || getCurrentYearString());
-        let url = API + '/api/business-snapshot?mode=yearly&year=' + encodeURIComponent(year);
-        if (force) url += '&force=1&_=' + Date.now();
-        const cacheMode = force ? 'no-store' : 'default';
-        return fetchWithTimeout(url, { credentials: 'same-origin', cache: cacheMode }, 30000)
-          .then(function (res) { return (res && res.ok) ? res.json() : null; })
-          .then(function (data) {
-            if (data && data.ok === true) setCachedSnapshot(year, data);
-            if (reqId === snapshotActiveRequest) renderSnapshot(data);
-          })
-          .catch(function () { if (reqId === snapshotActiveRequest) renderSnapshot(null); })
-          .finally(function () { if (reqId === snapshotActiveRequest) snapshotLoading = false; });
-      }
-
-      function normalizeRulesPayload(payload) {
-        const src = payload && typeof payload === 'object' ? payload : {};
-        const out = {
-          enabled: !!src.enabled,
-          currency: (src.currency && typeof src.currency === 'string' ? src.currency : 'GBP').toUpperCase(),
-          integrations: {
-            includeGoogleAdsSpend: !!(src.integrations && typeof src.integrations === 'object' && src.integrations.includeGoogleAdsSpend === true),
-          },
-          rules: [],
-        };
-        const list = Array.isArray(src.rules) ? src.rules : [];
-        for (let i = 0; i < list.length; i++) {
-          const row = list[i] && typeof list[i] === 'object' ? list[i] : {};
-          const mode = row.appliesTo && row.appliesTo.mode === 'countries' ? 'countries' : 'all';
-          const countries = mode === 'countries' && row.appliesTo && Array.isArray(row.appliesTo.countries)
-            ? row.appliesTo.countries.map(normalizeCountryCode).filter(Boolean)
-            : [];
-          out.rules.push({
-            id: row.id ? String(row.id) : createRuleId(),
-            name: row.name ? String(row.name) : 'Expense',
-            appliesTo: mode === 'countries' && countries.length ? { mode: 'countries', countries } : { mode: 'all', countries: [] },
-            type: row.type ? String(row.type) : 'percent_revenue',
-            value: Number.isFinite(Number(row.value)) ? Number(row.value) : 0,
-            notes: row.notes ? String(row.notes) : '',
-            enabled: row.enabled !== false,
-            sort: Number.isFinite(Number(row.sort)) ? Math.trunc(Number(row.sort)) : (i + 1),
-          });
-        }
-        out.rules.sort(function (a, b) { return (Number(a.sort) || 0) - (Number(b.sort) || 0); });
-        return out;
-      }
-
-      function fetchProfitRules(force) {
-        let url = API + '/api/settings/profit-rules';
-        if (force) url += '?_=' + Date.now();
-        return fetchWithTimeout(url, { credentials: 'same-origin', cache: 'no-store' }, 20000)
-          .then(function (res) { return (res && res.ok) ? res.json() : null; })
-          .then(function (payload) {
-            const normalized = normalizeRulesPayload(payload && payload.profitRules ? payload.profitRules : null);
-            rulesDraft = normalized;
-            return normalized;
-          })
-          .catch(function () {
-            const fallback = normalizeRulesPayload({ enabled: false, currency: 'GBP', rules: [] });
-            rulesDraft = fallback;
-            return fallback;
-          });
-      }
-
-      function setRulesMessage(text, ok) {
-        const el = document.getElementById('profit-rules-msg');
-        if (!el) return;
-        el.textContent = text || '';
-        el.classList.toggle('text-success', !!ok);
-        el.classList.toggle('text-danger', ok === false);
-        el.classList.toggle('is-hidden', !text);
-      }
-
-      function sortRulesDraft() {
-        if (!rulesDraft || !Array.isArray(rulesDraft.rules)) return;
-        rulesDraft.rules.sort(function (a, b) {
-          const sa = Number(a && a.sort != null ? a.sort : 0) || 0;
-          const sb = Number(b && b.sort != null ? b.sort : 0) || 0;
-          if (sa !== sb) return sa - sb;
-          return String(a && a.id || '').localeCompare(String(b && b.id || ''));
-        });
-      }
-
-      function reindexRulesSort() {
-        if (!rulesDraft || !Array.isArray(rulesDraft.rules)) return;
-        sortRulesDraft();
-        rulesDraft.rules.forEach(function (rule, idx) {
-          rule.sort = idx + 1;
-        });
-      }
-
-      function ruleTypeLabel(type) {
-        if (type === 'fixed_per_order') return 'Fixed per Order';
-        if (type === 'fixed_per_period') return 'Fixed per Period';
-        return 'Percent of Revenue';
-      }
-
-      function ruleValueLabel(rule) {
-        if (!rule) return '—';
-        const value = Number(rule.value);
-        if (!Number.isFinite(value)) return '—';
-        if (rule.type === 'percent_revenue') return value.toFixed(2).replace(/\.00$/, '') + '%';
-        return fmtCurrency(value);
-      }
-
-      function renderRulesList() {
-        const body = document.getElementById('profit-rules-table-body');
-        if (!body) return;
-        if (!rulesDraft || !Array.isArray(rulesDraft.rules) || !rulesDraft.rules.length) {
-          body.innerHTML = '<tr><td colspan="7" class="text-muted">No rules yet.</td></tr>';
-          return;
-        }
-        sortRulesDraft();
-        let html = '';
-        rulesDraft.rules.forEach(function (rule, idx) {
-          const applies = rule && rule.appliesTo && rule.appliesTo.mode === 'countries'
-            ? ((rule.appliesTo.countries || []).join(', ') || '—')
-            : 'All';
-          html += '' +
-            '<tr data-rule-id="' + escapeHtml(rule.id || '') + '">' +
-              '<td>' + escapeHtml(rule.name || 'Expense') + '</td>' +
-              '<td>' + escapeHtml(applies) + '</td>' +
-              '<td>' + escapeHtml(ruleTypeLabel(rule.type)) + '</td>' +
-              '<td>' + escapeHtml(ruleValueLabel(rule)) + '</td>' +
-              '<td class="text-nowrap">' +
-                '<button class="btn btn-sm btn-ghost-secondary" data-pr-action="move-up" data-rule-id="' + escapeHtml(rule.id || '') + '"' + (idx <= 0 ? ' disabled' : '') + '>Up</button> ' +
-                '<button class="btn btn-sm btn-ghost-secondary" data-pr-action="move-down" data-rule-id="' + escapeHtml(rule.id || '') + '"' + (idx >= (rulesDraft.rules.length - 1) ? ' disabled' : '') + '>Down</button>' +
-              '</td>' +
-              '<td>' +
-                '<label class="form-check form-switch m-0">' +
-                  '<input class="form-check-input" type="checkbox" data-pr-action="toggle-enabled" data-rule-id="' + escapeHtml(rule.id || '') + '"' + (rule.enabled ? ' checked' : '') + '>' +
-                '</label>' +
-              '</td>' +
-              '<td class="text-nowrap">' +
-                '<button class="btn btn-sm btn-ghost-secondary" data-pr-action="edit" data-rule-id="' + escapeHtml(rule.id || '') + '">Edit</button> ' +
-                '<button class="btn btn-sm btn-ghost-danger" data-pr-action="delete" data-rule-id="' + escapeHtml(rule.id || '') + '">Delete</button>' +
-              '</td>' +
-            '</tr>';
-        });
-        body.innerHTML = html;
-      }
-
-      function getRuleById(ruleId) {
-        if (!rulesDraft || !Array.isArray(rulesDraft.rules)) return null;
-        return rulesDraft.rules.find(function (rule) { return String(rule && rule.id || '') === String(ruleId || ''); }) || null;
-      }
-
-      function setFormMode(modeText) {
-        const title = document.getElementById('profit-rules-form-title');
-        if (title) title.textContent = modeText || 'Add Expense Rule';
-      }
-
-      function showRulesForm(rule) {
-        const panel = document.getElementById('profit-rules-form-wrap');
-        if (!panel) return;
-        panel.classList.remove('is-hidden');
-        const editing = !!rule;
-        editingRuleId = editing ? String(rule.id || '') : '';
-        setFormMode(editing ? 'Edit Expense Rule' : 'Add Expense Rule');
-        const nameEl = document.getElementById('profit-rule-name');
-        const modeAllEl = document.getElementById('profit-rule-applies-all');
-        const modeCountriesEl = document.getElementById('profit-rule-applies-countries');
-        const countriesEl = document.getElementById('profit-rule-countries');
-        const typeEl = document.getElementById('profit-rule-type');
-        const valueEl = document.getElementById('profit-rule-value');
-        const notesEl = document.getElementById('profit-rule-notes');
-        const enabledEl = document.getElementById('profit-rule-enabled');
-        if (nameEl) nameEl.value = editing ? (rule.name || '') : '';
-        const mode = editing && rule.appliesTo && rule.appliesTo.mode === 'countries' ? 'countries' : 'all';
-        if (modeAllEl) modeAllEl.checked = mode === 'all';
-        if (modeCountriesEl) modeCountriesEl.checked = mode === 'countries';
-        if (countriesEl) countriesEl.value = editing && rule.appliesTo && Array.isArray(rule.appliesTo.countries) ? rule.appliesTo.countries.join(', ') : '';
-        if (typeEl) typeEl.value = editing ? (rule.type || 'percent_revenue') : 'percent_revenue';
-        if (valueEl) valueEl.value = editing ? String(Number(rule.value) || 0) : '';
-        if (notesEl) notesEl.value = editing ? (rule.notes || '') : '';
-        if (enabledEl) enabledEl.checked = editing ? (rule.enabled !== false) : true;
-      }
-
-      function hideRulesForm() {
-        const panel = document.getElementById('profit-rules-form-wrap');
-        if (!panel) return;
-        panel.classList.add('is-hidden');
-        editingRuleId = '';
-      }
-
-      function readRuleForm() {
-        const nameEl = document.getElementById('profit-rule-name');
-        const modeCountriesEl = document.getElementById('profit-rule-applies-countries');
-        const countriesEl = document.getElementById('profit-rule-countries');
-        const typeEl = document.getElementById('profit-rule-type');
-        const valueEl = document.getElementById('profit-rule-value');
-        const notesEl = document.getElementById('profit-rule-notes');
-        const enabledEl = document.getElementById('profit-rule-enabled');
-
-        const name = nameEl ? String(nameEl.value || '').trim() : '';
-        if (!name) return { ok: false, error: 'Rule name is required.' };
-
-        const type = typeEl ? String(typeEl.value || '').trim() : 'percent_revenue';
-        if (['percent_revenue', 'fixed_per_order', 'fixed_per_period'].indexOf(type) < 0) {
-          return { ok: false, error: 'Invalid calculation type.' };
-        }
-
-        const value = valueEl ? Number(valueEl.value) : NaN;
-        if (!Number.isFinite(value) || value < 0) return { ok: false, error: 'Value must be a positive number.' };
-
-        const mode = modeCountriesEl && modeCountriesEl.checked ? 'countries' : 'all';
-        let countries = [];
-        if (mode === 'countries') {
-          const raw = countriesEl ? String(countriesEl.value || '') : '';
-          countries = raw.split(/[\s,]+/).map(normalizeCountryCode).filter(Boolean);
-          const uniq = [];
-          const seen = new Set();
-          countries.forEach(function (cc) {
-            if (!cc || seen.has(cc)) return;
-            seen.add(cc);
-            uniq.push(cc);
-          });
-          countries = uniq;
-          if (!countries.length) return { ok: false, error: 'Enter at least one valid ISO country code.' };
-          if (!countries.every(isIsoCountryCode)) return { ok: false, error: 'Country codes must be 2-letter ISO values.' };
-        }
-
-        return {
-          ok: true,
-          rule: {
-            id: editingRuleId || createRuleId(),
-            name: name.slice(0, 80),
-            appliesTo: mode === 'countries' ? { mode: 'countries', countries: countries.slice(0, 64) } : { mode: 'all', countries: [] },
-            type,
-            value,
-            notes: notesEl ? String(notesEl.value || '').trim().slice(0, 400) : '',
-            enabled: enabledEl ? !!enabledEl.checked : true,
-          },
-        };
-      }
-
-      function saveRuleForm() {
-        const parsed = readRuleForm();
-        if (!parsed.ok) {
-          setRulesMessage(parsed.error, false);
-          return;
-        }
-        if (!rulesDraft || !Array.isArray(rulesDraft.rules)) rulesDraft = normalizeRulesPayload(null);
-        const existing = getRuleById(parsed.rule.id);
-        if (existing) {
-          existing.name = parsed.rule.name;
-          existing.appliesTo = parsed.rule.appliesTo;
-          existing.type = parsed.rule.type;
-          existing.value = parsed.rule.value;
-          existing.notes = parsed.rule.notes;
-          existing.enabled = parsed.rule.enabled;
-        } else {
-          parsed.rule.sort = (rulesDraft.rules.length || 0) + 1;
-          rulesDraft.rules.push(parsed.rule);
-        }
-        reindexRulesSort();
-        renderRulesList();
-        hideRulesForm();
-        setRulesMessage('Rule saved in draft.', true);
-      }
-
-      function saveProfitRules() {
-        if (!rulesDraft) rulesDraft = normalizeRulesPayload(null);
-        const enabledToggle = document.getElementById('profit-rules-enabled');
-        rulesDraft.enabled = enabledToggle ? !!enabledToggle.checked : !!rulesDraft.enabled;
-        const adsToggle = document.getElementById('profit-rules-include-google-ads');
-        if (!rulesDraft.integrations || typeof rulesDraft.integrations !== 'object') rulesDraft.integrations = { includeGoogleAdsSpend: false };
-        if (adsToggle) rulesDraft.integrations.includeGoogleAdsSpend = !!adsToggle.checked;
-        reindexRulesSort();
-        setRulesMessage('Saving…', true);
-        return fetchWithTimeout(API + '/api/settings/profit-rules', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'same-origin',
-          body: JSON.stringify({ profitRules: rulesDraft }),
-        }, 25000)
-          .then(function (res) { return (res && res.ok) ? res.json() : null; })
-          .then(function (payload) {
-            const saved = normalizeRulesPayload(payload && payload.profitRules ? payload.profitRules : rulesDraft);
-            rulesDraft = saved;
-            setRulesMessage('Profit rules saved.', true);
-            if (modalVisible(snapshotModal)) fetchSnapshot(true);
-          })
-          .catch(function () {
-            setRulesMessage('Failed to save profit rules.', false);
-          });
-      }
-
-      function setProfitRulesTab(tabKey) {
-        const key = tabKey === 'integrations' ? 'integrations' : 'rules';
-        if (!rulesModal) return;
-        const tabs = rulesModal.querySelectorAll ? rulesModal.querySelectorAll('[data-pr-tab]') : [];
-        tabs.forEach(function (btn) {
-          const v = btn && btn.getAttribute ? String(btn.getAttribute('data-pr-tab') || '') : '';
-          if (btn && btn.classList) btn.classList.toggle('active', v === key);
-        });
-        const panes = rulesModal.querySelectorAll ? rulesModal.querySelectorAll('[data-pr-pane]') : [];
-        panes.forEach(function (pane) {
-          const v = pane && pane.getAttribute ? String(pane.getAttribute('data-pr-pane') || '') : '';
-          if (pane && pane.classList) pane.classList.toggle('is-hidden', v !== key);
-        });
-      }
-
-      function openProfitRulesModal() {
-        ensureModals();
-        setRulesMessage('', null);
-        fetchProfitRules(false).then(function (rules) {
-          const enabledToggle = document.getElementById('profit-rules-enabled');
-          if (enabledToggle) enabledToggle.checked = !!(rules && rules.enabled);
-          const adsToggle = document.getElementById('profit-rules-include-google-ads');
-          if (adsToggle) adsToggle.checked = !!(rules && rules.integrations && rules.integrations.includeGoogleAdsSpend);
-          setProfitRulesTab('rules');
-          renderRulesList();
-          hideRulesForm();
-          openModal(rulesModal);
-        });
-      }
-
-      function ensureModals() {
-        if (snapshotModal && rulesModal) return;
-        if (!snapshotModal) {
-          const wrap = document.createElement('div');
-          wrap.className = 'modal modal-blur fade';
-          wrap.id = 'business-snapshot-modal';
-          wrap.tabIndex = -1;
-          wrap.setAttribute('aria-hidden', 'true');
-          wrap.style.display = 'none';
-          wrap.innerHTML = '' +
-            '<div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable" role="dialog" aria-modal="true" aria-label="Business Snapshot">' +
-              '<div class="modal-content">' +
-                '<div class="modal-header p-4 align-items-start business-snapshot-modal-header">' +
-                  '<div class="business-snapshot-header-bg" aria-hidden="true">' +
-                    '<svg viewBox="0 0 760 180" preserveAspectRatio="none" aria-hidden="true">' +
-                      '<g>' +
-                        '<rect x="24" y="102" width="20" height="48" rx="4" fill="#4b94e4" fill-opacity="0.14"></rect>' +
-                        '<rect x="56" y="92" width="20" height="58" rx="4" fill="#3eb3ab" fill-opacity="0.14"></rect>' +
-                        '<rect x="88" y="108" width="20" height="42" rx="4" fill="#f59e34" fill-opacity="0.14"></rect>' +
-                        '<rect x="120" y="78" width="20" height="72" rx="4" fill="#e4644b" fill-opacity="0.12"></rect>' +
-                        '<rect x="152" y="90" width="20" height="60" rx="4" fill="#6681e8" fill-opacity="0.14"></rect>' +
-                        '<rect x="184" y="66" width="20" height="84" rx="4" fill="#4b94e4" fill-opacity="0.12"></rect>' +
-                        '<rect x="216" y="96" width="20" height="54" rx="4" fill="#3eb3ab" fill-opacity="0.14"></rect>' +
-                        '<rect x="248" y="82" width="20" height="68" rx="4" fill="#f59e34" fill-opacity="0.12"></rect>' +
-                        '<rect x="280" y="58" width="20" height="92" rx="4" fill="#e4644b" fill-opacity="0.11"></rect>' +
-                        '<rect x="312" y="94" width="20" height="56" rx="4" fill="#6681e8" fill-opacity="0.13"></rect>' +
-                        '<rect x="344" y="112" width="20" height="38" rx="4" fill="#4b94e4" fill-opacity="0.13"></rect>' +
-                        '<rect x="376" y="88" width="20" height="62" rx="4" fill="#3eb3ab" fill-opacity="0.13"></rect>' +
-                        '<rect x="408" y="68" width="20" height="82" rx="4" fill="#f59e34" fill-opacity="0.12"></rect>' +
-                        '<rect x="440" y="84" width="20" height="66" rx="4" fill="#e4644b" fill-opacity="0.11"></rect>' +
-                        '<rect x="472" y="62" width="20" height="88" rx="4" fill="#6681e8" fill-opacity="0.14"></rect>' +
-                        '<rect x="504" y="96" width="20" height="54" rx="4" fill="#4b94e4" fill-opacity="0.12"></rect>' +
-                        '<rect x="536" y="80" width="20" height="70" rx="4" fill="#3eb3ab" fill-opacity="0.13"></rect>' +
-                        '<rect x="568" y="102" width="20" height="48" rx="4" fill="#f59e34" fill-opacity="0.12"></rect>' +
-                        '<rect x="600" y="88" width="20" height="62" rx="4" fill="#e4644b" fill-opacity="0.11"></rect>' +
-                        '<rect x="632" y="74" width="20" height="76" rx="4" fill="#6681e8" fill-opacity="0.13"></rect>' +
-                        '<path d="M24 124 C88 88, 152 108, 216 74 C280 44, 344 66, 408 52 C472 38, 536 62, 600 48 C632 42, 662 46, 730 34" fill="none" stroke="#4b94e4" stroke-opacity="0.24" stroke-width="3.2" stroke-linecap="round"></path>' +
-                        '<path d="M24 138 C88 114, 152 128, 216 102 C280 82, 344 90, 408 78 C472 70, 536 84, 600 74 C632 70, 662 72, 730 66" fill="none" stroke="#3eb3ab" stroke-opacity="0.2" stroke-width="2.6" stroke-linecap="round"></path>' +
-                        '<circle cx="216" cy="74" r="3" fill="#f59e34" fill-opacity="0.35"></circle>' +
-                        '<circle cx="408" cy="52" r="3" fill="#e4644b" fill-opacity="0.32"></circle>' +
-                        '<circle cx="600" cy="48" r="3" fill="#6681e8" fill-opacity="0.35"></circle>' +
-                      '</g>' +
-                    '</svg>' +
-                  '</div>' +
-                  '<div class="d-flex flex-column">' +
-                    '<h5 class="modal-title mb-0" id="business-snapshot-title">Business Snapshot</h5>' +
-                    '<div class="text-muted small" id="business-snapshot-subtitle">Yearly Reports</div>' +
-                    '<div class="text-muted small mt-2">This year compared with the same period last year</div>' +
-                  '</div>' +
-                  '<div class="ms-auto d-flex align-items-start gap-3 business-snapshot-header-actions">' +
-                    '<div class="business-snapshot-ltv-head is-hidden" id="business-snapshot-ltv-head">' +
-                      '<div class="business-snapshot-ltv-label">LTV</div>' +
-                      '<div class="business-snapshot-ltv-ring-wrap">' +
-                        '<div class="business-snapshot-ltv-ring" id="business-snapshot-chart-ltv-head" aria-hidden="true"></div>' +
-                        '<div class="business-snapshot-ltv-value" id="business-snapshot-ltv-head-value">&pound;&mdash;</div>' +
-                      '</div>' +
-                      '<div class="business-snapshot-ltv-delta" id="business-snapshot-ltv-head-delta"></div>' +
-                    '</div>' +
-                    '<button type="button" class="btn-close" id="business-snapshot-close-btn" aria-label="Close"></button>' +
-                  '</div>' +
-                '</div>' +
-                '<div class="modal-body p-0 business-snapshot-modal-body">' +
-                  '<div id="business-snapshot-body"></div>' +
-                '</div>' +
-                '<div class="modal-footer business-snapshot-modal-footer">' +
-                  '<div class="business-snapshot-footer-settings">' +
-                    '<a href="#" class="link-secondary" id="business-snapshot-footer-settings-link">Settings</a>' +
-                  '</div>' +
-                '</div>' +
-              '</div>' +
-            '</div>';
-          document.body.appendChild(wrap);
-          snapshotModal = wrap;
-
-          const closeBtn = document.getElementById('business-snapshot-close-btn');
-          if (closeBtn) closeBtn.addEventListener('click', function () { closeModal(snapshotModal); });
-          snapshotModal.addEventListener('click', function (e) {
-            if (modalVisible(rulesModal)) return;
-            if (e && e.target === snapshotModal) closeModal(snapshotModal);
-          });
-          document.addEventListener('keydown', function (e) {
-            if (!modalVisible(snapshotModal)) return;
-            if (modalVisible(rulesModal)) return;
-            if ((e && (e.key || e.code)) === 'Escape') closeModal(snapshotModal);
-          });
-
-          const footerSettingsLink = document.getElementById('business-snapshot-footer-settings-link');
-          if (footerSettingsLink) {
-            footerSettingsLink.addEventListener('click', function (e) {
-              e.preventDefault();
-              openProfitRulesModal();
-            });
-          }
-        }
-
-        if (!rulesModal) {
-          const wrap = document.createElement('div');
-          wrap.className = 'modal modal-blur fade';
-          wrap.id = 'profit-rules-modal';
-          wrap.tabIndex = -1;
-          wrap.setAttribute('aria-hidden', 'true');
-          wrap.style.display = 'none';
-          wrap.innerHTML = '' +
-            '<div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable" role="dialog" aria-modal="true" aria-label="Profit Rules">' +
-              '<div class="modal-content">' +
-                '<div class="modal-header">' +
-                  '<h5 class="modal-title">Profit Rules</h5>' +
-                  '<button type="button" class="btn-close" id="profit-rules-close-btn" aria-label="Close"></button>' +
-                '</div>' +
-                '<div class="modal-body">' +
-                  '<ul class="nav nav-tabs mb-3">' +
-                    '<li class="nav-item"><button type="button" class="nav-link active" data-pr-tab="rules">Rules</button></li>' +
-                    '<li class="nav-item"><button type="button" class="nav-link" data-pr-tab="integrations">Integrations</button></li>' +
-                  '</ul>' +
-                  '<div data-pr-pane="rules">' +
-                  '<div class="mb-3">' +
-                    '<label class="form-check form-switch m-0">' +
-                      '<input class="form-check-input" type="checkbox" id="profit-rules-enabled">' +
-                      '<span class="form-check-label">Enable estimated profit in Business Snapshot</span>' +
-                    '</label>' +
-                  '</div>' +
-                  '<div class="d-flex align-items-center justify-content-between mb-2">' +
-                    '<h6 class="mb-0">Rules</h6>' +
-                    '<button type="button" class="btn btn-outline-primary btn-sm" id="profit-rules-add-btn">Add Expense Rule</button>' +
-                  '</div>' +
-                  '<div class="mb-3">' + (typeof buildKexoNativeTable === 'function' ? buildKexoNativeTable({
-                    tableId: 'profit-rules-table',
-                    bodyId: 'profit-rules-table-body',
-                    tableClass: 'table table-sm table-vcenter',
-                    columns: (window.KEXO_APP_MODAL_TABLE_DEFS && window.KEXO_APP_MODAL_TABLE_DEFS['profit-rules-table'] && window.KEXO_APP_MODAL_TABLE_DEFS['profit-rules-table'].columns) || [
-                      { header: 'Rule name', headerClass: '' },
-                      { header: 'Applies to', headerClass: '' },
-                      { header: 'Type', headerClass: '' },
-                      { header: 'Value', headerClass: '' },
-                      { header: 'Priority', headerClass: '' },
-                      { header: 'Enabled', headerClass: '' },
-                      { header: 'Actions', headerClass: '' }
-                    ]
-                  }) : '<div class="table-responsive"><table class="table table-sm table-vcenter"><thead><tr><th>Rule name</th><th>Applies to</th><th>Type</th><th>Value</th><th>Priority</th><th>Enabled</th><th>Actions</th></tr></thead><tbody id="profit-rules-table-body"></tbody></table></div>') + '</div>' +
-                  '<div class="card is-hidden" id="profit-rules-form-wrap">' +
-                    '<div class="card-body">' +
-                      '<h6 id="profit-rules-form-title" class="mb-3">Add Expense Rule</h6>' +
-                      '<div class="row g-3">' +
-                        '<div class="col-12 col-md-6">' +
-                          '<label class="form-label">Name</label>' +
-                          '<input class="form-control" id="profit-rule-name" placeholder="VAT">' +
-                        '</div>' +
-                        '<div class="col-12 col-md-6">' +
-                          '<label class="form-label">Calculation type</label>' +
-                          '<select class="form-select" id="profit-rule-type">' +
-                            '<option value="percent_revenue">Percent of Revenue</option>' +
-                            '<option value="fixed_per_order">Fixed per Order</option>' +
-                            '<option value="fixed_per_period">Fixed per Period</option>' +
-                          '</select>' +
-                        '</div>' +
-                        '<div class="col-12">' +
-                          '<label class="form-label d-block">Applies to</label>' +
-                          '<label class="form-check form-check-inline"><input class="form-check-input" type="radio" name="profit-rule-applies" id="profit-rule-applies-all" checked><span class="form-check-label">All countries</span></label>' +
-                          '<label class="form-check form-check-inline"><input class="form-check-input" type="radio" name="profit-rule-applies" id="profit-rule-applies-countries"><span class="form-check-label">Specific countries</span></label>' +
-                          '<input class="form-control mt-2" id="profit-rule-countries" placeholder="GB, US, AU">' +
-                        '</div>' +
-                        '<div class="col-12 col-md-6">' +
-                          '<label class="form-label">Value</label>' +
-                          '<input type="number" step="0.01" min="0" class="form-control" id="profit-rule-value" placeholder="20">' +
-                        '</div>' +
-                        '<div class="col-12 col-md-6 d-flex align-items-end">' +
-                          '<label class="form-check form-switch m-0">' +
-                            '<input class="form-check-input" type="checkbox" id="profit-rule-enabled" checked>' +
-                            '<span class="form-check-label">Enabled</span>' +
-                          '</label>' +
-                        '</div>' +
-                        '<div class="col-12">' +
-                          '<label class="form-label">Notes (optional)</label>' +
-                          '<textarea class="form-control" id="profit-rule-notes" rows="2"></textarea>' +
-                        '</div>' +
-                      '</div>' +
-                      '<div class="d-flex justify-content-end gap-2 mt-3">' +
-                        '<button type="button" class="btn btn-ghost-secondary" id="profit-rule-cancel-btn">Cancel</button>' +
-                        '<button type="button" class="btn btn-primary" id="profit-rule-save-btn">Save</button>' +
-                      '</div>' +
-                    '</div>' +
-                  '</div>' +
-                  '<div class="small mt-3 is-hidden" id="profit-rules-msg"></div>' +
-                  '</div>' +
-                  '<div class="is-hidden" data-pr-pane="integrations">' +
-                    '<div class="card card-sm mb-3">' +
-                      '<div class="card-body">' +
-                        '<label class="form-check form-switch m-0">' +
-                          '<input class="form-check-input" type="checkbox" id="profit-rules-include-google-ads">' +
-                          '<span class="form-check-label">Include Google Ads spend in Cost chart</span>' +
-                        '</label>' +
-                        '<div class="text-muted small mt-2">When enabled, the Business Snapshot Cost line includes Google Ads spend for the selected period.</div>' +
-                      '</div>' +
-                    '</div>' +
-                  '</div>' +
-                '</div>' +
-                '<div class="modal-footer">' +
-                  '<button type="button" class="btn btn-ghost-secondary" id="profit-rules-dismiss-btn">Close</button>' +
-                  '<button type="button" class="btn btn-primary" id="profit-rules-save-btn">Save Rules</button>' +
-                '</div>' +
-              '</div>' +
-            '</div>';
-          document.body.appendChild(wrap);
-          rulesModal = wrap;
-
-          const closeBtn = document.getElementById('profit-rules-close-btn');
-          if (closeBtn) closeBtn.addEventListener('click', function () { closeModal(rulesModal); });
-          const dismissBtn = document.getElementById('profit-rules-dismiss-btn');
-          if (dismissBtn) dismissBtn.addEventListener('click', function () { closeModal(rulesModal); });
-          rulesModal.addEventListener('click', function (e) {
-            if (e && e.target === rulesModal) closeModal(rulesModal);
-          });
-          rulesModal.addEventListener('click', function (e) {
-            const target = e && e.target ? e.target : null;
-            const tabBtn = target && target.closest ? target.closest('button[data-pr-tab]') : null;
-            if (!tabBtn) return;
-            e.preventDefault();
-            const key = String(tabBtn.getAttribute('data-pr-tab') || '').trim();
-            setProfitRulesTab(key);
-          });
-          document.addEventListener('keydown', function (e) {
-            if (!modalVisible(rulesModal)) return;
-            if ((e && (e.key || e.code)) === 'Escape') closeModal(rulesModal);
-          });
-
-          const addBtn = document.getElementById('profit-rules-add-btn');
-          if (addBtn) addBtn.addEventListener('click', function () {
-            setRulesMessage('', null);
-            showRulesForm(null);
-          });
-          const cancelBtn = document.getElementById('profit-rule-cancel-btn');
-          if (cancelBtn) cancelBtn.addEventListener('click', function () { hideRulesForm(); });
-          const saveRuleBtn = document.getElementById('profit-rule-save-btn');
-          if (saveRuleBtn) saveRuleBtn.addEventListener('click', function () { saveRuleForm(); });
-          const saveRulesBtn = document.getElementById('profit-rules-save-btn');
-          if (saveRulesBtn) saveRulesBtn.addEventListener('click', function () { saveProfitRules(); });
-
-          const tableBody = document.getElementById('profit-rules-table-body');
-          if (tableBody) {
-            tableBody.addEventListener('click', function (e) {
-              const target = e && e.target ? e.target : null;
-              const btn = target && target.closest ? target.closest('[data-pr-action]') : null;
-              if (!btn) return;
-              const action = String(btn.getAttribute('data-pr-action') || '').trim();
-              const ruleId = String(btn.getAttribute('data-rule-id') || '').trim();
-              const rule = getRuleById(ruleId);
-              if (!rule) return;
-              if (action === 'edit') {
-                setRulesMessage('', null);
-                showRulesForm(rule);
-                return;
-              }
-              if (action === 'delete') {
-                rulesDraft.rules = rulesDraft.rules.filter(function (r) { return String(r.id || '') !== ruleId; });
-                reindexRulesSort();
-                renderRulesList();
-                setRulesMessage('Rule removed.', true);
-                return;
-              }
-              if (action === 'move-up' || action === 'move-down') {
-                sortRulesDraft();
-                const idx = rulesDraft.rules.findIndex(function (r) { return String(r && r.id || '') === ruleId; });
-                if (idx < 0) return;
-                const nextIdx = action === 'move-up' ? idx - 1 : idx + 1;
-                if (nextIdx < 0 || nextIdx >= rulesDraft.rules.length) return;
-                const tmp = rulesDraft.rules[idx];
-                rulesDraft.rules[idx] = rulesDraft.rules[nextIdx];
-                rulesDraft.rules[nextIdx] = tmp;
-                reindexRulesSort();
-                renderRulesList();
-                setRulesMessage('Rule priority updated.', true);
-              }
-            });
-            tableBody.addEventListener('change', function (e) {
-              const target = e && e.target ? e.target : null;
-              if (!target || target.getAttribute('data-pr-action') !== 'toggle-enabled') return;
-              const ruleId = String(target.getAttribute('data-rule-id') || '').trim();
-              const rule = getRuleById(ruleId);
-              if (!rule) return;
-              rule.enabled = !!target.checked;
-              setRulesMessage('Rule updated in draft.', true);
-            });
-          }
-        }
-      }
-
-      openBtn.addEventListener('click', function () {
-        ensureModals();
-        selectedYear = getCurrentYearString();
-        openModal(snapshotModal);
-        const cached = getCachedSnapshot(selectedYear);
-        if (cached && cached.ok === true) {
-          renderSnapshot(cached);
-          fetchSnapshot(false, { showLoading: false });
-          return;
-        }
-        setSnapshotLoading();
-        fetchSnapshot(false, { showLoading: false });
-      });
-    })();
-
     (function initTrafficTypeTree() {
       const body = document.getElementById('traffic-types-body');
       if (!body) return;
@@ -16517,13 +15164,14 @@ const API = '';
       })();
       (function initMainTabs() {
         const TAB_KEY = 'kexo-main-tab';
-        const VALID_TABS = ['dashboard', 'spy', 'sales', 'date', 'stats', 'products', 'channels', 'type', 'ads', 'tools'];
-        const TAB_LABELS = { dashboard: 'Overview', spy: 'Live View', sales: 'Recent Sales', date: 'Table View', stats: 'Countries', products: 'Products', variants: 'Variants', channels: 'Channels', type: 'Device & Platform', ads: 'Google Ads', tools: 'Conversion Rate Compare' };
+        const VALID_TABS = ['dashboard', 'spy', 'sales', 'date', 'snapshot', 'stats', 'products', 'channels', 'type', 'ads', 'tools'];
+        const TAB_LABELS = { dashboard: 'Overview', spy: 'Live View', sales: 'Recent Sales', date: 'Table View', snapshot: 'Snapshot', stats: 'Countries', products: 'Products', variants: 'Variants', channels: 'Channels', type: 'Device & Platform', ads: 'Google Ads', tools: 'Conversion Rate Compare' };
         const HASH_TO_TAB = { dashboard: 'dashboard', 'live-view': 'spy', sales: 'sales', date: 'date', countries: 'stats', products: 'products', channels: 'channels', type: 'type', ads: 'ads', 'compare-conversion-rate': 'tools' };
         const TAB_TO_HASH = { dashboard: 'dashboard', spy: 'live-view', sales: 'sales', date: 'date', stats: 'countries', products: 'products', channels: 'channels', type: 'type', ads: 'ads', tools: 'compare-conversion-rate' };
         const tabDashboard = document.getElementById('nav-tab-dashboard');
         const tabSpy = document.getElementById('nav-tab-spy');
         const tabStats = document.getElementById('nav-tab-stats');
+        const tabSnapshot = document.getElementById('nav-tab-snapshot');
         const tabProducts = document.getElementById('nav-tab-products');
         const tabVariants = document.getElementById('nav-tab-variants');
         const tabAds = document.getElementById('nav-tab-ads');
@@ -16533,6 +15181,7 @@ const API = '';
         const panelDashboard = document.getElementById('tab-panel-dashboard');
         const panelSpy = document.getElementById('tab-panel-spy');
         const panelStats = document.getElementById('tab-panel-stats');
+        const panelSnapshot = document.getElementById('tab-panel-snapshot');
         const panelProducts = document.getElementById('tab-panel-products');
         const panelAds = document.getElementById('tab-panel-ads');
         const pageTitleEl = document.getElementById('page-title');
@@ -16614,13 +15263,14 @@ const API = '';
           hashUpdateInProgress = false;
         }
 
-        var TAB_TO_NAV = { spy: 'live', stats: 'countries' };
+        var TAB_TO_NAV = { spy: 'live', snapshot: 'snapshot', stats: 'countries' };
         var NAV_TO_ICON = {
           overview: 'fa-house',
           dashboard: 'fa-house',
           live: 'fa-satellite-dish',
           sales: 'fa-cart-shopping',
           date: 'fa-table',
+          snapshot: 'fa-chart-simple',
           countries: 'fa-globe',
           products: 'fa-box-open',
           variants: 'fa-bezier-curve',
@@ -16636,6 +15286,7 @@ const API = '';
           live: 'nav-item-live',
           sales: 'nav-item-sales',
           date: 'nav-item-table',
+          snapshot: 'nav-item-overview',
           countries: 'nav-item-countries',
           products: 'nav-item-products',
           variants: 'nav-item-variants',
@@ -16748,6 +15399,7 @@ const API = '';
           });
           if (tabDashboard) tabDashboard.setAttribute('aria-selected', tab === 'dashboard' ? 'true' : 'false');
           if (tabSpy) tabSpy.setAttribute('aria-selected', tab === 'spy' ? 'true' : 'false');
+          if (tabSnapshot) tabSnapshot.setAttribute('aria-selected', tab === 'snapshot' ? 'true' : 'false');
           if (tabStats) tabStats.setAttribute('aria-selected', tab === 'stats' ? 'true' : 'false');
           if (tabProducts) tabProducts.setAttribute('aria-selected', tab === 'products' ? 'true' : 'false');
           if (tabVariants) tabVariants.setAttribute('aria-selected', tab === 'variants' ? 'true' : 'false');
@@ -16766,8 +15418,8 @@ const API = '';
             if (isDashboardChild) dashboardDropdownItem.classList.add('active');
             else dashboardDropdownItem.classList.remove('active');
           }
-          // Insights dropdown (Countries + Products + Variants)
-          var isInsightsChild = (tab === 'stats' || tab === 'products' || tab === 'variants' || tab === 'abandoned-carts');
+          // Insights dropdown (Snapshot + Countries + Products + Variants)
+          var isInsightsChild = (tab === 'snapshot' || tab === 'stats' || tab === 'products' || tab === 'variants' || tab === 'abandoned-carts');
           var insightsToggle = document.querySelector('.nav-item.dropdown .dropdown-toggle[href="#navbar-insights-menu"]');
           var insightsDropdownItem = insightsToggle ? insightsToggle.closest('.nav-item') : null;
           if (insightsToggle) {
@@ -16841,6 +15493,10 @@ const API = '';
             ensureKpis();
             return;
           }
+          if (tab === 'snapshot') {
+            ensureKpis();
+            return;
+          }
           if (tab === 'dashboard') {
             try { if (typeof window.refreshDashboard === 'function') window.refreshDashboard({ force: false }); } catch (_) {}
             refreshKpis({ force: false }).then(function(data) {
@@ -16900,7 +15556,9 @@ const API = '';
           if (panelDashboard) panelDashboard.classList.toggle('active', isDashboard);
           var isSales = tab === 'sales';
           var isDate = tab === 'date';
+          var isSnapshot = tab === 'snapshot';
           if (panelSpy) panelSpy.classList.toggle('active', isSpy || isSales || isDate);
+          if (panelSnapshot) panelSnapshot.classList.toggle('active', isSnapshot);
           if (panelStats) panelStats.classList.toggle('active', isStats);
           if (panelProducts) panelProducts.classList.toggle('active', isProducts);
           if (panelAds) panelAds.classList.toggle('active', isAds);
@@ -16914,7 +15572,7 @@ const API = '';
         try { window.setTab = setTab; } catch (_) {}
 
         if (PAGE) {
-          var pageTab = PAGE === 'live' ? 'spy' : PAGE === 'countries' ? 'stats' : PAGE === 'sales' ? 'sales' : PAGE === 'date' ? 'date' : (PAGE === 'compare-conversion-rate' || PAGE === 'shipping-cr' || PAGE === 'click-order-lookup') ? 'tools' : PAGE;
+          var pageTab = PAGE === 'live' ? 'spy' : PAGE === 'snapshot' ? 'snapshot' : PAGE === 'countries' ? 'stats' : PAGE === 'sales' ? 'sales' : PAGE === 'date' ? 'date' : (PAGE === 'compare-conversion-rate' || PAGE === 'shipping-cr' || PAGE === 'click-order-lookup') ? 'tools' : PAGE;
           setTab(pageTab);
           return;
         }

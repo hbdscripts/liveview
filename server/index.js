@@ -435,6 +435,7 @@ dashboardPagesRouter.get('/sales', (req, res) => sendPage(res, 'dashboard/sales.
 dashboardPagesRouter.get('/table', (req, res) => sendPage(res, 'dashboard/table.html'));
 
 const insightsPagesRouter = express.Router();
+insightsPagesRouter.get('/snapshot', (req, res) => sendPage(res, 'insights/snapshot.html'));
 insightsPagesRouter.get('/countries', (req, res) => sendPage(res, 'insights/countries.html'));
 insightsPagesRouter.get('/products', (req, res) => sendPage(res, 'insights/products.html'));
 insightsPagesRouter.get('/variants', (req, res) => sendPage(res, 'insights/variants.html'));

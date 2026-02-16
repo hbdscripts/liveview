@@ -40,9 +40,6 @@
                 <a href="/admin" class="dropdown-item kexo-top-strip-settings-item kexo-admin-only d-none" id="kexo-admin-link" aria-label="Admin">
                   <i class="fa-jelly fa-user-gear kexo-top-strip-settings-item-icon" data-icon-key="nav-item-admin" aria-hidden="true"></i>Admin
                 </a>
-                <button type="button" class="dropdown-item kexo-top-strip-settings-item kexo-admin-only d-none" id="kexo-business-snapshot-btn" aria-label="Open Business Snapshot">
-                  <i class="fa-jelly-filled fa-sterling-sign kexo-top-strip-settings-item-icon" data-icon-key="header-business-snapshot" aria-hidden="true"></i>Business Snapshot
-                </button>
                 <div class="dropdown-divider kexo-admin-only d-none"></div>
                 <button type="button" class="dropdown-item kexo-top-strip-settings-item" id="refresh-btn" aria-label="Refresh">
                   <i class="fa-jelly fa-rotate-right kexo-top-strip-settings-item-icon" data-icon-key="nav-item-refresh" aria-hidden="true"></i>Refresh
@@ -97,6 +94,7 @@
               <li class="nav-item dropdown">
                 <a class="nav-link dropdown-toggle" href="#navbar-insights-menu" data-bs-toggle="dropdown" data-bs-auto-close="outside" role="button" aria-expanded="false" aria-haspopup="true" aria-controls="navbar-insights-menu"><i class="fa-jelly-filled fa-chart-pie kexo-nav-svg me-1" data-icon-key="nav-toggle-breakdown" aria-hidden="true"></i><span class="kexo-nav-label">Insights</span></a>
                 <div class="dropdown-menu" id="navbar-insights-menu" data-bs-popper="static">
+                  <a class="dropdown-item kexo-admin-only d-none" id="nav-tab-snapshot" data-nav="snapshot" href="/insights/snapshot"><i class="fa-solid fa-angle-right kexo-nav-dropdown-item-icon me-2" data-icon-key="nav-dropdown-arrow" aria-hidden="true"></i>Snapshot</a>
                   <a class="dropdown-item" id="nav-tab-stats" data-nav="countries" href="/insights/countries"><i class="fa-solid fa-angle-right kexo-nav-dropdown-item-icon me-2" data-icon-key="nav-dropdown-arrow" aria-hidden="true"></i>Countries</a>
                   <a class="dropdown-item" id="nav-tab-products" data-nav="products" href="/insights/products"><i class="fa-solid fa-angle-right kexo-nav-dropdown-item-icon me-2" data-icon-key="nav-dropdown-arrow" aria-hidden="true"></i>Products</a>
                   <a class="dropdown-item" id="nav-tab-variants" data-nav="variants" href="/insights/variants"><i class="fa-solid fa-angle-right kexo-nav-dropdown-item-icon me-2" data-icon-key="nav-dropdown-arrow" aria-hidden="true"></i>Variants</a>

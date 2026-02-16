@@ -91,6 +91,7 @@ function isProtectedPath(pathname) {
     '/dashboard/live',
     '/dashboard/sales',
     '/dashboard/table',
+    '/insights/snapshot',
     '/insights/countries',
     '/insights/products',
     '/insights/variants',

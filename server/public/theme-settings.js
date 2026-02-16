@@ -597,7 +597,7 @@
     var key = String(name || '').trim().toLowerCase();
     if (!key) return 'misc';
     if (key.indexOf('admin-tab-') === 0 || key === 'nav-item-admin') return 'admin';
-    if (key.indexOf('nav-toggle-') === 0 || key.indexOf('nav-item-') === 0 || key === 'topnav-date-chevron' || key === 'header-business-snapshot' || key === 'online-status-indicator' || key === 'nav-dropdown-arrow') return 'header-nav';
+    if (key.indexOf('nav-toggle-') === 0 || key.indexOf('nav-item-') === 0 || key === 'topnav-date-chevron' || key === 'online-status-indicator' || key === 'nav-dropdown-arrow') return 'header-nav';
     if (key.indexOf('footer-') === 0) return 'footer';
     if (key.indexOf('table-icon-') === 0 || key.indexOf('table-short-') === 0 || key === 'table-builder-icon' || key === 'table-sticky-resize-handle') return 'tables';
     if (key.indexOf('card-title-') === 0 || key.indexOf('card-collapse-') === 0 || key.indexOf('dash-kpi-delta-') === 0 || key.indexOf('chart-type-') === 0 || key === 'chart-builder-icon') return 'cards';

@@ -13,7 +13,16 @@ const {
   hasEnabledProfitRules,
 } = require('./profitRulesConfig');
 
-const SNAPSHOT_MODE_SET = new Set(['yearly', 'monthly']);
+const SNAPSHOT_MODE_SET = new Set(['yearly', 'monthly', 'range']);
+const SNAPSHOT_PRESET_SET = new Set([
+  'this_month',
+  'last_month',
+  'last_30_days',
+  'last_90_days',
+  'last_6_months',
+  'ytd',
+  'custom',
+]);
 const SNAPSHOT_MIN_YEAR = 2025;
 const SNAPSHOT_MIN_MONTH = '2025-01';
 const SNAPSHOT_MIN_START_YMD = '2025-01-01';
@@ -249,25 +258,34 @@ async function readShopName(shop, accessToken) {
 async function readGoogleAdsSpendDailyGbp(startMs, endMs, timeZone) {
   const start = Number(startMs);
   const end = Number(endMs);
-  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return { totalGbp: 0, byYmd: new Map() };
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) {
+    return { totalGbp: 0, byYmd: new Map(), totalClicks: 0, clicksByYmd: new Map() };
+  }
   const tz = typeof timeZone === 'string' ? timeZone : 'UTC';
   const cacheKey = `ga:${start}:${end}:${tz}`;
   const now = Date.now();
   const cached = adsSpendCache.get(cacheKey);
   if (cached && cached.expiresAt > now) {
     const byYmd = new Map(Object.entries(cached.byYmdObj || {}));
-    return { totalGbp: Number(cached.totalGbp) || 0, byYmd };
+    const clicksByYmd = new Map(Object.entries(cached.clicksByYmdObj || {}));
+    return {
+      totalGbp: Number(cached.totalGbp) || 0,
+      byYmd,
+      totalClicks: Number(cached.totalClicks) || 0,
+      clicksByYmd,
+    };
   }
 
   const adsDb = getAdsDb();
-  if (!adsDb) return { totalGbp: 0, byYmd: new Map() };
+  if (!adsDb) return { totalGbp: 0, byYmd: new Map(), totalClicks: 0, clicksByYmd: new Map() };
   let rows = [];
   try {
     rows = await adsDb.all(
       `
         SELECT
           (EXTRACT(EPOCH FROM DATE_TRUNC('day', hour_ts)) * 1000)::BIGINT AS day_ms,
-          COALESCE(SUM(spend_gbp), 0) AS spend_gbp
+          COALESCE(SUM(spend_gbp), 0) AS spend_gbp,
+          COALESCE(SUM(clicks), 0) AS clicks
         FROM google_ads_spend_hourly
         WHERE provider = 'google_ads'
           AND hour_ts >= TO_TIMESTAMP(?/1000.0) AND hour_ts < TO_TIMESTAMP(?/1000.0)
@@ -277,27 +295,46 @@ async function readGoogleAdsSpendDailyGbp(startMs, endMs, timeZone) {
       [start, end]
     );
   } catch (_) {
-    return { totalGbp: 0, byYmd: new Map() };
+    return { totalGbp: 0, byYmd: new Map(), totalClicks: 0, clicksByYmd: new Map() };
   }
 
   const byYmd = new Map();
+  const clicksByYmd = new Map();
   let total = 0;
+  let totalClicks = 0;
   for (const r of rows || []) {
     const ms = r && r.day_ms != null ? Number(r.day_ms) : NaN;
     const spend = r && r.spend_gbp != null ? Number(r.spend_gbp) : 0;
+    const clicks = r && r.clicks != null ? Number(r.clicks) : 0;
     if (!Number.isFinite(ms)) continue;
     const ymd = ymdInTimeZone(ms, tz) || null;
     if (!ymd) continue;
     const v = Number.isFinite(spend) ? spend : 0;
+    const c = Number.isFinite(clicks) ? clicks : 0;
     total += v;
+    totalClicks += c;
     byYmd.set(ymd, (byYmd.get(ymd) || 0) + v);
+    clicksByYmd.set(ymd, (clicksByYmd.get(ymd) || 0) + c);
   }
 
   const byYmdObj = {};
   for (const [k, v] of byYmd.entries()) byYmdObj[k] = round2(v) || 0;
-  adsSpendCache.set(cacheKey, { totalGbp: round2(total) || 0, byYmdObj, expiresAt: now + ADS_SPEND_CACHE_TTL_MS });
+  const clicksByYmdObj = {};
+  for (const [k, v] of clicksByYmd.entries()) clicksByYmdObj[k] = Math.max(0, Math.round(v));
+  adsSpendCache.set(cacheKey, {
+    totalGbp: round2(total) || 0,
+    byYmdObj,
+    totalClicks: Math.max(0, Math.round(totalClicks)),
+    clicksByYmdObj,
+    expiresAt: now + ADS_SPEND_CACHE_TTL_MS,
+  });
   cleanupCache(adsSpendCache, 250);
-  return { totalGbp: round2(total) || 0, byYmd };
+  return {
+    totalGbp: round2(total) || 0,
+    byYmd,
+    totalClicks: Math.max(0, Math.round(totalClicks)),
+    clicksByYmd,
+  };
 }
 
 function safeJsonParse(raw) {
@@ -392,6 +429,162 @@ function normalizeSnapshotMonth(raw, fallbackMonth) {
   return s;
 }
 
+function normalizeSnapshotPreset(raw) {
+  const s = raw == null ? '' : String(raw).trim().toLowerCase();
+  return SNAPSHOT_PRESET_SET.has(s) ? s : '';
+}
+
+function normalizeYmd(raw, fallbackYmd = '') {
+  const s = String(raw || '').trim().slice(0, 10);
+  const parts = parseYmdParts(s);
+  if (!parts) return fallbackYmd || '';
+  const maxDay = daysInMonth(parts.year, parts.month);
+  if (parts.day < 1 || parts.day > maxDay) return fallbackYmd || '';
+  return formatYmd(parts.year, parts.month, parts.day);
+}
+
+function ymdAddMonths(ymd, deltaMonths) {
+  const parts = parseYmdParts(ymd);
+  if (!parts) return String(ymd || '');
+  const dMonths = Number(deltaMonths);
+  if (!Number.isFinite(dMonths)) return formatYmd(parts.year, parts.month, parts.day);
+  const whole = Math.trunc(dMonths);
+  const targetMonthIndex = (parts.year * 12 + (parts.month - 1)) + whole;
+  const targetYear = Math.floor(targetMonthIndex / 12);
+  const targetMonth = (targetMonthIndex % 12 + 12) % 12 + 1;
+  const maxDay = daysInMonth(targetYear, targetMonth);
+  const targetDay = Math.min(parts.day, maxDay);
+  return formatYmd(targetYear, targetMonth, targetDay);
+}
+
+function ymdMonthStart(ymd) {
+  const parts = parseYmdParts(ymd);
+  if (!parts) return String(ymd || '');
+  return formatYmd(parts.year, parts.month, 1);
+}
+
+function ymdMonthEnd(ymd) {
+  const parts = parseYmdParts(ymd);
+  if (!parts) return String(ymd || '');
+  return formatYmd(parts.year, parts.month, daysInMonth(parts.year, parts.month));
+}
+
+function ymdDaysInclusive(startYmd, endYmd) {
+  const a = normalizeYmd(startYmd, '');
+  const b = normalizeYmd(endYmd, '');
+  if (!a || !b || a > b) return 0;
+  const out = listYmdRange(a, b, 4000);
+  return out.length;
+}
+
+function sanitizeRangeWindow(startYmd, endYmd, nowYmd) {
+  const safeNow = normalizeYmd(nowYmd, '');
+  let start = normalizeYmd(startYmd, safeNow || SNAPSHOT_MIN_START_YMD);
+  let end = normalizeYmd(endYmd, safeNow || start);
+  if (start > end) {
+    const tmp = start;
+    start = end;
+    end = tmp;
+  }
+  if (start < SNAPSHOT_MIN_START_YMD) start = SNAPSHOT_MIN_START_YMD;
+  if (safeNow && end > safeNow) end = safeNow;
+  if (safeNow && start > safeNow) start = safeNow;
+  if (start > end) start = end;
+  return { startYmd: start, endYmd: end };
+}
+
+function buildPresetCurrentRangeWindow(preset, nowYmd) {
+  const now = normalizeYmd(nowYmd, '');
+  if (!now) return null;
+  if (preset === 'this_month') {
+    return { startYmd: ymdMonthStart(now), endYmd: now };
+  }
+  if (preset === 'last_month') {
+    const prevMonthDay = ymdAddMonths(ymdMonthStart(now), -1);
+    return { startYmd: ymdMonthStart(prevMonthDay), endYmd: ymdMonthEnd(prevMonthDay) };
+  }
+  if (preset === 'last_30_days') {
+    return { startYmd: ymdAddDays(now, -29), endYmd: now };
+  }
+  if (preset === 'last_90_days') {
+    return { startYmd: ymdAddDays(now, -89), endYmd: now };
+  }
+  if (preset === 'last_6_months') {
+    // Rolling 6-month window ending today.
+    return { startYmd: ymdAddDays(ymdAddMonths(now, -6), 1), endYmd: now };
+  }
+  if (preset === 'ytd') {
+    const p = parseYmdParts(now);
+    if (!p) return null;
+    return { startYmd: formatYmd(p.year, 1, 1), endYmd: now };
+  }
+  return null;
+}
+
+function buildPresetCompareRangeWindow(preset, currentWindow, nowYmd) {
+  const current = currentWindow && currentWindow.startYmd && currentWindow.endYmd ? currentWindow : null;
+  if (!current) return null;
+  const safeCurrent = sanitizeRangeWindow(current.startYmd, current.endYmd, nowYmd);
+  if (preset === 'this_month') {
+    const prevMonthDate = ymdAddMonths(safeCurrent.startYmd, -1);
+    const prevParts = parseYmdParts(prevMonthDate);
+    const nowEndParts = parseYmdParts(safeCurrent.endYmd);
+    if (!prevParts || !nowEndParts) return null;
+    const startYmd = formatYmd(prevParts.year, prevParts.month, 1);
+    const endDay = Math.min(nowEndParts.day, daysInMonth(prevParts.year, prevParts.month));
+    return { startYmd, endYmd: formatYmd(prevParts.year, prevParts.month, endDay) };
+  }
+  if (preset === 'last_month') {
+    const prevMonthDate = ymdAddMonths(safeCurrent.startYmd, -1);
+    return { startYmd: ymdMonthStart(prevMonthDate), endYmd: ymdMonthEnd(prevMonthDate) };
+  }
+  if (preset === 'ytd') {
+    const nowEndParts = parseYmdParts(safeCurrent.endYmd);
+    if (!nowEndParts) return null;
+    const prevYear = nowEndParts.year - 1;
+    const endDay = Math.min(nowEndParts.day, daysInMonth(prevYear, nowEndParts.month));
+    return {
+      startYmd: formatYmd(prevYear, 1, 1),
+      endYmd: formatYmd(prevYear, nowEndParts.month, endDay),
+    };
+  }
+  // Rolling/custom presets: previous immediately preceding period of equal length.
+  const len = Math.max(1, ymdDaysInclusive(safeCurrent.startYmd, safeCurrent.endYmd));
+  const endYmd = ymdAddDays(safeCurrent.startYmd, -1);
+  const startYmd = ymdAddDays(endYmd, -(len - 1));
+  return { startYmd, endYmd };
+}
+
+function dateLabelFromYmd(ymd) {
+  const parts = parseYmdParts(ymd);
+  if (!parts) return String(ymd || '');
+  const d = new Date(Date.UTC(parts.year, parts.month - 1, parts.day, 12, 0, 0));
+  try {
+    return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
+  } catch (_) {
+    return String(ymd || '');
+  }
+}
+
+function dateSpanLabel(startYmd, endYmd) {
+  const a = dateLabelFromYmd(startYmd);
+  const b = dateLabelFromYmd(endYmd);
+  if (!a && !b) return '';
+  if (a === b) return a;
+  return `${a} - ${b}`;
+}
+
+function presetLabel(preset) {
+  if (preset === 'this_month') return 'This month';
+  if (preset === 'last_month') return 'Last month';
+  if (preset === 'last_30_days') return 'Last 30 days';
+  if (preset === 'last_90_days') return 'Last 90 days';
+  if (preset === 'last_6_months') return 'Last 6 months';
+  if (preset === 'ytd') return 'Year to date';
+  if (preset === 'custom') return 'Custom range';
+  return 'Range';
+}
+
 function buildYearlyWindow(yearStr, nowYmd) {
   const y = Number(yearStr);
   const nowParts = parseYmdParts(nowYmd);
@@ -416,6 +609,85 @@ function buildMonthlyWindow(monthStr, nowYmd) {
   const endDay = isCurrentMonth ? Math.min(nowParts.day, endDayFull) : endDayFull;
   const endYmd = formatYmd(year, month, endDay);
   return { startYmd, endYmd };
+}
+
+function resolveSnapshotWindows(options = {}, nowYmd) {
+  const safeNowYmd = normalizeYmd(nowYmd, normalizeYmd(new Date().toISOString().slice(0, 10), SNAPSHOT_MIN_START_YMD));
+  const nowParts = parseYmdParts(safeNowYmd) || { year: SNAPSHOT_MIN_YEAR, month: 1, day: 1 };
+
+  let mode = normalizeSnapshotMode(options.mode);
+  let selectedYear = normalizeSnapshotYear(options.year, String(nowParts.year));
+  let selectedMonth = normalizeSnapshotMonth(options.month, `${nowParts.year}-${pad2(nowParts.month)}`);
+  let preset = normalizeSnapshotPreset(options.preset);
+  let periodLabel = '';
+  let compareLabel = '';
+  let compareYear = null;
+  let currentWindow = null;
+  let previousWindow = null;
+
+  // Backwards compatibility with old query shape (?year=all)
+  if (String(options.year || '').trim().toLowerCase() === 'all') {
+    mode = 'yearly';
+    selectedYear = String(nowParts.year);
+  }
+
+  if (mode === 'range') {
+    if (!preset) preset = 'custom';
+    const presetWindow = buildPresetCurrentRangeWindow(preset, safeNowYmd);
+    const fromParams = sanitizeRangeWindow(
+      normalizeYmd(options.since, presetWindow && presetWindow.startYmd ? presetWindow.startYmd : safeNowYmd),
+      normalizeYmd(options.until, presetWindow && presetWindow.endYmd ? presetWindow.endYmd : safeNowYmd),
+      safeNowYmd
+    );
+    currentWindow = fromParams || presetWindow || sanitizeRangeWindow(safeNowYmd, safeNowYmd, safeNowYmd);
+    previousWindow = buildPresetCompareRangeWindow(preset, currentWindow, safeNowYmd);
+    if (!previousWindow) previousWindow = buildPresetCompareRangeWindow('custom', currentWindow, safeNowYmd);
+    previousWindow = sanitizeRangeWindow(previousWindow.startYmd, previousWindow.endYmd, safeNowYmd);
+    periodLabel = `${presetLabel(preset)} · ${dateSpanLabel(currentWindow.startYmd, currentWindow.endYmd)}`;
+    compareLabel = dateSpanLabel(previousWindow.startYmd, previousWindow.endYmd);
+  } else if (mode === 'monthly') {
+    const m = selectedMonth.match(/^(\d{4})-(\d{2})$/);
+    const year = m ? Number(m[1]) : nowParts.year;
+    const month = m ? Number(m[2]) : nowParts.month;
+    const isCurrentMonth = year === nowParts.year && month === nowParts.month;
+    currentWindow = buildMonthlyWindow(selectedMonth, safeNowYmd);
+    const prevYear = year - 1;
+    compareYear = prevYear;
+    const prevNowDay = isCurrentMonth ? Math.min(nowParts.day, daysInMonth(prevYear, month)) : daysInMonth(prevYear, month);
+    const prevNowYmd = formatYmd(prevYear, month, prevNowDay);
+    previousWindow = buildMonthlyWindow(`${String(prevYear)}-${pad2(month)}`, prevNowYmd);
+    periodLabel = `Monthly Reports · ${monthLabel(selectedMonth)}`;
+    compareLabel = `${monthLabel(`${String(prevYear)}-${pad2(month)}`)}`;
+  } else {
+    mode = 'yearly';
+    currentWindow = buildYearlyWindow(selectedYear, safeNowYmd);
+    const prevYear = Number(selectedYear) - 1;
+    compareYear = prevYear;
+    const prevNowYmd = formatYmd(prevYear, nowParts.month, Math.min(nowParts.day, daysInMonth(prevYear, nowParts.month)));
+    previousWindow = buildYearlyWindow(String(prevYear), prevNowYmd);
+    periodLabel = `Yearly Reports · ${selectedYear}`;
+    compareLabel = String(prevYear);
+  }
+
+  if (!currentWindow || !previousWindow) {
+    throw new Error('Could not resolve business snapshot windows');
+  }
+
+  currentWindow = sanitizeRangeWindow(currentWindow.startYmd, currentWindow.endYmd, safeNowYmd);
+  previousWindow = sanitizeRangeWindow(previousWindow.startYmd, previousWindow.endYmd, safeNowYmd);
+
+  return {
+    mode,
+    preset: preset || '',
+    selectedYear,
+    selectedMonth,
+    compareYear,
+    periodLabel,
+    compareLabel,
+    nowYmd: safeNowYmd,
+    currentWindow,
+    previousWindow,
+  };
 }
 
 function rangeKeyFromYmd(startYmd, endYmd) {
@@ -1070,6 +1342,72 @@ async function readCheckoutOrdersTimeseries(shop, startMs, endMs, timeZone) {
   return out;
 }
 
+async function readCustomerTypeTimeseries(shop, startMs, endMs, timeZone) {
+  const out = new Map(); // ymd -> { newCustomers, returningCustomers }
+  if (!shop) return out;
+  const start = Number(startMs);
+  const end = Number(endMs);
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return out;
+  const db = getDb();
+  let rows = [];
+  try {
+    rows = await db.all(
+      `
+        WITH paid AS (
+          SELECT customer_id, created_at, COALESCE(NULLIF(TRIM(order_id), ''), CAST(created_at AS TEXT)) AS order_key
+          FROM orders_shopify
+          WHERE shop = ?
+            AND created_at < ?
+            AND ${isPaidOrderWhereClause('')}
+            AND checkout_token IS NOT NULL
+            AND TRIM(checkout_token) != ''
+            AND customer_id IS NOT NULL
+            AND TRIM(customer_id) != ''
+        ),
+        ranked AS (
+          SELECT
+            customer_id,
+            created_at,
+            ROW_NUMBER() OVER (
+              PARTITION BY customer_id
+              ORDER BY created_at ASC, order_key ASC
+            ) AS order_seq
+          FROM paid
+        )
+        SELECT customer_id, created_at, order_seq
+        FROM ranked
+        WHERE created_at >= ? AND created_at < ?
+      `,
+      [shop, end, start, end]
+    );
+  } catch (_) {
+    return out;
+  }
+  if (!rows || !rows.length) return out;
+
+  const daySets = new Map(); // ymd -> { newCustomers:Set, returningCustomers:Set }
+  for (const row of rows) {
+    const ts = row && row.created_at != null ? Number(row.created_at) : NaN;
+    const customerId = row && row.customer_id != null ? String(row.customer_id).trim() : '';
+    const orderSeq = row && row.order_seq != null ? Number(row.order_seq) : NaN;
+    if (!Number.isFinite(ts) || !customerId || !Number.isFinite(orderSeq)) continue;
+    const ymd = ymdInTimeZone(ts, timeZone);
+    if (!ymd) continue;
+    const current = daySets.get(ymd) || { newCustomers: new Set(), returningCustomers: new Set() };
+    if (orderSeq <= 1) current.newCustomers.add(customerId);
+    else current.returningCustomers.add(customerId);
+    daySets.set(ymd, current);
+  }
+
+  for (const [ymd, item] of daySets.entries()) {
+    out.set(ymd, {
+      newCustomers: item && item.newCustomers ? item.newCustomers.size : 0,
+      returningCustomers: item && item.returningCustomers ? item.returningCustomers.size : 0,
+    });
+  }
+  return out;
+}
+
 async function getBusinessSnapshot(options = {}) {
   const nowMs = Date.now();
   const timeZone = store.resolveAdminTimeZone();
@@ -1084,50 +1422,35 @@ async function getBusinessSnapshot(options = {}) {
   const availableMonths = buildAvailableMonths(nowParts.year, nowParts.month);
   const availableMonthOptions = availableMonths.map((value) => ({ value, label: monthLabel(value) }));
 
-  let mode = normalizeSnapshotMode(options.mode);
-  let selectedYear = normalizeSnapshotYear(options.year, availableYears[0] || String(nowParts.year));
-  if (!availableYears.includes(selectedYear)) selectedYear = availableYears[0] || String(nowParts.year);
-  let selectedMonth = normalizeSnapshotMonth(options.month, availableMonths[0] || `${nowParts.year}-${pad2(nowParts.month)}`);
-  if (!availableMonths.includes(selectedMonth)) selectedMonth = availableMonths[0] || `${nowParts.year}-${pad2(nowParts.month)}`;
-
-  // Backwards compatibility with old query shape (?year=all)
-  if (String(options.year || '').trim().toLowerCase() === 'all') {
-    mode = 'yearly';
-    selectedYear = availableYears[0] || String(nowParts.year);
+  const requestedYear = normalizeSnapshotYear(options.year, availableYears[0] || String(nowParts.year));
+  const requestedMonth = normalizeSnapshotMonth(options.month, availableMonths[0] || `${nowParts.year}-${pad2(nowParts.month)}`);
+  let resolved = resolveSnapshotWindows(
+    {
+      mode: options.mode,
+      year: requestedYear,
+      month: requestedMonth,
+      since: options.since,
+      until: options.until,
+      preset: options.preset,
+    },
+    nowYmd
+  );
+  if (resolved.mode === 'yearly' && !availableYears.includes(resolved.selectedYear)) {
+    resolved = resolveSnapshotWindows({ ...options, mode: 'yearly', year: availableYears[0] || String(nowParts.year) }, nowYmd);
+  }
+  if (resolved.mode === 'monthly' && !availableMonths.includes(resolved.selectedMonth)) {
+    resolved = resolveSnapshotWindows({ ...options, mode: 'monthly', month: availableMonths[0] || `${nowParts.year}-${pad2(nowParts.month)}` }, nowYmd);
   }
 
-  let currentWindow = null;
-  let previousWindow = null;
-  let periodLabel = '';
-  let compareLabel = '';
-  let compareYear = null;
-
-  if (mode === 'monthly') {
-    const m = selectedMonth.match(/^(\d{4})-(\d{2})$/);
-    const year = m ? Number(m[1]) : nowParts.year;
-    const month = m ? Number(m[2]) : nowParts.month;
-    const isCurrentMonth = year === nowParts.year && month === nowParts.month;
-    currentWindow = buildMonthlyWindow(selectedMonth, nowYmd);
-    const prevYear = year - 1;
-    compareYear = prevYear;
-    const prevNowDay = isCurrentMonth ? Math.min(nowParts.day, daysInMonth(prevYear, month)) : daysInMonth(prevYear, month);
-    const prevNowYmd = formatYmd(prevYear, month, prevNowDay);
-    previousWindow = buildMonthlyWindow(`${String(prevYear)}-${pad2(month)}`, prevNowYmd);
-    periodLabel = `Monthly Reports · ${monthLabel(selectedMonth)}`;
-    compareLabel = `${monthLabel(`${String(prevYear)}-${pad2(month)}`)}`;
-  } else {
-    currentWindow = buildYearlyWindow(selectedYear, nowYmd);
-    const prevYear = Number(selectedYear) - 1;
-    compareYear = prevYear;
-    const prevNowYmd = formatYmd(prevYear, nowParts.month, Math.min(nowParts.day, daysInMonth(prevYear, nowParts.month)));
-    previousWindow = buildYearlyWindow(String(prevYear), prevNowYmd);
-    periodLabel = `Yearly Reports · ${selectedYear}`;
-    compareLabel = String(prevYear);
-  }
-
-  if (!currentWindow || !previousWindow) {
-    throw new Error('Could not resolve business snapshot windows');
-  }
+  const mode = resolved.mode;
+  const preset = resolved.preset || '';
+  const selectedYear = resolved.selectedYear;
+  const selectedMonth = resolved.selectedMonth;
+  const periodLabel = resolved.periodLabel;
+  const compareLabel = resolved.compareLabel;
+  const compareYear = resolved.compareYear;
+  const currentWindow = resolved.currentWindow;
+  const previousWindow = resolved.previousWindow;
 
   const rangeKey = rangeKeyFromYmd(currentWindow.startYmd, currentWindow.endYmd);
   const compareRangeKey = rangeKeyFromYmd(previousWindow.startYmd, previousWindow.endYmd);
@@ -1136,6 +1459,8 @@ async function getBusinessSnapshot(options = {}) {
 
   const startYmd = ymdInTimeZone(bounds.start, timeZone);
   const endYmd = ymdInTimeZone(Math.max(bounds.start, bounds.end - 1), timeZone);
+  const compareStartYmd = ymdInTimeZone(compareBounds.start, timeZone);
+  const compareEndYmd = ymdInTimeZone(Math.max(compareBounds.start, compareBounds.end - 1), timeZone);
 
   async function shopifySessionsForBounds(b) {
     if (!shop || !token) return { sessions: null, conversionRate: null };
@@ -1168,19 +1493,128 @@ async function getBusinessSnapshot(options = {}) {
     };
   }
 
-  const [sessionsNowTs, sessionsPrevMetrics, revenue, orders, revenuePrev, ordersPrev, ordersTsMap] = await Promise.all([
+  function mapSessionsTimeseries(ts) {
+    const sessionsByDay = new Map();
+    const convByDay = new Map();
+    try {
+      const labels = Array.isArray(ts && ts.labelsYmd) ? ts.labelsYmd : [];
+      const sArr = Array.isArray(ts && ts.sessions) ? ts.sessions : [];
+      const cArr = Array.isArray(ts && ts.conversionRate) ? ts.conversionRate : [];
+      for (let i = 0; i < labels.length; i += 1) {
+        const ymd = String(labels[i] || '').slice(0, 10);
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(ymd)) continue;
+        const sv = toNumber(sArr[i]);
+        const cv = toNumber(cArr[i]);
+        if (sv != null) sessionsByDay.set(ymd, sv);
+        if (cv != null) convByDay.set(ymd, cv);
+      }
+    } catch (_) {}
+    return { sessionsByDay, convByDay };
+  }
+
+  function buildCostDailySeries({ chartDays, revenueDaily, ordersDaily, cogsTotal, deductionsDetailed, adsByYmd, includeAds }) {
+    const days = Array.isArray(chartDays) ? chartDays : [];
+    const rev = Array.isArray(revenueDaily) ? revenueDaily : [];
+    const ord = Array.isArray(ordersDaily) ? ordersDaily : [];
+    const revTotalDaily = sumNumeric(rev);
+    const ordTotalDaily = sumNumeric(ord);
+    const daysCount = Math.max(1, days.length || 1);
+    const cogsDaily = (toNumber(cogsTotal) != null && revTotalDaily > 0)
+      ? rev.map((r) => {
+        const rr = Number(r) || 0;
+        return round2((Number(cogsTotal) * rr) / revTotalDaily) || 0;
+      })
+      : rev.map(() => 0);
+    const expensesDaily = rev.map(() => 0);
+    if (deductionsDetailed && Array.isArray(deductionsDetailed.lines) && deductionsDetailed.lines.length) {
+      for (const line of deductionsDetailed.lines) {
+        if (!line) continue;
+        const amt = Number(line.amountGbp) || 0;
+        if (!Number.isFinite(amt) || amt <= 0) continue;
+        const t = line.type ? String(line.type) : '';
+        if (t === PROFIT_RULE_TYPES.fixedPerPeriod) {
+          const perDay = amt / daysCount;
+          for (let i = 0; i < expensesDaily.length; i += 1) expensesDaily[i] += perDay;
+        } else if (t === PROFIT_RULE_TYPES.fixedPerOrder) {
+          const denom = ordTotalDaily > 0 ? ordTotalDaily : daysCount;
+          for (let i = 0; i < expensesDaily.length; i += 1) {
+            const w = ordTotalDaily > 0 ? (Number(ord[i]) || 0) : 1;
+            expensesDaily[i] += (amt * w) / denom;
+          }
+        } else {
+          const denom = revTotalDaily > 0 ? revTotalDaily : daysCount;
+          for (let i = 0; i < expensesDaily.length; i += 1) {
+            const w = revTotalDaily > 0 ? (Number(rev[i]) || 0) : 1;
+            expensesDaily[i] += (amt * w) / denom;
+          }
+        }
+      }
+    }
+    const adsDaily = includeAds
+      ? days.map((ymd) => {
+        const v = adsByYmd && adsByYmd.get ? Number(adsByYmd.get(ymd) || 0) : 0;
+        return round2(v) || 0;
+      })
+      : days.map(() => 0);
+    const costDaily = days.map((_, i) => {
+      const a = Number(cogsDaily[i]) || 0;
+      const b = Number(expensesDaily[i]) || 0;
+      const cVal = Number(adsDaily[i]) || 0;
+      return round2(a + b + cVal) || 0;
+    });
+    return { costDaily, adsDaily };
+  }
+
+  const profitRules = await readProfitRulesConfig();
+  const rulesEnabled = hasEnabledProfitRules(profitRules);
+  const includeGoogleAdsSpend = !!(profitRules && profitRules.integrations && profitRules.integrations.includeGoogleAdsSpend === true);
+  const profitConfigured = !!(profitRules && profitRules.enabled === true && (rulesEnabled || includeGoogleAdsSpend));
+
+  const [
+    sessionsNowTs,
+    sessionsPrevTs,
+    revenue,
+    orders,
+    revenuePrev,
+    ordersPrev,
+    ordersTsMap,
+    ordersPrevTsMap,
+    customerNowTsMap,
+    customerPrevTsMap,
+    shopName,
+    summaryNow,
+    summaryPrev,
+    cogsNowRaw,
+    cogsPrevRaw,
+    adsNow,
+    adsPrev,
+  ] = await Promise.all([
     shopifySessionsTimeseriesForBounds(bounds),
-    shopifySessionsForBounds(compareBounds),
+    shopifySessionsTimeseriesForBounds(compareBounds),
     shop ? salesTruth.getTruthCheckoutSalesTotalGbp(shop, bounds.start, bounds.end) : Promise.resolve(0),
     shop ? salesTruth.getTruthCheckoutOrderCount(shop, bounds.start, bounds.end) : Promise.resolve(0),
     shop ? salesTruth.getTruthCheckoutSalesTotalGbp(shop, compareBounds.start, compareBounds.end) : Promise.resolve(null),
     shop ? salesTruth.getTruthCheckoutOrderCount(shop, compareBounds.start, compareBounds.end) : Promise.resolve(null),
     readCheckoutOrdersTimeseries(shop, bounds.start, bounds.end, timeZone).catch(() => new Map()),
+    readCheckoutOrdersTimeseries(shop, compareBounds.start, compareBounds.end, timeZone).catch(() => new Map()),
+    readCustomerTypeTimeseries(shop, bounds.start, bounds.end, timeZone).catch(() => new Map()),
+    readCustomerTypeTimeseries(shop, compareBounds.start, compareBounds.end, timeZone).catch(() => new Map()),
+    readShopName(shop, token).catch(() => null),
+    rulesEnabled ? readOrderCountrySummary(shop, bounds.start, bounds.end) : Promise.resolve(null),
+    rulesEnabled ? readOrderCountrySummary(shop, compareBounds.start, compareBounds.end) : Promise.resolve(null),
+    readCogsTotalGbpFromLineItems(shop, token, bounds.start, bounds.end).catch(() => null),
+    readCogsTotalGbpFromLineItems(shop, token, compareBounds.start, compareBounds.end).catch(() => null),
+    readGoogleAdsSpendDailyGbp(bounds.start, bounds.end, timeZone).catch(() => ({ totalGbp: 0, byYmd: new Map(), totalClicks: 0, clicksByYmd: new Map() })),
+    readGoogleAdsSpendDailyGbp(compareBounds.start, compareBounds.end, timeZone).catch(() => ({ totalGbp: 0, byYmd: new Map(), totalClicks: 0, clicksByYmd: new Map() })),
   ]);
 
   let sessionsNowMetrics = summarizeSessionsTimeseries(sessionsNowTs);
   if (sessionsNowMetrics.sessions == null && sessionsNowMetrics.conversionRate == null) {
     sessionsNowMetrics = await shopifySessionsForBounds(bounds);
+  }
+  let sessionsPrevMetrics = summarizeSessionsTimeseries(sessionsPrevTs);
+  if (sessionsPrevMetrics.sessions == null && sessionsPrevMetrics.conversionRate == null) {
+    sessionsPrevMetrics = await shopifySessionsForBounds(compareBounds);
   }
 
   const sessions = toNumber(sessionsNowMetrics && sessionsNowMetrics.sessions);
@@ -1209,104 +1643,99 @@ async function getBusinessSnapshot(options = {}) {
   const aov = (toNumber(revenue) != null && toNumber(orders) != null && Number(orders) > 0) ? round2(Number(revenue) / Number(orders)) : null;
   const aovPrev = (toNumber(revenuePrev) != null && toNumber(ordersPrev) != null && Number(ordersPrev) > 0) ? round2(Number(revenuePrev) / Number(ordersPrev)) : null;
 
-  // --- Chart series (Apex) ---
   const chartDays = listYmdRange(startYmd, endYmd);
-  const revenueDaily = [];
-  const ordersDaily = [];
-  const sessionsDaily = [];
-  const convDaily = [];
+  const chartDaysPrev = listYmdRange(compareStartYmd, compareEndYmd);
+  const nowSessionsMap = mapSessionsTimeseries(sessionsNowTs);
+  const prevSessionsMap = mapSessionsTimeseries(sessionsPrevTs);
+  const adsNowByYmd = adsNow && adsNow.byYmd && adsNow.byYmd.get ? adsNow.byYmd : new Map();
+  const adsPrevByYmd = adsPrev && adsPrev.byYmd && adsPrev.byYmd.get ? adsPrev.byYmd : new Map();
+  const adsNowClicksByYmd = adsNow && adsNow.clicksByYmd && adsNow.clicksByYmd.get ? adsNow.clicksByYmd : new Map();
+  const adsPrevClicksByYmd = adsPrev && adsPrev.clicksByYmd && adsPrev.clicksByYmd.get ? adsPrev.clicksByYmd : new Map();
 
-  const sessionsByDay = new Map();
-  const convByDay = new Map();
-  try {
-    const labels = Array.isArray(sessionsNowTs && sessionsNowTs.labelsYmd) ? sessionsNowTs.labelsYmd : [];
-    const sArr = Array.isArray(sessionsNowTs && sessionsNowTs.sessions) ? sessionsNowTs.sessions : [];
-    const cArr = Array.isArray(sessionsNowTs && sessionsNowTs.conversionRate) ? sessionsNowTs.conversionRate : [];
-    for (let i = 0; i < labels.length; i += 1) {
-      const ymd = String(labels[i] || '').slice(0, 10);
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(ymd)) continue;
-      const sv = toNumber(sArr[i]);
-      const cv = toNumber(cArr[i]);
-      if (sv != null) sessionsByDay.set(ymd, sv);
-      if (cv != null) convByDay.set(ymd, cv);
+  function buildDailySeries(days, ordersMap, sessionMap, convMap, customerMap, spendMap, clicksMap) {
+    const revenueGbp = [];
+    const ordersArr = [];
+    const sessionsArr = [];
+    const conversionRateArr = [];
+    const aovArr = [];
+    const newCustomersArr = [];
+    const returningCustomersArr = [];
+    const clicksArr = [];
+    const roasArr = [];
+    for (const ymd of days || []) {
+      const orderRow = ordersMap && ordersMap.get ? ordersMap.get(ymd) : null;
+      const rev = orderRow && orderRow.revenueGbp != null ? Number(orderRow.revenueGbp) : 0;
+      const ord = orderRow && orderRow.orders != null ? Number(orderRow.orders) : 0;
+      const ses = sessionMap && sessionMap.has && sessionMap.has(ymd) ? toNumber(sessionMap.get(ymd)) : null;
+      const conv = convMap && convMap.has && convMap.has(ymd) ? toNumber(convMap.get(ymd)) : null;
+      const customerRow = customerMap && customerMap.get ? customerMap.get(ymd) : null;
+      const newCustomers = customerRow && customerRow.newCustomers != null ? Number(customerRow.newCustomers) : 0;
+      const returningCustomers = customerRow && customerRow.returningCustomers != null ? Number(customerRow.returningCustomers) : 0;
+      const spend = spendMap && spendMap.get ? Number(spendMap.get(ymd) || 0) : 0;
+      const clicks = clicksMap && clicksMap.get ? Number(clicksMap.get(ymd) || 0) : 0;
+      const revSafe = round2(rev) || 0;
+      const ordSafe = Number.isFinite(ord) ? ord : 0;
+      revenueGbp.push(revSafe);
+      ordersArr.push(ordSafe);
+      sessionsArr.push(ses);
+      conversionRateArr.push(conv);
+      aovArr.push(ordSafe > 0 ? (round2(revSafe / ordSafe) || 0) : null);
+      newCustomersArr.push(Number.isFinite(newCustomers) ? newCustomers : 0);
+      returningCustomersArr.push(Number.isFinite(returningCustomers) ? returningCustomers : 0);
+      clicksArr.push(Number.isFinite(clicks) ? Math.max(0, Math.round(clicks)) : 0);
+      roasArr.push(Number.isFinite(spend) && spend > 0 ? (round2(revSafe / spend) || 0) : null);
     }
-  } catch (_) {}
-
-  for (const ymd of chartDays) {
-    const row = ordersTsMap && ordersTsMap.get ? ordersTsMap.get(ymd) : null;
-    const rev = row && row.revenueGbp != null ? Number(row.revenueGbp) : 0;
-    const ord = row && row.orders != null ? Number(row.orders) : 0;
-    revenueDaily.push(round2(rev) || 0);
-    ordersDaily.push(Number.isFinite(ord) ? ord : 0);
-    sessionsDaily.push(sessionsByDay.has(ymd) ? sessionsByDay.get(ymd) : null);
-    convDaily.push(convByDay.has(ymd) ? convByDay.get(ymd) : null);
+    return {
+      revenueGbp,
+      orders: ordersArr,
+      sessions: sessionsArr,
+      conversionRate: conversionRateArr,
+      aov: aovArr,
+      newCustomers: newCustomersArr,
+      returningCustomers: returningCustomersArr,
+      clicks: clicksArr,
+      roas: roasArr,
+    };
   }
 
-  const profitRules = await readProfitRulesConfig();
-  const rulesEnabled = hasEnabledProfitRules(profitRules);
-  const includeGoogleAdsSpend = !!(profitRules && profitRules.integrations && profitRules.integrations.includeGoogleAdsSpend === true);
-
-  const [
-    shopName,
-    summaryNow,
-    summaryPrev,
-    cogsNowRaw,
-    adsNow,
-  ] = await Promise.all([
-    readShopName(shop, token).catch(() => null),
-    rulesEnabled ? readOrderCountrySummary(shop, bounds.start, bounds.end) : Promise.resolve(null),
-    rulesEnabled ? readOrderCountrySummary(shop, compareBounds.start, compareBounds.end) : Promise.resolve(null),
-    readCogsTotalGbpFromLineItems(shop, token, bounds.start, bounds.end).catch(() => null),
-    includeGoogleAdsSpend ? readGoogleAdsSpendDailyGbp(bounds.start, bounds.end, timeZone) : Promise.resolve({ totalGbp: 0, byYmd: new Map() }),
-  ]);
+  const dailyNow = buildDailySeries(
+    chartDays,
+    ordersTsMap,
+    nowSessionsMap.sessionsByDay,
+    nowSessionsMap.convByDay,
+    customerNowTsMap,
+    adsNowByYmd,
+    adsNowClicksByYmd
+  );
+  const dailyPrev = buildDailySeries(
+    chartDaysPrev,
+    ordersPrevTsMap,
+    prevSessionsMap.sessionsByDay,
+    prevSessionsMap.convByDay,
+    customerPrevTsMap,
+    adsPrevByYmd,
+    adsPrevClicksByYmd
+  );
 
   const deductionsNowDetailed = (rulesEnabled && summaryNow) ? computeProfitDeductionsDetailed(summaryNow, profitRules) : { total: 0, lines: [] };
   const deductionsPrevDetailed = (rulesEnabled && summaryPrev) ? computeProfitDeductionsDetailed(summaryPrev, profitRules) : { total: 0, lines: [] };
 
-  // Profit section (existing behaviour): only visible when rules are enabled.
-  let profitSection = {
-    enabled: false,
-    hasEnabledRules: false,
-    visible: false,
-    unavailable: false,
-    estimatedProfit: metric(null, null),
-    netProfit: metric(null, null),
-    marginPct: metric(null, null),
-    deductions: metric(null, null),
-  };
-  try {
-    profitSection.enabled = !!profitRules.enabled;
-    profitSection.hasEnabledRules = rulesEnabled;
-    if (rulesEnabled && summaryNow && summaryPrev) {
-      const deductionsNow = Number(deductionsNowDetailed.total) || 0;
-      const deductionsPrev = Number(deductionsPrevDetailed.total) || 0;
-
-      const estNow = round2((Number(summaryNow.revenueGbp) || 0) - deductionsNow);
-      const estPrev = round2((Number(summaryPrev.revenueGbp) || 0) - deductionsPrev);
-      const marginNow = (Number(summaryNow.revenueGbp) || 0) > 0 ? round1((Number(estNow) / Number(summaryNow.revenueGbp)) * 100) : null;
-      const marginPrev = (Number(summaryPrev.revenueGbp) || 0) > 0 ? round1((Number(estPrev) / Number(summaryPrev.revenueGbp)) * 100) : null;
-
-      profitSection.visible = true;
-      profitSection.unavailable = false;
-      profitSection.estimatedProfit = metric(estNow, estPrev);
-      // Net rules are not separate yet, so net mirrors estimated gross for now.
-      profitSection.netProfit = metric(estNow, estPrev);
-      profitSection.marginPct = metric(marginNow, marginPrev);
-      profitSection.deductions = metric(deductionsNow, deductionsPrev);
-    }
-  } catch (_) {
-    profitSection.unavailable = true;
-  }
-
-  // Cost totals + breakdown (used by Revenue & Cost chart tooltip)
   const cogsNow = toNumber(cogsNowRaw);
+  const cogsPrev = toNumber(cogsPrevRaw);
+  const adsSpendNowAll = Number(adsNow && adsNow.totalGbp) || 0;
+  const adsSpendPrevAll = Number(adsPrev && adsPrev.totalGbp) || 0;
+  const adsClicksNow = Math.max(0, Math.round(Number(adsNow && adsNow.totalClicks) || 0));
+  const adsClicksPrev = Math.max(0, Math.round(Number(adsPrev && adsPrev.totalClicks) || 0));
   const customExpensesNow = rulesEnabled ? (Number(deductionsNowDetailed.total) || 0) : 0;
-  const adsSpendNow = includeGoogleAdsSpend ? (Number(adsNow && adsNow.totalGbp) || 0) : 0;
-  const costNow = (cogsNow != null || customExpensesNow > 0 || adsSpendNow > 0)
-    ? round2((cogsNow || 0) + customExpensesNow + adsSpendNow)
+  const customExpensesPrev = rulesEnabled ? (Number(deductionsPrevDetailed.total) || 0) : 0;
+  const adsSpendNowCost = includeGoogleAdsSpend ? adsSpendNowAll : 0;
+  const adsSpendPrevCost = includeGoogleAdsSpend ? adsSpendPrevAll : 0;
+  const costNow = (cogsNow != null || customExpensesNow > 0 || adsSpendNowCost > 0)
+    ? round2((cogsNow || 0) + customExpensesNow + adsSpendNowCost)
     : null;
-  // Keep Snapshot fast: we don't compute COGS/Ads for previous windows.
-  const costPrev = null;
+  const costPrev = (cogsPrev != null || customExpensesPrev > 0 || adsSpendPrevCost > 0)
+    ? round2((cogsPrev || 0) + customExpensesPrev + adsSpendPrevCost)
+    : null;
 
   const costBreakdownNow = [];
   if (cogsNow != null) costBreakdownNow.push({ label: 'Cost of Goods', amountGbp: round2(cogsNow) || 0 });
@@ -1318,67 +1747,56 @@ async function getBusinessSnapshot(options = {}) {
       costBreakdownNow.push({ label: String(line.label), amountGbp: round2(amt) || 0 });
     }
   }
-  if (adsSpendNow > 0) costBreakdownNow.push({ label: 'Google Ads spend', amountGbp: round2(adsSpendNow) || 0 });
+  if (adsSpendNowCost > 0) costBreakdownNow.push({ label: 'Google Ads spend', amountGbp: round2(adsSpendNowCost) || 0 });
 
-  // --- Cost series (daily) ---
-  const revTotalDaily = sumNumeric(revenueDaily);
-  const ordTotalDaily = sumNumeric(ordersDaily);
-  const daysCount = Math.max(1, chartDays.length || 1);
-
-  const cogsDaily = (cogsNow != null && revTotalDaily > 0)
-    ? revenueDaily.map((r) => {
-      const rr = Number(r) || 0;
-      return round2((cogsNow * rr) / revTotalDaily) || 0;
-    })
-    : revenueDaily.map(() => 0);
-
-  const expensesDaily = revenueDaily.map(() => 0);
-  if (rulesEnabled && deductionsNowDetailed && Array.isArray(deductionsNowDetailed.lines) && deductionsNowDetailed.lines.length) {
-    for (const line of deductionsNowDetailed.lines) {
-      if (!line) continue;
+  const costBreakdownPrevious = [];
+  if (cogsPrev != null) costBreakdownPrevious.push({ label: 'Cost of Goods', amountGbp: round2(cogsPrev) || 0 });
+  if (rulesEnabled) {
+    for (const line of (deductionsPrevDetailed.lines || [])) {
+      if (!line || !line.label) continue;
       const amt = Number(line.amountGbp) || 0;
-      if (!Number.isFinite(amt) || amt <= 0) continue;
-      const t = line.type ? String(line.type) : '';
-      if (t === PROFIT_RULE_TYPES.fixedPerPeriod) {
-        const perDay = amt / daysCount;
-        for (let i = 0; i < expensesDaily.length; i += 1) expensesDaily[i] += perDay;
-      } else if (t === PROFIT_RULE_TYPES.fixedPerOrder) {
-        const denom = ordTotalDaily > 0 ? ordTotalDaily : daysCount;
-        for (let i = 0; i < expensesDaily.length; i += 1) {
-          const w = ordTotalDaily > 0 ? (Number(ordersDaily[i]) || 0) : 1;
-          expensesDaily[i] += (amt * w) / denom;
-        }
-      } else {
-        const denom = revTotalDaily > 0 ? revTotalDaily : daysCount;
-        for (let i = 0; i < expensesDaily.length; i += 1) {
-          const w = revTotalDaily > 0 ? (Number(revenueDaily[i]) || 0) : 1;
-          expensesDaily[i] += (amt * w) / denom;
-        }
-      }
+      if (amt <= 0) continue;
+      costBreakdownPrevious.push({ label: String(line.label), amountGbp: round2(amt) || 0 });
     }
   }
+  if (adsSpendPrevCost > 0) costBreakdownPrevious.push({ label: 'Google Ads spend', amountGbp: round2(adsSpendPrevCost) || 0 });
 
-  const adsDaily = includeGoogleAdsSpend
-    ? chartDays.map((ymd) => {
-      const v = adsNow && adsNow.byYmd && adsNow.byYmd.get ? Number(adsNow.byYmd.get(ymd) || 0) : 0;
-      return round2(v) || 0;
-    })
-    : chartDays.map(() => 0);
-
-  const costDaily = chartDays.map((_, i) => {
-    const a = Number(cogsDaily[i]) || 0;
-    const b = Number(expensesDaily[i]) || 0;
-    const cVal = Number(adsDaily[i]) || 0;
-    return round2(a + b + cVal) || 0;
+  const nowCostSeries = buildCostDailySeries({
+    chartDays,
+    revenueDaily: dailyNow.revenueGbp,
+    ordersDaily: dailyNow.orders,
+    cogsTotal: cogsNow,
+    deductionsDetailed: rulesEnabled ? deductionsNowDetailed : { lines: [] },
+    adsByYmd: adsNowByYmd,
+    includeAds: includeGoogleAdsSpend,
   });
+  const prevCostSeries = buildCostDailySeries({
+    chartDays: chartDaysPrev,
+    revenueDaily: dailyPrev.revenueGbp,
+    ordersDaily: dailyPrev.orders,
+    cogsTotal: cogsPrev,
+    deductionsDetailed: rulesEnabled ? deductionsPrevDetailed : { lines: [] },
+    adsByYmd: adsPrevByYmd,
+    includeAds: includeGoogleAdsSpend,
+  });
+  dailyNow.costGbp = nowCostSeries.costDaily;
+  dailyPrev.costGbp = prevCostSeries.costDaily;
 
   const series = downsampleWeekly({
     labelsYmd: chartDays,
-    revenueGbp: revenueDaily,
-    costGbp: costDaily,
-    orders: ordersDaily,
-    sessions: sessionsDaily,
-    conversionRate: convDaily,
+    revenueGbp: dailyNow.revenueGbp,
+    costGbp: dailyNow.costGbp,
+    orders: dailyNow.orders,
+    sessions: dailyNow.sessions,
+    conversionRate: dailyNow.conversionRate,
+  });
+  const seriesPrevious = downsampleWeekly({
+    labelsYmd: chartDaysPrev,
+    revenueGbp: dailyPrev.revenueGbp,
+    costGbp: dailyPrev.costGbp,
+    orders: dailyPrev.orders,
+    sessions: dailyPrev.sessions,
+    conversionRate: dailyPrev.conversionRate,
   });
 
   const [distinctCustomers, distinctCustomersPrev, ltvValue, ltvPrevValue, returningRaw, returningPrevRaw] = await Promise.all([
@@ -1403,10 +1821,51 @@ async function getBusinessSnapshot(options = {}) {
   const repeatPurchaseRate = safePercent(returningCustomers, distinctCustomers);
   const repeatPurchaseRatePrev = safePercent(returningCustomersPrev, distinctCustomersPrev);
 
+  const hasAdsMetricData = adsSpendNowAll > 0 || adsSpendPrevAll > 0 || adsClicksNow > 0 || adsClicksPrev > 0;
+  const roasNow = hasAdsMetricData && adsSpendNowAll > 0 ? (round2((Number(revenue) || 0) / adsSpendNowAll) || 0) : null;
+  const roasPrev = hasAdsMetricData && adsSpendPrevAll > 0 ? (round2((Number(revenuePrev) || 0) / adsSpendPrevAll) || 0) : null;
+
+  let profitSection = {
+    enabled: false,
+    hasEnabledRules: false,
+    hasEnabledIntegration: false,
+    visible: false,
+    unavailable: false,
+    estimatedProfit: metric(null, null),
+    netProfit: metric(null, null),
+    marginPct: metric(null, null),
+    deductions: metric(null, null),
+  };
+  try {
+    profitSection.enabled = !!(profitRules && profitRules.enabled === true);
+    profitSection.hasEnabledRules = rulesEnabled;
+    profitSection.hasEnabledIntegration = includeGoogleAdsSpend;
+    if (profitConfigured) {
+      const deductionsNow = (rulesEnabled ? (Number(deductionsNowDetailed.total) || 0) : 0) + (includeGoogleAdsSpend ? adsSpendNowAll : 0);
+      const deductionsPrev = (rulesEnabled ? (Number(deductionsPrevDetailed.total) || 0) : 0) + (includeGoogleAdsSpend ? adsSpendPrevAll : 0);
+      const revNow = Number(revenue) || 0;
+      const revPrev = Number(revenuePrev) || 0;
+      const estNow = round2(revNow - deductionsNow);
+      const estPrev = round2(revPrev - deductionsPrev);
+      const marginNow = revNow > 0 ? round1((Number(estNow) / revNow) * 100) : null;
+      const marginPrev = revPrev > 0 ? round1((Number(estPrev) / revPrev) * 100) : null;
+      profitSection.visible = true;
+      profitSection.unavailable = false;
+      profitSection.estimatedProfit = metric(estNow, estPrev);
+      // Net rules are not separate yet, so net mirrors estimated gross for now.
+      profitSection.netProfit = metric(estNow, estPrev);
+      profitSection.marginPct = metric(marginNow, marginPrev);
+      profitSection.deductions = metric(deductionsNow, deductionsPrev);
+    }
+  } catch (_) {
+    profitSection.unavailable = true;
+  }
+
   const previousPeriodHasData = (
     ((toNumber(ordersPrev) || 0) > 0) ||
     ((toNumber(sessionsPrevSafe) || 0) > 0) ||
-    ((toNumber(distinctCustomersPrev) || 0) > 0)
+    ((toNumber(distinctCustomersPrev) || 0) > 0) ||
+    ((toNumber(revenuePrev) || 0) > 0)
   );
   const prevOrNull = previousPeriodHasData
     ? function keepPrevious(value) { return toNumber(value); }
@@ -1422,12 +1881,43 @@ async function getBusinessSnapshot(options = {}) {
     ok: true,
     shopName: shopName || null,
     mode,
+    preset: preset || null,
     year: selectedYear,
     month: selectedMonth,
     periodLabel,
     compareLabel,
     rangeKey,
     series,
+    seriesPrevious,
+    seriesComparison: {
+      granularity: 'day',
+      current: {
+        labelsYmd: chartDays,
+        revenueGbp: dailyNow.revenueGbp,
+        costGbp: dailyNow.costGbp,
+        orders: dailyNow.orders,
+        sessions: dailyNow.sessions,
+        conversionRate: dailyNow.conversionRate,
+        aov: dailyNow.aov,
+        newCustomers: dailyNow.newCustomers,
+        returningCustomers: dailyNow.returningCustomers,
+        clicks: dailyNow.clicks,
+        roas: dailyNow.roas,
+      },
+      previous: {
+        labelsYmd: chartDaysPrev,
+        revenueGbp: dailyPrev.revenueGbp,
+        costGbp: dailyPrev.costGbp,
+        orders: dailyPrev.orders,
+        sessions: dailyPrev.sessions,
+        conversionRate: dailyPrev.conversionRate,
+        aov: dailyPrev.aov,
+        newCustomers: dailyPrev.newCustomers,
+        returningCustomers: dailyPrev.returningCustomers,
+        clicks: dailyPrev.clicks,
+        roas: dailyPrev.roas,
+      },
+    },
     availableYears,
     availableMonths: availableMonthOptions,
     range: {
@@ -1436,8 +1926,9 @@ async function getBusinessSnapshot(options = {}) {
     },
     financial: {
       revenue: metric(revenue, prevOrNull(revenuePrev)),
-      cost: metric(costNow, costPrev),
+      cost: metric(costNow, prevOrNull(costPrev)),
       costBreakdownNow,
+      costBreakdownPrevious,
       orders: metric(orders, prevOrNull(ordersPrev)),
       aov: metric(aov, prevOrNull(aovPrev)),
       conversionRate: metric(conversionRate, prevOrNull(conversionRatePrev)),
@@ -1466,6 +1957,8 @@ async function getBusinessSnapshot(options = {}) {
       orders: metric(orders, prevOrNull(ordersPrev)),
       conversionRate: metric(conversionRate, prevOrNull(conversionRatePrev)),
       aov: metric(aov, prevOrNull(aovPrev)),
+      clicks: metric(hasAdsMetricData ? adsClicksNow : null, hasAdsMetricData ? prevOrNull(adsClicksPrev) : null),
+      roas: metric(roasNow, prevOrNull(roasPrev)),
     },
     customers: {
       newCustomers: metric(newCustomers, prevOrNull(newCustomersPrev)),
@@ -1481,11 +1974,12 @@ async function getBusinessSnapshot(options = {}) {
       sessions: 'shopifyql (sessions)',
       timeZone,
       rangeYmd: { since: startYmd || null, until: endYmd || null },
-      compareRangeYmd: { since: previousWindow.startYmd, until: previousWindow.endYmd },
+      compareRangeYmd: { since: compareStartYmd || null, until: compareEndYmd || null },
     },
   };
 }
 
 module.exports = {
   getBusinessSnapshot,
+  resolveSnapshotWindows,
 };

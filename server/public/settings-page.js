@@ -1290,7 +1290,7 @@
   var KPI_BUNDLE_META = {
     dashboardCards: { label: 'KPI Bundle · Dashboard Cards', help: 'Applies to KPI cards on /dashboard/overview.', supportsCompare: true },
     headerStrip: { label: 'KPI Bundle · Header Strip (top of pages)', help: 'Applies to compact KPI chips shown at the top of pages.', supportsCompare: false },
-    yearlySnapshot: { label: 'KPI Bundle · Yearly Snapshot Modal', help: 'Applies to KPI cards in the yearly snapshot modal.', supportsCompare: false },
+    yearlySnapshot: { label: 'KPI Bundle · Snapshot Page', help: 'Applies to KPI cards/chips rendered on /insights/snapshot.', supportsCompare: false },
   };
 
   function chartMeta(key) {
