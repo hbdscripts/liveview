@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-16 (today KPI compare windows + accurate KPI bar change labels)
+Last updated: 2026-02-16 (header KPI strip always uses /api/kpis + today KPI compare windows + accurate KPI bar change labels)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -387,6 +387,11 @@ Ops/reliability:
 - Today KPI compare windows now use matching partial session baselines:
   - `server/store.js` now detects partial historical day windows in `getSessionCounts()` and falls back to session-table counts for those windows (instead of day-level Shopify Sessions snapshots).
   - This fixes small KPI comparisons for Today (especially Sessions + Conversion Rate and any compare-dependent deltas), where yesterday baseline windows must be same-time, not full-day.
+
+2026-02-16 (latest)
+- Header KPI strip now always uses `/api/kpis` (truth + compare) on all pages:
+  - `server/public/app.js` no longer overwrites KPI cache from the Stats report payload (which can drift and may not include compare windows).
+  - Navigation `ensureKpis()` now treats non-`/api/kpis` KPI caches (or range mismatches) as stale and forces a refresh, fixing “dashboard KPIs correct, small KPIs wrong” on other pages.
 
 2026-02-16 (latest)
 - Snapshot cost breakdown + Profit Rules integration toggles:

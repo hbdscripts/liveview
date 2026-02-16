@@ -8194,19 +8194,9 @@ const API = '';
 
     function renderStats(data) {
       statsCache = data || {};
-      const statsRange = getStatsRange();
-      if (statsRange !== 'today') {
-        const hasTrustedKpiForRange = kpiCache && kpiCacheRange === statsRange && kpiCacheSource === 'kpis';
-        if (!hasTrustedKpiForRange) {
-          if (kpiCache && kpiCache.compare && !statsCache.compare) {
-            kpiCache = { ...statsCache, compare: kpiCache.compare };
-          } else {
-            kpiCache = statsCache;
-          }
-          kpiCacheRange = statsRange;
-          kpiCacheSource = 'stats';
-        }
-      }
+      // IMPORTANT: keep the condensed KPI strip sourced from /api/kpis so compare windows
+      // and truth semantics remain consistent across all pages. Stats payload is optimized
+      // for reports/tables and may not include compare (or may differ from truth sources).
       maybeTriggerSaleToastFromStatsLikeData(statsCache);
       if (statsCache.rangeAvailable) applyRangeAvailable(statsCache.rangeAvailable);
       renderCountriesMapChart(statsCache);
@@ -15577,10 +15567,16 @@ const API = '';
           updateNextUpdateUi();
 
           function ensureKpis() {
-            var staleKpis = !lastKpisFetchedAt || (Date.now() - lastKpisFetchedAt) > KPI_REFRESH_MS;
-            if (staleKpis) refreshKpis({ force: false });
-            else {
+            var rangeKey = '';
+            try { rangeKey = getStatsRange(); } catch (_) { rangeKey = ''; }
+            var cacheMatchesRange = !!(rangeKey && kpiCache && kpiCacheRange === rangeKey);
+            var trusted = cacheMatchesRange && kpiCacheSource === 'kpis';
+            var staleKpis = !trusted || !lastKpisFetchedAt || (Date.now() - lastKpisFetchedAt) > KPI_REFRESH_MS;
+            if (staleKpis) {
+              refreshKpis({ force: false });
+            } else {
               renderLiveKpis(getKpiData());
+              try { refreshKpiExtrasSoft(); } catch (_) {}
               try { fetchCondensedSeries(); } catch (_) {}
             }
           }
