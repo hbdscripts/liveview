@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-16 (Snapshot rounding toggle + compact defaults + header/menu polish)
+Last updated: 2026-02-16 (Kexo Score tooltip reliability + ring spacing/size polish)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -378,6 +378,12 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-16 (latest)
+- Kexo Score tooltip + ring polish:
+  - Removed right margin from the header score ring and reduced perceived blur by removing the header score text shadow.
+  - Increased modal mini wheel size and score font so the in-modal score is easier to read.
+  - Switched score popovers to click-trigger + plain-text multiline content for more reliable interaction beside progress rows.
 
 2026-02-16 (latest)
 - Snapshot readability + header/menu polish:

@@ -17725,7 +17725,7 @@ const API = '';
             new Popover(node, {
               trigger: node.getAttribute('data-bs-trigger') || 'focus',
               placement: node.getAttribute('data-bs-placement') || 'top',
-              html: true,
+              html: false,
               container: node.getAttribute('data-bs-container') || 'body',
             });
           } catch (_) {}
@@ -17786,26 +17786,26 @@ const API = '';
           });
         }
 
-        function buildMetricComparePopoverHtml(valueStr, prevStr, prev2Str) {
-          return '' +
-            '<div><strong>Current:</strong> ' + escapeHtml(String(valueStr)) + '</div>' +
-            '<div><strong>Previous:</strong> ' + escapeHtml(String(prevStr)) + '</div>' +
-            '<div><strong>Day before:</strong> ' + escapeHtml(String(prev2Str)) + '</div>';
+        function buildMetricComparePopoverText(valueStr, prevStr, prev2Str) {
+          return 'Current: ' + String(valueStr) + '\n' +
+            'Previous: ' + String(prevStr) + '\n' +
+            'Day before: ' + String(prev2Str);
         }
 
-        function buildMetricCompareTooltipButton(label, popoverHtml) {
+        function buildMetricCompareTooltipButton(label, popoverText) {
           var aria = 'Show compare values for ' + String(label || 'this metric');
+          var safeContentAttr = escapeHtml(String(popoverText || '')).replace(/\n/g, '&#10;');
           return '' +
             '<button' +
               ' type="button"' +
               ' class="kexo-score-info-btn"' +
               ' data-kexo-score-popover="1"' +
               ' data-bs-toggle="popover"' +
-              ' data-bs-trigger="focus"' +
+              ' data-bs-trigger="click"' +
               ' data-bs-placement="top"' +
               ' data-bs-container="body"' +
               ' data-bs-custom-class="kexo-score-popover"' +
-              ' data-bs-content="' + popoverHtml + '"' +
+              ' data-bs-content="' + safeContentAttr + '"' +
               ' aria-label="' + escapeHtml(aria) + '">' +
               '<i class="fa-light fa-circle-info" aria-hidden="true"></i>' +
             '</button>';
@@ -17823,8 +17823,8 @@ const API = '';
             var valueStr = fmtComponentValue(c.key, c.value);
             var prevStr = fmtComponentValue(c.key, c.previous);
             var prev2Str = fmtComponentValue(c.key, c.previous2);
-            var popoverHtml = buildMetricComparePopoverHtml(valueStr, prevStr, prev2Str);
-            var infoButton = buildMetricCompareTooltipButton(label, popoverHtml);
+            var popoverText = buildMetricComparePopoverText(valueStr, prevStr, prev2Str);
+            var infoButton = buildMetricCompareTooltipButton(label, popoverText);
             return '<div class="kexo-score-breakdown-row mb-3">' +
               '<div class="kexo-score-breakdown-head mb-1">' +
                 '<span class="kexo-score-breakdown-label">' + escapeHtml(label) + '</span>' +
