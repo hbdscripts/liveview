@@ -1353,7 +1353,7 @@
       'theme-header-logo-url',
       'Logo URL override',
       'Use an absolute URL or /path to replace desktop and mobile logos.',
-      '/assets/logos/new/kexo_new.png'
+      '/assets/logos/new/kexo_new2.png'
     );
     var accentGrid = accentHexInputCard('theme-accent-1', 'Accent 1', DEFAULTS['theme-accent-1']) +
       accentHexInputCard('theme-accent-2', 'Accent 2', DEFAULTS['theme-accent-2']) +
