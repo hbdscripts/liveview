@@ -13118,17 +13118,28 @@ const API = '';
       function renderFraudGaugeHtml(info, options) {
         var i = info && typeof info === 'object' ? info : null;
         var score = i && i.score != null ? Math.max(0, Math.min(100, Math.trunc(Number(i.score) || 0))) : 0;
+        var triggered = !!(i && i.triggered === true);
         var label = (options && options.label) ? String(options.label) : 'Fraud Meter';
         var pct = String(score) + '%';
         var safety = Math.max(0, Math.min(100, 100 - score)); // 0 fraud => 100% safe
         var riskLabel = (safety <= 49) ? 'High' : (safety <= 75) ? 'Medium' : 'Low';
         var barClass = (safety <= 49) ? 'bg-danger' : (safety <= 75) ? 'bg-warning' : 'bg-success';
+        var iconTone = (safety <= 49) ? 'high' : (safety <= 75) ? 'medium' : 'low';
+        var statusIcon = (riskLabel === 'Low' && !triggered)
+          ? (
+              '<i class="fa-light fa-circle-check kexo-fraud-meter-status-icon is-ok"' +
+                ' data-icon-key="table-icon-compliance-check" aria-hidden="true"></i>'
+            )
+          : (
+              '<i class="fa-light fa-triangle-exclamation kexo-fraud-meter-status-icon is-warn tone-' + esc(iconTone) + '"' +
+                ' data-icon-key="table-icon-compliance-warning" aria-hidden="true"></i>'
+            );
         var aria = riskLabel + ' (' + pct + ' fraud score, ' + String(safety) + '% safe)';
         return '' +
           '<div class="kexo-kpi-chip kexo-fraud-meter-chip" data-kexo-fraud-meter="1" aria-label="' + esc(aria) + '">' +
             '<div class="subheader kexo-kpi-chip-label">' + esc(label) + '</div>' +
             '<div class="d-flex align-items-baseline">' +
-              '<div class="h3 mb-0 me-2 kexo-kpi-chip-value">' + esc(riskLabel) + '</div>' +
+              '<div class="h3 mb-0 me-2 kexo-kpi-chip-value">' + statusIcon + '<span class="kexo-fraud-meter-status-label">' + esc(riskLabel) + '</span></div>' +
               '<div class="me-auto">' +
                 '<span class="kexo-kpi-chip-delta d-inline-flex align-items-center lh-1 is-flat">' + esc(pct) + '</span>' +
               '</div>' +

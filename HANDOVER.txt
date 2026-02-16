@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-16 (Snapshot Shopify fee-type diagnostics + mapping)
+Last updated: 2026-02-16 (Fraud meter shows check/warn icon + compliance padding)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -379,6 +379,13 @@ Ops/reliability:
 ## Changelog (high-signal)
 
 2026-02-16 (latest)
+- Snapshot fee bucket + header UX adjustment:
+  - Profit Settings no longer exposes a Shopify app-bills toggle on Snapshot; Snapshot save/load now forces `includeShopifyAppBills=false` for this page flow.
+  - Snapshot Cost breakdown now hides zero-value `Shopify Fees` and app-bill rows (while keeping `Transaction Fees` behavior), so only real populated fee buckets render.
+  - Snapshot header date layout is restored (header date column mounts again), but only the actual date input button is hidden on Snapshot via CSS.
+  - Snapshot cache ui-version bumped to `snapshot-page-v4`.
+
+2026-02-16 (latest)
 - Snapshot Shopify Payments mapping refinement:
   - `Shopify Fees` now maps to Shopify fee-like adjustment debits from `shopifyPaymentsAccount.balanceTransactions` (instead of the old Klarna-only subset), while `Transaction Fees` remains charge/refund processing fees.
   - Snapshot response now includes Shopify Payments diagnostics (`topTypes`, `topSourceTypes`, `topAdjustmentReasons`, top fee/debit types) under `sources.shopifyPaymentsDetail.current/previous.diagnostics` to show what transaction classes actually exist for the selected range.
@@ -406,6 +413,11 @@ Ops/reliability:
 - Compliance column: hide icons unless we have a fraud evaluation:
   - Removed the Compliance header help button/popover.
   - Sessions table now shows compliance check/warn only when a fraud evaluation exists for that session; the converted sale icon is unchanged.
+  - Added `padding-left:10px` to the compliance icon span for spacing (`server/public/custom.css`).
+
+2026-02-16 (latest)
+- Fraud meter: add inline status icon:
+  - Fraud Meter now shows a check/warn icon inline to the left of Low/Medium/High (`server/public/app.js`, `server/public/custom.css`).
 
 2026-02-16 (latest)
 - Header Online badge → direct link (no dropdown):

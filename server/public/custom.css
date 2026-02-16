@@ -728,6 +728,7 @@ body.side-panel-open {
   width: 100%;
   height: 100%;
   cursor: pointer;
+  padding-left: 10px;
 }
 #sessions-table.grid-table .grid-body .grid-row .grid-cell.compliance-cell .compliance-status-icon {
   font-size: .85rem;
@@ -790,6 +791,24 @@ body.side-panel-open {
   max-width: none;
   width: 100%;
   padding: 0;
+}
+.kexo-kpi-chip.kexo-fraud-meter-chip .kexo-fraud-meter-status-icon {
+  display: inline-block;
+  font-size: 0.95rem;
+  margin-right: .4rem;
+  vertical-align: -0.08em;
+}
+.kexo-kpi-chip.kexo-fraud-meter-chip .kexo-fraud-meter-status-icon.is-ok {
+  color: var(--tblr-success, #2fb344);
+}
+.kexo-kpi-chip.kexo-fraud-meter-chip .kexo-fraud-meter-status-icon.is-warn.tone-medium {
+  color: var(--tblr-warning, #f59e0b);
+}
+.kexo-kpi-chip.kexo-fraud-meter-chip .kexo-fraud-meter-status-icon.is-warn.tone-high {
+  color: var(--tblr-danger, #d63939);
+}
+.kexo-kpi-chip.kexo-fraud-meter-chip .kexo-fraud-meter-status-label {
+  display: inline;
 }
 .kexo-kpi-chip-progress .progress-bar.bg-warning {
   background-color: var(--tblr-warning, #f59e0b) !important;
@@ -3330,9 +3349,10 @@ body.kexo-report-loading #kexo-date-display::after {
   visibility: visible !important;
 }
 body[data-page="settings"] .kexo-nav-date-slot,
-body[data-page="settings"] .kexo-page-header-date-col,
-body[data-page="snapshot"] .kexo-nav-date-slot,
-body[data-page="snapshot"] .kexo-page-header-date-col {
+body[data-page="settings"] .kexo-page-header-date-col {
+  display: none !important;
+}
+body[data-page="snapshot"] #kexo-date-display {
   display: none !important;
 }
 .page-header .kexo-page-header-date-col {
