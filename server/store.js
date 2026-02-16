@@ -1994,6 +1994,34 @@ async function getShopifySessionsCountForBounds(shop, startMs, endMs, timeZone, 
   return total;
 }
 
+function hasPartialHistoricalDayWindow(startMs, endMs, timeZone) {
+  const tz = timeZone || resolveAdminTimeZone();
+  const start = Number(startMs);
+  const end = Number(endMs);
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return false;
+
+  const ymds = listYmdsInBounds(start, end, tz);
+  if (!ymds.length) return false;
+  const todayYmd = ymdFromMs(Date.now(), tz);
+
+  for (const ymd of ymds) {
+    if (ymd === todayYmd) continue;
+    let dayBounds = null;
+    try { dayBounds = getRangeBounds('d:' + ymd, Date.now(), tz); } catch (_) { dayBounds = null; }
+    if (!dayBounds) continue;
+    const dayStart = Number(dayBounds.start);
+    const dayEnd = Number(dayBounds.end);
+    if (!Number.isFinite(dayStart) || !Number.isFinite(dayEnd) || dayEnd <= dayStart) continue;
+    const segStart = Math.max(start, dayStart);
+    const segEnd = Math.min(end, dayEnd);
+    if (!(segEnd > segStart)) continue;
+    // Historical Shopify sessions snapshots are day-granular only.
+    // If the requested historical segment is partial, snapshot counts would over/under-count.
+    if (segStart > dayStart || segEnd < dayEnd) return true;
+  }
+  return false;
+}
+
 /** List sessions in a date range with pagination. Used by Live tab when Today/Yesterday/3d/7d/1h/Sales is selected. */
 async function listSessionsByRange(rangeKey, timeZone, limit, offset) {
   const db = getDb();
@@ -3274,6 +3302,9 @@ async function getSessionCounts(start, end, options = {}) {
   const rangeKey = typeof options.rangeKey === 'string' ? options.rangeKey : '';
   const timeZone = options.timeZone || resolveAdminTimeZone();
   if (sessionsSource !== 'shopify_sessions' || !isDayLikeRangeKey(rangeKey)) {
+    return getSessionCountsFromSessionsTable(start, end, options);
+  }
+  if (hasPartialHistoricalDayWindow(start, end, timeZone)) {
     return getSessionCountsFromSessionsTable(start, end, options);
   }
   const shop = salesTruth.resolveShopForSales('');
