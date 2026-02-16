@@ -12,6 +12,8 @@
       var overviewMiniFetchedAt = 0;
       var overviewMiniInFlight = null;
       var overviewMiniCacheShopKey = '';
+      var overviewMiniPayloadSignature = '';
+      var overviewMiniResizeTimer = null;
       var OVERVIEW_MINI_CACHE_MS = 2 * 60 * 1000;
       var _primaryRgbDash = getComputedStyle(document.documentElement).getPropertyValue('--tblr-primary-rgb').trim() || '32,107,196';
       var DASH_ACCENT = 'rgb(' + _primaryRgbDash + ')';
@@ -316,14 +318,47 @@
         return ['dash-chart-finishes-30d', 'dash-chart-countries-30d', 'dash-chart-kexo-score-today', 'dash-chart-overview-30d'];
       }
 
+      function quantizeOverviewMiniSize(value) {
+        var n = Number(value);
+        if (!Number.isFinite(n) || n <= 0) return 0;
+        // Bucket to 8px to avoid micro-resize render loops.
+        return Math.round(n / 8) * 8;
+      }
+
+      function overviewMiniPayloadSig(payload) {
+        try { return JSON.stringify(payload || null) || ''; } catch (_) { return ''; }
+      }
+
+      function overviewMiniStyleSig() {
+        try {
+          if (typeof chartStyleFromUiConfig !== 'function') return '';
+          function miniChartCfg(key, fallbackMode, fallbackColors) {
+            return {
+              enabled: (typeof isChartEnabledByUiConfig === 'function') ? isChartEnabledByUiConfig(key, true) : true,
+              mode: (typeof chartModeFromUiConfig === 'function') ? chartModeFromUiConfig(key, fallbackMode) : fallbackMode,
+              colors: (typeof chartColorsFromUiConfig === 'function') ? chartColorsFromUiConfig(key, fallbackColors || []) : (fallbackColors || []),
+              style: chartStyleFromUiConfig(key) || {},
+            };
+          }
+          return JSON.stringify({
+            finishes: miniChartCfg('dash-chart-finishes-30d', 'pie', ['#f59e34']),
+            countries: miniChartCfg('dash-chart-countries-30d', 'pie', ['#4b94e4']),
+            score: miniChartCfg('dash-chart-kexo-score-today', 'pie', ['#4b94e4']),
+            overview: miniChartCfg('dash-chart-overview-30d', 'bar', ['#3eb3ab', '#ef4444']),
+          }) || '';
+        } catch (_) {
+          return '';
+        }
+      }
+
       function computeOverviewMiniSizeSignature() {
         var ids = overviewMiniChartIds();
         return ids.map(function(id) {
           var el = document.getElementById(id);
           if (!el || !el.getBoundingClientRect) return id + ':0x0';
           var r = el.getBoundingClientRect();
-          var w = Number.isFinite(r.width) ? Math.round(r.width) : 0;
-          var h = Number.isFinite(r.height) ? Math.round(r.height) : 0;
+          var w = quantizeOverviewMiniSize(r.width);
+          var h = quantizeOverviewMiniSize(r.height);
           return id + ':' + w + 'x' + h;
         }).join('|');
       }
@@ -331,14 +366,19 @@
       function scheduleOverviewMiniResizeRender() {
         if (overviewMiniResizeScheduled) return;
         overviewMiniResizeScheduled = true;
-        requestAnimationFrame(function() {
+        if (overviewMiniResizeTimer) {
+          try { clearTimeout(overviewMiniResizeTimer); } catch (_) {}
+          overviewMiniResizeTimer = null;
+        }
+        overviewMiniResizeTimer = setTimeout(function() {
+          overviewMiniResizeTimer = null;
           overviewMiniResizeScheduled = false;
           if (!overviewMiniCache) return;
           var sig = computeOverviewMiniSizeSignature();
           if (sig && sig === overviewMiniSizeSignature) return;
           overviewMiniSizeSignature = sig;
-          renderOverviewMiniCharts(overviewMiniCache);
-        });
+          renderOverviewMiniCharts(overviewMiniCache, { reason: 'resize' });
+        }, 140);
       }
 
       function ensureOverviewMiniResizeObserver() {
@@ -358,10 +398,15 @@
             overviewMiniResizeObserver.disconnect();
           }
         } catch (_) {}
+        try {
+          if (overviewMiniResizeTimer) clearTimeout(overviewMiniResizeTimer);
+        } catch (_) {}
+        overviewMiniResizeTimer = null;
         overviewMiniResizeObserver = null;
         overviewMiniResizeScheduled = false;
         overviewMiniSizeSignature = '';
         overviewMiniCacheShopKey = '';
+        overviewMiniPayloadSignature = '';
       });
 
       function renderOverviewChartEmpty(chartId, text) {
@@ -374,6 +419,13 @@
         }
         destroyDashChart(chartId);
         chartEl.innerHTML = '<div class="kexo-overview-chart-empty">' + escapeHtml(text || 'No data available') + '</div>';
+      }
+
+      function countryCodeToFlagEmoji(rawCode) {
+        var code = rawCode == null ? '' : String(rawCode).trim().toUpperCase();
+        if (!/^[A-Z]{2}$/.test(code)) return '';
+        var A = 0x1f1e6;
+        return String.fromCodePoint(A + (code.charCodeAt(0) - 65), A + (code.charCodeAt(1) - 65));
       }
 
       function renderOverviewPieChart(chartId, labels, values, opts) {
@@ -401,6 +453,8 @@
         }
         destroyDashChart(chartId);
         chartEl.innerHTML = '';
+        var uiStyle = (typeof chartStyleFromUiConfig === 'function') ? chartStyleFromUiConfig(chartId) : null;
+        if (!uiStyle || typeof uiStyle !== 'object') uiStyle = {};
         var fallbackColors = (opts && Array.isArray(opts.colors) && opts.colors.length)
           ? opts.colors
           : [DASH_ACCENT, DASH_BLUE, DASH_ORANGE, DASH_PURPLE, '#ef4444'];
@@ -408,7 +462,28 @@
         var valueFormatter = (opts && typeof opts.valueFormatter === 'function')
           ? opts.valueFormatter
           : function(v) { return formatRevenue(normalizeOverviewMetric(v)) || '\u2014'; };
-        var chartType = opts && opts.donut ? 'donut' : 'pie';
+        var donut = (opts && typeof opts.donut === 'boolean')
+          ? !!opts.donut
+          : !!uiStyle.pieDonut;
+        var chartType = donut ? 'donut' : 'pie';
+        var pieLabelPosition = (opts && opts.pieLabelPosition != null)
+          ? String(opts.pieLabelPosition).trim().toLowerCase()
+          : String(uiStyle.pieLabelPosition || 'auto').trim().toLowerCase();
+        if (pieLabelPosition !== 'outside' && pieLabelPosition !== 'inside' && pieLabelPosition !== 'auto') pieLabelPosition = 'auto';
+        var pieLabelContent = (opts && opts.pieLabelContent != null)
+          ? String(opts.pieLabelContent).trim().toLowerCase()
+          : String(uiStyle.pieLabelContent || 'percent').trim().toLowerCase();
+        if (pieLabelContent !== 'label' && pieLabelContent !== 'label_percent' && pieLabelContent !== 'percent') pieLabelContent = 'percent';
+        var pieLabelOffset = Number((opts && opts.pieLabelOffset != null) ? opts.pieLabelOffset : uiStyle.pieLabelOffset);
+        if (!Number.isFinite(pieLabelOffset)) pieLabelOffset = 16;
+        pieLabelOffset = Math.round(Math.max(-40, Math.min(40, pieLabelOffset)));
+        if (pieLabelPosition === 'outside') pieLabelOffset = Math.max(6, pieLabelOffset);
+        if (pieLabelPosition === 'inside') pieLabelOffset = Math.min(0, pieLabelOffset);
+        var showLegend = (opts && typeof opts.showLegend === 'boolean')
+          ? !!opts.showLegend
+          : (pieLabelPosition !== 'outside');
+        var labelFormatter = (opts && typeof opts.labelFormatter === 'function') ? opts.labelFormatter : null;
+        var dataLabelsEnabled = uiStyle.dataLabels !== 'off';
         var chartHeight = resolveOverviewChartHeight(
           chartEl,
           (opts && Number.isFinite(Number(opts.height))) ? Number(opts.height) : 240,
@@ -421,26 +496,44 @@
             height: chartHeight,
             fontFamily: 'Inter, sans-serif',
             toolbar: { show: false },
-            animations: { enabled: true, easing: 'easeinout', speed: 280 },
+            animations: { enabled: uiStyle.animations !== false, easing: 'easeinout', speed: 280 },
             zoom: { enabled: false }
           },
           series: safeValues,
           labels: safeLabels,
           colors: colors,
-          legend: { show: true, position: 'bottom', fontSize: '11px' },
+          legend: { show: showLegend, position: 'bottom', fontSize: '11px' },
           stroke: { show: true, width: 1, colors: ['#fff'] },
           dataLabels: {
-            enabled: true,
-            formatter: function(val) {
-              var n = normalizeOverviewMetric(val);
-              return n ? n.toFixed(0) + '%' : '';
+            enabled: dataLabelsEnabled,
+            formatter: function(val, ctx) {
+              var pct = normalizeOverviewMetric(val);
+              var idx = ctx && Number.isFinite(ctx.seriesIndex) ? ctx.seriesIndex : -1;
+              var seriesLabel = (idx >= 0 && idx < safeLabels.length) ? safeLabels[idx] : '';
+              if (labelFormatter) {
+                var custom = labelFormatter(pct, seriesLabel, idx, safeValues[idx]);
+                if (custom != null) return String(custom);
+              }
+              var pctText = pct ? pct.toFixed(0) + '%' : '';
+              if (pieLabelContent === 'label') return seriesLabel || pctText;
+              if (pieLabelContent === 'label_percent') {
+                if (seriesLabel && pctText) return seriesLabel + ' ' + pctText;
+                return seriesLabel || pctText;
+              }
+              return pctText;
             },
+            style: { fontSize: '11px', fontWeight: 500 },
+            dropShadow: { enabled: false }
           },
+          plotOptions: { pie: { dataLabels: { offset: pieLabelOffset, minAngleToShowLabel: 8 }, expandOnClick: false } },
           tooltip: { y: { formatter: valueFormatter } },
           noData: { text: 'No data available', style: { fontSize: '13px', color: '#626976' } }
         };
         if (chartType === 'donut') {
-          apexOpts.plotOptions = { pie: { donut: { size: '66%' } } };
+          var donutSize = Number(uiStyle.pieDonutSize);
+          if (!Number.isFinite(donutSize)) donutSize = 66;
+          donutSize = Math.round(Math.max(30, Math.min(90, donutSize)));
+          apexOpts.plotOptions.pie.donut = { size: donutSize + '%' };
         }
         try {
           var chartOverride = chartAdvancedOverrideFromUiConfig(chartId, 'pie');
@@ -456,6 +549,54 @@
           captureChartError(err, 'dashboardPieChartRender', { chartId: chartId });
           console.error('[dashboard] pie chart render error:', chartId, err);
         }
+      }
+
+      function renderOverviewKexoScoreChart(rawScore) {
+        var chartId = 'dash-chart-kexo-score-today';
+        var chartEl = document.getElementById(chartId);
+        if (!chartEl) return;
+        if (!isChartEnabledByUiConfig(chartId)) {
+          destroyDashChart(chartId);
+          chartEl.innerHTML = '';
+          return;
+        }
+        var style = (typeof chartStyleFromUiConfig === 'function') ? chartStyleFromUiConfig(chartId) : null;
+        var renderer = style && style.kexoRenderer != null ? String(style.kexoRenderer).trim().toLowerCase() : 'pie';
+        if (renderer !== 'wheel' && renderer !== 'pie') renderer = 'pie';
+        var hasScore = Number.isFinite(Number(rawScore));
+        if (!hasScore) {
+          renderOverviewChartEmpty(chartId, 'No data available');
+          return;
+        }
+        var score = Math.max(0, Math.min(100, Number(rawScore)));
+        if (renderer !== 'wheel') {
+          renderOverviewPieChart(chartId, ['Score', 'Remaining'], [score, Math.max(0, 100 - score)], {
+            donut: true,
+            colors: ['#4b94e4', '#e5e7eb'],
+            valueFormatter: function(v) { return normalizeOverviewMetric(v).toFixed(1); },
+            height: 180
+          });
+          return;
+        }
+        destroyDashChart(chartId);
+        chartEl.innerHTML = '' +
+          '<div class="kexo-overview-score-wheel">' +
+            '<div class="kexo-score-ring-wrap kexo-score-ring-wrap--overview" aria-hidden="true">' +
+              '<svg class="kexo-score-ring-svg kexo-score-ring-svg--overview" viewBox="0 0 40 40">' +
+                '<circle class="kexo-score-ring-track" cx="20" cy="20" r="16" fill="none"></circle>' +
+                '<circle class="kexo-score-ring-fill kexo-score-ring-fill--1" cx="20" cy="20" r="16" fill="none"></circle>' +
+                '<circle class="kexo-score-ring-fill kexo-score-ring-fill--2" cx="20" cy="20" r="16" fill="none"></circle>' +
+                '<circle class="kexo-score-ring-fill kexo-score-ring-fill--3" cx="20" cy="20" r="16" fill="none"></circle>' +
+                '<circle class="kexo-score-ring-fill kexo-score-ring-fill--4" cx="20" cy="20" r="16" fill="none"></circle>' +
+                '<circle class="kexo-score-ring-fill kexo-score-ring-fill--5" cx="20" cy="20" r="16" fill="none"></circle>' +
+              '</svg>' +
+              '<div class="kexo-score-ring-center"><span class="kexo-score-num kexo-score-num--overview" data-overview-kexo-score-num>\u2014</span></div>' +
+            '</div>' +
+          '</div>';
+        var numEl = chartEl.querySelector('[data-overview-kexo-score-num]');
+        if (numEl) numEl.textContent = formatKexoScoreNumber(score);
+        var ring = chartEl.querySelector('.kexo-score-ring-svg--overview');
+        if (ring) applyKexoScoreRingSvg(ring, score);
       }
 
       function renderOverviewRevenueCostChart(snapshotPayload) {
@@ -511,7 +652,14 @@
           .catch(function() { return null; });
       }
 
-      function renderOverviewMiniCharts(payload) {
+      function renderOverviewMiniCharts(payload, options) {
+        var opts = options && typeof options === 'object' ? options : {};
+        var reason = opts.reason != null ? String(opts.reason) : '';
+        var payloadSigBase = opts.payloadSignature != null ? String(opts.payloadSignature) : overviewMiniPayloadSig(payload);
+        var payloadSig = payloadSigBase + '|style:' + overviewMiniStyleSig();
+        if (reason !== 'resize' && !opts.forceRender && payloadSig && overviewMiniPayloadSignature && payloadSig === overviewMiniPayloadSignature) {
+          return;
+        }
         var finishesRows = payload && payload.finishes && Array.isArray(payload.finishes.finishes) ? payload.finishes.finishes : [];
         var finishLabels = [];
         var finishValues = [];
@@ -534,12 +682,18 @@
 
         var countriesRows = payload && payload.countries && Array.isArray(payload.countries.topCountries) ? payload.countries.topCountries : [];
         var topCountries = countriesRows.slice(0, 5);
+        var countriesStyle = (typeof chartStyleFromUiConfig === 'function') ? chartStyleFromUiConfig('dash-chart-countries-30d') : null;
+        var showCountryFlags = !!(countriesStyle && countriesStyle.pieCountryFlags);
         var countryLabels = [];
         var countryValues = [];
         topCountries.forEach(function(row) {
           if (!row || typeof row !== 'object') return;
           var cc = row.country != null ? String(row.country).trim().toUpperCase() : '';
           var label = cc ? ((typeof countryLabelFull === 'function') ? countryLabelFull(cc) : cc) : '';
+          if (showCountryFlags && cc) {
+            var emoji = countryCodeToFlagEmoji(cc);
+            if (emoji) label = emoji + ' ' + label;
+          }
           var val = normalizeOverviewMetric(row.revenue);
           if (!label || val <= 0) return;
           countryLabels.push(label);
@@ -552,30 +706,25 @@
         });
 
         var rawScore = payload && payload.kexoScore && payload.kexoScore.score != null ? Number(payload.kexoScore.score) : NaN;
-        var hasScore = Number.isFinite(rawScore);
-        var score = hasScore ? Math.max(0, Math.min(100, rawScore)) : null;
-        var scoreLabels = hasScore ? ['Score', 'Remaining'] : [];
-        var scoreValues = hasScore ? [score, Math.max(0, 100 - score)] : [];
-        renderOverviewPieChart('dash-chart-kexo-score-today', scoreLabels, scoreValues, {
-          donut: true,
-          colors: ['#4b94e4', '#e5e7eb'],
-          valueFormatter: function(v) { return normalizeOverviewMetric(v).toFixed(1); },
-          height: 180
-        });
+        renderOverviewKexoScoreChart(rawScore);
 
         renderOverviewRevenueCostChart(payload ? payload.snapshot : null);
         overviewMiniSizeSignature = computeOverviewMiniSizeSignature();
+        overviewMiniPayloadSignature = payloadSig;
       }
 
       function fetchOverviewMiniData(options) {
         ensureOverviewMiniResizeObserver();
         var opts = options && typeof options === 'object' ? options : {};
         var force = !!opts.force;
+        var renderIfFresh = !!opts.renderIfFresh;
         var shop = getShopForSales();
         var shopKey = shop || '__no_shop__';
         var fresh = overviewMiniCache && overviewMiniFetchedAt && (Date.now() - overviewMiniFetchedAt) < OVERVIEW_MINI_CACHE_MS && overviewMiniCacheShopKey === shopKey;
         if (!force && fresh) {
-          renderOverviewMiniCharts(overviewMiniCache);
+          if (renderIfFresh) {
+            renderOverviewMiniCharts(overviewMiniCache, { reason: 'fresh-cache', payloadSignature: overviewMiniPayloadSig(overviewMiniCache) });
+          }
           return Promise.resolve(overviewMiniCache);
         }
         if (overviewMiniInFlight && !force) return overviewMiniInFlight;
@@ -601,12 +750,13 @@
           overviewMiniCache = payload;
           overviewMiniFetchedAt = Date.now();
           overviewMiniCacheShopKey = shopKey;
-          overviewMiniSizeSignature = computeOverviewMiniSizeSignature();
-          renderOverviewMiniCharts(payload);
+          renderOverviewMiniCharts(payload, { reason: force ? 'force-fetch' : 'fetch', payloadSignature: overviewMiniPayloadSig(payload) });
           return payload;
         }).catch(function(err) {
           try { if (typeof window.kexoCaptureError === 'function') window.kexoCaptureError(err, { context: 'dashboardOverviewMiniCharts', page: PAGE }); } catch (_) {}
-          renderOverviewMiniCharts(overviewMiniCache || null);
+          if (overviewMiniCache) {
+            renderOverviewMiniCharts(overviewMiniCache, { reason: 'error-cache', payloadSignature: overviewMiniPayloadSig(overviewMiniCache) });
+          }
           return overviewMiniCache || null;
         }).finally(function() {
           overviewMiniInFlight = null;
@@ -936,8 +1086,6 @@
           } catch (_) {}
           try { if (typeof renderCondensedSparklines === 'function') renderCondensedSparklines(sparklineSeries); } catch (_) {}
         });
-
-        renderOverviewMiniCharts(overviewMiniCache || null);
 
         var prodTbody = el('dash-top-products') ? el('dash-top-products').querySelector('tbody') : null;
         if (prodTbody) {
@@ -1437,9 +1585,6 @@
           }).join('');
         }
         body.innerHTML =
-          '<div class="kexo-score-summary-toggle-row mb-3">' +
-            '<button type="button" class="btn btn-sm btn-ghost-secondary" id="kexo-score-show-summary-btn" aria-label="Show summary">Show summary</button>' +
-          '</div>' +
           '<div id="kexo-score-summary-section" class="kexo-score-summary-card mb-3 is-hidden" role="region" aria-label="Kexo Score summary">' +
             '<div class="kexo-score-summary-card-header d-flex align-items-center justify-content-between mb-2">' +
               '<span class="fw-medium">Summary</span>' +
@@ -1448,23 +1593,17 @@
             '<div id="kexo-score-summary-wrap">' + summaryHtml + '</div>' +
           '</div>' +
           '<div id="kexo-score-breakdown">' + breakdownHtml + '</div>';
-        (function initSummaryToggle() {
-          var showBtn = document.getElementById('kexo-score-show-summary-btn');
+        (function initSummaryCloseAndReset() {
           var section = document.getElementById('kexo-score-summary-section');
           var closeBtn = section && section.querySelector('.kexo-score-summary-close');
-          if (showBtn && section) {
-            showBtn.addEventListener('click', function() {
-              section.classList.remove('is-hidden');
-              showBtn.closest('.kexo-score-summary-toggle-row').classList.add('is-hidden');
-            });
-          }
+          var showBtn = document.getElementById('kexo-score-show-summary-btn');
           if (closeBtn && section) {
             closeBtn.addEventListener('click', function() {
               section.classList.add('is-hidden');
-              var row = document.querySelector('.kexo-score-summary-toggle-row');
-              if (row) row.classList.remove('is-hidden');
+              if (showBtn) showBtn.classList.remove('is-hidden');
             });
           }
+          if (showBtn) showBtn.classList.remove('is-hidden');
         })();
         (function fetchAndRenderSummary(force) {
           var wrap = document.getElementById('kexo-score-summary-wrap');
@@ -1534,6 +1673,13 @@
           });
         }
         if (closeBtn) closeBtn.addEventListener('click', closeKexoScoreModal);
+        var showSummaryBtn = document.getElementById('kexo-score-show-summary-btn');
+        if (showSummaryBtn) {
+          showSummaryBtn.addEventListener('click', function() {
+            var section = document.getElementById('kexo-score-summary-section');
+            if (section) { section.classList.remove('is-hidden'); showSummaryBtn.classList.add('is-hidden'); }
+          });
+        }
         if (modalEl) modalEl.addEventListener('click', function(e) { if (e.target === modalEl) closeKexoScoreModal(); });
         document.addEventListener('keydown', function(e) {
           if (e.key !== 'Escape') return;
@@ -1602,7 +1748,7 @@
         } catch (_) {}
         if (!force && dashCache && dashLastRangeKey === rk) {
           renderDashboard(dashCache);
-          fetchOverviewMiniData({ force: false });
+          fetchOverviewMiniData({ force: false, renderIfFresh: !overviewMiniPayloadSignature });
           return;
         }
         fetchDashboardData(rk, force, { silent: silent });

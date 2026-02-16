@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-16 (Kexo Score summary toggle: hidden by default, Show summary + X)
+Last updated: 2026-02-16 (Dashboard overview charts: Kexo wheel + donut/label controls + pulse fix)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -388,7 +388,15 @@ Ops/reliability:
 ## Changelog (high-signal)
 
 2026-02-16 (latest)
-- Kexo Score modal summary toggle: summary hidden by default; "Show summary" button reveals it; X in summary card header hides it again (`client/app/14-dashboard.js`, `server/public/app.js`).
+- Dashboard overview chart refinement:
+  - Overview Kexo Score card (`dash-chart-kexo-score-today`) now uses the existing segmented SVG Kexo wheel renderer by default (same rendering path used by header/modal), configurable from `charts_ui_config_v1.style.kexoRenderer` (`wheel` | `pie`).
+  - Overview finishes/countries pies now default to hollow donuts with outside labels; countries labels support optional flag prefixes via `style.pieCountryFlags`.
+  - Settings → Layout → Charts now includes pie/donut controls for chart cards (`style.pieDonut`, `style.pieDonutSize`, `style.pieLabelPosition`, `style.pieLabelContent`, `style.pieLabelOffset`) plus Kexo renderer selector for the overview score chart.
+  - Overview mini-chart pulsing reduced by resize bucketing + debounced observer rerenders and payload/style-signature dedupe (skip redraw on unchanged cache hits).
+  - Header Kexo Score is now force-hidden on `data-page="dashboard"` (dashboard-only) while keeping existing header/KPI config behavior on other pages.
+
+2026-02-16 (latest)
+- Kexo Score modal summary toggle: summary hidden by default; "Show summary" button in modal header (inline before X) reveals it; X in summary card header hides it again (`client/app/14-dashboard.js`, `server/public/partials/header.html`, `server/public/app.js`).
 
 2026-02-16 (latest)
 - UX fixes + admin Notes:
