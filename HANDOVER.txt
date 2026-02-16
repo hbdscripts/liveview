@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-16 (Kexo Score modal progress bar sizing + KPI tone classes)
+Last updated: 2026-02-16 (Kexo Score modal tooltip UX + branded header)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -378,6 +378,13 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-16 (latest)
+- Kexo Score modal header + tooltip UX:
+  - Modal header/body now use rounded corners (`10px 10px 0 0` and `0 0 10px 10px`) for a cleaner card look.
+  - Removed inline Current/Previous/Day-before text from each metric row; values are now shown in click-to-open popovers next to each metric label.
+  - Removed the top range sentence from the modal body and added a concise click-to-open info popover beside the `Kexo Score` header text to explain score intent.
+  - Added a branded modal logo at the left of the header text block (`/assets/logos/new/footer/2.png`, with `/api/footer-logo` fallback).
 
 2026-02-16 (latest)
 - Kexo Score modal progress bars:

@@ -2136,12 +2136,33 @@ html[data-bs-theme="dark"] .report-build-wrap {
   padding: 1rem 1.25rem;
   border-bottom: 1px solid rgba(15, 23, 42, 0.12);
   background: #fff;
+  border-radius: 10px 10px 0 0;
 }
 #kexo-score-modal .kpi-compare-modal-header-left {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.7rem;
+  min-width: 0;
+}
+#kexo-score-modal .kpi-compare-modal-header-text {
   display: flex;
   flex-direction: column;
   gap: 2px;
   min-width: 0;
+}
+#kexo-score-modal .kexo-score-modal-logo {
+  height: 34px;
+  width: auto;
+  display: block;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+#kexo-score-modal .kpi-compare-kicker-row,
+#kexo-score-modal .kpi-compare-title-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
 }
 #kexo-score-modal .kpi-compare-kicker {
   margin: 0;
@@ -2167,6 +2188,51 @@ html[data-bs-theme="dark"] .report-build-wrap {
   padding: 1rem 1.25rem 1.2rem;
   overflow-y: auto;
   background: #fafbfc;
+  border-radius: 0 0 10px 10px;
+}
+#kexo-score-modal .kexo-score-info-btn {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(148, 163, 184, 0.18);
+  color: #475569;
+  cursor: pointer;
+  transition: background-color .15s ease, color .15s ease, transform .15s ease;
+}
+#kexo-score-modal .kexo-score-info-btn:hover,
+#kexo-score-modal .kexo-score-info-btn:focus-visible {
+  background: rgba(59, 130, 246, 0.18);
+  color: #1d4ed8;
+  transform: translateY(-1px);
+  outline: none;
+}
+#kexo-score-modal .kexo-score-info-btn i {
+  font-size: 11px;
+  line-height: 1;
+}
+.kexo-score-breakdown-head {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.popover.kexo-score-popover {
+  border-radius: 10px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.16);
+}
+.popover.kexo-score-popover .popover-body {
+  font-size: 12px;
+  line-height: 1.45;
+  color: #0f172a;
+  padding: 0.55rem 0.65rem;
+}
+.popover.kexo-score-popover .popover-body strong {
+  font-weight: 500;
 }
 .kexo-score-breakdown-row .progress {
   height: 22px;

@@ -348,8 +348,26 @@
       <div class="config-modal-card kexo-score-modal-card" role="dialog" aria-modal="true" aria-label="Kexo Score breakdown">
         <div class="kpi-compare-modal-header">
           <div class="kpi-compare-modal-header-left">
-            <div class="kpi-compare-kicker">Kexo Score</div>
-            <h3 class="kpi-compare-title">Score breakdown</h3>
+            <img src="/assets/logos/new/footer/2.png" onerror="this.onerror=null;this.src='/api/footer-logo';" alt="Kexo" class="kexo-score-modal-logo">
+            <div class="kpi-compare-modal-header-text">
+              <div class="kpi-compare-kicker-row">
+                <div class="kpi-compare-kicker">Kexo Score</div>
+                <button
+                  type="button"
+                  class="kexo-score-info-btn kexo-score-info-btn--title"
+                  data-kexo-score-popover="1"
+                  data-bs-toggle="popover"
+                  data-bs-trigger="focus"
+                  data-bs-placement="bottom"
+                  data-bs-container="body"
+                  data-bs-custom-class="kexo-score-popover"
+                  data-bs-content="Kexo Score is a weighted 0-100 health signal based on revenue, conversion rate, bounce rate, sessions, and ad metrics when connected. Higher scores mean stronger performance."
+                  aria-label="What Kexo Score means">
+                  <i class="fa-light fa-circle-info" aria-hidden="true"></i>
+                </button>
+              </div>
+              <h3 class="kpi-compare-title">Score breakdown</h3>
+            </div>
           </div>
           <div class="kpi-compare-modal-actions">
             <button type="button" class="btn btn-icon btn-ghost-secondary" id="kexo-score-modal-close-btn" aria-label="Close"><i class="fa-light fa-xmark" data-icon-key="kpi-compare-close"></i></button>
