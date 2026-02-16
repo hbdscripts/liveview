@@ -348,6 +348,8 @@ Ops/reliability:
 - Static assets are versioned into HTML (query param `?v=`) to avoid Shopify embed caching mismatches.
 - `GET /api/version` returns `assetVersion` so clients can detect deploy drift after long-idle tabs (UI prompts user to click Refresh; no forced reload).
 - `.md`/`/docs` paths are blocked in production (see `server/index.js`).
+- Rollback / restore: SQLite — backups go to `server/backups/` (see `server/backup.js`). Restore is opt-in: stop the app, then `RESTORE_SQLITE_BACKUP=1 node scripts/restore-sqlite-backup.js server/backups/<filename>.sqlite` (overwrites `live_visitors.sqlite`). Postgres — backups are per-table (`<table>_backup_<label>_<timestamp>`); list with `SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename LIKE '%_backup_%'`; prune via `server/backup.js` helpers; restore is manual (recreate/copy from backup table; no automatic destructive restore).
+- Frontend app bundle: `server/public/app.js` is generated from `client/app/*.js` sources. Run `npm run build:app` (or `node scripts/build-app-js.js`). Manifest: `client/app/manifest.txt` lists source files in order. Production prune removes `client/`; always build before deploy so `app.js` is up to date.
 
 ---
 
@@ -378,6 +380,9 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-16 (latest)
+- Frontend app bundle: `server/public/app.js` is generated from `client/app/*.js`; run `npm run build:app`. Tests: `test/app-bundle.test.js` (checksum), `test/attribution-write-auth.test.js` (403 for non-admin on POST prefs/config/map), `test/salesTruth-transaction.test.js` (db.transaction rollback invariant).
 
 2026-02-16 (latest)
 - Google Ads: paused campaigns now render greyed out (50% opacity) in `/integrations/google-ads` (campaign status is persisted in Ads DB and returned in `/api/ads/summary`).
