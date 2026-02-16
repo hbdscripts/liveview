@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-16 (drawer fraud meter chip + no dashed borders)
+Last updated: 2026-02-16 (Snapshot fee labels + diagnostics details)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -377,6 +377,12 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-16 (latest)
+- Snapshot fee labels + diagnostics:
+  - Snapshot Cost breakdown and Profit Settings wording now use `Transaction Fees` and `Shopify Fees` (removing customer-facing Klarna label text).
+  - Snapshot now shows current/previous Shopify Payments diagnostic errors inline when fee/app-bill groups are enabled and lookups fail/warn.
+  - Snapshot report cache param version bumped to `snapshot-page-v2` so updated labels/diagnostics appear without waiting on stale keys.
 
 2026-02-16 (latest)
 - Snapshot Shopify Payments scope + visibility note:

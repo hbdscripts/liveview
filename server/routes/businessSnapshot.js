@@ -79,7 +79,7 @@ async function getBusinessSnapshot(req, res) {
           compareRangeStartTs: compareBounds.start,
           compareRangeEndTs: compareBounds.end,
           profitRulesFingerprint,
-          snapshotUiVersion: 'snapshot-page-v1',
+          snapshotUiVersion: 'snapshot-page-v2',
         },
         ttlMs: SNAPSHOT_CACHE_TTL_MS,
         force,

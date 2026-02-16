@@ -619,21 +619,36 @@
     const sources = data && data.sources ? data.sources : {};
     const shopifyPaymentsDetail = sources && sources.shopifyPaymentsDetail ? sources.shopifyPaymentsDetail : {};
     const current = shopifyPaymentsDetail && shopifyPaymentsDetail.current ? shopifyPaymentsDetail.current : null;
-    if (!current || current.available !== false) return;
+    const previous = shopifyPaymentsDetail && shopifyPaymentsDetail.previous ? shopifyPaymentsDetail.previous : null;
 
     const financial = data && data.financial ? data.financial : {};
     const lines = Array.isArray(financial.costBreakdownNow) ? financial.costBreakdownNow : [];
     const feeToggleInUse = lines.some((row) => {
       const label = String(row && row.label || '').toLowerCase();
-      return label.includes('shopify app bills') || label.includes('transaction fees') || label.includes('klarna fees');
+      return label.includes('shopify app bills')
+        || label.includes('transaction fees')
+        || label.includes('shopify fees')
+        || label.includes('klarna fees');
     });
     if (!feeToggleInUse) return;
 
-    const error = String(current.error || '').trim();
-    if (/access denied|forbidden|scope|permission/i.test(error)) {
-      note.textContent = 'Shopify fee data unavailable. Reconnect Shopify with read_shopify_payments scope in Settings > Integrations.';
-    } else if (error) {
-      note.textContent = `Shopify fee data unavailable: ${error}`;
+    const currentError = current && current.error ? String(current.error).trim() : '';
+    const previousError = previous && previous.error ? String(previous.error).trim() : '';
+    const anyUnavailable = !!((current && current.available === false) || (previous && previous.available === false));
+    const anyError = !!(currentError || previousError);
+    if (!anyUnavailable && !anyError) return;
+
+    const details = [];
+    if (currentError) details.push(`current: ${currentError}`);
+    if (previousError) details.push(`previous: ${previousError}`);
+    const detailText = details.join(' | ');
+
+    if (/access denied|forbidden|scope|permission/i.test(detailText)) {
+      note.textContent = detailText
+        ? `Shopify fee data unavailable. Reconnect Shopify with read_shopify_payments scope in Settings > Integrations. (${detailText})`
+        : 'Shopify fee data unavailable. Reconnect Shopify with read_shopify_payments scope in Settings > Integrations.';
+    } else if (detailText) {
+      note.textContent = `Shopify fee diagnostics: ${detailText}`;
     } else {
       note.textContent = 'Shopify fee data unavailable for this shop or date range.';
     }

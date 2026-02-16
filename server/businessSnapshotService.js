@@ -568,10 +568,14 @@ async function readShopifyBalanceCostsGbp(shop, accessToken, sinceYmd, untilYmd,
     fetchShopifyPaymentsBalanceTransactions(safeShop, accessToken, `${searchBase} payment_method_name:klarna`),
     fx.getRatesToGbp().catch(() => ({})),
   ]);
+  const diagnostics = [];
 
   if (!allResp.ok) {
     empty.error = allResp.error || 'shopify_payments_lookup_failed';
     return empty;
+  }
+  if (!klarnaResp.ok) {
+    diagnostics.push(`shopify_fees_lookup_warning: ${String(klarnaResp.error || 'query_failed')}`);
   }
 
   const paymentAllByYmd = new Map();
@@ -607,7 +611,7 @@ async function readShopifyBalanceCostsGbp(shop, accessToken, sinceYmd, untilYmd,
   const appBillsTotalGbp = round2(sumAmountMap(appBillsByYmd)) || 0;
   const value = {
     available: true,
-    error: '',
+    error: diagnostics.join(' | '),
     paymentFeesTotalGbp,
     klarnaFeesTotalGbp,
     appBillsTotalGbp,
@@ -619,6 +623,7 @@ async function readShopifyBalanceCostsGbp(shop, accessToken, sinceYmd, untilYmd,
   cleanupCache(shopifyBalanceCostsCache, 400);
   return {
     available: true,
+    error: value.error,
     paymentFeesTotalGbp,
     klarnaFeesTotalGbp,
     appBillsTotalGbp,
@@ -1946,6 +1951,7 @@ async function getBusinessSnapshot(options = {}) {
     readGoogleAdsSpendDailyGbp(compareBounds.start, compareBounds.end, timeZone).catch(() => ({ totalGbp: 0, byYmd: new Map(), totalClicks: 0, clicksByYmd: new Map() })),
     readShopifyBalanceCostsGbp(shop, token, startYmd, endYmd, timeZone).catch(() => ({
       available: false,
+      error: 'shopify_cost_lookup_failed',
       paymentFeesTotalGbp: 0,
       klarnaFeesTotalGbp: 0,
       appBillsTotalGbp: 0,
@@ -1955,6 +1961,7 @@ async function getBusinessSnapshot(options = {}) {
     })),
     readShopifyBalanceCostsGbp(shop, token, compareStartYmd, compareEndYmd, timeZone).catch(() => ({
       available: false,
+      error: 'shopify_cost_lookup_failed',
       paymentFeesTotalGbp: 0,
       klarnaFeesTotalGbp: 0,
       appBillsTotalGbp: 0,
@@ -2135,8 +2142,8 @@ async function getBusinessSnapshot(options = {}) {
   }
   if (includeGoogleAdsSpend || adsSpendNowCost > 0) costBreakdownNow.push({ label: 'Google Ads spend', amountGbp: round2(adsSpendNowCost) || 0 });
   if (includeShopifyAppBills || appBillsNowCost > 0) costBreakdownNow.push({ label: 'Shopify app bills', amountGbp: round2(appBillsNowCost) || 0 });
-  if (includePaymentFees || paymentFeesNowCost > 0) costBreakdownNow.push({ label: 'Transaction fees (excl. Klarna)', amountGbp: round2(paymentFeesNowCost) || 0 });
-  if (includeKlarnaFees || klarnaFeesNowCost > 0) costBreakdownNow.push({ label: 'Klarna fees', amountGbp: round2(klarnaFeesNowCost) || 0 });
+  if (includePaymentFees || paymentFeesNowCost > 0) costBreakdownNow.push({ label: 'Transaction Fees', amountGbp: round2(paymentFeesNowCost) || 0 });
+  if (includeKlarnaFees || klarnaFeesNowCost > 0) costBreakdownNow.push({ label: 'Shopify Fees', amountGbp: round2(klarnaFeesNowCost) || 0 });
 
   const costBreakdownPrevious = [];
   if (cogsPrev != null) costBreakdownPrevious.push({ label: 'Cost of Goods', amountGbp: round2(cogsPrev) || 0 });
@@ -2150,8 +2157,8 @@ async function getBusinessSnapshot(options = {}) {
   }
   if (includeGoogleAdsSpend || adsSpendPrevCost > 0) costBreakdownPrevious.push({ label: 'Google Ads spend', amountGbp: round2(adsSpendPrevCost) || 0 });
   if (includeShopifyAppBills || appBillsPrevCost > 0) costBreakdownPrevious.push({ label: 'Shopify app bills', amountGbp: round2(appBillsPrevCost) || 0 });
-  if (includePaymentFees || paymentFeesPrevCost > 0) costBreakdownPrevious.push({ label: 'Transaction fees (excl. Klarna)', amountGbp: round2(paymentFeesPrevCost) || 0 });
-  if (includeKlarnaFees || klarnaFeesPrevCost > 0) costBreakdownPrevious.push({ label: 'Klarna fees', amountGbp: round2(klarnaFeesPrevCost) || 0 });
+  if (includePaymentFees || paymentFeesPrevCost > 0) costBreakdownPrevious.push({ label: 'Transaction Fees', amountGbp: round2(paymentFeesPrevCost) || 0 });
+  if (includeKlarnaFees || klarnaFeesPrevCost > 0) costBreakdownPrevious.push({ label: 'Shopify Fees', amountGbp: round2(klarnaFeesPrevCost) || 0 });
 
   const nowCostSeries = buildCostDailySeries({
     chartDays,
@@ -2384,7 +2391,7 @@ async function getBusinessSnapshot(options = {}) {
     sources: {
       sales: 'shopify_orders_api (orders_shopify, checkout_token only)',
       sessions: 'shopifyql (sessions)',
-      costs: 'COGS + enabled profit deductions + optional integrations (Google Ads, Shopify app bills, transaction fees, Klarna fees)',
+      costs: 'COGS + enabled profit deductions + optional integrations (Google Ads, Shopify app bills, Transaction Fees, Shopify Fees)',
       shopifyPayments: (shopifyCostsNow && shopifyCostsNow.available) || (shopifyCostsPrev && shopifyCostsPrev.available)
         ? 'shopifyPaymentsAccount.balanceTransactions'
         : 'unavailable_or_scope_missing',
