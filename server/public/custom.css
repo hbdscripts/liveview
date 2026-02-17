@@ -1270,6 +1270,22 @@ body:not([data-page="settings"]) .table-responsive table td:first-child .country
   text-overflow: ellipsis;
   max-width: 100%;
 }
+.am-tree .am-tree-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  padding: 0.25rem 0;
+}
+.am-tree .am-tree-pad-1 { padding-left: 1rem; }
+.am-tree .am-tree-pad-2 { padding-left: 2rem; }
+.am-tree .am-tree-pad-3 { padding-left: 3rem; }
+.am-tree .am-tree-cell { flex: 0 0 auto; }
+.am-tree .am-tree-label { flex: 1 1 auto; min-width: 0; }
+.am-tree .am-tree-children.is-hidden { display: none; }
+.am-tree .am-tree-icon-preview { display: inline-flex; align-items: center; margin-right: 0.35rem; }
+.am-tree .am-tree-icon-preview img { max-width: 20px; max-height: 20px; object-fit: contain; }
+.am-tree .am-tree-icon-preview i { font-size: 1rem; }
 .traffic-type-parent .grid-cell:first-child {
   overflow: hidden;
   text-overflow: ellipsis;

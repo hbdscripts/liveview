@@ -27,6 +27,8 @@
     .settings-kexo-panel.active { display: block; }
     .settings-insights-layout-panel { display: none; }
     .settings-insights-layout-panel.active { display: block; }
+    .settings-attribution-panel { display: none; }
+    .settings-attribution-panel.active { display: block; }
       .settings-layout-panel { display: none; }
       .settings-layout-panel.active { display: block; }
     .settings-charts-accordion .accordion-item + .settings-charts-group-label { margin-top: 1rem; }
@@ -378,9 +380,24 @@
             <h3 class="card-title"><i class="fa-thin fa-map-location-dot me-2" data-icon-key="settings-tab-sources" aria-hidden="true"></i>Attribution</h3>
           </div>
           <div class="card-body">
-            <p class="text-secondary">Map observed tokens (UTMs, referrer host, entry URL params, explicit <code>kexo_attr</code>) into persisted Attribution variants (Channel + Source + Ownership).</p>
-            <div id="settings-attribution-mapping-root" class="dm-root">
-              <div class="dm-loading-spinner"><div class="report-build-wrap"><div class="spinner-border text-primary" role="status"></div><div class="report-build-title">loading attribution mapping</div></div></div>
+            <p class="text-secondary mb-3">Map observed tokens (UTMs, referrer host, entry URL params, explicit <code>kexo_attr</code>) into persisted Attribution variants (Channel + Source + Ownership).</p>
+            <ul class="nav nav-underline mb-3" id="settings-attribution-tabs" role="tablist">
+              <li class="nav-item" role="presentation">
+                <button class="nav-link active" type="button" role="tab" data-settings-attribution-tab="mapping" aria-selected="true">Mapping</button>
+              </li>
+              <li class="nav-item" role="presentation">
+                <button class="nav-link" type="button" role="tab" data-settings-attribution-tab="tree" aria-selected="false">Mapped tree</button>
+              </li>
+            </ul>
+            <div id="settings-attribution-panel-mapping" class="settings-attribution-panel active" role="tabpanel">
+              <div id="settings-attribution-mapping-root" class="dm-root">
+                <div class="dm-loading-spinner"><div class="report-build-wrap"><div class="spinner-border text-primary" role="status"></div><div class="report-build-title">loading attribution mapping</div></div></div>
+              </div>
+            </div>
+            <div id="settings-attribution-panel-tree" class="settings-attribution-panel" role="tabpanel">
+              <div id="settings-attribution-tree-root" class="dm-root">
+                <div class="dm-loading-spinner"><div class="report-build-wrap"><div class="spinner-border text-primary" role="status"></div><div class="report-build-title">loading mapped tree</div></div></div>
+              </div>
             </div>
           </div>
         </div>
@@ -728,6 +745,7 @@
   <script src="/app.js"></script>
   <script src="/theme-settings.js" defer></script>
   <script src="/attribution-mapping-settings.js"></script>
+  <script src="/attribution-tree-settings.js"></script>
   <script src="/settings-page.js"></script>
 </body>
 </html>

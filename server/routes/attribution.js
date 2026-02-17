@@ -864,6 +864,43 @@ async function postAttributionMap(req, res) {
   res.json({ ok: true });
 }
 
+async function postAttributionIcons(req, res) {
+  const body = req && req.body && typeof req.body === 'object' ? req.body : {};
+  const sources = Array.isArray(body.sources) ? body.sources : [];
+  const variants = Array.isArray(body.variants) ? body.variants : [];
+
+  const db = getDb();
+  const now = Date.now();
+
+  for (const r of sources) {
+    const sourceKey = sanitizeKey(r && r.source_key != null ? r.source_key : (r && r.key != null ? r.key : ''), { maxLen: 32 });
+    if (!sourceKey) continue;
+    const iconSpec = normalizeIconSpec(r && r.icon_spec != null ? r.icon_spec : r && r.iconSpec != null ? r.iconSpec : null);
+    try {
+      await db.run(
+        `UPDATE attribution_sources SET icon_spec = ?, updated_at = ? WHERE source_key = ?`,
+        [iconSpec, now, sourceKey]
+      );
+    } catch (_) {}
+  }
+  for (const r of variants) {
+    const variantKey = normalizeVariantKey(r && (r.variant_key != null ? r.variant_key : (r && r.key != null ? r.key : '')));
+    if (!variantKey) continue;
+    const iconSpec = normalizeIconSpec(r && r.icon_spec != null ? r.icon_spec : r && r.iconSpec != null ? r.iconSpec : null);
+    try {
+      await db.run(
+        `UPDATE attribution_variants SET icon_spec = ?, updated_at = ? WHERE variant_key = ?`,
+        [iconSpec, now, variantKey]
+      );
+    } catch (_) {}
+  }
+
+  invalidateAttributionConfigCache();
+  try { await writeAudit('admin', 'attribution_icons', { ts: Date.now(), sources: sources.length, variants: variants.length }); } catch (_) {}
+  res.setHeader('Cache-Control', 'no-store');
+  res.json({ ok: true });
+}
+
 module.exports = {
   getAttributionReport,
   getAttributionPrefs,
@@ -872,5 +909,6 @@ module.exports = {
   postAttributionConfig,
   getAttributionObserved,
   postAttributionMap,
+  postAttributionIcons,
 };
 

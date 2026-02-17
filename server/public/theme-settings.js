@@ -833,6 +833,141 @@
     });
   }
 
+  function ensureAttributionAccordionItem(accordionEl, opts) {
+    var groupId = String((opts && opts.groupId) || 'attribution').trim().toLowerCase();
+    var label = (opts && opts.label) ? String(opts.label) : 'Attribution';
+    var insertBeforeId = opts && opts.insertBeforeId ? String(opts.insertBeforeId) : null;
+    if (!accordionEl || !groupId) return null;
+    var existingCollapse = accordionEl.querySelector('#theme-icons-accordion-collapse-' + groupId);
+    if (existingCollapse) return existingCollapse.closest('.accordion-item');
+    var accordionId = accordionEl.getAttribute('id') || 'theme-icons-accordion';
+    var headingId = 'theme-icons-accordion-heading-' + groupId;
+    var collapseId = 'theme-icons-accordion-collapse-' + groupId;
+    var html = '' +
+      '<div class="accordion-item" data-theme-icon-group="' + groupId + '">' +
+        '<h2 class="accordion-header" id="' + headingId + '">' +
+          '<button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#' + collapseId + '" aria-expanded="false" aria-controls="' + collapseId + '">' +
+            '<span class="d-flex align-items-center w-100 gap-2">' +
+              '<span class="kexo-settings-accordion-chevron" aria-hidden="true"><i class="fa-regular fa-chevron-down" aria-hidden="true"></i></span>' +
+              '<span class="me-auto">' + escapeHtml(label) + '</span>' +
+              '<span class="text-muted small" data-theme-icon-group-count="' + groupId + '">0 icons</span>' +
+            '</span>' +
+          '</button>' +
+        '</h2>' +
+        '<div id="' + collapseId + '" class="accordion-collapse collapse" aria-labelledby="' + headingId + '" data-bs-parent="#' + accordionId + '">' +
+          '<div class="accordion-body"><div class="row g-3" data-theme-icon-group-body="' + groupId + '"></div></div>' +
+        '</div>' +
+      '</div>';
+    var wrap = document.createElement('div');
+    wrap.innerHTML = html;
+    var item = wrap.firstElementChild;
+    if (!item) return null;
+    var beforeNode = insertBeforeId ? accordionEl.querySelector('#' + insertBeforeId) && accordionEl.querySelector('#' + insertBeforeId).closest('.accordion-item') : null;
+    if (beforeNode) accordionEl.insertBefore(item, beforeNode);
+    else accordionEl.appendChild(item);
+    return item;
+  }
+
+  function fetchAttributionConfig() {
+    var base = '';
+    try { if (typeof API !== 'undefined') base = String(API || ''); } catch (_) {}
+    return fetch(base + '/api/attribution/config', { credentials: 'same-origin', cache: 'no-store' })
+      .then(function (r) { return r && r.ok ? r.json() : null; })
+      .catch(function () { return null; });
+  }
+
+  function saveAttributionIcons(payload) {
+    var base = '';
+    try { if (typeof API !== 'undefined') base = String(API || ''); } catch (_) {}
+    return fetch(base + '/api/attribution/icons', {
+      method: 'POST',
+      credentials: 'same-origin',
+      cache: 'no-store',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload || {}),
+    })
+      .then(function (r) { return r && r.ok ? r.json() : null; })
+      .catch(function () { return null; });
+  }
+
+  function hydrateAttributionIconGroup(root) {
+    if (!root) return;
+    var accordion = root.querySelector('#theme-icons-accordion');
+    if (!accordion) return;
+    var item = ensureAttributionAccordionItem(accordion, {
+      groupId: 'attribution',
+      label: 'Attribution',
+      insertBeforeId: 'theme-icons-accordion-collapse-misc',
+    });
+    if (!item) return;
+    var body = item.querySelector('[data-theme-icon-group-body="attribution"]');
+    if (!body) return;
+    body.innerHTML = '<div class="col-12"><div class="spinner-border spinner-border-sm text-primary" role="status"></div> Loading attribution…</div>';
+    fetchAttributionConfig().then(function (res) {
+      if (!res || !res.ok || !res.config) {
+        body.innerHTML = '<div class="col-12 text-secondary small">Could not load attribution config.</div>';
+        return;
+      }
+      var sources = Array.isArray(res.config.sources) ? res.config.sources : [];
+      var variants = Array.isArray(res.config.variants) ? res.config.variants : [];
+      var cards = [];
+      sources.forEach(function (r) {
+        var key = (r && r.source_key != null) ? String(r.source_key) : (r && r.key != null) ? String(r.key) : '';
+        var label = (r && r.label != null) ? String(r.label) : key || '—';
+        var icon = (r && r.icon_spec != null) ? String(r.icon_spec) : '';
+        if (!key) return;
+        cards.push('<div class="col-12 col-md-6 col-lg-4" data-attribution-icon="source" data-attribution-key="' + escapeHtml(key) + '">' +
+          '<div class="card card-sm h-100">' +
+            '<div class="card-body">' +
+              '<div class="d-flex align-items-center mb-2"><strong>Source: ' + escapeHtml(label) + '</strong></div>' +
+              '<div class="text-secondary small mb-2"><code>' + escapeHtml(key) + '</code></div>' +
+              '<div class="d-flex align-items-start gap-2">' +
+                '<input type="text" class="form-control form-control-sm attribution-icon-input" data-kind="source" data-key="' + escapeHtml(key) + '" value="' + escapeHtml(icon) + '" placeholder="fa-brands fa-google or URL" />' +
+                '<button type="button" class="btn btn-outline-primary btn-sm attribution-icon-save" data-kind="source" data-key="' + escapeHtml(key) + '">Save</button>' +
+              '</div>' +
+            '</div>' +
+          '</div>' +
+        '</div>');
+      });
+      variants.forEach(function (r) {
+        var key = (r && r.variant_key != null) ? String(r.variant_key) : (r && r.key != null) ? String(r.key) : '';
+        var label = (r && r.label != null) ? String(r.label) : key || '—';
+        var icon = (r && r.icon_spec != null) ? String(r.icon_spec) : '';
+        if (!key) return;
+        cards.push('<div class="col-12 col-md-6 col-lg-4" data-attribution-icon="variant" data-attribution-key="' + escapeHtml(key) + '">' +
+          '<div class="card card-sm h-100">' +
+            '<div class="card-body">' +
+              '<div class="d-flex align-items-center mb-2"><strong>Variant: ' + escapeHtml(label) + '</strong></div>' +
+              '<div class="text-secondary small mb-2"><code>' + escapeHtml(key) + '</code></div>' +
+              '<div class="d-flex align-items-start gap-2">' +
+                '<input type="text" class="form-control form-control-sm attribution-icon-input" data-kind="variant" data-key="' + escapeHtml(key) + '" value="' + escapeHtml(icon) + '" placeholder="fa-brands fa-google or URL" />' +
+                '<button type="button" class="btn btn-outline-primary btn-sm attribution-icon-save" data-kind="variant" data-key="' + escapeHtml(key) + '">Save</button>' +
+              '</div>' +
+            '</div>' +
+          '</div>' +
+        '</div>');
+      });
+      body.innerHTML = cards.length ? cards.join('') : '<div class="col-12 text-secondary small">No sources or variants yet. Add them in Settings → Attribution → Mapping.</div>';
+      body.querySelectorAll('.attribution-icon-save').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var kind = btn.getAttribute('data-kind');
+          var key = btn.getAttribute('data-key');
+          var card = btn.closest('[data-attribution-icon]');
+          var input = card ? card.querySelector('.attribution-icon-input') : null;
+          var spec = input ? input.value.trim() : '';
+          var payload = kind === 'source' ? { sources: [{ source_key: key, icon_spec: spec || null }] } : { variants: [{ variant_key: key, icon_spec: spec || null }] };
+          saveAttributionIcons(payload).then(function (ok) {
+            if (ok) {
+              try { window.dispatchEvent(new CustomEvent('kexo:attribution-icons-updated')); } catch (_) {}
+              hydrateAttributionIconGroup(root);
+            }
+          });
+        });
+      });
+      updateThemeIconsAccordionCounts(accordion);
+    });
+  }
+
   function buildIconEditModalHtml() {
     return '' +
       '<div class="modal fade" id="theme-icon-edit-modal" tabindex="-1" aria-hidden="true">' +
@@ -1888,6 +2023,16 @@
     wireSaleNotificationPanel();
     syncUI();
     hydrateDetectedDevicesIconGroup(root);
+    hydrateAttributionIconGroup(root);
+    try {
+      if (!window.__kexoAttributionIconsListenerBound) {
+        window.__kexoAttributionIconsListenerBound = true;
+        window.addEventListener('kexo:attribution-icons-updated', function () {
+          var form = document.getElementById('theme-settings-form');
+          if (form) hydrateAttributionIconGroup(form);
+        });
+      }
+    } catch (_) {}
   }
 
   // Build offcanvas and inject into page

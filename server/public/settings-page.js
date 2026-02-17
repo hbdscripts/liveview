@@ -117,6 +117,7 @@
   var initialLayoutSubTab = null;
   var initialKexoSubTab = null;
   var initialIntegrationsSubTab = null;
+  var initialAttributionSubTab = null;
   var activeLayoutSubTab = 'tables';
   var activeKexoSubTab = 'general';
 
@@ -164,6 +165,13 @@
           if (ik === 'shopify' || ik === 'googleads') initialIntegrationsSubTab = ik;
         }
       }
+      if (t === 'attribution') {
+        var am = /[?&]attributionTab=([^&]+)/.exec(window.location.search || '');
+        if (am && am[1]) {
+          var ak = am[1].toLowerCase().replace(/\s+/g, '-');
+          if (ak === 'mapping' || ak === 'tree') initialAttributionSubTab = ak;
+        }
+      }
       if (TAB_MAP[t]) return t;
     }
     return null;
@@ -195,6 +203,10 @@
       var kexoKey = getActiveKexoSubTab();
       if (kexoKey) params.set('kexoTab', kexoKey);
     }
+    if (key === 'attribution') {
+      var attributionKey = getActiveAttributionSubTab();
+      if (attributionKey === 'mapping' || attributionKey === 'tree') params.set('attributionTab', attributionKey);
+    }
     var url = window.location.pathname + '?' + params.toString();
     try { history.replaceState(null, '', url); } catch (_) {}
   }
@@ -217,6 +229,13 @@
     if (!tab) return activeKexoSubTab || 'general';
     var key = String(tab.getAttribute('data-settings-kexo-tab') || '').trim().toLowerCase();
     return key || (activeKexoSubTab || 'general');
+  }
+
+  function getActiveAttributionSubTab() {
+    var tab = document.querySelector('[data-settings-attribution-tab].active');
+    if (!tab) return 'mapping';
+    var key = String(tab.getAttribute('data-settings-attribution-tab') || '').trim().toLowerCase();
+    return key === 'tree' ? 'tree' : 'mapping';
   }
 
   function renderChartsWhenVisible() {
@@ -243,11 +262,20 @@
     });
     updateUrl(key);
     if (key === 'attribution') {
-      try {
-        if (typeof window.initAttributionMappingSettings === 'function') {
-          window.initAttributionMappingSettings({ rootId: 'settings-attribution-mapping-root' });
-        }
-      } catch (_) {}
+      var attributionSub = getActiveAttributionSubTab();
+      if (attributionSub === 'mapping') {
+        try {
+          if (typeof window.initAttributionMappingSettings === 'function') {
+            window.initAttributionMappingSettings({ rootId: 'settings-attribution-mapping-root' });
+          }
+        } catch (_) {}
+      } else if (attributionSub === 'tree') {
+        try {
+          if (typeof window.initAttributionTreeView === 'function') {
+            window.initAttributionTreeView({ rootId: 'settings-attribution-tree-root' });
+          }
+        } catch (_) {}
+      }
     }
     if (key === 'layout') {
       var sub = getActiveLayoutSubTab();
@@ -2376,6 +2404,46 @@
     activate(initialKey || activeKexoSubTab || 'general');
   }
 
+  function wireAttributionSubTabs(initialKey) {
+    var tabs = document.querySelectorAll('[data-settings-attribution-tab]');
+    if (!tabs.length) return;
+    var KEYS = ['mapping', 'tree'];
+    function activate(key) {
+      if (KEYS.indexOf(key) < 0) key = 'mapping';
+      tabs.forEach(function (tab) {
+        var active = tab.getAttribute('data-settings-attribution-tab') === key;
+        tab.classList.toggle('active', active);
+        tab.setAttribute('aria-selected', active ? 'true' : 'false');
+      });
+      KEYS.forEach(function (k) {
+        var panel = document.getElementById('settings-attribution-panel-' + k);
+        if (panel) panel.classList.toggle('active', k === key);
+      });
+      if (getActiveSettingsTab() === 'attribution') {
+        if (key === 'mapping') {
+          try {
+            if (typeof window.initAttributionMappingSettings === 'function') {
+              window.initAttributionMappingSettings({ rootId: 'settings-attribution-mapping-root' });
+            }
+          } catch (_) {}
+        } else if (key === 'tree') {
+          try {
+            if (typeof window.initAttributionTreeView === 'function') {
+              window.initAttributionTreeView({ rootId: 'settings-attribution-tree-root' });
+            }
+          } catch (_) {}
+        }
+      }
+      updateUrl(getActiveSettingsTab() || 'kexo');
+    }
+    tabs.forEach(function (tab) {
+      tab.addEventListener('click', function () {
+        activate(tab.getAttribute('data-settings-attribution-tab') || 'mapping');
+      });
+    });
+    activate(initialKey || 'mapping');
+  }
+
   function parseRowOptionsText(raw) {
     var text = raw == null ? '' : String(raw);
     var parts = text.split(/[^0-9]+/g);
@@ -4382,6 +4450,7 @@
     // `tab=charts` or `tab=kpis`, preselect the right Layout subtab BEFORE activating the panel.
     wireLayoutSubTabs(initialLayoutSubTab);
     wireKexoSubTabs(initialKexoSubTab);
+    wireAttributionSubTabs(initialAttributionSubTab);
     activateTab(initialTab);
 
     document.querySelectorAll('[data-settings-tab]').forEach(function (el) {
