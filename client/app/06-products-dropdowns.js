@@ -327,7 +327,7 @@
         var rev = revNum != null ? formatRevenueTableHtml(revNum) : '???';
         var cr = r && r.cr != null ? pct(r.cr) : '???';
         var vpvNum = (revNum != null && sessions > 0) ? (revNum / sessions) : null;
-        var vpv = (vpvNum != null && Number.isFinite(vpvNum)) ? formatRevenue0(vpvNum) : '\u2014';
+        var vpv = (vpvNum != null && Number.isFinite(vpvNum)) ? formatRevenue(vpvNum) : '\u2014';
         var handle = r && r.handle ? String(r.handle) : '';
         var productId = (r && r.product_id) ? String(r.product_id).replace(/^gid:\/\/shopify\/Product\//i, '').trim() : '';
         var productUrl = (mainBase && handle) ? (mainBase + '/products/' + encodeURIComponent(handle)) : '#';

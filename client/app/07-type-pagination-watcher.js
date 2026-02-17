@@ -208,7 +208,7 @@
         const crVal = (v && typeof v.cr === 'number') ? v.cr : null;
         const cr = crVal != null ? pct(crVal) : '\u2014';
         const vpvNum = (v && typeof v.vpv === 'number' && Number.isFinite(v.vpv)) ? v.vpv : ((v && v.clicks > 0 && v.revenue != null) ? (v.revenue / v.clicks) : null);
-        const vpv = vpvNum != null ? formatRevenue0(vpvNum) : '\u2014';
+        const vpv = vpvNum != null ? formatRevenue(vpvNum) : '\u2014';
 
         return '<div class="grid-row" role="row">' +
           '<div class="grid-cell bs-product-col" role="cell"><div class="product-cell">' + name + '</div></div>' +
@@ -557,7 +557,7 @@
         const revenue = formatRevenueTableHtml(p.revenue);
         const cr = p.cr != null ? pct(p.cr) : '\u2014';
         const vpvNum = vpvFromRow(p);
-        const vpv = vpvNum != null ? formatRevenue0(vpvNum) : '\u2014';
+        const vpv = vpvNum != null ? formatRevenue(vpvNum) : '\u2014';
         return '<div class="grid-row" role="row">' +
           '<div class="grid-cell bs-product-col" role="cell"><div class="product-cell">' + name + '</div></div>' +
           '<div class="grid-cell" role="cell">' + clicks + '</div>' +
@@ -1123,7 +1123,7 @@
         const clicks = r.total != null ? formatSessions(r.total) : '???';
         const revenue = formatRevenueTableHtml(r.revenue);
         const vpvNum = countryVpv(r);
-        const vpv = vpvNum != null ? formatRevenue0(vpvNum) : '\u2014';
+        const vpv = vpvNum != null ? formatRevenue(vpvNum) : '\u2014';
         const flag = flagImg(code, label);
         const labelHtml = '<span class="country-label">' + escapeHtml(label) + '</span>';
         return '<div class="grid-row" role="row">' +
@@ -1583,7 +1583,7 @@
         const clicks = r.total != null ? formatSessions(r.total) : '???';
         const revenue = formatRevenueTableHtml(r.revenue);
         const vpvNum = (r && r.total > 0 && r.revenue != null) ? (r.revenue / r.total) : null;
-        const vpv = vpvNum != null ? formatRevenue0(vpvNum) : '\u2014';
+        const vpv = vpvNum != null ? formatRevenue(vpvNum) : '\u2014';
         const flag = flagImg(iso, label);
         const normalizedHandle = productHandle ? String(productHandle).trim().toLowerCase() : '';
         const canOpen = normalizedHandle || (productId && /^\d+$/.test(productId));
@@ -2953,7 +2953,7 @@
       if (condRevenueEl) condRevenueEl.textContent = revenueVal != null ? formatRevenue(revenueVal) : '\u2014';
       if (condSessionsEl) condSessionsEl.textContent = sessionsVal != null ? formatSessions(sessionsVal) : '\u2014';
       if (condConvEl) condConvEl.textContent = convVal != null ? pct(convVal) : '\u2014';
-      if (condVpvEl) condVpvEl.textContent = vpvVal != null ? formatRevenue0(vpvVal) : '\u2014';
+      if (condVpvEl) condVpvEl.textContent = vpvVal != null ? formatRevenue(vpvVal) : '\u2014';
       if (condReturningEl) condReturningEl.textContent = returningVal != null ? formatSessions(returningVal) : '\u2014';
       if (condAovEl) condAovEl.textContent = aovVal != null ? formatRevenue(aovVal) : '\u2014';
       if (condRoasEl) condRoasEl.textContent = roasVal != null ? Number(roasVal).toFixed(2) + 'x' : '\u2014';
@@ -3264,7 +3264,7 @@
       setDashValueText('dash-kpi-orders', ordersVal != null ? Math.round(ordersVal).toLocaleString() : null);
       setDashValueText('dash-kpi-sessions', sessionsVal != null ? formatSessions(sessionsVal) : null);
       setDashValueText('dash-kpi-conv', convVal != null ? pct(convVal) : null);
-      setDashValueText('dash-kpi-vpv', vpvVal != null ? formatRevenue0(vpvVal) : null);
+      setDashValueText('dash-kpi-vpv', vpvVal != null ? formatRevenue(vpvVal) : null);
       setDashValueText('dash-kpi-aov', aovVal != null ? formatRevenue0(aovVal) : null);
       setDashValueText('dash-kpi-bounce', bounceVal != null ? pct(bounceVal) : null);
       setDashValueText('dash-kpi-returning', returningVal != null ? Math.round(returningVal).toLocaleString() : null);
@@ -3294,7 +3294,7 @@
         setDashValueText('dash-orders-' + slotSuffix, orders != null ? Math.round(orders).toLocaleString() : null);
         setDashValueText('dash-sessions-' + slotSuffix, sessions != null ? formatSessions(sessions) : null);
         setDashValueText('dash-conv-' + slotSuffix, conv != null ? pct(conv) : null);
-        setDashValueText('dash-vpv-' + slotSuffix, vpv != null ? formatRevenue0(vpv) : null);
+        setDashValueText('dash-vpv-' + slotSuffix, vpv != null ? formatRevenue(vpv) : null);
         setDashValueText('dash-aov-' + slotSuffix, aov != null ? formatRevenue0(aov) : null);
         setDashValueText('dash-bounce-' + slotSuffix, bounce != null ? pct(bounce) : null);
         setDashValueText('dash-returning-' + slotSuffix, returning != null ? Math.round(returning).toLocaleString() : null);

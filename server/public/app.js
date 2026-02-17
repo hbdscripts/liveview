@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: c24f5da6dd390ac9
+// checksum: cd7b499c8eb69550
 
 (function () {
 const API = '';
@@ -5170,7 +5170,7 @@ const API = '';
         var rev = revNum != null ? formatRevenueTableHtml(revNum) : '???';
         var cr = r && r.cr != null ? pct(r.cr) : '???';
         var vpvNum = (revNum != null && sessions > 0) ? (revNum / sessions) : null;
-        var vpv = (vpvNum != null && Number.isFinite(vpvNum)) ? formatRevenue0(vpvNum) : '\u2014';
+        var vpv = (vpvNum != null && Number.isFinite(vpvNum)) ? formatRevenue(vpvNum) : '\u2014';
         var handle = r && r.handle ? String(r.handle) : '';
         var productId = (r && r.product_id) ? String(r.product_id).replace(/^gid:\/\/shopify\/Product\//i, '').trim() : '';
         var productUrl = (mainBase && handle) ? (mainBase + '/products/' + encodeURIComponent(handle)) : '#';
@@ -5454,7 +5454,7 @@ const API = '';
         const crVal = (v && typeof v.cr === 'number') ? v.cr : null;
         const cr = crVal != null ? pct(crVal) : '\u2014';
         const vpvNum = (v && typeof v.vpv === 'number' && Number.isFinite(v.vpv)) ? v.vpv : ((v && v.clicks > 0 && v.revenue != null) ? (v.revenue / v.clicks) : null);
-        const vpv = vpvNum != null ? formatRevenue0(vpvNum) : '\u2014';
+        const vpv = vpvNum != null ? formatRevenue(vpvNum) : '\u2014';
 
         return '<div class="grid-row" role="row">' +
           '<div class="grid-cell bs-product-col" role="cell"><div class="product-cell">' + name + '</div></div>' +
@@ -5803,7 +5803,7 @@ const API = '';
         const revenue = formatRevenueTableHtml(p.revenue);
         const cr = p.cr != null ? pct(p.cr) : '\u2014';
         const vpvNum = vpvFromRow(p);
-        const vpv = vpvNum != null ? formatRevenue0(vpvNum) : '\u2014';
+        const vpv = vpvNum != null ? formatRevenue(vpvNum) : '\u2014';
         return '<div class="grid-row" role="row">' +
           '<div class="grid-cell bs-product-col" role="cell"><div class="product-cell">' + name + '</div></div>' +
           '<div class="grid-cell" role="cell">' + clicks + '</div>' +
@@ -6369,7 +6369,7 @@ const API = '';
         const clicks = r.total != null ? formatSessions(r.total) : '???';
         const revenue = formatRevenueTableHtml(r.revenue);
         const vpvNum = countryVpv(r);
-        const vpv = vpvNum != null ? formatRevenue0(vpvNum) : '\u2014';
+        const vpv = vpvNum != null ? formatRevenue(vpvNum) : '\u2014';
         const flag = flagImg(code, label);
         const labelHtml = '<span class="country-label">' + escapeHtml(label) + '</span>';
         return '<div class="grid-row" role="row">' +
@@ -6829,7 +6829,7 @@ const API = '';
         const clicks = r.total != null ? formatSessions(r.total) : '???';
         const revenue = formatRevenueTableHtml(r.revenue);
         const vpvNum = (r && r.total > 0 && r.revenue != null) ? (r.revenue / r.total) : null;
-        const vpv = vpvNum != null ? formatRevenue0(vpvNum) : '\u2014';
+        const vpv = vpvNum != null ? formatRevenue(vpvNum) : '\u2014';
         const flag = flagImg(iso, label);
         const normalizedHandle = productHandle ? String(productHandle).trim().toLowerCase() : '';
         const canOpen = normalizedHandle || (productId && /^\d+$/.test(productId));
@@ -8199,7 +8199,7 @@ const API = '';
       if (condRevenueEl) condRevenueEl.textContent = revenueVal != null ? formatRevenue(revenueVal) : '\u2014';
       if (condSessionsEl) condSessionsEl.textContent = sessionsVal != null ? formatSessions(sessionsVal) : '\u2014';
       if (condConvEl) condConvEl.textContent = convVal != null ? pct(convVal) : '\u2014';
-      if (condVpvEl) condVpvEl.textContent = vpvVal != null ? formatRevenue0(vpvVal) : '\u2014';
+      if (condVpvEl) condVpvEl.textContent = vpvVal != null ? formatRevenue(vpvVal) : '\u2014';
       if (condReturningEl) condReturningEl.textContent = returningVal != null ? formatSessions(returningVal) : '\u2014';
       if (condAovEl) condAovEl.textContent = aovVal != null ? formatRevenue(aovVal) : '\u2014';
       if (condRoasEl) condRoasEl.textContent = roasVal != null ? Number(roasVal).toFixed(2) + 'x' : '\u2014';
@@ -8510,7 +8510,7 @@ const API = '';
       setDashValueText('dash-kpi-orders', ordersVal != null ? Math.round(ordersVal).toLocaleString() : null);
       setDashValueText('dash-kpi-sessions', sessionsVal != null ? formatSessions(sessionsVal) : null);
       setDashValueText('dash-kpi-conv', convVal != null ? pct(convVal) : null);
-      setDashValueText('dash-kpi-vpv', vpvVal != null ? formatRevenue0(vpvVal) : null);
+      setDashValueText('dash-kpi-vpv', vpvVal != null ? formatRevenue(vpvVal) : null);
       setDashValueText('dash-kpi-aov', aovVal != null ? formatRevenue0(aovVal) : null);
       setDashValueText('dash-kpi-bounce', bounceVal != null ? pct(bounceVal) : null);
       setDashValueText('dash-kpi-returning', returningVal != null ? Math.round(returningVal).toLocaleString() : null);
@@ -8540,7 +8540,7 @@ const API = '';
         setDashValueText('dash-orders-' + slotSuffix, orders != null ? Math.round(orders).toLocaleString() : null);
         setDashValueText('dash-sessions-' + slotSuffix, sessions != null ? formatSessions(sessions) : null);
         setDashValueText('dash-conv-' + slotSuffix, conv != null ? pct(conv) : null);
-        setDashValueText('dash-vpv-' + slotSuffix, vpv != null ? formatRevenue0(vpv) : null);
+        setDashValueText('dash-vpv-' + slotSuffix, vpv != null ? formatRevenue(vpv) : null);
         setDashValueText('dash-aov-' + slotSuffix, aov != null ? formatRevenue0(aov) : null);
         setDashValueText('dash-bounce-' + slotSuffix, bounce != null ? pct(bounce) : null);
         setDashValueText('dash-returning-' + slotSuffix, returning != null ? Math.round(returning).toLocaleString() : null);
@@ -10579,7 +10579,7 @@ const API = '';
         const chOrders = (ch && typeof ch.orders === 'number') ? formatSessions(ch.orders) : '-';
         const chSessions = (ch && typeof ch.sessions === 'number') ? formatSessions(ch.sessions) : '-';
         const chRev = (ch && typeof ch.revenue_gbp === 'number') ? formatRevenueTableHtml(ch.revenue_gbp) : '-';
-        const chVpv = metric(ch, 'vpv') != null ? formatRevenue0(metric(ch, 'vpv')) : '\u2014';
+        const chVpv = metric(ch, 'vpv') != null ? formatRevenue(metric(ch, 'vpv')) : '\u2014';
         html += '<div class="grid-row traffic-type-parent attribution-channel-parent" role="row" data-channel="' + escapeHtml(chKey) + '">' +
           '<div class="grid-cell" role="cell">' +
             '<button type="button" class="traffic-type-toggle attribution-channel-toggle" data-channel="' + escapeHtml(chKey) + '" aria-expanded="' + (chOpen ? 'true' : 'false') + '">' +
@@ -10614,7 +10614,7 @@ const API = '';
           const sOrders = (src && typeof src.orders === 'number') ? formatSessions(src.orders) : '-';
           const sSessions = (src && typeof src.sessions === 'number') ? formatSessions(src.sessions) : '-';
           const sRev = (src && typeof src.revenue_gbp === 'number') ? formatRevenueTableHtml(src.revenue_gbp) : '-';
-          const sVpv = metric(src, 'vpv') != null ? formatRevenue0(metric(src, 'vpv')) : '\u2014';
+          const sVpv = metric(src, 'vpv') != null ? formatRevenue(metric(src, 'vpv')) : '\u2014';
           html += '<div class="grid-row traffic-type-child attribution-source-row' + (chOpen ? '' : ' is-hidden') + '" role="row" data-parent="' + escapeHtml(chKey) + '" data-channel="' + escapeHtml(chKey) + '" data-source="' + escapeHtml(sKey) + '">' +
             '<div class="grid-cell" role="cell">' +
               '<button type="button" class="traffic-type-toggle attribution-source-toggle" data-channel="' + escapeHtml(chKey) + '" data-source="' + escapeHtml(sKey) + '" aria-expanded="' + (srcOpen ? 'true' : 'false') + '">' +
@@ -10650,7 +10650,7 @@ const API = '';
             const vOrders = (v && typeof v.orders === 'number') ? formatSessions(v.orders) : '-';
             const vSessions = (v && typeof v.sessions === 'number') ? formatSessions(v.sessions) : '-';
             const vRev = (v && typeof v.revenue_gbp === 'number') ? formatRevenueTableHtml(v.revenue_gbp) : '-';
-            const vVpv = metric(v, 'vpv') != null ? formatRevenue0(metric(v, 'vpv')) : '\u2014';
+            const vVpv = metric(v, 'vpv') != null ? formatRevenue(metric(v, 'vpv')) : '\u2014';
             const ownerKind = v && v.owner_kind != null ? String(v.owner_kind).trim().toLowerCase() : '';
             const ownerBadge = ownerKind && ownerKind !== 'house'
               ? (' <span class="text-muted small">(' + escapeHtml(ownerKind) + ')</span>')
@@ -10818,7 +10818,7 @@ const API = '';
         const orders = (g && typeof g.orders === 'number') ? formatSessions(g.orders) : '-';
         const sessions = (g && typeof g.sessions === 'number') ? formatSessions(g.sessions) : '-';
         const rev = (g && typeof g.revenue_gbp === 'number') ? formatRevenueTableHtml(g.revenue_gbp) : '-';
-        const vpv = metric(g, 'vpv') != null ? formatRevenue0(metric(g, 'vpv')) : '\u2014';
+        const vpv = metric(g, 'vpv') != null ? formatRevenue(metric(g, 'vpv')) : '\u2014';
         html += '<div class="grid-row traffic-type-parent devices-parent" role="row" data-device-type="' + escapeHtml(dKey) + '">' +
           '<div class="grid-cell" role="cell">' +
             '<button type="button" class="traffic-type-toggle devices-toggle" data-device-type="' + escapeHtml(dKey) + '" aria-expanded="' + (open ? 'true' : 'false') + '">' +
@@ -10852,7 +10852,7 @@ const API = '';
           const corders = (c && typeof c.orders === 'number') ? formatSessions(c.orders) : '-';
           const csessions = (c && typeof c.sessions === 'number') ? formatSessions(c.sessions) : '-';
           const crev = (c && typeof c.revenue_gbp === 'number') ? formatRevenueTableHtml(c.revenue_gbp) : '-';
-          const cvpv = metric(c, 'vpv') != null ? formatRevenue0(metric(c, 'vpv')) : '\u2014';
+          const cvpv = metric(c, 'vpv') != null ? formatRevenue(metric(c, 'vpv')) : '\u2014';
           html += '<div class="grid-row traffic-type-child devices-child' + (open ? '' : ' is-hidden') + '" role="row" data-parent="' + escapeHtml(dKey) + '">' +
             '<div class="grid-cell" role="cell"><span style="display:inline-flex;align-items:center;gap:8px">' + trafficTypePlatformIcon(platform) + '<span>' + escapeHtml(clabel) + '</span></span></div>' +
             '<div class="grid-cell" role="cell">' + escapeHtml(csessions || '-') + '</div>' +
@@ -21818,16 +21818,9 @@ const API = '';
       openBtn.setAttribute('data-kexo-profit-bound', '1');
       openBtn.addEventListener('click', function (e) {
         e.preventDefault();
-        setMessage('', null);
-        loadRules(false).catch(function () {
-          state.rulesDraft = normalizeRulesPayload(null);
-          applyDraftToUi();
-          renderRulesList();
-          setMessage('Failed to load existing rules.', false);
-        }).finally(function () {
-          setTab('rules');
-          openModal();
-        });
+        try {
+          window.open('/settings?tab=cost-expenses&costExpensesTab=rules', '_blank', 'noopener,noreferrer');
+        } catch (_) {}
       });
     }
 

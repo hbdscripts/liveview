@@ -150,6 +150,13 @@
     return '&pound;' + n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
   }
 
+  function formatMoney2(value) {
+    if (value == null) return '—';
+    var n = Number(value);
+    if (!Number.isFinite(n)) return '—';
+    return '&pound;' + n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
   function formatCoveragePct(part, total) {
     var p = Number(part);
     var t = Number(total);
@@ -626,7 +633,7 @@
     }
     body.innerHTML = pageRows.map(function (row) {
       var vpvVal = rowVpv(row);
-      var vpvStr = vpvVal != null ? formatMoney(vpvVal) : '—';
+      var vpvStr = vpvVal != null ? formatMoney2(vpvVal) : '—';
       return '' +
         '<div class="grid-row" role="row">' +
           '<div class="grid-cell bs-product-col" role="cell"><div class="product-cell"><span class="bs-name" title="' + escapeHtml(row.variant || '—') + '">' + escapeHtml(row.variant || '—') + '</span></div></div>' +
