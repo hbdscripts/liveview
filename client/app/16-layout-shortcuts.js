@@ -213,7 +213,7 @@
     for (var i = 0; i < count; i += 1) {
       var label = series[i] ? String(series[i]) : ('Series ' + (i + 1));
       var val = normalizeHexColor(colors[i], '#3eb3ab');
-      html += '<label class="settings-charts-color-field"><span class="form-label mb-1">' + escapeHtml(label) + '</span><div class="settings-charts-color-field-row"><input type="text" class="form-control form-control-sm" data-chart-field="color" data-idx="' + i + '" value="' + escapeHtml(val) + '"><span class="settings-charts-color-swatch" data-color-swatch style="background:' + escapeHtml(val) + ';"></span></div></label>';
+      html += '<label class="settings-charts-color-field"><span class="form-label mb-1">' + escapeHtml(label) + '</span><div class="settings-charts-color-field-row"><input type="text" class="form-control form-control-sm" data-chart-field="color" data-idx="' + i + '" value="' + escapeHtml(val) + '" placeholder="#3eb3ab"><span class="settings-charts-color-swatch" data-color-swatch style="background:' + escapeHtml(val) + ';" title="' + escapeHtml(val) + '"></span><span class="settings-charts-color-hex text-muted small ms-1 font-monospace" data-color-hex>' + escapeHtml(val) + '</span></div></label>';
     }
     html += '</div>';
     return html;
@@ -363,7 +363,13 @@
     if (!root || !root.querySelectorAll) return;
     root.querySelectorAll('[data-color-swatch]').forEach(function (sw) {
       var input = sw.previousElementSibling;
-      if (input) sw.style.background = normalizeHexColor(input.value, '#3eb3ab');
+      var hexSpan = sw.nextElementSibling;
+      if (input) {
+        var val = normalizeHexColor(input.value, '#3eb3ab');
+        sw.style.background = val;
+        sw.setAttribute('title', val);
+        if (hexSpan && hexSpan.getAttribute('data-color-hex') !== null) hexSpan.textContent = val;
+      }
     });
   }
 
@@ -371,13 +377,13 @@
     if (!container || !container.querySelectorAll) return;
     var modeEl = container.querySelector('[data-chart-field="mode"]');
     var mode = (modeEl && modeEl.value != null ? String(modeEl.value).trim().toLowerCase() : '') || 'line';
-    var lineLike = mode === 'line' || mode === 'area' || mode === 'multi-line-labels';
+    var lineLike = mode === 'line' || mode === 'area' || mode === 'multi-line-labels' || mode === 'stacked-area' || mode === 'combo';
     var showCurve = lineLike;
     var showStroke = lineLike;
     var showDash = lineLike;
     var showMarkers = lineLike;
-    var showFill = mode === 'area';
-    var showGrid = lineLike || mode === 'bar';
+    var showFill = mode === 'area' || mode === 'stacked-area' || mode === 'combo';
+    var showGrid = lineLike || mode === 'bar' || mode === 'stacked-bar';
     var showLabels = lineLike || mode === 'bar';
     var showToolbar = true;
     var showAnimations = true;

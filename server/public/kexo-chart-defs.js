@@ -18,13 +18,15 @@
     donut: 'Donut',
     combo: 'Multiple (combo)',
     'multi-line-labels': 'Multiple line + labels',
+    'stacked-area': 'Stacked area',
+    'stacked-bar': 'Stacked bar',
   };
 
   window.KEXO_CHART_DEFS = {
-    'dash-chart-overview-30d': { modes: ['area', 'bar', 'line', 'multi-line-labels'], series: ['Revenue', 'Cost'], defaultMode: 'area', height: 420 },
-    'dash-chart-finishes-30d': { modes: ['radialbar', 'pie', 'donut', 'bar'], series: ['Revenue by finish'], defaultMode: 'radialbar', height: 240, colorSlots: 5 },
-    'dash-chart-countries-30d': { modes: ['bar-horizontal', 'pie'], series: ['Revenue by country'], defaultMode: 'bar-horizontal', height: 240, colorSlots: 5 },
-    'dash-chart-attribution-30d': { modes: ['bar-distributed', 'pie', 'bar'], series: ['Revenue by source'], defaultMode: 'bar-distributed', height: 240, colorSlots: 5 },
+    'dash-chart-overview-30d': { modes: ['area', 'bar', 'line', 'multi-line-labels', 'combo', 'stacked-area', 'stacked-bar'], series: ['Revenue', 'Cost'], defaultMode: 'area', height: 420 },
+    'dash-chart-finishes-30d': { modes: ['radialbar', 'pie', 'donut', 'bar', 'bar-horizontal', 'bar-distributed', 'area', 'line'], series: ['Revenue by finish'], defaultMode: 'radialbar', height: 240, colorSlots: 5 },
+    'dash-chart-countries-30d': { modes: ['bar-horizontal', 'pie', 'donut', 'bar', 'bar-distributed', 'radialbar', 'area', 'line'], series: ['Revenue by country'], defaultMode: 'bar-horizontal', height: 240, colorSlots: 5 },
+    'dash-chart-attribution-30d': { modes: ['bar-distributed', 'bar-horizontal', 'pie', 'donut', 'bar', 'radialbar', 'area', 'line'], series: ['Revenue by source'], defaultMode: 'bar-distributed', height: 240, colorSlots: 5 },
     'live-online-chart': { modes: ['map-animated', 'map-flat'], series: ['Online now'], defaultMode: 'map-flat', height: 220 },
     'sales-overview-chart': { modes: ['area', 'line', 'bar', 'multi-line-labels'], series: ['Revenue'], defaultMode: 'area', height: 220 },
     'date-overview-chart': { modes: ['area', 'line', 'bar', 'multi-line-labels'], series: ['Sessions', 'Orders'], defaultMode: 'area', height: 220 },

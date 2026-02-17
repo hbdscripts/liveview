@@ -306,7 +306,8 @@
         var defaultType = (opts && opts.chartType) || 'area';
         var rawMode = chartModeFromUiConfig(chartId, defaultType) || defaultType;
         var showEndLabels = rawMode === 'multi-line-labels';
-        var chartType = rawMode === 'multi-line-labels' ? 'line' : rawMode;
+        var stacked = rawMode === 'stacked-area' || rawMode === 'stacked-bar';
+        var chartType = rawMode === 'multi-line-labels' ? 'line' : rawMode === 'stacked-area' ? 'area' : rawMode === 'stacked-bar' ? 'bar' : rawMode === 'combo' ? 'area' : rawMode;
         chartType = normalizeChartType(chartType, normalizeChartType(defaultType, 'area'));
 
         if (!isChartEnabledByUiConfig(chartId, true)) {
@@ -400,7 +401,7 @@
             colors: colors,
             stroke: { show: true, width: chartType === 'bar' ? 0 : 2, curve: 'smooth', lineCap: 'round' },
             fill: fillConfig,
-            plotOptions: chartType === 'bar' ? { bar: { columnWidth: '60%', borderRadius: 3 } } : {},
+            plotOptions: chartType === 'bar' ? { bar: { columnWidth: stacked ? '80%' : '60%', borderRadius: 3, stacked: stacked } } : (chartType === 'area' && stacked ? { area: { stacked: true } } : {}),
             xaxis: {
               categories: labels || [],
               labels: { style: { fontSize: '10px', cssClass: 'apexcharts-xaxis-label' }, rotate: 0, hideOverlappingLabels: true },
@@ -513,6 +514,7 @@
             if (!card || !card.style) return;
             card.style.height = '';
             card.style.minHeight = '';
+            card.style.maxHeight = '';
           });
         } catch (_) {}
         try {
@@ -545,6 +547,7 @@
               if (!card || !card.style) return;
               card.style.height = String(topHeight) + 'px';
               card.style.minHeight = String(topHeight) + 'px';
+              card.style.maxHeight = String(topHeight) + 'px';
             });
           } catch (_) {}
         }
@@ -1050,11 +1053,13 @@
         var colors = (typeof chartColorsFromUiConfig === 'function') ? chartColorsFromUiConfig(chartId, fallbackColors) : fallbackColors;
         var chartHeight = resolveOverviewChartHeight(chartEl, (opts && Number.isFinite(Number(opts.height))) ? Number(opts.height) : 180, 120, 440);
         var uiStyle = (typeof chartStyleFromUiConfig === 'function') ? chartStyleFromUiConfig(chartId) : null;
+        var horizontal = opts && opts.horizontal !== false;
         var apexOpts = {
           chart: { type: 'bar', height: chartHeight, fontFamily: 'Inter, sans-serif', toolbar: { show: false }, animations: { enabled: (uiStyle && uiStyle.animations === false) ? false : true } },
-          plotOptions: { bar: { horizontal: true, borderRadius: 0, distributed: true, barHeight: '60%' } },
+          plotOptions: { bar: { horizontal: horizontal, borderRadius: 0, distributed: true, barHeight: horizontal ? '60%' : '70%' } },
           series: [{ name: 'Revenue', data: values.map(function(v) { return normalizeOverviewMetric(v); }) }],
-          xaxis: { categories: labels },
+          xaxis: { categories: labels, labels: { show: horizontal ? false : true } },
+          yaxis: horizontal ? { labels: { show: true, style: { fontSize: '12px', fontWeight: 500, colors: '#090f17' } } } : { labels: { show: false } },
           colors: colors,
           legend: { show: false },
           dataLabels: { enabled: false },
@@ -1083,6 +1088,7 @@
           chartEl.innerHTML = '';
           return;
         }
+        var uiStyle = (typeof chartStyleFromUiConfig === 'function') ? chartStyleFromUiConfig(chartId) : null;
         var categories = [];
         var values = [];
         var names = [];
@@ -1109,16 +1115,16 @@
         var fallbackColors = (opts && Array.isArray(opts.colors) && opts.colors.length) ? opts.colors : ['#4b94e4', '#3eb3ab', '#f59e34', '#8b5cf6', '#ef4444'];
         var colors = (typeof chartColorsFromUiConfig === 'function') ? chartColorsFromUiConfig(chartId, fallbackColors) : fallbackColors;
         var chartHeight = resolveOverviewChartHeight(chartEl, (opts && Number.isFinite(Number(opts.height))) ? Number(opts.height) : 180, 120, 440);
-        var uiStyle = (typeof chartStyleFromUiConfig === 'function') ? chartStyleFromUiConfig(chartId) : null;
+        var horizontal = opts && opts.horizontal !== false;
         var namesRef = names;
         var valuesRef = values;
         var crPctsRef = crPcts;
         var apexOpts = {
           chart: { type: 'bar', height: chartHeight, fontFamily: 'Inter, sans-serif', toolbar: { show: false }, animations: { enabled: (uiStyle && uiStyle.animations === false) ? false : true } },
-          plotOptions: { bar: { horizontal: true, borderRadius: 0, distributed: true, barHeight: '60%' } },
+          plotOptions: { bar: { horizontal: horizontal, borderRadius: 0, distributed: true, barHeight: horizontal ? '60%' : '70%' } },
           series: [{ name: 'Revenue', data: values }],
-          xaxis: { categories: categories, labels: { show: false } },
-          yaxis: { labels: { show: true, style: { fontSize: '12px', fontWeight: 500, colors: '#090f17' } } },
+          xaxis: { categories: categories, labels: { show: horizontal ? false : true } },
+          yaxis: horizontal ? { labels: { show: true, style: { fontSize: '12px', fontWeight: 500, colors: '#090f17' } } } : { labels: { show: false } },
           colors: colors,
           legend: { show: false },
           dataLabels: { enabled: false },
@@ -1195,11 +1201,13 @@
         var labelsRef = labels;
         var valuesRef = values;
         var crPctsRef = crPcts;
+        var horizontal = !!(opts && opts.horizontal);
         var apexOpts = {
           chart: { type: 'bar', height: chartHeight, fontFamily: 'Inter, sans-serif', toolbar: { show: false }, animations: { enabled: (uiStyle && uiStyle.animations === false) ? false : true } },
-          plotOptions: { bar: { borderRadius: 0, distributed: true, barHeight: '70%', horizontal: false } },
+          plotOptions: { bar: { borderRadius: 0, distributed: true, barHeight: horizontal ? '60%' : '70%', horizontal: horizontal } },
           series: [{ name: 'Revenue', data: values }],
-          xaxis: { categories: labels, labels: { show: false } },
+          xaxis: { categories: labels, labels: { show: !horizontal } },
+          yaxis: horizontal ? { labels: { show: true, style: { fontSize: '12px', fontWeight: 500, colors: '#090f17' } } } : { labels: { show: false } },
           colors: colors,
           legend: { show: false },
           dataLabels: { enabled: false },
@@ -1261,7 +1269,9 @@
           ? attributionPayload.attribution.rows
           : [];
         var mode = (typeof chartModeFromUiConfig === 'function') ? String(chartModeFromUiConfig(chartId, 'bar-distributed') || 'bar-distributed').trim().toLowerCase() : 'bar-distributed';
-        if (mode === 'bar-distributed') {
+        if (mode === 'radialbar' || mode === 'area' || mode === 'line') mode = 'bar-horizontal';
+        var barLike = mode === 'bar-distributed' || mode === 'bar-horizontal' || mode === 'bar';
+        if (barLike) {
           var flatSources = [];
           rows.forEach(function(ch) {
             if (!ch || !Array.isArray(ch.sources)) return;
@@ -1282,7 +1292,8 @@
           if (topSources.length) {
             renderOverviewAttributionDistributedBar(chartId, topSources, {
               colors: ['#4b94e4', '#3eb3ab', '#f59e34', '#8b5cf6', '#ef4444'],
-              height: 180
+              height: 180,
+              horizontal: mode === 'bar-horizontal'
             });
           } else {
             renderOverviewChartEmpty(chartId, 'No attribution data');
@@ -1308,7 +1319,8 @@
           valueFormatter: function(v) { return Math.round(normalizeOverviewMetric(v)).toLocaleString() + ' sessions'; },
           height: 180,
           dataLabels: false,
-          showLegend: true
+          showLegend: true,
+          donut: mode === 'donut'
         });
       }
 
@@ -1347,7 +1359,7 @@
         var chartEl = document.getElementById(chartId);
         var chartHeight = resolveOverviewChartHeight(chartEl, 260, 140, 760);
         var overviewMode = (typeof chartModeFromUiConfig === 'function') ? chartModeFromUiConfig(chartId, 'area') : 'area';
-        var overviewChartType = (overviewMode === 'multi-line-labels') ? 'line' : (overviewMode || 'area');
+        var overviewChartType = (overviewMode === 'multi-line-labels') ? 'line' : (overviewMode === 'stacked-area' || overviewMode === 'stacked-bar' || overviewMode === 'combo') ? overviewMode : (overviewMode || 'area');
         makeChart(chartId, labels, [{
           label: 'Revenue',
           data: revenue,
@@ -1449,8 +1461,11 @@
             } else if (finishesMode === 'radialbar') {
               renderOverviewFinishesRadialBar(chartId, finishLabels, finishValues, finishesOpts);
               renderOverviewMiniLegend(chartId, finishLabels, colors);
-            } else if (finishesMode === 'bar') {
-              renderOverviewFinishesBarChart(chartId, finishLabels, finishValues, finishesOpts);
+            } else if (finishesMode === 'bar' || finishesMode === 'bar-horizontal' || finishesMode === 'bar-distributed') {
+              renderOverviewFinishesBarChart(chartId, finishLabels, finishValues, Object.assign({}, finishesOpts, { horizontal: finishesMode !== 'bar-distributed' }));
+              renderOverviewMiniLegend(chartId, finishLabels, colors);
+            } else if (finishesMode === 'area' || finishesMode === 'line') {
+              makeChart(chartId, finishLabels, [{ label: 'Revenue', data: finishValues, borderColor: (colors && colors[0]) || DASH_ACCENT, backgroundColor: (colors && colors[0]) ? (colors[0] + '33') : DASH_ACCENT_LIGHT, fill: finishesMode === 'area', borderWidth: 2 }], { currency: true, chartType: finishesMode, height: 180 });
               renderOverviewMiniLegend(chartId, finishLabels, colors);
             } else {
               renderOverviewPieChart(chartId, finishLabels, finishValues, {
@@ -1474,11 +1489,12 @@
           payloadSig = JSON.stringify(topCountries.map(function(r) { return [String(r.country || ''), normalizeOverviewMetric(r.revenue)]; }).concat([rk])) || '';
           doRender = function() {
             var countriesMode = (typeof chartModeFromUiConfig === 'function') ? String(chartModeFromUiConfig(chartId, 'bar-horizontal') || 'bar-horizontal').trim().toLowerCase() : 'bar-horizontal';
+            if (countriesMode === 'radialbar' || countriesMode === 'area' || countriesMode === 'line') countriesMode = 'bar-horizontal';
             var fallbackColors2 = ['#4b94e4', '#3eb3ab', '#f59e34', '#8b5cf6', '#ef4444'];
             var countriesColors = (typeof chartColorsFromUiConfig === 'function') ? chartColorsFromUiConfig(chartId, fallbackColors2) : fallbackColors2;
             var countriesOpts = { colors: countriesColors, height: 180 };
-            if (countriesMode === 'bar-horizontal') {
-              renderOverviewCountriesHorizontalBar(chartId, topCountries, countriesOpts);
+            if (countriesMode === 'bar-horizontal' || countriesMode === 'bar' || countriesMode === 'bar-distributed') {
+              renderOverviewCountriesHorizontalBar(chartId, topCountries, Object.assign({}, countriesOpts, { horizontal: countriesMode === 'bar-horizontal' }));
               return;
             }
             var countryLabels = [];
