@@ -200,21 +200,29 @@
         return { step: function() {}, title: function() {}, finish: function() {} };
       }
 
-      // Silent mode: keep the page visible, but still show the header date-range spinner.
+      // Default: keep the page visible (top progress bar + header spinner only).
+      // Only show the full overlay when explicitly requested.
       // Also respect per-page loader enable (Admin ??? Controls). Admin is always disabled.
       var allowOverlay = true;
       try { allowOverlay = isPageLoaderEnabled(PAGE); } catch (_) { allowOverlay = true; }
       try { if (kexoSilentOverlayActive && typeof kexoSilentOverlayActive === 'function' && kexoSilentOverlayActive()) allowOverlay = false; } catch (_) {}
-      if (!allowOverlay) {
+      var showOverlay = opts.showOverlay === true && allowOverlay;
+      if (!showOverlay) {
+        reportBuildTokens[key] = (reportBuildTokens[key] || 0) + 1;
+        const token = reportBuildTokens[key];
         beginGlobalReportLoading();
+        showPageProgress();
         var finished = false;
         return {
           step: function() {},
           title: function() {},
           finish: function() {
+            if (reportBuildTokens[key] !== token) return;
             if (finished) return;
             finished = true;
             endGlobalReportLoading();
+            try { window.dispatchEvent(new CustomEvent('kexo:table-rows-changed')); } catch (_) {}
+            hidePageProgress();
           }
         };
       }
@@ -237,8 +245,7 @@
 
       beginReportBuildScope(scope);
       if (key === 'sessions' && scope) try { scope.classList.add('report-building-sessions'); } catch (_) {}
-      var showOverlay = opts.showOverlay === true;
-      if (overlay && showOverlay) overlay.classList.remove('is-hidden');
+      if (overlay) overlay.classList.remove('is-hidden');
       if (stepEl) {
         if (opts.initialStep != null) stepEl.textContent = String(opts.initialStep);
         else if (!String(stepEl.textContent || '').trim()) stepEl.textContent = 'Preparing application';
@@ -261,9 +268,8 @@
       function finish() {
         if (reportBuildTokens[key] !== token) return;
         if (key === 'sessions' && scope) try { scope.classList.remove('report-building-sessions'); } catch (_) {}
-        var showOverlay = opts.showOverlay === true;
-        if (overlay && showOverlay) overlay.classList.add('is-hidden');
-        if (overlay && showOverlay && overlayOrigin && overlayOrigin.parent) {
+        if (overlay) overlay.classList.add('is-hidden');
+        if (overlay && overlayOrigin && overlayOrigin.parent) {
           try {
             if (overlayOrigin.next && overlayOrigin.next.parentNode === overlayOrigin.parent) overlayOrigin.parent.insertBefore(overlay, overlayOrigin.next);
             else overlayOrigin.parent.appendChild(overlay);
