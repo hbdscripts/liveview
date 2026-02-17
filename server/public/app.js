@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: e14e666f84385fd4
+// checksum: 483d64093b356e48
 
 (function () {
 const API = '';
@@ -15954,7 +15954,7 @@ const API = '';
         return Number.isFinite(n) ? n : 0;
       }
 
-      var OVERVIEW_MINI_CARD_HEAD_BUFFER = 83;
+      var OVERVIEW_MINI_CARD_HEAD_BUFFER = 99;
       function resolveOverviewChartHeight(chartEl, fallback, min, max) {
         var fb = Number(fallback);
         if (!Number.isFinite(fb) || fb <= 0) fb = 220;
