@@ -974,6 +974,7 @@
           ? !!opts.showLegend
           : (pieLabelPosition !== 'outside');
         var labelFormatter = (opts && typeof opts.labelFormatter === 'function') ? opts.labelFormatter : null;
+        var countryCodesForPie = (opts && Array.isArray(opts.countryCodes) && opts.countryCodes.length === safeLabels.length) ? opts.countryCodes : null;
         var dataLabelsEnabled = (opts && opts.dataLabels === false)
           ? false
           : (uiStyle.dataLabels !== 'off');
@@ -1004,6 +1005,13 @@
               var pct = normalizeOverviewMetric(val);
               var idx = ctx && Number.isFinite(ctx.seriesIndex) ? ctx.seriesIndex : -1;
               var seriesLabel = (idx >= 0 && idx < safeLabels.length) ? safeLabels[idx] : '';
+              if (countryCodesForPie && idx >= 0 && idx < countryCodesForPie.length) {
+                var flag = (typeof countryCodeToFlagEmoji === 'function') ? countryCodeToFlagEmoji(countryCodesForPie[idx]) : '';
+                var pctText = pct ? pct.toFixed(0) + '%' : '';
+                if (pieLabelContent === 'label') return flag || seriesLabel || pctText;
+                if (pieLabelContent === 'label_percent') return (flag ? flag + ' ' : '') + (pctText || seriesLabel);
+                return (flag ? flag + ' ' : '') + pctText;
+              }
               if (labelFormatter) {
                 var custom = labelFormatter(pct, seriesLabel, idx, safeValues[idx]);
                 if (custom != null) return String(custom);
@@ -1185,6 +1193,7 @@
         var countryCodes = [];
         var crPcts = [];
         var showFlags = !!(uiStyle && uiStyle.pieCountryFlags);
+        var horizontal = opts && opts.horizontal !== false;
         rows.forEach(function(row) {
           var cc = countryCodeFromRow(row);
           if (!cc) {
@@ -1196,7 +1205,11 @@
           var emoji = showFlags ? countryCodeToFlagEmoji(cc) : '';
           var name = (typeof countryLabelFull === 'function') ? countryLabelFull(cc) : cc;
           var rev = normalizeOverviewMetric(row && row.revenue);
-          categories.push(showFlags && emoji ? (emoji + ' ' + name) : name);
+          if (horizontal) {
+            categories.push(showFlags && emoji ? (emoji + ' ' + name) : name);
+          } else {
+            categories.push(name || cc);
+          }
           values.push(rev);
           names.push(name || cc);
           countryCodes.push(cc);
@@ -1633,6 +1646,7 @@
             }
             var countryLabels = [];
             var countryValues = [];
+            var countryCodes = [];
             var countriesUiStyle = (typeof chartStyleFromUiConfig === 'function') ? chartStyleFromUiConfig(chartId) : null;
             var showFlags = !!(countriesUiStyle && countriesUiStyle.pieCountryFlags);
             topCountries.forEach(function(row) {
@@ -1643,18 +1657,18 @@
                 if (cc === 'UK') cc = 'GB';
                 if (!/^[A-Z]{2}$/.test(cc)) cc = '';
               }
-            var name = cc ? ((typeof countryLabelFull === 'function') ? countryLabelFull(cc) : cc) : '';
-            var emoji = showFlags && cc ? countryCodeToFlagEmoji(cc) : '';
-            var label = (showFlags && emoji) ? (emoji + ' ' + name) : name;
-            var val = normalizeOverviewMetric(row.revenue);
-            countryLabels.push(label || cc || (row.country != null ? String(row.country).trim() : ''));
+              var name = cc ? ((typeof countryLabelFull === 'function') ? countryLabelFull(cc) : cc) : '';
+              var val = normalizeOverviewMetric(row.revenue);
+              countryLabels.push(name || cc || (row.country != null ? String(row.country).trim() : ''));
               countryValues.push(val);
+              countryCodes.push(cc || '');
             });
             renderOverviewPieChart(chartId, countryLabels, countryValues, {
               colors: countriesColors,
               valueFormatter: function(v) { return formatRevenue(normalizeOverviewMetric(v)) || '\u2014'; },
               height: countriesOpts.height,
-              donut: countriesMode === 'donut'
+              donut: countriesMode === 'donut',
+              countryCodes: showFlags ? countryCodes : null
             });
           };
         } else if (chartId === 'dash-chart-attribution-30d') {
@@ -1759,6 +1773,7 @@
           var countryValues = [];
           var countriesUiStyle = (typeof chartStyleFromUiConfig === 'function') ? chartStyleFromUiConfig(countriesChartId) : null;
           var showFlags = !!(countriesUiStyle && countriesUiStyle.pieCountryFlags);
+          var countryCodesForMini = [];
           topCountries.forEach(function(row) {
             var cc = countryCodeFromRow(row);
             if (!cc) {
@@ -1768,16 +1783,16 @@
               if (!/^[A-Z]{2}$/.test(cc)) cc = '';
             }
             var name = cc ? ((typeof countryLabelFull === 'function') ? countryLabelFull(cc) : cc) : '';
-            var emoji = showFlags && cc ? countryCodeToFlagEmoji(cc) : '';
-            var label = (showFlags && emoji) ? (emoji + ' ' + name) : name;
             var val = normalizeOverviewMetric(row.revenue);
-            countryLabels.push(label || cc || (row.country != null ? String(row.country).trim() : ''));
+            countryLabels.push(name || cc || (row.country != null ? String(row.country).trim() : ''));
             countryValues.push(val);
+            countryCodesForMini.push(cc || '');
           });
           renderOverviewPieChart(countriesChartId, countryLabels, countryValues, {
             colors: countriesOpts.colors,
             valueFormatter: function(v) { return formatRevenue(normalizeOverviewMetric(v)) || '\u2014'; },
-            height: countriesOpts.height
+            height: countriesOpts.height,
+            countryCodes: showFlags ? countryCodesForMini : null
           });
         }
         var attributionRows = payload && payload.attribution && payload.attribution.attribution && Array.isArray(payload.attribution.attribution.rows)

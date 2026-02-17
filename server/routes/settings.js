@@ -91,10 +91,10 @@ const CHART_KPI_BUNDLE_KEYS = ['dashboardCards', 'headerStrip', 'yearlySnapshot'
 const CHART_KPI_BUNDLE_KEY_SET = new Set(CHART_KPI_BUNDLE_KEYS);
 
 const CHART_ALLOWED_MODES = Object.freeze({
-  'dash-chart-overview-30d': ['area', 'bar', 'line', 'multi-line-labels'],
-  'dash-chart-finishes-30d': ['radialbar', 'pie', 'donut', 'bar'],
-  'dash-chart-countries-30d': ['bar-horizontal', 'pie'],
-  'dash-chart-attribution-30d': ['bar-distributed', 'pie', 'bar'],
+  'dash-chart-overview-30d': ['area', 'bar', 'line', 'multi-line-labels', 'combo', 'stacked-area', 'stacked-bar'],
+  'dash-chart-finishes-30d': ['radialbar', 'pie', 'donut', 'bar', 'bar-horizontal', 'bar-distributed'],
+  'dash-chart-countries-30d': ['bar-horizontal', 'pie', 'donut', 'bar', 'bar-distributed', 'radialbar'],
+  'dash-chart-attribution-30d': ['bar-distributed', 'bar-horizontal', 'bar', 'line', 'area', 'pie', 'donut', 'radialbar'],
   'live-online-chart': ['map-animated', 'map-flat'],
   'sales-overview-chart': ['area', 'line', 'bar', 'multi-line-labels'],
   'date-overview-chart': ['area', 'line', 'bar', 'multi-line-labels'],
@@ -611,13 +611,28 @@ function normalizeDateLabelFormat(v, fallback) {
   return raw === 'mdy' ? 'mdy' : fb;
 }
 
+// Legacy mode values that may have been saved before canonical naming; map to canonical mode.
+const CHART_MODE_LEGACY_ALIASES = Object.freeze({
+  'bar (horizontal)': 'bar-horizontal',
+  'horizontal bar': 'bar-horizontal',
+  'bar horizontal': 'bar-horizontal',
+  'vertical bar': 'bar',
+  'radial bar': 'radialbar',
+  'multi line': 'multi-line-labels',
+  'multi-line': 'multi-line-labels',
+  'stacked area': 'stacked-area',
+  'stacked bar': 'stacked-bar',
+});
+
 function normalizeChartModeForKey(key, value, fallback) {
   const k = String(key || '').trim().toLowerCase();
-  const raw = value == null ? '' : String(value).trim().toLowerCase();
+  let raw = value == null ? '' : String(value).trim().toLowerCase();
+  raw = CHART_MODE_LEGACY_ALIASES[raw] || raw;
   const allowed = CHART_ALLOWED_MODES[k] || null;
   if (allowed && allowed.includes(raw)) return raw;
   const fb = fallback == null ? '' : String(fallback).trim().toLowerCase();
-  if (allowed && allowed.includes(fb)) return fb;
+  const fbNorm = CHART_MODE_LEGACY_ALIASES[fb] || fb;
+  if (allowed && allowed.includes(fbNorm)) return fbNorm;
   // Extremely defensive: pick first allowed or a safe fallback.
   if (allowed && allowed.length) return allowed[0];
   return 'line';
