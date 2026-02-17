@@ -126,6 +126,7 @@
   var initialKexoSubTab = null;
   var initialIntegrationsSubTab = null;
   var initialAttributionSubTab = null;
+  var initialAdminSubTab = null;
   var activeLayoutSubTab = 'tables';
   var activeKexoSubTab = 'general';
 
@@ -181,6 +182,13 @@
           if (ak === 'mapping' || ak === 'tree') initialAttributionSubTab = ak;
         }
       }
+      if (t === 'admin') {
+        var adm = /[?&]adminTab=([^&]+)/.exec(window.location.search || '');
+        if (adm && adm[1]) {
+          var adk = adm[1].toLowerCase().replace(/\s+/g, '-');
+          if (adk === 'controls' || adk === 'diagnostics' || adk === 'users') initialAdminSubTab = adk;
+        }
+      }
       if (TAB_MAP[t]) {
         if (t === 'admin' && !document.getElementById('settings-tab-admin')) return null;
         return t;
@@ -211,6 +219,10 @@
       var layoutKey = getActiveLayoutSubTab();
       if (layoutKey === 'tables' || layoutKey === 'charts' || layoutKey === 'kpis') params.set('layoutTab', layoutKey);
     }
+    if (key === 'integrations') {
+      var integrationsKey = getActiveIntegrationsSubTab();
+      if (integrationsKey === 'shopify' || integrationsKey === 'googleads') params.set('integrationsTab', integrationsKey);
+    }
     if (key === 'kexo') {
       var kexoKey = getActiveKexoSubTab();
       if (kexoKey) params.set('kexoTab', kexoKey);
@@ -220,16 +232,8 @@
       if (attributionKey === 'mapping' || attributionKey === 'tree') params.set('attributionTab', attributionKey);
     }
     if (key === 'admin') {
-      var adminAccordion = document.getElementById('settings-admin-accordion');
-      if (adminAccordion) {
-        var openCollapse = adminAccordion.querySelector('.accordion-collapse.show');
-        if (openCollapse && openCollapse.id) {
-          var m = openCollapse.id.match(/settings-admin-accordion-(controls|diagnostics|users)/);
-          if (m && m[1]) params.set('adminTab', m[1]);
-        } else {
-          params.set('adminTab', 'controls');
-        }
-      }
+      var adminKey = getActiveAdminSubTab();
+      if (adminKey === 'controls' || adminKey === 'diagnostics' || adminKey === 'users') params.set('adminTab', adminKey);
     }
     var url = window.location.pathname + '?' + params.toString();
     try { history.replaceState(null, '', url); } catch (_) {}
@@ -248,6 +252,13 @@
     return key || (activeLayoutSubTab || 'tables');
   }
 
+  function getActiveIntegrationsSubTab() {
+    var tab = document.querySelector('[data-settings-integrations-tab].active');
+    if (!tab) return initialIntegrationsSubTab || 'shopify';
+    var key = String(tab.getAttribute('data-settings-integrations-tab') || '').trim().toLowerCase();
+    return key === 'googleads' ? 'googleads' : 'shopify';
+  }
+
   function getActiveKexoSubTab() {
     var tab = document.querySelector('[data-settings-kexo-tab].active');
     if (!tab) return activeKexoSubTab || 'general';
@@ -260,6 +271,14 @@
     if (!tab) return 'mapping';
     var key = String(tab.getAttribute('data-settings-attribution-tab') || '').trim().toLowerCase();
     return key === 'tree' ? 'tree' : 'mapping';
+  }
+
+  function getActiveAdminSubTab() {
+    var tab = document.querySelector('[data-settings-admin-tab].active');
+    if (!tab) return initialAdminSubTab || 'controls';
+    var key = String(tab.getAttribute('data-settings-admin-tab') || '').trim().toLowerCase();
+    if (key === 'diagnostics' || key === 'users') return key;
+    return 'controls';
   }
 
   function renderChartsWhenVisible() {
@@ -303,6 +322,169 @@
         }
       } catch (_) {}
     }
+  }
+
+  function ensurePanelClass(panelId, className) {
+    var panel = document.getElementById(panelId);
+    if (!panel) return null;
+    if (className) panel.classList.add(className);
+    return panel;
+  }
+
+  function ensureKexoUiPanel() {
+    var general = ensurePanelClass('settings-kexo-panel-general', 'settings-kexo-panel');
+    var existing = document.getElementById('settings-kexo-panel-ui');
+    if (existing) {
+      existing.classList.add('settings-kexo-panel');
+      return;
+    }
+    var themeBody = document.querySelector('#settings-kexo-accordion-theme .accordion-body');
+    if (!themeBody) return;
+    var themeCard = themeBody.querySelector('.card.card-sm');
+    if (!themeCard) return;
+    var wrap = document.createElement('div');
+    wrap.id = 'settings-kexo-panel-ui';
+    wrap.className = 'settings-kexo-panel';
+    themeBody.insertBefore(wrap, themeCard);
+    wrap.appendChild(themeCard);
+    if (general && !general.classList.contains('active')) general.classList.add('active');
+  }
+
+  function injectMainTabsFromAccordion(opts) {
+    var o = opts && typeof opts === 'object' ? opts : {};
+    var accordion = document.getElementById(String(o.accordionId || ''));
+    var tabAttr = String(o.tabAttr || '');
+    var navId = String(o.navId || '');
+    var panelClass = String(o.panelClass || '');
+    var tabs = Array.isArray(o.tabs) ? o.tabs : [];
+    if (!accordion || !tabAttr || !navId || !tabs.length) return;
+
+    var host = accordion.parentElement;
+    if (!host) return;
+
+    var nav = document.getElementById(navId);
+    if (!nav) {
+      nav = document.createElement('ul');
+      nav.className = 'nav nav-tabs mb-3';
+      nav.id = navId;
+      nav.setAttribute('role', 'tablist');
+      tabs.forEach(function (tab, idx) {
+        var key = tab && tab.key != null ? String(tab.key) : '';
+        if (!key) return;
+        var label = tab && tab.label != null ? String(tab.label) : key;
+        var li = document.createElement('li');
+        li.className = 'nav-item';
+        li.setAttribute('role', 'presentation');
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'nav-link' + (idx === 0 ? ' active' : '');
+        btn.setAttribute('role', 'tab');
+        btn.setAttribute('aria-selected', idx === 0 ? 'true' : 'false');
+        btn.setAttribute(tabAttr, key);
+        btn.id = navId + '-tab-' + key;
+        btn.textContent = label;
+        li.appendChild(btn);
+        nav.appendChild(li);
+      });
+      host.insertBefore(nav, accordion);
+    }
+
+    accordion.classList.add('settings-main-tabs-accordion');
+    tabs.forEach(function (tab, idx) {
+      var panelId = tab && tab.panelId != null ? String(tab.panelId) : '';
+      if (!panelId) return;
+      var panel = ensurePanelClass(panelId, panelClass);
+      if (!panel) return;
+      if (idx === 0) panel.classList.add('active');
+
+      var collapse = panel.closest('.accordion-collapse');
+      if (collapse) {
+        collapse.classList.add('show');
+        collapse.style.height = '';
+        collapse.removeAttribute('data-bs-parent');
+      }
+
+      var body = panel.closest('.accordion-body');
+      if (body) body.classList.add('settings-main-tab-body');
+      var item = panel.closest('.accordion-item');
+      if (item) item.classList.add('settings-main-tab-item');
+      var header = item ? item.querySelector('.accordion-header') : null;
+      if (header) header.classList.add('d-none');
+    });
+  }
+
+  function prepareSettingsMainTabs() {
+    ensureKexoUiPanel();
+    injectMainTabsFromAccordion({
+      accordionId: 'settings-kexo-accordion',
+      tabAttr: 'data-settings-kexo-tab',
+      navId: 'settings-kexo-main-tabs',
+      panelClass: 'settings-kexo-panel',
+      tabs: [
+        { key: 'general', label: 'General', panelId: 'settings-kexo-panel-general' },
+        { key: 'icons', label: 'Icons', panelId: 'settings-kexo-panel-ui' },
+        { key: 'header', label: 'Header', panelId: 'settings-kexo-panel-ui' },
+        { key: 'color', label: 'Color', panelId: 'settings-kexo-panel-ui' },
+        { key: 'fonts', label: 'Fonts', panelId: 'settings-kexo-panel-ui' },
+        { key: 'notifications', label: 'Notifications', panelId: 'settings-kexo-panel-ui' },
+      ],
+    });
+
+    injectMainTabsFromAccordion({
+      accordionId: 'settings-integrations-accordion',
+      tabAttr: 'data-settings-integrations-tab',
+      navId: 'settings-integrations-main-tabs',
+      panelClass: 'settings-integrations-panel',
+      tabs: [
+        { key: 'shopify', label: 'Shopify', panelId: 'settings-integrations-panel-shopify' },
+        { key: 'googleads', label: 'Google Ads', panelId: 'settings-integrations-panel-googleads' },
+      ],
+    });
+
+    injectMainTabsFromAccordion({
+      accordionId: 'settings-attribution-accordion',
+      tabAttr: 'data-settings-attribution-tab',
+      navId: 'settings-attribution-main-tabs',
+      panelClass: 'settings-attribution-panel',
+      tabs: [
+        { key: 'mapping', label: 'Mapping', panelId: 'settings-attribution-panel-mapping' },
+        { key: 'tree', label: 'Mapped tree', panelId: 'settings-attribution-panel-tree' },
+      ],
+    });
+
+    injectMainTabsFromAccordion({
+      accordionId: 'settings-insights-accordion',
+      tabAttr: 'data-settings-insights-layout-tab',
+      navId: 'settings-insights-main-tabs',
+      panelClass: 'settings-insights-layout-panel',
+      tabs: [
+        { key: 'variants', label: 'Variants', panelId: 'settings-insights-layout-panel-variants' },
+      ],
+    });
+
+    injectMainTabsFromAccordion({
+      accordionId: 'settings-layout-accordion',
+      tabAttr: 'data-settings-layout-tab',
+      navId: 'settings-layout-main-tabs',
+      panelClass: 'settings-layout-panel',
+      tabs: [
+        { key: 'tables', label: 'Tables', panelId: 'settings-layout-panel-tables' },
+        { key: 'charts', label: 'Charts', panelId: 'settings-layout-panel-charts' },
+        { key: 'kpis', label: 'KPIs', panelId: 'settings-layout-panel-kpis' },
+      ],
+    });
+
+    injectMainTabsFromAccordion({
+      accordionId: 'settings-admin-accordion',
+      tabAttr: 'data-settings-admin-tab',
+      navId: 'settings-admin-main-tabs',
+      panelClass: 'admin-panel',
+      tabs: [
+        { key: 'controls', label: 'Controls', panelId: 'admin-panel-controls' },
+        { key: 'diagnostics', label: 'Diagnostics', panelId: 'admin-panel-diagnostics' },
+        { key: 'users', label: 'Users', panelId: 'admin-panel-users' },
+      ],
+    });
   }
 
   function wireSettingsAccordionShown() {
@@ -585,6 +767,9 @@
       panelIdPrefix: 'settings-integrations-panel-',
       keys: ['shopify', 'googleads'],
       initialKey: initialIntegrationsSubTab || 'shopify',
+      onActivate: function () {
+        if (getActiveSettingsTab() === 'integrations') updateUrl('integrations');
+      },
     });
   }
 
@@ -2501,6 +2686,19 @@
           }
         }
         updateUrl(getActiveSettingsTab() || 'kexo');
+      },
+    });
+  }
+
+  function wireAdminSubTabs(initialKey) {
+    wireKexoTabset({
+      tabSelector: '[data-settings-admin-tab]',
+      tabAttr: 'data-settings-admin-tab',
+      panelIdPrefix: 'admin-panel-',
+      keys: ['controls', 'diagnostics', 'users'],
+      initialKey: initialKey || initialAdminSubTab || 'controls',
+      onActivate: function () {
+        if (getActiveSettingsTab() === 'admin') updateUrl('admin');
       },
     });
   }
@@ -4483,11 +4681,13 @@
 
   function init() {
     var initialTab = getTabFromQuery() || getTabFromHash() || 'kexo';
+    prepareSettingsMainTabs();
     // Layout is now a multi-tab section (Tables / Charts / KPIs). If the URL used legacy
     // `tab=charts` or `tab=kpis`, preselect the right Layout subtab BEFORE activating the panel.
     wireLayoutSubTabs(initialLayoutSubTab);
     wireKexoSubTabs(initialKexoSubTab);
     wireAttributionSubTabs(initialAttributionSubTab);
+    wireAdminSubTabs(initialAdminSubTab);
     activateTab(initialTab);
 
     document.querySelectorAll('[data-settings-tab]').forEach(function (el) {
@@ -4523,7 +4723,6 @@
     wireKpisLayoutSubTabs();
     wireInsightsLayoutSubTabs();
     wireInsightsVariantsEditor();
-    wireSettingsAccordionShown();
     wireKpisSaveReset();
     wireInsightsVariantsSaveReset();
     wireInsightsVariantsIgnoreModal();
