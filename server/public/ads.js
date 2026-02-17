@@ -2462,8 +2462,16 @@
         try { renderAdsOverviewChart(nextSummary); } catch (_) {}
       }
 
+      var gaConnected = status && status.providers && status.providers.some(function (p) {
+        return p && p.key === 'google_ads' && p.connected;
+      });
+      if (gaConnected) {
+        fetchGoalHealth();
+      } else {
+        var card = document.getElementById('ads-goal-health-card');
+        if (card) card.style.display = 'none';
+      }
       fetchIssuesSummary();
-      fetchGoalHealth();
       return { status: status, summary: summary };
     }).catch(function () {
       _lastFetchError = 'Could not load ads.';

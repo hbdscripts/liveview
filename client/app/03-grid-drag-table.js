@@ -299,6 +299,10 @@
           link.addEventListener('click', function (e) {
             e.preventDefault();
             e.stopPropagation();
+            if (tableId === 'ads-root') {
+              window.location.href = '/settings?tab=integrations&integrationsTab=googleads';
+              return;
+            }
             if (typeof window.KexoLayoutShortcuts !== 'undefined' && typeof window.KexoLayoutShortcuts.openTableModal === 'function') {
               window.KexoLayoutShortcuts.openTableModal({ pageKey: pageKey, tableId: tableId, cardTitle: cardTitle });
             }

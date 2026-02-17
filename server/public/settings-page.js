@@ -53,6 +53,10 @@
       if ((rawLayout === 'tables' || rawLayout === 'charts' || rawLayout === 'kpis') && keep.get('tab') === 'layout') {
         keep.set('layoutTab', rawLayout);
       }
+      var rawIntegrations = String(params.get('integrationsTab') || '').trim().toLowerCase();
+      if ((rawIntegrations === 'shopify' || rawIntegrations === 'googleads') && keep.get('tab') === 'integrations') {
+        keep.set('integrationsTab', rawIntegrations);
+      }
       var rawShop = String(params.get('shop') || '').trim();
       if (rawShop) keep.set('shop', rawShop);
       var nextSearch = keep.toString();
@@ -470,7 +474,7 @@
         activate(tab.getAttribute('data-settings-integrations-tab') || 'shopify');
       });
     });
-    activate('shopify');
+    activate(initialIntegrationsSubTab || 'shopify');
   }
 
   function wireGoogleAdsActions() {
