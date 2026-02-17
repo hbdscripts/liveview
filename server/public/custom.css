@@ -2750,6 +2750,10 @@ html[data-bs-theme="dark"] .report-build-wrap {
 .kexo-overview-cell {
   min-width: 0;
 }
+.kexo-overview-charts-top,
+.kexo-overview-chart-main {
+  overflow-x: hidden;
+}
 #dash-kpi-grid,
 #dash-kpi-grid-mid {
   align-items: stretch;
@@ -2855,6 +2859,7 @@ html[data-bs-theme="dark"] .report-build-wrap {
   width: 100%;
   flex: 1 1 auto;
   min-height: 0;
+  overflow-x: hidden;
 }
 .kexo-overview-mini-chart {
   min-height: 120px;

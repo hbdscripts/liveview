@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 483d64093b356e48
+// checksum: 62b52d9caf2c83c0
 
 (function () {
 const API = '';
@@ -16557,7 +16557,7 @@ const API = '';
           series: [{ name: 'Revenue', data: values.map(function(v) { return normalizeOverviewMetric(v); }) }],
           xaxis: { categories: labels, labels: { show: horizontal ? false : true } },
           yaxis: horizontal ? { labels: { show: true, style: { fontSize: '12px', fontWeight: 500, colors: '#090f17' } } } : { labels: { show: false } },
-          grid: { padding: { bottom: 12, left: 8, right: 8, top: 4 } },
+          grid: { padding: { bottom: 12, left: 12, right: 8, top: 4 } },
           colors: colors,
           legend: { show: false },
           dataLabels: { enabled: false },
@@ -16627,7 +16627,7 @@ const API = '';
           series: [{ name: 'Revenue', data: values }],
           xaxis: { categories: categories, labels: { show: horizontal ? false : true } },
           yaxis: horizontal ? { labels: { show: true, style: { fontSize: '12px', fontWeight: 500, colors: '#090f17' } } } : { labels: { show: false } },
-          grid: { padding: { bottom: 12, left: 8, right: 8, top: 4 } },
+          grid: { padding: { bottom: 12, left: 12, right: 8, top: 4 } },
           colors: colors,
           legend: { show: false },
           dataLabels: { enabled: false },
@@ -16711,7 +16711,7 @@ const API = '';
           series: [{ name: 'Revenue', data: values }],
           xaxis: { categories: labels, labels: { show: !horizontal } },
           yaxis: horizontal ? { labels: { show: true, style: { fontSize: '12px', fontWeight: 500, colors: '#090f17' } } } : { labels: { show: false } },
-          grid: { padding: { bottom: 12, left: 8, right: 8, top: 4 } },
+          grid: { padding: { bottom: 12, left: 12, right: 8, top: 4 } },
           colors: colors,
           legend: { show: false },
           dataLabels: { enabled: false },
