@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 36d86ad09cc55ca3
+// checksum: bff1f6156e5e3810
 
 (function () {
 const API = '';
@@ -16570,7 +16570,7 @@ const API = '';
               track: { background: 'rgba(0,0,0,0.06)' },
               dataLabels: {
                 name: { show: false },
-                value: { show: false },
+                value: { show: true, formatter: function(val) { return val ? val.toFixed(0) + '%' : ''; } },
                 total: { show: false },
               }
             }
@@ -16578,7 +16578,7 @@ const API = '';
           series: series,
           labels: labels,
           colors: colors,
-          legend: { show: false },
+          legend: { show: true, position: 'bottom', fontSize: '11px', labels: { colors: undefined } },
           fill: { opacity: (uiStyle && Number.isFinite(Number(uiStyle.fillOpacity))) ? Math.max(0, Math.min(1, Number(uiStyle.fillOpacity))) : 1 },
           tooltip: {
             enabled: true,
@@ -20252,7 +20252,7 @@ const API = '';
     var count = chartColorCount(meta, item);
     var html = '<div class="settings-charts-color-grid">';
     for (var i = 0; i < count; i += 1) {
-      var label = series[i] ? String(series[i]) : ('Series ' + (i + 1));
+      var label = String(i + 1);
       var val = normalizeHexColor(colors[i], '#3eb3ab');
       html += '<label class="settings-charts-color-field"><span class="form-label">' + escapeHtml(label) + '</span><div class="settings-charts-color-field-row"><input type="text" class="form-control form-control-sm" data-chart-field="color" data-idx="' + i + '" value="' + escapeHtml(val) + '" placeholder="#3eb3ab"><span class="settings-charts-color-swatch" data-color-swatch style="background:' + escapeHtml(val) + ';" title="' + escapeHtml(val) + '" aria-hidden="true"></span></div></label>';
     }

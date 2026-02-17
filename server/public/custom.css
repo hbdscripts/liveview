@@ -1747,6 +1747,10 @@ body:not([data-page="settings"]) .table-responsive table thead th {
   height: 1rem;
   border-radius: 3px;
 }
+.settings-charts-color-grid {
+  display: grid;
+  gap: .75rem;
+}
 .settings-charts-color-field {
   display: flex;
   flex-direction: row;

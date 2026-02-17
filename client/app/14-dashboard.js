@@ -1096,7 +1096,7 @@
               track: { background: 'rgba(0,0,0,0.06)' },
               dataLabels: {
                 name: { show: false },
-                value: { show: false },
+                value: { show: true, formatter: function(val) { return val ? val.toFixed(0) + '%' : ''; } },
                 total: { show: false },
               }
             }
@@ -1104,7 +1104,7 @@
           series: series,
           labels: labels,
           colors: colors,
-          legend: { show: false },
+          legend: { show: true, position: 'bottom', fontSize: '11px', labels: { colors: undefined } },
           fill: { opacity: (uiStyle && Number.isFinite(Number(uiStyle.fillOpacity))) ? Math.max(0, Math.min(1, Number(uiStyle.fillOpacity))) : 1 },
           tooltip: {
             enabled: true,

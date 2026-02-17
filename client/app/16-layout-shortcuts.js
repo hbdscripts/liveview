@@ -211,7 +211,7 @@
     var count = chartColorCount(meta, item);
     var html = '<div class="settings-charts-color-grid">';
     for (var i = 0; i < count; i += 1) {
-      var label = series[i] ? String(series[i]) : ('Series ' + (i + 1));
+      var label = String(i + 1);
       var val = normalizeHexColor(colors[i], '#3eb3ab');
       html += '<label class="settings-charts-color-field"><span class="form-label">' + escapeHtml(label) + '</span><div class="settings-charts-color-field-row"><input type="text" class="form-control form-control-sm" data-chart-field="color" data-idx="' + i + '" value="' + escapeHtml(val) + '" placeholder="#3eb3ab"><span class="settings-charts-color-swatch" data-color-swatch style="background:' + escapeHtml(val) + ';" title="' + escapeHtml(val) + '" aria-hidden="true"></span></div></label>';
     }
