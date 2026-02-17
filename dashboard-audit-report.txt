@@ -1,96 +1,212 @@
-KEXO Dashboard Audit and Repair Report
+KEXO Dashboard Evidence Audit
 Date: 2026-02-17
-Phase flow: 1 Audit -> 2 Root Cause -> 3 Turbo Pass -> 4 Functional Repairs -> 5 Architecture Stabilisation -> 6 Verification -> 7 Report
+Scope: Evidence-only audit of existing code paths (no implementation changes in this report)
 
-Root causes identified
-- Duplicate labels on charts:
-  - Dashboard radial-bar cards rendered both Apex legend and custom mini-legend.
-  - Revenue/Cost/Profit chart always formatted labels as short day labels, even when backend granularity changed.
-- Country flags missing:
-  - Frontend accepted invalid/non-ISO values without robust fallback and top-countries table preferred `country` over `country_code`.
-- Lag when returning to tab:
-  - Multiple resume triggers (`visibilitychange`, `pageshow`, and dashboard interval loop) could force overlapping refreshes.
-  - Dashboard charts were frequently destroyed/recreated during refreshes.
-- Top Products / Trending empty:
-  - Product aggregation required non-empty `product_id`; rows with missing product IDs were dropped.
-  - Raw fallback top-products path filtered only `financial_status='paid'` and excluded `partially_paid`.
-- Revenue chart wrong granularity:
-  - `seriesComparison` returned daily arrays/granularity even when downsampling had produced weekly series.
-  - Weekly threshold was too high for intended chart behavior.
-- Date picker wrong position:
-  - Mobile header CSS absolutely positioned date button with negative top offset.
-- Chart type incompatible with dataset:
-  - UI mode retrieval did not always validate against chart-definition allowed modes.
-- Duplicate refresh / chart creation:
-  - Dashboard refresh path rendered from cache even when no payload change, and dedicated interval refreshed every 60s.
-- Chart animations hurting performance:
-  - Multiple renderers defaulted to animations on unless explicitly disabled.
-- Charts refreshing when data unchanged:
-  - No top-level dashboard payload signature gate for table/chart rerender.
-- Multiple polling intervals:
-  - Live re-init could stack additional 30s timers.
-- Chart instances destroyed/recreated unnecessarily:
-  - Several render paths used destroy + new ApexCharts each refresh.
+## Performance (10)
 
-Files changed
-- client/app/14-dashboard.js
-- client/app/13-live-sales.js
-- client/app/07-type-pagination-watcher.js
-- client/app/04-rows-sticky.js
-- server/routes/dashboardSeries.js
-- server/businessSnapshotService.js
-- server/routes/settings.js
-- server/public/kexo-chart-builder.js
-- server/public/custom.css
-- server/store.js
-- server/public/app.js (rebuilt bundle)
-- HANDOVER.txt
+1) O(n x m) order-to-bucket assignment in dashboard series
+- Where: `server/routes/dashboardSeries.js` -> `computeDashboardSeriesForBounds()` and legacy daily path; `for (const row of orderRows)` nested with `for (const db_day of dayBounds/bucketBounds)` (`L802-L811`, `L1277-L1285`).
+- Impact: High CPU growth as orders and buckets grow; directly affects `/api/dashboard/series` latency.
+- Root cause: Every order linearly scans all buckets to find membership.
+- Smallest safe fix: Precompute bucket edges and map `created_at` to bucket index with arithmetic/binary search; keep output shape unchanged.
+- Risk: Medium.
+- Quick verification: Compare p95 latency and CPU profile for `range=30d/90d` before/after; response totals must stay identical.
 
-What was fixed
-- Turbo pass performance fixes:
-  - Dashboard polling moved to a single DashboardController with 120s cadence.
-  - Polling now pauses when hidden and resumes with a single refresh when visible.
-  - Added dashboard payload signature to skip unnecessary rerenders.
-  - Added lazy render for below-viewport overview charts (IntersectionObserver).
-  - Replaced destroy/recreate cycles with updateOptions/updateSeries in dashboard chart paths and shared chart builder.
-  - Default chart animations switched OFF unless explicitly enabled by settings.
-- Functional repairs:
-  - Added chart config sanitation and mode validation safeguards.
-  - Added country flag globe fallback and stronger country_code preference.
-  - Corrected top-countries rendering to use country_code/UK->GB normalization.
-  - Product/trending aggregation now supports missing product_id using title-based fallback key.
-  - Raw top-products fallback includes partially_paid orders.
-  - Revenue comparison chart now uses backend granularity series and labels.
-  - Mobile date picker positioning corrected to stable top-right alignment.
-- Guardrail alignment:
-  - Kept reconciliation warmup non-blocking and compliant with runtime hang guardrail test expectations.
+2) Unbounded top-countries scan + per-row JSON parse
+- Where: `server/routes/dashboardSeries.js` -> top countries blocks (`L970-L989`, `L1445-L1462`), query has no `LIMIT`, then `JSON.parse(r.raw_json)` for each row.
+- Impact: High DB scan + parse cost for large shops.
+- Root cause: Country extraction uses raw order JSON instead of a pre-aggregated/normalized country field.
+- Smallest safe fix: Use SQL aggregation by normalized country code when available; keep JSON fallback only for missing values.
+- Risk: Medium.
+- Quick verification: Record row count scanned and route duration; top-country ranking must remain stable on sampled windows.
 
-Performance improvements delivered
-- Reduced dashboard refresh pressure (60s -> 120s dynamic poll).
-- Eliminated repeated chart object churn in core dashboard render paths.
-- Reduced hidden-tab work and resume-time burst refreshes.
-- Prevented full dashboard rerenders when payload signatures match.
-- Deferred non-critical overview chart rendering until visible/near-visible.
+3) Trending product aggregation runs two full heavy queries per request
+- Where: `server/routes/dashboardSeries.js` -> `fetchTrendingProducts()` calls `fetchProductAggByProductId()` twice (`L541-L542`) over aggregate SQL (`L503-L531`).
+- Impact: High query cost on each dashboard refresh.
+- Root cause: Current and previous periods are aggregated via separate full scans.
+- Smallest safe fix: Single query with period discriminator (CASE/CTE) and split in memory.
+- Risk: Medium.
+- Quick verification: Query count reduced by one heavy aggregate per request; same trendingUp/trendingDown ordering.
 
-Architecture improvements delivered
-- Introduced DashboardController lifecycle ownership in dashboard runtime:
-  - single polling lifecycle
-  - visibility lifecycle
-  - one-shot resume refresh behavior
-  - explicit init/destroy hooks
-- Unified chart update behavior around in-place updateOptions/updateSeries.
-- Added chart mode validation against canonical definitions for compatibility safety.
-- Added reusable sanitation step for chart labels/data alignment and duplicate-label avoidance.
+4) Stats endpoint fans out into many expensive range queries
+- Where: `server/store.js` -> `getStats()` style fan-out Promise block (`L3148-L3160`) calling sales/conversion/country/best-geo/session/bounce across ranges.
+- Impact: High DB pressure under concurrent dashboard usage.
+- Root cause: Broad metrics are always fetched even when not all are needed for immediate UI paint.
+- Smallest safe fix: Stage/fetch-lazy non-critical blocks or cache range results per request cycle.
+- Risk: Medium.
+- Quick verification: Count SQL statements per request and p95 `/api/kpis` latency before/after.
 
-Verification completed
-- Build:
-  - npm run build:app (pass)
-- Tests:
-  - npm test -- test/runtime-hang-guardrails.test.js test/chart-settings-unification.test.js test/latest-sales.test.js (pass)
-- Lints:
-  - IDE lint scan on edited files (no linter errors reported)
-- Syntax:
-  - node --check on edited server modules (pass)
+5) Products chart is always destroyed and recreated on render
+- Where: `client/app/07-type-pagination-watcher.js` -> `renderProductsChart()` destroys existing instance (`L271-L273`) and then creates `new ApexCharts(...)` (`L364`, `L459`).
+- Impact: Medium-high frontend GC/paint churn on refresh.
+- Root cause: No incremental chart update path (`updateOptions/updateSeries`) in this renderer.
+- Smallest safe fix: Reuse `productsChartInstance` with update calls; destroy only on fatal update failure.
+- Risk: Low.
+- Quick verification: Chrome Performance/Memory shows fewer detached nodes and less scripting time during repeated refresh.
 
-Notes
-- Requested report file name was `.md`, but project rule disallows creating new `.md` docs; this report is provided as `.txt` with equivalent content.
+6) Sparkline label render repeatedly scans full KPI DOM
+- Where: `client/app/14-dashboard.js` -> label rendering block with `document.querySelectorAll(...)` on each run (`L2734-L2737`) and full `row.innerHTML` rewrite (`L2729-L2732`).
+- Impact: Medium-high layout/recalc cost on each dashboard render.
+- Root cause: Global DOM query + full label row HTML rebuild, even for unchanged labels.
+- Smallest safe fix: Cache target containers and patch only changed labels/visibility classes.
+- Risk: Low.
+- Quick verification: Fewer style/layout events and lower scripting cost when refreshing dashboard repeatedly.
+
+7) Repeated full-table `innerHTML` rebuilds in dashboard panes
+- Where: `client/app/14-dashboard.js` -> products/countries/trending table updates (`L2849`, `L2891`, `L2950`, related empty states).
+- Impact: Medium frontend reflow + state loss (focus/selection/scroll context).
+- Root cause: Full tbody replacement regardless of row deltas.
+- Smallest safe fix: Row-keyed patching (or DocumentFragment diff) for pagination and refresh updates.
+- Risk: Medium.
+- Quick verification: Interaction state survives refresh; fewer long tasks while paging.
+
+8) Payload signature generation still serializes large payload objects
+- Where: `client/app/14-dashboard.js` -> `dashboardPayloadSignature()` uses `JSON.stringify(sigPayload)` (`L82-L96`).
+- Impact: Medium CPU cost for large arrays (top products/countries/trending).
+- Root cause: Full object serialization on each fetch response to compute signature.
+- Smallest safe fix: Use smaller canonical signature (lengths + stable hashes of key arrays) or server-provided version token.
+- Risk: Low.
+- Quick verification: Scripting time drops during refresh; rerender gating behavior unchanged.
+
+9) Settings chart panel re-renders all previews per input/change
+- Where: `server/public/settings-page.js` -> `queuePreview()` does full-card iteration + `renderAllChartsPreviews(root)` (`L2318-L2330`).
+- Impact: Medium; typing in one field redraws all chart previews.
+- Root cause: Broad invalidation scope; no per-card dirty tracking.
+- Smallest safe fix: Re-render only affected card/group; keep full repaint for reset/load only.
+- Risk: Low.
+- Quick verification: Editing one control updates one preview, not all previews.
+
+10) Per-chart dimension wait creates timer/observer overhead
+- Where: `server/public/kexo-chart-builder.js` -> `waitForContainerDimensions()` polling/observer path (`L130-L143`, `L149-L160`).
+- Impact: Medium in settings/preview-heavy flows (many charts waiting simultaneously).
+- Root cause: Each render spins its own timers/observer lifecycle.
+- Smallest safe fix: Share wait scheduler or hard short-circuit for hidden panels with deferred render-on-show.
+- Risk: Low.
+- Quick verification: Reduced timer count and less idle CPU while opening Settings -> Charts.
+
+## Bugs/Leaks (10)
+
+1) Charts settings root listeners accumulate across panel re-renders
+- Type: Event-listener leak / duplicate execution.
+- Where: `server/public/settings-page.js` -> `renderChartsUiPanel()` binds `root.addEventListener('input'...)` and `'change'...` (`L2332-L2333`); panel re-render is triggered by save/reset (`L2410`, `L2424`).
+- Symptoms: After repeated save/reset, one input causes multiple preview queue executions.
+- Root cause: Listeners are rebound on same root element without a one-time guard or explicit unbind.
+- Smallest safe fix: Add `data-charts-wired` guard or central delegated listeners wired once.
+- Risk: High.
+- Quick verification: After 10 save/reset cycles, input event should trigger exactly one preview pipeline.
+
+2) Dimension polling timeout in chart builder is not tracked for cleanup
+- Type: Timer leak / orphan callback risk.
+- Where: `server/public/kexo-chart-builder.js` -> `setTimeout(check, DIMENSION_POLL_MS)` (`L143`) in `check()`; timeout handle not stored in cleanup variables.
+- Symptoms: Stray `check()` callbacks can continue after `finish()` under rapid mount/unmount patterns.
+- Root cause: Poll timer ID is not captured, so `cleanup()` cannot cancel scheduled next tick.
+- Smallest safe fix: Store poll timer ID (`tPoll`) and clear it in `cleanup()`.
+- Risk: Medium.
+- Quick verification: Instrument callback count; no extra `check()` invocations after chart finish/destroy.
+
+3) Products chart destroy call is unguarded
+- Type: Runtime exception risk.
+- Where: `client/app/07-type-pagination-watcher.js` -> `productsChartInstance.destroy();` (`L272`) without try/catch.
+- Symptoms: Intermittent uncaught errors can abort chart rendering path and leave blank chart region.
+- Root cause: One destroy path lacks error guard while other destroy paths are guarded.
+- Smallest safe fix: Wrap in try/catch and null-check exactly as in guarded branches.
+- Risk: Medium.
+- Quick verification: Force stale instance edge-cases; no uncaught exception, chart still re-renders.
+
+4) Multiple anonymous resize handlers are not removable and can duplicate on re-init
+- Type: Listener lifecycle leak risk.
+- Where: `client/app/07-type-pagination-watcher.js` -> resize listeners at `L3707`, `L4317`, `L4546` (plus earlier global resize wiring).
+- Symptoms: Re-init/hot-reload style flows can stack extra resize work and degrade responsiveness.
+- Root cause: Anonymous handlers with no shared teardown contract.
+- Smallest safe fix: Use named handlers + idempotent wiring flags and `registerCleanup` removal.
+- Risk: Medium.
+- Quick verification: Listener count remains stable across repeated init flows; resize triggers one handler per concern.
+
+5) Resume refresh pathways can overlap and trigger burst fetches
+- Type: Concurrency/race correctness risk.
+- Where: `client/app/13-live-sales.js` (`pageshow` `L96-L108`, `visibilitychange` `L110+`) and `client/app/14-dashboard.js` controller resume path (`L3591-L3604`).
+- Symptoms: Back-to-back forced dashboard/KPI refreshes immediately after tab restore.
+- Root cause: Multiple resume triggers independently invoke refresh logic.
+- Smallest safe fix: Shared debounce token for resume refresh across modules.
+- Risk: Medium.
+- Quick verification: Simulate bfcache resume + visibility change; observe single refresh burst in Network.
+
+6) Insights loading timer is not tied to modal hide/abort lifecycle
+- Type: Timer lifecycle leak risk.
+- Where: `server/public/settings-page.js` -> interval start/stop (`L3291-L3309`) and fetch flow (`L3359-L3368`).
+- Symptoms: If modal closes while request hangs, elapsed timer keeps ticking until fetch settles.
+- Root cause: Interval cleanup depends on fetch completion, not modal visibility/unload.
+- Smallest safe fix: Stop timer on `hidden.bs.modal` and add `AbortController` timeout for fetch.
+- Risk: Medium.
+- Quick verification: Open modal, trigger load, close immediately; confirm no timer activity remains.
+
+7) Fallback top-products key is not normalized for title-based identities
+- Type: Data correctness bug.
+- Where: `server/routes/dashboardSeries.js` -> `key = pid || ('title:' + title)` (`L705`) in `fallbackTopProductsFromOrdersRawJson()`.
+- Symptoms: Same product title with case/spacing variations splits into multiple pseudo-products.
+- Root cause: Title fallback key is not normalized (trim/lowercase).
+- Smallest safe fix: Normalize title key (`trim().toLowerCase()`) before aggregation.
+- Risk: Medium.
+- Quick verification: Seed title variants (`"Tee"`, `" tee "`); output should aggregate to one row.
+
+8) Country parse failures are silently collapsed into `XX`
+- Type: Silent data-quality bug.
+- Where: `server/routes/dashboardSeries.js` -> parse/catch in top-countries (`L986-L989`, `L1461-L1464`).
+- Symptoms: Country distributions can drift to `XX` without observability when order JSON is malformed.
+- Root cause: Blanket catch with no parse error telemetry/counter.
+- Smallest safe fix: Track parse-failure count and prefer trusted stored country fields before defaulting `XX`.
+- Risk: Medium.
+- Quick verification: Inject malformed `raw_json`; `XX` increments should be traceable and bounded.
+
+9) Financial-status filtering is inconsistent across dashboard paths
+- Type: Reporting correctness bug.
+- Where: `server/routes/dashboardSeries.js` top-countries query uses `financial_status = 'paid'` (`L975`, `L1450`) while product/trending paths include `('paid', 'partially_paid')` (`L512`, `L684`).
+- Symptoms: Cross-widget mismatches between country totals and product/trending totals for same range.
+- Root cause: Different status criteria across related KPI sources.
+- Smallest safe fix: Align status policy across all dashboard-series aggregations (or explicitly document intentional difference).
+- Risk: High.
+- Quick verification: Compare totals for ranges containing `partially_paid` orders; mismatch should disappear or be explicitly separated.
+
+10) Payload-signature fallback defeats change detection on serialization failure
+- Type: Stability/correctness bug (low-frequency).
+- Where: `client/app/14-dashboard.js` -> `dashboardPayloadSignature()` catch returns `fastPayloadHash(String(Date.now()))` (`L96-L98` path).
+- Symptoms: If serialization fails, every fetch appears "changed", forcing rerenders and churn.
+- Root cause: Time-based fallback hash is non-deterministic.
+- Smallest safe fix: Deterministic fallback (stable sentinel hash + minimal shape signature).
+- Risk: Low.
+- Quick verification: Simulate signature serialization failure; ensure unchanged payload no longer forces rerender every poll.
+
+## Quick Wins Patch Plan
+
+1) Stop Charts Settings listener accumulation first
+- Files touched: `server/public/settings-page.js`.
+- Why these first: Highest operational risk and lowest implementation surface; fixes both leak and duplicate preview work.
+- Patch outline:
+  - Add one-time wiring guard on `#settings-charts-root` listeners.
+  - Keep `queuePreview` stable across panel re-renders.
+  - Ensure pending preview timeout is cleared before panel rebuild.
+- Verification checklist:
+  - Save/Reset Charts panel 10x, then type in one control -> exactly one preview cycle.
+  - No growth in event listener count for `#settings-charts-root`.
+
+2) Remove O(n x m) bucket scan in dashboard series
+- Files touched: `server/routes/dashboardSeries.js`.
+- Why these first: Largest backend CPU win for dashboard request path; localized logic change.
+- Patch outline:
+  - Replace per-order linear bucket scan with indexed bucket lookup.
+  - Reuse lookup for both day and bucket modes (`dayBounds` and `bucketBounds` paths).
+- Verification checklist:
+  - `/api/dashboard/series?range=30d` and `90d` return same totals/labels as before.
+  - Lower CPU time in profiler and reduced p95 latency.
+
+3) Reuse products chart instance instead of destroy/recreate
+- Files touched: `client/app/07-type-pagination-watcher.js`.
+- Why these first: Strong UI smoothness gain with low risk and isolated chart renderer change.
+- Patch outline:
+  - Add `updateOptions/updateSeries` path for `productsChartInstance`.
+  - Keep destroy/new only as fallback on update failure.
+  - Guard all destroy paths with try/catch.
+- Verification checklist:
+  - Repeated refreshes do not increase detached nodes.
+  - Chart visuals remain correct across mode switches (line/pie/etc.).
+  - No uncaught exceptions from chart teardown/rebuild.

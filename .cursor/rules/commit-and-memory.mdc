@@ -8,6 +8,7 @@ alwaysApply: true
 
 - **Commit changes yourself**: When you make code or config changes in this project, commit them (stage, commit with a clear message). Do not tell the user to run git commands unless they asked you not to commit (e.g. "don't commit").
 - **Always push after commit**: After every commit, **run `git push origin main` yourself** (or the current branch). Do not tell the user to push — do it in the same turn. Skip only if the user explicitly asked you not to push.
+- **Never ask to push**: Do not ask "should I push?" or "would you like me to push?" — just push. Treat push as automatic. No confirmation required from the user.
 - **User preference (persistent)**: Treat commit + push as required completion for implementation tasks. When work is done, stage relevant files, commit, and push in the same turn unless the user explicitly says not to.
 - **Default delivery flow**: For implementation requests, start by syncing with `git pull --ff-only`, then commit + push. Do **not** run `railway up` — Railway auto-deploys from git; pushing to main is sufficient.
 - **Railway DB_URL caveat**: In production `DB_URL` may point at `postgres.railway.internal` (internal DNS). `railway run ...` executes locally and **cannot** resolve that host. To run DB scripts, run them in the deployed container via `railway ssh -- <command>` or rely on startup migrations in `server/index.js`.

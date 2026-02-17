@@ -775,6 +775,26 @@ function ymdInTimeZone(ms, timeZone) {
   }
 }
 
+function hourKeyInTimeZone(ms, timeZone) {
+  try {
+    const fmt = new Intl.DateTimeFormat('en-GB', {
+      timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      hourCycle: 'h23',
+    });
+    const parts = fmt.formatToParts(new Date(ms));
+    const map = {};
+    for (const part of parts) map[part.type] = part.value;
+    if (!map.year || !map.month || !map.day || map.hour == null) return null;
+    return `${map.year}-${map.month}-${map.day} ${map.hour}:00`;
+  } catch (_) {
+    return null;
+  }
+}
+
 function parseYmdParts(ymd) {
   const s = typeof ymd === 'string' ? ymd.trim() : '';
   const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
@@ -1737,6 +1757,113 @@ async function readCheckoutOrdersTimeseries(shop, startMs, endMs, timeZone) {
   return out;
 }
 
+function listHourKeysForBounds(startMs, endMs, timeZone) {
+  const start = Number(startMs);
+  const end = Number(endMs);
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return [];
+  const out = [];
+  const seen = new Set();
+  const STEP_MS = 60 * 60 * 1000;
+  let ts = start;
+  for (let guard = 0; guard < 72 && ts < end; guard += 1) {
+    const key = hourKeyInTimeZone(ts, timeZone);
+    if (key && !seen.has(key)) {
+      seen.add(key);
+      out.push(key);
+    }
+    ts += STEP_MS;
+  }
+  const tailKey = hourKeyInTimeZone(Math.max(start, end - 1), timeZone);
+  if (tailKey && !seen.has(tailKey)) out.push(tailKey);
+  return out;
+}
+
+async function readCheckoutOrdersHourlyTimeseries(shop, startMs, endMs, timeZone) {
+  const labelsHour = listHourKeysForBounds(startMs, endMs, timeZone);
+  const byHour = new Map();
+  for (const key of labelsHour) byHour.set(key, { orders: 0, revenueGbp: 0 });
+  if (!shop) return { labelsHour, byHour };
+  const db = getDb();
+  const rows = await db.all(
+    `
+      SELECT created_at, COALESCE(NULLIF(TRIM(currency), ''), 'GBP') AS currency, total_price
+      FROM orders_shopify
+      WHERE shop = ?
+        AND created_at >= ? AND created_at < ?
+        AND ${isPaidOrderWhereClause('')}
+        AND checkout_token IS NOT NULL
+        AND TRIM(checkout_token) != ''
+        AND total_price IS NOT NULL
+    `,
+    [shop, startMs, endMs]
+  );
+  if (!rows || !rows.length) return { labelsHour, byHour };
+  const ratesToGbp = await fx.getRatesToGbp();
+  for (const row of rows) {
+    const ts = row && row.created_at != null ? Number(row.created_at) : NaN;
+    if (!Number.isFinite(ts)) continue;
+    const key = hourKeyInTimeZone(ts, timeZone);
+    if (!key) continue;
+    const amount = row && row.total_price != null ? Number(row.total_price) : NaN;
+    if (!Number.isFinite(amount)) continue;
+    const currency = fx.normalizeCurrency(row && row.currency != null ? String(row.currency) : '') || 'GBP';
+    const gbp = fx.convertToGbp(amount, currency, ratesToGbp);
+    if (typeof gbp !== 'number' || !Number.isFinite(gbp)) continue;
+    const current = byHour.get(key) || { orders: 0, revenueGbp: 0 };
+    current.orders += 1;
+    current.revenueGbp += gbp;
+    byHour.set(key, current);
+  }
+  for (const key of byHour.keys()) {
+    if (labelsHour.indexOf(key) < 0) labelsHour.push(key);
+  }
+  return { labelsHour, byHour };
+}
+
+function distributeDailySeriesToHourly(dayLabels, dayValues, hourLabels, hourlyRevenue, hourlyOrders) {
+  const days = Array.isArray(dayLabels) ? dayLabels : [];
+  const values = Array.isArray(dayValues) ? dayValues : [];
+  const labels = Array.isArray(hourLabels) ? hourLabels : [];
+  const revenue = Array.isArray(hourlyRevenue) ? hourlyRevenue : [];
+  const orders = Array.isArray(hourlyOrders) ? hourlyOrders : [];
+  const out = new Array(labels.length).fill(null);
+  const dayToIdx = new Map();
+  for (let i = 0; i < labels.length; i += 1) {
+    const key = String(labels[i] || '');
+    const ymd = key.slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(ymd)) continue;
+    if (!dayToIdx.has(ymd)) dayToIdx.set(ymd, []);
+    dayToIdx.get(ymd).push(i);
+  }
+  for (let d = 0; d < days.length; d += 1) {
+    const ymd = String(days[d] || '');
+    const total = toNumber(values[d]);
+    if (total == null) continue;
+    const idxs = dayToIdx.get(ymd) || [];
+    if (!idxs.length) continue;
+    let revSum = 0;
+    let ordSum = 0;
+    for (const i of idxs) {
+      revSum += Math.max(0, Number(revenue[i]) || 0);
+      ordSum += Math.max(0, Number(orders[i]) || 0);
+    }
+    for (const i of idxs) {
+      let w = 1;
+      let denom = idxs.length;
+      if (revSum > 0) {
+        w = Math.max(0, Number(revenue[i]) || 0);
+        denom = revSum;
+      } else if (ordSum > 0) {
+        w = Math.max(0, Number(orders[i]) || 0);
+        denom = ordSum;
+      }
+      const next = (Number(out[i]) || 0) + ((Number(total) || 0) * (w / Math.max(1e-9, denom)));
+      out[i] = next;
+    }
+  }
+  return out.map((v) => (toNumber(v) != null ? round2(v) : null));
+}
+
 async function readCustomerTypeTimeseries(shop, startMs, endMs, timeZone) {
   const out = new Map(); // ymd -> { newCustomers, returningCustomers }
   if (!shop) return out;
@@ -1839,6 +1966,7 @@ async function getBusinessSnapshot(options = {}) {
 
   const mode = resolved.mode;
   const preset = resolved.preset || '';
+  const requestedGranularity = String(options.granularity || '').trim().toLowerCase();
   const selectedYear = resolved.selectedYear;
   const selectedMonth = resolved.selectedMonth;
   const periodLabel = resolved.periodLabel;
@@ -1846,6 +1974,8 @@ async function getBusinessSnapshot(options = {}) {
   const compareYear = resolved.compareYear;
   const currentWindow = resolved.currentWindow;
   const previousWindow = resolved.previousWindow;
+  const isSingleDayRange = !!(currentWindow && currentWindow.startYmd && currentWindow.endYmd && currentWindow.startYmd === currentWindow.endYmd);
+  const useHourlySeries = requestedGranularity === 'hour' && isSingleDayRange;
 
   const rangeKey = rangeKeyFromYmd(currentWindow.startYmd, currentWindow.endYmd);
   const compareRangeKey = rangeKeyFromYmd(previousWindow.startYmd, previousWindow.endYmd);
@@ -2304,7 +2434,7 @@ async function getBusinessSnapshot(options = {}) {
   dailyNow.costGbp = nowCostSeries.costDaily;
   dailyPrev.costGbp = prevCostSeries.costDaily;
 
-  const series = downsampleWeekly({
+  let series = downsampleWeekly({
     labelsYmd: chartDays,
     revenueGbp: dailyNow.revenueGbp,
     costGbp: dailyNow.costGbp,
@@ -2312,7 +2442,7 @@ async function getBusinessSnapshot(options = {}) {
     sessions: dailyNow.sessions,
     conversionRate: dailyNow.conversionRate,
   });
-  const seriesPrevious = downsampleWeekly({
+  let seriesPrevious = downsampleWeekly({
     labelsYmd: chartDaysPrev,
     revenueGbp: dailyPrev.revenueGbp,
     costGbp: dailyPrev.costGbp,
@@ -2320,6 +2450,86 @@ async function getBusinessSnapshot(options = {}) {
     sessions: dailyPrev.sessions,
     conversionRate: dailyPrev.conversionRate,
   });
+
+  if (useHourlySeries) {
+    const [hourlyNowRaw, hourlyPrevRaw] = await Promise.all([
+      readCheckoutOrdersHourlyTimeseries(shop, bounds.start, bounds.end, timeZone).catch(() => ({
+        labelsHour: listHourKeysForBounds(bounds.start, bounds.end, timeZone),
+        byHour: new Map(),
+      })),
+      readCheckoutOrdersHourlyTimeseries(shop, compareBounds.start, compareBounds.end, timeZone).catch(() => ({
+        labelsHour: listHourKeysForBounds(compareBounds.start, compareBounds.end, timeZone),
+        byHour: new Map(),
+      })),
+    ]);
+
+    const buildHourlySeries = function buildHourlySeries({
+      labelsHour,
+      byHour,
+      dayLabels,
+      dailyCost,
+      dailySessions,
+    }) {
+      const labels = Array.isArray(labelsHour) ? labelsHour : [];
+      const hourMap = byHour && byHour.get ? byHour : new Map();
+      const revenueGbp = labels.map((key) => round2(Number((hourMap.get(key) || {}).revenueGbp) || 0) || 0);
+      const ordersArr = labels.map((key) => {
+        const n = Number((hourMap.get(key) || {}).orders) || 0;
+        return Number.isFinite(n) ? Math.max(0, Math.round(n)) : 0;
+      });
+      const costDistributed = distributeDailySeriesToHourly(
+        dayLabels,
+        dailyCost,
+        labels,
+        revenueGbp,
+        ordersArr
+      );
+      const sessionsDistributed = distributeDailySeriesToHourly(
+        dayLabels,
+        dailySessions,
+        labels,
+        revenueGbp,
+        ordersArr
+      );
+      const costGbp = costDistributed.map((v) => (toNumber(v) != null ? round2(v) || 0 : 0));
+      const sessionsArr = sessionsDistributed.map((v) => toNumber(v));
+      const conversionRate = labels.map((_, i) => safePercent(ordersArr[i], sessionsArr[i]));
+      const aov = labels.map((_, i) => {
+        const ord = Number(ordersArr[i]) || 0;
+        const rev = Number(revenueGbp[i]) || 0;
+        return ord > 0 ? round2(rev / ord) : null;
+      });
+      return {
+        granularity: 'hour',
+        labelsYmd: labels,
+        revenueGbp,
+        costGbp,
+        orders: ordersArr,
+        sessions: sessionsArr,
+        conversionRate,
+        aov,
+      };
+    };
+
+    if (hourlyNowRaw && Array.isArray(hourlyNowRaw.labelsHour) && hourlyNowRaw.labelsHour.length) {
+      series = buildHourlySeries({
+        labelsHour: hourlyNowRaw.labelsHour,
+        byHour: hourlyNowRaw.byHour,
+        dayLabels: chartDays,
+        dailyCost: dailyNow.costGbp,
+        dailySessions: dailyNow.sessions,
+      });
+    }
+    if (hourlyPrevRaw && Array.isArray(hourlyPrevRaw.labelsHour) && hourlyPrevRaw.labelsHour.length) {
+      seriesPrevious = buildHourlySeries({
+        labelsHour: hourlyPrevRaw.labelsHour,
+        byHour: hourlyPrevRaw.byHour,
+        dayLabels: chartDaysPrev,
+        dailyCost: dailyPrev.costGbp,
+        dailySessions: dailyPrev.sessions,
+      });
+    }
+  }
 
   const [distinctCustomers, distinctCustomersPrev, ltvValue, ltvPrevValue, returningRaw, returningPrevRaw] = await Promise.all([
     readDistinctCustomerCount(shop, bounds.start, bounds.end),

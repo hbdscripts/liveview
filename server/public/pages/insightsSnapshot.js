@@ -488,9 +488,15 @@
 
   function buildCategoriesFromLabels(labels) {
     const src = Array.isArray(labels) ? labels : [];
-    return src.map((ymd) => {
-      const d = ymdToDate(ymd);
-      if (!d) return String(ymd || '');
+    return src.map((value) => {
+      const raw = String(value || '').trim();
+      if (!raw) return '';
+      if (/^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}$/.test(raw)) {
+        const parts = raw.split(/\s+/);
+        return parts[1] || raw;
+      }
+      const d = ymdToDate(raw);
+      if (!d) return raw;
       return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', timeZone: 'UTC' });
     });
   }
@@ -778,6 +784,9 @@
     params.set('since', state.since);
     params.set('until', state.until);
     params.set('preset', state.preset);
+    if (String(state.since || '') === String(state.until || '')) {
+      params.set('granularity', 'hour');
+    }
     if (force) params.set('_', String(Date.now()));
     return `${API}/api/business-snapshot?${params.toString()}`;
   }

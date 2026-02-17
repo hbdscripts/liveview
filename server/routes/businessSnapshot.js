@@ -41,6 +41,7 @@ async function getBusinessSnapshot(req, res) {
   const sinceRaw = req && req.query && req.query.since != null ? String(req.query.since) : '';
   const untilRaw = req && req.query && req.query.until != null ? String(req.query.until) : '';
   const presetRaw = req && req.query && req.query.preset != null ? String(req.query.preset) : '';
+  const granularityRaw = req && req.query && req.query.granularity != null ? String(req.query.granularity) : '';
   const force = !!(req && req.query && (req.query.force === '1' || req.query.force === 'true' || req.query._));
   try {
     const now = Date.now();
@@ -54,6 +55,7 @@ async function getBusinessSnapshot(req, res) {
       until: untilRaw,
       preset: presetRaw,
     }, nowYmd);
+    const granularity = (String(granularityRaw || '').trim().toLowerCase() === 'hour') ? 'hour' : 'day';
 
     const rangeKey = `r:${resolved.currentWindow.startYmd}:${resolved.currentWindow.endYmd}`;
     const compareRangeKey = `r:${resolved.previousWindow.startYmd}:${resolved.previousWindow.endYmd}`;
@@ -78,6 +80,7 @@ async function getBusinessSnapshot(req, res) {
           compareUntil: resolved.previousWindow.endYmd,
           compareRangeStartTs: compareBounds.start,
           compareRangeEndTs: compareBounds.end,
+          granularity,
           profitRulesFingerprint,
           snapshotUiVersion: 'snapshot-page-v5',
         },
@@ -91,6 +94,7 @@ async function getBusinessSnapshot(req, res) {
         since: resolved.currentWindow.startYmd,
         until: resolved.currentWindow.endYmd,
         preset: resolved.preset || '',
+        granularity,
       })
     );
     res.setHeader('Cache-Control', 'private, max-age=60');
@@ -106,6 +110,7 @@ async function getBusinessSnapshot(req, res) {
         since: sinceRaw,
         until: untilRaw,
         preset: presetRaw,
+        granularity: granularityRaw,
       },
     });
     res.status(500).json({ ok: false, error: 'Failed to load business snapshot' });
