@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-16 (Dashboard KPI 8/4/rest layout + Settings IA restructure + attribution mini chart)
+Last updated: 2026-02-16 (Startup migration fix for change_pins + runtime schema guard)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -387,6 +387,11 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-16 (latest)
+- Change Pins production hardening:
+  - Startup migrations now include `052_change_pins` in `server/index.js` `APP_MIGRATIONS` (runtime app boot path), matching `server/migrate.js`.
+  - `server/tools/changePins.js` now has a schema guard (`ensureChangePinsSchema`) so `/api/tools/change-pins*` self-heals if the table is missing, preventing `relation "change_pins" does not exist` errors during staggered deploys.
 
 2026-02-16 (latest)
 - Dashboard overview + KPI routing refresh:

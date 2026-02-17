@@ -2,6 +2,70 @@ const store = require('../store');
 const { getDb, isPostgres } = require('../db');
 const reportCache = require('../reportCache');
 
+let changePinsSchemaReady = false;
+let changePinsSchemaInFlight = null;
+
+async function ensureChangePinsSchema() {
+  if (changePinsSchemaReady) return;
+  if (changePinsSchemaInFlight) return changePinsSchemaInFlight;
+  changePinsSchemaInFlight = (async () => {
+    const db = getDb();
+    if (isPostgres()) {
+      await db.exec(`
+        CREATE TABLE IF NOT EXISTS change_pins (
+          id SERIAL PRIMARY KEY,
+          shop TEXT,
+          event_ymd TEXT NOT NULL,
+          event_ts BIGINT,
+          event_tz TEXT,
+          title TEXT NOT NULL,
+          kind TEXT,
+          magnitude_value DOUBLE PRECISION,
+          magnitude_unit TEXT,
+          tags_json TEXT,
+          tags_text TEXT,
+          notes TEXT,
+          archived_at BIGINT,
+          created_at BIGINT NOT NULL,
+          updated_at BIGINT NOT NULL,
+          created_by TEXT,
+          updated_by TEXT
+        );
+      `);
+      await db.run('CREATE INDEX IF NOT EXISTS idx_change_pins_event_ymd ON change_pins(event_ymd DESC)').catch(() => null);
+      await db.run('CREATE INDEX IF NOT EXISTS idx_change_pins_archived_at ON change_pins(archived_at)').catch(() => null);
+    } else {
+      await db.exec(`
+        CREATE TABLE IF NOT EXISTS change_pins (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          shop TEXT,
+          event_ymd TEXT NOT NULL,
+          event_ts INTEGER,
+          event_tz TEXT,
+          title TEXT NOT NULL,
+          kind TEXT,
+          magnitude_value REAL,
+          magnitude_unit TEXT,
+          tags_json TEXT,
+          tags_text TEXT,
+          notes TEXT,
+          archived_at INTEGER,
+          created_at INTEGER NOT NULL,
+          updated_at INTEGER NOT NULL,
+          created_by TEXT,
+          updated_by TEXT
+        );
+        CREATE INDEX IF NOT EXISTS idx_change_pins_event_ymd ON change_pins(event_ymd DESC);
+        CREATE INDEX IF NOT EXISTS idx_change_pins_archived_at ON change_pins(archived_at);
+      `);
+    }
+    changePinsSchemaReady = true;
+  })().finally(() => {
+    changePinsSchemaInFlight = null;
+  });
+  return changePinsSchemaInFlight;
+}
+
 function safeStr(v, maxLen = 240) {
   if (v == null) return '';
   const s = String(v).trim();
@@ -171,6 +235,7 @@ function serializePinRow(r) {
 }
 
 async function createPin(input = {}, viewer = {}) {
+  await ensureChangePinsSchema();
   const db = getDb();
   const tz = store.resolveAdminTimeZone();
   const now = Date.now();
@@ -284,6 +349,7 @@ async function createPin(input = {}, viewer = {}) {
 }
 
 async function listPins(query = {}) {
+  await ensureChangePinsSchema();
   const db = getDb();
   const fromYmd = safeYmd(query.from_ymd);
   const toYmd = safeYmd(query.to_ymd);
@@ -322,6 +388,7 @@ async function listPins(query = {}) {
 }
 
 async function getPinById(id) {
+  await ensureChangePinsSchema();
   const db = getDb();
   const pinId = parseInt(String(id), 10);
   if (!Number.isFinite(pinId) || pinId <= 0) return { ok: false, error: 'invalid_id' };
@@ -331,6 +398,7 @@ async function getPinById(id) {
 }
 
 async function patchPin(id, patch = {}, viewer = {}) {
+  await ensureChangePinsSchema();
   const db = getDb();
   const pinId = parseInt(String(id), 10);
   if (!Number.isFinite(pinId) || pinId <= 0) return { ok: false, error: 'invalid_id' };
@@ -408,6 +476,7 @@ async function patchPin(id, patch = {}, viewer = {}) {
 }
 
 async function setArchived(id, archived, viewer = {}) {
+  await ensureChangePinsSchema();
   const db = getDb();
   const pinId = parseInt(String(id), 10);
   if (!Number.isFinite(pinId) || pinId <= 0) return { ok: false, error: 'invalid_id' };
@@ -508,6 +577,7 @@ async function getPinEffect(id, opts = {}) {
 }
 
 async function listRecentPins(opts = {}) {
+  await ensureChangePinsSchema();
   const db = getDb();
   const tz = store.resolveAdminTimeZone();
   const days = clampInt(opts.days, 120, 1, 400);
