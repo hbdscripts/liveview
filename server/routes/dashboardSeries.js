@@ -350,7 +350,7 @@ async function fetchUnitsSoldByDayBounds(db, shop, dayBounds, overallStart, over
       WHERE li.shop = ? AND li.order_created_at >= ? AND li.order_created_at < ?
         AND (li.order_test IS NULL OR li.order_test = 0)
         AND li.order_cancelled_at IS NULL
-        AND li.order_financial_status = 'paid'
+        AND li.order_financial_status IN ('paid', 'partially_paid')
     `,
     params
   );
@@ -505,18 +505,19 @@ async function fetchProductAggByProductId(db, shop, startMs, endMs) {
         ? `SELECT TRIM(li.product_id) AS product_id, MAX(NULLIF(TRIM(li.title), '')) AS title, COALESCE(SUM(li.line_revenue), 0) AS revenue, COUNT(DISTINCT li.order_id) AS orders
            FROM orders_shopify_line_items li
            WHERE li.shop = $1 AND li.order_created_at >= $2 AND li.order_created_at < $3
-             AND (li.order_test IS NULL OR li.order_test = 0) AND li.order_cancelled_at IS NULL AND li.order_financial_status = 'paid'
+             AND (li.order_test IS NULL OR li.order_test = 0) AND li.order_cancelled_at IS NULL AND li.order_financial_status IN ('paid', 'partially_paid')
              AND li.product_id IS NOT NULL AND TRIM(li.product_id) != ''
            GROUP BY TRIM(li.product_id)`
         : `SELECT TRIM(li.product_id) AS product_id, MAX(NULLIF(TRIM(li.title), '')) AS title, COALESCE(SUM(li.line_revenue), 0) AS revenue, COUNT(DISTINCT li.order_id) AS orders
            FROM orders_shopify_line_items li
            WHERE li.shop = ? AND li.order_created_at >= ? AND li.order_created_at < ?
-             AND (li.order_test IS NULL OR li.order_test = 0) AND li.order_cancelled_at IS NULL AND li.order_financial_status = 'paid'
+             AND (li.order_test IS NULL OR li.order_test = 0) AND li.order_cancelled_at IS NULL AND li.order_financial_status IN ('paid', 'partially_paid')
              AND li.product_id IS NOT NULL AND TRIM(li.product_id) != ''
            GROUP BY TRIM(li.product_id)`,
       [shop, start, end]
     );
-  } catch (_) {
+  } catch (e) {
+    if (e && typeof e.message === 'string') console.error('[dashSeries] fetchProductAggByProductId err', e.message);
     return [];
   }
 }
@@ -864,7 +865,7 @@ async function computeDashboardSeries(days, nowMs, timeZone, trafficMode) {
           ? `SELECT TRIM(li.product_id) AS product_id, MAX(NULLIF(TRIM(li.title), '')) AS title, COALESCE(SUM(li.line_revenue), 0) AS revenue, COUNT(DISTINCT li.order_id) AS orders
              FROM orders_shopify_line_items li
              WHERE li.shop = $1 AND li.order_created_at >= $2 AND li.order_created_at < $3
-               AND (li.order_test IS NULL OR li.order_test = 0) AND li.order_cancelled_at IS NULL AND li.order_financial_status = 'paid'
+               AND (li.order_test IS NULL OR li.order_test = 0) AND li.order_cancelled_at IS NULL AND li.order_financial_status IN ('paid', 'partially_paid')
                AND li.product_id IS NOT NULL AND TRIM(li.product_id) != ''
              GROUP BY TRIM(li.product_id)
              ORDER BY revenue DESC
@@ -872,7 +873,7 @@ async function computeDashboardSeries(days, nowMs, timeZone, trafficMode) {
           : `SELECT TRIM(li.product_id) AS product_id, MAX(NULLIF(TRIM(li.title), '')) AS title, COALESCE(SUM(li.line_revenue), 0) AS revenue, COUNT(DISTINCT li.order_id) AS orders
              FROM orders_shopify_line_items li
              WHERE li.shop = ? AND li.order_created_at >= ? AND li.order_created_at < ?
-               AND (li.order_test IS NULL OR li.order_test = 0) AND li.order_cancelled_at IS NULL AND li.order_financial_status = 'paid'
+               AND (li.order_test IS NULL OR li.order_test = 0) AND li.order_cancelled_at IS NULL AND li.order_financial_status IN ('paid', 'partially_paid')
                AND li.product_id IS NOT NULL AND TRIM(li.product_id) != ''
              GROUP BY TRIM(li.product_id)
              ORDER BY revenue DESC
@@ -937,7 +938,9 @@ async function computeDashboardSeries(days, nowMs, timeZone, trafficMode) {
           });
         }
       }
-    } catch (_) {}
+    } catch (e) {
+      if (e && typeof e.message === 'string') console.error('[dashSeries] topProducts err', e.message);
+    }
   }
 
   try { topProducts = await attachCrToTopProducts(db, overallStart, overallEnd, filter, topProducts); } catch (_) {}
@@ -1337,7 +1340,7 @@ async function computeDashboardSeriesForBounds(bounds, nowMs, timeZone, trafficM
           ? `SELECT TRIM(li.product_id) AS product_id, MAX(NULLIF(TRIM(li.title), '')) AS title, COALESCE(SUM(li.line_revenue), 0) AS revenue, COUNT(DISTINCT li.order_id) AS orders
              FROM orders_shopify_line_items li
              WHERE li.shop = $1 AND li.order_created_at >= $2 AND li.order_created_at < $3
-               AND (li.order_test IS NULL OR li.order_test = 0) AND li.order_cancelled_at IS NULL AND li.order_financial_status = 'paid'
+               AND (li.order_test IS NULL OR li.order_test = 0) AND li.order_cancelled_at IS NULL AND li.order_financial_status IN ('paid', 'partially_paid')
                AND li.product_id IS NOT NULL AND TRIM(li.product_id) != ''
              GROUP BY TRIM(li.product_id)
              ORDER BY revenue DESC
@@ -1345,7 +1348,7 @@ async function computeDashboardSeriesForBounds(bounds, nowMs, timeZone, trafficM
           : `SELECT TRIM(li.product_id) AS product_id, MAX(NULLIF(TRIM(li.title), '')) AS title, COALESCE(SUM(li.line_revenue), 0) AS revenue, COUNT(DISTINCT li.order_id) AS orders
              FROM orders_shopify_line_items li
              WHERE li.shop = ? AND li.order_created_at >= ? AND li.order_created_at < ?
-               AND (li.order_test IS NULL OR li.order_test = 0) AND li.order_cancelled_at IS NULL AND li.order_financial_status = 'paid'
+               AND (li.order_test IS NULL OR li.order_test = 0) AND li.order_cancelled_at IS NULL AND li.order_financial_status IN ('paid', 'partially_paid')
                AND li.product_id IS NOT NULL AND TRIM(li.product_id) != ''
              GROUP BY TRIM(li.product_id)
              ORDER BY revenue DESC
@@ -1410,7 +1413,9 @@ async function computeDashboardSeriesForBounds(bounds, nowMs, timeZone, trafficM
           });
         }
       }
-    } catch (_) {}
+    } catch (e) {
+      if (e && typeof e.message === 'string') console.error('[dashSeries] topProducts err', e.message);
+    }
   }
 
   try { topProducts = await attachCrToTopProducts(db, overallStart, overallEnd, filter, topProducts); } catch (_) {}
@@ -1472,7 +1477,9 @@ async function computeDashboardSeriesForBounds(bounds, nowMs, timeZone, trafficM
         const t = await fetchTrendingProducts(db, shop, nowBounds, prevBounds, filter);
         trendingUp = t && t.trendingUp ? t.trendingUp : [];
         trendingDown = t && t.trendingDown ? t.trendingDown : [];
-      } catch (_) {}
+      } catch (e) {
+        if (e && typeof e.message === 'string') console.error('[dashSeries] trending err', e.message);
+      }
     }
   }
 

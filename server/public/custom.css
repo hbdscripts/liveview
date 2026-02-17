@@ -1749,7 +1749,17 @@ body:not([data-page="settings"]) .table-responsive table thead th {
 }
 .settings-charts-color-field {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  align-items: center;
+  gap: .5rem;
+}
+.settings-charts-color-field .form-label {
+  margin-bottom: 0;
+  white-space: nowrap;
+}
+.settings-charts-color-field-row {
+  display: flex;
+  align-items: center;
   gap: .35rem;
 }
 .settings-charts-color-swatch {
@@ -2881,6 +2891,16 @@ html[data-bs-theme="dark"] .report-build-wrap {
   color: var(--tblr-secondary);
   letter-spacing: .02em;
   text-transform: uppercase;
+}
+/* Prevent dashboard table and chart cards from showing horizontal scrollbars. */
+.card[data-table-class="dashboard"] {
+  overflow: hidden;
+}
+.kexo-overview-main-card {
+  overflow: hidden;
+}
+.kexo-overview-mini-card {
+  overflow-x: hidden;
 }
 .kexo-overview-mini-card-body,
 .kexo-overview-main-card-body {

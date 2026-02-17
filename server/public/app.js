@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 9d5f9ca963739dd2
+// checksum: 36d86ad09cc55ca3
 
 (function () {
 const API = '';
@@ -16214,8 +16214,8 @@ const API = '';
       function quantizeOverviewMiniSize(value) {
         var n = Number(value);
         if (!Number.isFinite(n) || n <= 0) return 0;
-        // Bucket to 8px to avoid micro-resize render loops.
-        return Math.round(n / 8) * 8;
+        // Bucket to 16px to avoid ResizeObserver feedback loops and micro-resize rerenders.
+        return Math.round(n / 16) * 16;
       }
 
       function overviewMiniPayloadSig(payload) {
@@ -16273,7 +16273,7 @@ const API = '';
           if (sig && sig === overviewMiniSizeSignature) return;
           overviewMiniSizeSignature = sig;
           rerenderOverviewCardsFromCache({ reason: 'resize' });
-        }, 140);
+        }, 300);
       }
 
       function ensureOverviewMiniResizeObserver() {
@@ -16816,7 +16816,7 @@ const API = '';
           chart: { type: 'bar', height: chartHeight, fontFamily: 'Inter, sans-serif', toolbar: { show: false }, animations: { enabled: (uiStyle && uiStyle.animations === false) ? false : true } },
           plotOptions: { bar: { borderRadius: 0, distributed: true, barHeight: horizontal ? '60%' : '70%', horizontal: horizontal } },
           series: [{ name: 'Revenue', data: values }],
-          xaxis: { categories: labels, labels: { show: !horizontal } },
+          xaxis: { categories: labels, labels: { show: false } },
           yaxis: horizontal ? { labels: { show: true, style: { fontSize: '12px', fontWeight: 500, colors: '#090f17' } } } : { labels: { show: false } },
           grid: { padding: { bottom: 12, left: 12, right: 8, top: 4 } },
           colors: colors,
@@ -16964,7 +16964,7 @@ const API = '';
           return;
         }
         if (!snapshotPayload) {
-          renderOverviewChartLoading(chartId, 'Loading revenue & cost…');
+          renderOverviewChartLoading(chartId, 'Loading sales overview…');
           return;
         }
         var current = snapshotPayload && snapshotPayload.seriesComparison && snapshotPayload.seriesComparison.current
@@ -16975,17 +16975,21 @@ const API = '';
         var costGbp = current && Array.isArray(current.costGbp) ? current.costGbp : [];
         var len = Math.max(labelsYmd.length, revenueGbp.length, costGbp.length);
         if (!len) {
-          renderOverviewChartEmpty(chartId, 'No revenue & cost data');
+          renderOverviewChartEmpty(chartId, 'No sales overview data');
           return;
         }
         var labels = [];
         var revenue = [];
         var cost = [];
+        var profit = [];
         for (var i = 0; i < len; i++) {
           var ymd = labelsYmd[i] != null ? String(labelsYmd[i]) : '';
           labels.push(ymd ? shortDate(ymd) : String(i + 1));
-          revenue.push(normalizeOverviewMetric(revenueGbp[i]));
-          cost.push(normalizeOverviewMetric(costGbp[i]));
+          var rev = normalizeOverviewMetric(revenueGbp[i]);
+          var cst = normalizeOverviewMetric(costGbp[i]);
+          revenue.push(rev);
+          cost.push(cst);
+          profit.push(typeof rev === 'number' && typeof cst === 'number' ? rev - cst : 0);
         }
         var chartEl = document.getElementById(chartId);
         var chartHeight = resolveOverviewChartHeight(chartEl, 260, 140, 760);
@@ -17003,6 +17007,13 @@ const API = '';
           data: cost,
           borderColor: '#ef4444',
           backgroundColor: 'rgba(239,68,68,0.14)',
+          fill: true,
+          borderWidth: 2
+        }, {
+          label: 'Profit',
+          data: profit,
+          borderColor: '#22c55e',
+          backgroundColor: 'rgba(34,197,94,0.14)',
           fill: true,
           borderWidth: 2
         }], { currency: true, chartType: overviewChartType, height: chartHeight });
@@ -17507,8 +17518,7 @@ const API = '';
         var id = (chartId == null ? '' : String(chartId)).trim();
         if (!id) return Promise.resolve(null);
 
-        var rk = normalizeOverviewCardRangeKey(opts.rangeKey != null ? opts.rangeKey : getOverviewCardRange(id, OVERVIEW_CARD_DEFAULT_RANGE), OVERVIEW_CARD_DEFAULT_RANGE);
-        syncOverviewCardRangeUi(id);
+        var rk = normalizeOverviewCardRangeKey(opts.rangeKey != null ? opts.rangeKey : (typeof dashRangeKeyFromDateRange === 'function' ? dashRangeKeyFromDateRange() : OVERVIEW_CARD_DEFAULT_RANGE), OVERVIEW_CARD_DEFAULT_RANGE);
 
         var shop = (id === 'dash-chart-finishes-30d') ? getShopForSales() : null;
         var shopKey = shop || '__no_shop__';
@@ -20244,7 +20254,7 @@ const API = '';
     for (var i = 0; i < count; i += 1) {
       var label = series[i] ? String(series[i]) : ('Series ' + (i + 1));
       var val = normalizeHexColor(colors[i], '#3eb3ab');
-      html += '<label class="settings-charts-color-field"><span class="form-label mb-1">' + escapeHtml(label) + '</span><div class="settings-charts-color-field-row"><input type="text" class="form-control form-control-sm" data-chart-field="color" data-idx="' + i + '" value="' + escapeHtml(val) + '" placeholder="#3eb3ab"></div><span class="settings-charts-color-swatch" data-color-swatch style="background:' + escapeHtml(val) + ';" title="' + escapeHtml(val) + '" aria-hidden="true"></span></label>';
+      html += '<label class="settings-charts-color-field"><span class="form-label">' + escapeHtml(label) + '</span><div class="settings-charts-color-field-row"><input type="text" class="form-control form-control-sm" data-chart-field="color" data-idx="' + i + '" value="' + escapeHtml(val) + '" placeholder="#3eb3ab"><span class="settings-charts-color-swatch" data-color-swatch style="background:' + escapeHtml(val) + ';" title="' + escapeHtml(val) + '" aria-hidden="true"></span></div></label>';
     }
     html += '</div>';
     return html;
@@ -20393,9 +20403,8 @@ const API = '';
   function syncColorSwatches(root) {
     if (!root || !root.querySelectorAll) return;
     root.querySelectorAll('[data-color-swatch]').forEach(function (sw) {
-      var row = sw.previousElementSibling;
-      var input = row && row.querySelector && row.querySelector('[data-chart-field="color"]');
-      if (input) {
+      var input = sw.previousElementSibling;
+      if (input && (input.getAttribute && input.getAttribute('data-chart-field') === 'color')) {
         var val = normalizeHexColor(input.value, '#3eb3ab');
         sw.style.background = val;
         sw.setAttribute('title', val);

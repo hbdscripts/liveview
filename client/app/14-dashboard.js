@@ -740,8 +740,8 @@
       function quantizeOverviewMiniSize(value) {
         var n = Number(value);
         if (!Number.isFinite(n) || n <= 0) return 0;
-        // Bucket to 8px to avoid micro-resize render loops.
-        return Math.round(n / 8) * 8;
+        // Bucket to 16px to avoid ResizeObserver feedback loops and micro-resize rerenders.
+        return Math.round(n / 16) * 16;
       }
 
       function overviewMiniPayloadSig(payload) {
@@ -799,7 +799,7 @@
           if (sig && sig === overviewMiniSizeSignature) return;
           overviewMiniSizeSignature = sig;
           rerenderOverviewCardsFromCache({ reason: 'resize' });
-        }, 140);
+        }, 300);
       }
 
       function ensureOverviewMiniResizeObserver() {
@@ -1342,7 +1342,7 @@
           chart: { type: 'bar', height: chartHeight, fontFamily: 'Inter, sans-serif', toolbar: { show: false }, animations: { enabled: (uiStyle && uiStyle.animations === false) ? false : true } },
           plotOptions: { bar: { borderRadius: 0, distributed: true, barHeight: horizontal ? '60%' : '70%', horizontal: horizontal } },
           series: [{ name: 'Revenue', data: values }],
-          xaxis: { categories: labels, labels: { show: !horizontal } },
+          xaxis: { categories: labels, labels: { show: false } },
           yaxis: horizontal ? { labels: { show: true, style: { fontSize: '12px', fontWeight: 500, colors: '#090f17' } } } : { labels: { show: false } },
           grid: { padding: { bottom: 12, left: 12, right: 8, top: 4 } },
           colors: colors,
@@ -1490,7 +1490,7 @@
           return;
         }
         if (!snapshotPayload) {
-          renderOverviewChartLoading(chartId, 'Loading revenue & cost…');
+          renderOverviewChartLoading(chartId, 'Loading sales overview…');
           return;
         }
         var current = snapshotPayload && snapshotPayload.seriesComparison && snapshotPayload.seriesComparison.current
@@ -1501,17 +1501,21 @@
         var costGbp = current && Array.isArray(current.costGbp) ? current.costGbp : [];
         var len = Math.max(labelsYmd.length, revenueGbp.length, costGbp.length);
         if (!len) {
-          renderOverviewChartEmpty(chartId, 'No revenue & cost data');
+          renderOverviewChartEmpty(chartId, 'No sales overview data');
           return;
         }
         var labels = [];
         var revenue = [];
         var cost = [];
+        var profit = [];
         for (var i = 0; i < len; i++) {
           var ymd = labelsYmd[i] != null ? String(labelsYmd[i]) : '';
           labels.push(ymd ? shortDate(ymd) : String(i + 1));
-          revenue.push(normalizeOverviewMetric(revenueGbp[i]));
-          cost.push(normalizeOverviewMetric(costGbp[i]));
+          var rev = normalizeOverviewMetric(revenueGbp[i]);
+          var cst = normalizeOverviewMetric(costGbp[i]);
+          revenue.push(rev);
+          cost.push(cst);
+          profit.push(typeof rev === 'number' && typeof cst === 'number' ? rev - cst : 0);
         }
         var chartEl = document.getElementById(chartId);
         var chartHeight = resolveOverviewChartHeight(chartEl, 260, 140, 760);
@@ -1529,6 +1533,13 @@
           data: cost,
           borderColor: '#ef4444',
           backgroundColor: 'rgba(239,68,68,0.14)',
+          fill: true,
+          borderWidth: 2
+        }, {
+          label: 'Profit',
+          data: profit,
+          borderColor: '#22c55e',
+          backgroundColor: 'rgba(34,197,94,0.14)',
           fill: true,
           borderWidth: 2
         }], { currency: true, chartType: overviewChartType, height: chartHeight });
@@ -2033,8 +2044,7 @@
         var id = (chartId == null ? '' : String(chartId)).trim();
         if (!id) return Promise.resolve(null);
 
-        var rk = normalizeOverviewCardRangeKey(opts.rangeKey != null ? opts.rangeKey : getOverviewCardRange(id, OVERVIEW_CARD_DEFAULT_RANGE), OVERVIEW_CARD_DEFAULT_RANGE);
-        syncOverviewCardRangeUi(id);
+        var rk = normalizeOverviewCardRangeKey(opts.rangeKey != null ? opts.rangeKey : (typeof dashRangeKeyFromDateRange === 'function' ? dashRangeKeyFromDateRange() : OVERVIEW_CARD_DEFAULT_RANGE), OVERVIEW_CARD_DEFAULT_RANGE);
 
         var shop = (id === 'dash-chart-finishes-30d') ? getShopForSales() : null;
         var shopKey = shop || '__no_shop__';

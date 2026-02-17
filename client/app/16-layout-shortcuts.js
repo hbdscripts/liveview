@@ -213,7 +213,7 @@
     for (var i = 0; i < count; i += 1) {
       var label = series[i] ? String(series[i]) : ('Series ' + (i + 1));
       var val = normalizeHexColor(colors[i], '#3eb3ab');
-      html += '<label class="settings-charts-color-field"><span class="form-label mb-1">' + escapeHtml(label) + '</span><div class="settings-charts-color-field-row"><input type="text" class="form-control form-control-sm" data-chart-field="color" data-idx="' + i + '" value="' + escapeHtml(val) + '" placeholder="#3eb3ab"></div><span class="settings-charts-color-swatch" data-color-swatch style="background:' + escapeHtml(val) + ';" title="' + escapeHtml(val) + '" aria-hidden="true"></span></label>';
+      html += '<label class="settings-charts-color-field"><span class="form-label">' + escapeHtml(label) + '</span><div class="settings-charts-color-field-row"><input type="text" class="form-control form-control-sm" data-chart-field="color" data-idx="' + i + '" value="' + escapeHtml(val) + '" placeholder="#3eb3ab"><span class="settings-charts-color-swatch" data-color-swatch style="background:' + escapeHtml(val) + ';" title="' + escapeHtml(val) + '" aria-hidden="true"></span></div></label>';
     }
     html += '</div>';
     return html;
@@ -362,9 +362,8 @@
   function syncColorSwatches(root) {
     if (!root || !root.querySelectorAll) return;
     root.querySelectorAll('[data-color-swatch]').forEach(function (sw) {
-      var row = sw.previousElementSibling;
-      var input = row && row.querySelector && row.querySelector('[data-chart-field="color"]');
-      if (input) {
+      var input = sw.previousElementSibling;
+      if (input && (input.getAttribute && input.getAttribute('data-chart-field') === 'color')) {
         var val = normalizeHexColor(input.value, '#3eb3ab');
         sw.style.background = val;
         sw.setAttribute('title', val);
