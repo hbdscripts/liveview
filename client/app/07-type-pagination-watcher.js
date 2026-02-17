@@ -4324,6 +4324,7 @@
 
     // Apply cached KPI settings immediately (before async /api/settings returns).
     try { if (kpiUiConfigV1) applyKpiUiConfigV1(kpiUiConfigV1); } catch (_) {}
+    try { window.__applyDashboardKpiUiConfig = function() { applyDashboardKpiUiConfig(kpiUiConfigV1 || null); }; } catch (_) {}
 
     function ensureUiSettingsLoaded(options) {
       options = options && typeof options === 'object' ? options : {};

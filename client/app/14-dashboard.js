@@ -1840,6 +1840,9 @@
       }
 
       function fetchOverviewMiniData(options) {
+        if (typeof window.__applyDashboardKpiUiConfig === 'function') {
+          try { window.__applyDashboardKpiUiConfig(); } catch (_) {}
+        }
         ensureOverviewMiniResizeObserver();
         ensureOverviewHeightSyncObserver();
         scheduleOverviewHeightSync();

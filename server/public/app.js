@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 5bb104a194afd38d
+// checksum: ca98fb9052684902
 
 (function () {
 const API = '';
@@ -9565,6 +9565,7 @@ const API = '';
 
     // Apply cached KPI settings immediately (before async /api/settings returns).
     try { if (kpiUiConfigV1) applyKpiUiConfigV1(kpiUiConfigV1); } catch (_) {}
+    try { window.__applyDashboardKpiUiConfig = function() { applyDashboardKpiUiConfig(kpiUiConfigV1 || null); }; } catch (_) {}
 
     function ensureUiSettingsLoaded(options) {
       options = options && typeof options === 'object' ? options : {};
@@ -17313,6 +17314,9 @@ const API = '';
       }
 
       function fetchOverviewMiniData(options) {
+        if (typeof window.__applyDashboardKpiUiConfig === 'function') {
+          try { window.__applyDashboardKpiUiConfig(); } catch (_) {}
+        }
         ensureOverviewMiniResizeObserver();
         ensureOverviewHeightSyncObserver();
         scheduleOverviewHeightSync();
