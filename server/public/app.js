@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 22a306cc3814b39b
+// checksum: 4b14218e08332658
 
 (function () {
 const API = '';
@@ -16358,7 +16358,9 @@ const API = '';
           ? !!opts.showLegend
           : (pieLabelPosition !== 'outside');
         var labelFormatter = (opts && typeof opts.labelFormatter === 'function') ? opts.labelFormatter : null;
-        var dataLabelsEnabled = uiStyle.dataLabels !== 'off';
+        var dataLabelsEnabled = (opts && opts.dataLabels === false)
+          ? false
+          : (uiStyle.dataLabels !== 'off');
         var chartHeight = resolveOverviewChartHeight(
           chartEl,
           (opts && Number.isFinite(Number(opts.height))) ? Number(opts.height) : 180,
@@ -16778,7 +16780,9 @@ const API = '';
         renderOverviewPieChart(chartId, labels, values, {
           colors: ['#4b94e4', '#3eb3ab', '#f59e34', '#8b5cf6', '#ef4444'],
           valueFormatter: function(v) { return Math.round(normalizeOverviewMetric(v)).toLocaleString() + ' sessions'; },
-          height: 180
+          height: 180,
+          dataLabels: false,
+          showLegend: true
         });
       }
 
