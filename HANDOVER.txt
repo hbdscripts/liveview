@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-17 (Hotfix: Postgres tx context no longer leaks across requests)
+Last updated: 2026-02-17 (Hotfix + guardrails: prevent spinner/hang regressions)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -399,6 +399,9 @@ Ops/reliability:
 - Postgres request-stall hardening:
   - `server/db.js` no longer uses a global `_pgTxClient`; transaction client scope is now per-async-context via `AsyncLocalStorage`.
   - Nested transactions flatten into the existing transaction scope; unrelated requests no longer get routed through another request’s in-flight transaction.
+- Agent/runtime guardrails:
+  - Added always-on Cursor rule `.cursor/rules/runtime-hang-guardrails.mdc` with required incident workflow (Sentry transactions + release verification) for "site spins/down" reports.
+  - Added `test/runtime-hang-guardrails.test.js` to prevent regressions: no global Postgres tx client, `/api/kpis` must stay non-blocking on truth reconciliation, and pre-reconcile backup must remain async.
 
 2026-02-16 (latest)
 - Change Pins production hardening:
