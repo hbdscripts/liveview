@@ -2941,15 +2941,21 @@ html[data-bs-theme="dark"] .report-build-wrap {
 .kexo-overview-running-totals--main .kexo-overview-running-total-label {
   color: #333;
   opacity: 0.75;
+  font-weight: 400;
 }
 .kexo-overview-running-totals--main .kexo-overview-running-total-value {
   font-size: 1.05rem;
-  font-weight: 600;
+  font-weight: 400;
   color: #333;
 }
 .kexo-overview-running-totals--main .kexo-overview-running-total.is-revenue .kexo-overview-running-total-value,
 .kexo-overview-running-totals--main .kexo-overview-running-total.is-cost .kexo-overview-running-total-value {
   color: #333;
+}
+.kexo-overview-running-totals--main .kexo-overview-running-total.is-cost .kexo-overview-running-total-label,
+.kexo-overview-running-totals--main .kexo-overview-running-total.is-cost .kexo-overview-running-total-value {
+  color: #777;
+  opacity: 1;
 }
 .kexo-overview-running-totals--main .kexo-overview-running-total.is-profit .kexo-overview-running-total-label,
 .kexo-overview-running-totals--main .kexo-overview-running-total.is-profit .kexo-overview-running-total-value {

@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: b3026b2b1958b923
+// checksum: 7fcb2e15cf71d09c
 
 (function () {
 const API = '';
@@ -16209,6 +16209,8 @@ const API = '';
 
       var OVERVIEW_HEADER_GAP_PX = 8;
       var OVERVIEW_HEADER_FALLBACK_PX = 52;
+      var OVERVIEW_MINI_FOOTER_FALLBACK_PX = 32;
+      var OVERVIEW_MINI_EXTRA_BUFFER_PX = 10;
       function resolveOverviewChartHeight(chartEl, fallback, min, max) {
         var _dbgOn = false;
         var _dbgId = '';
@@ -16243,6 +16245,8 @@ const API = '';
               var card = parent.closest ? parent.closest('.kexo-overview-mini-card, .kexo-overview-main-card') : null;
               if (card && card.getBoundingClientRect) {
                 var cardH = card.getBoundingClientRect().height;
+                var isMini = false;
+                try { isMini = !!(card.classList && card.classList.contains('kexo-overview-mini-card')); } catch (_) { isMini = false; }
                 var headEl = card.querySelector ? card.querySelector('.kexo-overview-card-head') : null;
                 var headerPx = OVERVIEW_HEADER_FALLBACK_PX;
                 if (headEl && headEl.getBoundingClientRect) {
@@ -16255,6 +16259,32 @@ const API = '';
                   if (Number.isFinite(totalsRect.height) && totalsRect.height > 0) {
                     headerPx += totalsRect.height + OVERVIEW_HEADER_GAP_PX;
                   }
+                }
+                if (isMini) {
+                  try {
+                    var lid = chartEl && chartEl.id ? String(chartEl.id) : '';
+                    var footerPx = 0;
+                    var legendEl = lid && card.querySelector ? card.querySelector('[data-overview-legend="' + lid + '"]') : null;
+                    if (legendEl && legendEl.getBoundingClientRect) {
+                      var legendRect = legendEl.getBoundingClientRect();
+                      if (legendRect && Number.isFinite(legendRect.height) && legendRect.height > 0) {
+                        footerPx += legendRect.height + OVERVIEW_HEADER_GAP_PX;
+                      } else {
+                        footerPx += OVERVIEW_MINI_FOOTER_FALLBACK_PX;
+                      }
+                    } else if (legendEl) {
+                      footerPx += OVERVIEW_MINI_FOOTER_FALLBACK_PX;
+                    }
+                    var iconRowEl = card.querySelector ? card.querySelector('.dash-attribution-icon-row') : null;
+                    if (iconRowEl && iconRowEl.getBoundingClientRect) {
+                      var iconRect = iconRowEl.getBoundingClientRect();
+                      if (iconRect && Number.isFinite(iconRect.height) && iconRect.height > 0) {
+                        footerPx += iconRect.height + OVERVIEW_HEADER_GAP_PX;
+                      }
+                    }
+                    if (footerPx > 0) headerPx += footerPx;
+                  } catch (_) {}
+                  headerPx += OVERVIEW_MINI_EXTRA_BUFFER_PX;
                 }
                 var minBuffer = Math.max(OVERVIEW_HEADER_FALLBACK_PX, headerPx);
                 if (Number.isFinite(cardH) && cardH > minBuffer) {
@@ -17157,6 +17187,7 @@ const API = '';
           row.appendChild(cell);
         });
         chartEl.parentNode.insertBefore(row, chartEl.nextSibling);
+        try { scheduleOverviewHeightSync(); } catch (_) {}
       }
 
       function renderOverviewAttributionChart(attributionPayload) {
@@ -17189,6 +17220,7 @@ const API = '';
           var topSources = flatSources.slice(0, 5);
           if (topSources.length) {
             if (lineLike) {
+              renderOverviewMiniLegend(chartId, [], []);
               var srcLabels = topSources.map(function(s) { return s.label || ''; });
               var srcValues = topSources.map(function(s) { return s.revenue_gbp || 0; });
               var attrColors = ['#4b94e4', '#3eb3ab', '#f59e34', '#8b5cf6', '#ef4444'];
@@ -17204,8 +17236,11 @@ const API = '';
               try { removeAttributionIconRow(document.getElementById(chartId)); } catch (_) {}
               var rbLabels = topSources.map(function(s) { return s.label || ''; });
               var rbValues = topSources.map(function(s) { return s.revenue_gbp || 0; });
-              renderOverviewFinishesRadialBar(chartId, rbLabels, rbValues, { colors: ['#4b94e4', '#3eb3ab', '#f59e34', '#8b5cf6', '#ef4444'], height: 180 });
+              var rbColors = ['#4b94e4', '#3eb3ab', '#f59e34', '#8b5cf6', '#ef4444'];
+              renderOverviewFinishesRadialBar(chartId, rbLabels, rbValues, { colors: rbColors, height: 180 });
+              renderOverviewMiniLegend(chartId, rbLabels, rbColors);
             } else {
+              renderOverviewMiniLegend(chartId, [], []);
               renderOverviewAttributionDistributedBar(chartId, topSources, {
                 colors: ['#4b94e4', '#3eb3ab', '#f59e34', '#8b5cf6', '#ef4444'],
                 height: 180,
@@ -17214,6 +17249,7 @@ const API = '';
             }
           } else {
             renderOverviewChartEmpty(chartId, 'No attribution data');
+            renderOverviewMiniLegend(chartId, [], []);
             removeAttributionIconRow(document.getElementById(chartId));
           }
           return;
@@ -17239,6 +17275,7 @@ const API = '';
           showLegend: true,
           donut: mode === 'donut'
         });
+        renderOverviewMiniLegend(chartId, [], []);
       }
 
       function setOverviewSalesRunningTotals(revenueTotal, costTotal, profitTotal) {
@@ -17416,7 +17453,11 @@ const API = '';
         try { host = document.querySelector('[data-overview-legend="' + id + '"]'); } catch (_) { host = null; }
         if (!host) return;
         var list = Array.isArray(labels) ? labels : [];
-        if (!list.length) { host.innerHTML = ''; return; }
+        if (!list.length) {
+          host.innerHTML = '';
+          try { scheduleOverviewHeightSync(); } catch (_) {}
+          return;
+        }
         var cols = Array.isArray(colors) ? colors : [];
         var html = '';
         for (var i = 0; i < list.length; i++) {
@@ -17429,6 +17470,7 @@ const API = '';
             + '</span>';
         }
         host.innerHTML = html;
+        try { scheduleOverviewHeightSync(); } catch (_) {}
       }
 
       function overviewCardStyleSigFor(chartId) {
