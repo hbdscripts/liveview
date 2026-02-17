@@ -110,6 +110,40 @@ function uniqueNonEmpty(list) {
   return out;
 }
 
+async function inferSingleShopFromTable(db, tableName, orderByColumn) {
+  try {
+    const rows = await db.all(
+      `
+        SELECT LOWER(TRIM(shop)) AS shop, MAX(${orderByColumn}) AS last_seen
+        FROM ${tableName}
+        WHERE shop IS NOT NULL AND TRIM(shop) != ''
+        GROUP BY LOWER(TRIM(shop))
+        ORDER BY last_seen DESC
+        LIMIT 2
+      `
+    );
+    if (Array.isArray(rows) && rows.length === 1 && rows[0] && rows[0].shop) {
+      return String(rows[0].shop).trim().toLowerCase();
+    }
+  } catch (_) {}
+  return '';
+}
+
+async function resolveDashboardShop(db) {
+  const configured = salesTruth.resolveShopForSales('');
+  if (configured) return configured;
+
+  // Fail-open fallback: if env shop vars are unset, infer shop only when a single
+  // unambiguous shop exists in persisted auth/orders tables.
+  const fromSessions = await inferSingleShopFromTable(db, 'shop_sessions', 'updated_at');
+  if (fromSessions) return fromSessions;
+
+  const fromOrders = await inferSingleShopFromTable(db, 'orders_shopify', 'created_at');
+  if (fromOrders) return fromOrders;
+
+  return '';
+}
+
 function inPlaceholders(count, startIndex) {
   const n = Math.max(0, Math.trunc(Number(count) || 0));
   if (!n) return '';
@@ -736,7 +770,7 @@ async function fallbackTopProductsFromOrdersRawJson(db, shop, startMs, endMs, ra
 
 async function computeDashboardSeries(days, nowMs, timeZone, trafficMode) {
   const db = getDb();
-  const shop = salesTruth.resolveShopForSales('');
+  const shop = await resolveDashboardShop(db);
   const filter = sessionFilterForTraffic(trafficMode);
 
   // Platform start date: never show data before Feb 1 2025
@@ -1156,7 +1190,7 @@ function hourMinuteLabelFromParts(parts, hour, minute) {
 
 async function computeDashboardSeriesForBounds(bounds, nowMs, timeZone, trafficMode, bucketHint, rangeKey) {
   const db = getDb();
-  const shop = salesTruth.resolveShopForSales('');
+  const shop = await resolveDashboardShop(db);
   const filter = sessionFilterForTraffic(trafficMode);
 
   const start = bounds && Number.isFinite(Number(bounds.start)) ? Number(bounds.start) : nowMs;

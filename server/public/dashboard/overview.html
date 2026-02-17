@@ -289,6 +289,45 @@
       </div>
     </div>
       </div>
+      <div class="kexo-overview-cell kexo-overview-kpi-mid">
+        <div class="row g-3" id="dash-kpi-grid-mid"></div>
+      </div>
+      <div class="kexo-overview-cell kexo-overview-chart-main">
+        <div class="row g-3">
+          <div class="col-12" data-kexo-chart-key="dash-chart-overview-30d">
+            <div class="card kexo-overview-main-card">
+              <div class="card-body kexo-overview-main-card-body">
+                <div class="kexo-overview-card-head">
+                  <div class="kexo-overview-card-head-left">
+                    <div class="subheader">Sales Overview</div>
+                  </div>
+                  <div class="kexo-overview-card-actions">
+                    <button type="button" class="btn btn-sm btn-ghost-secondary kexo-overview-cost-settings-btn" id="dash-cost-settings-btn">Cost Settings</button>
+                    <button type="button" class="btn btn-icon btn-ghost-secondary kexo-overview-chart-settings-btn" data-kexo-chart-settings-key="dash-chart-overview-30d" aria-label="Chart settings" title="Chart settings">
+                      <i class="fa-light fa-gear" data-icon-key="chart-builder-icon" style="color:#999" aria-hidden="true"></i>
+                    </button>
+                  </div>
+                </div>
+                <div class="kexo-overview-running-totals" id="dash-overview-running-totals" aria-label="Sales Overview running totals">
+                  <span class="kexo-overview-running-total is-revenue">
+                    <span class="kexo-overview-running-total-label">Revenue</span>
+                    <span class="kexo-overview-running-total-value" id="dash-overview-total-revenue">&mdash;</span>
+                  </span>
+                  <span class="kexo-overview-running-total is-cost">
+                    <span class="kexo-overview-running-total-label">Cost</span>
+                    <span class="kexo-overview-running-total-value" id="dash-overview-total-cost">&mdash;</span>
+                  </span>
+                  <span class="kexo-overview-running-total is-profit">
+                    <span class="kexo-overview-running-total-label">Profit</span>
+                    <span class="kexo-overview-running-total-value" id="dash-overview-total-profit">&mdash;</span>
+                  </span>
+                </div>
+                <div id="dash-chart-overview-30d" class="kexo-overview-main-chart"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
       <div class="kexo-overview-cell kexo-overview-charts-top">
         <div class="row g-3 kexo-overview-mini-row">
           <div class="col-12 col-md-4" data-kexo-chart-key="dash-chart-finishes-30d">
@@ -341,31 +380,6 @@
                   </div>
                 </div>
                 <div id="dash-chart-attribution-30d" class="kexo-overview-mini-chart"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="kexo-overview-cell kexo-overview-kpi-mid">
-        <div class="row g-3" id="dash-kpi-grid-mid"></div>
-      </div>
-      <div class="kexo-overview-cell kexo-overview-chart-main">
-        <div class="row g-3">
-          <div class="col-12" data-kexo-chart-key="dash-chart-overview-30d">
-            <div class="card kexo-overview-main-card">
-              <div class="card-body kexo-overview-main-card-body">
-                <div class="kexo-overview-card-head">
-                  <div class="kexo-overview-card-head-left">
-                    <div class="subheader">Sales Overview</div>
-                  </div>
-                  <div class="kexo-overview-card-actions">
-                    <button type="button" class="btn btn-sm btn-ghost-secondary kexo-overview-cost-settings-btn" id="dash-cost-settings-btn">Cost Settings</button>
-                    <button type="button" class="btn btn-icon btn-ghost-secondary kexo-overview-chart-settings-btn" data-kexo-chart-settings-key="dash-chart-overview-30d" aria-label="Chart settings" title="Chart settings">
-                      <i class="fa-light fa-gear" data-icon-key="chart-builder-icon" style="color:#999" aria-hidden="true"></i>
-                    </button>
-                  </div>
-                </div>
-                <div id="dash-chart-overview-30d" class="kexo-overview-main-chart"></div>
               </div>
             </div>
           </div>

@@ -383,7 +383,7 @@
     var showMarkers = lineLike;
     var showFill = (lineLike || barLike) && mode !== 'map-flat' && mode !== 'map-animated';
     var showGrid = lineLike || barLike;
-    var showLabels = lineLike || barLike;
+    var showLabels = lineLike || barLike || mode === 'pie' || mode === 'donut' || mode === 'radialbar';
     var showToolbar = true;
     var showAnimations = true;
     var showPieDonut = mode === 'pie' || mode === 'donut';

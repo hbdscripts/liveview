@@ -2796,7 +2796,7 @@ html[data-bs-theme="dark"] .report-build-wrap {
   color: var(--kexo-kpi-delta-same, var(--kexo-accent-1, #4b94e4));
 }
 
-/* Dashboard overview 2x2 grid: Row1 = 4 KPIs | 3 charts, Row2 = 4 KPIs | 1 chart */
+/* Dashboard overview 2x2 grid: Row1 = 4 KPIs | Sales Overview, Row2 = 4 KPIs | 3 charts */
 .kexo-overview-grid {
   display: grid;
   grid-template-columns: 1fr;
@@ -2806,7 +2806,7 @@ html[data-bs-theme="dark"] .report-build-wrap {
 @media (min-width: 1200px) {
   .kexo-overview-grid {
     grid-template-columns: 5fr 7fr;
-    grid-template-rows: minmax(240px, auto) minmax(260px, auto);
+    grid-template-rows: minmax(260px, auto) minmax(240px, auto);
   }
 }
 .kexo-overview-cell {
@@ -2879,6 +2879,43 @@ html[data-bs-theme="dark"] .report-build-wrap {
   justify-content: flex-end;
   gap: .5rem;
   margin-left: auto;
+}
+.kexo-overview-running-totals {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: .4rem .6rem;
+  margin-top: .1rem;
+}
+.kexo-overview-running-total {
+  display: inline-flex;
+  align-items: baseline;
+  gap: .35rem;
+  border-radius: 999px;
+  padding: .2rem .5rem;
+  background: rgba(15, 23, 42, 0.045);
+}
+.kexo-overview-running-total-label {
+  font-size: .66rem;
+  font-weight: 500;
+  letter-spacing: .02em;
+  text-transform: uppercase;
+  color: var(--tblr-secondary);
+}
+.kexo-overview-running-total-value {
+  font-size: .75rem;
+  font-weight: 500;
+  line-height: 1.2;
+  color: #0f172a;
+}
+.kexo-overview-running-total.is-revenue .kexo-overview-running-total-value {
+  color: #2563eb;
+}
+.kexo-overview-running-total.is-cost .kexo-overview-running-total-value {
+  color: #dc2626;
+}
+.kexo-overview-running-total.is-profit .kexo-overview-running-total-value {
+  color: #16a34a;
 }
 .kexo-overview-cost-settings-btn {
   font-weight: 500;

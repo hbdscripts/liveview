@@ -214,8 +214,11 @@
 
     function normalizeChartType(value, fallback) {
       const v = String(value == null ? '' : value).trim().toLowerCase();
-      if (v === 'area' || v === 'bar' || v === 'line') return v;
-      return fallback || 'area';
+      if (v === 'multi-line-labels') return 'line';
+      if (v === 'donut') return 'pie';
+      if (v === 'radialbar' || v === 'radial-bar') return 'radialbar';
+      if (v === 'area' || v === 'bar' || v === 'line' || v === 'pie') return v;
+      return normalizeChartType(fallback, 'area');
     }
 
     // Chart-type switchers were removed theme-wide; keep this helper as a
@@ -3868,6 +3871,15 @@
         if (style.pieDonut) {
           out.plotOptions.pie.donut = { size: String(Math.max(30, Math.min(90, Number(style.pieDonutSize) || 66))) + '%' };
         }
+      } else if (mode === 'radialbar') {
+        if (style.dataLabels === 'on' || style.dataLabels === 'off') {
+          out.plotOptions = out.plotOptions || {};
+          out.plotOptions.radialBar = out.plotOptions.radialBar || {};
+          out.plotOptions.radialBar.dataLabels = out.plotOptions.radialBar.dataLabels || {};
+          out.plotOptions.radialBar.dataLabels.value = out.plotOptions.radialBar.dataLabels.value || {};
+          out.plotOptions.radialBar.dataLabels.value.show = style.dataLabels === 'on';
+        }
+        out.fill = { opacity: style.fillOpacity > 0 ? style.fillOpacity : 1 };
       } else {
         out.stroke = {
           show: true,

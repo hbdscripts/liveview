@@ -656,6 +656,13 @@
                   var headRect = headEl.getBoundingClientRect();
                   if (Number.isFinite(headRect.height) && headRect.height > 0) headerPx = headRect.height + OVERVIEW_HEADER_GAP_PX;
                 }
+                var totalsEl = card.querySelector ? card.querySelector('.kexo-overview-running-totals') : null;
+                if (totalsEl && totalsEl.getBoundingClientRect) {
+                  var totalsRect = totalsEl.getBoundingClientRect();
+                  if (Number.isFinite(totalsRect.height) && totalsRect.height > 0) {
+                    headerPx += totalsRect.height + OVERVIEW_HEADER_GAP_PX;
+                  }
+                }
                 var minBuffer = Math.max(OVERVIEW_HEADER_FALLBACK_PX, headerPx);
                 if (Number.isFinite(cardH) && cardH > minBuffer) {
                   var avail = cardH - headerPx;
@@ -718,16 +725,6 @@
           var topRect = topGrid.getBoundingClientRect ? topGrid.getBoundingClientRect() : null;
           if (topRect && Number.isFinite(topRect.height) && topRect.height > 0) topHeight = Math.max(0, Math.round(topRect.height) - 16);
         } catch (_) {}
-        if (topHeight > 0) {
-          try {
-            document.querySelectorAll('.kexo-overview-mini-row .kexo-overview-mini-card').forEach(function(card) {
-              if (!card || !card.style) return;
-              card.style.height = String(topHeight) + 'px';
-              card.style.minHeight = String(topHeight) + 'px';
-              card.style.maxHeight = String(topHeight) + 'px';
-            });
-          } catch (_) {}
-        }
         var midHeight = 0;
         try {
           if (midGrid && midGrid.getBoundingClientRect) {
@@ -735,7 +732,18 @@
             if (midRect && Number.isFinite(midRect.height) && midRect.height > 0) midHeight = Math.max(0, Math.round(midRect.height) - 16);
           }
         } catch (_) {}
-        var mainHeight = midHeight > 0 ? midHeight : topHeight;
+        var miniHeight = midHeight > 0 ? midHeight : topHeight;
+        if (miniHeight > 0) {
+          try {
+            document.querySelectorAll('.kexo-overview-mini-row .kexo-overview-mini-card').forEach(function(card) {
+              if (!card || !card.style) return;
+              card.style.height = String(miniHeight) + 'px';
+              card.style.minHeight = String(miniHeight) + 'px';
+              card.style.maxHeight = String(miniHeight) + 'px';
+            });
+          } catch (_) {}
+        }
+        var mainHeight = topHeight > 0 ? topHeight : midHeight;
         if (mainHeight > 0) {
           try {
             var mainCard = document.querySelector('[data-kexo-chart-key="dash-chart-overview-30d"] .kexo-overview-main-card');
@@ -745,7 +753,7 @@
             }
           } catch (_) {}
         }
-        if (mainHeight > 0 || topHeight > 0) {
+        if (mainHeight > 0 || miniHeight > 0) {
           try {
             overviewMiniChartIds().forEach(function(chartId) {
               var chart = dashCharts && dashCharts[chartId];
@@ -1008,10 +1016,16 @@
         if (!isChartEnabledByUiConfig(chartId)) {
           destroyDashChart(chartId);
           chartEl.innerHTML = '';
+          if (String(chartId || '') === 'dash-chart-overview-30d') {
+            setOverviewSalesRunningTotals(null, null, null);
+          }
           return;
         }
         destroyDashChart(chartId);
         chartEl.innerHTML = '<div class="kexo-overview-chart-empty">' + escapeHtml(text || 'No data available') + '</div>';
+        if (String(chartId || '') === 'dash-chart-overview-30d') {
+          setOverviewSalesRunningTotals(null, null, null);
+        }
       }
 
       function renderOverviewChartLoading(chartId, text) {
@@ -1020,10 +1034,16 @@
         if (!isChartEnabledByUiConfig(chartId)) {
           destroyDashChart(chartId);
           chartEl.innerHTML = '';
+          if (String(chartId || '') === 'dash-chart-overview-30d') {
+            setOverviewSalesRunningTotals(null, null, null);
+          }
           return;
         }
         destroyDashChart(chartId);
         chartEl.innerHTML = '<div class="kexo-overview-chart-empty is-loading"><span class="kpi-mini-spinner" aria-hidden="true"></span><span>' + escapeHtml(text || 'Loading...') + '</span></div>';
+        if (String(chartId || '') === 'dash-chart-overview-30d') {
+          setOverviewSalesRunningTotals(null, null, null);
+        }
       }
 
       function showOverviewMiniLoadingState() {
@@ -1131,7 +1151,7 @@
             type: chartType,
             height: chartHeight,
             fontFamily: 'Inter, sans-serif',
-            toolbar: { show: false },
+            toolbar: { show: !!(uiStyle && uiStyle.toolbar === true) },
             animations: { enabled: uiStyle.animations === true, easing: 'easeinout', speed: 280 },
             zoom: { enabled: false }
           },
@@ -1219,12 +1239,14 @@
         var uiStyle = (typeof chartStyleFromUiConfig === 'function') ? chartStyleFromUiConfig(chartId) : null;
         var labelsRef = labels;
         var valuesRef = values;
+        var labelsMode = (uiStyle && uiStyle.dataLabels != null) ? String(uiStyle.dataLabels).trim().toLowerCase() : 'auto';
+        if (labelsMode !== 'on' && labelsMode !== 'off' && labelsMode !== 'auto') labelsMode = 'auto';
         var apexOpts = {
           chart: {
             type: 'radialBar',
             height: chartHeight,
             fontFamily: 'Inter, sans-serif',
-            toolbar: { show: false },
+            toolbar: { show: !!(uiStyle && uiStyle.toolbar === true) },
             animations: { enabled: !!(uiStyle && uiStyle.animations === true), easing: 'easeinout', speed: 280 }
           },
           plotOptions: {
@@ -1235,7 +1257,7 @@
               track: { background: 'rgba(0,0,0,0.06)' },
               dataLabels: {
                 name: { show: false },
-                value: { show: true, formatter: function(val) { return val ? val.toFixed(0) + '%' : ''; } },
+                value: { show: labelsMode !== 'off', formatter: function(val) { return val ? val.toFixed(0) + '%' : ''; } },
                 total: { show: false },
               }
             }
@@ -1260,7 +1282,7 @@
           noData: { text: 'No data available', style: { fontSize: '13px', color: '#626976' } }
         };
         try {
-          var chartOverride = (typeof chartAdvancedOverrideFromUiConfig === 'function') ? chartAdvancedOverrideFromUiConfig(chartId, 'radialBar') : null;
+          var chartOverride = (typeof chartAdvancedOverrideFromUiConfig === 'function') ? chartAdvancedOverrideFromUiConfig(chartId, 'radialbar') : null;
           if (chartOverride && isPlainObject(chartOverride) && Object.keys(chartOverride).length) {
             apexOpts = deepMergeOptions(apexOpts, chartOverride);
           }
@@ -1607,15 +1629,33 @@
         });
       }
 
+      function setOverviewSalesRunningTotals(revenueTotal, costTotal, profitTotal) {
+        function setValue(id, value) {
+          var el = document.getElementById(id);
+          if (!el) return;
+          var n = Number(value);
+          if (!Number.isFinite(n)) {
+            el.textContent = '\u2014';
+            return;
+          }
+          el.textContent = fmtGbp(Math.round(n * 100) / 100);
+        }
+        setValue('dash-overview-total-revenue', revenueTotal);
+        setValue('dash-overview-total-cost', costTotal);
+        setValue('dash-overview-total-profit', profitTotal);
+      }
+
       function renderOverviewRevenueCostChart(snapshotPayload) {
         var chartId = 'dash-chart-overview-30d';
         if (!isChartEnabledByUiConfig(chartId)) {
           destroyDashChart(chartId);
           var hiddenEl = document.getElementById(chartId);
           if (hiddenEl) hiddenEl.innerHTML = '';
+          setOverviewSalesRunningTotals(null, null, null);
           return;
         }
         if (!snapshotPayload) {
+          setOverviewSalesRunningTotals(null, null, null);
           renderOverviewChartLoading(chartId, 'Loading sales overview…');
           return;
         }
@@ -1630,6 +1670,7 @@
         var costGbp = current && Array.isArray(current.costGbp) ? current.costGbp : [];
         var len = Math.max(labelsYmd.length, revenueGbp.length, costGbp.length);
         if (!len) {
+          setOverviewSalesRunningTotals(null, null, null);
           renderOverviewChartEmpty(chartId, 'No sales overview data');
           return;
         }
@@ -1637,15 +1678,23 @@
         var revenue = [];
         var cost = [];
         var profit = [];
+        var revenueTotal = 0;
+        var costTotal = 0;
+        var profitTotal = 0;
         for (var i = 0; i < len; i++) {
           var ymd = labelsYmd[i] != null ? String(labelsYmd[i]) : '';
           labels.push(ymd ? formatOverviewBucketLabel(ymd, granularity) : String(i + 1));
           var rev = normalizeOverviewMetric(revenueGbp[i]);
           var cst = normalizeOverviewMetric(costGbp[i]);
+          var pft = (typeof rev === 'number' && typeof cst === 'number') ? rev - cst : 0;
           revenue.push(rev);
           cost.push(cst);
-          profit.push(typeof rev === 'number' && typeof cst === 'number' ? rev - cst : 0);
+          profit.push(pft);
+          revenueTotal += rev;
+          costTotal += cst;
+          profitTotal += pft;
         }
+        setOverviewSalesRunningTotals(revenueTotal, costTotal, profitTotal);
         var chartEl = document.getElementById(chartId);
         var chartHeight = resolveOverviewChartHeight(chartEl, 260, 140, 760);
         var overviewMode = (typeof chartModeFromUiConfig === 'function') ? chartModeFromUiConfig(chartId, 'area') : 'area';

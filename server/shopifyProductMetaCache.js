@@ -111,5 +111,26 @@ async function getProductMeta(shop, token, productId, { ttlMs = DEFAULT_TTL_MS, 
   return inflight;
 }
 
-module.exports = { getProductMeta, sanitizeThumbUrl };
+function peekProductMeta(shop, productId, { ttlMs = DEFAULT_TTL_MS } = {}) {
+  const ttl = clampTtl(ttlMs);
+  const k = keyFor(shop, productId);
+  const entry = cache.get(k);
+  if (!entry || !entry.data) return null;
+  const fetchedAt = Number(entry.fetchedAt) || 0;
+  if (!fetchedAt) return null;
+  if ((Date.now() - fetchedAt) >= ttl) return null;
+  return entry.data;
+}
+
+function warmProductMeta(shop, token, productId, { ttlMs = DEFAULT_TTL_MS } = {}) {
+  try {
+    const p = getProductMeta(shop, token, productId, { ttlMs });
+    if (p && typeof p.catch === 'function') p.catch(() => null);
+    return p;
+  } catch (_) {
+    return Promise.resolve({ ok: false, handle: null, title: null, thumb_url: null, product_type: null });
+  }
+}
+
+module.exports = { getProductMeta, peekProductMeta, warmProductMeta, sanitizeThumbUrl };
 
