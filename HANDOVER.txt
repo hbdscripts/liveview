@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-17 (Dashboard overview per-card ranges + chart polish + chart settings migration fix)
+Last updated: 2026-02-17 (Google Ads postback + issues + goal health + Integrations/Settings UI)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -127,7 +127,7 @@ Acquisition:
 - `/acquisition/devices` → `server/public/acquisition/devices.html`
 
 Integrations:
-- `/integrations/google-ads` → `server/public/integrations/google-ads.html`
+- `/integrations/google-ads` → `server/public/integrations/google-ads.html` — includes Goal Health card, unresolved issues badge + modal (list/resolve), visibility-aware polling for `/api/integrations/google-ads/issues/summary`.
 
 Tools:
 - `/tools/compare-conversion-rate` → `server/public/tools/compare-conversion-rate.html`
@@ -169,7 +169,7 @@ Settings tabs:
 - Kexo (menu item #1): includes subtabs:
   - General: current config display + KPI date label format toggle (`dmy`/`mdy`), and Assets (favicon/logo overrides, R2-backed, plan-gated for normal accounts).
   - UI: theme editor (colors/fonts/icons/header/sale notification). Sale Notification subtab stores selection in `asset_overrides.saleSound`.
-- Integrations: Pixel + Google Ads status/actions
+- Integrations: Pixel + Google Ads status/actions; Google Ads OAuth (connect/disconnect/test), account context, goal provisioning, profit rules note, postback enable/disable (`google_ads_postback_enabled`).
 - Tables, Charts & KPIs (menu item #3):
   - Tables: accordion-based per-page table config (name/order/grid, rows-per-page options/default, optional sticky column min/max). **Insights · Variants** is a single accordion that controls all user-defined variant tables on /insights/variants (rows 5/10, sticky min/max).
   - Charts: accordion-based per-chart + per-KPI-bundle controls with live previews, hex palette inputs, sparkline mode/curve/width/height, delta typography/icon styling, and optional advanced Apex JSON overrides (see Charts section)
@@ -202,6 +202,14 @@ Diagnostics access:
 - `GET /api/config-status` is now **restricted for non-admins** (returns a minimal payload for Settings/Integrations/footer tags).
 - Full diagnostics payload is only returned to admin requests (OAuth cookie + users.role=admin; legacy: master).
 - `POST /api/reconcile-sales` is admin-only (gated in `server/index.js`).
+
+Google Ads postback and issues:
+- Postback default: **disabled** until `google_ads_postback_enabled` is enabled in Settings → Integrations. Profit conversion value = revenue − configured non-ads costs (excludes ad spend). Failures surface as issues (no silent drops).
+- Ads DB tables (migrations in `server/ads/adsMigrate.js`): `google_ads_postback_jobs`, `google_ads_postback_attempts`, `google_ads_issues`, `google_ads_conversion_goals`, `google_ads_diagnostics_cache`; click-id columns `gbraid`/`wbraid` on `ads_orders_attributed`. Main DB: `server/migrations/053_sessions_click_ids.js` adds `gclid`/`gbraid`/`wbraid` on `sessions`.
+- Issues API (shop-scoped, redacted): `GET /api/integrations/google-ads/issues/summary`, `GET /api/integrations/google-ads/issues`, `POST /api/integrations/google-ads/issues/:id/resolve` (`server/routes/googleAdsIssues.js`, mounted in `server/index.js`).
+- Goal health: `GET /api/ads/google/goals`, `POST /api/ads/google/provision-goals`, `GET /api/ads/google/diagnostics`, `GET /api/ads/google/goal-health` in `server/routes/ads.js`. Diagnostics cached in `google_ads_diagnostics_cache`.
+- Postback engine: `server/ads/googleAdsPostback.js` (enqueue dual-goal jobs, click-id precedence gclid→gbraid→wbraid, idempotency `(shop, order_id, goal_type)`, retry/backoff). Scheduler in `server/index.js`: `schedulePostbackSync` runs `runPostbackCycle(shop)` on an interval with in-flight guard; only runs when `google_ads_postback_enabled` is set. Fail-open (no blocking of request paths).
+- Rollback: disable postback via Settings; keep existing `/api/ads/status`/summary/audit unchanged.
 
 ---
 
@@ -415,6 +423,7 @@ Ops/reliability:
   - Countries + Attribution bars: square corners, full opacity, and no in-bar £ labels.
   - Countries + Attribution labels: countries now render flag+code axis labels; attribution icon row spacing made more visible.
   - Right overview card alignment: removed extra vertical gap so overview cards end flush with the KPI stacks on desktop.
+  - KPI placement: on desktop, keep `kexo_score` out of the top/mid KPI stacks so the “8 top + 4 mid” KPI layout aligns pixel-perfect with the 4 overview charts.
 - Dashboard tables rows-per-page: dashboard tables ignore persisted per-table row overrides; rows-per-page always follow `tables_ui_config_v1` defaults so “Trending Down” default rows (5) can’t be masked by stale localStorage.
 - Chart settings: dashboard overview mode migration is now one-time (`charts_ui_config_v1.defaultsVersion`) so user-selected chart types persist (fixes Revenue & Cost chart type changes being ignored).
 - KPI sparklines: removed left-edge “squiggle” at narrow widths by adding internal chart padding (prevents stroke clipping).
@@ -1639,5 +1648,8 @@ Ops/reliability:
 - Variants mapping-issue badge is now clickable and opens a modal with unmapped/ambiguous variant examples plus mapped coverage summary (sessions/orders/revenue) to help diagnose unusually high CR%.
 - Added dedicated icon keys for Insights → Variants table headers (`table-icon-variants-*`) so each column icon is individually configurable in Settings → Theme → Icons.
 - Sticky table cells, header row, and footer row (e.g. ads-totals-row) now use unified surface-secondary background with color-mix gradient; removed conflicting background overrides from custom.css, app.css, ads.js.
+- Migration 049: add sessions.utm_term (fixes NODE-1R traffic-sources-v2 diagnostics). trafficSourcesV2 fallback when column missing.
+- Acquisition cutover complete: legacy Traffic (channels/type) UI and APIs removed from app.js; settings defaults and trackerDefinitions use Acquisition · Attribution and Acquisition · Devices (attribution-chart, devices-chart, /api/attribution/report, /api/devices/report). Store no longer uses traffic_source_* maps or enrichSessionsWithTrafficSourcesV2; write-time attribution via deriveAttribution only. Tests: test/derive-attribution.test.js. Audit docs (METRICS_MAP.txt, map.json) updated to Acquisition routes.
+, app.css, ads.js.
 - Migration 049: add sessions.utm_term (fixes NODE-1R traffic-sources-v2 diagnostics). trafficSourcesV2 fallback when column missing.
 - Acquisition cutover complete: legacy Traffic (channels/type) UI and APIs removed from app.js; settings defaults and trackerDefinitions use Acquisition · Attribution and Acquisition · Devices (attribution-chart, devices-chart, /api/attribution/report, /api/devices/report). Store no longer uses traffic_source_* maps or enrichSessionsWithTrafficSourcesV2; write-time attribution via deriveAttribution only. Tests: test/derive-attribution.test.js. Audit docs (METRICS_MAP.txt, map.json) updated to Acquisition routes.

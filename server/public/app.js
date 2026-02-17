@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: de25a95e2c08b769
+// checksum: 79d6b8ed47cc7970
 
 (function () {
 const API = '';
@@ -9271,12 +9271,22 @@ const API = '';
       var list = cfg && cfg.kpis && Array.isArray(cfg.kpis.dashboard) ? cfg.kpis.dashboard : null;
       if (!list) return;
       var topCap = 4;
+      var desktop = false;
       try {
-        if (window && window.matchMedia && window.matchMedia('(min-width: 1200px)').matches) topCap = 8;
+        desktop = !!(window && window.matchMedia && window.matchMedia('(min-width: 1200px)').matches);
+        if (desktop) topCap = 8;
       } catch (_) {}
       var midCap = 4;
       var topVisibleCount = 0;
       var midVisibleCount = 0;
+
+      function pinToLower(key) {
+        // Keep special/tall KPI cards out of the top+mid layout so the left KPI stacks
+        // align exactly with the 4 overview charts on the right (8 top, 4 mid).
+        var k = key != null ? String(key).trim().toLowerCase() : '';
+        if (!desktop) return false;
+        return k === 'kexo_score';
+      }
 
       var idByKey = {
         revenue: 'dash-kpi-revenue',
@@ -9319,8 +9329,9 @@ const API = '';
       var fragMid = document.createDocumentFragment();
       var fragLower = document.createDocumentFragment();
 
-      function chooseBucket(enabled) {
+      function chooseBucket(key, enabled) {
         if (!enabled) return 'lower';
+        if (pinToLower(key)) return 'lower';
         if (topVisibleCount < topCap) {
           topVisibleCount += 1;
           return 'top';
@@ -9345,7 +9356,7 @@ const API = '';
         }
         var enabled = item.enabled !== false;
         col.classList.toggle('is-user-disabled', !enabled);
-        var bucket = chooseBucket(enabled);
+        var bucket = chooseBucket(key, enabled);
         if (bucket === 'top') fragPrimary.appendChild(col);
         else if (bucket === 'mid') fragMid.appendChild(col);
         else fragLower.appendChild(col);
@@ -9354,7 +9365,8 @@ const API = '';
       allCols.forEach(function(col) {
         if (!col || seen.has(col)) return;
         col.classList.remove('is-user-disabled');
-        var bucket = chooseBucket(true);
+        var key = keyByCol && keyByCol.get ? (keyByCol.get(col) || '') : '';
+        var bucket = chooseBucket(key, true);
         if (bucket === 'top') fragPrimary.appendChild(col);
         else if (bucket === 'mid') fragMid.appendChild(col);
         else fragLower.appendChild(col);
