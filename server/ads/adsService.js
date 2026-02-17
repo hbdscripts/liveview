@@ -2,7 +2,7 @@ const store = require('../store');
 const config = require('../config');
 const { getDb } = require('../db');
 const { getAdsDb } = require('./adsDb');
-const { getGoogleAdsConfig } = require('./adsStore');
+const { getGoogleAdsConfig, getResolvedCustomerIds } = require('./adsStore');
 
 const ALLOWED_RANGE = new Set(['today', 'yesterday', '3d', '7d', '14d', '30d', 'month']);
 
@@ -36,17 +36,12 @@ function fmtYmdInTz(tsMs, timeZone) {
   }
 }
 
-async function getStatus() {
+async function getStatus(shop) {
   const adsDb = getAdsDb();
-  const providerCfg = await getGoogleAdsConfig();
+  const providerCfg = await getGoogleAdsConfig(shop);
   const refreshToken = providerCfg && providerCfg.refresh_token ? String(providerCfg.refresh_token).trim() : '';
-
-  const customerIdRaw = config.googleAdsCustomerId != null ? String(config.googleAdsCustomerId) : '';
-  const loginCustomerIdRaw = config.googleAdsLoginCustomerId != null ? String(config.googleAdsLoginCustomerId) : '';
+  const { customerId, loginCustomerId } = getResolvedCustomerIds(providerCfg);
   const developerToken = config.googleAdsDeveloperToken != null ? String(config.googleAdsDeveloperToken).trim() : '';
-
-  const customerId = customerIdRaw.replace(/[^0-9]/g, '').slice(0, 32);
-  const loginCustomerId = loginCustomerIdRaw.replace(/[^0-9]/g, '').slice(0, 32);
 
   const configured = !!(adsDb && developerToken && customerId);
   const connected = !!(configured && refreshToken);

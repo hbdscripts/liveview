@@ -2,7 +2,7 @@ const config = require('../config');
 const fx = require('../fx');
 const { getDb, isPostgres } = require('../db');
 const { getAdsDb } = require('./adsDb');
-const { getGoogleAdsConfig } = require('./adsStore');
+const { getGoogleAdsConfig, getResolvedCustomerIds } = require('./adsStore');
 
 function normalizeCustomerId(raw) {
   const s = raw != null ? String(raw).trim() : '';
@@ -112,6 +112,38 @@ function normalizeApiVersion(raw) {
   if (/^v\d+$/.test(s)) return s;
   if (/^\d+$/.test(s)) return 'v' + s;
   return '';
+}
+
+/** Minimal GAQL test: SELECT customer.id FROM customer LIMIT 1. Returns { ok, error?, customerId? }. */
+async function testGoogleAdsConnection(shop) {
+  const developerToken = (config.googleAdsDeveloperToken || '').trim();
+  if (!developerToken) return { ok: false, error: 'Missing GOOGLE_ADS_DEVELOPER_TOKEN' };
+  if (!config.googleClientId || !config.googleClientSecret) {
+    return { ok: false, error: 'Missing GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET' };
+  }
+  const cfg = await getGoogleAdsConfig(shop);
+  const refreshToken = cfg && cfg.refresh_token ? String(cfg.refresh_token) : '';
+  if (!refreshToken) return { ok: false, error: 'Google Ads not connected (missing refresh_token)' };
+  const { customerId, loginCustomerId } = getResolvedCustomerIds(cfg);
+  if (!customerId) return { ok: false, error: 'Missing customer_id (set in OAuth or GOOGLE_ADS_CUSTOMER_ID)' };
+  try {
+    const accessToken = await fetchAccessTokenFromRefreshToken(refreshToken);
+    const out = await googleAdsSearch({
+      customerId,
+      loginCustomerId,
+      developerToken,
+      accessToken,
+      query: 'SELECT customer.id FROM customer LIMIT 1',
+    });
+    if (!out || !out.ok) {
+      return { ok: false, error: (out && out.error) || 'GAQL test failed', attempts: out && out.attempts };
+    }
+    const first = (out.results && out.results[0]) || null;
+    const cid = first && first.customer && first.customer.id != null ? String(first.customer.id) : customerId;
+    return { ok: true, customerId: cid };
+  } catch (e) {
+    return { ok: false, error: e && e.message ? String(e.message).slice(0, 320) : 'test_connection_failed' };
+  }
 }
 
 function getApiVersionsToTry(options = {}) {
@@ -260,16 +292,15 @@ async function syncGoogleAdsSpendHourly(options = {}) {
     if (!adsDb) return { ok: false, error: 'ADS_DB_URL not set' };
 
     const developerToken = (config.googleAdsDeveloperToken || '').trim();
-    const loginCustomerId = normalizeCustomerId(config.googleAdsLoginCustomerId);
-    const customerId = normalizeCustomerId(config.googleAdsCustomerId);
     if (!developerToken) return { ok: false, error: 'Missing GOOGLE_ADS_DEVELOPER_TOKEN' };
-    if (!customerId) return { ok: false, error: 'Missing GOOGLE_ADS_CUSTOMER_ID' };
 
     if (!config.googleClientId || !config.googleClientSecret) {
       return { ok: false, error: 'Missing GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET' };
     }
 
-    const cfg = await getGoogleAdsConfig();
+    const cfg = await getGoogleAdsConfig(options.shop);
+    const { customerId, loginCustomerId } = getResolvedCustomerIds(cfg);
+    if (!customerId) return { ok: false, error: 'Missing GOOGLE_ADS_CUSTOMER_ID or customer_id in OAuth config' };
     const refreshToken = cfg && cfg.refresh_token ? String(cfg.refresh_token) : '';
     if (!refreshToken) return { ok: false, error: 'Google Ads not connected (missing refresh_token). Run /api/ads/google/connect' };
 
@@ -432,16 +463,15 @@ async function syncGoogleAdsGeoDaily(options = {}) {
     if (!adsDb) return { ok: false, error: 'ADS_DB_URL not set' };
 
     const developerToken = (config.googleAdsDeveloperToken || '').trim();
-    const loginCustomerId = normalizeCustomerId(config.googleAdsLoginCustomerId);
-    const customerId = normalizeCustomerId(config.googleAdsCustomerId);
     if (!developerToken) return { ok: false, error: 'Missing GOOGLE_ADS_DEVELOPER_TOKEN' };
-    if (!customerId) return { ok: false, error: 'Missing GOOGLE_ADS_CUSTOMER_ID' };
 
     if (!config.googleClientId || !config.googleClientSecret) {
       return { ok: false, error: 'Missing GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET' };
     }
 
-    const cfg = await getGoogleAdsConfig();
+    const cfg = await getGoogleAdsConfig(options.shop);
+    const { customerId, loginCustomerId } = getResolvedCustomerIds(cfg);
+    if (!customerId) return { ok: false, error: 'Missing GOOGLE_ADS_CUSTOMER_ID or customer_id in OAuth config' };
     const refreshToken = cfg && cfg.refresh_token ? String(cfg.refresh_token) : '';
     if (!refreshToken) return { ok: false, error: 'Google Ads not connected (missing refresh_token). Run /api/ads/google/connect' };
 
@@ -640,16 +670,15 @@ async function syncGoogleAdsDeviceDaily(options = {}) {
     if (!adsDb) return { ok: false, error: 'ADS_DB_URL not set' };
 
     const developerToken = (config.googleAdsDeveloperToken || '').trim();
-    const loginCustomerId = normalizeCustomerId(config.googleAdsLoginCustomerId);
-    const customerId = normalizeCustomerId(config.googleAdsCustomerId);
     if (!developerToken) return { ok: false, error: 'Missing GOOGLE_ADS_DEVELOPER_TOKEN' };
-    if (!customerId) return { ok: false, error: 'Missing GOOGLE_ADS_CUSTOMER_ID' };
 
     if (!config.googleClientId || !config.googleClientSecret) {
       return { ok: false, error: 'Missing GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET' };
     }
 
-    const cfg = await getGoogleAdsConfig();
+    const cfg = await getGoogleAdsConfig(options.shop);
+    const { customerId, loginCustomerId } = getResolvedCustomerIds(cfg);
+    if (!customerId) return { ok: false, error: 'Missing GOOGLE_ADS_CUSTOMER_ID or customer_id in OAuth config' };
     const refreshToken = cfg && cfg.refresh_token ? String(cfg.refresh_token) : '';
     if (!refreshToken) return { ok: false, error: 'Google Ads not connected (missing refresh_token). Run /api/ads/google/connect' };
 
@@ -831,11 +860,11 @@ async function backfillCampaignIdsFromGclid(options = {}) {
     if (!adsDb) return { ok: false, error: 'ADS_DB_URL not set' };
 
     const developerToken = (config.googleAdsDeveloperToken || '').trim();
-    const loginCustomerId = normalizeCustomerId(config.googleAdsLoginCustomerId);
-    const customerId = normalizeCustomerId(config.googleAdsCustomerId);
-    if (!developerToken || !customerId) return { ok: false, error: 'Missing Google Ads credentials' };
+    if (!developerToken) return { ok: false, error: 'Missing Google Ads credentials' };
 
-    const cfg = await getGoogleAdsConfig();
+    const cfg = await getGoogleAdsConfig(options.shop);
+    const { customerId, loginCustomerId } = getResolvedCustomerIds(cfg);
+    if (!customerId) return { ok: false, error: 'Missing GOOGLE_ADS_CUSTOMER_ID or customer_id in OAuth config' };
     const refreshToken = cfg && cfg.refresh_token ? String(cfg.refresh_token) : '';
     if (!refreshToken) return { ok: false, error: 'Google Ads not connected' };
 
@@ -1101,4 +1130,6 @@ module.exports = {
   syncGoogleAdsGeoDaily,
   syncGoogleAdsDeviceDaily,
   backfillCampaignIdsFromGclid,
+  testGoogleAdsConnection,
+  getApiVersionsToTry,
 };

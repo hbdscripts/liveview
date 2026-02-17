@@ -221,6 +221,117 @@ async function runAdsMigrations() {
         await db.exec(`ALTER TABLE google_ads_spend_hourly ADD COLUMN IF NOT EXISTS campaign_status TEXT`);
       },
     },
+    {
+      id: '012_google_ads_postback_jobs',
+      up: async () => {
+        await db.exec(`
+          CREATE TABLE IF NOT EXISTS google_ads_postback_jobs (
+            id SERIAL PRIMARY KEY,
+            shop TEXT NOT NULL,
+            order_id TEXT NOT NULL,
+            goal_type TEXT NOT NULL,
+            conversion_action_resource_name TEXT NOT NULL,
+            conversion_date_time TEXT NOT NULL,
+            conversion_value DOUBLE PRECISION NOT NULL,
+            currency_code TEXT NOT NULL,
+            click_id_type TEXT NOT NULL,
+            click_id_value TEXT NOT NULL,
+            job_id BIGINT,
+            status TEXT NOT NULL DEFAULT 'pending',
+            retry_count INTEGER NOT NULL DEFAULT 0,
+            last_error TEXT,
+            next_retry_at BIGINT,
+            created_at BIGINT NOT NULL,
+            updated_at BIGINT NOT NULL,
+            UNIQUE (shop, order_id, goal_type)
+          )
+        `);
+        await db.exec('CREATE INDEX IF NOT EXISTS idx_gapj_shop_status ON google_ads_postback_jobs(shop, status)');
+        await db.exec('CREATE INDEX IF NOT EXISTS idx_gapj_next_retry ON google_ads_postback_jobs(next_retry_at) WHERE status IN (\'pending\', \'retry\')');
+      },
+    },
+    {
+      id: '013_google_ads_postback_attempts',
+      up: async () => {
+        await db.exec(`
+          CREATE TABLE IF NOT EXISTS google_ads_postback_attempts (
+            id SERIAL PRIMARY KEY,
+            job_id INTEGER NOT NULL REFERENCES google_ads_postback_jobs(id),
+            attempt_number INTEGER NOT NULL,
+            http_status INTEGER,
+            response_body TEXT,
+            error_message TEXT,
+            attempted_at BIGINT NOT NULL
+          )
+        `);
+        await db.exec('CREATE INDEX IF NOT EXISTS idx_gapa_job_id ON google_ads_postback_attempts(job_id)');
+      },
+    },
+    {
+      id: '014_google_ads_issues',
+      up: async () => {
+        await db.exec(`
+          CREATE TABLE IF NOT EXISTS google_ads_issues (
+            id SERIAL PRIMARY KEY,
+            shop TEXT NOT NULL,
+            source TEXT NOT NULL,
+            severity TEXT NOT NULL DEFAULT 'error',
+            status TEXT NOT NULL DEFAULT 'open',
+            affected_goal TEXT,
+            error_code TEXT,
+            error_message TEXT,
+            suggested_fix TEXT,
+            first_seen_at BIGINT NOT NULL,
+            last_seen_at BIGINT NOT NULL,
+            resolved_at BIGINT,
+            resolution_note TEXT,
+            created_at BIGINT NOT NULL,
+            updated_at BIGINT NOT NULL
+          )
+        `);
+        await db.exec('CREATE INDEX IF NOT EXISTS idx_gai_shop_status ON google_ads_issues(shop, status)');
+        await db.exec('CREATE INDEX IF NOT EXISTS idx_gai_last_seen ON google_ads_issues(shop, last_seen_at DESC)');
+      },
+    },
+    {
+      id: '015_google_ads_conversion_goals',
+      up: async () => {
+        await db.exec(`
+          CREATE TABLE IF NOT EXISTS google_ads_conversion_goals (
+            shop TEXT NOT NULL,
+            goal_type TEXT NOT NULL,
+            conversion_action_id BIGINT,
+            conversion_action_resource_name TEXT NOT NULL,
+            custom_goal_id BIGINT,
+            custom_goal_resource_name TEXT,
+            last_provisioned_at BIGINT,
+            PRIMARY KEY (shop, goal_type)
+          )
+        `);
+      },
+    },
+    {
+      id: '016_google_ads_diagnostics_cache',
+      up: async () => {
+        await db.exec(`
+          CREATE TABLE IF NOT EXISTS google_ads_diagnostics_cache (
+            shop TEXT NOT NULL PRIMARY KEY,
+            client_summary_json TEXT,
+            action_summaries_json TEXT,
+            fetched_at BIGINT NOT NULL
+          )
+        `);
+      },
+    },
+    {
+      id: '017_ads_orders_attributed_click_ids',
+      up: async () => {
+        await db.exec(`ALTER TABLE ads_orders_attributed ADD COLUMN IF NOT EXISTS gbraid TEXT`);
+        await db.exec(`ALTER TABLE ads_orders_attributed ADD COLUMN IF NOT EXISTS wbraid TEXT`);
+        await db.exec('CREATE INDEX IF NOT EXISTS idx_aoa_gbraid ON ads_orders_attributed(gbraid)').catch(() => null);
+        await db.exec('CREATE INDEX IF NOT EXISTS idx_aoa_wbraid ON ads_orders_attributed(wbraid)').catch(() => null);
+      },
+    },
   ];
 
   let applied = 0;

@@ -543,6 +543,106 @@
 
     wireRefresh('settings-ga-refresh-7d-btn', '7d');
     wireRefresh('settings-ga-refresh-month-btn', 'month');
+
+    var disconnectBtn = document.getElementById('settings-ga-disconnect-btn');
+    if (disconnectBtn) {
+      disconnectBtn.addEventListener('click', function () {
+        setMsg('Disconnecting…', true);
+        var shop = getShopParam();
+        fetchJson((API || '') + '/api/ads/google/disconnect', {
+          method: 'POST',
+          credentials: 'same-origin',
+          cache: 'no-store',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ shop: shop }),
+        })
+          .then(function (r) {
+            setOut(r.json || r.text);
+            setMsg(r.ok ? 'Disconnected' : ('Failed: ' + (r.status || '')), r.ok);
+            if (r.ok) loadConfigAndPopulate();
+          })
+          .catch(function (err) {
+            setMsg('Disconnect failed: ' + (err && err.message ? err.message : 'error'), false);
+          });
+      });
+    }
+
+    var testConnBtn = document.getElementById('settings-ga-test-connection-btn');
+    if (testConnBtn) {
+      testConnBtn.addEventListener('click', function () {
+        setMsg('Testing connection…', true);
+        var shop = getShopParam();
+        fetchJson((API || '') + '/api/ads/google/test-connection' + (shop ? '?shop=' + encodeURIComponent(shop) : ''), { credentials: 'same-origin', cache: 'no-store' })
+          .then(function (r) {
+            setOut(r.json || r.text);
+            setMsg(r.ok && r.json && r.json.ok ? 'Connection OK' : (r.json && r.json.error ? r.json.error : 'Test failed'), r.ok && r.json && r.json.ok);
+          })
+          .catch(function (err) {
+            setMsg('Test failed: ' + (err && err.message ? err.message : 'error'), false);
+          });
+      });
+    }
+
+    function loadGoals() {
+      var shop = getShopParam();
+      fetchJson((API || '') + '/api/ads/google/goals' + (shop ? '?shop=' + encodeURIComponent(shop) : ''), { credentials: 'same-origin', cache: 'no-store' })
+        .then(function (r) {
+          var goalsEl = document.getElementById('settings-ga-goals-output');
+          if (goalsEl) {
+            try { goalsEl.textContent = (r.json && r.json.goals) ? JSON.stringify(r.json.goals, null, 2) : (r.json ? JSON.stringify(r.json, null, 2) : '—'); }
+            catch (_) { goalsEl.textContent = '—'; }
+          }
+        })
+        .catch(function () {
+          var goalsEl = document.getElementById('settings-ga-goals-output');
+          if (goalsEl) goalsEl.textContent = 'Failed to load goals';
+        });
+    }
+
+    var provisionBtn = document.getElementById('settings-ga-provision-goals-btn');
+    if (provisionBtn) {
+      provisionBtn.addEventListener('click', function () {
+        setMsg('Provisioning goals…', true);
+        var shop = getShopParam();
+        fetchJson((API || '') + '/api/ads/google/provision-goals', {
+          method: 'POST',
+          credentials: 'same-origin',
+          cache: 'no-store',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ shop: shop }),
+        })
+          .then(function (r) {
+            setOut(r.json || r.text);
+            setMsg(r.ok && r.json && r.json.ok ? 'Goals provisioned' : (r.json && r.json.error ? r.json.error : 'Provision failed'), r.ok && r.json && r.json.ok);
+            if (r.ok) loadGoals();
+          })
+          .catch(function (err) {
+            setMsg('Provision failed: ' + (err && err.message ? err.message : 'error'), false);
+          });
+      });
+    }
+
+    var postbackCb = document.getElementById('settings-ga-postback-enabled');
+    if (postbackCb) {
+      postbackCb.addEventListener('change', function () {
+        var checked = postbackCb.checked;
+        fetch((API || '') + '/api/settings', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ googleAdsPostbackEnabled: checked }),
+        })
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            setMsg(checked ? 'Postback enabled' : 'Postback disabled', true);
+          })
+          .catch(function () {
+            setMsg('Failed to save postback setting', false);
+          });
+      });
+    }
+
+    loadGoals();
   }
 
   function renderIntegrationsFromConfig(c) {
@@ -552,6 +652,7 @@
     var settings = c && c.settings ? c.settings : {};
     var ingest = c && c.ingest ? c.ingest : {};
     var ads = c && c.ads && c.ads.status ? c.ads.status : {};
+    var shopParam = getShopParam();
     var providers = Array.isArray(ads.providers) ? ads.providers : [];
     var ga = providers.find(function (p) { return p && String(p.key || '').toLowerCase() === 'google_ads'; }) || {};
 
@@ -578,7 +679,7 @@
     setText('settings-int-pixel-ingest', pixelIngestUrl || '\u2014');
     setText('settings-int-expected-ingest', expectedIngestUrl || '\u2014');
     setHtml('settings-int-pixel-match', match == null ? badge('Unknown', 'warn') : (match ? badge('Match', 'ok') : badge('Mismatch', 'bad')));
-    setText('settings-int-session-mode', settings && settings.pixelSessionMode === 'shared_ttl' ? 'shared_ttl (cross-tab)' : 'legacy');
+    setText('settings-int-session-mode', (settings && settings.pixelSessionMode === 'shared_ttl') ? 'shared_ttl (cross-tab)' : 'legacy');
 
     setHtml('settings-int-ga-configured', ga && ga.configured ? badge('Yes', 'ok') : badge('No', 'bad'));
     setHtml('settings-int-ga-connected', ga && ga.connected ? badge('Yes', 'ok') : badge('No', 'bad'));
@@ -586,6 +687,31 @@
     setText('settings-int-ga-login-customer-id', ga && ga.loginCustomerId ? String(ga.loginCustomerId) : '\u2014');
     setHtml('settings-int-ga-dev-token', ga && ga.hasDeveloperToken ? badge('Set', 'ok') : badge('Missing', 'bad'));
     setHtml('settings-int-ga-refresh-token', ga && ga.hasRefreshToken ? badge('Present', 'ok') : badge('Missing', 'bad'));
+
+    var custIdEl = document.getElementById('settings-ga-account-customer-id');
+    var loginCustEl = document.getElementById('settings-ga-account-login-customer-id');
+    if (custIdEl && (ga && ga.customerId)) custIdEl.value = String(ga.customerId);
+    if (loginCustEl && (ga && ga.loginCustomerId)) loginCustEl.value = String(ga.loginCustomerId);
+
+    var postbackCb = document.getElementById('settings-ga-postback-enabled');
+    if (postbackCb) postbackCb.checked = !!(settings && settings.googleAdsPostbackEnabled);
+
+    function updateConnectHref() {
+      var btn = document.getElementById('settings-ga-connect-btn');
+      var cust = document.getElementById('settings-ga-account-customer-id');
+      var login = document.getElementById('settings-ga-account-login-customer-id');
+      if (!btn) return;
+      var sp = getShopParam();
+      var base = (typeof API !== 'undefined' ? API : '') + '/api/ads/google/connect?redirect=' + encodeURIComponent('/settings?tab=integrations');
+      if (sp) base += '&shop=' + encodeURIComponent(sp);
+      if (cust && cust.value.trim()) base += '&customer_id=' + encodeURIComponent(cust.value.trim());
+      if (login && login.value.trim()) base += '&login_customer_id=' + encodeURIComponent(login.value.trim());
+      btn.setAttribute('href', base);
+    }
+    var connectBtn = document.getElementById('settings-ga-connect-btn');
+    if (connectBtn) updateConnectHref();
+    if (custIdEl) custIdEl.addEventListener('input', updateConnectHref);
+    if (loginCustEl) loginCustEl.addEventListener('input', updateConnectHref);
 
     var outEl = document.getElementById('settings-ga-output');
     if (outEl) {

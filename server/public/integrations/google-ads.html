@@ -39,6 +39,14 @@
       <div class="dash-chart-wrap" id="ads-overview-chart" style="min-height:240px"></div>
     </div>
   </div>
+  <div class="card mb-3" id="ads-goal-health-card" style="display:none">
+    <div class="card-header">
+      <h3 class="card-title">Goal Health (Postback)</h3>
+    </div>
+    <div class="card-body">
+      <div id="ads-goal-health-content" class="small text-muted">Loading…</div>
+    </div>
+  </div>
   <div class="card" data-table-class="live" data-table-zone="ads-main" data-table-id="ads-root">
     <div class="card-header">
       <h3 class="card-title" data-kexo-table-title="1">Google Ads</h3>
@@ -69,6 +77,20 @@
       </div>
       <div class="kpi-compare-modal-body" id="kpi-compare-status">
         <div class="kpi-compare-loading"><div class="report-build-wrap"><div class="spinner-border text-primary" role="status"></div><div class="report-build-title">building KPI comparison</div><div class="report-build-step">&mdash;</div></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal modal-blur" id="ads-issues-modal" tabindex="-1" aria-hidden="true" style="display:none">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" role="dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Google Ads Issues</h5>
+          <button type="button" class="btn-close" id="ads-issues-modal-close" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" id="ads-issues-modal-body">
+          <div class="text-muted small">Loading…</div>
+        </div>
       </div>
     </div>
   </div>

@@ -44,10 +44,15 @@ function buildGoogleAdsConnectUrl(options = {}) {
   const redirect = (options && options.redirect && isSafeRelativeRedirectPath(options.redirect))
     ? options.redirect
     : '/';
+  const shop = (options && options.shop && typeof options.shop === 'string') ? String(options.shop).trim().toLowerCase() : '';
 
   const state = stateEncode({
     rnd: crypto.randomBytes(16).toString('hex'),
     r: redirect,
+    shop: shop || undefined,
+    customer_id: (options && options.customer_id != null) ? String(options.customer_id).replace(/[^0-9]/g, '') : undefined,
+    login_customer_id: (options && options.login_customer_id != null) ? String(options.login_customer_id).replace(/[^0-9]/g, '') : undefined,
+    conversion_customer_id: (options && options.conversion_customer_id != null) ? String(options.conversion_customer_id).replace(/[^0-9]/g, '') : undefined,
   });
 
   const params = new URLSearchParams({
@@ -103,7 +108,8 @@ async function handleGoogleAdsCallback(query = {}) {
     return { ok: false, error: 'missing_refresh_token', redirect };
   }
 
-  const existing = await getGoogleAdsConfig();
+  const shop = (decoded && decoded.shop && typeof decoded.shop === 'string') ? String(decoded.shop).trim().toLowerCase() : '';
+  const existing = await getGoogleAdsConfig(shop || undefined);
   const next = {
     ...(existing && typeof existing === 'object' ? existing : {}),
     refresh_token: refreshToken,
@@ -111,8 +117,11 @@ async function handleGoogleAdsCallback(query = {}) {
     token_type: tokens && tokens.token_type ? String(tokens.token_type) : 'Bearer',
     obtained_at: Date.now(),
   };
+  if (decoded && decoded.customer_id) next.customer_id = decoded.customer_id;
+  if (decoded && decoded.login_customer_id) next.login_customer_id = decoded.login_customer_id;
+  if (decoded && decoded.conversion_customer_id) next.conversion_customer_id = decoded.conversion_customer_id;
 
-  await setGoogleAdsConfig(next);
+  await setGoogleAdsConfig(next, shop || undefined);
 
   return { ok: true, redirect };
 }

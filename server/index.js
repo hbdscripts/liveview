@@ -47,6 +47,7 @@ const devicesRouter = require('./routes/devices');
 const attributionRouter = require('./routes/attribution');
 const abandonedCarts = require('./routes/abandonedCarts');
 const adsRouter = require('./routes/ads');
+const googleAdsIssuesRouter = require('./routes/googleAdsIssues');
 const toolsRouter = require('./routes/tools');
 const fraudRouter = require('./routes/fraud');
 const ogThumb = require('./routes/ogThumb');
@@ -201,6 +202,7 @@ app.get('/api/dashboard-series', dashboardSeries.getDashboardSeries);
 app.get('/api/business-snapshot', requireMaster.middleware, businessSnapshot.getBusinessSnapshot);
 // Ads feature area: mounted as a router to keep Ads endpoints self-contained.
 app.use('/api/ads', adsRouter);
+app.use('/api/integrations/google-ads/issues', googleAdsIssuesRouter);
 app.use('/api/tools', toolsRouter);
 app.use('/api/admin', requireMaster.middleware, adminUsersApi);
 app.use('/api/admin', requireMaster.middleware, adminControlsApi);
@@ -1023,4 +1025,31 @@ setInterval(() => {
       warnBackgroundFailure('[ads-sync] attribution 7d failed:', err);
     });
   }, ATTR_BACKFILL_MS);
+})();
+
+// Google Ads postback: UploadClickConversions for Revenue/Profit (default off; enable in settings).
+(function schedulePostbackSync() {
+  if (process.env.DISABLE_SCHEDULED_POSTBACK === '1' || process.env.DISABLE_SCHEDULED_POSTBACK === 'true') return;
+  const POSTBACK_MS = 5 * 60 * 1000;
+  let postbackInFlight = false;
+  async function runPostbackOnce() {
+    if (postbackInFlight) return;
+    postbackInFlight = true;
+    try {
+      const store = require('./store');
+      const salesTruth = require('./salesTruth');
+      const shop = salesTruth.resolveShopForSales('');
+      if (!shop) return;
+      const enabled = await store.getSetting('google_ads_postback_enabled');
+      if (!enabled || String(enabled).toLowerCase() !== 'true') return;
+      const { runPostbackCycle } = require('./ads/googleAdsPostback');
+      await runPostbackCycle(shop, { postbackEnabled: true });
+    } catch (err) {
+      try { console.warn('[postback] run failed:', err && err.message ? String(err.message).slice(0, 220) : err); } catch (_) {}
+    } finally {
+      postbackInFlight = false;
+    }
+  }
+  setTimeout(() => runPostbackOnce().catch(() => {}), 60 * 1000);
+  setInterval(() => runPostbackOnce().catch(() => {}), POSTBACK_MS);
 })();

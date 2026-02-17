@@ -1206,6 +1206,7 @@ async function readSettingsPayload() {
   let settingsScopeMode = 'global';
   let pageLoaderEnabled = defaultPageLoaderEnabledV1();
   let rawMap = {};
+  const GOOGLE_ADS_POSTBACK_ENABLED_KEY = 'google_ads_postback_enabled';
   try {
     rawMap = await readSettingsKeyMap([
       PIXEL_SESSION_MODE_KEY,
@@ -1217,6 +1218,7 @@ async function readSettingsPayload() {
       TABLES_UI_CONFIG_V1_KEY,
       PROFIT_RULES_V1_KEY,
       VARIANTS_CONFIG_KEY,
+      GOOGLE_ADS_POSTBACK_ENABLED_KEY,
     ]);
   } catch (_) {
     rawMap = {};
@@ -1263,6 +1265,11 @@ async function readSettingsPayload() {
     const raw = rawMap[PAGE_LOADER_ENABLED_V1_KEY];
     pageLoaderEnabled = normalizePageLoaderEnabledV1(raw);
   } catch (_) { pageLoaderEnabled = defaultPageLoaderEnabledV1(); }
+  let googleAdsPostbackEnabled = false;
+  try {
+    const raw = rawMap[GOOGLE_ADS_POSTBACK_ENABLED_KEY];
+    googleAdsPostbackEnabled = raw === 'true' || raw === '1';
+  } catch (_) {}
   const reporting = await store.getReportingConfig().catch(() => ({ ordersSource: 'orders_shopify', sessionsSource: 'sessions' }));
   return {
     ok: true,
@@ -1277,6 +1284,7 @@ async function readSettingsPayload() {
     profitRules,
     insightsVariantsConfig,
     pageLoaderEnabled,
+    googleAdsPostbackEnabled,
   };
 }
 
@@ -1385,6 +1393,16 @@ async function postSettings(req, res) {
       }
     } catch (err) {
       return res.status(500).json({ ok: false, error: err && err.message ? String(err.message) : 'Failed to save KPI UI config' });
+    }
+  }
+
+  // Google Ads postback (enable/disable)
+  if (Object.prototype.hasOwnProperty.call(body, 'googleAdsPostbackEnabled')) {
+    try {
+      const v = body.googleAdsPostbackEnabled === true || body.googleAdsPostbackEnabled === 'true' || body.googleAdsPostbackEnabled === '1';
+      await store.setSetting('google_ads_postback_enabled', v ? 'true' : 'false');
+    } catch (err) {
+      return res.status(500).json({ ok: false, error: err && err.message ? String(err.message) : 'Failed to save postback setting' });
     }
   }
 

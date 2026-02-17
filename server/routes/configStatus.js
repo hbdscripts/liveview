@@ -147,10 +147,16 @@ async function configStatus(req, res, next) {
     // --- Ads status (non-sensitive summary) ---
     let adsStatus = null;
     try {
-      adsStatus = await adsService.getStatus();
+      adsStatus = await adsService.getStatus(shop);
     } catch (err) {
       adsStatus = { ok: false, error: err && err.message ? String(err.message).slice(0, 220) : 'ads_status_failed' };
     }
+
+    let googleAdsPostbackEnabled = false;
+    try {
+      const raw = await store.getSetting('google_ads_postback_enabled');
+      googleAdsPostbackEnabled = raw === 'true' || raw === '1';
+    } catch (_) {}
 
     const configDisplay = {
       shopifyAppUrl: (config.shopify.appUrl || '').replace(/\/$/, ''),
@@ -179,6 +185,9 @@ async function configStatus(req, res, next) {
       ads: {
         status: adsStatus,
         googleAdsApiVersion: config.googleAdsApiVersion || '',
+      },
+      settings: {
+        googleAdsPostbackEnabled,
       },
     });
   }
