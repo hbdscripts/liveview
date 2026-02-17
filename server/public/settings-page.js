@@ -2256,22 +2256,48 @@
       '</div>' +
       '<div class="accordion settings-layout-accordion settings-charts-accordion" id="' + escapeHtml(accordionId) + '">';
     var itemIndex = 0;
-    CHARTS_GROUPS.forEach(function (group) {
+    CHARTS_GROUPS.forEach(function (group, groupIndex) {
       var keys = group && Array.isArray(group.keys) ? group.keys : [];
       var groupCharts = c.charts.filter(function (it) { return keys.indexOf(String(it.key || '').trim().toLowerCase()) >= 0; });
       if (!groupCharts.length) return;
-      html += '<div class="settings-charts-group-label">' + escapeHtml(group.label || '') + '</div>';
-      groupCharts.forEach(function (it) {
-        html += renderChartAccordionItem(it, itemIndex, accordionId);
+      var groupId = (group && group.id) ? String(group.id) : 'group-' + groupIndex;
+      var groupLabel = (group && group.label) ? String(group.label) : 'Charts';
+      var groupCollapseId = 'settings-charts-group-collapse-' + groupId.replace(/[^a-z0-9_-]/g, '-');
+      var innerAccordionId = 'settings-charts-group-inner-' + groupId.replace(/[^a-z0-9_-]/g, '-');
+      var groupHeadingId = groupCollapseId + '-heading';
+      var isGroupOpen = groupIndex === 0;
+      html += '<div class="accordion-item settings-charts-group-item">' +
+        '<h2 class="accordion-header" id="' + escapeHtml(groupHeadingId) + '">' +
+          '<button class="accordion-button' + (isGroupOpen ? '' : ' collapsed') + '" type="button" data-bs-toggle="collapse" data-bs-target="#' + escapeHtml(groupCollapseId) + '" aria-expanded="' + (isGroupOpen ? 'true' : 'false') + '" aria-controls="' + escapeHtml(groupCollapseId) + '">' +
+            '<span class="d-flex align-items-center w-100 gap-2"><span class="kexo-settings-accordion-chevron" aria-hidden="true"><i class="fa-regular fa-chevron-down" aria-hidden="true"></i></span><span class="me-auto">' + escapeHtml(groupLabel) + '</span></span>' +
+          '</button>' +
+        '</h2>' +
+        '<div id="' + escapeHtml(groupCollapseId) + '" class="accordion-collapse collapse' + (isGroupOpen ? ' show' : '') + '" aria-labelledby="' + escapeHtml(groupHeadingId) + '" data-bs-parent="#' + escapeHtml(accordionId) + '">' +
+          '<div class="accordion-body">' +
+            '<div class="accordion settings-layout-accordion settings-charts-inner-accordion" id="' + escapeHtml(innerAccordionId) + '">';
+      groupCharts.forEach(function (it, innerIdx) {
+        html += renderChartAccordionItem(it, innerIdx, innerAccordionId);
         itemIndex += 1;
       });
+      html += '</div></div></div></div>';
     });
-    html += '<div class="settings-charts-group-label">KPI bundles</div>';
-    KPI_BUNDLE_ORDER.forEach(function (bundleKey) {
-      html += renderBundleAccordionItem(bundleKey, c.kpiBundles[bundleKey] || defaultKpiBundle(bundleKey), itemIndex, accordionId);
+    var kpiGroupCollapseId = 'settings-charts-group-collapse-kpi-bundles';
+    var kpiGroupHeadingId = kpiGroupCollapseId + '-heading';
+    var kpiInnerAccordionId = 'settings-charts-group-inner-kpi-bundles';
+    html += '<div class="accordion-item settings-charts-group-item">' +
+      '<h2 class="accordion-header" id="' + escapeHtml(kpiGroupHeadingId) + '">' +
+        '<button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#' + escapeHtml(kpiGroupCollapseId) + '" aria-expanded="false" aria-controls="' + escapeHtml(kpiGroupCollapseId) + '">' +
+          '<span class="d-flex align-items-center w-100 gap-2"><span class="kexo-settings-accordion-chevron" aria-hidden="true"><i class="fa-regular fa-chevron-down" aria-hidden="true"></i></span><span class="me-auto">KPI bundles</span></span>' +
+        '</button>' +
+      '</h2>' +
+      '<div id="' + escapeHtml(kpiGroupCollapseId) + '" class="accordion-collapse collapse" aria-labelledby="' + escapeHtml(kpiGroupHeadingId) + '" data-bs-parent="#' + escapeHtml(accordionId) + '">' +
+        '<div class="accordion-body">' +
+          '<div class="accordion settings-layout-accordion settings-charts-inner-accordion" id="' + escapeHtml(kpiInnerAccordionId) + '">';
+    KPI_BUNDLE_ORDER.forEach(function (bundleKey, innerIdx) {
+      html += renderBundleAccordionItem(bundleKey, c.kpiBundles[bundleKey] || defaultKpiBundle(bundleKey), innerIdx, kpiInnerAccordionId);
       itemIndex += 1;
     });
-    html += '</div>';
+    html += '</div></div></div></div></div>';
     root.innerHTML = html;
     root.querySelectorAll('[data-chart-config-key]').forEach(function (card) {
       refreshPieMetricState(card);
