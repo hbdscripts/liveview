@@ -24,8 +24,8 @@
     <!--#include partials/page-body-start.html-->
 <div id="tab-panel-dashboard" class="main-tab-panel active" role="tabpanel" aria-labelledby="nav-tab-dashboard">
 
-    <div class="row g-3 mb-3 kexo-overview-top-layout">
-      <div class="col-12 col-xl-5 col-xxl-4">
+    <div class="kexo-overview-grid mb-3">
+      <div class="kexo-overview-cell kexo-overview-kpi-top">
     <!-- Enhanced KPI Cards -->
     <div class="row g-3" id="dash-kpi-grid">
       <!-- Revenue Card with Trend -->
@@ -280,10 +280,9 @@
         </div>
       </div>
     </div>
-    <div class="row g-3 mt-0" id="dash-kpi-grid-mid"></div>
       </div>
-      <div class="col-12 col-xl-7 col-xxl-8">
-        <div class="row g-3 mb-3 kexo-overview-mini-row">
+      <div class="kexo-overview-cell kexo-overview-charts-top">
+        <div class="row g-3 kexo-overview-mini-row">
           <div class="col-12 col-md-4" data-kexo-chart-key="dash-chart-finishes-30d">
             <div class="card h-100 kexo-overview-mini-card">
               <div class="card-body kexo-overview-mini-card-body">
@@ -370,6 +369,11 @@
             </div>
           </div>
         </div>
+      </div>
+      <div class="kexo-overview-cell kexo-overview-kpi-mid">
+        <div class="row g-3" id="dash-kpi-grid-mid"></div>
+      </div>
+      <div class="kexo-overview-cell kexo-overview-chart-main">
         <div class="row g-3">
           <div class="col-12" data-kexo-chart-key="dash-chart-overview-30d">
             <div class="card kexo-overview-main-card">

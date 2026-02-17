@@ -2721,13 +2721,21 @@ html[data-bs-theme="dark"] .report-build-wrap {
   color: var(--kexo-kpi-delta-same, var(--kexo-accent-1, #4b94e4));
 }
 
-/* Dashboard overview top composite layout */
-.kexo-overview-top-layout {
-  align-items: stretch;
+/* Dashboard overview 2x2 grid: Row1 = 4 KPIs | 3 charts, Row2 = 4 KPIs | 1 chart */
+.kexo-overview-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: auto auto auto auto;
+  gap: 0.75rem;
 }
-.kexo-overview-top-layout > [class*='col-'] {
-  display: flex;
-  flex-direction: column;
+@media (min-width: 1200px) {
+  .kexo-overview-grid {
+    grid-template-columns: 5fr 7fr;
+    grid-template-rows: auto auto;
+  }
+}
+.kexo-overview-cell {
+  min-width: 0;
 }
 #dash-kpi-grid {
   align-items: stretch;
