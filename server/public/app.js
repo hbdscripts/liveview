@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 224675669dc68b38
+// checksum: 9789b398c6b53140
 
 (function () {
 const API = '';
@@ -16836,6 +16836,11 @@ const API = '';
           var chartOverride = (typeof chartAdvancedOverrideFromUiConfig === 'function') ? chartAdvancedOverrideFromUiConfig(chartId, 'bar') : null;
           if (chartOverride && isPlainObject(chartOverride) && Object.keys(chartOverride).length) apexOpts = deepMergeOptions(apexOpts, chartOverride);
         } catch (_) {}
+        if (horizontal) {
+          apexOpts.xaxis = apexOpts.xaxis || {};
+          apexOpts.xaxis.labels = apexOpts.xaxis.labels || {};
+          apexOpts.xaxis.labels.show = false;
+        }
         try {
           upsertDashboardApexChart(chartId, chartEl, apexOpts);
         } catch (err) {
@@ -16939,6 +16944,11 @@ const API = '';
           var chartOverride = (typeof chartAdvancedOverrideFromUiConfig === 'function') ? chartAdvancedOverrideFromUiConfig(chartId, 'bar') : null;
           if (chartOverride && isPlainObject(chartOverride) && Object.keys(chartOverride).length) apexOpts = deepMergeOptions(apexOpts, chartOverride);
         } catch (_) {}
+        if (horizontal) {
+          apexOpts.xaxis = apexOpts.xaxis || {};
+          apexOpts.xaxis.labels = apexOpts.xaxis.labels || {};
+          apexOpts.xaxis.labels.show = false;
+        }
         try {
           upsertDashboardApexChart(chartId, chartEl, apexOpts);
           var legendEl = chartEl.parentElement ? chartEl.parentElement.querySelector('[data-overview-legend="' + chartId + '"]') : null;
@@ -17026,6 +17036,11 @@ const API = '';
           var chartOverride = (typeof chartAdvancedOverrideFromUiConfig === 'function') ? chartAdvancedOverrideFromUiConfig(chartId, 'bar') : null;
           if (chartOverride && isPlainObject(chartOverride) && Object.keys(chartOverride).length) apexOpts = deepMergeOptions(apexOpts, chartOverride);
         } catch (_) {}
+        if (horizontal) {
+          apexOpts.xaxis = apexOpts.xaxis || {};
+          apexOpts.xaxis.labels = apexOpts.xaxis.labels || {};
+          apexOpts.xaxis.labels.show = false;
+        }
         try {
           upsertDashboardApexChart(chartId, chartEl, apexOpts);
           appendAttributionIconRow(chartEl, sources, attributionIconSpecToHtml);

@@ -1326,6 +1326,11 @@
           var chartOverride = (typeof chartAdvancedOverrideFromUiConfig === 'function') ? chartAdvancedOverrideFromUiConfig(chartId, 'bar') : null;
           if (chartOverride && isPlainObject(chartOverride) && Object.keys(chartOverride).length) apexOpts = deepMergeOptions(apexOpts, chartOverride);
         } catch (_) {}
+        if (horizontal) {
+          apexOpts.xaxis = apexOpts.xaxis || {};
+          apexOpts.xaxis.labels = apexOpts.xaxis.labels || {};
+          apexOpts.xaxis.labels.show = false;
+        }
         try {
           upsertDashboardApexChart(chartId, chartEl, apexOpts);
         } catch (err) {
@@ -1429,6 +1434,11 @@
           var chartOverride = (typeof chartAdvancedOverrideFromUiConfig === 'function') ? chartAdvancedOverrideFromUiConfig(chartId, 'bar') : null;
           if (chartOverride && isPlainObject(chartOverride) && Object.keys(chartOverride).length) apexOpts = deepMergeOptions(apexOpts, chartOverride);
         } catch (_) {}
+        if (horizontal) {
+          apexOpts.xaxis = apexOpts.xaxis || {};
+          apexOpts.xaxis.labels = apexOpts.xaxis.labels || {};
+          apexOpts.xaxis.labels.show = false;
+        }
         try {
           upsertDashboardApexChart(chartId, chartEl, apexOpts);
           var legendEl = chartEl.parentElement ? chartEl.parentElement.querySelector('[data-overview-legend="' + chartId + '"]') : null;
@@ -1516,6 +1526,11 @@
           var chartOverride = (typeof chartAdvancedOverrideFromUiConfig === 'function') ? chartAdvancedOverrideFromUiConfig(chartId, 'bar') : null;
           if (chartOverride && isPlainObject(chartOverride) && Object.keys(chartOverride).length) apexOpts = deepMergeOptions(apexOpts, chartOverride);
         } catch (_) {}
+        if (horizontal) {
+          apexOpts.xaxis = apexOpts.xaxis || {};
+          apexOpts.xaxis.labels = apexOpts.xaxis.labels || {};
+          apexOpts.xaxis.labels.show = false;
+        }
         try {
           upsertDashboardApexChart(chartId, chartEl, apexOpts);
           appendAttributionIconRow(chartEl, sources, attributionIconSpecToHtml);

@@ -570,10 +570,50 @@ async function fetchProductAggByProductId(db, shop, startMs, endMs) {
   }
 }
 
+function rawTopRowsToTrendingAggRows(rawRows) {
+  const out = [];
+  for (const r of (Array.isArray(rawRows) ? rawRows : [])) {
+    const pid = r && r.product_id != null ? String(r.product_id).trim() : '';
+    const title = r && r.title != null ? String(r.title).trim() : '';
+    const pkey = pid || (title ? ('title:' + title.toLowerCase()) : '');
+    if (!pkey) continue;
+    out.push({
+      product_key: pkey,
+      product_id: pid || null,
+      title: title || 'Unknown',
+      revenue: Math.round((Number(r && r.revenue) || 0) * 100) / 100,
+      orders: Number(r && r.orders) || 0,
+    });
+  }
+  return out;
+}
+
 async function fetchTrendingProducts(db, shop, nowBounds, prevBounds, filter) {
   if (!shop || !nowBounds || !prevBounds) return { trendingUp: [], trendingDown: [] };
-  const nowRows = await fetchProductAggByProductId(db, shop, nowBounds.start, nowBounds.end);
-  const prevRows = await fetchProductAggByProductId(db, shop, prevBounds.start, prevBounds.end);
+  let nowRows = await fetchProductAggByProductId(db, shop, nowBounds.start, nowBounds.end);
+  let prevRows = await fetchProductAggByProductId(db, shop, prevBounds.start, prevBounds.end);
+  if (!nowRows.length || !prevRows.length) {
+    try {
+      const ratesToGbp = await fx.getRatesToGbp();
+      const fallbackLimit = Math.max(20, DASHBOARD_TRENDING_MAX_ROWS * 4);
+      if (!nowRows.length) {
+        const rawNow = await fallbackTopProductsFromOrdersRawJson(db, shop, nowBounds.start, nowBounds.end, ratesToGbp, {
+          limit: fallbackLimit,
+          maxOrders: 2000,
+        });
+        const nowFallback = rawTopRowsToTrendingAggRows(rawNow);
+        if (nowFallback.length) nowRows = nowFallback;
+      }
+      if (!prevRows.length) {
+        const rawPrev = await fallbackTopProductsFromOrdersRawJson(db, shop, prevBounds.start, prevBounds.end, ratesToGbp, {
+          limit: fallbackLimit,
+          maxOrders: 2000,
+        });
+        const prevFallback = rawTopRowsToTrendingAggRows(rawPrev);
+        if (prevFallback.length) prevRows = prevFallback;
+      }
+    } catch (_) {}
+  }
 
   const nowMap = new Map();
   const prevMap = new Map();
