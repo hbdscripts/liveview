@@ -99,7 +99,33 @@ async function getBusinessSnapshot(req, res) {
     );
     res.setHeader('Cache-Control', 'private, max-age=60');
     res.setHeader('Vary', 'Cookie');
-    res.json(cached && cached.ok ? cached.data : null);
+    const out = cached && cached.ok ? cached.data : null;
+    try {
+      const fin = out && out.financial && typeof out.financial === 'object' ? out.financial : null;
+      const breakdown = fin && Array.isArray(fin.costBreakdownNow) ? fin.costBreakdownNow : [];
+      let hasAds = false;
+      let hasTxnFees = false;
+      let hasShopifyFees = false;
+      let hasRules = false;
+      breakdown.forEach(function (row) {
+        if (!row || typeof row !== 'object') return;
+        const label = row.label != null ? String(row.label).trim().toLowerCase() : '';
+        const amt = row.amountGbp != null ? Number(row.amountGbp) : Number(row.amount);
+        if (!label) return;
+        if (!Number.isFinite(amt) || amt <= 0) return;
+        if (label.includes('google ads')) hasAds = true;
+        else if (label.includes('transaction fees')) hasTxnFees = true;
+        else if (label.includes('shopify fees')) hasShopifyFees = true;
+        else if (label.includes('cost of goods')) return;
+        else if (label.includes('shopify app bills')) return;
+        else hasRules = true;
+      });
+      Sentry.setTag('kexo_cost_has_ads', hasAds ? '1' : '0');
+      Sentry.setTag('kexo_cost_has_txn_fees', hasTxnFees ? '1' : '0');
+      Sentry.setTag('kexo_cost_has_shopify_fees', hasShopifyFees ? '1' : '0');
+      Sentry.setTag('kexo_cost_has_rules', hasRules ? '1' : '0');
+    } catch (_) {}
+    res.json(out);
   } catch (err) {
     Sentry.captureException(err, {
       extra: {

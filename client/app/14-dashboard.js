@@ -1018,6 +1018,7 @@
           chartEl.innerHTML = '';
           if (String(chartId || '') === 'dash-chart-overview-30d') {
             setOverviewSalesRunningTotals(null, null, null);
+            setOverviewCostBreakdownTooltip(null);
           }
           return;
         }
@@ -1025,6 +1026,7 @@
         chartEl.innerHTML = '<div class="kexo-overview-chart-empty">' + escapeHtml(text || 'No data available') + '</div>';
         if (String(chartId || '') === 'dash-chart-overview-30d') {
           setOverviewSalesRunningTotals(null, null, null);
+          setOverviewCostBreakdownTooltip(null);
         }
       }
 
@@ -1036,6 +1038,7 @@
           chartEl.innerHTML = '';
           if (String(chartId || '') === 'dash-chart-overview-30d') {
             setOverviewSalesRunningTotals(null, null, null);
+            setOverviewCostBreakdownTooltip(null);
           }
           return;
         }
@@ -1043,6 +1046,7 @@
         chartEl.innerHTML = '<div class="kexo-overview-chart-empty is-loading"><span class="kpi-mini-spinner" aria-hidden="true"></span><span>' + escapeHtml(text || 'Loading...') + '</span></div>';
         if (String(chartId || '') === 'dash-chart-overview-30d') {
           setOverviewSalesRunningTotals(null, null, null);
+          setOverviewCostBreakdownTooltip(null);
         }
       }
 
@@ -1660,6 +1664,35 @@
         setValue('dash-overview-total-profit', profitTotal);
       }
 
+      function setOverviewCostBreakdownTooltip(snapshotPayload) {
+        var iconEl = document.getElementById('dash-overview-cost-breakdown-icon');
+        var costEl = document.getElementById('dash-overview-total-cost');
+        if (iconEl && iconEl.style) iconEl.style.display = 'none';
+        try { if (iconEl) iconEl.removeAttribute('title'); } catch (_) {}
+        try { if (costEl) costEl.removeAttribute('title'); } catch (_) {}
+        if (!snapshotPayload) return;
+        var fin = snapshotPayload && snapshotPayload.financial && typeof snapshotPayload.financial === 'object' ? snapshotPayload.financial : null;
+        var breakdown = fin && Array.isArray(fin.costBreakdownNow) ? fin.costBreakdownNow : null;
+        if (!breakdown || !breakdown.length) return;
+        var lines = [];
+        var sum = 0;
+        breakdown.forEach(function(row) {
+          if (!row || typeof row !== 'object') return;
+          var label = row.label != null ? String(row.label).trim() : '';
+          var amt = row.amountGbp != null ? Number(row.amountGbp) : Number(row.amount);
+          if (!label) return;
+          if (!Number.isFinite(amt)) amt = 0;
+          sum += amt;
+          lines.push(label + ': ' + fmtGbp(Math.round(amt * 100) / 100));
+        });
+        if (!lines.length) return;
+        lines.push('Total: ' + fmtGbp(Math.round(sum * 100) / 100));
+        var tooltip = 'Cost breakdown\\n' + lines.join('\\n');
+        try { if (iconEl) iconEl.setAttribute('title', tooltip); } catch (_) {}
+        try { if (costEl) costEl.setAttribute('title', tooltip); } catch (_) {}
+        if (iconEl && iconEl.style) iconEl.style.display = '';
+      }
+
       function renderOverviewRevenueCostChart(snapshotPayload) {
         var chartId = 'dash-chart-overview-30d';
         if (!isChartEnabledByUiConfig(chartId)) {
@@ -1667,10 +1700,12 @@
           var hiddenEl = document.getElementById(chartId);
           if (hiddenEl) hiddenEl.innerHTML = '';
           setOverviewSalesRunningTotals(null, null, null);
+          setOverviewCostBreakdownTooltip(null);
           return;
         }
         if (!snapshotPayload) {
           setOverviewSalesRunningTotals(null, null, null);
+          setOverviewCostBreakdownTooltip(null);
           renderOverviewChartLoading(chartId, 'Loading sales overview…');
           return;
         }
@@ -1686,6 +1721,7 @@
         var len = Math.max(labelsYmd.length, revenueGbp.length, costGbp.length);
         if (!len) {
           setOverviewSalesRunningTotals(null, null, null);
+          setOverviewCostBreakdownTooltip(snapshotPayload);
           renderOverviewChartEmpty(chartId, 'No sales overview data');
           return;
         }
@@ -1710,6 +1746,7 @@
           profitTotal += pft;
         }
         setOverviewSalesRunningTotals(revenueTotal, costTotal, profitTotal);
+        setOverviewCostBreakdownTooltip(snapshotPayload);
         var chartEl = document.getElementById(chartId);
         var chartHeight = resolveOverviewChartHeight(chartEl, 260, 140, 760);
         var overviewMode = (typeof chartModeFromUiConfig === 'function') ? chartModeFromUiConfig(chartId, 'area') : 'area';
