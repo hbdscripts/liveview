@@ -1554,12 +1554,22 @@
             yMax = maxVal + pad;
           }
 
+          var hasCompare = !!(compareNums && compareNums.length >= 2);
           var series = [{ name: 'Current', data: nums }];
+          var chartType = sparkMode;
+          // If the spark mode is `area` and we render a compare series, force the compare to be a line
+          // so it reads as a dashed reference (not a filled area).
+          if (sparkMode === 'area' && hasCompare) {
+            chartType = 'line';
+            series[0].type = 'area';
+          }
           var colors = [color];
           var strokeWidths = [sparkMode === 'bar' ? 0 : sparkStrokeWidth];
           var dashArray = [0];
-          if (compareNums && compareNums.length >= 2) {
-            series.push({ name: 'Compare', data: compareNums });
+          if (hasCompare) {
+            var compareSeries = { name: 'Compare', data: compareNums };
+            if (sparkMode === 'area') compareSeries.type = 'line';
+            series.push(compareSeries);
             var usePrimary = sparkCfg.compareUsePrimaryColor !== false;
             var opacityPct = Number(sparkCfg.compareOpacity);
             if (!Number.isFinite(opacityPct)) opacityPct = 50;
@@ -1570,7 +1580,7 @@
             dashArray.push(usePrimary ? 0 : 4);
           }
           var apexOpts = {
-            chart: { type: sparkMode, height: sparkHeight, sparkline: { enabled: true }, animations: { enabled: false } },
+            chart: { type: chartType, height: sparkHeight, sparkline: { enabled: true }, animations: { enabled: false } },
             series: series,
             stroke: { show: true, width: strokeWidths, curve: sparkCurve, lineCap: 'butt', dashArray: dashArray },
             fill: sparkMode === 'area'

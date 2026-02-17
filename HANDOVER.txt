@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-16 (Dashboard overview mini charts + Revenue & Cost redo)
+Last updated: 2026-02-16 (Dashboard overview mini charts defaults + dashed KPI compare line)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -395,6 +395,9 @@ Ops/reliability:
   - Attribution: default distributed bar, top 5 by revenue from flattened sources; icon row under chart when icon_spec present; tooltip Revenue + CR%; mode switchable (bar-distributed/pie/bar).
   - Main chart: title "Revenue & Cost", default type area (configurable); no big headline number under title.
   - Chart defs: new modes radialbar, bar-horizontal, bar-distributed in kexo-chart-defs.js; overview default area; mini charts have colorSlots: 5; layout modal uses meta.colorSlots for color inputs.
+- Settings/runtime migrations:
+  - `charts_ui_config_v1` now allows the new dashboard mini-chart modes and migrates legacy dashboard chart modes (pie/bar) to the new defaults so the chart redesign actually applies even when older settings were saved.
+  - Dashboard KPI compare sparkline now defaults to a dashed grey line; when sparkline mode is `area`, the compare is always rendered as a line (no fill).
 - Dashboard overview deltas: all four cards use real current vs previous period (snapshot financial.revenue for Finishes/Countries; attribution report revenue for Attribution).
 - KPI sparkline labels: rendered under the sparkline strip; time format H:MM (e.g. 0:15); smart skip when >12 buckets.
 

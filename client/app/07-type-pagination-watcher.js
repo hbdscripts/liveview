@@ -3406,7 +3406,7 @@
     function defaultChartsKpiSparklineConfig(bundleKey) {
       if (bundleKey === 'headerStrip') return { mode: 'line', curve: 'smooth', strokeWidth: 2.15, height: 30, showCompare: false, advancedApexOverride: {} };
       if (bundleKey === 'yearlySnapshot') return { mode: 'line', curve: 'smooth', strokeWidth: 2.55, height: 56, showCompare: false, advancedApexOverride: {} };
-      return { mode: 'line', curve: 'straight', strokeWidth: 2.55, height: 50, showCompare: true, compareUsePrimaryColor: true, compareOpacity: 50, advancedApexOverride: {} };
+      return { mode: 'line', curve: 'straight', strokeWidth: 2.55, height: 50, showCompare: true, compareUsePrimaryColor: false, compareOpacity: 50, advancedApexOverride: {} };
     }
 
     function defaultChartsKpiDeltaStyle(bundleKey) {

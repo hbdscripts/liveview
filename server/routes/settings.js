@@ -91,10 +91,10 @@ const CHART_KPI_BUNDLE_KEYS = ['dashboardCards', 'headerStrip', 'yearlySnapshot'
 const CHART_KPI_BUNDLE_KEY_SET = new Set(CHART_KPI_BUNDLE_KEYS);
 
 const CHART_ALLOWED_MODES = Object.freeze({
-  'dash-chart-overview-30d': ['bar', 'line', 'area', 'multi-line-labels'],
-  'dash-chart-finishes-30d': ['pie'],
-  'dash-chart-countries-30d': ['pie'],
-  'dash-chart-attribution-30d': ['pie'],
+  'dash-chart-overview-30d': ['area', 'bar', 'line', 'multi-line-labels'],
+  'dash-chart-finishes-30d': ['radialbar', 'pie', 'donut', 'bar'],
+  'dash-chart-countries-30d': ['bar-horizontal', 'pie'],
+  'dash-chart-attribution-30d': ['bar-distributed', 'pie', 'bar'],
   'live-online-chart': ['map-animated', 'map-flat'],
   'sales-overview-chart': ['area', 'line', 'bar', 'multi-line-labels'],
   'date-overview-chart': ['area', 'line', 'bar', 'multi-line-labels'],
@@ -212,17 +212,17 @@ function defaultChartsUiConfigV1() {
     // Guardrail: charts + KPI bundle UI defaults are user-owned via Settings and normalized below.
     // Keep these defaults/allowed lists aligned with kexo-chart-defs.js and settings-page.js.
     charts: [
-      withStyle({ key: 'dash-chart-overview-30d', label: 'Dashboard · 7 Day Overview', enabled: true, mode: 'bar', colors: ['#3eb3ab', '#ef4444'], advancedApexOverride: {} }, { animations: false }),
+      withStyle({ key: 'dash-chart-overview-30d', label: 'Dashboard · 7 Day Overview', enabled: true, mode: 'area', colors: ['#3eb3ab', '#ef4444'], advancedApexOverride: {} }, { animations: false }),
       withStyle(
-        { key: 'dash-chart-finishes-30d', label: 'Dashboard · Finishes (7 Days)', enabled: true, mode: 'pie', colors: ['#f59e34', '#94a3b8', '#8b5cf6', '#4b94e4'], advancedApexOverride: {} },
+        { key: 'dash-chart-finishes-30d', label: 'Dashboard · Finishes (7 Days)', enabled: true, mode: 'radialbar', colors: ['#f59e34', '#94a3b8', '#8b5cf6', '#4b94e4', '#3eb3ab'], advancedApexOverride: {} },
         { animations: false, pieDonut: true, pieDonutSize: 64, pieLabelPosition: 'outside', pieLabelContent: 'label_percent', pieLabelOffset: 18 }
       ),
       withStyle(
-        { key: 'dash-chart-countries-30d', label: 'Dashboard · Countries (7 Days)', enabled: true, mode: 'pie', colors: ['#4b94e4', '#3eb3ab', '#f59e34', '#8b5cf6', '#ef4444'], advancedApexOverride: {} },
+        { key: 'dash-chart-countries-30d', label: 'Dashboard · Countries (7 Days)', enabled: true, mode: 'bar-horizontal', colors: ['#4b94e4', '#3eb3ab', '#f59e34', '#8b5cf6', '#ef4444'], advancedApexOverride: {} },
         { animations: false, pieDonut: true, pieDonutSize: 64, pieLabelPosition: 'outside', pieLabelContent: 'label_percent', pieLabelOffset: 18, pieCountryFlags: true }
       ),
       withStyle(
-        { key: 'dash-chart-attribution-30d', label: 'Dashboard · Attribution (7 Days)', enabled: true, mode: 'pie', colors: ['#4b94e4', '#3eb3ab', '#f59e34', '#8b5cf6', '#ef4444'], advancedApexOverride: {} },
+        { key: 'dash-chart-attribution-30d', label: 'Dashboard · Attribution (7 Days)', enabled: true, mode: 'bar-distributed', colors: ['#4b94e4', '#3eb3ab', '#f59e34', '#8b5cf6', '#ef4444'], advancedApexOverride: {} },
         { animations: false, pieDonut: true, pieDonutSize: 64, pieLabelPosition: 'outside', pieLabelContent: 'label_percent', pieLabelOffset: 18 }
       ),
       withStyle({ key: 'live-online-chart', label: 'Dashboard · Live Online', enabled: true, mode: 'map-flat', colors: ['#16a34a'], advancedApexOverride: {} }),
@@ -237,7 +237,7 @@ function defaultChartsUiConfigV1() {
     ],
     kpiBundles: {
       dashboardCards: {
-        sparkline: { mode: 'line', curve: 'straight', strokeWidth: 2.55, height: 50, showCompare: true, compareUsePrimaryColor: true, compareOpacity: 50, advancedApexOverride: {} },
+        sparkline: { mode: 'line', curve: 'straight', strokeWidth: 2.55, height: 50, showCompare: true, compareUsePrimaryColor: false, compareOpacity: 50, advancedApexOverride: {} },
         deltaStyle: { fontSize: 14, fontWeight: 500, iconSize: 12, fontColor: '', iconColor: '' },
         palette: { up: '#2fb344', down: '#d63939', same: '#66bdb7', compareLine: '#cccccc' },
       },
@@ -784,6 +784,15 @@ function normalizeChartsList(rawList, defaults) {
   for (const d of defaults) byKey[d.key] = d;
   const out = [];
   const seen = new Set();
+  function migrateDashboardOverviewMode(key, mode) {
+    // Migration: the dashboard overview mini charts used to default to `pie`.
+    // New defaults: radialbar / bar-horizontal / bar-distributed, plus overview `area`.
+    if (key === 'dash-chart-finishes-30d' && mode === 'pie') return 'radialbar';
+    if (key === 'dash-chart-countries-30d' && mode === 'pie') return 'bar-horizontal';
+    if (key === 'dash-chart-attribution-30d' && mode === 'pie') return 'bar-distributed';
+    if (key === 'dash-chart-overview-30d' && mode === 'bar') return 'area';
+    return mode;
+  }
   if (Array.isArray(rawList)) {
     for (const item of rawList) {
       if (!item || typeof item !== 'object') continue;
@@ -791,7 +800,8 @@ function normalizeChartsList(rawList, defaults) {
       if (!CHART_UI_KEY_SET.has(key)) continue;
       if (seen.has(key)) continue;
       const def = byKey[key] || { key, label: key, enabled: true, mode: 'line', colors: [] };
-      const mode = normalizeChartModeForKey(key, item.mode, def.mode);
+      let mode = normalizeChartModeForKey(key, item.mode, def.mode);
+      mode = migrateDashboardOverviewMode(key, mode);
       const normalized = {
         key,
         label: normalizeText(item.label, def.label),
@@ -919,7 +929,7 @@ function normalizeChartsKpiBundle(bundleKey, raw, fallback) {
   const fontWeightRaw = parseInt(String(deltaSrc.fontWeight != null ? deltaSrc.fontWeight : deltaDef.fontWeight || 500), 10);
   const fontWeight = (fontWeightRaw === 400 || fontWeightRaw === 500) ? fontWeightRaw : 500;
   const supportsCompare = bundleKey === 'dashboardCards';
-  return {
+  const out = {
     sparkline: {
       mode,
       curve,
@@ -944,6 +954,14 @@ function normalizeChartsKpiBundle(bundleKey, raw, fallback) {
       compareLine: normalizeHexColor(paletteSrc.compareLine, paletteDef.compareLine || '#cccccc'),
     },
   };
+  if (bundleKey === 'dashboardCards') {
+    // Migration: older defaults used a primary-color compare line (opacity) which reads like a filled area.
+    // New default: dashed grey compare line.
+    if (out.sparkline && out.sparkline.showCompare && out.sparkline.compareUsePrimaryColor === true && out.sparkline.compareOpacity === 50) {
+      out.sparkline.compareUsePrimaryColor = false;
+    }
+  }
+  return out;
 }
 
 function normalizeChartsKpiBundles(rawBundles, defaults) {

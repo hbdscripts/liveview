@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 16577503de66cca9
+// checksum: 03cf9fce35af137f
 
 (function () {
 const API = '';
@@ -8564,7 +8564,7 @@ const API = '';
     function defaultChartsKpiSparklineConfig(bundleKey) {
       if (bundleKey === 'headerStrip') return { mode: 'line', curve: 'smooth', strokeWidth: 2.15, height: 30, showCompare: false, advancedApexOverride: {} };
       if (bundleKey === 'yearlySnapshot') return { mode: 'line', curve: 'smooth', strokeWidth: 2.55, height: 56, showCompare: false, advancedApexOverride: {} };
-      return { mode: 'line', curve: 'straight', strokeWidth: 2.55, height: 50, showCompare: true, compareUsePrimaryColor: true, compareOpacity: 50, advancedApexOverride: {} };
+      return { mode: 'line', curve: 'straight', strokeWidth: 2.55, height: 50, showCompare: true, compareUsePrimaryColor: false, compareOpacity: 50, advancedApexOverride: {} };
     }
 
     function defaultChartsKpiDeltaStyle(bundleKey) {
@@ -16776,12 +16776,22 @@ const API = '';
             yMax = maxVal + pad;
           }
 
+          var hasCompare = !!(compareNums && compareNums.length >= 2);
           var series = [{ name: 'Current', data: nums }];
+          var chartType = sparkMode;
+          // If the spark mode is `area` and we render a compare series, force the compare to be a line
+          // so it reads as a dashed reference (not a filled area).
+          if (sparkMode === 'area' && hasCompare) {
+            chartType = 'line';
+            series[0].type = 'area';
+          }
           var colors = [color];
           var strokeWidths = [sparkMode === 'bar' ? 0 : sparkStrokeWidth];
           var dashArray = [0];
-          if (compareNums && compareNums.length >= 2) {
-            series.push({ name: 'Compare', data: compareNums });
+          if (hasCompare) {
+            var compareSeries = { name: 'Compare', data: compareNums };
+            if (sparkMode === 'area') compareSeries.type = 'line';
+            series.push(compareSeries);
             var usePrimary = sparkCfg.compareUsePrimaryColor !== false;
             var opacityPct = Number(sparkCfg.compareOpacity);
             if (!Number.isFinite(opacityPct)) opacityPct = 50;
@@ -16792,7 +16802,7 @@ const API = '';
             dashArray.push(usePrimary ? 0 : 4);
           }
           var apexOpts = {
-            chart: { type: sparkMode, height: sparkHeight, sparkline: { enabled: true }, animations: { enabled: false } },
+            chart: { type: chartType, height: sparkHeight, sparkline: { enabled: true }, animations: { enabled: false } },
             series: series,
             stroke: { show: true, width: strokeWidths, curve: sparkCurve, lineCap: 'butt', dashArray: dashArray },
             fill: sparkMode === 'area'
