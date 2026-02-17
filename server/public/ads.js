@@ -1280,6 +1280,14 @@
       var el = document.getElementById('ads-goal-health-content');
       var card = document.getElementById('ads-goal-health-card');
       if (!el || !card) return;
+      var goals = Array.isArray(data.goals) ? data.goals : [];
+      var hasProvisionedGoal = goals.some(function (g) {
+        return !!(g && g.conversion_action_resource_name);
+      });
+      if (!hasProvisionedGoal) {
+        card.style.display = 'none';
+        return;
+      }
       var c7 = data.coverage_7d || {};
       var c30 = data.coverage_30d || {};
       var rec = data.reconciliation || {};
