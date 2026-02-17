@@ -224,15 +224,15 @@ function defaultChartsUiConfigV1() {
       withStyle({ key: 'dash-chart-overview-30d', label: 'Dashboard · 7 Day Overview', enabled: true, mode: 'area', colors: ['#3eb3ab', '#ef4444'], advancedApexOverride: {} }, { animations: false }),
       withStyle(
         { key: 'dash-chart-finishes-30d', label: 'Dashboard · Finishes (7 Days)', enabled: true, mode: 'radialbar', colors: ['#f59e34', '#94a3b8', '#8b5cf6', '#4b94e4', '#3eb3ab'], advancedApexOverride: {} },
-        { animations: false, pieDonut: true, pieDonutSize: 64, pieLabelPosition: 'outside', pieLabelContent: 'label_percent', pieLabelOffset: 18 }
+        { animations: false }
       ),
       withStyle(
         { key: 'dash-chart-devices-30d', label: 'Dashboard · Devices (7 Days)', enabled: true, mode: 'bar-horizontal', colors: ['#4b94e4', '#3eb3ab', '#f59e34', '#8b5cf6', '#ef4444'], advancedApexOverride: {} },
         { animations: false }
       ),
       withStyle(
-        { key: 'dash-chart-attribution-30d', label: 'Dashboard · Attribution (7 Days)', enabled: true, mode: 'bar-distributed', colors: ['#4b94e4', '#3eb3ab', '#f59e34', '#8b5cf6', '#ef4444'], advancedApexOverride: {} },
-        { animations: false, pieDonut: true, pieDonutSize: 64, pieLabelPosition: 'outside', pieLabelContent: 'label_percent', pieLabelOffset: 18 }
+        { key: 'dash-chart-attribution-30d', label: 'Dashboard · Attribution (7 Days)', enabled: true, mode: 'donut', colors: ['#4b94e4', '#3eb3ab', '#f59e34', '#8b5cf6', '#ef4444'], advancedApexOverride: {} },
+        { animations: false, pieDonut: true, pieDonutSize: 64, pieLabelPosition: 'outside', pieLabelContent: 'label', pieLabelOffset: 18 }
       ),
       withStyle({ key: 'live-online-chart', label: 'Dashboard · Live Online', enabled: true, mode: 'map-flat', colors: ['#16a34a'], advancedApexOverride: {} }),
       withStyle({ key: 'sales-overview-chart', label: 'Dashboard · Sales Trend', enabled: true, mode: 'area', colors: ['#0d9488'], advancedApexOverride: {} }),
@@ -816,10 +816,10 @@ function normalizeChartsList(rawList, defaults, options) {
   const seen = new Set();
   function migrateDashboardOverviewMode(key, mode) {
     // Migration: the dashboard overview mini charts used to default to `pie`.
-    // New defaults: radialbar / bar-horizontal / bar-distributed, plus overview `area`.
+    // New defaults: radialbar / bar-horizontal / donut, plus overview `area`.
     if (key === 'dash-chart-finishes-30d' && mode === 'pie') return 'radialbar';
     if (key === 'dash-chart-countries-30d' && mode === 'pie') return 'bar-horizontal';
-    if (key === 'dash-chart-attribution-30d' && mode === 'pie') return 'bar-distributed';
+    if (key === 'dash-chart-attribution-30d' && mode === 'pie') return 'donut';
     if (key === 'dash-chart-overview-30d' && mode === 'bar') return 'area';
     return mode;
   }

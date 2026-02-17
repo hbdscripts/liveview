@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: a247f7926492ed1e
+// checksum: 9f13a08778f5e723
 
 (function () {
 const API = '';
@@ -16662,9 +16662,9 @@ const API = '';
             };
           }
           return JSON.stringify({
-            finishes: miniChartCfg('dash-chart-finishes-30d', 'pie', ['#f59e34']),
+            finishes: miniChartCfg('dash-chart-finishes-30d', 'radialbar', ['#f59e34']),
             devices: miniChartCfg('dash-chart-devices-30d', 'bar-horizontal', ['#4b94e4']),
-            attribution: miniChartCfg('dash-chart-attribution-30d', 'pie', ['#4b94e4']),
+            attribution: miniChartCfg('dash-chart-attribution-30d', 'donut', ['#4b94e4']),
             overview: miniChartCfg('dash-chart-overview-30d', 'bar', ['#3eb3ab', '#ef4444']),
           }) || '';
         } catch (_) {
@@ -16900,6 +16900,8 @@ const API = '';
         pieLabelOffset = Math.round(Math.max(-40, Math.min(40, pieLabelOffset)));
         if (pieLabelPosition === 'outside') pieLabelOffset = Math.max(6, pieLabelOffset);
         if (pieLabelPosition === 'inside') pieLabelOffset = Math.min(0, pieLabelOffset);
+        var pieStartAngle = Number(opts && opts.pieStartAngle != null ? opts.pieStartAngle : NaN);
+        var pieEndAngle = Number(opts && opts.pieEndAngle != null ? opts.pieEndAngle : NaN);
         var showLegend = (opts && typeof opts.showLegend === 'boolean')
           ? !!opts.showLegend
           : (pieLabelPosition !== 'outside');
@@ -16965,6 +16967,8 @@ const API = '';
           tooltip: { y: { formatter: valueFormatter } },
           noData: { text: 'No data available', style: { fontSize: '13px', color: '#626976' } }
         };
+        if (Number.isFinite(pieStartAngle)) apexOpts.plotOptions.pie.startAngle = pieStartAngle;
+        if (Number.isFinite(pieEndAngle)) apexOpts.plotOptions.pie.endAngle = pieEndAngle;
         if (chartType === 'donut') {
           var donutSize = Number(uiStyle.pieDonutSize);
           if (!Number.isFinite(donutSize)) donutSize = 66;
@@ -16978,7 +16982,17 @@ const API = '';
           }
         } catch (_) {}
         try {
-          upsertDashboardApexChart(chartId, chartEl, apexOpts);
+          var afterRender = (opts && typeof opts.afterRender === 'function') ? opts.afterRender : null;
+          upsertDashboardApexChart(
+            chartId,
+            chartEl,
+            apexOpts,
+            afterRender
+              ? function(chart) {
+                try { afterRender(chart, { chartEl: chartEl, labels: safeLabels, values: safeValues, chartType: chartType }); } catch (_) {}
+              }
+              : null
+          );
         } catch (err) {
           captureChartError(err, 'dashboardPieChartRender', { chartId: chartId });
           console.error('[dashboard] pie chart render error:', chartId, err);
@@ -17007,25 +17021,60 @@ const API = '';
         var uiStyle = (typeof chartStyleFromUiConfig === 'function') ? chartStyleFromUiConfig(chartId) : null;
         var labelsRef = labels;
         var valuesRef = values;
-        var labelsMode = (uiStyle && uiStyle.dataLabels != null) ? String(uiStyle.dataLabels).trim().toLowerCase() : 'auto';
-        if (labelsMode !== 'on' && labelsMode !== 'off' && labelsMode !== 'auto') labelsMode = 'auto';
+        var defaultIdx = 0;
+        try {
+          var bestRev = -Infinity;
+          for (var k = 0; k < valuesRef.length; k++) {
+            var rv = normalizeOverviewMetric(valuesRef[k]);
+            if (rv > bestRev) { bestRev = rv; defaultIdx = k; }
+          }
+        } catch (_) { defaultIdx = 0; }
+        function upsertRadialCenterLabel(selectedIdx) {
+          var idx = Number.isFinite(Number(selectedIdx)) ? Number(selectedIdx) : defaultIdx;
+          if (idx < 0 || idx >= labelsRef.length) idx = defaultIdx;
+          var name = (idx >= 0 && idx < labelsRef.length) ? labelsRef[idx] : '';
+          var rev = (idx >= 0 && idx < valuesRef.length) ? valuesRef[idx] : 0;
+          var revStr = formatRevenue(normalizeOverviewMetric(rev)) || '\u2014';
+          try { if (chartEl && chartEl.style) chartEl.style.position = 'relative'; } catch (_) {}
+          var el = null;
+          try { el = chartEl.querySelector('.kexo-radial-center-label-wrap'); } catch (_) { el = null; }
+          if (!el) {
+            el = document.createElement('div');
+            el.className = 'kexo-radial-center-label-wrap';
+            el.setAttribute('aria-hidden', 'true');
+            chartEl.appendChild(el);
+          }
+          el.innerHTML = '<div class="kexo-radial-center-label">' + escapeHtml(name || '') + '</div>' +
+            '<div class="kexo-radial-center-value">' + escapeHtml(revStr) + '</div>';
+        }
         var apexOpts = {
           chart: {
             type: 'radialBar',
             height: chartHeight,
             fontFamily: 'Inter, sans-serif',
             toolbar: { show: !!(uiStyle && uiStyle.toolbar === true) },
-            animations: { enabled: !!(uiStyle && uiStyle.animations === true), easing: 'easeinout', speed: 280 }
+            animations: { enabled: !!(uiStyle && uiStyle.animations === true), easing: 'easeinout', speed: 280 },
+            events: {
+              mounted: function() { try { upsertRadialCenterLabel(defaultIdx); } catch (_) {} },
+              updated: function() { try { upsertRadialCenterLabel(defaultIdx); } catch (_) {} },
+              dataPointMouseEnter: function(event, chartCtx, config) {
+                try {
+                  var idx = config && Number.isFinite(Number(config.seriesIndex)) ? Number(config.seriesIndex) : -1;
+                  if (idx >= 0) upsertRadialCenterLabel(idx);
+                } catch (_) {}
+              },
+              dataPointMouseLeave: function() { try { upsertRadialCenterLabel(defaultIdx); } catch (_) {} }
+            }
           },
           plotOptions: {
             radialBar: {
               startAngle: -135,
               endAngle: 135,
-              hollow: { size: '40%' },
+              hollow: { size: '58%' },
               track: { background: 'rgba(0,0,0,0.06)' },
               dataLabels: {
                 name: { show: false },
-                value: { show: labelsMode !== 'off', formatter: function(val) { return val ? val.toFixed(0) + '%' : ''; } },
+                value: { show: false },
                 total: { show: false },
               }
             }
@@ -17056,7 +17105,9 @@ const API = '';
           }
         } catch (_) {}
         try {
-          upsertDashboardApexChart(chartId, chartEl, apexOpts);
+          upsertDashboardApexChart(chartId, chartEl, apexOpts, function() {
+            try { upsertRadialCenterLabel(defaultIdx); } catch (_) {}
+          });
         } catch (err) {
           captureChartError(err, 'dashboardRadialBarRender', { chartId: chartId });
           console.error('[dashboard] radialBar chart render error:', chartId, err);
@@ -17263,12 +17314,13 @@ const API = '';
           col.innerHTML = '';
           return;
         }
+        try { col.style.setProperty('--dash-devices-row-count', String(list.length)); } catch (_) {}
         col.innerHTML = list.map(function(r) {
           var platform = r && r.platform != null ? String(r.platform).trim().toLowerCase() : '';
           var label = r && r.label != null ? String(r.label).trim() : platformLabelForKey(platform);
           return '<div class="dash-devices-icon-cell" title="' + escapeHtml(label) + '" aria-label="' + escapeHtml(label) + '">' +
-            '<span class="visually-hidden">' + escapeHtml(label) + '</span>' +
             platformIconHtmlForKey(platform, label) +
+            '<span class="dash-devices-icon-label">' + escapeHtml(label) + '</span>' +
           '</div>';
         }).join('');
       }
@@ -17325,12 +17377,12 @@ const API = '';
         var platformRef = platformKeys;
 
         var apexOpts = {
-          chart: { type: 'bar', height: chartHeight, fontFamily: 'Inter, sans-serif', toolbar: { show: false }, animations: { enabled: !!(uiStyle && uiStyle.animations === true) } },
+          chart: { type: 'bar', height: chartHeight, offsetY: -4, fontFamily: 'Inter, sans-serif', toolbar: { show: false }, animations: { enabled: !!(uiStyle && uiStyle.animations === true) } },
           plotOptions: { bar: { horizontal: true, borderRadius: 0, distributed: true, barHeight: '60%', dataLabels: { hideOverflowingLabels: false } } },
           series: [{ name: 'Sessions', data: values }],
           xaxis: { categories: labels, labels: { show: false } },
           yaxis: { labels: { show: false } },
-          grid: { padding: { bottom: 12, left: 6, right: 8, top: 4 } },
+          grid: { show: false, padding: { bottom: 10, left: 6, right: 8, top: 0 } },
           colors: colors,
           legend: { show: false },
           dataLabels: { enabled: false },
@@ -17489,90 +17541,131 @@ const API = '';
         try { scheduleOverviewHeightSync(); } catch (_) {}
       }
 
+      function removeAttributionDonutIcons(chartEl) {
+        if (!chartEl) return;
+        try {
+          var existing = chartEl.querySelector('.dash-attribution-donut-icons');
+          if (existing) existing.remove();
+        } catch (_) {}
+      }
+
+      function upsertAttributionDonutIcons(chartEl, sources, values) {
+        if (!chartEl) return;
+        removeAttributionDonutIcons(chartEl);
+        var list = Array.isArray(sources) ? sources : [];
+        var vals = Array.isArray(values) ? values : [];
+        if (!list.length || !vals.length || list.length !== vals.length) return;
+        try { if (chartEl && chartEl.style) chartEl.style.position = 'relative'; } catch (_) {}
+
+        var svg = null;
+        var pieNode = null;
+        try { svg = chartEl.querySelector('svg'); } catch (_) { svg = null; }
+        if (svg) {
+          try {
+            pieNode = svg.querySelector('.apexcharts-pie') ||
+              svg.querySelector('.apexcharts-donut-series') ||
+              svg.querySelector('.apexcharts-series');
+          } catch (_) { pieNode = null; }
+        }
+        var wrapRect = null;
+        var pieRect = null;
+        try { wrapRect = chartEl.getBoundingClientRect(); } catch (_) { wrapRect = null; }
+        try { pieRect = (pieNode && pieNode.getBoundingClientRect) ? pieNode.getBoundingClientRect() : (svg && svg.getBoundingClientRect ? svg.getBoundingClientRect() : null); } catch (_) { pieRect = null; }
+        if (!wrapRect || !pieRect || !(pieRect.width > 0) || !(pieRect.height > 0)) return;
+
+        var cx = pieRect.left + (pieRect.width / 2);
+        var cy = pieRect.top + (pieRect.height / 2);
+        var r = Math.min(pieRect.width, pieRect.height) / 2;
+        var iconR = r + Math.max(10, Math.round(r * 0.12));
+
+        var total = 0;
+        for (var i = 0; i < vals.length; i++) total += Math.max(0, normalizeOverviewMetric(vals[i]));
+        if (!(total > 0)) return;
+
+        var overlay = document.createElement('div');
+        overlay.className = 'dash-attribution-donut-icons';
+        overlay.setAttribute('aria-hidden', 'true');
+
+        var angle = -90;
+        for (var j = 0; j < list.length; j++) {
+          var v = Math.max(0, normalizeOverviewMetric(vals[j]));
+          if (!(v > 0)) continue;
+          var span = (v / total) * 360;
+          var mid = angle + (span / 2);
+          angle += span;
+          var rad = (mid * Math.PI) / 180;
+          var x = cx + (iconR * Math.cos(rad));
+          var y = cy + (iconR * Math.sin(rad));
+          var left = x - wrapRect.left;
+          var top = y - wrapRect.top;
+          if (!Number.isFinite(left) || !Number.isFinite(top)) continue;
+
+          var src = list[j] || {};
+          var label = src.label != null ? String(src.label).trim() : '';
+          var spec = src.icon_spec != null ? String(src.icon_spec).trim() : '';
+          var cell = document.createElement('div');
+          cell.className = 'dash-attribution-donut-icon';
+          cell.style.left = left + 'px';
+          cell.style.top = top + 'px';
+          cell.innerHTML = spec ? attributionIconSpecToHtml(spec, label) : ('<span class="dash-attribution-icon-fallback">' + escapeHtml(label || '—') + '</span>');
+          overlay.appendChild(cell);
+        }
+
+        chartEl.appendChild(overlay);
+      }
+
       function renderOverviewAttributionChart(attributionPayload) {
         var chartId = 'dash-chart-attribution-30d';
         var rows = attributionPayload && attributionPayload.attribution && Array.isArray(attributionPayload.attribution.rows)
           ? attributionPayload.attribution.rows
           : [];
-        var mode = (typeof chartModeFromUiConfig === 'function') ? String(chartModeFromUiConfig(chartId, 'bar-distributed') || 'bar-distributed').trim().toLowerCase() : 'bar-distributed';
-        mode = validateChartType(chartId, mode, 'bar-distributed');
-        var barLike = mode === 'bar-distributed' || mode === 'bar-horizontal' || mode === 'bar';
-        var lineLike = mode === 'line' || mode === 'area' || mode === 'multi-line-labels';
-        var radialLike = mode === 'radialbar';
-        if (barLike || lineLike || radialLike) {
-          var flatSources = [];
-          rows.forEach(function(ch) {
-            if (!ch || !Array.isArray(ch.sources)) return;
-            (ch.sources || []).forEach(function(src) {
-              if (!src) return;
-              var rev = normalizeOverviewMetric(src.revenue_gbp != null ? src.revenue_gbp : src.revenue);
-              if (rev <= 0) return;
-              flatSources.push({
-                label: (src.label != null ? String(src.label) : '') || (src.source_key != null ? String(src.source_key) : ''),
-                icon_spec: src.icon_spec != null ? src.icon_spec : null,
-                revenue_gbp: rev,
-                conversion_pct: src.conversion_pct != null ? src.conversion_pct : null
-              });
+        var mode = (typeof chartModeFromUiConfig === 'function') ? String(chartModeFromUiConfig(chartId, 'donut') || 'donut').trim().toLowerCase() : 'donut';
+        mode = validateChartType(chartId, mode, 'donut');
+
+        var flatSources = [];
+        rows.forEach(function(ch) {
+          if (!ch || !Array.isArray(ch.sources)) return;
+          (ch.sources || []).forEach(function(src) {
+            if (!src) return;
+            var rev = normalizeOverviewMetric(src.revenue_gbp != null ? src.revenue_gbp : src.revenue);
+            if (rev <= 0) return;
+            flatSources.push({
+              label: (src.label != null ? String(src.label) : '') || (src.source_key != null ? String(src.source_key) : ''),
+              icon_spec: src.icon_spec != null ? src.icon_spec : null,
+              revenue_gbp: rev,
+              conversion_pct: src.conversion_pct != null ? src.conversion_pct : null
             });
           });
-          flatSources.sort(function(a, b) { return (b.revenue_gbp || 0) - (a.revenue_gbp || 0); });
-          var topSources = flatSources.slice(0, 5);
-          if (topSources.length) {
-            if (lineLike) {
-              renderOverviewMiniLegend(chartId, [], []);
-              var srcLabels = topSources.map(function(s) { return s.label || ''; });
-              var srcValues = topSources.map(function(s) { return s.revenue_gbp || 0; });
-              var attrColors = ['#4b94e4', '#3eb3ab', '#f59e34', '#8b5cf6', '#ef4444'];
-              makeChart(chartId, srcLabels, [{
-                label: 'Revenue',
-                data: srcValues,
-                borderColor: (attrColors && attrColors[0]) || DASH_ACCENT,
-                backgroundColor: (attrColors && attrColors[0]) ? (attrColors[0] + '33') : DASH_ACCENT_LIGHT,
-                fill: mode === 'area',
-                borderWidth: 2
-              }], { currency: true, chartType: mode, height: 180 });
-            } else if (radialLike) {
-              try { removeAttributionIconRow(document.getElementById(chartId)); } catch (_) {}
-              var rbLabels = topSources.map(function(s) { return s.label || ''; });
-              var rbValues = topSources.map(function(s) { return s.revenue_gbp || 0; });
-              var rbColors = ['#4b94e4', '#3eb3ab', '#f59e34', '#8b5cf6', '#ef4444'];
-              renderOverviewFinishesRadialBar(chartId, rbLabels, rbValues, { colors: rbColors, height: 180 });
-              renderOverviewMiniLegend(chartId, rbLabels, rbColors);
-            } else {
-              renderOverviewMiniLegend(chartId, [], []);
-              renderOverviewAttributionDistributedBar(chartId, topSources, {
-                colors: ['#4b94e4', '#3eb3ab', '#f59e34', '#8b5cf6', '#ef4444'],
-                height: 180,
-                horizontal: mode === 'bar-horizontal'
-              });
-            }
-          } else {
-            renderOverviewChartEmpty(chartId, 'No attribution data');
-            renderOverviewMiniLegend(chartId, [], []);
-            removeAttributionIconRow(document.getElementById(chartId));
-          }
+        });
+        flatSources.sort(function(a, b) { return (b.revenue_gbp || 0) - (a.revenue_gbp || 0); });
+        var topSources = flatSources.slice(0, 5);
+
+        var chartEl = document.getElementById(chartId);
+        if (!topSources.length) {
+          renderOverviewChartEmpty(chartId, 'No attribution data');
+          removeAttributionIconRow(chartEl);
+          removeAttributionDonutIcons(chartEl);
+          renderOverviewMiniLegend(chartId, [], []);
           return;
         }
-        var topRows = rows
-          .filter(function (row) { return row && Number(row.sessions) > 0; })
-          .sort(function (a, b) { return (Number(b.sessions) || 0) - (Number(a.sessions) || 0); })
-          .slice(0, 5);
-        var labels = [];
-        var values = [];
-        topRows.forEach(function (row) {
-          var label = row && row.label != null ? String(row.label).trim() : '';
-          var sessions = normalizeOverviewMetric(row && row.sessions);
-          if (!label || sessions <= 0) return;
-          labels.push(label);
-          values.push(sessions);
-        });
+
+        removeAttributionIconRow(chartEl);
+        removeAttributionDonutIcons(chartEl);
+
+        var labels = topSources.map(function(s) { return s.label || ''; });
+        var values = topSources.map(function(s) { return s.revenue_gbp || 0; });
         renderOverviewPieChart(chartId, labels, values, {
           colors: ['#4b94e4', '#3eb3ab', '#f59e34', '#8b5cf6', '#ef4444'],
-          valueFormatter: function(v) { return Math.round(normalizeOverviewMetric(v)).toLocaleString() + ' sessions'; },
+          valueFormatter: function(v) { return formatRevenue(normalizeOverviewMetric(v)) || '\u2014'; },
           height: 180,
           dataLabels: false,
-          showLegend: true,
-          donut: mode === 'donut'
+          showLegend: false,
+          donut: mode === 'donut',
+          pieStartAngle: -90,
+          pieEndAngle: 270,
+          afterRender: function(_chart, info) {
+            try { upsertAttributionDonutIcons(info && info.chartEl ? info.chartEl : chartEl, topSources, info && info.values ? info.values : values); } catch (_) {}
+          }
         });
         renderOverviewMiniLegend(chartId, [], []);
       }

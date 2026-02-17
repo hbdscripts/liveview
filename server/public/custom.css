@@ -1272,7 +1272,7 @@ body:not([data-page="settings"]) .table-responsive table td:first-child .country
   max-width: 100%;
 }
 
-/* Dashboard Overview: Devices mini chart (icon-only y labels) */
+/* Dashboard Overview: Devices mini chart (icon + label y column) */
 .kexo-overview-mini-chart-wrap--devices {
   display: flex;
   align-items: stretch;
@@ -1286,20 +1286,32 @@ body:not([data-page="settings"]) .table-responsive table td:first-child .country
   min-width: 0;
 }
 .dash-devices-icon-col {
-  flex: 0 0 28px;
-  width: 28px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-around;
+  flex: 0 0 92px;
+  width: 92px;
+  display: grid;
+  grid-template-rows: repeat(var(--dash-devices-row-count, 5), minmax(0, 1fr));
   align-items: center;
-  padding: 8px 0 12px;
+  justify-items: start;
+  padding: 0 0 10px;
   color: #090f17;
 }
 .dash-devices-icon-cell {
   width: 100%;
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
+  gap: 0.4rem;
+  min-width: 0;
+}
+.dash-devices-icon-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: #0f172a;
+  opacity: 0.72;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 .dash-devices-icon-cell svg {
   width: 18px;
@@ -1311,6 +1323,80 @@ body:not([data-page="settings"]) .table-responsive table td:first-child .country
   object-fit: contain;
 }
 .dash-devices-icon-cell i {
+  font-size: 1rem;
+}
+
+/* Dashboard Overview: Finishes radial center label */
+.kexo-radial-center-label-wrap {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  pointer-events: none;
+  padding: 0 0.5rem;
+  z-index: 4;
+}
+.kexo-radial-center-label {
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--tblr-secondary, #626976);
+  opacity: 0.9;
+  line-height: 1.2;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.kexo-radial-center-value {
+  margin-top: 0.15rem;
+  font-size: 0.95rem;
+  font-weight: 500;
+  line-height: 1.1;
+  color: #0f172a;
+}
+
+/* Dashboard Overview: Attribution donut icons (outside ring) */
+.dash-attribution-donut-icons {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+}
+.dash-attribution-donut-icon {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.14);
+}
+html[data-bs-theme="dark"] .dash-attribution-donut-icon {
+  background: rgba(26, 34, 52, 0.92);
+}
+.dash-attribution-donut-icon .source-icons {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.dash-attribution-donut-icon svg {
+  width: 18px;
+  height: 18px;
+}
+.dash-attribution-donut-icon img {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+}
+.dash-attribution-donut-icon i {
   font-size: 1rem;
 }
 .am-tree .am-tree-row {
@@ -3030,13 +3116,37 @@ html[data-bs-theme="dark"] .report-build-wrap {
 }
 /* Prevent dashboard table and chart cards from showing horizontal scrollbars. */
 .card[data-table-class="dashboard"] {
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: visible;
 }
 .kexo-overview-main-card {
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: visible;
 }
 .kexo-overview-mini-card {
   overflow-x: hidden;
+}
+.card[data-kexo-chart-key],
+[data-kexo-chart-key] > .card {
+  overflow-x: hidden;
+  overflow-y: visible;
+}
+[data-kexo-chart-key].card > .card-body,
+[data-kexo-chart-key] > .card > .card-body {
+  overflow: visible;
+}
+.apexcharts-tooltip,
+.apexcharts-xaxistooltip,
+.apexcharts-yaxistooltip {
+  z-index: 1080 !important;
+}
+.apexcharts-grid,
+.apexcharts-gridlines-horizontal,
+.apexcharts-gridlines-vertical,
+.apexcharts-gridline,
+.apexcharts-xaxis-tick,
+.apexcharts-yaxis-tick {
+  display: none !important;
 }
 .kexo-overview-mini-card-body,
 .kexo-overview-main-card-body {

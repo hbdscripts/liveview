@@ -24,10 +24,10 @@
 
   window.KEXO_CHART_DEFS = {
     'dash-chart-overview-30d': { modes: ['area', 'bar', 'line', 'multi-line-labels', 'combo', 'stacked-area', 'stacked-bar'], series: ['Revenue', 'Cost', 'Profit'], defaultMode: 'area', height: 420 },
-    'dash-chart-finishes-30d': { modes: ['radialbar', 'pie', 'donut', 'bar-horizontal', 'bar', 'bar-distributed', 'line', 'area', 'multi-line-labels'], series: ['Revenue by finish'], defaultMode: 'radialbar', height: 240, colorSlots: 5 },
+    'dash-chart-finishes-30d': { modes: ['radialbar'], series: ['Revenue by finish'], defaultMode: 'radialbar', height: 240, colorSlots: 5 },
     'dash-chart-countries-30d': { modes: ['bar-horizontal', 'bar', 'bar-distributed', 'radialbar', 'pie', 'donut', 'line', 'area', 'multi-line-labels'], series: ['Revenue by country'], defaultMode: 'bar-horizontal', height: 240, colorSlots: 5 },
     'dash-chart-devices-30d': { modes: ['bar-horizontal'], series: ['Sessions by platform'], defaultMode: 'bar-horizontal', height: 240, colorSlots: 5 },
-    'dash-chart-attribution-30d': { modes: ['bar-distributed', 'bar-horizontal', 'bar', 'line', 'area', 'multi-line-labels', 'pie', 'donut', 'radialbar'], series: ['Revenue by source'], defaultMode: 'bar-distributed', height: 240, colorSlots: 5 },
+    'dash-chart-attribution-30d': { modes: ['donut'], series: ['Revenue by source'], defaultMode: 'donut', height: 240, colorSlots: 5 },
     'live-online-chart': { modes: ['map-animated', 'map-flat'], series: ['Online now'], defaultMode: 'map-flat', height: 220 },
     'sales-overview-chart': { modes: ['area', 'line', 'bar', 'multi-line-labels'], series: ['Revenue'], defaultMode: 'area', height: 220 },
     'date-overview-chart': { modes: ['area', 'line', 'bar', 'multi-line-labels'], series: ['Sessions', 'Orders'], defaultMode: 'area', height: 220 },
