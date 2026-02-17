@@ -137,9 +137,13 @@
   function bindTabClicks() {
     document.addEventListener('click', function (e) {
       var t = e && e.target ? e.target : null;
-      var trigger = t && t.closest ? t.closest('a[data-admin-tab], button[data-admin-tab]') : null;
+      var trigger = t && t.closest ? t.closest('a[data-admin-tab], button[data-admin-tab], a[data-settings-admin-tab], button[data-settings-admin-tab]') : null;
       if (!trigger) return;
-      var tab = String(trigger.getAttribute('data-admin-tab') || '').trim().toLowerCase();
+      var tab = String(
+        trigger.getAttribute('data-admin-tab') ||
+        trigger.getAttribute('data-settings-admin-tab') ||
+        ''
+      ).trim().toLowerCase();
       if (!tab) return;
       e.preventDefault();
       setActiveTab(tab);
@@ -698,8 +702,14 @@
     bindActions();
 
     if (isSettingsPage()) {
-      wireAdminAccordionShown();
-      expandAdminAccordionFromUrl();
+      var hasSettingsAdminTabs = !!document.querySelector('[data-settings-admin-tab]');
+      if (hasSettingsAdminTabs) {
+        var initialSettingsTab = getTabFromQuery() || 'controls';
+        setActiveTab(initialSettingsTab, { skipUrl: true });
+      } else {
+        wireAdminAccordionShown();
+        expandAdminAccordionFromUrl();
+      }
     } else {
       var initial = getTabFromQuery() || 'controls';
       setActiveTab(initial, { skipUrl: true });
