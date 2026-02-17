@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 68d10dfdca6e1c84
+// checksum: 7f141654041c4ba3
 
 (function () {
 const API = '';
@@ -587,22 +587,13 @@ const API = '';
     }
 
     (function primePageBodyLoader() {
-      if (!isPageLoaderEnabled(PAGE)) return;
-      // Tool pages compare-conversion-rate, shipping-cr, click-order-lookup don't use the report
-      // build system and never call finish() ??? skip showing the loader so it doesn't cover content.
-      var toolPagesNoLoader = ['compare-conversion-rate', 'shipping-cr', 'click-order-lookup', 'change-pins', 'snapshot'];
-      var pageKey = String(PAGE || '').trim().toLowerCase();
-      if (toolPagesNoLoader.indexOf(pageKey) >= 0) return;
+      // Default behavior: keep content visible and avoid global overlay on initial load.
       var pageBody = document.querySelector('.page-body');
       var overlay = document.getElementById('page-body-loader');
       if (!pageBody || !overlay) return;
       syncPageBodyLoaderOffset(pageBody);
-      pageBody.classList.add('report-building');
-      overlay.classList.remove('is-hidden');
-      var titleEl = overlay.querySelector('.report-build-title');
-      var stepEl = document.getElementById('page-body-build-step') || overlay.querySelector('.report-build-step');
-      if (titleEl && !String(titleEl.textContent || '').trim()) titleEl.textContent = 'Preparing application';
-      if (stepEl && !String(stepEl.textContent || '').trim()) stepEl.textContent = 'Preparing application';
+      pageBody.classList.remove('report-building');
+      overlay.classList.add('is-hidden');
     })();
 
     function normalizeTableClass(classKey) {
