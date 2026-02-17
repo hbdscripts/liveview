@@ -223,7 +223,27 @@
   }
 
   function isExpanded(k) {
-    return _state.expanded[k] !== false;
+    if (Object.prototype.hasOwnProperty.call(_state.expanded, k)) return !!_state.expanded[k];
+    return String(k || '').indexOf('c:') === 0;
+  }
+
+  function setAllExpanded(open) {
+    var expand = !!open;
+    var next = {};
+    var model = Array.isArray(_state.treeModel) ? _state.treeModel : [];
+    model.forEach(function (channel) {
+      var channelKey = 'c:' + String(channel && channel.channel_key != null ? channel.channel_key : '');
+      next[channelKey] = expand;
+      (channel && Array.isArray(channel.sources) ? channel.sources : []).forEach(function (source) {
+        var sourceKey = 's:' + String(channel && channel.channel_key != null ? channel.channel_key : '') + '|' + String(source && source.source_key != null ? source.source_key : '');
+        next[sourceKey] = expand;
+        (source && Array.isArray(source.variants) ? source.variants : []).forEach(function (variant) {
+          var variantKey = 'v:' + String(variant && variant.variant_key != null ? variant.variant_key : '');
+          next[variantKey] = expand;
+        });
+      });
+    });
+    _state.expanded = next;
   }
 
   function renderRuleRow(rule) {
@@ -340,7 +360,13 @@
       return;
     }
     var html = '<div class="am-tree mb-0">' +
-      '<p class="text-secondary small mb-2">Use <strong>Edit icon</strong> on a Source or Variant row. SVG paste works best in the textarea. Changes sync with Settings → Kexo → Icons.</p>' +
+      '<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">' +
+      '<p class="text-secondary small mb-0">Use <strong>Edit icon</strong> on a Source or Variant row. SVG paste works best in the textarea. Changes sync with Settings → Kexo → Icons.</p>' +
+      '<div class="btn-group btn-group-sm" role="group" aria-label="Tree display controls">' +
+      '<button type="button" class="btn btn-outline-secondary" data-am-tree-action="expand-all">Expand all</button>' +
+      '<button type="button" class="btn btn-outline-secondary" data-am-tree-action="collapse-all">Collapse all</button>' +
+      '</div>' +
+      '</div>' +
       model.map(function (ch) { return renderChannelRow(ch); }).join('') +
       '</div>';
     root.innerHTML = html;
@@ -352,6 +378,22 @@
 
     root.addEventListener('click', function (e) {
       var target = e && e.target ? e.target : null;
+      var treeAction = target && target.closest ? target.closest('[data-am-tree-action]') : null;
+      if (treeAction) {
+        e.preventDefault();
+        var action = String(treeAction.getAttribute('data-am-tree-action') || '').trim().toLowerCase();
+        if (action === 'expand-all') {
+          setAllExpanded(true);
+          renderTree(root, _state.treeModel);
+          return;
+        }
+        if (action === 'collapse-all') {
+          setAllExpanded(false);
+          renderTree(root, _state.treeModel);
+          return;
+        }
+      }
+
       var toggle = target && target.closest ? target.closest('[data-am-tree-toggle]') : null;
       if (toggle) {
         e.preventDefault();

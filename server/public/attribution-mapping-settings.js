@@ -129,6 +129,7 @@
     config: null,
     observed: [],
     selected: null, // { token_type, token_value }
+    mappedTokenKeys: {}, // "token_type|token_value" -> true
     sourceMetaByKey: {}, // source_key -> { label, icon_spec }
     variantMetaByKey: {}, // variant_key -> { label, icon_spec }
   };
@@ -232,8 +233,8 @@
           '<div class="col-12 col-md-3">' +
             '<label class="form-label" for="am-token-type" title="Filter the list: utm_source/medium/campaign, referrer_host, param_name (click IDs like gclid), param_pair, or kexo_attr (explicit URL param).">Token type <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></label>' +
             '<select class="form-select" id="am-token-type">' +
-              '<option value="">All</option>' +
-              '<option value="utm_source">utm_source</option>' +
+              '<option value="">All types</option>' +
+              '<option value="utm_source" selected>source (utm_source)</option>' +
               '<option value="utm_medium">utm_medium</option>' +
               '<option value="utm_campaign">utm_campaign</option>' +
               '<option value="utm_content">utm_content</option>' +
@@ -256,6 +257,12 @@
             '<button type="button" class="btn btn-outline-primary" data-am-action="refresh-observed" title="Reload observed tokens from the database.">Refresh</button>' +
           '</div>' +
           '<div class="col-12 col-md-auto">' +
+            '<label class="form-check mb-0">' +
+              '<input class="form-check-input" type="checkbox" id="am-show-mapped" />' +
+              '<span class="form-check-label">Show mapped</span>' +
+            '</label>' +
+          '</div>' +
+          '<div class="col-12 col-md-auto">' +
             '<span id="am-observed-msg" class="form-hint"></span>' +
           '</div>' +
         '</div>' +
@@ -275,7 +282,7 @@
         '</div>' +
       '</div>' +
 
-      '<div class="card card-sm mb-3">' +
+      '<div class="card card-sm mb-3" id="am-create-mapping-card">' +
         '<div class="card-header"><h4 class="card-title mb-0" title="Map a selected token to an attribution variant. Sessions with that token will be attributed to the variant (Channel + Source + Ownership).">Create mapping <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></h4></div>' +
         '<div class="card-body">' +
           '<div class="row g-2">' +
@@ -378,12 +385,91 @@
     }
   }
 
+  function tokenKey(tokenType, tokenValue) {
+    var t = trimLower(tokenType, 48);
+    var v = trimLower(tokenValue, 256);
+    if (!t || !v) return '';
+    return t + '|' + v;
+  }
+
+  function collectMatchValues(matchNode) {
+    if (matchNode == null) return [];
+    if (Array.isArray(matchNode)) return matchNode;
+    if (typeof matchNode === 'string' || typeof matchNode === 'number' || typeof matchNode === 'boolean') return [matchNode];
+    if (typeof matchNode !== 'object') return [];
+    if (Array.isArray(matchNode.any)) return matchNode.any;
+    if (Array.isArray(matchNode.in)) return matchNode.in;
+    if (matchNode.eq != null) return [matchNode.eq];
+    if (matchNode.value != null) return [matchNode.value];
+    return [];
+  }
+
+  function addMappedTokenKey(map, tokenType, tokenValue) {
+    var k = tokenKey(tokenType, tokenValue);
+    if (!k) return;
+    map[k] = true;
+  }
+
+  function rebuildMappedTokenLookup(cfg) {
+    var next = {};
+    var rules = cfg && Array.isArray(cfg.rules) ? cfg.rules : [];
+    var allowlist = cfg && Array.isArray(cfg.allowlist) ? cfg.allowlist : [];
+
+    rules.forEach(function (rule) {
+      var raw = rule && (rule.match_json != null ? rule.match_json : rule.match);
+      var match = typeof raw === 'string' ? safeJsonParse(raw) : raw;
+      if (!match || typeof match !== 'object') return;
+
+      collectMatchValues(match.utm_source).forEach(function (v) { addMappedTokenKey(next, 'utm_source', v); });
+      collectMatchValues(match.utm_medium).forEach(function (v) { addMappedTokenKey(next, 'utm_medium', v); });
+      collectMatchValues(match.utm_campaign).forEach(function (v) { addMappedTokenKey(next, 'utm_campaign', v); });
+      collectMatchValues(match.utm_content).forEach(function (v) { addMappedTokenKey(next, 'utm_content', v); });
+      collectMatchValues(match.utm_term).forEach(function (v) { addMappedTokenKey(next, 'utm_term', v); });
+      collectMatchValues(match.referrer_host).forEach(function (v) { addMappedTokenKey(next, 'referrer_host', v); });
+      collectMatchValues(match.param_names).forEach(function (v) { addMappedTokenKey(next, 'param_name', v); });
+      collectMatchValues(match.param_pairs).forEach(function (v) { addMappedTokenKey(next, 'param_pair', v); });
+      collectMatchValues(match.kexo_attr).forEach(function (v) { addMappedTokenKey(next, 'kexo_attr', v); });
+    });
+
+    // Common kexo_attr flow uses variant key in URL and allowlist.
+    allowlist.forEach(function (row) {
+      var enabled = row && row.enabled != null ? Number(row.enabled) : 1;
+      if (!isFinite(enabled) || enabled !== 0) {
+        addMappedTokenKey(next, 'kexo_attr', row && row.variant_key);
+      }
+    });
+
+    _state.mappedTokenKeys = next;
+  }
+
+  function isMappedObservedRow(row) {
+    var k = tokenKey(row && row.token_type, row && row.token_value);
+    if (!k) return false;
+    return !!(_state.mappedTokenKeys && _state.mappedTokenKeys[k]);
+  }
+
+  function scrollToMappingFields() {
+    var card = document.getElementById('am-create-mapping-card');
+    if (card && typeof card.scrollIntoView === 'function') {
+      try { card.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (_) { try { card.scrollIntoView(); } catch (_) {} }
+    }
+    var focusEl = document.getElementById('am-variant-key') || document.getElementById('am-source-key');
+    if (focusEl) {
+      setTimeout(function () {
+        try { focusEl.focus(); } catch (_) {}
+      }, 180);
+    }
+  }
+
   function renderObservedTable(rows) {
     var body = document.getElementById('am-observed-body');
     if (!body) return;
-    var list = Array.isArray(rows) ? rows : [];
+    var list = Array.isArray(rows) ? rows.slice() : [];
+    var showMappedEl = document.getElementById('am-show-mapped');
+    var showMapped = !!(showMappedEl && showMappedEl.checked);
+    if (!showMapped) list = list.filter(function (row) { return !isMappedObservedRow(row); });
     if (!list.length) {
-      body.innerHTML = '<tr><td colspan="5" class="text-secondary">No observed tokens yet.</td></tr>';
+      body.innerHTML = '<tr><td colspan="5" class="text-secondary">' + (showMapped ? 'No observed tokens yet.' : 'No unmapped tokens found. Enable "Show mapped" to view already-mapped items.') + '</td></tr>';
       return;
     }
     body.innerHTML = list.map(function (r) {
@@ -419,17 +505,21 @@
     return fetchConfig().then(function (payload) {
       if (!payload || payload.ok !== true) {
         _state.config = null;
+        rebuildMappedTokenLookup({ channels: [], sources: [], variants: [], rules: [], allowlist: [] });
         buildIconMetaMaps({ channels: [], sources: [], variants: [], rules: [], allowlist: [] });
         renderVariantsDatalist([]);
         renderConfigText({ config: { channels: [], sources: [], variants: [], rules: [], allowlist: [] } });
+        if (_state.observed && _state.observed.length) renderObservedTable(_state.observed);
         updateSourceIconPreview();
         setHint('am-config-msg', 'Could not load config (will fail open).', false);
         return null;
       }
       _state.config = payload.config || null;
+      rebuildMappedTokenLookup(payload.config || {});
       buildIconMetaMaps(payload.config || {});
       renderVariantsDatalist(variantsFromConfig(payload.config || {}));
       renderConfigText(payload);
+      if (_state.observed && _state.observed.length) renderObservedTable(_state.observed);
       updateSourceIconPreview();
       setHint('am-config-msg', 'Loaded.', true);
       setTimeout(function () { setHint('am-config-msg', '', true); }, 1200);
@@ -480,6 +570,7 @@
     _state.selected = null;
     _state.config = null;
     _state.observed = [];
+    _state.mappedTokenKeys = {};
 
     renderSkeleton(root);
     if (typeof window.initKexoTooltips === 'function') window.initKexoTooltips(root);
@@ -506,7 +597,15 @@
       }
       if (action === 'select-token') {
         _state.selected = readSelectedFromButton(btn);
+        if (_state.selected && _state.selected.token_type === 'utm_source') {
+          var srcKeyEl = document.getElementById('am-source-key');
+          if (srcKeyEl && !String(srcKeyEl.value || '').trim()) {
+            srcKeyEl.value = normalizeKeyLike(_state.selected.token_value, 32);
+            updateSourceIconPreview();
+          }
+        }
         renderSelected();
+        scrollToMappingFields();
         setHint('am-map-msg', '', true);
         return;
       }
@@ -584,6 +683,8 @@
             return;
           }
           setHint('am-map-msg', 'Mapped.', true);
+          _state.selected = null;
+          renderSelected();
           // Refresh both lists (best-effort).
           loadConfigAndRender();
           loadObservedAndRender();
@@ -605,6 +706,10 @@
       }
       if (t.id === 'am-variant-icon-spec') {
         updateIconInputPreview('am-variant-icon-spec', 'am-variant-icon-input-preview', 'Variant icon');
+        return;
+      }
+      if (t.id === 'am-show-mapped') {
+        renderObservedTable(_state.observed);
         return;
       }
     });
