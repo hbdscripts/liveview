@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-16 (Startup migration fix for change_pins + runtime schema guard)
+Last updated: 2026-02-17 (Dashboard 7-day mini charts + faster 30d range loads)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -110,7 +110,7 @@ KEXO “5-color” accents:
 Rendered templates live under `server/public/**` and are served by `server/index.js` via `sendPage()` (includes + cache-control + asset versioning).
 
 Dashboard:
-- `/dashboard/overview` → `server/public/dashboard/overview.html` (`data-page="dashboard"`) — left KPI block uses automatic order-based placement (desktop: first 8 KPIs; small screens: first 4), with a middle KPI band under Top Products/Countries (next 4) and lower KPI band under Trending Up/Down (remaining). Right mini charts are Finishes, Countries, and Attribution (30d) above the 30 Day Overview revenue/cost chart.
+- `/dashboard/overview` → `server/public/dashboard/overview.html` (`data-page="dashboard"`) — left KPI block uses automatic order-based placement (desktop: first 8 KPIs; small screens: first 4), with a middle KPI band under Top Products/Countries (next 4) and lower KPI band under Trending Up/Down (remaining). Right mini charts are Finishes, Countries, and Attribution (7d) above the 7 Day Overview revenue/cost chart.
 - `/dashboard/live` → `server/public/dashboard/live.html` — desktop shows a Latest sales card beside the map (last 5 sales)
 - `/dashboard/sales` → `server/public/dashboard/sales.html`
 - `/dashboard/table` → `server/public/dashboard/table.html`
@@ -387,6 +387,12 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-17 (latest)
+- Dashboard overview range tuning + performance:
+  - Dashboard mini charts + overview revenue/cost chart now use 7-day windows (Finishes/Countries/Attribution + Overview) to keep overview loads fast.
+  - Range changes no longer force-bypass report caches for `/api/kpis` and dashboard-series; large ranges like 30d now usually hit warm caches.
+  - Bounce rate query in `store.getBounceRate()` was rewritten to a single join+group query (uses `idx_events_type_session_id`) instead of a per-session correlated subquery, speeding up 30d/month KPI loads on cache misses.
 
 2026-02-16 (latest)
 - Change Pins production hardening:

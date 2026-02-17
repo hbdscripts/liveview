@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 28255df25cbb4757
+// checksum: 4d7a7512e9f81e3c
 
 (function () {
 const API = '';
@@ -7280,14 +7280,14 @@ const API = '';
       updateNextUpdateUi();
 
       // Top KPI grid refreshes independently (every minute). On range change, force a refresh immediately.
-      refreshKpis({ force: true });
+      refreshKpis({ force: false });
       try { refreshKpiExtrasSoft(); } catch (_) {}
       try { if (typeof window.refreshKexoScore === 'function') window.refreshKexoScore(); } catch (_) {}
       // Keep the desktop navbar "visitors" status eager on every range change.
       updateKpis();
 
       if (activeMainTab === 'dashboard') {
-        try { if (typeof refreshDashboard === 'function') refreshDashboard({ force: true }); } catch (_) {}
+        try { if (typeof refreshDashboard === 'function') refreshDashboard({ force: false }); } catch (_) {}
       } else if (activeMainTab === 'stats') {
         refreshStats({ force: false });
       } else if (activeMainTab === 'attribution') {
@@ -15734,7 +15734,7 @@ const API = '';
         renderOverviewChartLoading('dash-chart-finishes-30d', 'Loading finishes...');
         renderOverviewChartLoading('dash-chart-countries-30d', 'Loading countries...');
         renderOverviewChartLoading('dash-chart-attribution-30d', 'Loading attribution...');
-        renderOverviewChartLoading('dash-chart-overview-30d', 'Loading 30 day overview...');
+        renderOverviewChartLoading('dash-chart-overview-30d', 'Loading 7 day overview...');
       }
 
       function countryCodeToFlagEmoji(rawCode) {
@@ -16026,10 +16026,10 @@ const API = '';
         }
 
         var stamp = Date.now();
-        var seriesUrl = API + '/api/dashboard-series?range=30d' + (force ? ('&force=1&_=' + stamp) : '');
-        var snapshotUrl = API + '/api/business-snapshot?mode=range&preset=last_30_days' + (force ? ('&force=1&_=' + stamp) : '');
-        var finishesUrl = API + '/api/shopify-finishes?range=30d' + (shop ? ('&shop=' + encodeURIComponent(shop)) : '') + (force ? ('&force=1&_=' + stamp) : '');
-        var attributionUrl = API + '/api/attribution/report?range=30d' + (force ? ('&force=1&_=' + stamp) : '');
+        var seriesUrl = API + '/api/dashboard-series?range=7d' + (force ? ('&force=1&_=' + stamp) : '');
+        var snapshotUrl = API + '/api/business-snapshot?mode=range&preset=last_7_days' + (force ? ('&force=1&_=' + stamp) : '');
+        var finishesUrl = API + '/api/shopify-finishes?range=7d' + (shop ? ('&shop=' + encodeURIComponent(shop)) : '') + (force ? ('&force=1&_=' + stamp) : '');
+        var attributionUrl = API + '/api/attribution/report?range=7d' + (force ? ('&force=1&_=' + stamp) : '');
 
         overviewMiniInFlight = Promise.all([
           fetchOverviewJson(seriesUrl, force, 25000),

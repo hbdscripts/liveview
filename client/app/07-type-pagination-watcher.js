@@ -2145,14 +2145,14 @@
       updateNextUpdateUi();
 
       // Top KPI grid refreshes independently (every minute). On range change, force a refresh immediately.
-      refreshKpis({ force: true });
+      refreshKpis({ force: false });
       try { refreshKpiExtrasSoft(); } catch (_) {}
       try { if (typeof window.refreshKexoScore === 'function') window.refreshKexoScore(); } catch (_) {}
       // Keep the desktop navbar "visitors" status eager on every range change.
       updateKpis();
 
       if (activeMainTab === 'dashboard') {
-        try { if (typeof refreshDashboard === 'function') refreshDashboard({ force: true }); } catch (_) {}
+        try { if (typeof refreshDashboard === 'function') refreshDashboard({ force: false }); } catch (_) {}
       } else if (activeMainTab === 'stats') {
         refreshStats({ force: false });
       } else if (activeMainTab === 'attribution') {

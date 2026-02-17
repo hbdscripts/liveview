@@ -535,7 +535,7 @@
         renderOverviewChartLoading('dash-chart-finishes-30d', 'Loading finishes...');
         renderOverviewChartLoading('dash-chart-countries-30d', 'Loading countries...');
         renderOverviewChartLoading('dash-chart-attribution-30d', 'Loading attribution...');
-        renderOverviewChartLoading('dash-chart-overview-30d', 'Loading 30 day overview...');
+        renderOverviewChartLoading('dash-chart-overview-30d', 'Loading 7 day overview...');
       }
 
       function countryCodeToFlagEmoji(rawCode) {
@@ -827,10 +827,10 @@
         }
 
         var stamp = Date.now();
-        var seriesUrl = API + '/api/dashboard-series?range=30d' + (force ? ('&force=1&_=' + stamp) : '');
-        var snapshotUrl = API + '/api/business-snapshot?mode=range&preset=last_30_days' + (force ? ('&force=1&_=' + stamp) : '');
-        var finishesUrl = API + '/api/shopify-finishes?range=30d' + (shop ? ('&shop=' + encodeURIComponent(shop)) : '') + (force ? ('&force=1&_=' + stamp) : '');
-        var attributionUrl = API + '/api/attribution/report?range=30d' + (force ? ('&force=1&_=' + stamp) : '');
+        var seriesUrl = API + '/api/dashboard-series?range=7d' + (force ? ('&force=1&_=' + stamp) : '');
+        var snapshotUrl = API + '/api/business-snapshot?mode=range&preset=last_7_days' + (force ? ('&force=1&_=' + stamp) : '');
+        var finishesUrl = API + '/api/shopify-finishes?range=7d' + (shop ? ('&shop=' + encodeURIComponent(shop)) : '') + (force ? ('&force=1&_=' + stamp) : '');
+        var attributionUrl = API + '/api/attribution/report?range=7d' + (force ? ('&force=1&_=' + stamp) : '');
 
         overviewMiniInFlight = Promise.all([
           fetchOverviewJson(seriesUrl, force, 25000),

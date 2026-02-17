@@ -3024,14 +3024,26 @@ async function getBounceRate(start, end, options = {}) {
   const db = getDb();
   const singlePageRow = config.dbUrl
     ? await db.get(`
-      SELECT COUNT(*) AS n FROM sessions s
-      WHERE s.started_at >= $1 AND s.started_at < $2 ${filterAlias}
-      AND (SELECT COUNT(*) FROM events e WHERE e.session_id = s.session_id AND e.type = 'page_viewed') = 1
+      SELECT COUNT(*) AS n FROM (
+        SELECT s.session_id
+        FROM sessions s
+        JOIN events e ON e.session_id = s.session_id
+        WHERE s.started_at >= $1 AND s.started_at < $2 ${filterAlias}
+          AND e.type = 'page_viewed'
+        GROUP BY s.session_id
+        HAVING COUNT(*) = 1
+      ) t
     `, [start, end, ...filter.params])
     : await db.get(`
-      SELECT COUNT(*) AS n FROM sessions s
-      WHERE s.started_at >= ? AND s.started_at < ? ${filterAlias}
-      AND (SELECT COUNT(*) FROM events e WHERE e.session_id = s.session_id AND e.type = 'page_viewed') = 1
+      SELECT COUNT(*) AS n FROM (
+        SELECT s.session_id
+        FROM sessions s
+        JOIN events e ON e.session_id = s.session_id
+        WHERE s.started_at >= ? AND s.started_at < ? ${filterAlias}
+          AND e.type = 'page_viewed'
+        GROUP BY s.session_id
+        HAVING COUNT(*) = 1
+      ) t
     `, [start, end, ...filter.params]);
   const breakdown = await getSessionCountsFromSessionsTable(start, end, options);
   const total = breakdown.human_sessions ?? 0;

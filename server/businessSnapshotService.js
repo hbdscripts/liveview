@@ -17,6 +17,7 @@ const SNAPSHOT_MODE_SET = new Set(['yearly', 'monthly', 'range']);
 const SNAPSHOT_PRESET_SET = new Set([
   'this_month',
   'last_month',
+  'last_7_days',
   'last_30_days',
   'last_90_days',
   'last_6_months',
@@ -893,6 +894,9 @@ function buildPresetCurrentRangeWindow(preset, nowYmd) {
     const prevMonthDay = ymdAddMonths(ymdMonthStart(now), -1);
     return { startYmd: ymdMonthStart(prevMonthDay), endYmd: ymdMonthEnd(prevMonthDay) };
   }
+  if (preset === 'last_7_days') {
+    return { startYmd: ymdAddDays(now, -6), endYmd: now };
+  }
   if (preset === 'last_30_days') {
     return { startYmd: ymdAddDays(now, -29), endYmd: now };
   }
@@ -967,6 +971,7 @@ function dateSpanLabel(startYmd, endYmd) {
 function presetLabel(preset) {
   if (preset === 'this_month') return 'This month';
   if (preset === 'last_month') return 'Last month';
+  if (preset === 'last_7_days') return 'Last 7 days';
   if (preset === 'last_30_days') return 'Last 30 days';
   if (preset === 'last_90_days') return 'Last 90 days';
   if (preset === 'last_6_months') return 'Last 6 months';
