@@ -2731,7 +2731,7 @@ html[data-bs-theme="dark"] .report-build-wrap {
 @media (min-width: 1200px) {
   .kexo-overview-grid {
     grid-template-columns: 5fr 7fr;
-    grid-template-rows: auto auto;
+    grid-template-rows: minmax(240px, auto) minmax(260px, auto);
   }
 }
 .kexo-overview-cell {

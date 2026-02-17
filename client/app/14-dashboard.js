@@ -475,6 +475,7 @@
         return Number.isFinite(n) ? n : 0;
       }
 
+      var OVERVIEW_MINI_CARD_HEAD_BUFFER = 52;
       function resolveOverviewChartHeight(chartEl, fallback, min, max) {
         var fb = Number(fallback);
         if (!Number.isFinite(fb) || fb <= 0) fb = 220;
@@ -485,17 +486,24 @@
         var h = 0;
         try {
           if (chartEl) {
-            // Prefer layout height hints over content bounds. getBoundingClientRect() can be
-            // content-driven (e.g. SVG height) and is more likely to participate in feedback loops.
             var ch = chartEl.clientHeight;
             if (Number.isFinite(ch) && ch > 0) h = ch;
             var rect = chartEl.getBoundingClientRect ? chartEl.getBoundingClientRect() : null;
             if (rect && Number.isFinite(rect.height) && rect.height > 0) h = rect.height;
-            if ((!h || h < lo) && chartEl.parentElement && chartEl.parentElement.getBoundingClientRect) {
-              var ph = chartEl.parentElement.clientHeight;
+            if ((!h || h < lo) && chartEl.parentElement) {
+              var parent = chartEl.parentElement;
+              var ph = parent.clientHeight;
               if (Number.isFinite(ph) && ph > 0) h = ph;
-              var pRect = chartEl.parentElement.getBoundingClientRect();
+              var pRect = parent.getBoundingClientRect ? parent.getBoundingClientRect() : null;
               if (pRect && Number.isFinite(pRect.height) && pRect.height > 0) h = pRect.height;
+              var card = parent.closest ? parent.closest('.kexo-overview-mini-card') : null;
+              if (card && card.getBoundingClientRect) {
+                var cardH = card.getBoundingClientRect().height;
+                if (Number.isFinite(cardH) && cardH > OVERVIEW_MINI_CARD_HEAD_BUFFER) {
+                  var avail = cardH - OVERVIEW_MINI_CARD_HEAD_BUFFER;
+                  if (avail > lo) h = avail;
+                }
+              }
             }
           }
         } catch (_) {}
@@ -1060,6 +1068,7 @@
           series: [{ name: 'Revenue', data: values.map(function(v) { return normalizeOverviewMetric(v); }) }],
           xaxis: { categories: labels, labels: { show: horizontal ? false : true } },
           yaxis: horizontal ? { labels: { show: true, style: { fontSize: '12px', fontWeight: 500, colors: '#090f17' } } } : { labels: { show: false } },
+          grid: { padding: { bottom: 12, left: 8, right: 8, top: 4 } },
           colors: colors,
           legend: { show: false },
           dataLabels: { enabled: false },
@@ -1125,6 +1134,7 @@
           series: [{ name: 'Revenue', data: values }],
           xaxis: { categories: categories, labels: { show: horizontal ? false : true } },
           yaxis: horizontal ? { labels: { show: true, style: { fontSize: '12px', fontWeight: 500, colors: '#090f17' } } } : { labels: { show: false } },
+          grid: { padding: { bottom: 12, left: 8, right: 8, top: 4 } },
           colors: colors,
           legend: { show: false },
           dataLabels: { enabled: false },
@@ -1208,6 +1218,7 @@
           series: [{ name: 'Revenue', data: values }],
           xaxis: { categories: labels, labels: { show: !horizontal } },
           yaxis: horizontal ? { labels: { show: true, style: { fontSize: '12px', fontWeight: 500, colors: '#090f17' } } } : { labels: { show: false } },
+          grid: { padding: { bottom: 12, left: 8, right: 8, top: 4 } },
           colors: colors,
           legend: { show: false },
           dataLabels: { enabled: false },
@@ -1882,6 +1893,7 @@
         }
         ensureOverviewMiniResizeObserver();
         ensureOverviewHeightSyncObserver();
+        try { syncOverviewHeightGrid(); } catch (_) {}
         scheduleOverviewHeightSync();
         bindOverviewCardUiOnce();
         syncAllOverviewCardRangeUi();
