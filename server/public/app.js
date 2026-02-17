@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 834c50e23000cd8a
+// checksum: e14e666f84385fd4
 
 (function () {
 const API = '';
@@ -15954,7 +15954,7 @@ const API = '';
         return Number.isFinite(n) ? n : 0;
       }
 
-      var OVERVIEW_MINI_CARD_HEAD_BUFFER = 67;
+      var OVERVIEW_MINI_CARD_HEAD_BUFFER = 83;
       function resolveOverviewChartHeight(chartEl, fallback, min, max) {
         var fb = Number(fallback);
         if (!Number.isFinite(fb) || fb <= 0) fb = 220;
@@ -19955,7 +19955,7 @@ const API = '';
     for (var i = 0; i < count; i += 1) {
       var label = series[i] ? String(series[i]) : ('Series ' + (i + 1));
       var val = normalizeHexColor(colors[i], '#3eb3ab');
-      html += '<label class="settings-charts-color-field"><span class="form-label mb-1">' + escapeHtml(label) + '</span><div class="settings-charts-color-field-row"><span class="settings-charts-color-swatch" data-color-swatch style="background:' + escapeHtml(val) + ';" title="' + escapeHtml(val) + '" aria-hidden="true"></span><input type="text" class="form-control form-control-sm" data-chart-field="color" data-idx="' + i + '" value="' + escapeHtml(val) + '" placeholder="#3eb3ab"><span class="settings-charts-color-hex small font-monospace" data-color-hex style="color:' + escapeHtml(val) + ';">' + escapeHtml(val) + '</span></div></label>';
+      html += '<label class="settings-charts-color-field"><span class="form-label mb-1">' + escapeHtml(label) + '</span><div class="settings-charts-color-field-row"><input type="text" class="form-control form-control-sm" data-chart-field="color" data-idx="' + i + '" value="' + escapeHtml(val) + '" placeholder="#3eb3ab"></div><span class="settings-charts-color-swatch" data-color-swatch style="background:' + escapeHtml(val) + ';" title="' + escapeHtml(val) + '" aria-hidden="true"></span></label>';
     }
     html += '</div>';
     return html;
@@ -20104,16 +20104,12 @@ const API = '';
   function syncColorSwatches(root) {
     if (!root || !root.querySelectorAll) return;
     root.querySelectorAll('[data-color-swatch]').forEach(function (sw) {
-      var input = sw.nextElementSibling;
-      var hexSpan = input && input.nextElementSibling;
+      var row = sw.previousElementSibling;
+      var input = row && row.querySelector && row.querySelector('[data-chart-field="color"]');
       if (input) {
         var val = normalizeHexColor(input.value, '#3eb3ab');
         sw.style.background = val;
         sw.setAttribute('title', val);
-        if (hexSpan && hexSpan.getAttribute('data-color-hex') !== null) {
-          hexSpan.textContent = val;
-          hexSpan.style.color = val;
-        }
       }
     });
   }

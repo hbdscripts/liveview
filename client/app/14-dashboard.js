@@ -480,7 +480,7 @@
         return Number.isFinite(n) ? n : 0;
       }
 
-      var OVERVIEW_MINI_CARD_HEAD_BUFFER = 67;
+      var OVERVIEW_MINI_CARD_HEAD_BUFFER = 83;
       function resolveOverviewChartHeight(chartEl, fallback, min, max) {
         var fb = Number(fallback);
         if (!Number.isFinite(fb) || fb <= 0) fb = 220;
