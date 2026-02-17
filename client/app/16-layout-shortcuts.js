@@ -382,7 +382,7 @@
     var showStroke = lineLike;
     var showDash = lineLike;
     var showMarkers = lineLike;
-    var showFill = mode === 'area' || mode === 'stacked-area' || mode === 'combo';
+    var showFill = mode !== 'map-flat' && mode !== 'map-animated';
     var showGrid = lineLike || mode === 'bar' || mode === 'stacked-bar';
     var showLabels = lineLike || mode === 'bar';
     var showToolbar = true;

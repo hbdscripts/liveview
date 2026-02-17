@@ -334,6 +334,8 @@
 
         dashChartConfigs[chartId] = { labels: labels, datasets: datasets, opts: Object.assign({}, opts || {}, { chartType: chartType, chartScope: chartScope }) };
 
+        var uiStyle = (typeof chartStyleFromUiConfig === 'function') ? chartStyleFromUiConfig(chartId) : null;
+        var fillOpacityVal = (uiStyle && Number.isFinite(Number(uiStyle.fillOpacity))) ? Math.max(0, Math.min(1, Number(uiStyle.fillOpacity))) : null;
         var areaOpacityFrom = (opts && typeof opts.areaOpacityFrom === 'number' && isFinite(opts.areaOpacityFrom)) ? opts.areaOpacityFrom : 0.15;
         var areaOpacityTo = (opts && typeof opts.areaOpacityTo === 'number' && isFinite(opts.areaOpacityTo)) ? opts.areaOpacityTo : 0.02;
         var chartHeight = (opts && Number.isFinite(Number(opts.height))) ? Number(opts.height) : 200;
@@ -383,10 +385,13 @@
             : function(v) { return v != null ? Number(v).toLocaleString() : '\u2014'; };
 
           // ApexCharts 4.x can hide line strokes when fill opacity is 0.
-          // Keep opacity at 1; line charts still render without an area fill.
-          var fillConfig = chartType === 'line' ? { type: 'solid', opacity: 1 }
-            : chartType === 'bar' ? { type: 'solid', opacity: 1 }
-            : { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: areaOpacityFrom, opacityTo: areaOpacityTo, stops: [0, 100] } };
+          // Per-chart fillOpacity applies to all chart types.
+          var baseOpacity = fillOpacityVal != null ? fillOpacityVal : 1;
+          var areaFrom = fillOpacityVal != null ? fillOpacityVal * areaOpacityFrom : areaOpacityFrom;
+          var areaTo = fillOpacityVal != null ? fillOpacityVal * areaOpacityTo : areaOpacityTo;
+          var fillConfig = chartType === 'line' ? { type: 'solid', opacity: baseOpacity }
+            : chartType === 'bar' ? { type: 'solid', opacity: baseOpacity }
+            : { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: areaFrom, opacityTo: areaTo, stops: [0, 100] } };
 
           var apexOpts = {
             chart: {
@@ -917,6 +922,7 @@
           labels: safeLabels,
           colors: colors,
           legend: { show: showLegend, position: 'bottom', fontSize: '11px' },
+          fill: { opacity: (uiStyle && Number.isFinite(Number(uiStyle.fillOpacity))) ? Math.max(0, Math.min(1, Number(uiStyle.fillOpacity))) : 1 },
           stroke: { show: true, width: 1, colors: ['#fff'] },
           dataLabels: {
             enabled: dataLabelsEnabled,
@@ -1017,6 +1023,7 @@
           labels: labels,
           colors: colors,
           legend: { show: false },
+          fill: { opacity: (uiStyle && Number.isFinite(Number(uiStyle.fillOpacity))) ? Math.max(0, Math.min(1, Number(uiStyle.fillOpacity))) : 1 },
           tooltip: {
             enabled: true,
             custom: function(ctx) {
@@ -1072,7 +1079,7 @@
           colors: colors,
           legend: { show: false },
           dataLabels: { enabled: false },
-          fill: { opacity: 1 },
+          fill: { opacity: (uiStyle && Number.isFinite(Number(uiStyle.fillOpacity))) ? Math.max(0, Math.min(1, Number(uiStyle.fillOpacity))) : 1 },
           tooltip: { y: { formatter: function(v) { return formatRevenue(normalizeOverviewMetric(v)) || '\u2014'; } } },
           noData: { text: 'No data available', style: { fontSize: '13px', color: '#626976' } }
         };
@@ -1138,7 +1145,7 @@
           colors: colors,
           legend: { show: false },
           dataLabels: { enabled: false },
-          fill: { opacity: 1, type: 'solid' },
+          fill: { opacity: (uiStyle && Number.isFinite(Number(uiStyle.fillOpacity))) ? Math.max(0, Math.min(1, Number(uiStyle.fillOpacity))) : 1, type: 'solid' },
           stroke: { show: false, width: 0 },
           states: { normal: { filter: { type: 'none', value: 0 } }, hover: { filter: { type: 'none', value: 0 } }, active: { filter: { type: 'none', value: 0 } } },
           tooltip: {
@@ -1222,7 +1229,7 @@
           colors: colors,
           legend: { show: false },
           dataLabels: { enabled: false },
-          fill: { opacity: 1, type: 'solid' },
+          fill: { opacity: (uiStyle && Number.isFinite(Number(uiStyle.fillOpacity))) ? Math.max(0, Math.min(1, Number(uiStyle.fillOpacity))) : 1, type: 'solid' },
           stroke: { show: false, width: 0 },
           states: { normal: { filter: { type: 'none', value: 0 } }, hover: { filter: { type: 'none', value: 0 } }, active: { filter: { type: 'none', value: 0 } } },
           tooltip: {
