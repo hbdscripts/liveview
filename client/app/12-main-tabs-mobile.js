@@ -281,8 +281,8 @@
             else integrationsDropdownItem.classList.remove('active');
           }
 
-          // Tools dropdown
-          var isToolsChild = (tab === 'tools');
+          // Tools dropdown (include tool sub-pages so Tools is highlighted on /tools/* pages)
+          var isToolsChild = (tab === 'tools' || tab === 'compare-conversion-rate' || tab === 'shipping-cr' || tab === 'click-order-lookup' || tab === 'change-pins');
           var toolsToggle = document.querySelector('.nav-item.dropdown .dropdown-toggle[href="#navbar-tools-menu"]');
           var toolsDropdownItem = toolsToggle ? toolsToggle.closest('.nav-item') : null;
           if (toolsToggle) {
