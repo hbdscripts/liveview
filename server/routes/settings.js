@@ -75,6 +75,7 @@ const HEADER_KPI_STRIP_PAGE_KEY_SET = new Set(HEADER_KPI_STRIP_PAGE_KEYS);
 const CHART_UI_KEYS = [
   'dash-chart-overview-30d',
   'dash-chart-finishes-30d',
+  'dash-chart-devices-30d',
   'dash-chart-countries-30d',
   'dash-chart-attribution-30d',
   'live-online-chart',
@@ -94,6 +95,7 @@ const CHART_KPI_BUNDLE_KEY_SET = new Set(CHART_KPI_BUNDLE_KEYS);
 const CHART_ALLOWED_MODES = Object.freeze({
   'dash-chart-overview-30d': ['area', 'bar', 'line', 'multi-line-labels', 'combo', 'stacked-area', 'stacked-bar'],
   'dash-chart-finishes-30d': ['radialbar', 'pie', 'donut', 'bar-horizontal', 'bar', 'bar-distributed', 'line', 'area', 'multi-line-labels'],
+  'dash-chart-devices-30d': ['bar-horizontal'],
   'dash-chart-countries-30d': ['bar-horizontal', 'bar', 'bar-distributed', 'radialbar', 'pie', 'donut', 'line', 'area', 'multi-line-labels'],
   'dash-chart-attribution-30d': ['bar-distributed', 'bar-horizontal', 'bar', 'line', 'area', 'multi-line-labels', 'pie', 'donut', 'radialbar'],
   'live-online-chart': ['map-animated', 'map-flat'],
@@ -225,8 +227,8 @@ function defaultChartsUiConfigV1() {
         { animations: false, pieDonut: true, pieDonutSize: 64, pieLabelPosition: 'outside', pieLabelContent: 'label_percent', pieLabelOffset: 18 }
       ),
       withStyle(
-        { key: 'dash-chart-countries-30d', label: 'Dashboard · Countries (7 Days)', enabled: true, mode: 'bar-horizontal', colors: ['#4b94e4', '#3eb3ab', '#f59e34', '#8b5cf6', '#ef4444'], advancedApexOverride: {} },
-        { animations: false, pieDonut: true, pieDonutSize: 64, pieLabelPosition: 'outside', pieLabelContent: 'label_percent', pieLabelOffset: 18, pieCountryFlags: true }
+        { key: 'dash-chart-devices-30d', label: 'Dashboard · Devices (7 Days)', enabled: true, mode: 'bar-horizontal', colors: ['#4b94e4', '#3eb3ab', '#f59e34', '#8b5cf6', '#ef4444'], advancedApexOverride: {} },
+        { animations: false }
       ),
       withStyle(
         { key: 'dash-chart-attribution-30d', label: 'Dashboard · Attribution (7 Days)', enabled: true, mode: 'bar-distributed', colors: ['#4b94e4', '#3eb3ab', '#f59e34', '#8b5cf6', '#ef4444'], advancedApexOverride: {} },
@@ -277,7 +279,7 @@ function defaultTablesUiConfigV1() {
             zone: 'dashboard-top-products',
             order: 1,
             inGrid: true,
-            rows: { default: 5, options: [5, 10] },
+            rows: { default: 5, options: [5] },
             sticky: { minWidth: null, maxWidth: null },
           },
           {
@@ -287,7 +289,7 @@ function defaultTablesUiConfigV1() {
             zone: 'dashboard-top-countries',
             order: 2,
             inGrid: true,
-            rows: { default: 5, options: [5, 10] },
+            rows: { default: 5, options: [5] },
             sticky: { minWidth: null, maxWidth: null },
           },
           {
@@ -750,6 +752,10 @@ function normalizeTablesUiConfigV1(raw) {
         const nextOptions = normalizeRowOptions(rawTable.rows && rawTable.rows.options, defaultRowOptions);
         const nextDefault = pickDefaultRows(rawTable.rows && rawTable.rows.default, nextOptions, table.rows && table.rows.default);
         table.rows = { default: nextDefault, options: nextOptions };
+        // Guardrail: Dashboard Top Products/Countries are always 5 rows per page (pagination still uses up to 10 server rows).
+        if (id === 'dash-top-products' || id === 'dash-top-countries') {
+          table.rows = { default: 5, options: [5] };
+        }
 
         const minWidth = normalizeStickyWidth(rawTable.sticky && rawTable.sticky.minWidth);
         const maxWidth = normalizeStickyWidth(rawTable.sticky && rawTable.sticky.maxWidth);

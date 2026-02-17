@@ -268,18 +268,232 @@ async function fetchSessionCountsByCountryCode(db, startMs, endMs, countries, fi
   return out;
 }
 
+async function fetchSessionCountsByProductHandleAll(db, startMs, endMs, filter) {
+  const out = new Map();
+
+  const filterSql = String(filter && filter.sql ? filter.sql : '').replace(/\bs\./g, 's.').replace(/sessions\./g, 's.');
+  const filterParams = (filter && Array.isArray(filter.params)) ? filter.params : [];
+
+  const phStart = config.dbUrl ? '$1' : '?';
+  const phEnd = config.dbUrl ? '$2' : '?';
+
+  // Prefer the same "product landing" handle resolution logic as other product reports:
+  // first_path (/products/<handle>), else first_product_handle, else entry_url.
+  const rows = await db.all(
+    `
+      SELECT s.first_path, s.first_product_handle, s.entry_url
+      FROM sessions s
+      WHERE s.started_at >= ${phStart} AND s.started_at < ${phEnd}
+        ${filterSql}
+        AND (
+          (s.first_path IS NOT NULL AND LOWER(s.first_path) LIKE '/products/%')
+          OR (s.first_product_handle IS NOT NULL AND TRIM(s.first_product_handle) != '')
+          OR (s.entry_url IS NOT NULL AND LOWER(s.entry_url) LIKE '%/products/%')
+        )
+    `,
+    [startMs, endMs, ...filterParams]
+  );
+
+  for (const r of rows || []) {
+    const h = handleFromSessionRow(r);
+    if (!h) continue;
+    out.set(h, (out.get(h) || 0) + 1);
+  }
+  return out;
+}
+
+async function fetchSessionCountsByCountryCodeAll(db, startMs, endMs, filter) {
+  const out = new Map();
+
+  const filterSql = String(filter && filter.sql ? filter.sql : '').replace(/\bs\./g, 's.').replace(/sessions\./g, 's.');
+  const filterParams = (filter && Array.isArray(filter.params)) ? filter.params : [];
+
+  const phStart = config.dbUrl ? '$1' : '?';
+  const phEnd = config.dbUrl ? '$2' : '?';
+
+  const expr = `UPPER(SUBSTR(COALESCE(NULLIF(TRIM(s.country_code), ''), NULLIF(TRIM(s.cf_country), ''), 'XX'), 1, 2))`;
+
+  const rows = await db.all(
+    `
+      SELECT ${expr} AS country, COUNT(*) AS n
+      FROM sessions s
+      WHERE s.started_at >= ${phStart} AND s.started_at < ${phEnd}
+        ${filterSql}
+      GROUP BY ${expr}
+    `,
+    [startMs, endMs, ...filterParams]
+  );
+
+  for (const r of rows || []) {
+    let k = r && r.country != null ? normalizeCountryKey(String(r.country)) : '';
+    if (!k) continue;
+    if (k === 'UK') k = 'GB';
+    out.set(k, Number(r.n) || 0);
+  }
+  return out;
+}
+
+function titleFromHandle(handle) {
+  const h = typeof handle === 'string' ? handle.trim() : '';
+  if (!h) return '';
+  return h
+    .replace(/[-_]+/g, ' ')
+    .split(' ')
+    .filter(Boolean)
+    .map(function(w) {
+      const s = String(w || '').trim();
+      if (!s) return '';
+      return s.charAt(0).toUpperCase() + s.slice(1);
+    })
+    .filter(Boolean)
+    .join(' ')
+    .slice(0, 180);
+}
+
+function handleGuessFromTitle(title) {
+  const t = typeof title === 'string' ? title.trim().toLowerCase() : '';
+  if (!t) return '';
+  const slug = t
+    .replace(/['"]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-+/, '')
+    .replace(/-+$/, '')
+    .slice(0, 128);
+  return normalizeHandleKey(slug);
+}
+
+function fillTopProductsWithSessionsFallback(topProducts, sessionsByHandleAll, { limit = DASHBOARD_TOP_TABLE_MAX_ROWS } = {}) {
+  const out = Array.isArray(topProducts) ? topProducts.slice() : [];
+  const lim = Math.max(0, Math.trunc(Number(limit) || DASHBOARD_TOP_TABLE_MAX_ROWS));
+  if (lim <= 0) return [];
+
+  const seen = new Set();
+  for (const p of out) {
+    const h = normalizeHandleKey(p && p.handle != null ? String(p.handle) : '');
+    if (h) seen.add(h);
+    else {
+      const guess = handleGuessFromTitle(p && p.title != null ? String(p.title) : '');
+      if (guess) seen.add(guess);
+    }
+  }
+
+  // Fill remaining slots with the highest-clicked product handles (sessions), excluding anything already shown.
+  if (out.length < lim && sessionsByHandleAll && typeof sessionsByHandleAll.entries === 'function') {
+    const candidates = [];
+    for (const entry of sessionsByHandleAll.entries()) {
+      const h = normalizeHandleKey(entry && entry[0] != null ? String(entry[0]) : '');
+      const n = Number(entry && entry[1]) || 0;
+      if (!h || !(n > 0)) continue;
+      if (seen.has(h)) continue;
+      candidates.push({ handle: h, sessions: n });
+    }
+    candidates.sort(function(a, b) {
+      if (b.sessions !== a.sessions) return b.sessions - a.sessions;
+      if (a.handle < b.handle) return -1;
+      if (a.handle > b.handle) return 1;
+      return 0;
+    });
+    for (const c of candidates) {
+      if (out.length >= lim) break;
+      out.push({
+        product_id: null,
+        title: titleFromHandle(c.handle) || 'Unknown',
+        handle: c.handle,
+        revenue: 0,
+        orders: 0,
+        thumb_url: null,
+      });
+      seen.add(c.handle);
+    }
+  }
+
+  const map = sessionsByHandleAll && typeof sessionsByHandleAll.get === 'function' ? sessionsByHandleAll : null;
+  return out.slice(0, lim).map(function(p) {
+    const h = normalizeHandleKey(p && p.handle != null ? String(p.handle) : '');
+    const sessions = (h && map) ? (map.get(h) || 0) : 0;
+    const revenue = Number(p && p.revenue) || 0;
+    const orders = Number(p && p.orders) || 0;
+    return {
+      ...p,
+      sessions,
+      cr: crPct(orders, sessions),
+      vpv: ratioOrNull(revenue, sessions, { decimals: 2 }),
+    };
+  });
+}
+
+function fillTopCountriesWithSessionsFallback(topCountries, sessionsByCountryAll, { limit = DASHBOARD_TOP_TABLE_MAX_ROWS } = {}) {
+  const out = Array.isArray(topCountries) ? topCountries.slice() : [];
+  const lim = Math.max(0, Math.trunc(Number(limit) || DASHBOARD_TOP_TABLE_MAX_ROWS));
+  if (lim <= 0) return [];
+
+  const seen = new Set();
+  for (const c of out) {
+    let cc = normalizeCountryKey(c && (c.country_code != null ? String(c.country_code) : (c.country != null ? String(c.country) : '')));
+    if (!cc) continue;
+    if (cc === 'UK') cc = 'GB';
+    seen.add(cc);
+  }
+
+  if (out.length < lim && sessionsByCountryAll && typeof sessionsByCountryAll.entries === 'function') {
+    const candidates = [];
+    for (const entry of sessionsByCountryAll.entries()) {
+      let cc = normalizeCountryKey(entry && entry[0] != null ? String(entry[0]) : '');
+      const n = Number(entry && entry[1]) || 0;
+      if (!cc || !(n > 0)) continue;
+      if (cc === 'UK') cc = 'GB';
+      if (seen.has(cc)) continue;
+      candidates.push({ country: cc, sessions: n });
+    }
+    candidates.sort(function(a, b) {
+      if (b.sessions !== a.sessions) return b.sessions - a.sessions;
+      if (a.country < b.country) return -1;
+      if (a.country > b.country) return 1;
+      return 0;
+    });
+    for (const c of candidates) {
+      if (out.length >= lim) break;
+      out.push({
+        country: c.country,
+        country_code: c.country,
+        revenue: 0,
+        orders: 0,
+      });
+      seen.add(c.country);
+    }
+  }
+
+  const map = sessionsByCountryAll && typeof sessionsByCountryAll.get === 'function' ? sessionsByCountryAll : null;
+  return out.slice(0, lim).map(function(c) {
+    let cc = normalizeCountryKey(c && (c.country_code != null ? String(c.country_code) : (c.country != null ? String(c.country) : '')));
+    if (cc === 'UK') cc = 'GB';
+    const sessions = (cc && map) ? (map.get(cc) || 0) : 0;
+    const revenue = Number(c && c.revenue) || 0;
+    const orders = Number(c && c.orders) || 0;
+    return {
+      ...c,
+      country: cc || (c && c.country) || null,
+      country_code: cc || (c && c.country_code) || null,
+      sessions,
+      cr: crPct(orders, sessions),
+      vpv: ratioOrNull(revenue, sessions, { decimals: 2 }),
+    };
+  });
+}
+
 async function attachCrToTopProducts(db, startMs, endMs, filter, topProducts) {
   const list = Array.isArray(topProducts) ? topProducts : [];
   const handles = list.map(p => normalizeHandleKey(p && p.handle != null ? String(p.handle) : '')).filter(Boolean);
   const sessionsByHandle = handles.length ? await fetchSessionCountsByProductHandle(db, startMs, endMs, handles, filter) : new Map();
   return list.map(function(p) {
     const h = normalizeHandleKey(p && p.handle != null ? String(p.handle) : '');
-    const sessions = h ? (sessionsByHandle.get(h) || 0) : null;
+    const sessions = h ? (sessionsByHandle.get(h) || 0) : 0;
     const revenue = Number(p && p.revenue) || 0;
     return {
       ...p,
       sessions,
-      cr: sessions == null ? null : crPct(Number(p && p.orders) || 0, sessions),
+      cr: crPct(Number(p && p.orders) || 0, sessions),
       vpv: ratioOrNull(revenue, sessions, { decimals: 2 }),
     };
   });
@@ -291,12 +505,12 @@ async function attachCrToTopCountries(db, startMs, endMs, filter, topCountries) 
   const sessionsByCountry = codes.length ? await fetchSessionCountsByCountryCode(db, startMs, endMs, codes, filter) : new Map();
   return list.map(function(c) {
     const cc = normalizeCountryKey(c && c.country != null ? String(c.country) : '');
-    const sessions = cc ? (sessionsByCountry.get(cc) || 0) : null;
+    const sessions = cc ? (sessionsByCountry.get(cc) || 0) : 0;
     const revenue = Number(c && c.revenue) || 0;
     return {
       ...c,
       sessions,
-      cr: sessions == null ? null : crPct(Number(c && c.orders) || 0, sessions),
+      cr: crPct(Number(c && c.orders) || 0, sessions),
       vpv: ratioOrNull(revenue, sessions, { decimals: 2 }),
     };
   });
@@ -1040,7 +1254,9 @@ async function computeDashboardSeries(days, nowMs, timeZone, trafficMode) {
     }
   }
 
-  try { topProducts = await attachCrToTopProducts(db, overallStart, overallEnd, filter, topProducts); } catch (_) {}
+  let sessionsByHandleAll = new Map();
+  try { sessionsByHandleAll = await fetchSessionCountsByProductHandleAll(db, overallStart, overallEnd, filter); } catch (_) {}
+  topProducts = fillTopProductsWithSessionsFallback(topProducts, sessionsByHandleAll, { limit: DASHBOARD_TOP_TABLE_MAX_ROWS });
 
   // Top countries by revenue
   let topCountries = [];
@@ -1086,7 +1302,9 @@ async function computeDashboardSeries(days, nowMs, timeZone, trafficMode) {
     } catch (_) {}
   }
 
-  try { topCountries = await attachCrToTopCountries(db, overallStart, overallEnd, filter, topCountries); } catch (_) {}
+  let sessionsByCountryAll = new Map();
+  try { sessionsByCountryAll = await fetchSessionCountsByCountryCodeAll(db, overallStart, overallEnd, filter); } catch (_) {}
+  topCountries = fillTopCountriesWithSessionsFallback(topCountries, sessionsByCountryAll, { limit: DASHBOARD_TOP_TABLE_MAX_ROWS });
 
   // Trending up/down vs previous equivalent period
   let trendingUp = [];
@@ -1515,7 +1733,9 @@ async function computeDashboardSeriesForBounds(bounds, nowMs, timeZone, trafficM
     }
   }
 
-  try { topProducts = await attachCrToTopProducts(db, overallStart, overallEnd, filter, topProducts); } catch (_) {}
+  let sessionsByHandleAll = new Map();
+  try { sessionsByHandleAll = await fetchSessionCountsByProductHandleAll(db, overallStart, overallEnd, filter); } catch (_) {}
+  topProducts = fillTopProductsWithSessionsFallback(topProducts, sessionsByHandleAll, { limit: DASHBOARD_TOP_TABLE_MAX_ROWS });
 
   // Top countries by revenue (range)
   let topCountries = [];
@@ -1561,7 +1781,9 @@ async function computeDashboardSeriesForBounds(bounds, nowMs, timeZone, trafficM
     } catch (_) {}
   }
 
-  try { topCountries = await attachCrToTopCountries(db, overallStart, overallEnd, filter, topCountries); } catch (_) {}
+  let sessionsByCountryAll = new Map();
+  try { sessionsByCountryAll = await fetchSessionCountsByCountryCodeAll(db, overallStart, overallEnd, filter); } catch (_) {}
+  topCountries = fillTopCountriesWithSessionsFallback(topCountries, sessionsByCountryAll, { limit: DASHBOARD_TOP_TABLE_MAX_ROWS });
 
   // Trending up/down vs previous equivalent period
   let trendingUp = [];
