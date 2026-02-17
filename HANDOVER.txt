@@ -398,6 +398,9 @@ Ops/reliability:
 - Settings/runtime migrations:
   - `charts_ui_config_v1` now allows the new dashboard mini-chart modes and migrates legacy dashboard chart modes (pie/bar) to the new defaults so the chart redesign actually applies even when older settings were saved.
   - Dashboard KPI compare sparkline now defaults to a dashed grey line; when sparkline mode is `area`, the compare is always rendered as a line (no fill).
+- Layout shortcut modal fixes:
+  - Close/Cancel/Escape/backdrop click now reliably dismiss the Layout shortcut modal (it’s created dynamically, so close handlers must be bound at creation time).
+  - Saving table settings also syncs the “rows per page” override and re-renders affected tables immediately (fixes stale `dash-trending-up/down` showing 10 when configured for 5).
 - Dashboard overview deltas: all four cards use real current vs previous period (snapshot financial.revenue for Finishes/Countries; attribution report revenue for Attribution).
 - KPI sparkline labels: rendered under the sparkline strip; time format H:MM (e.g. 0:15); smart skip when >12 buckets.
 

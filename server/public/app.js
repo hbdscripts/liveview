@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 03cf9fce35af137f
+// checksum: 5b71c4c82a260aa7
 
 (function () {
 const API = '';
@@ -19224,6 +19224,7 @@ const API = '';
     );
     var el = wrap.firstChild;
     document.body.appendChild(el);
+    try { initModalClose(); } catch (_) {}
     return el;
   }
 
@@ -19248,7 +19249,7 @@ const API = '';
     modal.style.display = '';
     document.body.classList.remove('modal-open');
     try {
-      document.querySelectorAll('.modal-backdrop').forEach(function (b) { if (b && b.parentNode) b.parentNode.removeChild(b); });
+      document.querySelectorAll('.modal-backdrop[data-kexo-layout-backdrop="1"]').forEach(function (b) { if (b && b.parentNode) b.parentNode.removeChild(b); });
     } catch (_) {}
   }
 
@@ -19261,6 +19262,7 @@ const API = '';
     backdrop.className = 'modal-backdrop fade show';
     backdrop.setAttribute('data-kexo-layout-backdrop', '1');
     document.body.appendChild(backdrop);
+    backdrop.addEventListener('click', function () { closeModal(); });
     try {
       if (window.bootstrap && window.bootstrap.Modal) {
         var inst = window.bootstrap.Modal.getOrCreateInstance(modal, { backdrop: true, keyboard: true });
@@ -19390,6 +19392,13 @@ const API = '';
           }
           saveTablesUiConfig(nextCfg).then(function (data) {
             if (data && data.ok) {
+              try {
+                var nextRows = patch && patch.rows && typeof patch.rows.default === 'number' ? patch.rows.default : null;
+                if (nextRows != null) {
+                  if (typeof window.setTableRowsPerPage === 'function') window.setTableRowsPerPage(tableId, nextRows, 'live');
+                  if (typeof window.applyTableRowsPerPageChange === 'function') window.applyTableRowsPerPageChange(tableId, nextRows);
+                }
+              } catch (_) {}
               setMsg('Saved.', true);
               closeModal();
             } else {
@@ -19419,7 +19428,19 @@ const API = '';
           var row = { id: tableId, name: patch.name || tableId, order: 1, tableClass: t.tableClass || '', zone: t.zone || '', inGrid: patch.inGrid, rows: patch.rows, sticky: patch.sticky };
           nextCfg.pages.push({ key: pageKey, label: pageKey, tables: [row] });
           saveTablesUiConfig(nextCfg).then(function (data) {
-            if (data && data.ok) { setMsg('Saved.', true); closeModal(); } else { setMsg((data && data.error) ? String(data.error) : 'Save failed', false); }
+            if (data && data.ok) {
+              try {
+                var nextRows = patch && patch.rows && typeof patch.rows.default === 'number' ? patch.rows.default : null;
+                if (nextRows != null) {
+                  if (typeof window.setTableRowsPerPage === 'function') window.setTableRowsPerPage(tableId, nextRows, 'live');
+                  if (typeof window.applyTableRowsPerPageChange === 'function') window.applyTableRowsPerPageChange(tableId, nextRows);
+                }
+              } catch (_) {}
+              setMsg('Saved.', true);
+              closeModal();
+            } else {
+              setMsg((data && data.error) ? String(data.error) : 'Save failed', false);
+            }
           }).catch(function () { setMsg('Save failed', false); });
         });
         showModal();
@@ -19507,12 +19528,23 @@ const API = '';
   function initModalClose() {
     var modal = document.getElementById(MODAL_ID);
     if (!modal) return;
-    function close() { closeModal(); }
-    document.querySelectorAll('[data-kexo-layout-modal-close]').forEach(function (btn) { btn.addEventListener('click', close); });
-    modal.addEventListener('click', function (e) { if (e.target === modal) close(); });
-    document.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape' && modal.classList.contains('show')) close();
-    });
+    if (modal.getAttribute('data-kexo-layout-close-wired') === '1') return;
+    modal.setAttribute('data-kexo-layout-close-wired', '1');
+    function close(e) {
+      try { if (e && typeof e.preventDefault === 'function') e.preventDefault(); } catch (_) {}
+      closeModal();
+    }
+    modal.querySelectorAll('[data-kexo-layout-modal-close]').forEach(function (btn) { btn.addEventListener('click', close); });
+    modal.addEventListener('click', function (e) { if (e && e.target === modal) close(e); });
+    if (document.documentElement.getAttribute('data-kexo-layout-esc-wired') !== '1') {
+      document.documentElement.setAttribute('data-kexo-layout-esc-wired', '1');
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') {
+          var m = document.getElementById(MODAL_ID);
+          if (m && m.classList && m.classList.contains('show')) close(e);
+        }
+      });
+    }
   }
 
   try {
