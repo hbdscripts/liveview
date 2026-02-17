@@ -2925,6 +2925,44 @@ html[data-bs-theme="dark"] .report-build-wrap {
 .kexo-overview-running-total.is-profit .kexo-overview-running-total-value {
   color: #16a34a;
 }
+.kexo-overview-running-totals--main {
+  margin-top: 0;
+  flex-wrap: wrap;
+  gap: .5rem 1rem;
+}
+.kexo-overview-running-totals--main .kexo-overview-running-total {
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: .15rem;
+}
+.kexo-overview-running-totals--main .kexo-overview-running-total-label {
+  color: #333;
+  opacity: 0.75;
+}
+.kexo-overview-running-totals--main .kexo-overview-running-total-value {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #333;
+}
+.kexo-overview-running-totals--main .kexo-overview-running-total.is-revenue .kexo-overview-running-total-value,
+.kexo-overview-running-totals--main .kexo-overview-running-total.is-cost .kexo-overview-running-total-value {
+  color: #333;
+}
+.kexo-overview-running-totals--main .kexo-overview-running-total.is-profit .kexo-overview-running-total-label,
+.kexo-overview-running-totals--main .kexo-overview-running-total.is-profit .kexo-overview-running-total-value {
+  color: #16a34a;
+  opacity: 1;
+}
+.kexo-cost-breakdown-popover {
+  max-width: 340px;
+}
+.kexo-cost-breakdown-popover .popover-body {
+  font-size: .75rem;
+  line-height: 1.35;
+}
 .kexo-overview-cost-settings-btn {
   font-weight: 500;
 }

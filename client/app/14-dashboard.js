@@ -527,6 +527,8 @@
           var yFmt = (opts && opts.pct) ? function(v) { return v != null ? Number(v).toFixed(1) + '%' : '\u2014'; }
             : (opts && opts.currency) ? function(v) { return v != null ? (formatRevenue(Number(v)) || '\u2014') : '\u2014'; }
             : function(v) { return v != null ? Number(v).toLocaleString() : '\u2014'; };
+          var legendPos = (opts && opts.legendPosition != null) ? String(opts.legendPosition).trim().toLowerCase() : 'top';
+          if (legendPos !== 'top' && legendPos !== 'bottom' && legendPos !== 'left' && legendPos !== 'right') legendPos = 'top';
 
           var baseOpacity = fillOpacityVal != null ? fillOpacityVal : 1;
           var areaFrom = fillOpacityVal != null ? fillOpacityVal * areaOpacityFrom : areaOpacityFrom;
@@ -564,7 +566,7 @@
             },
             grid: { borderColor: '#f0f0f0', strokeDashArray: 3 },
             tooltip: { y: { formatter: yFmt } },
-            legend: { show: apexSeries.length > 1, position: 'top', fontSize: '11px' },
+            legend: { show: apexSeries.length > 1, position: legendPos, fontSize: '11px' },
             dataLabels: (showEndLabels && chartType === 'line') ? {
               enabled: true,
               formatter: function(val, ctx) {
@@ -641,7 +643,7 @@
             if (Number.isFinite(ch) && ch > 0) h = ch;
             var rect = chartEl.getBoundingClientRect ? chartEl.getBoundingClientRect() : null;
             if (rect && Number.isFinite(rect.height) && rect.height > 0) h = rect.height;
-            if ((!h || h < lo) && chartEl.parentElement) {
+            if (chartEl.parentElement) {
               var parent = chartEl.parentElement;
               var ph = parent.clientHeight;
               if (Number.isFinite(ph) && ph > 0) h = ph;
@@ -657,7 +659,7 @@
                   if (Number.isFinite(headRect.height) && headRect.height > 0) headerPx = headRect.height + OVERVIEW_HEADER_GAP_PX;
                 }
                 var totalsEl = card.querySelector ? card.querySelector('.kexo-overview-running-totals') : null;
-                if (totalsEl && totalsEl.getBoundingClientRect) {
+                if (totalsEl && totalsEl.getBoundingClientRect && !(headEl && headEl.contains && headEl.contains(totalsEl))) {
                   var totalsRect = totalsEl.getBoundingClientRect();
                   if (Number.isFinite(totalsRect.height) && totalsRect.height > 0) {
                     headerPx += totalsRect.height + OVERVIEW_HEADER_GAP_PX;
@@ -1667,7 +1669,37 @@
       function setOverviewCostBreakdownTooltip(snapshotPayload) {
         var iconEl = document.getElementById('dash-overview-cost-breakdown-icon');
         var costEl = document.getElementById('dash-overview-total-cost');
+        var Popover = window.bootstrap && window.bootstrap.Popover;
+        function disposePopover(el) {
+          if (!el || !Popover) return;
+          try {
+            var existing = Popover.getInstance(el);
+            if (existing) { existing.hide(); existing.dispose(); }
+          } catch (_) {}
+        }
+        function upsertPopover(el, contentHtml) {
+          if (!el || !Popover) return;
+          try {
+            disposePopover(el);
+            if (!contentHtml) return;
+            var pop = new Popover(el, {
+              trigger: 'hover focus',
+              placement: 'bottom',
+              html: true,
+              container: document.body,
+              customClass: 'kexo-cost-breakdown-popover',
+              content: contentHtml
+            });
+            // Ensure screen-readers have an accessible name even if markup uses aria-hidden elsewhere.
+            try {
+              if (!el.getAttribute('aria-label')) el.setAttribute('aria-label', 'Cost breakdown');
+            } catch (_) {}
+            return pop;
+          } catch (_) { return null; }
+        }
         if (iconEl && iconEl.style) iconEl.style.display = 'none';
+        disposePopover(iconEl);
+        disposePopover(costEl);
         try { if (iconEl) iconEl.removeAttribute('title'); } catch (_) {}
         try { if (costEl) costEl.removeAttribute('title'); } catch (_) {}
         if (!snapshotPayload) return;
@@ -1683,13 +1715,17 @@
           if (!label) return;
           if (!Number.isFinite(amt)) amt = 0;
           sum += amt;
-          lines.push(label + ': ' + fmtGbp(Math.round(amt * 100) / 100));
+          lines.push({ label: label, amount: Math.round(amt * 100) / 100 });
         });
         if (!lines.length) return;
-        lines.push('Total: ' + fmtGbp(Math.round(sum * 100) / 100));
-        var tooltip = 'Cost breakdown\\n' + lines.join('\\n');
-        try { if (iconEl) iconEl.setAttribute('title', tooltip); } catch (_) {}
-        try { if (costEl) costEl.setAttribute('title', tooltip); } catch (_) {}
+        var total = Math.round(sum * 100) / 100;
+        var html = '<strong>Cost breakdown</strong><br>'
+          + lines.map(function(r) {
+            return escapeHtml(r.label) + ': ' + escapeHtml(fmtGbp(r.amount));
+          }).join('<br>')
+          + '<br><strong>Total: ' + escapeHtml(fmtGbp(total)) + '</strong>';
+        upsertPopover(iconEl, html);
+        upsertPopover(costEl, html);
         if (iconEl && iconEl.style) iconEl.style.display = '';
       }
 
@@ -1773,7 +1809,7 @@
           backgroundColor: 'rgba(34,197,94,0.14)',
           fill: true,
           borderWidth: 2
-        }], { currency: true, chartType: overviewChartType, height: chartHeight });
+        }], { currency: true, chartType: overviewChartType, height: chartHeight, legendPosition: 'bottom' });
       }
 
       function fetchOverviewJson(url, force, timeoutMs) {
@@ -1918,7 +1954,7 @@
               renderOverviewMiniLegend(chartId, finishLabels, colors);
             } else if (finishesMode === 'bar' || finishesMode === 'bar-horizontal' || finishesMode === 'bar-distributed') {
               renderOverviewFinishesBarChart(chartId, finishLabels, finishValues, Object.assign({}, finishesOpts, { horizontal: finishesMode === 'bar-horizontal' }));
-              renderOverviewMiniLegend(chartId, finishLabels, colors);
+              renderOverviewMiniLegend(chartId, [], []);
             } else if (finishesMode === 'area' || finishesMode === 'line' || finishesMode === 'multi-line-labels') {
               makeChart(chartId, finishLabels, [{ label: 'Revenue', data: finishValues, borderColor: (colors && colors[0]) || DASH_ACCENT, backgroundColor: (colors && colors[0]) ? (colors[0] + '33') : DASH_ACCENT_LIGHT, fill: finishesMode === 'area', borderWidth: 2 }], { currency: true, chartType: finishesMode, height: 180 });
               renderOverviewMiniLegend(chartId, finishLabels, colors);
