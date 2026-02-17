@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 739a117f5101fd4d
+// checksum: de25a95e2c08b769
 
 (function () {
 const API = '';
@@ -16318,6 +16318,7 @@ const API = '';
           colors: colors,
           legend: { show: false },
           tooltip: {
+            enabled: true,
             custom: function(ctx) {
               var idx = ctx && Number.isFinite(ctx.seriesIndex) ? ctx.seriesIndex : -1;
               var name = (idx >= 0 && idx < labelsRef.length) ? labelsRef[idx] : '';
@@ -16327,6 +16328,7 @@ const API = '';
               return '<div class="kexo-tooltip-card p-2"><div class="fw-semibold">' + escapeHtml(name || '') + '</div><div>Revenue: ' + escapeHtml(formatRevenue(normalizeOverviewMetric(rev)) || '\u2014') + '</div><div>Share: ' + escapeHtml(pctStr) + '</div></div>';
             }
           },
+          states: { normal: { filter: { type: 'none', value: 0 } }, hover: { filter: { type: 'none', value: 0 } }, active: { filter: { type: 'none', value: 0 } } },
           noData: { text: 'No data available', style: { fontSize: '13px', color: '#626976' } }
         };
         try {
@@ -16402,7 +16404,7 @@ const API = '';
           var name = cc ? ((typeof countryLabelFull === 'function') ? countryLabelFull(cc) : cc) : '';
           var rev = normalizeOverviewMetric(row && row.revenue);
           if (!emoji && !name) return;
-          categories.push(emoji || name);
+          categories.push((emoji ? (emoji + ' ' + (cc || '')) : name) || cc);
           values.push(rev);
           names.push(name || cc);
           crPcts.push(row && row.cr != null ? Number(row.cr) : null);
@@ -16424,11 +16426,14 @@ const API = '';
           chart: { type: 'bar', height: chartHeight, fontFamily: 'Inter, sans-serif', toolbar: { show: false }, animations: { enabled: (uiStyle && uiStyle.animations === false) ? false : true } },
           plotOptions: { bar: { horizontal: true, borderRadius: 0, distributed: true, barHeight: '60%' } },
           series: [{ name: 'Revenue', data: values }],
-          xaxis: { categories: categories },
+          xaxis: { categories: categories, labels: { show: false } },
+          yaxis: { labels: { show: true, style: { fontSize: '12px', fontWeight: 500, colors: '#090f17' } } },
           colors: colors,
           legend: { show: false },
           dataLabels: { enabled: false },
-          fill: { opacity: 1 },
+          fill: { opacity: 1, type: 'solid' },
+          stroke: { show: false, width: 0 },
+          states: { normal: { filter: { type: 'none', value: 0 } }, hover: { filter: { type: 'none', value: 0 } }, active: { filter: { type: 'none', value: 0 } } },
           tooltip: {
             custom: function(opts) {
               var idx = opts && opts.dataPointIndex != null ? opts.dataPointIndex : -1;
@@ -16507,7 +16512,9 @@ const API = '';
           colors: colors,
           legend: { show: false },
           dataLabels: { enabled: false },
-          fill: { opacity: 1 },
+          fill: { opacity: 1, type: 'solid' },
+          stroke: { show: false, width: 0 },
+          states: { normal: { filter: { type: 'none', value: 0 } }, hover: { filter: { type: 'none', value: 0 } }, active: { filter: { type: 'none', value: 0 } } },
           tooltip: {
             custom: function(opts) {
               var idx = opts && opts.dataPointIndex != null ? opts.dataPointIndex : -1;
