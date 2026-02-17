@@ -129,6 +129,8 @@
     config: null,
     observed: [],
     selected: null, // { token_type, token_value }
+    sourceMetaByKey: {}, // source_key -> { label, icon_spec }
+    variantMetaByKey: {}, // variant_key -> { label, icon_spec }
   };
 
   function setHint(id, text, ok) {
@@ -145,6 +147,81 @@
       var label = row && row.label != null ? String(row.label) : '';
       return { key: key, label: label };
     }).filter(function (it) { return it && it.key; });
+  }
+
+  function sanitizeSvgMarkup(markup) {
+    var s = markup == null ? '' : String(markup);
+    s = s.trim();
+    if (!/^<svg[\s>]/i.test(s)) return '';
+    s = s.replace(/<\?xml[\s\S]*?\?>/gi, '');
+    s = s.replace(/<!--[\s\S]*?-->/g, '');
+    s = s.replace(/<script[\s\S]*?<\/script>/gi, '');
+    s = s.replace(/<foreignObject[\s\S]*?<\/foreignObject>/gi, '');
+    s = s.replace(/\son[a-z]+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '');
+    s = s.replace(/\s(?:href|xlink:href)\s*=\s*("javascript:[^"]*"|'javascript:[^']*'|javascript:[^\s>]+)/gi, '');
+    return s.trim();
+  }
+
+  function iconSpecToPreviewHtml(spec, label) {
+    var s = spec != null ? String(spec).trim() : '';
+    var l = label != null ? String(label).trim() : '';
+    if (!s) return '<span class="text-muted small">—</span>';
+    if (/^<svg[\s>]/i.test(s)) {
+      var safeSvg = sanitizeSvgMarkup(s);
+      if (!safeSvg) return '<span class="text-muted small">—</span>';
+      return '<span class="am-map-icon-preview" title="' + escapeHtml(l) + '">' + safeSvg + '</span>';
+    }
+    if (/^(https?:\/\/|\/\/|\/)/i.test(s)) return '<span class="am-map-icon-preview"><img src="' + escapeHtml(s) + '" alt="" width="20" height="20" style="vertical-align:middle"></span>';
+    return '<span class="am-map-icon-preview" title="' + escapeHtml(l) + '"><i class="' + escapeHtml(s) + '" aria-hidden="true"></i></span>';
+  }
+
+  function buildIconMetaMaps(cfg) {
+    var config = cfg && typeof cfg === 'object' ? cfg : {};
+    var sources = Array.isArray(config.sources) ? config.sources : [];
+    var variants = Array.isArray(config.variants) ? config.variants : [];
+    var sMap = {};
+    var vMap = {};
+    sources.forEach(function (r) {
+      var key = normalizeKeyLike(r && (r.source_key != null ? r.source_key : r.key), 32);
+      if (!key) return;
+      sMap[key] = {
+        label: (r && r.label != null) ? String(r.label) : key,
+        icon_spec: (r && r.icon_spec != null) ? String(r.icon_spec) : '',
+      };
+    });
+    variants.forEach(function (r) {
+      var key = normalizeVariantKey(r && (r.variant_key != null ? r.variant_key : r.key));
+      if (!key) return;
+      vMap[key] = {
+        label: (r && r.label != null) ? String(r.label) : key,
+        icon_spec: (r && r.icon_spec != null) ? String(r.icon_spec) : '',
+      };
+    });
+    _state.sourceMetaByKey = sMap;
+    _state.variantMetaByKey = vMap;
+  }
+
+  function updateSourceIconPreview() {
+    var prevEl = document.getElementById('am-source-icon-preview');
+    if (!prevEl) return;
+    var srcEl = document.getElementById('am-source-key');
+    var sourceKey = normalizeKeyLike(srcEl ? srcEl.value : '', 32);
+    if (!sourceKey) {
+      prevEl.innerHTML = '<span class="text-muted small">—</span>';
+      return;
+    }
+    var meta = _state.sourceMetaByKey && _state.sourceMetaByKey[sourceKey] ? _state.sourceMetaByKey[sourceKey] : null;
+    var iconSpec = meta && meta.icon_spec ? String(meta.icon_spec) : '';
+    var label = meta && meta.label ? String(meta.label) : sourceKey;
+    prevEl.innerHTML = iconSpecToPreviewHtml(iconSpec, label);
+  }
+
+  function updateIconInputPreview(inputId, previewId, label) {
+    var input = document.getElementById(inputId);
+    var out = document.getElementById(previewId);
+    if (!out) return;
+    var spec = input ? String(input.value || '') : '';
+    out.innerHTML = iconSpecToPreviewHtml(spec, label || '');
   }
 
   function renderSkeleton(root) {
@@ -225,7 +302,7 @@
               '<input class="form-control font-monospace" id="am-channel-key" type="text" placeholder="paid_search" />' +
             '</div>' +
             '<div class="col-6 col-md-2">' +
-              '<label class="form-label" for="am-source-key" title="Traffic source: google, bing, meta, omnisend, direct, other.">Source <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></label>' +
+              '<label class="form-label" for="am-source-key" title="Traffic source: google, bing, meta, omnisend, direct, other.">Source <span id="am-source-icon-preview" class="ms-1" aria-hidden="true"></span> <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></label>' +
               '<input class="form-control font-monospace" id="am-source-key" type="text" placeholder="google" />' +
             '</div>' +
             '<div class="col-12 col-md-4">' +
@@ -235,6 +312,19 @@
                 '<option value="partner">partner</option>' +
                 '<option value="affiliate">affiliate</option>' +
               '</select>' +
+            '</div>' +
+
+            '<div class="col-12 col-md-6">' +
+              '<label class="form-label" for="am-source-icon-spec" title="Optional: seed the source icon (icon_spec) only if it is blank. This will not overwrite an existing icon.">Source icon (optional, set if blank) <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></label>' +
+              '<textarea class="form-control font-monospace" id="am-source-icon-spec" rows="2" spellcheck="false" placeholder="fa-brands fa-google  OR  /assets/icon.png  OR  <svg ...>"></textarea>' +
+              '<div class="form-hint small">Only applied when the source has no icon yet.</div>' +
+              '<div id="am-source-icon-input-preview" class="am-map-icon-live-preview mt-1"></div>' +
+            '</div>' +
+            '<div class="col-12 col-md-6">' +
+              '<label class="form-label" for="am-variant-icon-spec" title="Optional: seed the variant icon (icon_spec) only if it is blank. This will not overwrite an existing icon.">Variant icon (optional, set if blank) <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></label>' +
+              '<textarea class="form-control font-monospace" id="am-variant-icon-spec" rows="2" spellcheck="false" placeholder="fa-solid fa-bolt  OR  /assets/icon.png  OR  <svg ...>"></textarea>' +
+              '<div class="form-hint small">Only applied when the variant has no icon yet. Leaving blank is fine.</div>' +
+              '<div id="am-variant-icon-input-preview" class="am-map-icon-live-preview mt-1"></div>' +
             '</div>' +
           '</div>' +
           '<div class="d-flex align-items-center gap-2 flex-wrap mt-3">' +
@@ -329,14 +419,18 @@
     return fetchConfig().then(function (payload) {
       if (!payload || payload.ok !== true) {
         _state.config = null;
+        buildIconMetaMaps({ channels: [], sources: [], variants: [], rules: [], allowlist: [] });
         renderVariantsDatalist([]);
         renderConfigText({ config: { channels: [], sources: [], variants: [], rules: [], allowlist: [] } });
+        updateSourceIconPreview();
         setHint('am-config-msg', 'Could not load config (will fail open).', false);
         return null;
       }
       _state.config = payload.config || null;
+      buildIconMetaMaps(payload.config || {});
       renderVariantsDatalist(variantsFromConfig(payload.config || {}));
       renderConfigText(payload);
+      updateSourceIconPreview();
       setHint('am-config-msg', 'Loaded.', true);
       setTimeout(function () { setHint('am-config-msg', '', true); }, 1200);
       return payload;
@@ -470,6 +564,9 @@
     renderSkeleton(root);
     initAmTooltips(root);
     renderSelected();
+    updateSourceIconPreview();
+    updateIconInputPreview('am-source-icon-spec', 'am-source-icon-input-preview', 'Source icon');
+    updateIconInputPreview('am-variant-icon-spec', 'am-variant-icon-input-preview', 'Variant icon');
 
     root.addEventListener('click', function (e) {
       var t = e && e.target ? e.target : null;
@@ -552,6 +649,13 @@
         var ownerKind = trimLower(ownerEl ? ownerEl.value : '', 32);
         if (ownerKind) payload.owner_kind = ownerKind;
 
+        var srcIconEl = document.getElementById('am-source-icon-spec');
+        var varIconEl = document.getElementById('am-variant-icon-spec');
+        var srcIcon = srcIconEl ? String(srcIconEl.value || '').trim() : '';
+        var varIcon = varIconEl ? String(varIconEl.value || '').trim() : '';
+        if (srcIcon) payload.source_icon_spec = srcIcon;
+        if (varIcon) payload.variant_icon_spec = varIcon;
+
         setHint('am-map-msg', 'Saving…', true);
         mapToken(payload).then(function (resp) {
           if (!resp || resp.ok !== true) {
@@ -564,6 +668,23 @@
           loadConfigAndRender();
           loadObservedAndRender();
         });
+        return;
+      }
+    });
+
+    root.addEventListener('input', function (e) {
+      var t = e && e.target ? e.target : null;
+      if (!t) return;
+      if (t.id === 'am-source-key') {
+        updateSourceIconPreview();
+        return;
+      }
+      if (t.id === 'am-source-icon-spec') {
+        updateIconInputPreview('am-source-icon-spec', 'am-source-icon-input-preview', 'Source icon');
+        return;
+      }
+      if (t.id === 'am-variant-icon-spec') {
+        updateIconInputPreview('am-variant-icon-spec', 'am-variant-icon-input-preview', 'Variant icon');
         return;
       }
     });

@@ -89,11 +89,29 @@
       .map(function (w) { return w.slice(0, 1).toUpperCase() + w.slice(1); }).join(' ');
   }
 
+  function sanitizeSvgMarkup(markup) {
+    var s = markup == null ? '' : String(markup);
+    s = s.trim();
+    if (!/^<svg[\s>]/i.test(s)) return '';
+    // drop scripts + foreignObject
+    s = s.replace(/<script[\s\S]*?<\/script>/gi, '');
+    s = s.replace(/<foreignObject[\s\S]*?<\/foreignObject>/gi, '');
+    // drop inline event handlers
+    s = s.replace(/\son[a-z]+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '');
+    // drop javascript: hrefs
+    s = s.replace(/\s(href|xlink:href)\s*=\s*(["'])\s*javascript:[^"']*\2/gi, '');
+    return s;
+  }
+
   function iconSpecToPreviewHtml(spec, label) {
     var s = spec != null ? String(spec).trim() : '';
     var l = label != null ? String(label).trim() : '';
     if (!s) return '<span class="text-muted small">—</span>';
-    if (/^<svg[\s>]/i.test(s)) return '<span class="am-tree-icon-preview" title="' + escapeHtml(l) + '">' + s + '</span>';
+    if (/^<svg[\s>]/i.test(s)) {
+      var safeSvg = sanitizeSvgMarkup(s);
+      if (!safeSvg) return '<span class="text-muted small">—</span>';
+      return '<span class="am-tree-icon-preview" title="' + escapeHtml(l) + '">' + safeSvg + '</span>';
+    }
     if (/^(https?:\/\/|\/\/|\/)/i.test(s)) return '<span class="am-tree-icon-preview"><img src="' + escapeHtml(s) + '" alt="" width="20" height="20" style="vertical-align:middle"></span>';
     return '<span class="am-tree-icon-preview" title="' + escapeHtml(l) + '"><i class="' + escapeHtml(s) + '" aria-hidden="true"></i></span>';
   }
@@ -237,11 +255,23 @@
       '<i class="fa fa-chevron-' + (isOpen ? 'down' : 'right') + ' small" aria-hidden="true"></i></button>' +
       '<span class="am-tree-cell am-tree-label">' + iconSpecToPreviewHtml(iconSpec, label) + ' <strong>' + escapeHtml(label) + '</strong> <code class="small">' + escapeHtml(vk) + '</code></span>' +
       '<span class="am-tree-cell text-muted small">' + String(ruleCount) + ' rule(s)</span>' +
+      '<span class="am-tree-cell"><button type="button" class="btn btn-outline-secondary btn-sm am-tree-edit-icon-btn" data-am-tree-edit-toggle="variant" data-key="' + escapeHtml(vk) + '" title="Edit icon">Edit icon</button></span>' +
       '</div>' +
-      '<div class="am-tree-variant-icon-edit mt-1 mb-2" data-am-tree-edit="variant" data-variant-key="' + escapeHtml(vk) + '" style="display:none">' +
-      '<div class="input-group input-group-sm"><input type="text" class="form-control form-control-sm am-tree-icon-input" placeholder="Font Awesome class or image URL" value="' + escapeHtml(iconSpec) + '">' +
+      '<div class="am-tree-variant-icon-edit mt-1 mb-2" data-am-tree-edit="variant" data-variant-key="' + escapeHtml(vk) + '" data-am-tree-label="' + escapeHtml(label) + '" style="display:none">' +
+      '<div class="row g-2 align-items-start">' +
+      '<div class="col-12 col-md-7">' +
+      '<textarea class="form-control form-control-sm am-tree-icon-input font-monospace" rows="3" spellcheck="false" placeholder="fa-solid fa-bolt  OR  /assets/icon.png  OR  <svg ...>">' + escapeHtml(iconSpec) + '</textarea>' +
+      '<div class="form-hint small">Font Awesome class, image URL/path, or inline SVG. Saved icons sync with Settings → Kexo → Icons.</div>' +
+      '</div>' +
+      '<div class="col-12 col-md-5">' +
+      '<div class="am-tree-icon-live-preview" data-am-tree-live-preview="1">' + iconSpecToPreviewHtml(iconSpec, label) + '</div>' +
+      '</div>' +
+      '<div class="col-12 d-flex align-items-center gap-2">' +
       '<button type="button" class="btn btn-outline-primary btn-sm am-tree-icon-save" data-kind="variant" data-key="' + escapeHtml(vk) + '">Save</button>' +
-      '<button type="button" class="btn btn-outline-secondary btn-sm am-tree-icon-reset" data-kind="variant" data-key="' + escapeHtml(vk) + '">Reset</button></div>' +
+      '<button type="button" class="btn btn-outline-secondary btn-sm am-tree-icon-reset" data-kind="variant" data-key="' + escapeHtml(vk) + '">Reset</button>' +
+      '<span class="am-tree-save-msg small text-secondary ms-auto" data-am-tree-save-msg="1"></span>' +
+      '</div>' +
+      '</div>' +
       '</div>' +
       '<div class="am-tree-children' + (isOpen ? '' : ' is-hidden') + '" data-am-tree-children="' + escapeHtml(expandedKey) + '">' +
       ruleRows +
@@ -262,11 +292,23 @@
       '<button type="button" class="am-tree-toggle btn btn-link btn-sm p-0 me-1" data-am-tree-toggle="' + escapeHtml(expandedKey) + '" aria-expanded="' + (isOpen ? 'true' : 'false') + '">' +
       '<i class="fa fa-chevron-' + (isOpen ? 'down' : 'right') + ' small" aria-hidden="true"></i></button>' +
       '<span class="am-tree-cell am-tree-label">' + iconSpecToPreviewHtml(iconSpec, label) + ' <strong>' + escapeHtml(label) + '</strong> <code class="small">' + escapeHtml(sk) + '</code></span>' +
+      '<span class="am-tree-cell"><button type="button" class="btn btn-outline-secondary btn-sm am-tree-edit-icon-btn" data-am-tree-edit-toggle="source" data-key="' + escapeHtml(sk) + '" title="Edit icon">Edit icon</button></span>' +
       '</div>' +
-      '<div class="am-tree-source-icon-edit mt-1 mb-2" data-am-tree-edit="source" data-source-key="' + escapeHtml(sk) + '" style="display:none">' +
-      '<div class="input-group input-group-sm"><input type="text" class="form-control form-control-sm am-tree-icon-input" placeholder="Font Awesome class or image URL" value="' + escapeHtml(iconSpec) + '">' +
+      '<div class="am-tree-source-icon-edit mt-1 mb-2" data-am-tree-edit="source" data-source-key="' + escapeHtml(sk) + '" data-am-tree-label="' + escapeHtml(label) + '" style="display:none">' +
+      '<div class="row g-2 align-items-start">' +
+      '<div class="col-12 col-md-7">' +
+      '<textarea class="form-control form-control-sm am-tree-icon-input font-monospace" rows="3" spellcheck="false" placeholder="fa-brands fa-google  OR  /assets/icon.png  OR  <svg ...>">' + escapeHtml(iconSpec) + '</textarea>' +
+      '<div class="form-hint small">Font Awesome class, image URL/path, or inline SVG. Saved icons sync with Settings → Kexo → Icons.</div>' +
+      '</div>' +
+      '<div class="col-12 col-md-5">' +
+      '<div class="am-tree-icon-live-preview" data-am-tree-live-preview="1">' + iconSpecToPreviewHtml(iconSpec, label) + '</div>' +
+      '</div>' +
+      '<div class="col-12 d-flex align-items-center gap-2">' +
       '<button type="button" class="btn btn-outline-primary btn-sm am-tree-icon-save" data-kind="source" data-key="' + escapeHtml(sk) + '">Save</button>' +
-      '<button type="button" class="btn btn-outline-secondary btn-sm am-tree-icon-reset" data-kind="source" data-key="' + escapeHtml(sk) + '">Reset</button></div>' +
+      '<button type="button" class="btn btn-outline-secondary btn-sm am-tree-icon-reset" data-kind="source" data-key="' + escapeHtml(sk) + '">Reset</button>' +
+      '<span class="am-tree-save-msg small text-secondary ms-auto" data-am-tree-save-msg="1"></span>' +
+      '</div>' +
+      '</div>' +
       '</div>' +
       '<div class="am-tree-children' + (isOpen ? '' : ' is-hidden') + '" data-am-tree-children="' + escapeHtml(expandedKey) + '">' +
       variantHtml +
@@ -298,7 +340,7 @@
       return;
     }
     var html = '<div class="am-tree mb-0">' +
-      '<p class="text-secondary small mb-2">Expand a channel or source to edit icons for sources and variants. Changes sync with Settings → Kexo → Icons.</p>' +
+      '<p class="text-secondary small mb-2">Use <strong>Edit icon</strong> on a Source or Variant row. SVG paste works best in the textarea. Changes sync with Settings → Kexo → Icons.</p>' +
       model.map(function (ch) { return renderChannelRow(ch); }).join('') +
       '</div>';
     root.innerHTML = html;
@@ -329,15 +371,28 @@
         return;
       }
 
-      var labelCell = target && target.closest ? target.closest('.am-tree-channel-head .am-tree-label, .am-tree-source-head .am-tree-label, .am-tree-variant-head .am-tree-label') : null;
-      if (labelCell) {
-        var node = labelCell.closest('.am-tree-channel, .am-tree-source, .am-tree-variant');
+      var editBtn = target && target.closest ? target.closest('[data-am-tree-edit-toggle]') : null;
+      if (editBtn) {
+        e.preventDefault();
+        var node = editBtn.closest('.am-tree-source, .am-tree-variant');
         if (!node) return;
         var editEl = node.querySelector('[data-am-tree-edit]');
         if (editEl) {
           var visible = editEl.style.display !== 'none';
           root.querySelectorAll('[data-am-tree-edit]').forEach(function (el) { el.style.display = 'none'; });
           editEl.style.display = visible ? 'none' : 'block';
+
+          var input = editEl.querySelector('.am-tree-icon-input');
+          var preview = editEl.querySelector('[data-am-tree-live-preview]');
+          if (input && preview) {
+            var lbl = editEl.getAttribute('data-am-tree-label') || '';
+            preview.innerHTML = iconSpecToPreviewHtml(input.value, lbl);
+          }
+          var msgEl = editEl.querySelector('[data-am-tree-save-msg]');
+          if (msgEl) {
+            msgEl.textContent = '';
+            msgEl.className = 'am-tree-save-msg small text-secondary ms-auto';
+          }
         }
         return;
       }
@@ -349,19 +404,33 @@
         var keyVal = saveBtn.getAttribute('data-key');
         var editDiv = saveBtn.closest('[data-am-tree-edit]');
         var input = editDiv ? editDiv.querySelector('.am-tree-icon-input') : null;
-        var newSpec = input ? input.value.trim() : '';
+        var newSpec = input ? String(input.value || '').trim() : '';
+        var msgEl = editDiv ? editDiv.querySelector('[data-am-tree-save-msg]') : null;
+        function setMsg(text, cls) {
+          if (!msgEl) return;
+          msgEl.textContent = text || '';
+          msgEl.className = 'am-tree-save-msg small ' + (cls || 'text-secondary') + ' ms-auto';
+        }
         var payload = { sources: [], variants: [] };
         if (kind === 'source') {
           payload.sources = [{ source_key: keyVal, icon_spec: newSpec || null }];
         } else if (kind === 'variant') {
           payload.variants = [{ variant_key: keyVal, icon_spec: newSpec || null }];
         }
+        setMsg('Saving…', 'text-secondary');
+        try { saveBtn.disabled = true; } catch (_) {}
         saveIcons(payload).then(function (res) {
           if (res && res.ok) {
-            _state.config = null;
-            loadAndRender();
+            setMsg('Saved', 'text-success');
             try { window.dispatchEvent(new CustomEvent('kexo:attribution-icons-updated')); } catch (_) {}
+            setTimeout(function () {
+              _state.config = null;
+              loadAndRender();
+            }, 250);
+          } else {
+            setMsg((res && res.error) ? String(res.error) : 'Save failed', 'text-danger');
           }
+          try { saveBtn.disabled = false; } catch (_) {}
         });
         return;
       }
@@ -382,8 +451,30 @@
             input.value = (v && v.icon_spec != null) ? String(v.icon_spec) : '';
           }
         }
+        if (editDiv) {
+          var preview = editDiv.querySelector('[data-am-tree-live-preview]');
+          var lbl = editDiv.getAttribute('data-am-tree-label') || '';
+          if (input && preview) preview.innerHTML = iconSpecToPreviewHtml(input.value, lbl);
+          var msgEl = editDiv.querySelector('[data-am-tree-save-msg]');
+          if (msgEl) {
+            msgEl.textContent = '';
+            msgEl.className = 'am-tree-save-msg small text-secondary ms-auto';
+          }
+        }
         return;
       }
+    });
+
+    root.addEventListener('input', function (e) {
+      var target = e && e.target ? e.target : null;
+      var input = target && target.closest ? target.closest('.am-tree-icon-input') : null;
+      if (!input) return;
+      var editDiv = input.closest ? input.closest('[data-am-tree-edit]') : null;
+      if (!editDiv) return;
+      var preview = editDiv.querySelector('[data-am-tree-live-preview]');
+      if (!preview) return;
+      var lbl = editDiv.getAttribute('data-am-tree-label') || '';
+      preview.innerHTML = iconSpecToPreviewHtml(input.value, lbl);
     });
   }
 

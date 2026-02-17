@@ -766,7 +766,7 @@
     accordionEl.querySelectorAll('.accordion-item').forEach(function (item) {
       var body = item.querySelector('.accordion-body .row');
       if (!body) return;
-      var n = body.querySelectorAll('.col-12').length;
+      var n = body.querySelectorAll('.col-12:not([data-theme-icon-count-exclude="1"])').length;
       var countEl = item.querySelector('[data-theme-icon-group-count]') || item.querySelector('.accordion-header .text-muted.small');
       if (countEl) countEl.textContent = String(n) + ' icons';
     });
@@ -886,8 +886,33 @@
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload || {}),
     })
-      .then(function (r) { return r && r.ok ? r.json() : null; })
-      .catch(function () { return null; });
+      .then(function (r) {
+        return r.json().catch(function () { return null; }).then(function (body) {
+          if (r && r.ok) return body;
+          return { ok: false, status: r && r.status, error: (body && body.error) || (r && r.status === 403 ? 'Admin only' : 'Request failed') };
+        });
+      })
+      .catch(function () { return { ok: false, status: 0, error: 'Request failed' }; });
+  }
+
+  function titleFromKey(key) {
+    var s = String(key || '').trim();
+    if (!s) return 'Unknown';
+    return s.replace(/[:_ -]+/g, ' ').trim().split(/\s+/g).filter(Boolean)
+      .map(function (w) { return w.slice(0, 1).toUpperCase() + w.slice(1); }).join(' ');
+  }
+
+  function attributionIconSpecToPreviewHtml(spec, label) {
+    var s = spec != null ? String(spec).trim() : '';
+    var l = label != null ? String(label).trim() : '';
+    if (!s) return '<span class="text-muted small">—</span>';
+    if (/^<svg[\s>]/i.test(s)) {
+      var safeSvg = sanitizeSvgMarkup(s);
+      if (!safeSvg) return '<span class="text-muted small">—</span>';
+      return '<span title="' + escapeHtml(l) + '">' + safeSvg + '</span>';
+    }
+    if (/^(https?:\/\/|\/\/|\/)/i.test(s)) return '<img src="' + escapeHtml(s) + '" alt="" title="' + escapeHtml(l) + '">';
+    return '<i class="' + escapeHtml(s) + '" aria-hidden="true" title="' + escapeHtml(l) + '"></i>';
   }
 
   function hydrateAttributionIconGroup(root) {
@@ -908,62 +933,212 @@
         body.innerHTML = '<div class="col-12 text-secondary small">Could not load attribution config.</div>';
         return;
       }
-      var sources = Array.isArray(res.config.sources) ? res.config.sources : [];
-      var variants = Array.isArray(res.config.variants) ? res.config.variants : [];
-      var cards = [];
-      sources.forEach(function (r) {
+      var rawSources = Array.isArray(res.config.sources) ? res.config.sources : [];
+      var rawVariants = Array.isArray(res.config.variants) ? res.config.variants : [];
+
+      var sourcesByKey = {}; // lower -> { key, label, icon_spec }
+      function upsertSourceRow(key, label, iconSpec) {
+        var rawKey = String(key || '').trim();
+        if (!rawKey) return;
+        var lk = rawKey.toLowerCase();
+        if (!lk) return;
+        var row = sourcesByKey[lk];
+        if (row) {
+          var l = label != null ? String(label).trim() : '';
+          var i = iconSpec != null ? String(iconSpec) : '';
+          if (l && (!row.label || row.label === row.key)) row.label = l;
+          if (i && !row.icon_spec) row.icon_spec = i;
+          return;
+        }
+        sourcesByKey[lk] = {
+          key: rawKey,
+          label: (label != null && String(label).trim()) ? String(label).trim() : titleFromKey(rawKey),
+          icon_spec: iconSpec != null ? String(iconSpec) : '',
+        };
+      }
+
+      rawSources.forEach(function (r) {
         var key = (r && r.source_key != null) ? String(r.source_key) : (r && r.key != null) ? String(r.key) : '';
-        var label = (r && r.label != null) ? String(r.label) : key || '—';
-        var icon = (r && r.icon_spec != null) ? String(r.icon_spec) : '';
         if (!key) return;
-        cards.push('<div class="col-12 col-md-6 col-lg-4" data-attribution-icon="source" data-attribution-key="' + escapeHtml(key) + '">' +
-          '<div class="card card-sm h-100">' +
-            '<div class="card-body">' +
-              '<div class="d-flex align-items-center mb-2"><strong>Source: ' + escapeHtml(label) + '</strong></div>' +
-              '<div class="text-secondary small mb-2"><code>' + escapeHtml(key) + '</code></div>' +
-              '<div class="d-flex align-items-start gap-2">' +
-                '<input type="text" class="form-control form-control-sm attribution-icon-input" data-kind="source" data-key="' + escapeHtml(key) + '" value="' + escapeHtml(icon) + '" placeholder="fa-brands fa-google or URL" />' +
-                '<button type="button" class="btn btn-outline-primary btn-sm attribution-icon-save" data-kind="source" data-key="' + escapeHtml(key) + '">Save</button>' +
-              '</div>' +
-            '</div>' +
-          '</div>' +
-        '</div>');
+        upsertSourceRow(key, (r && r.label != null) ? String(r.label) : '', (r && r.icon_spec != null) ? String(r.icon_spec) : '');
       });
-      variants.forEach(function (r) {
+      rawVariants.forEach(function (r) {
+        var sk = (r && r.source_key != null) ? String(r.source_key) : '';
+        if (!sk) return;
+        upsertSourceRow(sk, '', '');
+      });
+
+      var sources = Object.keys(sourcesByKey).map(function (k) { return sourcesByKey[k]; });
+      sources.sort(function (a, b) { return String(a.label || a.key).localeCompare(String(b.label || b.key)); });
+
+      var variants = [];
+      rawVariants.forEach(function (r) {
         var key = (r && r.variant_key != null) ? String(r.variant_key) : (r && r.key != null) ? String(r.key) : '';
-        var label = (r && r.label != null) ? String(r.label) : key || '—';
-        var icon = (r && r.icon_spec != null) ? String(r.icon_spec) : '';
         if (!key) return;
-        cards.push('<div class="col-12 col-md-6 col-lg-4" data-attribution-icon="variant" data-attribution-key="' + escapeHtml(key) + '">' +
-          '<div class="card card-sm h-100">' +
-            '<div class="card-body">' +
-              '<div class="d-flex align-items-center mb-2"><strong>Variant: ' + escapeHtml(label) + '</strong></div>' +
-              '<div class="text-secondary small mb-2"><code>' + escapeHtml(key) + '</code></div>' +
-              '<div class="d-flex align-items-start gap-2">' +
-                '<input type="text" class="form-control form-control-sm attribution-icon-input" data-kind="variant" data-key="' + escapeHtml(key) + '" value="' + escapeHtml(icon) + '" placeholder="fa-brands fa-google or URL" />' +
-                '<button type="button" class="btn btn-outline-primary btn-sm attribution-icon-save" data-kind="variant" data-key="' + escapeHtml(key) + '">Save</button>' +
-              '</div>' +
-            '</div>' +
-          '</div>' +
-        '</div>');
-      });
-      body.innerHTML = cards.length ? cards.join('') : '<div class="col-12 text-secondary small">No sources or variants yet. Add them in Settings → Attribution → Mapping.</div>';
-      body.querySelectorAll('.attribution-icon-save').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-          var kind = btn.getAttribute('data-kind');
-          var key = btn.getAttribute('data-key');
-          var card = btn.closest('[data-attribution-icon]');
-          var input = card ? card.querySelector('.attribution-icon-input') : null;
-          var spec = input ? input.value.trim() : '';
-          var payload = kind === 'source' ? { sources: [{ source_key: key, icon_spec: spec || null }] } : { variants: [{ variant_key: key, icon_spec: spec || null }] };
-          saveAttributionIcons(payload).then(function (ok) {
-            if (ok) {
-              try { window.dispatchEvent(new CustomEvent('kexo:attribution-icons-updated')); } catch (_) {}
-              hydrateAttributionIconGroup(root);
-            }
-          });
+        variants.push({
+          key: key,
+          label: (r && r.label != null) ? String(r.label) : titleFromKey(key),
+          icon_spec: (r && r.icon_spec != null) ? String(r.icon_spec) : '',
         });
       });
+      variants.sort(function (a, b) { return String(a.label || a.key).localeCompare(String(b.label || b.key)); });
+
+      var cards = [];
+      if (sources.length) {
+        cards.push(
+          '<div class="col-12" data-theme-icon-count-exclude="1">' +
+            '<div class="d-flex align-items-center justify-content-between flex-wrap gap-2">' +
+              '<h4 class="mb-0">Attribution Sources</h4>' +
+              '<span class="text-secondary small">Syncs with Settings → Attribution → Mapped tree</span>' +
+            '</div>' +
+          '</div>'
+        );
+        sources.forEach(function (r) {
+          var key = r.key;
+          var label = r.label || key || '—';
+          var icon = r.icon_spec != null ? String(r.icon_spec) : '';
+          if (!key) return;
+          cards.push('<div class="col-12 col-md-6 col-lg-4" data-attribution-icon="source" data-attribution-key="' + escapeHtml(key) + '" data-attribution-label="' + escapeHtml(label) + '">' +
+            '<div class="card card-sm h-100">' +
+              '<div class="card-body">' +
+                '<div class="d-flex align-items-center mb-2">' +
+                  '<span class="theme-icons-attribution-preview me-2 d-inline-flex align-items-center justify-content-center" style="width:1.5rem;height:1.5rem;" data-attribution-icon-preview="1" aria-hidden="true"></span>' +
+                  '<strong class="me-auto">Source: ' + escapeHtml(label) + '</strong>' +
+                '</div>' +
+                '<div class="text-secondary small mb-2"><code>' + escapeHtml(key) + '</code></div>' +
+                '<textarea class="form-control form-control-sm attribution-icon-input font-monospace" data-kind="source" data-key="' + escapeHtml(key) + '" rows="2" spellcheck="false" placeholder="fa-brands fa-google  OR  /assets/icon.png  OR  <svg ...>">' + escapeHtml(icon) + '</textarea>' +
+                '<div class="form-hint small mt-1">Font Awesome class, image URL/path, or inline SVG. Blank clears the icon.</div>' +
+                '<div class="d-flex align-items-center gap-2 mt-2">' +
+                  '<button type="button" class="btn btn-outline-primary btn-sm attribution-icon-save" data-kind="source" data-key="' + escapeHtml(key) + '">Save</button>' +
+                  '<span class="small text-secondary ms-auto" data-attribution-icon-msg="1"></span>' +
+                '</div>' +
+              '</div>' +
+            '</div>' +
+          '</div>');
+        });
+      }
+      if (variants.length) {
+        cards.push(
+          '<div class="col-12 mt-2" data-theme-icon-count-exclude="1">' +
+            '<div class="d-flex align-items-center justify-content-between flex-wrap gap-2">' +
+              '<h4 class="mb-0">Attribution Variants</h4>' +
+              '<span class="text-secondary small">Syncs with Settings → Attribution → Mapped tree</span>' +
+            '</div>' +
+          '</div>'
+        );
+        variants.forEach(function (r) {
+          var key = r.key;
+          var label = r.label || key || '—';
+          var icon = r.icon_spec != null ? String(r.icon_spec) : '';
+          if (!key) return;
+          cards.push('<div class="col-12 col-md-6 col-lg-4" data-attribution-icon="variant" data-attribution-key="' + escapeHtml(key) + '" data-attribution-label="' + escapeHtml(label) + '">' +
+            '<div class="card card-sm h-100">' +
+              '<div class="card-body">' +
+                '<div class="d-flex align-items-center mb-2">' +
+                  '<span class="theme-icons-attribution-preview me-2 d-inline-flex align-items-center justify-content-center" style="width:1.5rem;height:1.5rem;" data-attribution-icon-preview="1" aria-hidden="true"></span>' +
+                  '<strong class="me-auto">Variant: ' + escapeHtml(label) + '</strong>' +
+                '</div>' +
+                '<div class="text-secondary small mb-2"><code>' + escapeHtml(key) + '</code></div>' +
+                '<textarea class="form-control form-control-sm attribution-icon-input font-monospace" data-kind="variant" data-key="' + escapeHtml(key) + '" rows="2" spellcheck="false" placeholder="fa-solid fa-bolt  OR  /assets/icon.png  OR  <svg ...>">' + escapeHtml(icon) + '</textarea>' +
+                '<div class="form-hint small mt-1">Font Awesome class, image URL/path, or inline SVG. Blank clears the icon.</div>' +
+                '<div class="d-flex align-items-center gap-2 mt-2">' +
+                  '<button type="button" class="btn btn-outline-primary btn-sm attribution-icon-save" data-kind="variant" data-key="' + escapeHtml(key) + '">Save</button>' +
+                  '<span class="small text-secondary ms-auto" data-attribution-icon-msg="1"></span>' +
+                '</div>' +
+              '</div>' +
+            '</div>' +
+          '</div>');
+        });
+      }
+
+      body.innerHTML = cards.length ? cards.join('') : '<div class="col-12 text-secondary small">No sources or variants yet. Add them in Settings → Attribution → Mapping.</div>';
+
+      function updateCardPreview(cardEl) {
+        if (!cardEl) return;
+        var input = cardEl.querySelector('.attribution-icon-input');
+        var preview = cardEl.querySelector('[data-attribution-icon-preview]');
+        if (!input || !preview) return;
+        var label = cardEl.getAttribute('data-attribution-label') || '';
+        preview.innerHTML = attributionIconSpecToPreviewHtml(input.value, label);
+      }
+
+      body.querySelectorAll('[data-attribution-icon]').forEach(function (cardEl) { updateCardPreview(cardEl); });
+      if (body.getAttribute('data-attribution-icon-wired') !== '1') {
+        body.setAttribute('data-attribution-icon-wired', '1');
+
+        body.addEventListener('input', function (e) {
+          var target = e && e.target ? e.target : null;
+          var input = target && target.closest ? target.closest('.attribution-icon-input') : null;
+          if (!input) return;
+          var cardEl = input.closest ? input.closest('[data-attribution-icon]') : null;
+          if (!cardEl) return;
+          updateCardPreview(cardEl);
+          var msgEl = cardEl.querySelector('[data-attribution-icon-msg]');
+          if (msgEl) {
+            msgEl.textContent = '';
+            msgEl.className = 'small text-secondary ms-auto';
+          }
+        });
+
+        body.addEventListener('click', function (e) {
+          var target = e && e.target ? e.target : null;
+          var btn = target && target.closest ? target.closest('.attribution-icon-save') : null;
+          if (!btn) return;
+          e.preventDefault();
+          if (btn.disabled) return;
+          var kind = btn.getAttribute('data-kind');
+          var key = btn.getAttribute('data-key');
+          var cardEl = btn.closest('[data-attribution-icon]');
+          var input = cardEl ? cardEl.querySelector('.attribution-icon-input') : null;
+          var msgEl = cardEl ? cardEl.querySelector('[data-attribution-icon-msg]') : null;
+          var spec = input ? String(input.value || '').trim() : '';
+          var payload = kind === 'source' ? { sources: [{ source_key: key, icon_spec: spec || null }] } : { variants: [{ variant_key: key, icon_spec: spec || null }] };
+
+          var originalText = btn.textContent || 'Save';
+          btn.disabled = true;
+          btn.textContent = 'Saving…';
+          if (msgEl) {
+            msgEl.textContent = '';
+            msgEl.className = 'small text-secondary ms-auto';
+          }
+          saveAttributionIcons(payload).then(function (res2) {
+            if (res2 && res2.ok) {
+              btn.textContent = 'Saved!';
+              btn.classList.remove('btn-outline-primary');
+              btn.classList.add('btn-success');
+              if (msgEl) {
+                msgEl.textContent = 'Saved';
+                msgEl.className = 'small text-success ms-auto';
+              }
+              setTimeout(function () {
+                try { window.dispatchEvent(new CustomEvent('kexo:attribution-icons-updated')); } catch (_) {}
+              }, 350);
+            } else {
+              btn.textContent = 'Save failed';
+              btn.classList.remove('btn-outline-primary');
+              btn.classList.add('btn-danger');
+              if (msgEl) {
+                msgEl.textContent = (res2 && res2.error) ? String(res2.error) : 'Save failed';
+                msgEl.className = 'small text-danger ms-auto';
+              }
+              setTimeout(function () {
+                btn.textContent = originalText;
+                btn.classList.remove('btn-danger');
+                btn.classList.add('btn-outline-primary');
+                btn.disabled = false;
+              }, 1800);
+              return;
+            }
+            setTimeout(function () {
+              btn.textContent = originalText;
+              btn.classList.remove('btn-success');
+              btn.classList.add('btn-outline-primary');
+              btn.disabled = false;
+            }, 1200);
+          });
+        });
+      }
+
       updateThemeIconsAccordionCounts(accordion);
     });
   }

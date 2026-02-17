@@ -789,8 +789,37 @@ async function postAttributionMap(req, res) {
     const ownerKind = trimLower(body.owner_kind != null ? body.owner_kind : body.ownerKind, 32) || 'house';
     const partnerId = body.partner_id != null && String(body.partner_id).trim() ? String(body.partner_id).trim().slice(0, 128) : null;
     const network = body.network != null && String(body.network).trim() ? String(body.network).trim().slice(0, 32) : null;
-    const iconSpec = normalizeIconSpec(body.icon_spec != null ? body.icon_spec : body.iconSpec);
+    const sourceIconSpec = normalizeIconSpec(body.source_icon_spec != null ? body.source_icon_spec : body.sourceIconSpec);
+    const variantIconSpec = normalizeIconSpec(
+      body.variant_icon_spec != null ? body.variant_icon_spec
+        : (body.variantIconSpec != null ? body.variantIconSpec
+          : (body.icon_spec != null ? body.icon_spec : body.iconSpec))
+    );
     const sortOrder = clampInt(body.sort_order != null ? body.sort_order : body.sortOrder, { min: -1000000, max: 1000000, fallback: 1000 });
+
+    // Optional: seed Source icon_spec only when missing (never overwrite).
+    if (sourceIconSpec) {
+      await db.run(
+        `
+          INSERT INTO attribution_sources (source_key, label, icon_spec, sort_order, enabled, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?)
+          ON CONFLICT (source_key) DO UPDATE SET
+            icon_spec = CASE
+              WHEN (attribution_sources.icon_spec IS NULL OR TRIM(attribution_sources.icon_spec) = '')
+                AND EXCLUDED.icon_spec IS NOT NULL AND TRIM(EXCLUDED.icon_spec) <> ''
+                THEN EXCLUDED.icon_spec
+              ELSE attribution_sources.icon_spec
+            END,
+            updated_at = CASE
+              WHEN (attribution_sources.icon_spec IS NULL OR TRIM(attribution_sources.icon_spec) = '')
+                AND EXCLUDED.icon_spec IS NOT NULL AND TRIM(EXCLUDED.icon_spec) <> ''
+                THEN EXCLUDED.updated_at
+              ELSE attribution_sources.updated_at
+            END
+        `,
+        [sourceKey, titleFromKey(sourceKey), sourceIconSpec, 1000, 1, now]
+      );
+    }
     await db.run(
       `
         INSERT INTO attribution_variants (variant_key, label, channel_key, source_key, owner_kind, partner_id, network, icon_spec, sort_order, enabled, updated_at)
@@ -802,12 +831,17 @@ async function postAttributionMap(req, res) {
           owner_kind = EXCLUDED.owner_kind,
           partner_id = EXCLUDED.partner_id,
           network = EXCLUDED.network,
-          icon_spec = EXCLUDED.icon_spec,
+          icon_spec = CASE
+            WHEN (attribution_variants.icon_spec IS NULL OR TRIM(attribution_variants.icon_spec) = '')
+              AND EXCLUDED.icon_spec IS NOT NULL AND TRIM(EXCLUDED.icon_spec) <> ''
+              THEN EXCLUDED.icon_spec
+            ELSE attribution_variants.icon_spec
+          END,
           sort_order = EXCLUDED.sort_order,
           enabled = EXCLUDED.enabled,
           updated_at = EXCLUDED.updated_at
       `,
-      [variantKey, label, channelKey, sourceKey, ownerKind, partnerId, network, iconSpec, sortOrder, 1, now]
+      [variantKey, label, channelKey, sourceKey, ownerKind, partnerId, network, variantIconSpec, sortOrder, 1, now]
     );
   } catch (_) {}
 
@@ -872,33 +906,88 @@ async function postAttributionIcons(req, res) {
   const db = getDb();
   const now = Date.now();
 
+  let upsertedSources = 0;
+  let upsertedVariants = 0;
+
   for (const r of sources) {
     const sourceKey = sanitizeKey(r && r.source_key != null ? r.source_key : (r && r.key != null ? r.key : ''), { maxLen: 32 });
     if (!sourceKey) continue;
-    const iconSpec = normalizeIconSpec(r && r.icon_spec != null ? r.icon_spec : r && r.iconSpec != null ? r.iconSpec : null);
+    const iconSpecInput =
+      r && typeof r === 'object'
+        ? ('icon_spec' in r ? r.icon_spec : ('iconSpec' in r ? r.iconSpec : undefined))
+        : undefined;
+    if (iconSpecInput === undefined) continue;
+    const iconSpec = normalizeIconSpec(iconSpecInput);
     try {
       await db.run(
-        `UPDATE attribution_sources SET icon_spec = ?, updated_at = ? WHERE source_key = ?`,
-        [iconSpec, now, sourceKey]
+        `
+          INSERT INTO attribution_sources (source_key, label, icon_spec, sort_order, enabled, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?)
+          ON CONFLICT (source_key) DO UPDATE SET
+            icon_spec = EXCLUDED.icon_spec,
+            updated_at = EXCLUDED.updated_at
+        `,
+        [sourceKey, titleFromKey(sourceKey), iconSpec, 1000, 1, now]
       );
+      upsertedSources += 1;
     } catch (_) {}
   }
   for (const r of variants) {
     const variantKey = normalizeVariantKey(r && (r.variant_key != null ? r.variant_key : (r && r.key != null ? r.key : '')));
     if (!variantKey) continue;
-    const iconSpec = normalizeIconSpec(r && r.icon_spec != null ? r.icon_spec : r && r.iconSpec != null ? r.iconSpec : null);
+    const iconSpecInput =
+      r && typeof r === 'object'
+        ? ('icon_spec' in r ? r.icon_spec : ('iconSpec' in r ? r.iconSpec : undefined))
+        : undefined;
+    if (iconSpecInput === undefined) continue;
+    const iconSpec = normalizeIconSpec(iconSpecInput);
+
+    const colonIdx = variantKey.indexOf(':');
+    const derivedSourceKey = sanitizeKey(colonIdx > 0 ? variantKey.slice(0, colonIdx) : variantKey, { maxLen: 32 }) || 'other';
+    const derivedOwnerKind = sanitizeKey(colonIdx > 0 ? variantKey.slice(colonIdx + 1) : 'house', { maxLen: 16 }) || 'house';
     try {
       await db.run(
-        `UPDATE attribution_variants SET icon_spec = ?, updated_at = ? WHERE variant_key = ?`,
-        [iconSpec, now, variantKey]
+        `
+          INSERT INTO attribution_variants (
+            variant_key,
+            label,
+            channel_key,
+            source_key,
+            owner_kind,
+            partner_id,
+            network,
+            icon_spec,
+            sort_order,
+            enabled,
+            updated_at
+          )
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          ON CONFLICT (variant_key) DO UPDATE SET
+            icon_spec = EXCLUDED.icon_spec,
+            updated_at = EXCLUDED.updated_at
+        `,
+        [
+          variantKey,
+          titleFromKey(variantKey),
+          'other',
+          derivedSourceKey,
+          derivedOwnerKind,
+          null,
+          null,
+          iconSpec,
+          1000,
+          1,
+          now,
+        ]
       );
+      upsertedVariants += 1;
     } catch (_) {}
   }
 
   invalidateAttributionConfigCache();
-  try { await writeAudit('admin', 'attribution_icons', { ts: Date.now(), sources: sources.length, variants: variants.length }); } catch (_) {}
+  try { await writeAudit('admin', 'attribution_icons', { ts: Date.now(), upserted: { sources: upsertedSources, variants: upsertedVariants } }); } catch (_) {}
   res.setHeader('Cache-Control', 'no-store');
-  res.json({ ok: true });
+  res.json({ ok: true, upserted: { sources: upsertedSources, variants: upsertedVariants } });
 }
 
 module.exports = {
