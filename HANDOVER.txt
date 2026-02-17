@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-17 (Dashboard overview chart bugfixes + Settings theme tabs promoted)
+Last updated: 2026-02-16 (Dashboard overview mini charts + Revenue & Cost redo)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -388,7 +388,17 @@ Ops/reliability:
 
 ## Changelog (high-signal)
 
-2026-02-17 (latest)
+2026-02-16 (latest)
+- Dashboard overview mini charts redo (core UX):
+  - Finishes: default ApexCharts radialBar (270°) with bar labels (£ revenue), Kexo 5-color palette, up to 5 slices; mode switchable (radialbar/pie/donut/bar) via Settings → Layout → Charts.
+  - Countries: default horizontal bar with flag emoji categories; tooltip shows Revenue + Conversion rate; mode switchable (bar-horizontal/pie).
+  - Attribution: default distributed bar, top 5 by revenue from flattened sources; icon row under chart when icon_spec present; tooltip Revenue + CR%; mode switchable (bar-distributed/pie/bar).
+  - Main chart: title "Revenue & Cost", default type area (configurable); no big headline number under title.
+  - Chart defs: new modes radialbar, bar-horizontal, bar-distributed in kexo-chart-defs.js; overview default area; mini charts have colorSlots: 5; layout modal uses meta.colorSlots for color inputs.
+- Dashboard overview deltas: all four cards use real current vs previous period (snapshot financial.revenue for Finishes/Countries; attribution report revenue for Attribution).
+- KPI sparkline labels: rendered under the sparkline strip; time format H:MM (e.g. 0:15); smart skip when >12 buckets.
+
+2026-02-17
 - Dashboard overview card/row alignment pass:
   - Right-side mini/overview chart cards were reworked to KPI-style card heads (card type + `7 Days` date control styled with `dropdown-toggle text-secondary`, plus metric value/delta strip).
   - Overflow artifact behind left KPI cards was fixed by clipping KPI sparkline layers inside card bodies.

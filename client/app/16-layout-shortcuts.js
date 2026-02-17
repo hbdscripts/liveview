@@ -198,6 +198,8 @@
   }
 
   function chartColorCount(meta, item) {
+    var slots = meta && typeof meta.colorSlots === 'number' && meta.colorSlots > 0 ? meta.colorSlots : null;
+    if (slots != null) return Math.max(1, Math.min(6, Math.round(slots)));
     var seriesLen = meta && Array.isArray(meta.series) ? meta.series.length : 0;
     var colorLen = item && Array.isArray(item.colors) ? item.colors.length : 0;
     return Math.max(1, Math.min(6, Math.max(seriesLen, colorLen, 1)));

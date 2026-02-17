@@ -1241,6 +1241,35 @@ body:not([data-page="settings"]) .table-responsive table td:first-child .country
   margin-inline-end: 0.5rem;
   flex-shrink: 0;
 }
+.dash-attribution-icon-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.35rem 0.5rem 0.25rem;
+  margin-top: -0.25rem;
+  min-height: 28px;
+}
+.dash-attribution-icon-row .dash-attribution-icon-cell {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-width: 0;
+}
+.dash-attribution-icon-row .dash-attribution-icon-cell .source-icons {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.dash-attribution-icon-row .dash-attribution-icon-fallback {
+  font-size: 0.7rem;
+  color: var(--tblr-secondary-color, #626976);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
 .traffic-type-parent .grid-cell:first-child {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2565,32 +2594,41 @@ html[data-bs-theme="dark"] .report-build-wrap {
   right: 0;
   bottom: 0;
   width: 100%;
-  height: 54px;
+  min-height: 54px;
+  height: auto;
   z-index: 0;
   opacity: 0.72;
   pointer-events: none;
   border-radius: 4px;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
 }
-.dash-kpi-sparkline-wrap > div {
+.dash-kpi-sparkline-wrap > div:first-child {
   width: 100% !important;
-  height: 100% !important;
-  min-height: 54px;
+  height: 40px !important;
+  min-height: 40px !important;
+  flex: 0 0 40px;
   overflow: hidden;
+}
+.dash-kpi-sparkline-wrap > div:not(:first-child) {
+  width: 100% !important;
 }
 .dash-kpi-sparkline-labels {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0;
-  margin-top: 2px;
-  padding: 0 2px;
+  margin-top: 0;
+  padding: 2px 2px 0;
   font-size: 9px;
-  line-height: 1;
+  line-height: 1.2;
   color: rgba(100, 116, 139, 0.92);
   letter-spacing: 0.02em;
   user-select: none;
   pointer-events: none;
+  flex: 0 0 auto;
 }
 .dash-kpi-sparkline-label {
   flex: 1 1 0;
