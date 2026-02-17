@@ -1699,6 +1699,13 @@ body:not([data-page="settings"]) .table-responsive table thead th {
   height: 1rem;
   border-radius: 3px;
 }
+.settings-charts-color-swatch {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1px solid var(--tblr-border-color, #e6e7e9);
+  flex-shrink: 0;
+}
 .kexo-sale-banner .flag-xs {
   height: 1.1rem;
 }
