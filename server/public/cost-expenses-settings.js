@@ -16,6 +16,8 @@
     config: null,
     health: null,
     editingRuleId: '',
+    uiBound: false,
+    loadInFlight: null,
   };
 
   function fetchJson(url, opts) {
@@ -112,9 +114,9 @@
             priceGbp: Math.max(0, Number(ov.priceGbp) || 0),
             countries: codes,
           };
-        });
-        c.shipping.overrides.sort(function (a, b) { return (a.priority || 0) - (b.priority || 0); });
-      }
+        }),
+      };
+      c.shipping.overrides.sort(function (a, b) { return (a.priority || 0) - (b.priority || 0); });
     }
     return c;
   }
@@ -244,6 +246,49 @@
     tbody.innerHTML = html;
   }
 
+  function applyConfigToInputs() {
+    if (!state.config) return;
+    var cfg = state.config;
+    var googleAds = document.getElementById('cost-expenses-google-ads');
+    var paymentFees = document.getElementById('cost-expenses-payment-fees');
+    var appBills = document.getElementById('cost-expenses-app-bills');
+    var profitEnabled = document.getElementById('cost-expenses-profit-enabled');
+    if (googleAds) googleAds.checked = !!(cfg.integrations && cfg.integrations.includeGoogleAdsSpend);
+    if (paymentFees) paymentFees.checked = !!(cfg.integrations && cfg.integrations.includePaymentFees);
+    if (appBills) appBills.checked = !!(cfg.integrations && cfg.integrations.includeShopifyAppBills);
+    if (profitEnabled) profitEnabled.checked = cfg.enabled === true;
+
+    var worldwideEl = document.getElementById('cost-expenses-shipping-worldwide');
+    var shippingEnabledEl = document.getElementById('cost-expenses-shipping-enabled');
+    if (worldwideEl) worldwideEl.value = (cfg.shipping && cfg.shipping.worldwideDefaultGbp != null) ? cfg.shipping.worldwideDefaultGbp : 0;
+    if (shippingEnabledEl) shippingEnabledEl.checked = !!(cfg.shipping && cfg.shipping.enabled);
+  }
+
+  function setActiveSubTab(sub, opts) {
+    var s = String(sub || '').trim().toLowerCase();
+    if (s !== 'shipping' && s !== 'rules') return;
+    var o = opts && typeof opts === 'object' ? opts : {};
+    document.querySelectorAll('[data-settings-cost-expenses-tab]').forEach(function (btn) {
+      var btnSub = String(btn.getAttribute('data-settings-cost-expenses-tab') || '').trim().toLowerCase();
+      var isActive = btnSub === s;
+      btn.classList.toggle('active', isActive);
+      btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+    });
+    document.querySelectorAll('.settings-cost-expenses-panel').forEach(function (panel) {
+      var controlId = panel.getAttribute('aria-labelledby');
+      var control = controlId ? document.getElementById(controlId) : null;
+      var panelSub = control && control.getAttribute('data-settings-cost-expenses-tab');
+      panel.classList.toggle('active', String(panelSub || '').trim().toLowerCase() === s);
+    });
+    if (o.updateUrl) {
+      var params = new URLSearchParams(window.location.search || '');
+      params.set('costExpensesTab', s);
+      if (params.get('tab') !== 'cost-expenses') params.set('tab', 'cost-expenses');
+      var next = window.location.pathname + '?' + params.toString() + (window.location.hash || '');
+      try { window.history.replaceState(null, '', next); } catch (_) {}
+    }
+  }
+
   function getRuleById(id) {
     var rules = (state.config && state.config.rules) ? state.config.rules : [];
     for (var i = 0; i < rules.length; i++) {
@@ -320,6 +365,9 @@
   }
 
   function bindUi() {
+    if (state.uiBound) return;
+    state.uiBound = true;
+
     var saveBtn = document.getElementById('cost-expenses-save-btn');
     if (saveBtn) {
       saveBtn.addEventListener('click', function () {
@@ -345,25 +393,8 @@
       });
     }
 
-    var googleAds = document.getElementById('cost-expenses-google-ads');
-    var paymentFees = document.getElementById('cost-expenses-payment-fees');
-    var appBills = document.getElementById('cost-expenses-app-bills');
-    var profitEnabled = document.getElementById('cost-expenses-profit-enabled');
-    if (state.config) {
-      if (googleAds) googleAds.checked = state.config.integrations.includeGoogleAdsSpend;
-      if (paymentFees) paymentFees.checked = state.config.integrations.includePaymentFees;
-      if (appBills) appBills.checked = state.config.integrations.includeShopifyAppBills;
-      if (profitEnabled) profitEnabled.checked = state.config.enabled;
-    }
-
-    var worldwideEl = document.getElementById('cost-expenses-shipping-worldwide');
-    var shippingEnabledEl = document.getElementById('cost-expenses-shipping-enabled');
-    if (state.config && state.config.shipping) {
-      if (worldwideEl) worldwideEl.value = state.config.shipping.worldwideDefaultGbp;
-      if (shippingEnabledEl) shippingEnabledEl.checked = state.config.shipping.enabled;
-    }
-
-    document.getElementById('cost-expenses-shipping-add-override').addEventListener('click', function () {
+    var addOverrideBtn = document.getElementById('cost-expenses-shipping-add-override');
+    if (addOverrideBtn) addOverrideBtn.addEventListener('click', function () {
       state.config = state.config || defaultConfig();
       if (!state.config.shipping) state.config.shipping = { enabled: false, worldwideDefaultGbp: 0, overrides: [] };
       if (!state.config.shipping.overrides) state.config.shipping.overrides = [];
@@ -417,35 +448,32 @@
       }
     });
 
-    document.getElementById('cost-expenses-rules-add-btn').addEventListener('click', function () { showRuleForm(null); });
-    document.getElementById('cost-expenses-rule-save-btn').addEventListener('click', saveRuleFromForm);
-    document.getElementById('cost-expenses-rule-cancel-btn').addEventListener('click', hideRuleForm);
+    var addRuleBtn = document.getElementById('cost-expenses-rules-add-btn');
+    var saveRuleBtn = document.getElementById('cost-expenses-rule-save-btn');
+    var cancelRuleBtn = document.getElementById('cost-expenses-rule-cancel-btn');
+    if (addRuleBtn) addRuleBtn.addEventListener('click', function () { showRuleForm(null); });
+    if (saveRuleBtn) saveRuleBtn.addEventListener('click', saveRuleFromForm);
+    if (cancelRuleBtn) cancelRuleBtn.addEventListener('click', hideRuleForm);
 
     document.querySelectorAll('[data-settings-cost-expenses-tab]').forEach(function (btn) {
       btn.addEventListener('click', function () {
         var sub = (btn.getAttribute('data-settings-cost-expenses-tab') || '').trim().toLowerCase();
         if (sub !== 'shipping' && sub !== 'rules') return;
-        document.querySelectorAll('[data-settings-cost-expenses-tab]').forEach(function (b) {
-          b.classList.toggle('active', b === btn);
-          b.setAttribute('aria-selected', b === btn ? 'true' : 'false');
-        });
-        document.querySelectorAll('.settings-cost-expenses-panel').forEach(function (panel) {
-          var controlId = panel.getAttribute('aria-labelledby');
-          var control = controlId ? document.getElementById(controlId) : null;
-          var panelSub = control && control.getAttribute('data-settings-cost-expenses-tab');
-          panel.classList.toggle('active', panelSub === sub);
-        });
-        var params = new URLSearchParams(window.location.search || '');
-        params.set('costExpensesTab', sub);
-        if (params.get('tab') !== 'cost-expenses') params.set('tab', 'cost-expenses');
-        var next = window.location.pathname + '?' + params.toString() + (window.location.hash || '');
-        window.history.replaceState(null, '', next);
+        setActiveSubTab(sub, { updateUrl: true });
       });
     });
+
+    // Apply initial sub-tab from URL for direct loads / cached settings-page.
+    try {
+      var params = new URLSearchParams(window.location.search || '');
+      var initial = String(params.get('costExpensesTab') || '').trim().toLowerCase();
+      if (initial === 'shipping' || initial === 'rules') setActiveSubTab(initial, { updateUrl: false });
+    } catch (_) {}
   }
 
   function load() {
-    Promise.all([
+    if (state.loadInFlight) return state.loadInFlight;
+    state.loadInFlight = Promise.all([
       fetchJson(API + '/api/settings/profit-rules'),
       fetchJson(API + '/api/cost/health'),
     ]).then(function (results) {
@@ -453,17 +481,8 @@
       var healthPayload = results[1];
       state.config = normalizeConfig(configPayload && configPayload.profitRules);
       state.health = healthPayload;
+      applyConfigToInputs();
       renderHealthBadges(state.health);
-      var googleAds = document.getElementById('cost-expenses-google-ads');
-      var paymentFees = document.getElementById('cost-expenses-payment-fees');
-      var appBills = document.getElementById('cost-expenses-app-bills');
-      var profitEnabled = document.getElementById('cost-expenses-profit-enabled');
-      if (googleAds) googleAds.checked = state.config.integrations.includeGoogleAdsSpend;
-      if (paymentFees) paymentFees.checked = state.config.integrations.includePaymentFees;
-      if (appBills) appBills.checked = state.config.integrations.includeShopifyAppBills;
-      if (profitEnabled) profitEnabled.checked = state.config.enabled;
-      document.getElementById('cost-expenses-shipping-worldwide').value = state.config.shipping.worldwideDefaultGbp;
-      document.getElementById('cost-expenses-shipping-enabled').checked = state.config.shipping.enabled;
       renderShippingOverrides();
       renderRulesTable();
       bindUi();
@@ -473,14 +492,32 @@
     }).catch(function () {
       setMsg('Failed to load.', false);
       state.config = defaultConfig();
+      applyConfigToInputs();
       renderHealthBadges({});
       renderShippingOverrides();
       renderRulesTable();
       bindUi();
+    }).finally(function () {
+      state.loadInFlight = null;
     });
+    return state.loadInFlight;
   }
 
   window.initCostExpensesSettings = function () {
     load();
   };
+
+  // Always bind the UI once so buttons/tabs work even if Settings init is cached/broken.
+  try { bindUi(); } catch (_) {}
+
+  // Fail-safe: direct loads to /settings?tab=cost-expenses should initialize even if script order changes.
+  try {
+    var params = new URLSearchParams(window.location.search || '');
+    var tab = String(params.get('tab') || '').trim().toLowerCase();
+    if (tab === 'cost-expenses') {
+      try { window.initCostExpensesSettings(); } catch (_) {}
+      var sub = String(params.get('costExpensesTab') || '').trim().toLowerCase();
+      if (sub === 'shipping' || sub === 'rules') setActiveSubTab(sub, { updateUrl: false });
+    }
+  } catch (_) {}
 })();
