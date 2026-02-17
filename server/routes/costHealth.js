@@ -34,6 +34,11 @@ async function getShopAndToken(shopParam) {
 
 async function googleAdsHealth(shop) {
   const status = { status: 'unknown', statusText: '—' };
+  if (!shop) {
+    status.status = 'missing';
+    status.statusText = 'No shop';
+    return status;
+  }
   try {
     const adsStatus = await adsService.getStatus(shop);
     const connected = adsStatus && adsStatus.providers && adsStatus.providers[0]
@@ -78,7 +83,8 @@ function scopeHasBalance(scopeStr) {
 async function shopifyBalanceLookup(shop, token, scope) {
   const base = { status: 'unknown', statusText: '—' };
   if (!shop || !token) {
-    return { payment: { ...base, status: 'missing', statusText: 'No shop or token' }, shopifyFees: { ...base }, appBills: { ...base } };
+    const missing = { ...base, status: 'missing', statusText: 'No shop or token' };
+    return { payment: { ...missing }, shopifyFees: { ...missing }, appBills: { ...missing } };
   }
   if (!scopeHasBalance(scope)) {
     return {
