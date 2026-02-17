@@ -348,7 +348,13 @@
               <div class="card-body kexo-overview-main-card-body">
                 <div class="kexo-overview-card-head">
                   <div class="subheader">Overview</div>
-                  <button type="button" class="dropdown-toggle text-secondary kexo-overview-range-input" tabindex="-1" aria-hidden="true">7 Days</button>
+                  <div class="kexo-overview-card-actions">
+                    <button type="button" class="dropdown-toggle text-secondary kexo-overview-range-input" tabindex="-1" aria-hidden="true">7 Days</button>
+                    <button type="button" class="btn btn-sm btn-ghost-secondary kexo-overview-cost-settings-btn" id="dash-cost-settings-btn">Cost Settings</button>
+                    <button type="button" class="btn btn-icon btn-ghost-secondary kexo-overview-chart-settings-btn" data-kexo-chart-settings-key="dash-chart-overview-30d" aria-label="Chart settings" title="Chart settings">
+                      <i class="fa-light fa-gear" data-icon-key="chart-builder-icon" style="color:#999" aria-hidden="true"></i>
+                    </button>
+                  </div>
                 </div>
                 <div class="kexo-overview-card-kpi-label-row">
                   <div class="kexo-overview-card-kpi-label" id="dash-mini-overview-label">Revenue</div>
@@ -361,6 +367,122 @@
                 <div id="dash-chart-overview-30d" class="kexo-overview-main-chart"></div>
               </div>
             </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Profit Rules modal (shared with Snapshot; used for Dashboard Cost Settings shortcut) -->
+    <div class="modal modal-blur" id="profit-rules-modal" tabindex="-1" style="display:none" aria-hidden="true">
+      <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable" role="dialog" aria-modal="true" aria-label="Profit Rules">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Profit Rules</h5>
+            <button type="button" class="btn-close" id="profit-rules-close-btn" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <ul class="nav nav-tabs mb-3">
+              <li class="nav-item"><button type="button" class="nav-link active" data-pr-tab="rules">Rules</button></li>
+              <li class="nav-item"><button type="button" class="nav-link" data-pr-tab="integrations">Integrations</button></li>
+            </ul>
+
+            <div class="mb-3" id="profit-rules-tab-rules">
+              <label class="form-check form-switch mb-3">
+                <input class="form-check-input" type="checkbox" id="profit-rules-enabled" />
+                <span class="form-check-label">Enable estimated profit in Snapshot</span>
+              </label>
+
+              <div class="mb-3">
+                <h6 class="mb-2">Additional cost groups</h6>
+                <div class="d-flex flex-column gap-2">
+                  <label class="form-check form-switch mb-0">
+                    <input class="form-check-input" type="checkbox" id="profit-rules-include-payment-fees" />
+                    <span class="form-check-label">Include Transaction Fees in Cost</span>
+                  </label>
+                  <label class="form-check form-switch mb-0">
+                    <input class="form-check-input" type="checkbox" id="profit-rules-include-klarna-fees" />
+                    <span class="form-check-label">Include Shopify Fees in Cost</span>
+                  </label>
+                </div>
+                <div class="text-muted small mt-2">These toggles are included in Snapshot Cost, cost chart, and estimated profit deductions.</div>
+              </div>
+
+              <div class="d-flex align-items-center justify-content-between mb-2">
+                <h6 class="m-0">Rules</h6>
+                <button type="button" class="btn btn-sm btn-outline-primary" id="profit-rules-add-btn">Add rule</button>
+              </div>
+              <div class="text-muted small mb-2">Rules run in priority order. Scope can be All countries or a specific ISO country code.</div>
+
+              <div id="profit-rules-msg" class="is-hidden"></div>
+
+              <div class="table-responsive">
+                <table class="table table-sm">
+                  <thead>
+                    <tr>
+                      <th>Rule</th>
+                      <th>Type</th>
+                      <th class="text-end">Value</th>
+                      <th class="text-center">Country</th>
+                      <th class="text-center">Enabled</th>
+                      <th class="text-end">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="profit-rules-table-body"></tbody>
+                </table>
+              </div>
+
+              <div class="card mt-3 is-hidden" id="profit-rules-form-wrap">
+                <div class="card-body">
+                  <input type="hidden" id="profit-rule-id" />
+                  <div class="row g-2">
+                    <div class="col-12 col-md-4">
+                      <label class="form-label">Name</label>
+                      <input type="text" id="profit-rule-name" class="form-control" />
+                    </div>
+                    <div class="col-12 col-md-3">
+                      <label class="form-label">Type</label>
+                      <select id="profit-rule-type" class="form-select">
+                        <option value="percent_revenue">% of revenue</option>
+                        <option value="fixed_per_order">Fixed per order</option>
+                        <option value="fixed_per_period">Fixed per period</option>
+                      </select>
+                    </div>
+                    <div class="col-12 col-md-2">
+                      <label class="form-label">Value</label>
+                      <input type="number" id="profit-rule-value" class="form-control" min="0" step="0.01" />
+                    </div>
+                    <div class="col-12 col-md-2">
+                      <label class="form-label">Country</label>
+                      <input type="text" id="profit-rule-country" class="form-control" maxlength="2" placeholder="ALL" />
+                    </div>
+                    <div class="col-12 col-md-1">
+                      <label class="form-label">Sort</label>
+                      <input type="number" id="profit-rule-sort" class="form-control" min="1" step="1" />
+                    </div>
+                  </div>
+                  <label class="form-check mt-2">
+                    <input class="form-check-input" type="checkbox" id="profit-rule-enabled" checked />
+                    <span class="form-check-label">Rule enabled</span>
+                  </label>
+                  <div class="d-flex gap-2 mt-3">
+                    <button type="button" class="btn btn-primary" id="profit-rule-save-btn">Save rule</button>
+                    <button type="button" class="btn btn-ghost-secondary" id="profit-rule-cancel-btn">Cancel</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="mb-2 is-hidden" id="profit-rules-tab-integrations">
+              <label class="form-check form-switch mb-0">
+                <input class="form-check-input" type="checkbox" id="profit-rules-include-google-ads" />
+                <span class="form-check-label">Include Google Ads spend in Cost</span>
+              </label>
+              <div class="text-muted small mt-2">Integrations currently available here: Google Ads.</div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-ghost-secondary" id="profit-rules-dismiss-btn">Close</button>
+            <button type="button" class="btn btn-primary" id="profit-rules-save-btn">Save Rules</button>
           </div>
         </div>
       </div>

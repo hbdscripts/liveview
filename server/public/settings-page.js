@@ -36,7 +36,17 @@
         if (legacyTab === 'theme') rawKexo = 'ui';
         else if (legacyTab === 'general' || legacyTab === 'assets') rawKexo = 'general';
       }
-      if ((rawKexo === 'general' || rawKexo === 'ui') && keep.get('tab') === 'kexo') {
+      var allowedKexo = {
+        general: true,
+        ui: true, // legacy
+        icons: true,
+        header: true,
+        color: true,
+        fonts: true,
+        notifications: true,
+      };
+      if (allowedKexo[rawKexo] && keep.get('tab') === 'kexo') {
+        // Keep legacy 'ui' for backwards links; it maps to Icons at runtime.
         keep.set('kexoTab', rawKexo);
       }
       var rawLayout = String(params.get('layoutTab') || params.get('layout') || '').trim().toLowerCase();
@@ -119,7 +129,7 @@
       var t = m[1].toLowerCase().replace(/\s+/g, '-');
       if (t === 'sources') t = 'attribution';
       if (t === 'general' || t === 'assets' || t === 'theme') {
-        initialKexoSubTab = (t === 'theme') ? 'ui' : 'general';
+        initialKexoSubTab = (t === 'theme') ? 'icons' : 'general';
         return 'kexo';
       }
       if (t === 'charts' || t === 'kpis') {
@@ -130,7 +140,9 @@
         var km = /[?&](?:kexoTab|kexo)=([^&]+)/.exec(window.location.search || '');
         if (km && km[1]) {
           var kk = km[1].toLowerCase().replace(/\s+/g, '-');
-          if (kk === 'general' || kk === 'ui') initialKexoSubTab = kk;
+          if (kk === 'general' || kk === 'ui' || kk === 'icons' || kk === 'header' || kk === 'color' || kk === 'fonts' || kk === 'notifications') {
+            initialKexoSubTab = kk;
+          }
         }
       }
       if (t === 'layout') {
@@ -149,7 +161,7 @@
     var hash = (window.location.hash || '').replace(/^#/, '').toLowerCase();
     if (hash === 'sources') return 'attribution';
     if (hash === 'general' || hash === 'assets' || hash === 'theme') {
-      initialKexoSubTab = hash === 'theme' ? 'ui' : 'general';
+      initialKexoSubTab = hash === 'theme' ? 'icons' : 'general';
       return 'kexo';
     }
     if (hash === 'charts' || hash === 'kpis') {
@@ -169,7 +181,7 @@
     }
     if (key === 'kexo') {
       var kexoKey = getActiveKexoSubTab();
-      if (kexoKey === 'general' || kexoKey === 'ui') params.set('kexoTab', kexoKey);
+      if (kexoKey) params.set('kexoTab', kexoKey);
     }
     var url = window.location.pathname + '?' + params.toString();
     try { history.replaceState(null, '', url); } catch (_) {}
@@ -2155,8 +2167,22 @@
   function wireKexoSubTabs(initialKey) {
     var tabs = document.querySelectorAll('[data-settings-kexo-tab]');
     if (!tabs.length) return;
-    var KEYS = ['general', 'ui'];
+    var KEYS = ['general', 'icons', 'header', 'color', 'fonts', 'notifications'];
+    var THEME_MAP = {
+      icons: 'icons',
+      header: 'header',
+      color: 'color',
+      fonts: 'fonts',
+      notifications: 'sale-notification',
+    };
+    function setThemeTitle(text) {
+      var t = document.getElementById('settings-theme-title-text');
+      if (!t) return;
+      t.textContent = text || 'Theme';
+    }
     function activate(key) {
+      // Legacy links used kexoTab=ui; map that to Icons.
+      if (key === 'ui') key = 'icons';
       if (KEYS.indexOf(key) < 0) key = 'general';
       activeKexoSubTab = key;
       tabs.forEach(function (tab) {
@@ -2164,10 +2190,22 @@
         tab.classList.toggle('active', active);
         tab.setAttribute('aria-selected', active ? 'true' : 'false');
       });
-      KEYS.forEach(function (k) {
-        var panel = document.getElementById('settings-kexo-panel-' + k);
-        if (panel) panel.classList.toggle('active', k === key);
-      });
+      // Panels: General has its own; all Theme subtabs share the UI panel container.
+      var generalPanel = document.getElementById('settings-kexo-panel-general');
+      var themePanel = document.getElementById('settings-kexo-panel-ui');
+      if (generalPanel) generalPanel.classList.toggle('active', key === 'general');
+      if (themePanel) themePanel.classList.toggle('active', key !== 'general');
+      if (key === 'general') {
+        setThemeTitle('Theme');
+      } else {
+        var label = key === 'notifications' ? 'Notifications' : (key.slice(0, 1).toUpperCase() + key.slice(1));
+        setThemeTitle(label);
+        try {
+          var sub = THEME_MAP[key] || 'icons';
+          try { window.__kexoThemeRequestedSubtab = sub; } catch (_) {}
+          if (typeof window.kexoThemeActivateSubtab === 'function') window.kexoThemeActivateSubtab(sub);
+        } catch (_) {}
+      }
       if (getActiveSettingsTab() === 'kexo') updateUrl('kexo');
     }
     tabs.forEach(function (tab) {

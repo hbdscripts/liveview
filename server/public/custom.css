@@ -2578,6 +2578,30 @@ html[data-bs-theme="dark"] .report-build-wrap {
   min-height: 54px;
   overflow: hidden;
 }
+.dash-kpi-sparkline-labels {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0;
+  margin-top: 2px;
+  padding: 0 2px;
+  font-size: 9px;
+  line-height: 1;
+  color: rgba(100, 116, 139, 0.92);
+  letter-spacing: 0.02em;
+  user-select: none;
+  pointer-events: none;
+}
+.dash-kpi-sparkline-label {
+  flex: 1 1 0;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: clip;
+}
+.dash-kpi-sparkline-label.is-hidden {
+  visibility: hidden;
+}
 .card-body:has(.dash-kpi-sparkline-wrap) > *:not(.dash-kpi-sparkline-wrap) {
   position: relative;
   z-index: 1;
@@ -2669,6 +2693,16 @@ html[data-bs-theme="dark"] .report-build-wrap {
   align-items: center;
   justify-content: space-between;
   gap: .5rem;
+}
+.kexo-overview-card-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: .5rem;
+  margin-left: auto;
+}
+.kexo-overview-cost-settings-btn {
+  font-weight: 500;
 }
 .kexo-overview-card-kpi-label-row {
   display: flex;

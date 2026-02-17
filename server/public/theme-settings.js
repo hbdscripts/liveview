@@ -1394,7 +1394,7 @@
         '<li class="nav-item" role="presentation"><button class="nav-link" type="button" role="tab" data-theme-subtab="header" aria-selected="false">Header</button></li>' +
         '<li class="nav-item" role="presentation"><button class="nav-link" type="button" role="tab" data-theme-subtab="color" aria-selected="false">Color</button></li>' +
         '<li class="nav-item" role="presentation"><button class="nav-link" type="button" role="tab" data-theme-subtab="fonts" aria-selected="false">Fonts</button></li>' +
-        '<li class="nav-item" role="presentation"><button class="nav-link" type="button" role="tab" data-theme-subtab="sale-notification" aria-selected="false">Sale Notification</button></li>' +
+        '<li class="nav-item" role="presentation"><button class="nav-link" type="button" role="tab" data-theme-subtab="sale-notification" aria-selected="false">Notifications</button></li>' +
       '</ul>' +
 
       '<div class="theme-subpanel" data-theme-subpanel="icons">' +
@@ -1523,13 +1523,15 @@
     var panels = root ? root.querySelectorAll('[data-theme-subpanel]') : null;
     if (!tabs || !tabs.length || !panels || !panels.length) return;
     function activate(key) {
+      var k = String(key || '').trim().toLowerCase();
+      if (!k) k = 'icons';
       tabs.forEach(function (tab) {
-        var active = tab.getAttribute('data-theme-subtab') === key;
+        var active = tab.getAttribute('data-theme-subtab') === k;
         tab.classList.toggle('active', active);
         tab.setAttribute('aria-selected', active ? 'true' : 'false');
       });
       panels.forEach(function (panel) {
-        var active = panel.getAttribute('data-theme-subpanel') === key;
+        var active = panel.getAttribute('data-theme-subpanel') === k;
         panel.hidden = !active;
       });
     }
@@ -1538,7 +1540,24 @@
         activate(tab.getAttribute('data-theme-subtab') || 'icons');
       });
     });
-    activate('icons');
+    // Allow Settings top-level tabs to control the visible subpanel.
+    try {
+      window.kexoThemeActivateSubtab = function (key) { activate(key); };
+    } catch (_) {}
+    // On Settings page, hide the internal subtabs (Icons/Header/Color/Fonts/Notifications)
+    // because Settings promotes these to the Kexo top-level subnav.
+    try {
+      if (document.body && document.body.getAttribute('data-page') === 'settings') {
+        var nav = root.querySelector('#theme-subtabs');
+        if (nav) nav.hidden = true;
+      }
+    } catch (_) {}
+    var initial = 'icons';
+    try {
+      var requested = window.__kexoThemeRequestedSubtab;
+      if (requested) initial = String(requested).trim().toLowerCase() || initial;
+    } catch (_) {}
+    activate(initial);
   }
 
   function setPreviewIconClass(previewEl, glyphCls) {

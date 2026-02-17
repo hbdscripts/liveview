@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-17 (Dashboard overview cards reworked + strict KPI/chart row alignment)
+Last updated: 2026-02-17 (Dashboard overview chart bugfixes + Settings theme tabs promoted)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -393,6 +393,15 @@ Ops/reliability:
   - Right-side mini/overview chart cards were reworked to KPI-style card heads (card type + `7 Days` date control styled with `dropdown-toggle text-secondary`, plus metric value/delta strip).
   - Overflow artifact behind left KPI cards was fixed by clipping KPI sparkline layers inside card bodies.
   - Top composite layout now places `#dash-kpi-grid-mid` directly under `#dash-kpi-grid`; JS height-sync aligns mini-chart row to top KPI block and overview chart card to the middle KPI row.
+- Dashboard overview chart bugfixes + utilities:
+  - Fixed a ResizeObserver/height-sync feedback loop that could cause the mini/overview charts to keep growing after initial load.
+  - Mini chart headline values/deltas are now computed from 7-day snapshot + attribution comparisons (no longer cloned from the top KPI cards, which can be a different date range).
+  - Added small per-bucket date/time labels under dashboard KPI sparklines.
+  - Added `Cost Settings` shortcut beside the Overview chart settings button; opens the existing Profit Rules modal and triggers a 7d overview refresh after save.
+- Settings theme IA:
+  - Promoted Theme sections to top-level Kexo tabs: `Icons`, `Header`, `Color`, `Fonts`, `Notifications` (was a nested UI subtab).
+  - Renamed user-facing “Sale Notification” → “Notifications”; internal theme subtab key remains `sale-notification`.
+  - Settings now supports `kexoTab=icons|header|color|fonts|notifications`; legacy `kexoTab=ui` maps to Icons.
 - Layout shortcut modals (dashboard UX):
   - Table and chart card header gear icons now open in-page layout modals (table or chart settings) instead of navigating to Settings; same config source and save path (`POST /api/settings`, localStorage + `kexo:tablesUiConfigUpdated` / `kexo:chartsUiConfigUpdated`).
   - Shared module `client/app/16-layout-shortcuts.js` provides `KexoLayoutShortcuts.openTableModal`, `openChartModal`, and render/read helpers; Settings Layout tab uses the same API for tables and charts (single source of truth).

@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 7bc2b98deb52e88e
+// checksum: 7e171c126a472565
 
 (function () {
 const API = '';
@@ -15616,9 +15616,15 @@ const API = '';
         var h = 0;
         try {
           if (chartEl) {
+            // Prefer layout height hints over content bounds. getBoundingClientRect() can be
+            // content-driven (e.g. SVG height) and is more likely to participate in feedback loops.
+            var ch = chartEl.clientHeight;
+            if (Number.isFinite(ch) && ch > 0) h = ch;
             var rect = chartEl.getBoundingClientRect ? chartEl.getBoundingClientRect() : null;
             if (rect && Number.isFinite(rect.height) && rect.height > 0) h = rect.height;
             if ((!h || h < lo) && chartEl.parentElement && chartEl.parentElement.getBoundingClientRect) {
+              var ph = chartEl.parentElement.clientHeight;
+              if (Number.isFinite(ph) && ph > 0) h = ph;
               var pRect = chartEl.parentElement.getBoundingClientRect();
               if (pRect && Number.isFinite(pRect.height) && pRect.height > 0) h = pRect.height;
             }
@@ -15699,7 +15705,10 @@ const API = '';
         overviewHeightSyncTimer = setTimeout(function() {
           overviewHeightSyncTimer = null;
           syncOverviewHeightGrid();
-          if (overviewMiniCache) renderOverviewMiniCharts(overviewMiniCache, { reason: 'resize' });
+          // IMPORTANT: do not re-render charts here.
+          // Re-rendering from a resize/height-sync callback creates a ResizeObserver feedback loop
+          // (destroy/recreate chart -> size change -> observer -> destroy/recreate ...), which can
+          // manifest as charts continuously growing.
         }, 80);
       }
 
@@ -15711,12 +15720,9 @@ const API = '';
         try {
           var topGrid = document.getElementById('dash-kpi-grid');
           var midGrid = document.getElementById('dash-kpi-grid-mid');
-          var miniRow = document.querySelector('.kexo-overview-mini-row');
-          var mainCard = document.querySelector('[data-kexo-chart-key="dash-chart-overview-30d"] .kexo-overview-main-card');
+          // Avoid observing chart containers/rows directly: chart rendering changes their size.
           if (topGrid) overviewHeightSyncObserver.observe(topGrid);
           if (midGrid) overviewHeightSyncObserver.observe(midGrid);
-          if (miniRow) overviewHeightSyncObserver.observe(miniRow);
-          if (mainCard) overviewHeightSyncObserver.observe(mainCard);
         } catch (_) {}
         try {
           window.addEventListener('resize', scheduleOverviewHeightSync);
@@ -15729,66 +15735,65 @@ const API = '';
         target.textContent = text != null && String(text).trim() ? String(text) : '\u2014';
       }
 
-      function cloneOverviewDeltaFromKpi(sourcePrefix, targetPrefix) {
-        var srcWrap = document.getElementById(sourcePrefix + '-delta');
-        var srcText = document.getElementById(sourcePrefix + '-delta-text');
-        var dstWrap = document.getElementById(targetPrefix + '-delta');
-        var dstText = document.getElementById(targetPrefix + '-delta-text');
-        if (!dstWrap || !dstText) return;
-        var empty = !srcWrap || !srcText || srcWrap.classList.contains('is-hidden');
-        if (empty) {
-          dstWrap.classList.add('is-hidden');
-          dstWrap.classList.remove('is-up', 'is-down', 'is-flat');
-          dstWrap.setAttribute('data-dir', 'none');
-          dstText.textContent = '\u2014';
+      function setOverviewMiniDelta(prefix, cur, prev, opts) {
+        var o = opts && typeof opts === 'object' ? opts : {};
+        var invert = !!o.invert;
+        var wrap = document.getElementById(prefix + '-delta');
+        var textEl = document.getElementById(prefix + '-delta-text');
+        if (!wrap || !textEl) return;
+
+        var c = (typeof cur === 'number') ? cur : Number(cur);
+        var p = (typeof prev === 'number') ? prev : Number(prev);
+        if (!Number.isFinite(c) || !Number.isFinite(p) || Math.abs(p) < 1e-9) {
+          wrap.classList.add('is-hidden');
+          wrap.classList.remove('is-up', 'is-down', 'is-flat');
+          wrap.setAttribute('data-dir', 'none');
+          textEl.textContent = '\u2014';
           return;
         }
-        var text = srcText.textContent != null ? String(srcText.textContent).trim() : '';
-        if (!text || text === '\u2014') {
-          dstWrap.classList.add('is-hidden');
-          dstWrap.classList.remove('is-up', 'is-down', 'is-flat');
-          dstWrap.setAttribute('data-dir', 'none');
-          dstText.textContent = '\u2014';
-          return;
-        }
-        dstText.textContent = text;
-        dstWrap.classList.remove('is-hidden');
-        dstWrap.classList.remove('is-up', 'is-down', 'is-flat');
-        if (srcWrap.classList.contains('is-up')) dstWrap.classList.add('is-up');
-        else if (srcWrap.classList.contains('is-down')) dstWrap.classList.add('is-down');
-        else if (srcWrap.classList.contains('is-flat')) dstWrap.classList.add('is-flat');
-        var dir = srcWrap.getAttribute('data-dir') || 'none';
-        dstWrap.setAttribute('data-dir', dir);
+
+        var ratio = (c - p) / Math.abs(p);
+        if (invert) ratio = -ratio;
+        var rounded = Math.round(ratio * 1000) / 10; // 1dp
+        var sign = rounded > 0 ? '+' : '';
+        var text = sign + rounded.toFixed(1) + '%';
+
+        var dir = 'flat';
+        if (rounded > 0.05) dir = 'up';
+        else if (rounded < -0.05) dir = 'down';
+
+        wrap.classList.remove('is-hidden');
+        wrap.classList.remove('is-up', 'is-down', 'is-flat');
+        if (dir === 'up') wrap.classList.add('is-up');
+        else if (dir === 'down') wrap.classList.add('is-down');
+        else wrap.classList.add('is-flat');
+        wrap.setAttribute('data-dir', dir);
+        textEl.textContent = text;
       }
 
       function renderOverviewMiniCardStats(context) {
         var ctx = context && typeof context === 'object' ? context : {};
-        function sumSafe(values) {
-          if (!Array.isArray(values)) return 0;
-          return values.reduce(function(acc, n) { return acc + normalizeOverviewMetric(n); }, 0);
-        }
         function moneyText(value) {
           if (typeof formatRevenue0 === 'function') return formatRevenue0(normalizeOverviewMetric(value)) || '\u2014';
           return fmtGbp(normalizeOverviewMetric(value));
         }
 
-        var finishesRevenue = sumSafe(ctx.finishValues);
-        var countriesRevenue = sumSafe(ctx.countryValues);
-        var attributionSessions = sumSafe(ctx.attributionValues);
-        var overviewRevenue = normalizeOverviewMetric(ctx.overviewRevenue);
-        if (overviewRevenue <= 0 && Array.isArray(ctx.overviewRevenueSeries)) {
-          overviewRevenue = sumSafe(ctx.overviewRevenueSeries);
-        }
+        // Revenue cards should use a single truth total for the period (not “top N” sums),
+        // otherwise the headline number won’t reconcile with the rest of the dashboard.
+        var revNow = normalizeOverviewMetric(ctx.revenueNow);
+        var revPrev = normalizeOverviewMetric(ctx.revenuePrev);
+        var sessionsNow = normalizeOverviewMetric(ctx.sessionsNow);
+        var sessionsPrev = normalizeOverviewMetric(ctx.sessionsPrev);
 
-        setOverviewMiniCardValue('dash-mini-finishes-value', moneyText(finishesRevenue));
-        setOverviewMiniCardValue('dash-mini-countries-value', moneyText(countriesRevenue));
-        setOverviewMiniCardValue('dash-mini-attribution-value', Math.round(attributionSessions).toLocaleString());
-        setOverviewMiniCardValue('dash-mini-overview-value', moneyText(overviewRevenue));
+        setOverviewMiniCardValue('dash-mini-finishes-value', moneyText(revNow));
+        setOverviewMiniCardValue('dash-mini-countries-value', moneyText(revNow));
+        setOverviewMiniCardValue('dash-mini-overview-value', moneyText(revNow));
+        setOverviewMiniCardValue('dash-mini-attribution-value', Math.round(sessionsNow).toLocaleString());
 
-        cloneOverviewDeltaFromKpi('dash-kpi-revenue', 'dash-mini-finishes');
-        cloneOverviewDeltaFromKpi('dash-kpi-revenue', 'dash-mini-countries');
-        cloneOverviewDeltaFromKpi('dash-kpi-sessions', 'dash-mini-attribution');
-        cloneOverviewDeltaFromKpi('dash-kpi-revenue', 'dash-mini-overview');
+        setOverviewMiniDelta('dash-mini-finishes', revNow, revPrev);
+        setOverviewMiniDelta('dash-mini-countries', revNow, revPrev);
+        setOverviewMiniDelta('dash-mini-overview', revNow, revPrev);
+        setOverviewMiniDelta('dash-mini-attribution', sessionsNow, sessionsPrev);
       }
 
       function quantizeOverviewMiniSize(value) {
@@ -15831,8 +15836,10 @@ const API = '';
           if (!el || !el.getBoundingClientRect) return id + ':0x0';
           var r = el.getBoundingClientRect();
           var w = quantizeOverviewMiniSize(r.width);
-          var h = quantizeOverviewMiniSize(r.height);
-          return id + ':' + w + 'x' + h;
+          // Deliberately ignore height here. Height can be content-driven (SVG rendering) and
+          // cause ResizeObserver feedback loops. Width changes are the meaningful signal for
+          // re-rendering these charts.
+          return id + ':' + w;
         }).join('|');
       }
 
@@ -16197,21 +16204,35 @@ const API = '';
         var attributionRows = payload && payload.attribution && payload.attribution.attribution && Array.isArray(payload.attribution.attribution.rows)
           ? payload.attribution.attribution.rows
           : [];
-        var attributionValues = attributionRows
-          .filter(function(row) { return row && Number(row.sessions) > 0; })
-          .map(function(row) { return normalizeOverviewMetric(row && row.sessions); });
-        var snapshotFinancialRevenue = payload && payload.snapshot && payload.snapshot.financial && payload.snapshot.financial.revenue
+        var attributionSessionsNow = 0;
+        attributionRows.forEach(function(row) {
+          if (!row || typeof row !== 'object') return;
+          attributionSessionsNow += normalizeOverviewMetric(row.sessions);
+        });
+
+        var attributionPrevRows = payload && payload.attributionPrev && payload.attributionPrev.attribution && Array.isArray(payload.attributionPrev.attribution.rows)
+          ? payload.attributionPrev.attribution.rows
+          : [];
+        var attributionSessionsPrev = 0;
+        attributionPrevRows.forEach(function(row) {
+          if (!row || typeof row !== 'object') return;
+          attributionSessionsPrev += normalizeOverviewMetric(row.sessions);
+        });
+
+        var snapshotRevenueNow = payload && payload.snapshot && payload.snapshot.financial && payload.snapshot.financial.revenue
           ? normalizeOverviewMetric(payload.snapshot.financial.revenue.value)
           : 0;
-        var snapshotRevenueSeries = payload && payload.snapshot && payload.snapshot.seriesComparison && payload.snapshot.seriesComparison.current
-          ? payload.snapshot.seriesComparison.current.revenueGbp
-          : null;
+        var snapshotRevenuePrev = payload && payload.snapshot && payload.snapshot.financial && payload.snapshot.financial.revenue
+          ? normalizeOverviewMetric(payload.snapshot.financial.revenue.previous)
+          : 0;
+        if (snapshotRevenueNow <= 0 && payload && payload.countries && payload.countries.summary && payload.countries.summary.revenue != null) {
+          snapshotRevenueNow = normalizeOverviewMetric(payload.countries.summary.revenue);
+        }
         renderOverviewMiniCardStats({
-          finishValues: finishValues,
-          countryValues: countryValues,
-          attributionValues: attributionValues,
-          overviewRevenue: snapshotFinancialRevenue,
-          overviewRevenueSeries: snapshotRevenueSeries,
+          revenueNow: snapshotRevenueNow,
+          revenuePrev: snapshotRevenuePrev,
+          sessionsNow: attributionSessionsNow,
+          sessionsPrev: attributionSessionsPrev,
         });
         renderOverviewPieChart('dash-chart-countries-30d', countryLabels, countryValues, {
           colors: ['#4b94e4', '#3eb3ab', '#f59e34', '#8b5cf6', '#ef4444'],
@@ -16261,11 +16282,35 @@ const API = '';
           fetchOverviewJson(finishesUrl, force, 25000),
           fetchOverviewJson(attributionUrl, force, 25000),
         ]).then(function(parts) {
+          var snapshot = parts[1] || null;
+          function prevRangeKeyFromSnapshot(snap) {
+            try {
+              var prev = snap && snap.seriesComparison && snap.seriesComparison.previous ? snap.seriesComparison.previous : null;
+              var labels = prev && Array.isArray(prev.labelsYmd) ? prev.labelsYmd : [];
+              if (!labels.length) return null;
+              var startYmd = labels[0] != null ? String(labels[0]).slice(0, 10) : '';
+              var endYmd = labels[labels.length - 1] != null ? String(labels[labels.length - 1]).slice(0, 10) : '';
+              if (!/^\d{4}-\d{2}-\d{2}$/.test(startYmd) || !/^\d{4}-\d{2}-\d{2}$/.test(endYmd)) return null;
+              return 'r:' + startYmd + ':' + endYmd;
+            } catch (_) {
+              return null;
+            }
+          }
+          var prevRangeKey = prevRangeKeyFromSnapshot(snapshot);
+          if (!prevRangeKey) {
+            return parts.concat([null]);
+          }
+          var prevAttributionUrl = API + '/api/attribution/report?range=' + encodeURIComponent(prevRangeKey) + (force ? ('&force=1&_=' + stamp) : '');
+          return fetchOverviewJson(prevAttributionUrl, force, 25000)
+            .then(function(prevAttr) { return parts.concat([prevAttr || null]); })
+            .catch(function() { return parts.concat([null]); });
+        }).then(function(parts) {
           var payload = {
             countries: parts[0] || null,
             snapshot: parts[1] || null,
             finishes: parts[2] || null,
             attribution: parts[3] || null,
+            attributionPrev: parts[4] || null,
           };
           overviewMiniCache = payload;
           overviewMiniFetchedAt = Date.now();
@@ -16525,6 +16570,40 @@ const API = '';
             return Number.isFinite(n) ? n : 0;
           });
         }
+        function renderDashboardKpiSparkBucketLabels(series) {
+          try {
+            if (!Array.isArray(series) || !series.length) return;
+            var labels = series.map(function(d, idx) {
+              var key = d && d.date != null ? String(d.date) : '';
+              if (!key) return String(idx + 1);
+              if (/^\d{4}-\d{2}-\d{2}$/.test(key)) return shortDate(key);
+              if (key.indexOf(' ') >= 0) return shortHourLabel(key);
+              return key;
+            });
+            var step = 1;
+            if (labels.length > 14) step = Math.ceil(labels.length / 14);
+            function ensureRow(bodyEl) {
+              if (!bodyEl || !bodyEl.querySelector) return;
+              var row = bodyEl.querySelector('.dash-kpi-sparkline-labels');
+              if (!row) {
+                row = document.createElement('div');
+                row.className = 'dash-kpi-sparkline-labels';
+                var compareRow = bodyEl.querySelector('.dash-kpi-compare-row');
+                if (compareRow && compareRow.parentNode) compareRow.parentNode.insertBefore(row, compareRow);
+                else bodyEl.appendChild(row);
+              }
+              row.innerHTML = labels.map(function(t, i) {
+                var hidden = (step > 1 && (i % step) !== 0) ? ' is-hidden' : '';
+                return '<span class="dash-kpi-sparkline-label' + hidden + '">' + escapeHtml(t) + '</span>';
+              }).join('');
+            }
+            document.querySelectorAll('#dash-kpi-grid .card-body, #dash-kpi-grid-mid .card-body, #dash-kpi-grid-lower .card-body').forEach(function(bodyEl) {
+              if (!bodyEl || !bodyEl.querySelector) return;
+              if (!bodyEl.querySelector('.dash-kpi-sparkline-wrap')) return;
+              ensureRow(bodyEl);
+            });
+          } catch (_) {}
+        }
         var revenueHistorySpark = sparklineSeries.map(function(d) { return d.revenue; });
         var sessionsHistorySpark = sparklineSeries.map(function(d) { return d.sessions; });
         var ordersHistorySpark = sparklineSeries.map(function(d) { return d.orders; });
@@ -16593,6 +16672,7 @@ const API = '';
           renderSparkline('dash-bounce-sparkline', bounceSpark, sparkToneFromCompare(currentBounceTone, compareBounceTone, true, bounceSpark), bounceSparkCompare);
           renderSparkline('dash-roas-sparkline', roasSpark, sparkToneFromCompare(currentRoasTone, compareRoasTone, false, roasSpark), roasSparkCompare);
           renderSparkline('dash-items-sparkline', itemsSpark, DASHBOARD_NEUTRAL_TONE_HEX, itemsSparkCompare);
+          renderDashboardKpiSparkBucketLabels(sparklineSeries);
           // COGS / Fulfilled / Returns sparklines come from `/api/kpis-expanded-extra` (bucketed per range).
           try {
             var extraSpark = extrasTone && extrasTone.spark && typeof extrasTone.spark === 'object' ? extrasTone.spark : null;
@@ -17292,6 +17372,14 @@ const API = '';
       if (dashPanel && (dashPanel.classList.contains('active') || PAGE === 'dashboard')) {
         fetchDashboardData(dashRangeKeyFromDateRange(), false);
       }
+
+      // When Profit Rules are saved via the dashboard Cost Settings modal,
+      // refresh the 7d overview snapshot payload (cost/revenue series depend on profit rule fingerprint).
+      try {
+        window.addEventListener('kexo:profitRulesUpdated', function () {
+          try { fetchOverviewMiniData({ force: true }); } catch (_) {}
+        });
+      } catch (_) {}
 
       // Failsafe: on some post-login flows (mobile app switching, bfcache restores),
       // the first dashboard fetch can be skipped or run while hidden. If we still have
@@ -19087,5 +19175,497 @@ const API = '';
     initModalClose();
   }
 })();
+/**
+ * Dashboard: Profit Rules modal opener (Cost Settings shortcut).
+ * Reuses the same modal markup/IDs as Snapshot, but runs only on dashboard pages.
+ */
+(function () {
+  'use strict';
+
+  function bodyPage() {
+    try { return String(document.body && document.body.getAttribute('data-page') || ''); } catch (_) { return ''; }
+  }
+  if (bodyPage() !== 'dashboard') return;
+
+  function esc(str) {
+    try {
+      var div = document.createElement('div');
+      div.textContent = str == null ? '' : String(str);
+      return div.innerHTML;
+    } catch (_) {
+      return String(str == null ? '' : str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+  }
+
+  function fetchJson(url, opts) {
+    return fetch(url, opts || {})
+      .then(function (r) { return (r && r.ok) ? r.json() : null; })
+      .catch(function () { return null; });
+  }
+
+  var state = {
+    open: false,
+    backdrop: null,
+    rulesDraft: null,
+    editingRuleId: '',
+  };
+
+  function openModal() {
+    var modal = document.getElementById('profit-rules-modal');
+    if (!modal) return;
+    if (state.open) return;
+    state.open = true;
+    modal.style.display = 'block';
+    modal.classList.add('show');
+    modal.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('modal-open');
+    var backdrop = document.createElement('div');
+    backdrop.className = 'modal-backdrop fade show';
+    backdrop.addEventListener('click', closeModal);
+    document.body.appendChild(backdrop);
+    state.backdrop = backdrop;
+  }
+
+  function closeModal() {
+    var modal = document.getElementById('profit-rules-modal');
+    if (!modal) return;
+    modal.classList.remove('show');
+    modal.style.display = 'none';
+    modal.setAttribute('aria-hidden', 'true');
+    if (state.backdrop && state.backdrop.parentNode) {
+      state.backdrop.parentNode.removeChild(state.backdrop);
+    }
+    state.backdrop = null;
+    state.open = false;
+    document.body.classList.remove('modal-open');
+  }
+
+  function createRuleId() {
+    return 'rule_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 7);
+  }
+
+  function normalizeCountryCode(value) {
+    var raw = String(value || '').trim().toUpperCase().slice(0, 2);
+    if (!raw) return '';
+    var cc = raw === 'UK' ? 'GB' : raw;
+    if (!/^[A-Z]{2}$/.test(cc)) return '';
+    return cc;
+  }
+
+  function normalizeRulesPayload(payload) {
+    var src = payload && typeof payload === 'object' ? payload : {};
+    var list = Array.isArray(src.rules) ? src.rules : [];
+    var out = {
+      enabled: !!src.enabled,
+      currency: 'GBP',
+      integrations: {
+        includeGoogleAdsSpend: !!(src.integrations && src.integrations.includeGoogleAdsSpend === true),
+        includeShopifyAppBills: false,
+        includePaymentFees: !!(src.integrations && src.integrations.includePaymentFees === true),
+        includeKlarnaFees: !!(src.integrations && src.integrations.includeKlarnaFees === true),
+      },
+      rules: [],
+    };
+    for (var i = 0; i < list.length; i += 1) {
+      var row = list[i] && typeof list[i] === 'object' ? list[i] : {};
+      var appliesMode = row.appliesTo && row.appliesTo.mode === 'countries' ? 'countries' : 'all';
+      var countries = (appliesMode === 'countries' && Array.isArray(row.appliesTo && row.appliesTo.countries))
+        ? row.appliesTo.countries.map(normalizeCountryCode).filter(Boolean)
+        : [];
+      out.rules.push({
+        id: row.id ? String(row.id) : createRuleId(),
+        name: row.name ? String(row.name) : 'Expense',
+        type: row.type ? String(row.type) : 'percent_revenue',
+        value: Number.isFinite(Number(row.value)) ? Number(row.value) : 0,
+        enabled: row.enabled !== false,
+        sort: Number.isFinite(Number(row.sort)) ? Math.trunc(Number(row.sort)) : (i + 1),
+        appliesTo: (appliesMode === 'countries' && countries.length)
+          ? { mode: 'countries', countries: countries.slice(0, 64) }
+          : { mode: 'all', countries: [] },
+      });
+    }
+    out.rules.sort(function (a, b) { return (Number(a.sort) || 0) - (Number(b.sort) || 0); });
+    return out;
+  }
+
+  function setMessage(text, isOk) {
+    var el = document.getElementById('profit-rules-msg');
+    if (!el) return;
+    el.textContent = text || '';
+    el.classList.toggle('is-hidden', !text);
+    el.classList.toggle('text-success', !!isOk);
+    el.classList.toggle('text-danger', isOk === false);
+  }
+
+  function sortDraft() {
+    if (!state.rulesDraft || !Array.isArray(state.rulesDraft.rules)) return;
+    state.rulesDraft.rules.sort(function (a, b) {
+      var sa = Number(a && a.sort != null ? a.sort : 0) || 0;
+      var sb = Number(b && b.sort != null ? b.sort : 0) || 0;
+      if (sa !== sb) return sa - sb;
+      return String(a && a.id || '').localeCompare(String(b && b.id || ''));
+    });
+  }
+
+  function reindexDraft() {
+    if (!state.rulesDraft || !Array.isArray(state.rulesDraft.rules)) return;
+    sortDraft();
+    state.rulesDraft.rules.forEach(function (rule, idx) {
+      if (!rule) return;
+      rule.sort = idx + 1;
+    });
+  }
+
+  function getRuleById(ruleId) {
+    if (!state.rulesDraft || !Array.isArray(state.rulesDraft.rules)) return null;
+    return state.rulesDraft.rules.find(function (rule) { return String(rule && rule.id || '') === String(ruleId || ''); }) || null;
+  }
+
+  function ruleTypeLabel(type) {
+    if (type === 'fixed_per_order') return 'Fixed per order';
+    if (type === 'fixed_per_period') return 'Fixed per period';
+    return 'Percent of revenue';
+  }
+
+  function ruleValueLabel(rule) {
+    if (!rule) return '-';
+    var value = Number(rule.value);
+    if (!Number.isFinite(value)) return '-';
+    if (rule.type === 'percent_revenue') return value.toFixed(2).replace(/\.00$/, '') + '%';
+    return '\u00a3' + value.toFixed(2);
+  }
+
+  function renderRulesList() {
+    var bodyEl = document.getElementById('profit-rules-table-body');
+    if (!bodyEl) return;
+    if (!state.rulesDraft || !Array.isArray(state.rulesDraft.rules) || !state.rulesDraft.rules.length) {
+      bodyEl.innerHTML = '<tr><td colspan="6" class="text-muted">No rules yet.</td></tr>';
+      return;
+    }
+    sortDraft();
+    var html = '';
+    state.rulesDraft.rules.forEach(function (rule, idx) {
+      var countryLabel = rule && rule.appliesTo && rule.appliesTo.mode === 'countries'
+        ? ((rule.appliesTo.countries || []).join(', ') || '-')
+        : 'ALL';
+      html += '' +
+        '<tr data-rule-id="' + esc(rule.id || '') + '">' +
+          '<td>' + esc(rule.name || 'Expense') + '</td>' +
+          '<td>' + esc(ruleTypeLabel(rule.type)) + '</td>' +
+          '<td class="text-end">' + esc(ruleValueLabel(rule)) + '</td>' +
+          '<td class="text-center">' + esc(countryLabel) + '</td>' +
+          '<td class="text-center">' +
+            '<input type="checkbox" data-pr-action="toggle-enabled" data-rule-id="' + esc(rule.id || '') + '"' + (rule.enabled ? ' checked' : '') + ' />' +
+          '</td>' +
+          '<td class="text-end text-nowrap">' +
+            '<button type="button" class="btn btn-sm btn-ghost-secondary" data-pr-action="move-up" data-rule-id="' + esc(rule.id || '') + '"' + (idx <= 0 ? ' disabled' : '') + '>Up</button> ' +
+            '<button type="button" class="btn btn-sm btn-ghost-secondary" data-pr-action="move-down" data-rule-id="' + esc(rule.id || '') + '"' + (idx >= state.rulesDraft.rules.length - 1 ? ' disabled' : '') + '>Down</button> ' +
+            '<button type="button" class="btn btn-sm btn-ghost-secondary" data-pr-action="edit" data-rule-id="' + esc(rule.id || '') + '">Edit</button> ' +
+            '<button type="button" class="btn btn-sm btn-ghost-danger" data-pr-action="delete" data-rule-id="' + esc(rule.id || '') + '">Delete</button>' +
+          '</td>' +
+        '</tr>';
+    });
+    bodyEl.innerHTML = html;
+  }
+
+  function hideForm() {
+    var panel = document.getElementById('profit-rules-form-wrap');
+    if (panel) panel.classList.add('is-hidden');
+    state.editingRuleId = '';
+    var idEl = document.getElementById('profit-rule-id');
+    if (idEl) idEl.value = '';
+  }
+
+  function showForm(rule) {
+    var panel = document.getElementById('profit-rules-form-wrap');
+    if (panel) panel.classList.remove('is-hidden');
+    state.editingRuleId = rule ? String(rule.id || '') : '';
+    var idEl = document.getElementById('profit-rule-id');
+    var nameEl = document.getElementById('profit-rule-name');
+    var typeEl = document.getElementById('profit-rule-type');
+    var valueEl = document.getElementById('profit-rule-value');
+    var countryEl = document.getElementById('profit-rule-country');
+    var sortEl = document.getElementById('profit-rule-sort');
+    var enabledEl = document.getElementById('profit-rule-enabled');
+    if (idEl) idEl.value = state.editingRuleId;
+    if (nameEl) nameEl.value = rule ? (rule.name || '') : '';
+    if (typeEl) typeEl.value = rule ? (rule.type || 'percent_revenue') : 'percent_revenue';
+    if (valueEl) valueEl.value = rule && rule.value != null ? String(Number(rule.value) || 0) : '';
+    if (countryEl) countryEl.value = (rule && rule.appliesTo && rule.appliesTo.mode === 'countries')
+      ? ((rule.appliesTo.countries || []).join(','))
+      : '';
+    if (sortEl) sortEl.value = rule && Number.isFinite(Number(rule.sort)) ? String(Math.trunc(Number(rule.sort))) : String((state.rulesDraft && state.rulesDraft.rules ? state.rulesDraft.rules.length + 1 : 1));
+    if (enabledEl) enabledEl.checked = rule ? (rule.enabled !== false) : true;
+  }
+
+  function readForm() {
+    var nameEl = document.getElementById('profit-rule-name');
+    var typeEl = document.getElementById('profit-rule-type');
+    var valueEl = document.getElementById('profit-rule-value');
+    var countryEl = document.getElementById('profit-rule-country');
+    var sortEl = document.getElementById('profit-rule-sort');
+    var enabledEl = document.getElementById('profit-rule-enabled');
+    var name = String(nameEl && nameEl.value || '').trim();
+    if (!name) return { ok: false, error: 'Rule name is required.' };
+    var type = String(typeEl && typeEl.value || '').trim();
+    if (['percent_revenue', 'fixed_per_order', 'fixed_per_period'].indexOf(type) < 0) {
+      return { ok: false, error: 'Rule type is invalid.' };
+    }
+    var value = Number(valueEl && valueEl.value);
+    if (!Number.isFinite(value) || value < 0) return { ok: false, error: 'Value must be 0 or higher.' };
+    var sort = Math.max(1, Math.trunc(Number(sortEl && sortEl.value) || 1));
+    var countryRaw = String(countryEl && countryEl.value || '').trim();
+    var appliesTo = { mode: 'all', countries: [] };
+    if (countryRaw) {
+      var countries = countryRaw.split(/[,\s]+/).map(normalizeCountryCode).filter(Boolean);
+      if (!countries.length) return { ok: false, error: 'Use valid 2-letter ISO country codes.' };
+      var unique = [];
+      var seen = {};
+      countries.forEach(function (cc) {
+        if (!cc || seen[cc]) return;
+        seen[cc] = true;
+        unique.push(cc);
+      });
+      appliesTo = { mode: 'countries', countries: unique.slice(0, 64) };
+    }
+    return {
+      ok: true,
+      rule: {
+        id: state.editingRuleId || createRuleId(),
+        name: name.slice(0, 80),
+        type: type,
+        value: value,
+        enabled: enabledEl ? !!enabledEl.checked : true,
+        sort: sort,
+        appliesTo: appliesTo,
+      },
+    };
+  }
+
+  function saveRuleDraft() {
+    var parsed = readForm();
+    if (!parsed.ok) {
+      setMessage(parsed.error, false);
+      return;
+    }
+    if (!state.rulesDraft || !Array.isArray(state.rulesDraft.rules)) {
+      state.rulesDraft = normalizeRulesPayload(null);
+    }
+    var existing = getRuleById(parsed.rule.id);
+    if (existing) {
+      existing.name = parsed.rule.name;
+      existing.type = parsed.rule.type;
+      existing.value = parsed.rule.value;
+      existing.enabled = parsed.rule.enabled;
+      existing.sort = parsed.rule.sort;
+      existing.appliesTo = parsed.rule.appliesTo;
+    } else {
+      state.rulesDraft.rules.push(parsed.rule);
+    }
+    reindexDraft();
+    renderRulesList();
+    hideForm();
+    setMessage('Rule saved in draft.', true);
+  }
+
+  function setTab(tab) {
+    var key = tab === 'integrations' ? 'integrations' : 'rules';
+    document.querySelectorAll('[data-pr-tab]').forEach(function (btn) {
+      if (!btn || !btn.classList) return;
+      var v = String(btn.getAttribute('data-pr-tab') || '');
+      btn.classList.toggle('active', v === key);
+    });
+    var rulesPane = document.getElementById('profit-rules-tab-rules');
+    var integrationsPane = document.getElementById('profit-rules-tab-integrations');
+    if (rulesPane) rulesPane.classList.toggle('is-hidden', key !== 'rules');
+    if (integrationsPane) integrationsPane.classList.toggle('is-hidden', key !== 'integrations');
+  }
+
+  function applyDraftToUi() {
+    var enabledToggle = document.getElementById('profit-rules-enabled');
+    var adsToggle = document.getElementById('profit-rules-include-google-ads');
+    var paymentFeesToggle = document.getElementById('profit-rules-include-payment-fees');
+    var klarnaFeesToggle = document.getElementById('profit-rules-include-klarna-fees');
+    if (enabledToggle) enabledToggle.checked = !!(state.rulesDraft && state.rulesDraft.enabled);
+    if (adsToggle) adsToggle.checked = !!(state.rulesDraft && state.rulesDraft.integrations && state.rulesDraft.integrations.includeGoogleAdsSpend);
+    if (paymentFeesToggle) paymentFeesToggle.checked = !!(state.rulesDraft && state.rulesDraft.integrations && state.rulesDraft.integrations.includePaymentFees);
+    if (klarnaFeesToggle) klarnaFeesToggle.checked = !!(state.rulesDraft && state.rulesDraft.integrations && state.rulesDraft.integrations.includeKlarnaFees);
+  }
+
+  function readTogglesIntoDraft() {
+    if (!state.rulesDraft) state.rulesDraft = normalizeRulesPayload(null);
+    var enabledToggle = document.getElementById('profit-rules-enabled');
+    var adsToggle = document.getElementById('profit-rules-include-google-ads');
+    var paymentFeesToggle = document.getElementById('profit-rules-include-payment-fees');
+    var klarnaFeesToggle = document.getElementById('profit-rules-include-klarna-fees');
+    state.rulesDraft.enabled = enabledToggle ? !!enabledToggle.checked : !!state.rulesDraft.enabled;
+    if (!state.rulesDraft.integrations || typeof state.rulesDraft.integrations !== 'object') {
+      state.rulesDraft.integrations = { includeGoogleAdsSpend: false, includeShopifyAppBills: false, includePaymentFees: false, includeKlarnaFees: false };
+    }
+    state.rulesDraft.integrations.includeGoogleAdsSpend = adsToggle ? !!adsToggle.checked : !!state.rulesDraft.integrations.includeGoogleAdsSpend;
+    state.rulesDraft.integrations.includeShopifyAppBills = false;
+    state.rulesDraft.integrations.includePaymentFees = paymentFeesToggle ? !!paymentFeesToggle.checked : !!state.rulesDraft.integrations.includePaymentFees;
+    state.rulesDraft.integrations.includeKlarnaFees = klarnaFeesToggle ? !!klarnaFeesToggle.checked : !!state.rulesDraft.integrations.includeKlarnaFees;
+  }
+
+  function loadRules(force) {
+    var url = (typeof API !== 'undefined' ? API : '') + '/api/settings/profit-rules';
+    if (force) {
+      url += (url.indexOf('?') >= 0 ? '&' : '?') + '_=' + Date.now();
+    }
+    return fetchJson(url).then(function (payload) {
+      state.rulesDraft = normalizeRulesPayload(payload && payload.profitRules ? payload.profitRules : null);
+      applyDraftToUi();
+      renderRulesList();
+      hideForm();
+      return state.rulesDraft;
+    });
+  }
+
+  function saveRules() {
+    readTogglesIntoDraft();
+    reindexDraft();
+    setMessage('Saving...', true);
+    var url = (typeof API !== 'undefined' ? API : '') + '/api/settings/profit-rules';
+    return fetchJson(url, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ profitRules: state.rulesDraft }),
+      credentials: 'same-origin',
+    }).then(function (payload) {
+      state.rulesDraft = normalizeRulesPayload(payload && payload.profitRules ? payload.profitRules : state.rulesDraft);
+      applyDraftToUi();
+      renderRulesList();
+      hideForm();
+      setMessage('Profit rules saved.', true);
+      try { window.dispatchEvent(new CustomEvent('kexo:profitRulesUpdated')); } catch (_) {}
+      return payload;
+    }).catch(function () {
+      setMessage('Failed to save profit rules.', false);
+      return null;
+    });
+  }
+
+  function bind() {
+    var modal = document.getElementById('profit-rules-modal');
+    if (!modal) return;
+
+    var openBtn = document.getElementById('dash-cost-settings-btn');
+    if (openBtn && openBtn.getAttribute('data-kexo-profit-bound') !== '1') {
+      openBtn.setAttribute('data-kexo-profit-bound', '1');
+      openBtn.addEventListener('click', function (e) {
+        e.preventDefault();
+        setMessage('', null);
+        loadRules(false).catch(function () {
+          state.rulesDraft = normalizeRulesPayload(null);
+          applyDraftToUi();
+          renderRulesList();
+          setMessage('Failed to load existing rules.', false);
+        }).finally(function () {
+          setTab('rules');
+          openModal();
+        });
+      });
+    }
+
+    var chartBtn = document.querySelector('[data-kexo-chart-settings-key="dash-chart-overview-30d"]');
+    if (chartBtn && chartBtn.getAttribute('data-kexo-chart-settings-bound') !== '1') {
+      chartBtn.setAttribute('data-kexo-chart-settings-bound', '1');
+      chartBtn.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        try {
+          if (window.KexoLayoutShortcuts && typeof window.KexoLayoutShortcuts.openChartModal === 'function') {
+            window.KexoLayoutShortcuts.openChartModal({ chartKey: 'dash-chart-overview-30d', cardTitle: 'Overview' });
+          }
+        } catch (_) {}
+      });
+    }
+
+    var closeBtn = document.getElementById('profit-rules-close-btn');
+    var dismissBtn = document.getElementById('profit-rules-dismiss-btn');
+    var saveBtn = document.getElementById('profit-rules-save-btn');
+    var addBtn = document.getElementById('profit-rules-add-btn');
+    var formSaveBtn = document.getElementById('profit-rule-save-btn');
+    var formCancelBtn = document.getElementById('profit-rule-cancel-btn');
+    var tableBody = document.getElementById('profit-rules-table-body');
+
+    if (closeBtn) closeBtn.addEventListener('click', closeModal);
+    if (dismissBtn) dismissBtn.addEventListener('click', closeModal);
+    if (saveBtn) saveBtn.addEventListener('click', saveRules);
+    if (addBtn) addBtn.addEventListener('click', function () { showForm(null); });
+    if (formSaveBtn) formSaveBtn.addEventListener('click', saveRuleDraft);
+    if (formCancelBtn) formCancelBtn.addEventListener('click', hideForm);
+
+    document.querySelectorAll('[data-pr-tab]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var tab = String(btn.getAttribute('data-pr-tab') || '');
+        setTab(tab);
+      });
+    });
+
+    if (tableBody) {
+      tableBody.addEventListener('click', function (event) {
+        var target = event && event.target ? event.target : null;
+        if (!target || !target.getAttribute) return;
+        var action = String(target.getAttribute('data-pr-action') || '');
+        var ruleId = String(target.getAttribute('data-rule-id') || '');
+        if (!action || !ruleId) return;
+        if (!state.rulesDraft || !Array.isArray(state.rulesDraft.rules)) return;
+        if (action === 'edit') {
+          showForm(getRuleById(ruleId));
+          return;
+        }
+        if (action === 'delete') {
+          state.rulesDraft.rules = state.rulesDraft.rules.filter(function (rule) { return String(rule && rule.id || '') !== ruleId; });
+          reindexDraft();
+          renderRulesList();
+          hideForm();
+          return;
+        }
+        if (action === 'move-up' || action === 'move-down') {
+          sortDraft();
+          var idx = state.rulesDraft.rules.findIndex(function (rule) { return String(rule && rule.id || '') === ruleId; });
+          if (idx < 0) return;
+          var swapWith = action === 'move-up' ? idx - 1 : idx + 1;
+          if (swapWith < 0 || swapWith >= state.rulesDraft.rules.length) return;
+          var tmp = state.rulesDraft.rules[idx];
+          state.rulesDraft.rules[idx] = state.rulesDraft.rules[swapWith];
+          state.rulesDraft.rules[swapWith] = tmp;
+          reindexDraft();
+          renderRulesList();
+        }
+      });
+      tableBody.addEventListener('change', function (event) {
+        var target = event && event.target ? event.target : null;
+        if (!target || !target.getAttribute) return;
+        var action = String(target.getAttribute('data-pr-action') || '');
+        if (action !== 'toggle-enabled') return;
+        var ruleId = String(target.getAttribute('data-rule-id') || '');
+        var rule = getRuleById(ruleId);
+        if (!rule) return;
+        rule.enabled = !!target.checked;
+      });
+    }
+
+    document.addEventListener('keydown', function (event) {
+      if (!state.open) return;
+      var key = String(event && (event.key || event.code) || '');
+      if (key === 'Escape') closeModal();
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bind);
+  } else {
+    bind();
+  }
+})();
+
 
 })();
