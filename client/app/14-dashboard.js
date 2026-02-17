@@ -2464,6 +2464,13 @@
       var KEXO_RING_SEGMENT_AND_GAP = KEXO_RING_SEGMENT + KEXO_RING_GAP;
       var KEXO_RING_START_OFFSET = 0.75 * KEXO_RING_CIRCUMFERENCE;
 
+      var KEXO_RING_COLOR_ORDER = [
+          'var(--kexo-accent-5, #ef4444)',
+          'var(--kexo-accent-4, #8b5cf6)',
+          'var(--kexo-accent-3, #f59e34)',
+          'var(--kexo-accent-1, #4b94e4)',
+          'var(--kexo-accent-2, #3eb3ab)'
+        ];
       function applyKexoScoreRingSvg(svg, rawScore) {
         if (!svg || svg.tagName !== 'svg') return;
         var score = Number(rawScore);
@@ -2476,14 +2483,19 @@
           trackCircle.setAttribute('stroke-dashoffset', (-KEXO_RING_START_OFFSET).toFixed(2));
         }
         var totalFill = (score / 100) * (5 * KEXO_RING_SEGMENT);
+        var fullRed = score === 0;
+        var fullGreen = score === 100;
         for (var i = 0; i < 5; i += 1) {
           var segStart = KEXO_RING_START_OFFSET + i * KEXO_RING_SEGMENT_AND_GAP;
           var fillStart = i * KEXO_RING_SEGMENT_AND_GAP;
-          var filled = Math.max(0, Math.min(KEXO_RING_SEGMENT, totalFill - fillStart));
+          var filled = fullRed ? KEXO_RING_SEGMENT : (fullGreen ? KEXO_RING_SEGMENT : Math.max(0, Math.min(KEXO_RING_SEGMENT, totalFill - fillStart)));
           var fillCircle = svg.querySelector('.kexo-score-ring-fill--' + (i + 1));
           if (fillCircle) {
             fillCircle.setAttribute('stroke-dasharray', filled.toFixed(2) + ' 9999');
             fillCircle.setAttribute('stroke-dashoffset', (-segStart).toFixed(2));
+            if (fullRed) fillCircle.style.stroke = 'var(--kexo-accent-5, #ef4444)';
+            else if (fullGreen) fillCircle.style.stroke = 'var(--kexo-accent-2, #3eb3ab)';
+            else fillCircle.style.stroke = KEXO_RING_COLOR_ORDER[i];
           }
         }
       }
@@ -2493,12 +2505,15 @@
         if (!Number.isFinite(score)) score = 0;
         score = Math.max(0, Math.min(100, score));
 
+        if (score === 0) return 'conic-gradient(from -90deg, var(--kexo-accent-5, #ef4444) 0deg 360deg)';
+        if (score === 100) return 'conic-gradient(from -90deg, var(--kexo-accent-2, #3eb3ab) 0deg 360deg)';
+
         var colors = [
-          'var(--kexo-accent-1, #4b94e4)',
-          'var(--kexo-accent-2, #3eb3ab)',
-          'var(--kexo-accent-3, #f59e34)',
+          'var(--kexo-accent-5, #ef4444)',
           'var(--kexo-accent-4, #8b5cf6)',
-          'var(--kexo-accent-5, #ef4444)'
+          'var(--kexo-accent-3, #f59e34)',
+          'var(--kexo-accent-1, #4b94e4)',
+          'var(--kexo-accent-2, #3eb3ab)'
         ];
         var track = 'var(--kexo-score-track)';
         var segDeg = 360 / colors.length;
@@ -2548,7 +2563,10 @@
           if (empty) dashNum.innerHTML = '<span class="kpi-mini-spinner" aria-hidden="true"></span>';
           else dashNum.textContent = dashText;
         }
-        if (dashRing) dashRing.style.setProperty('--kexo-score-pct', pct);
+        if (dashRing) {
+          dashRing.style.setProperty('--kexo-score-pct', pct);
+          dashRing.setAttribute('data-score', pct);
+        }
         if (headerNum) { headerNum.textContent = headerText; }
         if (headerRing) {
           if (headerRing.tagName === 'svg') {
@@ -2923,7 +2941,7 @@
       };
 
       window.refreshKexoScore = function() {
-        fetchKexoScore(dashRangeKeyFromDateRange());
+        return fetchKexoScore(dashRangeKeyFromDateRange());
       };
       if (document.getElementById('header-kexo-score-wrap')) {
         fetchKexoScore(dashRangeKeyFromDateRange());

@@ -1867,12 +1867,22 @@ body[data-page="abandoned-carts"] .page-body-loader-overlay .page-loader-progres
 }
 
 /* Variants 3-grid: prevent last row stuck/overflow; allow normal scroll */
+body[data-page="variants"] .page-body > .container-fluid {
+  overflow: visible;
+  padding-bottom: 2rem;
+}
+body[data-page="variants"] #tab-panel-variants {
+  overflow: visible;
+  min-height: 0;
+}
 body[data-page="variants"] .stats-row-wrap {
   overflow: visible;
   min-height: 0;
 }
 body[data-page="variants"] #variants-tables-row {
   align-content: flex-start;
+  overflow: visible;
+  min-height: 0;
 }
 body[data-page="variants"] #variants-tables-row .stats-card {
   align-self: flex-start;
@@ -1967,6 +1977,15 @@ html[data-bs-theme="dark"] .report-build-wrap {
 
 .page-body-loader-overlay .report-build-title {
   display: none !important;
+}
+.page-body-loader-overlay.timeframe-overlay .report-build-title {
+  display: block !important;
+}
+.page-body-loader-overlay.timeframe-overlay .report-build-step {
+  display: block;
+}
+.page-loader-progress--determinate .progress-bar {
+  transition: width 0.25s ease;
 }
 
 .page-body-loader-overlay .report-build-step {
@@ -2105,15 +2124,25 @@ html[data-bs-theme="dark"] .report-build-wrap {
   border-radius: 50%;
   background: conic-gradient(
     from 0deg,
-    var(--kexo-accent-1, #4b94e4) 0deg,
-    var(--kexo-accent-2, #3eb3ab) 72deg,
+    var(--kexo-accent-5, #ef4444) 0deg,
+    var(--kexo-accent-4, #8b5cf6) 72deg,
     var(--kexo-accent-3, #f59e34) 144deg,
-    var(--kexo-accent-4, #8b5cf6) 216deg,
-    var(--kexo-accent-5, #ef4444) 288deg
+    var(--kexo-accent-1, #4b94e4) 216deg,
+    var(--kexo-accent-2, #3eb3ab) 288deg
   );
   --kexo-score-pct: 0;
   mask: conic-gradient(from 0deg, black 0deg, black calc(var(--kexo-score-pct) * 3.6deg), transparent calc(var(--kexo-score-pct) * 3.6deg));
   -webkit-mask: conic-gradient(from 0deg, black 0deg, black calc(var(--kexo-score-pct) * 3.6deg), transparent calc(var(--kexo-score-pct) * 3.6deg));
+}
+.kexo-score-ring[data-score="0"] {
+  background: var(--kexo-accent-5, #ef4444);
+  mask: conic-gradient(from 0deg, black 0deg, black 360deg);
+  -webkit-mask: conic-gradient(from 0deg, black 0deg, black 360deg);
+}
+.kexo-score-ring[data-score="100"] {
+  background: var(--kexo-accent-2, #3eb3ab);
+  mask: conic-gradient(from 0deg, black 0deg, black 360deg);
+  -webkit-mask: conic-gradient(from 0deg, black 0deg, black 360deg);
 }
 .kexo-score-ring::before {
   content: '';
@@ -2173,11 +2202,11 @@ html[data-bs-theme="dark"] .report-build-wrap {
   stroke-width: 4px;
   stroke-linecap: butt;
 }
-.kexo-score-ring-svg--header .kexo-score-ring-fill--1 { stroke: var(--kexo-accent-1, #4b94e4); }
-.kexo-score-ring-svg--header .kexo-score-ring-fill--2 { stroke: var(--kexo-accent-2, #3eb3ab); }
+.kexo-score-ring-svg--header .kexo-score-ring-fill--1 { stroke: var(--kexo-accent-5, #ef4444); }
+.kexo-score-ring-svg--header .kexo-score-ring-fill--2 { stroke: var(--kexo-accent-4, #8b5cf6); }
 .kexo-score-ring-svg--header .kexo-score-ring-fill--3 { stroke: var(--kexo-accent-3, #f59e34); }
-.kexo-score-ring-svg--header .kexo-score-ring-fill--4 { stroke: var(--kexo-accent-4, #8b5cf6); }
-.kexo-score-ring-svg--header .kexo-score-ring-fill--5 { stroke: var(--kexo-accent-5, #ef4444); }
+.kexo-score-ring-svg--header .kexo-score-ring-fill--4 { stroke: var(--kexo-accent-1, #4b94e4); }
+.kexo-score-ring-svg--header .kexo-score-ring-fill--5 { stroke: var(--kexo-accent-2, #3eb3ab); }
 .kexo-score-ring-svg--header .kexo-score-ring-fill {
   stroke-width: 4px;
   stroke-linecap: butt;
@@ -2284,11 +2313,11 @@ html[data-bs-theme="dark"] .report-build-wrap {
   stroke-width: 4px;
   stroke-linecap: butt;
 }
-#kexo-score-modal .kexo-score-ring-svg--modal .kexo-score-ring-fill--1 { stroke: var(--kexo-accent-1, #4b94e4); }
-#kexo-score-modal .kexo-score-ring-svg--modal .kexo-score-ring-fill--2 { stroke: var(--kexo-accent-2, #3eb3ab); }
+#kexo-score-modal .kexo-score-ring-svg--modal .kexo-score-ring-fill--1 { stroke: var(--kexo-accent-5, #ef4444); }
+#kexo-score-modal .kexo-score-ring-svg--modal .kexo-score-ring-fill--2 { stroke: var(--kexo-accent-4, #8b5cf6); }
 #kexo-score-modal .kexo-score-ring-svg--modal .kexo-score-ring-fill--3 { stroke: var(--kexo-accent-3, #f59e34); }
-#kexo-score-modal .kexo-score-ring-svg--modal .kexo-score-ring-fill--4 { stroke: var(--kexo-accent-4, #8b5cf6); }
-#kexo-score-modal .kexo-score-ring-svg--modal .kexo-score-ring-fill--5 { stroke: var(--kexo-accent-5, #ef4444); }
+#kexo-score-modal .kexo-score-ring-svg--modal .kexo-score-ring-fill--4 { stroke: var(--kexo-accent-1, #4b94e4); }
+#kexo-score-modal .kexo-score-ring-svg--modal .kexo-score-ring-fill--5 { stroke: var(--kexo-accent-2, #3eb3ab); }
 #kexo-score-modal .kexo-score-ring-svg--modal .kexo-score-ring-fill {
   stroke-width: 4px;
   stroke-linecap: butt;
@@ -2411,9 +2440,13 @@ html[data-bs-theme="dark"] .report-build-wrap {
   color: #0f172a;
 }
 .kexo-score-summary-card .kexo-score-summary-drivers {
-  margin: 0;
-  padding-left: 1.1rem;
+  margin: 0.5rem 0 0 0;
+  padding: 0.5rem 0.65rem 0.5rem 0.75rem;
+  background: rgba(15, 23, 42, 0.04);
+  border-left: 3px solid var(--kexo-accent-1, #4b94e4);
+  border-radius: 0 6px 6px 0;
   color: #475569;
+  list-style: none;
 }
 .kexo-score-summary-card .kexo-score-summary-drivers li {
   margin-bottom: 0.2rem;
@@ -2844,11 +2877,11 @@ html[data-bs-theme="dark"] .report-build-wrap {
   stroke-width: 4px;
   stroke-linecap: butt;
 }
-.kexo-score-ring-svg--overview .kexo-score-ring-fill--1 { stroke: var(--kexo-accent-1, #4b94e4); }
-.kexo-score-ring-svg--overview .kexo-score-ring-fill--2 { stroke: var(--kexo-accent-2, #3eb3ab); }
+.kexo-score-ring-svg--overview .kexo-score-ring-fill--1 { stroke: var(--kexo-accent-5, #ef4444); }
+.kexo-score-ring-svg--overview .kexo-score-ring-fill--2 { stroke: var(--kexo-accent-4, #8b5cf6); }
 .kexo-score-ring-svg--overview .kexo-score-ring-fill--3 { stroke: var(--kexo-accent-3, #f59e34); }
-.kexo-score-ring-svg--overview .kexo-score-ring-fill--4 { stroke: var(--kexo-accent-4, #8b5cf6); }
-.kexo-score-ring-svg--overview .kexo-score-ring-fill--5 { stroke: var(--kexo-accent-5, #ef4444); }
+.kexo-score-ring-svg--overview .kexo-score-ring-fill--4 { stroke: var(--kexo-accent-1, #4b94e4); }
+.kexo-score-ring-svg--overview .kexo-score-ring-fill--5 { stroke: var(--kexo-accent-2, #3eb3ab); }
 .kexo-score-ring-svg--overview .kexo-score-ring-fill {
   stroke-width: 4px;
   stroke-linecap: butt;

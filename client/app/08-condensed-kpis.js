@@ -237,7 +237,8 @@
 
       beginReportBuildScope(scope);
       if (key === 'sessions' && scope) try { scope.classList.add('report-building-sessions'); } catch (_) {}
-      if (overlay) overlay.classList.remove('is-hidden');
+      var showOverlay = opts.showOverlay === true;
+      if (overlay && showOverlay) overlay.classList.remove('is-hidden');
       if (stepEl) {
         if (opts.initialStep != null) stepEl.textContent = String(opts.initialStep);
         else if (!String(stepEl.textContent || '').trim()) stepEl.textContent = 'Preparing application';
@@ -260,8 +261,9 @@
       function finish() {
         if (reportBuildTokens[key] !== token) return;
         if (key === 'sessions' && scope) try { scope.classList.remove('report-building-sessions'); } catch (_) {}
-        if (overlay) overlay.classList.add('is-hidden');
-        if (overlay && overlayOrigin && overlayOrigin.parent) {
+        var showOverlay = opts.showOverlay === true;
+        if (overlay && showOverlay) overlay.classList.add('is-hidden');
+        if (overlay && showOverlay && overlayOrigin && overlayOrigin.parent) {
           try {
             if (overlayOrigin.next && overlayOrigin.next.parentNode === overlayOrigin.parent) overlayOrigin.parent.insertBefore(overlay, overlayOrigin.next);
             else overlayOrigin.parent.appendChild(overlay);
@@ -2664,19 +2666,19 @@
         html += section('Resolved IDs', renderIdsHtml(resolved, 'page'));
         html += section('Activity', renderActivityHtml(events, 'page'));
         if (session) {
-          var utm = [session.utm_source, session.utm_medium, session.utm_campaign, session.utm_content].filter(Boolean).join(' ?? ');
-          var attrib = [session.attribution_channel, session.attribution_source, session.attribution_variant].filter(Boolean).join(' ?? ');
+          var utm = [session.utm_source, session.utm_medium, session.utm_campaign, session.utm_content].filter(Boolean).join(' / ');
+          var attrib = [session.attribution_channel, session.attribution_source, session.attribution_variant].filter(Boolean).join(' / ');
           if (session.attribution_confidence) attrib = attrib ? (attrib + ' (' + session.attribution_confidence + ')') : String(session.attribution_confidence);
           var sRows = [
-            { k: 'Started', v: formatTs(session.started_at) || '???' },
-            { k: 'Last seen', v: formatTs(session.last_seen) || '???' },
-            { k: 'Country', v: session.country_code || '???' },
-            { k: 'Device', v: session.device || '???' },
-            { k: 'UA device/platform', v: ((session.ua_device_type || '') + ' / ' + (session.ua_platform || '') + (session.ua_model ? (' / ' + session.ua_model) : '')).trim() || '???' },
-            { k: 'Attribution', v: attrib || '???' },
-            { k: 'Entry URL', v: session.entry_url || '???' },
-            { k: 'Referrer', v: session.referrer || '???' },
-            { k: 'UTM', v: utm || '???' },
+            { k: 'Started', v: formatTs(session.started_at) || '\u2014' },
+            { k: 'Last seen', v: formatTs(session.last_seen) || '\u2014' },
+            { k: 'Country', v: session.country_code || '\u2014' },
+            { k: 'Device', v: session.device || '\u2014' },
+            { k: 'UA device/platform', v: ((session.ua_device_type || '') + ' / ' + (session.ua_platform || '') + (session.ua_model ? (' / ' + session.ua_model) : '')).trim() || '\u2014' },
+            { k: 'Attribution', v: attrib || '\u2014' },
+            { k: 'Entry URL', v: session.entry_url || '\u2014' },
+            { k: 'Referrer', v: session.referrer || '\u2014' },
+            { k: 'UTM', v: utm || '\u2014' },
           ];
           var body = sRows.map(function (r) {
             return '<tr><th style="width:180px">' + esc(r.k) + '</th><td><code>' + esc(r.v) + '</code></td></tr>';
@@ -2687,11 +2689,11 @@
           var pHtml = purchases.slice(0, 5).map(function (p) {
             if (!p || typeof p !== 'object') return '';
             var rows = [
-              { k: 'Purchase key', v: p.purchase_key || '???' },
-              { k: 'Purchased at', v: formatTs(p.purchased_at) || '???' },
-              { k: 'Order ID', v: p.order_id || '???' },
-              { k: 'Checkout token', v: p.checkout_token || '???' },
-              { k: 'Total', v: (p.order_total != null ? String(p.order_total) : '???') + (p.order_currency ? (' ' + p.order_currency) : '') },
+              { k: 'Purchase key', v: p.purchase_key || '\u2014' },
+              { k: 'Purchased at', v: formatTs(p.purchased_at) || '\u2014' },
+              { k: 'Order ID', v: p.order_id || '\u2014' },
+              { k: 'Checkout token', v: p.checkout_token || '\u2014' },
+              { k: 'Total', v: (p.order_total != null ? String(p.order_total) : '\u2014') + (p.order_currency ? (' ' + p.order_currency) : '') },
             ];
             var body = rows.map(function (r) {
               return '<tr><th style="width:180px">' + esc(r.k) + '</th><td><code>' + esc(r.v) + '</code></td></tr>';
@@ -2826,7 +2828,7 @@
                   if (info.platform && info.platform !== 'unknown') parts2.push(titleize(info.platform));
                   if (info.model) parts2.push(titleize(info.model));
                   if (info.deviceType && info.deviceType !== 'unknown') parts2.push(titleize(info.deviceType));
-                  deviceLabel = parts2.length ? parts2.join(' ?? ') : '';
+                  deviceLabel = parts2.length ? parts2.join(' - ') : '';
                 } catch (_) { deviceLabel = ''; }
 
                 var tailParts = [];

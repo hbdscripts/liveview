@@ -1488,7 +1488,7 @@
       if (info.platform && info.platform !== 'unknown') titleParts.push(titleize(info.platform));
       if (info.model) titleParts.push(titleize(info.model));
       if (info.deviceType && info.deviceType !== 'unknown') titleParts.push(titleize(info.deviceType));
-      const title = titleParts.length ? titleParts.join(' ?? ') : (s && s.device != null ? String(s.device) : 'Unknown');
+      const title = titleParts.length ? titleParts.join(' - ') : (s && s.device != null ? String(s.device) : 'Unknown');
       const t = title ? ' title="' + escapeHtml(String(title)) + '"' : '';
 
       return '' +

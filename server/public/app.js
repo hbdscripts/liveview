@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 79d6b8ed47cc7970
+// checksum: ce67d6c14d41dc2f
 
 (function () {
 const API = '';
@@ -813,7 +813,7 @@ const API = '';
 
     // Desktop date picker is mounted into the page header right slot.
 
-    // ?????? Page progress bar (Tabler turbo-style) ??????
+    // Page progress bar (Tabler Turbo-style): refcount + width animation
     var _progressEl = null;
     var _progressBarEl = null;
     var _progressActive = 0;
@@ -827,11 +827,28 @@ const API = '';
       _progressBarEl = _progressEl.querySelector('.page-progress-bar');
     }
     function showPageProgress() {
-      // Single-loader contract: do not show a separate top progress bar.
-      return;
+      _ensureProgress();
+      _progressActive += 1;
+      _progressEl.classList.add('active');
+      if (_progressBarEl) {
+        _progressBarEl.style.width = '';
+        _progressBarEl.offsetHeight;
+        _progressBarEl.style.width = '70%';
+      }
+      if (_progressHideTimer) {
+        clearTimeout(_progressHideTimer);
+        _progressHideTimer = null;
+      }
     }
     function hidePageProgress() {
-      return;
+      _progressActive = Math.max(0, _progressActive - 1);
+      if (_progressActive > 0 || !_progressEl || !_progressBarEl) return;
+      _progressBarEl.style.width = '100%';
+      _progressHideTimer = setTimeout(function() {
+        _progressHideTimer = null;
+        _progressEl.classList.remove('active');
+        _progressBarEl.style.width = '0%';
+      }, 200);
     }
     const LIVE_REFRESH_MS = 60000;
     const RANGE_REFRESH_MS = 5 * 60 * 1000; // Today and Sales refresh every 5 min
@@ -2996,7 +3013,7 @@ const API = '';
       if (info.platform && info.platform !== 'unknown') titleParts.push(titleize(info.platform));
       if (info.model) titleParts.push(titleize(info.model));
       if (info.deviceType && info.deviceType !== 'unknown') titleParts.push(titleize(info.deviceType));
-      const title = titleParts.length ? titleParts.join(' ?? ') : (s && s.device != null ? String(s.device) : 'Unknown');
+      const title = titleParts.length ? titleParts.join(' - ') : (s && s.device != null ? String(s.device) : 'Unknown');
       const t = title ? ' title="' + escapeHtml(String(title)) + '"' : '';
 
       return '' +
@@ -6851,15 +6868,14 @@ const API = '';
     function formatYmdRangeLabel(startYmd, endYmd) {
       if (!startYmd || !endYmd) return '';
       if (startYmd === endYmd) return formatYmdShort(startYmd);
-      // Same month? Compact as "5???7 Feb"
+      // Same month? Compact as "5–7 Feb"
       if (startYmd.slice(0, 7) === endYmd.slice(0, 7)) {
         var d1 = parseInt(startYmd.slice(8, 10), 10);
         var d2 = parseInt(endYmd.slice(8, 10), 10);
         var suffix = formatYmdShort(endYmd);
-        // suffix is "7 Feb" ??? replace the day part
-        return d1 + '???' + suffix;
+        return d1 + '\u2013' + suffix;
       }
-      return formatYmdShort(startYmd) + ' ??? ' + formatYmdShort(endYmd);
+      return formatYmdShort(startYmd) + ' \u2013 ' + formatYmdShort(endYmd);
     }
 
     function formatYmdShort(ymd) {
@@ -7349,7 +7365,12 @@ const API = '';
       syncDateSelectOptions();
     }
 
-    function applyDateRangeChange() {
+    var timeframeOverlayToken = 0;
+    function applyDateRangeChange(opts) {
+      opts = opts && typeof opts === 'object' ? opts : {};
+      var showTimeframeOverlay = opts.showTimeframeOverlay === true;
+      if (PAGE === 'settings') showTimeframeOverlay = false;
+
       if (dateRange !== 'live') lastOnlineCount = null;
       countryPage = 1;
       bestGeoProductsPage = 1;
@@ -7376,6 +7397,101 @@ const API = '';
       lastAttributionFetchedAt = 0;
       lastDevicesFetchedAt = 0;
       updateNextUpdateUi();
+
+      if (showTimeframeOverlay) {
+        timeframeOverlayToken += 1;
+        var token = timeframeOverlayToken;
+        var dateLabel = 'date range';
+        try {
+          var applied = appliedYmdRangeFromDateRange();
+          if (applied && applied.startYmd && applied.endYmd) {
+            dateLabel = formatYmdRangeLabel(applied.startYmd, applied.endYmd) || dateLabel;
+          } else {
+            var fallback = { today: 'Today', yesterday: 'Yesterday', '7days': 'Last 7 days', '14days': 'Last 14 days', '30days': 'Last 30 days' };
+            dateLabel = fallback[String(dateRange || 'today')] || 'Today';
+          }
+        } catch (_) {}
+        var overlay = document.getElementById('page-body-loader');
+        var titleEl = overlay && overlay.querySelector ? overlay.querySelector('.report-build-title') : null;
+        var stepEl = document.getElementById('page-body-build-step');
+        var indeterminateWrap = overlay && overlay.querySelector ? overlay.querySelector('.page-loader-progress:not(.page-loader-progress--determinate)') : null;
+        var determinateWrap = document.getElementById('page-body-loader-determinate');
+        var determinateBar = document.getElementById('page-body-loader-determinate-bar');
+        if (titleEl) titleEl.textContent = 'Preparing ' + dateLabel + ' reports';
+        if (stepEl) stepEl.textContent = 'Loading…';
+        if (indeterminateWrap) indeterminateWrap.style.display = 'none';
+        if (determinateWrap) { determinateWrap.style.display = ''; }
+        if (determinateBar) { determinateBar.style.width = '0%'; determinateBar.setAttribute('aria-valuenow', 0); }
+        if (overlay) {
+          overlay.classList.remove('is-hidden');
+          overlay.classList.add('timeframe-overlay');
+        }
+        var scope = document.querySelector('.page-body');
+        if (scope) try { scope.classList.add('report-building'); } catch (_) {}
+        try { document.body.classList.add('kexo-report-loading'); } catch (_) {}
+
+        var promises = [];
+        try { promises.push(refreshKpis({ force: true })); } catch (_) {}
+        try {
+          var kexoP = typeof window.refreshKexoScore === 'function' ? window.refreshKexoScore() : null;
+          if (kexoP && typeof kexoP.then === 'function') promises.push(kexoP);
+        } catch (_) {}
+        var tabPromise = null;
+        if (activeMainTab === 'stats') { try { tabPromise = refreshStats({ force: false }); } catch (_) {} }
+        else if (activeMainTab === 'products') { try { tabPromise = refreshProducts({ force: false }); } catch (_) {} }
+        else if (activeMainTab === 'attribution') { try { tabPromise = refreshAttribution({ force: false }); } catch (_) {} }
+        else if (activeMainTab === 'devices') { try { tabPromise = refreshDevices({ force: false }); } catch (_) {} }
+        else if (activeMainTab === 'variants') {
+          try { tabPromise = typeof window.__refreshVariantsInsights === 'function' ? window.__refreshVariantsInsights({ force: true }) : null; } catch (_) {}
+        } else if (activeMainTab === 'abandoned-carts') { try { tabPromise = refreshAbandonedCarts({ force: true }); } catch (_) {} }
+        if (tabPromise && typeof tabPromise.then === 'function') promises.push(tabPromise);
+        if (activeMainTab === 'dashboard') { try { if (typeof refreshDashboard === 'function') refreshDashboard({ force: false }); } catch (_) {} }
+        if (activeMainTab === 'ads' || PAGE === 'ads') { try { if (window.__adsRefresh) window.__adsRefresh({ force: false }); } catch (_) {} }
+        if (activeMainTab !== 'dashboard' && activeMainTab !== 'stats' && activeMainTab !== 'products' && activeMainTab !== 'attribution' && activeMainTab !== 'devices' && activeMainTab !== 'variants' && activeMainTab !== 'abandoned-carts') {
+          updateKpis();
+          try { fetchSessions(); } catch (_) {}
+        }
+
+        var total = Math.max(1, promises.length);
+        var completed = 0;
+        function updateProgress(pct) {
+          if (timeframeOverlayToken !== token) return;
+          var bar = document.getElementById('page-body-loader-determinate-bar');
+          if (bar) { bar.style.width = pct + '%'; bar.setAttribute('aria-valuenow', Math.round(pct)); }
+        }
+        function hideTimeframeOverlay() {
+          if (timeframeOverlayToken !== token) return;
+          var ov = document.getElementById('page-body-loader');
+          if (ov) { ov.classList.add('is-hidden'); ov.classList.remove('timeframe-overlay'); }
+          var ind = ov && ov.querySelector ? ov.querySelector('.page-loader-progress:not(.page-loader-progress--determinate)') : null;
+          if (ind) ind.style.display = '';
+          var det = document.getElementById('page-body-loader-determinate');
+          if (det) det.style.display = 'none';
+          var detBar = document.getElementById('page-body-loader-determinate-bar');
+          if (detBar) { detBar.style.width = '0%'; detBar.setAttribute('aria-valuenow', 0); }
+          if (scope) try { scope.classList.remove('report-building'); } catch (_) {}
+          try { document.body.classList.remove('kexo-report-loading'); } catch (_) {}
+        }
+        promises.forEach(function(p) {
+          if (p && typeof p.finally === 'function') {
+            p.finally(function() {
+              completed += 1;
+              updateProgress((completed / total) * 100);
+              if (completed >= total) hideTimeframeOverlay();
+            });
+          } else {
+            completed += 1;
+            updateProgress((completed / total) * 100);
+            if (completed >= total) hideTimeframeOverlay();
+          }
+        });
+        if (promises.length === 0) {
+          updateProgress(100);
+          hideTimeframeOverlay();
+        }
+        updateKpis();
+        return;
+      }
 
       // Top KPI grid refreshes independently (every minute). On range change, force a refresh immediately.
       refreshKpis({ force: false });
@@ -7467,7 +7583,7 @@ const API = '';
       }
       const startYmd = a <= b ? a : b;
       const endYmd = a <= b ? b : a;
-      summaryEl.textContent = 'Selected: ' + (formatYmdRangeLabel(startYmd, endYmd) || (startYmd + ' ??? ' + endYmd));
+      summaryEl.textContent = 'Selected: ' + (formatYmdRangeLabel(startYmd, endYmd) || (startYmd + ' \u2013 ' + endYmd));
       if (clearBtn) clearBtn.disabled = false;
       if (applyBtn) applyBtn.disabled = false;
     }
@@ -7520,7 +7636,7 @@ const API = '';
           customRangeEndYmd = endYmd;
           dateRange = rk;
           closeCustomDateModal();
-          applyDateRangeChange();
+          applyDateRangeChange({ showTimeframeOverlay: true });
         });
       }
       // Flatpickr handles date selection via its own UI
@@ -9883,7 +9999,8 @@ const API = '';
 
       beginReportBuildScope(scope);
       if (key === 'sessions' && scope) try { scope.classList.add('report-building-sessions'); } catch (_) {}
-      if (overlay) overlay.classList.remove('is-hidden');
+      var showOverlay = opts.showOverlay === true;
+      if (overlay && showOverlay) overlay.classList.remove('is-hidden');
       if (stepEl) {
         if (opts.initialStep != null) stepEl.textContent = String(opts.initialStep);
         else if (!String(stepEl.textContent || '').trim()) stepEl.textContent = 'Preparing application';
@@ -9906,8 +10023,9 @@ const API = '';
       function finish() {
         if (reportBuildTokens[key] !== token) return;
         if (key === 'sessions' && scope) try { scope.classList.remove('report-building-sessions'); } catch (_) {}
-        if (overlay) overlay.classList.add('is-hidden');
-        if (overlay && overlayOrigin && overlayOrigin.parent) {
+        var showOverlay = opts.showOverlay === true;
+        if (overlay && showOverlay) overlay.classList.add('is-hidden');
+        if (overlay && showOverlay && overlayOrigin && overlayOrigin.parent) {
           try {
             if (overlayOrigin.next && overlayOrigin.next.parentNode === overlayOrigin.parent) overlayOrigin.parent.insertBefore(overlay, overlayOrigin.next);
             else overlayOrigin.parent.appendChild(overlay);
@@ -12310,19 +12428,19 @@ const API = '';
         html += section('Resolved IDs', renderIdsHtml(resolved, 'page'));
         html += section('Activity', renderActivityHtml(events, 'page'));
         if (session) {
-          var utm = [session.utm_source, session.utm_medium, session.utm_campaign, session.utm_content].filter(Boolean).join(' ?? ');
-          var attrib = [session.attribution_channel, session.attribution_source, session.attribution_variant].filter(Boolean).join(' ?? ');
+          var utm = [session.utm_source, session.utm_medium, session.utm_campaign, session.utm_content].filter(Boolean).join(' / ');
+          var attrib = [session.attribution_channel, session.attribution_source, session.attribution_variant].filter(Boolean).join(' / ');
           if (session.attribution_confidence) attrib = attrib ? (attrib + ' (' + session.attribution_confidence + ')') : String(session.attribution_confidence);
           var sRows = [
-            { k: 'Started', v: formatTs(session.started_at) || '???' },
-            { k: 'Last seen', v: formatTs(session.last_seen) || '???' },
-            { k: 'Country', v: session.country_code || '???' },
-            { k: 'Device', v: session.device || '???' },
-            { k: 'UA device/platform', v: ((session.ua_device_type || '') + ' / ' + (session.ua_platform || '') + (session.ua_model ? (' / ' + session.ua_model) : '')).trim() || '???' },
-            { k: 'Attribution', v: attrib || '???' },
-            { k: 'Entry URL', v: session.entry_url || '???' },
-            { k: 'Referrer', v: session.referrer || '???' },
-            { k: 'UTM', v: utm || '???' },
+            { k: 'Started', v: formatTs(session.started_at) || '\u2014' },
+            { k: 'Last seen', v: formatTs(session.last_seen) || '\u2014' },
+            { k: 'Country', v: session.country_code || '\u2014' },
+            { k: 'Device', v: session.device || '\u2014' },
+            { k: 'UA device/platform', v: ((session.ua_device_type || '') + ' / ' + (session.ua_platform || '') + (session.ua_model ? (' / ' + session.ua_model) : '')).trim() || '\u2014' },
+            { k: 'Attribution', v: attrib || '\u2014' },
+            { k: 'Entry URL', v: session.entry_url || '\u2014' },
+            { k: 'Referrer', v: session.referrer || '\u2014' },
+            { k: 'UTM', v: utm || '\u2014' },
           ];
           var body = sRows.map(function (r) {
             return '<tr><th style="width:180px">' + esc(r.k) + '</th><td><code>' + esc(r.v) + '</code></td></tr>';
@@ -12333,11 +12451,11 @@ const API = '';
           var pHtml = purchases.slice(0, 5).map(function (p) {
             if (!p || typeof p !== 'object') return '';
             var rows = [
-              { k: 'Purchase key', v: p.purchase_key || '???' },
-              { k: 'Purchased at', v: formatTs(p.purchased_at) || '???' },
-              { k: 'Order ID', v: p.order_id || '???' },
-              { k: 'Checkout token', v: p.checkout_token || '???' },
-              { k: 'Total', v: (p.order_total != null ? String(p.order_total) : '???') + (p.order_currency ? (' ' + p.order_currency) : '') },
+              { k: 'Purchase key', v: p.purchase_key || '\u2014' },
+              { k: 'Purchased at', v: formatTs(p.purchased_at) || '\u2014' },
+              { k: 'Order ID', v: p.order_id || '\u2014' },
+              { k: 'Checkout token', v: p.checkout_token || '\u2014' },
+              { k: 'Total', v: (p.order_total != null ? String(p.order_total) : '\u2014') + (p.order_currency ? (' ' + p.order_currency) : '') },
             ];
             var body = rows.map(function (r) {
               return '<tr><th style="width:180px">' + esc(r.k) + '</th><td><code>' + esc(r.v) + '</code></td></tr>';
@@ -12472,7 +12590,7 @@ const API = '';
                   if (info.platform && info.platform !== 'unknown') parts2.push(titleize(info.platform));
                   if (info.model) parts2.push(titleize(info.model));
                   if (info.deviceType && info.deviceType !== 'unknown') parts2.push(titleize(info.deviceType));
-                  deviceLabel = parts2.length ? parts2.join(' ?? ') : '';
+                  deviceLabel = parts2.length ? parts2.join(' - ') : '';
                 } catch (_) { deviceLabel = ''; }
 
                 var tailParts = [];
@@ -14281,13 +14399,13 @@ const API = '';
           // Handle standard date ranges
           if (next === 'today' || next === 'yesterday' || next === '7days' || next === '14days' || next === '30days') {
             dateRange = next;
-            applyDateRangeChange();
+            applyDateRangeChange({ showTimeframeOverlay: true, source: 'header' });
             return;
           }
           // Defensive: allow selecting an applied range key if present.
           if (isCustomRangeKey(next)) {
             dateRange = next;
-            applyDateRangeChange();
+            applyDateRangeChange({ showTimeframeOverlay: true, source: 'header' });
           }
         });
         initCustomDateModal();
@@ -17798,6 +17916,13 @@ const API = '';
       var KEXO_RING_SEGMENT_AND_GAP = KEXO_RING_SEGMENT + KEXO_RING_GAP;
       var KEXO_RING_START_OFFSET = 0.75 * KEXO_RING_CIRCUMFERENCE;
 
+      var KEXO_RING_COLOR_ORDER = [
+          'var(--kexo-accent-5, #ef4444)',
+          'var(--kexo-accent-4, #8b5cf6)',
+          'var(--kexo-accent-3, #f59e34)',
+          'var(--kexo-accent-1, #4b94e4)',
+          'var(--kexo-accent-2, #3eb3ab)'
+        ];
       function applyKexoScoreRingSvg(svg, rawScore) {
         if (!svg || svg.tagName !== 'svg') return;
         var score = Number(rawScore);
@@ -17810,14 +17935,19 @@ const API = '';
           trackCircle.setAttribute('stroke-dashoffset', (-KEXO_RING_START_OFFSET).toFixed(2));
         }
         var totalFill = (score / 100) * (5 * KEXO_RING_SEGMENT);
+        var fullRed = score === 0;
+        var fullGreen = score === 100;
         for (var i = 0; i < 5; i += 1) {
           var segStart = KEXO_RING_START_OFFSET + i * KEXO_RING_SEGMENT_AND_GAP;
           var fillStart = i * KEXO_RING_SEGMENT_AND_GAP;
-          var filled = Math.max(0, Math.min(KEXO_RING_SEGMENT, totalFill - fillStart));
+          var filled = fullRed ? KEXO_RING_SEGMENT : (fullGreen ? KEXO_RING_SEGMENT : Math.max(0, Math.min(KEXO_RING_SEGMENT, totalFill - fillStart)));
           var fillCircle = svg.querySelector('.kexo-score-ring-fill--' + (i + 1));
           if (fillCircle) {
             fillCircle.setAttribute('stroke-dasharray', filled.toFixed(2) + ' 9999');
             fillCircle.setAttribute('stroke-dashoffset', (-segStart).toFixed(2));
+            if (fullRed) fillCircle.style.stroke = 'var(--kexo-accent-5, #ef4444)';
+            else if (fullGreen) fillCircle.style.stroke = 'var(--kexo-accent-2, #3eb3ab)';
+            else fillCircle.style.stroke = KEXO_RING_COLOR_ORDER[i];
           }
         }
       }
@@ -17827,12 +17957,15 @@ const API = '';
         if (!Number.isFinite(score)) score = 0;
         score = Math.max(0, Math.min(100, score));
 
+        if (score === 0) return 'conic-gradient(from -90deg, var(--kexo-accent-5, #ef4444) 0deg 360deg)';
+        if (score === 100) return 'conic-gradient(from -90deg, var(--kexo-accent-2, #3eb3ab) 0deg 360deg)';
+
         var colors = [
-          'var(--kexo-accent-1, #4b94e4)',
-          'var(--kexo-accent-2, #3eb3ab)',
-          'var(--kexo-accent-3, #f59e34)',
+          'var(--kexo-accent-5, #ef4444)',
           'var(--kexo-accent-4, #8b5cf6)',
-          'var(--kexo-accent-5, #ef4444)'
+          'var(--kexo-accent-3, #f59e34)',
+          'var(--kexo-accent-1, #4b94e4)',
+          'var(--kexo-accent-2, #3eb3ab)'
         ];
         var track = 'var(--kexo-score-track)';
         var segDeg = 360 / colors.length;
@@ -17882,7 +18015,10 @@ const API = '';
           if (empty) dashNum.innerHTML = '<span class="kpi-mini-spinner" aria-hidden="true"></span>';
           else dashNum.textContent = dashText;
         }
-        if (dashRing) dashRing.style.setProperty('--kexo-score-pct', pct);
+        if (dashRing) {
+          dashRing.style.setProperty('--kexo-score-pct', pct);
+          dashRing.setAttribute('data-score', pct);
+        }
         if (headerNum) { headerNum.textContent = headerText; }
         if (headerRing) {
           if (headerRing.tagName === 'svg') {
@@ -18257,7 +18393,7 @@ const API = '';
       };
 
       window.refreshKexoScore = function() {
-        fetchKexoScore(dashRangeKeyFromDateRange());
+        return fetchKexoScore(dashRangeKeyFromDateRange());
       };
       if (document.getElementById('header-kexo-score-wrap')) {
         fetchKexoScore(dashRangeKeyFromDateRange());

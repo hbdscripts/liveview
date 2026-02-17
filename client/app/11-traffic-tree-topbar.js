@@ -259,13 +259,13 @@
           // Handle standard date ranges
           if (next === 'today' || next === 'yesterday' || next === '7days' || next === '14days' || next === '30days') {
             dateRange = next;
-            applyDateRangeChange();
+            applyDateRangeChange({ showTimeframeOverlay: true, source: 'header' });
             return;
           }
           // Defensive: allow selecting an applied range key if present.
           if (isCustomRangeKey(next)) {
             dateRange = next;
-            applyDateRangeChange();
+            applyDateRangeChange({ showTimeframeOverlay: true, source: 'header' });
           }
         });
         initCustomDateModal();

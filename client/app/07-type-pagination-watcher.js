@@ -1622,15 +1622,14 @@
     function formatYmdRangeLabel(startYmd, endYmd) {
       if (!startYmd || !endYmd) return '';
       if (startYmd === endYmd) return formatYmdShort(startYmd);
-      // Same month? Compact as "5???7 Feb"
+      // Same month? Compact as "5–7 Feb"
       if (startYmd.slice(0, 7) === endYmd.slice(0, 7)) {
         var d1 = parseInt(startYmd.slice(8, 10), 10);
         var d2 = parseInt(endYmd.slice(8, 10), 10);
         var suffix = formatYmdShort(endYmd);
-        // suffix is "7 Feb" ??? replace the day part
-        return d1 + '???' + suffix;
+        return d1 + '\u2013' + suffix;
       }
-      return formatYmdShort(startYmd) + ' ??? ' + formatYmdShort(endYmd);
+      return formatYmdShort(startYmd) + ' \u2013 ' + formatYmdShort(endYmd);
     }
 
     function formatYmdShort(ymd) {
@@ -2120,7 +2119,12 @@
       syncDateSelectOptions();
     }
 
-    function applyDateRangeChange() {
+    var timeframeOverlayToken = 0;
+    function applyDateRangeChange(opts) {
+      opts = opts && typeof opts === 'object' ? opts : {};
+      var showTimeframeOverlay = opts.showTimeframeOverlay === true;
+      if (PAGE === 'settings') showTimeframeOverlay = false;
+
       if (dateRange !== 'live') lastOnlineCount = null;
       countryPage = 1;
       bestGeoProductsPage = 1;
@@ -2147,6 +2151,101 @@
       lastAttributionFetchedAt = 0;
       lastDevicesFetchedAt = 0;
       updateNextUpdateUi();
+
+      if (showTimeframeOverlay) {
+        timeframeOverlayToken += 1;
+        var token = timeframeOverlayToken;
+        var dateLabel = 'date range';
+        try {
+          var applied = appliedYmdRangeFromDateRange();
+          if (applied && applied.startYmd && applied.endYmd) {
+            dateLabel = formatYmdRangeLabel(applied.startYmd, applied.endYmd) || dateLabel;
+          } else {
+            var fallback = { today: 'Today', yesterday: 'Yesterday', '7days': 'Last 7 days', '14days': 'Last 14 days', '30days': 'Last 30 days' };
+            dateLabel = fallback[String(dateRange || 'today')] || 'Today';
+          }
+        } catch (_) {}
+        var overlay = document.getElementById('page-body-loader');
+        var titleEl = overlay && overlay.querySelector ? overlay.querySelector('.report-build-title') : null;
+        var stepEl = document.getElementById('page-body-build-step');
+        var indeterminateWrap = overlay && overlay.querySelector ? overlay.querySelector('.page-loader-progress:not(.page-loader-progress--determinate)') : null;
+        var determinateWrap = document.getElementById('page-body-loader-determinate');
+        var determinateBar = document.getElementById('page-body-loader-determinate-bar');
+        if (titleEl) titleEl.textContent = 'Preparing ' + dateLabel + ' reports';
+        if (stepEl) stepEl.textContent = 'Loading…';
+        if (indeterminateWrap) indeterminateWrap.style.display = 'none';
+        if (determinateWrap) { determinateWrap.style.display = ''; }
+        if (determinateBar) { determinateBar.style.width = '0%'; determinateBar.setAttribute('aria-valuenow', 0); }
+        if (overlay) {
+          overlay.classList.remove('is-hidden');
+          overlay.classList.add('timeframe-overlay');
+        }
+        var scope = document.querySelector('.page-body');
+        if (scope) try { scope.classList.add('report-building'); } catch (_) {}
+        try { document.body.classList.add('kexo-report-loading'); } catch (_) {}
+
+        var promises = [];
+        try { promises.push(refreshKpis({ force: true })); } catch (_) {}
+        try {
+          var kexoP = typeof window.refreshKexoScore === 'function' ? window.refreshKexoScore() : null;
+          if (kexoP && typeof kexoP.then === 'function') promises.push(kexoP);
+        } catch (_) {}
+        var tabPromise = null;
+        if (activeMainTab === 'stats') { try { tabPromise = refreshStats({ force: false }); } catch (_) {} }
+        else if (activeMainTab === 'products') { try { tabPromise = refreshProducts({ force: false }); } catch (_) {} }
+        else if (activeMainTab === 'attribution') { try { tabPromise = refreshAttribution({ force: false }); } catch (_) {} }
+        else if (activeMainTab === 'devices') { try { tabPromise = refreshDevices({ force: false }); } catch (_) {} }
+        else if (activeMainTab === 'variants') {
+          try { tabPromise = typeof window.__refreshVariantsInsights === 'function' ? window.__refreshVariantsInsights({ force: true }) : null; } catch (_) {}
+        } else if (activeMainTab === 'abandoned-carts') { try { tabPromise = refreshAbandonedCarts({ force: true }); } catch (_) {} }
+        if (tabPromise && typeof tabPromise.then === 'function') promises.push(tabPromise);
+        if (activeMainTab === 'dashboard') { try { if (typeof refreshDashboard === 'function') refreshDashboard({ force: false }); } catch (_) {} }
+        if (activeMainTab === 'ads' || PAGE === 'ads') { try { if (window.__adsRefresh) window.__adsRefresh({ force: false }); } catch (_) {} }
+        if (activeMainTab !== 'dashboard' && activeMainTab !== 'stats' && activeMainTab !== 'products' && activeMainTab !== 'attribution' && activeMainTab !== 'devices' && activeMainTab !== 'variants' && activeMainTab !== 'abandoned-carts') {
+          updateKpis();
+          try { fetchSessions(); } catch (_) {}
+        }
+
+        var total = Math.max(1, promises.length);
+        var completed = 0;
+        function updateProgress(pct) {
+          if (timeframeOverlayToken !== token) return;
+          var bar = document.getElementById('page-body-loader-determinate-bar');
+          if (bar) { bar.style.width = pct + '%'; bar.setAttribute('aria-valuenow', Math.round(pct)); }
+        }
+        function hideTimeframeOverlay() {
+          if (timeframeOverlayToken !== token) return;
+          var ov = document.getElementById('page-body-loader');
+          if (ov) { ov.classList.add('is-hidden'); ov.classList.remove('timeframe-overlay'); }
+          var ind = ov && ov.querySelector ? ov.querySelector('.page-loader-progress:not(.page-loader-progress--determinate)') : null;
+          if (ind) ind.style.display = '';
+          var det = document.getElementById('page-body-loader-determinate');
+          if (det) det.style.display = 'none';
+          var detBar = document.getElementById('page-body-loader-determinate-bar');
+          if (detBar) { detBar.style.width = '0%'; detBar.setAttribute('aria-valuenow', 0); }
+          if (scope) try { scope.classList.remove('report-building'); } catch (_) {}
+          try { document.body.classList.remove('kexo-report-loading'); } catch (_) {}
+        }
+        promises.forEach(function(p) {
+          if (p && typeof p.finally === 'function') {
+            p.finally(function() {
+              completed += 1;
+              updateProgress((completed / total) * 100);
+              if (completed >= total) hideTimeframeOverlay();
+            });
+          } else {
+            completed += 1;
+            updateProgress((completed / total) * 100);
+            if (completed >= total) hideTimeframeOverlay();
+          }
+        });
+        if (promises.length === 0) {
+          updateProgress(100);
+          hideTimeframeOverlay();
+        }
+        updateKpis();
+        return;
+      }
 
       // Top KPI grid refreshes independently (every minute). On range change, force a refresh immediately.
       refreshKpis({ force: false });
@@ -2238,7 +2337,7 @@
       }
       const startYmd = a <= b ? a : b;
       const endYmd = a <= b ? b : a;
-      summaryEl.textContent = 'Selected: ' + (formatYmdRangeLabel(startYmd, endYmd) || (startYmd + ' ??? ' + endYmd));
+      summaryEl.textContent = 'Selected: ' + (formatYmdRangeLabel(startYmd, endYmd) || (startYmd + ' \u2013 ' + endYmd));
       if (clearBtn) clearBtn.disabled = false;
       if (applyBtn) applyBtn.disabled = false;
     }
@@ -2291,7 +2390,7 @@
           customRangeEndYmd = endYmd;
           dateRange = rk;
           closeCustomDateModal();
-          applyDateRangeChange();
+          applyDateRangeChange({ showTimeframeOverlay: true });
         });
       }
       // Flatpickr handles date selection via its own UI
