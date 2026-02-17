@@ -417,7 +417,11 @@
       var classKey = getTableClassByTableId(id, fallbackClassKey);
       var cfg = tableRowsConfigForTableId(resolved || id, classKey);
       var raw = null;
-      try { raw = localStorage.getItem(tableRowsStorageKey(id)); } catch (_) { raw = null; }
+      // Dashboard tables: "Default rows" in UI config should always win.
+      // Ignore stale persisted overrides (common cause of Trending Up/Down stuck at 10).
+      if (classKey !== 'dashboard') {
+        try { raw = localStorage.getItem(tableRowsStorageKey(id)); } catch (_) { raw = null; }
+      }
       var value = clampTableRows(raw == null ? cfg.defaultRows : Number(raw), resolved || id, classKey);
       tableRowsCache[id] = value;
       return value;

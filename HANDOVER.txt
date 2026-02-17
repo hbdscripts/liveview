@@ -413,7 +413,7 @@ Ops/reliability:
   - Per-card range dropdowns are now functional (Today / Yesterday / 7 Days / Custom) and only refresh the targeted card; Custom uses the existing date modal without changing the global header range.
   - Finishes: radialBar hover tooltip fixed + legend rendered below (Gold/Silver etc) with matching colors.
   - Countries + Attribution bars: square corners, full opacity, and no in-bar £ labels.
-- Dashboard tables rows-per-page: when `tables_ui_config_v1` changes, sync dashboard table row overrides to the configured defaults so “Trending Down” default rows (5) can’t be masked by stale localStorage.
+- Dashboard tables rows-per-page: dashboard tables ignore persisted per-table row overrides; rows-per-page always follow `tables_ui_config_v1` defaults so “Trending Down” default rows (5) can’t be masked by stale localStorage.
 - Chart settings: dashboard overview mode migration is now one-time (`charts_ui_config_v1.defaultsVersion`) so user-selected chart types persist (fixes Revenue & Cost chart type changes being ignored).
 - KPI sparklines: removed left-edge “squiggle” at narrow widths by adding internal chart padding (prevents stroke clipping).
 - Dashboard overview chart bugfixes + utilities:
