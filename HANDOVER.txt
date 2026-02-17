@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-17 (Dashboard 7-day mini charts + faster 30d range loads)
+Last updated: 2026-02-17 (Hotfix: KPI endpoint no longer blocks on truth reconcile/backup)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -393,6 +393,9 @@ Ops/reliability:
   - Dashboard mini charts + overview revenue/cost chart now use 7-day windows (Finishes/Countries/Attribution + Overview) to keep overview loads fast.
   - Range changes no longer force-bypass report caches for `/api/kpis` and dashboard-series; large ranges like 30d now usually hit warm caches.
   - Bounce rate query in `store.getBounceRate()` was rewritten to a single join+group query (uses `idx_events_type_session_id`) instead of a per-session correlated subquery, speeding up 30d/month KPI loads on cache misses.
+- KPI + truth hang hardening:
+  - `/api/kpis` no longer blocks on `salesTruth.ensureReconciled()` (Shopify truth sync); warmups run in the background so the UI never stalls for minutes.
+  - Truth pre-reconcile backup is now scheduled asynchronously (not awaited) to avoid multi-minute request hangs after deploy restarts.
 
 2026-02-16 (latest)
 - Change Pins production hardening:

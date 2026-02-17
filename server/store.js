@@ -3273,33 +3273,25 @@ async function getKpis(options = {}) {
     ).then((r) => (r && r.ok ? r.data : null));
   }
 
-  // Guardrail: ensure Shopify truth cache is fresh for this range.
-  // For 'today' we block so KPIs reflect latest; for yesterday/other ranges we fire-and-forget
-  // so the response returns quickly (avoids ~25s timeout when reconcile is slow).
+  // Guardrail: keep Shopify truth cache warm for this range.
+  // IMPORTANT: do not block KPI responses on reconciliation. Truth reconciliation can be very slow
+  // (Shopify rate limits, large order volumes, pre-reconcile backups after deploy restarts).
+  // Startup/background warmers already run; here we only nudge the warmup best-effort.
   const salesShop = salesTruth.resolveShopForSales('');
   let salesTruthSync = null;
   let salesTruthCompareSync = null;
   if (salesShop) {
     const scopeKey = salesTruth.scopeForRangeKey(rangeKey, 'range');
-    if (rangeKey === 'today') {
-      try {
-        salesTruthSync = await salesTruth.ensureReconciled(salesShop, bounds.start, bounds.end, scopeKey);
-      } catch (_) {
-        salesTruthSync = { ok: false, error: 'reconcile_failed' };
-      }
-      // Keep the baseline trustworthy too: for Today comparisons, refresh yesterday-same-time range
-      // BEFORE we compute compare deltas (otherwise comparisons can read stale during active updates).
-      if (compareBounds && compareBounds.end > compareBounds.start) {
-        const compareScopeKey = salesTruth.scopeForRangeKey('yesterday', 'range');
-        try {
-          salesTruthCompareSync = await salesTruth.ensureReconciled(salesShop, compareBounds.start, compareBounds.end, compareScopeKey);
-        } catch (_) {
-          salesTruthCompareSync = { ok: false, error: 'reconcile_failed' };
-        }
-      }
-    } else {
+    try {
       salesTruth.ensureReconciled(salesShop, bounds.start, bounds.end, scopeKey).catch(warnOnReject('[store] ensureReconciled'));
-      salesTruthSync = null;
+    } catch (_) {}
+    // Keep the baseline trustworthy too: for Today comparisons, warm yesterday-same-time range.
+    // Non-blocking: comparisons will reflect the freshest truth available.
+    if (rangeKey === 'today' && compareBounds && compareBounds.end > compareBounds.start) {
+      const compareScopeKey = salesTruth.scopeForRangeKey('yesterday', 'range');
+      try {
+        salesTruth.ensureReconciled(salesShop, compareBounds.start, compareBounds.end, compareScopeKey).catch(warnOnReject('[store] ensureReconciled(compare)'));
+      } catch (_) {}
     }
   }
 

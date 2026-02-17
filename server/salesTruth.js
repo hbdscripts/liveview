@@ -16,6 +16,7 @@ const API_VERSION = '2024-01';
 const PRE_RECONCILE_BACKUP_TTL_MS = 24 * 60 * 60 * 1000;
 const CUSTOMER_FACTS_NULL_RECHECK_TTL_MS = 6 * 60 * 60 * 1000;
 let lastPreReconcileBackupAt = 0;
+let _preReconcileBackupInFlight = null;
 let _lineItemsTableOk = null; // null unknown, true exists, false missing
 let _shippingOptionsTableOk = null; // null unknown, true exists, false missing
 let _ordersHasAcquisitionColumns = null; // null unknown, true exists, false missing
@@ -1139,21 +1140,28 @@ async function reconcileRange(shop, startMs, endMs, scope = 'range') {
   const token = await getAccessToken(safeShop);
   if (!token) return { ok: false, error: 'No access token for shop', inserted: 0, updated: 0, fetched: 0 };
 
-  // Required: backup before reconciliation (but avoid backing up on every refresh).
+  // Best-effort: schedule backup before reconciliation (but avoid backing up on every refresh).
+  // IMPORTANT: never block reconciliation (or API endpoints awaiting it) on backups — backups can be slow
+  // on large datasets, especially right after deploy restarts.
   try {
     const now = Date.now();
-    if (!lastPreReconcileBackupAt || (now - lastPreReconcileBackupAt) > PRE_RECONCILE_BACKUP_TTL_MS) {
-      await backup.backup({
-        label: 'pre_reconcile',
-        tables: ['orders_shopify', 'purchase_events', 'purchases', 'sessions'],
-        retention: { keep: 7 },
-      });
+    const due = !lastPreReconcileBackupAt || (now - lastPreReconcileBackupAt) > PRE_RECONCILE_BACKUP_TTL_MS;
+    if (due && !_preReconcileBackupInFlight) {
+      // Set at scheduling time so concurrent requests don't stampede.
       lastPreReconcileBackupAt = now;
-      await writeAudit('system', 'backup', { when: 'pre_reconcile', shop: safeShop, ts: now });
+      _preReconcileBackupInFlight = Promise.resolve()
+        .then(() => backup.backup({
+          label: 'pre_reconcile',
+          tables: ['orders_shopify', 'purchase_events', 'purchases', 'sessions'],
+          retention: { keep: 7 },
+        }))
+        .then(() => writeAudit('system', 'backup', { when: 'pre_reconcile', shop: safeShop, ts: now }))
+        .catch(() => {})
+        .finally(() => {
+          _preReconcileBackupInFlight = null;
+        });
     }
-  } catch (_) {
-    // Fail-open: backup issues should not block truth reconciliation.
-  }
+  } catch (_) {}
 
   const startIso = new Date(startMs).toISOString();
   const endIso = new Date(endMs).toISOString();
