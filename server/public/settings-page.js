@@ -1816,7 +1816,7 @@
     for (var i = 0; i < count; i += 1) {
       var label = series[i] ? String(series[i]) : ('Series ' + (i + 1));
       var val = normalizeHexColor(colors[i], '#3eb3ab');
-      html += '<label class="settings-charts-color-field"><span class="form-label mb-1">' + escapeHtml(label) + '</span><div class="settings-charts-color-field-row"><input type="text" class="form-control form-control-sm" data-chart-field="color" data-idx="' + i + '" value="' + escapeHtml(val) + '" placeholder="#3eb3ab"><span class="settings-charts-color-swatch" data-color-swatch style="background:' + escapeHtml(val) + ';" title="' + escapeHtml(val) + '"></span><span class="settings-charts-color-hex text-muted small ms-1 font-monospace" data-color-hex>' + escapeHtml(val) + '</span></div></label>';
+      html += '<label class="settings-charts-color-field"><span class="form-label mb-1">' + escapeHtml(label) + '</span><div class="settings-charts-color-field-row"><input type="text" class="form-control form-control-sm" data-chart-field="color" data-idx="' + i + '" value="' + escapeHtml(val) + '" placeholder="#3eb3ab"><span class="settings-charts-color-swatch" data-color-swatch style="background:' + escapeHtml(val) + ';" title="' + escapeHtml(val) + '"></span><span class="settings-charts-color-hex small ms-1 font-monospace" data-color-hex style="color:' + escapeHtml(val) + ';">' + escapeHtml(val) + '</span></div></label>';
     }
     html += '</div>';
     return html;
@@ -1966,7 +1966,10 @@
       var val = normalizeHexColor(input.value, '#3eb3ab');
       sw.style.background = val;
       sw.setAttribute('title', val);
-      if (hexSpan && hexSpan.getAttribute('data-color-hex') !== null) hexSpan.textContent = val;
+      if (hexSpan && hexSpan.getAttribute('data-color-hex') !== null) {
+        hexSpan.textContent = val;
+        hexSpan.style.color = val;
+      }
     });
   }
 
