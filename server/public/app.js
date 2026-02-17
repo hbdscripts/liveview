@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: b3b55f03c15a79d0
+// checksum: 22a306cc3814b39b
 
 (function () {
 const API = '';
@@ -16029,12 +16029,13 @@ const API = '';
             if (midRect && Number.isFinite(midRect.height) && midRect.height > 0) midHeight = Math.round(midRect.height);
           }
         } catch (_) {}
-        if (midHeight > 0) {
+        var mainHeight = midHeight > 0 ? midHeight : topHeight;
+        if (mainHeight > 0) {
           try {
             var mainCard = document.querySelector('[data-kexo-chart-key="dash-chart-overview-30d"] .kexo-overview-main-card');
             if (mainCard && mainCard.style) {
-              mainCard.style.height = String(midHeight) + 'px';
-              mainCard.style.minHeight = String(midHeight) + 'px';
+              mainCard.style.height = String(mainHeight) + 'px';
+              mainCard.style.minHeight = String(mainHeight) + 'px';
             }
           } catch (_) {}
         }
@@ -16046,7 +16047,11 @@ const API = '';
         }
         overviewHeightSyncTimer = setTimeout(function() {
           overviewHeightSyncTimer = null;
-          syncOverviewHeightGrid();
+          var raf = typeof requestAnimationFrame === 'function' ? requestAnimationFrame : function(f) { f(); };
+          raf(function() {
+            syncOverviewHeightGrid();
+            setTimeout(function() { syncOverviewHeightGrid(); }, 120);
+          });
           // IMPORTANT: do not re-render charts here.
           // Re-rendering from a resize/height-sync callback creates a ResizeObserver feedback loop
           // (destroy/recreate chart -> size change -> observer -> destroy/recreate ...), which can
