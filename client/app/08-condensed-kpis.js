@@ -809,12 +809,78 @@
     function renderAttributionChart(data) {
       const el = document.getElementById('attribution-chart');
       if (!el) return;
-      // API currently returns an empty chart payload; render a friendly placeholder.
-      const chart = data && data.attribution && data.attribution.chart ? data.attribution.chart : null;
-      const hasSeries = !!(chart && Array.isArray(chart.series) && chart.series.length);
-      if (!hasSeries) {
-        el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:#6b7280;font-size:.875rem">No chart data yet</div>';
+      const chartKey = 'attribution-chart';
+      if (!isChartEnabledByUiConfig(chartKey, true)) {
+        try {
+          if (el.__kexoChartInstance) {
+            try { el.__kexoChartInstance.destroy(); } catch (_) {}
+            el.__kexoChartInstance = null;
+          }
+        } catch (_) {}
+        el.innerHTML = '';
         return;
+      }
+
+      const rows = data && data.attribution && Array.isArray(data.attribution.rows) ? data.attribution.rows.slice() : [];
+      if (!rows.length) {
+        el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:#6b7280;font-size:.875rem">No attribution data</div>';
+        return;
+      }
+
+      function channelLabel(r) {
+        if (!r) return 'Unknown';
+        if (r.label != null && String(r.label).trim() !== '') return String(r.label);
+        if (r.channel_key != null && String(r.channel_key).trim() !== '') return String(r.channel_key);
+        return 'Unknown';
+      }
+      function metricValue(r, metricKey) {
+        if (!r) return 0;
+        if (metricKey === 'orders') return Math.max(0, Number(r.orders) || 0);
+        if (metricKey === 'revenue') return Math.max(0, Number(r.revenue_gbp) || 0);
+        return Math.max(0, Number(r.sessions) || 0);
+      }
+
+      const rawMode = chartModeFromUiConfig(chartKey, 'line') || 'line';
+      const showEndLabels = rawMode === 'multi-line-labels';
+      const mode = rawMode === 'multi-line-labels' ? 'line' : rawMode;
+      const metricKey = chartPieMetricFromUiConfig(chartKey, 'sessions');
+      const palette = chartColorsFromUiConfig(chartKey, ['#4b94e4', '#f59e34', '#3eb3ab', '#8b5cf6', '#ef4444', '#22c55e']);
+      const isCurrency = metricKey === 'revenue';
+      const seriesName = metricKey === 'orders' ? 'Orders' : (metricKey === 'revenue' ? 'Revenue' : 'Sessions');
+
+      const items = rows
+        .map(function (r) { return { label: channelLabel(r), value: metricValue(r, metricKey) }; })
+        .filter(function (it) { return it && it.value > 0; })
+        .sort(function (a, b) { return (b.value - a.value) || String(a.label).localeCompare(String(b.label)); })
+        .slice(0, 10);
+
+      if (!items.length) {
+        el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:#6b7280;font-size:.875rem">No attribution data</div>';
+        return;
+      }
+
+      const categories = items.map(function (it) { return it.label; });
+      const values = items.map(function (it) { return it.value; });
+      const series = (String(mode).toLowerCase() === 'pie')
+        ? categories.map(function (name, idx) { return { name: name, data: [values[idx]] }; })
+        : [{ name: seriesName, data: values }];
+
+      try {
+        window.kexoRenderApexChart({
+          chartKey: chartKey,
+          containerEl: el,
+          categories: categories,
+          series: series,
+          mode: mode,
+          colors: palette,
+          height: 320,
+          currency: isCurrency,
+          showEndLabels: showEndLabels,
+          chartStyle: chartStyleFromUiConfig(chartKey),
+          advancedApexOverride: chartAdvancedOverrideFromUiConfig(chartKey, mode),
+        });
+      } catch (_) {
+        el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:#ef4444;font-size:.875rem">Chart rendering failed</div>';
       }
     }
 
@@ -1006,11 +1072,81 @@
     function renderDevicesChart(data) {
       const el = document.getElementById('devices-chart');
       if (!el) return;
-      const chart = data && data.devices && data.devices.chart ? data.devices.chart : null;
-      const hasSeries = !!(chart && Array.isArray(chart.series) && chart.series.length);
-      if (!hasSeries) {
-        el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:#6b7280;font-size:.875rem">No chart data yet</div>';
+      const chartKey = 'devices-chart';
+      if (!isChartEnabledByUiConfig(chartKey, true)) {
+        try {
+          if (el.__kexoChartInstance) {
+            try { el.__kexoChartInstance.destroy(); } catch (_) {}
+            el.__kexoChartInstance = null;
+          }
+        } catch (_) {}
+        el.innerHTML = '';
         return;
+      }
+
+      const rows = data && data.devices && Array.isArray(data.devices.rows) ? data.devices.rows.slice() : [];
+      if (!rows.length) {
+        el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:#6b7280;font-size:.875rem">No device data</div>';
+        return;
+      }
+
+      function deviceLabel(r) {
+        const k = r && r.device_type != null ? String(r.device_type).trim().toLowerCase() : '';
+        return k || 'unknown';
+      }
+      function titleCase(s) {
+        const raw = String(s || '').trim();
+        if (!raw) return 'Unknown';
+        return raw.slice(0, 1).toUpperCase() + raw.slice(1);
+      }
+      function metricValue(r, metricKey) {
+        if (!r) return 0;
+        if (metricKey === 'orders') return Math.max(0, Number(r.orders) || 0);
+        if (metricKey === 'revenue') return Math.max(0, Number(r.revenue_gbp) || 0);
+        return Math.max(0, Number(r.sessions) || 0);
+      }
+
+      const rawMode = chartModeFromUiConfig(chartKey, 'line') || 'line';
+      const showEndLabels = rawMode === 'multi-line-labels';
+      const mode = rawMode === 'multi-line-labels' ? 'line' : rawMode;
+      const metricKey = chartPieMetricFromUiConfig(chartKey, 'sessions');
+      const palette = chartColorsFromUiConfig(chartKey, ['#4b94e4', '#f59e34', '#3eb3ab', '#8b5cf6', '#ef4444', '#22c55e']);
+      const isCurrency = metricKey === 'revenue';
+      const seriesName = metricKey === 'orders' ? 'Orders' : (metricKey === 'revenue' ? 'Revenue' : 'Sessions');
+
+      const items = rows
+        .map(function (r) { return { label: titleCase(deviceLabel(r)), value: metricValue(r, metricKey) }; })
+        .filter(function (it) { return it && it.value > 0; })
+        .sort(function (a, b) { return (b.value - a.value) || String(a.label).localeCompare(String(b.label)); })
+        .slice(0, 10);
+
+      if (!items.length) {
+        el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:#6b7280;font-size:.875rem">No device data</div>';
+        return;
+      }
+
+      const categories = items.map(function (it) { return it.label; });
+      const values = items.map(function (it) { return it.value; });
+      const series = (String(mode).toLowerCase() === 'pie')
+        ? categories.map(function (name, idx) { return { name: name, data: [values[idx]] }; })
+        : [{ name: seriesName, data: values }];
+
+      try {
+        window.kexoRenderApexChart({
+          chartKey: chartKey,
+          containerEl: el,
+          categories: categories,
+          series: series,
+          mode: mode,
+          colors: palette,
+          height: 320,
+          currency: isCurrency,
+          showEndLabels: showEndLabels,
+          chartStyle: chartStyleFromUiConfig(chartKey),
+          advancedApexOverride: chartAdvancedOverrideFromUiConfig(chartKey, mode),
+        });
+      } catch (_) {
+        el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:#ef4444;font-size:.875rem">Chart rendering failed</div>';
       }
     }
 
