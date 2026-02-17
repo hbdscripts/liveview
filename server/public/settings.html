@@ -126,28 +126,14 @@
             <h3 class="card-title"><i class="fa-thin fa-palette me-2" data-icon-key="settings-tab-theme" aria-hidden="true"></i>Kexo</h3>
           </div>
           <div class="card-body">
-            <ul class="nav nav-underline mb-3" id="settings-kexo-tabs" role="tablist" aria-label="Kexo">
-              <li class="nav-item" role="presentation">
-                <button class="nav-link active" type="button" role="tab" id="settings-kexo-tab-general" data-settings-kexo-tab="general" aria-selected="true" aria-controls="settings-kexo-panel-general">General</button>
-              </li>
-              <li class="nav-item" role="presentation">
-                <button class="nav-link" type="button" role="tab" id="settings-kexo-tab-icons" data-settings-kexo-tab="icons" aria-selected="false" aria-controls="settings-kexo-panel-ui">Icons</button>
-              </li>
-              <li class="nav-item" role="presentation">
-                <button class="nav-link" type="button" role="tab" id="settings-kexo-tab-header" data-settings-kexo-tab="header" aria-selected="false" aria-controls="settings-kexo-panel-ui">Header</button>
-              </li>
-              <li class="nav-item" role="presentation">
-                <button class="nav-link" type="button" role="tab" id="settings-kexo-tab-color" data-settings-kexo-tab="color" aria-selected="false" aria-controls="settings-kexo-panel-ui">Color</button>
-              </li>
-              <li class="nav-item" role="presentation">
-                <button class="nav-link" type="button" role="tab" id="settings-kexo-tab-fonts" data-settings-kexo-tab="fonts" aria-selected="false" aria-controls="settings-kexo-panel-ui">Fonts</button>
-              </li>
-              <li class="nav-item" role="presentation">
-                <button class="nav-link" type="button" role="tab" id="settings-kexo-tab-notifications" data-settings-kexo-tab="notifications" aria-selected="false" aria-controls="settings-kexo-panel-ui">Notifications</button>
-              </li>
-            </ul>
-
-            <div id="settings-kexo-panel-general" class="settings-kexo-panel active" role="tabpanel" aria-labelledby="settings-kexo-tab-general">
+            <div class="accordion settings-layout-accordion" id="settings-kexo-accordion">
+              <div class="accordion-item">
+                <h4 class="accordion-header">
+                  <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#settings-kexo-accordion-general" aria-expanded="false" aria-controls="settings-kexo-accordion-general"><span class="d-flex align-items-center w-100 gap-2"><span class="kexo-settings-accordion-chevron" aria-hidden="true"><i class="fa-regular fa-chevron-down" aria-hidden="true"></i></span><span class="me-auto">General</span></span></button>
+                </h4>
+                <div id="settings-kexo-accordion-general" class="accordion-collapse collapse" data-bs-parent="#settings-kexo-accordion">
+                  <div class="accordion-body">
+            <div id="settings-kexo-panel-general">
               <div class="card card-sm mb-3">
                 <div class="card-header">
                   <h4 class="card-title"><i class="fa-thin fa-sliders me-2" data-icon-key="settings-tab-general" aria-hidden="true"></i>General</h4>
@@ -261,14 +247,24 @@
                 </div>
               </div>
             </div>
-
-            <div id="settings-kexo-panel-ui" class="settings-kexo-panel" role="tabpanel" aria-labelledby="settings-kexo-tab-icons">
-              <div class="card card-sm">
-                <div class="card-header">
-                  <h4 class="card-title" id="settings-theme-title"><i class="fa-thin fa-palette me-2" data-icon-key="settings-tab-theme" aria-hidden="true"></i><span id="settings-theme-title-text">Theme</span></h4>
+                  </div>
                 </div>
-                <div class="card-body" id="settings-theme-panel">
-                  <div class="dm-loading">Loading theme…</div>
+              </div>
+              <div class="accordion-item">
+                <h4 class="accordion-header">
+                  <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#settings-kexo-accordion-theme" aria-expanded="false" aria-controls="settings-kexo-accordion-theme"><span class="d-flex align-items-center w-100 gap-2"><span class="kexo-settings-accordion-chevron" aria-hidden="true"><i class="fa-regular fa-chevron-down" aria-hidden="true"></i></span><span class="me-auto">Theme</span></span></button>
+                </h4>
+                <div id="settings-kexo-accordion-theme" class="accordion-collapse collapse" data-bs-parent="#settings-kexo-accordion">
+                  <div class="accordion-body">
+                    <div class="card card-sm">
+                      <div class="card-header">
+                        <h4 class="card-title" id="settings-theme-title"><i class="fa-thin fa-palette me-2" data-icon-key="settings-tab-theme" aria-hidden="true"></i><span id="settings-theme-title-text">Theme</span></h4>
+                      </div>
+                      <div class="card-body" id="settings-theme-panel">
+                        <div class="dm-loading">Loading theme…</div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -283,16 +279,14 @@
           </div>
           <div class="card-body">
             <p class="text-secondary mb-3">Shopify + Google Ads integration status and controls.</p>
-            <ul class="nav nav-underline mb-3" id="settings-integrations-tabs" role="tablist" aria-label="Integrations">
-              <li class="nav-item" role="presentation">
-                <button class="nav-link active" type="button" role="tab" id="settings-integrations-tab-shopify" data-settings-integrations-tab="shopify" aria-selected="true" aria-controls="settings-integrations-panel-shopify">Shopify</button>
-              </li>
-              <li class="nav-item" role="presentation">
-                <button class="nav-link" type="button" role="tab" id="settings-integrations-tab-googleads" data-settings-integrations-tab="googleads" aria-selected="false" aria-controls="settings-integrations-panel-googleads">Google Ads</button>
-              </li>
-            </ul>
-
-            <div id="settings-integrations-panel-shopify" class="settings-integrations-panel active" role="tabpanel" aria-labelledby="settings-integrations-tab-shopify">
+            <div class="accordion settings-layout-accordion" id="settings-integrations-accordion">
+              <div class="accordion-item">
+                <h4 class="accordion-header">
+                  <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#settings-integrations-accordion-shopify" aria-expanded="false" aria-controls="settings-integrations-accordion-shopify"><span class="d-flex align-items-center w-100 gap-2"><span class="kexo-settings-accordion-chevron" aria-hidden="true"><i class="fa-regular fa-chevron-down" aria-hidden="true"></i></span><span class="me-auto">Shopify</span></span></button>
+                </h4>
+                <div id="settings-integrations-accordion-shopify" class="accordion-collapse collapse" data-bs-parent="#settings-integrations-accordion">
+                  <div class="accordion-body">
+            <div id="settings-integrations-panel-shopify">
               <div class="row g-3">
                 <div class="col-12 col-xl-6">
                   <div class="card card-sm">
@@ -329,8 +323,16 @@
                 </div>
               </div>
             </div>
-
-            <div id="settings-integrations-panel-googleads" class="settings-integrations-panel" role="tabpanel" aria-labelledby="settings-integrations-tab-googleads">
+                  </div>
+                </div>
+              </div>
+              <div class="accordion-item">
+                <h4 class="accordion-header">
+                  <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#settings-integrations-accordion-googleads" aria-expanded="false" aria-controls="settings-integrations-accordion-googleads"><span class="d-flex align-items-center w-100 gap-2"><span class="kexo-settings-accordion-chevron" aria-hidden="true"><i class="fa-regular fa-chevron-down" aria-hidden="true"></i></span><span class="me-auto">Google Ads</span></span></button>
+                </h4>
+                <div id="settings-integrations-accordion-googleads" class="accordion-collapse collapse" data-bs-parent="#settings-integrations-accordion">
+                  <div class="accordion-body">
+            <div id="settings-integrations-panel-googleads">
               <div class="card card-sm mb-3">
                 <div class="card-header"><h4 class="card-title">Google Ads Connection</h4></div>
                 <div class="card-body">
@@ -385,6 +387,10 @@
               </div>
               <pre id="settings-ga-output" class="dm-json-pre mb-0">Loading…</pre>
             </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -396,22 +402,34 @@
           </div>
           <div class="card-body">
             <p class="text-secondary mb-3">Map observed tokens (UTMs, referrer host, entry URL params, explicit <code>kexo_attr</code>) into persisted Attribution variants (Channel + Source + Ownership).</p>
-            <ul class="nav nav-underline mb-3" id="settings-attribution-tabs" role="tablist" aria-label="Attribution">
-              <li class="nav-item" role="presentation">
-                <button class="nav-link active" type="button" role="tab" id="settings-attribution-tab-mapping" data-settings-attribution-tab="mapping" aria-selected="true" aria-controls="settings-attribution-panel-mapping">Mapping</button>
-              </li>
-              <li class="nav-item" role="presentation">
-                <button class="nav-link" type="button" role="tab" id="settings-attribution-tab-tree" data-settings-attribution-tab="tree" aria-selected="false" aria-controls="settings-attribution-panel-tree">Mapped tree</button>
-              </li>
-            </ul>
-            <div id="settings-attribution-panel-mapping" class="settings-attribution-panel active" role="tabpanel" aria-labelledby="settings-attribution-tab-mapping">
+            <div class="accordion settings-layout-accordion" id="settings-attribution-accordion">
+              <div class="accordion-item">
+                <h4 class="accordion-header">
+                  <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#settings-attribution-accordion-mapping" aria-expanded="false" aria-controls="settings-attribution-accordion-mapping"><span class="d-flex align-items-center w-100 gap-2"><span class="kexo-settings-accordion-chevron" aria-hidden="true"><i class="fa-regular fa-chevron-down" aria-hidden="true"></i></span><span class="me-auto">Mapping</span></span></button>
+                </h4>
+                <div id="settings-attribution-accordion-mapping" class="accordion-collapse collapse" data-bs-parent="#settings-attribution-accordion">
+                  <div class="accordion-body">
+            <div id="settings-attribution-panel-mapping">
               <div id="settings-attribution-mapping-root" class="dm-root">
-                <div class="dm-loading-spinner"><div class="report-build-wrap"><div class="spinner-border text-primary" role="status"></div><div class="report-build-title">loading attribution mapping</div></div></div>
+                <div class="dm-loading-spinner"><div class="report-build-wrap"><div class="spinner-border text-primary" role="status"></div>                <div class="report-build-title">loading attribution mapping</div></div></div>
               </div>
             </div>
-            <div id="settings-attribution-panel-tree" class="settings-attribution-panel" role="tabpanel" aria-labelledby="settings-attribution-tab-tree">
+                  </div>
+                </div>
+              </div>
+              <div class="accordion-item">
+                <h4 class="accordion-header">
+                  <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#settings-attribution-accordion-tree" aria-expanded="false" aria-controls="settings-attribution-accordion-tree"><span class="d-flex align-items-center w-100 gap-2"><span class="kexo-settings-accordion-chevron" aria-hidden="true"><i class="fa-regular fa-chevron-down" aria-hidden="true"></i></span><span class="me-auto">Mapped tree</span></span></button>
+                </h4>
+                <div id="settings-attribution-accordion-tree" class="accordion-collapse collapse" data-bs-parent="#settings-attribution-accordion">
+                  <div class="accordion-body">
+            <div id="settings-attribution-panel-tree">
               <div id="settings-attribution-tree-root" class="dm-root">
-                <div class="dm-loading-spinner"><div class="report-build-wrap"><div class="spinner-border text-primary" role="status"></div><div class="report-build-title">loading mapped tree</div></div></div>
+                <div class="dm-loading-spinner"><div class="report-build-wrap"><div class="spinner-border text-primary" role="status"></div>                <div class="report-build-title">loading mapped tree</div></div></div>
+              </div>
+            </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -424,25 +442,34 @@
             <h3 class="card-title"><i class="fa-thin fa-chart-pie me-2" data-icon-key="settings-tab-insights" aria-hidden="true"></i>Insights</h3>
           </div>
           <div class="card-body">
-            <ul class="nav nav-underline mb-3" id="settings-insights-layout-tabs" role="tablist" aria-label="Insights">
-              <li class="nav-item" role="presentation">
-                <button class="nav-link" type="button" role="tab" id="settings-insights-layout-tab-products" data-settings-insights-layout-tab="products" aria-selected="false" aria-controls="settings-insights-layout-panel-products" disabled tabindex="-1">Products <span class="text-muted small">(coming soon)</span></button>
-              </li>
-              <li class="nav-item" role="presentation">
-                <button class="nav-link" type="button" role="tab" id="settings-insights-layout-tab-countries" data-settings-insights-layout-tab="countries" aria-selected="false" aria-controls="settings-insights-layout-panel-countries" disabled tabindex="-1">Countries <span class="text-muted small">(coming soon)</span></button>
-              </li>
-              <li class="nav-item" role="presentation">
-                <button class="nav-link active" type="button" role="tab" id="settings-insights-layout-tab-variants" data-settings-insights-layout-tab="variants" aria-selected="true" aria-controls="settings-insights-layout-panel-variants">Variants</button>
-              </li>
-            </ul>
-
-            <div id="settings-insights-layout-panel-products" class="settings-insights-layout-panel" role="tabpanel" aria-labelledby="settings-insights-layout-tab-products">
-              <p class="text-secondary mb-0">Products controls are planned for a future update.</p>
-            </div>
-            <div id="settings-insights-layout-panel-countries" class="settings-insights-layout-panel" role="tabpanel" aria-labelledby="settings-insights-layout-tab-countries">
-              <p class="text-secondary mb-0">Countries controls are planned for a future update.</p>
-            </div>
-            <div id="settings-insights-layout-panel-variants" class="settings-insights-layout-panel active" role="tabpanel" aria-labelledby="settings-insights-layout-tab-variants">
+            <div class="accordion settings-layout-accordion" id="settings-insights-accordion">
+              <div class="accordion-item">
+                <h4 class="accordion-header">
+                  <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#settings-insights-accordion-products" aria-expanded="false" aria-controls="settings-insights-accordion-products"><span class="d-flex align-items-center w-100 gap-2"><span class="kexo-settings-accordion-chevron" aria-hidden="true"><i class="fa-regular fa-chevron-down" aria-hidden="true"></i></span><span class="me-auto">Products</span><span class="text-muted small">(coming soon)</span></span></button>
+                </h4>
+                <div id="settings-insights-accordion-products" class="accordion-collapse collapse" data-bs-parent="#settings-insights-accordion">
+                  <div class="accordion-body">
+                    <p class="text-secondary mb-0">Products controls are planned for a future update.</p>
+                  </div>
+                </div>
+              </div>
+              <div class="accordion-item">
+                <h4 class="accordion-header">
+                  <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#settings-insights-accordion-countries" aria-expanded="false" aria-controls="settings-insights-accordion-countries"><span class="d-flex align-items-center w-100 gap-2"><span class="kexo-settings-accordion-chevron" aria-hidden="true"><i class="fa-regular fa-chevron-down" aria-hidden="true"></i></span><span class="me-auto">Countries</span><span class="text-muted small">(coming soon)</span></span></button>
+                </h4>
+                <div id="settings-insights-accordion-countries" class="accordion-collapse collapse" data-bs-parent="#settings-insights-accordion">
+                  <div class="accordion-body">
+                    <p class="text-secondary mb-0">Countries controls are planned for a future update.</p>
+                  </div>
+                </div>
+              </div>
+              <div class="accordion-item">
+                <h4 class="accordion-header">
+                  <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#settings-insights-accordion-variants" aria-expanded="false" aria-controls="settings-insights-accordion-variants"><span class="d-flex align-items-center w-100 gap-2"><span class="kexo-settings-accordion-chevron" aria-hidden="true"><i class="fa-regular fa-chevron-down" aria-hidden="true"></i></span><span class="me-auto">Variants</span></span></button>
+                </h4>
+                <div id="settings-insights-accordion-variants" class="accordion-collapse collapse" data-bs-parent="#settings-insights-accordion">
+                  <div class="accordion-body">
+            <div id="settings-insights-layout-panel-variants">
               <p class="text-secondary mb-3">Create and manage custom variant mapping tables used by Insights → Variants.</p>
               <div id="settings-insights-variants-root" class="dm-root">
                 <div class="dm-loading">Loading variant table mappings…</div>
@@ -460,6 +487,10 @@
               </div>
               <div class="mt-2"><span id="settings-insights-variants-msg" class="form-hint"></span></div>
               <div class="text-muted small mt-2">Save is allowed even when enabled tables have unmapped in-scope variants. You\u2019ll see warnings to help improve coverage. Overlap is auto-managed by specificity/order, and out-of-scope titles are skipped.</div>
+            </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -555,19 +586,14 @@
             <h3 class="card-title"><i class="fa-thin fa-table-columns me-2" data-icon-key="settings-tab-layout" aria-hidden="true"></i>Layout</h3>
           </div>
           <div class="card-body">
-            <ul class="nav nav-underline mb-3" id="settings-layout-tabs" role="tablist" aria-label="Layout options">
-              <li class="nav-item" role="presentation">
-                <button class="nav-link active" type="button" role="tab" id="settings-layout-tab-tables" data-settings-layout-tab="tables" aria-selected="true" aria-controls="settings-layout-panel-tables">Tables</button>
-              </li>
-              <li class="nav-item" role="presentation">
-                <button class="nav-link" type="button" role="tab" id="settings-layout-tab-charts" data-settings-layout-tab="charts" aria-selected="false" aria-controls="settings-layout-panel-charts">Charts</button>
-              </li>
-              <li class="nav-item" role="presentation">
-                <button class="nav-link" type="button" role="tab" id="settings-layout-tab-kpis" data-settings-layout-tab="kpis" aria-selected="false" aria-controls="settings-layout-panel-kpis">KPIs</button>
-              </li>
-            </ul>
-
-            <div id="settings-layout-panel-tables" class="settings-layout-panel active" role="tabpanel" aria-labelledby="settings-layout-tab-tables">
+            <div class="accordion settings-layout-accordion" id="settings-layout-accordion">
+              <div class="accordion-item">
+                <h4 class="accordion-header">
+                  <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#settings-layout-accordion-tables" aria-expanded="false" aria-controls="settings-layout-accordion-tables"><span class="d-flex align-items-center w-100 gap-2"><span class="kexo-settings-accordion-chevron" aria-hidden="true"><i class="fa-regular fa-chevron-down" aria-hidden="true"></i></span><span class="me-auto">Tables</span></span></button>
+                </h4>
+                <div id="settings-layout-accordion-tables" class="accordion-collapse collapse" data-bs-parent="#settings-layout-accordion">
+                  <div class="accordion-body">
+            <div id="settings-layout-panel-tables">
               <p class="text-secondary mb-3">Configure table pagination, sticky column sizing, and layout across pages. Adding new tables to pages is coming later.</p>
               <div id="settings-layout-tables-root" class="dm-root">
                 <div class="dm-loading">Loading tables…</div>
@@ -578,8 +604,16 @@
                 <span id="settings-layout-tables-msg" class="form-hint"></span>
               </div>
             </div>
-
-            <div id="settings-layout-panel-charts" class="settings-layout-panel" role="tabpanel" aria-labelledby="settings-layout-tab-charts">
+                  </div>
+                </div>
+              </div>
+              <div class="accordion-item">
+                <h4 class="accordion-header">
+                  <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#settings-layout-accordion-charts" aria-expanded="false" aria-controls="settings-layout-accordion-charts"><span class="d-flex align-items-center w-100 gap-2"><span class="kexo-settings-accordion-chevron" aria-hidden="true"><i class="fa-regular fa-chevron-down" aria-hidden="true"></i></span><span class="me-auto">Charts</span></span></button>
+                </h4>
+                <div id="settings-layout-accordion-charts" class="accordion-collapse collapse" data-bs-parent="#settings-layout-accordion">
+                  <div class="accordion-body">
+            <div id="settings-layout-panel-charts">
               <p class="text-secondary mb-3">Control chart types, colors, and visibility across the app. These settings are global (shared across all users).</p>
               <div id="settings-charts-root" class="dm-root">
                 <div class="dm-loading">Loading charts…</div>
@@ -591,8 +625,16 @@
               </div>
               <div class="text-muted small mt-2">Disabling a chart hides the entire card (header + content).</div>
             </div>
-
-            <div id="settings-layout-panel-kpis" class="settings-layout-panel" role="tabpanel" aria-labelledby="settings-layout-tab-kpis">
+                  </div>
+                </div>
+              </div>
+              <div class="accordion-item">
+                <h4 class="accordion-header">
+                  <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#settings-layout-accordion-kpis" aria-expanded="false" aria-controls="settings-layout-accordion-kpis"><span class="d-flex align-items-center w-100 gap-2"><span class="kexo-settings-accordion-chevron" aria-hidden="true"><i class="fa-regular fa-chevron-down" aria-hidden="true"></i></span><span class="me-auto">KPIs</span></span></button>
+                </h4>
+                <div id="settings-layout-accordion-kpis" class="accordion-collapse collapse" data-bs-parent="#settings-layout-accordion">
+                  <div class="accordion-body">
+            <div id="settings-layout-panel-kpis">
               <div class="row g-3">
                 <div class="col-12">
                   <h4 class="mb-2">KPIs</h4>
@@ -743,6 +785,10 @@
                 </div>
               </div>
             </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -755,19 +801,14 @@
           </div>
           <div class="card-body" id="settings-admin-root">
             <p class="text-secondary small mb-3">Admin controls apply globally. Admin is always loader-disabled.</p>
-            <ul class="nav nav-underline mb-3" id="settings-admin-tabs" role="tablist" aria-label="Admin">
-              <li class="nav-item" role="presentation">
-                <button class="nav-link active" type="button" role="tab" id="settings-admin-tab-controls" data-admin-tab="controls" aria-selected="true" aria-controls="admin-panel-controls">Controls</button>
-              </li>
-              <li class="nav-item" role="presentation">
-                <button class="nav-link" type="button" role="tab" id="settings-admin-tab-diagnostics" data-admin-tab="diagnostics" aria-selected="false" aria-controls="admin-panel-diagnostics">Diagnostics</button>
-              </li>
-              <li class="nav-item" role="presentation">
-                <button class="nav-link" type="button" role="tab" id="settings-admin-tab-users" data-admin-tab="users" aria-selected="false" aria-controls="admin-panel-users">Users</button>
-              </li>
-            </ul>
-
-            <div id="admin-panel-controls" class="admin-panel active" role="tabpanel" aria-labelledby="settings-admin-tab-controls">
+            <div class="accordion settings-layout-accordion" id="settings-admin-accordion">
+              <div class="accordion-item">
+                <h4 class="accordion-header">
+                  <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#settings-admin-accordion-controls" aria-expanded="false" aria-controls="settings-admin-accordion-controls"><span class="d-flex align-items-center w-100 gap-2"><span class="kexo-settings-accordion-chevron" aria-hidden="true"><i class="fa-regular fa-chevron-down" aria-hidden="true"></i></span><span class="me-auto">Controls</span></span></button>
+                </h4>
+                <div id="settings-admin-accordion-controls" class="accordion-collapse collapse" data-bs-parent="#settings-admin-accordion">
+                  <div class="accordion-body">
+            <div id="admin-panel-controls">
               <div class="accordion settings-layout-accordion" id="settings-admin-controls-accordion">
                 <div class="accordion-item">
                   <h4 class="accordion-header">
@@ -926,8 +967,16 @@
                 </div>
               </div>
             </div>
-
-            <div id="admin-panel-diagnostics" class="admin-panel" role="tabpanel" aria-labelledby="settings-admin-tab-diagnostics">
+                  </div>
+                </div>
+              </div>
+              <div class="accordion-item">
+                <h4 class="accordion-header">
+                  <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#settings-admin-accordion-diagnostics" aria-expanded="false" aria-controls="settings-admin-accordion-diagnostics"><span class="d-flex align-items-center w-100 gap-2"><span class="kexo-settings-accordion-chevron" aria-hidden="true"><i class="fa-regular fa-chevron-down" aria-hidden="true"></i></span><span class="me-auto">Diagnostics</span></span></button>
+                </h4>
+                <div id="settings-admin-accordion-diagnostics" class="accordion-collapse collapse" data-bs-parent="#settings-admin-accordion">
+                  <div class="accordion-body">
+            <div id="admin-panel-diagnostics">
               <div class="card">
                 <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
                   <h3 class="card-title mb-0"><i class="fa-thin fa-chart-line me-2" data-icon-key="admin-tab-diagnostics" aria-hidden="true"></i>Diagnostics</h3>
@@ -964,8 +1013,16 @@
                 </div>
               </div>
             </div>
-
-            <div id="admin-panel-users" class="admin-panel" role="tabpanel" aria-labelledby="settings-admin-tab-users">
+                  </div>
+                </div>
+              </div>
+              <div class="accordion-item">
+                <h4 class="accordion-header">
+                  <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#settings-admin-accordion-users" aria-expanded="false" aria-controls="settings-admin-accordion-users"><span class="d-flex align-items-center w-100 gap-2"><span class="kexo-settings-accordion-chevron" aria-hidden="true"><i class="fa-regular fa-chevron-down" aria-hidden="true"></i></span><span class="me-auto">Users</span></span></button>
+                </h4>
+                <div id="settings-admin-accordion-users" class="accordion-collapse collapse" data-bs-parent="#settings-admin-accordion">
+                  <div class="accordion-body">
+            <div id="admin-panel-users">
               <div class="card">
                 <div class="card-header">
                   <h3 class="card-title"><i class="fa-thin fa-users me-2" data-icon-key="admin-tab-users" aria-hidden="true"></i>Users</h3>
@@ -1017,6 +1074,10 @@
                         </tbody>
                       </table>
                     </div>
+                  </div>
+                </div>
+              </div>
+            </div>
                   </div>
                 </div>
               </div>

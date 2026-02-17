@@ -220,10 +220,15 @@
       if (attributionKey === 'mapping' || attributionKey === 'tree') params.set('attributionTab', attributionKey);
     }
     if (key === 'admin') {
-      var adminPanel = document.querySelector('#settings-panel-admin .admin-panel.active');
-      if (adminPanel && adminPanel.id) {
-        var adminKey = adminPanel.id.replace('admin-panel-', '');
-        if (adminKey === 'controls' || adminKey === 'diagnostics' || adminKey === 'users') params.set('adminTab', adminKey);
+      var adminAccordion = document.getElementById('settings-admin-accordion');
+      if (adminAccordion) {
+        var openCollapse = adminAccordion.querySelector('.accordion-collapse.show');
+        if (openCollapse && openCollapse.id) {
+          var m = openCollapse.id.match(/settings-admin-accordion-(controls|diagnostics|users)/);
+          if (m && m[1]) params.set('adminTab', m[1]);
+        } else {
+          params.set('adminTab', 'controls');
+        }
       }
     }
     var url = window.location.pathname + '?' + params.toString();
@@ -281,28 +286,15 @@
     });
     updateUrl(key);
     if (key === 'attribution') {
-      var attributionSub = getActiveAttributionSubTab();
-      if (attributionSub === 'mapping') {
-        try {
-          if (typeof window.initAttributionMappingSettings === 'function') {
-            window.initAttributionMappingSettings({ rootId: 'settings-attribution-mapping-root' });
-          }
-        } catch (_) {}
-      } else if (attributionSub === 'tree') {
-        try {
-          if (typeof window.initAttributionTreeView === 'function') {
-            window.initAttributionTreeView({ rootId: 'settings-attribution-tree-root' });
-          }
-        } catch (_) {}
-      }
+      try {
+        if (typeof window.initAttributionMappingSettings === 'function') {
+          window.initAttributionMappingSettings({ rootId: 'settings-attribution-mapping-root' });
+        }
+      } catch (_) {}
     }
     if (key === 'layout') {
-      var sub = getActiveLayoutSubTab();
-      if (sub === 'charts') {
-        try { renderChartsWhenVisible(); } catch (_) {}
-      } else if (sub === 'tables') {
-        try { renderTablesWhenVisible(); } catch (_) {}
-      }
+      try { renderTablesWhenVisible(); } catch (_) {}
+      try { renderChartsWhenVisible(); } catch (_) {}
     }
     if (key === 'insights') {
       try {
@@ -310,6 +302,43 @@
           renderInsightsVariantsPanel(insightsVariantsConfigCache || defaultInsightsVariantsConfigV1());
         }
       } catch (_) {}
+    }
+  }
+
+  function wireSettingsAccordionShown() {
+    var mappingEl = document.getElementById('settings-attribution-accordion-mapping');
+    var treeEl = document.getElementById('settings-attribution-accordion-tree');
+    if (mappingEl) {
+      mappingEl.addEventListener('shown.bs.collapse', function () {
+        try { if (typeof window.initAttributionMappingSettings === 'function') window.initAttributionMappingSettings({ rootId: 'settings-attribution-mapping-root' }); } catch (_) {}
+      });
+    }
+    if (treeEl) {
+      treeEl.addEventListener('shown.bs.collapse', function () {
+        try { if (typeof window.initAttributionTreeView === 'function') window.initAttributionTreeView({ rootId: 'settings-attribution-tree-root' }); } catch (_) {}
+      });
+    }
+    var tablesEl = document.getElementById('settings-layout-accordion-tables');
+    var chartsEl = document.getElementById('settings-layout-accordion-charts');
+    if (tablesEl) {
+      tablesEl.addEventListener('shown.bs.collapse', function () {
+        try { renderTablesWhenVisible(); } catch (_) {}
+      });
+    }
+    if (chartsEl) {
+      chartsEl.addEventListener('shown.bs.collapse', function () {
+        try { renderChartsWhenVisible(); } catch (_) {}
+      });
+    }
+    var variantsEl = document.getElementById('settings-insights-accordion-variants');
+    if (variantsEl) {
+      variantsEl.addEventListener('shown.bs.collapse', function () {
+        try {
+          if (!insightsVariantsDraft) {
+            renderInsightsVariantsPanel(insightsVariantsConfigCache || defaultInsightsVariantsConfigV1());
+          }
+        } catch (_) {}
+      });
     }
   }
 
@@ -4460,6 +4489,7 @@
     wireKpisLayoutSubTabs();
     wireInsightsLayoutSubTabs();
     wireInsightsVariantsEditor();
+    wireSettingsAccordionShown();
     wireKpisSaveReset();
     wireInsightsVariantsSaveReset();
     wireInsightsVariantsIgnoreModal();

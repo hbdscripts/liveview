@@ -85,15 +85,17 @@
     if (t !== 'users' && t !== 'diagnostics' && t !== 'controls') t = 'controls';
     activeTab = t;
 
-    document.querySelectorAll('[data-admin-tab]').forEach(function (el) {
-      var isActive = String(el.getAttribute('data-admin-tab') || '').trim().toLowerCase() === t;
-      el.classList.toggle('active', isActive);
-      el.setAttribute('aria-selected', isActive ? 'true' : 'false');
-    });
-    document.querySelectorAll('.admin-panel').forEach(function (el) {
-      var key = el && el.id ? String(el.id).replace(/^admin-panel-/, '') : '';
-      el.classList.toggle('active', key === t);
-    });
+    if (!isSettingsPage()) {
+      document.querySelectorAll('[data-admin-tab]').forEach(function (el) {
+        var isActive = String(el.getAttribute('data-admin-tab') || '').trim().toLowerCase() === t;
+        el.classList.toggle('active', isActive);
+        el.setAttribute('aria-selected', isActive ? 'true' : 'false');
+      });
+      document.querySelectorAll('.admin-panel').forEach(function (el) {
+        var key = el && el.id ? String(el.id).replace(/^admin-panel-/, '') : '';
+        el.classList.toggle('active', key === t);
+      });
+    }
 
     if (!(opts && opts.skipUrl)) {
       try {
@@ -109,7 +111,10 @@
       } catch (_) {}
     }
 
-    // Lazy-load per panel
+    runLazyLoadForAdminTab(t);
+  }
+
+  function runLazyLoadForAdminTab(t) {
     if (t === 'users') {
       if (!usersLoadedOnce) {
         usersLoadedOnce = true;
@@ -139,6 +144,56 @@
       e.preventDefault();
       setActiveTab(tab);
     });
+  }
+
+  function wireAdminAccordionShown() {
+    var controlsEl = document.getElementById('settings-admin-accordion-controls');
+    var diagnosticsEl = document.getElementById('settings-admin-accordion-diagnostics');
+    var usersEl = document.getElementById('settings-admin-accordion-users');
+    function updateUrlFromTab(t) {
+      try {
+        var params = new URLSearchParams(window.location.search);
+        params.set('tab', 'admin');
+        params.set('adminTab', t);
+        history.replaceState(null, '', window.location.pathname + '?' + params.toString());
+      } catch (_) {}
+    }
+    if (controlsEl) {
+      controlsEl.addEventListener('shown.bs.collapse', function () {
+        activeTab = 'controls';
+        updateUrlFromTab('controls');
+        runLazyLoadForAdminTab('controls');
+      });
+    }
+    if (diagnosticsEl) {
+      diagnosticsEl.addEventListener('shown.bs.collapse', function () {
+        activeTab = 'diagnostics';
+        updateUrlFromTab('diagnostics');
+        runLazyLoadForAdminTab('diagnostics');
+      });
+    }
+    if (usersEl) {
+      usersEl.addEventListener('shown.bs.collapse', function () {
+        activeTab = 'users';
+        updateUrlFromTab('users');
+        runLazyLoadForAdminTab('users');
+      });
+    }
+  }
+
+  function expandAdminAccordionFromUrl() {
+    var initial = getTabFromQuery() || 'controls';
+    activeTab = initial;
+    var collapseId = 'settings-admin-accordion-' + initial;
+    var el = document.getElementById(collapseId);
+    if (el && typeof window.bootstrap !== 'undefined' && window.bootstrap.Collapse) {
+      try {
+        var col = new window.bootstrap.Collapse(el, { toggle: false });
+        col.show();
+      } catch (_) {}
+    } else {
+      runLazyLoadForAdminTab(initial);
+    }
   }
 
   function bindAdminUsersSubTabs() {
@@ -642,8 +697,13 @@
     bindAdminUsersSubTabs();
     bindActions();
 
-    var initial = getTabFromQuery() || 'controls';
-    setActiveTab(initial, { skipUrl: true });
+    if (isSettingsPage()) {
+      wireAdminAccordionShown();
+      expandAdminAccordionFromUrl();
+    } else {
+      var initial = getTabFromQuery() || 'controls';
+      setActiveTab(initial, { skipUrl: true });
+    }
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
