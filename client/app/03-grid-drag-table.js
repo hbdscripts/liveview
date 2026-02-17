@@ -286,12 +286,23 @@
 
         if (card.dataset && card.dataset.tableId) {
           if (header.querySelector('.kexo-builder-icon-link')) return;
-          var link = document.createElement('a');
-          link.href = 'https://app.kexo.io/settings?tab=layout';
+          var tableId = String(card.dataset.tableId || '').trim();
+          var pageKey = getPageScope();
+          var titleEl = card.querySelector('.card-header .card-title');
+          var cardTitle = (titleEl && titleEl.textContent) ? String(titleEl.textContent).trim() : tableId;
+          var link = document.createElement('button');
+          link.type = 'button';
           link.className = 'kexo-builder-icon-link';
-          link.title = 'Layout settings';
-          link.setAttribute('aria-label', 'Layout settings');
+          link.title = 'Table settings';
+          link.setAttribute('aria-label', 'Table settings');
           link.innerHTML = '<i class="fa-light fa-gear" data-icon-key="table-builder-icon" style="color:#999" aria-hidden="true"></i>';
+          link.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (typeof window.KexoLayoutShortcuts !== 'undefined' && typeof window.KexoLayoutShortcuts.openTableModal === 'function') {
+              window.KexoLayoutShortcuts.openTableModal({ pageKey: pageKey, tableId: tableId, cardTitle: cardTitle });
+            }
+          });
           var actions = header.querySelector(':scope > .card-actions');
           if (!actions) {
             actions = document.createElement('div');
@@ -307,12 +318,24 @@
           var existingCollapse = header.querySelector('.kexo-card-collapse-toggle');
           if (existingCollapse) existingCollapse.remove();
           if (existingChartLink) return;
-          var chartLink = document.createElement('a');
-          chartLink.href = 'https://app.kexo.io/settings?tab=layout';
+          var chartWrap = card.closest ? card.closest('[data-kexo-chart-key]') : null;
+          var chartKey = (card.dataset && card.dataset.kexoChartKey) ? String(card.dataset.kexoChartKey).trim().toLowerCase() : (chartWrap && chartWrap.getAttribute('data-kexo-chart-key')) ? String(chartWrap.getAttribute('data-kexo-chart-key')).trim().toLowerCase() : '';
+          if (!chartKey) return;
+          var chartTitleEl = card.querySelector('.card-header .card-title');
+          var chartCardTitle = (chartTitleEl && chartTitleEl.textContent) ? String(chartTitleEl.textContent).trim() : chartKey;
+          var chartLink = document.createElement('button');
+          chartLink.type = 'button';
           chartLink.className = 'kexo-builder-icon-link';
-          chartLink.title = 'Layout settings';
-          chartLink.setAttribute('aria-label', 'Layout settings');
+          chartLink.title = 'Chart settings';
+          chartLink.setAttribute('aria-label', 'Chart settings');
           chartLink.innerHTML = '<i class="fa-light fa-gear" data-icon-key="chart-builder-icon" style="color:#999" aria-hidden="true"></i>';
+          chartLink.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (typeof window.KexoLayoutShortcuts !== 'undefined' && typeof window.KexoLayoutShortcuts.openChartModal === 'function') {
+              window.KexoLayoutShortcuts.openChartModal({ chartKey: chartKey, cardTitle: chartCardTitle });
+            }
+          });
           var chartActions = header.querySelector(':scope > .card-actions');
           if (!chartActions) {
             chartActions = document.createElement('div');

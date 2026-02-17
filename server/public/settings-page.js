@@ -1690,6 +1690,43 @@
     var collapseId = 'settings-chart-item-' + key.replace(/[^a-z0-9_-]/g, '-');
     var headingId = collapseId + '-heading';
     var isOpen = idx === 0;
+
+    var cardBodyContent;
+    if (typeof window.KexoLayoutShortcuts !== 'undefined' && window.KexoLayoutShortcuts.renderChartModalBody) {
+      var sharedRow = window.KexoLayoutShortcuts.renderChartModalBody(item, key);
+      var previewHtml = '<div class="col-12"><div class="settings-charts-preview-wrap"><div class="text-muted small mb-2">Preview</div><div class="settings-charts-preview-canvas" data-chart-preview-canvas></div></div></div>';
+      cardBodyContent = sharedRow.slice(0, sharedRow.length - 6) + previewHtml + '</div>';
+    } else {
+      cardBodyContent = '<div class="row g-3">' +
+        '<div class="col-12 col-lg-4"><label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-chart-field="enabled"' + (enabled ? ' checked' : '') + '><span class="form-check-label ms-2">Enabled</span></label></div>' +
+        '<div class="col-12 col-lg-8"><label class="form-label mb-1">Display name</label><input type="text" class="form-control form-control-sm" data-chart-field="label" value="' + escapeHtml(title) + '"></div>' +
+        '<div class="col-12 col-md-6 col-xl-4"><label class="form-label mb-1">Chart type</label><select class="form-select form-select-sm" data-chart-field="mode">' + selectOptionsHtml(modes, mode) + '</select></div>' +
+        '<div class="col-12 col-md-6 col-xl-4"><label class="form-label mb-1">Pie metric</label><select class="form-select form-select-sm" data-chart-field="pieMetric"' + (canPie ? '' : ' disabled') + '><option value="sessions"' + (pieMetric === 'sessions' ? ' selected' : '') + '>Sessions</option><option value="orders"' + (pieMetric === 'orders' ? ' selected' : '') + '>Orders</option><option value="revenue"' + (pieMetric === 'revenue' ? ' selected' : '') + '>Revenue</option></select></div>' +
+        '<div class="col-12"><label class="form-label mb-1">Chart style (quick controls)</label><div class="row g-2">' +
+          '<div class="col-6 col-lg-4 col-xl-3"><label class="form-label mb-1">Curve</label><select class="form-select form-select-sm" data-chart-field="style.curve"><option value="smooth"' + (style.curve === 'smooth' ? ' selected' : '') + '>Smooth</option><option value="straight"' + (style.curve === 'straight' ? ' selected' : '') + '>Straight</option><option value="stepline"' + (style.curve === 'stepline' ? ' selected' : '') + '>Stepline</option></select></div>' +
+          '<div class="col-6 col-lg-4 col-xl-2"><label class="form-label mb-1">Stroke</label><input type="number" class="form-control form-control-sm" min="0" max="8" step="0.1" data-chart-field="style.strokeWidth" value="' + escapeHtml(String(style.strokeWidth)) + '"></div>' +
+          '<div class="col-6 col-lg-4 col-xl-2"><label class="form-label mb-1">Dash</label><input type="number" class="form-control form-control-sm" min="0" max="20" step="1" data-chart-field="style.dashArray" value="' + escapeHtml(String(style.dashArray)) + '"></div>' +
+          '<div class="col-6 col-lg-4 col-xl-2"><label class="form-label mb-1">Markers</label><input type="number" class="form-control form-control-sm" min="0" max="12" step="1" data-chart-field="style.markerSize" value="' + escapeHtml(String(style.markerSize)) + '"></div>' +
+          '<div class="col-6 col-lg-4 col-xl-2"><label class="form-label mb-1">Fill opacity</label><input type="number" class="form-control form-control-sm" min="0" max="1" step="0.05" data-chart-field="style.fillOpacity" value="' + escapeHtml(String(style.fillOpacity)) + '"></div>' +
+          '<div class="col-6 col-lg-4 col-xl-2"><label class="form-label mb-1">Grid dash</label><input type="number" class="form-control form-control-sm" min="0" max="16" step="1" data-chart-field="style.gridDash" value="' + escapeHtml(String(style.gridDash)) + '"></div>' +
+          '<div class="col-6 col-lg-4 col-xl-2"><label class="form-label mb-1">Labels</label><select class="form-select form-select-sm" data-chart-field="style.dataLabels"><option value="auto"' + (style.dataLabels === 'auto' ? ' selected' : '') + '>Auto</option><option value="on"' + (style.dataLabels === 'on' ? ' selected' : '') + '>On</option><option value="off"' + (style.dataLabels === 'off' ? ' selected' : '') + '>Off</option></select></div>' +
+          '<div class="col-6 col-lg-4 col-xl-2 d-flex align-items-end"><label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-chart-field="style.toolbar"' + (style.toolbar ? ' checked' : '') + '><span class="form-check-label ms-2">Toolbar</span></label></div>' +
+          '<div class="col-6 col-lg-4 col-xl-2 d-flex align-items-end"><label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-chart-field="style.animations"' + (style.animations ? ' checked' : '') + '><span class="form-check-label ms-2">Animations</span></label></div>' +
+        '</div></div>' +
+        '<div class="col-12"><label class="form-label mb-1">Pie / donut controls</label><div class="row g-2">' +
+          '<div class="col-6 col-lg-4 col-xl-2 d-flex align-items-end"><label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-chart-field="style.pieDonut"' + (style.pieDonut ? ' checked' : '') + (supportsPie ? '' : ' disabled') + '><span class="form-check-label ms-2">Hollow donut</span></label></div>' +
+          '<div class="col-6 col-lg-4 col-xl-2"><label class="form-label mb-1">Donut size (%)</label><input type="number" class="form-control form-control-sm" min="30" max="90" step="1" data-chart-field="style.pieDonutSize" value="' + escapeHtml(String(style.pieDonutSize)) + '"' + (supportsPie ? '' : ' disabled') + '></div>' +
+          '<div class="col-6 col-lg-4 col-xl-2"><label class="form-label mb-1">Label position</label><select class="form-select form-select-sm" data-chart-field="style.pieLabelPosition"' + (supportsPie ? '' : ' disabled') + '><option value="auto"' + (style.pieLabelPosition === 'auto' ? ' selected' : '') + '>Auto</option><option value="inside"' + (style.pieLabelPosition === 'inside' ? ' selected' : '') + '>Inside</option><option value="outside"' + (style.pieLabelPosition === 'outside' ? ' selected' : '') + '>Outside</option></select></div>' +
+          '<div class="col-6 col-lg-4 col-xl-3"><label class="form-label mb-1">Label content</label><select class="form-select form-select-sm" data-chart-field="style.pieLabelContent"' + (supportsPie ? '' : ' disabled') + '><option value="percent"' + (style.pieLabelContent === 'percent' ? ' selected' : '') + '>Percent</option><option value="label"' + (style.pieLabelContent === 'label' ? ' selected' : '') + '>Label</option><option value="label_percent"' + (style.pieLabelContent === 'label_percent' ? ' selected' : '') + '>Label + percent</option></select></div>' +
+          '<div class="col-6 col-lg-4 col-xl-2"><label class="form-label mb-1">Label offset</label><input type="number" class="form-control form-control-sm" min="-40" max="40" step="1" data-chart-field="style.pieLabelOffset" value="' + escapeHtml(String(style.pieLabelOffset)) + '"' + (supportsPie ? '' : ' disabled') + '></div>' +
+          (isCountriesOverview ? '<div class="col-12 col-md-6 col-xl-3 d-flex align-items-end"><label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-chart-field="style.pieCountryFlags"' + (style.pieCountryFlags ? ' checked' : '') + '><span class="form-check-label ms-2">Country flags in labels</span></label></div>' : '') +
+        '</div></div>' +
+        '<div class="col-12"><label class="form-label mb-1">Series colors (hex)</label>' + renderChartColorInputs(item, meta) + '</div>' +
+        '<div class="col-12"><label class="form-label mb-1">Advanced Apex override (JSON)</label><textarea class="form-control form-control-sm settings-charts-advanced-json" rows="5" data-chart-field="advancedApexOverride" spellcheck="false">' + escapeHtml(prettyJson(item && item.advancedApexOverride)) + '</textarea></div>' +
+        '<div class="col-12"><div class="settings-charts-preview-wrap"><div class="text-muted small mb-2">Preview</div><div class="settings-charts-preview-canvas" data-chart-preview-canvas></div></div></div>' +
+      '</div>';
+    }
+
     return '<div class="accordion-item settings-charts-item" data-chart-config-key="' + escapeHtml(key) + '">' +
       '<h2 class="accordion-header" id="' + escapeHtml(headingId) + '">' +
         '<button class="accordion-button' + (isOpen ? '' : ' collapsed') + '" type="button" data-bs-toggle="collapse" data-bs-target="#' + escapeHtml(collapseId) + '" aria-expanded="' + (isOpen ? 'true' : 'false') + '" aria-controls="' + escapeHtml(collapseId) + '">' +
@@ -1697,34 +1734,7 @@
         '</button>' +
       '</h2>' +
       '<div id="' + escapeHtml(collapseId) + '" class="accordion-collapse collapse' + (isOpen ? ' show' : '') + '" aria-labelledby="' + escapeHtml(headingId) + '" data-bs-parent="#' + escapeHtml(accordionId) + '">' +
-        '<div class="accordion-body"><div class="settings-charts-card-body"><div class="row g-3">' +
-          '<div class="col-12 col-lg-4"><label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-chart-field="enabled"' + (enabled ? ' checked' : '') + '><span class="form-check-label ms-2">Enabled</span></label></div>' +
-          '<div class="col-12 col-lg-8"><label class="form-label mb-1">Display name</label><input type="text" class="form-control form-control-sm" data-chart-field="label" value="' + escapeHtml(title) + '"></div>' +
-          '<div class="col-12 col-md-6 col-xl-4"><label class="form-label mb-1">Chart type</label><select class="form-select form-select-sm" data-chart-field="mode">' + selectOptionsHtml(modes, mode) + '</select></div>' +
-          '<div class="col-12 col-md-6 col-xl-4"><label class="form-label mb-1">Pie metric</label><select class="form-select form-select-sm" data-chart-field="pieMetric"' + (canPie ? '' : ' disabled') + '><option value="sessions"' + (pieMetric === 'sessions' ? ' selected' : '') + '>Sessions</option><option value="orders"' + (pieMetric === 'orders' ? ' selected' : '') + '>Orders</option><option value="revenue"' + (pieMetric === 'revenue' ? ' selected' : '') + '>Revenue</option></select></div>' +
-          '<div class="col-12"><label class="form-label mb-1">Chart style (quick controls)</label><div class="row g-2">' +
-            '<div class="col-6 col-lg-4 col-xl-3"><label class="form-label mb-1">Curve</label><select class="form-select form-select-sm" data-chart-field="style.curve"><option value="smooth"' + (style.curve === 'smooth' ? ' selected' : '') + '>Smooth</option><option value="straight"' + (style.curve === 'straight' ? ' selected' : '') + '>Straight</option><option value="stepline"' + (style.curve === 'stepline' ? ' selected' : '') + '>Stepline</option></select></div>' +
-            '<div class="col-6 col-lg-4 col-xl-2"><label class="form-label mb-1">Stroke</label><input type="number" class="form-control form-control-sm" min="0" max="8" step="0.1" data-chart-field="style.strokeWidth" value="' + escapeHtml(String(style.strokeWidth)) + '"></div>' +
-            '<div class="col-6 col-lg-4 col-xl-2"><label class="form-label mb-1">Dash</label><input type="number" class="form-control form-control-sm" min="0" max="20" step="1" data-chart-field="style.dashArray" value="' + escapeHtml(String(style.dashArray)) + '"></div>' +
-            '<div class="col-6 col-lg-4 col-xl-2"><label class="form-label mb-1">Markers</label><input type="number" class="form-control form-control-sm" min="0" max="12" step="1" data-chart-field="style.markerSize" value="' + escapeHtml(String(style.markerSize)) + '"></div>' +
-            '<div class="col-6 col-lg-4 col-xl-2"><label class="form-label mb-1">Fill opacity</label><input type="number" class="form-control form-control-sm" min="0" max="1" step="0.05" data-chart-field="style.fillOpacity" value="' + escapeHtml(String(style.fillOpacity)) + '"></div>' +
-            '<div class="col-6 col-lg-4 col-xl-2"><label class="form-label mb-1">Grid dash</label><input type="number" class="form-control form-control-sm" min="0" max="16" step="1" data-chart-field="style.gridDash" value="' + escapeHtml(String(style.gridDash)) + '"></div>' +
-            '<div class="col-6 col-lg-4 col-xl-2"><label class="form-label mb-1">Labels</label><select class="form-select form-select-sm" data-chart-field="style.dataLabels"><option value="auto"' + (style.dataLabels === 'auto' ? ' selected' : '') + '>Auto</option><option value="on"' + (style.dataLabels === 'on' ? ' selected' : '') + '>On</option><option value="off"' + (style.dataLabels === 'off' ? ' selected' : '') + '>Off</option></select></div>' +
-            '<div class="col-6 col-lg-4 col-xl-2 d-flex align-items-end"><label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-chart-field="style.toolbar"' + (style.toolbar ? ' checked' : '') + '><span class="form-check-label ms-2">Toolbar</span></label></div>' +
-            '<div class="col-6 col-lg-4 col-xl-2 d-flex align-items-end"><label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-chart-field="style.animations"' + (style.animations ? ' checked' : '') + '><span class="form-check-label ms-2">Animations</span></label></div>' +
-          '</div></div>' +
-          '<div class="col-12"><label class="form-label mb-1">Pie / donut controls</label><div class="row g-2">' +
-            '<div class="col-6 col-lg-4 col-xl-2 d-flex align-items-end"><label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-chart-field="style.pieDonut"' + (style.pieDonut ? ' checked' : '') + (supportsPie ? '' : ' disabled') + '><span class="form-check-label ms-2">Hollow donut</span></label></div>' +
-            '<div class="col-6 col-lg-4 col-xl-2"><label class="form-label mb-1">Donut size (%)</label><input type="number" class="form-control form-control-sm" min="30" max="90" step="1" data-chart-field="style.pieDonutSize" value="' + escapeHtml(String(style.pieDonutSize)) + '"' + (supportsPie ? '' : ' disabled') + '></div>' +
-            '<div class="col-6 col-lg-4 col-xl-2"><label class="form-label mb-1">Label position</label><select class="form-select form-select-sm" data-chart-field="style.pieLabelPosition"' + (supportsPie ? '' : ' disabled') + '><option value="auto"' + (style.pieLabelPosition === 'auto' ? ' selected' : '') + '>Auto</option><option value="inside"' + (style.pieLabelPosition === 'inside' ? ' selected' : '') + '>Inside</option><option value="outside"' + (style.pieLabelPosition === 'outside' ? ' selected' : '') + '>Outside</option></select></div>' +
-            '<div class="col-6 col-lg-4 col-xl-3"><label class="form-label mb-1">Label content</label><select class="form-select form-select-sm" data-chart-field="style.pieLabelContent"' + (supportsPie ? '' : ' disabled') + '><option value="percent"' + (style.pieLabelContent === 'percent' ? ' selected' : '') + '>Percent</option><option value="label"' + (style.pieLabelContent === 'label' ? ' selected' : '') + '>Label</option><option value="label_percent"' + (style.pieLabelContent === 'label_percent' ? ' selected' : '') + '>Label + percent</option></select></div>' +
-            '<div class="col-6 col-lg-4 col-xl-2"><label class="form-label mb-1">Label offset</label><input type="number" class="form-control form-control-sm" min="-40" max="40" step="1" data-chart-field="style.pieLabelOffset" value="' + escapeHtml(String(style.pieLabelOffset)) + '"' + (supportsPie ? '' : ' disabled') + '></div>' +
-            (isCountriesOverview ? '<div class="col-12 col-md-6 col-xl-3 d-flex align-items-end"><label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-chart-field="style.pieCountryFlags"' + (style.pieCountryFlags ? ' checked' : '') + '><span class="form-check-label ms-2">Country flags in labels</span></label></div>' : '') +
-          '</div></div>' +
-          '<div class="col-12"><label class="form-label mb-1">Series colors (hex)</label>' + renderChartColorInputs(item, meta) + '</div>' +
-          '<div class="col-12"><label class="form-label mb-1">Advanced Apex override (JSON)</label><textarea class="form-control form-control-sm settings-charts-advanced-json" rows="5" data-chart-field="advancedApexOverride" spellcheck="false">' + escapeHtml(prettyJson(item && item.advancedApexOverride)) + '</textarea></div>' +
-          '<div class="col-12"><div class="settings-charts-preview-wrap"><div class="text-muted small mb-2">Preview</div><div class="settings-charts-preview-canvas" data-chart-preview-canvas></div></div></div>' +
-        '</div></div></div>' +
+        '<div class="accordion-body"><div class="settings-charts-card-body">' + cardBodyContent + '</div></div>' +
       '</div>' +
     '</div>';
   }
@@ -2040,12 +2050,16 @@
     var hideEl = document.getElementById('settings-charts-hide-mobile');
     var out = { v: 1, hideOnMobile: hideEl ? !!hideEl.checked : true, charts: [], kpiBundles: {} };
     root.querySelectorAll('[data-chart-config-key]').forEach(function (card) {
-      var chartCfg = readChartConfigFromCard(card);
+      var key = (card.getAttribute('data-chart-config-key') || '').trim().toLowerCase();
+      var bodyEl = card.querySelector('.settings-charts-card-body');
+      var chartCfg = (typeof window.KexoLayoutShortcuts !== 'undefined' && window.KexoLayoutShortcuts.readChartModalBody && bodyEl)
+        ? window.KexoLayoutShortcuts.readChartModalBody(bodyEl, key)
+        : readChartConfigFromCard(card);
       if (!chartCfg) return;
       out.charts.push({
-        key: chartCfg.key,
+        key: chartCfg.key || key,
         enabled: chartCfg.enabled,
-        label: chartCfg.label || chartCfg.key,
+        label: chartCfg.label || chartCfg.key || key,
         mode: chartCfg.mode,
         colors: chartCfg.colors,
         style: chartCfg.style,
@@ -2257,9 +2271,22 @@
         var stickyMin = t.sticky && typeof t.sticky.minWidth === 'number' ? t.sticky.minWidth : null;
         var stickyMax = t.sticky && typeof t.sticky.maxWidth === 'number' ? t.sticky.maxWidth : null;
 
-        var defaultOptsHtml = (rowOptions.length ? rowOptions : [defaultRows]).map(function (n) {
-          return '<option value="' + String(n) + '"' + (Number(n) === Number(defaultRows) ? ' selected' : '') + '>' + String(n) + '</option>';
-        }).join('');
+        var tableBodyHtml;
+        if (typeof window.KexoLayoutShortcuts !== 'undefined' && window.KexoLayoutShortcuts.renderTableModalBody) {
+          tableBodyHtml = window.KexoLayoutShortcuts.renderTableModalBody(t);
+        } else {
+          var defaultOptsHtml = (rowOptions.length ? rowOptions : [defaultRows]).map(function (n) {
+            return '<option value="' + String(n) + '"' + (Number(n) === Number(defaultRows) ? ' selected' : '') + '>' + String(n) + '</option>';
+          }).join('');
+          tableBodyHtml = '<div class="row g-3">' +
+            '<div class="col-12"><label class="form-label mb-1">Display name</label><input type="text" class="form-control form-control-sm" data-field="name" value="' + escapeHtml(name) + '"></div>' +
+            '<div class="col-12 col-md-6"><label class="form-label mb-1">Rows options</label><input type="text" class="form-control form-control-sm" data-field="rows-options" data-default-options="' + escapeHtml(formatRowOptionsText(rowOptions)) + '" value="' + escapeHtml(formatRowOptionsText(rowOptions)) + '" placeholder="e.g. 5, 10, 15, 20"><div class="text-muted small mt-1">Comma-separated values.</div></div>' +
+            '<div class="col-12 col-md-6"><label class="form-label mb-1">Default rows</label><select class="form-select form-select-sm" data-field="rows-default">' + defaultOptsHtml + '</select></div>' +
+            '<div class="col-12 col-md-6"><label class="form-label mb-1">Sticky min width (px)</label><input type="number" class="form-control form-control-sm" data-field="sticky-min" placeholder="auto" value="' + (stickyMin == null ? '' : escapeHtml(String(stickyMin))) + '"></div>' +
+            '<div class="col-12 col-md-6"><label class="form-label mb-1">Sticky max width (px)</label><input type="number" class="form-control form-control-sm" data-field="sticky-max" placeholder="auto" value="' + (stickyMax == null ? '' : escapeHtml(String(stickyMax))) + '"></div>' +
+            '<div class="col-12"><label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-field="inGrid"' + (inGrid ? ' checked' : '') + '><span class="form-check-label small ms-2">Keep in grid layout</span></label><div class="text-muted small mt-1">Disable to force full-width layout.</div></div>' +
+            '</div>';
+        }
 
         rowsHtml += '' +
           '<div class="card card-sm mb-3 settings-layout-table-card" data-layout-page-key="' + escapeHtml(pageKey) + '" data-layout-table-id="' + escapeHtml(tableId) + '">' +
@@ -2279,38 +2306,7 @@
                 '</div>' +
               '</div>' +
             '</div>' +
-            '<div class="card-body">' +
-              '<div class="row g-3">' +
-                '<div class="col-12">' +
-                  '<label class="form-label mb-1">Display name</label>' +
-                  '<input type="text" class="form-control form-control-sm" data-field="name" value="' + escapeHtml(name) + '">' +
-                '</div>' +
-                '<div class="col-12 col-md-6">' +
-                  '<label class="form-label mb-1">Rows options</label>' +
-                  '<input type="text" class="form-control form-control-sm" data-field="rows-options" data-default-options="' + escapeHtml(formatRowOptionsText(rowOptions)) + '" value="' + escapeHtml(formatRowOptionsText(rowOptions)) + '" placeholder="e.g. 5, 10, 15, 20">' +
-                  '<div class="text-muted small mt-1">Comma-separated values.</div>' +
-                '</div>' +
-                '<div class="col-12 col-md-6">' +
-                  '<label class="form-label mb-1">Default rows</label>' +
-                  '<select class="form-select form-select-sm" data-field="rows-default">' + defaultOptsHtml + '</select>' +
-                '</div>' +
-                '<div class="col-12 col-md-6">' +
-                  '<label class="form-label mb-1">Sticky min width (px)</label>' +
-                  '<input type="number" class="form-control form-control-sm" data-field="sticky-min" placeholder="auto" value="' + (stickyMin == null ? '' : escapeHtml(String(stickyMin))) + '">' +
-                '</div>' +
-                '<div class="col-12 col-md-6">' +
-                  '<label class="form-label mb-1">Sticky max width (px)</label>' +
-                  '<input type="number" class="form-control form-control-sm" data-field="sticky-max" placeholder="auto" value="' + (stickyMax == null ? '' : escapeHtml(String(stickyMax))) + '">' +
-                '</div>' +
-                '<div class="col-12">' +
-                  '<label class="form-check form-switch m-0">' +
-                    '<input class="form-check-input" type="checkbox" data-field="inGrid"' + (inGrid ? ' checked' : '') + '>' +
-                    '<span class="form-check-label small ms-2">Keep in grid layout</span>' +
-                  '</label>' +
-                  '<div class="text-muted small mt-1">Disable to force full-width layout.</div>' +
-                '</div>' +
-              '</div>' +
-            '</div>' +
+            '<div class="card-body">' + tableBodyHtml + '</div>' +
           '</div>';
       });
 
@@ -2383,6 +2379,21 @@
       rows.forEach(function (tr, idx) {
         var tableId = (tr.getAttribute('data-layout-table-id') || '').trim();
         if (!tableId) return;
+        var cardBody = tr.querySelector('.card-body');
+        var patch = (typeof window.KexoLayoutShortcuts !== 'undefined' && window.KexoLayoutShortcuts.readTableModalBody && cardBody)
+          ? window.KexoLayoutShortcuts.readTableModalBody(cardBody)
+          : null;
+        if (patch) {
+          page.tables.push({
+            id: tableId,
+            name: patch.name || tableId,
+            order: idx + 1,
+            inGrid: patch.inGrid !== false,
+            rows: patch.rows || { default: 20, options: [20] },
+            sticky: patch.sticky || { minWidth: null, maxWidth: null },
+          });
+          return;
+        }
         var nameEl = tr.querySelector('input[data-field="name"]');
         var inGridEl = tr.querySelector('input[data-field="inGrid"]');
         var optionsEl = tr.querySelector('input[data-field="rows-options"]');

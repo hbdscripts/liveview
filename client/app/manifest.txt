@@ -13,3 +13,4 @@
 13-live-sales.js
 14-dashboard.js
 15-user-footer-product.js
+16-layout-shortcuts.js
