@@ -10,6 +10,7 @@ const { signOauthSession, OAUTH_COOKIE_NAME } = require('../middleware/dashboard
 const auth = require('./auth');
 const salesTruth = require('../salesTruth');
 const users = require('../usersService');
+const { warnOnReject } = require('../shared/warnReject');
 
 let geoip;
 try {
@@ -278,7 +279,7 @@ async function handleShopifyLoginCallback(req, res) {
         const endMs = now;
         const startMs = endMs - 48 * 60 * 60 * 1000;
         setTimeout(() => {
-          salesTruth.reconcileRange(shopNorm, startMs, endMs, 'today').catch(() => {});
+          salesTruth.reconcileRange(shopNorm, startMs, endMs, 'today').catch(warnOnReject('[oauthLogin] reconcileRange'));
         }, 0);
       } catch (_) {
         // ignore

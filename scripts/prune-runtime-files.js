@@ -14,6 +14,7 @@ const removeTargets = [
   'docs',
   'extensions',
   'workers',
+  'client',
   'config',
   '.env.example',
   'README.md',

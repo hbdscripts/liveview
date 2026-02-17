@@ -5,6 +5,7 @@
       var dashCompareFetchedAt = 0;
       var dashCompareSeriesInFlight = null;
       var dashCharts = {};
+      var dashSparkCharts = {};
       var overviewMiniResizeObserver = null;
       var overviewMiniResizeScheduled = false;
       var overviewMiniSizeSignature = '';
@@ -15,6 +16,7 @@
       var overviewMiniPayloadSignature = '';
       var overviewMiniResizeTimer = null;
       var OVERVIEW_MINI_CACHE_MS = 2 * 60 * 1000;
+      var OVERVIEW_MINI_FORCE_REFRESH_MS = 5 * 60 * 1000;
       var _primaryRgbDash = getComputedStyle(document.documentElement).getPropertyValue('--tblr-primary-rgb').trim() || '32,107,196';
       var DASH_ACCENT = 'rgb(' + _primaryRgbDash + ')';
       var DASH_ACCENT_LIGHT = 'rgba(' + _primaryRgbDash + ',0.12)';
@@ -115,6 +117,87 @@
       }
 
       var dashChartConfigs = {};
+
+      function truncatePinTitle(s) {
+        var v = s == null ? '' : String(s).trim();
+        if (!v) return '';
+        return v.length > 26 ? (v.slice(0, 25) + '…') : v;
+      }
+
+      function buildPinAnnotationsForCategories(categoryLabels, pins) {
+        var labels = Array.isArray(categoryLabels) ? categoryLabels : [];
+        var list = Array.isArray(pins) ? pins : [];
+        if (!labels.length || !list.length) return [];
+        var idx = new Map();
+        for (var i = 0; i < labels.length; i++) {
+          var key = labels[i] != null ? String(labels[i]) : '';
+          if (!key) continue;
+          if (!idx.has(key)) idx.set(key, i);
+        }
+        var out = [];
+        for (var j = 0; j < list.length; j++) {
+          var p = list[j] || {};
+          var ymd = p.event_ymd ? String(p.event_ymd) : '';
+          if (!ymd) continue;
+          var cands = [];
+          cands.push(ymd);
+          try { cands.push(shortDate(ymd)); } catch (_) {}
+          var matchedLabel = null;
+          for (var k = 0; k < cands.length; k++) {
+            var c = cands[k];
+            if (!c) continue;
+            if (idx.has(c)) { matchedLabel = c; break; }
+          }
+          if (!matchedLabel) continue;
+          var text = truncatePinTitle(p.title || '') || 'Pin';
+          out.push({
+            x: matchedLabel,
+            borderColor: 'rgba(15,23,42,0.35)',
+            strokeDashArray: 0,
+            label: {
+              text: text,
+              borderColor: 'rgba(15,23,42,0.55)',
+              style: {
+                background: 'rgba(15,23,42,0.75)',
+                color: '#ffffff',
+                fontSize: '10px',
+                fontWeight: 500,
+              },
+              offsetY: -6,
+            },
+          });
+        }
+        return out;
+      }
+
+      function applyChangePinsOverlayToChart(chartId, chart, categoryLabels) {
+        if (!chart || !categoryLabels || !categoryLabels.length) return;
+        if (typeof window === 'undefined') return;
+        var cached = null;
+        try {
+          cached = (typeof window.__kexoReadChangePinsRecentCache === 'function') ? window.__kexoReadChangePinsRecentCache() : null;
+        } catch (_) {}
+        var ann = buildPinAnnotationsForCategories(categoryLabels, cached);
+        if (ann && ann.length) {
+          try {
+            if (dashCharts && dashCharts[chartId] !== chart) return;
+            chart.updateOptions({ annotations: { xaxis: ann } }, false, true);
+          } catch (_) {}
+          return;
+        }
+        try {
+          if (typeof window.__kexoGetChangePinsRecent !== 'function') return;
+          window.__kexoGetChangePinsRecent(120, false).then(function (pins) {
+            if (!pins) return;
+            var nextAnn = buildPinAnnotationsForCategories(categoryLabels, pins);
+            if (!nextAnn || !nextAnn.length) return;
+            try {
+              if (dashCharts && dashCharts[chartId] !== chart) return;
+              chart.updateOptions({ annotations: { xaxis: nextAnn } }, false, true);
+            } catch (_) {}
+          });
+        } catch (_) {}
+      }
 
       function makeChart(chartId, labels, datasets, opts) {
         if (typeof ApexCharts === 'undefined') {
@@ -267,8 +350,16 @@
           } catch (_) {}
 
           var chart = new ApexCharts(el, apexOpts);
-          chart.render();
           dashCharts[chartId] = chart;
+          var r = null;
+          try { r = chart.render(); } catch (_) { r = null; }
+          if (r && typeof r.then === 'function') {
+            r.then(function () {
+              try { applyChangePinsOverlayToChart(chartId, chart, labels || []); } catch (_) {}
+            }).catch(function () {});
+          } else {
+            try { setTimeout(function () { applyChangePinsOverlayToChart(chartId, chart, labels || []); }, 0); } catch (_) {}
+          }
           return chart;
         } catch (err) {
           captureChartError(err, 'dashboardChartRender', { chartId: chartId });
@@ -315,7 +406,7 @@
       }
 
       function overviewMiniChartIds() {
-        return ['dash-chart-finishes-30d', 'dash-chart-countries-30d', 'dash-chart-kexo-score-today', 'dash-chart-overview-30d'];
+        return ['dash-chart-finishes-30d', 'dash-chart-countries-30d', 'dash-chart-attribution-30d', 'dash-chart-overview-30d'];
       }
 
       function quantizeOverviewMiniSize(value) {
@@ -343,7 +434,7 @@
           return JSON.stringify({
             finishes: miniChartCfg('dash-chart-finishes-30d', 'pie', ['#f59e34']),
             countries: miniChartCfg('dash-chart-countries-30d', 'pie', ['#4b94e4']),
-            score: miniChartCfg('dash-chart-kexo-score-today', 'pie', ['#4b94e4']),
+            attribution: miniChartCfg('dash-chart-attribution-30d', 'pie', ['#4b94e4']),
             overview: miniChartCfg('dash-chart-overview-30d', 'bar', ['#3eb3ab', '#ef4444']),
           }) || '';
         } catch (_) {
@@ -407,6 +498,13 @@
         overviewMiniSizeSignature = '';
         overviewMiniCacheShopKey = '';
         overviewMiniPayloadSignature = '';
+        try {
+          Object.keys(dashSparkCharts || {}).forEach(function (id) {
+            var chart = dashSparkCharts[id];
+            if (chart && typeof chart.destroy === 'function') chart.destroy();
+          });
+        } catch (_) {}
+        dashSparkCharts = {};
       });
 
       function renderOverviewChartEmpty(chartId, text) {
@@ -436,7 +534,7 @@
       function showOverviewMiniLoadingState() {
         renderOverviewChartLoading('dash-chart-finishes-30d', 'Loading finishes...');
         renderOverviewChartLoading('dash-chart-countries-30d', 'Loading countries...');
-        renderOverviewChartLoading('dash-chart-kexo-score-today', 'Loading score...');
+        renderOverviewChartLoading('dash-chart-attribution-30d', 'Loading attribution...');
         renderOverviewChartLoading('dash-chart-overview-30d', 'Loading 30 day overview...');
       }
 
@@ -570,52 +668,29 @@
         }
       }
 
-      function renderOverviewKexoScoreChart(rawScore) {
-        var chartId = 'dash-chart-kexo-score-today';
-        var chartEl = document.getElementById(chartId);
-        if (!chartEl) return;
-        if (!isChartEnabledByUiConfig(chartId)) {
-          destroyDashChart(chartId);
-          chartEl.innerHTML = '';
-          return;
-        }
-        var style = (typeof chartStyleFromUiConfig === 'function') ? chartStyleFromUiConfig(chartId) : null;
-        var renderer = style && style.kexoRenderer != null ? String(style.kexoRenderer).trim().toLowerCase() : 'pie';
-        if (renderer !== 'wheel' && renderer !== 'pie') renderer = 'pie';
-        var hasScore = Number.isFinite(Number(rawScore));
-        if (!hasScore) {
-          renderOverviewChartLoading(chartId, 'Loading score...');
-          return;
-        }
-        var score = Math.max(0, Math.min(100, Number(rawScore)));
-        if (renderer !== 'wheel') {
-          renderOverviewPieChart(chartId, ['Score', 'Remaining'], [score, Math.max(0, 100 - score)], {
-            donut: true,
-            colors: ['#4b94e4', '#e5e7eb'],
-            valueFormatter: function(v) { return normalizeOverviewMetric(v).toFixed(1); },
-            height: 180
-          });
-          return;
-        }
-        destroyDashChart(chartId);
-        chartEl.innerHTML = '' +
-          '<div class="kexo-overview-score-wheel">' +
-            '<div class="kexo-score-ring-wrap kexo-score-ring-wrap--overview" aria-hidden="true">' +
-              '<svg class="kexo-score-ring-svg kexo-score-ring-svg--overview" viewBox="0 0 40 40">' +
-                '<circle class="kexo-score-ring-track" cx="20" cy="20" r="16" fill="none"></circle>' +
-                '<circle class="kexo-score-ring-fill kexo-score-ring-fill--1" cx="20" cy="20" r="16" fill="none"></circle>' +
-                '<circle class="kexo-score-ring-fill kexo-score-ring-fill--2" cx="20" cy="20" r="16" fill="none"></circle>' +
-                '<circle class="kexo-score-ring-fill kexo-score-ring-fill--3" cx="20" cy="20" r="16" fill="none"></circle>' +
-                '<circle class="kexo-score-ring-fill kexo-score-ring-fill--4" cx="20" cy="20" r="16" fill="none"></circle>' +
-                '<circle class="kexo-score-ring-fill kexo-score-ring-fill--5" cx="20" cy="20" r="16" fill="none"></circle>' +
-              '</svg>' +
-              '<div class="kexo-score-ring-center"><span class="kexo-score-num kexo-score-num--overview" data-overview-kexo-score-num>\u2014</span></div>' +
-            '</div>' +
-          '</div>';
-        var numEl = chartEl.querySelector('[data-overview-kexo-score-num]');
-        if (numEl) numEl.textContent = formatKexoScoreNumber(score);
-        var ring = chartEl.querySelector('.kexo-score-ring-svg--overview');
-        if (ring) applyKexoScoreRingSvg(ring, score);
+      function renderOverviewAttributionChart(attributionPayload) {
+        var chartId = 'dash-chart-attribution-30d';
+        var rows = attributionPayload && attributionPayload.attribution && Array.isArray(attributionPayload.attribution.rows)
+          ? attributionPayload.attribution.rows
+          : [];
+        var topRows = rows
+          .filter(function (row) { return row && Number(row.sessions) > 0; })
+          .sort(function (a, b) { return (Number(b.sessions) || 0) - (Number(a.sessions) || 0); })
+          .slice(0, 5);
+        var labels = [];
+        var values = [];
+        topRows.forEach(function (row) {
+          var label = row && row.label != null ? String(row.label).trim() : '';
+          var sessions = normalizeOverviewMetric(row && row.sessions);
+          if (!label || sessions <= 0) return;
+          labels.push(label);
+          values.push(sessions);
+        });
+        renderOverviewPieChart(chartId, labels, values, {
+          colors: ['#4b94e4', '#3eb3ab', '#f59e34', '#8b5cf6', '#ef4444'],
+          valueFormatter: function(v) { return Math.round(normalizeOverviewMetric(v)).toLocaleString() + ' sessions'; },
+          height: 180
+        });
       }
 
       function renderOverviewRevenueCostChart(snapshotPayload) {
@@ -724,8 +799,7 @@
           height: 180
         });
 
-        var rawScore = payload && payload.kexoScore && payload.kexoScore.score != null ? Number(payload.kexoScore.score) : NaN;
-        renderOverviewKexoScoreChart(rawScore);
+        renderOverviewAttributionChart(payload ? payload.attribution : null);
 
         renderOverviewRevenueCostChart(payload ? payload.snapshot : null);
         overviewMiniSizeSignature = computeOverviewMiniSizeSignature();
@@ -756,19 +830,19 @@
         var seriesUrl = API + '/api/dashboard-series?range=30d' + (force ? ('&force=1&_=' + stamp) : '');
         var snapshotUrl = API + '/api/business-snapshot?mode=range&preset=last_30_days' + (force ? ('&force=1&_=' + stamp) : '');
         var finishesUrl = API + '/api/shopify-finishes?range=30d' + (shop ? ('&shop=' + encodeURIComponent(shop)) : '') + (force ? ('&force=1&_=' + stamp) : '');
-        var scoreUrl = API + '/api/kexo-score?range=today' + (force ? ('&force=1&_=' + stamp) : '');
+        var attributionUrl = API + '/api/attribution/report?range=30d' + (force ? ('&force=1&_=' + stamp) : '');
 
         overviewMiniInFlight = Promise.all([
           fetchOverviewJson(seriesUrl, force, 25000),
           fetchOverviewJson(snapshotUrl, force, 30000),
           fetchOverviewJson(finishesUrl, force, 25000),
-          fetchOverviewJson(scoreUrl, force, 25000),
+          fetchOverviewJson(attributionUrl, force, 25000),
         ]).then(function(parts) {
           var payload = {
             countries: parts[0] || null,
             snapshot: parts[1] || null,
             finishes: parts[2] || null,
-            kexoScore: parts[3] || null,
+            attribution: parts[3] || null,
           };
           overviewMiniCache = payload;
           overviewMiniFetchedAt = Date.now();
@@ -834,7 +908,6 @@
           var sparkEl = el(elId);
           if (!sparkEl || typeof ApexCharts === 'undefined') return;
           if (dataArr.length < 2) dataArr = dataArr.length === 1 ? [dataArr[0], dataArr[0]] : [0, 0];
-          sparkEl.innerHTML = '';
           var dashBundle = getChartsKpiBundle('dashboardCards');
           var sparkCfg = dashBundle.sparkline || defaultChartsKpiSparklineConfig('dashboardCards');
           var sparkMode = String(sparkCfg.mode || 'line').toLowerCase();
@@ -930,8 +1003,21 @@
               apexOpts = deepMergeOptions(apexOpts, override);
             }
           } catch (_) {}
+          var existing = dashSparkCharts[elId];
+          if (existing && typeof existing.updateOptions === 'function' && typeof existing.updateSeries === 'function') {
+            try {
+              existing.updateOptions(apexOpts, false, false, false);
+              existing.updateSeries(series, false);
+              return;
+            } catch (_) {
+              try { existing.destroy(); } catch (_) {}
+              try { delete dashSparkCharts[elId]; } catch (_) {}
+            }
+          }
+          sparkEl.innerHTML = '';
           var chart = new ApexCharts(sparkEl, apexOpts);
           chart.render();
+          dashSparkCharts[elId] = chart;
         }
         function sparkToneColor(dataArr) {
           var GREEN = chartsKpiToneColor('dashboardCards', 'up');
@@ -1269,7 +1355,6 @@
         try {
           var cfg = (typeof kpiUiConfigV1 !== 'undefined' && kpiUiConfigV1 && kpiUiConfigV1.v === 1) ? kpiUiConfigV1 : null;
           if (!cfg) return true;
-          var headerEnabled = !(cfg.options && cfg.options.header && cfg.options.header.showKexoScore === false);
           var dashboardEnabled = true;
           var list = cfg.kpis && Array.isArray(cfg.kpis.dashboard) ? cfg.kpis.dashboard : null;
           if (list) {
@@ -1278,7 +1363,7 @@
             });
             if (scoreItem && scoreItem.enabled === false) dashboardEnabled = false;
           }
-          return headerEnabled || dashboardEnabled;
+          return dashboardEnabled;
         } catch (_) {
           return true;
         }
@@ -1727,8 +1812,13 @@
           initialStep: 'Loading dashboard data',
         });
         var url = API + '/api/dashboard-series?range=' + encodeURIComponent(rangeKey) + (force ? ('&force=1&_=' + Date.now()) : '');
+        var forceMini = !!force;
+        if (silent && forceMini) {
+          var miniAgeMs = overviewMiniFetchedAt ? (Date.now() - overviewMiniFetchedAt) : Number.POSITIVE_INFINITY;
+          forceMini = miniAgeMs > OVERVIEW_MINI_FORCE_REFRESH_MS;
+        }
         fetchKexoScore(rangeKey);
-        fetchOverviewMiniData({ force: force });
+        fetchOverviewMiniData({ force: forceMini });
         fetchWithTimeout(url, { credentials: 'same-origin', cache: force ? 'no-store' : 'default' }, 30000)
           .then(function(r) { return (r && r.ok) ? r.json() : null; })
           .then(function(data) {

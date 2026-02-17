@@ -8,6 +8,7 @@ const { getDb, isPostgres } = require('../db');
 const { writeAudit } = require('../audit');
 const salesTruth = require('../salesTruth');
 const { signOauthSession, OAUTH_COOKIE_NAME } = require('../middleware/dashboardAuth');
+const { warnOnReject } = require('../shared/warnReject');
 
 const apiKey = config.shopify.apiKey;
 const apiSecret = config.shopify.apiSecret;
@@ -154,7 +155,7 @@ async function handleCallback(req, res) {
       const endMs = now;
       const startMs = endMs - 48 * 60 * 60 * 1000;
       setTimeout(() => {
-        salesTruth.reconcileRange(shopNorm, startMs, endMs, 'today').catch(() => {});
+        salesTruth.reconcileRange(shopNorm, startMs, endMs, 'today').catch(warnOnReject('[auth] reconcileRange'));
       }, 0);
     } catch (_) {
       // ignore

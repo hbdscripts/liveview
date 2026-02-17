@@ -1184,6 +1184,7 @@ async function reconcileRange(shop, startMs, endMs, scope = 'range') {
       let json;
       try { json = text ? JSON.parse(text) : null; } catch (_) { json = null; }
       const orders = json && Array.isArray(json.orders) ? json.orders : [];
+      const database = getDb();
       for (const order of orders) {
         fetched += 1;
         const row = orderToRow(safeShop, order, Date.now());
@@ -1200,24 +1201,32 @@ async function reconcileRange(shop, startMs, endMs, scope = 'range') {
             shopifyRevenueByCurrency.set(cur, (shopifyRevenueByCurrency.get(cur) || 0) + amt);
           }
         }
-        const r = await upsertOrder(row);
-        inserted += r.inserted;
-        updated += r.updated;
+        const txResult = await database.transaction(async () => {
+          const r = await upsertOrder(row);
+          let liRows = 0;
+          let soOk = false;
+          try {
+            const li = await upsertOrderLineItems(safeShop, order, row);
+            if (li && li.ok && li.rows) liRows = Number(li.rows) || 0;
+          } catch (_) {
+            // Fail-open: line-items facts are an optimization; do not block reconciliation.
+          }
+          try {
+            const so = await upsertOrderShippingOption(safeShop, order, row);
+            soOk = !!(so && so.ok);
+          } catch (_) {
+            // Fail-open: shipping option facts are an optimization; do not block reconciliation.
+          }
+          const evLinked = await backfillEvidenceLinksForOrder(safeShop, row.order_id, row.checkout_token);
+          return { inserted: r.inserted, updated: r.updated, liRows, soOk, evLinked };
+        });
+        inserted += txResult.inserted;
+        updated += txResult.updated;
+        if (txResult.liRows) lineItemsRows += txResult.liRows;
+        if (txResult.soOk) shippingOptionsRows += 1;
+        evidenceLinked += txResult.evLinked;
         try {
-          const li = await upsertOrderLineItems(safeShop, order, row);
-          if (li && li.ok && li.rows) lineItemsRows += Number(li.rows) || 0;
-        } catch (_) {
-          // Fail-open: line-items facts are an optimization; do not block reconciliation.
-        }
-        try {
-          const so = await upsertOrderShippingOption(safeShop, order, row);
-          if (so && so.ok) shippingOptionsRows += 1;
-        } catch (_) {
-          // Fail-open: shipping option facts are an optimization; do not block reconciliation.
-        }
-        evidenceLinked += await backfillEvidenceLinksForOrder(safeShop, row.order_id, row.checkout_token);
-        try {
-          // Link truth order_id -> existing fraud evaluations via checkout_token (best-effort).
+          // Link truth order_id -> existing fraud evaluations via checkout_token (best-effort, outside tx).
           await fraudLinker.linkOrderFromTruthOrder({ orderId: row.order_id, checkoutToken: row.checkout_token });
         } catch (_) {}
       }

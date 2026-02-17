@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <!--#include partials/head-theme.html-->
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="icon" type="image/webp" href="/assets/logos/new/kexo.webp" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.4.0/dist/css/tabler.min.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.4.0/dist/css/tabler-flags.min.css" />
+  <link rel="stylesheet" href="/tabler-theme.css" />
+  <link rel="stylesheet" href="/custom.css" />
+  <link rel="stylesheet" href="/diagnostics-modal.css" />
+  <link rel="stylesheet" href="/tools.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js" defer></script>
+  <title>Kexo · Change Pins</title>
+</head>
+<body class="" data-page="change-pins">
+    <!--#include partials/header.html-->
+    <!--#include partials/page-body-start.html-->
+          <div class="page-header mb-3">
+            <div class="row align-items-center">
+              <div class="col">
+                <div class="page-pretitle">Tools</div>
+                <h2 class="page-title">Change Pins</h2>
+              </div>
+            </div>
+          </div>
+
+          <div class="card tools-card mb-3" id="tool-change-pins-create">
+            <div class="card-header">
+              <div>
+                <h3 class="card-title">Create a pin</h3>
+                <div class="card-subtitle">Mark a change (pricing/ads/site/ops) so you can find it later and compare before vs after.</div>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="tools-grid">
+                <div class="tools-row">
+                  <div class="tools-label form-label">Event date</div>
+                  <div>
+                    <div class="tools-actions">
+                      <div class="input-icon" style="min-width:220px;max-width:260px">
+                        <span class="input-icon-addon"><i class="fa-light fa-calendar-days" aria-hidden="true"></i></span>
+                        <input class="form-control" type="text" id="pin-date" placeholder="YYYY-MM-DD" autocomplete="off" inputmode="numeric" />
+                      </div>
+                      <input class="form-control" type="time" id="pin-time" style="width:140px" />
+                      <div class="tools-note" id="pin-date-note"></div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="tools-row">
+                  <div class="tools-label form-label">Title</div>
+                  <div class="tools-actions">
+                    <input class="form-control" type="text" id="pin-title" placeholder="e.g. Prices -20%" style="min-width:320px;max-width:520px;flex:1" />
+                    <select class="form-select" id="pin-kind" style="max-width:220px">
+                      <option value="">Kind…</option>
+                      <option value="pricing">Pricing</option>
+                      <option value="ads">Ads</option>
+                      <option value="site">Site</option>
+                      <option value="ops">Ops</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="tools-row">
+                  <div class="tools-label form-label">Magnitude (optional)</div>
+                  <div class="tools-actions">
+                    <input class="form-control" type="number" id="pin-mag-val" placeholder="22" step="0.01" style="width:140px" />
+                    <select class="form-select" id="pin-mag-unit" style="width:120px">
+                      <option value="%">%</option>
+                      <option value="gbp">GBP</option>
+                      <option value="usd">USD</option>
+                      <option value="eur">EUR</option>
+                      <option value="x">x</option>
+                    </select>
+                    <div class="tools-note">Examples: <code>-20</code> <code>%</code>, <code>+5</code> <code>GBP</code>.</div>
+                  </div>
+                </div>
+
+                <div class="tools-row">
+                  <div class="tools-label form-label">Tags (optional)</div>
+                  <div>
+                    <input class="form-control" type="text" id="pin-tags" placeholder="comma separated, e.g. google, discounts" />
+                    <div class="tools-note tools-note--tight">Used for lookup and filtering.</div>
+                  </div>
+                </div>
+
+                <div class="tools-row">
+                  <div class="tools-label form-label">Notes (optional)</div>
+                  <div>
+                    <textarea class="form-control" id="pin-notes" rows="2" placeholder="Any context (what changed, why, links, etc.)"></textarea>
+                  </div>
+                </div>
+
+                <div class="tools-row">
+                  <div class="tools-label form-label">Save</div>
+                  <div class="tools-actions">
+                    <div class="btn-list">
+                      <button class="btn btn-outline-primary" type="button" id="pin-save-btn" disabled>Save pin</button>
+                    </div>
+                    <div class="tools-note" id="pin-save-note"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card tools-card mb-3" id="tool-change-pins-list">
+            <div class="card-header">
+              <div>
+                <h3 class="card-title">Pins</h3>
+                <div class="card-subtitle">Search and filter pins over time.</div>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="tools-grid">
+                <div class="tools-row">
+                  <div class="tools-label form-label">Filter</div>
+                  <div class="tools-actions">
+                    <div class="input-icon" style="min-width:220px;max-width:260px">
+                      <span class="input-icon-addon"><i class="fa-light fa-calendar-days" aria-hidden="true"></i></span>
+                      <input class="form-control" type="text" id="filter-from" placeholder="From YYYY-MM-DD" autocomplete="off" inputmode="numeric" />
+                    </div>
+                    <div class="input-icon" style="min-width:220px;max-width:260px">
+                      <span class="input-icon-addon"><i class="fa-light fa-calendar-days" aria-hidden="true"></i></span>
+                      <input class="form-control" type="text" id="filter-to" placeholder="To YYYY-MM-DD" autocomplete="off" inputmode="numeric" />
+                    </div>
+                    <input class="form-control" type="text" id="filter-q" placeholder="Search title, notes, tags" style="min-width:260px;max-width:420px;flex:1" />
+                    <select class="form-select" id="filter-kind" style="max-width:180px">
+                      <option value="">All kinds</option>
+                      <option value="pricing">Pricing</option>
+                      <option value="ads">Ads</option>
+                      <option value="site">Site</option>
+                      <option value="ops">Ops</option>
+                      <option value="other">Other</option>
+                    </select>
+                    <label class="form-check form-switch m-0">
+                      <input class="form-check-input" type="checkbox" id="filter-archived" />
+                      <span class="form-check-label">Show archived</span>
+                    </label>
+                    <div class="btn-list">
+                      <button class="btn btn-outline-secondary" type="button" id="filter-refresh">Refresh</button>
+                    </div>
+                  </div>
+                </div>
+
+                <div id="pins-note" class="tools-note tools-note--tight"></div>
+                <div id="pins-table" class="tools-results"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card tools-card is-hidden" id="tool-change-pins-detail">
+            <div class="card-header">
+              <div>
+                <h3 class="card-title">Pin</h3>
+                <div class="card-subtitle" id="pin-detail-subtitle"></div>
+              </div>
+              <div class="btn-list">
+                <button class="btn btn-outline-secondary" type="button" id="pin-archive-btn">Archive</button>
+                <button class="btn btn-outline-secondary is-hidden" type="button" id="pin-unarchive-btn">Unarchive</button>
+                <button class="btn btn-outline-primary" type="button" id="pin-update-btn">Save changes</button>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="tools-grid">
+                <div class="tools-row">
+                  <div class="tools-label form-label">Event</div>
+                  <div class="tools-actions">
+                    <div class="input-icon" style="min-width:220px;max-width:260px">
+                      <span class="input-icon-addon"><i class="fa-light fa-calendar-days" aria-hidden="true"></i></span>
+                      <input class="form-control" type="text" id="edit-date" placeholder="YYYY-MM-DD" autocomplete="off" inputmode="numeric" />
+                    </div>
+                    <input class="form-control" type="time" id="edit-time" style="width:140px" />
+                    <div class="tools-note" id="edit-date-note"></div>
+                  </div>
+                </div>
+                <div class="tools-row">
+                  <div class="tools-label form-label">Title</div>
+                  <div class="tools-actions">
+                    <input class="form-control" type="text" id="edit-title" style="min-width:320px;max-width:520px;flex:1" />
+                    <select class="form-select" id="edit-kind" style="max-width:220px">
+                      <option value="">Kind…</option>
+                      <option value="pricing">Pricing</option>
+                      <option value="ads">Ads</option>
+                      <option value="site">Site</option>
+                      <option value="ops">Ops</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="tools-row">
+                  <div class="tools-label form-label">Magnitude</div>
+                  <div class="tools-actions">
+                    <input class="form-control" type="number" id="edit-mag-val" step="0.01" style="width:140px" />
+                    <select class="form-select" id="edit-mag-unit" style="width:120px">
+                      <option value="%">%</option>
+                      <option value="gbp">GBP</option>
+                      <option value="usd">USD</option>
+                      <option value="eur">EUR</option>
+                      <option value="x">x</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="tools-row">
+                  <div class="tools-label form-label">Tags</div>
+                  <div>
+                    <input class="form-control" type="text" id="edit-tags" placeholder="comma separated" />
+                  </div>
+                </div>
+                <div class="tools-row">
+                  <div class="tools-label form-label">Notes</div>
+                  <div>
+                    <textarea class="form-control" id="edit-notes" rows="2"></textarea>
+                  </div>
+                </div>
+
+                <div class="tools-row">
+                  <div class="tools-label form-label">Effect</div>
+                  <div class="tools-actions">
+                    <select class="form-select" id="effect-window" style="max-width:180px">
+                      <option value="7">7 days</option>
+                      <option value="14">14 days</option>
+                      <option value="30">30 days</option>
+                    </select>
+                    <div class="btn-list">
+                      <button class="btn btn-outline-secondary" type="button" id="effect-refresh">Refresh effect</button>
+                    </div>
+                    <div class="tools-note" id="effect-note"></div>
+                  </div>
+                </div>
+                <div id="effect-results" class="tools-results"></div>
+              </div>
+            </div>
+          </div>
+
+    <!--#include partials/page-body-end.html-->
+      <!--#include partials/footer.html-->
+
+  <script src="https://cdn.jsdelivr.net/npm/@tabler/core@1.4.0/dist/js/tabler.min.js" defer></script>
+  <script src="/kexo-table-builder.js" defer></script>
+  <script src="/kexo-table-defs.js" defer></script>
+  <script src="/kexo-chart-defs.js" defer></script>
+  <script src="/kexo-chart-builder.js" defer></script>
+  <script src="/app.js" defer></script>
+  <script src="/tools-change-pins.js" defer></script>
+  <script src="/theme-settings.js" defer></script>
+</body>
+</html>
+

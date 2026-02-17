@@ -1,6 +1,6 @@
         const VALID_TABS = ['dashboard', 'spy', 'sales', 'date', 'snapshot', 'stats', 'products', 'attribution', 'devices', 'ads', 'tools'];
-        const TAB_LABELS = { dashboard: 'Overview', spy: 'Live View', sales: 'Recent Sales', date: 'Table View', snapshot: 'Snapshot', stats: 'Countries', products: 'Products', variants: 'Variants', attribution: 'Attribution', devices: 'Devices', ads: 'Google Ads', tools: 'Conversion Rate Compare' };
-        const HASH_TO_TAB = { dashboard: 'dashboard', 'live-view': 'spy', sales: 'sales', date: 'date', countries: 'stats', products: 'products', channels: 'attribution', type: 'devices', attribution: 'attribution', devices: 'devices', ads: 'ads', 'compare-conversion-rate': 'tools' };
+        const TAB_LABELS = { dashboard: 'Overview', spy: 'Live View', sales: 'Recent Sales', date: 'Table View', snapshot: 'Snapshot', stats: 'Countries', products: 'Products', variants: 'Variants', attribution: 'Attribution', devices: 'Devices', ads: 'Google Ads', tools: 'Tools' };
+        const HASH_TO_TAB = { dashboard: 'dashboard', 'live-view': 'spy', sales: 'sales', date: 'date', countries: 'stats', products: 'products', channels: 'attribution', type: 'devices', attribution: 'attribution', devices: 'devices', ads: 'ads', 'compare-conversion-rate': 'tools', 'change-pins': 'tools' };
         const TAB_TO_HASH = { dashboard: 'dashboard', spy: 'live-view', sales: 'sales', date: 'date', stats: 'countries', products: 'products', attribution: 'attribution', devices: 'devices', ads: 'ads', tools: 'compare-conversion-rate' };
         const tabDashboard = document.getElementById('nav-tab-dashboard');
         const tabSpy = document.getElementById('nav-tab-spy');
@@ -117,7 +117,8 @@
           tools: 'nav-item-tools',
           'click-order-lookup': 'nav-item-tools',
           'compare-conversion-rate': 'nav-item-tools',
-          'shipping-cr': 'nav-item-tools'
+          'shipping-cr': 'nav-item-tools',
+          'change-pins': 'nav-item-tools'
         };
         function syncPageHeaderCategoryIcon() {
           // Inject the active top-menu category icon into the page header (next to pretitle/title),
@@ -417,7 +418,7 @@
             : PAGE === 'type' ? 'devices'
             : PAGE === 'attribution' ? 'attribution'
             : PAGE === 'devices' ? 'devices'
-            : (PAGE === 'compare-conversion-rate' || PAGE === 'shipping-cr' || PAGE === 'click-order-lookup') ? PAGE
+            : (PAGE === 'compare-conversion-rate' || PAGE === 'shipping-cr' || PAGE === 'click-order-lookup' || PAGE === 'change-pins') ? PAGE
             : PAGE;
           setTab(pageTab);
           return;

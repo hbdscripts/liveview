@@ -50,6 +50,7 @@ const API = '';
           'compare-conversion-rate': true,
           'shipping-cr': true,
           'click-order-lookup': true,
+          'change-pins': true,
           // Settings must never show the page overlay loader.
           settings: false,
           // Upgrade page is a static marketing/TODO page; never show the overlay loader there.
@@ -124,6 +125,41 @@ const API = '';
     }
     try { window.__kexoWithSilentOverlay = kexoWithSilentOverlay; } catch (_) {}
     try { window.__kexoSilentOverlayActive = kexoSilentOverlayActive; } catch (_) {}
+
+    // Change Pins (timeline annotations) — cached for dashboard chart overlays.
+    var _changePinsCache = null;
+    var _changePinsFetchedAt = 0;
+    var _changePinsInFlight = null;
+    var CHANGE_PINS_CACHE_TTL_MS = 60 * 1000;
+
+    function fetchChangePinsRecent(days) {
+      var d = (typeof days === 'number' && isFinite(days)) ? Math.max(7, Math.min(400, Math.floor(days))) : 120;
+      var url = API + '/api/tools/change-pins/recent?days=' + encodeURIComponent(String(d));
+      return fetch(url, { credentials: 'same-origin', cache: 'no-store' })
+        .then(function (r) { return (r && r.ok) ? r.json().catch(function () { return null; }) : null; })
+        .then(function (json) {
+          var pins = json && json.ok && Array.isArray(json.pins) ? json.pins : null;
+          if (!pins) return null;
+          _changePinsCache = pins;
+          _changePinsFetchedAt = Date.now();
+          return pins;
+        })
+        .catch(function (err) {
+          try { if (typeof window.kexoCaptureError === 'function') window.kexoCaptureError(err, { context: 'changePins.fetch' }); } catch (_) {}
+          return null;
+        });
+    }
+
+    function getChangePinsRecent(days, force) {
+      var fresh = _changePinsCache && _changePinsFetchedAt && (Date.now() - _changePinsFetchedAt) < CHANGE_PINS_CACHE_TTL_MS;
+      if (!force && fresh) return Promise.resolve(_changePinsCache);
+      if (_changePinsInFlight) return _changePinsInFlight;
+      _changePinsInFlight = fetchChangePinsRecent(days).finally(function () { _changePinsInFlight = null; });
+      return _changePinsInFlight;
+    }
+
+    try { window.__kexoGetChangePinsRecent = getChangePinsRecent; } catch (_) {}
+    try { window.__kexoReadChangePinsRecentCache = function () { return _changePinsCache; }; } catch (_) {}
 
     // ?????? Admin preview mode (UI-only) ????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
     // Preview is an admin tool: it affects client UI gating only and cannot bypass server auth.

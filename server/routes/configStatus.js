@@ -245,7 +245,7 @@ async function configStatus(req, res, next) {
     'dash-chart-overview-30d',
     'dash-chart-finishes-30d',
     'dash-chart-countries-30d',
-    'dash-chart-kexo-score-today',
+    'dash-chart-attribution-30d',
     'live-online-chart',
     'sales-overview-chart',
     'date-overview-chart',

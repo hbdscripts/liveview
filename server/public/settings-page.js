@@ -23,12 +23,22 @@
       var keep = new URLSearchParams();
       var rawTab = String(params.get('tab') || '').trim().toLowerCase();
       if (rawTab === 'sources') rawTab = 'attribution';
+      if (rawTab === 'general' || rawTab === 'assets' || rawTab === 'theme') rawTab = 'kexo';
       if (rawTab === 'charts' || rawTab === 'kpis') rawTab = 'layout';
       var allowedTabs = {
-        general: true, theme: true, assets: true, integrations: true,
+        kexo: true, integrations: true,
         attribution: true, insights: true, layout: true,
       };
       if (allowedTabs[rawTab]) keep.set('tab', rawTab);
+      var rawKexo = String(params.get('kexoTab') || params.get('kexo') || '').trim().toLowerCase();
+      if (!rawKexo) {
+        var legacyTab = String(params.get('tab') || '').trim().toLowerCase();
+        if (legacyTab === 'theme') rawKexo = 'ui';
+        else if (legacyTab === 'general' || legacyTab === 'assets') rawKexo = 'general';
+      }
+      if ((rawKexo === 'general' || rawKexo === 'ui') && keep.get('tab') === 'kexo') {
+        keep.set('kexoTab', rawKexo);
+      }
       var rawLayout = String(params.get('layoutTab') || params.get('layout') || '').trim().toLowerCase();
       if ((rawLayout === 'tables' || rawLayout === 'charts' || rawLayout === 'kpis') && keep.get('tab') === 'layout') {
         keep.set('layoutTab', rawLayout);
@@ -91,12 +101,12 @@
   var insightsMergeModalBackdropEl = null;
   var insightsMergeContext = null;
   var initialLayoutSubTab = null;
+  var initialKexoSubTab = null;
   var activeLayoutSubTab = 'tables';
+  var activeKexoSubTab = 'general';
 
   var TAB_MAP = {
-    general: 'settings-panel-general',
-    theme: 'settings-panel-theme',
-    assets: 'settings-panel-assets',
+    kexo: 'settings-panel-kexo',
     integrations: 'settings-panel-integrations',
     attribution: 'settings-panel-attribution',
     insights: 'settings-panel-insights',
@@ -108,9 +118,20 @@
     if (m && m[1]) {
       var t = m[1].toLowerCase().replace(/\s+/g, '-');
       if (t === 'sources') t = 'attribution';
+      if (t === 'general' || t === 'assets' || t === 'theme') {
+        initialKexoSubTab = (t === 'theme') ? 'ui' : 'general';
+        return 'kexo';
+      }
       if (t === 'charts' || t === 'kpis') {
         initialLayoutSubTab = t;
         return 'layout';
+      }
+      if (t === 'kexo') {
+        var km = /[?&](?:kexoTab|kexo)=([^&]+)/.exec(window.location.search || '');
+        if (km && km[1]) {
+          var kk = km[1].toLowerCase().replace(/\s+/g, '-');
+          if (kk === 'general' || kk === 'ui') initialKexoSubTab = kk;
+        }
       }
       if (t === 'layout') {
         var lm = /[?&](?:layoutTab|layout)=([^&]+)/.exec(window.location.search || '');
@@ -127,6 +148,10 @@
   function getTabFromHash() {
     var hash = (window.location.hash || '').replace(/^#/, '').toLowerCase();
     if (hash === 'sources') return 'attribution';
+    if (hash === 'general' || hash === 'assets' || hash === 'theme') {
+      initialKexoSubTab = hash === 'theme' ? 'ui' : 'general';
+      return 'kexo';
+    }
     if (hash === 'charts' || hash === 'kpis') {
       initialLayoutSubTab = hash;
       return 'layout';
@@ -136,7 +161,17 @@
   }
 
   function updateUrl(key) {
-    var url = window.location.pathname + '?tab=' + encodeURIComponent(key);
+    var params = new URLSearchParams();
+    params.set('tab', key);
+    if (key === 'layout') {
+      var layoutKey = getActiveLayoutSubTab();
+      if (layoutKey === 'tables' || layoutKey === 'charts' || layoutKey === 'kpis') params.set('layoutTab', layoutKey);
+    }
+    if (key === 'kexo') {
+      var kexoKey = getActiveKexoSubTab();
+      if (kexoKey === 'general' || kexoKey === 'ui') params.set('kexoTab', kexoKey);
+    }
+    var url = window.location.pathname + '?' + params.toString();
     try { history.replaceState(null, '', url); } catch (_) {}
   }
 
@@ -151,6 +186,13 @@
     if (!tab) return activeLayoutSubTab || 'tables';
     var key = String(tab.getAttribute('data-settings-layout-tab') || '').trim().toLowerCase();
     return key || (activeLayoutSubTab || 'tables');
+  }
+
+  function getActiveKexoSubTab() {
+    var tab = document.querySelector('[data-settings-kexo-tab].active');
+    if (!tab) return activeKexoSubTab || 'general';
+    var key = String(tab.getAttribute('data-settings-kexo-tab') || '').trim().toLowerCase();
+    return key || (activeKexoSubTab || 'general');
   }
 
   function renderChartsWhenVisible() {
@@ -595,6 +637,14 @@
         chartsUiConfigCache = data.chartsUiConfig || null;
         tablesUiConfigCache = data.tablesUiConfig || null;
         insightsVariantsConfigCache = data.insightsVariantsConfig || null;
+        var generalDateFormat = normalizeDateLabelFormat(
+          kpiUiConfigCache &&
+          kpiUiConfigCache.options &&
+          kpiUiConfigCache.options.general &&
+          kpiUiConfigCache.options.general.dateLabelFormat
+        );
+        var dateFmtEl = document.getElementById('settings-general-date-format');
+        if (dateFmtEl) dateFmtEl.value = generalDateFormat;
         var scopeMode = (data.settingsScopeMode || 'global');
         var scopeGlobal = document.getElementById('settings-scope-global');
         var scopeUser = document.getElementById('settings-scope-user');
@@ -676,6 +726,53 @@
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload || {}),
     }).then(function (r) { return r.json(); });
+  }
+
+  function wireGeneralSettingsSave() {
+    var formatEl = document.getElementById('settings-general-date-format');
+    var saveBtn = document.getElementById('settings-general-save-btn');
+    var msgEl = document.getElementById('settings-general-msg');
+    if (!formatEl || !saveBtn) return;
+
+    function setMsg(text, ok) {
+      if (!msgEl) return;
+      msgEl.textContent = text || '';
+      if (ok === true) msgEl.className = 'form-hint text-success';
+      else if (ok === false) msgEl.className = 'form-hint text-danger';
+      else msgEl.className = 'form-hint';
+    }
+
+    saveBtn.addEventListener('click', function () {
+      var nextFormat = normalizeDateLabelFormat(formatEl.value);
+      var cfg = deepClone(kpiUiConfigCache || defaultKpiUiConfigV1()) || defaultKpiUiConfigV1();
+      if (!cfg.options || typeof cfg.options !== 'object') cfg.options = {};
+      if (!cfg.options.general || typeof cfg.options.general !== 'object') cfg.options.general = {};
+      cfg.options.general.dateLabelFormat = nextFormat;
+
+      setMsg('Saving…', true);
+      saveSettings({ kpiUiConfig: cfg })
+        .then(function (r) {
+          if (r && r.ok) {
+            kpiUiConfigCache = r.kpiUiConfig || cfg;
+            var saved = normalizeDateLabelFormat(
+              kpiUiConfigCache &&
+              kpiUiConfigCache.options &&
+              kpiUiConfigCache.options.general &&
+              kpiUiConfigCache.options.general.dateLabelFormat
+            );
+            formatEl.value = saved;
+            setMsg('Saved.', true);
+            try {
+              if (window && typeof window.dispatchEvent === 'function') {
+                window.dispatchEvent(new CustomEvent('kexo:kpiUiConfigUpdated', { detail: kpiUiConfigCache }));
+              }
+            } catch (_) {}
+          } else {
+            setMsg((r && r.error) ? String(r.error) : 'Save failed', false);
+          }
+        })
+        .catch(function () { setMsg('Save failed', false); });
+    });
   }
 
   function wireDataReporting() {
@@ -1118,7 +1215,7 @@
       options: {
         condensed: { showDelta: true, showProgress: true, showSparkline: true },
         dashboard: { showDelta: true },
-        header: { showKexoScore: true },
+        general: { dateLabelFormat: 'dmy' },
       },
       headerStrip: {
         pages: {
@@ -1153,19 +1250,19 @@
           { key: 'items', label: 'Items ordered', enabled: true },
         ],
         dashboard: [
-          { key: 'revenue', label: 'Revenue', enabled: true, position: 'top' },
-          { key: 'orders', label: 'Orders', enabled: true, position: 'top' },
-          { key: 'conv', label: 'Conversion Rate', enabled: true, position: 'top' },
-          { key: 'aov', label: 'Average Order Value', enabled: true, position: 'top' },
-          { key: 'sessions', label: 'Sessions', enabled: true, position: 'top' },
-          { key: 'bounce', label: 'Bounce Rate', enabled: true, position: 'top' },
-          { key: 'returning', label: 'Returning', enabled: true, position: 'lower' },
-          { key: 'roas', label: 'ADS ROAS', enabled: true, position: 'lower' },
-          { key: 'kexo_score', label: 'Kexo Score', enabled: true, position: 'lower' },
-          { key: 'cogs', label: 'COGS', enabled: true, position: 'lower' },
-          { key: 'fulfilled', label: 'Fulfilled', enabled: true, position: 'lower' },
-          { key: 'returns', label: 'Returns', enabled: true, position: 'lower' },
-          { key: 'items', label: 'Items ordered', enabled: true, position: 'lower' },
+          { key: 'revenue', label: 'Revenue', enabled: true },
+          { key: 'orders', label: 'Orders', enabled: true },
+          { key: 'conv', label: 'Conversion Rate', enabled: true },
+          { key: 'aov', label: 'Average Order Value', enabled: true },
+          { key: 'sessions', label: 'Sessions', enabled: true },
+          { key: 'bounce', label: 'Bounce Rate', enabled: true },
+          { key: 'returning', label: 'Returning', enabled: true },
+          { key: 'roas', label: 'ADS ROAS', enabled: true },
+          { key: 'kexo_score', label: 'Kexo Score', enabled: true },
+          { key: 'cogs', label: 'COGS', enabled: true },
+          { key: 'fulfilled', label: 'Fulfilled', enabled: true },
+          { key: 'returns', label: 'Returns', enabled: true },
+          { key: 'items', label: 'Items ordered', enabled: true },
         ],
       },
       dateRanges: [
@@ -1179,12 +1276,17 @@
     };
   }
 
+  function normalizeDateLabelFormat(raw) {
+    var key = String(raw || '').trim().toLowerCase();
+    return key === 'mdy' ? 'mdy' : 'dmy';
+  }
+
   function defaultChartsUiConfigV1() {
     var baseCharts = [
       { key: 'dash-chart-overview-30d', label: 'Dashboard · 30 Day Overview', enabled: true, mode: 'bar', colors: ['#3eb3ab', '#ef4444'], advancedApexOverride: {}, styleOverride: { animations: false } },
       { key: 'dash-chart-finishes-30d', label: 'Dashboard · Finishes (30 Days)', enabled: true, mode: 'pie', colors: ['#f59e34', '#94a3b8', '#8b5cf6', '#4b94e4'], advancedApexOverride: {}, styleOverride: { animations: false, pieDonut: true, pieDonutSize: 64, pieLabelPosition: 'outside', pieLabelContent: 'label_percent', pieLabelOffset: 18 } },
       { key: 'dash-chart-countries-30d', label: 'Dashboard · Countries (30 Days)', enabled: true, mode: 'pie', colors: ['#4b94e4', '#3eb3ab', '#f59e34', '#8b5cf6', '#ef4444'], advancedApexOverride: {}, styleOverride: { animations: false, pieDonut: true, pieDonutSize: 64, pieLabelPosition: 'outside', pieLabelContent: 'label_percent', pieLabelOffset: 18, pieCountryFlags: true } },
-      { key: 'dash-chart-kexo-score-today', label: 'Dashboard · Kexo Score (Today)', enabled: true, mode: 'pie', colors: ['#4b94e4', '#e5e7eb'], advancedApexOverride: {}, styleOverride: { animations: false, pieDonut: true, pieDonutSize: 68, dataLabels: 'off', kexoRenderer: 'wheel' } },
+      { key: 'dash-chart-attribution-30d', label: 'Dashboard · Attribution (30 Days)', enabled: true, mode: 'pie', colors: ['#4b94e4', '#3eb3ab', '#f59e34', '#8b5cf6', '#ef4444'], advancedApexOverride: {}, styleOverride: { animations: false, pieDonut: true, pieDonutSize: 64, pieLabelPosition: 'outside', pieLabelContent: 'label_percent', pieLabelOffset: 18 } },
       { key: 'live-online-chart', label: 'Dashboard · Live Online', enabled: true, mode: 'map-flat', colors: ['#16a34a'], advancedApexOverride: {} },
       { key: 'sales-overview-chart', label: 'Dashboard · Sales Trend', enabled: true, mode: 'area', colors: ['#0d9488'], advancedApexOverride: {} },
       { key: 'date-overview-chart', label: 'Dashboard · Sessions & Orders Trend', enabled: true, mode: 'area', colors: ['#4b94e4', '#f59e34'], advancedApexOverride: {} },
@@ -1322,7 +1424,7 @@
   };
 
   var CHARTS_GROUPS = [
-    { id: 'dashboard', label: 'Dashboard charts', keys: ['dash-chart-overview-30d', 'dash-chart-finishes-30d', 'dash-chart-countries-30d', 'dash-chart-kexo-score-today', 'live-online-chart', 'sales-overview-chart', 'date-overview-chart'] },
+    { id: 'dashboard', label: 'Dashboard charts', keys: ['dash-chart-overview-30d', 'dash-chart-finishes-30d', 'dash-chart-countries-30d', 'dash-chart-attribution-30d', 'live-online-chart', 'sales-overview-chart', 'date-overview-chart'] },
     { id: 'acquisition', label: 'Acquisition charts', keys: ['attribution-chart', 'devices-chart'] },
     { id: 'insights', label: 'Insights charts', keys: ['products-chart', 'abandoned-carts-chart', 'countries-map-chart'] },
     { id: 'integrations', label: 'Integration charts', keys: ['ads-overview-chart'] },
@@ -2041,6 +2143,32 @@
       });
     });
     activate(initialKey || activeLayoutSubTab || 'tables');
+  }
+
+  function wireKexoSubTabs(initialKey) {
+    var tabs = document.querySelectorAll('[data-settings-kexo-tab]');
+    if (!tabs.length) return;
+    var KEYS = ['general', 'ui'];
+    function activate(key) {
+      if (KEYS.indexOf(key) < 0) key = 'general';
+      activeKexoSubTab = key;
+      tabs.forEach(function (tab) {
+        var active = tab.getAttribute('data-settings-kexo-tab') === key;
+        tab.classList.toggle('active', active);
+        tab.setAttribute('aria-selected', active ? 'true' : 'false');
+      });
+      KEYS.forEach(function (k) {
+        var panel = document.getElementById('settings-kexo-panel-' + k);
+        if (panel) panel.classList.toggle('active', k === key);
+      });
+      if (getActiveSettingsTab() === 'kexo') updateUrl('kexo');
+    }
+    tabs.forEach(function (tab) {
+      tab.addEventListener('click', function () {
+        activate(tab.getAttribute('data-settings-kexo-tab') || 'general');
+      });
+    });
+    activate(initialKey || activeKexoSubTab || 'general');
   }
 
   function parseRowOptionsText(raw) {
@@ -3704,32 +3832,20 @@
       if (!row) return;
       e.preventDefault();
       moveRow(row, action);
+      if (row.matches && row.matches('tr[data-kpi-key]')) {
+        try { renderKpiPlacementPreview(); } catch (_) {}
+      }
     });
-  }
-
-  function defaultDashboardKpiPositionForKey(key) {
-    var k = String(key || '').trim().toLowerCase();
-    if (!k) return 'top';
-    if (k === 'cogs' || k === 'fulfilled' || k === 'returns' || k === 'items') return 'lower';
-    return 'top';
-  }
-
-  function normalizeDashboardKpiPosition(pos, key) {
-    var raw = String(pos || '').trim().toLowerCase();
-    if (raw === 'top' || raw === 'lower') return raw;
-    return defaultDashboardKpiPositionForKey(key);
   }
 
   function renderKpiTable(rootId, items, kind) {
     var root = document.getElementById(rootId);
     if (!root) return;
     var rows = Array.isArray(items) ? items : [];
-    var showPosition = String(kind || '').trim().toLowerCase() === 'dashboard';
     var tableColumns = [
       { header: 'On', headerClass: 'w-1' },
       { header: 'Label', headerClass: '' },
     ];
-    if (showPosition) tableColumns.push({ header: 'Position', headerClass: 'w-1' });
     tableColumns.push({ header: 'Key', headerClass: 'text-muted' });
     tableColumns.push({ header: 'Order', headerClass: 'text-end w-1' });
     var html;
@@ -3744,17 +3860,9 @@
           if (!key) return '';
           var label = it.label != null ? String(it.label) : key;
           var enabled = !!it.enabled;
-          var position = normalizeDashboardKpiPosition(it.position, key);
-          var positionCell = showPosition
-            ? '<td><select class="form-select form-select-sm" data-field="position">' +
-                '<option value="top"' + (position === 'top' ? ' selected' : '') + '>Top grid</option>' +
-                '<option value="lower"' + (position === 'lower' ? ' selected' : '') + '>Lower grid</option>' +
-              '</select></td>'
-            : '';
           return '<tr data-kpi-key="' + escapeHtml(key) + '">' +
             '<td><label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-field="enabled" ' + (enabled ? 'checked' : '') + '></label></td>' +
             '<td><input type="text" class="form-control form-control-sm" data-field="label" value="' + escapeHtml(label) + '"></td>' +
-            positionCell +
             '<td class="text-muted small">' + escapeHtml(key) + '</td>' +
             '<td class="text-end"><div class="btn-group btn-group-sm" role="group" aria-label="Reorder">' +
               '<button type="button" class="btn btn-outline-secondary" data-action="up" aria-label="Move up">\u2191</button>' +
@@ -3766,24 +3874,16 @@
     } else {
       html = '<div class="table-responsive">' +
         '<table class="table table-sm table-vcenter mb-0">' +
-        '<thead><tr><th class="w-1">On</th><th>Label</th>' + (showPosition ? '<th class="w-1">Position</th>' : '') + '<th class="text-muted">Key</th><th class="text-end w-1">Order</th></tr></thead><tbody>';
+        '<thead><tr><th class="w-1">On</th><th>Label</th><th class="text-muted">Key</th><th class="text-end w-1">Order</th></tr></thead><tbody>';
       rows.forEach(function (it) {
         if (!it) return;
         var key = String(it.key || '').trim().toLowerCase();
         if (!key) return;
         var label = it.label != null ? String(it.label) : key;
         var enabled = !!it.enabled;
-        var position = normalizeDashboardKpiPosition(it.position, key);
-        var positionCell = showPosition
-          ? '<td><select class="form-select form-select-sm" data-field="position">' +
-              '<option value="top"' + (position === 'top' ? ' selected' : '') + '>Top grid</option>' +
-              '<option value="lower"' + (position === 'lower' ? ' selected' : '') + '>Lower grid</option>' +
-            '</select></td>'
-          : '';
         html += '<tr data-kpi-key="' + escapeHtml(key) + '">' +
           '<td><label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-field="enabled" ' + (enabled ? 'checked' : '') + '></label></td>' +
           '<td><input type="text" class="form-control form-control-sm" data-field="label" value="' + escapeHtml(label) + '"></td>' +
-          positionCell +
           '<td class="text-muted small">' + escapeHtml(key) + '</td>' +
           '<td class="text-end"><div class="btn-group btn-group-sm" role="group" aria-label="Reorder">' +
             '<button type="button" class="btn btn-outline-secondary" data-action="up" aria-label="Move up">\u2191</button>' +
@@ -3795,6 +3895,16 @@
     }
     root.innerHTML = html;
     wireReorderButtons(root);
+    if (String(kind || '').trim().toLowerCase() === 'dashboard') renderKpiPlacementPreview();
+    if (String(kind || '').trim().toLowerCase() === 'dashboard' && root.getAttribute('data-kpi-preview-wired') !== '1') {
+      root.setAttribute('data-kpi-preview-wired', '1');
+      root.addEventListener('change', function () {
+        try { renderKpiPlacementPreview(); } catch (_) {}
+      });
+      root.addEventListener('input', function () {
+        try { renderKpiPlacementPreview(); } catch (_) {}
+      });
+    }
   }
 
   function renderDateRangesTable(rootId, items) {
@@ -3860,7 +3970,6 @@
   function readKpiTable(rootId, kind) {
     var root = document.getElementById(rootId);
     if (!root) return [];
-    var includePosition = String(kind || '').trim().toLowerCase() === 'dashboard';
     var out = [];
     root.querySelectorAll('tr[data-kpi-key]').forEach(function (tr) {
       var key = (tr.getAttribute('data-kpi-key') || '').trim().toLowerCase();
@@ -3872,13 +3981,47 @@
         enabled: !!(enabledEl && enabledEl.checked),
         label: labelEl && labelEl.value != null ? String(labelEl.value).trim() : key,
       };
-      if (includePosition) {
-        var positionEl = tr.querySelector('select[data-field="position"]');
-        row.position = normalizeDashboardKpiPosition(positionEl && positionEl.value, key);
-      }
       out.push(row);
     });
     return out;
+  }
+
+  function renderKpiPlacementPreview() {
+    var root = document.getElementById('settings-kpis-placement-preview');
+    if (!root) return;
+    var list = readKpiTable('settings-kpis-dashboard-root', 'dashboard')
+      .filter(function (it) { return it && it.enabled !== false; })
+      .map(function (it) { return String((it.label || it.key || '').trim() || it.key || '').trim(); })
+      .filter(Boolean);
+    function slice(start, end) {
+      return list.slice(start, end).map(function (label) {
+        return '<span class="badge bg-secondary-lt">' + escapeHtml(label) + '</span>';
+      }).join(' ');
+    }
+    function row(title, rangeText, labelsHtml) {
+      return '<div class="mb-2"><div class="text-muted small mb-1">' + escapeHtml(title) + '</div>' +
+        '<div class="small mb-1">' + escapeHtml(rangeText) + '</div>' +
+        '<div class="d-flex flex-wrap gap-1">' + (labelsHtml || '<span class="text-muted small">None</span>') + '</div></div>';
+    }
+    var desktopTop = slice(0, 8);
+    var desktopMid = slice(8, 12);
+    var desktopLower = slice(12);
+    var mobileTop = slice(0, 4);
+    var mobileMid = slice(4, 8);
+    var mobileLower = slice(8);
+    root.innerHTML =
+      '<div class="col-12 col-xl-6"><div class="card card-sm h-100"><div class="card-body">' +
+      '<div class="fw-medium mb-2">Desktop/Large screens</div>' +
+      row('Left KPI block', 'First 8 enabled KPIs', desktopTop) +
+      row('Under first 2 tables', 'Next 4 KPIs', desktopMid) +
+      row('Under last 2 tables', 'Remaining KPIs', desktopLower) +
+      '</div></div></div>' +
+      '<div class="col-12 col-xl-6"><div class="card card-sm h-100"><div class="card-body">' +
+      '<div class="fw-medium mb-2">Small screens</div>' +
+      row('Top KPI block', 'First 4 enabled KPIs', mobileTop) +
+      row('Under first 2 tables', 'Next 4 KPIs', mobileMid) +
+      row('Under last 2 tables', 'Remaining KPIs', mobileLower) +
+      '</div></div></div>';
   }
 
   function readDateRangesTable(rootId) {
@@ -3909,20 +4052,18 @@
     var options = c.options || {};
     var condensed = options.condensed || {};
     var dashboard = options.dashboard || {};
+    var general = options.general || {};
 
     var optCondDelta = document.getElementById('settings-kpi-opt-condensed-delta');
     var optCondProg = document.getElementById('settings-kpi-opt-condensed-progress');
     var optCondSpark = document.getElementById('settings-kpi-opt-condensed-sparkline');
     var optDashDelta = document.getElementById('settings-kpi-opt-dashboard-delta');
-    var optHeaderKexoScore = document.getElementById('settings-kpi-opt-header-kexo-score');
+    var generalDateFormatEl = document.getElementById('settings-general-date-format');
     if (optCondDelta) optCondDelta.checked = condensed.showDelta !== false;
     if (optCondProg) optCondProg.checked = condensed.showProgress !== false;
     if (optCondSpark) optCondSpark.checked = condensed.showSparkline !== false;
     if (optDashDelta) optDashDelta.checked = dashboard.showDelta !== false;
-    if (optHeaderKexoScore) {
-      var headerOpt = options.header && typeof options.header === 'object' ? options.header : {};
-      optHeaderKexoScore.checked = headerOpt.showKexoScore !== false;
-    }
+    if (generalDateFormatEl) generalDateFormatEl.value = normalizeDateLabelFormat(general.dateLabelFormat);
 
     // Header KPI strip visibility per page.
     var defPages = (def.headerStrip && def.headerStrip.pages && typeof def.headerStrip.pages === 'object') ? def.headerStrip.pages : {};
@@ -3968,7 +4109,7 @@
     var optCondProg = document.getElementById('settings-kpi-opt-condensed-progress');
     var optCondSpark = document.getElementById('settings-kpi-opt-condensed-sparkline');
     var optDashDelta = document.getElementById('settings-kpi-opt-dashboard-delta');
-    var optHeaderKexoScore = document.getElementById('settings-kpi-opt-header-kexo-score');
+    var generalDateFormatEl = document.getElementById('settings-general-date-format');
     return {
       v: 1,
       options: {
@@ -3980,8 +4121,8 @@
         dashboard: {
           showDelta: !!(optDashDelta && optDashDelta.checked),
         },
-        header: {
-          showKexoScore: !!(optHeaderKexoScore && optHeaderKexoScore.checked),
+        general: {
+          dateLabelFormat: normalizeDateLabelFormat(generalDateFormatEl && generalDateFormatEl.value),
         },
       },
       headerStrip: {
@@ -4034,10 +4175,11 @@
   }
 
   function init() {
-    var initialTab = getTabFromQuery() || getTabFromHash() || 'general';
+    var initialTab = getTabFromQuery() || getTabFromHash() || 'kexo';
     // Layout is now a multi-tab section (Tables / Charts / KPIs). If the URL used legacy
     // `tab=charts` or `tab=kpis`, preselect the right Layout subtab BEFORE activating the panel.
     wireLayoutSubTabs(initialLayoutSubTab);
+    wireKexoSubTabs(initialKexoSubTab);
     activateTab(initialTab);
 
     document.querySelectorAll('[data-settings-tab]').forEach(function (el) {
@@ -4049,7 +4191,7 @@
     });
 
     window.addEventListener('popstate', function () {
-      activateTab(getTabFromQuery() || getTabFromHash() || 'general');
+      activateTab(getTabFromQuery() || getTabFromHash() || 'kexo');
     });
 
     var loaderEnabled = isSettingsPageLoaderEnabled();
@@ -4067,6 +4209,7 @@
 
     wirePlanBasedBrandingLocks();
     wireAssets();
+    wireGeneralSettingsSave();
     wireIntegrationsSubTabs();
     wireGoogleAdsActions();
     wireKpisLayoutSubTabs();

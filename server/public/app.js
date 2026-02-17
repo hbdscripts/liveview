@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: fe2b0540ee59198b
+// checksum: 9c201b7be48ccf65
 
 (function () {
 const API = '';
@@ -54,6 +54,7 @@ const API = '';
           'compare-conversion-rate': true,
           'shipping-cr': true,
           'click-order-lookup': true,
+          'change-pins': true,
           // Settings must never show the page overlay loader.
           settings: false,
           // Upgrade page is a static marketing/TODO page; never show the overlay loader there.
@@ -128,6 +129,41 @@ const API = '';
     }
     try { window.__kexoWithSilentOverlay = kexoWithSilentOverlay; } catch (_) {}
     try { window.__kexoSilentOverlayActive = kexoSilentOverlayActive; } catch (_) {}
+
+    // Change Pins (timeline annotations) — cached for dashboard chart overlays.
+    var _changePinsCache = null;
+    var _changePinsFetchedAt = 0;
+    var _changePinsInFlight = null;
+    var CHANGE_PINS_CACHE_TTL_MS = 60 * 1000;
+
+    function fetchChangePinsRecent(days) {
+      var d = (typeof days === 'number' && isFinite(days)) ? Math.max(7, Math.min(400, Math.floor(days))) : 120;
+      var url = API + '/api/tools/change-pins/recent?days=' + encodeURIComponent(String(d));
+      return fetch(url, { credentials: 'same-origin', cache: 'no-store' })
+        .then(function (r) { return (r && r.ok) ? r.json().catch(function () { return null; }) : null; })
+        .then(function (json) {
+          var pins = json && json.ok && Array.isArray(json.pins) ? json.pins : null;
+          if (!pins) return null;
+          _changePinsCache = pins;
+          _changePinsFetchedAt = Date.now();
+          return pins;
+        })
+        .catch(function (err) {
+          try { if (typeof window.kexoCaptureError === 'function') window.kexoCaptureError(err, { context: 'changePins.fetch' }); } catch (_) {}
+          return null;
+        });
+    }
+
+    function getChangePinsRecent(days, force) {
+      var fresh = _changePinsCache && _changePinsFetchedAt && (Date.now() - _changePinsFetchedAt) < CHANGE_PINS_CACHE_TTL_MS;
+      if (!force && fresh) return Promise.resolve(_changePinsCache);
+      if (_changePinsInFlight) return _changePinsInFlight;
+      _changePinsInFlight = fetchChangePinsRecent(days).finally(function () { _changePinsInFlight = null; });
+      return _changePinsInFlight;
+    }
+
+    try { window.__kexoGetChangePinsRecent = getChangePinsRecent; } catch (_) {}
+    try { window.__kexoReadChangePinsRecentCache = function () { return _changePinsCache; }; } catch (_) {}
 
     // ?????? Admin preview mode (UI-only) ????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
     // Preview is an admin tool: it affects client UI gating only and cannot bypass server auth.
@@ -487,7 +523,7 @@ const API = '';
       if (!isPageLoaderEnabled(PAGE)) return;
       // Tool pages compare-conversion-rate, shipping-cr, click-order-lookup don't use the report
       // build system and never call finish() ??? skip showing the loader so it doesn't cover content.
-      var toolPagesNoLoader = ['compare-conversion-rate', 'shipping-cr', 'click-order-lookup', 'snapshot'];
+      var toolPagesNoLoader = ['compare-conversion-rate', 'shipping-cr', 'click-order-lookup', 'change-pins', 'snapshot'];
       var pageKey = String(PAGE || '').trim().toLowerCase();
       if (toolPagesNoLoader.indexOf(pageKey) >= 0) return;
       var pageBody = document.querySelector('.page-body');
@@ -898,7 +934,7 @@ const API = '';
     }
     function getCompareDisplayLabel(rangeKey) {
       const rk = normalizeRangeKeyForApi(rangeKey);
-      if (rk === 'today') return 'Yesterday (same time)';
+      if (rk === 'today') return 'Yesterday';
       if (rk === 'yesterday') return 'Day before';
       if (rk === '3d') return 'Previous 3 days';
       if (rk === '7d') return 'Previous 7 days';
@@ -8062,18 +8098,29 @@ const API = '';
     }
 
     // Dashboard compare labels: use explicit date/date-range strings (avoid "Day before", "Previous 7 days").
+    function kpiDateLabelFormat() {
+      try {
+        var cfg = (typeof kpiUiConfigV1 !== 'undefined' && kpiUiConfigV1 && kpiUiConfigV1.v === 1) ? kpiUiConfigV1 : null;
+        var general = cfg && cfg.options && cfg.options.general && typeof cfg.options.general === 'object' ? cfg.options.general : null;
+        var raw = String(general && general.dateLabelFormat ? general.dateLabelFormat : '').trim().toLowerCase();
+        return raw === 'mdy' ? 'mdy' : 'dmy';
+      } catch (_) {
+        return 'dmy';
+      }
+    }
+
     function formatYmdMonthDay(ymd, includeYear) {
       if (!ymd || !/^\d{4}-\d{2}-\d{2}$/.test(String(ymd))) return String(ymd || '');
       var y = parseInt(String(ymd).slice(0, 4), 10);
       var m = parseInt(String(ymd).slice(5, 7), 10);
       var d = parseInt(String(ymd).slice(8, 10), 10);
-      if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) return String(ymd || '');
-      var dt = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
-      try {
-        return new Intl.DateTimeFormat('en-US', includeYear ? { month: 'short', day: 'numeric', year: 'numeric' } : { month: 'short', day: 'numeric' }).format(dt);
-      } catch (_) {
-        return String(ymd || '');
-      }
+      if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d) || m < 1 || m > 12 || d < 1 || d > 31) return String(ymd || '');
+      var order = kpiDateLabelFormat();
+      var base = order === 'mdy'
+        ? (String(m) + '/' + String(d))
+        : (String(d) + '/' + String(m));
+      if (!includeYear) return base;
+      return base + '/' + String(y);
     }
 
     function formatYmdRangeMonthDay(startYmd, endYmd) {
@@ -8109,16 +8156,13 @@ const API = '';
     }
 
     function compareLabelFromRange(rangeObj, opts) {
-      opts = opts && typeof opts === 'object' ? opts : {};
       var startMs = rangeObj && rangeObj.start != null ? Number(rangeObj.start) : NaN;
       var endMs = rangeObj && rangeObj.end != null ? Number(rangeObj.end) : NaN;
       if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || !(endMs > startMs)) return '';
       var startYmd = ymdInAdminTzFromMs(startMs);
       var endYmd = ymdInAdminTzFromMs(Math.max(startMs, endMs - 1));
       if (!startYmd || !endYmd) return '';
-      var label = formatYmdRangeMonthDay(startYmd, endYmd);
-      if (opts && opts.sameTime) label += ' (same time)';
-      return label;
+      return formatYmdRangeMonthDay(startYmd, endYmd);
     }
 
     function renderDashboardKpisFromApi(primaryData) {
@@ -8484,6 +8528,8 @@ const API = '';
     var uiSettingsInFlight = null;
     var kpiUiConfigV1 = null;
     var chartsUiConfigV1 = null;
+    var _dashboardKpiResizeWired = false;
+    var _dashboardKpiResizeTimer = 0;
     var KPI_UI_CFG_LS_KEY = 'kexo:kpi-ui-config:v1';
     var CHARTS_UI_CFG_LS_KEY = 'kexo:charts-ui-config:v1';
     var CHARTS_KPI_BUNDLE_KEYS = ['dashboardCards', 'headerStrip', 'yearlySnapshot'];
@@ -9026,18 +9072,6 @@ const API = '';
       } catch (_) {}
     }
 
-    function applyHeaderKexoScoreUiConfig(cfg) {
-      try {
-        var btn = document.getElementById('header-kexo-score-wrap');
-        if (!btn || !cfg || cfg.v !== 1) return;
-        var show = !(cfg.options && cfg.options.header && cfg.options.header.showKexoScore === false);
-        var page = '';
-        try { page = String(document.body && document.body.getAttribute ? document.body.getAttribute('data-page') : '').trim().toLowerCase(); } catch (_) { page = ''; }
-        if (page === 'dashboard') show = false;
-        btn.style.display = show ? '' : 'none';
-      } catch (_) {}
-    }
-
     function applyCondensedKpiUiConfig(cfg) {
       var strip = document.getElementById('kexo-condensed-kpis');
       if (!strip || !cfg || cfg.v !== 1) return;
@@ -9112,13 +9146,18 @@ const API = '';
 
     function applyDashboardKpiUiConfig(cfg) {
       var grid = document.getElementById('dash-kpi-grid');
+      var midGrid = document.getElementById('dash-kpi-grid-mid');
       var lowerGrid = document.getElementById('dash-kpi-grid-lower');
-      if (!grid || !cfg || cfg.v !== 1) return;
+      if (!grid || !midGrid || !lowerGrid || !cfg || cfg.v !== 1) return;
       var list = cfg && cfg.kpis && Array.isArray(cfg.kpis.dashboard) ? cfg.kpis.dashboard : null;
       if (!list) return;
-      var legacyLowerKeys = new Set(['cogs', 'fulfilled', 'returns', 'items']);
-      var maxTopVisible = 6;
+      var topCap = 4;
+      try {
+        if (window && window.matchMedia && window.matchMedia('(min-width: 1200px)').matches) topCap = 8;
+      } catch (_) {}
+      var midCap = 4;
       var topVisibleCount = 0;
+      var midVisibleCount = 0;
 
       var idByKey = {
         revenue: 'dash-kpi-revenue',
@@ -9149,13 +9188,30 @@ const API = '';
       var allColsPrimary = Array.prototype.slice.call(grid.children || []).filter(function(el) {
         return el && el.classList && el.classList.contains('col-sm-6');
       });
+      var allColsMid = Array.prototype.slice.call(midGrid.children || []).filter(function(el) {
+        return el && el.classList && el.classList.contains('col-sm-6');
+      });
       var allColsLower = lowerGrid ? Array.prototype.slice.call(lowerGrid.children || []).filter(function(el) {
         return el && el.classList && el.classList.contains('col-sm-6');
       }) : [];
-      var allCols = allColsPrimary.concat(allColsLower);
+      var allCols = allColsPrimary.concat(allColsMid).concat(allColsLower);
       var seen = new Set();
       var fragPrimary = document.createDocumentFragment();
+      var fragMid = document.createDocumentFragment();
       var fragLower = document.createDocumentFragment();
+
+      function chooseBucket(enabled) {
+        if (!enabled) return 'lower';
+        if (topVisibleCount < topCap) {
+          topVisibleCount += 1;
+          return 'top';
+        }
+        if (midVisibleCount < midCap) {
+          midVisibleCount += 1;
+          return 'mid';
+        }
+        return 'lower';
+      }
 
       list.forEach(function(item) {
         if (!item || typeof item !== 'object') return;
@@ -9170,26 +9226,23 @@ const API = '';
         }
         var enabled = item.enabled !== false;
         col.classList.toggle('is-user-disabled', !enabled);
-        var pos = item.position != null ? String(item.position).trim().toLowerCase() : '';
-        var wantsLower = (pos === 'lower') || (pos !== 'top' && legacyLowerKeys.has(key));
-        if (!wantsLower && enabled && topVisibleCount >= maxTopVisible) wantsLower = true;
-        if (!wantsLower && enabled) topVisibleCount += 1;
-        if (lowerGrid && wantsLower) fragLower.appendChild(col);
-        else fragPrimary.appendChild(col);
+        var bucket = chooseBucket(enabled);
+        if (bucket === 'top') fragPrimary.appendChild(col);
+        else if (bucket === 'mid') fragMid.appendChild(col);
+        else fragLower.appendChild(col);
         seen.add(col);
       });
       allCols.forEach(function(col) {
         if (!col || seen.has(col)) return;
         col.classList.remove('is-user-disabled');
-        var key = keyByCol.get(col) || '';
-        var wantsLower = legacyLowerKeys.has(key);
-        if (!wantsLower && topVisibleCount >= maxTopVisible) wantsLower = true;
-        if (!wantsLower) topVisibleCount += 1;
-        if (lowerGrid && wantsLower) fragLower.appendChild(col);
-        else fragPrimary.appendChild(col);
+        var bucket = chooseBucket(true);
+        if (bucket === 'top') fragPrimary.appendChild(col);
+        else if (bucket === 'mid') fragMid.appendChild(col);
+        else fragLower.appendChild(col);
       });
       grid.appendChild(fragPrimary);
-      if (lowerGrid) lowerGrid.appendChild(fragLower);
+      midGrid.appendChild(fragMid);
+      lowerGrid.appendChild(fragLower);
 
       var showDelta = !(cfg.options && cfg.options.dashboard && cfg.options.dashboard.showDelta === false);
       var deltaEls = Array.prototype.slice.call(grid.querySelectorAll('.dash-kpi-delta'));
@@ -9225,9 +9278,24 @@ const API = '';
       try { window.__kexoKpiUiConfigV1 = cfg; } catch (_) {}
       try { safeWriteLocalStorageJson(KPI_UI_CFG_LS_KEY, cfg); } catch (_) {}
       try { applyHeaderKpiStripVisibilityByPage(cfg); } catch (_) {}
-      try { applyHeaderKexoScoreUiConfig(cfg); } catch (_) {}
       try { applyCondensedKpiUiConfig(cfg); } catch (_) {}
       try { applyDashboardKpiUiConfig(cfg); } catch (_) {}
+      if (!_dashboardKpiResizeWired) {
+        _dashboardKpiResizeWired = true;
+        try {
+          window.addEventListener('resize', function () {
+            if (_dashboardKpiResizeTimer) {
+              try { clearTimeout(_dashboardKpiResizeTimer); } catch (_) {}
+            }
+            _dashboardKpiResizeTimer = setTimeout(function () {
+              _dashboardKpiResizeTimer = 0;
+              try {
+                if (kpiUiConfigV1 && kpiUiConfigV1.v === 1) applyDashboardKpiUiConfig(kpiUiConfigV1);
+              } catch (_) {}
+            }, 120);
+          });
+        } catch (_) {}
+      }
       try { syncDateSelectOptions(); } catch (_) {}
       try { ensureDateRangeAllowedByUiConfig(); } catch (_) {}
     }
@@ -11064,8 +11132,58 @@ const API = '';
         }
       } catch (_) {}
       rangeOverviewChart = new ApexCharts(el, overviewOpts);
-      rangeOverviewChart.render();
+      var curOverviewChart = rangeOverviewChart;
+      var overviewRenderPromise = null;
+      try { overviewRenderPromise = curOverviewChart.render(); } catch (_) { overviewRenderPromise = null; }
       rangeOverviewChartKey = String(rangeKey || '');
+      function applyChangePinsOverlay() {
+        try {
+          if (rangeOverviewChart !== curOverviewChart) return;
+          if (typeof window === 'undefined' || typeof window.__kexoGetChangePinsRecent !== 'function') return;
+          window.__kexoGetChangePinsRecent(120, false).then(function (pins) {
+            try {
+              if (rangeOverviewChart !== curOverviewChart) return;
+              if (!pins || !Array.isArray(pins) || !pins.length) return;
+              if (!labels || !labels.length) return;
+              var idx = new Map();
+              for (var i = 0; i < labels.length; i++) {
+                var key = labels[i] != null ? String(labels[i]) : '';
+                if (!key) continue;
+                if (!idx.has(key)) idx.set(key, i);
+              }
+              var ann = [];
+              for (var j = 0; j < pins.length; j++) {
+                var p = pins[j] || {};
+                var ts = p.event_ts != null ? Number(p.event_ts) : NaN;
+                if (!Number.isFinite(ts)) continue;
+                var cand = bucket === 'hour' ? shortTimeLabel(ts) : shortDateTimeLabel(ts);
+                if (!cand) continue;
+                if (!idx.has(cand)) continue;
+                var text = p.title != null ? String(p.title).trim() : '';
+                if (text.length > 22) text = text.slice(0, 21) + '…';
+                if (!text) text = 'Pin';
+                ann.push({
+                  x: cand,
+                  borderColor: 'rgba(15,23,42,0.35)',
+                  label: {
+                    text: text,
+                    borderColor: 'rgba(15,23,42,0.55)',
+                    style: { background: 'rgba(15,23,42,0.75)', color: '#fff', fontSize: '10px', fontWeight: 500 },
+                    offsetY: -6,
+                  },
+                });
+              }
+              if (!ann.length) return;
+              try { curOverviewChart.updateOptions({ annotations: { xaxis: ann } }, false, true); } catch (_) {}
+            } catch (_) {}
+          });
+        } catch (_) {}
+      }
+      if (overviewRenderPromise && typeof overviewRenderPromise.then === 'function') {
+        overviewRenderPromise.then(function () { try { setTimeout(applyChangePinsOverlay, 0); } catch (_) {} }).catch(function () {});
+      } else {
+        try { setTimeout(applyChangePinsOverlay, 0); } catch (_) {}
+      }
       var labelEl = document.getElementById('sessions-overview-bucket-label');
       if (labelEl && PAGE === 'sales') {
         var bucketLabel = bucket === 'hour' ? 'By hour' : bucket === 'month' ? 'By month' : 'By day';
@@ -14069,8 +14187,8 @@ const API = '';
       (function initMainTabs() {
         const TAB_KEY = 'kexo-main-tab';
         const VALID_TABS = ['dashboard', 'spy', 'sales', 'date', 'snapshot', 'stats', 'products', 'attribution', 'devices', 'ads', 'tools'];
-        const TAB_LABELS = { dashboard: 'Overview', spy: 'Live View', sales: 'Recent Sales', date: 'Table View', snapshot: 'Snapshot', stats: 'Countries', products: 'Products', variants: 'Variants', attribution: 'Attribution', devices: 'Devices', ads: 'Google Ads', tools: 'Conversion Rate Compare' };
-        const HASH_TO_TAB = { dashboard: 'dashboard', 'live-view': 'spy', sales: 'sales', date: 'date', countries: 'stats', products: 'products', channels: 'attribution', type: 'devices', attribution: 'attribution', devices: 'devices', ads: 'ads', 'compare-conversion-rate': 'tools' };
+        const TAB_LABELS = { dashboard: 'Overview', spy: 'Live View', sales: 'Recent Sales', date: 'Table View', snapshot: 'Snapshot', stats: 'Countries', products: 'Products', variants: 'Variants', attribution: 'Attribution', devices: 'Devices', ads: 'Google Ads', tools: 'Tools' };
+        const HASH_TO_TAB = { dashboard: 'dashboard', 'live-view': 'spy', sales: 'sales', date: 'date', countries: 'stats', products: 'products', channels: 'attribution', type: 'devices', attribution: 'attribution', devices: 'devices', ads: 'ads', 'compare-conversion-rate': 'tools', 'change-pins': 'tools' };
         const TAB_TO_HASH = { dashboard: 'dashboard', spy: 'live-view', sales: 'sales', date: 'date', stats: 'countries', products: 'products', attribution: 'attribution', devices: 'devices', ads: 'ads', tools: 'compare-conversion-rate' };
         const tabDashboard = document.getElementById('nav-tab-dashboard');
         const tabSpy = document.getElementById('nav-tab-spy');
@@ -14187,7 +14305,8 @@ const API = '';
           tools: 'nav-item-tools',
           'click-order-lookup': 'nav-item-tools',
           'compare-conversion-rate': 'nav-item-tools',
-          'shipping-cr': 'nav-item-tools'
+          'shipping-cr': 'nav-item-tools',
+          'change-pins': 'nav-item-tools'
         };
         function syncPageHeaderCategoryIcon() {
           // Inject the active top-menu category icon into the page header (next to pretitle/title),
@@ -14487,7 +14606,7 @@ const API = '';
             : PAGE === 'type' ? 'devices'
             : PAGE === 'attribution' ? 'attribution'
             : PAGE === 'devices' ? 'devices'
-            : (PAGE === 'compare-conversion-rate' || PAGE === 'shipping-cr' || PAGE === 'click-order-lookup') ? PAGE
+            : (PAGE === 'compare-conversion-rate' || PAGE === 'shipping-cr' || PAGE === 'click-order-lookup' || PAGE === 'change-pins') ? PAGE
             : PAGE;
           setTab(pageTab);
           return;
@@ -15088,6 +15207,7 @@ const API = '';
       var dashCompareFetchedAt = 0;
       var dashCompareSeriesInFlight = null;
       var dashCharts = {};
+      var dashSparkCharts = {};
       var overviewMiniResizeObserver = null;
       var overviewMiniResizeScheduled = false;
       var overviewMiniSizeSignature = '';
@@ -15098,6 +15218,8 @@ const API = '';
       var overviewMiniPayloadSignature = '';
       var overviewMiniResizeTimer = null;
       var OVERVIEW_MINI_CACHE_MS = 2 * 60 * 1000;
+      var OVERVIEW_MINI_FORCE_REFRESH_MS = 5 * 60 * 1000;
+      var overviewMiniLastForceAt = 0;
       var _primaryRgbDash = getComputedStyle(document.documentElement).getPropertyValue('--tblr-primary-rgb').trim() || '32,107,196';
       var DASH_ACCENT = 'rgb(' + _primaryRgbDash + ')';
       var DASH_ACCENT_LIGHT = 'rgba(' + _primaryRgbDash + ',0.12)';
@@ -15198,6 +15320,87 @@ const API = '';
       }
 
       var dashChartConfigs = {};
+
+      function truncatePinTitle(s) {
+        var v = s == null ? '' : String(s).trim();
+        if (!v) return '';
+        return v.length > 26 ? (v.slice(0, 25) + '…') : v;
+      }
+
+      function buildPinAnnotationsForCategories(categoryLabels, pins) {
+        var labels = Array.isArray(categoryLabels) ? categoryLabels : [];
+        var list = Array.isArray(pins) ? pins : [];
+        if (!labels.length || !list.length) return [];
+        var idx = new Map();
+        for (var i = 0; i < labels.length; i++) {
+          var key = labels[i] != null ? String(labels[i]) : '';
+          if (!key) continue;
+          if (!idx.has(key)) idx.set(key, i);
+        }
+        var out = [];
+        for (var j = 0; j < list.length; j++) {
+          var p = list[j] || {};
+          var ymd = p.event_ymd ? String(p.event_ymd) : '';
+          if (!ymd) continue;
+          var cands = [];
+          cands.push(ymd);
+          try { cands.push(shortDate(ymd)); } catch (_) {}
+          var matchedLabel = null;
+          for (var k = 0; k < cands.length; k++) {
+            var c = cands[k];
+            if (!c) continue;
+            if (idx.has(c)) { matchedLabel = c; break; }
+          }
+          if (!matchedLabel) continue;
+          var text = truncatePinTitle(p.title || '') || 'Pin';
+          out.push({
+            x: matchedLabel,
+            borderColor: 'rgba(15,23,42,0.35)',
+            strokeDashArray: 0,
+            label: {
+              text: text,
+              borderColor: 'rgba(15,23,42,0.55)',
+              style: {
+                background: 'rgba(15,23,42,0.75)',
+                color: '#ffffff',
+                fontSize: '10px',
+                fontWeight: 500,
+              },
+              offsetY: -6,
+            },
+          });
+        }
+        return out;
+      }
+
+      function applyChangePinsOverlayToChart(chartId, chart, categoryLabels) {
+        if (!chart || !categoryLabels || !categoryLabels.length) return;
+        if (typeof window === 'undefined') return;
+        var cached = null;
+        try {
+          cached = (typeof window.__kexoReadChangePinsRecentCache === 'function') ? window.__kexoReadChangePinsRecentCache() : null;
+        } catch (_) {}
+        var ann = buildPinAnnotationsForCategories(categoryLabels, cached);
+        if (ann && ann.length) {
+          try {
+            if (dashCharts && dashCharts[chartId] !== chart) return;
+            chart.updateOptions({ annotations: { xaxis: ann } }, false, true);
+          } catch (_) {}
+          return;
+        }
+        try {
+          if (typeof window.__kexoGetChangePinsRecent !== 'function') return;
+          window.__kexoGetChangePinsRecent(120, false).then(function (pins) {
+            if (!pins) return;
+            var nextAnn = buildPinAnnotationsForCategories(categoryLabels, pins);
+            if (!nextAnn || !nextAnn.length) return;
+            try {
+              if (dashCharts && dashCharts[chartId] !== chart) return;
+              chart.updateOptions({ annotations: { xaxis: nextAnn } }, false, true);
+            } catch (_) {}
+          });
+        } catch (_) {}
+      }
 
       function makeChart(chartId, labels, datasets, opts) {
         if (typeof ApexCharts === 'undefined') {
@@ -15350,8 +15553,16 @@ const API = '';
           } catch (_) {}
 
           var chart = new ApexCharts(el, apexOpts);
-          chart.render();
           dashCharts[chartId] = chart;
+          var r = null;
+          try { r = chart.render(); } catch (_) { r = null; }
+          if (r && typeof r.then === 'function') {
+            r.then(function () {
+              try { applyChangePinsOverlayToChart(chartId, chart, labels || []); } catch (_) {}
+            }).catch(function () {});
+          } else {
+            try { setTimeout(function () { applyChangePinsOverlayToChart(chartId, chart, labels || []); }, 0); } catch (_) {}
+          }
           return chart;
         } catch (err) {
           captureChartError(err, 'dashboardChartRender', { chartId: chartId });
@@ -15398,7 +15609,7 @@ const API = '';
       }
 
       function overviewMiniChartIds() {
-        return ['dash-chart-finishes-30d', 'dash-chart-countries-30d', 'dash-chart-kexo-score-today', 'dash-chart-overview-30d'];
+        return ['dash-chart-finishes-30d', 'dash-chart-countries-30d', 'dash-chart-attribution-30d', 'dash-chart-overview-30d'];
       }
 
       function quantizeOverviewMiniSize(value) {
@@ -15426,7 +15637,7 @@ const API = '';
           return JSON.stringify({
             finishes: miniChartCfg('dash-chart-finishes-30d', 'pie', ['#f59e34']),
             countries: miniChartCfg('dash-chart-countries-30d', 'pie', ['#4b94e4']),
-            score: miniChartCfg('dash-chart-kexo-score-today', 'pie', ['#4b94e4']),
+            attribution: miniChartCfg('dash-chart-attribution-30d', 'pie', ['#4b94e4']),
             overview: miniChartCfg('dash-chart-overview-30d', 'bar', ['#3eb3ab', '#ef4444']),
           }) || '';
         } catch (_) {
@@ -15519,7 +15730,7 @@ const API = '';
       function showOverviewMiniLoadingState() {
         renderOverviewChartLoading('dash-chart-finishes-30d', 'Loading finishes...');
         renderOverviewChartLoading('dash-chart-countries-30d', 'Loading countries...');
-        renderOverviewChartLoading('dash-chart-kexo-score-today', 'Loading score...');
+        renderOverviewChartLoading('dash-chart-attribution-30d', 'Loading attribution...');
         renderOverviewChartLoading('dash-chart-overview-30d', 'Loading 30 day overview...');
       }
 
@@ -15653,52 +15864,29 @@ const API = '';
         }
       }
 
-      function renderOverviewKexoScoreChart(rawScore) {
-        var chartId = 'dash-chart-kexo-score-today';
-        var chartEl = document.getElementById(chartId);
-        if (!chartEl) return;
-        if (!isChartEnabledByUiConfig(chartId)) {
-          destroyDashChart(chartId);
-          chartEl.innerHTML = '';
-          return;
-        }
-        var style = (typeof chartStyleFromUiConfig === 'function') ? chartStyleFromUiConfig(chartId) : null;
-        var renderer = style && style.kexoRenderer != null ? String(style.kexoRenderer).trim().toLowerCase() : 'pie';
-        if (renderer !== 'wheel' && renderer !== 'pie') renderer = 'pie';
-        var hasScore = Number.isFinite(Number(rawScore));
-        if (!hasScore) {
-          renderOverviewChartLoading(chartId, 'Loading score...');
-          return;
-        }
-        var score = Math.max(0, Math.min(100, Number(rawScore)));
-        if (renderer !== 'wheel') {
-          renderOverviewPieChart(chartId, ['Score', 'Remaining'], [score, Math.max(0, 100 - score)], {
-            donut: true,
-            colors: ['#4b94e4', '#e5e7eb'],
-            valueFormatter: function(v) { return normalizeOverviewMetric(v).toFixed(1); },
-            height: 180
-          });
-          return;
-        }
-        destroyDashChart(chartId);
-        chartEl.innerHTML = '' +
-          '<div class="kexo-overview-score-wheel">' +
-            '<div class="kexo-score-ring-wrap kexo-score-ring-wrap--overview" aria-hidden="true">' +
-              '<svg class="kexo-score-ring-svg kexo-score-ring-svg--overview" viewBox="0 0 40 40">' +
-                '<circle class="kexo-score-ring-track" cx="20" cy="20" r="16" fill="none"></circle>' +
-                '<circle class="kexo-score-ring-fill kexo-score-ring-fill--1" cx="20" cy="20" r="16" fill="none"></circle>' +
-                '<circle class="kexo-score-ring-fill kexo-score-ring-fill--2" cx="20" cy="20" r="16" fill="none"></circle>' +
-                '<circle class="kexo-score-ring-fill kexo-score-ring-fill--3" cx="20" cy="20" r="16" fill="none"></circle>' +
-                '<circle class="kexo-score-ring-fill kexo-score-ring-fill--4" cx="20" cy="20" r="16" fill="none"></circle>' +
-                '<circle class="kexo-score-ring-fill kexo-score-ring-fill--5" cx="20" cy="20" r="16" fill="none"></circle>' +
-              '</svg>' +
-              '<div class="kexo-score-ring-center"><span class="kexo-score-num kexo-score-num--overview" data-overview-kexo-score-num>\u2014</span></div>' +
-            '</div>' +
-          '</div>';
-        var numEl = chartEl.querySelector('[data-overview-kexo-score-num]');
-        if (numEl) numEl.textContent = formatKexoScoreNumber(score);
-        var ring = chartEl.querySelector('.kexo-score-ring-svg--overview');
-        if (ring) applyKexoScoreRingSvg(ring, score);
+      function renderOverviewAttributionChart(attributionPayload) {
+        var chartId = 'dash-chart-attribution-30d';
+        var rows = attributionPayload && attributionPayload.attribution && Array.isArray(attributionPayload.attribution.rows)
+          ? attributionPayload.attribution.rows
+          : [];
+        var topRows = rows
+          .filter(function (row) { return row && Number(row.sessions) > 0; })
+          .sort(function (a, b) { return (Number(b.sessions) || 0) - (Number(a.sessions) || 0); })
+          .slice(0, 5);
+        var labels = [];
+        var values = [];
+        topRows.forEach(function (row) {
+          var label = row && row.label != null ? String(row.label).trim() : '';
+          var sessions = normalizeOverviewMetric(row && row.sessions);
+          if (!label || sessions <= 0) return;
+          labels.push(label);
+          values.push(sessions);
+        });
+        renderOverviewPieChart(chartId, labels, values, {
+          colors: ['#4b94e4', '#3eb3ab', '#f59e34', '#8b5cf6', '#ef4444'],
+          valueFormatter: function(v) { return Math.round(normalizeOverviewMetric(v)).toLocaleString() + ' sessions'; },
+          height: 180
+        });
       }
 
       function renderOverviewRevenueCostChart(snapshotPayload) {
@@ -15807,8 +15995,7 @@ const API = '';
           height: 180
         });
 
-        var rawScore = payload && payload.kexoScore && payload.kexoScore.score != null ? Number(payload.kexoScore.score) : NaN;
-        renderOverviewKexoScoreChart(rawScore);
+        renderOverviewAttributionChart(payload ? payload.attribution : null);
 
         renderOverviewRevenueCostChart(payload ? payload.snapshot : null);
         overviewMiniSizeSignature = computeOverviewMiniSizeSignature();
@@ -15839,19 +16026,19 @@ const API = '';
         var seriesUrl = API + '/api/dashboard-series?range=30d' + (force ? ('&force=1&_=' + stamp) : '');
         var snapshotUrl = API + '/api/business-snapshot?mode=range&preset=last_30_days' + (force ? ('&force=1&_=' + stamp) : '');
         var finishesUrl = API + '/api/shopify-finishes?range=30d' + (shop ? ('&shop=' + encodeURIComponent(shop)) : '') + (force ? ('&force=1&_=' + stamp) : '');
-        var scoreUrl = API + '/api/kexo-score?range=today' + (force ? ('&force=1&_=' + stamp) : '');
+        var attributionUrl = API + '/api/attribution/report?range=30d' + (force ? ('&force=1&_=' + stamp) : '');
 
         overviewMiniInFlight = Promise.all([
           fetchOverviewJson(seriesUrl, force, 25000),
           fetchOverviewJson(snapshotUrl, force, 30000),
           fetchOverviewJson(finishesUrl, force, 25000),
-          fetchOverviewJson(scoreUrl, force, 25000),
+          fetchOverviewJson(attributionUrl, force, 25000),
         ]).then(function(parts) {
           var payload = {
             countries: parts[0] || null,
             snapshot: parts[1] || null,
             finishes: parts[2] || null,
-            kexoScore: parts[3] || null,
+            attribution: parts[3] || null,
           };
           overviewMiniCache = payload;
           overviewMiniFetchedAt = Date.now();
@@ -15917,7 +16104,6 @@ const API = '';
           var sparkEl = el(elId);
           if (!sparkEl || typeof ApexCharts === 'undefined') return;
           if (dataArr.length < 2) dataArr = dataArr.length === 1 ? [dataArr[0], dataArr[0]] : [0, 0];
-          sparkEl.innerHTML = '';
           var dashBundle = getChartsKpiBundle('dashboardCards');
           var sparkCfg = dashBundle.sparkline || defaultChartsKpiSparklineConfig('dashboardCards');
           var sparkMode = String(sparkCfg.mode || 'line').toLowerCase();
@@ -16013,8 +16199,21 @@ const API = '';
               apexOpts = deepMergeOptions(apexOpts, override);
             }
           } catch (_) {}
+          var existing = dashSparkCharts[elId];
+          if (existing && typeof existing.updateOptions === 'function' && typeof existing.updateSeries === 'function') {
+            try {
+              existing.updateOptions(apexOpts, false, false, false);
+              existing.updateSeries(series, false);
+              return;
+            } catch (_) {
+              try { existing.destroy(); } catch (_) {}
+              try { delete dashSparkCharts[elId]; } catch (_) {}
+            }
+          }
+          sparkEl.innerHTML = '';
           var chart = new ApexCharts(sparkEl, apexOpts);
           chart.render();
+          dashSparkCharts[elId] = chart;
         }
         function sparkToneColor(dataArr) {
           var GREEN = chartsKpiToneColor('dashboardCards', 'up');
@@ -16352,7 +16551,6 @@ const API = '';
         try {
           var cfg = (typeof kpiUiConfigV1 !== 'undefined' && kpiUiConfigV1 && kpiUiConfigV1.v === 1) ? kpiUiConfigV1 : null;
           if (!cfg) return true;
-          var headerEnabled = !(cfg.options && cfg.options.header && cfg.options.header.showKexoScore === false);
           var dashboardEnabled = true;
           var list = cfg.kpis && Array.isArray(cfg.kpis.dashboard) ? cfg.kpis.dashboard : null;
           if (list) {
@@ -16361,7 +16559,7 @@ const API = '';
             });
             if (scoreItem && scoreItem.enabled === false) dashboardEnabled = false;
           }
-          return headerEnabled || dashboardEnabled;
+          return dashboardEnabled;
         } catch (_) {
           return true;
         }

@@ -110,6 +110,7 @@ function isProtectedPath(pathname) {
     '/tools/compare-conversion-rate',
     '/tools/shipping-cr',
     '/tools/click-order-lookup',
+    '/tools/change-pins',
     '/settings',
     '/admin',
     // Legacy flat routes retained as protected redirect endpoints.
@@ -126,6 +127,7 @@ function isProtectedPath(pathname) {
     '/compare-conversion-rate',
     '/shipping-cr',
     '/click-order-lookup',
+    '/change-pins',
   ]);
   if (protectedPages.has(pathname)) return true;
   return false;

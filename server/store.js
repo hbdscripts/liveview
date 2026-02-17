@@ -13,6 +13,7 @@ const shopifyLandingMeta = require('./shopifyLandingMeta');
 const shopifyQl = require('./shopifyQl');
 const reportCache = require('./reportCache');
 const { deriveAttribution } = require('./attribution/deriveAttribution');
+const { warnOnReject } = require('./shared/warnReject');
 
 const ALLOWED_EVENT_TYPES = new Set([
   'page_viewed', 'product_viewed', 'product_added_to_cart', 'product_removed_from_cart',
@@ -3084,7 +3085,7 @@ async function getStats(options = {}) {
       // Avoid blocking report responses on potentially slow Shopify reconciliation.
       // Long-range backfills are handled opportunistically in the background.
       const scopeKey = salesTruth.scopeForRangeKey(r.key || 'range', 'range');
-      salesTruth.ensureReconciled(salesShop, r.start, r.end, scopeKey).catch(() => {});
+      salesTruth.ensureReconciled(salesShop, r.start, r.end, scopeKey).catch(warnOnReject('[store] ensureReconciled'));
     }
   }
   // Run all stats queries in one parallel batch to avoid N+1 (many sequential DB round-trips). Fixes NODE-1.
@@ -3285,7 +3286,7 @@ async function getKpis(options = {}) {
         }
       }
     } else {
-      salesTruth.ensureReconciled(salesShop, bounds.start, bounds.end, scopeKey).catch(() => {});
+      salesTruth.ensureReconciled(salesShop, bounds.start, bounds.end, scopeKey).catch(warnOnReject('[store] ensureReconciled'));
       salesTruthSync = null;
     }
   }

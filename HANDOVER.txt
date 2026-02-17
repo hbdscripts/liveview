@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-16 (Dashboard overview charts: Kexo wheel + donut/label controls + pulse fix)
+Last updated: 2026-02-16 (Tools: Change Pins annotations + before/after effect + dashboard markers)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -133,6 +133,7 @@ Tools:
 - `/tools/compare-conversion-rate` → `server/public/tools/compare-conversion-rate.html`
 - `/tools/shipping-cr` → `server/public/tools/shipping-cr.html`
 - `/tools/click-order-lookup` → `server/public/tools/click-order-lookup.html`
+- `/tools/change-pins` → `server/public/tools/change-pins.html`
 
 Settings:
 - `/settings` → `server/public/settings.html`
@@ -386,6 +387,12 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-16 (latest)
+- Tools: Change Pins annotations:
+  - New Tools page `/tools/change-pins` to create/edit/archive pins (pricing/ads/site/ops) with tags + notes.
+  - Effect lookup: 7/14/30 day before-vs-after comparison using the same KPI truth logic (`store.getKpis`).
+  - Dashboard overlays: recent pins render as vertical markers on time-series charts (category label match).
 
 2026-02-16 (latest)
 - Dashboard overview chart refinement:

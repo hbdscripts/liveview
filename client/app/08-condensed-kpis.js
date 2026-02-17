@@ -1618,8 +1618,58 @@
         }
       } catch (_) {}
       rangeOverviewChart = new ApexCharts(el, overviewOpts);
-      rangeOverviewChart.render();
+      var curOverviewChart = rangeOverviewChart;
+      var overviewRenderPromise = null;
+      try { overviewRenderPromise = curOverviewChart.render(); } catch (_) { overviewRenderPromise = null; }
       rangeOverviewChartKey = String(rangeKey || '');
+      function applyChangePinsOverlay() {
+        try {
+          if (rangeOverviewChart !== curOverviewChart) return;
+          if (typeof window === 'undefined' || typeof window.__kexoGetChangePinsRecent !== 'function') return;
+          window.__kexoGetChangePinsRecent(120, false).then(function (pins) {
+            try {
+              if (rangeOverviewChart !== curOverviewChart) return;
+              if (!pins || !Array.isArray(pins) || !pins.length) return;
+              if (!labels || !labels.length) return;
+              var idx = new Map();
+              for (var i = 0; i < labels.length; i++) {
+                var key = labels[i] != null ? String(labels[i]) : '';
+                if (!key) continue;
+                if (!idx.has(key)) idx.set(key, i);
+              }
+              var ann = [];
+              for (var j = 0; j < pins.length; j++) {
+                var p = pins[j] || {};
+                var ts = p.event_ts != null ? Number(p.event_ts) : NaN;
+                if (!Number.isFinite(ts)) continue;
+                var cand = bucket === 'hour' ? shortTimeLabel(ts) : shortDateTimeLabel(ts);
+                if (!cand) continue;
+                if (!idx.has(cand)) continue;
+                var text = p.title != null ? String(p.title).trim() : '';
+                if (text.length > 22) text = text.slice(0, 21) + '…';
+                if (!text) text = 'Pin';
+                ann.push({
+                  x: cand,
+                  borderColor: 'rgba(15,23,42,0.35)',
+                  label: {
+                    text: text,
+                    borderColor: 'rgba(15,23,42,0.55)',
+                    style: { background: 'rgba(15,23,42,0.75)', color: '#fff', fontSize: '10px', fontWeight: 500 },
+                    offsetY: -6,
+                  },
+                });
+              }
+              if (!ann.length) return;
+              try { curOverviewChart.updateOptions({ annotations: { xaxis: ann } }, false, true); } catch (_) {}
+            } catch (_) {}
+          });
+        } catch (_) {}
+      }
+      if (overviewRenderPromise && typeof overviewRenderPromise.then === 'function') {
+        overviewRenderPromise.then(function () { try { setTimeout(applyChangePinsOverlay, 0); } catch (_) {} }).catch(function () {});
+      } else {
+        try { setTimeout(applyChangePinsOverlay, 0); } catch (_) {}
+      }
       var labelEl = document.getElementById('sessions-overview-bucket-label');
       if (labelEl && PAGE === 'sales') {
         var bucketLabel = bucket === 'hour' ? 'By hour' : bucket === 'month' ? 'By month' : 'By day';

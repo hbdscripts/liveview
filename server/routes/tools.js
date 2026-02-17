@@ -5,6 +5,7 @@ const salesTruth = require('../salesTruth');
 const compareCr = require('../tools/compareCr');
 const shippingCr = require('../tools/shippingCr');
 const clickOrderLookup = require('../tools/clickOrderLookup');
+const changePins = require('../tools/changePins');
 const { warnOnReject } = require('../shared/warnReject');
 
 const router = express.Router();
@@ -135,6 +136,115 @@ router.get('/click-order-lookup', async (req, res) => {
   } catch (err) {
     Sentry.captureException(err, { extra: { route: 'tools.click-order-lookup' } });
     console.error('[tools.click-order-lookup]', err);
+    res.status(500).json({ ok: false, error: 'Internal error' });
+  }
+});
+
+router.get('/change-pins', async (req, res) => {
+  res.setHeader('Cache-Control', 'private, max-age=30');
+  res.setHeader('Vary', 'Cookie');
+  try {
+    const out = await changePins.listPins({
+      from_ymd: req?.query?.from_ymd,
+      to_ymd: req?.query?.to_ymd,
+      q: req?.query?.q,
+      kind: req?.query?.kind,
+      include_archived: req?.query?.include_archived,
+      limit: req?.query?.limit,
+      offset: req?.query?.offset,
+    });
+    res.json(out);
+  } catch (err) {
+    Sentry.captureException(err, { extra: { route: 'tools.change-pins.list' } });
+    console.error('[tools.change-pins.list]', err);
+    res.status(500).json({ ok: false, error: 'Internal error' });
+  }
+});
+
+router.get('/change-pins/recent', async (req, res) => {
+  res.setHeader('Cache-Control', 'private, max-age=30');
+  res.setHeader('Vary', 'Cookie');
+  try {
+    const days = req?.query?.days;
+    const out = await changePins.listRecentPins({ days });
+    res.json(out);
+  } catch (err) {
+    Sentry.captureException(err, { extra: { route: 'tools.change-pins.recent' } });
+    console.error('[tools.change-pins.recent]', err);
+    res.status(500).json({ ok: false, error: 'Internal error' });
+  }
+});
+
+router.get('/change-pins/:id/effect', async (req, res) => {
+  res.setHeader('Cache-Control', 'private, max-age=30');
+  res.setHeader('Vary', 'Cookie');
+  try {
+    const id = req?.params?.id;
+    const windowDays = req?.query?.window_days;
+    const out = await changePins.getPinEffect(id, { window_days: windowDays });
+    res.json(out);
+  } catch (err) {
+    Sentry.captureException(err, { extra: { route: 'tools.change-pins.effect' } });
+    console.error('[tools.change-pins.effect]', err);
+    res.status(500).json({ ok: false, error: 'Internal error' });
+  }
+});
+
+router.post('/change-pins', async (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  res.setHeader('Vary', 'Cookie');
+  try {
+    const out = await changePins.createPin(req?.body || {}, {});
+    if (!out || !out.ok) return res.status(400).json(out || { ok: false, error: 'invalid_request' });
+    res.json(out);
+  } catch (err) {
+    Sentry.captureException(err, { extra: { route: 'tools.change-pins.create' } });
+    console.error('[tools.change-pins.create]', err);
+    res.status(500).json({ ok: false, error: 'Internal error' });
+  }
+});
+
+router.patch('/change-pins/:id', async (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  res.setHeader('Vary', 'Cookie');
+  try {
+    const id = req?.params?.id;
+    const out = await changePins.patchPin(id, req?.body || {}, {});
+    if (!out || !out.ok) return res.status(out && out.error === 'not_found' ? 404 : 400).json(out || { ok: false, error: 'invalid_request' });
+    res.json(out);
+  } catch (err) {
+    Sentry.captureException(err, { extra: { route: 'tools.change-pins.patch' } });
+    console.error('[tools.change-pins.patch]', err);
+    res.status(500).json({ ok: false, error: 'Internal error' });
+  }
+});
+
+router.post('/change-pins/:id/archive', async (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  res.setHeader('Vary', 'Cookie');
+  try {
+    const id = req?.params?.id;
+    const out = await changePins.setArchived(id, true, {});
+    if (!out || !out.ok) return res.status(out && out.error === 'not_found' ? 404 : 400).json(out || { ok: false, error: 'invalid_request' });
+    res.json(out);
+  } catch (err) {
+    Sentry.captureException(err, { extra: { route: 'tools.change-pins.archive' } });
+    console.error('[tools.change-pins.archive]', err);
+    res.status(500).json({ ok: false, error: 'Internal error' });
+  }
+});
+
+router.post('/change-pins/:id/unarchive', async (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  res.setHeader('Vary', 'Cookie');
+  try {
+    const id = req?.params?.id;
+    const out = await changePins.setArchived(id, false, {});
+    if (!out || !out.ok) return res.status(out && out.error === 'not_found' ? 404 : 400).json(out || { ok: false, error: 'invalid_request' });
+    res.json(out);
+  } catch (err) {
+    Sentry.captureException(err, { extra: { route: 'tools.change-pins.unarchive' } });
+    console.error('[tools.change-pins.unarchive]', err);
     res.status(500).json({ ok: false, error: 'Internal error' });
   }
 });

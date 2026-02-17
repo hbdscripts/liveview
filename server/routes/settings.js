@@ -51,8 +51,6 @@ const KPI_UI_KEYS = [
 const KPI_UI_KEY_SET = new Set(KPI_UI_KEYS);
 const DATE_RANGE_UI_KEYS = ['today', 'yesterday', '7days', '14days', '30days', 'custom'];
 const DATE_RANGE_UI_KEY_SET = new Set(DATE_RANGE_UI_KEYS);
-const DASHBOARD_KPI_POSITION_KEYS = ['top', 'lower'];
-const DASHBOARD_KPI_POSITION_KEY_SET = new Set(DASHBOARD_KPI_POSITION_KEYS);
 const HEADER_KPI_STRIP_PAGE_KEYS = [
   'dashboard',
   'live',
@@ -77,7 +75,7 @@ const CHART_UI_KEYS = [
   'dash-chart-overview-30d',
   'dash-chart-finishes-30d',
   'dash-chart-countries-30d',
-  'dash-chart-kexo-score-today',
+  'dash-chart-attribution-30d',
   'live-online-chart',
   'sales-overview-chart',
   'date-overview-chart',
@@ -96,7 +94,7 @@ const CHART_ALLOWED_MODES = Object.freeze({
   'dash-chart-overview-30d': ['bar', 'line', 'area', 'multi-line-labels'],
   'dash-chart-finishes-30d': ['pie'],
   'dash-chart-countries-30d': ['pie'],
-  'dash-chart-kexo-score-today': ['pie'],
+  'dash-chart-attribution-30d': ['pie'],
   'live-online-chart': ['map-animated', 'map-flat'],
   'sales-overview-chart': ['area', 'line', 'bar', 'multi-line-labels'],
   'date-overview-chart': ['area', 'line', 'bar', 'multi-line-labels'],
@@ -141,8 +139,8 @@ function defaultKpiUiConfigV1() {
       dashboard: {
         showDelta: true,
       },
-      header: {
-        showKexoScore: true,
+      general: {
+        dateLabelFormat: 'dmy',
       },
     },
     headerStrip: {
@@ -181,19 +179,19 @@ function defaultKpiUiConfigV1() {
         { key: 'items', label: 'Items ordered', enabled: true },
       ],
       dashboard: [
-        { key: 'revenue', label: 'Revenue', enabled: true, position: 'top' },
-        { key: 'orders', label: 'Orders', enabled: true, position: 'top' },
-        { key: 'conv', label: 'Conversion Rate', enabled: true, position: 'top' },
-        { key: 'aov', label: 'Average Order Value', enabled: true, position: 'top' },
-        { key: 'sessions', label: 'Sessions', enabled: true, position: 'top' },
-        { key: 'bounce', label: 'Bounce Rate', enabled: true, position: 'top' },
-        { key: 'returning', label: 'Returning', enabled: true, position: 'lower' },
-        { key: 'roas', label: 'ADS ROAS', enabled: true, position: 'lower' },
-        { key: 'kexo_score', label: 'Kexo Score', enabled: true, position: 'lower' },
-        { key: 'cogs', label: 'COGS', enabled: true, position: 'lower' },
-        { key: 'fulfilled', label: 'Fulfilled', enabled: true, position: 'lower' },
-        { key: 'returns', label: 'Returns', enabled: true, position: 'lower' },
-        { key: 'items', label: 'Items ordered', enabled: true, position: 'lower' },
+        { key: 'revenue', label: 'Revenue', enabled: true },
+        { key: 'orders', label: 'Orders', enabled: true },
+        { key: 'conv', label: 'Conversion Rate', enabled: true },
+        { key: 'aov', label: 'Average Order Value', enabled: true },
+        { key: 'sessions', label: 'Sessions', enabled: true },
+        { key: 'bounce', label: 'Bounce Rate', enabled: true },
+        { key: 'returning', label: 'Returning', enabled: true },
+        { key: 'roas', label: 'ADS ROAS', enabled: true },
+        { key: 'kexo_score', label: 'Kexo Score', enabled: true },
+        { key: 'cogs', label: 'COGS', enabled: true },
+        { key: 'fulfilled', label: 'Fulfilled', enabled: true },
+        { key: 'returns', label: 'Returns', enabled: true },
+        { key: 'items', label: 'Items ordered', enabled: true },
       ],
     },
     dateRanges: [
@@ -225,8 +223,8 @@ function defaultChartsUiConfigV1() {
         { animations: false, pieDonut: true, pieDonutSize: 64, pieLabelPosition: 'outside', pieLabelContent: 'label_percent', pieLabelOffset: 18, pieCountryFlags: true }
       ),
       withStyle(
-        { key: 'dash-chart-kexo-score-today', label: 'Dashboard · Kexo Score (Today)', enabled: true, mode: 'pie', colors: ['#4b94e4', '#e5e7eb'], advancedApexOverride: {} },
-        { animations: false, pieDonut: true, pieDonutSize: 68, dataLabels: 'off', kexoRenderer: 'wheel' }
+        { key: 'dash-chart-attribution-30d', label: 'Dashboard · Attribution (30 Days)', enabled: true, mode: 'pie', colors: ['#4b94e4', '#3eb3ab', '#f59e34', '#8b5cf6', '#ef4444'], advancedApexOverride: {} },
+        { animations: false, pieDonut: true, pieDonutSize: 64, pieLabelPosition: 'outside', pieLabelContent: 'label_percent', pieLabelOffset: 18 }
       ),
       withStyle({ key: 'live-online-chart', label: 'Dashboard · Live Online', enabled: true, mode: 'map-flat', colors: ['#16a34a'], advancedApexOverride: {} }),
       withStyle({ key: 'sales-overview-chart', label: 'Dashboard · Sales Trend', enabled: true, mode: 'area', colors: ['#0d9488'], advancedApexOverride: {} }),
@@ -604,6 +602,12 @@ function normalizeBool(v, fallback) {
   return !!fallback;
 }
 
+function normalizeDateLabelFormat(v, fallback) {
+  const fb = String(fallback || '').trim().toLowerCase() === 'mdy' ? 'mdy' : 'dmy';
+  const raw = String(v || '').trim().toLowerCase();
+  return raw === 'mdy' ? 'mdy' : fb;
+}
+
 function normalizeChartModeForKey(key, value, fallback) {
   const k = String(key || '').trim().toLowerCase();
   const raw = value == null ? '' : String(value).trim().toLowerCase();
@@ -968,23 +972,13 @@ function normalizeChartsUiConfigV1(raw) {
   };
 }
 
-function normalizeDashboardKpiPosition(raw, fallback) {
-  const fb = DASHBOARD_KPI_POSITION_KEY_SET.has(String(fallback || '').trim().toLowerCase()) ? String(fallback).trim().toLowerCase() : 'lower';
-  const pos = raw == null ? '' : String(raw).trim().toLowerCase();
-  if (DASHBOARD_KPI_POSITION_KEY_SET.has(pos)) return pos;
-  return fb;
-}
-
-function normalizeKpiList(rawList, defaults, opts) {
-  const options = opts && typeof opts === 'object' ? opts : {};
-  const withPosition = normalizeBool(options.withPosition, false);
+function normalizeKpiList(rawList, defaults) {
   const byKey = {};
   for (const d of defaults) {
     byKey[d.key] = {
       key: d.key,
       label: d.label,
       enabled: !!d.enabled,
-      position: normalizeDashboardKpiPosition(d.position, 'lower'),
     };
   }
   const out = [];
@@ -1001,7 +995,6 @@ function normalizeKpiList(rawList, defaults, opts) {
         label: normalizeText(item.label, def.label),
         enabled: normalizeBool(item.enabled, def.enabled),
       };
-      if (withPosition) normalized.position = normalizeDashboardKpiPosition(item.position, def.position);
       out.push(normalized);
       seen.add(key);
     }
@@ -1009,7 +1002,6 @@ function normalizeKpiList(rawList, defaults, opts) {
   for (const d of defaults) {
     if (seen.has(d.key)) continue;
     const normalized = { key: d.key, label: d.label, enabled: !!d.enabled };
-    if (withPosition) normalized.position = normalizeDashboardKpiPosition(d.position, 'lower');
     out.push(normalized);
   }
   return out;
@@ -1065,12 +1057,12 @@ function normalizeKpiUiConfigV1(raw) {
   const options = obj.options && typeof obj.options === 'object' ? obj.options : {};
   const condensed = options.condensed && typeof options.condensed === 'object' ? options.condensed : {};
   const dashboard = options.dashboard && typeof options.dashboard === 'object' ? options.dashboard : {};
-  const headerOptions = options.header && typeof options.header === 'object' ? options.header : {};
+  const generalOptions = options.general && typeof options.general === 'object' ? options.general : {};
   const headerStrip = obj.headerStrip && typeof obj.headerStrip === 'object' ? obj.headerStrip : {};
   const headerStripPages = normalizeHeaderKpiStripPages(headerStrip.pages, def.headerStrip.pages);
   const kpis = obj.kpis && typeof obj.kpis === 'object' ? obj.kpis : {};
   const header = normalizeKpiList(kpis.header, def.kpis.header);
-  const dash = normalizeKpiList(kpis.dashboard, def.kpis.dashboard, { withPosition: true });
+  const dash = normalizeKpiList(kpis.dashboard, def.kpis.dashboard);
   const dateRanges = normalizeDateRangeList(obj.dateRanges, def.dateRanges);
   return {
     v: 1,
@@ -1083,8 +1075,8 @@ function normalizeKpiUiConfigV1(raw) {
       dashboard: {
         showDelta: normalizeBool(dashboard.showDelta, def.options.dashboard.showDelta),
       },
-      header: {
-        showKexoScore: normalizeBool(headerOptions.showKexoScore, def.options.header.showKexoScore),
+      general: {
+        dateLabelFormat: normalizeDateLabelFormat(generalOptions.dateLabelFormat, def.options.general.dateLabelFormat),
       },
     },
     headerStrip: {
@@ -1910,15 +1902,9 @@ async function getThemeVarsCss(req, res) {
       const key = k && k.key != null ? String(k.key).trim().toLowerCase() : '';
       const valueId = dashboardValueIdByKey[key];
       if (!valueId) return;
-      // Dashboard cards are direct children of #dash-kpi-grid OR #dash-kpi-grid-lower and can be matched via their value id.
-      rules.push(`#dash-kpi-grid > .col-sm-6:has(#${valueId}),#dash-kpi-grid-lower > .col-sm-6:has(#${valueId}){display:none!important;}`);
+      // Dashboard cards are direct children of #dash-kpi-grid, #dash-kpi-grid-mid, or #dash-kpi-grid-lower.
+      rules.push(`#dash-kpi-grid > .col-sm-6:has(#${valueId}),#dash-kpi-grid-mid > .col-sm-6:has(#${valueId}),#dash-kpi-grid-lower > .col-sm-6:has(#${valueId}){display:none!important;}`);
     });
-
-    // Header Kexo Score button visibility (hide before app.js boot to prevent flash).
-    const showHeaderKexoScore = !(cfg && cfg.v === 1 && cfg.options && cfg.options.header && cfg.options.header.showKexoScore === false);
-    if (!showHeaderKexoScore) {
-      rules.push('#header-kexo-score-wrap{display:none!important;}');
-    }
 
     if (rules.length) {
       kpisCss = ['/* KEXO: server-injected KPI visibility */', ...rules, ''].join('\n');

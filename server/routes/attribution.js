@@ -27,6 +27,7 @@ const {
   readAttributionConfigCached,
   invalidateAttributionConfigCache,
 } = require('../attribution/deriveAttribution');
+const { writeAudit } = require('../audit');
 
 const PREFS_KEY = 'attribution_prefs_v1';
 
@@ -468,6 +469,7 @@ async function postAttributionPrefs(req, res) {
   } catch (e) {
     return res.status(500).json({ ok: false, error: e && e.message ? String(e.message) : 'Failed to save' });
   }
+  try { await writeAudit('admin', 'attribution_prefs', { ts: Date.now(), summary: 'prefs updated' }); } catch (_) {}
   const prefs = await getAttributionPrefsRaw();
   res.setHeader('Cache-Control', 'no-store');
   res.json({ ok: true, prefs });
@@ -685,6 +687,7 @@ async function postAttributionConfig(req, res) {
   }
 
   invalidateAttributionConfigCache();
+  try { await writeAudit('admin', 'attribution_config', { ts: Date.now(), summary: 'config updated' }); } catch (_) {}
   const out = await (async () => {
     try {
       const channelsOut = await db.all('SELECT channel_key, label, sort_order, enabled, updated_at FROM attribution_channels ORDER BY sort_order ASC, label ASC');
@@ -856,6 +859,7 @@ async function postAttributionMap(req, res) {
   }
 
   invalidateAttributionConfigCache();
+  try { await writeAudit('admin', 'attribution_map', { ts: Date.now(), tokenType, variantKey }); } catch (_) {}
   res.setHeader('Cache-Control', 'no-store');
   res.json({ ok: true });
 }

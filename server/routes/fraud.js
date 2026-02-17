@@ -13,6 +13,7 @@ const { getDb } = require('../db');
 const fraudCfg = require('../fraud/config');
 const fraudService = require('../fraud/service');
 const aiNarrative = require('../fraud/aiNarrative');
+const { warnOnReject } = require('../shared/warnReject');
 
 const router = express.Router();
 
@@ -170,7 +171,7 @@ router.get('/detail', async (req, res) => {
       if (!aiUsed && aiEnabled && Number(row.triggered) === 1 && row.session_id) {
         aiNarrative.generateAiSummary({ score: row.score, flags, evidence, fraudCfg: cfg })
           .then((r) => fraudService.updateAiSummaryForSession(String(row.session_id), r))
-          .catch(() => {});
+          .catch(warnOnReject('[fraud] aiNarrative.generateAiSummary'));
       }
     } catch (_) {}
 

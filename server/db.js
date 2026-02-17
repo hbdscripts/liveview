@@ -1,38 +1,64 @@
 /**
  * DB abstraction: SQLite (default) or Postgres via DB_URL.
- * Single place for all DB access; exposes run, get, all.
+ * Single place for all DB access; exposes run, get, all, exec, transaction.
  */
 
 const config = require('./config');
 const path = require('path');
 
 let db;
+let _pgPool = null;
+let _pgTxClient = null;
+
+function toPg(sql, params) {
+  let i = 0;
+  const out = sql.replace(/\?/g, () => `$${++i}`);
+  return [out, params];
+}
 
 function getDb() {
   if (db) return db;
   if (config.dbUrl && config.dbUrl.trim() !== '') {
     const { Pool } = require('pg');
     const pool = new Pool({ connectionString: config.dbUrl });
-    function toPg(sql, params) {
-      let i = 0;
-      const out = sql.replace(/\?/g, () => `$${++i}`);
-      return [out, params];
-    }
+    _pgPool = pool;
     db = {
       run: (sql, params = []) => {
         const [q, p] = toPg(sql, params);
-        return pool.query(q, p).then(r => ({ lastID: r.rows[0]?.id, changes: r.rowCount }));
+        const target = _pgTxClient || pool;
+        return target.query(q, p).then(r => ({ lastID: r.rows[0]?.id, changes: r.rowCount }));
       },
       get: (sql, params = []) => {
         const [q, p] = toPg(sql, params);
-        return pool.query(q, p).then(r => r.rows[0] || null);
+        const target = _pgTxClient || pool;
+        return target.query(q, p).then(r => r.rows[0] || null);
       },
       all: (sql, params = []) => {
         const [q, p] = toPg(sql, params);
-        return pool.query(q, p).then(r => r.rows);
+        const target = _pgTxClient || pool;
+        return target.query(q, p).then(r => r.rows);
       },
-      exec: (sql) => pool.query(sql).then(() => {}),
+      exec: (sql) => {
+        const target = _pgTxClient || pool;
+        return target.query(sql).then(() => {});
+      },
       close: () => pool.end(),
+      transaction: async (fn) => {
+        const client = await pool.connect();
+        _pgTxClient = client;
+        try {
+          await client.query('BEGIN');
+          const result = await fn();
+          await client.query('COMMIT');
+          return result;
+        } catch (err) {
+          try { await client.query('ROLLBACK'); } catch (_) {}
+          throw err;
+        } finally {
+          _pgTxClient = null;
+          client.release();
+        }
+      },
     };
     return db;
   }
@@ -55,6 +81,18 @@ function getDb() {
     all: (sql, params = []) => Promise.resolve(sqlite.prepare(sql).all(...params)),
     exec: (sql) => { sqlite.exec(sql); return Promise.resolve(); },
     close: () => { sqlite.close(); },
+    transaction: async (fn) => {
+      const database = getDb();
+      await database.run('BEGIN');
+      try {
+        const result = await fn();
+        await database.run('COMMIT');
+        return result;
+      } catch (err) {
+        try { await database.run('ROLLBACK'); } catch (_) {}
+        throw err;
+      }
+    },
   };
   return db;
 }

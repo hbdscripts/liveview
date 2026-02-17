@@ -14,7 +14,8 @@
     "deploy:interactive": "shopify app deploy",
     "config:link": "node scripts/shopify-link.js",
     "config:link:interactive": "shopify app config link",
-    "shopify:info": "shopify app info"
+    "shopify:info": "shopify app info",
+    "build:app": "node scripts/build-app-js.js"
   },
   "engines": {
     "node": ">=18.0.0"
