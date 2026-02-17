@@ -2632,18 +2632,23 @@
               title: 'Kexo Score',
             });
             node.addEventListener('shown.bs.popover', function onShown() {
-              var tip = node.getAttribute('aria-describedby') ? document.getElementById(node.getAttribute('aria-describedby')) : scope.querySelector('.popover.show');
-              if (tip && tip.querySelector && !tip.querySelector('.kexo-score-popover-close')) {
-                var header = tip.querySelector('.popover-header');
-                if (header) {
-                  var closeBtn = document.createElement('button');
-                  closeBtn.type = 'button';
-                  closeBtn.className = 'btn-close btn-close-sm kexo-score-popover-close position-absolute top-0 end-0 m-2';
-                  closeBtn.setAttribute('aria-label', 'Close');
-                  header.style.position = 'relative';
-                  header.appendChild(closeBtn);
-                }
+              var tip = popover && typeof popover.getTipElement === 'function'
+                ? popover.getTipElement()
+                : (node.getAttribute('aria-describedby') ? document.getElementById(node.getAttribute('aria-describedby')) : scope.querySelector('.popover.show'));
+              if (!tip || !tip.querySelector || tip.querySelector('.kexo-score-popover-close')) return;
+              var header = tip.querySelector('.popover-header');
+              if (!header) {
+                header = document.createElement('div');
+                header.className = 'popover-header';
+                header.textContent = 'Kexo Score';
+                tip.insertBefore(header, tip.firstChild);
               }
+              var closeBtn = document.createElement('button');
+              closeBtn.type = 'button';
+              closeBtn.className = 'btn-close btn-close-sm kexo-score-popover-close position-absolute top-0 end-0 m-2';
+              closeBtn.setAttribute('aria-label', 'Close');
+              header.style.position = 'relative';
+              header.appendChild(closeBtn);
             });
           } catch (_) {}
         });
@@ -2828,6 +2833,7 @@
         var modal = document.getElementById('kexo-score-modal');
         if (!modal) return;
         disposeKexoScorePopovers(modal);
+        disposeKexoScorePopovers(document);
         modal.classList.add('is-hidden');
         modal.setAttribute('aria-hidden', 'true');
       }
