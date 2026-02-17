@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-16 (Dashboard overview mini charts defaults + dashed KPI compare line)
+Last updated: 2026-02-16 (Dashboard mini charts + dashed KPI compare + admin notes modal fix)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -401,6 +401,8 @@ Ops/reliability:
 - Layout shortcut modal fixes:
   - Close/Cancel/Escape/backdrop click now reliably dismiss the Layout shortcut modal (it’s created dynamically, so close handlers must be bound at creation time).
   - Saving table settings also syncs the “rows per page” override and re-renders affected tables immediately (fixes stale `dash-trending-up/down` showing 10 when configured for 5).
+- Admin Notes footer modal:
+  - Footer pen icon (`#footer-notes-btn`) now reliably opens the Admin Notes modal even when Bootstrap’s JS modal API isn’t available (manual show/hide + backdrop fallback).
 - Dashboard overview deltas: all four cards use real current vs previous period (snapshot financial.revenue for Finishes/Countries; attribution report revenue for Attribution).
 - KPI sparkline labels: rendered under the sparkline strip; time format H:MM (e.g. 0:15); smart skip when >12 buckets.
 
