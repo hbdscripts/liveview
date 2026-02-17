@@ -1481,20 +1481,26 @@
 
     /* ── Variants settings: table alias chips ───────────────────────── */
     .kexo-alias-chipbox {
-      display: flex;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 0.35rem;
-      padding: 0.25rem 0.4rem;
-      min-height: 32px;
+      display: block;
+      padding: 0.125rem 0.35rem;
+      min-height: 34px;
       cursor: text;
     }
 
     .kexo-alias-chipbox .kexo-alias-chipbox-chips {
-      display: inline-flex;
+      display: flex;
       align-items: center;
       flex-wrap: wrap;
       gap: 0.35rem;
+      min-height: 28px;
+      width: 100%;
+    }
+
+    .kexo-alias-chipbox.ts-wrapper .kexo-alias-chipbox-chips.ts-control {
+      border: 0;
+      box-shadow: none;
+      background: transparent;
+      padding: 0;
     }
 
     .kexo-alias-chipbox input.kexo-alias-chipbox-input {
@@ -1509,15 +1515,21 @@
       line-height: 1.2;
     }
 
+    .kexo-alias-chipbox:focus-within {
+      border-color: rgba(var(--tblr-primary-rgb), 0.45);
+      box-shadow: 0 0 0 0.125rem rgba(var(--tblr-primary-rgb), 0.14);
+    }
+
     .kexo-alias-chipbox input.kexo-alias-chipbox-input::placeholder {
       color: rgba(108, 117, 125, 0.95);
     }
 
-    .kexo-alias-chip {
+    .kexo-alias-chip.item {
       display: inline-flex;
       align-items: center;
       gap: 0.35rem;
       padding-right: 0.25rem;
+      border-radius: var(--tblr-border-radius-pill, 999px);
     }
 
     .kexo-alias-chip-remove {

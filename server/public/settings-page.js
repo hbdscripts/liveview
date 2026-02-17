@@ -677,7 +677,7 @@
       var token = String(a || '');
       if (!token) return '';
       return '' +
-        '<span class="badge bg-secondary-lt kexo-alias-chip">' +
+        '<span class="item badge bg-secondary-lt kexo-alias-chip" data-ts-item data-value="' + escapeHtml(token) + '">' +
           '<span class="kexo-alias-chip-text">' + escapeHtml(token) + '</span>' +
           '<button type="button" class="kexo-alias-chip-remove" aria-label="Remove alias" data-action="remove-table-alias" data-table-idx="' + String(tableIdx) + '" data-alias="' + escapeHtml(token) + '">×</button>' +
         '</span>';
@@ -3749,10 +3749,9 @@
         '<div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">' +
           '<div class="d-flex align-items-center gap-2 flex-grow-1">' +
             '<input type="text" class="form-control form-control-sm" style="max-width:280px" data-field="table-name" data-table-idx="' + String(tableIdx) + '" value="' + escapeHtml(table.name || '') + '">' +
-            '<div class="kexo-alias-chipbox form-control form-control-sm" style="max-width:360px" data-alias-chipbox data-table-idx="' + String(tableIdx) + '" title="Type and press Enter or comma to add. These are Shopify option-name synonyms to merge Suggestions into the same table.">' +
+            '<div class="kexo-alias-chipbox ts-wrapper multi form-control form-control-sm" style="max-width:360px" data-alias-chipbox data-table-idx="' + String(tableIdx) + '" title="Type and press Enter or comma to add. These are Shopify option-name synonyms to merge Suggestions into the same table.">' +
               '<input type="hidden" data-field="table-aliases" data-table-idx="' + String(tableIdx) + '" value="' + escapeHtml(aliasValue) + '">' +
-              '<div class="kexo-alias-chipbox-chips" data-alias-chips data-table-idx="' + String(tableIdx) + '">' + aliasChips + '</div>' +
-              '<input type="text" class="kexo-alias-chipbox-input" data-alias-input data-table-idx="' + String(tableIdx) + '" placeholder="Aliases (Enter or comma)">' +
+              '<div class="kexo-alias-chipbox-chips ts-control" data-alias-chips data-table-idx="' + String(tableIdx) + '">' + aliasChips + '<input type="text" class="kexo-alias-chipbox-input" data-alias-input data-table-idx="' + String(tableIdx) + '" placeholder="Aliases (Enter or comma)"></div>' +
             '</div>' +
             '<span class="badge bg-secondary-lt">Custom</span>' +
           '</div>' +
