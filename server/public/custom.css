@@ -4198,8 +4198,7 @@ body.kexo-report-loading #kexo-date-display::after {
   visibility: visible !important;
 }
 body[data-page="settings"] .kexo-nav-date-slot,
-body[data-page="admin"] .kexo-nav-date-slot,
-body[data-page="dashboard"] .kexo-nav-date-slot {
+body[data-page="admin"] .kexo-nav-date-slot {
   display: none !important;
 }
 /* Pages without date: keep triple-layout spacing/connector by ghost date col (visibility only) */
@@ -4207,10 +4206,6 @@ body[data-page="settings"] .kexo-page-header-date-col,
 body[data-page="admin"] .kexo-page-header-date-col {
   visibility: hidden !important;
   pointer-events: none !important;
-}
-/* Dashboard overview has fixed-period mini cards; hide page-header date control completely. */
-body[data-page="dashboard"] .kexo-page-header-date-col {
-  display: none !important;
 }
 body[data-page="snapshot"] #kexo-date-display {
   display: none !important;
@@ -4405,10 +4400,16 @@ body[data-page="snapshot"] #kexo-date-display {
   .kexo-page-header-title-icon {
     display: none !important;
   }
+  .page-header .kexo-page-header-date-col {
+    display: flex;
+    justify-content: flex-end;
+    width: 100%;
+    margin-top: 6px;
+  }
   .page-header .kexo-page-header-date-col .kexo-date-btn {
-    position: absolute;
-    top: -50px;
-    right: 0;
+    position: static;
+    top: auto;
+    right: auto;
     font-size: 15px !important;
   }
 

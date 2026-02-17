@@ -591,7 +591,7 @@
     function rerenderDashboardFromCache() {
       try {
         if (typeof window.refreshDashboard === 'function') {
-          window.refreshDashboard({ force: false, silent: true });
+          window.refreshDashboard({ force: false, silent: true, rerender: true });
           return true;
         }
       } catch (_) {}
@@ -950,7 +950,7 @@
       const safeLabel = label != null ? String(label) : (code ? String(code) : '?');
       const titleAttr = label ? ' title="' + escapeHtml(safeLabel) + '"' : '';
       if (!raw || raw === 'xx' || !/^[a-z]{2}$/.test(raw)) {
-        return '<span class="flag flag-xs flag-country-xx"' + titleAttr + ' aria-label="' + escapeHtml(safeLabel) + '"></span>';
+        return '<span class="kexo-flag-fallback" style="display:inline-flex;align-items:center;justify-content:center;width:1rem;height:1rem;opacity:.8"' + titleAttr + ' aria-label="' + escapeHtml(safeLabel) + '"><i class="fa-light fa-globe"></i></span>';
       }
       return '<span class="flag flag-xs flag-country-' + raw + '"' + titleAttr + ' aria-label="' + escapeHtml(safeLabel) + '"></span>';
     }
@@ -958,7 +958,7 @@
     function flagImgSmall(code) {
       const raw = (code || '').toString().trim().toLowerCase();
       if (!raw || raw === 'xx' || !/^[a-z]{2}$/.test(raw)) {
-        return '<span class="flag flag-xs flag-country-xx" aria-hidden="true"></span>';
+        return '<span class="kexo-flag-fallback" style="display:inline-flex;align-items:center;justify-content:center;width:1rem;height:1rem;opacity:.8" aria-hidden="true"><i class="fa-light fa-globe"></i></span>';
       }
       return '<span class="flag flag-xs flag-country-' + raw + '" aria-hidden="true"></span>';
     }

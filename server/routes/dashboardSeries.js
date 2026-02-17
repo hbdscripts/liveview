@@ -502,18 +502,32 @@ async function fetchProductAggByProductId(db, shop, startMs, endMs) {
   try {
     return await db.all(
       config.dbUrl
-        ? `SELECT TRIM(li.product_id) AS product_id, MAX(NULLIF(TRIM(li.title), '')) AS title, COALESCE(SUM(li.line_revenue), 0) AS revenue, COUNT(DISTINCT li.order_id) AS orders
+        ? `SELECT COALESCE(NULLIF(TRIM(li.product_id), ''), ('title:' || LOWER(TRIM(COALESCE(li.title, ''))))) AS product_key,
+                  NULLIF(TRIM(li.product_id), '') AS product_id,
+                  MAX(NULLIF(TRIM(li.title), '')) AS title,
+                  COALESCE(SUM(li.line_revenue), 0) AS revenue,
+                  COUNT(DISTINCT li.order_id) AS orders
            FROM orders_shopify_line_items li
            WHERE li.shop = $1 AND li.order_created_at >= $2 AND li.order_created_at < $3
              AND (li.order_test IS NULL OR li.order_test = 0) AND li.order_cancelled_at IS NULL AND li.order_financial_status IN ('paid', 'partially_paid')
-             AND li.product_id IS NOT NULL AND TRIM(li.product_id) != ''
-           GROUP BY TRIM(li.product_id)`
-        : `SELECT TRIM(li.product_id) AS product_id, MAX(NULLIF(TRIM(li.title), '')) AS title, COALESCE(SUM(li.line_revenue), 0) AS revenue, COUNT(DISTINCT li.order_id) AS orders
+             AND (
+               (li.product_id IS NOT NULL AND TRIM(li.product_id) != '')
+               OR (li.title IS NOT NULL AND TRIM(li.title) != '')
+             )
+           GROUP BY COALESCE(NULLIF(TRIM(li.product_id), ''), ('title:' || LOWER(TRIM(COALESCE(li.title, '')))))`
+        : `SELECT COALESCE(NULLIF(TRIM(li.product_id), ''), ('title:' || LOWER(TRIM(COALESCE(li.title, ''))))) AS product_key,
+                  NULLIF(TRIM(li.product_id), '') AS product_id,
+                  MAX(NULLIF(TRIM(li.title), '')) AS title,
+                  COALESCE(SUM(li.line_revenue), 0) AS revenue,
+                  COUNT(DISTINCT li.order_id) AS orders
            FROM orders_shopify_line_items li
            WHERE li.shop = ? AND li.order_created_at >= ? AND li.order_created_at < ?
              AND (li.order_test IS NULL OR li.order_test = 0) AND li.order_cancelled_at IS NULL AND li.order_financial_status IN ('paid', 'partially_paid')
-             AND li.product_id IS NOT NULL AND TRIM(li.product_id) != ''
-           GROUP BY TRIM(li.product_id)`,
+             AND (
+               (li.product_id IS NOT NULL AND TRIM(li.product_id) != '')
+               OR (li.title IS NOT NULL AND TRIM(li.title) != '')
+             )
+           GROUP BY COALESCE(NULLIF(TRIM(li.product_id), ''), ('title:' || LOWER(TRIM(COALESCE(li.title, '')))))`,
       [shop, start, end]
     );
   } catch (e) {
@@ -531,9 +545,11 @@ async function fetchTrendingProducts(db, shop, nowBounds, prevBounds, filter) {
   const prevMap = new Map();
   nowRows.forEach(function(r) {
     const pid = r && r.product_id != null ? String(r.product_id).trim() : '';
-    if (!pid) return;
-    nowMap.set(pid, {
-      product_id: pid,
+    const pkey = r && r.product_key != null ? String(r.product_key).trim() : '';
+    const id = pid || pkey;
+    if (!id) return;
+    nowMap.set(id, {
+      product_id: pid || null,
       title: r.title || 'Unknown',
       revenue: Math.round((Number(r.revenue) || 0) * 100) / 100,
       orders: Number(r.orders) || 0,
@@ -541,9 +557,11 @@ async function fetchTrendingProducts(db, shop, nowBounds, prevBounds, filter) {
   });
   prevRows.forEach(function(r) {
     const pid = r && r.product_id != null ? String(r.product_id).trim() : '';
-    if (!pid) return;
-    prevMap.set(pid, {
-      product_id: pid,
+    const pkey = r && r.product_key != null ? String(r.product_key).trim() : '';
+    const id = pid || pkey;
+    if (!id) return;
+    prevMap.set(id, {
+      product_id: pid || null,
       title: r.title || 'Unknown',
       revenue: Math.round((Number(r.revenue) || 0) * 100) / 100,
       orders: Number(r.orders) || 0,
@@ -559,7 +577,7 @@ async function fetchTrendingProducts(db, shop, nowBounds, prevBounds, filter) {
     const n = nowMap.get(pid) || { product_id: pid, title: 'Unknown', revenue: 0, orders: 0 };
     const p = prevMap.get(pid) || { product_id: pid, title: n.title || 'Unknown', revenue: 0, orders: 0 };
     base.push({
-      product_id: pid,
+      product_id: n.product_id || p.product_id || null,
       title: n.title || p.title || 'Unknown',
       revenueNow: n.revenue,
       revenuePrev: p.revenue,
@@ -663,13 +681,13 @@ async function fallbackTopProductsFromOrdersRawJson(db, shop, startMs, endMs, ra
         ? `SELECT order_id, raw_json, currency
            FROM orders_shopify
            WHERE shop = $1 AND created_at >= $2 AND created_at < $3
-             AND (test IS NULL OR test = 0) AND cancelled_at IS NULL AND financial_status = 'paid'
+             AND (test IS NULL OR test = 0) AND cancelled_at IS NULL AND financial_status IN ('paid', 'partially_paid')
            ORDER BY created_at DESC
            LIMIT ${cap}`
         : `SELECT order_id, raw_json, currency
            FROM orders_shopify
            WHERE shop = ? AND created_at >= ? AND created_at < ?
-             AND (test IS NULL OR test = 0) AND cancelled_at IS NULL AND financial_status = 'paid'
+             AND (test IS NULL OR test = 0) AND cancelled_at IS NULL AND financial_status IN ('paid', 'partially_paid')
            ORDER BY created_at DESC
            LIMIT ${cap}`,
       [shop, start, end]

@@ -1634,7 +1634,7 @@ function weightedAvg(values, weights) {
 
 function downsampleWeekly({ labelsYmd, revenueGbp, costGbp, orders, sessions, conversionRate } = {}) {
   const labels = Array.isArray(labelsYmd) ? labelsYmd : [];
-  if (labels.length <= 120) {
+  if (labels.length <= 56) {
     const aov = (Array.isArray(revenueGbp) && Array.isArray(orders))
       ? revenueGbp.map((r, i) => {
         const o = Number(orders[i]);
@@ -2424,28 +2424,28 @@ async function getBusinessSnapshot(options = {}) {
     series,
     seriesPrevious,
     seriesComparison: {
-      granularity: 'day',
+      granularity: series && series.granularity ? series.granularity : 'day',
       current: {
-        labelsYmd: chartDays,
-        revenueGbp: dailyNow.revenueGbp,
-        costGbp: dailyNow.costGbp,
-        orders: dailyNow.orders,
-        sessions: dailyNow.sessions,
-        conversionRate: dailyNow.conversionRate,
-        aov: dailyNow.aov,
+        labelsYmd: Array.isArray(series && series.labelsYmd) ? series.labelsYmd : chartDays,
+        revenueGbp: Array.isArray(series && series.revenueGbp) ? series.revenueGbp : dailyNow.revenueGbp,
+        costGbp: Array.isArray(series && series.costGbp) ? series.costGbp : dailyNow.costGbp,
+        orders: Array.isArray(series && series.orders) ? series.orders : dailyNow.orders,
+        sessions: Array.isArray(series && series.sessions) ? series.sessions : dailyNow.sessions,
+        conversionRate: Array.isArray(series && series.conversionRate) ? series.conversionRate : dailyNow.conversionRate,
+        aov: Array.isArray(series && series.aov) ? series.aov : dailyNow.aov,
         newCustomers: dailyNow.newCustomers,
         returningCustomers: dailyNow.returningCustomers,
         clicks: dailyNow.clicks,
         roas: dailyNow.roas,
       },
       previous: {
-        labelsYmd: chartDaysPrev,
-        revenueGbp: dailyPrev.revenueGbp,
-        costGbp: dailyPrev.costGbp,
-        orders: dailyPrev.orders,
-        sessions: dailyPrev.sessions,
-        conversionRate: dailyPrev.conversionRate,
-        aov: dailyPrev.aov,
+        labelsYmd: Array.isArray(seriesPrevious && seriesPrevious.labelsYmd) ? seriesPrevious.labelsYmd : chartDaysPrev,
+        revenueGbp: Array.isArray(seriesPrevious && seriesPrevious.revenueGbp) ? seriesPrevious.revenueGbp : dailyPrev.revenueGbp,
+        costGbp: Array.isArray(seriesPrevious && seriesPrevious.costGbp) ? seriesPrevious.costGbp : dailyPrev.costGbp,
+        orders: Array.isArray(seriesPrevious && seriesPrevious.orders) ? seriesPrevious.orders : dailyPrev.orders,
+        sessions: Array.isArray(seriesPrevious && seriesPrevious.sessions) ? seriesPrevious.sessions : dailyPrev.sessions,
+        conversionRate: Array.isArray(seriesPrevious && seriesPrevious.conversionRate) ? seriesPrevious.conversionRate : dailyPrev.conversionRate,
+        aov: Array.isArray(seriesPrevious && seriesPrevious.aov) ? seriesPrevious.aov : dailyPrev.aov,
         newCustomers: dailyPrev.newCustomers,
         returningCustomers: dailyPrev.returningCustomers,
         clicks: dailyPrev.clicks,

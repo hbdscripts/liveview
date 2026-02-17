@@ -3312,7 +3312,13 @@ async function getKpis(options = {}) {
   if (salesShop) {
     const scopeKey = salesTruth.scopeForRangeKey(rangeKey, 'range');
     try {
-      nudgeSalesTruthWarmupDetached(salesShop, bounds.start, bounds.end, scopeKey, '[store] ensureReconciled');
+      const warmNow = Date.now();
+      if ((warmNow - (_truthNudgeLastAt || 0)) >= 2 * 60 * 1000 && !_truthNudgeInFlight) {
+        _truthNudgeLastAt = warmNow;
+        _truthNudgeInFlight = true;
+        salesTruth.ensureReconciled(salesShop, bounds.start, bounds.end, scopeKey || 'today').catch(warnOnReject('[store] ensureReconciled'))
+          .finally(() => { _truthNudgeInFlight = false; });
+      }
     } catch (_) {}
     // Keep the baseline trustworthy too: for Today comparisons, warm yesterday-same-time range.
     // Non-blocking: comparisons will reflect the freshest truth available.

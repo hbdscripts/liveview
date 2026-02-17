@@ -37,9 +37,17 @@
       refreshProducts({ force: false });
     }
 
+    var _tickTimeIntervalId = null;
+    function ensureTickTimeInterval() {
+      if (_tickTimeIntervalId) return _tickTimeIntervalId;
+      _tickTimeIntervalId = setInterval(tickTimeOnSite, 30000);
+      _intervals.push(_tickTimeIntervalId);
+      return _tickTimeIntervalId;
+    }
+
     // Background polling is intentionally disabled across the site (manual refresh only),
     // except for /dashboard/live and /dashboard/sales (which use a dedicated 10s poller).
-    _intervals.push(setInterval(tickTimeOnSite, 30000));
+    ensureTickTimeInterval();
 
     // ?????? Tab resume + deploy drift guard ???????????????????????????????????????????????????????????????????????????????????????????????????????????????
     // In Safari/iOS (and some embed contexts) long-idle tabs can resume with a "white page"
@@ -80,7 +88,7 @@
     // Also restart SSE and pollers (runCleanup on pagehide closes them).
     function reinitLiveStreamsAndPollers() {
       try { initEventSource(); } catch (_) {}
-      _intervals.push(setInterval(tickTimeOnSite, 30000));
+      ensureTickTimeInterval();
       try { if (typeof scheduleLiveSalesPoll === 'function') scheduleLiveSalesPoll(LIVE_SALES_POLL_MS); } catch (_) {}
       try { if (typeof window.__kexoInitStickyDocObserver === 'function') window.__kexoInitStickyDocObserver(); } catch (_) {}
       try { if (typeof window.__kexoInitGridDocObserver === 'function') window.__kexoInitGridDocObserver(); } catch (_) {}
@@ -90,7 +98,10 @@
       reinitLiveStreamsAndPollers();
       kexoWithSilentOverlay(function() {
         if (PAGE === 'dashboard') {
-          try { if (typeof window.refreshDashboard === 'function') window.refreshDashboard({ force: true, silent: true }); } catch (_) {}
+          try {
+            if (window.dashboardController && typeof window.dashboardController.onVisibleResume === 'function') window.dashboardController.onVisibleResume('pageshow');
+            else if (typeof window.refreshDashboard === 'function') window.refreshDashboard({ force: true, silent: true });
+          } catch (_) {}
         }
         try { refreshKpis({ force: true }); } catch (_) {}
       });
@@ -107,7 +118,10 @@
       // blank if fetches ran while hidden or failed. Refresh when visible again within ~2 min.
       if (idleMs < 2 * 60 * 1000 && PAGE === 'dashboard') {
         kexoWithSilentOverlay(function() {
-          try { if (typeof window.refreshDashboard === 'function') window.refreshDashboard({ force: true, silent: true }); } catch (_) {}
+          try {
+            if (window.dashboardController && typeof window.dashboardController.onVisibleResume === 'function') window.dashboardController.onVisibleResume('visibility');
+            else if (typeof window.refreshDashboard === 'function') window.refreshDashboard({ force: true, silent: true });
+          } catch (_) {}
           try { refreshKpis({ force: true }); } catch (_) {}
         });
       }
@@ -202,6 +216,7 @@
     registerCleanup(function() {
       _intervals.forEach(function(id) { clearInterval(id); });
       _intervals.length = 0;
+      _tickTimeIntervalId = null;
       if (liveSalesPollTimer) { try { clearTimeout(liveSalesPollTimer); } catch (_) {} liveSalesPollTimer = null; }
       if (_eventSource) { try { _eventSource.close(); } catch (_) {} _eventSource = null; }
       if (_condensedStripResizeObserver) {

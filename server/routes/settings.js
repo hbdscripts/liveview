@@ -119,7 +119,7 @@ function defaultChartStyleConfig() {
     gridDash: 3,
     dataLabels: 'auto',
     toolbar: false,
-    animations: true,
+    animations: false,
     pieDonut: false,
     pieDonutSize: 66,
     pieLabelPosition: 'auto',

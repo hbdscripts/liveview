@@ -229,7 +229,7 @@
       gridDash: num(src.gridDash, 3, 0, 16),
       dataLabels: labelsMode,
       toolbar: !!src.toolbar,
-      animations: src.animations !== false,
+      animations: src.animations === true,
     };
   }
 
@@ -324,7 +324,7 @@
         height: height,
         fontFamily: 'Inter, sans-serif',
         toolbar: { show: false },
-        animations: { enabled: true },
+        animations: { enabled: false },
         zoom: { enabled: false },
       },
       series: apexSeries,
@@ -371,9 +371,19 @@
     ensureApexCharts(function () {
       waitForContainerDimensions(el, function () {
         try {
-          if (el.__kexoChartInstance) {
-            try { el.__kexoChartInstance.destroy(); } catch (_) {}
-            el.__kexoChartInstance = null;
+          if (el.__kexoChartInstance && typeof el.__kexoChartInstance.updateOptions === 'function' && typeof el.__kexoChartInstance.updateSeries === 'function') {
+            var nextSeries = Array.isArray(apexOpts.series) ? apexOpts.series : [];
+            var optsNoSeries = Object.assign({}, apexOpts);
+            delete optsNoSeries.series;
+            try {
+              el.__kexoChartInstance.updateOptions(optsNoSeries, false, true, false);
+              el.__kexoChartInstance.updateSeries(nextSeries, false);
+              instance = el.__kexoChartInstance;
+              return;
+            } catch (_) {
+              try { el.__kexoChartInstance.destroy(); } catch (_) {}
+              el.__kexoChartInstance = null;
+            }
           }
           el.innerHTML = '';
           instance = new ApexCharts(el, apexOpts);
@@ -425,11 +435,6 @@
     var instance = null;
     ensureApexCharts(function () {
       try {
-        if (el.__kexoChartInstance) {
-          try { el.__kexoChartInstance.destroy(); } catch (_) {}
-          el.__kexoChartInstance = null;
-        }
-        el.innerHTML = '';
         var compareDash = (c.compareUsePrimaryColor !== false) ? 0 : 5;
         var opts = {
           chart: { type: mode, height: height, sparkline: { enabled: true }, animations: { enabled: false } },
@@ -450,6 +455,21 @@
         if (advancedApexOverride && Object.keys(advancedApexOverride).length) {
           deepMergeInto(opts, advancedApexOverride);
         }
+        if (el.__kexoChartInstance && typeof el.__kexoChartInstance.updateOptions === 'function' && typeof el.__kexoChartInstance.updateSeries === 'function') {
+          var nextSeries = Array.isArray(opts.series) ? opts.series : [];
+          var optsNoSeries = Object.assign({}, opts);
+          delete optsNoSeries.series;
+          try {
+            el.__kexoChartInstance.updateOptions(optsNoSeries, false, true, false);
+            el.__kexoChartInstance.updateSeries(nextSeries, false);
+            instance = el.__kexoChartInstance;
+            return;
+          } catch (_) {
+            try { el.__kexoChartInstance.destroy(); } catch (_) {}
+            el.__kexoChartInstance = null;
+          }
+        }
+        el.innerHTML = '';
         instance = new ApexCharts(el, opts);
         try { instance.render(); } catch (_) {}
         el.__kexoChartInstance = instance;

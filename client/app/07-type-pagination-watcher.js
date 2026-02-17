@@ -1819,14 +1819,6 @@
           const dateBtn = document.getElementById('kexo-date-display');
           const dateWrap = dateBtn && dateBtn.closest ? dateBtn.closest('.kexo-topbar-date') : null;
           if (page === 'settings' || page === 'snapshot') return;
-          if (page === 'dashboard') {
-            if (sourceLi && dateWrap && dateWrap.parentElement !== sourceLi) {
-              sourceLi.appendChild(dateWrap);
-            }
-            try { if (sourceLi) sourceLi.style.display = 'none'; } catch (_) {}
-            try { if (dateWrap) dateWrap.style.display = 'none'; } catch (_) {}
-            return;
-          }
           try { if (sourceLi) sourceLi.style.display = ''; } catch (_) {}
           try { if (dateWrap) dateWrap.style.display = ''; } catch (_) {}
         }
@@ -3738,6 +3730,24 @@
       return fallbackEnabled !== false;
     }
 
+    function validateChartType(key, mode, fallbackMode) {
+      var fb = String(fallbackMode || '').trim().toLowerCase() || 'area';
+      var m = String(mode || '').trim().toLowerCase();
+      if (!m) m = fb;
+      try {
+        if (typeof window.kexoChartMeta === 'function') {
+          var meta = window.kexoChartMeta(key);
+          var allowed = meta && Array.isArray(meta.modes) ? meta.modes.map(function(v) { return String(v).trim().toLowerCase(); }) : [];
+          if (allowed.length && allowed.indexOf(m) < 0) {
+            if (allowed.indexOf(fb) >= 0) return fb;
+            if (meta && meta.defaultMode) return String(meta.defaultMode).trim().toLowerCase();
+            return allowed[0];
+          }
+        }
+      } catch (_) {}
+      return m || fb;
+    }
+
     function chartModeFromUiConfig(key, fallbackMode) {
       var k = String(key == null ? '' : key).trim().toLowerCase();
       var it = getChartsUiItem(k);
@@ -3750,8 +3760,7 @@
         if (m === 'map-animated' || m === 'map-flat') return m;
         return 'map-flat';
       }
-      if (m) return m;
-      return String(fallbackMode || '').trim().toLowerCase() || '';
+      return validateChartType(k, m || fallbackMode, fallbackMode);
     }
 
     function chartColorsFromUiConfig(key, fallbackColors) {
@@ -3780,7 +3789,7 @@
         gridDash: 3,
         dataLabels: 'auto',
         toolbar: false,
-        animations: true,
+        animations: false,
         pieDonut: false,
         pieDonutSize: 66,
         pieLabelPosition: 'auto',
@@ -3818,7 +3827,7 @@
         gridDash: n(src.gridDash, def.gridDash, 0, 16),
         dataLabels: dataLabels,
         toolbar: !!src.toolbar,
-        animations: src.animations !== false,
+        animations: src.animations === true,
         pieDonut: !!src.pieDonut,
         pieDonutSize: Math.round(n(src.pieDonutSize, def.pieDonutSize, 30, 90)),
         pieLabelPosition: pieLabelPosition,

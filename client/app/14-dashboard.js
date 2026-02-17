@@ -4,8 +4,10 @@
       var dashCompareRangeKey = null;
       var dashCompareFetchedAt = 0;
       var dashCompareSeriesInFlight = null;
+      var dashPayloadSignature = '';
       var dashCharts = {};
       var dashSparkCharts = {};
+      var dashController = null;
       var overviewMiniResizeObserver = null;
       var overviewMiniResizeScheduled = false;
       var overviewMiniSizeSignature = '';
@@ -28,7 +30,14 @@
       var overviewCardCache = {}; // chartId -> { rangeKey, fetchedAt, payload }
       var overviewCardInFlight = {}; // chartId -> Promise
       var overviewCardPayloadSignature = {}; // chartId -> string
+      var overviewLazyObserver = null;
+      var overviewLazyPending = {};
+      var overviewLazyVisible = {};
       var overviewCardUiBound = false;
+      var OVERVIEW_LAZY_CHART_IDS = {
+        'dash-chart-attribution-30d': true,
+        'dash-chart-overview-30d': true
+      };
       var _primaryRgbDash = getComputedStyle(document.documentElement).getPropertyValue('--tblr-primary-rgb').trim() || '32,107,196';
       var DASH_ACCENT = 'rgb(' + _primaryRgbDash + ')';
       var DASH_ACCENT_LIGHT = 'rgba(' + _primaryRgbDash + ',0.12)';
@@ -59,6 +68,101 @@
         var idx = s.indexOf(' ');
         if (idx >= 0) return s.slice(idx + 1);
         return s;
+      }
+
+      function fastPayloadHash(input) {
+        var str = (input == null ? '' : String(input));
+        var hash = 5381;
+        for (var i = 0; i < str.length; i++) {
+          hash = ((hash << 5) + hash) ^ str.charCodeAt(i);
+        }
+        return String(hash >>> 0);
+      }
+
+      function dashboardPayloadSignature(data, rangeKey) {
+        var safeData = data && typeof data === 'object' ? data : {};
+        var sigPayload = {
+          range: String(rangeKey || ''),
+          labels: Array.isArray(safeData.labels) ? safeData.labels : [],
+          revenue: Array.isArray(safeData.revenue) ? safeData.revenue : [],
+          sessions: Array.isArray(safeData.sessions) ? safeData.sessions : [],
+          orders: Array.isArray(safeData.orders) ? safeData.orders : [],
+          topProducts: Array.isArray(safeData.topProducts) ? safeData.topProducts : [],
+          topCountries: Array.isArray(safeData.topCountries) ? safeData.topCountries : [],
+          trendingUp: Array.isArray(safeData.trendingUp) ? safeData.trendingUp : [],
+          trendingDown: Array.isArray(safeData.trendingDown) ? safeData.trendingDown : []
+        };
+        try {
+          return fastPayloadHash(JSON.stringify(sigPayload) || '');
+        } catch (_) {
+          return fastPayloadHash(String(Date.now()));
+        }
+      }
+
+      function sanitizeChartConfig(labels, datasets) {
+        var srcLabels = Array.isArray(labels) ? labels : [];
+        var srcDatasets = Array.isArray(datasets) ? datasets : [];
+        var normalized = srcDatasets.map(function(ds) {
+          var next = Object.assign({}, ds || {});
+          next.data = Array.isArray(next.data) ? next.data.slice() : [];
+          return next;
+        });
+        var maxLen = srcLabels.length;
+        normalized.forEach(function(ds) {
+          if (Array.isArray(ds.data) && ds.data.length > maxLen) maxLen = ds.data.length;
+        });
+        var outLabels = srcLabels.slice(0, maxLen).map(function(lbl, idx) {
+          var text = lbl == null ? '' : String(lbl).trim();
+          return text || String(idx + 1);
+        });
+        while (outLabels.length < maxLen) outLabels.push(String(outLabels.length + 1));
+        var seen = Object.create(null);
+        outLabels = outLabels.map(function(lbl) {
+          var base = String(lbl || '').trim() || '—';
+          var key = base.toLowerCase();
+          seen[key] = (seen[key] || 0) + 1;
+          return seen[key] > 1 ? (base + ' (' + String(seen[key]) + ')') : base;
+        });
+        normalized.forEach(function(ds) {
+          if (!Array.isArray(ds.data)) ds.data = [];
+          if (ds.data.length > maxLen) ds.data = ds.data.slice(0, maxLen);
+          while (ds.data.length < maxLen) ds.data.push(0);
+        });
+        return { labels: outLabels, datasets: normalized };
+      }
+
+      function validateChartType(chartId, requestedMode, fallbackMode) {
+        var fallback = String(fallbackMode || 'area').trim().toLowerCase() || 'area';
+        var req = String(requestedMode || '').trim().toLowerCase();
+        if (!req) req = fallback;
+        try {
+          if (typeof window.kexoChartMeta === 'function') {
+            var meta = window.kexoChartMeta(chartId);
+            var allowed = meta && Array.isArray(meta.modes) ? meta.modes.map(function(m) { return String(m).trim().toLowerCase(); }) : [];
+            if (allowed.length && allowed.indexOf(req) < 0) {
+              if (allowed.indexOf(fallback) >= 0) return fallback;
+              if (meta && meta.defaultMode) return String(meta.defaultMode).trim().toLowerCase();
+              return allowed[0];
+            }
+          }
+        } catch (_) {}
+        return req;
+      }
+
+      function formatOverviewBucketLabel(rawLabel, granularity) {
+        var key = rawLabel == null ? '' : String(rawLabel).trim();
+        var g = String(granularity || '').trim().toLowerCase();
+        if (!key) return '';
+        if (g === 'hour') {
+          if (key.indexOf(' ') >= 0) return shortHourLabel(key);
+          return key;
+        }
+        if (g === 'week') {
+          if (/^\d{4}-\d{2}-\d{2}$/.test(key)) return 'Wk ' + shortDate(key);
+          return key;
+        }
+        if (/^\d{4}-\d{2}-\d{2}$/.test(key)) return shortDate(key);
+        return key;
       }
 
       function normalizeOverviewCardRangeKey(raw, fallback) {
@@ -295,6 +399,43 @@
         } catch (_) {}
       }
 
+      function upsertDashboardApexChart(chartId, chartEl, apexOpts, afterRender) {
+        if (!chartEl || !apexOpts || typeof ApexCharts === 'undefined') return null;
+        var existing = dashCharts && dashCharts[chartId] ? dashCharts[chartId] : null;
+        var series = Array.isArray(apexOpts.series) ? apexOpts.series : [];
+        if (existing && typeof existing.updateOptions === 'function' && typeof existing.updateSeries === 'function') {
+          try {
+            var optsNoSeries = Object.assign({}, apexOpts);
+            delete optsNoSeries.series;
+            existing.updateOptions(optsNoSeries, false, true, false);
+            existing.updateSeries(series, false);
+            if (typeof afterRender === 'function') {
+              setTimeout(function() {
+                try { afterRender(existing); } catch (_) {}
+              }, 0);
+            }
+            return existing;
+          } catch (updateErr) {
+            try { existing.destroy(); } catch (_) {}
+            try { delete dashCharts[chartId]; } catch (_) {}
+            captureChartError(updateErr, 'dashboardChartUpdate', { chartId: chartId });
+          }
+        }
+        chartEl.innerHTML = '';
+        var chart = new ApexCharts(chartEl, apexOpts);
+        dashCharts[chartId] = chart;
+        var rendered = null;
+        try { rendered = chart.render(); } catch (_) { rendered = null; }
+        if (rendered && typeof rendered.then === 'function') {
+          rendered.then(function() {
+            if (typeof afterRender === 'function') afterRender(chart);
+          }).catch(function() {});
+        } else if (typeof afterRender === 'function') {
+          setTimeout(function() { afterRender(chart); }, 0);
+        }
+        return chart;
+      }
+
       function makeChart(chartId, labels, datasets, opts) {
         if (typeof ApexCharts === 'undefined') {
           waitForApexCharts(function() { makeChart(chartId, labels, datasets, opts); });
@@ -303,26 +444,27 @@
         if (!chartId) return null;
         var el = document.getElementById(chartId);
         if (!el) { console.warn('[dashboard] chart element not found:', chartId); return null; }
-        if (dashCharts[chartId]) { try { dashCharts[chartId].destroy(); } catch (_) {} }
-        el.innerHTML = '';
 
         var chartScope = (opts && opts.chartScope) ? String(opts.chartScope) : ('dashboard-' + chartId);
         var defaultType = (opts && opts.chartType) || 'area';
-        var rawMode = chartModeFromUiConfig(chartId, defaultType) || defaultType;
-        var showEndLabels = rawMode === 'multi-line-labels';
-        var stacked = rawMode === 'stacked-area' || rawMode === 'stacked-bar';
-        var chartType = rawMode === 'multi-line-labels' ? 'line' : rawMode === 'stacked-area' ? 'area' : rawMode === 'stacked-bar' ? 'bar' : rawMode === 'combo' ? 'area' : rawMode;
+        var requestedMode = chartModeFromUiConfig(chartId, defaultType) || defaultType;
+        requestedMode = validateChartType(chartId, requestedMode, defaultType);
+        var showEndLabels = requestedMode === 'multi-line-labels';
+        var stacked = requestedMode === 'stacked-area' || requestedMode === 'stacked-bar';
+        var chartType = requestedMode === 'multi-line-labels' ? 'line' : requestedMode === 'stacked-area' ? 'area' : requestedMode === 'stacked-bar' ? 'bar' : requestedMode === 'combo' ? 'area' : requestedMode;
         chartType = normalizeChartType(chartType, normalizeChartType(defaultType, 'area'));
 
         if (!isChartEnabledByUiConfig(chartId, true)) {
-          // Chart hidden by settings: keep DOM empty and avoid rendering work.
           try { if (dashCharts[chartId]) dashCharts[chartId].destroy(); } catch (_) {}
           dashCharts[chartId] = null;
           el.innerHTML = '';
           return null;
         }
 
-        // Apply per-chart palette overrides (maps to series order).
+        var normalized = sanitizeChartConfig(labels, datasets);
+        labels = normalized.labels;
+        datasets = normalized.datasets;
+
         try {
           var uiColors = chartColorsFromUiConfig(chartId, []);
           if (uiColors && uiColors.length && Array.isArray(datasets)) {
@@ -345,8 +487,6 @@
         var chartHeight = (opts && Number.isFinite(Number(opts.height))) ? Number(opts.height) : 200;
         if (!Number.isFinite(chartHeight) || chartHeight < 80) chartHeight = 200;
 
-        // Guardrails: single-point or all-zero series can render as visually empty.
-        // Duplicate the only point to make a tiny segment, and set a y-axis max so 0-lines are visible.
         try {
           if (Array.isArray(labels) && labels.length === 1) labels = [labels[0], labels[0]];
           if (Array.isArray(datasets)) {
@@ -388,14 +528,13 @@
             : (opts && opts.currency) ? function(v) { return v != null ? (formatRevenue(Number(v)) || '\u2014') : '\u2014'; }
             : function(v) { return v != null ? Number(v).toLocaleString() : '\u2014'; };
 
-          // ApexCharts 4.x can hide line strokes when fill opacity is 0.
-          // Per-chart fillOpacity applies to all chart types.
           var baseOpacity = fillOpacityVal != null ? fillOpacityVal : 1;
           var areaFrom = fillOpacityVal != null ? fillOpacityVal * areaOpacityFrom : areaOpacityFrom;
           var areaTo = fillOpacityVal != null ? fillOpacityVal * areaOpacityTo : areaOpacityTo;
           var fillConfig = chartType === 'line' ? { type: 'solid', opacity: baseOpacity }
             : chartType === 'bar' ? { type: 'solid', opacity: baseOpacity }
             : { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: areaFrom, opacityTo: areaTo, stops: [0, 100] } };
+          var animationsEnabled = !!(uiStyle && uiStyle.animations === true);
 
           var apexOpts = {
             chart: {
@@ -403,7 +542,7 @@
               height: chartHeight,
               fontFamily: 'Inter, sans-serif',
               toolbar: { show: false },
-              animations: { enabled: true, easing: 'easeinout', speed: 300 },
+              animations: { enabled: animationsEnabled, easing: 'easeinout', speed: 300 },
               zoom: { enabled: false }
             },
             series: apexSeries,
@@ -439,7 +578,7 @@
               },
               style: { fontSize: '10px' },
               background: { enabled: true, borderRadius: 4, padding: 3, opacity: 0.85 },
-              offsetY: -3,
+              offsetY: -3
             } : { enabled: false },
             markers: { size: chartType === 'line' ? 3 : 0, hover: { size: 5 } },
             noData: { text: 'No data available', style: { fontSize: '13px', color: '#626976' } }
@@ -451,18 +590,9 @@
             }
           } catch (_) {}
 
-          var chart = new ApexCharts(el, apexOpts);
-          dashCharts[chartId] = chart;
-          var r = null;
-          try { r = chart.render(); } catch (_) { r = null; }
-          if (r && typeof r.then === 'function') {
-            r.then(function () {
-              try { applyChangePinsOverlayToChart(chartId, chart, labels || []); } catch (_) {}
-            }).catch(function () {});
-          } else {
-            try { setTimeout(function () { applyChangePinsOverlayToChart(chartId, chart, labels || []); }, 0); } catch (_) {}
-          }
-          return chart;
+          return upsertDashboardApexChart(chartId, el, apexOpts, function(chart) {
+            try { applyChangePinsOverlayToChart(chartId, chart, labels || []); } catch (_) {}
+          });
         } catch (err) {
           captureChartError(err, 'dashboardChartRender', { chartId: chartId });
           console.error('[dashboard] chart render error:', chartId, err);
@@ -829,6 +959,11 @@
           }
         } catch (_) {}
         try {
+          if (overviewLazyObserver && typeof overviewLazyObserver.disconnect === 'function') {
+            overviewLazyObserver.disconnect();
+          }
+        } catch (_) {}
+        try {
           if (overviewHeightSyncTimer) clearTimeout(overviewHeightSyncTimer);
         } catch (_) {}
         try {
@@ -842,12 +977,16 @@
         overviewMiniSizeSignature = '';
         overviewMiniCacheShopKey = '';
         overviewMiniPayloadSignature = '';
+        dashPayloadSignature = '';
         overviewMiniCache = null;
         overviewMiniFetchedAt = 0;
         overviewMiniInFlight = null;
         overviewCardCache = {};
         overviewCardInFlight = {};
         overviewCardPayloadSignature = {};
+        overviewLazyObserver = null;
+        overviewLazyPending = {};
+        overviewLazyVisible = {};
         clearOverviewHeightSyncStyles();
         try {
           Object.keys(dashSparkCharts || {}).forEach(function (id) {
@@ -907,14 +1046,18 @@
       function countryCodeToFlagHtml(rawCode) {
         var code = rawCode == null ? '' : String(rawCode).trim().toUpperCase().slice(0, 2);
         if (code === 'UK') code = 'GB';
-        if (!/^[A-Z]{2}$/.test(code)) return '';
+        if (!/^[A-Z]{2}$/.test(code)) {
+          return '<span class="kexo-flag-fallback" aria-hidden="true" style="display:inline-flex;align-items:center;margin-right:4px;opacity:.8"><i class="fa-light fa-globe"></i></span>';
+        }
         var raw = code.toLowerCase();
         return '<span class="flag flag-xs flag-country-' + escapeHtml(raw) + '" style="vertical-align:middle;margin-right:4px;" aria-hidden="true"></span>';
       }
 
       function countryCodeFromRow(row) {
         if (!row || typeof row !== 'object') return '';
-        var cc = (row.country_code != null ? String(row.country_code) : (row.country != null ? String(row.country) : '')).trim().toUpperCase().slice(0, 2);
+        var preferred = row.country_code != null ? String(row.country_code) : '';
+        var fallback = row.country != null ? String(row.country) : '';
+        var cc = (preferred || fallback).trim().toUpperCase().slice(0, 2);
         if (cc === 'UK') cc = 'GB';
         return /^[A-Z]{2}$/.test(cc) ? cc : '';
       }
@@ -938,12 +1081,11 @@
           safeLabels.push(label);
           safeValues.push(n);
         }
+        safeLabels = sanitizeChartConfig(safeLabels, [{ label: 'Value', data: safeValues }]).labels;
         if (!safeValues.length) {
           renderOverviewChartLoading(chartId, 'Loading chart...');
           return;
         }
-        destroyDashChart(chartId);
-        chartEl.innerHTML = '';
         var uiStyle = (typeof chartStyleFromUiConfig === 'function') ? chartStyleFromUiConfig(chartId) : null;
         if (!uiStyle || typeof uiStyle !== 'object') uiStyle = {};
         var fallbackColors = (opts && Array.isArray(opts.colors) && opts.colors.length)
@@ -990,7 +1132,7 @@
             height: chartHeight,
             fontFamily: 'Inter, sans-serif',
             toolbar: { show: false },
-            animations: { enabled: uiStyle.animations !== false, easing: 'easeinout', speed: 280 },
+            animations: { enabled: uiStyle.animations === true, easing: 'easeinout', speed: 280 },
             zoom: { enabled: false }
           },
           series: safeValues,
@@ -1048,9 +1190,7 @@
           }
         } catch (_) {}
         try {
-          var chart = new ApexCharts(chartEl, apexOpts);
-          chart.render();
-          dashCharts[chartId] = chart;
+          upsertDashboardApexChart(chartId, chartEl, apexOpts);
         } catch (err) {
           captureChartError(err, 'dashboardPieChartRender', { chartId: chartId });
           console.error('[dashboard] pie chart render error:', chartId, err);
@@ -1072,8 +1212,7 @@
           var v = normalizeOverviewMetric(values[j]);
           series.push(total > 0 ? (v / total) * 100 : 0);
         }
-        destroyDashChart(chartId);
-        chartEl.innerHTML = '';
+        labels = sanitizeChartConfig(labels, [{ label: 'Share', data: series }]).labels;
         var fallbackColors = (opts && Array.isArray(opts.colors) && opts.colors.length) ? opts.colors : ['#f59e34', '#94a3b8', '#8b5cf6', '#4b94e4', '#3eb3ab'];
         var colors = (typeof chartColorsFromUiConfig === 'function') ? chartColorsFromUiConfig(chartId, fallbackColors) : fallbackColors;
         var chartHeight = resolveOverviewChartHeight(chartEl, (opts && Number.isFinite(Number(opts.height))) ? Number(opts.height) : 180, 120, 440);
@@ -1086,7 +1225,7 @@
             height: chartHeight,
             fontFamily: 'Inter, sans-serif',
             toolbar: { show: false },
-            animations: { enabled: (uiStyle && uiStyle.animations === false) ? false : true, easing: 'easeinout', speed: 280 }
+            animations: { enabled: !!(uiStyle && uiStyle.animations === true), easing: 'easeinout', speed: 280 }
           },
           plotOptions: {
             radialBar: {
@@ -1104,7 +1243,7 @@
           series: series,
           labels: labels,
           colors: colors,
-          legend: { show: true, position: 'bottom', fontSize: '11px', labels: { colors: undefined } },
+          legend: { show: !!(opts && opts.showLegend), position: 'bottom', fontSize: '11px', labels: { colors: undefined } },
           fill: { opacity: (uiStyle && Number.isFinite(Number(uiStyle.fillOpacity))) ? Math.max(0, Math.min(1, Number(uiStyle.fillOpacity))) : 1 },
           tooltip: {
             enabled: true,
@@ -1127,9 +1266,7 @@
           }
         } catch (_) {}
         try {
-          var chart = new ApexCharts(chartEl, apexOpts);
-          chart.render();
-          dashCharts[chartId] = chart;
+          upsertDashboardApexChart(chartId, chartEl, apexOpts);
         } catch (err) {
           captureChartError(err, 'dashboardRadialBarRender', { chartId: chartId });
           console.error('[dashboard] radialBar chart render error:', chartId, err);
@@ -1144,15 +1281,13 @@
           chartEl.innerHTML = '';
           return;
         }
-        destroyDashChart(chartId);
-        chartEl.innerHTML = '';
         var fallbackColors = (opts && Array.isArray(opts.colors) && opts.colors.length) ? opts.colors : ['#f59e34', '#94a3b8', '#8b5cf6', '#4b94e4', '#3eb3ab'];
         var colors = (typeof chartColorsFromUiConfig === 'function') ? chartColorsFromUiConfig(chartId, fallbackColors) : fallbackColors;
         var chartHeight = resolveOverviewChartHeight(chartEl, (opts && Number.isFinite(Number(opts.height))) ? Number(opts.height) : 180, 120, 440);
         var uiStyle = (typeof chartStyleFromUiConfig === 'function') ? chartStyleFromUiConfig(chartId) : null;
         var horizontal = opts && opts.horizontal !== false;
         var apexOpts = {
-          chart: { type: 'bar', height: chartHeight, fontFamily: 'Inter, sans-serif', toolbar: { show: false }, animations: { enabled: (uiStyle && uiStyle.animations === false) ? false : true } },
+          chart: { type: 'bar', height: chartHeight, fontFamily: 'Inter, sans-serif', toolbar: { show: false }, animations: { enabled: !!(uiStyle && uiStyle.animations === true) } },
           plotOptions: { bar: { horizontal: horizontal, borderRadius: 0, distributed: true, barHeight: horizontal ? '60%' : '70%' } },
           series: [{ name: 'Revenue', data: values.map(function(v) { return normalizeOverviewMetric(v); }) }],
           xaxis: { categories: labels, labels: { show: horizontal ? false : true } },
@@ -1170,9 +1305,7 @@
           if (chartOverride && isPlainObject(chartOverride) && Object.keys(chartOverride).length) apexOpts = deepMergeOptions(apexOpts, chartOverride);
         } catch (_) {}
         try {
-          var chart = new ApexCharts(chartEl, apexOpts);
-          chart.render();
-          dashCharts[chartId] = chart;
+          upsertDashboardApexChart(chartId, chartEl, apexOpts);
         } catch (err) {
           captureChartError(err, 'dashboardFinishesBarRender', { chartId: chartId });
         }
@@ -1223,8 +1356,6 @@
           } catch (_) {}
           return;
         }
-        destroyDashChart(chartId);
-        chartEl.innerHTML = '';
         var fallbackColors = (opts && Array.isArray(opts.colors) && opts.colors.length) ? opts.colors : ['#4b94e4', '#3eb3ab', '#f59e34', '#8b5cf6', '#ef4444'];
         var colors = (typeof chartColorsFromUiConfig === 'function') ? chartColorsFromUiConfig(chartId, fallbackColors) : fallbackColors;
         var chartHeight = resolveOverviewChartHeight(chartEl, (opts && Number.isFinite(Number(opts.height))) ? Number(opts.height) : 180, 120, 440);
@@ -1247,7 +1378,7 @@
           };
         }
         var apexOpts = {
-          chart: { type: 'bar', height: chartHeight, fontFamily: 'Inter, sans-serif', toolbar: { show: false }, animations: { enabled: (uiStyle && uiStyle.animations === false) ? false : true } },
+          chart: { type: 'bar', height: chartHeight, fontFamily: 'Inter, sans-serif', toolbar: { show: false }, animations: { enabled: !!(uiStyle && uiStyle.animations === true) } },
           plotOptions: { bar: { horizontal: horizontal, borderRadius: 0, distributed: true, barHeight: horizontal ? '60%' : '70%', dataLabels: { hideOverflowingLabels: false } } },
           series: [{ name: 'Revenue', data: values }],
           xaxis: { categories: categories, labels: { show: horizontal ? false : true } },
@@ -1277,9 +1408,7 @@
           if (chartOverride && isPlainObject(chartOverride) && Object.keys(chartOverride).length) apexOpts = deepMergeOptions(apexOpts, chartOverride);
         } catch (_) {}
         try {
-          var chart = new ApexCharts(chartEl, apexOpts);
-          chart.render();
-          dashCharts[chartId] = chart;
+          upsertDashboardApexChart(chartId, chartEl, apexOpts);
           var legendEl = chartEl.parentElement ? chartEl.parentElement.querySelector('[data-overview-legend="' + chartId + '"]') : null;
           if (legendEl) {
             // Strict layout: bar charts show flags on axis labels (horizontal) or as data labels (vertical),
@@ -1327,9 +1456,7 @@
           removeAttributionIconRow(chartEl);
           return;
         }
-        destroyDashChart(chartId);
         removeAttributionIconRow(chartEl);
-        chartEl.innerHTML = '';
         var fallbackColors = (opts && Array.isArray(opts.colors) && opts.colors.length) ? opts.colors : ['#4b94e4', '#3eb3ab', '#f59e34', '#8b5cf6', '#ef4444'];
         var colors = (typeof chartColorsFromUiConfig === 'function') ? chartColorsFromUiConfig(chartId, fallbackColors) : fallbackColors;
         var chartHeight = resolveOverviewChartHeight(chartEl, (opts && Number.isFinite(Number(opts.height))) ? Number(opts.height) : 180, 120, 440);
@@ -1339,7 +1466,7 @@
         var crPctsRef = crPcts;
         var horizontal = !!(opts && opts.horizontal);
         var apexOpts = {
-          chart: { type: 'bar', height: chartHeight, fontFamily: 'Inter, sans-serif', toolbar: { show: false }, animations: { enabled: (uiStyle && uiStyle.animations === false) ? false : true } },
+          chart: { type: 'bar', height: chartHeight, fontFamily: 'Inter, sans-serif', toolbar: { show: false }, animations: { enabled: !!(uiStyle && uiStyle.animations === true) } },
           plotOptions: { bar: { borderRadius: 0, distributed: true, barHeight: horizontal ? '60%' : '70%', horizontal: horizontal } },
           series: [{ name: 'Revenue', data: values }],
           xaxis: { categories: labels, labels: { show: false } },
@@ -1368,9 +1495,7 @@
           if (chartOverride && isPlainObject(chartOverride) && Object.keys(chartOverride).length) apexOpts = deepMergeOptions(apexOpts, chartOverride);
         } catch (_) {}
         try {
-          var chart = new ApexCharts(chartEl, apexOpts);
-          chart.render();
-          dashCharts[chartId] = chart;
+          upsertDashboardApexChart(chartId, chartEl, apexOpts);
           appendAttributionIconRow(chartEl, sources, attributionIconSpecToHtml);
         } catch (err) {
           captureChartError(err, 'dashboardAttributionBarRender', { chartId: chartId });
@@ -1406,6 +1531,7 @@
           ? attributionPayload.attribution.rows
           : [];
         var mode = (typeof chartModeFromUiConfig === 'function') ? String(chartModeFromUiConfig(chartId, 'bar-distributed') || 'bar-distributed').trim().toLowerCase() : 'bar-distributed';
+        mode = validateChartType(chartId, mode, 'bar-distributed');
         var barLike = mode === 'bar-distributed' || mode === 'bar-horizontal' || mode === 'bar';
         var lineLike = mode === 'line' || mode === 'area' || mode === 'multi-line-labels';
         var radialLike = mode === 'radialbar';
@@ -1496,6 +1622,9 @@
         var current = snapshotPayload && snapshotPayload.seriesComparison && snapshotPayload.seriesComparison.current
           ? snapshotPayload.seriesComparison.current
           : null;
+        var granularity = snapshotPayload && snapshotPayload.seriesComparison && snapshotPayload.seriesComparison.granularity
+          ? String(snapshotPayload.seriesComparison.granularity).trim().toLowerCase()
+          : 'day';
         var labelsYmd = current && Array.isArray(current.labelsYmd) ? current.labelsYmd : [];
         var revenueGbp = current && Array.isArray(current.revenueGbp) ? current.revenueGbp : [];
         var costGbp = current && Array.isArray(current.costGbp) ? current.costGbp : [];
@@ -1510,7 +1639,7 @@
         var profit = [];
         for (var i = 0; i < len; i++) {
           var ymd = labelsYmd[i] != null ? String(labelsYmd[i]) : '';
-          labels.push(ymd ? shortDate(ymd) : String(i + 1));
+          labels.push(ymd ? formatOverviewBucketLabel(ymd, granularity) : String(i + 1));
           var rev = normalizeOverviewMetric(revenueGbp[i]);
           var cst = normalizeOverviewMetric(costGbp[i]);
           revenue.push(rev);
@@ -1520,6 +1649,7 @@
         var chartEl = document.getElementById(chartId);
         var chartHeight = resolveOverviewChartHeight(chartEl, 260, 140, 760);
         var overviewMode = (typeof chartModeFromUiConfig === 'function') ? chartModeFromUiConfig(chartId, 'area') : 'area';
+        overviewMode = validateChartType(chartId, overviewMode, 'area');
         var overviewChartType = (overviewMode === 'multi-line-labels') ? 'line' : (overviewMode === 'stacked-area' || overviewMode === 'stacked-bar' || overviewMode === 'combo') ? overviewMode : (overviewMode || 'area');
         makeChart(chartId, labels, [{
           label: 'Revenue',
@@ -1586,10 +1716,65 @@
         } catch (_) { return ''; }
       }
 
+      function ensureOverviewLazyObserver() {
+        if (overviewLazyObserver || typeof IntersectionObserver === 'undefined') return;
+        overviewLazyObserver = new IntersectionObserver(function(entries) {
+          entries.forEach(function(entry) {
+            if (!entry || !entry.target || !entry.target.id) return;
+            var chartId = String(entry.target.id);
+            overviewLazyVisible[chartId] = !!entry.isIntersecting;
+            if (!entry.isIntersecting) return;
+            var pending = overviewLazyPending && overviewLazyPending[chartId] ? overviewLazyPending[chartId] : null;
+            if (!pending) return;
+            try { delete overviewLazyPending[chartId]; } catch (_) {}
+            var run = function() {
+              try {
+                renderOverviewCardById(chartId, pending.payload, Object.assign({}, pending.options || {}, { forceRender: true, reason: 'lazy-visible' }));
+              } catch (_) {}
+            };
+            if (typeof requestIdleCallback === 'function') requestIdleCallback(run, { timeout: 1200 });
+            else setTimeout(run, 0);
+          });
+        }, { root: null, rootMargin: '120px 0px', threshold: 0.1 });
+      }
+
+      function shouldLazyRenderOverviewChart(chartId) {
+        return !!(OVERVIEW_LAZY_CHART_IDS && OVERVIEW_LAZY_CHART_IDS[chartId]);
+      }
+
+      function observeOverviewChartIfLazy(chartId) {
+        if (!shouldLazyRenderOverviewChart(chartId)) return;
+        ensureOverviewLazyObserver();
+        if (!overviewLazyObserver) return;
+        try {
+          var el = document.getElementById(chartId);
+          if (el) overviewLazyObserver.observe(el);
+        } catch (_) {}
+      }
+
+      function isOverviewChartVisible(chartId) {
+        if (!shouldLazyRenderOverviewChart(chartId)) return true;
+        if (overviewLazyVisible[chartId] != null) return !!overviewLazyVisible[chartId];
+        try {
+          var el = document.getElementById(chartId);
+          if (!el || !el.getBoundingClientRect) return false;
+          var rect = el.getBoundingClientRect();
+          var h = (window && window.innerHeight) ? window.innerHeight : 0;
+          return rect.bottom > 0 && rect.top < h;
+        } catch (_) {
+          return false;
+        }
+      }
+
       function renderOverviewCardById(chartId, payload, options) {
         var opts = options && typeof options === 'object' ? options : {};
         var reason = opts.reason != null ? String(opts.reason) : '';
         var rk = opts.rangeKey != null ? normalizeOverviewCardRangeKey(opts.rangeKey, OVERVIEW_CARD_DEFAULT_RANGE) : getOverviewCardRange(chartId, OVERVIEW_CARD_DEFAULT_RANGE);
+        observeOverviewChartIfLazy(chartId);
+        if (!opts.forceRender && shouldLazyRenderOverviewChart(chartId) && !isOverviewChartVisible(chartId)) {
+          overviewLazyPending[chartId] = { payload: payload, options: { rangeKey: rk } };
+          return;
+        }
 
         // NOTE: Avoid JSON stringifying the full /api/dashboard-series payload. Build a small sig from rendered data.
         var styleSig = overviewCardStyleSigFor(chartId);
@@ -1623,6 +1808,7 @@
               height: 180
             };
             var finishesMode = (typeof chartModeFromUiConfig === 'function') ? String(chartModeFromUiConfig(chartId, 'radialbar') || 'radialbar').trim().toLowerCase() : 'radialbar';
+            finishesMode = validateChartType(chartId, finishesMode, 'radialbar');
             if (!finishLabels.length || !finishValues.length) {
               renderOverviewChartEmpty(chartId, 'No finishes data');
               renderOverviewMiniLegend(chartId, [], []);
@@ -1654,11 +1840,12 @@
             var val = normalizeOverviewMetric(row.revenue);
             return (cc || row.revenue != null) && val > 0;
           }).slice(0, 5);
-          payloadSig = JSON.stringify(topCountries.map(function(r) { return [String(r.country || ''), normalizeOverviewMetric(r.revenue)]; }).concat([rk])) || '';
+          payloadSig = JSON.stringify(topCountries.map(function(r) {
+            return [String((r.country_code != null ? r.country_code : r.country) || ''), normalizeOverviewMetric(r.revenue)];
+          }).concat([rk])) || '';
           doRender = function() {
             var countriesMode = (typeof chartModeFromUiConfig === 'function') ? String(chartModeFromUiConfig(chartId, 'bar-horizontal') || 'bar-horizontal').trim().toLowerCase() : 'bar-horizontal';
-            var allowedCountriesModes = ['bar-horizontal', 'bar', 'bar-distributed', 'pie', 'donut', 'radialbar', 'line', 'area', 'multi-line-labels'];
-            if (allowedCountriesModes.indexOf(countriesMode) < 0) countriesMode = 'bar-horizontal';
+            countriesMode = validateChartType(chartId, countriesMode, 'bar-horizontal');
             var fallbackColors2 = ['#4b94e4', '#3eb3ab', '#f59e34', '#8b5cf6', '#ef4444'];
             var countriesColors = (typeof chartColorsFromUiConfig === 'function') ? chartColorsFromUiConfig(chartId, fallbackColors2) : fallbackColors2;
             var countriesOpts = { colors: countriesColors, height: 180 };
@@ -2702,7 +2889,8 @@
             countryTbody.innerHTML = '<tr><td colspan="4" class="dash-empty">No data</td></tr>';
           } else {
             countryTbody.innerHTML = countriesPageRows.map(function(c) {
-              var cc = (c.country || 'XX').toUpperCase();
+              var cc = ((c && (c.country_code || c.country)) || 'XX').toUpperCase();
+              if (cc === 'UK') cc = 'GB';
               var name = (typeof countryLabelFull === 'function') ? countryLabelFull(cc) : cc;
               var crVal = (c && typeof c.cr === 'number' && isFinite(c.cr)) ? c.cr : null;
               var sessions = (c && typeof c.sessions === 'number' && isFinite(c.sessions)) ? c.sessions : null;
@@ -3293,10 +3481,15 @@
           .then(function(data) {
             dashLoading = false;
             if (data) {
-              build.step('Rendering dashboard panels');
+              var nextSig = dashboardPayloadSignature(data, rangeKey);
+              var shouldRender = !!force || !(dashPayloadSignature && nextSig && nextSig === dashPayloadSignature);
               dashCache = data;
               dashLastRangeKey = rangeKey;
-              renderDashboard(data);
+              dashPayloadSignature = nextSig;
+              if (shouldRender || (opts && opts.rerender)) {
+                build.step('Rendering dashboard panels');
+                renderDashboard(data);
+              }
             }
             // #region agent log
             if (_dbgOn) {
@@ -3331,23 +3524,118 @@
       window.refreshDashboard = function(opts) {
         var force = opts && opts.force;
         var silent = !!(opts && opts.silent);
+        var rerender = !!(opts && opts.rerender);
         var rk = dashRangeKeyFromDateRange();
         try {
           var curYmd = (typeof ymdNowInTz === 'function') ? ymdNowInTz() : null;
           if (curYmd && dashLastDayYmd && dashLastDayYmd !== curYmd) {
             dashCache = null;
             dashLastRangeKey = null;
+            dashPayloadSignature = '';
             force = true;
           }
           if (curYmd) dashLastDayYmd = curYmd;
         } catch (_) {}
         if (!force && dashCache && dashLastRangeKey === rk) {
-          renderDashboard(dashCache);
+          if (rerender) renderDashboard(dashCache);
           fetchOverviewMiniData({ force: false, renderIfFresh: !overviewMiniPayloadSignature });
           return;
         }
-        fetchDashboardData(rk, force, { silent: silent });
+        fetchDashboardData(rk, force, { silent: silent, rerender: rerender });
       };
+
+      function createDashboardController() {
+        var pollTimer = null;
+        var visibilityBound = false;
+        var pageShowBound = false;
+        var lastResumeAt = 0;
+        var POLL_MS = 120000;
+        function isDashboardActive() {
+          try {
+            var p = document.getElementById('tab-panel-dashboard');
+            if (!p) return PAGE === 'dashboard';
+            return p.classList.contains('active') || PAGE === 'dashboard';
+          } catch (_) {
+            return PAGE === 'dashboard';
+          }
+        }
+        function isVisible() {
+          try {
+            return !document || !document.visibilityState || document.visibilityState === 'visible';
+          } catch (_) {
+            return true;
+          }
+        }
+        function isDynamicRange() {
+          var rk = dashRangeKeyFromDateRange();
+          return rk === 'today' || rk === '1h';
+        }
+        function stopPolling() {
+          if (pollTimer) {
+            try { clearInterval(pollTimer); } catch (_) {}
+            pollTimer = null;
+          }
+        }
+        function pollTick() {
+          if (!isVisible()) return;
+          if (!isDashboardActive()) return;
+          if (!isDynamicRange()) return;
+          if (dashLoading) return;
+          try { if (typeof window.refreshDashboard === 'function') window.refreshDashboard({ force: true, silent: true }); } catch (_) {}
+        }
+        function startPolling() {
+          stopPolling();
+          if (!isVisible()) return;
+          pollTimer = setInterval(pollTick, POLL_MS);
+        }
+        function refreshOnceAndResume(reason) {
+          var now = Date.now();
+          if (now - lastResumeAt < 1000) return;
+          lastResumeAt = now;
+          try { if (typeof window.refreshDashboard === 'function') window.refreshDashboard({ force: true, silent: true, reason: reason || 'resume' }); } catch (_) {}
+          startPolling();
+        }
+        function onVisibilityChange() {
+          if (!isVisible()) {
+            stopPolling();
+            return;
+          }
+          refreshOnceAndResume('visibility');
+        }
+        function onPageShow(ev) {
+          if (ev && ev.persisted) refreshOnceAndResume('pageshow');
+        }
+        function init() {
+          startPolling();
+          if (!visibilityBound) {
+            document.addEventListener('visibilitychange', onVisibilityChange);
+            visibilityBound = true;
+          }
+          if (!pageShowBound) {
+            window.addEventListener('pageshow', onPageShow);
+            pageShowBound = true;
+          }
+        }
+        function destroy() {
+          stopPolling();
+          if (visibilityBound) {
+            try { document.removeEventListener('visibilitychange', onVisibilityChange); } catch (_) {}
+            visibilityBound = false;
+          }
+          if (pageShowBound) {
+            try { window.removeEventListener('pageshow', onPageShow); } catch (_) {}
+            pageShowBound = false;
+          }
+        }
+        return {
+          init: init,
+          destroy: destroy,
+          startPolling: startPolling,
+          stopPolling: stopPolling,
+          onVisibleResume: refreshOnceAndResume,
+          pollNow: pollTick
+        };
+      }
 
       window.refreshKexoScore = function() {
         return fetchKexoScore(dashRangeKeyFromDateRange());
@@ -3362,6 +3650,14 @@
       if (dashPanel && (dashPanel.classList.contains('active') || PAGE === 'dashboard')) {
         fetchDashboardData(dashRangeKeyFromDateRange(), false);
       }
+      try {
+        if (window.dashboardController && typeof window.dashboardController.destroy === 'function') {
+          window.dashboardController.destroy();
+        }
+      } catch (_) {}
+      dashController = createDashboardController();
+      try { window.dashboardController = dashController; } catch (_) {}
+      try { dashController.init(); } catch (_) {}
 
       // When Profit Rules are saved via the dashboard Cost Settings modal,
       // refresh the 7d overview snapshot payload (cost/revenue series depend on profit rule fingerprint).
@@ -3387,19 +3683,11 @@
         }, 1200);
       }
 
-      // Auto-refresh dynamic ranges so "Today"/"1h" stays live without manual refresh.
-      _intervals.push(setInterval(function() {
+      registerCleanup(function() {
         try {
-          if (document && document.visibilityState && document.visibilityState !== 'visible') return;
-          var rk = dashRangeKeyFromDateRange();
-          if (rk !== 'today' && rk !== '1h') return;
-          var p = document.getElementById('tab-panel-dashboard');
-          if (!p) return;
-          if (!(p.classList.contains('active') || PAGE === 'dashboard')) return;
-          if (dashLoading) return;
-          if (typeof window.refreshDashboard === 'function') window.refreshDashboard({ force: true, silent: true });
+          if (dashController && typeof dashController.destroy === 'function') dashController.destroy();
         } catch (_) {}
-      }, 60000));
+      });
     })();
 
     // ?????? User avatar: fetch /api/me and populate ????????????????????????????????????????????????????????????????????????

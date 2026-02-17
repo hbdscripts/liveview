@@ -1,0 +1,96 @@
+KEXO Dashboard Audit and Repair Report
+Date: 2026-02-17
+Phase flow: 1 Audit -> 2 Root Cause -> 3 Turbo Pass -> 4 Functional Repairs -> 5 Architecture Stabilisation -> 6 Verification -> 7 Report
+
+Root causes identified
+- Duplicate labels on charts:
+  - Dashboard radial-bar cards rendered both Apex legend and custom mini-legend.
+  - Revenue/Cost/Profit chart always formatted labels as short day labels, even when backend granularity changed.
+- Country flags missing:
+  - Frontend accepted invalid/non-ISO values without robust fallback and top-countries table preferred `country` over `country_code`.
+- Lag when returning to tab:
+  - Multiple resume triggers (`visibilitychange`, `pageshow`, and dashboard interval loop) could force overlapping refreshes.
+  - Dashboard charts were frequently destroyed/recreated during refreshes.
+- Top Products / Trending empty:
+  - Product aggregation required non-empty `product_id`; rows with missing product IDs were dropped.
+  - Raw fallback top-products path filtered only `financial_status='paid'` and excluded `partially_paid`.
+- Revenue chart wrong granularity:
+  - `seriesComparison` returned daily arrays/granularity even when downsampling had produced weekly series.
+  - Weekly threshold was too high for intended chart behavior.
+- Date picker wrong position:
+  - Mobile header CSS absolutely positioned date button with negative top offset.
+- Chart type incompatible with dataset:
+  - UI mode retrieval did not always validate against chart-definition allowed modes.
+- Duplicate refresh / chart creation:
+  - Dashboard refresh path rendered from cache even when no payload change, and dedicated interval refreshed every 60s.
+- Chart animations hurting performance:
+  - Multiple renderers defaulted to animations on unless explicitly disabled.
+- Charts refreshing when data unchanged:
+  - No top-level dashboard payload signature gate for table/chart rerender.
+- Multiple polling intervals:
+  - Live re-init could stack additional 30s timers.
+- Chart instances destroyed/recreated unnecessarily:
+  - Several render paths used destroy + new ApexCharts each refresh.
+
+Files changed
+- client/app/14-dashboard.js
+- client/app/13-live-sales.js
+- client/app/07-type-pagination-watcher.js
+- client/app/04-rows-sticky.js
+- server/routes/dashboardSeries.js
+- server/businessSnapshotService.js
+- server/routes/settings.js
+- server/public/kexo-chart-builder.js
+- server/public/custom.css
+- server/store.js
+- server/public/app.js (rebuilt bundle)
+- HANDOVER.txt
+
+What was fixed
+- Turbo pass performance fixes:
+  - Dashboard polling moved to a single DashboardController with 120s cadence.
+  - Polling now pauses when hidden and resumes with a single refresh when visible.
+  - Added dashboard payload signature to skip unnecessary rerenders.
+  - Added lazy render for below-viewport overview charts (IntersectionObserver).
+  - Replaced destroy/recreate cycles with updateOptions/updateSeries in dashboard chart paths and shared chart builder.
+  - Default chart animations switched OFF unless explicitly enabled by settings.
+- Functional repairs:
+  - Added chart config sanitation and mode validation safeguards.
+  - Added country flag globe fallback and stronger country_code preference.
+  - Corrected top-countries rendering to use country_code/UK->GB normalization.
+  - Product/trending aggregation now supports missing product_id using title-based fallback key.
+  - Raw top-products fallback includes partially_paid orders.
+  - Revenue comparison chart now uses backend granularity series and labels.
+  - Mobile date picker positioning corrected to stable top-right alignment.
+- Guardrail alignment:
+  - Kept reconciliation warmup non-blocking and compliant with runtime hang guardrail test expectations.
+
+Performance improvements delivered
+- Reduced dashboard refresh pressure (60s -> 120s dynamic poll).
+- Eliminated repeated chart object churn in core dashboard render paths.
+- Reduced hidden-tab work and resume-time burst refreshes.
+- Prevented full dashboard rerenders when payload signatures match.
+- Deferred non-critical overview chart rendering until visible/near-visible.
+
+Architecture improvements delivered
+- Introduced DashboardController lifecycle ownership in dashboard runtime:
+  - single polling lifecycle
+  - visibility lifecycle
+  - one-shot resume refresh behavior
+  - explicit init/destroy hooks
+- Unified chart update behavior around in-place updateOptions/updateSeries.
+- Added chart mode validation against canonical definitions for compatibility safety.
+- Added reusable sanitation step for chart labels/data alignment and duplicate-label avoidance.
+
+Verification completed
+- Build:
+  - npm run build:app (pass)
+- Tests:
+  - npm test -- test/runtime-hang-guardrails.test.js test/chart-settings-unification.test.js test/latest-sales.test.js (pass)
+- Lints:
+  - IDE lint scan on edited files (no linter errors reported)
+- Syntax:
+  - node --check on edited server modules (pass)
+
+Notes
+- Requested report file name was `.md`, but project rule disallows creating new `.md` docs; this report is provided as `.txt` with equivalent content.
