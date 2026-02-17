@@ -15,6 +15,8 @@
       var overviewMiniCacheShopKey = '';
       var overviewMiniPayloadSignature = '';
       var overviewMiniResizeTimer = null;
+      var overviewHeightSyncObserver = null;
+      var overviewHeightSyncTimer = null;
       var OVERVIEW_MINI_CACHE_MS = 2 * 60 * 1000;
       var OVERVIEW_MINI_FORCE_REFRESH_MS = 5 * 60 * 1000;
       var _primaryRgbDash = getComputedStyle(document.documentElement).getPropertyValue('--tblr-primary-rgb').trim() || '32,107,196';
@@ -409,6 +411,164 @@
         return ['dash-chart-finishes-30d', 'dash-chart-countries-30d', 'dash-chart-attribution-30d', 'dash-chart-overview-30d'];
       }
 
+      function clearOverviewHeightSyncStyles() {
+        try {
+          document.querySelectorAll('.kexo-overview-mini-row .kexo-overview-mini-card').forEach(function(card) {
+            if (!card || !card.style) return;
+            card.style.height = '';
+            card.style.minHeight = '';
+          });
+        } catch (_) {}
+        try {
+          var mainCard = document.querySelector('[data-kexo-chart-key="dash-chart-overview-30d"] .kexo-overview-main-card');
+          if (mainCard && mainCard.style) {
+            mainCard.style.height = '';
+            mainCard.style.minHeight = '';
+          }
+        } catch (_) {}
+      }
+
+      function syncOverviewHeightGrid() {
+        var topGrid = document.getElementById('dash-kpi-grid');
+        var midGrid = document.getElementById('dash-kpi-grid-mid');
+        if (!topGrid) return;
+        var desktop = false;
+        try { desktop = !!(window && window.matchMedia && window.matchMedia('(min-width: 1200px)').matches); } catch (_) { desktop = false; }
+        if (!desktop) {
+          clearOverviewHeightSyncStyles();
+          return;
+        }
+        var topHeight = 0;
+        try {
+          var topRect = topGrid.getBoundingClientRect ? topGrid.getBoundingClientRect() : null;
+          if (topRect && Number.isFinite(topRect.height) && topRect.height > 0) topHeight = Math.round(topRect.height);
+        } catch (_) {}
+        if (topHeight > 0) {
+          try {
+            document.querySelectorAll('.kexo-overview-mini-row .kexo-overview-mini-card').forEach(function(card) {
+              if (!card || !card.style) return;
+              card.style.height = String(topHeight) + 'px';
+              card.style.minHeight = String(topHeight) + 'px';
+            });
+          } catch (_) {}
+        }
+        var midHeight = 0;
+        try {
+          if (midGrid && midGrid.getBoundingClientRect) {
+            var midRect = midGrid.getBoundingClientRect();
+            if (midRect && Number.isFinite(midRect.height) && midRect.height > 0) midHeight = Math.round(midRect.height);
+          }
+        } catch (_) {}
+        if (midHeight > 0) {
+          try {
+            var mainCard = document.querySelector('[data-kexo-chart-key="dash-chart-overview-30d"] .kexo-overview-main-card');
+            if (mainCard && mainCard.style) {
+              mainCard.style.height = String(midHeight) + 'px';
+              mainCard.style.minHeight = String(midHeight) + 'px';
+            }
+          } catch (_) {}
+        }
+      }
+
+      function scheduleOverviewHeightSync() {
+        if (overviewHeightSyncTimer) {
+          try { clearTimeout(overviewHeightSyncTimer); } catch (_) {}
+        }
+        overviewHeightSyncTimer = setTimeout(function() {
+          overviewHeightSyncTimer = null;
+          syncOverviewHeightGrid();
+          if (overviewMiniCache) renderOverviewMiniCharts(overviewMiniCache, { reason: 'resize' });
+        }, 80);
+      }
+
+      function ensureOverviewHeightSyncObserver() {
+        if (overviewHeightSyncObserver || typeof ResizeObserver === 'undefined') return;
+        overviewHeightSyncObserver = new ResizeObserver(function() {
+          scheduleOverviewHeightSync();
+        });
+        try {
+          var topGrid = document.getElementById('dash-kpi-grid');
+          var midGrid = document.getElementById('dash-kpi-grid-mid');
+          var miniRow = document.querySelector('.kexo-overview-mini-row');
+          var mainCard = document.querySelector('[data-kexo-chart-key="dash-chart-overview-30d"] .kexo-overview-main-card');
+          if (topGrid) overviewHeightSyncObserver.observe(topGrid);
+          if (midGrid) overviewHeightSyncObserver.observe(midGrid);
+          if (miniRow) overviewHeightSyncObserver.observe(miniRow);
+          if (mainCard) overviewHeightSyncObserver.observe(mainCard);
+        } catch (_) {}
+        try {
+          window.addEventListener('resize', scheduleOverviewHeightSync);
+        } catch (_) {}
+      }
+
+      function setOverviewMiniCardValue(id, text) {
+        var target = document.getElementById(id);
+        if (!target) return;
+        target.textContent = text != null && String(text).trim() ? String(text) : '\u2014';
+      }
+
+      function cloneOverviewDeltaFromKpi(sourcePrefix, targetPrefix) {
+        var srcWrap = document.getElementById(sourcePrefix + '-delta');
+        var srcText = document.getElementById(sourcePrefix + '-delta-text');
+        var dstWrap = document.getElementById(targetPrefix + '-delta');
+        var dstText = document.getElementById(targetPrefix + '-delta-text');
+        if (!dstWrap || !dstText) return;
+        var empty = !srcWrap || !srcText || srcWrap.classList.contains('is-hidden');
+        if (empty) {
+          dstWrap.classList.add('is-hidden');
+          dstWrap.classList.remove('is-up', 'is-down', 'is-flat');
+          dstWrap.setAttribute('data-dir', 'none');
+          dstText.textContent = '\u2014';
+          return;
+        }
+        var text = srcText.textContent != null ? String(srcText.textContent).trim() : '';
+        if (!text || text === '\u2014') {
+          dstWrap.classList.add('is-hidden');
+          dstWrap.classList.remove('is-up', 'is-down', 'is-flat');
+          dstWrap.setAttribute('data-dir', 'none');
+          dstText.textContent = '\u2014';
+          return;
+        }
+        dstText.textContent = text;
+        dstWrap.classList.remove('is-hidden');
+        dstWrap.classList.remove('is-up', 'is-down', 'is-flat');
+        if (srcWrap.classList.contains('is-up')) dstWrap.classList.add('is-up');
+        else if (srcWrap.classList.contains('is-down')) dstWrap.classList.add('is-down');
+        else if (srcWrap.classList.contains('is-flat')) dstWrap.classList.add('is-flat');
+        var dir = srcWrap.getAttribute('data-dir') || 'none';
+        dstWrap.setAttribute('data-dir', dir);
+      }
+
+      function renderOverviewMiniCardStats(context) {
+        var ctx = context && typeof context === 'object' ? context : {};
+        function sumSafe(values) {
+          if (!Array.isArray(values)) return 0;
+          return values.reduce(function(acc, n) { return acc + normalizeOverviewMetric(n); }, 0);
+        }
+        function moneyText(value) {
+          if (typeof formatRevenue0 === 'function') return formatRevenue0(normalizeOverviewMetric(value)) || '\u2014';
+          return fmtGbp(normalizeOverviewMetric(value));
+        }
+
+        var finishesRevenue = sumSafe(ctx.finishValues);
+        var countriesRevenue = sumSafe(ctx.countryValues);
+        var attributionSessions = sumSafe(ctx.attributionValues);
+        var overviewRevenue = normalizeOverviewMetric(ctx.overviewRevenue);
+        if (overviewRevenue <= 0 && Array.isArray(ctx.overviewRevenueSeries)) {
+          overviewRevenue = sumSafe(ctx.overviewRevenueSeries);
+        }
+
+        setOverviewMiniCardValue('dash-mini-finishes-value', moneyText(finishesRevenue));
+        setOverviewMiniCardValue('dash-mini-countries-value', moneyText(countriesRevenue));
+        setOverviewMiniCardValue('dash-mini-attribution-value', Math.round(attributionSessions).toLocaleString());
+        setOverviewMiniCardValue('dash-mini-overview-value', moneyText(overviewRevenue));
+
+        cloneOverviewDeltaFromKpi('dash-kpi-revenue', 'dash-mini-finishes');
+        cloneOverviewDeltaFromKpi('dash-kpi-revenue', 'dash-mini-countries');
+        cloneOverviewDeltaFromKpi('dash-kpi-sessions', 'dash-mini-attribution');
+        cloneOverviewDeltaFromKpi('dash-kpi-revenue', 'dash-mini-overview');
+      }
+
       function quantizeOverviewMiniSize(value) {
         var n = Number(value);
         if (!Number.isFinite(n) || n <= 0) return 0;
@@ -474,6 +634,7 @@
 
       function ensureOverviewMiniResizeObserver() {
         if (overviewMiniResizeObserver || typeof ResizeObserver === 'undefined') return;
+        ensureOverviewHeightSyncObserver();
         overviewMiniResizeObserver = new ResizeObserver(function() {
           scheduleOverviewMiniResizeRender();
         });
@@ -492,12 +653,26 @@
         try {
           if (overviewMiniResizeTimer) clearTimeout(overviewMiniResizeTimer);
         } catch (_) {}
+        try {
+          if (overviewHeightSyncObserver && typeof overviewHeightSyncObserver.disconnect === 'function') {
+            overviewHeightSyncObserver.disconnect();
+          }
+        } catch (_) {}
+        try {
+          if (overviewHeightSyncTimer) clearTimeout(overviewHeightSyncTimer);
+        } catch (_) {}
+        try {
+          window.removeEventListener('resize', scheduleOverviewHeightSync);
+        } catch (_) {}
         overviewMiniResizeTimer = null;
         overviewMiniResizeObserver = null;
+        overviewHeightSyncObserver = null;
+        overviewHeightSyncTimer = null;
         overviewMiniResizeScheduled = false;
         overviewMiniSizeSignature = '';
         overviewMiniCacheShopKey = '';
         overviewMiniPayloadSignature = '';
+        clearOverviewHeightSyncStyles();
         try {
           Object.keys(dashSparkCharts || {}).forEach(function (id) {
             var chart = dashSparkCharts[id];
@@ -532,6 +707,10 @@
       }
 
       function showOverviewMiniLoadingState() {
+        setOverviewMiniCardValue('dash-mini-finishes-value', '\u2014');
+        setOverviewMiniCardValue('dash-mini-countries-value', '\u2014');
+        setOverviewMiniCardValue('dash-mini-attribution-value', '\u2014');
+        setOverviewMiniCardValue('dash-mini-overview-value', '\u2014');
         renderOverviewChartLoading('dash-chart-finishes-30d', 'Loading finishes...');
         renderOverviewChartLoading('dash-chart-countries-30d', 'Loading countries...');
         renderOverviewChartLoading('dash-chart-attribution-30d', 'Loading attribution...');
@@ -603,8 +782,8 @@
         var dataLabelsEnabled = uiStyle.dataLabels !== 'off';
         var chartHeight = resolveOverviewChartHeight(
           chartEl,
-          (opts && Number.isFinite(Number(opts.height))) ? Number(opts.height) : 240,
-          180,
+          (opts && Number.isFinite(Number(opts.height))) ? Number(opts.height) : 180,
+          120,
           440
         );
         var apexOpts = {
@@ -709,7 +888,7 @@
         var costGbp = current && Array.isArray(current.costGbp) ? current.costGbp : [];
         var len = Math.max(labelsYmd.length, revenueGbp.length, costGbp.length);
         if (!len) {
-          renderOverviewChartLoading(chartId, 'Loading 30 day overview...');
+          renderOverviewChartLoading(chartId, 'Loading 7 day overview...');
           return;
         }
         var labels = [];
@@ -722,7 +901,7 @@
           cost.push(normalizeOverviewMetric(costGbp[i]));
         }
         var chartEl = document.getElementById(chartId);
-        var chartHeight = resolveOverviewChartHeight(chartEl, 420, 300, 760);
+        var chartHeight = resolveOverviewChartHeight(chartEl, 260, 140, 760);
         makeChart(chartId, labels, [{
           label: 'Revenue',
           data: revenue,
@@ -793,6 +972,25 @@
           countryLabels.push(label);
           countryValues.push(val);
         });
+        var attributionRows = payload && payload.attribution && payload.attribution.attribution && Array.isArray(payload.attribution.attribution.rows)
+          ? payload.attribution.attribution.rows
+          : [];
+        var attributionValues = attributionRows
+          .filter(function(row) { return row && Number(row.sessions) > 0; })
+          .map(function(row) { return normalizeOverviewMetric(row && row.sessions); });
+        var snapshotFinancialRevenue = payload && payload.snapshot && payload.snapshot.financial && payload.snapshot.financial.revenue
+          ? normalizeOverviewMetric(payload.snapshot.financial.revenue.value)
+          : 0;
+        var snapshotRevenueSeries = payload && payload.snapshot && payload.snapshot.seriesComparison && payload.snapshot.seriesComparison.current
+          ? payload.snapshot.seriesComparison.current.revenueGbp
+          : null;
+        renderOverviewMiniCardStats({
+          finishValues: finishValues,
+          countryValues: countryValues,
+          attributionValues: attributionValues,
+          overviewRevenue: snapshotFinancialRevenue,
+          overviewRevenueSeries: snapshotRevenueSeries,
+        });
         renderOverviewPieChart('dash-chart-countries-30d', countryLabels, countryValues, {
           colors: ['#4b94e4', '#3eb3ab', '#f59e34', '#8b5cf6', '#ef4444'],
           valueFormatter: function(v) { return formatRevenue(normalizeOverviewMetric(v)) || '\u2014'; },
@@ -802,12 +1000,15 @@
         renderOverviewAttributionChart(payload ? payload.attribution : null);
 
         renderOverviewRevenueCostChart(payload ? payload.snapshot : null);
+        scheduleOverviewHeightSync();
         overviewMiniSizeSignature = computeOverviewMiniSizeSignature();
         overviewMiniPayloadSignature = payloadSig;
       }
 
       function fetchOverviewMiniData(options) {
         ensureOverviewMiniResizeObserver();
+        ensureOverviewHeightSyncObserver();
+        scheduleOverviewHeightSync();
         var opts = options && typeof options === 'object' ? options : {};
         var force = !!opts.force;
         var renderIfFresh = !!opts.renderIfFresh;

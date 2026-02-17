@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-16 (Layout shortcut modals: gear opens in-page table/chart editors)
+Last updated: 2026-02-17 (Dashboard overview cards reworked + strict KPI/chart row alignment)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -110,7 +110,7 @@ KEXO “5-color” accents:
 Rendered templates live under `server/public/**` and are served by `server/index.js` via `sendPage()` (includes + cache-control + asset versioning).
 
 Dashboard:
-- `/dashboard/overview` → `server/public/dashboard/overview.html` (`data-page="dashboard"`) — left KPI block uses automatic order-based placement (desktop: first 8 KPIs; small screens: first 4), with a middle KPI band under Top Products/Countries (next 4) and lower KPI band under Trending Up/Down (remaining). Right mini charts are Finishes, Countries, and Attribution (7d) above the 7 Day Overview revenue/cost chart.
+- `/dashboard/overview` → `server/public/dashboard/overview.html` (`data-page="dashboard"`) — left KPI block uses automatic order-based placement (desktop: first 8 KPIs; small screens: first 4), with the middle KPI band (next 4) now directly under the top KPI band inside the top composite layout so it aligns against the right-side overview chart row; lower KPI band remains under Trending Up/Down (remaining). Right mini charts are Finishes, Countries, and Attribution (7d) above the 7 Day Overview revenue/cost chart, and chart cards now use KPI-style heads (card type + date + delta/value strip).
 - `/dashboard/live` → `server/public/dashboard/live.html` — desktop shows a Latest sales card beside the map (last 5 sales)
 - `/dashboard/sales` → `server/public/dashboard/sales.html`
 - `/dashboard/table` → `server/public/dashboard/table.html`
@@ -389,6 +389,10 @@ Ops/reliability:
 ## Changelog (high-signal)
 
 2026-02-17 (latest)
+- Dashboard overview card/row alignment pass:
+  - Right-side mini/overview chart cards were reworked to KPI-style card heads (card type + `7 Days` date control styled with `dropdown-toggle text-secondary`, plus metric value/delta strip).
+  - Overflow artifact behind left KPI cards was fixed by clipping KPI sparkline layers inside card bodies.
+  - Top composite layout now places `#dash-kpi-grid-mid` directly under `#dash-kpi-grid`; JS height-sync aligns mini-chart row to top KPI block and overview chart card to the middle KPI row.
 - Layout shortcut modals (dashboard UX):
   - Table and chart card header gear icons now open in-page layout modals (table or chart settings) instead of navigating to Settings; same config source and save path (`POST /api/settings`, localStorage + `kexo:tablesUiConfigUpdated` / `kexo:chartsUiConfigUpdated`).
   - Shared module `client/app/16-layout-shortcuts.js` provides `KexoLayoutShortcuts.openTableModal`, `openChartModal`, and render/read helpers; Settings Layout tab uses the same API for tables and charts (single source of truth).

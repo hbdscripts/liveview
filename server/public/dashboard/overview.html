@@ -280,38 +280,63 @@
         </div>
       </div>
     </div>
+    <div class="row g-3 mt-0" id="dash-kpi-grid-mid"></div>
       </div>
       <div class="col-12 col-xl-7 col-xxl-8">
         <div class="row g-3 mb-3 kexo-overview-mini-row">
           <div class="col-12 col-md-4" data-kexo-chart-key="dash-chart-finishes-30d">
-            <div class="card h-100">
-              <div class="card-header">
-                <h3 class="card-title">Finishes</h3>
-                <input type="text" class="form-control form-control-sm kexo-overview-range-input" value="7 Days" disabled>
-              </div>
-              <div class="card-body">
+            <div class="card h-100 kexo-overview-mini-card">
+              <div class="card-body kexo-overview-mini-card-body">
+                <div class="kexo-overview-card-head">
+                  <div class="subheader">Finishes</div>
+                  <button type="button" class="dropdown-toggle text-secondary kexo-overview-range-input" tabindex="-1" aria-hidden="true">7 Days</button>
+                </div>
+                <div class="kexo-overview-card-kpi-label-row">
+                  <div class="kexo-overview-card-kpi-label" id="dash-mini-finishes-label">Revenue</div>
+                  <div class="dash-kpi-delta kexo-overview-mini-delta is-hidden" id="dash-mini-finishes-delta" data-dir="none">
+                    <i class="fa-jelly fa-arrow-trend-up" data-icon-key="dash-kpi-delta-up" aria-hidden="true"></i>
+                    <span id="dash-mini-finishes-delta-text">&mdash;</span>
+                  </div>
+                </div>
+                <div class="h1 mb-0 kexo-overview-card-kpi-value" id="dash-mini-finishes-value">&mdash;</div>
                 <div id="dash-chart-finishes-30d" class="kexo-overview-mini-chart"></div>
               </div>
             </div>
           </div>
           <div class="col-12 col-md-4" data-kexo-chart-key="dash-chart-countries-30d">
-            <div class="card h-100">
-              <div class="card-header">
-                <h3 class="card-title">Countries</h3>
-                <input type="text" class="form-control form-control-sm kexo-overview-range-input" value="7 Days" disabled>
-              </div>
-              <div class="card-body">
+            <div class="card h-100 kexo-overview-mini-card">
+              <div class="card-body kexo-overview-mini-card-body">
+                <div class="kexo-overview-card-head">
+                  <div class="subheader">Countries</div>
+                  <button type="button" class="dropdown-toggle text-secondary kexo-overview-range-input" tabindex="-1" aria-hidden="true">7 Days</button>
+                </div>
+                <div class="kexo-overview-card-kpi-label-row">
+                  <div class="kexo-overview-card-kpi-label" id="dash-mini-countries-label">Revenue</div>
+                  <div class="dash-kpi-delta kexo-overview-mini-delta is-hidden" id="dash-mini-countries-delta" data-dir="none">
+                    <i class="fa-jelly fa-arrow-trend-up" data-icon-key="dash-kpi-delta-up" aria-hidden="true"></i>
+                    <span id="dash-mini-countries-delta-text">&mdash;</span>
+                  </div>
+                </div>
+                <div class="h1 mb-0 kexo-overview-card-kpi-value" id="dash-mini-countries-value">&mdash;</div>
                 <div id="dash-chart-countries-30d" class="kexo-overview-mini-chart"></div>
               </div>
             </div>
           </div>
           <div class="col-12 col-md-4" data-kexo-chart-key="dash-chart-attribution-30d">
-            <div class="card h-100">
-              <div class="card-header">
-                <h3 class="card-title">Attribution</h3>
-                <input type="text" class="form-control form-control-sm kexo-overview-range-input" value="7 Days" disabled>
-              </div>
-              <div class="card-body">
+            <div class="card h-100 kexo-overview-mini-card">
+              <div class="card-body kexo-overview-mini-card-body">
+                <div class="kexo-overview-card-head">
+                  <div class="subheader">Attribution</div>
+                  <button type="button" class="dropdown-toggle text-secondary kexo-overview-range-input" tabindex="-1" aria-hidden="true">7 Days</button>
+                </div>
+                <div class="kexo-overview-card-kpi-label-row">
+                  <div class="kexo-overview-card-kpi-label" id="dash-mini-attribution-label">Sessions</div>
+                  <div class="dash-kpi-delta kexo-overview-mini-delta is-hidden" id="dash-mini-attribution-delta" data-dir="none">
+                    <i class="fa-jelly fa-arrow-trend-up" data-icon-key="dash-kpi-delta-up" aria-hidden="true"></i>
+                    <span id="dash-mini-attribution-delta-text">&mdash;</span>
+                  </div>
+                </div>
+                <div class="h1 mb-0 kexo-overview-card-kpi-value" id="dash-mini-attribution-value">&mdash;</div>
                 <div id="dash-chart-attribution-30d" class="kexo-overview-mini-chart"></div>
               </div>
             </div>
@@ -319,11 +344,20 @@
         </div>
         <div class="row g-3">
           <div class="col-12" data-kexo-chart-key="dash-chart-overview-30d">
-            <div class="card">
-              <div class="card-header">
-                <h3 class="card-title">7 Day Overview</h3>
-              </div>
-              <div class="card-body">
+            <div class="card kexo-overview-main-card">
+              <div class="card-body kexo-overview-main-card-body">
+                <div class="kexo-overview-card-head">
+                  <div class="subheader">Overview</div>
+                  <button type="button" class="dropdown-toggle text-secondary kexo-overview-range-input" tabindex="-1" aria-hidden="true">7 Days</button>
+                </div>
+                <div class="kexo-overview-card-kpi-label-row">
+                  <div class="kexo-overview-card-kpi-label" id="dash-mini-overview-label">Revenue</div>
+                  <div class="dash-kpi-delta kexo-overview-mini-delta is-hidden" id="dash-mini-overview-delta" data-dir="none">
+                    <i class="fa-jelly fa-arrow-trend-up" data-icon-key="dash-kpi-delta-up" aria-hidden="true"></i>
+                    <span id="dash-mini-overview-delta-text">&mdash;</span>
+                  </div>
+                </div>
+                <div class="h1 mb-0 kexo-overview-card-kpi-value" id="dash-mini-overview-value">&mdash;</div>
                 <div id="dash-chart-overview-30d" class="kexo-overview-main-chart"></div>
               </div>
             </div>
@@ -352,8 +386,6 @@
         </div>
       </div>
     </div>
-
-    <div class="row g-3 mb-3" id="dash-kpi-grid-mid"></div>
 
     <div class="row g-3 mb-3">
       <div class="col-lg-6">
