@@ -17,6 +17,38 @@ const { warnOnReject } = require('../shared/warnReject');
 const DASHBOARD_TOP_TABLE_MAX_ROWS = 10;
 const DASHBOARD_TRENDING_MAX_ROWS = 10;
 
+// Best-effort truth warmup. Must never block the request path.
+let _truthNudgeLastAt = 0;
+let _truthNudgeInFlight = false;
+function nudgeTruthWarmupDetached(shop, startMs, endMs, scopeKey) {
+  const safeShop = typeof shop === 'string' ? shop.trim().toLowerCase() : '';
+  if (!safeShop) return;
+  const start = Number(startMs);
+  const end = Number(endMs);
+  if (!Number.isFinite(start) || !Number.isFinite(end) || !(end > start)) return;
+  const now = Date.now();
+  // Throttle: avoid hammering reconcile_state + Shopify API on frequent dashboard polling.
+  if ((now - (_truthNudgeLastAt || 0)) < 2 * 60 * 1000) return;
+  if (_truthNudgeInFlight) return;
+  _truthNudgeLastAt = now;
+  _truthNudgeInFlight = true;
+  try {
+    if (typeof setImmediate === 'function') {
+      setImmediate(() => {
+        salesTruth
+          .ensureReconciled(safeShop, start, end, scopeKey || 'today')
+          .catch(warnOnReject('[dashboardSeries] ensureReconciled'))
+          .finally(() => { _truthNudgeInFlight = false; });
+      });
+      return;
+    }
+  } catch (_) {}
+  salesTruth
+    .ensureReconciled(safeShop, start, end, scopeKey || 'today')
+    .catch(warnOnReject('[dashboardSeries] ensureReconciled'))
+    .finally(() => { _truthNudgeInFlight = false; });
+}
+
 function sessionFilterForTraffic(trafficMode) {
   if (trafficMode === 'human_only') {
     return config.dbUrl
@@ -389,6 +421,8 @@ async function getDashboardSeries(req, res) {
   }
 
   try {
+    const _dbgOn = process.env.KEXO_DEBUG_PERF === '1';
+    const _t0 = _dbgOn ? Date.now() : 0;
     const rangeEnd = rangeKey ? bounds.end : now;
     const rangeEndForCache = (rangeKey === 'today' || rangeKey === 'yesterday' || endMs != null) && Number.isFinite(rangeEnd)
       ? Math.floor(rangeEnd / (60 * 1000)) * (60 * 1000)
@@ -408,6 +442,12 @@ async function getDashboardSeries(req, res) {
         ? computeDashboardSeriesForBounds(bounds, now, timeZone, trafficMode, bucketHint, rangeKey)
         : computeDashboardSeries(days, now, timeZone, trafficMode)
     );
+    if (_dbgOn) {
+      const ms = Math.max(0, Date.now() - (_t0 || 0));
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/a370db6d-7333-4112-99f8-dd4bc899a89b',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'server/routes/dashboardSeries.js:getDashboardSeries',message:'dashboard series served',data:{ms_total:ms,cacheHit:!!(cached&&cached.cacheHit),rangeKey:rangeKey||'',bucket:bucketHint||'',days:days,force:!!force,endMs:endMs!=null?Number(endMs):null},timestamp:Date.now(),runId:process.env.KEXO_DEBUG_PERF_RUN_ID?String(process.env.KEXO_DEBUG_PERF_RUN_ID).slice(0,32):'baseline',hypothesisId:'H4'} )}).catch(()=>{});
+      // #endregion
+    }
     res.json(cached && cached.ok ? cached.data : { series: [], topProducts: [], topCountries: [], trendingUp: [], trendingDown: [] });
   } catch (err) {
     Sentry.captureException(err, { extra: { route: 'dashboard-series', days, rangeKey, endMs } });
@@ -543,23 +583,35 @@ async function fetchTrendingProducts(db, shop, nowBounds, prevBounds, filter) {
   down.forEach(function(r) { if (r.product_id) candidateIds.add(String(r.product_id).trim()); });
 
   let token = null;
-  try { token = await salesTruth.getAccessToken(shop); } catch (_) {}
   const metaMap = new Map();
-  if (token && candidateIds.size) {
+  const missingMetaIds = [];
+  if (candidateIds.size) {
     const productIds = Array.from(candidateIds);
-    const metaPairs = await Promise.all(productIds.map(async function(pid) {
-      try {
-        const meta = await productMetaCache.getProductMeta(shop, token, pid);
-        return [String(pid), meta];
-      } catch (_) {
-        return [String(pid), null];
-      }
-    }));
-    metaPairs.forEach(function(pair) {
-      const pid = pair[0];
-      const meta = pair[1];
-      if (meta && meta.ok) metaMap.set(pid, meta);
+    productIds.forEach(function(pid) {
+      const cached = productMetaCache.peekProductMeta(shop, pid);
+      if (cached && cached.ok) metaMap.set(String(pid), cached);
+      else missingMetaIds.push(String(pid));
     });
+  }
+  // Do not block dashboard reports on Shopify Admin API product metadata.
+  // Warm missing meta asynchronously; next request will use cache hits.
+  if (missingMetaIds.length) {
+    try { token = await salesTruth.getAccessToken(shop); } catch (_) { token = null; }
+    if (token) {
+      const toWarm = missingMetaIds.slice(0, 10);
+      for (const pid of toWarm) {
+        try {
+          if (typeof setImmediate === 'function') {
+            setImmediate(() => {
+              try { productMetaCache.warmProductMeta(shop, token, pid); } catch (_) {}
+            });
+          } else {
+            // Best-effort fallback; should not throw.
+            productMetaCache.warmProductMeta(shop, token, pid);
+          }
+        } catch (_) {}
+      }
+    }
   }
 
   base.forEach(function(r) {
@@ -711,7 +763,7 @@ async function computeDashboardSeries(days, nowMs, timeZone, trafficMode) {
   if (shop) {
     try {
       const today = store.getRangeBounds('today', Date.now(), timeZone);
-      salesTruth.ensureReconciled(shop, today.start, today.end, 'today').catch(warnOnReject('[dashboardSeries] ensureReconciled'));
+      nudgeTruthWarmupDetached(shop, today.start, today.end, 'today');
     } catch (_) {}
   }
 
@@ -827,24 +879,22 @@ async function computeDashboardSeries(days, nowMs, timeZone, trafficMode) {
              LIMIT ${DASHBOARD_TOP_TABLE_MAX_ROWS}`,
         [shop, overallStart, overallEnd]
       );
-      // Fetch product thumbnails
+      // Product meta: peek cache only; warm missing in background (never block on Shopify API).
       let token = null;
       try { token = await salesTruth.getAccessToken(shop); } catch (_) {}
       const productIds = token ? productRows.map(r => r.product_id).filter(Boolean) : [];
       const metaMap = new Map();
-      const metaPairs = await Promise.all(productIds.map(async function(pid) {
+      const missingMetaIds = [];
+      for (const pid of productIds) {
+        const cached = productMetaCache.peekProductMeta(shop, pid);
+        if (cached && cached.ok) metaMap.set(String(pid), cached);
+        else missingMetaIds.push(String(pid));
+      }
+      if (token && missingMetaIds.length) {
         try {
-          const meta = await productMetaCache.getProductMeta(shop, token, pid);
-          return [String(pid), meta];
-        } catch (_) {
-          return [String(pid), null];
-        }
-      }));
-      metaPairs.forEach(function(pair) {
-        const pid = pair[0];
-        const meta = pair[1];
-        if (meta && meta.ok) metaMap.set(pid, meta);
-      });
+          missingMetaIds.forEach(function(pid) { productMetaCache.warmProductMeta(shop, token, pid); });
+        } catch (_) {}
+      }
       topProducts = productRows.map(function(r) {
         const pid = r.product_id ? String(r.product_id) : '';
         const meta = metaMap.get(pid);
@@ -864,15 +914,15 @@ async function computeDashboardSeries(days, nowMs, timeZone, trafficMode) {
           if (!fallbackToken) {
             try { fallbackToken = await salesTruth.getAccessToken(shop); } catch (_) {}
           }
-          const fallbackProductIds = fallbackToken ? rawTop.map(r => r.product_id).filter(Boolean) : [];
           const fallbackMetaMap = new Map();
-          if (fallbackToken && fallbackProductIds.length) {
-            const fallbackPairs = await Promise.all(fallbackProductIds.map(async function(pid) {
-              try { return [String(pid), await productMetaCache.getProductMeta(shop, fallbackToken, pid)]; } catch (_) { return [String(pid), null]; }
-            }));
-            fallbackPairs.forEach(function(pair) {
-              if (pair[1] && pair[1].ok) fallbackMetaMap.set(pair[0], pair[1]);
-            });
+          if (fallbackToken) {
+            for (const r of rawTop) {
+              const pid = r.product_id ? String(r.product_id) : '';
+              if (!pid) continue;
+              const cached = productMetaCache.peekProductMeta(shop, pid);
+              if (cached && cached.ok) fallbackMetaMap.set(pid, cached);
+              else try { productMetaCache.warmProductMeta(shop, fallbackToken, pid); } catch (_) {}
+            }
           }
           topProducts = rawTop.map(function(r) {
             const pid = r.product_id ? String(r.product_id) : '';
@@ -917,6 +967,7 @@ async function computeDashboardSeries(days, nowMs, timeZone, trafficMode) {
                (json && json.billing_address && json.billing_address.country_code) || 'XX';
         } catch (_) {}
         cc = String(cc).toUpperCase().slice(0, 2) || 'XX';
+        if (cc === 'UK') cc = 'GB';
         const price = parseFloat(r.total_price);
         const currency = (r.currency || 'GBP').toUpperCase();
         const gbpVal = Number.isFinite(price) ? fx.convertToGbp(price, currency, ratesToGbp) : 0;
@@ -927,7 +978,8 @@ async function computeDashboardSeries(days, nowMs, timeZone, trafficMode) {
       }
       topCountries = Object.entries(countryMap)
         .map(function(entry) {
-          return { country: entry[0], revenue: Math.round(entry[1].revenue * 100) / 100, orders: entry[1].orders };
+          const code = entry[0];
+          return { country: code, country_code: code, revenue: Math.round(entry[1].revenue * 100) / 100, orders: entry[1].orders };
         })
         .sort(function(a, b) { return b.revenue - a.revenue; })
         .slice(0, DASHBOARD_TOP_TABLE_MAX_ROWS);
@@ -1184,7 +1236,7 @@ async function computeDashboardSeriesForBounds(bounds, nowMs, timeZone, trafficM
   if (shop) {
     try {
       const today = store.getRangeBounds('today', Date.now(), timeZone);
-      salesTruth.ensureReconciled(shop, today.start, today.end, 'today').catch(warnOnReject('[dashboardSeries] ensureReconciled'));
+      nudgeTruthWarmupDetached(shop, today.start, today.end, 'today');
     } catch (_) {}
   }
 
@@ -1300,23 +1352,22 @@ async function computeDashboardSeriesForBounds(bounds, nowMs, timeZone, trafficM
              LIMIT ${DASHBOARD_TOP_TABLE_MAX_ROWS}`,
         [shop, overallStart, overallEnd]
       );
+      // Product meta: peek cache only; warm missing in background (never block on Shopify API).
       let token = null;
       try { token = await salesTruth.getAccessToken(shop); } catch (_) {}
       const productIds = token ? productRows.map(r => r.product_id).filter(Boolean) : [];
       const metaMap = new Map();
-      const metaPairs = await Promise.all(productIds.map(async function(pid) {
+      const missingMetaIds = [];
+      for (const pid of productIds) {
+        const cached = productMetaCache.peekProductMeta(shop, pid);
+        if (cached && cached.ok) metaMap.set(String(pid), cached);
+        else missingMetaIds.push(String(pid));
+      }
+      if (token && missingMetaIds.length) {
         try {
-          const meta = await productMetaCache.getProductMeta(shop, token, pid);
-          return [String(pid), meta];
-        } catch (_) {
-          return [String(pid), null];
-        }
-      }));
-      metaPairs.forEach(function(pair) {
-        const pid = pair[0];
-        const meta = pair[1];
-        if (meta && meta.ok) metaMap.set(pid, meta);
-      });
+          missingMetaIds.forEach(function(pid) { productMetaCache.warmProductMeta(shop, token, pid); });
+        } catch (_) {}
+      }
       topProducts = productRows.map(function(r) {
         const pid = r.product_id ? String(r.product_id) : '';
         const meta = metaMap.get(pid);
@@ -1336,15 +1387,15 @@ async function computeDashboardSeriesForBounds(bounds, nowMs, timeZone, trafficM
           if (!fallbackToken) {
             try { fallbackToken = await salesTruth.getAccessToken(shop); } catch (_) {}
           }
-          const fallbackProductIds = fallbackToken ? rawTop.map(r => r.product_id).filter(Boolean) : [];
           const fallbackMetaMap = new Map();
-          if (fallbackToken && fallbackProductIds.length) {
-            const fallbackPairs = await Promise.all(fallbackProductIds.map(async function(pid) {
-              try { return [String(pid), await productMetaCache.getProductMeta(shop, fallbackToken, pid)]; } catch (_) { return [String(pid), null]; }
-            }));
-            fallbackPairs.forEach(function(pair) {
-              if (pair[1] && pair[1].ok) fallbackMetaMap.set(pair[0], pair[1]);
-            });
+          if (fallbackToken) {
+            for (const r of rawTop) {
+              const pid = r.product_id ? String(r.product_id) : '';
+              if (!pid) continue;
+              const cached = productMetaCache.peekProductMeta(shop, pid);
+              if (cached && cached.ok) fallbackMetaMap.set(pid, cached);
+              else try { productMetaCache.warmProductMeta(shop, fallbackToken, pid); } catch (_) {}
+            }
           }
           topProducts = rawTop.map(function(r) {
             const pid = r.product_id ? String(r.product_id) : '';
@@ -1389,6 +1440,7 @@ async function computeDashboardSeriesForBounds(bounds, nowMs, timeZone, trafficM
                (json && json.billing_address && json.billing_address.country_code) || 'XX';
         } catch (_) {}
         cc = String(cc).toUpperCase().slice(0, 2) || 'XX';
+        if (cc === 'UK') cc = 'GB';
         const price = parseFloat(r.total_price);
         const currency = (r.currency || 'GBP').toUpperCase();
         const gbpVal = Number.isFinite(price) ? fx.convertToGbp(price, currency, ratesToGbp) : 0;
@@ -1399,7 +1451,8 @@ async function computeDashboardSeriesForBounds(bounds, nowMs, timeZone, trafficM
       }
       topCountries = Object.entries(countryMap)
         .map(function(entry) {
-          return { country: entry[0], revenue: Math.round(entry[1].revenue * 100) / 100, orders: entry[1].orders };
+          const code = entry[0];
+          return { country: code, country_code: code, revenue: Math.round(entry[1].revenue * 100) / 100, orders: entry[1].orders };
         })
         .sort(function(a, b) { return b.revenue - a.revenue; })
         .slice(0, DASHBOARD_TOP_TABLE_MAX_ROWS);

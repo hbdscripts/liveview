@@ -15,6 +15,39 @@ const reportCache = require('./reportCache');
 const { deriveAttribution } = require('./attribution/deriveAttribution');
 const { warnOnReject } = require('./shared/warnReject');
 
+// Best-effort Shopify truth warmup (must not block request paths).
+let _truthNudgeLastAt = 0;
+let _truthNudgeInFlight = false;
+function nudgeSalesTruthWarmupDetached(shop, startMs, endMs, scopeKey, logTag) {
+  const safeShop = typeof shop === 'string' ? shop.trim().toLowerCase() : '';
+  if (!safeShop) return;
+  const start = Number(startMs);
+  const end = Number(endMs);
+  if (!Number.isFinite(start) || !Number.isFinite(end) || !(end > start)) return;
+  const now = Date.now();
+  // Throttle to avoid hammering reconcile_state / Shopify on KPI polling.
+  if ((now - (_truthNudgeLastAt || 0)) < 2 * 60 * 1000) return;
+  if (_truthNudgeInFlight) return;
+  _truthNudgeLastAt = now;
+  _truthNudgeInFlight = true;
+  const tag = logTag ? String(logTag) : '[store] ensureReconciled';
+  try {
+    if (typeof setImmediate === 'function') {
+      setImmediate(() => {
+        salesTruth
+          .ensureReconciled(safeShop, start, end, scopeKey || 'today')
+          .catch(warnOnReject(tag))
+          .finally(() => { _truthNudgeInFlight = false; });
+      });
+      return;
+    }
+  } catch (_) {}
+  salesTruth
+    .ensureReconciled(safeShop, start, end, scopeKey || 'today')
+    .catch(warnOnReject(tag))
+    .finally(() => { _truthNudgeInFlight = false; });
+}
+
 const ALLOWED_EVENT_TYPES = new Set([
   'page_viewed', 'product_viewed', 'product_added_to_cart', 'product_removed_from_cart',
   'cart_updated', 'cart_viewed', 'checkout_started', 'checkout_completed', 'heartbeat',
@@ -3073,18 +3106,14 @@ async function getStats(options = {}) {
   for (const key of rangeKeys) {
     ranges[key] = getRangeBounds(key, now, timeZone);
   }
-  // Guardrail: ensure Shopify truth cache is fresh for the ranges we will report.
+  // Guardrail: nudge truth warmup; do not block /api/stats on reconciliation (same as getKpis).
   const salesShop = salesTruth.resolveShopForSales('');
-  let salesTruthTodaySync = null;
+  const salesTruthTodaySync = null; // No longer blocking; warmup is nudged in background.
   if (salesShop) {
-    // Always reconcile Today with scope='today' (also ensures returning-customer facts).
     try {
-      salesTruthTodaySync = await salesTruth.ensureReconciled(salesShop, ranges.today.start, ranges.today.end, 'today');
-    } catch (_) {
-      salesTruthTodaySync = { ok: false, error: 'reconcile_failed' };
-    }
-
-    // Reconcile other ranges (skip ranges fully contained inside another requested range).
+      nudgeSalesTruthWarmupDetached(salesShop, ranges.today.start, ranges.today.end, 'today', '[store] getStats today');
+    } catch (_) {}
+    // Reconcile other ranges in background (skip ranges fully contained inside another requested range).
     const others = rangeKeys
       .map((key) => ({ key, start: ranges[key]?.start, end: ranges[key]?.end }))
       .filter((r) => r && r.key && r.key !== 'today' && typeof r.start === 'number' && Number.isFinite(r.start) && typeof r.end === 'number' && Number.isFinite(r.end) && r.end > r.start);
@@ -3283,14 +3312,14 @@ async function getKpis(options = {}) {
   if (salesShop) {
     const scopeKey = salesTruth.scopeForRangeKey(rangeKey, 'range');
     try {
-      salesTruth.ensureReconciled(salesShop, bounds.start, bounds.end, scopeKey).catch(warnOnReject('[store] ensureReconciled'));
+      nudgeSalesTruthWarmupDetached(salesShop, bounds.start, bounds.end, scopeKey, '[store] ensureReconciled');
     } catch (_) {}
     // Keep the baseline trustworthy too: for Today comparisons, warm yesterday-same-time range.
     // Non-blocking: comparisons will reflect the freshest truth available.
     if (rangeKey === 'today' && compareBounds && compareBounds.end > compareBounds.start) {
       const compareScopeKey = salesTruth.scopeForRangeKey('yesterday', 'range');
       try {
-        salesTruth.ensureReconciled(salesShop, compareBounds.start, compareBounds.end, compareScopeKey).catch(warnOnReject('[store] ensureReconciled(compare)'));
+        nudgeSalesTruthWarmupDetached(salesShop, compareBounds.start, compareBounds.end, compareScopeKey, '[store] ensureReconciled(compare)');
       } catch (_) {}
     }
   }

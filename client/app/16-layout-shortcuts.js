@@ -377,16 +377,17 @@
     var modeEl = container.querySelector('[data-chart-field="mode"]');
     var mode = (modeEl && modeEl.value != null ? String(modeEl.value).trim().toLowerCase() : '') || 'line';
     var lineLike = mode === 'line' || mode === 'area' || mode === 'multi-line-labels' || mode === 'stacked-area' || mode === 'combo';
+    var barLike = mode === 'bar' || mode === 'bar-horizontal' || mode === 'bar-distributed' || mode === 'stacked-bar';
     var showCurve = lineLike;
     var showStroke = lineLike;
     var showDash = lineLike;
     var showMarkers = lineLike;
-    var showFill = mode !== 'map-flat' && mode !== 'map-animated';
-    var showGrid = lineLike || mode === 'bar' || mode === 'stacked-bar';
-    var showLabels = lineLike || mode === 'bar';
+    var showFill = (lineLike || barLike) && mode !== 'map-flat' && mode !== 'map-animated';
+    var showGrid = lineLike || barLike;
+    var showLabels = lineLike || barLike;
     var showToolbar = true;
     var showAnimations = true;
-    var showPieDonut = mode === 'pie';
+    var showPieDonut = mode === 'pie' || mode === 'donut';
     if (mode.indexOf('map-') === 0) {
       showCurve = showStroke = showDash = showMarkers = showFill = showGrid = showLabels = showPieDonut = false;
     }

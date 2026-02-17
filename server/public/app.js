@@ -1,11 +1,34 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: d1bde4b5fd3fa619
+// checksum: 28eb7843e4ee537f
 
 (function () {
 const API = '';
     const PAGE = (document.body && document.body.getAttribute('data-page')) || '';
     try { if (typeof window.kexoSetContext === 'function') window.kexoSetContext(PAGE || 'unknown', { page: PAGE || 'unknown' }); } catch (_) {}
     try { if (typeof window.kexoBreadcrumb === 'function') window.kexoBreadcrumb('app', 'init', { page: PAGE }); } catch (_) {}
+    // Perf/debug instrumentation helpers (default OFF).
+    // Enable by adding `?kexoPerf=1` (optionally `&kexoPerfRun=baseline|post-fix`) or setting localStorage `kexo:debug-perf:v1` = "1".
+    const KEXO_PERF_DEBUG_LS_KEY = 'kexo:debug-perf:v1';
+    function kexoPerfDebugEnabled() {
+      try { if (window && window.__KEXO_DEBUG_PERF === true) return true; } catch (_) {}
+      try {
+        const q = (window && window.location && typeof window.location.search === 'string') ? window.location.search : '';
+        if (q && /(?:\?|&)kexoPerf=1(?:&|$)/.test(q)) return true;
+      } catch (_) {}
+      try { return (localStorage.getItem(KEXO_PERF_DEBUG_LS_KEY) || '') === '1'; } catch (_) { return false; }
+    }
+    function kexoPerfDebugRunId() {
+      try {
+        const q = (window && window.location && typeof window.location.search === 'string') ? window.location.search : '';
+        if (q) {
+          const m = q.match(/(?:\?|&)kexoPerfRun=([^&]+)/);
+          if (m && m[1]) return decodeURIComponent(m[1]).slice(0, 32);
+        }
+      } catch (_) {}
+      return 'baseline';
+    }
+    try { window.__kexoPerfDebugEnabled = kexoPerfDebugEnabled; } catch (_) {}
+    try { window.__kexoPerfDebugRunId = kexoPerfDebugRunId; } catch (_) {}
     function captureChartError(err, context, extra) {
       try {
         if (typeof window.kexoCaptureError !== 'function') return;
@@ -9595,8 +9618,30 @@ const API = '';
       }
       if (uiSettingsInFlight) return uiSettingsInFlight;
       var url = API + '/api/settings' + (force ? ('?_=' + Date.now()) : '');
+      var _dbgPerfOn = false;
+      var _dbgT0 = 0;
+      var _dbgBytes = 0;
+      var _dbgParseMs = 0;
+      var _dbgStatus = 0;
+      try { _dbgPerfOn = !!(window && typeof window.__kexoPerfDebugEnabled === 'function' && window.__kexoPerfDebugEnabled()); } catch (_) { _dbgPerfOn = false; }
+      try { _dbgT0 = (typeof performance !== 'undefined' && performance && typeof performance.now === 'function') ? performance.now() : Date.now(); } catch (_) { _dbgT0 = Date.now(); }
       uiSettingsInFlight = fetchWithTimeout(url, { credentials: 'same-origin', cache: 'no-store' }, 15000)
-        .then(function(r) { return (r && r.ok) ? r.json() : null; })
+        .then(function(r) {
+          _dbgStatus = r && typeof r.status === 'number' ? r.status : 0;
+          if (!(r && r.ok)) return null;
+          if (!_dbgPerfOn) return r.json();
+          return r.text().then(function(t) {
+            _dbgBytes = t ? String(t).length : 0;
+            var p0 = 0;
+            try { p0 = (typeof performance !== 'undefined' && performance && typeof performance.now === 'function') ? performance.now() : Date.now(); } catch (_) { p0 = Date.now(); }
+            var json = null;
+            try { json = t ? JSON.parse(t) : null; } catch (_) { json = null; }
+            var p1 = 0;
+            try { p1 = (typeof performance !== 'undefined' && performance && typeof performance.now === 'function') ? performance.now() : Date.now(); } catch (_) { p1 = Date.now(); }
+            _dbgParseMs = Math.max(0, Math.round(p1 - p0));
+            return json;
+          });
+        })
         .then(function(data) {
           uiSettingsCache = (data && data.ok) ? data : null;
           uiSettingsFetchedAt = Date.now();
@@ -9619,6 +9664,14 @@ const API = '';
               try { window.__kexoApplySaleSoundOverride(url ? url : null); } catch (_) {}
             }
           }
+          // #region agent log
+          if (_dbgPerfOn) {
+            var _t1 = 0;
+            try { _t1 = (typeof performance !== 'undefined' && performance && typeof performance.now === 'function') ? performance.now() : Date.now(); } catch (_) { _t1 = Date.now(); }
+            var _ms = Math.max(0, Math.round(_t1 - (_dbgT0 || 0)));
+            fetch('http://127.0.0.1:7242/ingest/a370db6d-7333-4112-99f8-dd4bc899a89b',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'07-type-pagination-watcher.js:ensureUiSettingsLoaded',message:'ui settings loaded',data:{page:PAGE||'',force:!!force,apply:!!options.apply,status:_dbgStatus,ms_total:_ms,bytes:_dbgBytes,parse_ms:_dbgParseMs,has_kpi:!!(uiSettingsCache&&uiSettingsCache.kpiUiConfig),has_charts:!!(uiSettingsCache&&uiSettingsCache.chartsUiConfig),has_tables:!!(uiSettingsCache&&uiSettingsCache.tablesUiConfig)},timestamp:Date.now(),runId:(typeof window.__kexoPerfDebugRunId==='function'?window.__kexoPerfDebugRunId():'baseline'),hypothesisId:'H3'} )}).catch(()=>{});
+          }
+          // #endregion
           return uiSettingsCache;
         })
         .catch(function() { return null; })
@@ -15491,6 +15544,10 @@ const API = '';
       var overviewMiniResizeTimer = null;
       var overviewHeightSyncObserver = null;
       var overviewHeightSyncTimer = null;
+      var __kexoPerfOnce = {};
+      var __kexoPerfOverviewMiniCalls = 0;
+      var __kexoPerfDashboardFetchCalls = 0;
+      var __kexoPerfLastHeightSig = '';
       var OVERVIEW_MINI_CACHE_MS = 2 * 60 * 1000;
       var OVERVIEW_MINI_FORCE_REFRESH_MS = 5 * 60 * 1000;
       var OVERVIEW_CARD_RANGE_LS_PREFIX = 'kexo:overview-card-range:v1:';
@@ -15954,8 +16011,20 @@ const API = '';
         return Number.isFinite(n) ? n : 0;
       }
 
-      var OVERVIEW_MINI_CARD_HEAD_BUFFER = 99;
+      var OVERVIEW_HEADER_GAP_PX = 8;
+      var OVERVIEW_HEADER_FALLBACK_PX = 52;
       function resolveOverviewChartHeight(chartEl, fallback, min, max) {
+        var _dbgOn = false;
+        var _dbgId = '';
+        try {
+          _dbgOn = !!(window && typeof window.__kexoPerfDebugEnabled === 'function' && window.__kexoPerfDebugEnabled());
+          _dbgId = chartEl && chartEl.id ? String(chartEl.id) : '';
+        } catch (_) { _dbgOn = false; _dbgId = ''; }
+        var _dbgKey = _dbgId ? ('resolveOverviewChartHeight:' + _dbgId) : '';
+        var _dbgCardH = 0;
+        var _dbgAvail = 0;
+        var _dbgUsedCard = false;
+        var _dbgHeaderPx = 0;
         var fb = Number(fallback);
         if (!Number.isFinite(fb) || fb <= 0) fb = 220;
         var lo = Number(min);
@@ -15975,12 +16044,23 @@ const API = '';
               if (Number.isFinite(ph) && ph > 0) h = ph;
               var pRect = parent.getBoundingClientRect ? parent.getBoundingClientRect() : null;
               if (pRect && Number.isFinite(pRect.height) && pRect.height > 0) h = pRect.height;
-              var card = parent.closest ? parent.closest('.kexo-overview-mini-card') : null;
+              var card = parent.closest ? parent.closest('.kexo-overview-mini-card, .kexo-overview-main-card') : null;
               if (card && card.getBoundingClientRect) {
                 var cardH = card.getBoundingClientRect().height;
-                if (Number.isFinite(cardH) && cardH > OVERVIEW_MINI_CARD_HEAD_BUFFER) {
-                  var avail = cardH - OVERVIEW_MINI_CARD_HEAD_BUFFER;
+                var headEl = card.querySelector ? card.querySelector('.kexo-overview-card-head') : null;
+                var headerPx = OVERVIEW_HEADER_FALLBACK_PX;
+                if (headEl && headEl.getBoundingClientRect) {
+                  var headRect = headEl.getBoundingClientRect();
+                  if (Number.isFinite(headRect.height) && headRect.height > 0) headerPx = headRect.height + OVERVIEW_HEADER_GAP_PX;
+                }
+                var minBuffer = Math.max(OVERVIEW_HEADER_FALLBACK_PX, headerPx);
+                if (Number.isFinite(cardH) && cardH > minBuffer) {
+                  var avail = cardH - headerPx;
                   if (avail > lo) h = avail;
+                  _dbgUsedCard = true;
+                  _dbgCardH = Math.round(cardH);
+                  _dbgAvail = Math.round(avail);
+                  _dbgHeaderPx = Math.round(headerPx);
                 }
               }
             }
@@ -15988,7 +16068,14 @@ const API = '';
         } catch (_) {}
         if (!Number.isFinite(h) || h <= 0) h = fb;
         h = Math.max(lo, Math.min(hi, h));
-        return Math.round(h);
+        var out = Math.round(h);
+        // #region agent log
+        if (_dbgOn && _dbgKey && !__kexoPerfOnce[_dbgKey]) {
+          __kexoPerfOnce[_dbgKey] = 1;
+          fetch('http://127.0.0.1:7242/ingest/a370db6d-7333-4112-99f8-dd4bc899a89b',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'14-dashboard.js:resolveOverviewChartHeight',message:'resolved overview chart height',data:{chartId:_dbgId,fallback:fb,min:lo,max:hi,headerPx:_dbgHeaderPx,used_card:!!_dbgUsedCard,card_h:_dbgCardH,avail:_dbgAvail,out:out},timestamp:Date.now(),runId:(typeof window.__kexoPerfDebugRunId==='function'?window.__kexoPerfDebugRunId():'baseline'),hypothesisId:'H2'} )}).catch(()=>{});
+        }
+        // #endregion
+        return out;
       }
 
       function overviewMiniChartIds() {
@@ -16055,6 +16142,30 @@ const API = '';
             }
           } catch (_) {}
         }
+        if (mainHeight > 0 || topHeight > 0) {
+          try {
+            overviewMiniChartIds().forEach(function(chartId) {
+              var chart = dashCharts && dashCharts[chartId];
+              if (!chart || typeof chart.updateOptions !== 'function') return;
+              var chartEl = document.getElementById(chartId);
+              if (!chartEl) return;
+              var h = resolveOverviewChartHeight(chartEl, 180, 120, 440);
+              if (h > 0) chart.updateOptions({ chart: { height: h } }, false, false, false);
+            });
+          } catch (_) {}
+        }
+        // #region agent log
+        try {
+          var _dbgOn = !!(window && typeof window.__kexoPerfDebugEnabled === 'function' && window.__kexoPerfDebugEnabled());
+          if (_dbgOn) {
+            var sig = String(desktop ? 1 : 0) + '|' + String(topHeight) + '|' + String(midHeight) + '|' + String(mainHeight);
+            if (sig !== __kexoPerfLastHeightSig) {
+              __kexoPerfLastHeightSig = sig;
+              fetch('http://127.0.0.1:7242/ingest/a370db6d-7333-4112-99f8-dd4bc899a89b',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'14-dashboard.js:syncOverviewHeightGrid',message:'overview height sync',data:{desktop:!!desktop,topHeight:topHeight,midHeight:midHeight,mainHeight:mainHeight},timestamp:Date.now(),runId:(typeof window.__kexoPerfDebugRunId==='function'?window.__kexoPerfDebugRunId():'baseline'),hypothesisId:'H2'} )}).catch(()=>{});
+            }
+          }
+        } catch (_) {}
+        // #endregion
       }
 
       function scheduleOverviewHeightSync() {
@@ -16066,12 +16177,8 @@ const API = '';
           var raf = typeof requestAnimationFrame === 'function' ? requestAnimationFrame : function(f) { f(); };
           raf(function() {
             syncOverviewHeightGrid();
-            setTimeout(function() { syncOverviewHeightGrid(); }, 120);
           });
-          // IMPORTANT: do not re-render charts here.
-          // Re-rendering from a resize/height-sync callback creates a ResizeObserver feedback loop
-          // (destroy/recreate chart -> size change -> observer -> destroy/recreate ...), which can
-          // manifest as charts continuously growing.
+          // Do not re-render charts here (ResizeObserver feedback loop).
         }, 80);
       }
 
@@ -16276,6 +16383,11 @@ const API = '';
           });
         } catch (_) {}
         dashSparkCharts = {};
+        try {
+          overviewMiniChartIds().forEach(function (chartId) {
+            destroyDashChart(chartId);
+          });
+        } catch (_) {}
       });
 
       function renderOverviewChartEmpty(chartId, text) {
@@ -16318,6 +16430,13 @@ const API = '';
         if (!/^[A-Z]{2}$/.test(code)) return '';
         var A = 0x1f1e6;
         return String.fromCodePoint(A + (code.charCodeAt(0) - 65), A + (code.charCodeAt(1) - 65));
+      }
+      function countryCodeToFlagHtml(rawCode) {
+        var code = rawCode == null ? '' : String(rawCode).trim().toUpperCase().slice(0, 2);
+        if (code === 'UK') code = 'GB';
+        if (!/^[A-Z]{2}$/.test(code)) return '';
+        var raw = code.toLowerCase();
+        return '<span class="flag flag-xs flag-country-' + escapeHtml(raw) + '" style="vertical-align:middle;margin-right:4px;" aria-hidden="true"></span>';
       }
 
       function countryCodeFromRow(row) {
@@ -16590,6 +16709,7 @@ const API = '';
         var categories = [];
         var values = [];
         var names = [];
+        var countryCodes = [];
         var crPcts = [];
         var showFlags = !!(uiStyle && uiStyle.pieCountryFlags);
         rows.forEach(function(row) {
@@ -16606,10 +16726,15 @@ const API = '';
           categories.push(showFlags && emoji ? (emoji + ' ' + name) : name);
           values.push(rev);
           names.push(name || cc);
+          countryCodes.push(cc);
           crPcts.push(row && row.cr != null ? Number(row.cr) : null);
         });
         if (!categories.length || !values.length) {
           renderOverviewChartEmpty(chartId, 'No country data');
+          try {
+            var legendEl = chartEl.parentElement ? chartEl.parentElement.querySelector('[data-overview-legend="' + chartId + '"]') : null;
+            if (legendEl) legendEl.innerHTML = '';
+          } catch (_) {}
           return;
         }
         destroyDashChart(chartId);
@@ -16621,6 +16746,8 @@ const API = '';
         var namesRef = names;
         var valuesRef = values;
         var crPctsRef = crPcts;
+        var countryCodesRef = countryCodes;
+        var showFlagsRef = showFlags;
         var apexOpts = {
           chart: { type: 'bar', height: chartHeight, fontFamily: 'Inter, sans-serif', toolbar: { show: false }, animations: { enabled: (uiStyle && uiStyle.animations === false) ? false : true } },
           plotOptions: { bar: { horizontal: horizontal, borderRadius: 0, distributed: true, barHeight: horizontal ? '60%' : '70%' } },
@@ -16641,7 +16768,8 @@ const API = '';
               var rev = (idx >= 0 && idx < valuesRef.length) ? valuesRef[idx] : 0;
               var cr = (idx >= 0 && idx < crPctsRef.length) ? crPctsRef[idx] : null;
               var crStr = cr != null && Number.isFinite(cr) ? cr.toFixed(1) + '%' : '\u2014';
-              return '<div class="kexo-tooltip-card p-2"><div class="fw-semibold">' + escapeHtml(name || '') + '</div><div>Revenue: ' + escapeHtml(formatRevenue(rev) || '\u2014') + '</div><div>Conversion: ' + escapeHtml(crStr) + '</div></div>';
+              var flagHtml = (showFlagsRef && idx >= 0 && idx < countryCodesRef.length) ? countryCodeToFlagHtml(countryCodesRef[idx]) : '';
+              return '<div class="kexo-tooltip-card p-2"><div class="fw-semibold">' + (flagHtml || '') + escapeHtml(name || '') + '</div><div>Revenue: ' + escapeHtml(formatRevenue(rev) || '\u2014') + '</div><div>Conversion: ' + escapeHtml(crStr) + '</div></div>';
             }
           },
           noData: { text: 'No data available', style: { fontSize: '13px', color: '#626976' } }
@@ -16654,6 +16782,20 @@ const API = '';
           var chart = new ApexCharts(chartEl, apexOpts);
           chart.render();
           dashCharts[chartId] = chart;
+          if (showFlags) {
+            var legendEl = chartEl.parentElement ? chartEl.parentElement.querySelector('[data-overview-legend="' + chartId + '"]') : null;
+            if (legendEl) {
+              legendEl.innerHTML = names.map(function(n, i) {
+                var cc = countryCodes[i];
+                var flagHtml = cc ? countryCodeToFlagHtml(cc) : '';
+                return '<span class="kexo-overview-legend-item">' + flagHtml + '<span class="kexo-overview-legend-label">' + escapeHtml(n || '') + '</span></span>';
+              }).join('');
+              legendEl.className = 'kexo-overview-mini-legend kexo-overview-countries-legend kexo-overview-legend-flags';
+            }
+          } else {
+            var legendEl = chartEl.parentElement ? chartEl.parentElement.querySelector('[data-overview-legend="' + chartId + '"]') : null;
+            if (legendEl) { legendEl.innerHTML = ''; legendEl.className = 'kexo-overview-mini-legend kexo-overview-countries-legend'; }
+          }
         } catch (err) {
           captureChartError(err, 'dashboardCountriesBarRender', { chartId: chartId });
         }
@@ -17406,6 +17548,15 @@ const API = '';
       }
 
       function fetchOverviewMiniData(options) {
+        var _dbgOn = false;
+        var _dbgT0 = 0;
+        var _dbgCall = 0;
+        try {
+          _dbgOn = !!(window && typeof window.__kexoPerfDebugEnabled === 'function' && window.__kexoPerfDebugEnabled());
+          _dbgT0 = (typeof performance !== 'undefined' && performance && typeof performance.now === 'function') ? performance.now() : Date.now();
+          __kexoPerfOverviewMiniCalls += 1;
+          _dbgCall = __kexoPerfOverviewMiniCalls;
+        } catch (_) { _dbgOn = false; _dbgT0 = Date.now(); _dbgCall = 0; }
         if (typeof window.__applyDashboardKpiUiConfig === 'function') {
           try { window.__applyDashboardKpiUiConfig(); } catch (_) {}
         }
@@ -17436,6 +17587,14 @@ const API = '';
             return id + ':' + (entry && entry.rangeKey ? entry.rangeKey : '');
           }).join('|');
           overviewMiniSizeSignature = computeOverviewMiniSizeSignature();
+          // #region agent log
+          if (_dbgOn) {
+            var _t1 = 0;
+            try { _t1 = (typeof performance !== 'undefined' && performance && typeof performance.now === 'function') ? performance.now() : Date.now(); } catch (_) { _t1 = Date.now(); }
+            var _ms = Math.max(0, Math.round(_t1 - (_dbgT0 || 0)));
+            fetch('http://127.0.0.1:7242/ingest/a370db6d-7333-4112-99f8-dd4bc899a89b',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'14-dashboard.js:fetchOverviewMiniData',message:'overview mini cards fetched',data:{call:_dbgCall,force:!!force,renderIfFresh:!!renderIfFresh,ms_total:_ms,charts:ids.length,payload_sig_len:overviewMiniPayloadSignature?String(overviewMiniPayloadSignature).length:0},timestamp:Date.now(),runId:(typeof window.__kexoPerfDebugRunId==='function'?window.__kexoPerfDebugRunId():'baseline'),hypothesisId:'H1'} )}).catch(()=>{});
+          }
+          // #endregion
           return overviewCardCache;
         }).finally(function() {
           overviewMiniInFlight = null;
@@ -17487,7 +17646,9 @@ const API = '';
           var a = typeof alpha === 'number' && Number.isFinite(alpha) ? Math.max(0, Math.min(1, alpha)) : 0.5;
           return 'rgba(' + r + ',' + g + ',' + b + ',' + a + ')';
         }
-        function renderSparkline(elId, dataArr, color, compareDataArr) {
+        // sparkBaseline: 'zero' = include 0 baseline (revenue, sessions, orders, aov, cogs, etc.);
+        // 'percent' = clamp [0,100] (conversion, bounce); 'symmetric' = include 0 and allow negative (returns).
+        function renderSparkline(elId, dataArr, color, compareDataArr, sparkBaseline) {
           var sparkEl = el(elId);
           if (!sparkEl || typeof ApexCharts === 'undefined') return;
           if (dataArr.length < 2) dataArr = dataArr.length === 1 ? [dataArr[0], dataArr[0]] : [0, 0];
@@ -17503,15 +17664,22 @@ const API = '';
           var sparkStrokeWidth = Number(sparkCfg.strokeWidth);
           if (!Number.isFinite(sparkStrokeWidth)) sparkStrokeWidth = 2.55;
           var showCompare = sparkCfg.showCompare !== false;
+          var baseline = (sparkBaseline === 'percent' || sparkBaseline === 'symmetric') ? sparkBaseline : 'zero';
 
           var nums = dataArr.map(function(v) {
             var n = (typeof v === 'number') ? v : Number(v);
             return isFinite(n) ? n : 0;
           });
+          if (baseline === 'percent') {
+            nums = nums.map(function(n) { return Math.max(0, Math.min(100, n)); });
+          }
           var compareNums = Array.isArray(compareDataArr) ? compareDataArr.map(function(v) {
             var n = (typeof v === 'number') ? v : Number(v);
             return isFinite(n) ? n : 0;
           }) : null;
+          if (baseline === 'percent' && compareNums) {
+            compareNums = compareNums.map(function(n) { return Math.max(0, Math.min(100, n)); });
+          }
           if (compareNums && compareNums.length < 2) {
             compareNums = compareNums.length === 1 ? [compareNums[0], compareNums[0]] : null;
           }
@@ -17543,12 +17711,27 @@ const API = '';
           }
           var yMin = -1;
           var yMax = 1;
-          if (!allZero) {
-            // Keep some headroom but avoid over-padding, so peaks read more like
-            // the original "mountain" profile instead of looking flattened.
+          if (baseline === 'percent') {
+            yMin = 0;
+            yMax = 100;
+          } else if (!allZero) {
             var pad = Math.max(1e-6, span * 0.12);
             yMin = minVal - pad;
             yMax = maxVal + pad;
+            // Include zero baseline for non-negative KPIs (zero) or show zero line for symmetric (returns).
+            if (baseline === 'zero') {
+              yMin = Math.min(yMin, 0);
+              if (maxVal <= 0) yMax = 0 + pad;
+            } else if (baseline === 'symmetric') {
+              if (minVal < 0 && maxVal > 0) {
+                var absMax = Math.max(Math.abs(minVal), Math.abs(maxVal)) + pad;
+                yMin = -absMax;
+                yMax = absMax;
+              } else {
+                yMin = Math.min(yMin, 0);
+                if (maxVal <= 0) yMax = 0 + pad;
+              }
+            }
           }
 
           var hasCompare = !!(compareNums && compareNums.length >= 2);
@@ -17587,9 +17770,11 @@ const API = '';
             yaxis: { min: yMin, max: yMax },
             markers: { size: 0 },
             plotOptions: sparkMode === 'bar' ? { bar: { columnWidth: '55%', borderRadius: 2 } } : {},
-            // Prevent the first/last stroke from clipping at narrow widths.
             grid: { padding: { top: 0, right: 2, bottom: 0, left: 2 } },
-            tooltip: { enabled: false }
+            tooltip: { enabled: false },
+            annotations: (baseline === 'zero' || baseline === 'symmetric') && yMin <= 0 && yMax >= 0
+              ? { yaxis: [{ y: 0, strokeDashArray: 2, borderColor: 'rgba(0,0,0,0.15)', borderWidth: 1, opacity: 0.9 }] }
+              : undefined
           };
           try {
             var override = sparkCfg.advancedApexOverride;
@@ -17804,15 +17989,15 @@ const API = '';
             roasSparkCompare = alignCompareToPrimary(roasExtracted, primaryLen);
           }
           var itemsSparkCompare = compareFromCache(cmp, primaryLen, function(d) { return d.units || 0; });
-          renderSparkline('dash-revenue-sparkline', revenueSpark, sparkToneFromCompare(currentRevenueTone, compareRevenueTone, false, revenueSpark), revenueSparkCompare);
-          renderSparkline('dash-sessions-sparkline', sessionsSpark, sparkToneFromCompare(currentSessionsTone, compareSessionsTone, false, sessionsSpark), sessionsSparkCompare);
-          renderSparkline('dash-orders-sparkline', ordersSpark, sparkToneFromCompare(currentOrdersTone, compareOrdersTone, false, ordersSpark), ordersSparkCompare);
-          renderSparkline('dash-returning-sparkline', returningSpark, sparkToneFromCompare(currentReturningTone, compareReturningTone, false, returningSpark), returningSparkCompare);
-          renderSparkline('dash-conv-sparkline', convSpark, sparkToneFromCompare(currentConvTone, compareConvTone, false, convSpark), convSparkCompare);
-          renderSparkline('dash-aov-sparkline', aovSpark, sparkToneFromCompare(currentAovTone, compareAovTone, false, aovSpark), aovSparkCompare);
-          renderSparkline('dash-bounce-sparkline', bounceSpark, sparkToneFromCompare(currentBounceTone, compareBounceTone, true, bounceSpark), bounceSparkCompare);
-          renderSparkline('dash-roas-sparkline', roasSpark, sparkToneFromCompare(currentRoasTone, compareRoasTone, false, roasSpark), roasSparkCompare);
-          renderSparkline('dash-items-sparkline', itemsSpark, DASHBOARD_NEUTRAL_TONE_HEX, itemsSparkCompare);
+          renderSparkline('dash-revenue-sparkline', revenueSpark, sparkToneFromCompare(currentRevenueTone, compareRevenueTone, false, revenueSpark), revenueSparkCompare, 'zero');
+          renderSparkline('dash-sessions-sparkline', sessionsSpark, sparkToneFromCompare(currentSessionsTone, compareSessionsTone, false, sessionsSpark), sessionsSparkCompare, 'zero');
+          renderSparkline('dash-orders-sparkline', ordersSpark, sparkToneFromCompare(currentOrdersTone, compareOrdersTone, false, ordersSpark), ordersSparkCompare, 'zero');
+          renderSparkline('dash-returning-sparkline', returningSpark, sparkToneFromCompare(currentReturningTone, compareReturningTone, false, returningSpark), returningSparkCompare, 'zero');
+          renderSparkline('dash-conv-sparkline', convSpark, sparkToneFromCompare(currentConvTone, compareConvTone, false, convSpark), convSparkCompare, 'percent');
+          renderSparkline('dash-aov-sparkline', aovSpark, sparkToneFromCompare(currentAovTone, compareAovTone, false, aovSpark), aovSparkCompare, 'zero');
+          renderSparkline('dash-bounce-sparkline', bounceSpark, sparkToneFromCompare(currentBounceTone, compareBounceTone, true, bounceSpark), bounceSparkCompare, 'percent');
+          renderSparkline('dash-roas-sparkline', roasSpark, sparkToneFromCompare(currentRoasTone, compareRoasTone, false, roasSpark), roasSparkCompare, 'zero');
+          renderSparkline('dash-items-sparkline', itemsSpark, DASHBOARD_NEUTRAL_TONE_HEX, itemsSparkCompare, 'zero');
           renderDashboardKpiSparkBucketLabels(sparklineSeries);
           // COGS / Fulfilled / Returns sparklines come from `/api/kpis-expanded-extra` (bucketed per range).
           try {
@@ -17828,13 +18013,13 @@ const API = '';
             var fulfilledCmpArr = extraCmpSpark && Array.isArray(extraCmpSpark.fulfilled) ? extraCmpSpark.fulfilled : null;
             var returnsCmpArr = extraCmpSpark && Array.isArray(extraCmpSpark.returns) ? extraCmpSpark.returns : null;
 
-            if (cogsArr && cogsArr.length) renderSparkline('dash-cogs-sparkline', cogsArr, DASHBOARD_NEUTRAL_TONE_HEX, cogsCmpArr);
+            if (cogsArr && cogsArr.length) renderSparkline('dash-cogs-sparkline', cogsArr, DASHBOARD_NEUTRAL_TONE_HEX, cogsCmpArr, 'zero');
             else { var cs = el('dash-cogs-sparkline'); if (cs) cs.innerHTML = ''; }
 
-            if (fulfilledArr && fulfilledArr.length) renderSparkline('dash-fulfilled-sparkline', fulfilledArr, DASHBOARD_NEUTRAL_TONE_HEX, fulfilledCmpArr);
+            if (fulfilledArr && fulfilledArr.length) renderSparkline('dash-fulfilled-sparkline', fulfilledArr, DASHBOARD_NEUTRAL_TONE_HEX, fulfilledCmpArr, 'zero');
             else { var fs = el('dash-fulfilled-sparkline'); if (fs) fs.innerHTML = ''; }
 
-            if (returnsArr && returnsArr.length) renderSparkline('dash-returns-sparkline', returnsArr, DASHBOARD_NEUTRAL_TONE_HEX, returnsCmpArr);
+            if (returnsArr && returnsArr.length) renderSparkline('dash-returns-sparkline', returnsArr, DASHBOARD_NEUTRAL_TONE_HEX, returnsCmpArr, 'symmetric');
             else { var rs = el('dash-returns-sparkline'); if (rs) rs.innerHTML = ''; }
           } catch (_) {}
           try { if (typeof renderCondensedSparklines === 'function') renderCondensedSparklines(sparklineSeries); } catch (_) {}
@@ -18458,6 +18643,15 @@ const API = '';
         if (dashLoading && !force) return;
         rangeKey = (rangeKey == null ? '' : String(rangeKey)).trim().toLowerCase();
         if (!rangeKey) rangeKey = 'today';
+        var _dbgOn = false;
+        var _dbgT0 = 0;
+        var _dbgCall = 0;
+        try {
+          _dbgOn = !!(window && typeof window.__kexoPerfDebugEnabled === 'function' && window.__kexoPerfDebugEnabled());
+          _dbgT0 = (typeof performance !== 'undefined' && performance && typeof performance.now === 'function') ? performance.now() : Date.now();
+          __kexoPerfDashboardFetchCalls += 1;
+          _dbgCall = __kexoPerfDashboardFetchCalls;
+        } catch (_) { _dbgOn = false; _dbgT0 = Date.now(); _dbgCall = 0; }
         dashLoading = true;
         var silent = !!(opts && opts.silent);
         var build = silent ? { step: function() {}, finish: function() {} } : startReportBuild({
@@ -18483,6 +18677,16 @@ const API = '';
               dashLastRangeKey = rangeKey;
               renderDashboard(data);
             }
+            // #region agent log
+            if (_dbgOn) {
+              var _t1 = 0;
+              try { _t1 = (typeof performance !== 'undefined' && performance && typeof performance.now === 'function') ? performance.now() : Date.now(); } catch (_) { _t1 = Date.now(); }
+              var _ms = Math.max(0, Math.round(_t1 - (_dbgT0 || 0)));
+              var _charts = 0;
+              try { _charts = dashCharts ? Object.keys(dashCharts).filter(function(k){return !!dashCharts[k];}).length : 0; } catch (_) { _charts = 0; }
+              fetch('http://127.0.0.1:7242/ingest/a370db6d-7333-4112-99f8-dd4bc899a89b',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'14-dashboard.js:fetchDashboardData',message:'dashboard series fetched',data:{call:_dbgCall,range:rangeKey,force:!!force,silent:!!silent,ms_total:_ms,ok:!!data,charts_live:_charts},timestamp:Date.now(),runId:(typeof window.__kexoPerfDebugRunId==='function'?window.__kexoPerfDebugRunId():'baseline'),hypothesisId:'H4'} )}).catch(()=>{});
+            }
+            // #endregion
           })
           .catch(function(err) {
             try { if (typeof window.kexoCaptureError === 'function') window.kexoCaptureError(err, { context: 'dashboardSeries', page: PAGE }); } catch (_) {}
@@ -20119,16 +20323,17 @@ const API = '';
     var modeEl = container.querySelector('[data-chart-field="mode"]');
     var mode = (modeEl && modeEl.value != null ? String(modeEl.value).trim().toLowerCase() : '') || 'line';
     var lineLike = mode === 'line' || mode === 'area' || mode === 'multi-line-labels' || mode === 'stacked-area' || mode === 'combo';
+    var barLike = mode === 'bar' || mode === 'bar-horizontal' || mode === 'bar-distributed' || mode === 'stacked-bar';
     var showCurve = lineLike;
     var showStroke = lineLike;
     var showDash = lineLike;
     var showMarkers = lineLike;
-    var showFill = mode !== 'map-flat' && mode !== 'map-animated';
-    var showGrid = lineLike || mode === 'bar' || mode === 'stacked-bar';
-    var showLabels = lineLike || mode === 'bar';
+    var showFill = (lineLike || barLike) && mode !== 'map-flat' && mode !== 'map-animated';
+    var showGrid = lineLike || barLike;
+    var showLabels = lineLike || barLike;
     var showToolbar = true;
     var showAnimations = true;
-    var showPieDonut = mode === 'pie';
+    var showPieDonut = mode === 'pie' || mode === 'donut';
     if (mode.indexOf('map-') === 0) {
       showCurve = showStroke = showDash = showMarkers = showFill = showGrid = showLabels = showPieDonut = false;
     }
