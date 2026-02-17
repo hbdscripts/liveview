@@ -5,10 +5,11 @@
 
 const config = require('./config');
 const path = require('path');
+const { AsyncLocalStorage } = require('async_hooks');
 
 let db;
 let _pgPool = null;
-let _pgTxClient = null;
+const _pgTxStorage = new AsyncLocalStorage();
 
 function toPg(sql, params) {
   let i = 0;
@@ -22,40 +23,46 @@ function getDb() {
     const { Pool } = require('pg');
     const pool = new Pool({ connectionString: config.dbUrl });
     _pgPool = pool;
+    function pgTarget() {
+      return _pgTxStorage.getStore() || pool;
+    }
     db = {
       run: (sql, params = []) => {
         const [q, p] = toPg(sql, params);
-        const target = _pgTxClient || pool;
+        const target = pgTarget();
         return target.query(q, p).then(r => ({ lastID: r.rows[0]?.id, changes: r.rowCount }));
       },
       get: (sql, params = []) => {
         const [q, p] = toPg(sql, params);
-        const target = _pgTxClient || pool;
+        const target = pgTarget();
         return target.query(q, p).then(r => r.rows[0] || null);
       },
       all: (sql, params = []) => {
         const [q, p] = toPg(sql, params);
-        const target = _pgTxClient || pool;
+        const target = pgTarget();
         return target.query(q, p).then(r => r.rows);
       },
       exec: (sql) => {
-        const target = _pgTxClient || pool;
+        const target = pgTarget();
         return target.query(sql).then(() => {});
       },
       close: () => pool.end(),
       transaction: async (fn) => {
+        const ambient = _pgTxStorage.getStore();
+        if (ambient) {
+          // Nested transactions are flattened into the existing transaction scope.
+          return fn();
+        }
         const client = await pool.connect();
-        _pgTxClient = client;
         try {
           await client.query('BEGIN');
-          const result = await fn();
+          const result = await _pgTxStorage.run(client, async () => fn());
           await client.query('COMMIT');
           return result;
         } catch (err) {
           try { await client.query('ROLLBACK'); } catch (_) {}
           throw err;
         } finally {
-          _pgTxClient = null;
           client.release();
         }
       },

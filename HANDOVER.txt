@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-17 (Hotfix: KPI endpoint no longer blocks on truth reconcile/backup)
+Last updated: 2026-02-17 (Hotfix: Postgres tx context no longer leaks across requests)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -396,6 +396,9 @@ Ops/reliability:
 - KPI + truth hang hardening:
   - `/api/kpis` no longer blocks on `salesTruth.ensureReconciled()` (Shopify truth sync); warmups run in the background so the UI never stalls for minutes.
   - Truth pre-reconcile backup is now scheduled asynchronously (not awaited) to avoid multi-minute request hangs after deploy restarts.
+- Postgres request-stall hardening:
+  - `server/db.js` no longer uses a global `_pgTxClient`; transaction client scope is now per-async-context via `AsyncLocalStorage`.
+  - Nested transactions flatten into the existing transaction scope; unrelated requests no longer get routed through another request’s in-flight transaction.
 
 2026-02-16 (latest)
 - Change Pins production hardening:
