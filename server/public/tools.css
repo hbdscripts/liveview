@@ -157,6 +157,11 @@
   margin-top: 12px;
 }
 
+body[data-page="change-pins"] .tools-table-wrap {
+  border: none;
+  border-radius: 0;
+}
+
 .tools-table {
   width: 100%;
   min-width: 820px;
@@ -273,5 +278,118 @@ body[data-page="change-pins"] .tools-delta-neutral::after {
 
   .tools-summary {
     grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Change Pins: block labels + input grids, responsive table */
+body[data-page="change-pins"] .tools-form-block .tools-field {
+  display: block;
+  margin-bottom: 0;
+}
+
+body[data-page="change-pins"] .tools-form-block .tools-field + .tools-field {
+  margin-top: 14px;
+}
+
+body[data-page="change-pins"] .tools-form-block .tools-label {
+  display: block;
+  padding-top: 0;
+  margin-bottom: 6px;
+}
+
+body[data-page="change-pins"] .tools-input-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+body[data-page="change-pins"] .tools-input-row .form-control,
+body[data-page="change-pins"] .tools-input-row .form-select {
+  min-width: 0;
+}
+
+body[data-page="change-pins"] .tools-input-row .tools-note {
+  grid-column: 1 / -1;
+}
+
+body[data-page="change-pins"] .tools-input-icon {
+  min-width: 140px;
+  max-width: 260px;
+}
+
+body[data-page="change-pins"] .tools-detail-stats .tools-detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+body[data-page="change-pins"] .tools-detail-edit .tools-input-row {
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+}
+
+/* Change Pins: responsive table — card layout when narrow */
+@media (max-width: 720px) {
+  body[data-page="change-pins"] .tools-table-wrap {
+    overflow: visible;
+  }
+
+  body[data-page="change-pins"] .tools-table,
+  body[data-page="change-pins"] .tools-table thead,
+  body[data-page="change-pins"] .tools-table tbody,
+  body[data-page="change-pins"] .tools-table tr,
+  body[data-page="change-pins"] .tools-table th,
+  body[data-page="change-pins"] .tools-table td {
+    display: block;
+  }
+
+  body[data-page="change-pins"] .tools-table thead {
+    position: absolute;
+    clip: rect(0, 0, 0, 0);
+    overflow: hidden;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    border: 0;
+  }
+
+  body[data-page="change-pins"] .tools-table tr {
+    border: 1px solid rgba(15, 23, 42, 0.12);
+    border-radius: 8px;
+    margin-bottom: 10px;
+    padding: 10px 12px;
+    min-width: 0;
+  }
+
+  body[data-page="change-pins"] .tools-table td {
+    border: none;
+    padding: 4px 0;
+    padding-left: 0;
+  }
+
+  body[data-page="change-pins"] .tools-table td::before {
+    content: attr(data-label);
+    font-weight: 500;
+    color: var(--tblr-secondary, #64748b);
+    display: inline-block;
+    min-width: 5em;
+    margin-right: 8px;
+  }
+
+  body[data-page="change-pins"] .tools-table td:last-child {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(15, 23, 42, 0.08);
+  }
+
+  body[data-page="change-pins"] .tools-table td:last-child::before {
+    display: none;
+  }
+
+  body[data-page="change-pins"] .tools-summary {
+    grid-template-columns: 1fr;
   }
 }

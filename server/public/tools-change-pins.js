@@ -110,6 +110,7 @@
     selected: null,
     effect: null,
     view: 'list', // list | detail
+    detailSubview: 'stats', // stats | edit (when view === detail)
     loading: false,
   };
 
@@ -136,11 +137,13 @@
     filterRefresh: qs('#filter-refresh'),
     pinsNote: qs('#pins-note'),
     pinsTable: qs('#pins-table'),
-    // detail/edit
+    // detail
     detailCard: qs('#tool-change-pins-detail'),
     detailBack: qs('#pin-detail-back'),
     detailTitle: qs('#pin-detail-title'),
-    detailSubtitle: qs('#pin-detail-subtitle'),
+    detailStatsView: qs('#detail-stats-view'),
+    detailEditView: qs('#detail-edit-view'),
+    editBtn: qs('#pin-edit-btn'),
     editDate: qs('#edit-date'),
     editTime: qs('#edit-time'),
     editDateNote: qs('#edit-date-note'),
@@ -153,11 +156,12 @@
     updateBtn: qs('#pin-update-btn'),
     archiveBtn: qs('#pin-archive-btn'),
     unarchiveBtn: qs('#pin-unarchive-btn'),
-    // effect
+    // effect (stats + edit each have a results div)
     effectWindow: qs('#effect-window'),
     effectRefresh: qs('#effect-refresh'),
     effectNote: qs('#effect-note'),
-    effectResults: qs('#effect-results'),
+    effectResultsStats: qs('#effect-results-stats'),
+    effectResultsEdit: qs('#effect-results-edit'),
   };
 
   function setNote(el, msg, isError) {
@@ -237,13 +241,13 @@
       var status = p.archived_at ? 'Archived' : 'Active';
       var isSel = state.selected && state.selected.id === id;
       html += '<tr data-pin-id="' + esc(id) + '" tabindex="0" role="button" aria-label="View stats for pin: ' + esc(p.title || '') + '" style="cursor:pointer;' + (isSel ? 'background:rgba(15,23,42,0.03);' : '') + '">' +
-        '<td>' + esc(ymd) + '</td>' +
-        '<td>' + esc(time || '') + '</td>' +
-        '<td><strong style="font-weight:600">' + esc(p.title || '') + '</strong></td>' +
-        '<td>' + esc(p.kind || '') + '</td>' +
-        '<td>' + esc(tags) + '</td>' +
-        '<td>' + esc(status) + '</td>' +
-        '<td class="text-end"><button class="btn btn-sm btn-ghost-secondary" type="button" data-pin-action="view" data-pin-id="' + esc(id) + '">View Stats</button></td>' +
+        '<td data-label="Date">' + esc(ymd) + '</td>' +
+        '<td data-label="Time">' + esc(time || '') + '</td>' +
+        '<td data-label="Title"><strong style="font-weight:600">' + esc(p.title || '') + '</strong></td>' +
+        '<td data-label="Kind">' + esc(p.kind || '') + '</td>' +
+        '<td data-label="Tags">' + esc(tags) + '</td>' +
+        '<td data-label="Status">' + esc(status) + '</td>' +
+        '<td class="text-end" data-label="View Stats"><button class="btn btn-sm btn-ghost-secondary" type="button" data-pin-action="view" data-pin-id="' + esc(id) + '">View Stats</button></td>' +
       '</tr>';
     }
     html += '</tbody></table></div>';
@@ -308,7 +312,18 @@
     if (!showDetail) state.view = 'list';
     if (els.gridWrap) els.gridWrap.classList.toggle('is-hidden', showDetail);
     if (els.detailCard) els.detailCard.classList.toggle('is-hidden', !showDetail);
-    if (!showDetail && els.effectResults) els.effectResults.innerHTML = '';
+    if (!showDetail) {
+      if (els.effectResultsStats) els.effectResultsStats.innerHTML = '';
+      if (els.effectResultsEdit) els.effectResultsEdit.innerHTML = '';
+    } else {
+      applyDetailSubview();
+    }
+  }
+
+  function applyDetailSubview() {
+    var showEdit = state.detailSubview === 'edit';
+    if (els.detailStatsView) els.detailStatsView.classList.toggle('is-hidden', showEdit);
+    if (els.detailEditView) els.detailEditView.classList.toggle('is-hidden', !showEdit);
   }
 
   function hideDetail() {
@@ -319,6 +334,7 @@
   function selectPin(pin) {
     state.selected = pin;
     state.view = 'detail';
+    state.detailSubview = 'stats';
     renderPinsTable(state.pins);
     applyView();
     renderSelectedDetail();
@@ -349,12 +365,6 @@
     setDetailArchivedUi(pin);
 
     if (els.detailTitle) els.detailTitle.textContent = pin.title || '';
-    var createdMs = pin.created_at != null ? Number(pin.created_at) : null;
-    var addedDmy = (createdMs != null && Number.isFinite(createdMs)) ? dmyInTzFromMs(createdMs) : '';
-    var addedHm = (createdMs != null && Number.isFinite(createdMs)) ? hmInTzFromMs(createdMs) : '';
-    if (!addedDmy) addedDmy = dmyFromYmd(pin.event_ymd || '');
-    if (!addedHm && pin.event_ts) addedHm = hmInTzFromMs(pin.event_ts);
-    if (els.detailSubtitle) els.detailSubtitle.textContent = 'Added on: ' + (addedDmy || '—') + ' - ' + (addedHm || '—');
 
     try { if (els.editDate) els.editDate.value = pin.event_ymd || ''; } catch (_) {}
     try { if (els.editTime) els.editTime.value = pin.event_ts ? hmInTzFromMs(pin.event_ts) : ''; } catch (_) {}
@@ -364,6 +374,8 @@
     try { if (els.editMagUnit) els.editMagUnit.value = (pin.magnitude_unit || '%'); } catch (_) {}
     try { if (els.editTags) els.editTags.value = (Array.isArray(pin.tags) ? pin.tags.join(', ') : ''); } catch (_) {}
     try { if (els.editNotes) els.editNotes.value = pin.notes || ''; } catch (_) {}
+
+    applyDetailSubview();
   }
 
   function collectEditPatch() {
@@ -394,21 +406,24 @@
     var w = els.effectWindow ? safeStr(els.effectWindow.value) : '7';
     var win = Number(w) || 7;
     setNote(els.effectNote, 'Loading…', false);
-    if (els.effectResults) els.effectResults.innerHTML = '';
+    if (els.effectResultsStats) els.effectResultsStats.innerHTML = '';
+    if (els.effectResultsEdit) els.effectResultsEdit.innerHTML = '';
     fetchJson('/api/tools/change-pins/' + encodeURIComponent(String(pinId)) + '/effect?window_days=' + encodeURIComponent(String(win)), { credentials: 'same-origin', cache: 'no-store' })
       .then(function (data) {
         if (!data || !data.ok) {
           setNote(els.effectNote, 'Failed to load effect.', true);
-          if (els.effectResults) els.effectResults.innerHTML = '';
+          if (els.effectResultsStats) els.effectResultsStats.innerHTML = '';
+          if (els.effectResultsEdit) els.effectResultsEdit.innerHTML = '';
           return;
         }
         setNote(els.effectNote, '', false);
+        state.effect = data;
         renderEffect(data);
       });
   }
 
   function renderEffect(payload) {
-    if (!els.effectResults) return;
+    if (!els.effectResultsStats && !els.effectResultsEdit) return;
     var before = payload.before || {};
     var after = payload.after || {};
     var d = payload.delta || {};
@@ -450,7 +465,8 @@
       return n.toFixed(2) + 'x';
     });
     html += '</div>';
-    els.effectResults.innerHTML = html;
+    if (els.effectResultsStats) els.effectResultsStats.innerHTML = html;
+    if (els.effectResultsEdit) els.effectResultsEdit.innerHTML = html;
   }
 
   function init() {
@@ -506,6 +522,12 @@
 
     if (els.detailBack) els.detailBack.addEventListener('click', function () { backToList(); });
 
+    if (els.editBtn) els.editBtn.addEventListener('click', function () {
+      state.detailSubview = 'edit';
+      applyDetailSubview();
+      if (state.effect) renderEffect(state.effect);
+    });
+
     if (els.pinsTable) {
       els.pinsTable.addEventListener('click', function (e) {
         var t = e && e.target ? e.target : null;
@@ -556,6 +578,7 @@
         }
         setNote(els.editDateNote, 'Saved.', false);
         state.selected = data.pin;
+        state.detailSubview = 'stats';
         loadPins();
         renderSelectedDetail();
         refreshEffect();
