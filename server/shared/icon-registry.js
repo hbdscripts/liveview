@@ -7,9 +7,7 @@ function toBooleanMap(keys) {
 }
 
 const LOCKED_SETTINGS_ICON_KEYS = Object.freeze(toBooleanMap([
-  'settings-tab-general',
   'settings-tab-theme',
-  'settings-tab-assets',
   'settings-tab-data-reporting',
   'settings-tab-integrations',
   'settings-tab-sources',
@@ -97,9 +95,7 @@ const ICON_GLYPH_DEFAULTS = Object.freeze({
   'table-icon-variants-orders': 'fa-box-open',
   'table-icon-variants-cr': 'fa-percent',
   'table-icon-variants-revenue': 'fa-sterling-sign',
-  'settings-tab-general': 'fa-sliders',
   'settings-tab-theme': 'fa-palette',
-  'settings-tab-assets': 'fa-image',
   'settings-tab-data-reporting': 'fa-chart-column',
   'settings-tab-integrations': 'fa-plug',
   'settings-tab-sources': 'fa-map-location-dot',

@@ -620,35 +620,6 @@
     return 'Misc';
   }
 
-  function getIconAuditData() {
-    var registryKeys = Object.keys(ICON_GLYPH_DEFAULTS).slice().sort();
-    var registrySet = {};
-    registryKeys.forEach(function (name) { registrySet[name] = true; });
-    var requiredKeys = REQUIRED_ACTIVE_ICON_KEYS.slice().sort();
-    var missingFromSettings = requiredKeys.filter(function (name) { return !registrySet[name]; });
-    return {
-      missingFromSettings: missingFromSettings,
-    };
-  }
-
-  function renderIconAuditCodeList(keys) {
-    var list = Array.isArray(keys) ? keys : [];
-    if (!list.length) return '<span class="text-success">None</span>';
-    return list.map(function (name) { return '<code>' + String(name) + '</code>'; }).join(' ');
-  }
-
-  function buildIconAuditHtml() {
-    var audit = getIconAuditData();
-    return '' +
-      '<div class="alert alert-secondary mb-3" role="status">' +
-        '<div class="d-flex flex-wrap align-items-center gap-2 mb-2">' +
-          '<strong>Icon audit</strong>' +
-          '<span class="badge ' + (audit.missingFromSettings.length ? 'bg-danger-lt text-danger' : 'bg-success-lt text-success') + '">Missing in settings: ' + String(audit.missingFromSettings.length) + '</span>' +
-        '</div>' +
-        '<div class="small"><strong>Used in theme but missing from settings:</strong> ' + renderIconAuditCodeList(audit.missingFromSettings) + '</div>' +
-      '</div>';
-  }
-
   function buildGlyphAccordionHtml() {
     var groups = {};
     var keys = ICON_GLYPH_KEYS.slice();
@@ -1529,16 +1500,14 @@
     '</div>';
   }
 
+  var TOOLTIP_ICON = ' <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i>';
   function iconVisualInputCard(key, title, help, placeholder) {
     var inputId = 'theme-input-' + key;
+    var titleAttr = help ? (' title="' + String(help).replace(/"/g, '&quot;') + '"') : '';
     return '<div class="col-12 col-md-6 col-lg-4">' +
       '<div class="card card-sm h-100">' +
         '<div class="card-body">' +
-          '<div class="d-flex align-items-center mb-2">' +
-            '<i class="fa-jelly fa-sliders me-2" aria-hidden="true"></i>' +
-            '<strong>' + title + '</strong>' +
-          '</div>' +
-          '<div class="text-secondary small mb-2">' + help + '</div>' +
+          '<label class="form-label d-flex align-items-center mb-2" for="' + inputId + '"' + titleAttr + '><i class="fa-jelly fa-sliders me-2" aria-hidden="true"></i><strong>' + title + '</strong>' + TOOLTIP_ICON + '</label>' +
           '<input type="text" class="form-control" id="' + inputId + '" name="' + key + '" placeholder="' + placeholder + '" />' +
         '</div>' +
       '</div>' +
@@ -1547,14 +1516,11 @@
 
   function headerInputCard(key, title, help, placeholder) {
     var inputId = 'theme-input-' + key;
+    var titleAttr = help ? (' title="' + String(help).replace(/"/g, '&quot;') + '"') : '';
     return '<div class="col-12 col-md-6 col-lg-4">' +
       '<div class="card card-sm h-100">' +
         '<div class="card-body">' +
-          '<div class="d-flex align-items-center mb-2">' +
-            '<i class="fa-jelly fa-window-maximize me-2" aria-hidden="true"></i>' +
-            '<strong>' + title + '</strong>' +
-          '</div>' +
-          '<div class="text-secondary small mb-2">' + help + '</div>' +
+          '<label class="form-label d-flex align-items-center mb-2" for="' + inputId + '"' + titleAttr + '><i class="fa-jelly fa-window-maximize me-2" aria-hidden="true"></i><strong>' + title + '</strong>' + TOOLTIP_ICON + '</label>' +
           '<input type="text" class="form-control" id="' + inputId + '" name="' + key + '" placeholder="' + placeholder + '" />' +
         '</div>' +
       '</div>' +
@@ -1563,11 +1529,11 @@
 
   function headerInputCardNoIcon(key, title, help, placeholder) {
     var inputId = 'theme-input-' + key;
+    var titleAttr = help ? (' title="' + String(help).replace(/"/g, '&quot;') + '"') : '';
     return '<div class="col-12 col-md-6 col-lg-4">' +
       '<div class="card card-sm h-100">' +
         '<div class="card-body">' +
-          '<div class="mb-2"><strong>' + title + '</strong></div>' +
-          '<div class="text-secondary small mb-2">' + help + '</div>' +
+          '<label class="form-label mb-2" for="' + inputId + '"' + titleAttr + '><strong>' + title + '</strong>' + TOOLTIP_ICON + '</label>' +
           '<input type="text" class="form-control" id="' + inputId + '" name="' + key + '" placeholder="' + placeholder + '" />' +
         '</div>' +
       '</div>' +
@@ -1575,11 +1541,11 @@
   }
 
   function headerToggleCardNoIcon(key, title, help) {
+    var titleAttr = help ? (' title="' + String(help).replace(/"/g, '&quot;') + '"') : '';
     return '<div class="col-12 col-md-6 col-lg-4">' +
       '<div class="card card-sm h-100">' +
         '<div class="card-body">' +
-          '<div class="mb-2"><strong>' + title + '</strong></div>' +
-          '<div class="text-secondary small mb-2">' + help + '</div>' +
+          '<div class="mb-2"><strong' + titleAttr + '>' + title + TOOLTIP_ICON + '</strong></div>' +
           '<div class="form-selectgroup">' +
             radioCard(key, 'show', 'Show') +
             radioCard(key, 'hide', 'Hide') +
@@ -1592,11 +1558,11 @@
   function headerSelectCardNoIcon(key, title, help, options, defaultValue) {
     var opts = options || {};
     var radios = Object.keys(opts).map(function (v) { return radioCard(key, v, opts[v] || v); }).join('');
+    var titleAttr = help ? (' title="' + String(help).replace(/"/g, '&quot;') + '"') : '';
     return '<div class="col-12 col-md-6 col-lg-4">' +
       '<div class="card card-sm h-100">' +
         '<div class="card-body">' +
-          '<div class="mb-2"><strong>' + title + '</strong></div>' +
-          '<div class="text-secondary small mb-2">' + help + '</div>' +
+          '<div class="mb-2"><strong' + titleAttr + '>' + title + TOOLTIP_ICON + '</strong></div>' +
           '<div class="form-selectgroup">' + radios + '</div>' +
         '</div>' +
       '</div>' +
@@ -1620,14 +1586,11 @@
   }
 
   function headerToggleCard(key, title, help) {
+    var titleAttr = help ? (' title="' + String(help).replace(/"/g, '&quot;') + '"') : '';
     return '<div class="col-12 col-md-6 col-lg-4">' +
       '<div class="card card-sm h-100">' +
         '<div class="card-body">' +
-          '<div class="d-flex align-items-center mb-2">' +
-            '<i class="fa-jelly fa-toggle-on me-2" aria-hidden="true"></i>' +
-            '<strong>' + title + '</strong>' +
-          '</div>' +
-          '<div class="text-secondary small mb-2">' + help + '</div>' +
+          '<div class="d-flex align-items-center mb-2"><i class="fa-jelly fa-toggle-on me-2" aria-hidden="true"></i><strong' + titleAttr + '>' + title + TOOLTIP_ICON + '</strong></div>' +
           '<div class="form-selectgroup">' +
             radioCard(key, 'show', 'Show') +
             radioCard(key, 'hide', 'Hide') +
@@ -1649,7 +1612,6 @@
 
   function getThemeFormHtml() {
     var glyphAccordion = buildGlyphAccordionHtml();
-    var iconAuditHtml = buildIconAuditHtml();
     var visualGrid = [
       iconVisualInputCard('theme-icon-size', 'Global icon size', 'CSS size value used by all Font Awesome icons (for example 1em, 14px, 0.95rem).', DEFAULTS['theme-icon-size']),
       iconVisualInputCard('theme-icon-color', 'Global icon color', 'CSS color for all icons (for example currentColor, #ffffff, rgb(255,255,255)).', DEFAULTS['theme-icon-color'])
@@ -1694,8 +1656,7 @@
     ].join('');
     var customCssFieldset =
       '<fieldset class="mb-4">' +
-        '<legend class="form-label">Custom CSS</legend>' +
-        '<div class="text-secondary small mb-2">Injected inline into <code>&lt;head&gt;</code> after other stylesheets. Changes are global.</div>' +
+        '<legend class="form-label" title="Injected inline into head after other stylesheets. Changes are global.">Custom CSS <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></legend>' +
         '<textarea class="form-control font-monospace" name="theme-custom-css" rows="9" spellcheck="false" placeholder="/* Custom CSS */"></textarea>' +
       '</fieldset>';
     return '<form id="theme-settings-form">' +
@@ -1708,22 +1669,18 @@
       '</ul>' +
 
       '<div class="theme-subpanel" data-theme-subpanel="icons">' +
-        '<div class="text-secondary mb-3">Each icon field accepts Font Awesome classes (for example <code>fa-light fa-bars</code>) or a pasted <code>&lt;svg&gt;...&lt;/svg&gt;</code>. Use <strong>Edit</strong> on any icon to set optional per-icon size/color overrides. Settings-page sidebar and diagnostics icons are locked to fixed <code>fa-thin</code> classes and are intentionally excluded from this list.</div>' +
-        iconAuditHtml +
-        '<h4 class="mb-2">Global icon visuals</h4>' +
+        '<h4 class="mb-2" title="Each icon field accepts Font Awesome classes (e.g. fa-light fa-bars) or a pasted SVG. Use Edit on any icon for per-icon size/color overrides. Settings sidebar and diagnostics icons are locked to fa-thin and excluded from this list.">Global icon visuals <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></h4>' +
         '<div class="row g-3">' + visualGrid + '</div>' +
         '<hr class="my-3" />' +
         '<h4 class="mb-2">Icon overrides</h4>' +
         glyphAccordion +
         '<div class="d-flex align-items-center gap-2 mt-3">' +
-          '<button type="button" class="btn btn-outline-secondary btn-sm" id="theme-icons-refresh">Refresh previews</button>' +
-          '<span class="text-secondary small">Debounced preview updates after typing stops.</span>' +
+          '<button type="button" class="btn btn-outline-secondary btn-sm" id="theme-icons-refresh" title="Debounced preview updates after typing stops.">Refresh previews</button>' +
         '</div>' +
       '</div>' +
 
       '<div class="theme-subpanel" data-theme-subpanel="header" hidden>' +
-        '<div class="text-secondary mb-3">Configure header visibility and shape controls. Header/nav colors are configured in the Color tab.</div>' +
-        '<h4 class="mb-2">Shape</h4>' +
+        '<h4 class="mb-2" title="Configure header visibility and shape. Header/nav colors are in the Color tab.">Shape <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></h4>' +
         '<div class="row g-3">' + headerShapeGrid + '</div>' +
         '<hr class="my-3" />' +
         '<h4 class="mb-2">Visibility & borders</h4>' +

@@ -146,45 +146,43 @@
             <div id="settings-kexo-panel-general">
               <div class="card card-sm mb-3">
                 <div class="card-header">
-                  <h4 class="card-title"><i class="fa-thin fa-sliders me-2" data-icon-key="settings-tab-general" aria-hidden="true"></i>General</h4>
+                  <h4 class="card-title">General</h4>
                 </div>
                 <div class="card-body">
-                  <p class="text-secondary">Read-only environment values plus KPI date label format.</p>
                   <div class="mb-3">
-                    <label class="form-label">App URL</label>
+                    <label class="form-label" for="settings-general-app-url" title="Read-only app base URL from environment.">App URL <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></label>
                     <input type="text" class="form-control" id="settings-general-app-url" value="—" readonly />
                   </div>
                   <div class="mb-3">
-                    <label class="form-label">Admin timezone <span class="badge bg-primary-lt">TODO per-install</span></label>
+                    <label class="form-label" for="settings-general-timezone" title="Admin timezone for display (TODO per-install).">Admin timezone <span class="badge bg-primary-lt">TODO per-install</span> <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></label>
                     <input type="text" class="form-control" id="settings-general-timezone" value="—" readonly />
                   </div>
                   <div class="mb-3">
-                    <label class="form-label">Store domain</label>
+                    <label class="form-label" for="settings-general-shop-domain" title="Read-only store domain from environment.">Store domain <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></label>
                     <input type="text" class="form-control" id="settings-general-shop-domain" value="—" readonly />
                   </div>
                   <div class="mb-3">
-                    <label class="form-label">Display domain</label>
+                    <label class="form-label" for="settings-general-display-domain" title="Read-only display domain from environment.">Display domain <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></label>
                     <input type="text" class="form-control" id="settings-general-display-domain" value="—" readonly />
                   </div>
                   <div class="mb-3">
-                    <label class="form-label">Store main URL</label>
+                    <label class="form-label" for="settings-general-store-main" title="Read-only store main URL from environment.">Store main URL <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></label>
                     <input type="text" class="form-control" id="settings-general-store-main" value="—" readonly />
                   </div>
                   <div class="mb-3">
-                    <label class="form-label">Ingest URL</label>
+                    <label class="form-label" for="settings-general-ingest-url" title="Read-only ingest endpoint URL from environment.">Ingest URL <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></label>
                     <input type="text" class="form-control" id="settings-general-ingest-url" value="—" readonly />
                   </div>
                   <div class="mb-3">
-                    <label class="form-label">Acquisition mode / DB</label>
+                    <label class="form-label" for="settings-general-traffic-mode" title="Read-only acquisition mode and DB from environment.">Acquisition mode / DB <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></label>
                     <input type="text" class="form-control" id="settings-general-traffic-mode" value="—" readonly />
                   </div>
                   <div class="mb-3">
-                    <label class="form-label" for="settings-general-date-format">KPI date label format</label>
+                    <label class="form-label" for="settings-general-date-format" title="Controls compact KPI compare labels like 16/2 – 16/3.">KPI date label format <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></label>
                     <select class="form-select" id="settings-general-date-format">
                       <option value="dmy">English (D/M)</option>
                       <option value="mdy">American (M/D)</option>
                     </select>
-                    <div class="form-hint">Controls compact KPI compare labels like <code>16/2 – 16/3</code>.</div>
                   </div>
                   <div class="d-flex align-items-center gap-2 flex-wrap">
                     <button type="button" class="btn btn-primary" id="settings-general-save-btn">Save</button>
@@ -195,56 +193,50 @@
 
               <div class="card card-sm">
                 <div class="card-header">
-                  <h4 class="card-title"><i class="fa-thin fa-image me-2" data-icon-key="settings-tab-assets" aria-hidden="true"></i>Assets</h4>
+                  <h4 class="card-title">Assets</h4>
                 </div>
                 <div class="card-body">
-                  <p class="text-secondary mb-3">Upload/override branding assets (favicon + logos). Saved globally.</p>
                   <form id="settings-assets-form">
                     <div class="row g-3">
                       <div class="col-12 col-lg-6">
-                        <label class="form-label" for="settings-asset-favicon">Favicon URL override</label>
+                        <label class="form-label" for="settings-asset-favicon" title="Upload/override favicon. PNG/ICO recommended. Saved globally; uploads stored in Cloudflare R2.">Favicon URL override <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></label>
                         <input type="url" class="form-control" id="settings-asset-favicon" placeholder="https://…" />
                         <div class="input-group mt-2">
                           <input type="file" class="form-control" id="settings-upload-favicon" accept="image/png,image/webp,image/jpeg,image/x-icon,image/vnd.microsoft.icon" />
                           <button type="button" class="btn btn-outline-primary" data-kexo-asset-upload="1" data-kexo-slot="favicon" data-kexo-file="settings-upload-favicon" data-kexo-url="settings-asset-favicon">Upload</button>
                         </div>
-                        <div class="form-hint">PNG/ICO recommended.</div>
                       </div>
                       <div class="col-12 col-lg-6">
-                        <label class="form-label" for="settings-asset-logo">Header logo URL override</label>
+                        <label class="form-label" for="settings-asset-logo" title="Replaces the top-strip logo across the app. Saved globally.">Header logo URL override <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></label>
                         <input type="url" class="form-control" id="settings-asset-logo" placeholder="https://…" />
                         <div class="input-group mt-2">
                           <input type="file" class="form-control" id="settings-upload-header-logo" accept="image/png,image/webp,image/jpeg" />
                           <button type="button" class="btn btn-outline-primary" data-kexo-asset-upload="1" data-kexo-slot="header_logo" data-kexo-file="settings-upload-header-logo" data-kexo-url="settings-asset-logo">Upload</button>
                         </div>
-                        <div class="form-hint">Replaces the top-strip logo across the app.</div>
                       </div>
                       <div class="col-12 col-lg-6">
-                        <label class="form-label" for="settings-asset-footer-logo">Footer logo URL override</label>
+                        <label class="form-label" for="settings-asset-footer-logo" title="Replaces the footer center logo. Saved globally.">Footer logo URL override <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></label>
                         <input type="url" class="form-control" id="settings-asset-footer-logo" placeholder="https://…" />
                         <div class="input-group mt-2">
                           <input type="file" class="form-control" id="settings-upload-footer-logo" accept="image/png,image/webp,image/jpeg" />
                           <button type="button" class="btn btn-outline-primary" data-kexo-asset-upload="1" data-kexo-slot="footer_logo" data-kexo-file="settings-upload-footer-logo" data-kexo-url="settings-asset-footer-logo">Upload</button>
                         </div>
-                        <div class="form-hint">Replaces the footer center logo.</div>
                       </div>
                       <div class="col-12 col-lg-6">
-                        <label class="form-label" for="settings-asset-login-logo">Login logo URL override</label>
+                        <label class="form-label" for="settings-asset-login-logo" title="Replaces the logo shown on /app/login. Saved globally.">Login logo URL override <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></label>
                         <input type="url" class="form-control" id="settings-asset-login-logo" placeholder="https://…" />
                         <div class="input-group mt-2">
                           <input type="file" class="form-control" id="settings-upload-login-logo" accept="image/png,image/webp,image/jpeg" />
                           <button type="button" class="btn btn-outline-primary" data-kexo-asset-upload="1" data-kexo-slot="login_logo" data-kexo-file="settings-upload-login-logo" data-kexo-url="settings-asset-login-logo">Upload</button>
                         </div>
-                        <div class="form-hint">Replaces the logo shown on <code>/app/login</code>.</div>
                       </div>
                       <div class="col-12 col-lg-6">
-                        <label class="form-label" for="settings-asset-kexo-fullcolor-logo">Kexo full-color logo URL override</label>
+                        <label class="form-label" for="settings-asset-kexo-fullcolor-logo" title="Used in Settings → Diagnostics branding blocks. Saved globally.">Kexo full-color logo URL override <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></label>
                         <input type="url" class="form-control" id="settings-asset-kexo-fullcolor-logo" placeholder="https://…" />
                         <div class="input-group mt-2">
                           <input type="file" class="form-control" id="settings-upload-kexo-fullcolor-logo" accept="image/png,image/webp,image/jpeg" />
                           <button type="button" class="btn btn-outline-primary" data-kexo-asset-upload="1" data-kexo-slot="kexo_logo_fullcolor" data-kexo-file="settings-upload-kexo-fullcolor-logo" data-kexo-url="settings-asset-kexo-fullcolor-logo">Upload</button>
                         </div>
-                        <div class="form-hint">Used in Settings → Diagnostics branding blocks.</div>
                       </div>
                     </div>
 
@@ -253,7 +245,6 @@
                       <span id="settings-assets-msg" class="form-hint ms-2"></span>
                     </div>
                   </form>
-                  <p class="text-muted small mt-2 mb-0">Uploads are stored in Cloudflare R2.</p>
                 </div>
               </div>
             </div>
@@ -268,7 +259,7 @@
                   <div class="accordion-body">
                     <div class="card card-sm">
                       <div class="card-header">
-                        <h4 class="card-title" id="settings-theme-title"><i class="fa-thin fa-palette me-2" data-icon-key="settings-tab-theme" aria-hidden="true"></i><span id="settings-theme-title-text">Theme</span></h4>
+                        <h4 class="card-title" id="settings-theme-title"><span id="settings-theme-title-text">Theme</span></h4>
                       </div>
                       <div class="card-body" id="settings-theme-panel">
                         <div class="dm-loading">Loading theme…</div>
@@ -285,10 +276,9 @@
       <div id="settings-panel-integrations" class="settings-panel" role="tabpanel" aria-labelledby="settings-tab-integrations">
         <div class="card">
           <div class="card-header">
-            <h3 class="card-title"><i class="fa-thin fa-plug me-2" data-icon-key="settings-tab-integrations" aria-hidden="true"></i>Integrations</h3>
+            <h3 class="card-title" title="Shopify + Google Ads integration status and controls."><i class="fa-thin fa-plug me-2" data-icon-key="settings-tab-integrations" aria-hidden="true"></i>Integrations <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></h3>
           </div>
           <div class="card-body">
-            <p class="text-secondary mb-3">Shopify + Google Ads integration status and controls.</p>
             <div class="accordion settings-layout-accordion" id="settings-integrations-accordion">
               <div class="accordion-item">
                 <h4 class="accordion-header">
@@ -353,7 +343,7 @@
                   <div class="mb-2"><strong>Developer token</strong> <span id="settings-int-ga-dev-token" class="text-muted">—</span></div>
                   <div class="mb-2"><strong>Refresh token</strong> <span id="settings-int-ga-refresh-token" class="text-muted">—</span></div>
                   <div class="mb-3">
-                    <label class="form-label small">Account context (optional, for Connect)</label>
+                    <label class="form-label small" for="settings-ga-account-customer-id" title="Optional Customer ID and Login Customer ID for Connect flow.">Account context (optional, for Connect) <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></label>
                     <div class="row g-2">
                       <div class="col-md-6"><input type="text" class="form-control form-control-sm" id="settings-ga-account-customer-id" placeholder="Customer ID" /></div>
                       <div class="col-md-6"><input type="text" class="form-control form-control-sm" id="settings-ga-account-login-customer-id" placeholder="Login Customer ID" /></div>
@@ -374,15 +364,14 @@
               <div class="card card-sm mb-3">
                 <div class="card-header"><h4 class="card-title">Conversion goals (Revenue / Profit)</h4></div>
                 <div class="card-body">
-                  <p class="text-muted small mb-2">Provision UPLOAD_CLICKS conversion actions for postback. Current goals:</p>
+                  <p class="text-muted small mb-2" title="Provision UPLOAD_CLICKS conversion actions for postback.">Current goals: <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></p>
                   <pre id="settings-ga-goals-output" class="dm-json-pre small mb-2" style="max-height:120px">—</pre>
                   <button type="button" class="btn btn-outline-primary btn-sm" id="settings-ga-provision-goals-btn">Provision goals</button>
                 </div>
               </div>
               <div class="card card-sm mb-3">
-                <div class="card-header"><h4 class="card-title">Profit rules</h4></div>
+                <div class="card-header"><h4 class="card-title" title="Profit conversion value = revenue − configured non-ads costs (ad spend excluded). Configure cost components in Kexo / Business snapshot / Profit rules.">Profit rules <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></h4></div>
                 <div class="card-body">
-                  <p class="text-muted small mb-0">Profit conversion value = revenue − configured non-ads costs (ad spend excluded). Configure cost components in Kexo / Business snapshot / Profit rules.</p>
                 </div>
               </div>
               <div class="card card-sm mb-3">
@@ -390,9 +379,8 @@
                 <div class="card-body">
                   <div class="form-check form-switch mb-2">
                     <input class="form-check-input" type="checkbox" id="settings-ga-postback-enabled" />
-                    <label class="form-check-label" for="settings-ga-postback-enabled">Enable postback</label>
+                    <label class="form-check-label" for="settings-ga-postback-enabled" title="When enabled, attributed orders are sent to Google Ads as Revenue and Profit conversions. Default: off.">Enable postback <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></label>
                   </div>
-                  <p class="text-muted small mb-0">When enabled, attributed orders are sent to Google Ads as Revenue and Profit conversions. Default: off.</p>
                 </div>
               </div>
               <pre id="settings-ga-output" class="dm-json-pre mb-0">Loading…</pre>
@@ -408,10 +396,9 @@
       <div id="settings-panel-attribution" class="settings-panel" role="tabpanel" aria-labelledby="settings-tab-attribution">
         <div class="card">
           <div class="card-header">
-            <h3 class="card-title"><i class="fa-thin fa-map-location-dot me-2" data-icon-key="settings-tab-sources" aria-hidden="true"></i>Attribution</h3>
+            <h3 class="card-title" title="Map observed tokens (UTMs, referrer host, entry URL params, explicit kexo_attr) into persisted Attribution variants (Channel + Source + Ownership)."><i class="fa-thin fa-map-location-dot me-2" data-icon-key="settings-tab-sources" aria-hidden="true"></i>Attribution <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></h3>
           </div>
           <div class="card-body">
-            <p class="text-secondary mb-3">Map observed tokens (UTMs, referrer host, entry URL params, explicit <code>kexo_attr</code>) into persisted Attribution variants (Channel + Source + Ownership).</p>
             <div class="accordion settings-layout-accordion" id="settings-attribution-accordion">
               <div class="accordion-item">
                 <h4 class="accordion-header">
@@ -449,7 +436,7 @@
       <div id="settings-panel-insights" class="settings-panel" role="tabpanel" aria-labelledby="settings-tab-insights">
         <div class="card">
           <div class="card-header">
-            <h3 class="card-title"><i class="fa-thin fa-chart-pie me-2" data-icon-key="settings-tab-insights" aria-hidden="true"></i>Insights</h3>
+            <h3 class="card-title" title="Create and manage custom variant mapping tables used by Insights → Variants."><i class="fa-thin fa-chart-pie me-2" data-icon-key="settings-tab-insights" aria-hidden="true"></i>Insights <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></h3>
           </div>
           <div class="card-body">
             <div class="accordion settings-layout-accordion" id="settings-insights-accordion">
@@ -460,7 +447,6 @@
                 <div id="settings-insights-accordion-variants" class="accordion-collapse collapse" data-bs-parent="#settings-insights-accordion">
                   <div class="accordion-body">
             <div id="settings-insights-layout-panel-variants">
-              <p class="text-secondary mb-3">Create and manage custom variant mapping tables used by Insights → Variants.</p>
               <div id="settings-insights-variants-root" class="dm-root">
                 <div class="dm-loading">Loading variant table mappings…</div>
               </div>
@@ -573,7 +559,7 @@
       <div id="settings-panel-layout" class="settings-panel" role="tabpanel" aria-labelledby="settings-tab-layout">
         <div class="card">
           <div class="card-header">
-            <h3 class="card-title"><i class="fa-thin fa-table-columns me-2" data-icon-key="settings-tab-layout" aria-hidden="true"></i>Layout</h3>
+            <h3 class="card-title" title="Configure table pagination, sticky column sizing, chart types/colors, KPI labels, and date ranges. Layout and chart settings are global."><i class="fa-thin fa-table-columns me-2" data-icon-key="settings-tab-layout" aria-hidden="true"></i>Layout <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></h3>
           </div>
           <div class="card-body">
             <div class="accordion settings-layout-accordion" id="settings-layout-accordion">
@@ -584,7 +570,6 @@
                 <div id="settings-layout-accordion-tables" class="accordion-collapse collapse" data-bs-parent="#settings-layout-accordion">
                   <div class="accordion-body">
             <div id="settings-layout-panel-tables">
-              <p class="text-secondary mb-3">Configure table pagination, sticky column sizing, and layout across pages. Adding new tables to pages is coming later.</p>
               <div id="settings-layout-tables-root" class="dm-root">
                 <div class="dm-loading">Loading tables…</div>
               </div>
@@ -604,7 +589,6 @@
                 <div id="settings-layout-accordion-charts" class="accordion-collapse collapse" data-bs-parent="#settings-layout-accordion">
                   <div class="accordion-body">
             <div id="settings-layout-panel-charts">
-              <p class="text-secondary mb-3">Control chart types, colors, and visibility across the app. These settings are global (shared across all users).</p>
               <div id="settings-charts-root" class="dm-root">
                 <div class="dm-loading">Loading charts…</div>
               </div>
@@ -613,7 +597,6 @@
                 <button type="button" class="btn btn-outline-secondary" id="settings-charts-reset-btn">Reset to defaults</button>
                 <span id="settings-charts-msg" class="form-hint"></span>
               </div>
-              <div class="text-muted small mt-2">Disabling a chart hides the entire card (header + content).</div>
             </div>
                   </div>
                 </div>
@@ -627,8 +610,7 @@
             <div id="settings-layout-panel-kpis">
               <div class="row g-3">
                 <div class="col-12">
-                  <h4 class="mb-2">KPIs</h4>
-                  <p class="text-secondary mb-3">Configure labels and visibility for the dashboard KPI cards and the header KPI chips. Dashboard KPI placement is automatic by enabled order.</p>
+                  <h4 class="mb-2" title="Configure labels and visibility for dashboard KPI cards and header KPI chips. Placement is automatic by enabled order.">KPIs <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></h4>
 
                   <div class="card card-sm mb-3">
                     <div class="card-body">
@@ -761,8 +743,7 @@
 
                 <div class="col-12">
                   <hr class="my-4" />
-                  <h4 class="mb-2">Date Ranges</h4>
-                  <p class="text-secondary mb-3">Configure which date ranges are available in the date dropdown.</p>
+                  <h4 class="mb-2" title="Configure which date ranges are available in the date dropdown.">Date Ranges <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></h4>
                   <div id="settings-date-ranges-root" class="dm-root">
                     <div class="dm-loading">Loading date ranges…</div>
                   </div>
@@ -787,10 +768,9 @@
       <div id="settings-panel-admin" class="settings-panel kexo-admin-only d-none" role="tabpanel" aria-labelledby="settings-tab-admin">
         <div class="card">
           <div class="card-header">
-            <h3 class="card-title"><i class="fa-thin fa-user-gear me-2" data-icon-key="settings-tab-admin" aria-hidden="true"></i>Admin</h3>
+            <h3 class="card-title" title="Admin controls apply globally. Admin is always loader-disabled."><i class="fa-thin fa-user-gear me-2" data-icon-key="settings-tab-admin" aria-hidden="true"></i>Admin <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></h3>
           </div>
           <div class="card-body" id="settings-admin-root">
-            <p class="text-secondary small mb-3">Admin controls apply globally. Admin is always loader-disabled.</p>
             <div class="accordion settings-layout-accordion" id="settings-admin-accordion">
               <div class="accordion-item">
                 <h4 class="accordion-header">
@@ -806,10 +786,9 @@
                   </h4>
                   <div id="settings-admin-accordion-preview" class="accordion-collapse collapse" data-bs-parent="#settings-admin-controls-accordion">
                     <div class="accordion-body">
-                      <div class="text-secondary small mb-2">Preview affects UI only; server access remains your real account.</div>
+                      <label class="form-label mb-2" for="admin-preview-tier" title="Preview affects UI only; server access remains your real account.">Preview as tier <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></label>
                       <div class="row g-3 align-items-end">
                         <div class="col-12 col-lg-6">
-                          <label class="form-label" for="admin-preview-tier">Preview as tier</label>
                           <select class="form-select" id="admin-preview-tier" aria-label="Preview as tier">
                             <option value="" selected>Off</option>
                             <option value="starter">Starter</option>
@@ -833,7 +812,7 @@
                   </h4>
                   <div id="settings-admin-accordion-loader" class="accordion-collapse collapse" data-bs-parent="#settings-admin-controls-accordion">
                     <div class="accordion-body">
-                      <div class="text-secondary small mb-2">Enable or disable the page loader overlay per page.</div>
+                      <div class="mb-2" title="Enable or disable the page loader overlay per page. Admin loader is always disabled.">Loader <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></div>
                       <div id="admin-loader-toggles" class="d-grid gap-2">
                         <div class="form-check form-switch">
                           <input class="form-check-input" type="checkbox" id="admin-loader-dashboard" data-admin-loader-page="dashboard" />
@@ -903,10 +882,9 @@
                   </h4>
                   <div id="settings-admin-accordion-reporting" class="accordion-collapse collapse" data-bs-parent="#settings-admin-controls-accordion">
                     <div class="accordion-body">
-                      <div class="text-secondary small mb-3">Orders source, sessions source, and pixel session mode. Auto-saves on change.</div>
                       <div class="row g-3">
                         <div class="col-12 col-lg-6">
-                          <label class="form-label" for="admin-orders-source">Orders source</label>
+                          <label class="form-label" for="admin-orders-source" title="Orders source, sessions source, and pixel session mode. Auto-saves on change.">Orders source <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></label>
                           <select class="form-select" id="admin-orders-source">
                             <option value="orders_shopify">orders_shopify</option>
                           </select>
