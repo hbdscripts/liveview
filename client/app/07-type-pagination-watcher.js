@@ -153,9 +153,16 @@
         else if (bvBy === 'sales') primary = cmpNullableNumber(a && a.orders, b && b.orders, bvDir);
         else if (bvBy === 'clicks') primary = cmpNullableNumber(a && a.clicks, b && b.clicks, bvDir);
         else if (bvBy === 'rev') primary = cmpNullableNumber(a && a.revenue, b && b.revenue, bvDir);
+        else if (bvBy === 'vpv') primary = cmpNullableNumber(vpvFromRow(a), vpvFromRow(b), bvDir);
         else if (bvBy === 'cr') {
           primary = cmpNullableNumber(a && a.cr, b && b.cr, bvDir) ||
             cmpNullableNumber(a && a.orders, b && b.orders, 'desc');
+        }
+        function vpvFromRow(r) {
+          if (r && typeof r.vpv === 'number' && Number.isFinite(r.vpv)) return r.vpv;
+          var rev = r && typeof r.revenue === 'number' ? r.revenue : null;
+          var sess = r && (typeof r.clicks === 'number' || typeof r.sessions === 'number') ? (r.clicks != null ? r.clicks : r.sessions) : null;
+          return (sess != null && sess > 0 && rev != null) ? (rev / sess) : null;
         }
         return primary ||
           cmpNullableNumber(a && a.revenue, b && b.revenue, 'desc') ||
@@ -200,12 +207,15 @@
         const revenue = formatRevenueTableHtml(v && v.revenue != null ? v.revenue : null);
         const crVal = (v && typeof v.cr === 'number') ? v.cr : null;
         const cr = crVal != null ? pct(crVal) : '\u2014';
+        const vpvNum = (v && typeof v.vpv === 'number' && Number.isFinite(v.vpv)) ? v.vpv : ((v && v.clicks > 0 && v.revenue != null) ? (v.revenue / v.clicks) : null);
+        const vpv = vpvNum != null ? formatRevenue0(vpvNum) : '\u2014';
 
         return '<div class="grid-row" role="row">' +
           '<div class="grid-cell bs-product-col" role="cell"><div class="product-cell">' + name + '</div></div>' +
           '<div class="grid-cell" role="cell">' + clicks + '</div>' +
           '<div class="grid-cell" role="cell">' + orders + '</div>' +
           '<div class="grid-cell" role="cell">' + cr + '</div>' +
+          '<div class="grid-cell" role="cell">' + vpv + '</div>' +
           '<div class="grid-cell" role="cell">' + revenue + '</div>' +
         '</div>';
       }).join('');
@@ -500,12 +510,19 @@
         if (sortKey === 'orders') return cmpNullableNumber(a && a.orders, b && b.orders, sortDir);
         if (sortKey === 'clicks') return cmpNullableNumber(a && a.clicks, b && b.clicks, sortDir);
         if (sortKey === 'rev') return cmpNullableNumber(a && a.revenue, b && b.revenue, sortDir);
+        if (sortKey === 'vpv') return cmpNullableNumber(vpvFromRow(a), vpvFromRow(b), sortDir);
         if (sortKey === 'cr') {
           return cmpNullableNumber(a && a.cr, b && b.cr, sortDir) ||
             cmpNullableNumber(a && a.orders, b && b.orders, 'desc');
         }
         return 0;
       });
+      function vpvFromRow(r) {
+        if (r && typeof r.vpv === 'number' && Number.isFinite(r.vpv)) return r.vpv;
+        var rev = r && typeof r.revenue === 'number' ? r.revenue : null;
+        var sess = r && (typeof r.clicks === 'number' || typeof r.sessions === 'number') ? (r.clicks != null ? r.clicks : r.sessions) : null;
+        return (sess != null && sess > 0 && rev != null) ? (rev / sess) : null;
+      }
       const pageSize = (data && typeof data.pageSize === 'number' && data.pageSize > 0)
         ? data.pageSize
         : getTableRowsPerPage('best-sellers-table', 'product');
@@ -539,11 +556,14 @@
         const clicks = (typeof p.clicks === 'number') ? formatSessions(p.clicks) : '\u2014';
         const revenue = formatRevenueTableHtml(p.revenue);
         const cr = p.cr != null ? pct(p.cr) : '\u2014';
+        const vpvNum = vpvFromRow(p);
+        const vpv = vpvNum != null ? formatRevenue0(vpvNum) : '\u2014';
         return '<div class="grid-row" role="row">' +
           '<div class="grid-cell bs-product-col" role="cell"><div class="product-cell">' + name + '</div></div>' +
           '<div class="grid-cell" role="cell">' + clicks + '</div>' +
           '<div class="grid-cell" role="cell">' + orders + '</div>' +
           '<div class="grid-cell" role="cell">' + cr + '</div>' +
+          '<div class="grid-cell" role="cell">' + vpv + '</div>' +
           '<div class="grid-cell" role="cell">' + revenue + '</div>' +
         '</div>';
       }).join('');
@@ -1073,8 +1093,14 @@
         const code = (r && r.country_code != null ? String(r.country_code) : 'XX').toUpperCase().slice(0, 2);
         return countryLabel(code);
       }
+      function countryVpv(r) {
+        var rev = r && typeof r.revenue === 'number' ? r.revenue : null;
+        var tot = r && typeof r.total === 'number' ? r.total : null;
+        return (tot != null && tot > 0 && rev != null) ? (rev / tot) : null;
+      }
       list.sort(function(a, b) {
         if (countryBy === 'country') return cmpNullableText(labelFor(a), labelFor(b), countryDir);
+        if (countryBy === 'vpv') return cmpNullableNumber(countryVpv(a), countryVpv(b), countryDir) || cmpNullableText(labelFor(a), labelFor(b), 'asc');
         if (countryBy === 'cr') return cmpNullableNumber(a && a.conversion, b && b.conversion, countryDir) || cmpNullableText(labelFor(a), labelFor(b), 'asc');
         if (countryBy === 'sales') return cmpNullableNumber(a && a.converted, b && b.converted, countryDir) || cmpNullableText(labelFor(a), labelFor(b), 'asc');
         if (countryBy === 'clicks') return cmpNullableNumber(a && a.total, b && b.total, countryDir) || cmpNullableText(labelFor(a), labelFor(b), 'asc');
@@ -1096,6 +1122,8 @@
         const salesCount = r.converted != null ? Number(r.converted) : 0;
         const clicks = r.total != null ? formatSessions(r.total) : '???';
         const revenue = formatRevenueTableHtml(r.revenue);
+        const vpvNum = countryVpv(r);
+        const vpv = vpvNum != null ? formatRevenue0(vpvNum) : '\u2014';
         const flag = flagImg(code, label);
         const labelHtml = '<span class="country-label">' + escapeHtml(label) + '</span>';
         return '<div class="grid-row" role="row">' +
@@ -1103,6 +1131,7 @@
           '<div class="grid-cell" role="cell">' + clicks + '</div>' +
           '<div class="grid-cell" role="cell">' + salesCount + '</div>' +
           '<div class="grid-cell" role="cell">' + conversion + '</div>' +
+          '<div class="grid-cell" role="cell">' + vpv + '</div>' +
           '<div class="grid-cell" role="cell">' + revenue + '</div>' +
         '</div>';
       }).join('');
@@ -1517,11 +1546,17 @@
       function geoProductTitle(r) {
         return (r && r.product_title != null) ? String(r.product_title).trim() : '';
       }
+      function geoVpv(r) {
+        var rev = r && typeof r.revenue === 'number' ? r.revenue : null;
+        var tot = r && typeof r.total === 'number' ? r.total : null;
+        return (tot != null && tot > 0 && rev != null) ? (rev / tot) : null;
+      }
       list.sort(function(a, b) {
         if (geoBy === 'country') {
           return cmpNullableText(geoCountryLabel(a), geoCountryLabel(b), geoDir) ||
             cmpNullableText(geoProductTitle(a), geoProductTitle(b), 'asc');
         }
+        if (geoBy === 'vpv') return cmpNullableNumber(geoVpv(a), geoVpv(b), geoDir) || cmpNullableNumber(a && a.revenue, b && b.revenue, 'desc');
         if (geoBy === 'cr') return cmpNullableNumber(a && a.conversion, b && b.conversion, geoDir) || cmpNullableNumber(a && a.total, b && b.total, 'desc');
         if (geoBy === 'sales') return cmpNullableNumber(a && a.converted, b && b.converted, geoDir) || cmpNullableNumber(a && a.revenue, b && b.revenue, 'desc');
         if (geoBy === 'clicks') return cmpNullableNumber(a && a.total, b && b.total, geoDir) || cmpNullableNumber(a && a.converted, b && b.converted, 'desc');
@@ -1547,6 +1582,8 @@
         const salesCount = r.converted != null ? Number(r.converted) : 0;
         const clicks = r.total != null ? formatSessions(r.total) : '???';
         const revenue = formatRevenueTableHtml(r.revenue);
+        const vpvNum = (r && r.total > 0 && r.revenue != null) ? (r.revenue / r.total) : null;
+        const vpv = vpvNum != null ? formatRevenue0(vpvNum) : '\u2014';
         const flag = flagImg(iso, label);
         const normalizedHandle = productHandle ? String(productHandle).trim().toLowerCase() : '';
         const canOpen = normalizedHandle || (productId && /^\d+$/.test(productId));
@@ -1567,6 +1604,7 @@
           '<div class="grid-cell" role="cell">' + clicks + '</div>' +
           '<div class="grid-cell" role="cell">' + salesCount + '</div>' +
           '<div class="grid-cell" role="cell">' + conversion + '</div>' +
+          '<div class="grid-cell" role="cell">' + vpv + '</div>' +
           '<div class="grid-cell" role="cell">' + revenue + '</div>' +
         '</div>';
       }).join('');
@@ -2447,6 +2485,7 @@
         'cond-kpi-revenue',
         'cond-kpi-sessions',
         'cond-kpi-conv',
+        'cond-kpi-vpv',
         'cond-kpi-roas',
         'cond-kpi-returning',
         'cond-kpi-aov',
@@ -2744,6 +2783,11 @@
         'cond-kpi-orders-sparkline': function(d) { return d.orders; },
         'cond-kpi-revenue-sparkline': function(d) { return d.revenue; },
         'cond-kpi-conv-sparkline': function(d) { return d.convRate; },
+        'cond-kpi-vpv-sparkline': function(d) {
+          var rev = d && typeof d.revenue === 'number' ? d.revenue : 0;
+          var sess = d && typeof d.sessions === 'number' ? d.sessions : 0;
+          return (sess > 0) ? (rev / sess) : null;
+        },
         'cond-kpi-roas-sparkline': function(d) {
           var spend = d && typeof d.adSpend === 'number' ? d.adSpend : 0;
           var rev = d && typeof d.revenue === 'number' ? d.revenue : 0;
@@ -2837,11 +2881,13 @@
       const returningCustomerCountMap = data && data.returningCustomerCount ? data.returningCustomerCount : {};
       const breakdown = data && data.trafficBreakdown ? data.trafficBreakdown : {};
       const conv = data && data.conversion ? data.conversion : {};
+      const vpvMap = data && data.vpv ? data.vpv : {};
       const aovMap = data && data.aov ? data.aov : {};
       const bounceMap = data && data.bounce ? data.bounce : {};
       const condOrdersEl = document.getElementById('cond-kpi-orders');
       const condRevenueEl = document.getElementById('cond-kpi-revenue');
       const condConvEl = document.getElementById('cond-kpi-conv');
+      const condVpvEl = document.getElementById('cond-kpi-vpv');
       const condSessionsEl = document.getElementById('cond-kpi-sessions');
       const condReturningEl = document.getElementById('cond-kpi-returning');
       const condAovEl = document.getElementById('cond-kpi-aov');
@@ -2863,6 +2909,7 @@
       const revenueVal = typeof sales[kpiRange] === 'number' ? sales[kpiRange] : null;
       const returningVal = typeof returningCustomerCountMap[kpiRange] === 'number' ? returningCustomerCountMap[kpiRange] : null;
       const convVal = typeof conv[kpiRange] === 'number' ? conv[kpiRange] : null;
+      const vpvVal = typeof vpvMap[kpiRange] === 'number' ? vpvMap[kpiRange] : null;
       const aovVal = typeof aovMap[kpiRange] === 'number' ? aovMap[kpiRange] : null;
       const roasVal = data && data.roas && typeof data.roas[kpiRange] === 'number' ? data.roas[kpiRange] : null;
       const bounceVal = typeof bounceMap[kpiRange] === 'number' ? bounceMap[kpiRange] : null;
@@ -2873,6 +2920,7 @@
       const compareRevenueVal = compare && typeof compare.sales === 'number' ? compare.sales : null;
       const compareReturningVal = compare && typeof compare.returningCustomerCount === 'number' ? compare.returningCustomerCount : null;
       const compareConvVal = compare && typeof compare.conversion === 'number' ? compare.conversion : null;
+      const compareVpvVal = compare && typeof compare.vpv === 'number' ? compare.vpv : null;
       const compareAovVal = compare && typeof compare.aov === 'number' ? compare.aov : null;
       const compareRoasVal = compare && typeof compare.roas === 'number' ? compare.roas : null;
       const compareBounceVal = compare && typeof compare.bounce === 'number' ? compare.bounce : null;
@@ -2905,6 +2953,7 @@
       if (condRevenueEl) condRevenueEl.textContent = revenueVal != null ? formatRevenue(revenueVal) : '\u2014';
       if (condSessionsEl) condSessionsEl.textContent = sessionsVal != null ? formatSessions(sessionsVal) : '\u2014';
       if (condConvEl) condConvEl.textContent = convVal != null ? pct(convVal) : '\u2014';
+      if (condVpvEl) condVpvEl.textContent = vpvVal != null ? formatRevenue0(vpvVal) : '\u2014';
       if (condReturningEl) condReturningEl.textContent = returningVal != null ? formatSessions(returningVal) : '\u2014';
       if (condAovEl) condAovEl.textContent = aovVal != null ? formatRevenue(aovVal) : '\u2014';
       if (condRoasEl) condRoasEl.textContent = roasVal != null ? Number(roasVal).toFixed(2) + 'x' : '\u2014';
@@ -2913,6 +2962,7 @@
       applyCondensedKpiDelta('revenue', revenueVal, compareRevenueVal, false);
       applyCondensedKpiDelta('sessions', sessionsVal, compareSessionsVal, false);
       applyCondensedKpiDelta('conv', convVal, compareConvVal, false);
+      applyCondensedKpiDelta('vpv', vpvVal, compareVpvVal, false);
       applyCondensedKpiDelta('returning', returningVal, compareReturningVal, false);
       applyCondensedKpiDelta('aov', aovVal, compareAovVal, false);
       applyCondensedKpiDelta('roas', roasVal, compareRoasVal, false);
@@ -2920,6 +2970,7 @@
       setCondensedSparklineTone('cond-kpi-orders-sparkline', orderCountVal, compareOrdersVal);
       setCondensedSparklineTone('cond-kpi-revenue-sparkline', revenueVal, compareRevenueVal);
       setCondensedSparklineTone('cond-kpi-conv-sparkline', convVal, compareConvVal);
+      setCondensedSparklineTone('cond-kpi-vpv-sparkline', vpvVal, compareVpvVal);
       setCondensedSparklineTone('cond-kpi-roas-sparkline', roasVal, compareRoasVal);
       setCondensedSparklineTone('cond-kpi-sessions-sparkline', sessionsVal, compareSessionsVal);
       setCondensedSparklineTone('cond-kpi-returning-sparkline', returningVal, compareReturningVal);
@@ -3188,6 +3239,7 @@
       var ordersVal = numFromMap(main, 'convertedCount', kpiRange);
       var sessionsVal = sessionsFromBreakdownMap(main, kpiRange);
       var convVal = numFromMap(main, 'conversion', kpiRange);
+      var vpvVal = numFromMap(main, 'vpv', kpiRange);
       var aovVal = numFromMap(main, 'aov', kpiRange);
       var bounceVal = numFromMap(main, 'bounce', kpiRange);
       var returningVal = numFromMap(main, 'returningCustomerCount', kpiRange);
@@ -3212,6 +3264,7 @@
       setDashValueText('dash-kpi-orders', ordersVal != null ? Math.round(ordersVal).toLocaleString() : null);
       setDashValueText('dash-kpi-sessions', sessionsVal != null ? formatSessions(sessionsVal) : null);
       setDashValueText('dash-kpi-conv', convVal != null ? pct(convVal) : null);
+      setDashValueText('dash-kpi-vpv', vpvVal != null ? formatRevenue0(vpvVal) : null);
       setDashValueText('dash-kpi-aov', aovVal != null ? formatRevenue0(aovVal) : null);
       setDashValueText('dash-kpi-bounce', bounceVal != null ? pct(bounceVal) : null);
       setDashValueText('dash-kpi-returning', returningVal != null ? Math.round(returningVal).toLocaleString() : null);
@@ -3227,6 +3280,7 @@
         var orders = values.orders;
         var sessions = values.sessions;
         var conv = values.conv;
+        var vpv = values.vpv;
         var aov = values.aov;
         var bounce = values.bounce;
         var returning = values.returning;
@@ -3240,6 +3294,7 @@
         setDashValueText('dash-orders-' + slotSuffix, orders != null ? Math.round(orders).toLocaleString() : null);
         setDashValueText('dash-sessions-' + slotSuffix, sessions != null ? formatSessions(sessions) : null);
         setDashValueText('dash-conv-' + slotSuffix, conv != null ? pct(conv) : null);
+        setDashValueText('dash-vpv-' + slotSuffix, vpv != null ? formatRevenue0(vpv) : null);
         setDashValueText('dash-aov-' + slotSuffix, aov != null ? formatRevenue0(aov) : null);
         setDashValueText('dash-bounce-' + slotSuffix, bounce != null ? pct(bounce) : null);
         setDashValueText('dash-returning-' + slotSuffix, returning != null ? Math.round(returning).toLocaleString() : null);
@@ -3335,6 +3390,7 @@
       var ordersBase = numFromCompare(primaryCompare, 'convertedCount');
       var sessionsBase = sessionsFromBreakdownCompare(primaryCompare);
       var convBase = numFromCompare(primaryCompare, 'conversion');
+      var vpvBase = numFromCompare(primaryCompare, 'vpv');
       var aovBase = numFromCompare(primaryCompare, 'aov');
       var bounceBase = numFromCompare(primaryCompare, 'bounce');
       var returningBase = numFromCompare(primaryCompare, 'returningCustomerCount');
@@ -3348,6 +3404,7 @@
       applyDashDelta('orders', ordersVal, ordersBase, false);
       applyDashDelta('sessions', sessionsVal, sessionsBase, false);
       applyDashDelta('conv', convVal, convBase, false);
+      applyDashDelta('vpv', vpvVal, vpvBase, false);
       applyDashDelta('aov', aovVal, aovBase, false);
       applyDashDelta('bounce', bounceVal, bounceBase, true);
       applyDashDelta('returning', returningVal, returningBase, false);
@@ -3361,6 +3418,7 @@
         orders: ordersBase,
         sessions: sessionsBase,
         conv: convBase,
+        vpv: vpvBase,
         aov: aovBase,
         bounce: bounceBase,
         returning: returningBase,
@@ -3402,6 +3460,7 @@
           orders: numFromMap(secondary, 'convertedCount', secondaryRangeKey),
           sessions: sessionsFromBreakdownMap(secondary, secondaryRangeKey),
           conv: numFromMap(secondary, 'conversion', secondaryRangeKey),
+          vpv: numFromMap(secondary, 'vpv', secondaryRangeKey),
           aov: numFromMap(secondary, 'aov', secondaryRangeKey),
           bounce: numFromMap(secondary, 'bounce', secondaryRangeKey),
           returning: numFromMap(secondary, 'returningCustomerCount', secondaryRangeKey),
@@ -4092,6 +4151,7 @@
         orders: 'cond-kpi-orders',
         revenue: 'cond-kpi-revenue',
         conv: 'cond-kpi-conv',
+        vpv: 'cond-kpi-vpv',
         roas: 'cond-kpi-roas',
         sessions: 'cond-kpi-sessions',
         returning: 'cond-kpi-returning',
@@ -4182,6 +4242,7 @@
         revenue: 'dash-kpi-revenue',
         orders: 'dash-kpi-orders',
         conv: 'dash-kpi-conv',
+        vpv: 'dash-kpi-vpv',
         aov: 'dash-kpi-aov',
         sessions: 'dash-kpi-sessions',
         bounce: 'dash-kpi-bounce',
@@ -4193,7 +4254,7 @@
         items: 'dash-kpi-items',
         kexo_score: 'dash-kpi-kexo-score',
       };
-      var defaultKpiOrder = ['revenue', 'orders', 'conv', 'aov', 'sessions', 'bounce', 'returning', 'roas', 'kexo_score', 'cogs', 'fulfilled', 'returns', 'items'];
+      var defaultKpiOrder = ['revenue', 'orders', 'conv', 'vpv', 'aov', 'sessions', 'bounce', 'returning', 'roas', 'kexo_score', 'cogs', 'fulfilled', 'returns', 'items'];
       var colByKey = {};
       var keyByCol = new Map();
       Object.keys(idByKey).forEach(function(key) {

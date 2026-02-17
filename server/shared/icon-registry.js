@@ -80,6 +80,7 @@ const ICON_GLYPH_DEFAULTS = Object.freeze({
   'nav-item-admin': 'fa-user-gear',
   'tools-click-order-lookup-search': 'fa-magnifying-glass',
   'table-icon-cr': 'fa-percent',
+  'table-icon-vpv': 'fa-coins',
   'table-icon-orders': 'fa-box-open',
   'table-icon-sessions': 'fa-users',
   'table-icon-revenue': 'fa-sterling-sign',

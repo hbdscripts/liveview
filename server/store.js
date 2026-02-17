@@ -14,6 +14,7 @@ const shopifyQl = require('./shopifyQl');
 const reportCache = require('./reportCache');
 const { deriveAttribution } = require('./attribution/deriveAttribution');
 const { warnOnReject } = require('./shared/warnReject');
+const { ratioOrNull } = require('./metrics');
 
 // Best-effort Shopify truth warmup (must not block request paths).
 let _truthNudgeLastAt = 0;
@@ -3386,6 +3387,8 @@ async function getKpis(options = {}) {
     ? (Math.round((salesVal / adSpendVal) * 100) / 100)
     : null;
 
+  const vpvVal = ratioOrNull(salesVal, sessionsForConv, { decimals: 2 });
+
   let compare = null;
   // Compute previous-period comparison for all date ranges
   {
@@ -3443,6 +3446,8 @@ async function getKpis(options = {}) {
         ? (Math.round((compareSales / compareAdSpend) * 100) / 100)
         : null;
 
+      const compareVpv = ratioOrNull(compareSales, compareSessionsForConv, { decimals: 2 });
+
       compare = {
         sales: compareSales,
         returningRevenue: compareReturning,
@@ -3453,6 +3458,7 @@ async function getKpis(options = {}) {
         bounce: compareBounce,
         adSpend: compareAdSpend,
         roas: compareRoas,
+        vpv: compareVpv,
         convertedCount: compareConvertedCount,
         trafficBreakdown: compareBreakdown,
         range: { start: compareStart, end: compareEnd },
@@ -3477,6 +3483,7 @@ async function getKpis(options = {}) {
     convertedCount: { [rangeKey]: convertedCountVal },
     adSpend: { [rangeKey]: adSpendVal },
     roas: { [rangeKey]: roasVal },
+    vpv: { [rangeKey]: vpvVal },
     compare,
     trafficMode,
     trafficBreakdown: { [rangeKey]: trafficBreakdownVal },

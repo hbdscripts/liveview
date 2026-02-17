@@ -645,6 +645,11 @@
         if (key === 'orders') return (typeof r.orders === 'number') ? r.orders : null;
         if (key === 'sessions') return (typeof r.sessions === 'number') ? r.sessions : null;
         if (key === 'rev') return (typeof r.revenue_gbp === 'number') ? r.revenue_gbp : null;
+        if (key === 'vpv') {
+          const rev = (typeof r.revenue_gbp === 'number') ? r.revenue_gbp : null;
+          const sess = (typeof r.sessions === 'number') ? r.sessions : null;
+          return (sess != null && sess > 0 && rev != null) ? (rev / sess) : null;
+        }
         return null;
       }
 
@@ -709,6 +714,7 @@
         const chOrders = (ch && typeof ch.orders === 'number') ? formatSessions(ch.orders) : '-';
         const chSessions = (ch && typeof ch.sessions === 'number') ? formatSessions(ch.sessions) : '-';
         const chRev = (ch && typeof ch.revenue_gbp === 'number') ? formatRevenueTableHtml(ch.revenue_gbp) : '-';
+        const chVpv = metric(ch, 'vpv') != null ? formatRevenue0(metric(ch, 'vpv')) : '\u2014';
         html += '<div class="grid-row traffic-type-parent attribution-channel-parent" role="row" data-channel="' + escapeHtml(chKey) + '">' +
           '<div class="grid-cell" role="cell">' +
             '<button type="button" class="traffic-type-toggle attribution-channel-toggle" data-channel="' + escapeHtml(chKey) + '" aria-expanded="' + (chOpen ? 'true' : 'false') + '">' +
@@ -718,6 +724,7 @@
           '<div class="grid-cell" role="cell">' + escapeHtml(chSessions || '-') + '</div>' +
           '<div class="grid-cell" role="cell">' + escapeHtml(chOrders || '-') + '</div>' +
           '<div class="grid-cell" role="cell">' + escapeHtml(chCr || '-') + '</div>' +
+          '<div class="grid-cell" role="cell">' + chVpv + '</div>' +
           '<div class="grid-cell" role="cell">' + (chRev || '-') + '</div>' +
         '</div>';
 
@@ -742,6 +749,7 @@
           const sOrders = (src && typeof src.orders === 'number') ? formatSessions(src.orders) : '-';
           const sSessions = (src && typeof src.sessions === 'number') ? formatSessions(src.sessions) : '-';
           const sRev = (src && typeof src.revenue_gbp === 'number') ? formatRevenueTableHtml(src.revenue_gbp) : '-';
+          const sVpv = metric(src, 'vpv') != null ? formatRevenue0(metric(src, 'vpv')) : '\u2014';
           html += '<div class="grid-row traffic-type-child attribution-source-row' + (chOpen ? '' : ' is-hidden') + '" role="row" data-parent="' + escapeHtml(chKey) + '" data-channel="' + escapeHtml(chKey) + '" data-source="' + escapeHtml(sKey) + '">' +
             '<div class="grid-cell" role="cell">' +
               '<button type="button" class="traffic-type-toggle attribution-source-toggle" data-channel="' + escapeHtml(chKey) + '" data-source="' + escapeHtml(sKey) + '" aria-expanded="' + (srcOpen ? 'true' : 'false') + '">' +
@@ -752,6 +760,7 @@
             '<div class="grid-cell" role="cell">' + escapeHtml(sSessions || '-') + '</div>' +
             '<div class="grid-cell" role="cell">' + escapeHtml(sOrders || '-') + '</div>' +
             '<div class="grid-cell" role="cell">' + escapeHtml(sCr || '-') + '</div>' +
+            '<div class="grid-cell" role="cell">' + sVpv + '</div>' +
             '<div class="grid-cell" role="cell">' + (sRev || '-') + '</div>' +
           '</div>';
 
@@ -776,6 +785,7 @@
             const vOrders = (v && typeof v.orders === 'number') ? formatSessions(v.orders) : '-';
             const vSessions = (v && typeof v.sessions === 'number') ? formatSessions(v.sessions) : '-';
             const vRev = (v && typeof v.revenue_gbp === 'number') ? formatRevenueTableHtml(v.revenue_gbp) : '-';
+            const vVpv = metric(v, 'vpv') != null ? formatRevenue0(metric(v, 'vpv')) : '\u2014';
             const ownerKind = v && v.owner_kind != null ? String(v.owner_kind).trim().toLowerCase() : '';
             const ownerBadge = ownerKind && ownerKind !== 'house'
               ? (' <span class="text-muted small">(' + escapeHtml(ownerKind) + ')</span>')
@@ -785,6 +795,7 @@
               '<div class="grid-cell" role="cell">' + escapeHtml(vSessions || '-') + '</div>' +
               '<div class="grid-cell" role="cell">' + escapeHtml(vOrders || '-') + '</div>' +
               '<div class="grid-cell" role="cell">' + escapeHtml(vCr || '-') + '</div>' +
+              '<div class="grid-cell" role="cell">' + vVpv + '</div>' +
               '<div class="grid-cell" role="cell">' + (vRev || '-') + '</div>' +
             '</div>';
           });
@@ -874,6 +885,11 @@
         if (key === 'orders') return (typeof r.orders === 'number') ? r.orders : null;
         if (key === 'sessions') return (typeof r.sessions === 'number') ? r.sessions : null;
         if (key === 'rev') return (typeof r.revenue_gbp === 'number') ? r.revenue_gbp : null;
+        if (key === 'vpv') {
+          const rev = (typeof r.revenue_gbp === 'number') ? r.revenue_gbp : null;
+          const sess = (typeof r.sessions === 'number') ? r.sessions : null;
+          return (sess != null && sess > 0 && rev != null) ? (rev / sess) : null;
+        }
         return null;
       }
 
@@ -937,6 +953,7 @@
         const orders = (g && typeof g.orders === 'number') ? formatSessions(g.orders) : '-';
         const sessions = (g && typeof g.sessions === 'number') ? formatSessions(g.sessions) : '-';
         const rev = (g && typeof g.revenue_gbp === 'number') ? formatRevenueTableHtml(g.revenue_gbp) : '-';
+        const vpv = metric(g, 'vpv') != null ? formatRevenue0(metric(g, 'vpv')) : '\u2014';
         html += '<div class="grid-row traffic-type-parent devices-parent" role="row" data-device-type="' + escapeHtml(dKey) + '">' +
           '<div class="grid-cell" role="cell">' +
             '<button type="button" class="traffic-type-toggle devices-toggle" data-device-type="' + escapeHtml(dKey) + '" aria-expanded="' + (open ? 'true' : 'false') + '">' +
@@ -947,6 +964,7 @@
           '<div class="grid-cell" role="cell">' + escapeHtml(sessions || '-') + '</div>' +
           '<div class="grid-cell" role="cell">' + escapeHtml(orders || '-') + '</div>' +
           '<div class="grid-cell" role="cell">' + escapeHtml(cr || '-') + '</div>' +
+          '<div class="grid-cell" role="cell">' + vpv + '</div>' +
           '<div class="grid-cell" role="cell">' + (rev || '-') + '</div>' +
         '</div>';
 
@@ -969,11 +987,13 @@
           const corders = (c && typeof c.orders === 'number') ? formatSessions(c.orders) : '-';
           const csessions = (c && typeof c.sessions === 'number') ? formatSessions(c.sessions) : '-';
           const crev = (c && typeof c.revenue_gbp === 'number') ? formatRevenueTableHtml(c.revenue_gbp) : '-';
+          const cvpv = metric(c, 'vpv') != null ? formatRevenue0(metric(c, 'vpv')) : '\u2014';
           html += '<div class="grid-row traffic-type-child devices-child' + (open ? '' : ' is-hidden') + '" role="row" data-parent="' + escapeHtml(dKey) + '">' +
             '<div class="grid-cell" role="cell"><span style="display:inline-flex;align-items:center;gap:8px">' + trafficTypePlatformIcon(platform) + '<span>' + escapeHtml(clabel) + '</span></span></div>' +
             '<div class="grid-cell" role="cell">' + escapeHtml(csessions || '-') + '</div>' +
             '<div class="grid-cell" role="cell">' + escapeHtml(corders || '-') + '</div>' +
             '<div class="grid-cell" role="cell">' + escapeHtml(ccr || '-') + '</div>' +
+            '<div class="grid-cell" role="cell">' + cvpv + '</div>' +
             '<div class="grid-cell" role="cell">' + (crev || '-') + '</div>' +
           '</div>';
         });

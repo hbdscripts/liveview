@@ -1424,31 +1424,40 @@
             var code = r && r.country ? String(r.country).trim().toUpperCase() : '';
             var cc = code ? code.toLowerCase() : '';
             var flag = (cc && /^[a-z]{2}$/.test(cc)) ? '<span class="flag flag-xs flag-country-' + esc(cc) + '" style="vertical-align:middle;margin-right:4px;" aria-hidden="true"></span>' : '';
+            var clicks = r && r.clicks != null ? r.clicks : 0;
+            var rev = r && r.revenue != null ? r.revenue : 0;
+            var vpv = (clicks > 0 && rev != null) ? (rev / clicks) : null;
+            var vpvStr = vpv != null ? fmtMoney(vpv, currency || 'GBP') : '—';
             return (
               '<tr>' +
                 '<td>' + flag + esc(code || '—') + '</td>' +
-                '<td class="text-end">' + esc(fmtNum(r && r.clicks != null ? r.clicks : 0)) + '</td>' +
+                '<td class="text-end">' + esc(fmtNum(clicks)) + '</td>' +
                 '<td class="text-end">' + esc(fmtMoney(r && r.spend != null ? r.spend : 0, currency || 'GBP')) + '</td>' +
                 '<td class="text-end">' + esc(fmtNum(r && r.orders != null ? r.orders : 0)) + '</td>' +
                 '<td class="text-end">' + esc(fmtPct(r && r.cr != null ? r.cr : null, 1)) + '</td>' +
-                '<td class="text-end">' + esc(fmtMoney(r && r.revenue != null ? r.revenue : 0, currency || 'GBP')) + '</td>' +
+                '<td class="text-end">' + esc(vpvStr) + '</td>' +
+                '<td class="text-end">' + esc(fmtMoney(rev, currency || 'GBP')) + '</td>' +
                 '<td class="text-end">' + esc(fmtRoas(r && r.roas != null ? r.roas : null)) + '</td>' +
               '</tr>'
             );
           }
         })
       : (function () {
-          var h = '<table class="ads-modal-countries-table"><thead><tr><th>Country</th><th class="text-end">Clicks</th><th class="text-end">Spend</th><th class="text-end">Orders</th><th class="text-end">CR%</th><th class="text-end">Revenue</th><th class="text-end">ROAS</th></tr></thead><tbody>';
+          var h = '<table class="ads-modal-countries-table"><thead><tr><th>Country</th><th class="text-end">Clicks</th><th class="text-end">Spend</th><th class="text-end">Orders</th><th class="text-end">CR%</th><th class="text-end">VPV</th><th class="text-end">Revenue</th><th class="text-end">ROAS</th></tr></thead><tbody>';
           for (var i = 0; i < rows.length; i++) {
             var r = rows[i] || {};
             var code = r.country ? String(r.country).trim().toUpperCase() : '';
             var cc = code ? code.toLowerCase() : '';
             var flag = (cc && /^[a-z]{2}$/.test(cc)) ? '<span class="flag flag-xs flag-country-' + esc(cc) + '" style="vertical-align:middle;margin-right:4px;" aria-hidden="true"></span>' : '';
+            var clicks = r.clicks || 0;
+            var vpv = (clicks > 0 && r.revenue != null) ? (r.revenue / clicks) : null;
+            var vpvStr = vpv != null ? fmtMoney(vpv, currency || 'GBP') : '—';
             h += '<tr><td>' + flag + esc(code || '—') + '</td>' +
-              '<td class="text-end">' + esc(fmtNum(r.clicks || 0)) + '</td>' +
+              '<td class="text-end">' + esc(fmtNum(clicks)) + '</td>' +
               '<td class="text-end">' + esc(fmtMoney(r.spend || 0, currency || 'GBP')) + '</td>' +
               '<td class="text-end">' + esc(fmtNum(r.orders || 0)) + '</td>' +
               '<td class="text-end">' + esc(fmtPct(r.cr, 1)) + '</td>' +
+              '<td class="text-end">' + esc(vpvStr) + '</td>' +
               '<td class="text-end">' + esc(fmtMoney(r.revenue || 0, currency || 'GBP')) + '</td>' +
               '<td class="text-end">' + esc(fmtRoas(r.roas)) + '</td></tr>';
           }
@@ -1507,29 +1516,38 @@
           rows: rows,
           renderRow: function (r) {
             var device = r && r.device ? String(r.device).trim() : '';
+            var clicks = r && r.clicks != null ? r.clicks : 0;
+            var rev = r && r.revenue != null ? r.revenue : 0;
+            var vpv = (clicks > 0 && rev != null) ? (rev / clicks) : null;
+            var vpvStr = vpv != null ? fmtMoney(vpv, currency || 'GBP') : '—';
             return (
               '<tr>' +
                 '<td>' + esc(device || '—') + '</td>' +
-                '<td class="text-end">' + esc(fmtNum(r && r.clicks != null ? r.clicks : 0)) + '</td>' +
+                '<td class="text-end">' + esc(fmtNum(clicks)) + '</td>' +
                 '<td class="text-end">' + esc(fmtMoney(r && r.spend != null ? r.spend : 0, currency || 'GBP')) + '</td>' +
                 '<td class="text-end">' + esc(fmtNum(r && r.orders != null ? r.orders : 0)) + '</td>' +
                 '<td class="text-end">' + esc(fmtPct(r && r.cr != null ? r.cr : null, 1)) + '</td>' +
-                '<td class="text-end">' + esc(fmtMoney(r && r.revenue != null ? r.revenue : 0, currency || 'GBP')) + '</td>' +
+                '<td class="text-end">' + esc(vpvStr) + '</td>' +
+                '<td class="text-end">' + esc(fmtMoney(rev, currency || 'GBP')) + '</td>' +
                 '<td class="text-end">' + esc(fmtRoas(r && r.roas != null ? r.roas : null)) + '</td>' +
               '</tr>'
             );
           }
         })
       : (function () {
-          var h = '<table class="ads-modal-devices-table"><thead><tr><th>Device</th><th class="text-end">Clicks</th><th class="text-end">Spend</th><th class="text-end">Orders</th><th class="text-end">CR%</th><th class="text-end">Revenue</th><th class="text-end">ROAS</th></tr></thead><tbody>';
+          var h = '<table class="ads-modal-devices-table"><thead><tr><th>Device</th><th class="text-end">Clicks</th><th class="text-end">Spend</th><th class="text-end">Orders</th><th class="text-end">CR%</th><th class="text-end">VPV</th><th class="text-end">Revenue</th><th class="text-end">ROAS</th></tr></thead><tbody>';
           for (var i = 0; i < rows.length; i++) {
             var r = rows[i] || {};
             var device = r.device ? String(r.device).trim() : '';
+            var clicks = r.clicks || 0;
+            var vpv = (clicks > 0 && r.revenue != null) ? (r.revenue / clicks) : null;
+            var vpvStr = vpv != null ? fmtMoney(vpv, currency || 'GBP') : '—';
             h += '<tr><td>' + esc(device || '—') + '</td>' +
-              '<td class="text-end">' + esc(fmtNum(r.clicks || 0)) + '</td>' +
+              '<td class="text-end">' + esc(fmtNum(clicks)) + '</td>' +
               '<td class="text-end">' + esc(fmtMoney(r.spend || 0, currency || 'GBP')) + '</td>' +
               '<td class="text-end">' + esc(fmtNum(r.orders || 0)) + '</td>' +
               '<td class="text-end">' + esc(fmtPct(r.cr, 1)) + '</td>' +
+              '<td class="text-end">' + esc(vpvStr) + '</td>' +
               '<td class="text-end">' + esc(fmtMoney(r.revenue || 0, currency || 'GBP')) + '</td>' +
               '<td class="text-end">' + esc(fmtRoas(r.roas)) + '</td></tr>';
           }
@@ -1596,28 +1614,37 @@
             var label = r && r.label ? String(r.label).trim() : '';
             var name = label || (code ? code : '—');
             var title = label && code ? (label + ' (' + code + ')') : name;
+            var sess = r && r.sessions != null ? r.sessions : 0;
+            var rev = r && r.revenue != null ? r.revenue : 0;
+            var vpv = (sess > 0 && rev != null) ? (rev / sess) : null;
+            var vpvStr = vpv != null ? fmtMoney(vpv, currency || 'GBP') : '—';
             return (
               '<tr>' +
                 '<td>' + esc(title || '—') + '</td>' +
-                '<td class="text-end">' + esc(fmtNum(r && r.sessions != null ? r.sessions : 0)) + '</td>' +
+                '<td class="text-end">' + esc(fmtNum(sess)) + '</td>' +
                 '<td class="text-end">' + esc(fmtNum(r && r.orders != null ? r.orders : 0)) + '</td>' +
                 '<td class="text-end">' + esc(fmtPct(r && r.cr != null ? r.cr : null, 1)) + '</td>' +
-                '<td class="text-end">' + esc(fmtMoney(r && r.revenue != null ? r.revenue : 0, currency || 'GBP')) + '</td>' +
+                '<td class="text-end">' + esc(vpvStr) + '</td>' +
+                '<td class="text-end">' + esc(fmtMoney(rev, currency || 'GBP')) + '</td>' +
               '</tr>'
             );
           }
         })
       : (function () {
-          var h = '<table class="ads-modal-networks-table"><thead><tr><th>Network</th><th class="text-end">Sessions</th><th class="text-end">Orders</th><th class="text-end">CR%</th><th class="text-end">Revenue</th></tr></thead><tbody>';
+          var h = '<table class="ads-modal-networks-table"><thead><tr><th>Network</th><th class="text-end">Sessions</th><th class="text-end">Orders</th><th class="text-end">CR%</th><th class="text-end">VPV</th><th class="text-end">Revenue</th></tr></thead><tbody>';
           for (var i = 0; i < rows.length; i++) {
             var r = rows[i] || {};
             var code = r.network ? String(r.network).trim().toLowerCase() : '';
             var label = r.label ? String(r.label).trim() : '';
             var title = label && code ? (label + ' (' + code + ')') : (label || code || '—');
+            var sess = r.sessions || 0;
+            var vpv = (sess > 0 && r.revenue != null) ? (r.revenue / sess) : null;
+            var vpvStr = vpv != null ? fmtMoney(vpv, currency || 'GBP') : '—';
             h += '<tr><td>' + esc(title) + '</td>' +
-              '<td class="text-end">' + esc(fmtNum(r.sessions || 0)) + '</td>' +
+              '<td class="text-end">' + esc(fmtNum(sess)) + '</td>' +
               '<td class="text-end">' + esc(fmtNum(r.orders || 0)) + '</td>' +
               '<td class="text-end">' + esc(fmtPct(r.cr, 1)) + '</td>' +
+              '<td class="text-end">' + esc(vpvStr) + '</td>' +
               '<td class="text-end">' + esc(fmtMoney(r.revenue || 0, currency || 'GBP')) + '</td></tr>';
           }
           return h + '</tbody></table>';
@@ -1674,29 +1701,38 @@
           rows: rows,
           renderRow: function (r) {
             var label = r && r.label != null ? String(r.label) : (r && r.hour != null ? (String(r.hour).padStart(2, '0') + ':00') : '');
+            var clicks = r && r.clicks != null ? r.clicks : 0;
+            var rev = r && r.revenue != null ? r.revenue : 0;
+            var vpv = (clicks > 0 && rev != null) ? (rev / clicks) : null;
+            var vpvStr = vpv != null ? fmtMoney(vpv, currency || 'GBP') : '—';
             return (
               '<tr>' +
                 '<td>' + esc(label || '—') + '</td>' +
-                '<td class="text-end">' + esc(fmtNum(r && r.clicks != null ? r.clicks : 0)) + '</td>' +
+                '<td class="text-end">' + esc(fmtNum(clicks)) + '</td>' +
                 '<td class="text-end">' + esc(fmtMoney(r && r.spend != null ? r.spend : 0, currency || 'GBP')) + '</td>' +
                 '<td class="text-end">' + esc(fmtNum(r && r.orders != null ? r.orders : 0)) + '</td>' +
                 '<td class="text-end">' + esc(fmtPct(r && r.cr != null ? r.cr : null, 1)) + '</td>' +
-                '<td class="text-end">' + esc(fmtMoney(r && r.revenue != null ? r.revenue : 0, currency || 'GBP')) + '</td>' +
+                '<td class="text-end">' + esc(vpvStr) + '</td>' +
+                '<td class="text-end">' + esc(fmtMoney(rev, currency || 'GBP')) + '</td>' +
                 '<td class="text-end">' + esc(fmtRoas(r && r.roas != null ? r.roas : null)) + '</td>' +
               '</tr>'
             );
           }
         })
       : (function () {
-          var h = '<table class="ads-modal-dayparting-table"><thead><tr><th>Hour</th><th class="text-end">Clicks</th><th class="text-end">Spend</th><th class="text-end">Orders</th><th class="text-end">CR%</th><th class="text-end">Revenue</th><th class="text-end">ROAS</th></tr></thead><tbody>';
+          var h = '<table class="ads-modal-dayparting-table"><thead><tr><th>Hour</th><th class="text-end">Clicks</th><th class="text-end">Spend</th><th class="text-end">Orders</th><th class="text-end">CR%</th><th class="text-end">VPV</th><th class="text-end">Revenue</th><th class="text-end">ROAS</th></tr></thead><tbody>';
           for (var i = 0; i < rows.length; i++) {
             var r = rows[i] || {};
             var label = r.label != null ? String(r.label) : (r.hour != null ? (String(r.hour).padStart(2, '0') + ':00') : '');
+            var clicks = r.clicks || 0;
+            var vpv = (clicks > 0 && r.revenue != null) ? (r.revenue / clicks) : null;
+            var vpvStr = vpv != null ? fmtMoney(vpv, currency || 'GBP') : '—';
             h += '<tr><td>' + esc(label || '—') + '</td>' +
-              '<td class="text-end">' + esc(fmtNum(r.clicks || 0)) + '</td>' +
+              '<td class="text-end">' + esc(fmtNum(clicks)) + '</td>' +
               '<td class="text-end">' + esc(fmtMoney(r.spend || 0, currency || 'GBP')) + '</td>' +
               '<td class="text-end">' + esc(fmtNum(r.orders || 0)) + '</td>' +
               '<td class="text-end">' + esc(fmtPct(r.cr, 1)) + '</td>' +
+              '<td class="text-end">' + esc(vpvStr) + '</td>' +
               '<td class="text-end">' + esc(fmtMoney(r.revenue || 0, currency || 'GBP')) + '</td>' +
               '<td class="text-end">' + esc(fmtRoas(r.roas)) + '</td></tr>';
           }

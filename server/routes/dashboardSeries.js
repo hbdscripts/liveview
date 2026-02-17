@@ -275,10 +275,12 @@ async function attachCrToTopProducts(db, startMs, endMs, filter, topProducts) {
   return list.map(function(p) {
     const h = normalizeHandleKey(p && p.handle != null ? String(p.handle) : '');
     const sessions = h ? (sessionsByHandle.get(h) || 0) : null;
+    const revenue = Number(p && p.revenue) || 0;
     return {
       ...p,
       sessions,
       cr: sessions == null ? null : crPct(Number(p && p.orders) || 0, sessions),
+      vpv: ratioOrNull(revenue, sessions, { decimals: 2 }),
     };
   });
 }
@@ -290,10 +292,12 @@ async function attachCrToTopCountries(db, startMs, endMs, filter, topCountries) 
   return list.map(function(c) {
     const cc = normalizeCountryKey(c && c.country != null ? String(c.country) : '');
     const sessions = cc ? (sessionsByCountry.get(cc) || 0) : null;
+    const revenue = Number(c && c.revenue) || 0;
     return {
       ...c,
       sessions,
       cr: sessions == null ? null : crPct(Number(c && c.orders) || 0, sessions),
+      vpv: ratioOrNull(revenue, sessions, { decimals: 2 }),
     };
   });
 }
@@ -736,6 +740,7 @@ async function fetchTrendingProducts(db, shop, nowBounds, prevBounds, filter) {
       r.sessionsNow = sessionsNow;
       r.sessionsPrev = sessionsPrev;
       r.cr = sessionsNow == null ? null : crPct(Number(r && r.ordersNow) || 0, sessionsNow);
+      r.vpv = ratioOrNull(r.revenueNow, sessionsNow, { decimals: 2 });
     });
   } catch (_) {}
 

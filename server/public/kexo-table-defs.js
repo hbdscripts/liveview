@@ -10,6 +10,7 @@
     { key: 'clicks', label: 'Sessions', sortable: false, cellClass: 'text-end', iconKey: 'table-icon-sessions' },
     { key: 'orders', label: 'Orders', sortable: false, cellClass: 'text-end', iconKey: 'table-icon-orders' },
     { key: 'cr', label: 'CR%', sortable: false, cellClass: 'text-end', iconKey: 'table-icon-cr' },
+    { key: 'vpv', label: 'VPV', sortable: false, cellClass: 'text-end', iconKey: 'table-icon-vpv' },
     { key: 'rev', label: 'Rev', sortable: false, cellClass: 'text-end', iconKey: 'table-icon-revenue' }
   ];
 
@@ -42,6 +43,7 @@
         { key: 'clicks', label: 'Sessions', iconKey: 'table-icon-clicks' },
         { key: 'orders', label: 'Orders', iconKey: 'table-icon-orders' },
         { key: 'cr', label: 'CR%', iconKey: 'table-icon-cr' },
+        { key: 'vpv', label: 'VPV', iconKey: 'table-icon-vpv' },
         { key: 'rev', label: 'Rev', iconKey: 'table-icon-revenue' }
       ]
     },
@@ -55,6 +57,7 @@
         { key: 'clicks', label: 'Sessions', iconKey: 'table-icon-clicks' },
         { key: 'sales', label: 'Orders', iconKey: 'table-icon-orders' },
         { key: 'cr', label: 'CR%', iconKey: 'table-icon-cr' },
+        { key: 'vpv', label: 'VPV', iconKey: 'table-icon-vpv' },
         { key: 'rev', label: 'Rev', iconKey: 'table-icon-revenue' }
       ]
     },
@@ -110,6 +113,7 @@
         { key: 'clicks', label: 'Sessions', iconKey: 'table-icon-sessions' },
         { key: 'sales', label: 'Orders', iconKey: 'table-icon-orders' },
         { key: 'cr', label: 'CR', iconKey: 'table-icon-cr' },
+        { key: 'vpv', label: 'VPV', iconKey: 'table-icon-vpv' },
         { key: 'rev', label: 'Rev', iconKey: 'table-icon-revenue' }
       ]
     },
@@ -123,6 +127,7 @@
         { key: 'clicks', label: 'Sessions', iconKey: 'table-icon-sessions' },
         { key: 'sales', label: 'Orders', iconKey: 'table-icon-orders' },
         { key: 'cr', label: 'CR', iconKey: 'table-icon-cr' },
+        { key: 'vpv', label: 'VPV', iconKey: 'table-icon-vpv' },
         { key: 'rev', label: 'Rev', iconKey: 'table-icon-revenue' }
       ]
     },
@@ -163,6 +168,7 @@
         { key: 'sessions', label: 'Sessions', iconKey: 'table-icon-sessions' },
         { key: 'orders', label: 'Orders', iconKey: 'table-icon-orders' },
         { key: 'cr', label: 'CR%', iconKey: 'table-icon-cr' },
+        { key: 'vpv', label: 'VPV', iconKey: 'table-icon-vpv' },
         { key: 'rev', label: 'Rev', iconKey: 'table-icon-revenue' }
       ]
     },
@@ -177,6 +183,7 @@
         { key: 'sessions', label: 'Sessions', iconKey: 'table-icon-sessions' },
         { key: 'orders', label: 'Orders', iconKey: 'table-icon-orders' },
         { key: 'cr', label: 'CR%', iconKey: 'table-icon-cr' },
+        { key: 'vpv', label: 'VPV', iconKey: 'table-icon-vpv' },
         { key: 'rev', label: 'Rev', iconKey: 'table-icon-revenue' }
       ]
     },
@@ -188,6 +195,7 @@
         { key: 'sessions', label: 'Sessions', iconKey: 'table-icon-variants-sessions' },
         { key: 'orders', label: 'Orders', iconKey: 'table-icon-variants-orders' },
         { key: 'cr', label: 'CR%', iconKey: 'table-icon-variants-cr' },
+        { key: 'vpv', label: 'VPV', iconKey: 'table-icon-vpv' },
         { key: 'rev', label: 'Rev', iconKey: 'table-icon-variants-revenue', defaultSort: 'rev' }
       ]
     },
@@ -216,7 +224,8 @@
         { header: 'Product', headerClass: '' },
         { header: 'Revenue', headerClass: 'text-end w-1' },
         { header: 'Orders', headerClass: 'text-end w-1' },
-        { header: 'CR%', headerClass: 'text-end w-1' }
+        { header: 'CR%', headerClass: 'text-end w-1' },
+        { header: 'VPV', headerClass: 'text-end w-1' }
       ]
     },
     'dash-top-countries': {
@@ -225,7 +234,8 @@
         { header: 'Country', headerClass: '' },
         { header: 'Revenue', headerClass: 'text-end w-1' },
         { header: 'Orders', headerClass: 'text-end w-1' },
-        { header: 'CR%', headerClass: 'text-end w-1' }
+        { header: 'CR%', headerClass: 'text-end w-1' },
+        { header: 'VPV', headerClass: 'text-end w-1' }
       ]
     },
     'dash-trending-up': {
@@ -234,7 +244,8 @@
         { header: 'Product', headerClass: '' },
         { header: 'Revenue', headerClass: 'text-end w-1' },
         { header: 'Orders', headerClass: 'text-end w-1' },
-        { header: 'CR%', headerClass: 'text-end w-1' }
+        { header: 'CR%', headerClass: 'text-end w-1' },
+        { header: 'VPV', headerClass: 'text-end w-1' }
       ]
     },
     'dash-trending-down': {
@@ -243,7 +254,8 @@
         { header: 'Product', headerClass: '' },
         { header: 'Revenue', headerClass: 'text-end w-1' },
         { header: 'Orders', headerClass: 'text-end w-1' },
-        { header: 'CR%', headerClass: 'text-end w-1' }
+        { header: 'CR%', headerClass: 'text-end w-1' },
+        { header: 'VPV', headerClass: 'text-end w-1' }
       ]
     },
     'latest-sales-table': {
@@ -410,6 +422,7 @@
         { header: 'Spend', headerClass: 'text-end' },
         { header: 'Orders', headerClass: 'text-end' },
         { header: 'CR%', headerClass: 'text-end' },
+        { header: 'VPV', headerClass: 'text-end' },
         { header: 'Revenue', headerClass: 'text-end' },
         { header: 'ROAS', headerClass: 'text-end' }
       ]
@@ -422,6 +435,7 @@
         { header: 'Spend', headerClass: 'text-end' },
         { header: 'Orders', headerClass: 'text-end' },
         { header: 'CR%', headerClass: 'text-end' },
+        { header: 'VPV', headerClass: 'text-end' },
         { header: 'Revenue', headerClass: 'text-end' },
         { header: 'ROAS', headerClass: 'text-end' }
       ]
@@ -433,6 +447,7 @@
         { header: 'Sessions', headerClass: 'text-end' },
         { header: 'Orders', headerClass: 'text-end' },
         { header: 'CR%', headerClass: 'text-end' },
+        { header: 'VPV', headerClass: 'text-end' },
         { header: 'Revenue', headerClass: 'text-end' }
       ]
     },
@@ -444,6 +459,7 @@
         { header: 'Spend', headerClass: 'text-end' },
         { header: 'Orders', headerClass: 'text-end' },
         { header: 'CR%', headerClass: 'text-end' },
+        { header: 'VPV', headerClass: 'text-end' },
         { header: 'Revenue', headerClass: 'text-end' },
         { header: 'ROAS', headerClass: 'text-end' }
       ]

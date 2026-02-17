@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 9789b398c6b53140
+// checksum: fe76da431d01c2fd
 
 (function () {
 const API = '';
@@ -5394,9 +5394,16 @@ const API = '';
         else if (bvBy === 'sales') primary = cmpNullableNumber(a && a.orders, b && b.orders, bvDir);
         else if (bvBy === 'clicks') primary = cmpNullableNumber(a && a.clicks, b && b.clicks, bvDir);
         else if (bvBy === 'rev') primary = cmpNullableNumber(a && a.revenue, b && b.revenue, bvDir);
+        else if (bvBy === 'vpv') primary = cmpNullableNumber(vpvFromRow(a), vpvFromRow(b), bvDir);
         else if (bvBy === 'cr') {
           primary = cmpNullableNumber(a && a.cr, b && b.cr, bvDir) ||
             cmpNullableNumber(a && a.orders, b && b.orders, 'desc');
+        }
+        function vpvFromRow(r) {
+          if (r && typeof r.vpv === 'number' && Number.isFinite(r.vpv)) return r.vpv;
+          var rev = r && typeof r.revenue === 'number' ? r.revenue : null;
+          var sess = r && (typeof r.clicks === 'number' || typeof r.sessions === 'number') ? (r.clicks != null ? r.clicks : r.sessions) : null;
+          return (sess != null && sess > 0 && rev != null) ? (rev / sess) : null;
         }
         return primary ||
           cmpNullableNumber(a && a.revenue, b && b.revenue, 'desc') ||
@@ -5441,12 +5448,15 @@ const API = '';
         const revenue = formatRevenueTableHtml(v && v.revenue != null ? v.revenue : null);
         const crVal = (v && typeof v.cr === 'number') ? v.cr : null;
         const cr = crVal != null ? pct(crVal) : '\u2014';
+        const vpvNum = (v && typeof v.vpv === 'number' && Number.isFinite(v.vpv)) ? v.vpv : ((v && v.clicks > 0 && v.revenue != null) ? (v.revenue / v.clicks) : null);
+        const vpv = vpvNum != null ? formatRevenue0(vpvNum) : '\u2014';
 
         return '<div class="grid-row" role="row">' +
           '<div class="grid-cell bs-product-col" role="cell"><div class="product-cell">' + name + '</div></div>' +
           '<div class="grid-cell" role="cell">' + clicks + '</div>' +
           '<div class="grid-cell" role="cell">' + orders + '</div>' +
           '<div class="grid-cell" role="cell">' + cr + '</div>' +
+          '<div class="grid-cell" role="cell">' + vpv + '</div>' +
           '<div class="grid-cell" role="cell">' + revenue + '</div>' +
         '</div>';
       }).join('');
@@ -5741,12 +5751,19 @@ const API = '';
         if (sortKey === 'orders') return cmpNullableNumber(a && a.orders, b && b.orders, sortDir);
         if (sortKey === 'clicks') return cmpNullableNumber(a && a.clicks, b && b.clicks, sortDir);
         if (sortKey === 'rev') return cmpNullableNumber(a && a.revenue, b && b.revenue, sortDir);
+        if (sortKey === 'vpv') return cmpNullableNumber(vpvFromRow(a), vpvFromRow(b), sortDir);
         if (sortKey === 'cr') {
           return cmpNullableNumber(a && a.cr, b && b.cr, sortDir) ||
             cmpNullableNumber(a && a.orders, b && b.orders, 'desc');
         }
         return 0;
       });
+      function vpvFromRow(r) {
+        if (r && typeof r.vpv === 'number' && Number.isFinite(r.vpv)) return r.vpv;
+        var rev = r && typeof r.revenue === 'number' ? r.revenue : null;
+        var sess = r && (typeof r.clicks === 'number' || typeof r.sessions === 'number') ? (r.clicks != null ? r.clicks : r.sessions) : null;
+        return (sess != null && sess > 0 && rev != null) ? (rev / sess) : null;
+      }
       const pageSize = (data && typeof data.pageSize === 'number' && data.pageSize > 0)
         ? data.pageSize
         : getTableRowsPerPage('best-sellers-table', 'product');
@@ -5780,11 +5797,14 @@ const API = '';
         const clicks = (typeof p.clicks === 'number') ? formatSessions(p.clicks) : '\u2014';
         const revenue = formatRevenueTableHtml(p.revenue);
         const cr = p.cr != null ? pct(p.cr) : '\u2014';
+        const vpvNum = vpvFromRow(p);
+        const vpv = vpvNum != null ? formatRevenue0(vpvNum) : '\u2014';
         return '<div class="grid-row" role="row">' +
           '<div class="grid-cell bs-product-col" role="cell"><div class="product-cell">' + name + '</div></div>' +
           '<div class="grid-cell" role="cell">' + clicks + '</div>' +
           '<div class="grid-cell" role="cell">' + orders + '</div>' +
           '<div class="grid-cell" role="cell">' + cr + '</div>' +
+          '<div class="grid-cell" role="cell">' + vpv + '</div>' +
           '<div class="grid-cell" role="cell">' + revenue + '</div>' +
         '</div>';
       }).join('');
@@ -6314,8 +6334,14 @@ const API = '';
         const code = (r && r.country_code != null ? String(r.country_code) : 'XX').toUpperCase().slice(0, 2);
         return countryLabel(code);
       }
+      function countryVpv(r) {
+        var rev = r && typeof r.revenue === 'number' ? r.revenue : null;
+        var tot = r && typeof r.total === 'number' ? r.total : null;
+        return (tot != null && tot > 0 && rev != null) ? (rev / tot) : null;
+      }
       list.sort(function(a, b) {
         if (countryBy === 'country') return cmpNullableText(labelFor(a), labelFor(b), countryDir);
+        if (countryBy === 'vpv') return cmpNullableNumber(countryVpv(a), countryVpv(b), countryDir) || cmpNullableText(labelFor(a), labelFor(b), 'asc');
         if (countryBy === 'cr') return cmpNullableNumber(a && a.conversion, b && b.conversion, countryDir) || cmpNullableText(labelFor(a), labelFor(b), 'asc');
         if (countryBy === 'sales') return cmpNullableNumber(a && a.converted, b && b.converted, countryDir) || cmpNullableText(labelFor(a), labelFor(b), 'asc');
         if (countryBy === 'clicks') return cmpNullableNumber(a && a.total, b && b.total, countryDir) || cmpNullableText(labelFor(a), labelFor(b), 'asc');
@@ -6337,6 +6363,8 @@ const API = '';
         const salesCount = r.converted != null ? Number(r.converted) : 0;
         const clicks = r.total != null ? formatSessions(r.total) : '???';
         const revenue = formatRevenueTableHtml(r.revenue);
+        const vpvNum = countryVpv(r);
+        const vpv = vpvNum != null ? formatRevenue0(vpvNum) : '\u2014';
         const flag = flagImg(code, label);
         const labelHtml = '<span class="country-label">' + escapeHtml(label) + '</span>';
         return '<div class="grid-row" role="row">' +
@@ -6344,6 +6372,7 @@ const API = '';
           '<div class="grid-cell" role="cell">' + clicks + '</div>' +
           '<div class="grid-cell" role="cell">' + salesCount + '</div>' +
           '<div class="grid-cell" role="cell">' + conversion + '</div>' +
+          '<div class="grid-cell" role="cell">' + vpv + '</div>' +
           '<div class="grid-cell" role="cell">' + revenue + '</div>' +
         '</div>';
       }).join('');
@@ -6758,11 +6787,17 @@ const API = '';
       function geoProductTitle(r) {
         return (r && r.product_title != null) ? String(r.product_title).trim() : '';
       }
+      function geoVpv(r) {
+        var rev = r && typeof r.revenue === 'number' ? r.revenue : null;
+        var tot = r && typeof r.total === 'number' ? r.total : null;
+        return (tot != null && tot > 0 && rev != null) ? (rev / tot) : null;
+      }
       list.sort(function(a, b) {
         if (geoBy === 'country') {
           return cmpNullableText(geoCountryLabel(a), geoCountryLabel(b), geoDir) ||
             cmpNullableText(geoProductTitle(a), geoProductTitle(b), 'asc');
         }
+        if (geoBy === 'vpv') return cmpNullableNumber(geoVpv(a), geoVpv(b), geoDir) || cmpNullableNumber(a && a.revenue, b && b.revenue, 'desc');
         if (geoBy === 'cr') return cmpNullableNumber(a && a.conversion, b && b.conversion, geoDir) || cmpNullableNumber(a && a.total, b && b.total, 'desc');
         if (geoBy === 'sales') return cmpNullableNumber(a && a.converted, b && b.converted, geoDir) || cmpNullableNumber(a && a.revenue, b && b.revenue, 'desc');
         if (geoBy === 'clicks') return cmpNullableNumber(a && a.total, b && b.total, geoDir) || cmpNullableNumber(a && a.converted, b && b.converted, 'desc');
@@ -6788,6 +6823,8 @@ const API = '';
         const salesCount = r.converted != null ? Number(r.converted) : 0;
         const clicks = r.total != null ? formatSessions(r.total) : '???';
         const revenue = formatRevenueTableHtml(r.revenue);
+        const vpvNum = (r && r.total > 0 && r.revenue != null) ? (r.revenue / r.total) : null;
+        const vpv = vpvNum != null ? formatRevenue0(vpvNum) : '\u2014';
         const flag = flagImg(iso, label);
         const normalizedHandle = productHandle ? String(productHandle).trim().toLowerCase() : '';
         const canOpen = normalizedHandle || (productId && /^\d+$/.test(productId));
@@ -6808,6 +6845,7 @@ const API = '';
           '<div class="grid-cell" role="cell">' + clicks + '</div>' +
           '<div class="grid-cell" role="cell">' + salesCount + '</div>' +
           '<div class="grid-cell" role="cell">' + conversion + '</div>' +
+          '<div class="grid-cell" role="cell">' + vpv + '</div>' +
           '<div class="grid-cell" role="cell">' + revenue + '</div>' +
         '</div>';
       }).join('');
@@ -7688,6 +7726,7 @@ const API = '';
         'cond-kpi-revenue',
         'cond-kpi-sessions',
         'cond-kpi-conv',
+        'cond-kpi-vpv',
         'cond-kpi-roas',
         'cond-kpi-returning',
         'cond-kpi-aov',
@@ -7985,6 +8024,11 @@ const API = '';
         'cond-kpi-orders-sparkline': function(d) { return d.orders; },
         'cond-kpi-revenue-sparkline': function(d) { return d.revenue; },
         'cond-kpi-conv-sparkline': function(d) { return d.convRate; },
+        'cond-kpi-vpv-sparkline': function(d) {
+          var rev = d && typeof d.revenue === 'number' ? d.revenue : 0;
+          var sess = d && typeof d.sessions === 'number' ? d.sessions : 0;
+          return (sess > 0) ? (rev / sess) : null;
+        },
         'cond-kpi-roas-sparkline': function(d) {
           var spend = d && typeof d.adSpend === 'number' ? d.adSpend : 0;
           var rev = d && typeof d.revenue === 'number' ? d.revenue : 0;
@@ -8078,11 +8122,13 @@ const API = '';
       const returningCustomerCountMap = data && data.returningCustomerCount ? data.returningCustomerCount : {};
       const breakdown = data && data.trafficBreakdown ? data.trafficBreakdown : {};
       const conv = data && data.conversion ? data.conversion : {};
+      const vpvMap = data && data.vpv ? data.vpv : {};
       const aovMap = data && data.aov ? data.aov : {};
       const bounceMap = data && data.bounce ? data.bounce : {};
       const condOrdersEl = document.getElementById('cond-kpi-orders');
       const condRevenueEl = document.getElementById('cond-kpi-revenue');
       const condConvEl = document.getElementById('cond-kpi-conv');
+      const condVpvEl = document.getElementById('cond-kpi-vpv');
       const condSessionsEl = document.getElementById('cond-kpi-sessions');
       const condReturningEl = document.getElementById('cond-kpi-returning');
       const condAovEl = document.getElementById('cond-kpi-aov');
@@ -8104,6 +8150,7 @@ const API = '';
       const revenueVal = typeof sales[kpiRange] === 'number' ? sales[kpiRange] : null;
       const returningVal = typeof returningCustomerCountMap[kpiRange] === 'number' ? returningCustomerCountMap[kpiRange] : null;
       const convVal = typeof conv[kpiRange] === 'number' ? conv[kpiRange] : null;
+      const vpvVal = typeof vpvMap[kpiRange] === 'number' ? vpvMap[kpiRange] : null;
       const aovVal = typeof aovMap[kpiRange] === 'number' ? aovMap[kpiRange] : null;
       const roasVal = data && data.roas && typeof data.roas[kpiRange] === 'number' ? data.roas[kpiRange] : null;
       const bounceVal = typeof bounceMap[kpiRange] === 'number' ? bounceMap[kpiRange] : null;
@@ -8114,6 +8161,7 @@ const API = '';
       const compareRevenueVal = compare && typeof compare.sales === 'number' ? compare.sales : null;
       const compareReturningVal = compare && typeof compare.returningCustomerCount === 'number' ? compare.returningCustomerCount : null;
       const compareConvVal = compare && typeof compare.conversion === 'number' ? compare.conversion : null;
+      const compareVpvVal = compare && typeof compare.vpv === 'number' ? compare.vpv : null;
       const compareAovVal = compare && typeof compare.aov === 'number' ? compare.aov : null;
       const compareRoasVal = compare && typeof compare.roas === 'number' ? compare.roas : null;
       const compareBounceVal = compare && typeof compare.bounce === 'number' ? compare.bounce : null;
@@ -8146,6 +8194,7 @@ const API = '';
       if (condRevenueEl) condRevenueEl.textContent = revenueVal != null ? formatRevenue(revenueVal) : '\u2014';
       if (condSessionsEl) condSessionsEl.textContent = sessionsVal != null ? formatSessions(sessionsVal) : '\u2014';
       if (condConvEl) condConvEl.textContent = convVal != null ? pct(convVal) : '\u2014';
+      if (condVpvEl) condVpvEl.textContent = vpvVal != null ? formatRevenue0(vpvVal) : '\u2014';
       if (condReturningEl) condReturningEl.textContent = returningVal != null ? formatSessions(returningVal) : '\u2014';
       if (condAovEl) condAovEl.textContent = aovVal != null ? formatRevenue(aovVal) : '\u2014';
       if (condRoasEl) condRoasEl.textContent = roasVal != null ? Number(roasVal).toFixed(2) + 'x' : '\u2014';
@@ -8154,6 +8203,7 @@ const API = '';
       applyCondensedKpiDelta('revenue', revenueVal, compareRevenueVal, false);
       applyCondensedKpiDelta('sessions', sessionsVal, compareSessionsVal, false);
       applyCondensedKpiDelta('conv', convVal, compareConvVal, false);
+      applyCondensedKpiDelta('vpv', vpvVal, compareVpvVal, false);
       applyCondensedKpiDelta('returning', returningVal, compareReturningVal, false);
       applyCondensedKpiDelta('aov', aovVal, compareAovVal, false);
       applyCondensedKpiDelta('roas', roasVal, compareRoasVal, false);
@@ -8161,6 +8211,7 @@ const API = '';
       setCondensedSparklineTone('cond-kpi-orders-sparkline', orderCountVal, compareOrdersVal);
       setCondensedSparklineTone('cond-kpi-revenue-sparkline', revenueVal, compareRevenueVal);
       setCondensedSparklineTone('cond-kpi-conv-sparkline', convVal, compareConvVal);
+      setCondensedSparklineTone('cond-kpi-vpv-sparkline', vpvVal, compareVpvVal);
       setCondensedSparklineTone('cond-kpi-roas-sparkline', roasVal, compareRoasVal);
       setCondensedSparklineTone('cond-kpi-sessions-sparkline', sessionsVal, compareSessionsVal);
       setCondensedSparklineTone('cond-kpi-returning-sparkline', returningVal, compareReturningVal);
@@ -8429,6 +8480,7 @@ const API = '';
       var ordersVal = numFromMap(main, 'convertedCount', kpiRange);
       var sessionsVal = sessionsFromBreakdownMap(main, kpiRange);
       var convVal = numFromMap(main, 'conversion', kpiRange);
+      var vpvVal = numFromMap(main, 'vpv', kpiRange);
       var aovVal = numFromMap(main, 'aov', kpiRange);
       var bounceVal = numFromMap(main, 'bounce', kpiRange);
       var returningVal = numFromMap(main, 'returningCustomerCount', kpiRange);
@@ -8453,6 +8505,7 @@ const API = '';
       setDashValueText('dash-kpi-orders', ordersVal != null ? Math.round(ordersVal).toLocaleString() : null);
       setDashValueText('dash-kpi-sessions', sessionsVal != null ? formatSessions(sessionsVal) : null);
       setDashValueText('dash-kpi-conv', convVal != null ? pct(convVal) : null);
+      setDashValueText('dash-kpi-vpv', vpvVal != null ? formatRevenue0(vpvVal) : null);
       setDashValueText('dash-kpi-aov', aovVal != null ? formatRevenue0(aovVal) : null);
       setDashValueText('dash-kpi-bounce', bounceVal != null ? pct(bounceVal) : null);
       setDashValueText('dash-kpi-returning', returningVal != null ? Math.round(returningVal).toLocaleString() : null);
@@ -8468,6 +8521,7 @@ const API = '';
         var orders = values.orders;
         var sessions = values.sessions;
         var conv = values.conv;
+        var vpv = values.vpv;
         var aov = values.aov;
         var bounce = values.bounce;
         var returning = values.returning;
@@ -8481,6 +8535,7 @@ const API = '';
         setDashValueText('dash-orders-' + slotSuffix, orders != null ? Math.round(orders).toLocaleString() : null);
         setDashValueText('dash-sessions-' + slotSuffix, sessions != null ? formatSessions(sessions) : null);
         setDashValueText('dash-conv-' + slotSuffix, conv != null ? pct(conv) : null);
+        setDashValueText('dash-vpv-' + slotSuffix, vpv != null ? formatRevenue0(vpv) : null);
         setDashValueText('dash-aov-' + slotSuffix, aov != null ? formatRevenue0(aov) : null);
         setDashValueText('dash-bounce-' + slotSuffix, bounce != null ? pct(bounce) : null);
         setDashValueText('dash-returning-' + slotSuffix, returning != null ? Math.round(returning).toLocaleString() : null);
@@ -8576,6 +8631,7 @@ const API = '';
       var ordersBase = numFromCompare(primaryCompare, 'convertedCount');
       var sessionsBase = sessionsFromBreakdownCompare(primaryCompare);
       var convBase = numFromCompare(primaryCompare, 'conversion');
+      var vpvBase = numFromCompare(primaryCompare, 'vpv');
       var aovBase = numFromCompare(primaryCompare, 'aov');
       var bounceBase = numFromCompare(primaryCompare, 'bounce');
       var returningBase = numFromCompare(primaryCompare, 'returningCustomerCount');
@@ -8589,6 +8645,7 @@ const API = '';
       applyDashDelta('orders', ordersVal, ordersBase, false);
       applyDashDelta('sessions', sessionsVal, sessionsBase, false);
       applyDashDelta('conv', convVal, convBase, false);
+      applyDashDelta('vpv', vpvVal, vpvBase, false);
       applyDashDelta('aov', aovVal, aovBase, false);
       applyDashDelta('bounce', bounceVal, bounceBase, true);
       applyDashDelta('returning', returningVal, returningBase, false);
@@ -8602,6 +8659,7 @@ const API = '';
         orders: ordersBase,
         sessions: sessionsBase,
         conv: convBase,
+        vpv: vpvBase,
         aov: aovBase,
         bounce: bounceBase,
         returning: returningBase,
@@ -8643,6 +8701,7 @@ const API = '';
           orders: numFromMap(secondary, 'convertedCount', secondaryRangeKey),
           sessions: sessionsFromBreakdownMap(secondary, secondaryRangeKey),
           conv: numFromMap(secondary, 'conversion', secondaryRangeKey),
+          vpv: numFromMap(secondary, 'vpv', secondaryRangeKey),
           aov: numFromMap(secondary, 'aov', secondaryRangeKey),
           bounce: numFromMap(secondary, 'bounce', secondaryRangeKey),
           returning: numFromMap(secondary, 'returningCustomerCount', secondaryRangeKey),
@@ -9333,6 +9392,7 @@ const API = '';
         orders: 'cond-kpi-orders',
         revenue: 'cond-kpi-revenue',
         conv: 'cond-kpi-conv',
+        vpv: 'cond-kpi-vpv',
         roas: 'cond-kpi-roas',
         sessions: 'cond-kpi-sessions',
         returning: 'cond-kpi-returning',
@@ -9423,6 +9483,7 @@ const API = '';
         revenue: 'dash-kpi-revenue',
         orders: 'dash-kpi-orders',
         conv: 'dash-kpi-conv',
+        vpv: 'dash-kpi-vpv',
         aov: 'dash-kpi-aov',
         sessions: 'dash-kpi-sessions',
         bounce: 'dash-kpi-bounce',
@@ -9434,7 +9495,7 @@ const API = '';
         items: 'dash-kpi-items',
         kexo_score: 'dash-kpi-kexo-score',
       };
-      var defaultKpiOrder = ['revenue', 'orders', 'conv', 'aov', 'sessions', 'bounce', 'returning', 'roas', 'kexo_score', 'cogs', 'fulfilled', 'returns', 'items'];
+      var defaultKpiOrder = ['revenue', 'orders', 'conv', 'vpv', 'aov', 'sessions', 'bounce', 'returning', 'roas', 'kexo_score', 'cogs', 'fulfilled', 'returns', 'items'];
       var colByKey = {};
       var keyByCol = new Map();
       Object.keys(idByKey).forEach(function(key) {
@@ -10444,6 +10505,11 @@ const API = '';
         if (key === 'orders') return (typeof r.orders === 'number') ? r.orders : null;
         if (key === 'sessions') return (typeof r.sessions === 'number') ? r.sessions : null;
         if (key === 'rev') return (typeof r.revenue_gbp === 'number') ? r.revenue_gbp : null;
+        if (key === 'vpv') {
+          const rev = (typeof r.revenue_gbp === 'number') ? r.revenue_gbp : null;
+          const sess = (typeof r.sessions === 'number') ? r.sessions : null;
+          return (sess != null && sess > 0 && rev != null) ? (rev / sess) : null;
+        }
         return null;
       }
 
@@ -10508,6 +10574,7 @@ const API = '';
         const chOrders = (ch && typeof ch.orders === 'number') ? formatSessions(ch.orders) : '-';
         const chSessions = (ch && typeof ch.sessions === 'number') ? formatSessions(ch.sessions) : '-';
         const chRev = (ch && typeof ch.revenue_gbp === 'number') ? formatRevenueTableHtml(ch.revenue_gbp) : '-';
+        const chVpv = metric(ch, 'vpv') != null ? formatRevenue0(metric(ch, 'vpv')) : '\u2014';
         html += '<div class="grid-row traffic-type-parent attribution-channel-parent" role="row" data-channel="' + escapeHtml(chKey) + '">' +
           '<div class="grid-cell" role="cell">' +
             '<button type="button" class="traffic-type-toggle attribution-channel-toggle" data-channel="' + escapeHtml(chKey) + '" aria-expanded="' + (chOpen ? 'true' : 'false') + '">' +
@@ -10517,6 +10584,7 @@ const API = '';
           '<div class="grid-cell" role="cell">' + escapeHtml(chSessions || '-') + '</div>' +
           '<div class="grid-cell" role="cell">' + escapeHtml(chOrders || '-') + '</div>' +
           '<div class="grid-cell" role="cell">' + escapeHtml(chCr || '-') + '</div>' +
+          '<div class="grid-cell" role="cell">' + chVpv + '</div>' +
           '<div class="grid-cell" role="cell">' + (chRev || '-') + '</div>' +
         '</div>';
 
@@ -10541,6 +10609,7 @@ const API = '';
           const sOrders = (src && typeof src.orders === 'number') ? formatSessions(src.orders) : '-';
           const sSessions = (src && typeof src.sessions === 'number') ? formatSessions(src.sessions) : '-';
           const sRev = (src && typeof src.revenue_gbp === 'number') ? formatRevenueTableHtml(src.revenue_gbp) : '-';
+          const sVpv = metric(src, 'vpv') != null ? formatRevenue0(metric(src, 'vpv')) : '\u2014';
           html += '<div class="grid-row traffic-type-child attribution-source-row' + (chOpen ? '' : ' is-hidden') + '" role="row" data-parent="' + escapeHtml(chKey) + '" data-channel="' + escapeHtml(chKey) + '" data-source="' + escapeHtml(sKey) + '">' +
             '<div class="grid-cell" role="cell">' +
               '<button type="button" class="traffic-type-toggle attribution-source-toggle" data-channel="' + escapeHtml(chKey) + '" data-source="' + escapeHtml(sKey) + '" aria-expanded="' + (srcOpen ? 'true' : 'false') + '">' +
@@ -10551,6 +10620,7 @@ const API = '';
             '<div class="grid-cell" role="cell">' + escapeHtml(sSessions || '-') + '</div>' +
             '<div class="grid-cell" role="cell">' + escapeHtml(sOrders || '-') + '</div>' +
             '<div class="grid-cell" role="cell">' + escapeHtml(sCr || '-') + '</div>' +
+            '<div class="grid-cell" role="cell">' + sVpv + '</div>' +
             '<div class="grid-cell" role="cell">' + (sRev || '-') + '</div>' +
           '</div>';
 
@@ -10575,6 +10645,7 @@ const API = '';
             const vOrders = (v && typeof v.orders === 'number') ? formatSessions(v.orders) : '-';
             const vSessions = (v && typeof v.sessions === 'number') ? formatSessions(v.sessions) : '-';
             const vRev = (v && typeof v.revenue_gbp === 'number') ? formatRevenueTableHtml(v.revenue_gbp) : '-';
+            const vVpv = metric(v, 'vpv') != null ? formatRevenue0(metric(v, 'vpv')) : '\u2014';
             const ownerKind = v && v.owner_kind != null ? String(v.owner_kind).trim().toLowerCase() : '';
             const ownerBadge = ownerKind && ownerKind !== 'house'
               ? (' <span class="text-muted small">(' + escapeHtml(ownerKind) + ')</span>')
@@ -10584,6 +10655,7 @@ const API = '';
               '<div class="grid-cell" role="cell">' + escapeHtml(vSessions || '-') + '</div>' +
               '<div class="grid-cell" role="cell">' + escapeHtml(vOrders || '-') + '</div>' +
               '<div class="grid-cell" role="cell">' + escapeHtml(vCr || '-') + '</div>' +
+              '<div class="grid-cell" role="cell">' + vVpv + '</div>' +
               '<div class="grid-cell" role="cell">' + (vRev || '-') + '</div>' +
             '</div>';
           });
@@ -10673,6 +10745,11 @@ const API = '';
         if (key === 'orders') return (typeof r.orders === 'number') ? r.orders : null;
         if (key === 'sessions') return (typeof r.sessions === 'number') ? r.sessions : null;
         if (key === 'rev') return (typeof r.revenue_gbp === 'number') ? r.revenue_gbp : null;
+        if (key === 'vpv') {
+          const rev = (typeof r.revenue_gbp === 'number') ? r.revenue_gbp : null;
+          const sess = (typeof r.sessions === 'number') ? r.sessions : null;
+          return (sess != null && sess > 0 && rev != null) ? (rev / sess) : null;
+        }
         return null;
       }
 
@@ -10736,6 +10813,7 @@ const API = '';
         const orders = (g && typeof g.orders === 'number') ? formatSessions(g.orders) : '-';
         const sessions = (g && typeof g.sessions === 'number') ? formatSessions(g.sessions) : '-';
         const rev = (g && typeof g.revenue_gbp === 'number') ? formatRevenueTableHtml(g.revenue_gbp) : '-';
+        const vpv = metric(g, 'vpv') != null ? formatRevenue0(metric(g, 'vpv')) : '\u2014';
         html += '<div class="grid-row traffic-type-parent devices-parent" role="row" data-device-type="' + escapeHtml(dKey) + '">' +
           '<div class="grid-cell" role="cell">' +
             '<button type="button" class="traffic-type-toggle devices-toggle" data-device-type="' + escapeHtml(dKey) + '" aria-expanded="' + (open ? 'true' : 'false') + '">' +
@@ -10746,6 +10824,7 @@ const API = '';
           '<div class="grid-cell" role="cell">' + escapeHtml(sessions || '-') + '</div>' +
           '<div class="grid-cell" role="cell">' + escapeHtml(orders || '-') + '</div>' +
           '<div class="grid-cell" role="cell">' + escapeHtml(cr || '-') + '</div>' +
+          '<div class="grid-cell" role="cell">' + vpv + '</div>' +
           '<div class="grid-cell" role="cell">' + (rev || '-') + '</div>' +
         '</div>';
 
@@ -10768,11 +10847,13 @@ const API = '';
           const corders = (c && typeof c.orders === 'number') ? formatSessions(c.orders) : '-';
           const csessions = (c && typeof c.sessions === 'number') ? formatSessions(c.sessions) : '-';
           const crev = (c && typeof c.revenue_gbp === 'number') ? formatRevenueTableHtml(c.revenue_gbp) : '-';
+          const cvpv = metric(c, 'vpv') != null ? formatRevenue0(metric(c, 'vpv')) : '\u2014';
           html += '<div class="grid-row traffic-type-child devices-child' + (open ? '' : ' is-hidden') + '" role="row" data-parent="' + escapeHtml(dKey) + '">' +
             '<div class="grid-cell" role="cell"><span style="display:inline-flex;align-items:center;gap:8px">' + trafficTypePlatformIcon(platform) + '<span>' + escapeHtml(clabel) + '</span></span></div>' +
             '<div class="grid-cell" role="cell">' + escapeHtml(csessions || '-') + '</div>' +
             '<div class="grid-cell" role="cell">' + escapeHtml(corders || '-') + '</div>' +
             '<div class="grid-cell" role="cell">' + escapeHtml(ccr || '-') + '</div>' +
+            '<div class="grid-cell" role="cell">' + cvpv + '</div>' +
             '<div class="grid-cell" role="cell">' + (crev || '-') + '</div>' +
           '</div>';
         });
@@ -18237,6 +18318,7 @@ const API = '';
         var currentOrdersTone = numFromRangeMap(kpiDataForTone, 'convertedCount', kpiRangeForTone);
         var currentSessionsTone = sessionsFromBreakdownMap(kpiDataForTone, kpiRangeForTone);
         var currentConvTone = numFromRangeMap(kpiDataForTone, 'conversion', kpiRangeForTone);
+        var currentVpvTone = numFromRangeMap(kpiDataForTone, 'vpv', kpiRangeForTone);
         var currentReturningTone = numFromRangeMap(kpiDataForTone, 'returningCustomerCount', kpiRangeForTone);
         var currentAovTone = numFromRangeMap(kpiDataForTone, 'aov', kpiRangeForTone);
         var currentBounceTone = numFromRangeMap(kpiDataForTone, 'bounce', kpiRangeForTone);
@@ -18247,6 +18329,7 @@ const API = '';
           ? compareTone.trafficBreakdown.human_sessions
           : null;
         var compareConvTone = compareTone && typeof compareTone.conversion === 'number' ? compareTone.conversion : null;
+        var compareVpvTone = compareTone && typeof compareTone.vpv === 'number' ? compareTone.vpv : null;
         var compareReturningTone = compareTone && typeof compareTone.returningCustomerCount === 'number' ? compareTone.returningCustomerCount : null;
         var compareAovTone = compareTone && typeof compareTone.aov === 'number' ? compareTone.aov : null;
         var compareBounceTone = compareTone && typeof compareTone.bounce === 'number' ? compareTone.bounce : null;
@@ -18323,6 +18406,11 @@ const API = '';
         var ordersHistorySpark = sparklineSeries.map(function(d) { return d.orders; });
         var returningHistorySpark = sparklineSeries.map(function(d) { return d.returningCustomerOrders || 0; });
         var convHistorySpark = sparklineSeries.map(function(d) { return d.convRate; });
+        var vpvHistorySpark = sparklineSeries.map(function(d) {
+          var r = d && typeof d.revenue === 'number' ? d.revenue : null;
+          var s = d && typeof d.sessions === 'number' ? d.sessions : null;
+          return (s != null && s > 0 && r != null) ? (r / s) : null;
+        });
         var aovHistorySpark = sparklineSeries.map(function(d) { return d.aov; });
         var bounceHistorySpark = sparklineSeries.map(function(d) { return d.bounceRate; });
         var itemsHistorySpark = sparklineSeries.map(function(d) { return d.units || 0; });
@@ -18336,6 +18424,7 @@ const API = '';
         var ordersSpark = sparkSeriesFromCompare(currentOrdersTone, compareOrdersTone, ordersHistorySpark);
         var returningSpark = sparkSeriesFromCompare(currentReturningTone, compareReturningTone, returningHistorySpark);
         var convSpark = sparkSeriesFromCompare(currentConvTone, compareConvTone, convHistorySpark);
+        var vpvSpark = sparkSeriesFromCompare(currentVpvTone, compareVpvTone, vpvHistorySpark);
         var aovSpark = sparkSeriesFromCompare(currentAovTone, compareAovTone, aovHistorySpark);
         var bounceSpark = sparkSeriesFromCompare(currentBounceTone, compareBounceTone, bounceHistorySpark);
         var itemsSpark = sparkSeriesFromCompare(currentItemsTone, compareItemsTone, itemsHistorySpark);
@@ -18365,6 +18454,11 @@ const API = '';
           var ordersSparkCompare = compareFromCache(cmp, primaryLen, function(d) { return d.orders || 0; });
           var returningSparkCompare = compareFromCache(cmp, primaryLen, function(d) { return d.returningCustomerOrders || 0; });
           var convSparkCompare = compareFromCache(cmp, primaryLen, function(d) { return d.convRate != null ? d.convRate : 0; });
+          var vpvSparkCompare = compareFromCache(cmp, primaryLen, function(d) {
+            var r = d && typeof d.revenue === 'number' ? d.revenue : null;
+            var s = d && typeof d.sessions === 'number' ? d.sessions : null;
+            return (s != null && s > 0 && r != null) ? (r / s) : 0;
+          });
           var aovSparkCompare = compareFromCache(cmp, primaryLen, function(d) { return d.aov != null ? d.aov : 0; });
           var bounceSparkCompare = compareFromCache(cmp, primaryLen, function(d) { return d.bounceRate != null ? d.bounceRate : 0; });
           var roasSparkCompare = null;
@@ -18382,6 +18476,7 @@ const API = '';
           renderSparkline('dash-orders-sparkline', ordersSpark, sparkToneFromCompare(currentOrdersTone, compareOrdersTone, false, ordersSpark), ordersSparkCompare, 'zero');
           renderSparkline('dash-returning-sparkline', returningSpark, sparkToneFromCompare(currentReturningTone, compareReturningTone, false, returningSpark), returningSparkCompare, 'zero');
           renderSparkline('dash-conv-sparkline', convSpark, sparkToneFromCompare(currentConvTone, compareConvTone, false, convSpark), convSparkCompare, 'percent');
+          renderSparkline('dash-vpv-sparkline', vpvSpark, sparkToneFromCompare(currentVpvTone, compareVpvTone, false, vpvSpark), vpvSparkCompare, 'zero');
           renderSparkline('dash-aov-sparkline', aovSpark, sparkToneFromCompare(currentAovTone, compareAovTone, false, aovSpark), aovSparkCompare, 'zero');
           renderSparkline('dash-bounce-sparkline', bounceSpark, sparkToneFromCompare(currentBounceTone, compareBounceTone, true, bounceSpark), bounceSparkCompare, 'percent');
           renderSparkline('dash-roas-sparkline', roasSpark, sparkToneFromCompare(currentRoasTone, compareRoasTone, false, roasSpark), roasSparkCompare, 'zero');
@@ -18423,7 +18518,7 @@ const API = '';
           var prodStart = (dashTopProductsPage - 1) * prodPageSize;
           var productsPageRows = products.slice(prodStart, prodStart + prodPageSize);
           if (!products.length) {
-            prodTbody.innerHTML = '<tr><td colspan="4" class="dash-empty">No data</td></tr>';
+            prodTbody.innerHTML = '<tr><td colspan="5" class="dash-empty">No data</td></tr>';
           } else {
             var mainBase = getMainBaseUrl();
             prodTbody.innerHTML = productsPageRows.map(function(p) {
@@ -18451,7 +18546,9 @@ const API = '';
                   ? ('\u2014 <i class="fa-light fa-circle-info ms-1 text-muted" aria-hidden="true" title="' + escapeHtml(tip) + '"></i>')
                   : '\u2014';
               }
-              return '<tr><td><span class="product-cell">' + titleHtml + '</span></td><td class="text-end">' + fmtGbp(p.revenue) + '</td><td class="text-end">' + p.orders + '</td><td class="text-end kexo-nowrap">' + crHtml + '</td></tr>';
+              var vpvVal = (p && typeof p.vpv === 'number' && isFinite(p.vpv)) ? p.vpv : null;
+              var vpvHtml = vpvVal != null ? fmtGbp(vpvVal) : '\u2014';
+              return '<tr><td><span class="product-cell">' + titleHtml + '</span></td><td class="text-end">' + fmtGbp(p.revenue) + '</td><td class="text-end">' + p.orders + '</td><td class="text-end kexo-nowrap">' + crHtml + '</td><td class="text-end kexo-nowrap">' + vpvHtml + '</td></tr>';
             }).join('');
           }
         }
@@ -18466,7 +18563,7 @@ const API = '';
           var countryStart = (dashTopCountriesPage - 1) * countryPageSize;
           var countriesPageRows = countries.slice(countryStart, countryStart + countryPageSize);
           if (!countries.length) {
-            countryTbody.innerHTML = '<tr><td colspan="4" class="dash-empty">No data</td></tr>';
+            countryTbody.innerHTML = '<tr><td colspan="5" class="dash-empty">No data</td></tr>';
           } else {
             countryTbody.innerHTML = countriesPageRows.map(function(c) {
               var cc = ((c && (c.country_code || c.country)) || 'XX').toUpperCase();
@@ -18482,7 +18579,9 @@ const API = '';
                   ? ('\u2014 <i class="fa-light fa-circle-info ms-1 text-muted" aria-hidden="true" title="' + escapeHtml(tip) + '"></i>')
                   : '\u2014';
               }
-              return '<tr><td><span style="display:inline-flex;align-items:center;gap:0.5rem">' + flagImg(cc, name) + ' ' + escapeHtml(name) + '</span></td><td class="text-end">' + fmtGbp(c.revenue) + '</td><td class="text-end">' + c.orders + '</td><td class="text-end kexo-nowrap">' + crHtml + '</td></tr>';
+              var vpvVal = (c && typeof c.vpv === 'number' && isFinite(c.vpv)) ? c.vpv : null;
+              var vpvHtml = vpvVal != null ? fmtGbp(vpvVal) : '\u2014';
+              return '<tr><td><span style="display:inline-flex;align-items:center;gap:0.5rem">' + flagImg(cc, name) + ' ' + escapeHtml(name) + '</span></td><td class="text-end">' + fmtGbp(c.revenue) + '</td><td class="text-end">' + c.orders + '</td><td class="text-end kexo-nowrap">' + crHtml + '</td><td class="text-end kexo-nowrap">' + vpvHtml + '</td></tr>';
             }).join('');
           }
         }
@@ -18502,7 +18601,7 @@ const API = '';
           var pageStart = (page - 1) * pageSize;
           var pageRows = rows.slice(pageStart, pageStart + pageSize);
           if (!rows.length) {
-            tbody.innerHTML = '<tr><td colspan="4" class="dash-empty">No data</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" class="dash-empty">No data</td></tr>';
             return;
           }
           function fmtSignedGbp(v) {
@@ -18546,7 +18645,9 @@ const API = '';
             var revCell = '<div>' + deltaText(p) + '</div>';
             var ordCell = '<div>' + deltaOrdersText(p) + '</div>';
             var crCell = fmtPct(p && (typeof p.cr === 'number' ? p.cr : null));
-            return '<tr><td><span class="product-cell">' + titleHtml + '</span></td><td class="text-end">' + revCell + '</td><td class="text-end">' + ordCell + '</td><td class="text-end kexo-nowrap">' + crCell + '</td></tr>';
+            var vpvVal = (p && typeof p.vpv === 'number' && isFinite(p.vpv)) ? p.vpv : null;
+            var vpvCell = vpvVal != null ? fmtGbp(vpvVal) : '\u2014';
+            return '<tr><td><span class="product-cell">' + titleHtml + '</span></td><td class="text-end">' + revCell + '</td><td class="text-end">' + ordCell + '</td><td class="text-end kexo-nowrap">' + crCell + '</td><td class="text-end kexo-nowrap">' + vpvCell + '</td></tr>';
           }).join('');
         }
 

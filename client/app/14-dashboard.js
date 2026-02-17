@@ -2727,6 +2727,7 @@
         var currentOrdersTone = numFromRangeMap(kpiDataForTone, 'convertedCount', kpiRangeForTone);
         var currentSessionsTone = sessionsFromBreakdownMap(kpiDataForTone, kpiRangeForTone);
         var currentConvTone = numFromRangeMap(kpiDataForTone, 'conversion', kpiRangeForTone);
+        var currentVpvTone = numFromRangeMap(kpiDataForTone, 'vpv', kpiRangeForTone);
         var currentReturningTone = numFromRangeMap(kpiDataForTone, 'returningCustomerCount', kpiRangeForTone);
         var currentAovTone = numFromRangeMap(kpiDataForTone, 'aov', kpiRangeForTone);
         var currentBounceTone = numFromRangeMap(kpiDataForTone, 'bounce', kpiRangeForTone);
@@ -2737,6 +2738,7 @@
           ? compareTone.trafficBreakdown.human_sessions
           : null;
         var compareConvTone = compareTone && typeof compareTone.conversion === 'number' ? compareTone.conversion : null;
+        var compareVpvTone = compareTone && typeof compareTone.vpv === 'number' ? compareTone.vpv : null;
         var compareReturningTone = compareTone && typeof compareTone.returningCustomerCount === 'number' ? compareTone.returningCustomerCount : null;
         var compareAovTone = compareTone && typeof compareTone.aov === 'number' ? compareTone.aov : null;
         var compareBounceTone = compareTone && typeof compareTone.bounce === 'number' ? compareTone.bounce : null;
@@ -2813,6 +2815,11 @@
         var ordersHistorySpark = sparklineSeries.map(function(d) { return d.orders; });
         var returningHistorySpark = sparklineSeries.map(function(d) { return d.returningCustomerOrders || 0; });
         var convHistorySpark = sparklineSeries.map(function(d) { return d.convRate; });
+        var vpvHistorySpark = sparklineSeries.map(function(d) {
+          var r = d && typeof d.revenue === 'number' ? d.revenue : null;
+          var s = d && typeof d.sessions === 'number' ? d.sessions : null;
+          return (s != null && s > 0 && r != null) ? (r / s) : null;
+        });
         var aovHistorySpark = sparklineSeries.map(function(d) { return d.aov; });
         var bounceHistorySpark = sparklineSeries.map(function(d) { return d.bounceRate; });
         var itemsHistorySpark = sparklineSeries.map(function(d) { return d.units || 0; });
@@ -2826,6 +2833,7 @@
         var ordersSpark = sparkSeriesFromCompare(currentOrdersTone, compareOrdersTone, ordersHistorySpark);
         var returningSpark = sparkSeriesFromCompare(currentReturningTone, compareReturningTone, returningHistorySpark);
         var convSpark = sparkSeriesFromCompare(currentConvTone, compareConvTone, convHistorySpark);
+        var vpvSpark = sparkSeriesFromCompare(currentVpvTone, compareVpvTone, vpvHistorySpark);
         var aovSpark = sparkSeriesFromCompare(currentAovTone, compareAovTone, aovHistorySpark);
         var bounceSpark = sparkSeriesFromCompare(currentBounceTone, compareBounceTone, bounceHistorySpark);
         var itemsSpark = sparkSeriesFromCompare(currentItemsTone, compareItemsTone, itemsHistorySpark);
@@ -2855,6 +2863,11 @@
           var ordersSparkCompare = compareFromCache(cmp, primaryLen, function(d) { return d.orders || 0; });
           var returningSparkCompare = compareFromCache(cmp, primaryLen, function(d) { return d.returningCustomerOrders || 0; });
           var convSparkCompare = compareFromCache(cmp, primaryLen, function(d) { return d.convRate != null ? d.convRate : 0; });
+          var vpvSparkCompare = compareFromCache(cmp, primaryLen, function(d) {
+            var r = d && typeof d.revenue === 'number' ? d.revenue : null;
+            var s = d && typeof d.sessions === 'number' ? d.sessions : null;
+            return (s != null && s > 0 && r != null) ? (r / s) : 0;
+          });
           var aovSparkCompare = compareFromCache(cmp, primaryLen, function(d) { return d.aov != null ? d.aov : 0; });
           var bounceSparkCompare = compareFromCache(cmp, primaryLen, function(d) { return d.bounceRate != null ? d.bounceRate : 0; });
           var roasSparkCompare = null;
@@ -2872,6 +2885,7 @@
           renderSparkline('dash-orders-sparkline', ordersSpark, sparkToneFromCompare(currentOrdersTone, compareOrdersTone, false, ordersSpark), ordersSparkCompare, 'zero');
           renderSparkline('dash-returning-sparkline', returningSpark, sparkToneFromCompare(currentReturningTone, compareReturningTone, false, returningSpark), returningSparkCompare, 'zero');
           renderSparkline('dash-conv-sparkline', convSpark, sparkToneFromCompare(currentConvTone, compareConvTone, false, convSpark), convSparkCompare, 'percent');
+          renderSparkline('dash-vpv-sparkline', vpvSpark, sparkToneFromCompare(currentVpvTone, compareVpvTone, false, vpvSpark), vpvSparkCompare, 'zero');
           renderSparkline('dash-aov-sparkline', aovSpark, sparkToneFromCompare(currentAovTone, compareAovTone, false, aovSpark), aovSparkCompare, 'zero');
           renderSparkline('dash-bounce-sparkline', bounceSpark, sparkToneFromCompare(currentBounceTone, compareBounceTone, true, bounceSpark), bounceSparkCompare, 'percent');
           renderSparkline('dash-roas-sparkline', roasSpark, sparkToneFromCompare(currentRoasTone, compareRoasTone, false, roasSpark), roasSparkCompare, 'zero');
@@ -2913,7 +2927,7 @@
           var prodStart = (dashTopProductsPage - 1) * prodPageSize;
           var productsPageRows = products.slice(prodStart, prodStart + prodPageSize);
           if (!products.length) {
-            prodTbody.innerHTML = '<tr><td colspan="4" class="dash-empty">No data</td></tr>';
+            prodTbody.innerHTML = '<tr><td colspan="5" class="dash-empty">No data</td></tr>';
           } else {
             var mainBase = getMainBaseUrl();
             prodTbody.innerHTML = productsPageRows.map(function(p) {
@@ -2941,7 +2955,9 @@
                   ? ('\u2014 <i class="fa-light fa-circle-info ms-1 text-muted" aria-hidden="true" title="' + escapeHtml(tip) + '"></i>')
                   : '\u2014';
               }
-              return '<tr><td><span class="product-cell">' + titleHtml + '</span></td><td class="text-end">' + fmtGbp(p.revenue) + '</td><td class="text-end">' + p.orders + '</td><td class="text-end kexo-nowrap">' + crHtml + '</td></tr>';
+              var vpvVal = (p && typeof p.vpv === 'number' && isFinite(p.vpv)) ? p.vpv : null;
+              var vpvHtml = vpvVal != null ? fmtGbp(vpvVal) : '\u2014';
+              return '<tr><td><span class="product-cell">' + titleHtml + '</span></td><td class="text-end">' + fmtGbp(p.revenue) + '</td><td class="text-end">' + p.orders + '</td><td class="text-end kexo-nowrap">' + crHtml + '</td><td class="text-end kexo-nowrap">' + vpvHtml + '</td></tr>';
             }).join('');
           }
         }
@@ -2956,7 +2972,7 @@
           var countryStart = (dashTopCountriesPage - 1) * countryPageSize;
           var countriesPageRows = countries.slice(countryStart, countryStart + countryPageSize);
           if (!countries.length) {
-            countryTbody.innerHTML = '<tr><td colspan="4" class="dash-empty">No data</td></tr>';
+            countryTbody.innerHTML = '<tr><td colspan="5" class="dash-empty">No data</td></tr>';
           } else {
             countryTbody.innerHTML = countriesPageRows.map(function(c) {
               var cc = ((c && (c.country_code || c.country)) || 'XX').toUpperCase();
@@ -2972,7 +2988,9 @@
                   ? ('\u2014 <i class="fa-light fa-circle-info ms-1 text-muted" aria-hidden="true" title="' + escapeHtml(tip) + '"></i>')
                   : '\u2014';
               }
-              return '<tr><td><span style="display:inline-flex;align-items:center;gap:0.5rem">' + flagImg(cc, name) + ' ' + escapeHtml(name) + '</span></td><td class="text-end">' + fmtGbp(c.revenue) + '</td><td class="text-end">' + c.orders + '</td><td class="text-end kexo-nowrap">' + crHtml + '</td></tr>';
+              var vpvVal = (c && typeof c.vpv === 'number' && isFinite(c.vpv)) ? c.vpv : null;
+              var vpvHtml = vpvVal != null ? fmtGbp(vpvVal) : '\u2014';
+              return '<tr><td><span style="display:inline-flex;align-items:center;gap:0.5rem">' + flagImg(cc, name) + ' ' + escapeHtml(name) + '</span></td><td class="text-end">' + fmtGbp(c.revenue) + '</td><td class="text-end">' + c.orders + '</td><td class="text-end kexo-nowrap">' + crHtml + '</td><td class="text-end kexo-nowrap">' + vpvHtml + '</td></tr>';
             }).join('');
           }
         }
@@ -2992,7 +3010,7 @@
           var pageStart = (page - 1) * pageSize;
           var pageRows = rows.slice(pageStart, pageStart + pageSize);
           if (!rows.length) {
-            tbody.innerHTML = '<tr><td colspan="4" class="dash-empty">No data</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" class="dash-empty">No data</td></tr>';
             return;
           }
           function fmtSignedGbp(v) {
@@ -3036,7 +3054,9 @@
             var revCell = '<div>' + deltaText(p) + '</div>';
             var ordCell = '<div>' + deltaOrdersText(p) + '</div>';
             var crCell = fmtPct(p && (typeof p.cr === 'number' ? p.cr : null));
-            return '<tr><td><span class="product-cell">' + titleHtml + '</span></td><td class="text-end">' + revCell + '</td><td class="text-end">' + ordCell + '</td><td class="text-end kexo-nowrap">' + crCell + '</td></tr>';
+            var vpvVal = (p && typeof p.vpv === 'number' && isFinite(p.vpv)) ? p.vpv : null;
+            var vpvCell = vpvVal != null ? fmtGbp(vpvVal) : '\u2014';
+            return '<tr><td><span class="product-cell">' + titleHtml + '</span></td><td class="text-end">' + revCell + '</td><td class="text-end">' + ordCell + '</td><td class="text-end kexo-nowrap">' + crCell + '</td><td class="text-end kexo-nowrap">' + vpvCell + '</td></tr>';
           }).join('');
         }
 

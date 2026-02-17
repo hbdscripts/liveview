@@ -588,10 +588,17 @@
     var sortBy = tableState.sortBy || 'rev';
     var sortDir = tableState.sortDir === 'asc' ? 'asc' : 'desc';
     rows.sort(function (a, b) {
+      function rowVpv(r) {
+        if (r && typeof r.vpv === 'number' && Number.isFinite(r.vpv)) return r.vpv;
+        var rev = r && typeof r.revenue === 'number' ? r.revenue : null;
+        var sess = r && typeof r.sessions === 'number' ? r.sessions : null;
+        return (sess != null && sess > 0 && rev != null) ? (rev / sess) : null;
+      }
       if (sortBy === 'variant') return cmpText(a && a.variant, b && b.variant, sortDir);
       if (sortBy === 'sessions') return cmpNum(a && a.sessions, b && b.sessions, sortDir) || cmpNum(a && a.revenue, b && b.revenue, 'desc');
       if (sortBy === 'orders') return cmpNum(a && a.orders, b && b.orders, sortDir) || cmpNum(a && a.revenue, b && b.revenue, 'desc');
       if (sortBy === 'cr') return cmpNum(a && a.cr, b && b.cr, sortDir) || cmpNum(a && a.orders, b && b.orders, 'desc');
+      if (sortBy === 'vpv') return cmpNum(rowVpv(a), rowVpv(b), sortDir) || cmpNum(a && a.revenue, b && b.revenue, 'desc');
       return cmpNum(a && a.revenue, b && b.revenue, sortDir) || cmpNum(a && a.orders, b && b.orders, 'desc');
     });
 
@@ -611,13 +618,22 @@
     var start = (tableState.page - 1) * pageSize;
     var pageRows = rows.slice(start, start + pageSize);
 
+    function rowVpv(r) {
+      if (r && typeof r.vpv === 'number' && Number.isFinite(r.vpv)) return r.vpv;
+      var rev = r && typeof r.revenue === 'number' ? r.revenue : null;
+      var sess = r && typeof r.sessions === 'number' ? r.sessions : null;
+      return (sess != null && sess > 0 && rev != null) ? (rev / sess) : null;
+    }
     body.innerHTML = pageRows.map(function (row) {
+      var vpvVal = rowVpv(row);
+      var vpvStr = vpvVal != null ? formatMoney(vpvVal) : '—';
       return '' +
         '<div class="grid-row" role="row">' +
           '<div class="grid-cell bs-product-col" role="cell"><div class="product-cell"><span class="bs-name" title="' + escapeHtml(row.variant || '—') + '">' + escapeHtml(row.variant || '—') + '</span></div></div>' +
           '<div class="grid-cell" role="cell">' + escapeHtml(formatInt(row.sessions)) + '</div>' +
           '<div class="grid-cell" role="cell">' + escapeHtml(formatInt(row.orders)) + '</div>' +
           '<div class="grid-cell" role="cell">' + escapeHtml(formatPct(row.cr)) + '</div>' +
+          '<div class="grid-cell" role="cell">' + vpvStr + '</div>' +
           '<div class="grid-cell" role="cell">' + formatMoney(row.revenue) + '</div>' +
         '</div>';
     }).join('');
