@@ -552,7 +552,7 @@
         var topHeight = 0;
         try {
           var topRect = topGrid.getBoundingClientRect ? topGrid.getBoundingClientRect() : null;
-          if (topRect && Number.isFinite(topRect.height) && topRect.height > 0) topHeight = Math.round(topRect.height);
+          if (topRect && Number.isFinite(topRect.height) && topRect.height > 0) topHeight = Math.max(0, Math.round(topRect.height) - 16);
         } catch (_) {}
         if (topHeight > 0) {
           try {
@@ -568,7 +568,7 @@
         try {
           if (midGrid && midGrid.getBoundingClientRect) {
             var midRect = midGrid.getBoundingClientRect();
-            if (midRect && Number.isFinite(midRect.height) && midRect.height > 0) midHeight = Math.round(midRect.height);
+            if (midRect && Number.isFinite(midRect.height) && midRect.height > 0) midHeight = Math.max(0, Math.round(midRect.height) - 16);
           }
         } catch (_) {}
         var mainHeight = midHeight > 0 ? midHeight : topHeight;
