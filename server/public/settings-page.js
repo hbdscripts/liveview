@@ -112,6 +112,7 @@
   var insightsMergeContext = null;
   var initialLayoutSubTab = null;
   var initialKexoSubTab = null;
+  var initialIntegrationsSubTab = null;
   var activeLayoutSubTab = 'tables';
   var activeKexoSubTab = 'general';
 
@@ -150,6 +151,13 @@
         if (lm && lm[1]) {
           var lk = lm[1].toLowerCase().replace(/\s+/g, '-');
           if (lk === 'tables' || lk === 'charts' || lk === 'kpis') initialLayoutSubTab = lk;
+        }
+      }
+      if (t === 'integrations') {
+        var im = /[?&]integrationsTab=([^&]+)/.exec(window.location.search || '');
+        if (im && im[1]) {
+          var ik = im[1].toLowerCase().replace(/\s+/g, '-');
+          if (ik === 'shopify' || ik === 'googleads') initialIntegrationsSubTab = ik;
         }
       }
       if (TAB_MAP[t]) return t;
@@ -2149,7 +2157,14 @@
     });
     html += '</div>';
     root.innerHTML = html;
-    root.querySelectorAll('[data-chart-config-key]').forEach(function (card) { refreshPieMetricState(card); });
+    root.querySelectorAll('[data-chart-config-key]').forEach(function (card) {
+      refreshPieMetricState(card);
+      var bodyEl = card.querySelector('.settings-charts-card-body');
+      var key = (card.getAttribute('data-chart-config-key') || '').trim().toLowerCase();
+      if (bodyEl && key && typeof window.KexoLayoutShortcuts !== 'undefined' && window.KexoLayoutShortcuts.refreshChartSettingsUi) {
+        window.KexoLayoutShortcuts.refreshChartSettingsUi(bodyEl, key);
+      }
+    });
     syncColorSwatches(root);
     renderAllChartsPreviews(root);
 
@@ -2160,7 +2175,14 @@
       }
       previewTimer = setTimeout(function () {
         previewTimer = 0;
-        root.querySelectorAll('[data-chart-config-key]').forEach(function (card) { refreshPieMetricState(card); });
+        root.querySelectorAll('[data-chart-config-key]').forEach(function (card) {
+          refreshPieMetricState(card);
+          var bodyEl = card.querySelector('.settings-charts-card-body');
+          var key = (card.getAttribute('data-chart-config-key') || '').trim().toLowerCase();
+          if (bodyEl && key && typeof window.KexoLayoutShortcuts !== 'undefined' && window.KexoLayoutShortcuts.refreshChartSettingsUi) {
+            window.KexoLayoutShortcuts.refreshChartSettingsUi(bodyEl, key);
+          }
+        });
         syncColorSwatches(root);
         renderAllChartsPreviews(root);
       }, 100);

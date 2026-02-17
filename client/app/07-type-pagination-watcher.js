@@ -4137,14 +4137,13 @@
       var grid = document.getElementById('dash-kpi-grid');
       var midGrid = document.getElementById('dash-kpi-grid-mid');
       var lowerGrid = document.getElementById('dash-kpi-grid-lower');
-      if (!grid || !midGrid || !lowerGrid || !cfg || cfg.v !== 1) return;
-      var list = cfg && cfg.kpis && Array.isArray(cfg.kpis.dashboard) ? cfg.kpis.dashboard : null;
-      if (!list) return;
+      if (!grid || !midGrid || !lowerGrid) return;
+      var list = cfg && cfg.v === 1 && cfg.kpis && Array.isArray(cfg.kpis.dashboard) ? cfg.kpis.dashboard : null;
       var topCap = 4;
       var desktop = false;
       try {
         desktop = !!(window && window.matchMedia && window.matchMedia('(min-width: 1200px)').matches);
-        if (desktop) topCap = 8;
+        if (desktop) topCap = 4;
       } catch (_) {}
       var midCap = 4;
       var topVisibleCount = 0;
@@ -4152,7 +4151,7 @@
 
       function pinToLower(key) {
         // Keep special/tall KPI cards out of the top+mid layout so the left KPI stacks
-        // align exactly with the 4 overview charts on the right (8 top, 4 mid).
+        // align exactly with the 4 overview charts on the right (4 top, 4 mid).
         var k = key != null ? String(key).trim().toLowerCase() : '';
         if (!desktop) return false;
         return k === 'kexo_score';
@@ -4173,6 +4172,7 @@
         items: 'dash-kpi-items',
         kexo_score: 'dash-kpi-kexo-score',
       };
+      var defaultKpiOrder = ['revenue', 'orders', 'conv', 'aov', 'sessions', 'bounce', 'returning', 'roas', 'kexo_score', 'cogs', 'fulfilled', 'returns', 'items'];
       var colByKey = {};
       var keyByCol = new Map();
       Object.keys(idByKey).forEach(function(key) {
@@ -4213,39 +4213,59 @@
         return 'lower';
       }
 
-      list.forEach(function(item) {
-        if (!item || typeof item !== 'object') return;
-        var key = item.key != null ? String(item.key).trim().toLowerCase() : '';
-        if (!key) return;
-        var col = colByKey[key] || null;
-        if (!col) return;
-        var labelEl = col.querySelector ? col.querySelector('.subheader') : null;
-        if (labelEl && item.label != null) {
-          var lbl = String(item.label).trim();
-          if (lbl) labelEl.textContent = lbl;
-        }
-        var enabled = item.enabled !== false;
-        col.classList.toggle('is-user-disabled', !enabled);
-        var bucket = chooseBucket(key, enabled);
-        if (bucket === 'top') fragPrimary.appendChild(col);
-        else if (bucket === 'mid') fragMid.appendChild(col);
-        else fragLower.appendChild(col);
-        seen.add(col);
-      });
-      allCols.forEach(function(col) {
-        if (!col || seen.has(col)) return;
-        col.classList.remove('is-user-disabled');
-        var key = keyByCol && keyByCol.get ? (keyByCol.get(col) || '') : '';
-        var bucket = chooseBucket(key, true);
-        if (bucket === 'top') fragPrimary.appendChild(col);
-        else if (bucket === 'mid') fragMid.appendChild(col);
-        else fragLower.appendChild(col);
-      });
+      if (list && list.length > 0) {
+        list.forEach(function(item) {
+          if (!item || typeof item !== 'object') return;
+          var key = item.key != null ? String(item.key).trim().toLowerCase() : '';
+          if (!key) return;
+          var col = colByKey[key] || null;
+          if (!col) return;
+          var labelEl = col.querySelector ? col.querySelector('.subheader') : null;
+          if (labelEl && item.label != null) {
+            var lbl = String(item.label).trim();
+            if (lbl) labelEl.textContent = lbl;
+          }
+          var enabled = item.enabled !== false;
+          col.classList.toggle('is-user-disabled', !enabled);
+          var bucket = chooseBucket(key, enabled);
+          if (bucket === 'top') fragPrimary.appendChild(col);
+          else if (bucket === 'mid') fragMid.appendChild(col);
+          else fragLower.appendChild(col);
+          seen.add(col);
+        });
+        allCols.forEach(function(col) {
+          if (!col || seen.has(col)) return;
+          col.classList.remove('is-user-disabled');
+          var key = keyByCol && keyByCol.get ? (keyByCol.get(col) || '') : '';
+          var bucket = chooseBucket(key, true);
+          if (bucket === 'top') fragPrimary.appendChild(col);
+          else if (bucket === 'mid') fragMid.appendChild(col);
+          else fragLower.appendChild(col);
+        });
+      } else {
+        defaultKpiOrder.forEach(function(key) {
+          var col = colByKey[key];
+          if (!col || seen.has(col)) return;
+          var bucket = chooseBucket(key, true);
+          if (bucket === 'top') fragPrimary.appendChild(col);
+          else if (bucket === 'mid') fragMid.appendChild(col);
+          else fragLower.appendChild(col);
+          seen.add(col);
+        });
+        allCols.forEach(function(col) {
+          if (!col || seen.has(col)) return;
+          var key = keyByCol && keyByCol.get ? (keyByCol.get(col) || '') : '';
+          var bucket = chooseBucket(key, true);
+          if (bucket === 'top') fragPrimary.appendChild(col);
+          else if (bucket === 'mid') fragMid.appendChild(col);
+          else fragLower.appendChild(col);
+        });
+      }
       grid.appendChild(fragPrimary);
       midGrid.appendChild(fragMid);
       lowerGrid.appendChild(fragLower);
 
-      var showDelta = !(cfg.options && cfg.options.dashboard && cfg.options.dashboard.showDelta === false);
+      var showDelta = (cfg && cfg.options && cfg.options.dashboard && cfg.options.dashboard.showDelta === false) ? false : true;
       var deltaEls = Array.prototype.slice.call(grid.querySelectorAll('.dash-kpi-delta'));
       deltaEls = deltaEls.concat(Array.prototype.slice.call(midGrid.querySelectorAll('.dash-kpi-delta')));
       if (lowerGrid) deltaEls = deltaEls.concat(Array.prototype.slice.call(lowerGrid.querySelectorAll('.dash-kpi-delta')));

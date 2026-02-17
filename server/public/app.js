@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 7f141654041c4ba3
+// checksum: 5bb104a194afd38d
 
 (function () {
 const API = '';
@@ -1397,6 +1397,10 @@ const API = '';
           link.addEventListener('click', function (e) {
             e.preventDefault();
             e.stopPropagation();
+            if (tableId === 'ads-root') {
+              window.location.href = '/settings?tab=integrations&integrationsTab=googleads';
+              return;
+            }
             if (typeof window.KexoLayoutShortcuts !== 'undefined' && typeof window.KexoLayoutShortcuts.openTableModal === 'function') {
               window.KexoLayoutShortcuts.openTableModal({ pageKey: pageKey, tableId: tableId, cardTitle: cardTitle });
             }
@@ -9374,14 +9378,13 @@ const API = '';
       var grid = document.getElementById('dash-kpi-grid');
       var midGrid = document.getElementById('dash-kpi-grid-mid');
       var lowerGrid = document.getElementById('dash-kpi-grid-lower');
-      if (!grid || !midGrid || !lowerGrid || !cfg || cfg.v !== 1) return;
-      var list = cfg && cfg.kpis && Array.isArray(cfg.kpis.dashboard) ? cfg.kpis.dashboard : null;
-      if (!list) return;
+      if (!grid || !midGrid || !lowerGrid) return;
+      var list = cfg && cfg.v === 1 && cfg.kpis && Array.isArray(cfg.kpis.dashboard) ? cfg.kpis.dashboard : null;
       var topCap = 4;
       var desktop = false;
       try {
         desktop = !!(window && window.matchMedia && window.matchMedia('(min-width: 1200px)').matches);
-        if (desktop) topCap = 8;
+        if (desktop) topCap = 4;
       } catch (_) {}
       var midCap = 4;
       var topVisibleCount = 0;
@@ -9389,7 +9392,7 @@ const API = '';
 
       function pinToLower(key) {
         // Keep special/tall KPI cards out of the top+mid layout so the left KPI stacks
-        // align exactly with the 4 overview charts on the right (8 top, 4 mid).
+        // align exactly with the 4 overview charts on the right (4 top, 4 mid).
         var k = key != null ? String(key).trim().toLowerCase() : '';
         if (!desktop) return false;
         return k === 'kexo_score';
@@ -9410,6 +9413,7 @@ const API = '';
         items: 'dash-kpi-items',
         kexo_score: 'dash-kpi-kexo-score',
       };
+      var defaultKpiOrder = ['revenue', 'orders', 'conv', 'aov', 'sessions', 'bounce', 'returning', 'roas', 'kexo_score', 'cogs', 'fulfilled', 'returns', 'items'];
       var colByKey = {};
       var keyByCol = new Map();
       Object.keys(idByKey).forEach(function(key) {
@@ -9450,39 +9454,59 @@ const API = '';
         return 'lower';
       }
 
-      list.forEach(function(item) {
-        if (!item || typeof item !== 'object') return;
-        var key = item.key != null ? String(item.key).trim().toLowerCase() : '';
-        if (!key) return;
-        var col = colByKey[key] || null;
-        if (!col) return;
-        var labelEl = col.querySelector ? col.querySelector('.subheader') : null;
-        if (labelEl && item.label != null) {
-          var lbl = String(item.label).trim();
-          if (lbl) labelEl.textContent = lbl;
-        }
-        var enabled = item.enabled !== false;
-        col.classList.toggle('is-user-disabled', !enabled);
-        var bucket = chooseBucket(key, enabled);
-        if (bucket === 'top') fragPrimary.appendChild(col);
-        else if (bucket === 'mid') fragMid.appendChild(col);
-        else fragLower.appendChild(col);
-        seen.add(col);
-      });
-      allCols.forEach(function(col) {
-        if (!col || seen.has(col)) return;
-        col.classList.remove('is-user-disabled');
-        var key = keyByCol && keyByCol.get ? (keyByCol.get(col) || '') : '';
-        var bucket = chooseBucket(key, true);
-        if (bucket === 'top') fragPrimary.appendChild(col);
-        else if (bucket === 'mid') fragMid.appendChild(col);
-        else fragLower.appendChild(col);
-      });
+      if (list && list.length > 0) {
+        list.forEach(function(item) {
+          if (!item || typeof item !== 'object') return;
+          var key = item.key != null ? String(item.key).trim().toLowerCase() : '';
+          if (!key) return;
+          var col = colByKey[key] || null;
+          if (!col) return;
+          var labelEl = col.querySelector ? col.querySelector('.subheader') : null;
+          if (labelEl && item.label != null) {
+            var lbl = String(item.label).trim();
+            if (lbl) labelEl.textContent = lbl;
+          }
+          var enabled = item.enabled !== false;
+          col.classList.toggle('is-user-disabled', !enabled);
+          var bucket = chooseBucket(key, enabled);
+          if (bucket === 'top') fragPrimary.appendChild(col);
+          else if (bucket === 'mid') fragMid.appendChild(col);
+          else fragLower.appendChild(col);
+          seen.add(col);
+        });
+        allCols.forEach(function(col) {
+          if (!col || seen.has(col)) return;
+          col.classList.remove('is-user-disabled');
+          var key = keyByCol && keyByCol.get ? (keyByCol.get(col) || '') : '';
+          var bucket = chooseBucket(key, true);
+          if (bucket === 'top') fragPrimary.appendChild(col);
+          else if (bucket === 'mid') fragMid.appendChild(col);
+          else fragLower.appendChild(col);
+        });
+      } else {
+        defaultKpiOrder.forEach(function(key) {
+          var col = colByKey[key];
+          if (!col || seen.has(col)) return;
+          var bucket = chooseBucket(key, true);
+          if (bucket === 'top') fragPrimary.appendChild(col);
+          else if (bucket === 'mid') fragMid.appendChild(col);
+          else fragLower.appendChild(col);
+          seen.add(col);
+        });
+        allCols.forEach(function(col) {
+          if (!col || seen.has(col)) return;
+          var key = keyByCol && keyByCol.get ? (keyByCol.get(col) || '') : '';
+          var bucket = chooseBucket(key, true);
+          if (bucket === 'top') fragPrimary.appendChild(col);
+          else if (bucket === 'mid') fragMid.appendChild(col);
+          else fragLower.appendChild(col);
+        });
+      }
       grid.appendChild(fragPrimary);
       midGrid.appendChild(fragMid);
       lowerGrid.appendChild(fragLower);
 
-      var showDelta = !(cfg.options && cfg.options.dashboard && cfg.options.dashboard.showDelta === false);
+      var showDelta = (cfg && cfg.options && cfg.options.dashboard && cfg.options.dashboard.showDelta === false) ? false : true;
       var deltaEls = Array.prototype.slice.call(grid.querySelectorAll('.dash-kpi-delta'));
       deltaEls = deltaEls.concat(Array.prototype.slice.call(midGrid.querySelectorAll('.dash-kpi-delta')));
       if (lowerGrid) deltaEls = deltaEls.concat(Array.prototype.slice.call(lowerGrid.querySelectorAll('.dash-kpi-delta')));
@@ -17592,8 +17616,16 @@ const API = '';
               if (key.indexOf(' ') >= 0) return formatSparklineTimeLabel(key);
               return key;
             });
-            var step = 1;
-            if (labels.length > 12) step = Math.max(1, Math.ceil(labels.length / 8));
+            var maxLabels = 6;
+            var visibleIndices = new Set();
+            if (labels.length <= maxLabels) {
+              labels.forEach(function(_, i) { visibleIndices.add(i); });
+            } else {
+              for (var i = 0; i < maxLabels; i++) {
+                var idx = i === 0 ? 0 : i === maxLabels - 1 ? labels.length - 1 : Math.round((i / (maxLabels - 1)) * (labels.length - 1));
+                visibleIndices.add(idx);
+              }
+            }
             function ensureRow(bodyEl) {
               if (!bodyEl || !bodyEl.querySelector) return;
               var wrap = bodyEl.querySelector('.dash-kpi-sparkline-wrap');
@@ -17605,7 +17637,7 @@ const API = '';
                 wrap.appendChild(row);
               }
               row.innerHTML = labels.map(function(t, i) {
-                var hidden = (step > 1 && (i % step) !== 0) ? ' is-hidden' : '';
+                var hidden = visibleIndices.has(i) ? '' : ' is-hidden';
                 return '<span class="dash-kpi-sparkline-label' + hidden + '">' + escapeHtml(t) + '</span>';
               }).join('');
             }
@@ -19892,17 +19924,17 @@ const API = '';
         '<div class="col-12 col-md-6"><label class="form-label mb-1">Chart type</label><select class="form-select form-select-sm" data-chart-field="mode">' + selectOptionsHtml(modes, mode) + '</select></div>' +
         '<div class="col-12 col-md-6"><label class="form-label mb-1">Pie metric</label><select class="form-select form-select-sm" data-chart-field="pieMetric"' + (canPie ? '' : ' disabled') + '><option value="sessions"' + (pieMetric === 'sessions' ? ' selected' : '') + '>Sessions</option><option value="orders"' + (pieMetric === 'orders' ? ' selected' : '') + '>Orders</option><option value="revenue"' + (pieMetric === 'revenue' ? ' selected' : '') + '>Revenue</option></select></div>' +
         '<div class="col-12"><label class="form-label mb-1">Chart style</label><div class="row g-2">' +
-          '<div class="col-6 col-lg-4"><label class="form-label mb-1">Curve</label><select class="form-select form-select-sm" data-chart-field="style.curve"><option value="smooth"' + (style.curve === 'smooth' ? ' selected' : '') + '>Smooth</option><option value="straight"' + (style.curve === 'straight' ? ' selected' : '') + '>Straight</option><option value="stepline"' + (style.curve === 'stepline' ? ' selected' : '') + '>Stepline</option></select></div>' +
-          '<div class="col-6 col-lg-4"><label class="form-label mb-1">Stroke</label><input type="number" class="form-control form-control-sm" min="0" max="8" step="0.1" data-chart-field="style.strokeWidth" value="' + escapeHtml(String(style.strokeWidth)) + '"></div>' +
-          '<div class="col-6 col-lg-4"><label class="form-label mb-1">Dash</label><input type="number" class="form-control form-control-sm" min="0" max="20" step="1" data-chart-field="style.dashArray" value="' + escapeHtml(String(style.dashArray)) + '"></div>' +
-          '<div class="col-6 col-lg-4"><label class="form-label mb-1">Markers</label><input type="number" class="form-control form-control-sm" min="0" max="12" step="1" data-chart-field="style.markerSize" value="' + escapeHtml(String(style.markerSize)) + '"></div>' +
-          '<div class="col-6 col-lg-4"><label class="form-label mb-1">Fill opacity</label><input type="number" class="form-control form-control-sm" min="0" max="1" step="0.05" data-chart-field="style.fillOpacity" value="' + escapeHtml(String(style.fillOpacity)) + '"></div>' +
-          '<div class="col-6 col-lg-4"><label class="form-label mb-1">Grid dash</label><input type="number" class="form-control form-control-sm" min="0" max="16" step="1" data-chart-field="style.gridDash" value="' + escapeHtml(String(style.gridDash)) + '"></div>' +
-          '<div class="col-6 col-lg-4"><label class="form-label mb-1">Labels</label><select class="form-select form-select-sm" data-chart-field="style.dataLabels"><option value="auto"' + (style.dataLabels === 'auto' ? ' selected' : '') + '>Auto</option><option value="on"' + (style.dataLabels === 'on' ? ' selected' : '') + '>On</option><option value="off"' + (style.dataLabels === 'off' ? ' selected' : '') + '>Off</option></select></div>' +
-          '<div class="col-6 col-lg-4 d-flex align-items-end"><label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-chart-field="style.toolbar"' + (style.toolbar ? ' checked' : '') + '><span class="form-check-label ms-2">Toolbar</span></label></div>' +
-          '<div class="col-6 col-lg-4 d-flex align-items-end"><label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-chart-field="style.animations"' + (style.animations ? ' checked' : '') + '><span class="form-check-label ms-2">Animations</span></label></div>' +
+          '<div class="col-6 col-lg-4" data-chart-setting="curve"><label class="form-label mb-1">Curve</label><select class="form-select form-select-sm" data-chart-field="style.curve"><option value="smooth"' + (style.curve === 'smooth' ? ' selected' : '') + '>Smooth</option><option value="straight"' + (style.curve === 'straight' ? ' selected' : '') + '>Straight</option><option value="stepline"' + (style.curve === 'stepline' ? ' selected' : '') + '>Stepline</option></select></div>' +
+          '<div class="col-6 col-lg-4" data-chart-setting="stroke"><label class="form-label mb-1">Stroke</label><input type="number" class="form-control form-control-sm" min="0" max="8" step="0.1" data-chart-field="style.strokeWidth" value="' + escapeHtml(String(style.strokeWidth)) + '"></div>' +
+          '<div class="col-6 col-lg-4" data-chart-setting="dash"><label class="form-label mb-1">Dash</label><input type="number" class="form-control form-control-sm" min="0" max="20" step="1" data-chart-field="style.dashArray" value="' + escapeHtml(String(style.dashArray)) + '"></div>' +
+          '<div class="col-6 col-lg-4" data-chart-setting="markers"><label class="form-label mb-1">Markers</label><input type="number" class="form-control form-control-sm" min="0" max="12" step="1" data-chart-field="style.markerSize" value="' + escapeHtml(String(style.markerSize)) + '"></div>' +
+          '<div class="col-6 col-lg-4" data-chart-setting="fill"><label class="form-label mb-1">Fill opacity</label><input type="number" class="form-control form-control-sm" min="0" max="1" step="0.05" data-chart-field="style.fillOpacity" value="' + escapeHtml(String(style.fillOpacity)) + '"></div>' +
+          '<div class="col-6 col-lg-4" data-chart-setting="grid"><label class="form-label mb-1">Grid dash</label><input type="number" class="form-control form-control-sm" min="0" max="16" step="1" data-chart-field="style.gridDash" value="' + escapeHtml(String(style.gridDash)) + '"></div>' +
+          '<div class="col-6 col-lg-4" data-chart-setting="labels"><label class="form-label mb-1">Labels</label><select class="form-select form-select-sm" data-chart-field="style.dataLabels"><option value="auto"' + (style.dataLabels === 'auto' ? ' selected' : '') + '>Auto</option><option value="on"' + (style.dataLabels === 'on' ? ' selected' : '') + '>On</option><option value="off"' + (style.dataLabels === 'off' ? ' selected' : '') + '>Off</option></select></div>' +
+          '<div class="col-6 col-lg-4 d-flex align-items-end" data-chart-setting="toolbar"><label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-chart-field="style.toolbar"' + (style.toolbar ? ' checked' : '') + '><span class="form-check-label ms-2">Toolbar</span></label></div>' +
+          '<div class="col-6 col-lg-4 d-flex align-items-end" data-chart-setting="animations"><label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-chart-field="style.animations"' + (style.animations ? ' checked' : '') + '><span class="form-check-label ms-2">Animations</span></label></div>' +
         '</div></div>' +
-        '<div class="col-12"><label class="form-label mb-1">Pie / donut</label><div class="row g-2">' +
+        '<div class="col-12" data-chart-setting="pie-donut"><label class="form-label mb-1">Pie / donut</label><div class="row g-2">' +
           '<div class="col-6 col-md-4 d-flex align-items-end"><label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-chart-field="style.pieDonut"' + (style.pieDonut ? ' checked' : '') + (supportsPie ? '' : ' disabled') + '><span class="form-check-label ms-2">Hollow donut</span></label></div>' +
           '<div class="col-6 col-md-4"><label class="form-label mb-1">Donut size (%)</label><input type="number" class="form-control form-control-sm" min="30" max="90" step="1" data-chart-field="style.pieDonutSize" value="' + escapeHtml(String(style.pieDonutSize)) + '"' + (supportsPie ? '' : ' disabled') + '></div>' +
           '<div class="col-6 col-md-4"><label class="form-label mb-1">Label position</label><select class="form-select form-select-sm" data-chart-field="style.pieLabelPosition"' + (supportsPie ? '' : ' disabled') + '><option value="auto"' + (style.pieLabelPosition === 'auto' ? ' selected' : '') + '>Auto</option><option value="inside"' + (style.pieLabelPosition === 'inside' ? ' selected' : '') + '>Inside</option><option value="outside"' + (style.pieLabelPosition === 'outside' ? ' selected' : '') + '>Outside</option></select></div>' +
@@ -19977,6 +20009,39 @@ const API = '';
     root.querySelectorAll('[data-color-swatch]').forEach(function (sw) {
       var input = sw.previousElementSibling;
       if (input) sw.style.background = normalizeHexColor(input.value, '#3eb3ab');
+    });
+  }
+
+  function refreshChartSettingsUi(container, chartKey) {
+    if (!container || !container.querySelectorAll) return;
+    var modeEl = container.querySelector('[data-chart-field="mode"]');
+    var mode = (modeEl && modeEl.value != null ? String(modeEl.value).trim().toLowerCase() : '') || 'line';
+    var lineLike = mode === 'line' || mode === 'area' || mode === 'multi-line-labels';
+    var showCurve = lineLike;
+    var showStroke = lineLike;
+    var showDash = lineLike;
+    var showMarkers = lineLike;
+    var showFill = mode === 'area';
+    var showGrid = lineLike || mode === 'bar';
+    var showLabels = lineLike || mode === 'bar';
+    var showToolbar = true;
+    var showAnimations = true;
+    var showPieDonut = mode === 'pie';
+    if (mode.indexOf('map-') === 0) {
+      showCurve = showStroke = showDash = showMarkers = showFill = showGrid = showLabels = showPieDonut = false;
+    }
+    var settingNames = ['curve', 'stroke', 'dash', 'markers', 'fill', 'grid', 'labels', 'toolbar', 'animations', 'pie-donut'];
+    var visibility = { curve: showCurve, stroke: showStroke, dash: showDash, markers: showMarkers, fill: showFill, grid: showGrid, labels: showLabels, toolbar: showToolbar, animations: showAnimations, 'pie-donut': showPieDonut };
+    settingNames.forEach(function (name) {
+      var el = container.querySelector('[data-chart-setting="' + name + '"]');
+      if (!el) return;
+      var visible = !!visibility[name];
+      el.style.display = visible ? '' : 'none';
+      var inputs = el.querySelectorAll('input, select, textarea');
+      inputs.forEach(function (inp) {
+        if (visible) inp.removeAttribute('disabled');
+        else inp.setAttribute('disabled', 'disabled');
+      });
     });
   }
 
@@ -20256,9 +20321,13 @@ const API = '';
         bodyEl.removeAttribute('data-kexo-layout-page-key');
         bodyEl.removeAttribute('data-kexo-layout-table-id');
         setMsg('', null);
+        refreshChartSettingsUi(bodyEl, chartKey);
         syncColorSwatches(bodyEl);
         bodyEl.addEventListener('input', function () { syncColorSwatches(bodyEl); });
-        bodyEl.addEventListener('change', function () { syncColorSwatches(bodyEl); });
+        bodyEl.addEventListener('change', function () {
+          syncColorSwatches(bodyEl);
+          refreshChartSettingsUi(bodyEl, chartKey);
+        });
 
         saveBtn.replaceWith(saveBtn.cloneNode(true));
         document.getElementById(MODAL_ID + '-save-btn').addEventListener('click', function () {
@@ -20289,6 +20358,7 @@ const API = '';
         bodyEl.setAttribute('data-kexo-layout-chart-key', chartKey);
         bodyEl.removeAttribute('data-kexo-layout-page-key');
         bodyEl.removeAttribute('data-kexo-layout-table-id');
+        refreshChartSettingsUi(bodyEl, chartKey);
         syncColorSwatches(bodyEl);
         saveBtn.replaceWith(saveBtn.cloneNode(true));
         document.getElementById(MODAL_ID + '-save-btn').addEventListener('click', function () {
@@ -20337,6 +20407,7 @@ const API = '';
       readTableModalBody: readTableModalBody,
       renderChartModalBody: renderChartModalBody,
       readChartModalBody: readChartModalBody,
+      refreshChartSettingsUi: refreshChartSettingsUi,
     };
   } catch (_) {}
 

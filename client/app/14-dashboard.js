@@ -2143,8 +2143,16 @@
               if (key.indexOf(' ') >= 0) return formatSparklineTimeLabel(key);
               return key;
             });
-            var step = 1;
-            if (labels.length > 12) step = Math.max(1, Math.ceil(labels.length / 8));
+            var maxLabels = 6;
+            var visibleIndices = new Set();
+            if (labels.length <= maxLabels) {
+              labels.forEach(function(_, i) { visibleIndices.add(i); });
+            } else {
+              for (var i = 0; i < maxLabels; i++) {
+                var idx = i === 0 ? 0 : i === maxLabels - 1 ? labels.length - 1 : Math.round((i / (maxLabels - 1)) * (labels.length - 1));
+                visibleIndices.add(idx);
+              }
+            }
             function ensureRow(bodyEl) {
               if (!bodyEl || !bodyEl.querySelector) return;
               var wrap = bodyEl.querySelector('.dash-kpi-sparkline-wrap');
@@ -2156,7 +2164,7 @@
                 wrap.appendChild(row);
               }
               row.innerHTML = labels.map(function(t, i) {
-                var hidden = (step > 1 && (i % step) !== 0) ? ' is-hidden' : '';
+                var hidden = visibleIndices.has(i) ? '' : ' is-hidden';
                 return '<span class="dash-kpi-sparkline-label' + hidden + '">' + escapeHtml(t) + '</span>';
               }).join('');
             }

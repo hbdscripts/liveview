@@ -279,17 +279,17 @@
         '<div class="col-12 col-md-6"><label class="form-label mb-1">Chart type</label><select class="form-select form-select-sm" data-chart-field="mode">' + selectOptionsHtml(modes, mode) + '</select></div>' +
         '<div class="col-12 col-md-6"><label class="form-label mb-1">Pie metric</label><select class="form-select form-select-sm" data-chart-field="pieMetric"' + (canPie ? '' : ' disabled') + '><option value="sessions"' + (pieMetric === 'sessions' ? ' selected' : '') + '>Sessions</option><option value="orders"' + (pieMetric === 'orders' ? ' selected' : '') + '>Orders</option><option value="revenue"' + (pieMetric === 'revenue' ? ' selected' : '') + '>Revenue</option></select></div>' +
         '<div class="col-12"><label class="form-label mb-1">Chart style</label><div class="row g-2">' +
-          '<div class="col-6 col-lg-4"><label class="form-label mb-1">Curve</label><select class="form-select form-select-sm" data-chart-field="style.curve"><option value="smooth"' + (style.curve === 'smooth' ? ' selected' : '') + '>Smooth</option><option value="straight"' + (style.curve === 'straight' ? ' selected' : '') + '>Straight</option><option value="stepline"' + (style.curve === 'stepline' ? ' selected' : '') + '>Stepline</option></select></div>' +
-          '<div class="col-6 col-lg-4"><label class="form-label mb-1">Stroke</label><input type="number" class="form-control form-control-sm" min="0" max="8" step="0.1" data-chart-field="style.strokeWidth" value="' + escapeHtml(String(style.strokeWidth)) + '"></div>' +
-          '<div class="col-6 col-lg-4"><label class="form-label mb-1">Dash</label><input type="number" class="form-control form-control-sm" min="0" max="20" step="1" data-chart-field="style.dashArray" value="' + escapeHtml(String(style.dashArray)) + '"></div>' +
-          '<div class="col-6 col-lg-4"><label class="form-label mb-1">Markers</label><input type="number" class="form-control form-control-sm" min="0" max="12" step="1" data-chart-field="style.markerSize" value="' + escapeHtml(String(style.markerSize)) + '"></div>' +
-          '<div class="col-6 col-lg-4"><label class="form-label mb-1">Fill opacity</label><input type="number" class="form-control form-control-sm" min="0" max="1" step="0.05" data-chart-field="style.fillOpacity" value="' + escapeHtml(String(style.fillOpacity)) + '"></div>' +
-          '<div class="col-6 col-lg-4"><label class="form-label mb-1">Grid dash</label><input type="number" class="form-control form-control-sm" min="0" max="16" step="1" data-chart-field="style.gridDash" value="' + escapeHtml(String(style.gridDash)) + '"></div>' +
-          '<div class="col-6 col-lg-4"><label class="form-label mb-1">Labels</label><select class="form-select form-select-sm" data-chart-field="style.dataLabels"><option value="auto"' + (style.dataLabels === 'auto' ? ' selected' : '') + '>Auto</option><option value="on"' + (style.dataLabels === 'on' ? ' selected' : '') + '>On</option><option value="off"' + (style.dataLabels === 'off' ? ' selected' : '') + '>Off</option></select></div>' +
-          '<div class="col-6 col-lg-4 d-flex align-items-end"><label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-chart-field="style.toolbar"' + (style.toolbar ? ' checked' : '') + '><span class="form-check-label ms-2">Toolbar</span></label></div>' +
-          '<div class="col-6 col-lg-4 d-flex align-items-end"><label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-chart-field="style.animations"' + (style.animations ? ' checked' : '') + '><span class="form-check-label ms-2">Animations</span></label></div>' +
+          '<div class="col-6 col-lg-4" data-chart-setting="curve"><label class="form-label mb-1">Curve</label><select class="form-select form-select-sm" data-chart-field="style.curve"><option value="smooth"' + (style.curve === 'smooth' ? ' selected' : '') + '>Smooth</option><option value="straight"' + (style.curve === 'straight' ? ' selected' : '') + '>Straight</option><option value="stepline"' + (style.curve === 'stepline' ? ' selected' : '') + '>Stepline</option></select></div>' +
+          '<div class="col-6 col-lg-4" data-chart-setting="stroke"><label class="form-label mb-1">Stroke</label><input type="number" class="form-control form-control-sm" min="0" max="8" step="0.1" data-chart-field="style.strokeWidth" value="' + escapeHtml(String(style.strokeWidth)) + '"></div>' +
+          '<div class="col-6 col-lg-4" data-chart-setting="dash"><label class="form-label mb-1">Dash</label><input type="number" class="form-control form-control-sm" min="0" max="20" step="1" data-chart-field="style.dashArray" value="' + escapeHtml(String(style.dashArray)) + '"></div>' +
+          '<div class="col-6 col-lg-4" data-chart-setting="markers"><label class="form-label mb-1">Markers</label><input type="number" class="form-control form-control-sm" min="0" max="12" step="1" data-chart-field="style.markerSize" value="' + escapeHtml(String(style.markerSize)) + '"></div>' +
+          '<div class="col-6 col-lg-4" data-chart-setting="fill"><label class="form-label mb-1">Fill opacity</label><input type="number" class="form-control form-control-sm" min="0" max="1" step="0.05" data-chart-field="style.fillOpacity" value="' + escapeHtml(String(style.fillOpacity)) + '"></div>' +
+          '<div class="col-6 col-lg-4" data-chart-setting="grid"><label class="form-label mb-1">Grid dash</label><input type="number" class="form-control form-control-sm" min="0" max="16" step="1" data-chart-field="style.gridDash" value="' + escapeHtml(String(style.gridDash)) + '"></div>' +
+          '<div class="col-6 col-lg-4" data-chart-setting="labels"><label class="form-label mb-1">Labels</label><select class="form-select form-select-sm" data-chart-field="style.dataLabels"><option value="auto"' + (style.dataLabels === 'auto' ? ' selected' : '') + '>Auto</option><option value="on"' + (style.dataLabels === 'on' ? ' selected' : '') + '>On</option><option value="off"' + (style.dataLabels === 'off' ? ' selected' : '') + '>Off</option></select></div>' +
+          '<div class="col-6 col-lg-4 d-flex align-items-end" data-chart-setting="toolbar"><label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-chart-field="style.toolbar"' + (style.toolbar ? ' checked' : '') + '><span class="form-check-label ms-2">Toolbar</span></label></div>' +
+          '<div class="col-6 col-lg-4 d-flex align-items-end" data-chart-setting="animations"><label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-chart-field="style.animations"' + (style.animations ? ' checked' : '') + '><span class="form-check-label ms-2">Animations</span></label></div>' +
         '</div></div>' +
-        '<div class="col-12"><label class="form-label mb-1">Pie / donut</label><div class="row g-2">' +
+        '<div class="col-12" data-chart-setting="pie-donut"><label class="form-label mb-1">Pie / donut</label><div class="row g-2">' +
           '<div class="col-6 col-md-4 d-flex align-items-end"><label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-chart-field="style.pieDonut"' + (style.pieDonut ? ' checked' : '') + (supportsPie ? '' : ' disabled') + '><span class="form-check-label ms-2">Hollow donut</span></label></div>' +
           '<div class="col-6 col-md-4"><label class="form-label mb-1">Donut size (%)</label><input type="number" class="form-control form-control-sm" min="30" max="90" step="1" data-chart-field="style.pieDonutSize" value="' + escapeHtml(String(style.pieDonutSize)) + '"' + (supportsPie ? '' : ' disabled') + '></div>' +
           '<div class="col-6 col-md-4"><label class="form-label mb-1">Label position</label><select class="form-select form-select-sm" data-chart-field="style.pieLabelPosition"' + (supportsPie ? '' : ' disabled') + '><option value="auto"' + (style.pieLabelPosition === 'auto' ? ' selected' : '') + '>Auto</option><option value="inside"' + (style.pieLabelPosition === 'inside' ? ' selected' : '') + '>Inside</option><option value="outside"' + (style.pieLabelPosition === 'outside' ? ' selected' : '') + '>Outside</option></select></div>' +
@@ -364,6 +364,39 @@
     root.querySelectorAll('[data-color-swatch]').forEach(function (sw) {
       var input = sw.previousElementSibling;
       if (input) sw.style.background = normalizeHexColor(input.value, '#3eb3ab');
+    });
+  }
+
+  function refreshChartSettingsUi(container, chartKey) {
+    if (!container || !container.querySelectorAll) return;
+    var modeEl = container.querySelector('[data-chart-field="mode"]');
+    var mode = (modeEl && modeEl.value != null ? String(modeEl.value).trim().toLowerCase() : '') || 'line';
+    var lineLike = mode === 'line' || mode === 'area' || mode === 'multi-line-labels';
+    var showCurve = lineLike;
+    var showStroke = lineLike;
+    var showDash = lineLike;
+    var showMarkers = lineLike;
+    var showFill = mode === 'area';
+    var showGrid = lineLike || mode === 'bar';
+    var showLabels = lineLike || mode === 'bar';
+    var showToolbar = true;
+    var showAnimations = true;
+    var showPieDonut = mode === 'pie';
+    if (mode.indexOf('map-') === 0) {
+      showCurve = showStroke = showDash = showMarkers = showFill = showGrid = showLabels = showPieDonut = false;
+    }
+    var settingNames = ['curve', 'stroke', 'dash', 'markers', 'fill', 'grid', 'labels', 'toolbar', 'animations', 'pie-donut'];
+    var visibility = { curve: showCurve, stroke: showStroke, dash: showDash, markers: showMarkers, fill: showFill, grid: showGrid, labels: showLabels, toolbar: showToolbar, animations: showAnimations, 'pie-donut': showPieDonut };
+    settingNames.forEach(function (name) {
+      var el = container.querySelector('[data-chart-setting="' + name + '"]');
+      if (!el) return;
+      var visible = !!visibility[name];
+      el.style.display = visible ? '' : 'none';
+      var inputs = el.querySelectorAll('input, select, textarea');
+      inputs.forEach(function (inp) {
+        if (visible) inp.removeAttribute('disabled');
+        else inp.setAttribute('disabled', 'disabled');
+      });
     });
   }
 
@@ -643,9 +676,13 @@
         bodyEl.removeAttribute('data-kexo-layout-page-key');
         bodyEl.removeAttribute('data-kexo-layout-table-id');
         setMsg('', null);
+        refreshChartSettingsUi(bodyEl, chartKey);
         syncColorSwatches(bodyEl);
         bodyEl.addEventListener('input', function () { syncColorSwatches(bodyEl); });
-        bodyEl.addEventListener('change', function () { syncColorSwatches(bodyEl); });
+        bodyEl.addEventListener('change', function () {
+          syncColorSwatches(bodyEl);
+          refreshChartSettingsUi(bodyEl, chartKey);
+        });
 
         saveBtn.replaceWith(saveBtn.cloneNode(true));
         document.getElementById(MODAL_ID + '-save-btn').addEventListener('click', function () {
@@ -676,6 +713,7 @@
         bodyEl.setAttribute('data-kexo-layout-chart-key', chartKey);
         bodyEl.removeAttribute('data-kexo-layout-page-key');
         bodyEl.removeAttribute('data-kexo-layout-table-id');
+        refreshChartSettingsUi(bodyEl, chartKey);
         syncColorSwatches(bodyEl);
         saveBtn.replaceWith(saveBtn.cloneNode(true));
         document.getElementById(MODAL_ID + '-save-btn').addEventListener('click', function () {
@@ -724,6 +762,7 @@
       readTableModalBody: readTableModalBody,
       renderChartModalBody: renderChartModalBody,
       readChartModalBody: readChartModalBody,
+      refreshChartSettingsUi: refreshChartSettingsUi,
     };
   } catch (_) {}
 
