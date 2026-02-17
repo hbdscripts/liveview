@@ -63,6 +63,7 @@ const dashboardSeries = require('./routes/dashboardSeries');
 const businessSnapshot = require('./routes/businessSnapshot');
 const dashboardAuth = require('./middleware/dashboardAuth');
 const requireMaster = require('./middleware/requireMaster');
+const { isMasterRequest } = require('./authz');
 const adminUsersApi = require('./routes/adminUsers');
 const adminControlsApi = require('./routes/adminControls');
 const adminFraudApi = require('./routes/adminFraud');
@@ -438,6 +439,13 @@ function sendPage(res, filename) {
   res.type('html').send(applyAssetVersionToHtml(html));
 }
 
+function stripAdminMarkupFromSettings(html) {
+  return String(html || '')
+    .replace(/<!-- KEXO_ADMIN_NAV_START -->[\s\S]*?<!-- KEXO_ADMIN_NAV_END -->/g, '')
+    .replace(/<!-- KEXO_ADMIN_PANEL_START -->[\s\S]*?<!-- KEXO_ADMIN_PANEL_END -->/g, '')
+    .replace(/<!-- KEXO_ADMIN_SCRIPT_START -->[\s\S]*?<!-- KEXO_ADMIN_SCRIPT_END -->/g, '');
+}
+
 function appendOriginalQuery(targetPath, req) {
   const original = String((req && req.originalUrl) || '');
   const qIndex = original.indexOf('?');
@@ -524,9 +532,35 @@ app.get('/compare-conversion-rate', redirectWithQuery(301, '/tools/compare-conve
 app.get('/shipping-cr', redirectWithQuery(301, '/tools/shipping-cr'));
 app.get('/click-order-lookup', redirectWithQuery(301, '/tools/click-order-lookup'));
 app.get('/change-pins', redirectWithQuery(301, '/tools/change-pins'));
-app.get('/settings', (req, res) => sendPage(res, 'settings.html'));
+app.get('/settings', async (req, res, next) => {
+  try {
+    const isMaster = await isMasterRequest(req);
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+    const filePath = path.join(__dirname, 'public', 'settings.html');
+    const raw = fs.readFileSync(filePath, 'utf8');
+    let html = resolveIncludes(raw);
+    html = applySentryTemplate(html);
+    if (!isMaster) html = stripAdminMarkupFromSettings(html);
+    res.type('html').send(applyAssetVersionToHtml(html));
+  } catch (err) {
+    next(err);
+  }
+});
 app.get('/upgrade', (req, res) => sendPage(res, 'upgrade.html'));
-app.get('/admin', requireMaster.middleware, (req, res) => sendPage(res, 'admin.html'));
+app.get('/admin', async (req, res, next) => {
+  try {
+    const isMaster = await isMasterRequest(req);
+    const params = new URLSearchParams(req.query || '');
+    const legacyTab = String(params.get('tab') || '').trim().toLowerCase();
+    const adminTab = (legacyTab === 'controls' || legacyTab === 'diagnostics' || legacyTab === 'users') ? legacyTab : 'controls';
+    if (isMaster) {
+      return res.redirect(302, '/settings?tab=admin&adminTab=' + encodeURIComponent(adminTab));
+    }
+    return res.redirect(302, '/settings?tab=kexo');
+  } catch (err) {
+    next(err);
+  }
+});
 
 // App URL: if shop + hmac (no code), OAuth when no session else show dashboard in iframe; else redirect to overview
 app.get('/', async (req, res, next) => {

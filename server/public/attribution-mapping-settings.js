@@ -467,86 +467,6 @@
     return { token_type: tokenType, token_value: tokenValue };
   }
 
-  var _amTooltipTimer = null;
-  var _amTooltipEl = null;
-  var _amTooltipCurrentEl = null;
-
-  function initAmTooltips(root) {
-    if (!root || !root.querySelector) return;
-    root.classList.add('am-has-tooltips');
-    if (!document.getElementById('am-tooltip-styles')) {
-      var s = document.createElement('style');
-      s.id = 'am-tooltip-styles';
-      s.textContent = '.am-has-tooltips [title], .am-has-tooltips [data-am-title] { cursor: help; }';
-      document.head.appendChild(s);
-    }
-    if (!_amTooltipEl) {
-      _amTooltipEl = document.createElement('div');
-      _amTooltipEl.id = 'am-tooltip-popup';
-      _amTooltipEl.setAttribute('role', 'tooltip');
-      _amTooltipEl.style.cssText = 'position:fixed;z-index:9999;max-width:320px;padding:8px 10px;background:#1e293b;color:#e2e8f0;font-size:13px;line-height:1.4;border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,0.25);pointer-events:none;opacity:0;transition:opacity 0.15s ease;';
-      document.body.appendChild(_amTooltipEl);
-    }
-    function restoreCurrent() {
-      if (_amTooltipCurrentEl && _amTooltipCurrentEl.getAttribute('data-am-title')) {
-        _amTooltipCurrentEl.setAttribute('title', _amTooltipCurrentEl.getAttribute('data-am-title'));
-        _amTooltipCurrentEl.removeAttribute('data-am-title');
-      }
-      _amTooltipCurrentEl = null;
-    }
-    function show(el) {
-      var title = el && el.getAttribute ? el.getAttribute('title') : '';
-      if (!title) return;
-      restoreCurrent();
-      _amTooltipEl.textContent = title;
-      el.setAttribute('data-am-title', title);
-      el.removeAttribute('title');
-      _amTooltipCurrentEl = el;
-      _amTooltipEl.style.opacity = '1';
-      var rect = el.getBoundingClientRect();
-      var ttRect = _amTooltipEl.getBoundingClientRect();
-      var top = rect.top - ttRect.height - 6;
-      var left = rect.left + (rect.width / 2) - (ttRect.width / 2);
-      if (top < 8) top = rect.bottom + 6;
-      if (left < 8) left = 8;
-      if (left + ttRect.width > window.innerWidth - 8) left = window.innerWidth - ttRect.width - 8;
-      _amTooltipEl.style.top = top + 'px';
-      _amTooltipEl.style.left = left + 'px';
-    }
-    function hide() {
-      restoreCurrent();
-      _amTooltipEl.style.opacity = '0';
-    }
-    function findTitleTarget(el) {
-      for (var n = el; n && n !== root; n = n.parentNode) {
-        if (n.getAttribute && n.getAttribute('title')) return n;
-      }
-      return null;
-    }
-    root.addEventListener('mouseenter', function (e) {
-      var target = findTitleTarget(e.target);
-      if (!target) return;
-      clearTimeout(_amTooltipTimer);
-      _amTooltipTimer = setTimeout(function () { show(target); }, 200);
-    }, true);
-    root.addEventListener('mouseleave', function (e) {
-      clearTimeout(_amTooltipTimer);
-      _amTooltipTimer = null;
-      hide();
-    }, true);
-    root.addEventListener('focusin', function (e) {
-      var target = findTitleTarget(e.target);
-      if (!target) return;
-      clearTimeout(_amTooltipTimer);
-      _amTooltipTimer = setTimeout(function () { show(target); }, 150);
-    }, true);
-    root.addEventListener('focusout', function (e) {
-      clearTimeout(_amTooltipTimer);
-      _amTooltipTimer = null;
-      hide();
-    }, true);
-  }
-
   function initAttributionMappingSettings(opts) {
     var o = opts && typeof opts === 'object' ? opts : {};
     var rootId = o.rootId ? String(o.rootId) : 'settings-attribution-mapping-root';
@@ -562,7 +482,7 @@
     _state.observed = [];
 
     renderSkeleton(root);
-    initAmTooltips(root);
+    if (typeof window.initKexoTooltips === 'function') window.initKexoTooltips(root);
     renderSelected();
     updateSourceIconPreview();
     updateIconInputPreview('am-source-icon-spec', 'am-source-icon-input-preview', 'Source icon');

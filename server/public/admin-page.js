@@ -56,9 +56,23 @@
   var usersLoadedOnce = false;
   var controlsLoadedOnce = false;
 
+  function isSettingsPage() {
+    try {
+      return (document.body && document.body.getAttribute('data-page')) === 'settings';
+    } catch (_) { return false; }
+  }
+
   function getTabFromQuery() {
     try {
-      var m = /[?&]tab=([^&]+)/.exec(window.location.search || '');
+      var search = window.location.search || '';
+      if (isSettingsPage()) {
+        var m = /[?&]adminTab=([^&]+)/.exec(search);
+        var raw = m && m[1] ? String(m[1]) : '';
+        var t = raw.trim().toLowerCase();
+        if (t === 'users' || t === 'diagnostics' || t === 'controls') return t;
+        return 'controls';
+      }
+      var m = /[?&]tab=([^&]+)/.exec(search);
       var raw = m && m[1] ? String(m[1]) : '';
       var t = raw.trim().toLowerCase();
       if (t === 'users' || t === 'diagnostics' || t === 'controls') return t;
@@ -82,7 +96,17 @@
     });
 
     if (!(opts && opts.skipUrl)) {
-      try { history.replaceState(null, '', window.location.pathname + '?tab=' + encodeURIComponent(t)); } catch (_) {}
+      try {
+        if (isSettingsPage()) {
+          var params = new URLSearchParams(window.location.search);
+          params.set('tab', 'admin');
+          params.set('adminTab', t);
+          var q = params.toString();
+          history.replaceState(null, '', window.location.pathname + (q ? '?' + q : ''));
+        } else {
+          history.replaceState(null, '', window.location.pathname + '?tab=' + encodeURIComponent(t));
+        }
+      } catch (_) {}
     }
 
     // Lazy-load per panel
@@ -108,12 +132,38 @@
   function bindTabClicks() {
     document.addEventListener('click', function (e) {
       var t = e && e.target ? e.target : null;
-      var link = t && t.closest ? t.closest('a[data-admin-tab]') : null;
-      if (!link) return;
-      var tab = String(link.getAttribute('data-admin-tab') || '').trim().toLowerCase();
+      var trigger = t && t.closest ? t.closest('a[data-admin-tab], button[data-admin-tab]') : null;
+      if (!trigger) return;
+      var tab = String(trigger.getAttribute('data-admin-tab') || '').trim().toLowerCase();
       if (!tab) return;
       e.preventDefault();
       setActiveTab(tab);
+    });
+  }
+
+  function bindAdminUsersSubTabs() {
+    document.addEventListener('click', function (e) {
+      var btn = e.target && e.target.closest && e.target.closest('[data-admin-users-tab]');
+      if (!btn) return;
+      e.preventDefault();
+      var which = String(btn.getAttribute('data-admin-users-tab') || '').trim().toLowerCase();
+      if (which !== 'active' && which !== 'pending') return;
+      var activePane = document.getElementById('admin-users-active');
+      var pendingPane = document.getElementById('admin-users-pending');
+      if (!activePane || !pendingPane) return;
+      if (which === 'active') {
+        activePane.classList.add('active', 'show');
+        pendingPane.classList.remove('active', 'show');
+      } else {
+        pendingPane.classList.add('active', 'show');
+        activePane.classList.remove('active', 'show');
+      }
+      document.querySelectorAll('[data-admin-users-tab]').forEach(function (el) {
+        var val = String(el.getAttribute('data-admin-users-tab') || '').trim().toLowerCase();
+        var sel = val === which;
+        el.setAttribute('aria-selected', sel ? 'true' : 'false');
+        el.classList.toggle('active', sel);
+      });
     });
   }
 
@@ -589,6 +639,7 @@
 
   function init() {
     bindTabClicks();
+    bindAdminUsersSubTabs();
     bindActions();
 
     var initial = getTabFromQuery() || 'controls';

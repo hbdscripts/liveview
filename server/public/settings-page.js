@@ -28,8 +28,12 @@
       var allowedTabs = {
         kexo: true, integrations: true,
         attribution: true, insights: true, layout: true,
+        admin: true,
       };
-      if (allowedTabs[rawTab]) keep.set('tab', rawTab);
+      if (allowedTabs[rawTab]) {
+        if (rawTab === 'admin' && !document.getElementById('settings-tab-admin')) keep.set('tab', 'kexo');
+        else keep.set('tab', rawTab);
+      }
       var rawKexo = String(params.get('kexoTab') || params.get('kexo') || '').trim().toLowerCase();
       if (!rawKexo) {
         var legacyTab = String(params.get('tab') || '').trim().toLowerCase();
@@ -56,6 +60,10 @@
       var rawIntegrations = String(params.get('integrationsTab') || '').trim().toLowerCase();
       if ((rawIntegrations === 'shopify' || rawIntegrations === 'googleads') && keep.get('tab') === 'integrations') {
         keep.set('integrationsTab', rawIntegrations);
+      }
+      var rawAdminTab = String(params.get('adminTab') || '').trim().toLowerCase();
+      if ((rawAdminTab === 'controls' || rawAdminTab === 'diagnostics' || rawAdminTab === 'users') && keep.get('tab') === 'admin') {
+        keep.set('adminTab', rawAdminTab);
       }
       var rawShop = String(params.get('shop') || '').trim();
       if (rawShop) keep.set('shop', rawShop);
@@ -127,6 +135,7 @@
     attribution: 'settings-panel-attribution',
     insights: 'settings-panel-insights',
     layout: 'settings-panel-layout',
+    admin: 'settings-panel-admin',
   };
 
   function getTabFromQuery() {
@@ -172,7 +181,10 @@
           if (ak === 'mapping' || ak === 'tree') initialAttributionSubTab = ak;
         }
       }
-      if (TAB_MAP[t]) return t;
+      if (TAB_MAP[t]) {
+        if (t === 'admin' && !document.getElementById('settings-tab-admin')) return null;
+        return t;
+      }
     }
     return null;
   }
@@ -206,6 +218,13 @@
     if (key === 'attribution') {
       var attributionKey = getActiveAttributionSubTab();
       if (attributionKey === 'mapping' || attributionKey === 'tree') params.set('attributionTab', attributionKey);
+    }
+    if (key === 'admin') {
+      var adminPanel = document.querySelector('#settings-panel-admin .admin-panel.active');
+      if (adminPanel && adminPanel.id) {
+        var adminKey = adminPanel.id.replace('admin-panel-', '');
+        if (adminKey === 'controls' || adminKey === 'diagnostics' || adminKey === 'users') params.set('adminTab', adminKey);
+      }
     }
     var url = window.location.pathname + '?' + params.toString();
     try { history.replaceState(null, '', url); } catch (_) {}
@@ -292,6 +311,53 @@
         }
       } catch (_) {}
     }
+  }
+
+  /**
+   * Generic tabset controller. Wires [data-kexo-tab] / data-*-tab buttons to panels by id.
+   * options: { tabSelector, panelIdPrefix, keys, tabToPanel (optional), initialKey, onActivate(key) }
+   */
+  function wireKexoTabset(options) {
+    var opts = options || {};
+    var tabSelector = opts.tabSelector || '[data-kexo-tab]';
+    var tabAttr = opts.tabAttr || 'data-kexo-tab';
+    var panelIdPrefix = opts.panelIdPrefix || '';
+    var keys = opts.keys || [];
+    var tabToPanel = opts.tabToPanel || null;
+    var initialKey = opts.initialKey || (keys[0]);
+    var onActivate = typeof opts.onActivate === 'function' ? opts.onActivate : null;
+    var tabs = document.querySelectorAll(tabSelector);
+    if (!tabs.length) return;
+    function getPanelKey(tabKey) {
+      return tabToPanel && tabToPanel[tabKey] !== undefined ? tabToPanel[tabKey] : tabKey;
+    }
+    function activate(key) {
+      var panelKey = getPanelKey(key);
+      tabs.forEach(function (tab) {
+        var tabKey = (tab.getAttribute && tab.getAttribute(tabAttr)) || '';
+        var isActive = tabKey === key;
+        tab.classList.toggle('active', isActive);
+        tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
+        var ctrlId = tab.id;
+        if (ctrlId && panelIdPrefix) {
+          var p = document.getElementById(panelIdPrefix + panelKey);
+          if (p) p.setAttribute('aria-labelledby', ctrlId);
+        }
+      });
+      keys.forEach(function (k) {
+        var pkey = getPanelKey(k);
+        var panel = document.getElementById(panelIdPrefix + pkey);
+        if (panel) panel.classList.toggle('active', pkey === panelKey);
+      });
+      if (onActivate) onActivate(key);
+    }
+    tabs.forEach(function (tab) {
+      tab.addEventListener('click', function () {
+        var k = (tab.getAttribute && tab.getAttribute(tabAttr)) || keys[0];
+        activate(k);
+      });
+    });
+    activate(initialKey);
   }
 
   function escapeHtml(s) {
@@ -484,25 +550,13 @@
   }
 
   function wireIntegrationsSubTabs() {
-    var tabs = document.querySelectorAll('[data-settings-integrations-tab]');
-    if (!tabs.length) return;
-    function activate(key) {
-      tabs.forEach(function (tab) {
-        var active = tab.getAttribute('data-settings-integrations-tab') === key;
-        tab.classList.toggle('active', active);
-        tab.setAttribute('aria-selected', active ? 'true' : 'false');
-      });
-      ['shopify', 'googleads'].forEach(function (k) {
-        var panel = document.getElementById('settings-integrations-panel-' + k);
-        if (panel) panel.classList.toggle('active', k === key);
-      });
-    }
-    tabs.forEach(function (tab) {
-      tab.addEventListener('click', function () {
-        activate(tab.getAttribute('data-settings-integrations-tab') || 'shopify');
-      });
+    wireKexoTabset({
+      tabSelector: '[data-settings-integrations-tab]',
+      tabAttr: 'data-settings-integrations-tab',
+      panelIdPrefix: 'settings-integrations-panel-',
+      keys: ['shopify', 'googleads'],
+      initialKey: initialIntegrationsSubTab || 'shopify',
     });
-    activate(initialIntegrationsSubTab || 'shopify');
   }
 
   function wireGoogleAdsActions() {
@@ -2318,41 +2372,23 @@
   }
 
   function wireLayoutSubTabs(initialKey) {
-    var tabs = document.querySelectorAll('[data-settings-layout-tab]');
-    if (!tabs.length) return;
-    var KEYS = ['tables', 'charts', 'kpis'];
-    function activate(key) {
-      if (KEYS.indexOf(key) < 0) key = 'tables';
-      activeLayoutSubTab = key;
-      tabs.forEach(function (tab) {
-        var active = tab.getAttribute('data-settings-layout-tab') === key;
-        tab.classList.toggle('active', active);
-        tab.setAttribute('aria-selected', active ? 'true' : 'false');
-      });
-      KEYS.forEach(function (k) {
-        var panel = document.getElementById('settings-layout-panel-' + k);
-        if (panel) panel.classList.toggle('active', k === key);
-      });
-      if (getActiveSettingsTab() === 'layout') {
-        if (key === 'tables') {
-          try { renderTablesWhenVisible(); } catch (_) {}
-        } else if (key === 'charts') {
-          try { renderChartsWhenVisible(); } catch (_) {}
+    wireKexoTabset({
+      tabSelector: '[data-settings-layout-tab]',
+      tabAttr: 'data-settings-layout-tab',
+      panelIdPrefix: 'settings-layout-panel-',
+      keys: ['tables', 'charts', 'kpis'],
+      initialKey: initialKey || activeLayoutSubTab || 'tables',
+      onActivate: function (key) {
+        activeLayoutSubTab = key;
+        if (getActiveSettingsTab() === 'layout') {
+          if (key === 'tables') try { renderTablesWhenVisible(); } catch (_) {}
+          else if (key === 'charts') try { renderChartsWhenVisible(); } catch (_) {}
         }
-      }
-    }
-    tabs.forEach(function (tab) {
-      tab.addEventListener('click', function () {
-        activate(tab.getAttribute('data-settings-layout-tab') || 'tables');
-      });
+      },
     });
-    activate(initialKey || activeLayoutSubTab || 'tables');
   }
 
   function wireKexoSubTabs(initialKey) {
-    var tabs = document.querySelectorAll('[data-settings-kexo-tab]');
-    if (!tabs.length) return;
-    var KEYS = ['general', 'icons', 'header', 'color', 'fonts', 'notifications'];
     var THEME_MAP = {
       icons: 'icons',
       header: 'header',
@@ -2360,85 +2396,50 @@
       fonts: 'fonts',
       notifications: 'sale-notification',
     };
-    function setThemeTitle(text) {
-      var t = document.getElementById('settings-theme-title-text');
-      if (!t) return;
-      t.textContent = text || 'Theme';
-    }
-    function activate(key) {
-      // Legacy links used kexoTab=ui; map that to Icons.
-      if (key === 'ui') key = 'icons';
-      if (KEYS.indexOf(key) < 0) key = 'general';
-      activeKexoSubTab = key;
-      tabs.forEach(function (tab) {
-        var active = tab.getAttribute('data-settings-kexo-tab') === key;
-        tab.classList.toggle('active', active);
-        tab.setAttribute('aria-selected', active ? 'true' : 'false');
-      });
-      // Panels: General has its own; all Theme subtabs share the UI panel container.
-      var generalPanel = document.getElementById('settings-kexo-panel-general');
-      var themePanel = document.getElementById('settings-kexo-panel-ui');
-      if (generalPanel) generalPanel.classList.toggle('active', key === 'general');
-      if (themePanel) themePanel.classList.toggle('active', key !== 'general');
-      if (key === 'general') {
-        setThemeTitle('Theme');
-      } else {
-        var label = key === 'notifications' ? 'Notifications' : (key.slice(0, 1).toUpperCase() + key.slice(1));
-        setThemeTitle(label);
-        try {
-          var sub = THEME_MAP[key] || 'icons';
-          try { window.__kexoThemeRequestedSubtab = sub; } catch (_) {}
-          if (typeof window.kexoThemeActivateSubtab === 'function') window.kexoThemeActivateSubtab(sub);
-        } catch (_) {}
-      }
-      if (getActiveSettingsTab() === 'kexo') updateUrl('kexo');
-    }
-    tabs.forEach(function (tab) {
-      tab.addEventListener('click', function () {
-        activate(tab.getAttribute('data-settings-kexo-tab') || 'general');
-      });
+    wireKexoTabset({
+      tabSelector: '[data-settings-kexo-tab]',
+      tabAttr: 'data-settings-kexo-tab',
+      panelIdPrefix: 'settings-kexo-panel-',
+      keys: ['general', 'icons', 'header', 'color', 'fonts', 'notifications'],
+      tabToPanel: { general: 'general', icons: 'ui', header: 'ui', color: 'ui', fonts: 'ui', notifications: 'ui' },
+      initialKey: initialKey || activeKexoSubTab || 'general',
+      onActivate: function (key) {
+        if (key === 'ui') key = 'icons';
+        activeKexoSubTab = key;
+        var titleEl = document.getElementById('settings-theme-title-text');
+        if (titleEl) {
+          titleEl.textContent = key === 'general' ? 'Theme' : (key === 'notifications' ? 'Notifications' : (key.slice(0, 1).toUpperCase() + key.slice(1)));
+        }
+        if (key !== 'general') {
+          try {
+            var sub = THEME_MAP[key] || 'icons';
+            try { window.__kexoThemeRequestedSubtab = sub; } catch (_) {}
+            if (typeof window.kexoThemeActivateSubtab === 'function') window.kexoThemeActivateSubtab(sub);
+          } catch (_) {}
+        }
+        if (getActiveSettingsTab() === 'kexo') updateUrl('kexo');
+      },
     });
-    activate(initialKey || activeKexoSubTab || 'general');
   }
 
   function wireAttributionSubTabs(initialKey) {
-    var tabs = document.querySelectorAll('[data-settings-attribution-tab]');
-    if (!tabs.length) return;
-    var KEYS = ['mapping', 'tree'];
-    function activate(key) {
-      if (KEYS.indexOf(key) < 0) key = 'mapping';
-      tabs.forEach(function (tab) {
-        var active = tab.getAttribute('data-settings-attribution-tab') === key;
-        tab.classList.toggle('active', active);
-        tab.setAttribute('aria-selected', active ? 'true' : 'false');
-      });
-      KEYS.forEach(function (k) {
-        var panel = document.getElementById('settings-attribution-panel-' + k);
-        if (panel) panel.classList.toggle('active', k === key);
-      });
-      if (getActiveSettingsTab() === 'attribution') {
-        if (key === 'mapping') {
-          try {
-            if (typeof window.initAttributionMappingSettings === 'function') {
-              window.initAttributionMappingSettings({ rootId: 'settings-attribution-mapping-root' });
-            }
-          } catch (_) {}
-        } else if (key === 'tree') {
-          try {
-            if (typeof window.initAttributionTreeView === 'function') {
-              window.initAttributionTreeView({ rootId: 'settings-attribution-tree-root' });
-            }
-          } catch (_) {}
+    wireKexoTabset({
+      tabSelector: '[data-settings-attribution-tab]',
+      tabAttr: 'data-settings-attribution-tab',
+      panelIdPrefix: 'settings-attribution-panel-',
+      keys: ['mapping', 'tree'],
+      initialKey: initialKey || 'mapping',
+      onActivate: function (key) {
+        if (getActiveSettingsTab() === 'attribution') {
+          if (key === 'mapping' && typeof window.initAttributionMappingSettings === 'function') {
+            try { window.initAttributionMappingSettings({ rootId: 'settings-attribution-mapping-root' }); } catch (_) {}
+          } else if (key === 'tree' && typeof window.initAttributionTreeView === 'function') {
+            try { window.initAttributionTreeView({ rootId: 'settings-attribution-tree-root' }); } catch (_) {}
+          }
         }
-      }
-      updateUrl(getActiveSettingsTab() || 'kexo');
-    }
-    tabs.forEach(function (tab) {
-      tab.addEventListener('click', function () {
-        activate(tab.getAttribute('data-settings-attribution-tab') || 'mapping');
-      });
+        updateUrl(getActiveSettingsTab() || 'kexo');
+      },
     });
-    activate(initialKey || 'mapping');
   }
 
   function parseRowOptionsText(raw) {
@@ -2739,47 +2740,23 @@
   }
 
   function wireKpisLayoutSubTabs() {
-    var tabs = document.querySelectorAll('[data-settings-kpis-layout-tab]');
-    if (!tabs.length) return;
-    function activate(key) {
-      tabs.forEach(function (tab) {
-        var active = tab.getAttribute('data-settings-kpis-layout-tab') === key;
-        tab.classList.toggle('active', active);
-        tab.setAttribute('aria-selected', active ? 'true' : 'false');
-      });
-      ['dashboard', 'header'].forEach(function (k) {
-        var panel = document.getElementById('settings-kpis-layout-panel-' + k);
-        if (panel) panel.classList.toggle('active', k === key);
-      });
-    }
-    tabs.forEach(function (tab) {
-      tab.addEventListener('click', function () {
-        activate(tab.getAttribute('data-settings-kpis-layout-tab') || 'dashboard');
-      });
+    wireKexoTabset({
+      tabSelector: '[data-settings-kpis-layout-tab]',
+      tabAttr: 'data-settings-kpis-layout-tab',
+      panelIdPrefix: 'settings-kpis-layout-panel-',
+      keys: ['dashboard', 'header'],
+      initialKey: 'dashboard',
     });
-    activate('dashboard');
   }
 
   function wireInsightsLayoutSubTabs() {
-    var tabs = document.querySelectorAll('[data-settings-insights-layout-tab]');
-    if (!tabs.length) return;
-    function activate(key) {
-      tabs.forEach(function (tab) {
-        var active = tab.getAttribute('data-settings-insights-layout-tab') === key;
-        tab.classList.toggle('active', active);
-        tab.setAttribute('aria-selected', active ? 'true' : 'false');
-      });
-      ['products', 'countries', 'variants'].forEach(function (k) {
-        var panel = document.getElementById('settings-insights-layout-panel-' + k);
-        if (panel) panel.classList.toggle('active', k === key);
-      });
-    }
-    tabs.forEach(function (tab) {
-      tab.addEventListener('click', function () {
-        activate(tab.getAttribute('data-settings-insights-layout-tab') || 'products');
-      });
+    wireKexoTabset({
+      tabSelector: '[data-settings-insights-layout-tab]',
+      tabAttr: 'data-settings-insights-layout-tab',
+      panelIdPrefix: 'settings-insights-layout-panel-',
+      keys: ['products', 'countries', 'variants'],
+      initialKey: 'variants',
     });
-    activate('variants');
   }
 
   function setInsightsVariantsMsg(text, ok) {

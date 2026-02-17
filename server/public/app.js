@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: bff1f6156e5e3810
+// checksum: c83dc9bee0319841
 
 (function () {
 const API = '';
@@ -7060,14 +7060,6 @@ const API = '';
           const dateBtn = document.getElementById('kexo-date-display');
           const dateWrap = dateBtn && dateBtn.closest ? dateBtn.closest('.kexo-topbar-date') : null;
           if (page === 'settings' || page === 'snapshot') return;
-          if (page === 'dashboard') {
-            if (sourceLi && dateWrap && dateWrap.parentElement !== sourceLi) {
-              sourceLi.appendChild(dateWrap);
-            }
-            try { if (sourceLi) sourceLi.style.display = 'none'; } catch (_) {}
-            try { if (dateWrap) dateWrap.style.display = 'none'; } catch (_) {}
-            return;
-          }
           try { if (sourceLi) sourceLi.style.display = ''; } catch (_) {}
           try { if (dateWrap) dateWrap.style.display = ''; } catch (_) {}
         }
@@ -19141,7 +19133,7 @@ const API = '';
               var statusCls = it.ok ? 'kexo-status-indicator--online' : 'kexo-status-indicator--offline';
               var esc = function(s) { return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); };
               html += '<div class="kexo-footer-diagnostics-tag">';
-              html += '<a href="/admin?tab=diagnostics" class="kexo-footer-diagnostics-tag-link" title="' + esc(it.label) + ' ' + esc(it.status) + ' ??? click for diagnostics">';
+              html += '<a href="/settings?tab=admin&adminTab=diagnostics" class="kexo-footer-diagnostics-tag-link" title="' + esc(it.label) + ' ' + esc(it.status) + ' ??? click for diagnostics">';
               html += '<span class="kexo-footer-diagnostics-label">' + esc(it.label) + '</span>';
               html += '</a>';
               html += '<span class="kexo-footer-diagnostics-status">';
