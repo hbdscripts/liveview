@@ -61,6 +61,17 @@
     if (!d) return '';
     try { return d.toLocaleTimeString('en-GB', { timeZone: tz, hour: '2-digit', minute: '2-digit', hour12: false }); } catch (_) { return ''; }
   }
+  function dmyInTzFromMs(ms) {
+    var d = dateFromMs(ms);
+    if (!d) return '';
+    try { return d.toLocaleDateString('en-GB', { timeZone: tz }); } catch (_) { return ''; }
+  }
+  function dmyFromYmd(ymd) {
+    var s = String(ymd || '');
+    if (!isYmd(s)) return '';
+    var parts = s.split('-');
+    return parts[2] + '/' + parts[1] + '/' + parts[0];
+  }
 
   function attachFlatpickr(el, onValue) {
     if (!el) return null;
@@ -98,10 +109,12 @@
     pins: [],
     selected: null,
     effect: null,
+    view: 'list', // list | detail
     loading: false,
   };
 
   var els = {
+    gridWrap: qs('#tool-change-pins-grid'),
     // create
     date: qs('#pin-date'),
     time: qs('#pin-time'),
@@ -125,6 +138,8 @@
     pinsTable: qs('#pins-table'),
     // detail/edit
     detailCard: qs('#tool-change-pins-detail'),
+    detailBack: qs('#pin-detail-back'),
+    detailTitle: qs('#pin-detail-title'),
     detailSubtitle: qs('#pin-detail-subtitle'),
     editDate: qs('#edit-date'),
     editTime: qs('#edit-time'),
@@ -194,7 +209,11 @@
     if (!els.pinsTable) return;
     var list = Array.isArray(pins) ? pins : [];
     if (!list.length) {
-      els.pinsTable.innerHTML = '<div class="tools-note tools-note--spaced">No pins found.</div>';
+      els.pinsTable.innerHTML = '' +
+        '<div class="text-center py-4">' +
+          '<h3 class="mb-1">No Pins Found</h3>' +
+          '<div class="text-muted">Future saved pins will display here</div>' +
+        '</div>';
       return;
     }
     var html = '';
@@ -207,6 +226,7 @@
       '<th style="min-width:90px">Kind</th>' +
       '<th style="min-width:140px">Tags</th>' +
       '<th style="min-width:90px">Status</th>' +
+      '<th class="text-end" style="min-width:110px">View Stats</th>' +
     '</tr></thead><tbody>';
     for (var i = 0; i < list.length; i++) {
       var p = list[i] || {};
@@ -216,26 +236,18 @@
       var tags = Array.isArray(p.tags) ? p.tags.join(', ') : '';
       var status = p.archived_at ? 'Archived' : 'Active';
       var isSel = state.selected && state.selected.id === id;
-      html += '<tr data-pin-id="' + esc(id) + '" style="cursor:pointer;' + (isSel ? 'background:rgba(15,23,42,0.03);' : '') + '">' +
+      html += '<tr data-pin-id="' + esc(id) + '" tabindex="0" role="button" aria-label="View stats for pin: ' + esc(p.title || '') + '" style="cursor:pointer;' + (isSel ? 'background:rgba(15,23,42,0.03);' : '') + '">' +
         '<td>' + esc(ymd) + '</td>' +
         '<td>' + esc(time || '') + '</td>' +
         '<td><strong style="font-weight:600">' + esc(p.title || '') + '</strong></td>' +
         '<td>' + esc(p.kind || '') + '</td>' +
         '<td>' + esc(tags) + '</td>' +
         '<td>' + esc(status) + '</td>' +
+        '<td class="text-end"><button class="btn btn-sm btn-ghost-secondary" type="button" data-pin-action="view" data-pin-id="' + esc(id) + '">View Stats</button></td>' +
       '</tr>';
     }
     html += '</tbody></table></div>';
     els.pinsTable.innerHTML = html;
-
-    els.pinsTable.querySelectorAll('tr[data-pin-id]').forEach(function (tr) {
-      tr.addEventListener('click', function () {
-        var id = tr.getAttribute('data-pin-id');
-        if (!id) return;
-        var pin = state.pins.find(function (x) { return String(x && x.id) === String(id); });
-        if (pin) selectPin(pin);
-      });
-    });
   }
 
   function currentFilters() {
@@ -281,28 +293,48 @@
           else state.selected = null;
         }
         renderPinsTable(state.pins);
-        if (state.selected) {
-          renderSelectedDetail();
-        } else {
-          hideDetail();
-        }
+        var showDetail = state.view === 'detail' && !!state.selected;
+        if (!showDetail) state.view = 'list';
+        applyView();
+        if (showDetail) renderSelectedDetail();
       })
       .finally(function () {
         state.loading = false;
       });
   }
 
+  function applyView() {
+    var showDetail = state.view === 'detail' && !!state.selected;
+    if (!showDetail) state.view = 'list';
+    if (els.gridWrap) els.gridWrap.classList.toggle('is-hidden', showDetail);
+    if (els.detailCard) els.detailCard.classList.toggle('is-hidden', !showDetail);
+    if (!showDetail && els.effectResults) els.effectResults.innerHTML = '';
+  }
+
   function hideDetail() {
-    if (!els.detailCard) return;
-    els.detailCard.classList.add('is-hidden');
-    if (els.effectResults) els.effectResults.innerHTML = '';
+    state.view = 'list';
+    applyView();
   }
 
   function selectPin(pin) {
     state.selected = pin;
+    state.view = 'detail';
     renderPinsTable(state.pins);
+    applyView();
     renderSelectedDetail();
     refreshEffect();
+  }
+
+  function selectPinById(id) {
+    var pinId = String(id || '').trim();
+    if (!pinId) return;
+    var pin = state.pins.find(function (x) { return String(x && x.id) === pinId; });
+    if (pin) selectPin(pin);
+  }
+
+  function backToList() {
+    state.view = 'list';
+    applyView();
   }
 
   function setDetailArchivedUi(pin) {
@@ -314,12 +346,15 @@
   function renderSelectedDetail() {
     var pin = state.selected;
     if (!pin || !els.detailCard) { hideDetail(); return; }
-    els.detailCard.classList.remove('is-hidden');
     setDetailArchivedUi(pin);
 
-    var subtitle = pin.event_ymd || '';
-    if (pin.event_ts) subtitle += ' · ' + hmInTzFromMs(pin.event_ts);
-    if (els.detailSubtitle) els.detailSubtitle.textContent = subtitle;
+    if (els.detailTitle) els.detailTitle.textContent = pin.title || '';
+    var createdMs = pin.created_at != null ? Number(pin.created_at) : null;
+    var addedDmy = (createdMs != null && Number.isFinite(createdMs)) ? dmyInTzFromMs(createdMs) : '';
+    var addedHm = (createdMs != null && Number.isFinite(createdMs)) ? hmInTzFromMs(createdMs) : '';
+    if (!addedDmy) addedDmy = dmyFromYmd(pin.event_ymd || '');
+    if (!addedHm && pin.event_ts) addedHm = hmInTzFromMs(pin.event_ts);
+    if (els.detailSubtitle) els.detailSubtitle.textContent = 'Added on: ' + (addedDmy || '—') + ' - ' + (addedHm || '—');
 
     try { if (els.editDate) els.editDate.value = pin.event_ymd || ''; } catch (_) {}
     try { if (els.editTime) els.editTime.value = pin.event_ts ? hmInTzFromMs(pin.event_ts) : ''; } catch (_) {}
@@ -468,6 +503,35 @@
 
     if (els.filterRefresh) els.filterRefresh.addEventListener('click', function () { loadPins(); });
     if (els.filterQ) els.filterQ.addEventListener('keydown', function (e) { if (e && e.key === 'Enter') loadPins(); });
+
+    if (els.detailBack) els.detailBack.addEventListener('click', function () { backToList(); });
+
+    if (els.pinsTable) {
+      els.pinsTable.addEventListener('click', function (e) {
+        var t = e && e.target ? e.target : null;
+        if (!t || !t.closest) return;
+        var actionBtn = t.closest('[data-pin-action="view"]');
+        if (actionBtn) {
+          try { e.preventDefault(); } catch (_) {}
+          try { e.stopPropagation(); } catch (_) {}
+          selectPinById(actionBtn.getAttribute('data-pin-id'));
+          return;
+        }
+        var tr = t.closest('tr[data-pin-id]');
+        if (tr) selectPinById(tr.getAttribute('data-pin-id'));
+      });
+      els.pinsTable.addEventListener('keydown', function (e) {
+        var key = e && e.key ? String(e.key) : '';
+        if (key !== 'Enter' && key !== ' ' && key !== 'Spacebar') return;
+        var t = e && e.target ? e.target : null;
+        if (!t || !t.closest) return;
+        if (t.matches && t.matches('button, a, input, select, textarea')) return;
+        var tr = t.closest('tr[data-pin-id]');
+        if (!tr) return;
+        try { e.preventDefault(); } catch (_) {}
+        selectPinById(tr.getAttribute('data-pin-id'));
+      });
+    }
 
     if (els.updateBtn) els.updateBtn.addEventListener('click', function () {
       if (!state.selected) return;

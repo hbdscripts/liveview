@@ -31,11 +31,13 @@
             </div>
           </div>
 
-          <div class="card tools-card mb-3" id="tool-change-pins-create">
+          <div id="tool-change-pins-grid" class="row g-3 mb-3">
+            <div class="col-12 col-md-5 col-xl-4">
+          <div class="card tools-card" id="tool-change-pins-create">
             <div class="card-header">
               <div>
-                <h3 class="card-title">Create a pin</h3>
-                <div class="card-subtitle">Mark a change (pricing/ads/site/ops) so you can find it later and compare before vs after.</div>
+                <h3 class="card-title">Add a New Pin</h3>
+                <div class="card-subtitle">Mark a change (pricing/ads/site/ops) so you can find it later and compare before/after.</div>
               </div>
             </div>
             <div class="card-body">
@@ -111,12 +113,14 @@
               </div>
             </div>
           </div>
+            </div>
 
-          <div class="card tools-card mb-3" id="tool-change-pins-list">
+            <div class="col-12 col-md-7 col-xl-8">
+          <div class="card tools-card" id="tool-change-pins-list">
             <div class="card-header">
               <div>
-                <h3 class="card-title">Pins</h3>
-                <div class="card-subtitle">Search and filter pins over time.</div>
+                <h3 class="card-title">Previously Added Pins</h3>
+                <div class="card-subtitle">Click a pin in the below table to load stats before/after pin was added</div>
               </div>
             </div>
             <div class="card-body">
@@ -156,11 +160,13 @@
               </div>
             </div>
           </div>
+            </div>
+          </div>
 
           <div class="card tools-card is-hidden" id="tool-change-pins-detail">
             <div class="card-header">
               <div>
-                <h3 class="card-title">Pin</h3>
+                <h3 class="card-title"><button class="btn btn-link p-0 link-secondary" type="button" id="pin-detail-back">&lt; Back</button> - Pin: <span id="pin-detail-title"></span></h3>
                 <div class="card-subtitle" id="pin-detail-subtitle"></div>
               </div>
               <div class="btn-list">

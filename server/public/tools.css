@@ -202,6 +202,16 @@
   font-weight: 500;
 }
 
+/* Change Pins: never show triangle/arrow glyph pseudo-elements in deltas */
+body[data-page="change-pins"] .tools-delta-pos::before,
+body[data-page="change-pins"] .tools-delta-neg::before,
+body[data-page="change-pins"] .tools-delta-neutral::before,
+body[data-page="change-pins"] .tools-delta-pos::after,
+body[data-page="change-pins"] .tools-delta-neg::after,
+body[data-page="change-pins"] .tools-delta-neutral::after {
+  content: none !important;
+}
+
 .tools-results {
   margin-top: 12px;
 }
