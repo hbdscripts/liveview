@@ -996,6 +996,7 @@ body.side-panel-open {
 .grid-cell[data-sort="clicks"],
 .grid-cell[data-sort="sessions"],
 .grid-cell[data-sort="cr"],
+.grid-cell[data-sort="vpv"],
 .grid-cell[data-sort="aov"] {
   text-align: right;
 }

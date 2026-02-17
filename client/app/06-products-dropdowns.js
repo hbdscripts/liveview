@@ -322,8 +322,12 @@
         var title = r && r.title ? String(r.title) : '???';
         var orders = r && r.orders != null ? Number(r.orders) : 0;
         var sessions = r && r.sessions != null ? Number(r.sessions) : 0;
-        var rev = r && r.revenueGbp != null ? formatRevenueTableHtml(r.revenueGbp) : '???';
+        var revNum = r && r.revenueGbp != null ? Number(r.revenueGbp) : null;
+        if (!Number.isFinite(revNum)) revNum = null;
+        var rev = revNum != null ? formatRevenueTableHtml(revNum) : '???';
         var cr = r && r.cr != null ? pct(r.cr) : '???';
+        var vpvNum = (revNum != null && sessions > 0) ? (revNum / sessions) : null;
+        var vpv = (vpvNum != null && Number.isFinite(vpvNum)) ? formatRevenue0(vpvNum) : '\u2014';
         var handle = r && r.handle ? String(r.handle) : '';
         var productId = (r && r.product_id) ? String(r.product_id).replace(/^gid:\/\/shopify\/Product\//i, '').trim() : '';
         var productUrl = (mainBase && handle) ? (mainBase + '/products/' + encodeURIComponent(handle)) : '#';
@@ -343,6 +347,7 @@
           '<div class="grid-cell" role="cell">' + formatSessions(sessions) + '</div>' +
           '<div class="grid-cell" role="cell">' + formatSessions(orders) + '</div>' +
           '<div class="grid-cell" role="cell">' + cr + '</div>' +
+          '<div class="grid-cell" role="cell">' + vpv + '</div>' +
           '<div class="grid-cell" role="cell">' + rev + '</div>' +
         '</div>';
       }).join('');
