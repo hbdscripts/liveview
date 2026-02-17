@@ -61,6 +61,7 @@ const settings = require('./routes/settings');
 const assets = require('./routes/assets');
 const dashboardSeries = require('./routes/dashboardSeries');
 const businessSnapshot = require('./routes/businessSnapshot');
+const costHealth = require('./routes/costHealth');
 const dashboardAuth = require('./middleware/dashboardAuth');
 const requireMaster = require('./middleware/requireMaster');
 const { isMasterRequest } = require('./authz');
@@ -202,6 +203,7 @@ app.get('/api/og-thumb', ogThumb.handleOgThumb);
 app.get('/api/available-days', availableDays.getAvailableDays);
 app.get('/api/dashboard-series', dashboardSeries.getDashboardSeries);
 app.get('/api/business-snapshot', requireMaster.middleware, businessSnapshot.getBusinessSnapshot);
+app.get('/api/cost/health', requireMaster.middleware, costHealth.getCostHealth);
 // Ads feature area: mounted as a router to keep Ads endpoints self-contained.
 app.use('/api/ads', adsRouter);
 app.use('/api/integrations/google-ads/issues', googleAdsIssuesRouter);
@@ -443,7 +445,10 @@ function stripAdminMarkupFromSettings(html) {
   return String(html || '')
     .replace(/<!-- KEXO_ADMIN_NAV_START -->[\s\S]*?<!-- KEXO_ADMIN_NAV_END -->/g, '')
     .replace(/<!-- KEXO_ADMIN_PANEL_START -->[\s\S]*?<!-- KEXO_ADMIN_PANEL_END -->/g, '')
-    .replace(/<!-- KEXO_ADMIN_SCRIPT_START -->[\s\S]*?<!-- KEXO_ADMIN_SCRIPT_END -->/g, '');
+    .replace(/<!-- KEXO_ADMIN_SCRIPT_START -->[\s\S]*?<!-- KEXO_ADMIN_SCRIPT_END -->/g, '')
+    .replace(/<!-- KEXO_COST_EXPENSES_NAV_START -->[\s\S]*?<!-- KEXO_COST_EXPENSES_NAV_END -->/g, '')
+    .replace(/<!-- KEXO_COST_EXPENSES_PANEL_START -->[\s\S]*?<!-- KEXO_COST_EXPENSES_PANEL_END -->/g, '')
+    .replace(/<!-- KEXO_COST_EXPENSES_SCRIPT_START -->[\s\S]*?<!-- KEXO_COST_EXPENSES_SCRIPT_END -->/g, '');
 }
 
 function appendOriginalQuery(targetPath, req) {

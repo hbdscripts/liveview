@@ -721,7 +721,7 @@
       }
 
       function overviewMiniChartIds() {
-        return ['dash-chart-finishes-30d', 'dash-chart-countries-30d', 'dash-chart-attribution-30d', 'dash-chart-overview-30d'];
+        return ['dash-chart-finishes-30d', 'dash-chart-devices-30d', 'dash-chart-attribution-30d', 'dash-chart-overview-30d'];
       }
 
       function clearOverviewHeightSyncStyles() {
@@ -931,7 +931,7 @@
           }
           return JSON.stringify({
             finishes: miniChartCfg('dash-chart-finishes-30d', 'pie', ['#f59e34']),
-            countries: miniChartCfg('dash-chart-countries-30d', 'pie', ['#4b94e4']),
+            devices: miniChartCfg('dash-chart-devices-30d', 'bar-horizontal', ['#4b94e4']),
             attribution: miniChartCfg('dash-chart-attribution-30d', 'pie', ['#4b94e4']),
             overview: miniChartCfg('dash-chart-overview-30d', 'bar', ['#3eb3ab', '#ef4444']),
           }) || '';
@@ -1087,7 +1087,7 @@
         setOverviewMiniCardValue('dash-mini-countries-value', '\u2014');
         setOverviewMiniCardValue('dash-mini-attribution-value', '\u2014');
         renderOverviewChartLoading('dash-chart-finishes-30d', 'Loading finishes...');
-        renderOverviewChartLoading('dash-chart-countries-30d', 'Loading countries...');
+        renderOverviewChartLoading('dash-chart-devices-30d', 'Loading devices...');
         renderOverviewChartLoading('dash-chart-attribution-30d', 'Loading attribution...');
         renderOverviewChartLoading('dash-chart-overview-30d', 'Loading 7 day overview...');
       }
@@ -1486,6 +1486,164 @@
           }
         } catch (err) {
           captureChartError(err, 'dashboardCountriesBarRender', { chartId: chartId });
+        }
+      }
+
+      function platformLabelForKey(platformKey) {
+        var p = (platformKey || '').trim().toLowerCase();
+        if (p === 'ios') return 'iOS';
+        if (p === 'android') return 'Android';
+        if (p === 'windows') return 'Windows';
+        if (p === 'mac') return 'Mac';
+        if (p === 'linux') return 'Linux';
+        return p || 'Other';
+      }
+
+      function platformIconHtmlForKey(platformKey, label) {
+        var p = (platformKey || '').trim().toLowerCase();
+        var key = 'type-platform-unknown';
+        var cls = 'fa-light fa-circle-question';
+        if (p === 'ios') { key = 'type-platform-ios'; cls = 'fa-light fa-apple'; }
+        else if (p === 'mac') { key = 'type-platform-mac'; cls = 'fa-light fa-apple'; }
+        else if (p === 'android') { key = 'type-platform-android'; cls = 'fa-light fa-android'; }
+        else if (p === 'windows') { key = 'type-platform-windows'; cls = 'fa-light fa-windows'; }
+        else if (p === 'linux') { key = 'type-platform-linux'; cls = 'fa-light fa-linux'; }
+        return '<i class="' + escapeHtml(cls) + '" data-icon-key="' + escapeHtml(key) + '" aria-hidden="true"' +
+          (label ? (' title="' + escapeHtml(label) + '"') : '') + '></i>';
+      }
+
+      function clearOverviewDevicesYIcons(chartId) {
+        var chartEl = document.getElementById(chartId);
+        if (!chartEl || !chartEl.parentElement || !chartEl.parentElement.querySelector) return;
+        var col = null;
+        try { col = chartEl.parentElement.querySelector('[data-overview-yicons="' + chartId + '"]'); } catch (_) { col = null; }
+        if (col) col.innerHTML = '';
+      }
+
+      function setOverviewDevicesYIcons(chartId, platforms) {
+        var chartEl = document.getElementById(chartId);
+        if (!chartEl || !chartEl.parentElement || !chartEl.parentElement.querySelector) return;
+        var col = null;
+        try { col = chartEl.parentElement.querySelector('[data-overview-yicons="' + chartId + '"]'); } catch (_) { col = null; }
+        if (!col) return;
+        var list = Array.isArray(platforms) ? platforms : [];
+        if (!list.length) {
+          col.innerHTML = '';
+          return;
+        }
+        col.innerHTML = list.map(function(r) {
+          var platform = r && r.platform != null ? String(r.platform).trim().toLowerCase() : '';
+          var label = r && r.label != null ? String(r.label).trim() : platformLabelForKey(platform);
+          return '<div class="dash-devices-icon-cell" title="' + escapeHtml(label) + '" aria-label="' + escapeHtml(label) + '">' +
+            '<span class="visually-hidden">' + escapeHtml(label) + '</span>' +
+            platformIconHtmlForKey(platform, label) +
+          '</div>';
+        }).join('');
+      }
+
+      function renderOverviewDevicesHorizontalBar(chartId, platforms, opts) {
+        var chartEl = document.getElementById(chartId);
+        if (!chartEl || typeof ApexCharts === 'undefined') return;
+        if (!isChartEnabledByUiConfig(chartId)) {
+          destroyDashChart(chartId);
+          chartEl.innerHTML = '';
+          clearOverviewDevicesYIcons(chartId);
+          return;
+        }
+
+        var rows = Array.isArray(platforms) ? platforms : [];
+        var labels = [];
+        var values = [];
+        var orders = [];
+        var revenues = [];
+        var platformKeys = [];
+        var renderedRows = [];
+        rows.forEach(function(r) {
+          if (!r || typeof r !== 'object') return;
+          var p = r.platform != null ? String(r.platform).trim().toLowerCase() : '';
+          var label = r.label != null ? String(r.label).trim() : platformLabelForKey(p);
+          var sessions = normalizeOverviewMetric(r.sessions);
+          if (!label || sessions <= 0) return;
+          var s = Math.max(0, Math.round(sessions));
+          var o = Math.max(0, Math.round(normalizeOverviewMetric(r.orders)));
+          var rev = normalizeOverviewMetric(r.revenue_gbp);
+          labels.push(label);
+          values.push(s);
+          orders.push(o);
+          revenues.push(rev);
+          platformKeys.push(p);
+          renderedRows.push({ platform: p, label: label, sessions: s, orders: o, revenue_gbp: rev });
+        });
+
+        if (!labels.length || !values.length) {
+          renderOverviewChartEmpty(chartId, 'No device data');
+          clearOverviewDevicesYIcons(chartId);
+          return;
+        }
+
+        var fallbackColors = (opts && Array.isArray(opts.colors) && opts.colors.length) ? opts.colors : ['#4b94e4', '#3eb3ab', '#f59e34', '#8b5cf6', '#ef4444'];
+        var colors = (typeof chartColorsFromUiConfig === 'function') ? chartColorsFromUiConfig(chartId, fallbackColors) : fallbackColors;
+        var chartHeight = resolveOverviewChartHeight(chartEl, (opts && Number.isFinite(Number(opts.height))) ? Number(opts.height) : 180, 120, 440);
+        var uiStyle = (typeof chartStyleFromUiConfig === 'function') ? chartStyleFromUiConfig(chartId) : null;
+
+        var labelsRef = labels;
+        var valuesRef = values;
+        var ordersRef = orders;
+        var revenuesRef = revenues;
+        var platformRef = platformKeys;
+
+        var apexOpts = {
+          chart: { type: 'bar', height: chartHeight, fontFamily: 'Inter, sans-serif', toolbar: { show: false }, animations: { enabled: !!(uiStyle && uiStyle.animations === true) } },
+          plotOptions: { bar: { horizontal: true, borderRadius: 0, distributed: true, barHeight: '60%', dataLabels: { hideOverflowingLabels: false } } },
+          series: [{ name: 'Sessions', data: values }],
+          xaxis: { categories: labels, labels: { show: false } },
+          yaxis: { labels: { show: false } },
+          grid: { padding: { bottom: 12, left: 6, right: 8, top: 4 } },
+          colors: colors,
+          legend: { show: false },
+          dataLabels: { enabled: false },
+          fill: { opacity: (uiStyle && Number.isFinite(Number(uiStyle.fillOpacity))) ? Math.max(0, Math.min(1, Number(uiStyle.fillOpacity))) : 1, type: 'solid' },
+          stroke: { show: false, width: 0 },
+          states: { normal: { filter: { type: 'none', value: 0 } }, hover: { filter: { type: 'none', value: 0 } }, active: { filter: { type: 'none', value: 0 } } },
+          tooltip: {
+            custom: function(tip) {
+              var idx = tip && tip.dataPointIndex != null ? tip.dataPointIndex : -1;
+              var name = (idx >= 0 && idx < labelsRef.length) ? labelsRef[idx] : '';
+              var sess = (idx >= 0 && idx < valuesRef.length) ? valuesRef[idx] : 0;
+              var ord = (idx >= 0 && idx < ordersRef.length) ? ordersRef[idx] : 0;
+              var rev = (idx >= 0 && idx < revenuesRef.length) ? revenuesRef[idx] : 0;
+              var pKey = (idx >= 0 && idx < platformRef.length) ? platformRef[idx] : '';
+              var crStr = (sess > 0) ? ((ord / sess) * 100).toFixed(1) + '%' : '\u2014';
+              var iconHtml = platformIconHtmlForKey(pKey, name);
+              return '<div class="kexo-tooltip-card p-2">' +
+                '<div class="fw-semibold" style="display:flex;align-items:center;gap:6px">' + iconHtml + escapeHtml(name || '') + '</div>' +
+                '<div>Sessions: ' + escapeHtml(fmtNum(sess)) + '</div>' +
+                '<div>Orders: ' + escapeHtml(fmtNum(ord)) + '</div>' +
+                '<div>Conversion: ' + escapeHtml(crStr) + '</div>' +
+                '<div>Revenue: ' + escapeHtml(formatRevenue(normalizeOverviewMetric(rev)) || '\u2014') + '</div>' +
+              '</div>';
+            }
+          },
+          noData: { text: 'No data available', style: { fontSize: '13px', color: '#626976' } }
+        };
+
+        try {
+          var chartOverride = (typeof chartAdvancedOverrideFromUiConfig === 'function') ? chartAdvancedOverrideFromUiConfig(chartId, 'bar-horizontal') : null;
+          if (chartOverride && isPlainObject(chartOverride) && Object.keys(chartOverride).length) apexOpts = deepMergeOptions(apexOpts, chartOverride);
+        } catch (_) {}
+
+        try {
+          upsertDashboardApexChart(chartId, chartEl, apexOpts);
+          setOverviewDevicesYIcons(chartId, renderedRows);
+          try {
+            var legendEl = chartEl.parentElement && chartEl.parentElement.parentElement && chartEl.parentElement.parentElement.querySelector
+              ? chartEl.parentElement.parentElement.querySelector('[data-overview-legend="' + chartId + '"]')
+              : null;
+            if (legendEl) legendEl.innerHTML = '';
+          } catch (_) {}
+        } catch (err) {
+          captureChartError(err, 'dashboardDevicesBarRender', { chartId: chartId });
+          clearOverviewDevicesYIcons(chartId);
         }
       }
 
@@ -2010,105 +2168,55 @@
               renderOverviewMiniLegend(chartId, finishLabels, colors);
             }
           };
-        } else if (chartId === 'dash-chart-countries-30d') {
-          var countriesRows = payload && Array.isArray(payload.topCountries) ? payload.topCountries
-            : (payload && payload.countries && Array.isArray(payload.countries.topCountries) ? payload.countries.topCountries : []);
-          var topCountries = (countriesRows || []).filter(function(row) {
-            if (!row || typeof row !== 'object') return false;
-            var cc = countryCodeFromRow(row) || (row.country != null ? String(row.country).trim().toUpperCase().slice(0, 2) : '');
-            var val = normalizeOverviewMetric(row.revenue);
-            return (cc || row.revenue != null) && val > 0;
-          }).slice(0, 5);
-          payloadSig = JSON.stringify(topCountries.map(function(r) {
-            return [String((r.country_code != null ? r.country_code : r.country) || ''), normalizeOverviewMetric(r.revenue)];
+        } else if (chartId === 'dash-chart-devices-30d') {
+          var deviceRows = payload && payload.devices && Array.isArray(payload.devices.rows) ? payload.devices.rows : [];
+          var agg = {
+            ios: { sessions: 0, orders: 0, revenue: 0 },
+            android: { sessions: 0, orders: 0, revenue: 0 },
+            windows: { sessions: 0, orders: 0, revenue: 0 },
+            mac: { sessions: 0, orders: 0, revenue: 0 },
+            linux: { sessions: 0, orders: 0, revenue: 0 },
+          };
+          (deviceRows || []).forEach(function(d) {
+            if (!d || !Array.isArray(d.platforms)) return;
+            (d.platforms || []).forEach(function(p) {
+              var key = p && p.platform != null ? String(p.platform).trim().toLowerCase() : '';
+              if (!key || !agg[key]) return;
+              agg[key].sessions += normalizeOverviewMetric(p.sessions);
+              agg[key].orders += normalizeOverviewMetric(p.orders);
+              agg[key].revenue += normalizeOverviewMetric(p.revenue_gbp);
+            });
+          });
+          var orderKeys = ['ios', 'android', 'windows', 'mac', 'linux'];
+          var platforms = [];
+          orderKeys.forEach(function(k) {
+            var a = agg[k];
+            if (!a) return;
+            var s = Math.max(0, Math.round(normalizeOverviewMetric(a.sessions)));
+            var o = Math.max(0, Math.round(normalizeOverviewMetric(a.orders)));
+            var r = Math.round(normalizeOverviewMetric(a.revenue) * 100) / 100;
+            if (!(s > 0 || o > 0 || r > 0)) return;
+            platforms.push({ platform: k, label: platformLabelForKey(k), sessions: s, orders: o, revenue_gbp: r });
+          });
+          payloadSig = JSON.stringify(platforms.map(function(r) {
+            return [String(r.platform || ''), normalizeOverviewMetric(r.sessions), normalizeOverviewMetric(r.orders), normalizeOverviewMetric(r.revenue_gbp)];
           }).concat([rk])) || '';
           doRender = function() {
-            var countriesMode = (typeof chartModeFromUiConfig === 'function') ? String(chartModeFromUiConfig(chartId, 'bar-horizontal') || 'bar-horizontal').trim().toLowerCase() : 'bar-horizontal';
-            countriesMode = validateChartType(chartId, countriesMode, 'bar-horizontal');
             var fallbackColors2 = ['#4b94e4', '#3eb3ab', '#f59e34', '#8b5cf6', '#ef4444'];
-            var countriesColors = (typeof chartColorsFromUiConfig === 'function') ? chartColorsFromUiConfig(chartId, fallbackColors2) : fallbackColors2;
-            var countriesOpts = { colors: countriesColors, height: 180 };
+            var devicesColors = (typeof chartColorsFromUiConfig === 'function') ? chartColorsFromUiConfig(chartId, fallbackColors2) : fallbackColors2;
+            var devicesOpts = { colors: devicesColors, height: 180 };
             try {
               var legendEl = document.getElementById(chartId) && document.getElementById(chartId).parentElement
-                ? document.getElementById(chartId).parentElement.querySelector('[data-overview-legend="' + chartId + '"]')
+                ? document.getElementById(chartId).parentElement.parentElement.querySelector('[data-overview-legend="' + chartId + '"]')
                 : null;
               if (legendEl) legendEl.innerHTML = '';
             } catch (_) {}
-            if (countriesMode === 'bar-horizontal' || countriesMode === 'bar' || countriesMode === 'bar-distributed') {
-              renderOverviewCountriesHorizontalBar(chartId, topCountries, Object.assign({}, countriesOpts, { horizontal: countriesMode === 'bar-horizontal' }));
+            if (!platforms.length) {
+              renderOverviewChartEmpty(chartId, 'No device data');
+              clearOverviewDevicesYIcons(chartId);
               return;
             }
-            if (countriesMode === 'radialbar') {
-              var rbLabels = [];
-              var rbValues = [];
-              topCountries.forEach(function(row) {
-                var cc = countryCodeFromRow(row) || '';
-                if (!cc) {
-                  var raw = row && row.country != null ? String(row.country).trim() : '';
-                  cc = raw ? raw.toUpperCase().slice(0, 2) : '';
-                  if (cc === 'UK') cc = 'GB';
-                  if (!/^[A-Z]{2}$/.test(cc)) cc = '';
-                }
-                var name = cc ? ((typeof countryLabelFull === 'function') ? countryLabelFull(cc) : cc) : '';
-                var val = normalizeOverviewMetric(row && row.revenue);
-                rbLabels.push(name || cc || (row && row.country != null ? String(row.country).trim() : ''));
-                rbValues.push(val);
-              });
-              renderOverviewFinishesRadialBar(chartId, rbLabels, rbValues, countriesOpts);
-              return;
-            }
-            if (countriesMode === 'line' || countriesMode === 'area' || countriesMode === 'multi-line-labels') {
-              var lineLabels = [];
-              var lineValues = [];
-              topCountries.forEach(function(row) {
-                var cc = countryCodeFromRow(row) || '';
-                if (!cc) {
-                  var raw = row && row.country != null ? String(row.country).trim() : '';
-                  cc = raw ? raw.toUpperCase().slice(0, 2) : '';
-                  if (cc === 'UK') cc = 'GB';
-                  if (!/^[A-Z]{2}$/.test(cc)) cc = '';
-                }
-                var name = cc ? ((typeof countryLabelFull === 'function') ? countryLabelFull(cc) : cc) : '';
-                var val = normalizeOverviewMetric(row && row.revenue);
-                lineLabels.push(name || cc || (row && row.country != null ? String(row.country).trim() : ''));
-                lineValues.push(val);
-              });
-              makeChart(chartId, lineLabels, [{
-                label: 'Revenue',
-                data: lineValues,
-                borderColor: (countriesColors && countriesColors[0]) || DASH_ACCENT,
-                backgroundColor: (countriesColors && countriesColors[0]) ? (countriesColors[0] + '33') : DASH_ACCENT_LIGHT,
-                fill: countriesMode === 'area',
-                borderWidth: 2
-              }], { currency: true, chartType: countriesMode, height: countriesOpts.height });
-              return;
-            }
-            var countryLabels = [];
-            var countryValues = [];
-            var countryCodes = [];
-            var countriesUiStyle = (typeof chartStyleFromUiConfig === 'function') ? chartStyleFromUiConfig(chartId) : null;
-            var showFlags = !!(countriesUiStyle && countriesUiStyle.pieCountryFlags);
-            topCountries.forEach(function(row) {
-              var cc = countryCodeFromRow(row);
-              if (!cc) {
-                var raw = row.country != null ? String(row.country).trim() : '';
-                cc = raw ? raw.toUpperCase().slice(0, 2) : '';
-                if (cc === 'UK') cc = 'GB';
-                if (!/^[A-Z]{2}$/.test(cc)) cc = '';
-              }
-              var name = cc ? ((typeof countryLabelFull === 'function') ? countryLabelFull(cc) : cc) : '';
-              var val = normalizeOverviewMetric(row.revenue);
-              countryLabels.push(name || cc || (row.country != null ? String(row.country).trim() : ''));
-              countryValues.push(val);
-              countryCodes.push(cc || '');
-            });
-            renderOverviewPieChart(chartId, countryLabels, countryValues, {
-              colors: countriesColors,
-              valueFormatter: function(v) { return formatRevenue(normalizeOverviewMetric(v)) || '\u2014'; },
-              height: countriesOpts.height,
-              donut: countriesMode === 'donut',
-              countryCodes: showFlags ? countryCodes : null
-            });
+            renderOverviewDevicesHorizontalBar(chartId, platforms, Object.assign({}, devicesOpts, { horizontal: true }));
           };
         } else if (chartId === 'dash-chart-attribution-30d') {
           try {
@@ -2398,8 +2506,8 @@
         if (id === 'dash-chart-finishes-30d') {
           url = API + '/api/shopify-finishes?range=' + encodeURIComponent(rk);
           if (shop) url += '&shop=' + encodeURIComponent(String(shop));
-        } else if (id === 'dash-chart-countries-30d') {
-          url = API + '/api/dashboard-series?range=' + encodeURIComponent(rk);
+        } else if (id === 'dash-chart-devices-30d') {
+          url = API + '/api/devices/report?range=' + encodeURIComponent(rk);
         } else if (id === 'dash-chart-attribution-30d') {
           url = API + '/api/attribution/report?range=' + encodeURIComponent(rk);
         } else {

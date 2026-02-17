@@ -451,7 +451,7 @@
       html += metricRow('Estimated Profit', profit.estimatedProfit, 'currency');
       html += metricRow('Net Profit', profit.netProfit, 'currency');
       html += metricRow('Profit Margin', profit.marginPct, 'percent');
-      html += metricRow('Deductions', profit.deductions, 'currency');
+      html += metricRow('Total cost deducted (incl. COGS)', profit.deductions, 'currency');
     }
     body.innerHTML = html;
   }
@@ -720,6 +720,27 @@
     note.classList.remove('is-hidden');
   }
 
+  function debugCostEnabled() {
+    try {
+      const params = new URLSearchParams(typeof window !== 'undefined' && window.location ? window.location.search : '');
+      if (params.get('debugCost') === '1') return true;
+      if (typeof localStorage !== 'undefined' && localStorage.getItem('kexoDebugCost') === '1') return true;
+    } catch (_) {}
+    return false;
+  }
+
+  function logCostReconciliation(data) {
+    if (!data || !data.financial) return;
+    const financial = data.financial;
+    const costVal = financial.cost && financial.cost.value != null ? Number(financial.cost.value) : NaN;
+    const lines = Array.isArray(financial.costBreakdownNow) ? financial.costBreakdownNow : [];
+    const breakdownSum = lines.reduce((sum, row) => sum + (Number(row && (row.amountGbp != null ? row.amountGbp : row.amount)) || 0), 0);
+    const diff = Number.isFinite(costVal) && Number.isFinite(breakdownSum) ? Math.abs(costVal - breakdownSum) : NaN;
+    const match = Number.isFinite(diff) && diff < 0.02;
+    const msg = 'Cost sums match: ' + (match ? 'yes' : 'no') + ' (cost vs breakdown sum, diff ' + (Number.isFinite(diff) ? diff.toFixed(4) : 'n/a') + ')';
+    try { console.log('[KEXO snapshot]', msg); } catch (_) {}
+  }
+
   function renderAll(data) {
     if (!data || data.ok !== true) {
       setAllGroups('error');
@@ -735,6 +756,7 @@
     if (state.showGraphs.performance) renderPerformanceChart(data);
     if (state.showGraphs.customers) renderCustomersChart(data);
     setAllGroups('ready');
+    if (debugCostEnabled()) logCostReconciliation(data);
   }
 
   function toggleSnapshotGraph(key) {
@@ -1212,17 +1234,10 @@
     const tableBody = document.getElementById('profit-rules-table-body');
 
     if (openBtn) {
-      openBtn.addEventListener('click', async function onOpenProfitRules() {
-        setRulesMessage('', null);
+      openBtn.addEventListener('click', function onOpenProfitRules() {
         try {
-          await loadProfitRules(false);
-        } catch (_) {
-          state.rulesDraft = normalizeRulesPayload(null);
-          renderRulesList();
-          setRulesMessage('Failed to load existing rules.', false);
-        }
-        setProfitRulesTab('rules');
-        openProfitRulesModal();
+          window.open('/settings?tab=cost-expenses&costExpensesTab=rules', '_blank', 'noopener,noreferrer');
+        } catch (_) {}
       });
     }
     if (closeBtn) closeBtn.addEventListener('click', closeProfitRulesModal);

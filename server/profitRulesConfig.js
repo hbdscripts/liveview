@@ -8,6 +8,46 @@ const PROFIT_RULE_TYPES = Object.freeze({
 
 const PROFIT_RULE_TYPE_SET = new Set(Object.values(PROFIT_RULE_TYPES));
 
+function defaultShippingConfig() {
+  return {
+    enabled: false,
+    worldwideDefaultGbp: 0,
+    overrides: [],
+  };
+}
+
+function normalizeShippingOverride(raw, idx) {
+  const o = raw && typeof raw === 'object' ? raw : {};
+  const countries = Array.isArray(o.countries) ? o.countries : [];
+  const seen = new Set();
+  const codes = [];
+  for (const item of countries) {
+    const code = normalizeCountryCode(item);
+    if (!code || seen.has(code)) continue;
+    seen.add(code);
+    codes.push(code);
+    if (codes.length >= 64) break;
+  }
+  return {
+    priority: Math.trunc(clampNumber(o.priority, 1, 1000000, idx + 1)),
+    enabled: o.enabled !== false,
+    priceGbp: Math.max(0, Number(o.priceGbp) || 0),
+    countries: codes,
+  };
+}
+
+function normalizeShippingConfig(raw) {
+  if (!raw || typeof raw !== 'object') return defaultShippingConfig();
+  const overrides = Array.isArray(raw.overrides) ? raw.overrides : [];
+  const normalized = overrides.slice(0, 64).map((o, i) => normalizeShippingOverride(o, i));
+  normalized.sort((a, b) => (a.priority || 0) - (b.priority || 0));
+  return {
+    enabled: raw.enabled === true,
+    worldwideDefaultGbp: Math.max(0, Number(raw.worldwideDefaultGbp) || 0),
+    overrides: normalized,
+  };
+}
+
 function defaultProfitRulesConfigV1() {
   return {
     enabled: false,
@@ -19,6 +59,7 @@ function defaultProfitRulesConfigV1() {
       includeKlarnaFees: false,
     },
     rules: [],
+    shipping: defaultShippingConfig(),
   };
 }
 
@@ -161,6 +202,7 @@ function normalizeProfitRulesConfigV1(raw) {
     return String(a.id).localeCompare(String(b.id));
   });
   out.rules = normalized;
+  out.shipping = normalizeShippingConfig(parsed.shipping);
   return out;
 }
 

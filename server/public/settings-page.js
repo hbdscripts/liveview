@@ -28,11 +28,17 @@
       var allowedTabs = {
         kexo: true, integrations: true,
         attribution: true, insights: true, layout: true,
+        'cost-expenses': true,
         admin: true,
       };
       if (allowedTabs[rawTab]) {
         if (rawTab === 'admin' && !document.getElementById('settings-tab-admin')) keep.set('tab', 'kexo');
+        else if (rawTab === 'cost-expenses' && !document.getElementById('settings-tab-cost-expenses')) keep.set('tab', 'kexo');
         else keep.set('tab', rawTab);
+      }
+      var rawCostExpenses = String(params.get('costExpensesTab') || '').trim().toLowerCase();
+      if ((rawCostExpenses === 'shipping' || rawCostExpenses === 'rules') && keep.get('tab') === 'cost-expenses') {
+        keep.set('costExpensesTab', rawCostExpenses);
       }
       var rawKexo = String(params.get('kexoTab') || params.get('kexo') || '').trim().toLowerCase();
       if (!rawKexo) {
@@ -127,6 +133,7 @@
   var initialIntegrationsSubTab = null;
   var initialAttributionSubTab = null;
   var initialAdminSubTab = null;
+  var initialCostExpensesSubTab = null;
   var activeLayoutSubTab = 'tables';
   var activeKexoSubTab = 'general';
 
@@ -136,6 +143,7 @@
     attribution: 'settings-panel-attribution',
     insights: 'settings-panel-insights',
     layout: 'settings-panel-layout',
+    'cost-expenses': 'settings-panel-cost-expenses',
     admin: 'settings-panel-admin',
   };
 
@@ -189,8 +197,16 @@
           if (adk === 'controls' || adk === 'diagnostics' || adk === 'users') initialAdminSubTab = adk;
         }
       }
+      if (t === 'cost-expenses') {
+        var cem = /[?&]costExpensesTab=([^&]+)/.exec(window.location.search || '');
+        if (cem && cem[1]) {
+          var cek = cem[1].toLowerCase().replace(/\s+/g, '-');
+          if (cek === 'shipping' || cek === 'rules') initialCostExpensesSubTab = cek;
+        }
+      }
       if (TAB_MAP[t]) {
         if (t === 'admin' && !document.getElementById('settings-tab-admin')) return null;
+        if (t === 'cost-expenses' && !document.getElementById('settings-tab-cost-expenses')) return null;
         return t;
       }
     }
@@ -234,6 +250,10 @@
     if (key === 'admin') {
       var adminKey = getActiveAdminSubTab();
       if (adminKey === 'controls' || adminKey === 'diagnostics' || adminKey === 'users') params.set('adminTab', adminKey);
+    }
+    if (key === 'cost-expenses') {
+      var costExpensesKey = getActiveCostExpensesSubTab();
+      if (costExpensesKey === 'shipping' || costExpensesKey === 'rules') params.set('costExpensesTab', costExpensesKey);
     }
     var url = window.location.pathname + '?' + params.toString();
     try { history.replaceState(null, '', url); } catch (_) {}
@@ -281,6 +301,13 @@
     return 'controls';
   }
 
+  function getActiveCostExpensesSubTab() {
+    var tab = document.querySelector('[data-settings-cost-expenses-tab].active');
+    if (!tab) return initialCostExpensesSubTab || 'shipping';
+    var key = String(tab.getAttribute('data-settings-cost-expenses-tab') || '').trim().toLowerCase();
+    return (key === 'rules') ? 'rules' : 'shipping';
+  }
+
   function renderChartsWhenVisible() {
     if (chartsUiPanelRendered) return;
     renderChartsUiPanel(chartsUiConfigCache || defaultChartsUiConfigV1());
@@ -321,6 +348,23 @@
           renderInsightsVariantsPanel(insightsVariantsConfigCache || defaultInsightsVariantsConfigV1());
         }
       } catch (_) {}
+    }
+    if (key === 'cost-expenses') {
+      try {
+        if (typeof window.initCostExpensesSettings === 'function') window.initCostExpensesSettings();
+      } catch (_) {}
+      var costExpensesSub = initialCostExpensesSubTab || 'shipping';
+      document.querySelectorAll('[data-settings-cost-expenses-tab]').forEach(function (btn) {
+        var sub = String(btn.getAttribute('data-settings-cost-expenses-tab') || '').trim().toLowerCase();
+        var isActive = (sub === costExpensesSub);
+        btn.classList.toggle('active', isActive);
+        btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+        var panelId = btn.getAttribute('aria-controls');
+        if (panelId) {
+          var panel = document.getElementById(panelId);
+          if (panel) panel.classList.toggle('active', isActive);
+        }
+      });
     }
   }
 
@@ -1733,7 +1777,7 @@
     var baseCharts = [
       { key: 'dash-chart-overview-30d', label: 'Dashboard · 7 Day Overview', enabled: true, mode: 'area', colors: ['#3eb3ab', '#ef4444'], advancedApexOverride: {}, styleOverride: { animations: false } },
       { key: 'dash-chart-finishes-30d', label: 'Dashboard · Finishes (7 Days)', enabled: true, mode: 'radialbar', colors: ['#f59e34', '#94a3b8', '#8b5cf6', '#4b94e4', '#3eb3ab'], advancedApexOverride: {}, styleOverride: { animations: false, pieDonut: true, pieDonutSize: 64, pieLabelPosition: 'outside', pieLabelContent: 'label_percent', pieLabelOffset: 18 } },
-      { key: 'dash-chart-countries-30d', label: 'Dashboard · Countries (7 Days)', enabled: true, mode: 'bar-horizontal', colors: ['#4b94e4', '#3eb3ab', '#f59e34', '#8b5cf6', '#ef4444'], advancedApexOverride: {}, styleOverride: { animations: false, pieDonut: true, pieDonutSize: 64, pieLabelPosition: 'outside', pieLabelContent: 'label_percent', pieLabelOffset: 18, pieCountryFlags: true } },
+      { key: 'dash-chart-devices-30d', label: 'Dashboard · Devices (7 Days)', enabled: true, mode: 'bar-horizontal', colors: ['#4b94e4', '#3eb3ab', '#f59e34', '#8b5cf6', '#ef4444'], advancedApexOverride: {}, styleOverride: { animations: false } },
       { key: 'dash-chart-attribution-30d', label: 'Dashboard · Attribution (7 Days)', enabled: true, mode: 'bar-distributed', colors: ['#4b94e4', '#3eb3ab', '#f59e34', '#8b5cf6', '#ef4444'], advancedApexOverride: {}, styleOverride: { animations: false, pieDonut: true, pieDonutSize: 64, pieLabelPosition: 'outside', pieLabelContent: 'label_percent', pieLabelOffset: 18 } },
       { key: 'live-online-chart', label: 'Dashboard · Live Online', enabled: true, mode: 'map-flat', colors: ['#16a34a'], advancedApexOverride: {} },
       { key: 'sales-overview-chart', label: 'Dashboard · Sales Trend', enabled: true, mode: 'area', colors: ['#0d9488'], advancedApexOverride: {} },
@@ -1785,8 +1829,8 @@
           key: 'dashboard',
           label: 'Dashboard · Overview',
           tables: [
-            { id: 'dash-top-products', name: 'Top Products', tableClass: 'dashboard', zone: 'dashboard-top-products', order: 1, inGrid: true, rows: { default: 5, options: [5, 10] }, sticky: { minWidth: null, maxWidth: null } },
-            { id: 'dash-top-countries', name: 'Top Countries', tableClass: 'dashboard', zone: 'dashboard-top-countries', order: 2, inGrid: true, rows: { default: 5, options: [5, 10] }, sticky: { minWidth: null, maxWidth: null } },
+            { id: 'dash-top-products', name: 'Top Products', tableClass: 'dashboard', zone: 'dashboard-top-products', order: 1, inGrid: true, rows: { default: 5, options: [5] }, sticky: { minWidth: null, maxWidth: null } },
+            { id: 'dash-top-countries', name: 'Top Countries', tableClass: 'dashboard', zone: 'dashboard-top-countries', order: 2, inGrid: true, rows: { default: 5, options: [5] }, sticky: { minWidth: null, maxWidth: null } },
             { id: 'dash-trending-up', name: 'Trending Up', tableClass: 'dashboard', zone: 'dashboard-trending-up', order: 3, inGrid: true, rows: { default: 5, options: [5, 10] }, sticky: { minWidth: null, maxWidth: null } },
             { id: 'dash-trending-down', name: 'Trending Down', tableClass: 'dashboard', zone: 'dashboard-trending-down', order: 4, inGrid: true, rows: { default: 5, options: [5, 10] }, sticky: { minWidth: null, maxWidth: null } },
           ],
@@ -1870,7 +1914,7 @@
   var CHART_MODE_LABEL = (typeof window.KEXO_CHART_MODE_LABEL === 'object' && window.KEXO_CHART_MODE_LABEL) || {};
 
   var CHARTS_GROUPS = [
-    { id: 'dashboard', label: 'Dashboard charts', keys: ['dash-chart-overview-30d', 'dash-chart-finishes-30d', 'dash-chart-countries-30d', 'dash-chart-attribution-30d', 'live-online-chart', 'sales-overview-chart', 'date-overview-chart'] },
+    { id: 'dashboard', label: 'Dashboard charts', keys: ['dash-chart-overview-30d', 'dash-chart-finishes-30d', 'dash-chart-devices-30d', 'dash-chart-attribution-30d', 'live-online-chart', 'sales-overview-chart', 'date-overview-chart'] },
     { id: 'acquisition', label: 'Acquisition charts', keys: ['attribution-chart', 'devices-chart'] },
     { id: 'insights', label: 'Insights charts', keys: ['products-chart', 'abandoned-carts-chart', 'countries-map-chart'] },
     { id: 'integrations', label: 'Integration charts', keys: ['ads-overview-chart'] },

@@ -1450,6 +1450,29 @@ async function readOrderCountrySummary(shop, startMs, endMs) {
   return out;
 }
 
+function computeShippingCostFromSummary(summary, shippingConfig) {
+  if (!shippingConfig || shippingConfig.enabled !== true || !summary || !summary.byCountry || !summary.byCountry.size) return 0;
+  const defaultGbp = Math.max(0, Number(shippingConfig.worldwideDefaultGbp) || 0);
+  const overrides = Array.isArray(shippingConfig.overrides) ? shippingConfig.overrides : [];
+  let total = 0;
+  for (const [countryCode, data] of summary.byCountry) {
+    const orders = Number(data && data.orders) || 0;
+    if (orders <= 0) continue;
+    const code = normalizeCountryCode(countryCode) || countryCode;
+    let priceGbp = defaultGbp;
+    for (const o of overrides) {
+      if (!o || o.enabled === false) continue;
+      const countries = Array.isArray(o.countries) ? o.countries : [];
+      if (countries.includes(code)) {
+        priceGbp = Math.max(0, Number(o.priceGbp) || 0);
+        break;
+      }
+    }
+    total += orders * priceGbp;
+  }
+  return round2(total) || 0;
+}
+
 function selectedScopeTotals(summary, appliesTo) {
   const fallback = { revenueGbp: 0, orders: 0 };
   if (!summary || typeof summary !== 'object') return fallback;
@@ -2051,6 +2074,8 @@ async function getBusinessSnapshot(options = {}) {
     includeAppBills,
     includePaymentFees,
     includeKlarnaFees,
+    shippingTotal,
+    includeShipping,
   }) {
     const days = Array.isArray(chartDays) ? chartDays : [];
     const rev = Array.isArray(revenueDaily) ? revenueDaily : [];
@@ -2113,6 +2138,9 @@ async function getBusinessSnapshot(options = {}) {
         return round2(v) || 0;
       })
       : days.map(() => 0);
+    const shippingDaily = includeShipping && Number(shippingTotal) > 0 && ordTotalDaily > 0
+      ? ord.map((w) => round2((Number(shippingTotal) * (Number(w) || 0)) / ordTotalDaily) || 0)
+      : days.map(() => 0);
     const costDaily = days.map((_, i) => {
       const a = Number(cogsDaily[i]) || 0;
       const b = Number(expensesDaily[i]) || 0;
@@ -2120,7 +2148,8 @@ async function getBusinessSnapshot(options = {}) {
       const dVal = Number(appBillsDaily[i]) || 0;
       const eVal = Number(paymentFeesDaily[i]) || 0;
       const fVal = Number(klarnaFeesDaily[i]) || 0;
-      return round2(a + b + cVal + dVal + eVal + fVal) || 0;
+      const gVal = Number(shippingDaily[i]) || 0;
+      return round2(a + b + cVal + dVal + eVal + fVal + gVal) || 0;
     });
     return {
       costDaily,
@@ -2134,11 +2163,12 @@ async function getBusinessSnapshot(options = {}) {
   const profitRules = await readProfitRulesConfig();
   const rulesEnabled = hasEnabledProfitRules(profitRules);
   const includeGoogleAdsSpend = !!(profitRules && profitRules.integrations && profitRules.integrations.includeGoogleAdsSpend === true);
-  const includeShopifyAppBills = false;
+  const includeShopifyAppBills = !!(profitRules && profitRules.integrations && profitRules.integrations.includeShopifyAppBills === true);
   const includePaymentFees = !!(profitRules && profitRules.integrations && profitRules.integrations.includePaymentFees === true);
   const includeKlarnaFees = !!(profitRules && profitRules.integrations && profitRules.integrations.includeKlarnaFees === true);
   const anyIntegrationEnabled = includeGoogleAdsSpend || includePaymentFees || includeKlarnaFees;
   const profitConfigured = !!(profitRules && profitRules.enabled === true && (rulesEnabled || anyIntegrationEnabled));
+  const shippingEnabled = !!(profitRules && profitRules.shipping && profitRules.shipping.enabled === true);
 
   const [
     sessionsNowTs,
@@ -2172,8 +2202,8 @@ async function getBusinessSnapshot(options = {}) {
     readCustomerTypeTimeseries(shop, bounds.start, bounds.end, timeZone).catch(() => new Map()),
     readCustomerTypeTimeseries(shop, compareBounds.start, compareBounds.end, timeZone).catch(() => new Map()),
     readShopName(shop, token).catch(() => null),
-    rulesEnabled ? readOrderCountrySummary(shop, bounds.start, bounds.end) : Promise.resolve(null),
-    rulesEnabled ? readOrderCountrySummary(shop, compareBounds.start, compareBounds.end) : Promise.resolve(null),
+    (rulesEnabled || shippingEnabled) ? readOrderCountrySummary(shop, bounds.start, bounds.end) : Promise.resolve(null),
+    (rulesEnabled || shippingEnabled) ? readOrderCountrySummary(shop, compareBounds.start, compareBounds.end) : Promise.resolve(null),
     readCogsTotalGbpFromLineItems(shop, token, bounds.start, bounds.end).catch(() => null),
     readCogsTotalGbpFromLineItems(shop, token, compareBounds.start, compareBounds.end).catch(() => null),
     readGoogleAdsSpendDailyGbp(bounds.start, bounds.end, timeZone).catch(() => ({ totalGbp: 0, byYmd: new Map(), totalClicks: 0, clicksByYmd: new Map() })),
@@ -2364,11 +2394,13 @@ async function getBusinessSnapshot(options = {}) {
   const paymentFeesPrevCost = includePaymentFees ? paymentFeesPrevAll : 0;
   const shopifyFeesNowCost = includeKlarnaFees ? shopifyFeesNowAll : 0;
   const shopifyFeesPrevCost = includeKlarnaFees ? shopifyFeesPrevAll : 0;
-  const costNow = (cogsNow != null || customExpensesNow > 0 || adsSpendNowCost > 0 || appBillsNowCost > 0 || paymentFeesNowCost > 0 || shopifyFeesNowCost > 0)
-    ? round2((cogsNow || 0) + customExpensesNow + adsSpendNowCost + appBillsNowCost + paymentFeesNowCost + shopifyFeesNowCost)
+  const shippingNowCost = shippingEnabled && summaryNow ? computeShippingCostFromSummary(summaryNow, profitRules.shipping) : 0;
+  const shippingPrevCost = shippingEnabled && summaryPrev ? computeShippingCostFromSummary(summaryPrev, profitRules.shipping) : 0;
+  const costNow = (cogsNow != null || customExpensesNow > 0 || adsSpendNowCost > 0 || appBillsNowCost > 0 || paymentFeesNowCost > 0 || shopifyFeesNowCost > 0 || shippingNowCost > 0)
+    ? round2((cogsNow || 0) + customExpensesNow + adsSpendNowCost + appBillsNowCost + paymentFeesNowCost + shopifyFeesNowCost + shippingNowCost)
     : null;
-  const costPrev = (cogsPrev != null || customExpensesPrev > 0 || adsSpendPrevCost > 0 || appBillsPrevCost > 0 || paymentFeesPrevCost > 0 || shopifyFeesPrevCost > 0)
-    ? round2((cogsPrev || 0) + customExpensesPrev + adsSpendPrevCost + appBillsPrevCost + paymentFeesPrevCost + shopifyFeesPrevCost)
+  const costPrev = (cogsPrev != null || customExpensesPrev > 0 || adsSpendPrevCost > 0 || appBillsPrevCost > 0 || paymentFeesPrevCost > 0 || shopifyFeesPrevCost > 0 || shippingPrevCost > 0)
+    ? round2((cogsPrev || 0) + customExpensesPrev + adsSpendPrevCost + appBillsPrevCost + paymentFeesPrevCost + shopifyFeesPrevCost + shippingPrevCost)
     : null;
 
   const costBreakdownNow = [];
@@ -2385,6 +2417,7 @@ async function getBusinessSnapshot(options = {}) {
   if (appBillsNowCost > 0) costBreakdownNow.push({ label: 'Shopify app bills', amountGbp: round2(appBillsNowCost) || 0 });
   if (includePaymentFees || paymentFeesNowCost > 0) costBreakdownNow.push({ label: 'Transaction Fees', amountGbp: round2(paymentFeesNowCost) || 0 });
   if (shopifyFeesNowCost > 0) costBreakdownNow.push({ label: 'Shopify Fees', amountGbp: round2(shopifyFeesNowCost) || 0 });
+  if (shippingNowCost > 0) costBreakdownNow.push({ label: 'Shipping', amountGbp: round2(shippingNowCost) || 0 });
 
   const costBreakdownPrevious = [];
   if (cogsPrev != null) costBreakdownPrevious.push({ label: 'Cost of Goods', amountGbp: round2(cogsPrev) || 0 });
@@ -2400,6 +2433,7 @@ async function getBusinessSnapshot(options = {}) {
   if (appBillsPrevCost > 0) costBreakdownPrevious.push({ label: 'Shopify app bills', amountGbp: round2(appBillsPrevCost) || 0 });
   if (includePaymentFees || paymentFeesPrevCost > 0) costBreakdownPrevious.push({ label: 'Transaction Fees', amountGbp: round2(paymentFeesPrevCost) || 0 });
   if (shopifyFeesPrevCost > 0) costBreakdownPrevious.push({ label: 'Shopify Fees', amountGbp: round2(shopifyFeesPrevCost) || 0 });
+  if (shippingPrevCost > 0) costBreakdownPrevious.push({ label: 'Shipping', amountGbp: round2(shippingPrevCost) || 0 });
 
   const nowCostSeries = buildCostDailySeries({
     chartDays,
@@ -2415,6 +2449,8 @@ async function getBusinessSnapshot(options = {}) {
     includeAppBills: includeShopifyAppBills,
     includePaymentFees,
     includeKlarnaFees,
+    shippingTotal: shippingNowCost,
+    includeShipping: shippingEnabled,
   });
   const prevCostSeries = buildCostDailySeries({
     chartDays: chartDaysPrev,
@@ -2430,6 +2466,8 @@ async function getBusinessSnapshot(options = {}) {
     includeAppBills: includeShopifyAppBills,
     includePaymentFees,
     includeKlarnaFees,
+    shippingTotal: shippingPrevCost,
+    includeShipping: shippingEnabled,
   });
   dailyNow.costGbp = nowCostSeries.costDaily;
   dailyPrev.costGbp = prevCostSeries.costDaily;
@@ -2746,4 +2784,5 @@ async function getBusinessSnapshot(options = {}) {
 module.exports = {
   getBusinessSnapshot,
   resolveSnapshotWindows,
+  readShopifyBalanceCostsGbp,
 };

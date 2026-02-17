@@ -106,6 +106,8 @@ async function getBusinessSnapshot(req, res) {
       let hasAds = false;
       let hasTxnFees = false;
       let hasShopifyFees = false;
+      let hasAppBills = false;
+      let hasShipping = false;
       let hasRules = false;
       breakdown.forEach(function (row) {
         if (!row || typeof row !== 'object') return;
@@ -117,12 +119,15 @@ async function getBusinessSnapshot(req, res) {
         else if (label.includes('transaction fees')) hasTxnFees = true;
         else if (label.includes('shopify fees')) hasShopifyFees = true;
         else if (label.includes('cost of goods')) return;
-        else if (label.includes('shopify app bills')) return;
+        else if (label.includes('shopify app bills')) hasAppBills = true;
+        else if (label.includes('shipping')) hasShipping = true;
         else hasRules = true;
       });
       Sentry.setTag('kexo_cost_has_ads', hasAds ? '1' : '0');
       Sentry.setTag('kexo_cost_has_txn_fees', hasTxnFees ? '1' : '0');
       Sentry.setTag('kexo_cost_has_shopify_fees', hasShopifyFees ? '1' : '0');
+      Sentry.setTag('kexo_cost_has_app_bills', hasAppBills ? '1' : '0');
+      Sentry.setTag('kexo_cost_has_shipping', hasShipping ? '1' : '0');
       Sentry.setTag('kexo_cost_has_rules', hasRules ? '1' : '0');
     } catch (_) {}
     res.json(out);

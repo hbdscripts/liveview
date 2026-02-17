@@ -383,16 +383,9 @@
       openBtn.setAttribute('data-kexo-profit-bound', '1');
       openBtn.addEventListener('click', function (e) {
         e.preventDefault();
-        setMessage('', null);
-        loadRules(false).catch(function () {
-          state.rulesDraft = normalizeRulesPayload(null);
-          applyDraftToUi();
-          renderRulesList();
-          setMessage('Failed to load existing rules.', false);
-        }).finally(function () {
-          setTab('rules');
-          openModal();
-        });
+        try {
+          window.open('/settings?tab=cost-expenses&costExpensesTab=rules', '_blank', 'noopener,noreferrer');
+        } catch (_) {}
       });
     }
 

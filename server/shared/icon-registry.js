@@ -18,6 +18,7 @@ const LOCKED_SETTINGS_ICON_KEYS = Object.freeze(toBooleanMap([
   'settings-tab-diagnostics',
   'settings-diagnostics-refresh',
   'settings-diagnostics-reconcile',
+  'settings-tab-cost-expenses',
 ]));
 
 const LEGACY_THEME_ICON_KEYS = Object.freeze(toBooleanMap([
@@ -107,6 +108,7 @@ const ICON_GLYPH_DEFAULTS = Object.freeze({
   'settings-tab-diagnostics': 'fa-chart-line',
   'settings-diagnostics-refresh': 'fa-rotate-right',
   'settings-diagnostics-reconcile': 'fa-sliders',
+  'settings-tab-cost-expenses': 'fa-sterling-sign',
   'admin-tab-controls': 'fa-sliders',
   'admin-tab-diagnostics': 'fa-chart-line',
   'admin-tab-users': 'fa-users',
