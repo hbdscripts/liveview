@@ -1,34 +1,11 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 28eb7843e4ee537f
+// checksum: 9d5f9ca963739dd2
 
 (function () {
 const API = '';
     const PAGE = (document.body && document.body.getAttribute('data-page')) || '';
     try { if (typeof window.kexoSetContext === 'function') window.kexoSetContext(PAGE || 'unknown', { page: PAGE || 'unknown' }); } catch (_) {}
     try { if (typeof window.kexoBreadcrumb === 'function') window.kexoBreadcrumb('app', 'init', { page: PAGE }); } catch (_) {}
-    // Perf/debug instrumentation helpers (default OFF).
-    // Enable by adding `?kexoPerf=1` (optionally `&kexoPerfRun=baseline|post-fix`) or setting localStorage `kexo:debug-perf:v1` = "1".
-    const KEXO_PERF_DEBUG_LS_KEY = 'kexo:debug-perf:v1';
-    function kexoPerfDebugEnabled() {
-      try { if (window && window.__KEXO_DEBUG_PERF === true) return true; } catch (_) {}
-      try {
-        const q = (window && window.location && typeof window.location.search === 'string') ? window.location.search : '';
-        if (q && /(?:\?|&)kexoPerf=1(?:&|$)/.test(q)) return true;
-      } catch (_) {}
-      try { return (localStorage.getItem(KEXO_PERF_DEBUG_LS_KEY) || '') === '1'; } catch (_) { return false; }
-    }
-    function kexoPerfDebugRunId() {
-      try {
-        const q = (window && window.location && typeof window.location.search === 'string') ? window.location.search : '';
-        if (q) {
-          const m = q.match(/(?:\?|&)kexoPerfRun=([^&]+)/);
-          if (m && m[1]) return decodeURIComponent(m[1]).slice(0, 32);
-        }
-      } catch (_) {}
-      return 'baseline';
-    }
-    try { window.__kexoPerfDebugEnabled = kexoPerfDebugEnabled; } catch (_) {}
-    try { window.__kexoPerfDebugRunId = kexoPerfDebugRunId; } catch (_) {}
     function captureChartError(err, context, extra) {
       try {
         if (typeof window.kexoCaptureError !== 'function') return;
@@ -9618,30 +9595,8 @@ const API = '';
       }
       if (uiSettingsInFlight) return uiSettingsInFlight;
       var url = API + '/api/settings' + (force ? ('?_=' + Date.now()) : '');
-      var _dbgPerfOn = false;
-      var _dbgT0 = 0;
-      var _dbgBytes = 0;
-      var _dbgParseMs = 0;
-      var _dbgStatus = 0;
-      try { _dbgPerfOn = !!(window && typeof window.__kexoPerfDebugEnabled === 'function' && window.__kexoPerfDebugEnabled()); } catch (_) { _dbgPerfOn = false; }
-      try { _dbgT0 = (typeof performance !== 'undefined' && performance && typeof performance.now === 'function') ? performance.now() : Date.now(); } catch (_) { _dbgT0 = Date.now(); }
       uiSettingsInFlight = fetchWithTimeout(url, { credentials: 'same-origin', cache: 'no-store' }, 15000)
-        .then(function(r) {
-          _dbgStatus = r && typeof r.status === 'number' ? r.status : 0;
-          if (!(r && r.ok)) return null;
-          if (!_dbgPerfOn) return r.json();
-          return r.text().then(function(t) {
-            _dbgBytes = t ? String(t).length : 0;
-            var p0 = 0;
-            try { p0 = (typeof performance !== 'undefined' && performance && typeof performance.now === 'function') ? performance.now() : Date.now(); } catch (_) { p0 = Date.now(); }
-            var json = null;
-            try { json = t ? JSON.parse(t) : null; } catch (_) { json = null; }
-            var p1 = 0;
-            try { p1 = (typeof performance !== 'undefined' && performance && typeof performance.now === 'function') ? performance.now() : Date.now(); } catch (_) { p1 = Date.now(); }
-            _dbgParseMs = Math.max(0, Math.round(p1 - p0));
-            return json;
-          });
-        })
+        .then(function(r) { return (r && r.ok) ? r.json() : null; })
         .then(function(data) {
           uiSettingsCache = (data && data.ok) ? data : null;
           uiSettingsFetchedAt = Date.now();
@@ -9664,14 +9619,6 @@ const API = '';
               try { window.__kexoApplySaleSoundOverride(url ? url : null); } catch (_) {}
             }
           }
-          // #region agent log
-          if (_dbgPerfOn) {
-            var _t1 = 0;
-            try { _t1 = (typeof performance !== 'undefined' && performance && typeof performance.now === 'function') ? performance.now() : Date.now(); } catch (_) { _t1 = Date.now(); }
-            var _ms = Math.max(0, Math.round(_t1 - (_dbgT0 || 0)));
-            fetch('http://127.0.0.1:7242/ingest/a370db6d-7333-4112-99f8-dd4bc899a89b',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'07-type-pagination-watcher.js:ensureUiSettingsLoaded',message:'ui settings loaded',data:{page:PAGE||'',force:!!force,apply:!!options.apply,status:_dbgStatus,ms_total:_ms,bytes:_dbgBytes,parse_ms:_dbgParseMs,has_kpi:!!(uiSettingsCache&&uiSettingsCache.kpiUiConfig),has_charts:!!(uiSettingsCache&&uiSettingsCache.chartsUiConfig),has_tables:!!(uiSettingsCache&&uiSettingsCache.tablesUiConfig)},timestamp:Date.now(),runId:(typeof window.__kexoPerfDebugRunId==='function'?window.__kexoPerfDebugRunId():'baseline'),hypothesisId:'H3'} )}).catch(()=>{});
-          }
-          // #endregion
           return uiSettingsCache;
         })
         .catch(function() { return null; })
@@ -16501,6 +16448,7 @@ const API = '';
           ? !!opts.showLegend
           : (pieLabelPosition !== 'outside');
         var labelFormatter = (opts && typeof opts.labelFormatter === 'function') ? opts.labelFormatter : null;
+        var countryCodesForPie = (opts && Array.isArray(opts.countryCodes) && opts.countryCodes.length === safeLabels.length) ? opts.countryCodes : null;
         var dataLabelsEnabled = (opts && opts.dataLabels === false)
           ? false
           : (uiStyle.dataLabels !== 'off');
@@ -16531,6 +16479,13 @@ const API = '';
               var pct = normalizeOverviewMetric(val);
               var idx = ctx && Number.isFinite(ctx.seriesIndex) ? ctx.seriesIndex : -1;
               var seriesLabel = (idx >= 0 && idx < safeLabels.length) ? safeLabels[idx] : '';
+              if (countryCodesForPie && idx >= 0 && idx < countryCodesForPie.length) {
+                var flag = (typeof countryCodeToFlagEmoji === 'function') ? countryCodeToFlagEmoji(countryCodesForPie[idx]) : '';
+                var pctText = pct ? pct.toFixed(0) + '%' : '';
+                if (pieLabelContent === 'label') return flag || seriesLabel || pctText;
+                if (pieLabelContent === 'label_percent') return (flag ? flag + ' ' : '') + (pctText || seriesLabel);
+                return (flag ? flag + ' ' : '') + pctText;
+              }
               if (labelFormatter) {
                 var custom = labelFormatter(pct, seriesLabel, idx, safeValues[idx]);
                 if (custom != null) return String(custom);
@@ -16712,6 +16667,7 @@ const API = '';
         var countryCodes = [];
         var crPcts = [];
         var showFlags = !!(uiStyle && uiStyle.pieCountryFlags);
+        var horizontal = opts && opts.horizontal !== false;
         rows.forEach(function(row) {
           var cc = countryCodeFromRow(row);
           if (!cc) {
@@ -16723,7 +16679,11 @@ const API = '';
           var emoji = showFlags ? countryCodeToFlagEmoji(cc) : '';
           var name = (typeof countryLabelFull === 'function') ? countryLabelFull(cc) : cc;
           var rev = normalizeOverviewMetric(row && row.revenue);
-          categories.push(showFlags && emoji ? (emoji + ' ' + name) : name);
+          if (horizontal) {
+            categories.push(showFlags && emoji ? (emoji + ' ' + name) : name);
+          } else {
+            categories.push(name || cc);
+          }
           values.push(rev);
           names.push(name || cc);
           countryCodes.push(cc);
@@ -16742,22 +16702,34 @@ const API = '';
         var fallbackColors = (opts && Array.isArray(opts.colors) && opts.colors.length) ? opts.colors : ['#4b94e4', '#3eb3ab', '#f59e34', '#8b5cf6', '#ef4444'];
         var colors = (typeof chartColorsFromUiConfig === 'function') ? chartColorsFromUiConfig(chartId, fallbackColors) : fallbackColors;
         var chartHeight = resolveOverviewChartHeight(chartEl, (opts && Number.isFinite(Number(opts.height))) ? Number(opts.height) : 180, 120, 440);
-        var horizontal = opts && opts.horizontal !== false;
         var namesRef = names;
         var valuesRef = values;
         var crPctsRef = crPcts;
         var countryCodesRef = countryCodes;
         var showFlagsRef = showFlags;
+        var dataLabelsConfig = false;
+        if (!horizontal && showFlags && countryCodesRef.length) {
+          dataLabelsConfig = {
+            enabled: true,
+            formatter: function (_val, opts) {
+              var idx = opts && opts.dataPointIndex != null ? opts.dataPointIndex : -1;
+              if (idx < 0 || idx >= countryCodesRef.length) return '';
+              return countryCodeToFlagEmoji(countryCodesRef[idx]) || '';
+            },
+            style: { fontSize: '14px', fontWeight: 500 },
+            offsetY: -4
+          };
+        }
         var apexOpts = {
           chart: { type: 'bar', height: chartHeight, fontFamily: 'Inter, sans-serif', toolbar: { show: false }, animations: { enabled: (uiStyle && uiStyle.animations === false) ? false : true } },
-          plotOptions: { bar: { horizontal: horizontal, borderRadius: 0, distributed: true, barHeight: horizontal ? '60%' : '70%' } },
+          plotOptions: { bar: { horizontal: horizontal, borderRadius: 0, distributed: true, barHeight: horizontal ? '60%' : '70%', dataLabels: { hideOverflowingLabels: false } } },
           series: [{ name: 'Revenue', data: values }],
           xaxis: { categories: categories, labels: { show: horizontal ? false : true } },
           yaxis: horizontal ? { labels: { show: true, style: { fontSize: '12px', fontWeight: 500, colors: '#090f17' } } } : { labels: { show: false } },
           grid: { padding: { bottom: 12, left: 12, right: 8, top: 4 } },
           colors: colors,
           legend: { show: false },
-          dataLabels: { enabled: false },
+          dataLabels: dataLabelsConfig || { enabled: false },
           fill: { opacity: (uiStyle && Number.isFinite(Number(uiStyle.fillOpacity))) ? Math.max(0, Math.min(1, Number(uiStyle.fillOpacity))) : 1, type: 'solid' },
           stroke: { show: false, width: 0 },
           states: { normal: { filter: { type: 'none', value: 0 } }, hover: { filter: { type: 'none', value: 0 } }, active: { filter: { type: 'none', value: 0 } } },
@@ -16782,19 +16754,12 @@ const API = '';
           var chart = new ApexCharts(chartEl, apexOpts);
           chart.render();
           dashCharts[chartId] = chart;
-          if (showFlags) {
-            var legendEl = chartEl.parentElement ? chartEl.parentElement.querySelector('[data-overview-legend="' + chartId + '"]') : null;
-            if (legendEl) {
-              legendEl.innerHTML = names.map(function(n, i) {
-                var cc = countryCodes[i];
-                var flagHtml = cc ? countryCodeToFlagHtml(cc) : '';
-                return '<span class="kexo-overview-legend-item">' + flagHtml + '<span class="kexo-overview-legend-label">' + escapeHtml(n || '') + '</span></span>';
-              }).join('');
-              legendEl.className = 'kexo-overview-mini-legend kexo-overview-countries-legend kexo-overview-legend-flags';
-            }
-          } else {
-            var legendEl = chartEl.parentElement ? chartEl.parentElement.querySelector('[data-overview-legend="' + chartId + '"]') : null;
-            if (legendEl) { legendEl.innerHTML = ''; legendEl.className = 'kexo-overview-mini-legend kexo-overview-countries-legend'; }
+          var legendEl = chartEl.parentElement ? chartEl.parentElement.querySelector('[data-overview-legend="' + chartId + '"]') : null;
+          if (legendEl) {
+            // Strict layout: bar charts show flags on axis labels (horizontal) or as data labels (vertical),
+            // not in the bottom legend.
+            legendEl.innerHTML = '';
+            legendEl.className = 'kexo-overview-mini-legend kexo-overview-countries-legend';
           }
         } catch (err) {
           captureChartError(err, 'dashboardCountriesBarRender', { chartId: chartId });
@@ -16915,10 +16880,10 @@ const API = '';
           ? attributionPayload.attribution.rows
           : [];
         var mode = (typeof chartModeFromUiConfig === 'function') ? String(chartModeFromUiConfig(chartId, 'bar-distributed') || 'bar-distributed').trim().toLowerCase() : 'bar-distributed';
-        if (mode === 'radialbar') mode = 'bar-horizontal';
         var barLike = mode === 'bar-distributed' || mode === 'bar-horizontal' || mode === 'bar';
-        var lineLike = mode === 'line' || mode === 'area';
-        if (barLike || lineLike) {
+        var lineLike = mode === 'line' || mode === 'area' || mode === 'multi-line-labels';
+        var radialLike = mode === 'radialbar';
+        if (barLike || lineLike || radialLike) {
           var flatSources = [];
           rows.forEach(function(ch) {
             if (!ch || !Array.isArray(ch.sources)) return;
@@ -16949,6 +16914,11 @@ const API = '';
                 fill: mode === 'area',
                 borderWidth: 2
               }], { currency: true, chartType: mode, height: 180 });
+            } else if (radialLike) {
+              try { removeAttributionIconRow(document.getElementById(chartId)); } catch (_) {}
+              var rbLabels = topSources.map(function(s) { return s.label || ''; });
+              var rbValues = topSources.map(function(s) { return s.revenue_gbp || 0; });
+              renderOverviewFinishesRadialBar(chartId, rbLabels, rbValues, { colors: ['#4b94e4', '#3eb3ab', '#f59e34', '#8b5cf6', '#ef4444'], height: 180 });
             } else {
               renderOverviewAttributionDistributedBar(chartId, topSources, {
                 colors: ['#4b94e4', '#3eb3ab', '#f59e34', '#8b5cf6', '#ef4444'],
@@ -17123,9 +17093,9 @@ const API = '';
               renderOverviewFinishesRadialBar(chartId, finishLabels, finishValues, finishesOpts);
               renderOverviewMiniLegend(chartId, finishLabels, colors);
             } else if (finishesMode === 'bar' || finishesMode === 'bar-horizontal' || finishesMode === 'bar-distributed') {
-              renderOverviewFinishesBarChart(chartId, finishLabels, finishValues, Object.assign({}, finishesOpts, { horizontal: finishesMode !== 'bar-distributed' }));
+              renderOverviewFinishesBarChart(chartId, finishLabels, finishValues, Object.assign({}, finishesOpts, { horizontal: finishesMode === 'bar-horizontal' }));
               renderOverviewMiniLegend(chartId, finishLabels, colors);
-            } else if (finishesMode === 'area' || finishesMode === 'line') {
+            } else if (finishesMode === 'area' || finishesMode === 'line' || finishesMode === 'multi-line-labels') {
               makeChart(chartId, finishLabels, [{ label: 'Revenue', data: finishValues, borderColor: (colors && colors[0]) || DASH_ACCENT, backgroundColor: (colors && colors[0]) ? (colors[0] + '33') : DASH_ACCENT_LIGHT, fill: finishesMode === 'area', borderWidth: 2 }], { currency: true, chartType: finishesMode, height: 180 });
               renderOverviewMiniLegend(chartId, finishLabels, colors);
             } else {
@@ -17150,16 +17120,69 @@ const API = '';
           payloadSig = JSON.stringify(topCountries.map(function(r) { return [String(r.country || ''), normalizeOverviewMetric(r.revenue)]; }).concat([rk])) || '';
           doRender = function() {
             var countriesMode = (typeof chartModeFromUiConfig === 'function') ? String(chartModeFromUiConfig(chartId, 'bar-horizontal') || 'bar-horizontal').trim().toLowerCase() : 'bar-horizontal';
-            if (countriesMode === 'radialbar' || countriesMode === 'area' || countriesMode === 'line') countriesMode = 'bar-horizontal';
+            var allowedCountriesModes = ['bar-horizontal', 'bar', 'bar-distributed', 'pie', 'donut', 'radialbar', 'line', 'area', 'multi-line-labels'];
+            if (allowedCountriesModes.indexOf(countriesMode) < 0) countriesMode = 'bar-horizontal';
             var fallbackColors2 = ['#4b94e4', '#3eb3ab', '#f59e34', '#8b5cf6', '#ef4444'];
             var countriesColors = (typeof chartColorsFromUiConfig === 'function') ? chartColorsFromUiConfig(chartId, fallbackColors2) : fallbackColors2;
             var countriesOpts = { colors: countriesColors, height: 180 };
+            try {
+              var legendEl = document.getElementById(chartId) && document.getElementById(chartId).parentElement
+                ? document.getElementById(chartId).parentElement.querySelector('[data-overview-legend="' + chartId + '"]')
+                : null;
+              if (legendEl) legendEl.innerHTML = '';
+            } catch (_) {}
             if (countriesMode === 'bar-horizontal' || countriesMode === 'bar' || countriesMode === 'bar-distributed') {
               renderOverviewCountriesHorizontalBar(chartId, topCountries, Object.assign({}, countriesOpts, { horizontal: countriesMode === 'bar-horizontal' }));
               return;
             }
+            if (countriesMode === 'radialbar') {
+              var rbLabels = [];
+              var rbValues = [];
+              topCountries.forEach(function(row) {
+                var cc = countryCodeFromRow(row) || '';
+                if (!cc) {
+                  var raw = row && row.country != null ? String(row.country).trim() : '';
+                  cc = raw ? raw.toUpperCase().slice(0, 2) : '';
+                  if (cc === 'UK') cc = 'GB';
+                  if (!/^[A-Z]{2}$/.test(cc)) cc = '';
+                }
+                var name = cc ? ((typeof countryLabelFull === 'function') ? countryLabelFull(cc) : cc) : '';
+                var val = normalizeOverviewMetric(row && row.revenue);
+                rbLabels.push(name || cc || (row && row.country != null ? String(row.country).trim() : ''));
+                rbValues.push(val);
+              });
+              renderOverviewFinishesRadialBar(chartId, rbLabels, rbValues, countriesOpts);
+              return;
+            }
+            if (countriesMode === 'line' || countriesMode === 'area' || countriesMode === 'multi-line-labels') {
+              var lineLabels = [];
+              var lineValues = [];
+              topCountries.forEach(function(row) {
+                var cc = countryCodeFromRow(row) || '';
+                if (!cc) {
+                  var raw = row && row.country != null ? String(row.country).trim() : '';
+                  cc = raw ? raw.toUpperCase().slice(0, 2) : '';
+                  if (cc === 'UK') cc = 'GB';
+                  if (!/^[A-Z]{2}$/.test(cc)) cc = '';
+                }
+                var name = cc ? ((typeof countryLabelFull === 'function') ? countryLabelFull(cc) : cc) : '';
+                var val = normalizeOverviewMetric(row && row.revenue);
+                lineLabels.push(name || cc || (row && row.country != null ? String(row.country).trim() : ''));
+                lineValues.push(val);
+              });
+              makeChart(chartId, lineLabels, [{
+                label: 'Revenue',
+                data: lineValues,
+                borderColor: (countriesColors && countriesColors[0]) || DASH_ACCENT,
+                backgroundColor: (countriesColors && countriesColors[0]) ? (countriesColors[0] + '33') : DASH_ACCENT_LIGHT,
+                fill: countriesMode === 'area',
+                borderWidth: 2
+              }], { currency: true, chartType: countriesMode, height: countriesOpts.height });
+              return;
+            }
             var countryLabels = [];
             var countryValues = [];
+            var countryCodes = [];
             var countriesUiStyle = (typeof chartStyleFromUiConfig === 'function') ? chartStyleFromUiConfig(chartId) : null;
             var showFlags = !!(countriesUiStyle && countriesUiStyle.pieCountryFlags);
             topCountries.forEach(function(row) {
@@ -17170,18 +17193,18 @@ const API = '';
                 if (cc === 'UK') cc = 'GB';
                 if (!/^[A-Z]{2}$/.test(cc)) cc = '';
               }
-            var name = cc ? ((typeof countryLabelFull === 'function') ? countryLabelFull(cc) : cc) : '';
-            var emoji = showFlags && cc ? countryCodeToFlagEmoji(cc) : '';
-            var label = (showFlags && emoji) ? (emoji + ' ' + name) : name;
-            var val = normalizeOverviewMetric(row.revenue);
-            countryLabels.push(label || cc || (row.country != null ? String(row.country).trim() : ''));
+              var name = cc ? ((typeof countryLabelFull === 'function') ? countryLabelFull(cc) : cc) : '';
+              var val = normalizeOverviewMetric(row.revenue);
+              countryLabels.push(name || cc || (row.country != null ? String(row.country).trim() : ''));
               countryValues.push(val);
+              countryCodes.push(cc || '');
             });
             renderOverviewPieChart(chartId, countryLabels, countryValues, {
               colors: countriesColors,
               valueFormatter: function(v) { return formatRevenue(normalizeOverviewMetric(v)) || '\u2014'; },
               height: countriesOpts.height,
-              donut: countriesMode === 'donut'
+              donut: countriesMode === 'donut',
+              countryCodes: showFlags ? countryCodes : null
             });
           };
         } else if (chartId === 'dash-chart-attribution-30d') {
@@ -17258,8 +17281,17 @@ const API = '';
           renderOverviewChartEmpty(finishesChartId, 'No finishes data');
         } else if (finishesMode === 'radialbar') {
           renderOverviewFinishesRadialBar(finishesChartId, finishLabels, finishValues, finishesOpts);
-        } else if (finishesMode === 'bar') {
-          renderOverviewFinishesBarChart(finishesChartId, finishLabels, finishValues, finishesOpts);
+        } else if (finishesMode === 'bar-horizontal' || finishesMode === 'bar' || finishesMode === 'bar-distributed') {
+          renderOverviewFinishesBarChart(finishesChartId, finishLabels, finishValues, Object.assign({}, finishesOpts, { horizontal: finishesMode === 'bar-horizontal' }));
+        } else if (finishesMode === 'line' || finishesMode === 'area' || finishesMode === 'multi-line-labels') {
+          makeChart(finishesChartId, finishLabels, [{
+            label: 'Revenue',
+            data: finishValues,
+            borderColor: (finishesOpts.colors && finishesOpts.colors[0]) || DASH_ACCENT,
+            backgroundColor: (finishesOpts.colors && finishesOpts.colors[0]) ? (finishesOpts.colors[0] + '33') : DASH_ACCENT_LIGHT,
+            fill: finishesMode === 'area',
+            borderWidth: 2
+          }], { currency: true, chartType: finishesMode, height: finishesOpts.height });
         } else {
           renderOverviewPieChart(finishesChartId, finishLabels, finishValues, {
             colors: finishesOpts.colors,
@@ -17278,14 +17310,66 @@ const API = '';
         }).slice(0, 5);
         var countriesChartId = 'dash-chart-countries-30d';
         var countriesMode = (typeof chartModeFromUiConfig === 'function') ? String(chartModeFromUiConfig(countriesChartId, 'bar-horizontal') || 'bar-horizontal').trim().toLowerCase() : 'bar-horizontal';
-        var countriesOpts = { colors: ['#4b94e4', '#3eb3ab', '#f59e34', '#8b5cf6', '#ef4444'], height: 180 };
-        if (countriesMode === 'bar-horizontal') {
-          renderOverviewCountriesHorizontalBar(countriesChartId, topCountries, countriesOpts);
+        var allowedCountriesModes = ['bar-horizontal', 'bar', 'bar-distributed', 'pie', 'donut', 'radialbar', 'line', 'area', 'multi-line-labels'];
+        if (allowedCountriesModes.indexOf(countriesMode) < 0) countriesMode = 'bar-horizontal';
+        var fallbackCountriesColors = ['#4b94e4', '#3eb3ab', '#f59e34', '#8b5cf6', '#ef4444'];
+        var countriesColors = (typeof chartColorsFromUiConfig === 'function') ? chartColorsFromUiConfig(countriesChartId, fallbackCountriesColors) : fallbackCountriesColors;
+        var countriesOpts = { colors: countriesColors, height: 180 };
+        try {
+          var legendEl = document.getElementById(countriesChartId) && document.getElementById(countriesChartId).parentElement
+            ? document.getElementById(countriesChartId).parentElement.querySelector('[data-overview-legend="' + countriesChartId + '"]')
+            : null;
+          if (legendEl) legendEl.innerHTML = '';
+        } catch (_) {}
+        if (countriesMode === 'bar-horizontal' || countriesMode === 'bar' || countriesMode === 'bar-distributed') {
+          renderOverviewCountriesHorizontalBar(countriesChartId, topCountries, Object.assign({}, countriesOpts, { horizontal: countriesMode === 'bar-horizontal' }));
+        } else if (countriesMode === 'radialbar') {
+          var rbLabels = [];
+          var rbValues = [];
+          topCountries.forEach(function(row) {
+            var cc = countryCodeFromRow(row) || '';
+            if (!cc) {
+              var raw = row && row.country != null ? String(row.country).trim() : '';
+              cc = raw ? raw.toUpperCase().slice(0, 2) : '';
+              if (cc === 'UK') cc = 'GB';
+              if (!/^[A-Z]{2}$/.test(cc)) cc = '';
+            }
+            var name = cc ? ((typeof countryLabelFull === 'function') ? countryLabelFull(cc) : cc) : '';
+            var val = normalizeOverviewMetric(row && row.revenue);
+            rbLabels.push(name || cc || (row && row.country != null ? String(row.country).trim() : ''));
+            rbValues.push(val);
+          });
+          renderOverviewFinishesRadialBar(countriesChartId, rbLabels, rbValues, countriesOpts);
+        } else if (countriesMode === 'line' || countriesMode === 'area' || countriesMode === 'multi-line-labels') {
+          var lineLabels = [];
+          var lineValues = [];
+          topCountries.forEach(function(row) {
+            var cc = countryCodeFromRow(row) || '';
+            if (!cc) {
+              var raw = row && row.country != null ? String(row.country).trim() : '';
+              cc = raw ? raw.toUpperCase().slice(0, 2) : '';
+              if (cc === 'UK') cc = 'GB';
+              if (!/^[A-Z]{2}$/.test(cc)) cc = '';
+            }
+            var name = cc ? ((typeof countryLabelFull === 'function') ? countryLabelFull(cc) : cc) : '';
+            var val = normalizeOverviewMetric(row && row.revenue);
+            lineLabels.push(name || cc || (row && row.country != null ? String(row.country).trim() : ''));
+            lineValues.push(val);
+          });
+          makeChart(countriesChartId, lineLabels, [{
+            label: 'Revenue',
+            data: lineValues,
+            borderColor: (countriesColors && countriesColors[0]) || DASH_ACCENT,
+            backgroundColor: (countriesColors && countriesColors[0]) ? (countriesColors[0] + '33') : DASH_ACCENT_LIGHT,
+            fill: countriesMode === 'area',
+            borderWidth: 2
+          }], { currency: true, chartType: countriesMode, height: countriesOpts.height });
         } else {
           var countryLabels = [];
           var countryValues = [];
           var countriesUiStyle = (typeof chartStyleFromUiConfig === 'function') ? chartStyleFromUiConfig(countriesChartId) : null;
           var showFlags = !!(countriesUiStyle && countriesUiStyle.pieCountryFlags);
+          var countryCodesForMini = [];
           topCountries.forEach(function(row) {
             var cc = countryCodeFromRow(row);
             if (!cc) {
@@ -17295,16 +17379,17 @@ const API = '';
               if (!/^[A-Z]{2}$/.test(cc)) cc = '';
             }
             var name = cc ? ((typeof countryLabelFull === 'function') ? countryLabelFull(cc) : cc) : '';
-            var emoji = showFlags && cc ? countryCodeToFlagEmoji(cc) : '';
-            var label = (showFlags && emoji) ? (emoji + ' ' + name) : name;
             var val = normalizeOverviewMetric(row.revenue);
-            countryLabels.push(label || cc || (row.country != null ? String(row.country).trim() : ''));
+            countryLabels.push(name || cc || (row.country != null ? String(row.country).trim() : ''));
             countryValues.push(val);
+            countryCodesForMini.push(cc || '');
           });
           renderOverviewPieChart(countriesChartId, countryLabels, countryValues, {
             colors: countriesOpts.colors,
             valueFormatter: function(v) { return formatRevenue(normalizeOverviewMetric(v)) || '\u2014'; },
-            height: countriesOpts.height
+            height: countriesOpts.height,
+            donut: countriesMode === 'donut',
+            countryCodes: showFlags ? countryCodesForMini : null
           });
         }
         var attributionRows = payload && payload.attribution && payload.attribution.attribution && Array.isArray(payload.attribution.attribution.rows)
@@ -20036,7 +20121,7 @@ const API = '';
   function selectOptionsHtml(modes, selected) {
     var sel = String(selected || '').trim().toLowerCase();
     var opts = Array.isArray(modes) ? modes : [];
-    var CHART_MODE_LABEL = (typeof window.KEXO_CHART_MODE_LABEL === 'object' && window.KEXO_CHART_MODE_LABEL) || { area: 'Area', line: 'Line', bar: 'Bar', pie: 'Pie', 'map-flat': 'Map (flat)', 'map-animated': 'Map (animated)', 'multi-line-labels': 'Multiple line + labels' };
+    var CHART_MODE_LABEL = (typeof window.KEXO_CHART_MODE_LABEL === 'object' && window.KEXO_CHART_MODE_LABEL) || {};
     return opts.map(function (m) {
       var val = String(m || '').trim().toLowerCase();
       if (!val) return '';

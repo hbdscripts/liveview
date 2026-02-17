@@ -90,7 +90,7 @@
   function selectOptionsHtml(modes, selected) {
     var sel = String(selected || '').trim().toLowerCase();
     var opts = Array.isArray(modes) ? modes : [];
-    var CHART_MODE_LABEL = (typeof window.KEXO_CHART_MODE_LABEL === 'object' && window.KEXO_CHART_MODE_LABEL) || { area: 'Area', line: 'Line', bar: 'Bar', pie: 'Pie', 'map-flat': 'Map (flat)', 'map-animated': 'Map (animated)', 'multi-line-labels': 'Multiple line + labels' };
+    var CHART_MODE_LABEL = (typeof window.KEXO_CHART_MODE_LABEL === 'object' && window.KEXO_CHART_MODE_LABEL) || {};
     return opts.map(function (m) {
       var val = String(m || '').trim().toLowerCase();
       if (!val) return '';

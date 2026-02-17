@@ -1597,10 +1597,7 @@
     };
   }
 
-  var CHART_MODE_LABEL = (typeof window.KEXO_CHART_MODE_LABEL === 'object' && window.KEXO_CHART_MODE_LABEL) || {
-    'map-animated': 'Map (animated)', 'map-flat': 'Map (flat)', area: 'Area', line: 'Line', bar: 'Bar', pie: 'Pie',
-    combo: 'Multiple (combo)', 'multi-line-labels': 'Multiple line + labels',
-  };
+  var CHART_MODE_LABEL = (typeof window.KEXO_CHART_MODE_LABEL === 'object' && window.KEXO_CHART_MODE_LABEL) || {};
 
   var CHARTS_GROUPS = [
     { id: 'dashboard', label: 'Dashboard charts', keys: ['dash-chart-overview-30d', 'dash-chart-finishes-30d', 'dash-chart-countries-30d', 'dash-chart-attribution-30d', 'live-online-chart', 'sales-overview-chart', 'date-overview-chart'] },

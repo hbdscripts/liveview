@@ -68,8 +68,8 @@ test('kexo-chart-defs.js: KEXO_CHART_DEFS has same chart keys as CHART_UI_KEYS',
 
 test('kexo-chart-defs.js: CHART_MODE_LABEL has canonical mode labels', () => {
   const src = fs.readFileSync(defsPath, 'utf8');
-  assert.ok(src.includes("bar: 'Bar'") || src.includes('bar: "Bar"'), 'bar label');
-  assert.ok(src.includes('bar-horizontal') && src.includes('Bar'), 'bar-horizontal label');
-  assert.ok(src.includes('radialbar') && src.includes('Radial'), 'radialbar label');
-  assert.ok(src.includes('multi-line-labels'), 'multi-line-labels key');
+  assert.ok(src.includes('Vertical Bar'), 'bar label should include Vertical Bar');
+  assert.ok(src.includes('bar-horizontal') && src.includes('Horizontal Bar'), 'bar-horizontal label should include Horizontal Bar');
+  assert.ok(src.includes('radialbar') && src.includes('Radial Bar'), 'radialbar label should include Radial Bar');
+  assert.ok(src.includes('multi-line-labels') && src.includes('Multi Line'), 'multi-line-labels label should include Multi Line');
 });

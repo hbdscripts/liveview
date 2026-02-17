@@ -92,9 +92,9 @@ const CHART_KPI_BUNDLE_KEY_SET = new Set(CHART_KPI_BUNDLE_KEYS);
 
 const CHART_ALLOWED_MODES = Object.freeze({
   'dash-chart-overview-30d': ['area', 'bar', 'line', 'multi-line-labels', 'combo', 'stacked-area', 'stacked-bar'],
-  'dash-chart-finishes-30d': ['radialbar', 'pie', 'donut', 'bar', 'bar-horizontal', 'bar-distributed'],
-  'dash-chart-countries-30d': ['bar-horizontal', 'pie', 'donut', 'bar', 'bar-distributed', 'radialbar'],
-  'dash-chart-attribution-30d': ['bar-distributed', 'bar-horizontal', 'bar', 'line', 'area', 'pie', 'donut', 'radialbar'],
+  'dash-chart-finishes-30d': ['radialbar', 'pie', 'donut', 'bar-horizontal', 'bar', 'bar-distributed', 'line', 'area', 'multi-line-labels'],
+  'dash-chart-countries-30d': ['bar-horizontal', 'bar', 'bar-distributed', 'radialbar', 'pie', 'donut', 'line', 'area', 'multi-line-labels'],
+  'dash-chart-attribution-30d': ['bar-distributed', 'bar-horizontal', 'bar', 'line', 'area', 'multi-line-labels', 'pie', 'donut', 'radialbar'],
   'live-online-chart': ['map-animated', 'map-flat'],
   'sales-overview-chart': ['area', 'line', 'bar', 'multi-line-labels'],
   'date-overview-chart': ['area', 'line', 'bar', 'multi-line-labels'],
