@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-16 (Tools: Change Pins annotations + before/after effect + dashboard markers)
+Last updated: 2026-02-16 (Dashboard KPI 8/4/rest layout + Settings IA restructure + attribution mini chart)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -110,7 +110,7 @@ KEXO “5-color” accents:
 Rendered templates live under `server/public/**` and are served by `server/index.js` via `sendPage()` (includes + cache-control + asset versioning).
 
 Dashboard:
-- `/dashboard/overview` → `server/public/dashboard/overview.html` (`data-page="dashboard"`) — left KPI block (top 4) + right mini chart grid (Finishes/Countries/Kexo Score pies + 30 Day Overview revenue/cost bar); legacy page-title row is removed on this page.
+- `/dashboard/overview` → `server/public/dashboard/overview.html` (`data-page="dashboard"`) — left KPI block uses automatic order-based placement (desktop: first 8 KPIs; small screens: first 4), with a middle KPI band under Top Products/Countries (next 4) and lower KPI band under Trending Up/Down (remaining). Right mini charts are Finishes, Countries, and Attribution (30d) above the 30 Day Overview revenue/cost chart.
 - `/dashboard/live` → `server/public/dashboard/live.html` — desktop shows a Latest sales card beside the map (last 5 sales)
 - `/dashboard/sales` → `server/public/dashboard/sales.html`
 - `/dashboard/table` → `server/public/dashboard/table.html`
@@ -166,16 +166,16 @@ Settings UI:
 - `server/public/settings-page.js`: tab switching, saving, and Settings panel wiring
 
 Settings tabs:
-- General: current config display (read-only)
-- Kexo UI: theme editor (colors/fonts/icons/header/sale notification) — formerly Theme. Subtab Sale Notification: choose sale sound (presets Kexo 1–4; or custom URL/upload). Stored in `asset_overrides.saleSound`.
-- Assets: upload/override favicon + logos (R2-backed) — plan-gated for normal accounts (Upgrade required)
+- Kexo (menu item #1): includes subtabs:
+  - General: current config display + KPI date label format toggle (`dmy`/`mdy`), and Assets (favicon/logo overrides, R2-backed, plan-gated for normal accounts).
+  - UI: theme editor (colors/fonts/icons/header/sale notification). Sale Notification subtab stores selection in `asset_overrides.saleSound`.
 - Integrations: Pixel + Google Ads status/actions
+- Tables, Charts & KPIs (menu item #3):
+  - Tables: accordion-based per-page table config (name/order/grid, rows-per-page options/default, optional sticky column min/max). **Insights · Variants** is a single accordion that controls all user-defined variant tables on /insights/variants (rows 5/10, sticky min/max).
+  - Charts: accordion-based per-chart + per-KPI-bundle controls with live previews, hex palette inputs, sparkline mode/curve/width/height, delta typography/icon styling, and optional advanced Apex JSON overrides (see Charts section)
+  - KPIs: KPI order/labels/visibility + date-range labels/availability + header KPI strip page visibility + placement preview (automatic 8/4/rest desktop, 4/4/rest small). Manual KPI `position` setting was removed.
 - Attribution mapping: Attribution config + observed token mapping editor (`server/public/attribution-mapping-settings.js`) backed by `/api/attribution/config`, `/api/attribution/observed`, and `/api/attribution/map`.
 - Insights: tab shell for Products/Countries plus active Variants mapping manager (custom table/rule editor)
-- Layout:
-- Tables: accordion-based per-page table config (name/order/grid, rows-per-page options/default, optional sticky column min/max). **Insights · Variants** is a single accordion that controls all user-defined variant tables on /insights/variants (rows 5/10, sticky min/max).
-  - Charts: accordion-based per-chart + per-KPI-bundle controls with live previews, hex palette inputs, sparkline mode/curve/width/height, delta typography/icon styling, and optional advanced Apex JSON overrides (see Charts section)
-  - KPIs: KPI order/labels/visibility + date-range labels/availability + header KPI strip page visibility
 
 Admin-only (moved out of `/settings`):
 - Admin → Controls: per-page loader toggles + Data & Reporting + Settings scope (read-only global for now)
@@ -387,6 +387,17 @@ Ops/reliability:
 ---
 
 ## Changelog (high-signal)
+
+2026-02-16 (latest)
+- Dashboard overview + KPI routing refresh:
+  - Overview mini row replaced Kexo Score card with Attribution (`dash-chart-attribution-30d` from `/api/attribution/report?range=30d`); Kexo Score remains as dashboard KPI card and is visible again in the shared header on `/dashboard/overview`.
+  - Added middle KPI container (`#dash-kpi-grid-mid`) and switched dashboard KPI placement to automatic order-only routing: desktop `8 / 4 / rest`, small screens `4 / 4 / rest` (top / mid / lower).
+  - Removed manual KPI `position` persistence from `kpi_ui_config_v1`; settings now preview placement instead of per-KPI position dropdown.
+  - KPI compare labels no longer append `(same time)`; date labels use compact numeric ranges and honor new General setting `options.general.dateLabelFormat` (`dmy` vs `mdy`).
+  - Dashboard perf: silent 60s refresh no longer force-refreshes mini charts every cycle; mini charts force-refresh only when stale, and KPI sparklines now reuse Apex instances via `updateOptions/updateSeries` instead of destroy/recreate loops.
+- Settings IA restructure:
+  - Left menu order is now `Kexo`, `Integrations`, `Tables, Charts & KPIs`, `Attribution`, `Insights`.
+  - General and Assets moved inside `Kexo` (`General` subtab first; `UI` subtab hosts theme controls).
 
 2026-02-16 (latest)
 - Tools: Change Pins annotations:

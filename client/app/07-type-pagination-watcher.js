@@ -3659,7 +3659,6 @@
         pieLabelContent: 'percent',
         pieLabelOffset: 16,
         pieCountryFlags: false,
-        kexoRenderer: 'pie',
       };
     }
 
@@ -3674,8 +3673,6 @@
       if (pieLabelPosition !== 'auto' && pieLabelPosition !== 'inside' && pieLabelPosition !== 'outside') pieLabelPosition = def.pieLabelPosition;
       var pieLabelContent = String(src.pieLabelContent != null ? src.pieLabelContent : def.pieLabelContent).trim().toLowerCase();
       if (pieLabelContent !== 'percent' && pieLabelContent !== 'label' && pieLabelContent !== 'label_percent') pieLabelContent = def.pieLabelContent;
-      var kexoRenderer = String(src.kexoRenderer != null ? src.kexoRenderer : def.kexoRenderer).trim().toLowerCase();
-      if (kexoRenderer !== 'wheel' && kexoRenderer !== 'pie') kexoRenderer = def.kexoRenderer;
       function n(v, fb, min, max) {
         var x = Number(v);
         if (!Number.isFinite(x)) x = Number(fb);
@@ -3700,7 +3697,6 @@
         pieLabelContent: pieLabelContent,
         pieLabelOffset: Math.round(n(src.pieLabelOffset, def.pieLabelOffset, -40, 40)),
         pieCountryFlags: !!src.pieCountryFlags,
-        kexoRenderer: kexoRenderer,
       };
     }
 

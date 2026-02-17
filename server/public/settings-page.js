@@ -1486,7 +1486,6 @@
       pieLabelContent: 'percent',
       pieLabelOffset: 16,
       pieCountryFlags: false,
-      kexoRenderer: 'pie',
     };
   }
 
@@ -1501,8 +1500,6 @@
     if (['auto', 'inside', 'outside'].indexOf(pieLabelPosition) < 0) pieLabelPosition = def.pieLabelPosition || 'auto';
     var pieLabelContent = String(src.pieLabelContent != null ? src.pieLabelContent : def.pieLabelContent).trim().toLowerCase();
     if (['percent', 'label', 'label_percent'].indexOf(pieLabelContent) < 0) pieLabelContent = def.pieLabelContent || 'percent';
-    var kexoRenderer = String(src.kexoRenderer != null ? src.kexoRenderer : def.kexoRenderer).trim().toLowerCase();
-    if (kexoRenderer !== 'wheel' && kexoRenderer !== 'pie') kexoRenderer = def.kexoRenderer || 'pie';
     return {
       curve: curve,
       strokeWidth: safeNumber(src.strokeWidth, def.strokeWidth, 0, 8),
@@ -1519,7 +1516,6 @@
       pieLabelContent: pieLabelContent,
       pieLabelOffset: Math.round(safeNumber(src.pieLabelOffset, def.pieLabelOffset, -40, 40)),
       pieCountryFlags: !!(src.pieCountryFlags === true || (src.pieCountryFlags == null && def.pieCountryFlags)),
-      kexoRenderer: kexoRenderer,
     };
   }
 
@@ -1690,7 +1686,6 @@
     var canPie = !!(meta && meta.pieMetric);
     var supportsPie = modes.indexOf('pie') >= 0 || mode === 'pie';
     var isCountriesOverview = key === 'dash-chart-countries-30d';
-    var isKexoOverview = key === 'dash-chart-kexo-score-today';
     var style = normalizeChartStyleDraft(item && item.style, defaultChartStyleConfig());
     var collapseId = 'settings-chart-item-' + key.replace(/[^a-z0-9_-]/g, '-');
     var headingId = collapseId + '-heading';
@@ -1725,7 +1720,6 @@
             '<div class="col-6 col-lg-4 col-xl-3"><label class="form-label mb-1">Label content</label><select class="form-select form-select-sm" data-chart-field="style.pieLabelContent"' + (supportsPie ? '' : ' disabled') + '><option value="percent"' + (style.pieLabelContent === 'percent' ? ' selected' : '') + '>Percent</option><option value="label"' + (style.pieLabelContent === 'label' ? ' selected' : '') + '>Label</option><option value="label_percent"' + (style.pieLabelContent === 'label_percent' ? ' selected' : '') + '>Label + percent</option></select></div>' +
             '<div class="col-6 col-lg-4 col-xl-2"><label class="form-label mb-1">Label offset</label><input type="number" class="form-control form-control-sm" min="-40" max="40" step="1" data-chart-field="style.pieLabelOffset" value="' + escapeHtml(String(style.pieLabelOffset)) + '"' + (supportsPie ? '' : ' disabled') + '></div>' +
             (isCountriesOverview ? '<div class="col-12 col-md-6 col-xl-3 d-flex align-items-end"><label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-chart-field="style.pieCountryFlags"' + (style.pieCountryFlags ? ' checked' : '') + '><span class="form-check-label ms-2">Country flags in labels</span></label></div>' : '') +
-            (isKexoOverview ? '<div class="col-12 col-md-6 col-xl-3"><label class="form-label mb-1">Kexo renderer</label><select class="form-select form-select-sm" data-chart-field="style.kexoRenderer"><option value="wheel"' + (style.kexoRenderer === 'wheel' ? ' selected' : '') + '>Kexo wheel</option><option value="pie"' + (style.kexoRenderer === 'pie' ? ' selected' : '') + '>Donut pie</option></select></div>' : '') +
           '</div></div>' +
           '<div class="col-12"><label class="form-label mb-1">Series colors (hex)</label>' + renderChartColorInputs(item, meta) + '</div>' +
           '<div class="col-12"><label class="form-label mb-1">Advanced Apex override (JSON)</label><textarea class="form-control form-control-sm settings-charts-advanced-json" rows="5" data-chart-field="advancedApexOverride" spellcheck="false">' + escapeHtml(prettyJson(item && item.advancedApexOverride)) + '</textarea></div>' +
@@ -1851,7 +1845,6 @@
       pieLabelContent: (card.querySelector('[data-chart-field="style.pieLabelContent"]') || {}).value,
       pieLabelOffset: (card.querySelector('[data-chart-field="style.pieLabelOffset"]') || {}).value,
       pieCountryFlags: !!(card.querySelector('[data-chart-field="style.pieCountryFlags"]') || {}).checked,
-      kexoRenderer: (card.querySelector('[data-chart-field="style.kexoRenderer"]') || {}).value,
     }, def.style || defaultChartStyleConfig());
     var adv = validateApexTextarea(advancedEl, def.advancedApexOverride || {});
     var colors = [];

@@ -1352,21 +1352,7 @@
       }
 
       function isKexoScoreEnabledByConfig() {
-        try {
-          var cfg = (typeof kpiUiConfigV1 !== 'undefined' && kpiUiConfigV1 && kpiUiConfigV1.v === 1) ? kpiUiConfigV1 : null;
-          if (!cfg) return true;
-          var dashboardEnabled = true;
-          var list = cfg.kpis && Array.isArray(cfg.kpis.dashboard) ? cfg.kpis.dashboard : null;
-          if (list) {
-            var scoreItem = list.find(function(it) {
-              return it && String(it.key || '').trim().toLowerCase() === 'kexo_score';
-            });
-            if (scoreItem && scoreItem.enabled === false) dashboardEnabled = false;
-          }
-          return dashboardEnabled;
-        } catch (_) {
-          return true;
-        }
+        return true;
       }
 
       function shouldFetchKexoScore() {

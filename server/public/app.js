@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 9c201b7be48ccf65
+// checksum: 28255df25cbb4757
 
 (function () {
 const API = '';
@@ -8794,7 +8794,6 @@ const API = '';
         pieLabelContent: 'percent',
         pieLabelOffset: 16,
         pieCountryFlags: false,
-        kexoRenderer: 'pie',
       };
     }
 
@@ -8809,8 +8808,6 @@ const API = '';
       if (pieLabelPosition !== 'auto' && pieLabelPosition !== 'inside' && pieLabelPosition !== 'outside') pieLabelPosition = def.pieLabelPosition;
       var pieLabelContent = String(src.pieLabelContent != null ? src.pieLabelContent : def.pieLabelContent).trim().toLowerCase();
       if (pieLabelContent !== 'percent' && pieLabelContent !== 'label' && pieLabelContent !== 'label_percent') pieLabelContent = def.pieLabelContent;
-      var kexoRenderer = String(src.kexoRenderer != null ? src.kexoRenderer : def.kexoRenderer).trim().toLowerCase();
-      if (kexoRenderer !== 'wheel' && kexoRenderer !== 'pie') kexoRenderer = def.kexoRenderer;
       function n(v, fb, min, max) {
         var x = Number(v);
         if (!Number.isFinite(x)) x = Number(fb);
@@ -8835,7 +8832,6 @@ const API = '';
         pieLabelContent: pieLabelContent,
         pieLabelOffset: Math.round(n(src.pieLabelOffset, def.pieLabelOffset, -40, 40)),
         pieCountryFlags: !!src.pieCountryFlags,
-        kexoRenderer: kexoRenderer,
       };
     }
 
@@ -9246,6 +9242,7 @@ const API = '';
 
       var showDelta = !(cfg.options && cfg.options.dashboard && cfg.options.dashboard.showDelta === false);
       var deltaEls = Array.prototype.slice.call(grid.querySelectorAll('.dash-kpi-delta'));
+      deltaEls = deltaEls.concat(Array.prototype.slice.call(midGrid.querySelectorAll('.dash-kpi-delta')));
       if (lowerGrid) deltaEls = deltaEls.concat(Array.prototype.slice.call(lowerGrid.querySelectorAll('.dash-kpi-delta')));
       deltaEls.forEach(function(el) {
         if (!el) return;
@@ -15219,7 +15216,6 @@ const API = '';
       var overviewMiniResizeTimer = null;
       var OVERVIEW_MINI_CACHE_MS = 2 * 60 * 1000;
       var OVERVIEW_MINI_FORCE_REFRESH_MS = 5 * 60 * 1000;
-      var overviewMiniLastForceAt = 0;
       var _primaryRgbDash = getComputedStyle(document.documentElement).getPropertyValue('--tblr-primary-rgb').trim() || '32,107,196';
       var DASH_ACCENT = 'rgb(' + _primaryRgbDash + ')';
       var DASH_ACCENT_LIGHT = 'rgba(' + _primaryRgbDash + ',0.12)';
@@ -15701,6 +15697,13 @@ const API = '';
         overviewMiniSizeSignature = '';
         overviewMiniCacheShopKey = '';
         overviewMiniPayloadSignature = '';
+        try {
+          Object.keys(dashSparkCharts || {}).forEach(function (id) {
+            var chart = dashSparkCharts[id];
+            if (chart && typeof chart.destroy === 'function') chart.destroy();
+          });
+        } catch (_) {}
+        dashSparkCharts = {};
       });
 
       function renderOverviewChartEmpty(chartId, text) {
@@ -16548,21 +16551,7 @@ const API = '';
       }
 
       function isKexoScoreEnabledByConfig() {
-        try {
-          var cfg = (typeof kpiUiConfigV1 !== 'undefined' && kpiUiConfigV1 && kpiUiConfigV1.v === 1) ? kpiUiConfigV1 : null;
-          if (!cfg) return true;
-          var dashboardEnabled = true;
-          var list = cfg.kpis && Array.isArray(cfg.kpis.dashboard) ? cfg.kpis.dashboard : null;
-          if (list) {
-            var scoreItem = list.find(function(it) {
-              return it && String(it.key || '').trim().toLowerCase() === 'kexo_score';
-            });
-            if (scoreItem && scoreItem.enabled === false) dashboardEnabled = false;
-          }
-          return dashboardEnabled;
-        } catch (_) {
-          return true;
-        }
+        return true;
       }
 
       function shouldFetchKexoScore() {
@@ -17008,8 +16997,13 @@ const API = '';
           initialStep: 'Loading dashboard data',
         });
         var url = API + '/api/dashboard-series?range=' + encodeURIComponent(rangeKey) + (force ? ('&force=1&_=' + Date.now()) : '');
+        var forceMini = !!force;
+        if (silent && forceMini) {
+          var miniAgeMs = overviewMiniFetchedAt ? (Date.now() - overviewMiniFetchedAt) : Number.POSITIVE_INFINITY;
+          forceMini = miniAgeMs > OVERVIEW_MINI_FORCE_REFRESH_MS;
+        }
         fetchKexoScore(rangeKey);
-        fetchOverviewMiniData({ force: force });
+        fetchOverviewMiniData({ force: forceMini });
         fetchWithTimeout(url, { credentials: 'same-origin', cache: force ? 'no-store' : 'default' }, 30000)
           .then(function(r) { return (r && r.ok) ? r.json() : null; })
           .then(function(data) {

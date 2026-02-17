@@ -123,7 +123,6 @@ function defaultChartStyleConfig() {
     pieLabelContent: 'percent',
     pieLabelOffset: 16,
     pieCountryFlags: false,
-    kexoRenderer: 'pie',
   };
 }
 
@@ -885,7 +884,6 @@ function normalizeChartStyle(raw, fallback) {
   const dataLabelsRaw = String(src.dataLabels != null ? src.dataLabels : def.dataLabels).trim().toLowerCase();
   const pieLabelPositionRaw = String(src.pieLabelPosition != null ? src.pieLabelPosition : def.pieLabelPosition).trim().toLowerCase();
   const pieLabelContentRaw = String(src.pieLabelContent != null ? src.pieLabelContent : def.pieLabelContent).trim().toLowerCase();
-  const kexoRendererRaw = String(src.kexoRenderer != null ? src.kexoRenderer : def.kexoRenderer).trim().toLowerCase();
   return {
     curve: ['smooth', 'straight', 'stepline'].includes(curveRaw) ? curveRaw : String(def.curve || 'smooth'),
     strokeWidth: parseBoundedNumber(src.strokeWidth, def.strokeWidth != null ? def.strokeWidth : 2.6, 0, 8),
@@ -902,7 +900,6 @@ function normalizeChartStyle(raw, fallback) {
     pieLabelContent: ['percent', 'label', 'label_percent'].includes(pieLabelContentRaw) ? pieLabelContentRaw : String(def.pieLabelContent || 'percent'),
     pieLabelOffset: Math.round(parseBoundedNumber(src.pieLabelOffset, def.pieLabelOffset != null ? def.pieLabelOffset : 16, -40, 40)),
     pieCountryFlags: normalizeBool(src.pieCountryFlags, def.pieCountryFlags === true),
-    kexoRenderer: (kexoRendererRaw === 'wheel' || kexoRendererRaw === 'pie') ? kexoRendererRaw : String(def.kexoRenderer || 'pie'),
   };
 }
 
