@@ -1316,6 +1316,7 @@
     });
     return {
       v: 1,
+      defaultsVersion: 2,
       hideOnMobile: true,
       // User-managed chart + KPI bundle config source of truth.
       // Runtime reads this payload; avoid adding hardcoded style overrides elsewhere.
@@ -1617,7 +1618,10 @@
   function normalizeChartsUiConfigDraft(cfg) {
     var def = defaultChartsUiConfigV1();
     var src = cfg && typeof cfg === 'object' ? cfg : {};
-    var out = { v: 1, hideOnMobile: !(src.hideOnMobile === false), charts: [], kpiBundles: {} };
+    var dv = parseInt(String(src.defaultsVersion != null ? src.defaultsVersion : ''), 10);
+    if (!(dv >= 0)) dv = 0;
+    if (dv < 2) dv = 2;
+    var out = { v: 1, defaultsVersion: dv, hideOnMobile: !(src.hideOnMobile === false), charts: [], kpiBundles: {} };
     var incomingByKey = {};
     (Array.isArray(src.charts) ? src.charts : []).forEach(function (it) {
       if (!it || typeof it !== 'object') return;

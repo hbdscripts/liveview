@@ -2724,13 +2724,31 @@ html[data-bs-theme="dark"] .report-build-wrap {
   font-weight: 500;
   line-height: 1.2;
   text-decoration: none;
-  pointer-events: none;
+  pointer-events: auto;
+  cursor: pointer;
 }
 .kexo-overview-card-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: .5rem;
+}
+.kexo-overview-card-head-left {
+  display: flex;
+  flex-direction: column;
+  gap: .1rem;
+  min-width: 0;
+}
+.kexo-overview-card-subtitle {
+  font-size: .72rem;
+  font-weight: 500;
+  line-height: 1.1;
+  color: var(--tblr-secondary);
+  letter-spacing: .02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .kexo-overview-card-actions {
   display: inline-flex;
@@ -2761,7 +2779,8 @@ html[data-bs-theme="dark"] .report-build-wrap {
   flex-direction: column;
   gap: .35rem;
   height: 100%;
-  overflow: hidden;
+  /* Allow dropdown menus + chart tooltips to overflow the body. */
+  overflow: visible;
 }
 .kexo-overview-mini-card-body .kexo-overview-card-kpi-value,
 .kexo-overview-main-card-body .kexo-overview-card-kpi-value {
@@ -2838,6 +2857,31 @@ html[data-bs-theme="dark"] .report-build-wrap {
   font-weight: 500;
   color: #0f172a;
   line-height: 1;
+}
+
+.kexo-overview-mini-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: .35rem .75rem;
+  padding-top: .15rem;
+  font-size: .75rem;
+  font-weight: 500;
+  color: var(--tblr-secondary);
+  letter-spacing: .01em;
+}
+.kexo-overview-mini-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  white-space: nowrap;
+}
+.kexo-overview-mini-legend-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  flex: 0 0 10px;
 }
 @media (max-width: 767.98px) {
   .kexo-overview-mini-chart {

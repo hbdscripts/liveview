@@ -2009,6 +2009,8 @@
     // Flatpickr instance for custom date picker
     let flatpickrInstance = null;
     let availableDatesSet = new Set();
+    let customDateApplyOverride = null; // function({ rangeKey, startYmd, endYmd })
+    let customDatePrefillRangeKey = null;
 
     function initFlatpickrDatePicker(payload) {
       const input = document.getElementById('date-range-picker');
@@ -2109,6 +2111,8 @@
       document.body.classList.remove('modal-open');
       pendingCustomRangeStartYmd = null;
       pendingCustomRangeEndYmd = null;
+      customDateApplyOverride = null;
+      customDatePrefillRangeKey = null;
       if (flatpickrInstance) {
         flatpickrInstance.destroy();
         flatpickrInstance = null;
@@ -2173,14 +2177,27 @@
       }
     }
 
-    function openCustomDateModal() {
+    function openCustomDateModalFor(opts) {
+      const o = opts && typeof opts === 'object' ? opts : {};
+      customDateApplyOverride = (typeof o.onApply === 'function') ? o.onApply : null;
+      customDatePrefillRangeKey = (o.prefillRangeKey != null) ? String(o.prefillRangeKey).trim().toLowerCase() : null;
       const modal = document.getElementById('date-custom-modal');
       const input = document.getElementById('date-range-picker');
       if (!modal || !input) return;
       modal.style.display = 'block';
       modal.classList.add('show');
       document.body.classList.add('modal-open');
-      const applied = appliedYmdRangeFromDateRange();
+      let applied = null;
+      try {
+        if (customDatePrefillRangeKey) {
+          if (isCustomRangeKey(customDatePrefillRangeKey)) applied = ymdRangeFromRangeKey(customDatePrefillRangeKey);
+          else if (isCustomDayRangeKey(customDatePrefillRangeKey)) {
+            const ymd = ymdFromDayKey(customDatePrefillRangeKey);
+            applied = ymd ? { startYmd: ymd, endYmd: ymd } : null;
+          }
+        }
+      } catch (_) { applied = null; }
+      if (!applied) applied = appliedYmdRangeFromDateRange();
       pendingCustomRangeStartYmd = applied && applied.startYmd && applied.startYmd >= MIN_YMD ? applied.startYmd : null;
       pendingCustomRangeEndYmd = applied && applied.endYmd && applied.endYmd >= MIN_YMD ? applied.endYmd : null;
       customCalendarLastPayload = null;
@@ -2194,6 +2211,10 @@
         input.disabled = false;
         updateCustomDateFooter();
       });
+    }
+
+    function openCustomDateModal() {
+      openCustomDateModalFor({});
     }
 
     function updateCustomDateFooter() {
@@ -2260,6 +2281,12 @@
           if (startYmd < MIN_YMD || endYmd < MIN_YMD) return;
           const rk = makeRangeKeyFromYmds(startYmd, endYmd);
           if (!rk) return;
+          const override = customDateApplyOverride;
+          if (typeof override === 'function') {
+            closeCustomDateModal();
+            try { override({ rangeKey: rk, startYmd: startYmd, endYmd: endYmd }); } catch (_) {}
+            return;
+          }
           customRangeStartYmd = startYmd;
           customRangeEndYmd = endYmd;
           dateRange = rk;
@@ -2269,6 +2296,8 @@
       }
       // Flatpickr handles date selection via its own UI
     }
+
+    try { window.__kexoOpenCustomDateModalFor = openCustomDateModalFor; } catch (_) {}
 
     function maybeTriggerSaleToastFromStatsLikeData(data) {
       const conv = data && data.convertedCount ? data.convertedCount : {};

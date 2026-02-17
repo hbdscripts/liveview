@@ -101,7 +101,74 @@
       try {
         Object.keys(tableRowsCache).forEach(function (k) { delete tableRowsCache[k]; });
       } catch (_) {}
-      return prevSig !== nextSig;
+      var changed = prevSig !== nextSig;
+      if (changed) {
+        try { syncDashboardTableRowsOverridesFromUiConfig(cfg); } catch (_) {}
+      }
+      return changed;
+    }
+
+    function syncDashboardTableRowsOverridesFromUiConfig(cfg) {
+      // Dashboard tables are frequently configured in Settings/Modals, but a stale per-table localStorage
+      // override can take precedence and make "Default rows" appear ignored. When the UI config changes,
+      // sync dashboard table row overrides to the configured defaults so the saved setting wins.
+      if (!cfg || cfg.v !== 1 || !Array.isArray(cfg.pages)) return;
+      var dashPage = null;
+      for (var i = 0; i < cfg.pages.length; i++) {
+        var p = cfg.pages[i];
+        if (!p || typeof p !== 'object') continue;
+        if (normalizeUiPageKey(p.key) === 'dashboard') { dashPage = p; break; }
+      }
+      if (!dashPage || !Array.isArray(dashPage.tables)) return;
+
+      dashPage.tables.forEach(function (t) {
+        if (!t || typeof t !== 'object') return;
+        var tableId = t.id != null ? normalizeUiTableId(t.id) : '';
+        if (!tableId) return;
+        var classKey = getTableClassByTableId(tableId, 'dashboard');
+        if (classKey !== 'dashboard') return;
+        if (!t.rows || typeof t.rows !== 'object') return;
+
+        var defaultRows = t.rows.default;
+        if (typeof defaultRows !== 'number' || !Number.isFinite(defaultRows)) return;
+        defaultRows = Math.round(defaultRows);
+        if (defaultRows <= 0 || defaultRows > 200) return;
+
+        var rowOptions = null;
+        var opts = Array.isArray(t.rows.options) ? t.rows.options : null;
+        if (opts && opts.length) {
+          var seen = {};
+          var normalized = [];
+          opts.forEach(function (n) {
+            var x = Math.round(Number(n));
+            if (!Number.isFinite(x) || x <= 0 || x > 200) return;
+            if (seen[x]) return;
+            seen[x] = true;
+            normalized.push(x);
+          });
+          normalized.sort(function (a, b) { return a - b; });
+          if (normalized.length) rowOptions = normalized.slice(0, 12);
+        }
+        if (!rowOptions || !rowOptions.length) {
+          var fallback = tableClassConfig('dashboard');
+          rowOptions = Array.isArray(fallback && fallback.rowOptions) ? fallback.rowOptions.slice() : [5, 10];
+        }
+        if (rowOptions.indexOf(defaultRows) < 0) {
+          var nearest = rowOptions[0];
+          var nearestDiff = Math.abs(nearest - defaultRows);
+          for (var j = 1; j < rowOptions.length; j++) {
+            var diff = Math.abs(rowOptions[j] - defaultRows);
+            if (diff < nearestDiff) {
+              nearest = rowOptions[j];
+              nearestDiff = diff;
+            }
+          }
+          defaultRows = nearest;
+        }
+
+        tableRowsCache[tableId] = defaultRows;
+        try { localStorage.setItem(tableRowsStorageKey(tableId), String(defaultRows)); } catch (_) {}
+      });
     }
 
     function tableRowsConfigForTableId(tableId, classKey) {

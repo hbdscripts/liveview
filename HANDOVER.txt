@@ -1,5 +1,5 @@
 KEXO Liveview — HANDOVER (keep current)
-Last updated: 2026-02-16 (Dashboard mini charts + dashed KPI compare + admin notes modal fix)
+Last updated: 2026-02-17 (Dashboard overview per-card ranges + chart polish + chart settings migration fix)
 
 This repo ships a private Shopify app with a near-real-time Live Visitors dashboard. The frontend is Tabler-based and split into multiple HTML pages (folder-style routes) with shared partials and a shared JS bundle.
 
@@ -388,7 +388,7 @@ Ops/reliability:
 
 ## Changelog (high-signal)
 
-2026-02-16 (latest)
+2026-02-16
 - Dashboard overview mini charts redo (core UX):
   - Finishes: default ApexCharts radialBar (270°) with bar labels (£ revenue), Kexo 5-color palette, up to 5 slices; mode switchable (radialbar/pie/donut/bar) via Settings → Layout → Charts.
   - Countries: default horizontal bar with flag emoji categories; tooltip shows Revenue + Conversion rate; mode switchable (bar-horizontal/pie).
@@ -406,14 +406,19 @@ Ops/reliability:
 - Dashboard overview deltas: all four cards use real current vs previous period (snapshot financial.revenue for Finishes/Countries; attribution report revenue for Attribution).
 - KPI sparkline labels: rendered under the sparkline strip; time format H:MM (e.g. 0:15); smart skip when >12 buckets.
 
-2026-02-17
-- Dashboard overview card/row alignment pass:
-  - Right-side mini/overview chart cards were reworked to KPI-style card heads (card type + `7 Days` date control styled with `dropdown-toggle text-secondary`, plus metric value/delta strip).
-  - Overflow artifact behind left KPI cards was fixed by clipping KPI sparkline layers inside card bodies.
-  - Top composite layout now places `#dash-kpi-grid-mid` directly under `#dash-kpi-grid`; JS height-sync aligns mini-chart row to top KPI block and overview chart card to the middle KPI row.
+2026-02-17 (latest)
+- Dashboard overview controls + chart polish:
+  - Removed mini-card £ totals and removed overview deltas (were unreliable).
+  - Added per-card subtitle under each overview chart title (e.g. “7 Day Revenue”) that tracks that card’s own range.
+  - Per-card range dropdowns are now functional (Today / Yesterday / 7 Days / Custom) and only refresh the targeted card; Custom uses the existing date modal without changing the global header range.
+  - Finishes: radialBar hover tooltip fixed + legend rendered below (Gold/Silver etc) with matching colors.
+  - Countries + Attribution bars: square corners, full opacity, and no in-bar £ labels.
+- Dashboard tables rows-per-page: when `tables_ui_config_v1` changes, sync dashboard table row overrides to the configured defaults so “Trending Down” default rows (5) can’t be masked by stale localStorage.
+- Chart settings: dashboard overview mode migration is now one-time (`charts_ui_config_v1.defaultsVersion`) so user-selected chart types persist (fixes Revenue & Cost chart type changes being ignored).
+- KPI sparklines: removed left-edge “squiggle” at narrow widths by adding internal chart padding (prevents stroke clipping).
 - Dashboard overview chart bugfixes + utilities:
   - Fixed a ResizeObserver/height-sync feedback loop that could cause the mini/overview charts to keep growing after initial load.
-  - Mini chart headline values/deltas are now computed from 7-day snapshot + attribution comparisons (no longer cloned from the top KPI cards, which can be a different date range).
+  - Mini chart headline values/deltas removed (chart-only overview avoids misleading comparisons and keeps the cards compact).
   - Added small per-bucket date/time labels under dashboard KPI sparklines.
   - Added `Cost Settings` shortcut beside the Overview chart settings button; opens the existing Profit Rules modal and triggers a 7d overview refresh after save.
 - Settings theme IA:
@@ -424,7 +429,7 @@ Ops/reliability:
   - Table and chart card header gear icons now open in-page layout modals (table or chart settings) instead of navigating to Settings; same config source and save path (`POST /api/settings`, localStorage + `kexo:tablesUiConfigUpdated` / `kexo:chartsUiConfigUpdated`).
   - Shared module `client/app/16-layout-shortcuts.js` provides `KexoLayoutShortcuts.openTableModal`, `openChartModal`, and render/read helpers; Settings Layout tab uses the same API for tables and charts (single source of truth).
 - Dashboard overview range tuning + performance:
-  - Dashboard mini charts + overview revenue/cost chart now use 7-day windows (Finishes/Countries/Attribution + Overview) to keep overview loads fast.
+  - Overview cards default to 7-day windows for speed, but each card can now be set independently (Today / Yesterday / 7 Days / Custom).
   - Range changes no longer force-bypass report caches for `/api/kpis` and dashboard-series; large ranges like 30d now usually hit warm caches.
   - Bounce rate query in `store.getBounceRate()` was rewritten to a single join+group query (uses `idx_events_type_session_id`) instead of a per-session correlated subquery, speeding up 30d/month KPI loads on cache misses.
 - KPI + truth hang hardening:

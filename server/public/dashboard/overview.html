@@ -288,18 +288,28 @@
             <div class="card h-100 kexo-overview-mini-card">
               <div class="card-body kexo-overview-mini-card-body">
                 <div class="kexo-overview-card-head">
-                  <div class="subheader">Finishes</div>
-                  <button type="button" class="dropdown-toggle text-secondary kexo-overview-range-input" tabindex="-1" aria-hidden="true">7 Days</button>
-                </div>
-                <div class="kexo-overview-card-kpi-label-row">
-                  <div class="kexo-overview-card-kpi-label" id="dash-mini-finishes-label"></div>
-                  <div class="dash-kpi-delta kexo-overview-mini-delta is-hidden" id="dash-mini-finishes-delta" data-dir="none">
-                    <i class="fa-jelly fa-arrow-trend-up" data-icon-key="dash-kpi-delta-up" aria-hidden="true"></i>
-                    <span id="dash-mini-finishes-delta-text">&mdash;</span>
+                  <div class="kexo-overview-card-head-left">
+                    <div class="subheader">Finishes</div>
+                    <span class="kexo-overview-card-subtitle" data-overview-subtitle="1" data-chart-id="dash-chart-finishes-30d">7 Day Revenue</span>
+                  </div>
+                  <div class="kexo-overview-card-actions">
+                    <div class="dropdown">
+                      <button type="button" class="dropdown-toggle text-secondary kexo-overview-range-input" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Finishes range">7 Days</button>
+                      <div class="dropdown-menu dropdown-menu-end" aria-label="Finishes ranges">
+                        <button class="dropdown-item" type="button" data-overview-range="today" data-overview-chart="dash-chart-finishes-30d">Today</button>
+                        <button class="dropdown-item" type="button" data-overview-range="yesterday" data-overview-chart="dash-chart-finishes-30d">Yesterday</button>
+                        <button class="dropdown-item" type="button" data-overview-range="7d" data-overview-chart="dash-chart-finishes-30d">7 Days</button>
+                        <div class="dropdown-divider"></div>
+                        <button class="dropdown-item" type="button" data-overview-range="custom" data-overview-chart="dash-chart-finishes-30d">Custom…</button>
+                      </div>
+                    </div>
+                    <button type="button" class="btn btn-icon btn-ghost-secondary kexo-overview-chart-settings-btn" data-kexo-chart-settings-key="dash-chart-finishes-30d" aria-label="Chart settings" title="Chart settings">
+                      <i class="fa-light fa-gear" data-icon-key="chart-builder-icon" style="color:#999" aria-hidden="true"></i>
+                    </button>
                   </div>
                 </div>
-                <div class="h1 mb-0 kexo-overview-card-kpi-value" id="dash-mini-finishes-value">&mdash;</div>
                 <div id="dash-chart-finishes-30d" class="kexo-overview-mini-chart"></div>
+                <div class="kexo-overview-mini-legend" data-overview-legend="dash-chart-finishes-30d" aria-label="Finishes legend"></div>
               </div>
             </div>
           </div>
@@ -307,17 +317,26 @@
             <div class="card h-100 kexo-overview-mini-card">
               <div class="card-body kexo-overview-mini-card-body">
                 <div class="kexo-overview-card-head">
-                  <div class="subheader">Countries</div>
-                  <button type="button" class="dropdown-toggle text-secondary kexo-overview-range-input" tabindex="-1" aria-hidden="true">7 Days</button>
-                </div>
-                <div class="kexo-overview-card-kpi-label-row">
-                  <div class="kexo-overview-card-kpi-label" id="dash-mini-countries-label"></div>
-                  <div class="dash-kpi-delta kexo-overview-mini-delta is-hidden" id="dash-mini-countries-delta" data-dir="none">
-                    <i class="fa-jelly fa-arrow-trend-up" data-icon-key="dash-kpi-delta-up" aria-hidden="true"></i>
-                    <span id="dash-mini-countries-delta-text">&mdash;</span>
+                  <div class="kexo-overview-card-head-left">
+                    <div class="subheader">Countries</div>
+                    <span class="kexo-overview-card-subtitle" data-overview-subtitle="1" data-chart-id="dash-chart-countries-30d">7 Day Revenue</span>
+                  </div>
+                  <div class="kexo-overview-card-actions">
+                    <div class="dropdown">
+                      <button type="button" class="dropdown-toggle text-secondary kexo-overview-range-input" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Countries range">7 Days</button>
+                      <div class="dropdown-menu dropdown-menu-end" aria-label="Countries ranges">
+                        <button class="dropdown-item" type="button" data-overview-range="today" data-overview-chart="dash-chart-countries-30d">Today</button>
+                        <button class="dropdown-item" type="button" data-overview-range="yesterday" data-overview-chart="dash-chart-countries-30d">Yesterday</button>
+                        <button class="dropdown-item" type="button" data-overview-range="7d" data-overview-chart="dash-chart-countries-30d">7 Days</button>
+                        <div class="dropdown-divider"></div>
+                        <button class="dropdown-item" type="button" data-overview-range="custom" data-overview-chart="dash-chart-countries-30d">Custom…</button>
+                      </div>
+                    </div>
+                    <button type="button" class="btn btn-icon btn-ghost-secondary kexo-overview-chart-settings-btn" data-kexo-chart-settings-key="dash-chart-countries-30d" aria-label="Chart settings" title="Chart settings">
+                      <i class="fa-light fa-gear" data-icon-key="chart-builder-icon" style="color:#999" aria-hidden="true"></i>
+                    </button>
                   </div>
                 </div>
-                <div class="h1 mb-0 kexo-overview-card-kpi-value" id="dash-mini-countries-value">&mdash;</div>
                 <div id="dash-chart-countries-30d" class="kexo-overview-mini-chart"></div>
               </div>
             </div>
@@ -326,17 +345,26 @@
             <div class="card h-100 kexo-overview-mini-card">
               <div class="card-body kexo-overview-mini-card-body">
                 <div class="kexo-overview-card-head">
-                  <div class="subheader">Attribution</div>
-                  <button type="button" class="dropdown-toggle text-secondary kexo-overview-range-input" tabindex="-1" aria-hidden="true">7 Days</button>
-                </div>
-                <div class="kexo-overview-card-kpi-label-row">
-                  <div class="kexo-overview-card-kpi-label" id="dash-mini-attribution-label"></div>
-                  <div class="dash-kpi-delta kexo-overview-mini-delta is-hidden" id="dash-mini-attribution-delta" data-dir="none">
-                    <i class="fa-jelly fa-arrow-trend-up" data-icon-key="dash-kpi-delta-up" aria-hidden="true"></i>
-                    <span id="dash-mini-attribution-delta-text">&mdash;</span>
+                  <div class="kexo-overview-card-head-left">
+                    <div class="subheader">Attribution</div>
+                    <span class="kexo-overview-card-subtitle" data-overview-subtitle="1" data-chart-id="dash-chart-attribution-30d">7 Day Revenue</span>
+                  </div>
+                  <div class="kexo-overview-card-actions">
+                    <div class="dropdown">
+                      <button type="button" class="dropdown-toggle text-secondary kexo-overview-range-input" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Attribution range">7 Days</button>
+                      <div class="dropdown-menu dropdown-menu-end" aria-label="Attribution ranges">
+                        <button class="dropdown-item" type="button" data-overview-range="today" data-overview-chart="dash-chart-attribution-30d">Today</button>
+                        <button class="dropdown-item" type="button" data-overview-range="yesterday" data-overview-chart="dash-chart-attribution-30d">Yesterday</button>
+                        <button class="dropdown-item" type="button" data-overview-range="7d" data-overview-chart="dash-chart-attribution-30d">7 Days</button>
+                        <div class="dropdown-divider"></div>
+                        <button class="dropdown-item" type="button" data-overview-range="custom" data-overview-chart="dash-chart-attribution-30d">Custom…</button>
+                      </div>
+                    </div>
+                    <button type="button" class="btn btn-icon btn-ghost-secondary kexo-overview-chart-settings-btn" data-kexo-chart-settings-key="dash-chart-attribution-30d" aria-label="Chart settings" title="Chart settings">
+                      <i class="fa-light fa-gear" data-icon-key="chart-builder-icon" style="color:#999" aria-hidden="true"></i>
+                    </button>
                   </div>
                 </div>
-                <div class="h1 mb-0 kexo-overview-card-kpi-value" id="dash-mini-attribution-value">&mdash;</div>
                 <div id="dash-chart-attribution-30d" class="kexo-overview-mini-chart"></div>
               </div>
             </div>
@@ -347,9 +375,21 @@
             <div class="card kexo-overview-main-card">
               <div class="card-body kexo-overview-main-card-body">
                 <div class="kexo-overview-card-head">
-                  <div class="subheader">Revenue &amp; Cost</div>
+                  <div class="kexo-overview-card-head-left">
+                    <div class="subheader">Revenue &amp; Cost</div>
+                    <span class="kexo-overview-card-subtitle" data-overview-subtitle="1" data-chart-id="dash-chart-overview-30d">7 Day Revenue</span>
+                  </div>
                   <div class="kexo-overview-card-actions">
-                    <button type="button" class="dropdown-toggle text-secondary kexo-overview-range-input" tabindex="-1" aria-hidden="true">7 Days</button>
+                    <div class="dropdown">
+                      <button type="button" class="dropdown-toggle text-secondary kexo-overview-range-input" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Revenue &amp; Cost range">7 Days</button>
+                      <div class="dropdown-menu dropdown-menu-end" aria-label="Revenue &amp; Cost ranges">
+                        <button class="dropdown-item" type="button" data-overview-range="today" data-overview-chart="dash-chart-overview-30d">Today</button>
+                        <button class="dropdown-item" type="button" data-overview-range="yesterday" data-overview-chart="dash-chart-overview-30d">Yesterday</button>
+                        <button class="dropdown-item" type="button" data-overview-range="7d" data-overview-chart="dash-chart-overview-30d">7 Days</button>
+                        <div class="dropdown-divider"></div>
+                        <button class="dropdown-item" type="button" data-overview-range="custom" data-overview-chart="dash-chart-overview-30d">Custom…</button>
+                      </div>
+                    </div>
                     <button type="button" class="btn btn-sm btn-ghost-secondary kexo-overview-cost-settings-btn" id="dash-cost-settings-btn">Cost Settings</button>
                     <button type="button" class="btn btn-icon btn-ghost-secondary kexo-overview-chart-settings-btn" data-kexo-chart-settings-key="dash-chart-overview-30d" aria-label="Chart settings" title="Chart settings">
                       <i class="fa-light fa-gear" data-icon-key="chart-builder-icon" style="color:#999" aria-hidden="true"></i>

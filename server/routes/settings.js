@@ -106,6 +106,9 @@ const CHART_ALLOWED_MODES = Object.freeze({
   'countries-map-chart': ['map-animated', 'map-flat'],
 });
 
+// One-time migrations for chart defaults that should never override user choices after the first run.
+const CHARTS_UI_DEFAULTS_VERSION = 2;
+
 function defaultChartStyleConfig() {
   return {
     curve: 'smooth',
@@ -208,6 +211,7 @@ function defaultChartsUiConfigV1() {
   const withStyle = (item, styleOverride) => ({ ...item, style: { ...defaultChartStyleConfig(), ...(styleOverride && typeof styleOverride === 'object' ? styleOverride : {}) } });
   return {
     v: 1,
+    defaultsVersion: CHARTS_UI_DEFAULTS_VERSION,
     hideOnMobile: true,
     // Guardrail: charts + KPI bundle UI defaults are user-owned via Settings and normalized below.
     // Keep these defaults/allowed lists aligned with kexo-chart-defs.js and settings-page.js.
@@ -779,7 +783,9 @@ function normalizeTablesUiConfigV1(raw) {
   return out;
 }
 
-function normalizeChartsList(rawList, defaults) {
+function normalizeChartsList(rawList, defaults, options) {
+  const opts = options && typeof options === 'object' ? options : {};
+  const migrateDashboardOverview = !!opts.migrateDashboardOverview;
   const byKey = {};
   for (const d of defaults) byKey[d.key] = d;
   const out = [];
@@ -801,7 +807,7 @@ function normalizeChartsList(rawList, defaults) {
       if (seen.has(key)) continue;
       const def = byKey[key] || { key, label: key, enabled: true, mode: 'line', colors: [] };
       let mode = normalizeChartModeForKey(key, item.mode, def.mode);
-      mode = migrateDashboardOverviewMode(key, mode);
+      if (migrateDashboardOverview) mode = migrateDashboardOverviewMode(key, mode);
       const normalized = {
         key,
         label: normalizeText(item.label, def.label),
@@ -979,10 +985,14 @@ function normalizeChartsUiConfigV1(raw) {
   const def = defaultChartsUiConfigV1();
   const obj = safeJsonParseObject(raw);
   if (!obj || obj.v !== 1) return def;
+  const rawDefaultsVersion = Number.parseInt(String(obj.defaultsVersion != null ? obj.defaultsVersion : ''), 10);
+  const defaultsVersion = Number.isFinite(rawDefaultsVersion) && rawDefaultsVersion >= 0 ? rawDefaultsVersion : 0;
+  const shouldMigrateDashboardOverview = defaultsVersion < CHARTS_UI_DEFAULTS_VERSION;
   return {
     v: 1,
+    defaultsVersion: Math.max(defaultsVersion, CHARTS_UI_DEFAULTS_VERSION),
     hideOnMobile: normalizeBool(obj.hideOnMobile, def.hideOnMobile),
-    charts: normalizeChartsList(obj.charts, def.charts),
+    charts: normalizeChartsList(obj.charts, def.charts, { migrateDashboardOverview: shouldMigrateDashboardOverview }),
     kpiBundles: normalizeChartsKpiBundles(obj.kpiBundles, def.kpiBundles),
   };
 }
