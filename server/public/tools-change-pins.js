@@ -39,6 +39,12 @@
     var sign = pct > 0 ? '+' : '';
     return sign + pct.toFixed(1) + '%';
   }
+  function stripDeltaGlyphs(text) {
+    return String(text == null ? '' : text)
+      .replace(/[▲▼△▽▴▾▵▿↑↓⬆⬇]/g, '')
+      .replace(/\s{2,}/g, ' ')
+      .trim();
+  }
 
   function dateFromMs(ms) {
     var n = Number(ms);
@@ -373,19 +379,27 @@
     var d = payload.delta || {};
     function metric(label, beforeVal, afterVal, deltaAbs, deltaPct, fmt) {
       var f = fmt || function (x) { return x == null ? '—' : String(x); };
-      var absTxt = deltaAbs != null && Number.isFinite(Number(deltaAbs)) ? (Number(deltaAbs) > 0 ? '+' : '') + (fmt === fmtMoney ? fmtMoney(deltaAbs) : fmt(deltaAbs)) : '—';
-      var pctTxt = fmtRatioDelta(deltaPct);
+      var absN = (deltaAbs != null && Number.isFinite(Number(deltaAbs))) ? Number(deltaAbs) : null;
+      var absTxtRaw = absN != null ? (absN > 0 ? '+' : '') + (fmt === fmtMoney ? fmtMoney(absN) : fmt(absN)) : '—';
+      var pctTxtRaw = fmtRatioDelta(deltaPct);
+      var absTxt = stripDeltaGlyphs(absTxtRaw);
+      var pctTxt = stripDeltaGlyphs(pctTxtRaw);
+      var deltaClass = absN == null ? 'tools-delta-neutral' : (absN > 0 ? 'tools-delta-pos' : (absN < 0 ? 'tools-delta-neg' : 'tools-delta-neutral'));
       return '' +
         '<div class="tools-metric">' +
           '<div class="k">' + esc(label) + '</div>' +
           '<div class="v">' + esc(f(afterVal)) + '</div>' +
-          '<div class="tools-note tools-note--tight">Before: ' + esc(f(beforeVal)) + ' · Δ ' + esc(absTxt) + ' (' + esc(pctTxt) + ')</div>' +
+          '<div class="tools-note tools-note--tight">' +
+            '<span class="tools-ba-label">Before:</span> <span class="tools-ba-value">' + esc(f(beforeVal)) + '</span>' +
+            ' · <span class="tools-delta-label">Δ</span> <span class="' + deltaClass + '">' + esc(absTxt) + '</span> <span class="' + deltaClass + '">(' + esc(pctTxt) + ')</span>' +
+          '</div>' +
         '</div>';
     }
 
     var html = '';
-    html += '<div class="tools-note tools-note--spaced">Before: ' + esc(payload.ranges && payload.ranges.before ? (payload.ranges.before.start_ymd + ' → ' + payload.ranges.before.end_ymd) : '') +
-      ' · After: ' + esc(payload.ranges && payload.ranges.after ? (payload.ranges.after.start_ymd + ' → ' + payload.ranges.after.end_ymd) : '') +
+    html += '<div class="tools-note tools-note--spaced">' +
+      '<span class="tools-ba-label">Before:</span> <span class="tools-ba-value">' + esc(payload.ranges && payload.ranges.before ? (payload.ranges.before.start_ymd + ' → ' + payload.ranges.before.end_ymd) : '') + '</span>' +
+      ' · <span class="tools-ba-label">After:</span> <span class="tools-ba-value">' + esc(payload.ranges && payload.ranges.after ? (payload.ranges.after.start_ymd + ' → ' + payload.ranges.after.end_ymd) : '') + '</span>' +
       '</div>';
     html += '<div class="tools-summary">';
     html += metric('Revenue', before.revenue, after.revenue, d.revenue && d.revenue.abs, d.revenue && d.revenue.pct, fmtMoney);

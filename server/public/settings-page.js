@@ -2298,6 +2298,12 @@
       itemIndex += 1;
     });
     html += '</div></div></div></div></div>';
+    // If a debounced preview render is still pending from a previous panel paint,
+    // clear it before rebuilding the DOM to avoid stale rerenders.
+    if (root.__kexoChartsPreviewTimer) {
+      try { clearTimeout(root.__kexoChartsPreviewTimer); } catch (_) {}
+      root.__kexoChartsPreviewTimer = 0;
+    }
     root.innerHTML = html;
     root.querySelectorAll('[data-chart-config-key]').forEach(function (card) {
       refreshPieMetricState(card);
@@ -2310,27 +2316,29 @@
     syncColorSwatches(root);
     renderAllChartsPreviews(root);
 
-    var previewTimer = 0;
-    function queuePreview() {
-      if (previewTimer) {
-        try { clearTimeout(previewTimer); } catch (_) {}
-      }
-      previewTimer = setTimeout(function () {
-        previewTimer = 0;
-        root.querySelectorAll('[data-chart-config-key]').forEach(function (card) {
-          refreshPieMetricState(card);
-          var bodyEl = card.querySelector('.settings-charts-card-body');
-          var key = (card.getAttribute('data-chart-config-key') || '').trim().toLowerCase();
-          if (bodyEl && key && typeof window.KexoLayoutShortcuts !== 'undefined' && window.KexoLayoutShortcuts.refreshChartSettingsUi) {
-            window.KexoLayoutShortcuts.refreshChartSettingsUi(bodyEl, key);
-          }
-        });
-        syncColorSwatches(root);
-        renderAllChartsPreviews(root);
-      }, 100);
+    if (typeof root.__kexoChartsQueuePreview !== 'function') {
+      root.__kexoChartsQueuePreview = function () {
+        if (root.__kexoChartsPreviewTimer) {
+          try { clearTimeout(root.__kexoChartsPreviewTimer); } catch (_) {}
+        }
+        root.__kexoChartsPreviewTimer = setTimeout(function () {
+          root.__kexoChartsPreviewTimer = 0;
+          root.querySelectorAll('[data-chart-config-key]').forEach(function (card) {
+            refreshPieMetricState(card);
+            var bodyEl = card.querySelector('.settings-charts-card-body');
+            var key = (card.getAttribute('data-chart-config-key') || '').trim().toLowerCase();
+            if (bodyEl && key && typeof window.KexoLayoutShortcuts !== 'undefined' && window.KexoLayoutShortcuts.refreshChartSettingsUi) {
+              window.KexoLayoutShortcuts.refreshChartSettingsUi(bodyEl, key);
+            }
+          });
+          syncColorSwatches(root);
+          renderAllChartsPreviews(root);
+        }, 100);
+      };
+      root.addEventListener('input', root.__kexoChartsQueuePreview);
+      root.addEventListener('change', root.__kexoChartsQueuePreview);
+      root.setAttribute('data-layout-charts-wired', '1');
     }
-    root.addEventListener('input', queuePreview);
-    root.addEventListener('change', queuePreview);
     root.querySelectorAll('.accordion-collapse').forEach(function (collapseEl) {
       collapseEl.addEventListener('shown.bs.collapse', function () {
         var chartCard = collapseEl.closest('[data-chart-config-key]');

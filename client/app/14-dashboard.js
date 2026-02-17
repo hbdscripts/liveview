@@ -2178,6 +2178,7 @@
       function buildBusinessSnapshotUrlForOverviewRange(rangeKey, force, stamp) {
         var rk = normalizeOverviewCardRangeKey(rangeKey, OVERVIEW_CARD_DEFAULT_RANGE);
         var url = API + '/api/business-snapshot?mode=range';
+        var isSingleDay = rk === 'today' || rk === 'yesterday' || /^d:\d{4}-\d{2}-\d{2}$/.test(rk);
         if (rk === '7d') {
           url += '&preset=last_7_days';
         } else {
@@ -2196,11 +2197,16 @@
             until = rk.slice(2);
           } else {
             var m = rk.match(/^r:(\d{4}-\d{2}-\d{2}):(\d{4}-\d{2}-\d{2})$/);
-            if (m && m[1] && m[2]) { since = m[1]; until = m[2]; }
+            if (m && m[1] && m[2]) {
+              since = m[1];
+              until = m[2];
+              if (m[1] === m[2]) isSingleDay = true;
+            }
           }
           if (since && until) url += '&preset=custom&since=' + encodeURIComponent(String(since)) + '&until=' + encodeURIComponent(String(until));
           else url += '&preset=last_7_days';
         }
+        if (isSingleDay) url += '&granularity=hour';
         if (force) url += '&force=1&_=' + encodeURIComponent(String(stamp || Date.now()));
         return url;
       }

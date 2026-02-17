@@ -20,13 +20,12 @@
       position: relative;
     }
     #tab-panel-variants .stats-row {
-      display: flex;
-      flex-wrap: wrap;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
       gap: 1rem;
       align-items: stretch;
     }
     #tab-panel-variants .stats-row > .stats-card {
-      flex: 1 1 520px;
       min-width: 0;
     }
     #tab-panel-variants .variants-card-heading {
@@ -37,6 +36,11 @@
       line-height: 1.2;
       margin: 0;
       align-self: center;
+    }
+    @media (max-width: 576px) {
+      #tab-panel-variants .stats-row {
+        grid-template-columns: 1fr;
+      }
     }
   </style>
 </head>

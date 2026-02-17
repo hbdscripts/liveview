@@ -178,6 +178,30 @@
   margin-top: 8px;
 }
 
+.tools-ba-label,
+.tools-ba-value {
+  font-weight: 500;
+}
+
+.tools-delta-label {
+  color: var(--tblr-secondary, #64748b);
+}
+
+.tools-delta-pos {
+  color: #16a34a;
+  font-weight: 500;
+}
+
+.tools-delta-neg {
+  color: #dc2626;
+  font-weight: 500;
+}
+
+.tools-delta-neutral {
+  color: var(--tblr-secondary, #64748b);
+  font-weight: 500;
+}
+
 .tools-results {
   margin-top: 12px;
 }
