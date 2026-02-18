@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 88457e50673c711e
+// checksum: 9a5771fed42e5b5c
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -22884,15 +22884,21 @@ const API = '';
       } catch (_) {}
       return null;
     }
-    // Capture phase so we still handle clicks even if other handlers stop propagation.
-    document.addEventListener('click', function (e) {
+    function handleSettingsTrigger(e) {
       if (!e || !e.target) return;
       if (e.__kexoChartSettingsHandled) return;
+      // Some embed contexts can interfere with "click". Pointer events are more reliable.
+      try {
+        if (e.type === 'pointerup') {
+          var pt = String(e.pointerType || '').toLowerCase();
+          if (pt === 'mouse' && e.button !== 0) return;
+        }
+      } catch (_) {}
       // 1) Prefer explicit settings key on the cog/button.
       // 2) Fallback to explicit chart key on the element.
       // 3) Final fallback: nearest wrapper with data-kexo-chart-key / data-chart-key.
       var hit = safeClosest(e.target,
-        '[data-kexo-chart-settings-key],.kexo-overview-chart-settings-btn,' +
+        '[data-kexo-chart-settings-key],.kexo-overview-chart-settings-btn,.kexo-builder-icon-link,' +
         '[data-chart-key],[data-kexo-chart-key]'
       );
       if (!hit) return;
@@ -22921,7 +22927,10 @@ const API = '';
         title = titleEl && titleEl.textContent ? String(titleEl.textContent).trim() : '';
       } catch (_) { title = ''; }
       openModal({ chartKey: chartKey, cardTitle: title || chartKey });
-    }, true);
+    }
+    // Capture phase so we still handle clicks even if other handlers stop propagation.
+    document.addEventListener('click', handleSettingsTrigger, true);
+    try { document.addEventListener('pointerup', handleSettingsTrigger, true); } catch (_) {}
   }
 
   // Bind immediately (safe even while DOM is still loading).
