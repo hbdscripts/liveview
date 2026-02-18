@@ -229,10 +229,10 @@
         }
         if (isOverview) {
           body += '<div class="col-12"><label class="form-label">Colours</label><div class="row g-2">';
-          body += '<div class="col-6 col-md-3"><label class="form-label small">Revenue</label><input type="text" class="form-control form-control-sm" data-cs-field="color-revenue" value="' + escapeHtml(rev) + '" placeholder="#3eb3ab"></div>';
-          body += '<div class="col-6 col-md-3"><label class="form-label small">Cost</label><input type="text" class="form-control form-control-sm" data-cs-field="color-cost" value="' + escapeHtml(cost) + '" placeholder="#ef4444"></div>';
-          body += '<div class="col-6 col-md-3"><label class="form-label small">Profit (positive)</label><input type="text" class="form-control form-control-sm" data-cs-field="color-profitPos" value="' + escapeHtml(profitPos) + '" placeholder="#2fb344"></div>';
-          body += '<div class="col-6 col-md-3"><label class="form-label small">Profit (negative)</label><input type="text" class="form-control form-control-sm" data-cs-field="color-profitNeg" value="' + escapeHtml(profitNeg) + '" placeholder="#d63939"></div>';
+          body += '<div class="col-6 col-md-3"><label class="form-label small">Revenue</label><div class="kexo-color-input"><input type="text" class="form-control form-control-sm" data-kexo-color-input data-cs-field="color-revenue" value="' + escapeHtml(rev) + '" placeholder="#3eb3ab"><span class="kexo-color-swatch" data-kexo-color-swatch aria-hidden="true"></span></div></div>';
+          body += '<div class="col-6 col-md-3"><label class="form-label small">Cost</label><div class="kexo-color-input"><input type="text" class="form-control form-control-sm" data-kexo-color-input data-cs-field="color-cost" value="' + escapeHtml(cost) + '" placeholder="#ef4444"><span class="kexo-color-swatch" data-kexo-color-swatch aria-hidden="true"></span></div></div>';
+          body += '<div class="col-6 col-md-3"><label class="form-label small">Profit (positive)</label><div class="kexo-color-input"><input type="text" class="form-control form-control-sm" data-kexo-color-input data-cs-field="color-profitPos" value="' + escapeHtml(profitPos) + '" placeholder="#2fb344"><span class="kexo-color-swatch" data-kexo-color-swatch aria-hidden="true"></span></div></div>';
+          body += '<div class="col-6 col-md-3"><label class="form-label small">Profit (negative)</label><div class="kexo-color-input"><input type="text" class="form-control form-control-sm" data-kexo-color-input data-cs-field="color-profitNeg" value="' + escapeHtml(profitNeg) + '" placeholder="#d63939"><span class="kexo-color-swatch" data-kexo-color-swatch aria-hidden="true"></span></div></div>';
           body += '</div></div>';
         }
         body += '</div>';
@@ -240,6 +240,48 @@
         bodyEl.innerHTML = body;
         bodyEl.setAttribute('data-cs-chart-key', chartKey);
         setMsg('', null);
+
+        function normalizeHex6(v) {
+          var r = (v == null ? '' : String(v)).trim().toLowerCase();
+          if (/^#[0-9a-f]{6}$/.test(r)) return r;
+          if (/^[0-9a-f]{6}$/.test(r)) return '#' + r;
+          return null;
+        }
+
+        function syncColorPreview(inputEl) {
+          if (!inputEl) return;
+          var sw = null;
+          try { sw = inputEl.parentNode ? inputEl.parentNode.querySelector('[data-kexo-color-swatch]') : null; } catch (_) { sw = null; }
+          if (!sw) return;
+          var hexVal = normalizeHex6(inputEl.value);
+          try {
+            if (hexVal) {
+              sw.classList.remove('is-empty');
+              sw.style.setProperty('--kexo-swatch-color', hexVal);
+            } else {
+              sw.classList.add('is-empty');
+              sw.style.removeProperty('--kexo-swatch-color');
+            }
+          } catch (_) {}
+        }
+
+        function bindColorPreviews() {
+          try {
+            var inputs = bodyEl.querySelectorAll('[data-kexo-color-input]');
+            for (var i = 0; i < inputs.length; i++) {
+              var el = inputs[i];
+              if (!el || el.__kexoColorPreviewBound) continue;
+              el.__kexoColorPreviewBound = 1;
+              (function (inputEl) {
+                var sync = function () { syncColorPreview(inputEl); };
+                try { inputEl.addEventListener('input', sync); } catch (_) {}
+                try { inputEl.addEventListener('change', sync); } catch (_) {}
+                sync();
+              })(el);
+            }
+          } catch (_) {}
+        }
+        bindColorPreviews();
 
         function readForm() {
           var modeEl = bodyEl.querySelector('[data-cs-field="mode"]');
