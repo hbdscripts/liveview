@@ -240,6 +240,65 @@ async function readCogsTotalGbpFromLineItems(shop, accessToken, startMs, endMs) 
   return rounded;
 }
 
+async function readCogsAuditGbpFromLineItems(shop, accessToken, startMs, endMs) {
+  const safeShop = salesTruth.resolveShopForSales(shop || '');
+  const start = Number(startMs);
+  const end = Number(endMs);
+  if (!safeShop || !accessToken || !Number.isFinite(start) || !Number.isFinite(end) || !(end > start)) return null;
+
+  let rows = [];
+  try {
+    rows = await getDb().all(
+      `
+        SELECT TRIM(COALESCE(variant_id, '')) AS variant_id,
+               UPPER(COALESCE(currency, 'GBP')) AS currency,
+               COALESCE(SUM(quantity), 0) AS qty
+        FROM orders_shopify_line_items
+        WHERE shop = ? AND order_created_at >= ? AND order_created_at < ?
+          AND (order_test IS NULL OR order_test = 0)
+          AND order_cancelled_at IS NULL
+          AND order_financial_status = 'paid'
+          AND variant_id IS NOT NULL AND TRIM(variant_id) != ''
+        GROUP BY TRIM(COALESCE(variant_id, '')), UPPER(COALESCE(currency, 'GBP'))
+      `,
+      [safeShop, start, end]
+    );
+  } catch (_) {
+    return null;
+  }
+
+  const variantIds = Array.from(new Set((rows || []).map((r) => parseLegacyVariantId(r && r.variant_id)).filter(Boolean)));
+  if (!variantIds.length) return { totalGbp: 0, lines: [] };
+
+  const ratesToGbp = await fx.getRatesToGbp();
+  const costMap = await fetchVariantUnitCosts(safeShop, accessToken, variantIds);
+  const lines = [];
+  let total = 0;
+  for (const row of (rows || [])) {
+    const vid = parseLegacyVariantId(row && row.variant_id);
+    const qty = row && row.qty != null ? Number(row.qty) : NaN;
+    const fallbackCur = fx.normalizeCurrency(row && row.currency) || 'GBP';
+    const cost = vid ? costMap.get(vid) : null;
+    const unitCost = cost && cost.amount != null ? Number(cost.amount) : null;
+    const currency = fx.normalizeCurrency(cost && cost.currency) || fallbackCur || 'GBP';
+    const fxRate = currency === 'GBP' ? 1 : (ratesToGbp && typeof ratesToGbp === 'object' ? ratesToGbp[currency] : null);
+    let lineTotalGbp = null;
+    if (vid && Number.isFinite(qty) && qty > 0 && Number.isFinite(unitCost) && unitCost >= 0 && Number.isFinite(Number(fxRate)) && Number(fxRate) > 0) {
+      lineTotalGbp = round2(unitCost * qty * Number(fxRate));
+      if (lineTotalGbp != null) total += lineTotalGbp;
+    }
+    lines.push({
+      variant_id: vid ? String(vid) : '',
+      qty: Number.isFinite(qty) ? qty : 0,
+      unit_cost: Number.isFinite(unitCost) ? unitCost : null,
+      currency,
+      fx_rate: Number.isFinite(Number(fxRate)) ? Number(fxRate) : null,
+      line_total_gbp: lineTotalGbp,
+    });
+  }
+  return { totalGbp: round2(total) || 0, lines };
+}
+
 async function readShopName(shop, accessToken) {
   const safeShop = salesTruth.resolveShopForSales(shop || '');
   if (!safeShop || !accessToken) return null;
@@ -583,10 +642,11 @@ async function fetchShopifyPaymentsBalanceTransactions(shop, accessToken, search
   return { ok: true, rows, error: '' };
 }
 
-async function readShopifyBalanceCostsGbp(shop, accessToken, sinceYmd, untilYmd, timeZone) {
+async function readShopifyBalanceCostsGbp(shop, accessToken, sinceYmd, untilYmd, timeZone, options = {}) {
   const safeShop = salesTruth.resolveShopForSales(shop || '');
   const since = normalizeYmd(sinceYmd, '');
   const until = normalizeYmd(untilYmd, '');
+  const audit = !!(options && options.audit === true);
   if (!safeShop || !accessToken || !since || !until || since > until) {
     return {
       available: false,
@@ -600,13 +660,14 @@ async function readShopifyBalanceCostsGbp(shop, accessToken, sinceYmd, untilYmd,
       klarnaFeesByYmd: new Map(),
       appBillsByYmd: new Map(),
       diagnostics: null,
+      ...(audit ? { audit_rows: [], audit_query: null } : {}),
     };
   }
   const tz = typeof timeZone === 'string' && timeZone ? timeZone : 'UTC';
   const cacheKey = `${safeShop}:${since}:${until}:${tz}`;
   const now = Date.now();
   const cached = shopifyBalanceCostsCache.get(cacheKey);
-  if (cached && cached.expiresAt > now && cached.value) {
+  if (!audit && cached && cached.expiresAt > now && cached.value) {
     const value = cached.value;
     const shopifyFeesByYmdObj = value.shopifyFeesByYmdObj || value.klarnaFeesByYmdObj || null;
     return {
@@ -636,9 +697,13 @@ async function readShopifyBalanceCostsGbp(shop, accessToken, sinceYmd, untilYmd,
     klarnaFeesByYmd: new Map(),
     appBillsByYmd: new Map(),
     diagnostics: null,
+    ...(audit ? { audit_rows: [], audit_query: null } : {}),
   };
 
-  const searchBase = `processed_at:>=${since} processed_at:<=${until}`;
+  const untilExclusive = normalizeYmd(ymdAddDays(until, 1), '');
+  const searchBase = untilExclusive
+    ? `processed_at:>=${since} processed_at:<${untilExclusive}`
+    : `processed_at:>=${since} processed_at:<=${until}`;
   const [allResp, ratesToGbp] = await Promise.all([
     fetchShopifyPaymentsBalanceTransactions(safeShop, accessToken, searchBase),
     fx.getRatesToGbp().catch(() => ({})),
@@ -658,6 +723,7 @@ async function readShopifyBalanceCostsGbp(shop, accessToken, sinceYmd, untilYmd,
   const reasonCounts = new Map();
   const feeByType = new Map();
   const debitByType = new Map();
+  const auditRows = audit ? [] : null;
   for (const tx of allResp.rows) {
     if (!tx || typeof tx !== 'object') continue;
     const ymd = isoToYmdInTimeZone(tx.transactionDate, tz);
@@ -668,18 +734,45 @@ async function readShopifyBalanceCostsGbp(shop, accessToken, sinceYmd, untilYmd,
     addCountToMap(typeCounts, typeKey, 1);
     addCountToMap(sourceTypeCounts, sourceTypeKey, 1);
     addCountToMap(reasonCounts, reasonKey, 1);
+    const amountGbp = moneyV2ToGbp(tx.amount, ratesToGbp);
     const feeGbp = moneyV2ToGbp(tx.fee, ratesToGbp);
     if (feeGbp > 0) addAmountToMap(feeByType, typeKey, feeGbp);
     const netGbp = moneyV2ToGbp(tx.net, ratesToGbp);
     if (netGbp < 0) addAmountToMap(debitByType, typeKey, Math.abs(netGbp));
-    if (isPaymentFeeTransaction(tx)) {
+    const isPaymentFee = isPaymentFeeTransaction(tx);
+    const isAppBill = netGbp < 0 && isLikelyAppBillTransaction(tx);
+    const isShopifyFeeLike = netGbp < 0 && isLikelyShopifyFeeTransaction(tx);
+    if (isPaymentFee) {
       if (feeGbp > 0) addAmountToMap(paymentAllByYmd, ymd, feeGbp);
     }
-    if (netGbp < 0 && isLikelyAppBillTransaction(tx)) {
+    if (isAppBill) {
       addAmountToMap(appBillsByYmd, ymd, Math.abs(netGbp));
     }
-    if (netGbp < 0 && isLikelyShopifyFeeTransaction(tx)) {
+    if (isShopifyFeeLike) {
       addAmountToMap(shopifyFeesAllByYmd, ymd, Math.abs(netGbp));
+    }
+    if (auditRows) {
+      const countedAs = [];
+      if (isPaymentFee && feeGbp > 0) countedAs.push('payment_fee');
+      if (isAppBill && netGbp < 0) countedAs.push('app_bill');
+      if (isShopifyFeeLike && netGbp < 0) countedAs.push('shopify_fee_like');
+      const txId = [
+        String(tx.transactionDate || ''),
+        String(tx.type || ''),
+        String(tx.sourceType || ''),
+        String(tx.adjustmentReason || ''),
+        String(round2(amountGbp) || 0),
+        String(round2(feeGbp) || 0),
+        String(round2(netGbp) || 0),
+      ].join('|');
+      auditRows.push({
+        tx_id: txId.slice(0, 240),
+        processed_at: tx.transactionDate ? String(tx.transactionDate) : null,
+        classification: countedAs.length ? countedAs.join('+') : 'ignored',
+        amount_gbp: round2(amountGbp) || 0,
+        fee_gbp: round2(feeGbp) || 0,
+        net_gbp: round2(netGbp) || 0,
+      });
     }
   }
 
@@ -725,6 +818,7 @@ async function readShopifyBalanceCostsGbp(shop, accessToken, sinceYmd, untilYmd,
     klarnaFeesByYmd: shopifyFeesByYmd,
     appBillsByYmd,
     diagnostics,
+    ...(audit ? { audit_rows: auditRows || [], audit_query: { since, until, untilExclusive: untilExclusive || null, search: searchBase } } : {}),
   };
 }
 
@@ -1473,6 +1567,47 @@ function computeShippingCostFromSummary(summary, shippingConfig) {
   return round2(total) || 0;
 }
 
+function computeShippingCostAuditFromSummary(summary, shippingConfig, { assertSingleSource } = {}) {
+  const res = { totalGbp: 0, lines: [] };
+  if (!shippingConfig || shippingConfig.enabled !== true || !summary || !summary.byCountry || !summary.byCountry.size) return res;
+  const defaultGbp = Math.max(0, Number(shippingConfig.worldwideDefaultGbp) || 0);
+  const overrides = Array.isArray(shippingConfig.overrides) ? shippingConfig.overrides : [];
+  let total = 0;
+  for (const [countryCode, data] of summary.byCountry) {
+    const orders = Number(data && data.orders) || 0;
+    if (orders <= 0) continue;
+    const code = normalizeCountryCode(countryCode) || String(countryCode || '').trim().toUpperCase().slice(0, 2) || 'XX';
+    let usedPriceGbp = defaultGbp;
+    let priceSource = 'worldwide_default';
+    for (const o of overrides) {
+      if (!o || o.enabled === false) continue;
+      const countries = Array.isArray(o.countries) ? o.countries : [];
+      if (countries.includes(code)) {
+        usedPriceGbp = Math.max(0, Number(o.priceGbp) || 0);
+        priceSource = 'override';
+        break;
+      }
+    }
+    if (assertSingleSource) {
+      const sources = priceSource === 'override' ? ['override'] : ['worldwide_default'];
+      if (sources.length !== 1) {
+        throw new Error('shipping_audit_dual_source country=' + code + ' sources=' + JSON.stringify(sources));
+      }
+    }
+    const subtotal = round2(orders * usedPriceGbp) || 0;
+    total += subtotal;
+    res.lines.push({
+      country: code,
+      orders,
+      used_price_gbp: round2(usedPriceGbp) || 0,
+      price_source: priceSource,
+      subtotal_gbp: subtotal,
+    });
+  }
+  res.totalGbp = round2(total) || 0;
+  return res;
+}
+
 function selectedScopeTotals(summary, appliesTo) {
   const fallback = { revenueGbp: 0, orders: 0 };
   if (!summary || typeof summary !== 'object') return fallback;
@@ -1535,8 +1670,53 @@ function computeProfitDeductionsDetailed(summary, config) {
   };
 }
 
+function computeProfitDeductionsAudit(summary, config) {
+  const normalized = normalizeProfitRulesConfigV1(config);
+  const allRules = Array.isArray(normalized.rules) ? normalized.rules : [];
+  const rules = allRules.filter((rule) => rule && rule.enabled === true);
+  const lines = [];
+  let total = 0;
+  for (const rule of rules) {
+    const scoped = selectedScopeTotals(summary, rule.appliesTo);
+    const value = Number(rule.value) || 0;
+    let deduction = 0;
+    if (rule.type === PROFIT_RULE_TYPES.percentRevenue) deduction = scoped.revenueGbp * (value / 100);
+    else if (rule.type === PROFIT_RULE_TYPES.fixedPerOrder) deduction = scoped.orders * value;
+    else if (rule.type === PROFIT_RULE_TYPES.fixedPerPeriod) deduction = value;
+    if (!Number.isFinite(deduction) || deduction <= 0) continue;
+    const rounded = round2(deduction) || 0;
+    total += rounded;
+    lines.push({
+      id: rule.id ? String(rule.id) : '',
+      label: rule.name ? String(rule.name) : 'Expense',
+      enabled: rule.enabled === true,
+      applies_to: rule.appliesTo && rule.appliesTo.mode === 'countries' ? (rule.appliesTo.countries || []) : 'ALL',
+      type: rule.type ? String(rule.type) : '',
+      value,
+      scoped_revenue_gbp: round2(scoped.revenueGbp) || 0,
+      scoped_orders: Number(scoped.orders) || 0,
+      computed_deduction_gbp: rounded,
+    });
+  }
+  return { totalGbp: round2(total) || 0, lines };
+}
+
 function computeProfitDeductions(summary, config) {
   return computeProfitDeductionsDetailed(summary, config).total;
+}
+
+function computeCostBreakdownTotals(items) {
+  const list = Array.isArray(items) ? items : [];
+  let activeTotal = 0;
+  let inactiveTotal = 0;
+  for (const it of list) {
+    if (!it || typeof it !== 'object') continue;
+    if (it.is_detail === true || it.parent_key != null) continue;
+    const amt = Number(it.amount) || 0;
+    if (it.active === true) activeTotal += amt;
+    else inactiveTotal += amt;
+  }
+  return { activeTotal, inactiveTotal };
 }
 
 function metric(value, previous) {
@@ -1813,6 +1993,48 @@ async function readTruthCheckoutTaxTotalGbp(shop, startMs, endMs) {
     total += gbp;
   }
   return round2(total) || 0;
+}
+
+async function readTruthCheckoutTaxAuditGbp(shop, startMs, endMs) {
+  if (!shop) return { totalGbp: 0, rows: [] };
+  const db = getDb();
+  const rows = await db.all(
+    `
+      SELECT order_id, created_at, COALESCE(NULLIF(TRIM(currency), ''), 'GBP') AS currency, total_tax
+      FROM orders_shopify
+      WHERE shop = ?
+        AND created_at >= ? AND created_at < ?
+        AND ${isPaidOrderWhereClause('')}
+        AND checkout_token IS NOT NULL
+        AND TRIM(checkout_token) != ''
+        AND total_tax IS NOT NULL
+    `,
+    [shop, startMs, endMs]
+  );
+  if (!rows || !rows.length) return { totalGbp: 0, rows: [] };
+  const ratesToGbp = await fx.getRatesToGbp();
+  const outRows = [];
+  let total = 0;
+  for (const row of rows) {
+    const orderId = row && row.order_id != null ? String(row.order_id) : '';
+    const ts = row && row.created_at != null ? Number(row.created_at) : null;
+    const amount = row && row.total_tax != null ? Number(row.total_tax) : NaN;
+    const currency = fx.normalizeCurrency(row && row.currency != null ? String(row.currency) : '') || 'GBP';
+    const fxRate = currency === 'GBP' ? 1 : (ratesToGbp && typeof ratesToGbp === 'object' ? ratesToGbp[currency] : null);
+    const taxGbp = (Number.isFinite(amount) && amount > 0 && Number.isFinite(Number(fxRate)) && Number(fxRate) > 0)
+      ? (round2(amount * Number(fxRate)) || 0)
+      : 0;
+    if (taxGbp > 0) total += taxGbp;
+    outRows.push({
+      order_id: orderId,
+      created_at: Number.isFinite(ts) ? ts : null,
+      currency,
+      total_tax: Number.isFinite(amount) ? amount : 0,
+      fx_rate: Number.isFinite(Number(fxRate)) ? Number(fxRate) : null,
+      tax_gbp: taxGbp,
+    });
+  }
+  return { totalGbp: round2(total) || 0, rows: outRows };
 }
 
 function listHourKeysForBounds(startMs, endMs, timeZone) {
@@ -2868,7 +3090,7 @@ async function getBusinessSnapshot(options = {}) {
   };
 }
 
-async function getCostBreakdown({ rangeKey } = {}) {
+async function getCostBreakdown({ rangeKey, audit } = {}) {
   const nowMs = Date.now();
   const timeZone = store.resolveAdminTimeZone();
   const rawRange = rangeKey != null ? String(rangeKey).trim().toLowerCase() : '';
@@ -2876,6 +3098,7 @@ async function getCostBreakdown({ rangeKey } = {}) {
   const bounds = store.getRangeBounds(safeRange, nowMs, timeZone);
   const startTs = bounds && bounds.start != null ? Number(bounds.start) : nowMs;
   const endTs = bounds && bounds.end != null ? Number(bounds.end) : nowMs;
+  const auditEnabled = audit === true;
 
   const shop = salesTruth.resolveShopForSales('');
   const token = shop ? await salesTruth.getAccessToken(shop) : '';
@@ -2907,7 +3130,9 @@ async function getCostBreakdown({ rangeKey } = {}) {
     : Promise.resolve(null);
 
   const cogsPromise = (shop && token)
-    ? readCogsTotalGbpFromLineItems(shop, token, startTs, endTs).catch(() => null)
+    ? (auditEnabled
+      ? readCogsAuditGbpFromLineItems(shop, token, startTs, endTs).catch(() => null)
+      : readCogsTotalGbpFromLineItems(shop, token, startTs, endTs).catch(() => null))
     : Promise.resolve(null);
 
   const adsPromise = readGoogleAdsSpendDailyGbp(startTs, endTs, timeZone).catch(() => ({
@@ -2918,7 +3143,7 @@ async function getCostBreakdown({ rangeKey } = {}) {
   }));
 
   const shopifyCostsPromise = (shop && token)
-    ? readShopifyBalanceCostsGbp(shop, token, startYmd, endYmd, timeZone).catch(() => ({
+    ? readShopifyBalanceCostsGbp(shop, token, startYmd, endYmd, timeZone, auditEnabled ? { audit: true } : undefined).catch(() => ({
       available: false,
       error: 'shopify_cost_lookup_failed',
       paymentFeesTotalGbp: 0,
@@ -2930,6 +3155,7 @@ async function getCostBreakdown({ rangeKey } = {}) {
       klarnaFeesByYmd: new Map(),
       appBillsByYmd: new Map(),
       diagnostics: null,
+      ...(auditEnabled ? { audit_rows: [], audit_query: null } : {}),
     }))
     : Promise.resolve({
       available: false,
@@ -2943,21 +3169,32 @@ async function getCostBreakdown({ rangeKey } = {}) {
       klarnaFeesByYmd: new Map(),
       appBillsByYmd: new Map(),
       diagnostics: null,
+      ...(auditEnabled ? { audit_rows: [], audit_query: null } : {}),
     });
+
+  const taxPromise = shop
+    ? (auditEnabled
+      ? readTruthCheckoutTaxAuditGbp(shop, startTs, endTs).catch(() => ({ totalGbp: 0, rows: [] }))
+      : readTruthCheckoutTaxTotalGbp(shop, startTs, endTs).catch(() => 0))
+    : Promise.resolve(auditEnabled ? { totalGbp: 0, rows: [] } : 0);
 
   const [summary, cogsRaw, ads, shopifyCosts, taxAmountRaw] = await Promise.all([
     summaryPromise,
     cogsPromise,
     adsPromise,
     shopifyCostsPromise,
-    shop ? readTruthCheckoutTaxTotalGbp(shop, startTs, endTs).catch(() => 0) : Promise.resolve(0),
+    taxPromise,
   ]);
 
-  const cogsAmount = (cogsRaw != null && Number.isFinite(Number(cogsRaw))) ? (round2(Number(cogsRaw)) || 0) : null;
+  const cogsAmount = auditEnabled
+    ? (cogsRaw && typeof cogsRaw === 'object' && Number.isFinite(Number(cogsRaw.totalGbp)) ? (round2(Number(cogsRaw.totalGbp)) || 0) : null)
+    : ((cogsRaw != null && Number.isFinite(Number(cogsRaw))) ? (round2(Number(cogsRaw)) || 0) : null);
   const adsAmount = round2(Number(ads && ads.totalGbp) || 0) || 0;
   const paymentFeesAmount = round2(Number(shopifyCosts && shopifyCosts.paymentFeesTotalGbp) || 0) || 0;
   const appBillsAmount = round2(Number(shopifyCosts && shopifyCosts.appBillsTotalGbp) || 0) || 0;
-  const taxAmount = round2(Number(taxAmountRaw) || 0) || 0;
+  const taxAmount = auditEnabled
+    ? (taxAmountRaw && typeof taxAmountRaw === 'object' ? (round2(Number(taxAmountRaw.totalGbp) || 0) || 0) : 0)
+    : (round2(Number(taxAmountRaw) || 0) || 0);
 
   const rulesDetailed = (summary && rulesWouldApply) ? computeProfitDeductionsDetailed(summary, profitRules) : { total: 0, lines: [] };
   const rulesAmount = round2(Number(rulesDetailed && rulesDetailed.total) || 0) || 0;
@@ -3147,13 +3384,149 @@ async function getCostBreakdown({ rangeKey } = {}) {
   });
   ruleDetails.forEach((d) => items.push(d));
 
-  let activeTotal = 0;
-  let inactiveTotal = 0;
-  for (const it of items) {
-    const amt = Number(it && it.amount) || 0;
-    if (it && it.active === true) activeTotal += amt;
-    else inactiveTotal += amt;
-  }
+  const parentTotals = computeCostBreakdownTotals(items);
+  const activeTotal = parentTotals.activeTotal;
+  const inactiveTotal = parentTotals.inactiveTotal;
+
+  const auditDebug = auditEnabled ? (() => {
+    const shippingAudit = (summary && shippingConfigured)
+      ? computeShippingCostAuditFromSummary(summary, { ...shippingCfg, enabled: true }, { assertSingleSource: true })
+      : { totalGbp: 0, lines: [] };
+    const rulesAudit = (summary && rulesConfigured)
+      ? computeProfitDeductionsAudit(summary, profitRules)
+      : { totalGbp: 0, lines: [] };
+
+    const adsDays = [];
+    const adsBy = ads && ads.byYmd && ads.byYmd.entries ? ads.byYmd : new Map();
+    const clicksBy = ads && ads.clicksByYmd && ads.clicksByYmd.entries ? ads.clicksByYmd : new Map();
+    for (const [day, spend] of adsBy.entries()) {
+      adsDays.push({
+        day: String(day),
+        spend_gbp: round2(spend) || 0,
+        clicks: Math.max(0, Math.round(Number(clicksBy.get(day) || 0) || 0)),
+        daily_total: round2(spend) || 0,
+      });
+    }
+    adsDays.sort((a, b) => a.day.localeCompare(b.day));
+
+    const oldTotalsIncludingDetails = (() => {
+      let a = 0;
+      let i = 0;
+      for (const it of items) {
+        const amt = Number(it && it.amount) || 0;
+        if (it && it.active === true) a += amt;
+        else i += amt;
+      }
+      return { activeTotal: round2(a) || 0, inactiveTotal: round2(i) || 0 };
+    })();
+
+    const cogsLines = (cogsRaw && typeof cogsRaw === 'object' && Array.isArray(cogsRaw.lines)) ? cogsRaw.lines : [];
+    const taxRows = (taxAmountRaw && typeof taxAmountRaw === 'object' && Array.isArray(taxAmountRaw.rows)) ? taxAmountRaw.rows : [];
+    const txRows = (shopifyCosts && Array.isArray(shopifyCosts.audit_rows)) ? shopifyCosts.audit_rows : [];
+
+    const sumRows = (rows, field, predicate) => {
+      const list = Array.isArray(rows) ? rows : [];
+      let total = 0;
+      for (const r of list) {
+        if (predicate && !predicate(r)) continue;
+        const n = Number(r && r[field]);
+        if (!Number.isFinite(n)) continue;
+        total += n;
+      }
+      return round2(total) || 0;
+    };
+
+    const truth = {
+      cogs_gbp: sumRows(cogsLines, 'line_total_gbp'),
+      ads_gbp: sumRows(adsDays, 'spend_gbp'),
+      payment_fees_gbp: sumRows(txRows, 'fee_gbp', (r) => String(r && r.classification || '').includes('payment_fee')),
+      app_bills_gbp: (() => {
+        let total = 0;
+        for (const r of txRows) {
+          if (!String(r && r.classification || '').includes('app_bill')) continue;
+          const n = Number(r && r.net_gbp);
+          if (!Number.isFinite(n) || n === 0) continue;
+          total += Math.abs(n);
+        }
+        return round2(total) || 0;
+      })(),
+      tax_gbp: sumRows(taxRows, 'tax_gbp'),
+      shipping_gbp: sumRows(shippingAudit.lines, 'subtotal_gbp'),
+      rules_gbp: sumRows(rulesAudit.lines, 'computed_deduction_gbp'),
+    };
+
+    const existing = {
+      cogs_gbp: cogsAmount != null ? (round2(cogsAmount) || 0) : null,
+      ads_gbp: adsAmount,
+      payment_fees_gbp: paymentFeesAmount,
+      app_bills_gbp: appBillsAmount,
+      tax_gbp: taxAmount,
+      shipping_gbp: round2(Number(shippingAmount) || 0) || 0,
+      rules_gbp: rulesAmount,
+    };
+
+    const truthChecks = {};
+    const mismatches = [];
+    for (const key of Object.keys(truth)) {
+      const ex = existing[key];
+      const tr = truth[key];
+      const delta = (ex == null) ? null : (round2(tr - ex) || 0);
+      truthChecks[key] = { existing_gbp: ex, recomputed_gbp: tr, delta_gbp: delta };
+      if (delta != null && Math.abs(delta) > 0.01) {
+        mismatches.push({ key, existing_gbp: ex, recomputed_gbp: tr, delta_gbp: delta });
+      }
+    }
+
+    return {
+      meta: {
+        range_key: safeRange,
+        start_ts: startTs,
+        end_ts: endTs,
+        window: '[start_ts, end_ts)',
+        time_zone: timeZone,
+        start_ymd: startYmd,
+        end_ymd: endYmd,
+      },
+      sources: {
+        cogs: 'orders_shopify_line_items(order_created_at) + Shopify GraphQL variant inventoryItem.unitCost',
+        ads: 'google_ads_spend_hourly(hour_ts)',
+        payment_fees_and_app_bills: 'Shopify Payments balanceTransactions(query processed_at)',
+        tax: 'orders_shopify(created_at,total_tax)',
+        shipping: 'orders_shopify(created_at,total_price,raw_json country) + profitRules.shipping config',
+        rules: 'orders_shopify(created_at,total_price,raw_json country) + profitRules.rules config',
+      },
+      cogs: cogsRaw && typeof cogsRaw === 'object'
+        ? { lines: cogsLines }
+        : { lines: [] },
+      ads: { days: adsDays },
+      payment_fees_and_app_bills: {
+        query: shopifyCosts && shopifyCosts.audit_query ? shopifyCosts.audit_query : null,
+        tx: txRows,
+      },
+      tax: taxAmountRaw && typeof taxAmountRaw === 'object'
+        ? { rows: taxRows }
+        : { rows: [] },
+      shipping: {
+        worldwide_default_gbp: round2(Number(shippingCfg.worldwideDefaultGbp) || 0) || 0,
+        overrides_enabled: (Array.isArray(shippingCfg.overrides) ? shippingCfg.overrides : [])
+          .filter((o) => o && o.enabled !== false)
+          .map((o) => ({
+            price_gbp: round2(Number(o.priceGbp) || 0) || 0,
+            countries: Array.isArray(o.countries) ? o.countries.map((c) => normalizeCountryCode(c)).filter(Boolean) : [],
+          })),
+        per_country: shippingAudit.lines,
+      },
+      rules: { lines: rulesAudit.lines },
+      totals_proof: {
+        active_total_parent_only: round2(activeTotal) || 0,
+        inactive_total_parent_only: round2(inactiveTotal) || 0,
+        active_total_including_details: oldTotalsIncludingDetails.activeTotal,
+        inactive_total_including_details: oldTotalsIncludingDetails.inactiveTotal,
+      },
+      truth_checks: truthChecks,
+      mismatches,
+    };
+  })() : null;
 
   return {
     ok: true,
@@ -3168,6 +3541,7 @@ async function getCostBreakdown({ rangeKey } = {}) {
       inactive_total: round2(inactiveTotal) || 0,
       currency: 'GBP',
     },
+    ...(auditEnabled ? { audit_debug: auditDebug } : {}),
   };
 }
 
@@ -3176,4 +3550,7 @@ module.exports = {
   getCostBreakdown,
   resolveSnapshotWindows,
   readShopifyBalanceCostsGbp,
+  // Exposed for unit tests / audits.
+  computeShippingCostFromSummary,
+  computeCostBreakdownTotals,
 };
