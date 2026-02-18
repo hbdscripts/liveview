@@ -201,7 +201,6 @@
     'theme-header-online-text-color',
     'theme-header-online-radius',
     'theme-header-online-border-color',
-    'theme-header-logo-url',
     'theme-header-strip-padding',
   ];
   var HEADER_THEME_TOGGLE_KEYS = [
@@ -1626,12 +1625,6 @@
       headerToggleCardNoIcon('theme-header-settings-border', 'Settings button border', 'Show or hide the border around the Settings button.'),
       headerToggleCardNoIcon('theme-header-online-border', 'Online badge border', 'Show or hide the border around the visitors badge.')
     ].join('');
-    var logoCard = headerInputCardNoIcon(
-      'theme-header-logo-url',
-      'Logo URL override',
-      'Use an absolute URL or /path to replace desktop and mobile logos.',
-      '/assets/logos/new/kexo_new2.png'
-    );
     var accentGrid = accentHexInputCard('theme-accent-1', 'Accent 1', DEFAULTS['theme-accent-1']) +
       accentHexInputCard('theme-accent-2', 'Accent 2', DEFAULTS['theme-accent-2']) +
       accentHexInputCard('theme-accent-3', 'Accent 3', DEFAULTS['theme-accent-3']) +
@@ -1685,10 +1678,6 @@
         '<hr class="my-3" />' +
         '<h4 class="mb-2">Visibility & borders</h4>' +
         '<div class="row g-3">' + headerToggleGrid + '</div>' +
-        '<hr class="my-3" />' +
-        '<h4 class="mb-2">Logo</h4>' +
-        '<div class="row g-3">' + logoCard + '</div>' +
-        '<div class="alert alert-secondary mt-3 mb-0 py-2">Upload logo file: TODO. Use URL override for now.</div>' +
       '</div>' +
 
       '<div class="theme-subpanel" data-theme-subpanel="color" hidden>' +

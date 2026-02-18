@@ -267,6 +267,11 @@
       var next = window.location.pathname + '?' + params.toString() + (window.location.hash || '');
       try { window.history.replaceState(null, '', next); } catch (_) {}
     }
+    try {
+      if (window && typeof window.dispatchEvent === 'function') {
+        window.dispatchEvent(new CustomEvent('kexo:costExpensesTabChanged', { detail: { key: s } }));
+      }
+    } catch (_) {}
   }
 
   function getRuleById(id) {
@@ -479,6 +484,7 @@
   window.initCostExpensesSettings = function () {
     load();
   };
+  try { window.__kexoCostExpensesSetActiveSubTab = setActiveSubTab; } catch (_) {}
 
   // Always bind the UI once so buttons/tabs work even if Settings init is cached/broken.
   try { bindUi(); } catch (_) {}

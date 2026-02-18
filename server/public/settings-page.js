@@ -46,9 +46,10 @@
         if (legacyTab === 'theme') rawKexo = 'theme-display';
         else if (legacyTab === 'general' || legacyTab === 'assets') rawKexo = 'general';
       }
-      var kexoToNew = { ui: 'brand-appearance', icons: 'icons-assets', header: 'theme-display', color: 'theme-display', fonts: 'theme-display', notifications: 'theme-display' };
+      var kexoToNew = { ui: 'icons-assets', icons: 'icons-assets', header: 'theme-display', color: 'theme-display', fonts: 'theme-display', notifications: 'theme-display' };
       if (kexoToNew[rawKexo]) rawKexo = kexoToNew[rawKexo];
-      var allowedKexo = { general: true, 'brand-appearance': true, 'icons-assets': true, 'theme-display': true };
+      if (rawKexo === 'brand-appearance') rawKexo = 'icons-assets';
+      var allowedKexo = { general: true, 'icons-assets': true, 'theme-display': true };
       if (allowedKexo[rawKexo] && keep.get('tab') === 'kexo') {
         keep.set('kexoTab', rawKexo);
       }
@@ -166,9 +167,10 @@
         var km = /[?&](?:kexoTab|kexo)=([^&]+)/.exec(window.location.search || '');
         if (km && km[1]) {
           var kk = km[1].toLowerCase().replace(/\s+/g, '-');
-          var kexoMap = { ui: 'brand-appearance', icons: 'icons-assets', header: 'theme-display', color: 'theme-display', fonts: 'theme-display', notifications: 'theme-display' };
+          var kexoMap = { ui: 'icons-assets', icons: 'icons-assets', header: 'theme-display', color: 'theme-display', fonts: 'theme-display', notifications: 'theme-display' };
           if (kexoMap[kk]) kk = kexoMap[kk];
-          if (kk === 'general' || kk === 'brand-appearance' || kk === 'icons-assets' || kk === 'theme-display') {
+          if (kk === 'brand-appearance') kk = 'icons-assets';
+          if (kk === 'general' || kk === 'icons-assets' || kk === 'theme-display') {
             initialKexoSubTab = kk;
           }
         }
@@ -313,7 +315,7 @@
     tablesUiPanelRendered = true;
   }
 
-  function activateTab(key) {
+  function syncLeftNavActiveClasses(key) {
     var tablist = document.getElementById('settings-category-tablist');
     if (!tablist) return;
     tablist.querySelectorAll('a[data-settings-tab]').forEach(function (el) {
@@ -336,6 +338,10 @@
       el.classList.toggle('active', isActive);
       el.setAttribute('aria-selected', isActive ? 'true' : 'false');
     });
+  }
+
+  function activateTab(key) {
+    syncLeftNavActiveClasses(key);
     document.querySelectorAll('.settings-panel').forEach(function (el) {
       var panelKey = el.id && el.id.replace('settings-panel-', '');
       el.classList.toggle('active', panelKey === key);
@@ -362,18 +368,12 @@
       try {
         if (typeof window.initCostExpensesSettings === 'function') window.initCostExpensesSettings();
       } catch (_) {}
-      var costExpensesSub = getActiveCostExpensesSubTab();
-      document.querySelectorAll('[data-settings-cost-expenses-tab]').forEach(function (btn) {
-        var sub = String(btn.getAttribute('data-settings-cost-expenses-tab') || '').trim().toLowerCase();
-        var isActive = (sub === costExpensesSub);
-        btn.classList.toggle('active', isActive);
-        btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
-        var panelId = btn.getAttribute('aria-controls');
-        if (panelId) {
-          var panel = document.getElementById(panelId);
-          if (panel) panel.classList.toggle('active', isActive);
+      try {
+        var costExpensesSub = getActiveCostExpensesSubTab();
+        if (typeof window.__kexoCostExpensesSetActiveSubTab === 'function') {
+          window.__kexoCostExpensesSetActiveSubTab(costExpensesSub, { updateUrl: false });
         }
-      });
+      } catch (_) {}
     }
   }
 
@@ -386,7 +386,6 @@
 
   function ensureKexoUiPanel() {
     ensurePanelClass('settings-kexo-panel-general', 'settings-kexo-panel');
-    ensurePanelClass('settings-kexo-panel-brand-appearance', 'settings-kexo-panel');
     ensurePanelClass('settings-kexo-panel-icons-assets', 'settings-kexo-panel');
     var themeDisplay = document.getElementById('settings-kexo-panel-theme-display');
     if (themeDisplay) themeDisplay.classList.add('settings-kexo-panel');
@@ -464,7 +463,6 @@
       panelClass: 'settings-kexo-panel',
       tabs: [
         { key: 'general', label: 'General', panelId: 'settings-kexo-panel-general' },
-        { key: 'brand-appearance', label: 'Brand & appearance', panelId: 'settings-kexo-panel-brand-appearance' },
         { key: 'icons-assets', label: 'Icons & assets', panelId: 'settings-kexo-panel-icons-assets' },
         { key: 'theme-display', label: 'Theme & display', panelId: 'settings-kexo-panel-theme-display' },
       ],
@@ -805,7 +803,10 @@
       initialKey: initialIntegrationsSubTab || 'shopify',
       onActivate: function (key) {
         activeIntegrationsSubTab = key;
-        if (getActiveSettingsTab() === 'integrations') updateUrl('integrations');
+        if (getActiveSettingsTab() === 'integrations') {
+          updateUrl('integrations');
+          syncLeftNavActiveClasses('integrations');
+        }
       },
     });
   }
@@ -2668,56 +2669,37 @@
         if (getActiveSettingsTab() === 'layout') {
           if (key === 'tables') try { renderTablesWhenVisible(); } catch (_) {}
           updateUrl('layout');
+          syncLeftNavActiveClasses('layout');
         }
       },
     });
   }
 
   function wireKexoSubTabs(initialKey) {
-    function placeBrandCards(viewKey) {
-      var brandPanel = document.getElementById('settings-kexo-panel-brand-appearance');
+    function placeThemeCard(viewKey) {
       var iconsPanel = document.getElementById('settings-kexo-panel-icons-assets');
       var themePanel = document.getElementById('settings-kexo-panel-theme-display');
-      if (!brandPanel || !iconsPanel || !themePanel) return;
-
-      var assetsCard = document.querySelector('#settings-panel-kexo .kexo-brand-assets');
+      if (!iconsPanel || !themePanel) return;
       var themeCard = document.querySelector('#settings-panel-kexo .kexo-brand-theme');
-      if (!assetsCard || !themeCard) return;
-
-      if (viewKey === 'brand-appearance') {
-        if (assetsCard.parentElement !== brandPanel) brandPanel.appendChild(assetsCard);
-        if (themeCard.parentElement !== brandPanel) brandPanel.appendChild(themeCard);
-        return;
-      }
-
+      if (!themeCard) return;
       if (viewKey === 'icons-assets') {
-        if (assetsCard.parentElement !== iconsPanel) iconsPanel.appendChild(assetsCard);
         if (themeCard.parentElement !== iconsPanel) iconsPanel.appendChild(themeCard);
         return;
       }
-
-      if (viewKey === 'theme-display') {
-        if (assetsCard.parentElement !== iconsPanel) iconsPanel.appendChild(assetsCard);
-        if (themeCard.parentElement !== themePanel) themePanel.appendChild(themeCard);
-        return;
-      }
-
-      // Default: keep the content assembled under Brand & appearance.
-      if (assetsCard.parentElement !== brandPanel) brandPanel.appendChild(assetsCard);
-      if (themeCard.parentElement !== brandPanel) brandPanel.appendChild(themeCard);
+      if (themeCard.parentElement !== themePanel) themePanel.appendChild(themeCard);
     }
 
     kexoTabsetApi = wireKexoTabset({
       tabSelector: '#settings-kexo-main-tabs [data-settings-kexo-tab]',
       tabAttr: 'data-settings-kexo-tab',
       panelIdPrefix: 'settings-kexo-panel-',
-      keys: ['general', 'brand-appearance', 'icons-assets', 'theme-display'],
+      keys: ['general', 'icons-assets', 'theme-display'],
       initialKey: initialKey || activeKexoSubTab || 'general',
       onActivate: function (key) {
         activeKexoSubTab = key;
-        placeBrandCards(key);
+        placeThemeCard(key);
         var requestedThemeSubtab = null;
-        if (key === 'icons-assets' || key === 'brand-appearance') requestedThemeSubtab = 'icons';
+        if (key === 'icons-assets') requestedThemeSubtab = 'icons';
         else if (key === 'theme-display') requestedThemeSubtab = 'header';
         if (requestedThemeSubtab) {
           try {
@@ -2725,7 +2707,10 @@
             if (typeof window.kexoThemeActivateSubtab === 'function') window.kexoThemeActivateSubtab(requestedThemeSubtab);
           } catch (_) {}
         }
-        if (getActiveSettingsTab() === 'kexo') updateUrl('kexo');
+        if (getActiveSettingsTab() === 'kexo') {
+          updateUrl('kexo');
+          syncLeftNavActiveClasses('kexo');
+        }
       },
     });
   }
@@ -2746,6 +2731,7 @@
             try { window.initAttributionTreeView({ rootId: 'settings-attribution-tree-root' }); } catch (_) {}
           }
           updateUrl('attribution');
+          syncLeftNavActiveClasses('attribution');
         }
       },
     });
@@ -2760,7 +2746,10 @@
       initialKey: initialKey || initialAdminSubTab || 'users',
       onActivate: function (key) {
         activeAdminSubTab = key;
-        if (getActiveSettingsTab() === 'admin') updateUrl('admin');
+        if (getActiveSettingsTab() === 'admin') {
+          updateUrl('admin');
+          syncLeftNavActiveClasses('admin');
+        }
       },
     });
   }
@@ -4812,6 +4801,20 @@
           else if (key === 'attribution' && attributionTabsetApi) attributionTabsetApi.activate(subKey);
           else if (key === 'admin' && adminTabsetApi) adminTabsetApi.activate(subKey);
         } catch (_) {}
+      });
+    }
+
+    if (document.documentElement.getAttribute('data-kexo-cost-expenses-sync-bound') !== '1') {
+      document.documentElement.setAttribute('data-kexo-cost-expenses-sync-bound', '1');
+      window.addEventListener('kexo:costExpensesTabChanged', function (e) {
+        var key = e && e.detail && e.detail.key != null ? String(e.detail.key).trim().toLowerCase() : '';
+        if (key !== 'cost-sources' && key !== 'shipping' && key !== 'rules') return;
+        initialCostExpensesSubTab = key;
+        activeCostExpensesSubTab = key;
+        if (getActiveSettingsTab() === 'cost-expenses') {
+          syncLeftNavActiveClasses('cost-expenses');
+          updateUrl('cost-expenses');
+        }
       });
     }
 
