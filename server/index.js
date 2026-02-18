@@ -151,6 +151,8 @@ app.post(
 );
 app.get('/api/devices/observed', devicesRouter.getObservedDevices);
 app.get('/api/devices/report', devicesRouter.getDevicesReport);
+app.get('/api/browsers/series', require('./routes/browsers').getBrowsersSeries);
+app.get('/api/browsers/table', require('./routes/browsers').getBrowsersTable);
 app.get('/api/attribution/report', attributionRouter.getAttributionReport);
 app.get('/api/attribution/prefs', attributionRouter.getAttributionPrefs);
 app.post('/api/attribution/prefs', requireMaster.middleware, attributionRouter.postAttributionPrefs);
@@ -472,6 +474,7 @@ insightsPagesRouter.get('/abandoned-carts', (req, res) => sendPage(res, 'insight
 
 const acquisitionPagesRouter = express.Router();
 acquisitionPagesRouter.get('/attribution', (req, res) => sendPage(res, 'acquisition/attribution.html'));
+acquisitionPagesRouter.get('/browsers', (req, res) => sendPage(res, 'acquisition/browsers.html'));
 acquisitionPagesRouter.get('/devices', (req, res) => sendPage(res, 'acquisition/devices.html'));
 
 const integrationsPagesRouter = express.Router();
@@ -521,6 +524,7 @@ app.get('/payment-types', redirectWithQuery(301, '/insights/payment-types'));
 app.get('/abandoned-carts', redirectWithQuery(301, '/insights/abandoned-carts'));
 app.get('/channels', redirectWithQuery(301, '/acquisition/attribution'));
 app.get('/type', redirectWithQuery(301, '/acquisition/devices'));
+app.get('/browsers', redirectWithQuery(301, '/acquisition/browsers'));
 app.get('/ads', redirectWithQuery(301, '/integrations/google-ads'));
 app.get('/compare-conversion-rate', redirectWithQuery(301, '/tools/compare-conversion-rate'));
 app.get('/shipping-cr', redirectWithQuery(301, '/tools/shipping-cr'));
