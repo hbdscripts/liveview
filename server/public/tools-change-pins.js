@@ -544,7 +544,15 @@
     var preset = payload && payload.preset != null ? String(payload.preset).trim().toLowerCase() : '';
     var hint = '';
     if (preset === 'today') hint = 'Today compares elapsed time (00:00 → now) vs the pin day (00:00 → same time-of-day).';
-    else if (preset === 'yesterday') hint = 'Yesterday compares the full day vs the full day the pin was added.';
+    else if (preset === 'yesterday') {
+      var pinYmd = payload && payload.pin && payload.pin.event_ymd != null ? String(payload.pin.event_ymd) : '';
+      var afterYmd = payload && payload.ranges && payload.ranges.after && payload.ranges.after.start_ymd != null ? String(payload.ranges.after.start_ymd) : '';
+      if (pinYmd && afterYmd && pinYmd === afterYmd) {
+        hint = 'Pin was added yesterday, so Yesterday compares the day before yesterday vs yesterday.';
+      } else {
+        hint = 'Yesterday compares the full day of yesterday vs the full day the pin was added.';
+      }
+    }
     else if (preset === 'window') hint = 'Window compares a fixed number of days before vs after the pin date.';
 
     if (hint) {

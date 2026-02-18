@@ -564,13 +564,22 @@ async function getPinEffect(id, opts = {}) {
     };
   } else if (preset === 'yesterday') {
     const todayYmd = ymdTodayInTz(tz);
-    const ymd = todayYmd ? ymdAddDays(todayYmd, -1) : '';
-    if (!ymd) return { ok: false, error: 'invalid_yesterday' };
-    beforeKey = `d:${eventYmd}`;
-    afterKey = `d:${ymd}`;
+    const yesterdayYmd = todayYmd ? ymdAddDays(todayYmd, -1) : '';
+    if (!yesterdayYmd) return { ok: false, error: 'invalid_yesterday' };
+    let beforeYmd = eventYmd;
+    let afterYmd = yesterdayYmd;
+    // If the pin was added yesterday, comparing "pin day" vs "yesterday" is identical.
+    // In that case, compare day-before-yesterday vs yesterday so the preset still yields signal.
+    if (String(eventYmd) === String(yesterdayYmd)) {
+      const dayBeforeYesterday = ymdAddDays(yesterdayYmd, -1);
+      if (!dayBeforeYesterday) return { ok: false, error: 'invalid_yesterday_shift' };
+      beforeYmd = dayBeforeYesterday;
+    }
+    beforeKey = `d:${beforeYmd}`;
+    afterKey = `d:${afterYmd}`;
     ranges = {
-      before: { rangeKey: beforeKey, kind: 'day', start_ymd: eventYmd, end_ymd: eventYmd },
-      after: { rangeKey: afterKey, kind: 'day', start_ymd: ymd, end_ymd: ymd },
+      before: { rangeKey: beforeKey, kind: 'day', start_ymd: beforeYmd, end_ymd: beforeYmd },
+      after: { rangeKey: afterKey, kind: 'day', start_ymd: afterYmd, end_ymd: afterYmd },
     };
   } else {
     windowDays = clampInt(opts.window_days, 7, 1, 60);
