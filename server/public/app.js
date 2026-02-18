@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 7081b592b2106e05
+// checksum: 63525d064a1ae375
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -12329,10 +12329,31 @@ const API = '';
       return '<div class="cf-row"><strong>' + escapeHtml(title) + ':</strong> ' + (v ? escapeHtml(v) : '\u2014') + '</div>';
     }
 
+    function formatBrowserLabel(session) {
+      const s = session || {};
+      const key = s.ua_browser != null ? String(s.ua_browser).trim().toLowerCase() : '';
+      const vRaw = s.ua_browser_version != null ? String(s.ua_browser_version).trim() : '';
+      const version = vRaw && vRaw.length > 16 ? vRaw.slice(0, 16) : vRaw;
+      if (!key) return null;
+      const names = {
+        chrome: 'Chrome',
+        safari: 'Safari',
+        edge: 'Edge',
+        firefox: 'Firefox',
+        opera: 'Opera',
+        ie: 'Internet Explorer',
+        samsung: 'Samsung Internet',
+        other: 'Other',
+      };
+      const name = names[key] || (key ? (key.charAt(0).toUpperCase() + key.slice(1)) : '');
+      if (!name) return null;
+      return version ? (name + ' ' + version) : name;
+    }
+
     function buildSidePanelCf(session) {
       const s = session || {};
       const blocks = [
-        ['Country & Device', cfSection('Country', s.cf_country || s.country_code) + cfSection('Device', s.device)],
+        ['Country & Device', cfSection('Country', s.cf_country || s.country_code) + cfSection('Device', s.device) + cfSection('Browser', formatBrowserLabel(s))],
         ['Referrer / Entry', cfSection('Referrer', s.referrer) + cfSection('Entry URL', s.entry_url)],
         ['Colo / ASN', cfSection('Colo', s.cf_colo) + cfSection('ASN', s.cf_asn)],
         ['Bot', cfSection('Known bot', s.cf_known_bot != null ? (s.cf_known_bot === 1 ? 'Yes' : 'No') : null) + cfSection('Verified bot category', s.cf_verified_bot_category)],

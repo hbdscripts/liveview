@@ -300,6 +300,28 @@ function normalizeUaModel(v) {
   return null;
 }
 
+function normalizeUaBrowser(v) {
+  const s = trimLower(v, 24);
+  if (!s) return null;
+  if (s === 'chrome' || s === 'safari' || s === 'edge' || s === 'firefox' || s === 'opera' || s === 'ie' || s === 'samsung' || s === 'other') return s;
+  return null;
+}
+
+function normalizeUaBrowserVersion(v) {
+  const raw = typeof v === 'string' ? v.trim() : '';
+  if (!raw) return null;
+  const m = raw.match(/^\d+(?:\.\d+){0,3}$/);
+  const out = m ? m[0] : raw.replace(/[^\d.]/g, '');
+  if (!out) return null;
+  return out.length > 16 ? out.slice(0, 16) : out;
+}
+
+function normalizeCity(v) {
+  const s = typeof v === 'string' ? v.trim() : '';
+  if (!s) return null;
+  return s.length > 96 ? s.slice(0, 96) : s;
+}
+
 async function getSetting(key) {
   const db = getDb();
   const row = await db.get('SELECT value FROM settings WHERE key = ?', [key]);
@@ -399,13 +421,23 @@ async function getSession(sessionId) {
 }
 
 function parseCfContext(cfContext) {
-  if (!cfContext) return { cfKnownBot: null, cfVerifiedBotCategory: null, cfCountry: null, cfColo: null, cfAsn: null };
+  if (!cfContext) {
+    return {
+      cfKnownBot: null,
+      cfVerifiedBotCategory: null,
+      cfCountry: null,
+      cfCity: null,
+      cfColo: null,
+      cfAsn: null,
+    };
+  }
   const knownBot = cfContext.cf_known_bot;
   const cfKnownBot = knownBot === '1' || knownBot === true ? 1 : (knownBot === '0' || knownBot === false ? 0 : null);
   return {
     cfKnownBot,
     cfVerifiedBotCategory: cfContext.cf_verified_bot_category && String(cfContext.cf_verified_bot_category).trim() ? String(cfContext.cf_verified_bot_category).trim().slice(0, 128) : null,
     cfCountry: cfContext.cf_country && String(cfContext.cf_country).trim().length === 2 ? String(cfContext.cf_country).trim().toUpperCase() : null,
+    cfCity: cfContext.cf_city && String(cfContext.cf_city).trim() ? normalizeCity(String(cfContext.cf_city)) : null,
     cfColo: cfContext.cf_colo && String(cfContext.cf_colo).trim() ? String(cfContext.cf_colo).trim().slice(0, 32) : null,
     cfAsn: cfContext.cf_asn != null && String(cfContext.cf_asn).trim() ? String(cfContext.cf_asn).trim().slice(0, 32) : null,
   };
@@ -514,10 +546,14 @@ async function upsertSession(payload, visitorIsReturning, cfContext) {
   const uaDeviceType = normalizeUaDeviceType(payload.ua_device_type);
   const uaPlatform = normalizeUaPlatform(payload.ua_platform);
   const uaModel = normalizeUaModel(payload.ua_model);
+  const uaBrowser = normalizeUaBrowser(payload.ua_browser);
+  const uaBrowserVersion = normalizeUaBrowserVersion(payload.ua_browser_version);
+  const city = normalizeCity(payload.city);
 
   const cfKnownBot = cf.cfKnownBot != null ? cf.cfKnownBot : null;
   const cfVerifiedBotCategory = cf.cfVerifiedBotCategory;
   const cfCountry = cf.cfCountry;
+  const cfCity = cf.cfCity;
   const cfColo = cf.cfColo;
   const cfAsn = cf.cfAsn;
   const isReturningSession = visitorIsReturning ? 1 : 0;
@@ -538,9 +574,9 @@ async function upsertSession(payload, visitorIsReturning, cfContext) {
             referrer, entry_url,
             is_checking_out, checkout_started_at, has_purchased, purchased_at,
             is_abandoned, abandoned_at, recovered_at,
-            cf_known_bot, cf_verified_bot_category, cf_country, cf_colo, cf_asn,
+            cf_known_bot, cf_verified_bot_category, cf_country, cf_colo, cf_asn, cf_city, city,
             is_returning,
-            ua_device_type, ua_platform, ua_model,
+            ua_device_type, ua_platform, ua_model, ua_browser, ua_browser_version,
             bs_source, bs_campaign_id, bs_adgroup_id, bs_ad_id, bs_network
           )
           VALUES (
@@ -554,9 +590,9 @@ async function upsertSession(payload, visitorIsReturning, cfContext) {
             ?, ?,
             ?, ?, ?, ?,
             0, NULL, NULL,
-            ?, ?, ?, ?, ?,
+            ?, ?, ?, ?, ?, ?, ?,
             ?,
-            ?, ?, ?,
+            ?, ?, ?, ?, ?,
             ?, ?, ?, ?, ?
           )
           ON CONFLICT (session_id) DO UPDATE SET
@@ -594,9 +630,13 @@ async function upsertSession(payload, visitorIsReturning, cfContext) {
             cf_country = EXCLUDED.cf_country,
             cf_colo = EXCLUDED.cf_colo,
             cf_asn = EXCLUDED.cf_asn,
+            cf_city = COALESCE(EXCLUDED.cf_city, sessions.cf_city),
+            city = COALESCE(EXCLUDED.city, sessions.city),
             ua_device_type = COALESCE(EXCLUDED.ua_device_type, sessions.ua_device_type),
             ua_platform = COALESCE(EXCLUDED.ua_platform, sessions.ua_platform),
             ua_model = COALESCE(EXCLUDED.ua_model, sessions.ua_model),
+            ua_browser = COALESCE(EXCLUDED.ua_browser, sessions.ua_browser),
+            ua_browser_version = COALESCE(EXCLUDED.ua_browser_version, sessions.ua_browser_version),
             bs_source = COALESCE(EXCLUDED.bs_source, sessions.bs_source),
             bs_campaign_id = COALESCE(EXCLUDED.bs_campaign_id, sessions.bs_campaign_id),
             bs_adgroup_id = COALESCE(EXCLUDED.bs_adgroup_id, sessions.bs_adgroup_id),
@@ -633,10 +673,14 @@ async function upsertSession(payload, visitorIsReturning, cfContext) {
           cfCountry,
           cfColo,
           cfAsn,
+          cfCity,
+          city,
           isReturningSession,
           uaDeviceType,
           uaPlatform,
           uaModel,
+          uaBrowser,
+          uaBrowserVersion,
           bsSource,
           bsCampaignId,
           bsAdgroupId,
@@ -656,9 +700,9 @@ async function upsertSession(payload, visitorIsReturning, cfContext) {
             referrer, entry_url,
             is_checking_out, checkout_started_at, has_purchased, purchased_at,
             is_abandoned, abandoned_at, recovered_at,
-            cf_known_bot, cf_verified_bot_category, cf_country, cf_colo, cf_asn,
+            cf_known_bot, cf_verified_bot_category, cf_country, cf_colo, cf_asn, cf_city, city,
             is_returning,
-            ua_device_type, ua_platform, ua_model,
+            ua_device_type, ua_platform, ua_model, ua_browser, ua_browser_version,
             bs_source, bs_campaign_id, bs_adgroup_id, bs_ad_id
           )
           VALUES (
@@ -672,9 +716,9 @@ async function upsertSession(payload, visitorIsReturning, cfContext) {
             ?, ?,
             ?, ?, ?, ?,
             0, NULL, NULL,
-            ?, ?, ?, ?, ?,
+            ?, ?, ?, ?, ?, ?, ?,
             ?,
-            ?, ?, ?,
+            ?, ?, ?, ?, ?,
             ?, ?, ?, ?
           )
           ON CONFLICT (session_id) DO UPDATE SET
@@ -712,9 +756,13 @@ async function upsertSession(payload, visitorIsReturning, cfContext) {
             cf_country = EXCLUDED.cf_country,
             cf_colo = EXCLUDED.cf_colo,
             cf_asn = EXCLUDED.cf_asn,
+            cf_city = COALESCE(EXCLUDED.cf_city, sessions.cf_city),
+            city = COALESCE(EXCLUDED.city, sessions.city),
             ua_device_type = COALESCE(EXCLUDED.ua_device_type, sessions.ua_device_type),
             ua_platform = COALESCE(EXCLUDED.ua_platform, sessions.ua_platform),
             ua_model = COALESCE(EXCLUDED.ua_model, sessions.ua_model),
+            ua_browser = COALESCE(EXCLUDED.ua_browser, sessions.ua_browser),
+            ua_browser_version = COALESCE(EXCLUDED.ua_browser_version, sessions.ua_browser_version),
             bs_source = COALESCE(EXCLUDED.bs_source, sessions.bs_source),
             bs_campaign_id = COALESCE(EXCLUDED.bs_campaign_id, sessions.bs_campaign_id),
             bs_adgroup_id = COALESCE(EXCLUDED.bs_adgroup_id, sessions.bs_adgroup_id),
@@ -750,10 +798,14 @@ async function upsertSession(payload, visitorIsReturning, cfContext) {
           cfCountry,
           cfColo,
           cfAsn,
+          cfCity,
+          city,
           isReturningSession,
           uaDeviceType,
           uaPlatform,
           uaModel,
+          uaBrowser,
+          uaBrowserVersion,
           bsSource,
           bsCampaignId,
           bsAdgroupId,
@@ -763,14 +815,14 @@ async function upsertSession(payload, visitorIsReturning, cfContext) {
     } else {
       if (supportsBsNetwork) {
         await db.run(`
-          INSERT INTO sessions (session_id, visitor_id, started_at, last_seen, last_path, last_product_handle, first_path, first_product_handle, cart_qty, cart_value, cart_currency, order_total, order_currency, country_code, utm_campaign, utm_source, utm_medium, utm_content, utm_term, referrer, entry_url, is_checking_out, checkout_started_at, has_purchased, purchased_at, is_abandoned, abandoned_at, recovered_at, cf_known_bot, cf_verified_bot_category, cf_country, cf_colo, cf_asn, is_returning, ua_device_type, ua_platform, ua_model, bs_source, bs_campaign_id, bs_adgroup_id, bs_ad_id, bs_network)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `, [payload.session_id, payload.visitor_id, now, now, lastPath, lastProductHandle, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, normalizedCountry, utmCampaign, utmSource, utmMedium, utmContent, utmTerm, referrer, entryUrl, isCheckingOut, checkoutStartedAt, hasPurchased, purchasedAt, cfKnownBot, cfVerifiedBotCategory, cfCountry, cfColo, cfAsn, isReturningSession, uaDeviceType, uaPlatform, uaModel, bsSource, bsCampaignId, bsAdgroupId, bsAdId, bsNetwork]);
+          INSERT INTO sessions (session_id, visitor_id, started_at, last_seen, last_path, last_product_handle, first_path, first_product_handle, cart_qty, cart_value, cart_currency, order_total, order_currency, country_code, utm_campaign, utm_source, utm_medium, utm_content, utm_term, referrer, entry_url, is_checking_out, checkout_started_at, has_purchased, purchased_at, is_abandoned, abandoned_at, recovered_at, cf_known_bot, cf_verified_bot_category, cf_country, cf_colo, cf_asn, cf_city, city, is_returning, ua_device_type, ua_platform, ua_model, ua_browser, ua_browser_version, bs_source, bs_campaign_id, bs_adgroup_id, bs_ad_id, bs_network)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `, [payload.session_id, payload.visitor_id, now, now, lastPath, lastProductHandle, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, normalizedCountry, utmCampaign, utmSource, utmMedium, utmContent, utmTerm, referrer, entryUrl, isCheckingOut, checkoutStartedAt, hasPurchased, purchasedAt, cfKnownBot, cfVerifiedBotCategory, cfCountry, cfColo, cfAsn, cfCity, city, isReturningSession, uaDeviceType, uaPlatform, uaModel, uaBrowser, uaBrowserVersion, bsSource, bsCampaignId, bsAdgroupId, bsAdId, bsNetwork]);
       } else {
         await db.run(`
-          INSERT INTO sessions (session_id, visitor_id, started_at, last_seen, last_path, last_product_handle, first_path, first_product_handle, cart_qty, cart_value, cart_currency, order_total, order_currency, country_code, utm_campaign, utm_source, utm_medium, utm_content, utm_term, referrer, entry_url, is_checking_out, checkout_started_at, has_purchased, purchased_at, is_abandoned, abandoned_at, recovered_at, cf_known_bot, cf_verified_bot_category, cf_country, cf_colo, cf_asn, is_returning, ua_device_type, ua_platform, ua_model, bs_source, bs_campaign_id, bs_adgroup_id, bs_ad_id)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `, [payload.session_id, payload.visitor_id, now, now, lastPath, lastProductHandle, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, normalizedCountry, utmCampaign, utmSource, utmMedium, utmContent, utmTerm, referrer, entryUrl, isCheckingOut, checkoutStartedAt, hasPurchased, purchasedAt, cfKnownBot, cfVerifiedBotCategory, cfCountry, cfColo, cfAsn, isReturningSession, uaDeviceType, uaPlatform, uaModel, bsSource, bsCampaignId, bsAdgroupId, bsAdId]);
+          INSERT INTO sessions (session_id, visitor_id, started_at, last_seen, last_path, last_product_handle, first_path, first_product_handle, cart_qty, cart_value, cart_currency, order_total, order_currency, country_code, utm_campaign, utm_source, utm_medium, utm_content, utm_term, referrer, entry_url, is_checking_out, checkout_started_at, has_purchased, purchased_at, is_abandoned, abandoned_at, recovered_at, cf_known_bot, cf_verified_bot_category, cf_country, cf_colo, cf_asn, cf_city, city, is_returning, ua_device_type, ua_platform, ua_model, ua_browser, ua_browser_version, bs_source, bs_campaign_id, bs_adgroup_id, bs_ad_id)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `, [payload.session_id, payload.visitor_id, now, now, lastPath, lastProductHandle, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, normalizedCountry, utmCampaign, utmSource, utmMedium, utmContent, utmTerm, referrer, entryUrl, isCheckingOut, checkoutStartedAt, hasPurchased, purchasedAt, cfKnownBot, cfVerifiedBotCategory, cfCountry, cfColo, cfAsn, cfCity, city, isReturningSession, uaDeviceType, uaPlatform, uaModel, uaBrowser, uaBrowserVersion, bsSource, bsCampaignId, bsAdgroupId, bsAdId]);
       }
     }
   } else {
@@ -784,6 +836,7 @@ async function upsertSession(payload, visitorIsReturning, cfContext) {
       'order_total = COALESCE(?, order_total)',
       'order_currency = COALESCE(?, order_currency)',
       'country_code = COALESCE(?, country_code)',
+      'city = COALESCE(?, city)',
       'utm_campaign = COALESCE(?, utm_campaign)',
       'utm_source = COALESCE(?, utm_source)',
       'utm_medium = COALESCE(?, utm_medium)',
@@ -798,6 +851,8 @@ async function upsertSession(payload, visitorIsReturning, cfContext) {
       'ua_device_type = COALESCE(?, ua_device_type)',
       'ua_platform = COALESCE(?, ua_platform)',
       'ua_model = COALESCE(?, ua_model)',
+      'ua_browser = COALESCE(?, ua_browser)',
+      'ua_browser_version = COALESCE(?, ua_browser_version)',
       'bs_source = COALESCE(?, bs_source)',
       'bs_campaign_id = COALESCE(?, bs_campaign_id)',
       'bs_adgroup_id = COALESCE(?, bs_adgroup_id)',
@@ -813,6 +868,7 @@ async function upsertSession(payload, visitorIsReturning, cfContext) {
       orderTotal,
       orderCurrency,
       normalizedCountry,
+      city,
       utmCampaign,
       utmSource,
       utmMedium,
@@ -827,6 +883,8 @@ async function upsertSession(payload, visitorIsReturning, cfContext) {
       uaDeviceType,
       uaPlatform,
       uaModel,
+      uaBrowser,
+      uaBrowserVersion,
       updateBsSource,
       updateBsCampaignId,
       updateBsAdgroupId,
@@ -849,6 +907,10 @@ async function upsertSession(payload, visitorIsReturning, cfContext) {
     if (cfCountry !== undefined && cfCountry !== null) {
       setParts.push('cf_country = ?');
       params.push(cfCountry);
+    }
+    if (cfCity !== undefined && cfCity !== null) {
+      setParts.push('cf_city = ?');
+      params.push(cfCity);
     }
     if (cfColo !== undefined && cfColo !== null) {
       setParts.push('cf_colo = ?');
