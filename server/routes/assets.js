@@ -220,13 +220,13 @@ function getHeaderLogo(req, res) {
 }
 
 function getFooterLogo(req, res) {
-  const lightDir = path.join(__dirname, '..', '..', 'assets', 'logos', 'new', 'light');
+  const darkDir = path.join(__dirname, '..', '..', 'assets', 'logos', 'new', 'dark');
 
-  // Footer should use the same curated "light" logo set (avoid legacy /footer variants).
-  const files = listLogoFiles(lightDir);
+  // Footer should use dark variants only (header uses light).
+  const files = listLogoFiles(darkDir);
   const chosen = pickRandomFile(files);
-  if (!chosen) return redirectNoStore(res, '/assets/logos/new/light/1.png');
-  return redirectNoStore(res, '/assets/logos/new/light/' + encodeURIComponent(chosen));
+  if (!chosen) return redirectNoStore(res, '/assets/logos/new/dark/1.png');
+  return redirectNoStore(res, '/assets/logos/new/dark/' + encodeURIComponent(chosen));
 }
 
 module.exports = {
