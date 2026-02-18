@@ -1,0 +1,127 @@
+/* Critical above-the-fold and theme-early styles (from head-theme.html) */
+.theme-dark-early,
+.theme-dark-early body {
+  background: #1a2234;
+  color: #e2e8f0;
+}
+.kexo-desktop-nav {
+  display: none;
+}
+@media (min-width: 992px) {
+  .kexo-desktop-nav {
+    display: flex;
+  }
+  .kexo-top-navbar {
+    display: none;
+  }
+}
+.kexo-desktop-nav .kexo-nav-date-slot {
+  visibility: hidden;
+}
+:root {
+  --kexo-top-row-height: 2.65rem;
+}
+.visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+.kexo-date-bar {
+  height: 0;
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
+}
+#kexo-kpis {
+  min-height: var(--kexo-top-row-height);
+  overflow: hidden;
+  background: #fff;
+  border-bottom: 1px solid #e6e7e9;
+  box-shadow: 2px 2px 2px #eee;
+  margin: 0;
+  padding: 0 0 0 5px;
+  display: flex;
+  align-items: center;
+}
+#kexo-kpis .container-fluid {
+  width: 100%;
+  max-width: 100%;
+  padding-left: 0;
+  padding-right: 0;
+}
+#kexo-kpis .kexo-kpis-condensed-row {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  flex-wrap: nowrap;
+  padding: 12px 5px;
+}
+#kexo-kpis .kexo-kpis-condensed-strip {
+  display: flex;
+  align-items: stretch;
+  gap: var(--kexo-kpi-gap, 15px);
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+#kexo-kpis .kexo-kpis-condensed-strip::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+#kexo-kpis .kexo-kpi-chip {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 var(--kexo-kpi-width, 148px);
+  min-width: var(--kexo-kpi-min-width, 132px);
+  max-width: var(--kexo-kpi-width, 148px);
+  gap: 5px;
+  padding: 2px 6px 0 0;
+  margin: 0;
+  line-height: 1.12;
+  position: relative;
+}
+#kexo-kpis .kexo-kpi-chip .d-flex {
+  flex-wrap: nowrap;
+}
+#kexo-kpis .kexo-kpi-chip-label {
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #555;
+  white-space: nowrap;
+  line-height: 1.1;
+}
+#kexo-kpis .kexo-kpi-chip-value {
+  font-weight: 600;
+  font-size: 0.94rem;
+  line-height: 1;
+  color: #333;
+  white-space: nowrap;
+}
+#kexo-kpis .kexo-kpi-chip-delta {
+  font-size: 0.68rem;
+  font-weight: 500;
+  color: #626976;
+  gap: 0.2rem;
+  white-space: nowrap;
+  line-height: 1.1;
+}
+#kexo-kpis .kexo-kpi-chip-progress {
+  height: 4px;
+  margin: 0;
+  background: rgba(100, 116, 139, 0.16);
+}

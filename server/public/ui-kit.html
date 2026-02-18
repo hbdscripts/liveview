@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <!--#include partials/head-theme.html-->
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="icon" type="image/webp" href="/assets/logos/new/kexo.webp" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.4.0/dist/css/tabler.min.css" />
+  <link rel="stylesheet" href="/tabler-theme.css" />
+  <link rel="stylesheet" href="/custom.css" />
+  <title>Kexo · UI Kit</title>
+</head>
+<body class="" data-page="ui-kit">
+  <!--#include partials/header.html-->
+  <!--#include partials/page-body-start.html-->
+  <div class="page-header mb-3">
+    <div class="row align-items-center">
+      <div class="col">
+        <div class="page-pretitle">Reference</div>
+        <h2 class="page-title">UI Kit</h2>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-4">
+    <div class="col-12">
+      <h3 class="mb-2">Page header</h3>
+      <div class="page-header mb-3">
+        <div class="row align-items-center">
+          <div class="col">
+            <div class="page-pretitle">Pretitle</div>
+            <h2 class="page-title">Page title</h2>
+          </div>
+          <div class="col-auto ms-auto">
+            <button type="button" class="btn btn-primary">Action</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-4">
+    <div class="col-12 col-md-6">
+      <h3 class="mb-2">Basic card</h3>
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">Card title</h3>
+        </div>
+        <div class="card-body">
+          Card body content.
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-md-6">
+      <h3 class="mb-2">KPI-style card</h3>
+      <div class="card">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <div class="subheader">Metric</div>
+          </div>
+          <div class="d-flex align-items-baseline">
+            <div class="h1 mb-0 me-2">1,234</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-4">
+    <div class="col-12">
+      <h3 class="mb-2">Form rows</h3>
+      <div class="card">
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-12 col-md-6">
+              <label class="form-label">Label</label>
+              <input type="text" class="form-control" placeholder="Placeholder">
+            </div>
+            <div class="col-12 col-md-6">
+              <label class="form-label">Select</label>
+              <select class="form-select">
+                <option>Option 1</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-4">
+    <div class="col-12">
+      <h3 class="mb-2">Tabs</h3>
+      <ul class="nav nav-tabs" role="tablist">
+        <li class="nav-item" role="presentation">
+          <a href="#tab-a" class="nav-link active" data-bs-toggle="tab" role="tab">Tab A</a>
+        </li>
+        <li class="nav-item" role="presentation">
+          <a href="#tab-b" class="nav-link" data-bs-toggle="tab" role="tab">Tab B</a>
+        </li>
+      </ul>
+      <div class="tab-content">
+        <div class="tab-pane active" id="tab-a" role="tabpanel">Tab A content.</div>
+        <div class="tab-pane" id="tab-b" role="tabpanel">Tab B content.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-4">
+    <div class="col-12">
+      <h3 class="mb-2">Table with empty state</h3>
+      <div class="card">
+        <div class="card-body">
+          <div class="empty">
+            <p class="empty-title">No rows</p>
+            <p class="empty-subtitle text-secondary">Add data to see the table.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-4">
+    <div class="col-12">
+      <h3 class="mb-2">Modal example</h3>
+      <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#ui-kit-example-modal">Open modal</button>
+      <div class="modal modal-blur fade" id="ui-kit-example-modal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title">Example modal</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              Modal body. Use Tabler modal classes only.
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!--#include partials/page-body-end.html-->
+  <!--#include partials/footer.html-->
+  <script src="https://cdn.jsdelivr.net/npm/@tabler/core@1.4.0/dist/js/tabler.min.js"></script>
+</body>
+</html>

@@ -539,6 +539,7 @@ app.get('/settings', async (req, res, next) => {
   }
 });
 app.get('/upgrade', (req, res) => sendPage(res, 'upgrade.html'));
+app.get('/ui-kit', (req, res) => sendPage(res, 'ui-kit.html'));
 app.get('/admin', async (req, res, next) => {
   try {
     const isMaster = await isMasterRequest(req);

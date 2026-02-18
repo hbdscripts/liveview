@@ -14,21 +14,13 @@
   <link rel="stylesheet" href="/tabler-theme.css" />
   <link rel="stylesheet" href="/custom.css" />
   <link rel="stylesheet" href="/diagnostics-modal.css" />
-  <style>
-    body[data-page="snapshot"] .kexo-page-header-date-col {
-      display: block !important;
-    }
-    body[data-page="snapshot"] #kexo-date-display {
-      display: none !important;
-    }
-  </style>
   <title>Kexo · Snapshot</title>
 </head>
 <body class="" data-page="snapshot">
   <!--#include partials/header.html-->
   <!--#include partials/page-body-start.html-->
   <div class="page-header mb-3">
-    <div class="row align-items-center kexo-page-header-layout-triple" style="--kexo-page-header-accent: rgb(62, 179, 171);">
+    <div class="row align-items-center kexo-page-header-layout-triple kexo-page-header-accent-teal">
       <div class="col-auto kexo-page-header-left-col">
         <div class="page-pretitle"><i class="kexo-nav-svg kexo-page-header-category-icon kexo-accent-2 fa-jelly-fill fa-regular fa-chart-pie" data-icon-key="nav-toggle-breakdown" aria-hidden="true"></i>Insights</div>
       </div>
@@ -214,7 +206,7 @@
     </div>
   </div>
 
-  <div class="modal modal-blur" id="profit-rules-modal" tabindex="-1" style="display:none" aria-hidden="true">
+  <div class="modal modal-blur kexo-modal-hidden" id="profit-rules-modal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable" role="dialog" aria-modal="true" aria-label="Profit Rules">
       <div class="modal-content">
         <div class="modal-header">

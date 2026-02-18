@@ -17,28 +17,6 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
   <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js" defer></script>
   <title>Kexo · Products</title>
-  <style>
-    /* Products page fixes kept self-contained to this file. */
-    #tab-panel-products .stats-row-wrap {
-      position: relative;
-    }
-
-    /* Ensure cards never "touch" on this page, even if custom.css misses these. */
-    #tab-panel-products .stats-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 1rem;
-      align-items: stretch;
-    }
-    #tab-panel-products .stats-row > .stats-card {
-      flex: 1 1 520px;
-      min-width: min(320px, 100%);
-    }
-    #tab-panel-products .stats-row + .stats-row {
-      margin-top: 1rem;
-    }
-
-  </style>
   <script src="https://cdn.jsdelivr.net/npm/apexcharts@4.7.0/dist/apexcharts.min.js" defer></script>
 </head>
 <body class="" data-page="products">
@@ -58,7 +36,7 @@
       <h3 class="card-title">Revenue by Product</h3>
     </div>
     <div class="card-body">
-      <div class="dash-chart-wrap" id="products-chart" style="min-height:280px"></div>
+      <div class="dash-chart-wrap kexo-chart-wrap-min-280" id="products-chart"></div>
     </div>
   </div>
   <div class="stats-row-wrap">
@@ -123,7 +101,7 @@
     </div>
   </div>
   </div>
-  <div class="text-muted small mt-3 text-center w-100" id="products-hidden-tables-note" style="display:none;">Tables without sessions are hidden</div>
+  <div class="text-muted small mt-3 text-center w-100 kexo-products-hidden-note" id="products-hidden-tables-note">Tables without sessions are hidden</div>
   </div>
     <!--#include partials/page-body-end.html-->
       <!--#include partials/footer.html-->
@@ -148,7 +126,7 @@
     </div>
   </div>
 
-  <div class="modal modal-blur" id="date-custom-modal" tabindex="-1" style="display:none">
+  <div class="modal modal-blur kexo-modal-hidden" id="date-custom-modal" tabindex="-1">
     <div class="modal-dialog modal-sm modal-dialog-centered" role="dialog">
       <div class="modal-content">
         <div class="modal-header">
