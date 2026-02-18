@@ -221,14 +221,14 @@ function getHeaderLogo(req, res) {
 
 function getFooterLogo(req, res) {
   const footerDir = path.join(__dirname, '..', '..', 'assets', 'logos', 'new', 'footer');
-  const darkDir = path.join(__dirname, '..', '..', 'assets', 'logos', 'new', 'dark');
+  const lightDir = path.join(__dirname, '..', '..', 'assets', 'logos', 'new', 'light');
 
   const footerFiles = listLogoFiles(footerDir);
-  const darkFiles = footerFiles.length ? [] : listLogoFiles(darkDir);
-  const chosen = pickRandomFile(footerFiles.length ? footerFiles : darkFiles);
-  if (!chosen) return redirectNoStore(res, '/assets/logos/new/dark/1.png');
+  const lightFiles = footerFiles.length ? [] : listLogoFiles(lightDir);
+  const chosen = pickRandomFile(footerFiles.length ? footerFiles : lightFiles);
+  if (!chosen) return redirectNoStore(res, '/assets/logos/new/light/1.png');
 
-  const base = footerFiles.length ? '/assets/logos/new/footer/' : '/assets/logos/new/dark/';
+  const base = footerFiles.length ? '/assets/logos/new/footer/' : '/assets/logos/new/light/';
   return redirectNoStore(res, base + encodeURIComponent(chosen));
 }
 
