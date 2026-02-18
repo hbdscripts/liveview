@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 37de40fbb417c29f
+// checksum: 0efc6ce380a211da
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -22288,13 +22288,20 @@ const API = '';
 
   function setLogoImg(img, slot, variants) {
     if (!img || !img.getAttribute || !img.setAttribute) return;
-    if (img.getAttribute('data-kexo-logo-rotated') === '1') return;
+    if (img.getAttribute('data-kexo-logo-rotated') === '1') {
+      try {
+        img.setAttribute('data-kexo-logo-ready', '1');
+        if (img.hasAttribute && img.hasAttribute('hidden')) img.removeAttribute('hidden');
+      } catch (_) {}
+      return;
+    }
     var chosen = pickStable(slot, variants);
     if (!chosen) return;
     try {
       if (String(img.getAttribute('src') || '') !== String(chosen)) img.setAttribute('src', chosen);
       img.setAttribute('data-kexo-logo-rotated', '1');
       img.setAttribute('data-kexo-logo-ready', '1');
+      if (img.hasAttribute && img.hasAttribute('hidden')) img.removeAttribute('hidden');
     } catch (_) {}
   }
 

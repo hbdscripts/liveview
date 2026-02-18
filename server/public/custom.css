@@ -263,8 +263,8 @@ a {
   display: table !important;
   width: 100% !important;
   border-collapse: collapse !important;
-  font-size: .8125rem !important;
-  font-variant-numeric: tabular-nums;
+  font-size: 12px !important;
+  /* font-variant-numeric: tabular-nums; */
 }
 
 /* No-data block mode: hide headers/cells and show a full-width message block. */
