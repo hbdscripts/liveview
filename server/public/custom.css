@@ -1221,12 +1221,6 @@ body:not([data-page="settings"]) .table-responsive table td:first-child .country
   body:not([data-page="settings"]) .table-responsive table td:first-child .country-cell .country-name {
     display: none !important;
   }
-  /* Sticky cells with flag only: reduce min-width, center align like header */
-  body:not([data-page="settings"]) .country-table-wrap .grid-row--header .grid-cell:first-child,
-  body:not([data-page="settings"]) .country-table-wrap .grid-body .grid-row .grid-cell:first-child {
-    min-width: 56px !important;
-    text-align: center !important;
-  }
   body:not([data-page="settings"]) .country-table-wrap .grid-cell:first-child .country-cell {
     justify-content: center;
   }
@@ -4720,6 +4714,7 @@ body[data-page="snapshot"] #kexo-date-display {
     text-align: left;
     font-size: 15px;
     margin-left: 15px;
+    opacity: 0.9;
   }
   .kexo-page-header-category-icon {
     display: none;
@@ -4727,8 +4722,9 @@ body[data-page="snapshot"] #kexo-date-display {
   .kexo-page-header-title-icon {
     display: none !important;
   }
+  /* Mobile: attribution uses the arrow-only indicator, not the page icon. */
   body[data-page="attribution"] .kexo-page-header-title-icon {
-    display: inline-flex !important;
+    display: none !important;
   }
   body[data-page="attribution"] .kexo-page-title-mobile-sep {
     display: inline-flex !important;
@@ -5318,7 +5314,7 @@ body[data-page="date"] #sessions-table .grid-body .grid-row .grid-cell:nth-child
   /* Mobile: ensure page body and cards have safe padding */
   .page-body .container-fluid { padding-left: .75rem; padding-right: .75rem; }
   .page-body .card { margin-bottom: .75rem; }
-  .page-header .page-title { font-size: 1.25rem; }
+  /* Intentionally no override for .page-header .page-title here (handled elsewhere). */
 }
 
 @media (max-width: 768px) and (min-width: 577px) {
