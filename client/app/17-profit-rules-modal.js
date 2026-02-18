@@ -91,6 +91,7 @@
         includeShopifyAppBills: false,
         includePaymentFees: !!(src.integrations && src.integrations.includePaymentFees === true),
         includeKlarnaFees: !!(src.integrations && src.integrations.includeKlarnaFees === true),
+        includeShopifyTaxes: !!(src.integrations && src.integrations.includeShopifyTaxes === true),
       },
       rules: [],
     };
@@ -314,10 +315,12 @@
     var adsToggle = document.getElementById('profit-rules-include-google-ads');
     var paymentFeesToggle = document.getElementById('profit-rules-include-payment-fees');
     var klarnaFeesToggle = document.getElementById('profit-rules-include-klarna-fees');
+    var taxToggle = document.getElementById('profit-rules-include-tax');
     if (enabledToggle) enabledToggle.checked = !!(state.rulesDraft && state.rulesDraft.enabled);
     if (adsToggle) adsToggle.checked = !!(state.rulesDraft && state.rulesDraft.integrations && state.rulesDraft.integrations.includeGoogleAdsSpend);
     if (paymentFeesToggle) paymentFeesToggle.checked = !!(state.rulesDraft && state.rulesDraft.integrations && state.rulesDraft.integrations.includePaymentFees);
     if (klarnaFeesToggle) klarnaFeesToggle.checked = !!(state.rulesDraft && state.rulesDraft.integrations && state.rulesDraft.integrations.includeKlarnaFees);
+    if (taxToggle) taxToggle.checked = !!(state.rulesDraft && state.rulesDraft.integrations && state.rulesDraft.integrations.includeShopifyTaxes);
   }
 
   function readTogglesIntoDraft() {
@@ -326,14 +329,16 @@
     var adsToggle = document.getElementById('profit-rules-include-google-ads');
     var paymentFeesToggle = document.getElementById('profit-rules-include-payment-fees');
     var klarnaFeesToggle = document.getElementById('profit-rules-include-klarna-fees');
+    var taxToggle = document.getElementById('profit-rules-include-tax');
     state.rulesDraft.enabled = enabledToggle ? !!enabledToggle.checked : !!state.rulesDraft.enabled;
     if (!state.rulesDraft.integrations || typeof state.rulesDraft.integrations !== 'object') {
-      state.rulesDraft.integrations = { includeGoogleAdsSpend: false, includeShopifyAppBills: false, includePaymentFees: false, includeKlarnaFees: false };
+      state.rulesDraft.integrations = { includeGoogleAdsSpend: false, includeShopifyAppBills: false, includePaymentFees: false, includeKlarnaFees: false, includeShopifyTaxes: false };
     }
     state.rulesDraft.integrations.includeGoogleAdsSpend = adsToggle ? !!adsToggle.checked : !!state.rulesDraft.integrations.includeGoogleAdsSpend;
     state.rulesDraft.integrations.includeShopifyAppBills = false;
     state.rulesDraft.integrations.includePaymentFees = paymentFeesToggle ? !!paymentFeesToggle.checked : !!state.rulesDraft.integrations.includePaymentFees;
     state.rulesDraft.integrations.includeKlarnaFees = klarnaFeesToggle ? !!klarnaFeesToggle.checked : !!state.rulesDraft.integrations.includeKlarnaFees;
+    state.rulesDraft.integrations.includeShopifyTaxes = taxToggle ? !!taxToggle.checked : !!state.rulesDraft.integrations.includeShopifyTaxes;
   }
 
   function loadRules(force) {
