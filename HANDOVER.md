@@ -45,7 +45,7 @@ Templates under `server/public/**`; served via `sendPage()` in `server/index.js`
 - **Ingest:** `POST /api/ingest` → `server/store.js`
 - **Auth:** `server/middleware/dashboardAuth.js` (Shopify embed + OAuth cookie); `server/routes/login.js`, `oauthLogin.js`, `auth.js`, `localAuth.js`
 - **KPIs / dashboard:** `GET /api/kpis`, `/api/kpis-expanded-extra`, `/api/kexo-score`, `/api/dashboard-series`, `/api/business-snapshot`; `server/store.js`, `server/routes/dashboardSeries.js`, `server/businessSnapshotService.js`
-- **Settings:** `GET/POST /api/settings`; `GET/PUT /api/chart-settings/:chartKey` (per-chart settings; stored in same `charts_ui_config_v1` blob); `server/public/settings.html`, `settings-page.js`; chart cog opens unified modal from `client/app/18-chart-settings-builder.js`.
+- **Settings:** `GET/POST /api/settings`; `GET/PUT /api/chart-settings/:chartKey` (per-chart settings; stored in same `charts_ui_config_v1` blob). Auth: protected by `dashboardAuth` (same as `/api/settings`); writes are **not** `requireMaster`-gated today. UI: `server/public/settings.html`, `settings-page.js`; chart cog opens unified modal from `client/app/18-chart-settings-builder.js`.
 - **Frontend bundle:** `server/public/app.js` is **generated** from `client/app/*.js` via `scripts/build-app-js.js` and `client/app/manifest.txt`. After any `client/app/**` edit, run `npm run build:app`.
 
 ---
