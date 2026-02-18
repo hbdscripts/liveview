@@ -1,6 +1,7 @@
 # Kexo agent rules
 
 - **Commit + push** after every logical change group.
+- **Deploy means push**: if the user asks to deploy, do not stop at committing—**push to `origin`** (normally `main`). Railway auto-deploys from git; **push to main is sufficient** (do **not** run `railway up` manually).
 - **Push proof:** After each push run and paste output of:
   - `git rev-parse HEAD`
   - `git branch --show-current`
