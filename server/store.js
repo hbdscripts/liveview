@@ -1137,14 +1137,18 @@ async function attachSessionActionStats(sessions) {
   }
 
   const CHUNK = 200;
-  const map = new Map(); // session_id -> { actions_count, last_event_ts }
+  const map = new Map(); // session_id -> { actions_count, last_event_ts, last_action_ts }
 
   for (let start = 0; start < uniq.length; start += CHUNK) {
     const chunk = uniq.slice(start, start + CHUNK);
     if (!chunk.length) continue;
 
     let sql = `
-      SELECT session_id, COUNT(*) AS actions_count, MAX(ts) AS last_event_ts
+      SELECT
+        session_id,
+        SUM(CASE WHEN type <> 'heartbeat' THEN 1 ELSE 0 END) AS actions_count,
+        MAX(CASE WHEN type <> 'heartbeat' THEN ts END) AS last_action_ts,
+        MAX(ts) AS last_event_ts
       FROM events
       WHERE session_id IN (
     `;
@@ -1163,6 +1167,7 @@ async function attachSessionActionStats(sessions) {
       if (!sid) continue;
       map.set(sid, {
         actions_count: r.actions_count != null ? Number(r.actions_count) : 0,
+        last_action_ts: r.last_action_ts != null ? Number(r.last_action_ts) : null,
         last_event_ts: r.last_event_ts != null ? Number(r.last_event_ts) : null,
       });
     }
@@ -1173,6 +1178,7 @@ async function attachSessionActionStats(sessions) {
     if (!sid) continue;
     const stats = map.get(sid);
     s.actions_count = stats && Number.isFinite(stats.actions_count) ? Math.max(0, Math.round(stats.actions_count)) : 0;
+    s.last_action_ts = (stats && stats.last_action_ts != null && Number.isFinite(stats.last_action_ts)) ? Number(stats.last_action_ts) : null;
     s.last_event_ts = (stats && stats.last_event_ts != null && Number.isFinite(stats.last_event_ts)) ? Number(stats.last_event_ts) : null;
   }
 }

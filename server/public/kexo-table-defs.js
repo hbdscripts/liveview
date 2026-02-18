@@ -29,8 +29,8 @@
         { key: 'cart', label: 'Cart', cellClass: 'cart-value-cell', iconKey: 'table-short-cart' },
         { key: 'arrived', label: 'Arrived', iconKey: 'table-short-arrived' },
         { key: 'last_seen', label: 'Seen', iconKey: 'table-short-seen' },
-        { key: 'actions', label: 'Actions', sortable: false, cellClass: 'text-end' },
-        { key: 'exit', label: 'Exit', sortable: false, cellClass: 'text-end' },
+        { key: 'actions', label: 'Actions', sortable: false },
+        { key: 'exit', label: 'Exit', sortable: false },
         { key: 'history', label: 'Visits', iconKey: 'table-short-history' },
         { key: '', label: 'Consent (debug)', sortable: false, cellClass: 'consent-col is-hidden', iconKey: 'table-short-consent' }
       ]

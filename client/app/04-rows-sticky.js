@@ -871,9 +871,11 @@
       // Live view: still active, no meaningful "exit" yet.
       if (sessionsTotal == null && filter === 'active') return 'Live';
       var lastSeen = toMs(s && s.last_seen);
+      var lastAction = toMs(s && s.last_action_ts);
       var lastEvent = toMs(s && s.last_event_ts);
-      if (lastSeen == null || lastEvent == null) return '\u2014';
-      var delta = lastSeen - lastEvent;
+      var baseline = lastAction != null ? lastAction : lastEvent;
+      if (lastSeen == null || baseline == null) return '\u2014';
+      var delta = lastSeen - baseline;
       if (!Number.isFinite(delta) || delta < 0) return '\u2014';
       return formatExitDelta(delta);
     }
@@ -1551,8 +1553,8 @@
         <div class="grid-cell cart-value-cell" role="cell">${cartOrSaleCell}</div>
         <div class="grid-cell arrived-cell" role="cell"><span data-started="${s.started_at}">${arrivedAgo(s.started_at)}</span></div>
         <div class="grid-cell last-seen-cell" role="cell"><span data-last-seen="${s.last_seen}">${arrivedAgo(s.last_seen)}</span></div>
-        <div class="grid-cell text-end" role="cell">${escapeHtml(actionsLabel)}</div>
-        <div class="grid-cell text-end" role="cell">${escapeHtml(exitLabel)}</div>
+        <div class="grid-cell" role="cell">${escapeHtml(actionsLabel)}</div>
+        <div class="grid-cell" role="cell">${escapeHtml(exitLabel)}</div>
         <div class="grid-cell" role="cell">${visitsLabel}</div>
         <div class="grid-cell consent-debug consent-col is-hidden" role="cell">${escapeHtml(consentDebug)}</div>
       </div>`;
