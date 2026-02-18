@@ -444,7 +444,18 @@ async function upsertVisitor(payload) {
 
 async function getSession(sessionId) {
   const db = getDb();
-  return db.get('SELECT * FROM sessions WHERE session_id = ?', [sessionId]);
+  return db.get(
+    `
+    SELECT
+      s.*,
+      (SELECT payment_gateway FROM purchases p WHERE p.session_id = s.session_id ORDER BY p.purchased_at DESC LIMIT 1) AS payment_gateway,
+      (SELECT payment_method_name FROM purchases p WHERE p.session_id = s.session_id ORDER BY p.purchased_at DESC LIMIT 1) AS payment_method_name,
+      (SELECT payment_method_type FROM purchases p WHERE p.session_id = s.session_id ORDER BY p.purchased_at DESC LIMIT 1) AS payment_method_type
+    FROM sessions s
+    WHERE s.session_id = ?
+    `.trim(),
+    [sessionId]
+  );
 }
 
 function parseCfContext(cfContext) {
@@ -1322,7 +1333,10 @@ async function listSessions(filter) {
   let sql = `
     SELECT s.*, v.is_returning AS visitor_is_returning, v.returning_count,
       COALESCE(s.country_code, v.last_country) AS session_country,
-      v.device, v.network_speed
+      v.device, v.network_speed,
+      (SELECT payment_gateway FROM purchases p WHERE p.session_id = s.session_id ORDER BY p.purchased_at DESC LIMIT 1) AS payment_gateway,
+      (SELECT payment_method_name FROM purchases p WHERE p.session_id = s.session_id ORDER BY p.purchased_at DESC LIMIT 1) AS payment_method_name,
+      (SELECT payment_method_type FROM purchases p WHERE p.session_id = s.session_id ORDER BY p.purchased_at DESC LIMIT 1) AS payment_method_type
     FROM sessions s
     LEFT JOIN visitors v ON s.visitor_id = v.visitor_id
     WHERE 1=1
@@ -1859,7 +1873,10 @@ async function listSessionsByRange(rangeKey, timeZone, limit, offset) {
   const baseSql = `
     SELECT s.*, v.is_returning AS visitor_is_returning, v.returning_count,
       COALESCE(s.country_code, v.last_country) AS session_country,
-      v.device, v.network_speed
+      v.device, v.network_speed,
+      (SELECT payment_gateway FROM purchases p WHERE p.session_id = s.session_id ORDER BY p.purchased_at DESC LIMIT 1) AS payment_gateway,
+      (SELECT payment_method_name FROM purchases p WHERE p.session_id = s.session_id ORDER BY p.purchased_at DESC LIMIT 1) AS payment_method_name,
+      (SELECT payment_method_type FROM purchases p WHERE p.session_id = s.session_id ORDER BY p.purchased_at DESC LIMIT 1) AS payment_method_type
     FROM sessions s
     LEFT JOIN visitors v ON s.visitor_id = v.visitor_id
     WHERE ${timeCol} >= ${config.dbUrl ? '$1' : '?'} AND ${timeCol} < ${config.dbUrl ? '$2' : '?'}${purchasedFilterSql}

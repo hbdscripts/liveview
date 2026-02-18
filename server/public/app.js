@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: b57b6957066c127c
+// checksum: ed2222d61936bca3
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -3122,6 +3122,51 @@ const API = '';
       return '<span class="compliance-icons" aria-label="' + escapeHtml(title) + '" title="' + escapeHtml(title) + '">' + saleIcon + statusIcon + '</span>';
     }
 
+    function inferPaymentProviderKeyFromSession(s) {
+      try {
+        if (!s || !s.has_purchased) return null;
+        var candidates = [];
+        if (s.payment_method_type != null) candidates.push(String(s.payment_method_type));
+        if (s.payment_gateway != null) candidates.push(String(s.payment_gateway));
+        if (s.payment_method_name != null) candidates.push(String(s.payment_method_name));
+        for (var i = 0; i < candidates.length; i++) {
+          var raw = (candidates[i] || '').trim();
+          if (!raw) continue;
+          var low = raw.toLowerCase();
+          if (low.includes('paypal')) return 'paypal';
+          if (low.includes('apple') && low.includes('pay')) return 'applepay';
+          if (low.includes('google') && low.includes('pay')) return 'google-pay';
+          if (low.includes('klarna')) return 'klarna';
+          if (low.includes('shop') && low.includes('pay')) return 'shop-pay';
+          if (low.includes('visa')) return 'visa';
+          if (low.includes('mastercard')) return 'mastercard';
+          if (low.includes('american') && low.includes('express')) return 'americanexpress';
+          if (typeof normalizePaymentProviderKey === 'function') {
+            var k = normalizePaymentProviderKey(raw);
+            if (k) {
+              var meta = (typeof paymentProviderMeta === 'function') ? paymentProviderMeta(k) : null;
+              if (meta && meta.tablerKey) return k;
+            }
+          }
+        }
+      } catch (_) {}
+      return null;
+    }
+
+    function paymentIconHtmlForSession(s) {
+      try {
+        var k = inferPaymentProviderKeyFromSession(s);
+        if (!k) return '';
+        var meta = (typeof paymentProviderMeta === 'function') ? paymentProviderMeta(k) : null;
+        if (!meta || !meta.tablerKey) return '';
+        var cls = (typeof tablerPaymentClassName === 'function') ? tablerPaymentClassName(k) : '';
+        if (!cls) return '';
+        return '<span class="' + escapeHtml(cls + ' payment-xxs') + '" aria-label="' + escapeHtml(meta.label || '') + '" title="' + escapeHtml(meta.label || '') + '"></span>';
+      } catch (_) {
+        return '';
+      }
+    }
+
     function renderRow(s) {
       const countryCode = s.country_code || 'XX';
       const visits = (s.returning_count != null ? s.returning_count : 0) + 1;
@@ -3133,8 +3178,12 @@ const API = '';
         ? formatMoney(Math.floor(cartValueNum), s.cart_currency)
         : '');
       const saleVal = s.has_purchased ? formatMoney(s.order_total != null ? Number(s.order_total) : null, s.order_currency) : '';
+      const paymentIcon = s.has_purchased ? paymentIconHtmlForSession(s) : '';
       const cartOrSaleCell = s.has_purchased
-        ? '<span class="cart-value-sale">' + escapeHtml(saleVal) + '</span>'
+        ? ('<span class="d-inline-flex align-items-center gap-2">' +
+            '<span class="cart-value-sale">' + escapeHtml(saleVal) + '</span>' +
+            paymentIcon +
+          '</span>')
         : cartVal;
       const cached = liveComplianceMarkersCache[s.session_id];
       const hasEval = cached ? !!cached.hasEval : false;
