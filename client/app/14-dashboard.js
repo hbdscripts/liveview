@@ -1360,6 +1360,7 @@
               var rev = (idx >= 0 && idx < valuesRef.length) ? valuesRef[idx] : 0;
               var pct = (ctx && Array.isArray(ctx.series) && idx >= 0 && idx < ctx.series.length) ? Number(ctx.series[idx]) : null;
               var pctStr = (pct != null && Number.isFinite(pct)) ? pct.toFixed(1) + '%' : '\u2014';
+              try { if (idx >= 0) upsertRadialCenterLabel(idx); } catch (_) {}
               return '<div class="kexo-tooltip-card p-2"><div class="fw-semibold">' + escapeHtml(name || '') + '</div><div>Revenue: ' + escapeHtml(formatRevenue(normalizeOverviewMetric(rev)) || '\u2014') + '</div><div>Share: ' + escapeHtml(pctStr) + '</div></div>';
             }
           },
@@ -1376,6 +1377,12 @@
           upsertDashboardApexChart(chartId, chartEl, apexOpts, function() {
             try { upsertRadialCenterLabel(defaultIdx); } catch (_) {}
           });
+          try {
+            if (chartEl && !chartEl.__kexoRadialCenterLeaveBound) {
+              chartEl.__kexoRadialCenterLeaveBound = true;
+              chartEl.addEventListener('mouseleave', function () { try { upsertRadialCenterLabel(defaultIdx); } catch (_) {} });
+            }
+          } catch (_) {}
         } catch (err) {
           captureChartError(err, 'dashboardRadialBarRender', { chartId: chartId });
           console.error('[dashboard] radialBar chart render error:', chartId, err);
@@ -1646,7 +1653,7 @@
 
         var apexOpts = {
           chart: { type: 'bar', height: chartHeight, offsetY: -4, fontFamily: 'Inter, sans-serif', toolbar: { show: false }, animations: { enabled: !!(uiStyle && uiStyle.animations === true) } },
-          plotOptions: { bar: { horizontal: true, borderRadius: 0, distributed: true, barHeight: '60%', dataLabels: { hideOverflowingLabels: false } } },
+          plotOptions: { bar: { horizontal: true, borderRadius: 0, distributed: true, barHeight: '54%', dataLabels: { hideOverflowingLabels: false } } },
           series: [{ name: 'Sessions', data: values }],
           xaxis: { categories: labels, labels: { show: false } },
           yaxis: { labels: { show: false } },
@@ -1931,6 +1938,7 @@
           donut: mode === 'donut',
           pieStartAngle: -90,
           pieEndAngle: 270,
+          pieCustomScale: 0.70,
           afterRender: function(_chart, info) {
             try { upsertAttributionDonutIcons(info && info.chartEl ? info.chartEl : chartEl, topSources, info && info.values ? info.values : values); } catch (_) {}
           }
