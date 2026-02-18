@@ -123,6 +123,7 @@ function defaultChartStyleConfig() {
     dataLabels: 'auto',
     toolbar: false,
     animations: false,
+    icons: false,
     pieDonut: false,
     pieDonutSize: 66,
     pieLabelPosition: 'auto',
@@ -236,7 +237,7 @@ function defaultChartsUiConfigV1() {
       ),
       withStyle(
         { key: 'dash-chart-attribution-30d', label: 'Dashboard · Attribution (7 Days)', enabled: true, mode: 'donut', sizePercent: 70, colors: ['#4b94e4', '#3eb3ab', '#f59e34', '#8b5cf6', '#ef4444'], advancedApexOverride: {} },
-        { animations: false, pieDonut: true, pieDonutSize: 64, pieLabelPosition: 'outside', pieLabelContent: 'label', pieLabelOffset: 18 }
+        { animations: false, icons: true, pieDonut: true, pieDonutSize: 64, pieLabelPosition: 'outside', pieLabelContent: 'label', pieLabelOffset: 18 }
       ),
       withStyle({ key: 'live-online-chart', label: 'Dashboard · Live Online', enabled: true, mode: 'map-flat', colors: ['#16a34a'], advancedApexOverride: {} }),
       withStyle({ key: 'sales-overview-chart', label: 'Dashboard · Sales Trend', enabled: true, mode: 'area', colors: ['#0d9488'], advancedApexOverride: {} }),
@@ -947,6 +948,7 @@ function normalizeChartStyle(raw, fallback) {
     dataLabels: ['auto', 'on', 'off'].includes(dataLabelsRaw) ? dataLabelsRaw : String(def.dataLabels || 'auto'),
     toolbar: normalizeBool(src.toolbar, def.toolbar === true),
     animations: normalizeBool(src.animations, def.animations !== false),
+    icons: normalizeBool(src.icons, def.icons === true),
     pieDonut: normalizeBool(src.pieDonut, def.pieDonut === true),
     pieDonutSize: Math.round(parseBoundedNumber(src.pieDonutSize, def.pieDonutSize != null ? def.pieDonutSize : 66, 30, 90)),
     pieLabelPosition: ['auto', 'inside', 'outside'].includes(pieLabelPositionRaw) ? pieLabelPositionRaw : String(def.pieLabelPosition || 'auto'),

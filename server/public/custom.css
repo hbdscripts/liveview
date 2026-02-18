@@ -3311,6 +3311,18 @@ html[data-bs-theme="dark"] .report-build-wrap {
   border-radius: 2px;
   flex: 0 0 10px;
 }
+.kexo-overview-mini-legend .source-icons img,
+.kexo-overview-mini-legend .source-icons svg,
+.kexo-overview-mini-legend .source-icons i {
+  width: 16px !important;
+  height: 16px !important;
+  max-width: 16px !important;
+  max-height: 16px !important;
+}
+.kexo-overview-mini-legend .source-icons i {
+  font-size: 16px !important;
+  line-height: 16px !important;
+}
 .kexo-overview-countries-legend .kexo-overview-legend-item {
   display: inline-flex;
   align-items: center;

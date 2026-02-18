@@ -1941,38 +1941,132 @@
         var mode = (typeof chartModeFromUiConfig === 'function') ? String(chartModeFromUiConfig(chartId, 'donut') || 'donut').trim().toLowerCase() : 'donut';
         mode = validateChartType(chartId, mode, 'donut');
 
-        var flatSources = [];
+        var chartEl = document.getElementById(chartId);
+        removeAttributionIconRow(chartEl);
+        removeAttributionDonutIcons(chartEl);
+
+        var uiStyle = (typeof chartStyleFromUiConfig === 'function') ? chartStyleFromUiConfig(chartId) : null;
+        var showIcons = !!(uiStyle && uiStyle.icons === true);
+
+        function normText(v) {
+          var s = v == null ? '' : String(v);
+          return s.replace(/\s+/g, ' ').trim();
+        }
+        function isOtherLabel(v) {
+          var s = normText(v).toLowerCase();
+          return s === 'other' || s === 'unknown' || s === '(other)' || s === '(unknown)' || s === 'n/a' || s === 'na';
+        }
+        function titleCaseWords(v) {
+          var s = normText(v);
+          if (!s) return '';
+          if (/^(sms|seo|ppc|roas)$/i.test(s)) return s.toUpperCase();
+          return s.split(' ').map(function(w) {
+            if (!w) return '';
+            return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
+          }).join(' ');
+        }
+        function labelFromKey(keyRaw, fallbackLabel) {
+          var key = normText(keyRaw).toLowerCase();
+          var fb = normText(fallbackLabel);
+          if (!key) return fb || 'Other';
+          if (key.indexOf('google') >= 0 && key.indexOf('ads') >= 0) return 'Google Ads';
+          if (key.indexOf('organic') >= 0) return 'Organic';
+          if (key.indexOf('direct') >= 0) return 'Direct';
+          if (key.indexOf('email') >= 0 || key.indexOf('klaviyo') >= 0) return 'Email';
+          if (key.indexOf('affiliate') >= 0) return 'Affiliates';
+          if (key.indexOf('referral') >= 0) return 'Referral';
+          if (key.indexOf('sms') >= 0) return 'SMS';
+          if (key.indexOf('tiktok') >= 0) return 'TikTok';
+          if (key.indexOf('facebook') >= 0 || key.indexOf('meta') >= 0) return 'Meta';
+          if (key.indexOf('instagram') >= 0) return 'Instagram';
+          if (key.indexOf('pinterest') >= 0) return 'Pinterest';
+          if (key.indexOf('snap') >= 0) return 'Snapchat';
+          if (key.indexOf('bing') >= 0) return 'Bing';
+          if (key.indexOf('other') >= 0 || key.indexOf('unknown') >= 0) return 'Other';
+          var human = titleCaseWords(key.replace(/[_-]+/g, ' '));
+          return human || fb || 'Other';
+        }
+        function fallbackIconSpecForLabel(labelRaw) {
+          var s = normText(labelRaw).toLowerCase();
+          if (!s || s === 'other') return 'fa-light fa-ellipsis';
+          if (s.indexOf('google') >= 0) return 'fa-brands fa-google';
+          if (s.indexOf('meta') >= 0 || s.indexOf('facebook') >= 0) return 'fa-brands fa-facebook';
+          if (s.indexOf('instagram') >= 0) return 'fa-brands fa-instagram';
+          if (s.indexOf('tiktok') >= 0) return 'fa-brands fa-tiktok';
+          if (s.indexOf('email') >= 0) return 'fa-light fa-envelope';
+          if (s.indexOf('direct') >= 0) return 'fa-light fa-arrow-right-to-bracket';
+          if (s.indexOf('organic') >= 0) return 'fa-light fa-seedling';
+          if (s.indexOf('affiliate') >= 0) return 'fa-light fa-handshake';
+          if (s.indexOf('referral') >= 0) return 'fa-light fa-link';
+          if (s.indexOf('sms') >= 0) return 'fa-light fa-message-sms';
+          return 'fa-light fa-globe';
+        }
+
+        var byKey = {};
         rows.forEach(function(ch) {
           if (!ch || !Array.isArray(ch.sources)) return;
           (ch.sources || []).forEach(function(src) {
             if (!src) return;
             var rev = normalizeOverviewMetric(src.revenue_gbp != null ? src.revenue_gbp : src.revenue);
-            if (rev <= 0) return;
-            flatSources.push({
-              label: (src.label != null ? String(src.label) : '') || (src.source_key != null ? String(src.source_key) : ''),
-              icon_spec: src.icon_spec != null ? src.icon_spec : null,
-              revenue_gbp: rev,
-              conversion_pct: src.conversion_pct != null ? src.conversion_pct : null
-            });
+            if (!(rev > 0)) return;
+            var rawLabel = normText(src.label != null ? src.label : '');
+            var rawKey = normText(src.source_key != null ? src.source_key : '');
+            var label = rawLabel && !isOtherLabel(rawLabel) ? rawLabel : labelFromKey(rawKey, rawLabel);
+            if (isOtherLabel(label)) label = 'Other';
+            if (!label) label = 'Other';
+            var k = label.toLowerCase();
+            if (k === 'other' || isOtherLabel(k)) k = 'other';
+            var iconSpec = normText(src.icon_spec != null ? src.icon_spec : '');
+            if (!iconSpec) iconSpec = '';
+            if (!byKey[k]) byKey[k] = { key: k, label: label, icon_spec: iconSpec, revenue_gbp: 0 };
+            byKey[k].revenue_gbp += rev;
+            if (!byKey[k].icon_spec && iconSpec) byKey[k].icon_spec = iconSpec;
           });
         });
-        flatSources.sort(function(a, b) { return (b.revenue_gbp || 0) - (a.revenue_gbp || 0); });
-        var topSources = flatSources.slice(0, 5);
 
-        var chartEl = document.getElementById(chartId);
-        if (!topSources.length) {
+        var groups = Object.keys(byKey).map(function(k) { return byKey[k]; }).filter(Boolean);
+        groups.forEach(function(g) {
+          if (!g) return;
+          if (g.key === 'other') g.label = 'Other';
+          if (!g.icon_spec && showIcons) g.icon_spec = fallbackIconSpecForLabel(g.label);
+        });
+        groups.sort(function(a, b) { return (b.revenue_gbp || 0) - (a.revenue_gbp || 0); });
+
+        var other = null;
+        for (var oi = 0; oi < groups.length; oi++) {
+          if (groups[oi] && groups[oi].key === 'other') { other = groups[oi]; break; }
+        }
+        var main = groups.filter(function(g) { return g && g.key !== 'other'; });
+        var keep = main.slice(0, 4);
+        var remainder = main.slice(4);
+        if (remainder.length) {
+          if (!other) other = { key: 'other', label: 'Other', icon_spec: showIcons ? fallbackIconSpecForLabel('Other') : '', revenue_gbp: 0 };
+          remainder.forEach(function(g) { other.revenue_gbp += (g && g.revenue_gbp) ? g.revenue_gbp : 0; });
+        }
+        if (other && (other.revenue_gbp || 0) > 0) keep.push(other);
+        var finalSources = keep.filter(function(g) { return g && (g.revenue_gbp || 0) > 0; }).slice(0, 5);
+
+        if (!finalSources.length) {
           renderOverviewChartEmpty(chartId, 'No attribution data');
-          removeAttributionIconRow(chartEl);
-          removeAttributionDonutIcons(chartEl);
-          renderOverviewMiniLegend(chartId, [], []);
+          try {
+            var legendHost = document.querySelector('[data-overview-legend="' + chartId + '"]');
+            if (legendHost) legendHost.innerHTML = '';
+          } catch (_) {}
           return;
         }
-
-        removeAttributionIconRow(chartEl);
-        removeAttributionDonutIcons(chartEl);
-
-        var labels = topSources.map(function(s) { return s.label || ''; });
-        var values = topSources.map(function(s) { return s.revenue_gbp || 0; });
+        var labels = finalSources.map(function(s) { return s && s.label ? String(s.label) : ''; });
+        var values = finalSources.map(function(s) { return s && s.revenue_gbp ? s.revenue_gbp : 0; });
+        try {
+          var legendHost2 = document.querySelector('[data-overview-legend="' + chartId + '"]');
+          if (legendHost2) {
+            legendHost2.innerHTML = finalSources.map(function(s) {
+              var lbl = s && s.label ? String(s.label) : '';
+              var spec = s && s.icon_spec ? String(s.icon_spec) : '';
+              var icon = (showIcons && spec) ? attributionIconSpecToHtml(spec, lbl) : '';
+              return '<span class="kexo-overview-mini-legend-item">' + icon + '<span class="kexo-overview-legend-label">' + escapeHtml(lbl || 'Other') + '</span></span>';
+            }).join('');
+          }
+        } catch (_) {}
         renderOverviewPieChart(chartId, labels, values, {
           colors: ['#4b94e4', '#3eb3ab', '#f59e34', '#8b5cf6', '#ef4444'],
           valueFormatter: function(v) { return formatRevenue(normalizeOverviewMetric(v)) || '\u2014'; },
@@ -1983,11 +2077,9 @@
           pieStartAngle: -90,
           pieEndAngle: 270,
           pieCustomScale: 0.70,
-          afterRender: function(_chart, info) {
-            try { upsertAttributionDonutIcons(info && info.chartEl ? info.chartEl : chartEl, topSources, info && info.values ? info.values : values); } catch (_) {}
-          }
+          afterRender: null
         });
-        renderOverviewMiniLegend(chartId, [], []);
+        try { scheduleOverviewHeightSync(); } catch (_) {}
       }
 
       function setOverviewSalesRunningTotals(revenueTotal, costTotal, profitTotal) {

@@ -3862,6 +3862,7 @@
         dataLabels: 'auto',
         toolbar: false,
         animations: false,
+        icons: false,
         pieDonut: false,
         pieDonutSize: 66,
         pieLabelPosition: 'auto',
@@ -3882,6 +3883,7 @@
       if (pieLabelPosition !== 'auto' && pieLabelPosition !== 'inside' && pieLabelPosition !== 'outside') pieLabelPosition = def.pieLabelPosition;
       var pieLabelContent = String(src.pieLabelContent != null ? src.pieLabelContent : def.pieLabelContent).trim().toLowerCase();
       if (pieLabelContent !== 'percent' && pieLabelContent !== 'label' && pieLabelContent !== 'label_percent') pieLabelContent = def.pieLabelContent;
+      var icons = (src.icons === true) ? true : (src.icons === false) ? false : (def.icons === true);
       function n(v, fb, min, max) {
         var x = Number(v);
         if (!Number.isFinite(x)) x = Number(fb);
@@ -3900,6 +3902,7 @@
         dataLabels: dataLabels,
         toolbar: !!src.toolbar,
         animations: src.animations === true,
+        icons: icons,
         pieDonut: !!src.pieDonut,
         pieDonutSize: Math.round(n(src.pieDonutSize, def.pieDonutSize, 30, 90)),
         pieLabelPosition: pieLabelPosition,

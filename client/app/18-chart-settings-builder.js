@@ -185,6 +185,8 @@
         if (!Number.isFinite(size) || size < 25 || size > 100) size = 100;
         size = Math.round(size / 5) * 5;
         var animations = !(s.style && s.style.animations === false);
+        var supportsIcons = !!(meta && meta.capabilities && meta.capabilities.icons === true);
+        var iconsEnabled = supportsIcons ? !!(s.style && s.style.icons === true) : false;
         var isOverview = chartKey === 'dash-chart-overview-30d';
         var colors = (s.colors && Array.isArray(s.colors)) ? s.colors : (meta.series && meta.series.length ? ['#3eb3ab', '#ef4444', '#2fb344', '#d63939'].slice(0, meta.series.length) : ['#3eb3ab']);
         var rev = (isOverview && colors[0]) ? colors[0] : '#3eb3ab';
@@ -201,6 +203,9 @@
         }
         body += '</select></div>';
         body += '<div class="col-12"><label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-cs-field="animations"' + (animations ? ' checked' : '') + '><span class="form-check-label ms-2">Animations</span></label></div>';
+        if (supportsIcons) {
+          body += '<div class="col-12"><label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-cs-field="icons"' + (iconsEnabled ? ' checked' : '') + '><span class="form-check-label ms-2">Icons</span></label><div class="form-hint">Show source icons in the chart legend.</div></div>';
+        }
         if (isOverview) {
           body += '<div class="col-12"><label class="form-label">Colours</label><div class="row g-2">';
           body += '<div class="col-6 col-md-3"><label class="form-label small">Revenue</label><input type="text" class="form-control form-control-sm" data-cs-field="color-revenue" value="' + escapeHtml(rev) + '" placeholder="#3eb3ab"></div>';
@@ -219,11 +224,18 @@
           var modeEl = bodyEl.querySelector('[data-cs-field="mode"]');
           var sizeEl = bodyEl.querySelector('[data-cs-field="sizePercent"]');
           var animEl = bodyEl.querySelector('[data-cs-field="animations"]');
+          var iconsEl = supportsIcons ? bodyEl.querySelector('[data-cs-field="icons"]') : null;
+          var styleBase = {};
+          try {
+            if (s && s.style && typeof s.style === 'object') styleBase = Object.assign({}, s.style);
+          } catch (_) { styleBase = {}; }
+          styleBase.animations = !!(animEl && animEl.checked);
+          if (supportsIcons) styleBase.icons = !!(iconsEl && iconsEl.checked);
           var out = {
             key: chartKey,
             mode: (modeEl && modeEl.value) ? String(modeEl.value).trim().toLowerCase() : mode,
             sizePercent: sizeEl ? parseInt(sizeEl.value, 10) : 100,
-            style: { animations: !!(animEl && animEl.checked) },
+            style: styleBase,
             colors: (s.colors && Array.isArray(s.colors)) ? s.colors.slice() : (meta.series && meta.series.length ? ['#3eb3ab', '#ef4444', '#2fb344', '#d63939'].slice(0, meta.series.length) : ['#3eb3ab']),
           };
           if (isOverview) {
