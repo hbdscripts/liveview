@@ -72,7 +72,7 @@ const adminNotesApi = require('./routes/adminNotes');
 const { getBrowserRegistryPayload } = require('./shared/icon-registry');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = config.port;
 
 function warnBackgroundFailure(tag, err) {
   try {
@@ -326,18 +326,7 @@ function isLoggedIn(req) {
 // Static assets are cached aggressively in some embed contexts (e.g. Shopify admin + CDN).
 // Version local CSS/JS URLs in rendered HTML so deploys don't produce "new HTML + old JS/CSS" mismatches.
 const ASSET_VERSION = (() => {
-  try {
-    const envCommit = String(
-      process.env.RAILWAY_GIT_COMMIT_SHA ||
-      process.env.RAILWAY_GIT_COMMIT_HASH ||
-      process.env.GIT_COMMIT ||
-      process.env.COMMIT_SHA ||
-      process.env.SOURCE_VERSION ||
-      ''
-    ).trim();
-    if (envCommit) return envCommit.slice(0, 12);
-  } catch (_) {}
-
+  if (config.assetVersion) return config.assetVersion;
   try {
     const base = path.join(__dirname, 'public');
     const files = [
@@ -389,9 +378,7 @@ function applyAssetVersionToHtml(html) {
 
 // Simple server-side include: <!--#include partials/header.html-->
 const _includeCache = {};
-const _includeCacheEnabled =
-  process.env.NODE_ENV === 'production' &&
-  !(process.env.INCLUDE_CACHE === '0' || process.env.INCLUDE_CACHE === 'false');
+const _includeCacheEnabled = config.nodeEnv === 'production' && config.includeCache;
 
 function safeResolveIncludePath(file) {
   const rel = file != null ? String(file).trim() : '';
@@ -794,7 +781,7 @@ async function migrateAndStart() {
     // Best-effort fraud catch-up: if purchases were backfilled/reconciled from evidence, ensure
     // we also have fraud_evaluations rows so the drawer can show a score (fail-open).
     setTimeout(() => {
-      if (process.env.DISABLE_FRAUD_BACKFILL === '1' || process.env.DISABLE_FRAUD_BACKFILL === 'true') return;
+      if (config.disableFraudBackfill) return;
       try {
         const fraudBackfill = require('./fraud/backfillFromEvidence');
         fraudBackfill.runOnce({ reason: 'startup' }).catch((err) => {
@@ -805,7 +792,7 @@ async function migrateAndStart() {
 
     // Warm long-range Shopify truth in the background so 7/14/30d reports are instant from our DB.
     (function warmSalesTruthRanges() {
-      if (process.env.DISABLE_SCHEDULED_TRUTH_SYNC === '1' || process.env.DISABLE_SCHEDULED_TRUTH_SYNC === 'true') return;
+      if (config.disableScheduledTruthSync) return;
       let inFlight = false;
       async function runOnce(rangeKey) {
         if (inFlight) return;
@@ -836,7 +823,7 @@ async function migrateAndStart() {
 
     // Daily backups (fail-open). Retain last 7.
     (function scheduleDailyBackups() {
-      if (process.env.DISABLE_SCHEDULED_BACKUPS === '1' || process.env.DISABLE_SCHEDULED_BACKUPS === 'true') return;
+      if (config.disableScheduledBackups) return;
       const DAY_MS = 24 * 60 * 60 * 1000;
       const TABLES = ['orders_shopify', 'purchases', 'purchase_events', 'sessions'];
       async function runOnce() {
@@ -879,7 +866,7 @@ setInterval(() => {
 
 // Ads spend sync runs in the background so the Ads table can refresh without wiping UI.
 (function scheduleAdsSync() {
-  if (process.env.DISABLE_SCHEDULED_ADS_SYNC === '1' || process.env.DISABLE_SCHEDULED_ADS_SYNC === 'true') return;
+  if (config.disableScheduledAdsSync) return;
 
   const store = require('./store');
   const { syncGoogleAdsSpendHourly, syncGoogleAdsGeoDaily, syncGoogleAdsDeviceDaily, backfillCampaignIdsFromGclid } = require('./ads/googleAdsSpendSync');
@@ -1071,7 +1058,7 @@ setInterval(() => {
 
 // Google Ads postback: UploadClickConversions for Revenue/Profit (default off; enable in settings).
 (function schedulePostbackSync() {
-  if (process.env.DISABLE_SCHEDULED_POSTBACK === '1' || process.env.DISABLE_SCHEDULED_POSTBACK === 'true') return;
+  if (config.disableScheduledPostback) return;
   const POSTBACK_MS = 5 * 60 * 1000;
   let postbackInFlight = false;
   async function runPostbackOnce() {

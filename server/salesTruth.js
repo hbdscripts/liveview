@@ -1081,9 +1081,7 @@ async function getReconcileState(shop, scope) {
 }
 
 function reconcileMinIntervalMs(scope) {
-  const v = process.env.SALES_TRUTH_RECONCILE_MIN_INTERVAL_SECONDS;
-  const n = v != null ? parseInt(String(v), 10) : NaN;
-  const baseSeconds = Number.isFinite(n) && n > 0 ? n : 90;
+  const baseSeconds = config.salesTruthReconcileMinIntervalSeconds;
   const baseMs = baseSeconds * 1000;
 
   const s = scope != null ? String(scope).trim().toLowerCase() : '';

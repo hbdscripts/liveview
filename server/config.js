@@ -145,6 +145,38 @@ const config = {
   reportCacheRetentionDays: getInt('REPORT_CACHE_RETENTION_DAYS', 30),
   auditLogRetentionDays: getInt('AUDIT_LOG_RETENTION_DAYS', 90),
   reconcileSnapshotsRetentionDays: getInt('RECONCILE_SNAPSHOTS_RETENTION_DAYS', 365),
+  /** Server port (default 3000). */
+  port: getInt('PORT', 3000),
+  /** NODE_ENV (development | production | test). */
+  nodeEnv: getEnv('NODE_ENV', 'development'),
+  /** When true (and nodeEnv is production), send Cache-Control headers for static assets. Set INCLUDE_CACHE=0 to disable. */
+  includeCache: (function () {
+    if (getEnv('NODE_ENV', 'development') !== 'production') return false;
+    const v = getEnv('INCLUDE_CACHE', '1');
+    return v !== '0' && v !== 'false';
+  })(),
+  /** Asset version for HTML ?v= (Railway/Git/commit env). */
+  assetVersion: (function () {
+    return (
+      getEnv('RAILWAY_GIT_COMMIT_SHA', '') ||
+      getEnv('RAILWAY_GIT_COMMIT_HASH', '') ||
+      getEnv('GIT_COMMIT', '') ||
+      getEnv('COMMIT_SHA', '') ||
+      getEnv('SOURCE_VERSION', '') ||
+      ''
+    ).trim().slice(0, 12) || undefined;
+  })(),
+  /** Disable scheduled jobs when set to 1 or true. */
+  disableFraudBackfill: getBool('DISABLE_FRAUD_BACKFILL', false),
+  disableScheduledTruthSync: getBool('DISABLE_SCHEDULED_TRUTH_SYNC', false),
+  disableScheduledBackups: getBool('DISABLE_SCHEDULED_BACKUPS', false),
+  disableScheduledAdsSync: getBool('DISABLE_SCHEDULED_ADS_SYNC', false),
+  disableScheduledPostback: getBool('DISABLE_SCHEDULED_POSTBACK', false),
+  /** Sales truth reconcile cadence for "today" (seconds). 60–120 recommended. */
+  salesTruthReconcileMinIntervalSeconds: getInt('SALES_TRUTH_RECONCILE_MIN_INTERVAL_SECONDS', 90),
+  /** Debug perf: when 1, dashboard-series can send timing to external ingest. */
+  kexoDebugPerf: getEnv('KEXO_DEBUG_PERF', '') === '1',
+  kexoDebugPerfRunId: (getEnv('KEXO_DEBUG_PERF_RUN_ID', '') || '').trim().slice(0, 32) || 'baseline',
 };
 
 module.exports = config;

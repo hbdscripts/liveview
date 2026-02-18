@@ -673,7 +673,7 @@ async function getDashboardSeries(req, res) {
   }
 
   try {
-    const _dbgOn = process.env.KEXO_DEBUG_PERF === '1';
+    const _dbgOn = config.kexoDebugPerf;
     const _t0 = _dbgOn ? Date.now() : 0;
     const rangeEnd = rangeKey ? bounds.end : now;
     const rangeEndForCache = (rangeKey === 'today' || rangeKey === 'yesterday' || endMs != null) && Number.isFinite(rangeEnd)
@@ -697,7 +697,7 @@ async function getDashboardSeries(req, res) {
     if (_dbgOn) {
       const ms = Math.max(0, Date.now() - (_t0 || 0));
       // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/a370db6d-7333-4112-99f8-dd4bc899a89b',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'server/routes/dashboardSeries.js:getDashboardSeries',message:'dashboard series served',data:{ms_total:ms,cacheHit:!!(cached&&cached.cacheHit),rangeKey:rangeKey||'',bucket:bucketHint||'',days:days,force:!!force,endMs:endMs!=null?Number(endMs):null},timestamp:Date.now(),runId:process.env.KEXO_DEBUG_PERF_RUN_ID?String(process.env.KEXO_DEBUG_PERF_RUN_ID).slice(0,32):'baseline',hypothesisId:'H4'} )}).catch(()=>{});
+      fetch('http://127.0.0.1:7242/ingest/a370db6d-7333-4112-99f8-dd4bc899a89b',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'server/routes/dashboardSeries.js:getDashboardSeries',message:'dashboard series served',data:{ms_total:ms,cacheHit:!!(cached&&cached.cacheHit),rangeKey:rangeKey||'',bucket:bucketHint||'',days:days,force:!!force,endMs:endMs!=null?Number(endMs):null},timestamp:Date.now(),runId:config.kexoDebugPerfRunId,hypothesisId:'H4'} )}).catch(()=>{});
       // #endregion
     }
     res.json(cached && cached.ok ? cached.data : { series: [], topProducts: [], topCountries: [], trendingUp: [], trendingDown: [] });

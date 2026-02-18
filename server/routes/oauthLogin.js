@@ -28,7 +28,7 @@ const scopes = config.shopify.scopes || 'read_products,read_orders,read_all_orde
 function setOauthCookie(res, value) {
   const maxAge = SESSION_HOURS * 60 * 60;
   let set = `${OAUTH_COOKIE_NAME}=${encodeURIComponent(value)}; Path=/; Max-Age=${maxAge}; SameSite=lax; HttpOnly`;
-  if (process.env.NODE_ENV === 'production') set += '; Secure';
+  if (config.nodeEnv === 'production') set += '; Secure';
   res.setHeader('Set-Cookie', set);
 }
 

@@ -319,7 +319,7 @@ function allow(req) {
   }
   // No Google configured: allow only in non-production (e.g. local dev).
   // In production, fail-closed for direct visits (still allows Shopify Admin embeds above).
-  if (process.env.NODE_ENV === 'production') return false;
+  if (config.nodeEnv === 'production') return false;
   return true;
 }
 

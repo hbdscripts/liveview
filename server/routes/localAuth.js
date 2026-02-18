@@ -90,7 +90,7 @@ function setOauthCookie(res, value, maxAgeSecOverride) {
     ? Math.trunc(Number(maxAgeSecOverride))
     : (dashboardAuth.SESSION_HOURS * 60 * 60);
   let set = `${dashboardAuth.OAUTH_COOKIE_NAME}=${encodeURIComponent(value)}; Path=/; Max-Age=${maxAge}; SameSite=lax; HttpOnly`;
-  if (process.env.NODE_ENV === 'production') set += '; Secure';
+  if (config.nodeEnv === 'production') set += '; Secure';
   res.setHeader('Set-Cookie', set);
 }
 

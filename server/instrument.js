@@ -11,7 +11,7 @@ if (config.sentryDsn && config.sentryDsn.trim() !== '') {
   const Sentry = require('@sentry/node');
   Sentry.init({
     dsn: config.sentryDsn,
-    environment: process.env.NODE_ENV || 'development',
+    environment: config.nodeEnv,
     tracesSampleRate: 0.2,
     maxBreadcrumbs: 100,
     sendDefaultPii: false,

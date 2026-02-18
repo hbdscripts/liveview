@@ -868,7 +868,7 @@ async function configStatus(req, res, next) {
     configDisplay,
     app: {
       version: pkg.version || '0.0.0',
-      nodeEnv: process.env.NODE_ENV || 'development',
+      nodeEnv: config.nodeEnv,
       sentryConfigured: !!(config.sentryDsn && config.sentryDsn.trim()),
     },
     shopify: {

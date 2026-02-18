@@ -288,7 +288,7 @@ async function handleGetLogin(req, res) {
     ? queryShop
     : (config.allowedShopDomain || '');
   // Local dev: if Google isn't configured, jump straight to dashboard overview (auth middleware allows).
-  if (!hasGoogle && process.env.NODE_ENV !== 'production') {
+  if (!hasGoogle && config.nodeEnv !== 'production') {
     return res.redirect(302, '/dashboard/overview');
   }
 
