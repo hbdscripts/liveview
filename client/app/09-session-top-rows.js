@@ -93,6 +93,22 @@
       el.className = 'form-hint ' + (ok ? 'text-success' : 'text-danger');
     }
 
+    function edgeBlocksButtonHtml(count, rangeKey) {
+      var label = '\u2014';
+      try {
+        if (count != null && typeof fmtSessions === 'function') label = fmtSessions(count);
+        else if (count != null) label = String(count);
+      } catch (_) { label = count != null ? String(count) : '\u2014'; }
+      var rk = (rangeKey && String(rangeKey).trim().toLowerCase() === '7d') ? '7d' : '24h';
+      return (
+        '<button type="button" class="btn btn-link p-0 kexo-edge-blocks-open-btn" data-edge-blocks-range="' +
+        escapeHtml(rk) +
+        '" disabled aria-disabled="true" title="Admin only">' +
+        escapeHtml(label) +
+        '</button>'
+      );
+    }
+
     function reconcileSalesTruth(options = {}) {
       const btn = document.getElementById('config-reconcile-btn');
       if (btn) {
@@ -758,7 +774,7 @@
             kvTable([
               ['Sessions (human, ' + overviewLabel + ')', fmtSessions(overviewKexoSessions)],
               ['CR% (truth, ' + overviewLabel + ')', fmtPct(overviewKexoCr)],
-              ['Bots blocked (' + overviewLabel + ')', overviewBotsBlocked != null ? fmtSessions(overviewBotsBlocked) : '\u2014'],
+              ['Bots blocked (' + overviewLabel + ')', overviewBotsBlocked != null ? edgeBlocksButtonHtml(overviewBotsBlocked, '24h') : '\u2014'],
               ['Orders (paid, ' + overviewLabel + ')', overviewTruthOrders != null ? escapeHtml(String(overviewTruthOrders)) : '\u2014'],
               ['Revenue (paid, ' + overviewLabel + ')', fmtRevenue(overviewTruthRevenue)],
             ])
@@ -1146,7 +1162,7 @@
                 cmpHtml +=     '<div class="kpi-compare-metrics">' +
                                  compareMetric('CR% (truth)', fmtPct(kexoCr)) +
                                  compareMetric('Sessions (human, today)', fmtSessions(kexoSessionsToday)) +
-                                 compareMetric('Bots blocked (today)', botsBlockedToday != null ? fmtSessions(botsBlockedToday) : '\u2014') +
+                                 compareMetric('Bots blocked (today)', botsBlockedToday != null ? edgeBlocksButtonHtml(botsBlockedToday, '24h') : '\u2014') +
                                  compareMetric('Bot-tagged (today)', botsTaggedToday != null ? fmtSessions(botsTaggedToday) : '\u2014') +
                                '</div>';
                 cmpHtml +=   '</div>';

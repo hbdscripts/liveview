@@ -166,6 +166,20 @@ const config = {
       ''
     ).trim().slice(0, 12) || undefined;
   })(),
+  /** Full git SHA for /api/version deploy proof (prefer explicit GIT_SHA when provided). */
+  gitSha: (function () {
+    const v = (
+      getEnv('GIT_SHA', '') ||
+      getEnv('RAILWAY_GIT_COMMIT_SHA', '') ||
+      getEnv('RAILWAY_GIT_COMMIT_HASH', '') ||
+      getEnv('GIT_COMMIT', '') ||
+      getEnv('COMMIT_SHA', '') ||
+      getEnv('SOURCE_VERSION', '') ||
+      ''
+    ).trim();
+    // Safety: avoid unexpectedly huge envs.
+    return v ? v.slice(0, 64) : '';
+  })(),
   /** Disable scheduled jobs when set to 1 or true. */
   disableFraudBackfill: getBool('DISABLE_FRAUD_BACKFILL', false),
   disableScheduledTruthSync: getBool('DISABLE_SCHEDULED_TRUTH_SYNC', false),

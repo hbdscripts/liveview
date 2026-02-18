@@ -31,6 +31,7 @@ All runtime env is read in `server/config.js`; server code should use `config.*`
 - **Time windows:** `ACTIVE_WINDOW_MINUTES`, `LIVE_ARRIVED_WINDOW_MINUTES`, `RECENT_WINDOW_MINUTES`, `SESSION_TTL_MINUTES`, `SESSION_RETENTION_DAYS`, `ABANDONED_WINDOW_MINUTES`, `CHECKOUT_STARTED_WINDOW_MINUTES`, etc.
 - **DB:** `DB_URL` (Postgres; empty = SQLite), `SQLITE_DB_PATH`, `ADS_DB_URL`
 - **Sentry:** `SENTRY_DSN` (optional)
+- **Deploy proof:** `GIT_SHA` (optional; full git commit SHA returned by `/api/version` as `git_sha`). In production on Railway, set this as a Variable (or rely on Railway-provided `RAILWAY_GIT_COMMIT_SHA`, which the app uses as a fallback).
 - **Fraud:** `FRAUD_IP_SALT`, `FRAUD_AI_ENABLED`, `OPENAI_API_KEY`
 - **Kexo Score AI:** `KEXO_AI_ENABLED`, `KEXO_AI_MODEL`
 - **OAuth (direct visit):** `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `OAUTH_COOKIE_SECRET`, `ALLOWED_GOOGLE_EMAILS`

@@ -73,6 +73,14 @@ function countryFromIp(ip) {
   return geo && typeof geo.country === 'string' && geo.country.length === 2 ? geo.country : null;
 }
 
+function cityFromIp(ip) {
+  if (!geoip || !ip || ip === '::1' || ip === '127.0.0.1') return null;
+  const geo = geoip.lookup(ip);
+  const city = geo && typeof geo.city === 'string' ? geo.city.trim() : '';
+  if (!city) return null;
+  return city.length <= 96 ? city : city.slice(0, 96);
+}
+
 function getVisitorCountry(req) {
   const worker = countryFromWorker(req);
   if (worker) return worker;
@@ -138,20 +146,60 @@ function parseTrafficTypeFromUserAgent(req) {
   return { uaDeviceType, uaPlatform, uaModel };
 }
 
+function parseBrowserFromUserAgent(req) {
+  const ua = (req.get('user-agent') || req.get('User-Agent') || '').trim();
+  if (!ua) return null;
+  const s = ua;
+
+  function m(re) {
+    const out = s.match(re);
+    return out && out[1] ? String(out[1]).trim() : '';
+  }
+
+  // Order matters: many browsers include "Safari" tokens.
+  const edge = m(/\bEdgA?iOS?\/([0-9.]+)/) || m(/\bEdg\/([0-9.]+)/);
+  if (edge) return { uaBrowser: 'edge', uaBrowserVersion: edge };
+
+  const opera = m(/\bOPR\/([0-9.]+)/) || m(/\bOpera\/([0-9.]+)/);
+  if (opera) return { uaBrowser: 'opera', uaBrowserVersion: opera };
+
+  const firefox = m(/\bFxiOS\/([0-9.]+)/) || m(/\bFirefox\/([0-9.]+)/);
+  if (firefox) return { uaBrowser: 'firefox', uaBrowserVersion: firefox };
+
+  const samsung = m(/\bSamsungBrowser\/([0-9.]+)/);
+  if (samsung) return { uaBrowser: 'samsung', uaBrowserVersion: samsung };
+
+  const chrome = m(/\bCriOS\/([0-9.]+)/) || m(/\bChrome\/([0-9.]+)/);
+  if (chrome) return { uaBrowser: 'chrome', uaBrowserVersion: chrome };
+
+  const ie = m(/\bMSIE\s+([0-9.]+)/) || m(/\brv:([0-9.]+)\)\s+like Gecko/i);
+  if (ie) return { uaBrowser: 'ie', uaBrowserVersion: ie };
+
+  const safari = m(/\bVersion\/([0-9.]+).*Safari\//);
+  if (safari) return { uaBrowser: 'safari', uaBrowserVersion: safari };
+
+  // Best-effort: presence-only (no reliable version token).
+  if (/\bSafari\//.test(s)) return { uaBrowser: 'safari', uaBrowserVersion: '' };
+
+  return null;
+}
+
 /** Build CF context from Worker-added headers (Phase 2). Keys match parseCfContext in store. */
 function getCfContextFromRequest(req) {
   const knownBot = req.get('x-cf-known-bot');
   const category = req.get('x-cf-verified-bot-category');
   const country = req.get('x-cf-country');
+  const city = req.get('x-cf-city');
   const colo = req.get('x-cf-colo');
   const asn = req.get('x-cf-asn');
-  if (knownBot === undefined && category === undefined && country === undefined && colo === undefined && asn === undefined) {
+  if (knownBot === undefined && category === undefined && country === undefined && city === undefined && colo === undefined && asn === undefined) {
     return null;
   }
   return {
     cf_known_bot: knownBot,
     cf_verified_bot_category: category,
     cf_country: country,
+    cf_city: city,
     cf_colo: colo,
     cf_asn: asn,
   };
@@ -225,6 +273,11 @@ function ingestRouter(req, res, next) {
     payload.ua_platform = trafficType.uaPlatform;
     if (trafficType.uaModel) payload.ua_model = trafficType.uaModel;
   }
+  const browser = parseBrowserFromUserAgent(req);
+  if (browser) {
+    payload.ua_browser = browser.uaBrowser;
+    if (browser.uaBrowserVersion) payload.ua_browser_version = browser.uaBrowserVersion;
+  }
   // Capture Cloudflare/Worker "Referer" (the page URL that triggered ingest) on entry.
   const requestReferer = (req.get('x-request-referer') || req.get('referer') || '').trim().slice(0, 2048);
   // IMPORTANT: do not overwrite the pixel-provided entry_url.
@@ -239,6 +292,10 @@ function ingestRouter(req, res, next) {
   }
 
   const cfContext = getCfContextFromRequest(req);
+  if ((!cfContext || !cfContext.cf_city || !String(cfContext.cf_city).trim()) && !payload.city) {
+    const ipCity = cityFromIp(getClientIp(req));
+    if (ipCity) payload.city = ipCity;
+  }
   store.upsertVisitor(payload)
     .then(({ isReturning } = {}) => store.upsertSession(payload, isReturning, cfContext))
     .then(() => {
