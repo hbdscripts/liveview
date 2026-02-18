@@ -5421,6 +5421,20 @@ body[data-bs-theme="dark"] .kexo-upgrade-locked .kexo-upgrade-lock-overlay {
 .settings-attribution-panel.active { display: block; }
 .settings-cost-expenses-panel { display: none; }
 .settings-cost-expenses-panel.active { display: block; }
+
+/* Cost & profit: Shipping overrides table inputs */
+.kexo-ce-override-priority {
+  width: 5.5rem;
+  min-width: 5.5rem;
+}
+.kexo-ce-override-price {
+  width: 9rem;
+  min-width: 9rem;
+}
+.kexo-ce-override-countries {
+  min-width: 16rem;
+  text-transform: uppercase;
+}
 .settings-layout-panel { display: none; }
 .settings-layout-panel.active { display: block; }
 .settings-charts-accordion .accordion-item + .settings-charts-group-label { margin-top: 1rem; }

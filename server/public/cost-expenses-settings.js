@@ -154,15 +154,27 @@
     var html = '';
     overrides.forEach(function (ov, idx) {
       var countriesStr = (ov.countries || []).join(', ');
-      html += '<div class="d-flex align-items-center gap-2 mb-2" data-override-idx="' + idx + '">' +
-        '<input type="number" class="form-control form-control-sm" style="width:4rem" min="1" value="' + (ov.priority || idx + 1) + '" data-override-priority />' +
-        '<label class="form-check form-switch mb-0"><input type="checkbox" class="form-check-input" data-override-enabled ' + (ov.enabled !== false ? 'checked' : '') + ' /></label>' +
-        '<input type="number" class="form-control form-control-sm" style="width:5rem" min="0" step="0.01" value="' + (ov.priceGbp != null ? ov.priceGbp : 0) + '" data-override-price placeholder="GBP" />' +
-        '<input type="text" class="form-control form-control-sm flex-grow-1" value="' + esc(countriesStr) + '" data-override-countries placeholder="GB,IE,FR" title="Comma-separated ISO codes" />' +
-        '<button type="button" class="btn btn-sm btn-ghost-danger" data-override-remove>Remove</button>' +
-        '</div>';
+      html += '<tr data-override-idx="' + idx + '">' +
+        '<td>' +
+          '<input type="number" class="form-control form-control-sm kexo-ce-override-priority" min="1" value="' + (ov.priority || idx + 1) + '" data-override-priority placeholder="1" aria-label="Priority" />' +
+        '</td>' +
+        '<td class="text-center">' +
+          '<label class="form-check form-switch mb-0 d-inline-flex align-items-center justify-content-center" aria-label="Override enabled">' +
+            '<input type="checkbox" class="form-check-input" data-override-enabled ' + (ov.enabled !== false ? 'checked' : '') + ' />' +
+          '</label>' +
+        '</td>' +
+        '<td>' +
+          '<input type="number" class="form-control form-control-sm kexo-ce-override-price" min="0" step="0.01" value="' + (ov.priceGbp != null ? ov.priceGbp : 0) + '" data-override-price placeholder="e.g. 4.99" aria-label="Price (GBP)" />' +
+        '</td>' +
+        '<td>' +
+          '<input type="text" class="form-control form-control-sm kexo-ce-override-countries" value="' + esc(countriesStr) + '" data-override-countries placeholder="e.g. GB, IE, FR" title="Comma-separated ISO2 country codes" aria-label="Countries" />' +
+        '</td>' +
+        '<td class="text-end">' +
+          '<button type="button" class="btn btn-sm btn-ghost-danger" data-override-remove>Remove</button>' +
+        '</td>' +
+        '</tr>';
     });
-    wrap.innerHTML = html || '<p class="text-muted small mb-0">No overrides. Add one below.</p>';
+    wrap.innerHTML = html || '<tr><td colspan="5" class="text-muted small">No overrides yet.</td></tr>';
   }
 
   function readShippingFromUi() {
