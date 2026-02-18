@@ -341,6 +341,44 @@
       el.classList.toggle('active', isActive);
       el.setAttribute('aria-selected', isActive ? 'true' : 'false');
     });
+    try { syncSettingsMobileMenuTitle(); } catch (_) {}
+  }
+
+  function getSettingsActiveNavLabel() {
+    var tablist = document.getElementById('settings-category-tablist');
+    if (!tablist) return '';
+    var child = tablist.querySelector('a.settings-nav-child.active');
+    var parent = tablist.querySelector('a[data-settings-tab]:not(.settings-nav-child).active');
+    var childText = child ? String(child.textContent || '').trim() : '';
+    var parentText = parent ? String(parent.textContent || '').trim() : '';
+    if (childText && parentText && childText.toLowerCase() !== parentText.toLowerCase()) return parentText + ' · ' + childText;
+    return childText || parentText || '';
+  }
+
+  function syncSettingsMobileMenuTitle() {
+    var titleEl = document.getElementById('settings-mobile-menu-title');
+    if (!titleEl) return;
+    var t = getSettingsActiveNavLabel();
+    titleEl.textContent = t || 'Settings';
+  }
+
+  function isSettingsMobileViewport() {
+    try {
+      return !!(window && window.matchMedia && window.matchMedia('(max-width: 991.98px)').matches);
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function settingsSubAttrForKey(key) {
+    var k = String(key || '').trim().toLowerCase();
+    return (k === 'kexo' && 'data-settings-kexo-tab') ||
+      (k === 'layout' && 'data-settings-layout-tab') ||
+      (k === 'integrations' && 'data-settings-integrations-tab') ||
+      (k === 'attribution' && 'data-settings-attribution-tab') ||
+      (k === 'cost-expenses' && 'data-settings-cost-expenses-tab') ||
+      (k === 'admin' && 'data-settings-admin-tab') ||
+      null;
   }
 
   function activateTab(key) {
@@ -378,6 +416,196 @@
         }
       } catch (_) {}
     }
+  }
+
+  function activateFromSettingsNavAnchor(a, opts) {
+    var o = opts && typeof opts === 'object' ? opts : {};
+    if (!a || !a.getAttribute) return;
+    var key = a.getAttribute('data-settings-tab');
+    if (!key) return;
+
+    var subKey = null;
+    if (a.classList && a.classList.contains('settings-nav-child')) {
+      var subAttr = settingsSubAttrForKey(key);
+      subKey = subAttr ? a.getAttribute(subAttr) : null;
+      if (subKey) {
+        if (key === 'kexo') { initialKexoSubTab = subKey; activeKexoSubTab = subKey; }
+        else if (key === 'layout') { initialLayoutSubTab = subKey; activeLayoutSubTab = subKey; }
+        else if (key === 'integrations') { initialIntegrationsSubTab = subKey; activeIntegrationsSubTab = subKey; }
+        else if (key === 'attribution') { initialAttributionSubTab = subKey; activeAttributionSubTab = subKey; }
+        else if (key === 'cost-expenses') { initialCostExpensesSubTab = subKey; activeCostExpensesSubTab = subKey; }
+        else if (key === 'admin') { initialAdminSubTab = subKey; activeAdminSubTab = subKey; }
+      }
+    }
+
+    if (a.getAttribute('href')) {
+      try { history.replaceState(null, '', a.getAttribute('href')); } catch (_) {}
+    }
+
+    activateTab(key);
+    try {
+      if (subKey) {
+        if (key === 'kexo' && kexoTabsetApi) kexoTabsetApi.activate(subKey);
+        else if (key === 'layout' && layoutTabsetApi) layoutTabsetApi.activate(subKey);
+        else if (key === 'integrations' && integrationsTabsetApi) integrationsTabsetApi.activate(subKey);
+        else if (key === 'attribution' && attributionTabsetApi) attributionTabsetApi.activate(subKey);
+        else if (key === 'admin' && adminTabsetApi) adminTabsetApi.activate(subKey);
+      }
+    } catch (_) {}
+
+    if (o.scrollIntoView) {
+      try {
+        var activePanel = document.querySelector('.settings-panel.active');
+        if (activePanel && activePanel.scrollIntoView) {
+          activePanel.scrollIntoView({ block: 'start', behavior: 'smooth' });
+          setTimeout(function () { try { window.scrollBy(0, -12); } catch (_) {} }, 0);
+        }
+      } catch (_) {}
+    }
+  }
+
+  function initSettingsMobileMenu() {
+    var btn = document.getElementById('settings-mobile-menu-btn');
+    var closeBtn = document.getElementById('settings-mobile-menu-close');
+    var backdrop = document.getElementById('settings-mobile-drawer-backdrop');
+    var drawer = document.getElementById('settings-mobile-drawer');
+    var menuRoot = document.getElementById('settings-mobile-drawer-menu');
+    var tablist = document.getElementById('settings-category-tablist');
+    if (!btn || !drawer || !backdrop || !menuRoot || !tablist) return;
+
+    function closeMenu() {
+      try { btn.setAttribute('aria-expanded', 'false'); } catch (_) {}
+      try { document.documentElement.classList.remove('settings-mobile-menu-open'); } catch (_) {}
+      try { backdrop.hidden = true; } catch (_) {}
+      try { drawer.hidden = true; } catch (_) {}
+      try { btn.focus(); } catch (_) {}
+    }
+
+    function collapseAllMobileCategories() {
+      try {
+        menuRoot.querySelectorAll('.settings-mobile-category').forEach(function (wrap) {
+          if (!wrap) return;
+          wrap.classList.remove('is-open');
+          var btnEl = wrap.querySelector ? wrap.querySelector('.settings-mobile-cat-btn') : null;
+          if (btnEl) btnEl.setAttribute('aria-expanded', 'false');
+        });
+      } catch (_) {}
+    }
+
+    function syncMobileMenuActiveLinks() {
+      try {
+        var activeTab = getActiveSettingsTab();
+        var currentSubAttr = settingsSubAttrForKey(activeTab);
+        var currentSub = currentSubAttr
+          ? (activeTab === 'kexo' ? getActiveKexoSubTab() : (activeTab === 'layout' ? getActiveLayoutSubTab() : (activeTab === 'integrations' ? getActiveIntegrationsSubTab() : (activeTab === 'attribution' ? getActiveAttributionSubTab() : (activeTab === 'cost-expenses' ? getActiveCostExpensesSubTab() : (activeTab === 'admin' ? getActiveAdminSubTab() : null))))))
+          : null;
+        menuRoot.querySelectorAll('a[data-settings-tab]').forEach(function (a) {
+          var k = a.getAttribute('data-settings-tab');
+          var isMatch = (k === activeTab);
+          var isActive = false;
+          if (a.classList.contains('settings-nav-child')) {
+            var subAttr = settingsSubAttrForKey(k);
+            var subKey = subAttr ? a.getAttribute(subAttr) : null;
+            if (!subAttr) isActive = isMatch;
+            else isActive = isMatch && subKey && String(subKey).toLowerCase() === String(currentSub || '').toLowerCase();
+          } else {
+            isActive = isMatch;
+          }
+          a.classList.toggle('active', !!isActive);
+        });
+      } catch (_) {}
+    }
+
+    function buildMenu() {
+      menuRoot.innerHTML = '';
+      tablist.querySelectorAll('.settings-nav-category').forEach(function (cat) {
+        if (!cat || !cat.querySelector) return;
+        var catLink = cat.querySelector('a[data-settings-tab]:not(.settings-nav-child)');
+        if (!catLink) return;
+        if (catLink.classList.contains('d-none')) return;
+        var key = String(catLink.getAttribute('data-settings-tab') || '').trim();
+        if (!key) return;
+        var label = String(catLink.textContent || '').trim() || key;
+
+        var wrap = document.createElement('div');
+        wrap.className = 'settings-mobile-category';
+        wrap.setAttribute('data-settings-tab', key);
+
+        var btnCat = document.createElement('button');
+        btnCat.type = 'button';
+        btnCat.className = 'settings-mobile-cat-btn';
+        btnCat.setAttribute('aria-expanded', 'false');
+        var left = document.createElement('span');
+        left.textContent = label;
+        var chev = document.createElement('span');
+        chev.className = 'settings-mobile-cat-chevron';
+        chev.innerHTML = '<i class="fa-regular fa-chevron-down" aria-hidden="true"></i>';
+        btnCat.appendChild(left);
+        btnCat.appendChild(chev);
+
+        var children = document.createElement('div');
+        children.className = 'settings-mobile-children';
+        cat.querySelectorAll('.settings-nav-children a[data-settings-tab]').forEach(function (childA) {
+          if (!childA) return;
+          var clone = childA.cloneNode(true);
+          clone.removeAttribute('role');
+          clone.removeAttribute('aria-controls');
+          clone.removeAttribute('aria-selected');
+          clone.addEventListener('click', function (e) {
+            try { e.preventDefault(); } catch (_) {}
+            activateFromSettingsNavAnchor(clone, { scrollIntoView: true });
+            syncMobileMenuActiveLinks();
+            closeMenu();
+          });
+          children.appendChild(clone);
+        });
+
+        btnCat.addEventListener('click', function () {
+          var isNowOpen = !wrap.classList.contains('is-open');
+          menuRoot.querySelectorAll('.settings-mobile-category').forEach(function (w) {
+            if (!w) return;
+            w.classList.toggle('is-open', w === wrap ? isNowOpen : false);
+            var b = w.querySelector ? w.querySelector('.settings-mobile-cat-btn') : null;
+            if (b) b.setAttribute('aria-expanded', w.classList.contains('is-open') ? 'true' : 'false');
+          });
+        });
+
+        wrap.appendChild(btnCat);
+        wrap.appendChild(children);
+        menuRoot.appendChild(wrap);
+      });
+      collapseAllMobileCategories();
+      syncMobileMenuActiveLinks();
+    }
+
+    function openMenu() {
+      try { btn.setAttribute('aria-expanded', 'true'); } catch (_) {}
+      try { backdrop.hidden = false; } catch (_) {}
+      try { drawer.hidden = false; } catch (_) {}
+      try { document.documentElement.classList.add('settings-mobile-menu-open'); } catch (_) {}
+      try { syncSettingsMobileMenuTitle(); } catch (_) {}
+      try { buildMenu(); } catch (_) {}
+      setTimeout(function () { try { drawer.focus(); } catch (_) {} }, 0);
+    }
+
+    function isOpen() {
+      try { return document.documentElement.classList.contains('settings-mobile-menu-open'); } catch (_) { return false; }
+    }
+
+    // Build once for initial label; we rebuild on open in case tabs are toggled by viewer plan.
+    try { syncSettingsMobileMenuTitle(); } catch (_) {}
+
+    btn.addEventListener('click', function () { if (isOpen()) closeMenu(); else openMenu(); });
+    if (closeBtn) closeBtn.addEventListener('click', closeMenu);
+    backdrop.addEventListener('click', closeMenu);
+    window.addEventListener('keydown', function (e) {
+      if (!isOpen()) return;
+      var k = e && e.key != null ? String(e.key) : '';
+      if (k === 'Escape') closeMenu();
+    });
+    window.addEventListener('resize', function () {
+      if (!isSettingsMobileViewport() && isOpen()) closeMenu();
+    });
   }
 
   function ensurePanelClass(panelId, className) {
@@ -4789,6 +5017,7 @@
     wireIntegrationsSubTabs();
     wireAttributionSubTabs(initialAttributionSubTab);
     wireAdminSubTabs(initialAdminSubTab);
+    initSettingsMobileMenu();
 
     var tablist = document.getElementById('settings-category-tablist');
     if (tablist) {
@@ -4797,36 +5026,7 @@
         try { a = e && e.target && e.target.closest ? e.target.closest('a[data-settings-tab]') : null; } catch (_) {}
         if (!a || !tablist.contains(a)) return;
         try { e.preventDefault(); } catch (_) {}
-        var key = a.getAttribute('data-settings-tab');
-        if (!key) return;
-
-        var subKey = null;
-        if (a.classList.contains('settings-nav-child')) {
-          var subAttr = (key === 'kexo' && 'data-settings-kexo-tab') || (key === 'layout' && 'data-settings-layout-tab') || (key === 'integrations' && 'data-settings-integrations-tab') || (key === 'attribution' && 'data-settings-attribution-tab') || (key === 'cost-expenses' && 'data-settings-cost-expenses-tab') || (key === 'admin' && 'data-settings-admin-tab');
-          subKey = subAttr ? a.getAttribute(subAttr) : null;
-          if (subKey) {
-            if (key === 'kexo') { initialKexoSubTab = subKey; activeKexoSubTab = subKey; }
-            else if (key === 'layout') { initialLayoutSubTab = subKey; activeLayoutSubTab = subKey; }
-            else if (key === 'integrations') { initialIntegrationsSubTab = subKey; activeIntegrationsSubTab = subKey; }
-            else if (key === 'attribution') { initialAttributionSubTab = subKey; activeAttributionSubTab = subKey; }
-            else if (key === 'cost-expenses') { initialCostExpensesSubTab = subKey; activeCostExpensesSubTab = subKey; }
-            else if (key === 'admin') { initialAdminSubTab = subKey; activeAdminSubTab = subKey; }
-          }
-        }
-
-        if (a.getAttribute('href')) {
-          try { history.replaceState(null, '', a.getAttribute('href')); } catch (_) {}
-        }
-
-        activateTab(key);
-        try {
-          if (!subKey) return;
-          if (key === 'kexo' && kexoTabsetApi) kexoTabsetApi.activate(subKey);
-          else if (key === 'layout' && layoutTabsetApi) layoutTabsetApi.activate(subKey);
-          else if (key === 'integrations' && integrationsTabsetApi) integrationsTabsetApi.activate(subKey);
-          else if (key === 'attribution' && attributionTabsetApi) attributionTabsetApi.activate(subKey);
-          else if (key === 'admin' && adminTabsetApi) adminTabsetApi.activate(subKey);
-        } catch (_) {}
+        activateFromSettingsNavAnchor(a, { scrollIntoView: isSettingsMobileViewport() });
       });
     }
 

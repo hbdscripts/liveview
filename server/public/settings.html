@@ -22,7 +22,7 @@
 
   <div class="row">
     <!-- Left nav: category tablist with children -->
-    <div class="col-lg-3 mb-4 mb-lg-0" role="presentation">
+    <div class="col-lg-3 mb-4 mb-lg-0 d-none d-lg-block" role="presentation">
       <div class="list-group list-group-transparent" id="settings-category-tablist" role="tablist" aria-label="Settings categories">
         <div class="settings-nav-category">
           <a href="/settings?tab=kexo&kexoTab=general" class="list-group-item list-group-item-action d-flex align-items-center" id="settings-tab-kexo" role="tab" data-settings-tab="kexo" aria-controls="settings-panel-kexo">Kexo</a>
@@ -85,6 +85,17 @@
 
     <!-- Right content: category tab panels -->
     <div class="col-lg-9">
+      <!-- Mobile settings menu trigger (hamburger). Desktop keeps the sidebar. -->
+      <div class="d-flex align-items-center gap-2 d-lg-none mb-3 settings-mobile-topbar">
+        <button type="button" class="btn btn-outline-primary btn-icon" id="settings-mobile-menu-btn" aria-label="Open settings menu" aria-controls="settings-mobile-drawer" aria-expanded="false">
+          <i class="fa-thin fa-bars" aria-hidden="true"></i>
+        </button>
+        <div class="flex-grow-1 min-w-0">
+          <div class="text-secondary small">Settings</div>
+          <div class="fw-semibold text-truncate" id="settings-mobile-menu-title">General</div>
+        </div>
+      </div>
+
       <div id="settings-panel-kexo" class="settings-panel active" role="tabpanel" aria-labelledby="settings-tab-kexo">
         <div class="card">
           <div class="card-header">
@@ -1221,6 +1232,20 @@
 
     </div>
   </div>
+
+  <!-- Mobile settings drawer (mobile-only, shown via JS) -->
+  <div id="settings-mobile-drawer-backdrop" class="settings-mobile-backdrop" hidden></div>
+  <aside id="settings-mobile-drawer" class="settings-mobile-drawer" role="dialog" aria-modal="true" aria-label="Settings menu" tabindex="-1" hidden>
+    <div class="settings-mobile-drawer-header">
+      <div class="fw-semibold">Settings menu</div>
+      <button type="button" class="btn btn-ghost-secondary btn-icon" id="settings-mobile-menu-close" aria-label="Close settings menu">
+        <i class="fa-thin fa-xmark" aria-hidden="true"></i>
+      </button>
+    </div>
+    <div class="settings-mobile-drawer-body">
+      <div id="settings-mobile-drawer-menu" class="settings-mobile-menu"></div>
+    </div>
+  </aside>
 
   <!--#include partials/page-body-end.html-->
   <!--#include partials/footer.html-->
