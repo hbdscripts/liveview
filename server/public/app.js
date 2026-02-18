@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 5beb87d15bc16d06
+// checksum: 9686a0378089eaf0
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -19667,6 +19667,7 @@ const API = '';
         try { kpiRangeForTone = getStatsRange(); } catch (_) { kpiRangeForTone = null; }
         var compareTone = kpiDataForTone && kpiDataForTone.compare ? kpiDataForTone.compare : null;
         var currentRevenueTone = numFromRangeMap(kpiDataForTone, 'sales', kpiRangeForTone);
+        var currentProfitTone = numFromRangeMap(kpiDataForTone, 'profit', kpiRangeForTone);
         var currentOrdersTone = numFromRangeMap(kpiDataForTone, 'convertedCount', kpiRangeForTone);
         var currentSessionsTone = sessionsFromBreakdownMap(kpiDataForTone, kpiRangeForTone);
         var currentConvTone = numFromRangeMap(kpiDataForTone, 'conversion', kpiRangeForTone);
@@ -19675,7 +19676,9 @@ const API = '';
         var currentAovTone = numFromRangeMap(kpiDataForTone, 'aov', kpiRangeForTone);
         var currentBounceTone = numFromRangeMap(kpiDataForTone, 'bounce', kpiRangeForTone);
         var currentRoasTone = numFromRangeMap(kpiDataForTone, 'roas', kpiRangeForTone);
+        var profitKpiAllowed = !!(kpiDataForTone && kpiDataForTone.profitKpiAllowed === true);
         var compareRevenueTone = compareTone && typeof compareTone.sales === 'number' ? compareTone.sales : null;
+        var compareProfitTone = compareTone && typeof compareTone.profit === 'number' ? compareTone.profit : null;
         var compareOrdersTone = compareTone && typeof compareTone.convertedCount === 'number' ? compareTone.convertedCount : null;
         var compareSessionsTone = (compareTone && compareTone.trafficBreakdown && typeof compareTone.trafficBreakdown.human_sessions === 'number')
           ? compareTone.trafficBreakdown.human_sessions
@@ -19771,6 +19774,9 @@ const API = '';
           var rev = d && typeof d.revenue === 'number' ? d.revenue : 0;
           return (spend > 0) ? (rev / spend) : 0;
         });
+        var profitHistorySpark = (profitKpiAllowed && kpiDataForTone && Array.isArray(kpiDataForTone.profitSparkline))
+          ? kpiDataForTone.profitSparkline
+          : null;
         var revenueSpark = sparkSeriesFromCompare(currentRevenueTone, compareRevenueTone, revenueHistorySpark);
         var sessionsSpark = sparkSeriesFromCompare(currentSessionsTone, compareSessionsTone, sessionsHistorySpark);
         var ordersSpark = sparkSeriesFromCompare(currentOrdersTone, compareOrdersTone, ordersHistorySpark);
@@ -19781,6 +19787,7 @@ const API = '';
         var bounceSpark = sparkSeriesFromCompare(currentBounceTone, compareBounceTone, bounceHistorySpark);
         var itemsSpark = sparkSeriesFromCompare(currentItemsTone, compareItemsTone, itemsHistorySpark);
         var roasSpark = sparkSeriesFromCompare(currentRoasTone, compareRoasTone, roasHistorySpark);
+        var profitSpark = profitKpiAllowed ? sparkSeriesFromCompare(currentProfitTone, compareProfitTone, profitHistorySpark) : [];
         function alignCompareToPrimary(compareArr, primaryLen) {
           if (!Array.isArray(compareArr) || compareArr.length < 2) return null;
           var arr = compareArr.map(function(v) {
@@ -19799,6 +19806,10 @@ const API = '';
           return alignCompareToPrimary(extracted, primaryLen);
         }
         var primaryLen = revenueSpark.length;
+        if (profitSpark && profitSpark.length >= 2 && profitSpark.length !== primaryLen) {
+          var alignedProfitSpark = alignCompareToPrimary(profitSpark, primaryLen);
+          if (alignedProfitSpark) profitSpark = alignedProfitSpark;
+        }
         ensureDashboardCompareSeries(getKpiData()).then(function(compareSeries) {
           var cmp = compareSeries;
           var revenueSparkCompare = compareFromCache(cmp, primaryLen, function(d) { return d.revenue || 0; });
@@ -19823,6 +19834,13 @@ const API = '';
             roasSparkCompare = alignCompareToPrimary(roasExtracted, primaryLen);
           }
           var itemsSparkCompare = compareFromCache(cmp, primaryLen, function(d) { return d.units || 0; });
+          var profitSparkCompare = null;
+          try {
+            var profitCmpRaw = (profitKpiAllowed && kpiDataForTone && Array.isArray(kpiDataForTone.profitSparklineCompare))
+              ? kpiDataForTone.profitSparklineCompare
+              : null;
+            profitSparkCompare = profitCmpRaw ? alignCompareToPrimary(profitCmpRaw, primaryLen) : null;
+          } catch (_) { profitSparkCompare = null; }
           renderSparkline('dash-revenue-sparkline', revenueSpark, sparkToneFromCompare(currentRevenueTone, compareRevenueTone, false, revenueSpark), revenueSparkCompare, 'zero');
           renderSparkline('dash-sessions-sparkline', sessionsSpark, sparkToneFromCompare(currentSessionsTone, compareSessionsTone, false, sessionsSpark), sessionsSparkCompare, 'zero');
           renderSparkline('dash-orders-sparkline', ordersSpark, sparkToneFromCompare(currentOrdersTone, compareOrdersTone, false, ordersSpark), ordersSparkCompare, 'zero');
@@ -19832,6 +19850,12 @@ const API = '';
           renderSparkline('dash-aov-sparkline', aovSpark, sparkToneFromCompare(currentAovTone, compareAovTone, false, aovSpark), aovSparkCompare, 'zero');
           renderSparkline('dash-bounce-sparkline', bounceSpark, sparkToneFromCompare(currentBounceTone, compareBounceTone, true, bounceSpark), bounceSparkCompare, 'percent');
           renderSparkline('dash-roas-sparkline', roasSpark, sparkToneFromCompare(currentRoasTone, compareRoasTone, false, roasSpark), roasSparkCompare, 'zero');
+          if (profitKpiAllowed && profitSpark && profitSpark.length) {
+            renderSparkline('dash-profit-sparkline', profitSpark, sparkToneFromCompare(currentProfitTone, compareProfitTone, false, profitSpark), profitSparkCompare, 'symmetric');
+          } else {
+            var ps = el('dash-profit-sparkline');
+            if (ps) ps.innerHTML = '';
+          }
           renderSparkline('dash-items-sparkline', itemsSpark, DASHBOARD_NEUTRAL_TONE_HEX, itemsSparkCompare, 'zero');
           renderDashboardKpiSparkBucketLabels(sparklineSeries);
           // COGS / Fulfilled / Returns sparklines come from `/api/kpis-expanded-extra` (bucketed per range).
