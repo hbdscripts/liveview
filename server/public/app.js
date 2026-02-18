@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: fe1b9904202840d4
+// checksum: aef751e863935046
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -23029,7 +23029,7 @@ const API = '';
         }
         if (isFinishes) {
           body += '<div class="col-12' + (String(mode || '').toLowerCase() === 'radialbar' ? '' : ' d-none') + '" data-cs-mode-group="finishes-center-label">';
-          body += '<label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-cs-field="radialCenterLabel"' + (finishesCenterLabel ? ' checked' : '') + '><span class="form-check-label ms-2">Show best finish in center</span></label>';
+          body += '<label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-cs-field="radialCenterLabel"' + (finishesCenterLabel ? ' checked' : '') + '><span class="form-check-label ms-2">Place the highest revenue variant in the center?</span></label>';
           body += '<div class="form-hint">Only applies to the Radial Bar chart type.</div>';
           body += '</div>';
         }

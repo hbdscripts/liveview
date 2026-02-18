@@ -236,7 +236,7 @@
         }
         if (isFinishes) {
           body += '<div class="col-12' + (String(mode || '').toLowerCase() === 'radialbar' ? '' : ' d-none') + '" data-cs-mode-group="finishes-center-label">';
-          body += '<label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-cs-field="radialCenterLabel"' + (finishesCenterLabel ? ' checked' : '') + '><span class="form-check-label ms-2">Show best finish in center</span></label>';
+          body += '<label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-cs-field="radialCenterLabel"' + (finishesCenterLabel ? ' checked' : '') + '><span class="form-check-label ms-2">Place the highest revenue variant in the center?</span></label>';
           body += '<div class="form-hint">Only applies to the Radial Bar chart type.</div>';
           body += '</div>';
         }
