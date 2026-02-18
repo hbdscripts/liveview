@@ -5746,6 +5746,9 @@ body[data-page="snapshot"] #kexo-date-display { display: none !important; }
 #tab-panel-products .stats-row + .stats-row { margin-top: 1rem; }
 
 /* Payment methods (Insights) */
+.payment-lg {
+  height: 1.5rem;
+}
 .kexo-payment-method-icon {
   width: 26px;
   height: 18px;
