@@ -214,8 +214,8 @@
       emptyMessage: 'No payment methods.',
       columns: [
         { key: 'payment', label: 'Payment', sortable: false },
-        { key: 'icon', label: '', sortable: false, cellClass: 'kexo-payments-icon-col' },
-        { key: 'sessions', label: 'Sessions', sortable: false, iconKey: 'table-icon-sessions', cellClass: 'text-end' },
+        { key: 'icon', label: '', sortable: false, cellClass: 'kexo-payments-icon-col kexo-payment-method-icon-cell' },
+        { key: 'sessions', label: 'Sessions', sortable: false, iconKey: 'table-icon-sessions', cellClass: 'text-center' },
         { key: 'carts', label: 'Carts', sortable: false, cellClass: 'text-end' },
         { key: 'orders', label: 'Orders', sortable: false, iconKey: 'table-icon-orders', cellClass: 'text-end' },
         { key: 'cr', label: 'CR%', sortable: false, iconKey: 'table-icon-cr', cellClass: 'text-end' },

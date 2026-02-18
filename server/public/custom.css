@@ -1004,7 +1004,7 @@ body.side-panel-open {
 }
 
 /* Numeric cells in grid body inherit right-alignment from header sort key */
-.grid-body .grid-row .grid-cell:not(:first-child) {
+.grid-body .grid-row .grid-cell:not(:first-child):not(.text-center):not(.text-start):not(.text-end) {
   text-align: right;
 }
 
@@ -5753,13 +5753,14 @@ body[data-page="snapshot"] #kexo-date-display { display: none !important; }
   object-fit: contain;
 }
 .kexo-payments-icon-col {
-  width: 44px !important;
-  min-width: 44px !important;
-  max-width: 44px !important;
+  width: 64px !important;
+  min-width: 64px !important;
+  max-width: 64px !important;
 }
 .kexo-payment-method-icon-cell {
   padding-top: 0 !important;
   padding-bottom: 0 !important;
+  height: 44px;
   text-align: center !important;
 }
 .kexo-payment-method-icon--fill {

@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 3a2e988c7143420b
+// checksum: 6d43eda9785d0216
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -20555,480 +20555,6 @@ const API = '';
         });
       })();
 
-      // Dashboard widgets (custom HTML/CSS/SVG; no ApexCharts)
-      var DASH_WIDGETS_LS_KEY = 'kexo:dashboard-widgets:v1';
-      var dashWidgetsPrefsCache = null;
-      var dashWidgetsUiBound = false;
-      var dashWidgetsTooltipEl = null;
-      var dashWidgetsCache = {}; // key -> { fetchedAt, sig, payload }
-      var dashWidgetsInFlight = {}; // key -> Promise
-
-      function fmtGbp2(n) {
-        var v = (typeof n === 'number') ? n : Number(n);
-        if (!Number.isFinite(v)) return '\u2014';
-        try {
-          if (typeof formatRevenue2 === 'function') return formatRevenue2(v) || '\u2014';
-          return '\u00A3' + v.toFixed(2);
-        } catch (_) {
-          return '\u00A3' + String(Math.round(v * 100) / 100);
-        }
-      }
-
-      function dashWidgetsDefaults() {
-        return {
-          v: 1,
-          variant: { tableId: '' },
-          devices: { dim: 'devices' },
-        };
-      }
-
-      function readDashWidgetsPrefs() {
-        if (dashWidgetsPrefsCache) return dashWidgetsPrefsCache;
-        var raw = '';
-        try { raw = localStorage.getItem(DASH_WIDGETS_LS_KEY) || ''; } catch (_) { raw = ''; }
-        var parsed = null;
-        try { parsed = raw ? JSON.parse(raw) : null; } catch (_) { parsed = null; }
-        var next = dashWidgetsDefaults();
-        if (parsed && typeof parsed === 'object') {
-          if (parsed.variant && typeof parsed.variant === 'object' && parsed.variant.tableId != null) next.variant.tableId = String(parsed.variant.tableId || '');
-          if (parsed.devices && typeof parsed.devices === 'object' && parsed.devices.dim != null) next.devices.dim = String(parsed.devices.dim || 'devices');
-        }
-        next.variant.tableId = String(next.variant.tableId || '').trim();
-        next.devices.dim = String(next.devices.dim || 'devices').trim().toLowerCase();
-        if (next.devices.dim !== 'devices' && next.devices.dim !== 'browsers') next.devices.dim = 'devices';
-        dashWidgetsPrefsCache = next;
-        return next;
-      }
-
-      function writeDashWidgetsPrefs(next) {
-        if (!next || typeof next !== 'object') return;
-        dashWidgetsPrefsCache = next;
-        try { localStorage.setItem(DASH_WIDGETS_LS_KEY, JSON.stringify(next)); } catch (_) {}
-      }
-
-      function dashWidgetsPresent() {
-        try { return !!document.getElementById('dash-widgets-grid'); } catch (_) { return false; }
-      }
-
-      function ensureDashWidgetsTooltip() {
-        if (dashWidgetsTooltipEl) return dashWidgetsTooltipEl;
-        var el = document.createElement('div');
-        el.className = 'kexo-widget-tooltip is-hidden';
-        el.setAttribute('role', 'tooltip');
-        el.style.position = 'fixed';
-        el.style.zIndex = '1090';
-        el.style.pointerEvents = 'none';
-        el.style.maxWidth = '260px';
-        el.style.padding = '8px 10px';
-        el.style.borderRadius = '10px';
-        el.style.background = 'rgba(15,23,42,0.92)';
-        el.style.color = '#fff';
-        el.style.fontSize = '12px';
-        el.style.lineHeight = '1.25';
-        el.style.boxShadow = '0 10px 28px rgba(0,0,0,0.22)';
-        el.style.transform = 'translate(10px, 10px)';
-        document.body.appendChild(el);
-        dashWidgetsTooltipEl = el;
-        return el;
-      }
-
-      function showDashWidgetTooltip(target, x, y) {
-        var t = target && target.getAttribute ? target : null;
-        if (!t) return;
-        var name = String(t.getAttribute('data-kexo-wtip-name') || '').trim();
-        var value = String(t.getAttribute('data-kexo-wtip-value') || '').trim();
-        var share = String(t.getAttribute('data-kexo-wtip-share') || '').trim();
-        if (!name && !value && !share) return;
-        var tip = ensureDashWidgetsTooltip();
-        var html = '';
-        if (name) html += '<div style="font-weight:600; margin-bottom:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">' + escapeHtml(name) + '</div>';
-        if (value) html += '<div style="opacity:0.92;">' + escapeHtml(value) + (share ? (' <span style="opacity:0.82;">(' + escapeHtml(share) + ')</span>') : '') + '</div>';
-        tip.innerHTML = html;
-        tip.classList.remove('is-hidden');
-        var left = (typeof x === 'number' && Number.isFinite(x)) ? x : 0;
-        var top = (typeof y === 'number' && Number.isFinite(y)) ? y : 0;
-        tip.style.left = Math.max(8, Math.min(window.innerWidth - 8, left)) + 'px';
-        tip.style.top = Math.max(8, Math.min(window.innerHeight - 8, top)) + 'px';
-      }
-
-      function hideDashWidgetTooltip() {
-        if (!dashWidgetsTooltipEl) return;
-        dashWidgetsTooltipEl.classList.add('is-hidden');
-      }
-
-      function bindDashWidgetsUiOnce() {
-        if (dashWidgetsUiBound) return;
-        if (!dashWidgetsPresent()) return;
-        dashWidgetsUiBound = true;
-        document.addEventListener('click', function(e) {
-          var t = e && e.target ? e.target : null;
-          if (!t || !t.closest) return;
-
-          var dimBtn = t.closest('[data-kexo-widget-devices-dim]');
-          if (dimBtn) {
-            e.preventDefault();
-            var dim = String(dimBtn.getAttribute('data-kexo-widget-devices-dim') || '').trim().toLowerCase();
-            var prefs = readDashWidgetsPrefs();
-            prefs.devices.dim = (dim === 'browsers') ? 'browsers' : 'devices';
-            writeDashWidgetsPrefs(prefs);
-            try { fetchDashboardWidgets({ force: false, rangeKey: dashRangeKeyFromDateRange(), reason: 'devices-dim' }); } catch (_) {}
-            return;
-          }
-
-          var tableBtn = t.closest('[data-kexo-widget-variant-table]');
-          if (tableBtn) {
-            e.preventDefault();
-            var tableId = String(tableBtn.getAttribute('data-kexo-widget-variant-table') || '').trim();
-            if (!tableId) return;
-            var prefs = readDashWidgetsPrefs();
-            prefs.variant.tableId = tableId;
-            writeDashWidgetsPrefs(prefs);
-            try { fetchDashboardWidgets({ force: false, rangeKey: dashRangeKeyFromDateRange(), reason: 'variant-table' }); } catch (_) {}
-            return;
-          }
-        });
-
-        document.addEventListener('mousemove', function(e) {
-          var t = e && e.target ? e.target : null;
-          if (!t || !t.closest) return;
-          var row = t.closest('[data-kexo-wtip="1"]');
-          if (!row) return;
-          showDashWidgetTooltip(row, e.clientX, e.clientY);
-        });
-        document.addEventListener('mouseover', function(e) {
-          var t = e && e.target ? e.target : null;
-          if (!t || !t.closest) return;
-          var row = t.closest('[data-kexo-wtip="1"]');
-          if (!row) return;
-          showDashWidgetTooltip(row, e.clientX, e.clientY);
-        });
-        document.addEventListener('mouseout', function(e) {
-          var t = e && e.target ? e.target : null;
-          if (!t || !t.closest) return;
-          var row = t.closest('[data-kexo-wtip="1"]');
-          if (!row) return;
-          hideDashWidgetTooltip();
-        });
-      }
-
-      function widgetCacheGet(key, ttlMs) {
-        var entry = dashWidgetsCache && dashWidgetsCache[key] ? dashWidgetsCache[key] : null;
-        if (!entry || !entry.payload || !entry.fetchedAt) return null;
-        var age = Date.now() - entry.fetchedAt;
-        if (age < 0 || age > ttlMs) return null;
-        return entry;
-      }
-
-      function fetchWidgetJson(key, url, opts) {
-        var force = !!(opts && opts.force);
-        var ttlMs = (opts && Number.isFinite(opts.ttlMs)) ? Math.max(1000, Number(opts.ttlMs)) : (2 * 60 * 1000);
-        var timeoutMs = (opts && Number.isFinite(opts.timeoutMs)) ? Math.max(5000, Number(opts.timeoutMs)) : 25000;
-        if (!force) {
-          var cached = widgetCacheGet(key, ttlMs);
-          if (cached) return Promise.resolve(cached.payload);
-        }
-        if (!force && dashWidgetsInFlight[key]) return dashWidgetsInFlight[key];
-        dashWidgetsInFlight[key] = fetchWithTimeout(url, { credentials: 'same-origin', cache: force ? 'no-store' : 'default' }, timeoutMs)
-          .then(function(r) { return (r && r.ok) ? r.json() : null; })
-          .then(function(payload) {
-            if (!payload) return null;
-            var sig = '';
-            try { sig = fastPayloadHash(JSON.stringify(payload)); } catch (_) { sig = ''; }
-            dashWidgetsCache[key] = { fetchedAt: Date.now(), sig: sig, payload: payload };
-            return payload;
-          })
-          .catch(function(err) {
-            try { if (typeof window.kexoCaptureError === 'function') window.kexoCaptureError(err, { context: 'dashboardWidgetFetch', widget: key, page: PAGE }); } catch (_) {}
-            return null;
-          })
-          .finally(function() { dashWidgetsInFlight[key] = null; });
-        return dashWidgetsInFlight[key];
-      }
-
-      function escapeHtml(s) {
-        var str = (s == null ? '' : String(s));
-        return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
-      }
-
-      function animateBarsWithin(root) {
-        if (!root || !root.querySelectorAll) return;
-        try {
-          var fills = root.querySelectorAll('[data-kexo-bar-fill]');
-          if (fills && fills.length) {
-            requestAnimationFrame(function() {
-              fills.forEach(function(el) {
-                var pct = Number(el.getAttribute('data-kexo-bar-fill') || 0);
-                if (!Number.isFinite(pct)) pct = 0;
-                pct = Math.max(0, Math.min(100, pct));
-                if (el.classList.contains('kexo-widget-vbar-fill')) el.style.height = pct + '%';
-                else el.style.width = pct + '%';
-              });
-            });
-          }
-        } catch (_) {}
-      }
-
-      function renderWidgetEmpty(mountId, msg) {
-        var el = document.getElementById(mountId);
-        if (!el) return;
-        el.innerHTML = '<div class="kexo-widget-empty">' + escapeHtml(msg || 'No data') + '</div>';
-      }
-
-      function renderWidgetDevices(payload, dim) {
-        var mount = document.getElementById('dash-widget-devices');
-        if (!mount) return;
-        var titleEl = document.getElementById('dash-widget-devices-title');
-        if (titleEl) titleEl.textContent = dim === 'browsers' ? 'Browsers' : 'Devices';
-        var rows = [];
-        if (dim === 'browsers') {
-          rows = payload && Array.isArray(payload.rows) ? payload.rows : [];
-          rows = rows.map(function(r) {
-            return { key: r && r.ua_browser ? String(r.ua_browser) : 'Unknown', revenue: Number(r && r.revenue) || 0 };
-          });
-        } else {
-          var devRows = payload && payload.devices && Array.isArray(payload.devices.rows) ? payload.devices.rows : [];
-          rows = devRows.map(function(r) {
-            return { key: r && r.device_type ? String(r.device_type) : 'unknown', revenue: Number(r && r.revenue_gbp) || 0 };
-          });
-        }
-        if (!rows.length) { renderWidgetEmpty('dash-widget-devices', 'No data'); return; }
-        rows.sort(function(a, b) { return (b.revenue - a.revenue) || String(a.key).localeCompare(String(b.key)); });
-        var total = rows.reduce(function(acc, r) { return acc + (Number(r.revenue) || 0); }, 0);
-        var top = rows.slice(0, 5);
-        var max = top.reduce(function(acc, r) { return Math.max(acc, Number(r.revenue) || 0); }, 0);
-        function iconHtml(name) {
-          var n = String(name || '').trim().toLowerCase();
-          if (dim === 'devices') {
-            if (n.indexOf('mobile') >= 0) return '<i class="fa-light fa-mobile-screen-button" aria-hidden="true"></i>';
-            if (n.indexOf('tablet') >= 0) return '<i class="fa-light fa-tablet-screen-button" aria-hidden="true"></i>';
-            if (n.indexOf('desktop') >= 0) return '<i class="fa-light fa-desktop" aria-hidden="true"></i>';
-            return '<i class="fa-light fa-display" aria-hidden="true"></i>';
-          }
-          if (n.indexOf('chrome') >= 0) return '<i class="fa-brands fa-chrome" aria-hidden="true"></i>';
-          if (n.indexOf('safari') >= 0) return '<i class="fa-brands fa-safari" aria-hidden="true"></i>';
-          if (n.indexOf('firefox') >= 0) return '<i class="fa-brands fa-firefox-browser" aria-hidden="true"></i>';
-          if (n.indexOf('edge') >= 0) return '<i class="fa-brands fa-edge" aria-hidden="true"></i>';
-          return '<i class="fa-light fa-globe" aria-hidden="true"></i>';
-        }
-        var html = '<div class="kexo-widget-list">';
-        top.forEach(function(r, idx) {
-          var pct = max > 0 ? (Math.max(0, r.revenue) / max) * 100 : 0;
-          var sharePct = total > 0 ? (Math.max(0, r.revenue) / total) * 100 : 0;
-          var label = r.key || 'Unknown';
-          var color = idx === 0 ? 'var(--kexo-accent-1, #4b94e4)' : idx === 1 ? 'var(--kexo-accent-2, #3eb3ab)' : idx === 2 ? 'var(--kexo-accent-3, #f59e0b)' : idx === 3 ? 'var(--kexo-accent-4, #8b5cf6)' : 'var(--kexo-accent-5, #ef4444)';
-          html += '<div class="kexo-widget-row" tabindex="0" data-kexo-wtip="1" data-kexo-wtip-name="' + escapeHtml(label) + '" data-kexo-wtip-value="' + escapeHtml(fmtGbp2(r.revenue)) + '" data-kexo-wtip-share="' + escapeHtml((Math.round(sharePct * 10) / 10).toFixed(1) + '%') + '">';
-          html += '<div class="kexo-widget-row-icon" aria-hidden="true">' + iconHtml(label) + '</div>';
-          html += '<div class="kexo-widget-row-label">' + escapeHtml(label) + '</div>';
-          html += '<div class="kexo-widget-row-value">' + escapeHtml(fmtGbp2(r.revenue)) + '</div>';
-          html += '<div class="kexo-widget-row-bar"><span style="background:' + color + ';" data-kexo-bar-fill="' + String(pct) + '"></span></div>';
-          html += '</div>';
-        });
-        html += '</div>';
-        mount.innerHTML = html;
-        animateBarsWithin(mount);
-      }
-
-      function renderWidgetAbandoned(payload) {
-        var mount = document.getElementById('dash-widget-abandoned');
-        if (!mount) return;
-        var rows = payload && Array.isArray(payload.rows) ? payload.rows : [];
-        if (!rows.length) { renderWidgetEmpty('dash-widget-abandoned', 'No data'); return; }
-        rows = rows.map(function(r) {
-          var cc = r && r.country ? String(r.country).toUpperCase().slice(0, 2) : 'XX';
-          var value = Number(r && r.abandoned_value_gbp) || 0;
-          return { cc: cc, value: value };
-        });
-        rows.sort(function(a, b) { return (b.value - a.value) || String(a.cc).localeCompare(String(b.cc)); });
-        var top = rows.slice(0, 5);
-        var max = top.reduce(function(acc, r) { return Math.max(acc, Number(r.value) || 0); }, 0);
-        var html = '<div class="kexo-widget-vbars">';
-        html += '<div class="kexo-widget-vbars-grid">';
-        top.forEach(function(r, idx) {
-          var pct = max > 0 ? (Math.max(0, r.value) / max) * 100 : 0;
-          var color = idx === 0 ? 'var(--kexo-accent-1, #4b94e4)' : idx === 1 ? 'var(--kexo-accent-2, #3eb3ab)' : idx === 2 ? 'var(--kexo-accent-3, #f59e0b)' : idx === 3 ? 'var(--kexo-accent-4, #8b5cf6)' : 'var(--kexo-accent-5, #ef4444)';
-          var flag = '<span class="flag flag-country-' + escapeHtml(String(r.cc || 'xx').toLowerCase()) + '" aria-hidden="true"></span>';
-          html += '<div class="kexo-widget-vbar" tabindex="0" data-kexo-wtip="1" data-kexo-wtip-name="' + escapeHtml(r.cc) + '" data-kexo-wtip-value="' + escapeHtml(fmtGbp2(r.value)) + '" data-kexo-wtip-share="">';
-          html += '<div class="kexo-widget-vbar-col"><div class="kexo-widget-vbar-fill" style="background:' + color + ';" data-kexo-bar-fill="' + String(pct) + '"></div></div>';
-          html += '<div class="kexo-widget-vbar-label">' + flag + ' ' + escapeHtml(r.cc) + '</div>';
-          html += '</div>';
-        });
-        html += '</div>';
-        html += '<div class="kexo-widget-vbars-foot" aria-hidden="true"><i class="fa-light fa-flag" aria-hidden="true"></i></div>';
-        html += '</div>';
-        mount.innerHTML = html;
-        animateBarsWithin(mount);
-      }
-
-      function renderWidgetAttribution(payload) {
-        var mount = document.getElementById('dash-widget-attribution');
-        if (!mount) return;
-        var channels = payload && payload.attribution && Array.isArray(payload.attribution.rows) ? payload.attribution.rows : [];
-        if (!channels.length) { renderWidgetEmpty('dash-widget-attribution', 'No data'); return; }
-        var bySource = new Map();
-        channels.forEach(function(ch) {
-          var sources = ch && Array.isArray(ch.sources) ? ch.sources : [];
-          sources.forEach(function(s) {
-            var key = s && s.source_key ? String(s.source_key) : '';
-            if (!key) return;
-            var prev = bySource.get(key) || { key: key, label: (s && s.label) ? String(s.label) : key, revenue: 0 };
-            prev.revenue += Number(s && s.revenue_gbp) || 0;
-            bySource.set(key, prev);
-          });
-        });
-        var rows = Array.from(bySource.values());
-        rows.sort(function(a, b) { return (b.revenue - a.revenue) || String(a.label).localeCompare(String(b.label)); });
-        var top = rows.slice(0, 5);
-        var max = top.reduce(function(acc, r) { return Math.max(acc, Number(r.revenue) || 0); }, 0);
-        var html = '<div class="kexo-widget-vbars">';
-        html += '<div class="kexo-widget-vbars-grid">';
-        top.forEach(function(r, idx) {
-          var pct = max > 0 ? (Math.max(0, r.revenue) / max) * 100 : 0;
-          var color = idx === 0 ? 'var(--kexo-accent-1, #4b94e4)' : idx === 1 ? 'var(--kexo-accent-2, #3eb3ab)' : idx === 2 ? 'var(--kexo-accent-3, #f59e0b)' : idx === 3 ? 'var(--kexo-accent-4, #8b5cf6)' : 'var(--kexo-accent-5, #ef4444)';
-          html += '<div class="kexo-widget-vbar" tabindex="0" data-kexo-wtip="1" data-kexo-wtip-name="' + escapeHtml(r.label) + '" data-kexo-wtip-value="' + escapeHtml(fmtGbp2(r.revenue)) + '" data-kexo-wtip-share="">';
-          html += '<div class="kexo-widget-vbar-col"><div class="kexo-widget-vbar-fill" style="background:' + color + ';" data-kexo-bar-fill="' + String(pct) + '"></div></div>';
-          html += '<div class="kexo-widget-vbar-label">' + escapeHtml(r.label) + '</div>';
-          html += '</div>';
-        });
-        html += '</div>';
-        html += '<div class="kexo-widget-vbars-foot" aria-hidden="true"><i class="fa-light fa-chart-network" aria-hidden="true"></i></div>';
-        html += '</div>';
-        mount.innerHTML = html;
-        animateBarsWithin(mount);
-      }
-
-      function renderWidgetPaymentTypes(payload) {
-        var mount = document.getElementById('dash-widget-payment-types');
-        if (!mount) return;
-        var rows = payload && Array.isArray(payload.rows) ? payload.rows : [];
-        if (!rows.length) { renderWidgetEmpty('dash-widget-payment-types', 'No data'); return; }
-        rows = rows.map(function(r) {
-          var key = r && r.payment_gateway ? String(r.payment_gateway) : 'unknown';
-          var revenue = Number(r && r.revenue) || 0;
-          return { key: key, label: key, revenue: revenue };
-        });
-        rows.sort(function(a, b) { return (b.revenue - a.revenue) || String(a.key).localeCompare(String(b.key)); });
-        var total = rows.reduce(function(acc, r) { return acc + (Number(r.revenue) || 0); }, 0);
-        var top = rows.slice(0, 5);
-        var html = '<div class="kexo-widget-list">';
-        top.forEach(function(r, idx) {
-          var sharePct = total > 0 ? (Math.max(0, r.revenue) / total) * 100 : 0;
-          var pct = sharePct;
-          var color = idx === 0 ? 'var(--kexo-accent-1, #4b94e4)' : idx === 1 ? 'var(--kexo-accent-2, #3eb3ab)' : idx === 2 ? 'var(--kexo-accent-3, #f59e0b)' : idx === 3 ? 'var(--kexo-accent-4, #8b5cf6)' : 'var(--kexo-accent-5, #ef4444)';
-          html += '<div class="kexo-widget-row" tabindex="0" data-kexo-wtip="1" data-kexo-wtip-name="' + escapeHtml(r.label) + '" data-kexo-wtip-value="' + escapeHtml(fmtGbp2(r.revenue)) + '" data-kexo-wtip-share="' + escapeHtml((Math.round(sharePct * 10) / 10).toFixed(1) + '%') + '">';
-          html += '<div class="kexo-widget-row-icon" aria-hidden="true"><i class="fa-light fa-credit-card" aria-hidden="true"></i></div>';
-          html += '<div class="kexo-widget-row-label">' + escapeHtml(r.label) + '</div>';
-          html += '<div class="kexo-widget-row-value">' + escapeHtml((Math.round(sharePct * 10) / 10).toFixed(1) + '%') + '</div>';
-          html += '<div class="kexo-widget-row-bar"><span style="background:' + color + ';" data-kexo-bar-fill="' + String(pct) + '"></span></div>';
-          html += '</div>';
-        });
-        html += '</div>';
-        mount.innerHTML = html;
-        animateBarsWithin(mount);
-      }
-
-      function renderWidgetVariant(payload) {
-        var mount = document.getElementById('dash-widget-variant');
-        if (!mount) return;
-        var menu = null;
-        try { menu = document.querySelector('[data-kexo-widget-menu="variant"]'); } catch (_) { menu = null; }
-        var tables = payload && Array.isArray(payload.tables) ? payload.tables : [];
-        if (!tables.length) {
-          if (menu) menu.innerHTML = '<div class="dropdown-item text-muted small pe-none">No tables configured</div>';
-          renderWidgetEmpty('dash-widget-variant', 'No data');
-          return;
-        }
-        var prefs = readDashWidgetsPrefs();
-        var selected = prefs.variant.tableId;
-        if (!selected || !tables.some(function(t) { return t && String(t.id) === selected; })) {
-          selected = String(tables[0].id || '');
-          prefs.variant.tableId = selected;
-          writeDashWidgetsPrefs(prefs);
-        }
-        if (menu) {
-          var mHtml = '';
-          tables.forEach(function(t) {
-            var id = t && t.id != null ? String(t.id) : '';
-            var name = t && t.name != null ? String(t.name) : id;
-            if (!id) return;
-            var active = id === selected;
-            mHtml += '<button type="button" class="dropdown-item' + (active ? ' active' : '') + '" data-kexo-widget-variant-table="' + escapeHtml(id) + '">' + escapeHtml(name) + '</button>';
-          });
-          menu.innerHTML = mHtml || '<div class="dropdown-item text-muted small pe-none">No tables</div>';
-        }
-        var table = tables.find(function(t) { return t && String(t.id) === selected; }) || tables[0];
-        var rows = table && Array.isArray(table.rows) ? table.rows : [];
-        if (!rows.length) { renderWidgetEmpty('dash-widget-variant', 'No data'); return; }
-        rows = rows.map(function(r) {
-          return { label: r && r.variant ? String(r.variant) : (r && r.key ? String(r.key) : '—'), revenue: Number(r && r.revenue) || 0 };
-        });
-        rows.sort(function(a, b) { return (b.revenue - a.revenue) || String(a.label).localeCompare(String(b.label)); });
-        var top = rows.slice(0, 5);
-        var total = rows.reduce(function(acc, r) { return acc + (Number(r.revenue) || 0); }, 0);
-        var max = top.reduce(function(acc, r) { return Math.max(acc, Number(r.revenue) || 0); }, 0);
-        var html = '<div class="kexo-widget-list">';
-        top.forEach(function(r, idx) {
-          var sharePct = total > 0 ? (Math.max(0, r.revenue) / total) * 100 : 0;
-          var pct = max > 0 ? (Math.max(0, r.revenue) / max) * 100 : 0;
-          var color = idx === 0 ? 'var(--kexo-accent-1, #4b94e4)' : idx === 1 ? 'var(--kexo-accent-2, #3eb3ab)' : idx === 2 ? 'var(--kexo-accent-3, #f59e0b)' : idx === 3 ? 'var(--kexo-accent-4, #8b5cf6)' : 'var(--kexo-accent-5, #ef4444)';
-          html += '<div class="kexo-widget-row" tabindex="0" data-kexo-wtip="1" data-kexo-wtip-name="' + escapeHtml(r.label) + '" data-kexo-wtip-value="' + escapeHtml(fmtGbp2(r.revenue)) + '" data-kexo-wtip-share="' + escapeHtml((Math.round(sharePct * 10) / 10).toFixed(1) + '%') + '">';
-          html += '<div class="kexo-widget-row-icon" aria-hidden="true"><i class="fa-light fa-gem" aria-hidden="true"></i></div>';
-          html += '<div class="kexo-widget-row-label">' + escapeHtml(r.label) + '</div>';
-          html += '<div class="kexo-widget-row-value">' + escapeHtml((Math.round(sharePct * 10) / 10).toFixed(1) + '%') + '</div>';
-          html += '<div class="kexo-widget-row-bar"><span style="background:' + color + ';" data-kexo-bar-fill="' + String(pct) + '"></span></div>';
-          html += '</div>';
-        });
-        html += '</div>';
-        mount.innerHTML = html;
-        animateBarsWithin(mount);
-      }
-
-      function fetchDashboardWidgets(options) {
-        if (!dashWidgetsPresent()) return;
-        bindDashWidgetsUiOnce();
-        var opts = options && typeof options === 'object' ? options : {};
-        var force = !!opts.force;
-        var rk = (opts.rangeKey != null) ? String(opts.rangeKey) : (typeof dashRangeKeyFromDateRange === 'function' ? dashRangeKeyFromDateRange() : 'today');
-        rk = (rk == null ? '' : String(rk)).trim().toLowerCase() || 'today';
-
-        var prefs = readDashWidgetsPrefs();
-        var dim = prefs.devices && prefs.devices.dim ? prefs.devices.dim : 'devices';
-        if (dim !== 'browsers') dim = 'devices';
-
-        // Variant tables
-        try {
-          var shop = (typeof getShopForSales === 'function') ? getShopForSales() : '';
-          if (shop) {
-            var vUrl = API + '/api/insights-variants?shop=' + encodeURIComponent(String(shop)) + '&range=' + encodeURIComponent(String(rk)) + (force ? ('&force=1&_=' + Date.now()) : '');
-            fetchWidgetJson('variant', vUrl, { force: force, ttlMs: 2 * 60 * 1000, timeoutMs: 30000 }).then(function(p) { renderWidgetVariant(p || { tables: [] }); });
-          } else {
-            renderWidgetEmpty('dash-widget-variant', 'Missing shop');
-          }
-        } catch (_) {
-          renderWidgetEmpty('dash-widget-variant', 'Unavailable');
-        }
-
-        // Devices or browsers
-        if (dim === 'browsers') {
-          var bUrl = API + '/api/browsers/table?range=' + encodeURIComponent(String(rk)) + (force ? ('&force=1&_=' + Date.now()) : '');
-          fetchWidgetJson('browsers', bUrl, { force: force, ttlMs: 2 * 60 * 1000 }).then(function(p) { renderWidgetDevices(p || { rows: [] }, 'browsers'); });
-        } else {
-          var dUrl = API + '/api/devices/report?range=' + encodeURIComponent(String(rk)) + (force ? ('&force=1&_=' + Date.now()) : '');
-          fetchWidgetJson('devices', dUrl, { force: force, ttlMs: 2 * 60 * 1000 }).then(function(p) { renderWidgetDevices(p || { devices: { rows: [] } }, 'devices'); });
-        }
-
-        // Attribution
-        var aUrl = API + '/api/attribution/report?range=' + encodeURIComponent(String(rk)) + (force ? ('&force=1&_=' + Date.now()) : '');
-        fetchWidgetJson('attribution', aUrl, { force: force, ttlMs: 2 * 60 * 1000 }).then(function(p) { renderWidgetAttribution(p || { attribution: { rows: [] } }); });
-
-        // Payment types
-        var pUrl = API + '/api/payment-types/table?range=' + encodeURIComponent(String(rk)) + (force ? ('&force=1&_=' + Date.now()) : '');
-        fetchWidgetJson('payment-types', pUrl, { force: force, ttlMs: 2 * 60 * 1000 }).then(function(p) { renderWidgetPaymentTypes(p || { rows: [] }); });
-
-        // Abandoned carts
-        var abUrl = API + '/api/abandoned-carts/top-countries?range=' + encodeURIComponent(String(rk)) + '&limit=5&mode=cart' + (force ? ('&force=1&_=' + Date.now()) : '');
-        fetchWidgetJson('abandoned', abUrl, { force: force, ttlMs: 2 * 60 * 1000 }).then(function(p) { renderWidgetAbandoned(p || { rows: [] }); });
-      }
-
       function fetchDashboardData(rangeKey, force, opts) {
         if (dashLoading && !force) return;
         rangeKey = (rangeKey == null ? '' : String(rangeKey)).trim().toLowerCase();
@@ -21056,8 +20582,7 @@ const API = '';
           forceMini = miniAgeMs > OVERVIEW_MINI_FORCE_REFRESH_MS;
         }
         fetchKexoScore(rangeKey);
-        try { fetchOverviewCardData('dash-chart-overview-30d', { force: forceMini, rangeKey: dashRangeKeyFromDateRange(), renderIfFresh: true }); } catch (_) {}
-        try { fetchDashboardWidgets({ force: forceMini, rangeKey: dashRangeKeyFromDateRange(), reason: 'dashboard-fetch' }); } catch (_) {}
+        fetchOverviewMiniData({ force: forceMini });
         fetchWithTimeout(url, { credentials: 'same-origin', cache: force ? 'no-store' : 'default' }, 30000)
           .then(function(r) { return (r && r.ok) ? r.json() : null; })
           .then(function(data) {
@@ -24089,6 +23614,24 @@ const API = '';
     return '<span class="d-inline-flex align-items-center gap-2">' + img + '<span>' + escapeHtml(safeLabel) + '</span></span>';
   }
 
+  function tablerPaymentProviderForKey(key) {
+    const k = (key == null ? '' : String(key)).trim().toLowerCase();
+    if (!k) return '';
+    if (k === 'visa') return 'visa';
+    if (k === 'mastercard') return 'mastercard';
+    if (k === 'amex') return 'americanexpress';
+    if (k === 'paypal') return 'paypal';
+    if (k === 'klarna') return 'klarna';
+    if (k === 'shop_pay') return 'shop-pay';
+    if (k === 'apple_pay') return 'applepay';
+    if (k === 'google_pay') return 'google-pay';
+    if (k === 'discover') return 'discover';
+    if (k === 'maestro') return 'maestro';
+    if (k === 'diners') return 'dinersclub';
+    if (k === 'unionpay') return 'unionpay';
+    return '';
+  }
+
   const CHART_KEY = 'payment-methods-chart';
   let lastPayload = null;
   let inFlight = null;
@@ -24171,18 +23714,23 @@ const API = '';
       return;
     }
     body.innerHTML = rows.map(function (r) {
+      const key = r && r.key != null ? String(r.key) : '';
       const label = r && r.label != null ? String(r.label) : 'Other';
       const iconSrc = r && r.iconSrc ? String(r.iconSrc) : '';
       const iconAlt = r && r.iconAlt ? String(r.iconAlt) : label;
       const payCell = '<span class="d-inline-flex align-items-center">' + escapeHtml(label) + '</span>';
-      const iconCell = iconSrc
-        ? '<img class="kexo-payment-method-icon kexo-payment-method-icon--fill" src="' + escapeHtml(iconSrc) + '" alt="' + escapeHtml(iconAlt) + '" loading="lazy" />'
-        : '<i class="fa-light fa-circle-question text-secondary kexo-payment-method-fallback-icon" aria-hidden="true"></i>';
+      const provider = tablerPaymentProviderForKey(key);
+      const iconInner = provider
+        ? '<span class="payment payment-lg payment-provider-' + escapeHtml(provider) + '" aria-hidden="true"></span>'
+        : (iconSrc
+          ? '<img class="kexo-payment-method-icon kexo-payment-method-icon--fill" src="' + escapeHtml(iconSrc) + '" alt="' + escapeHtml(iconAlt) + '" loading="lazy" />'
+          : '<i class="fa-light fa-circle-question text-secondary kexo-payment-method-fallback-icon" aria-hidden="true"></i>');
+      const iconCell = '<span class="d-flex align-items-center justify-content-center w-100 h-100">' + iconInner + '</span>';
       return '' +
         '<div class="grid-row" role="row">' +
           '<div class="grid-cell" role="cell">' + payCell + '</div>' +
           '<div class="grid-cell kexo-payments-icon-col kexo-payment-method-icon-cell" role="cell">' + iconCell + '</div>' +
-          '<div class="grid-cell text-end" role="cell">' + escapeHtml(fmtInt(r.sessions)) + '</div>' +
+          '<div class="grid-cell text-center" role="cell">' + escapeHtml(fmtInt(r.sessions)) + '</div>' +
           '<div class="grid-cell text-end" role="cell">' + escapeHtml(fmtInt(r.carts)) + '</div>' +
           '<div class="grid-cell text-end" role="cell">' + escapeHtml(fmtInt(r.orders)) + '</div>' +
           '<div class="grid-cell text-end" role="cell">' + escapeHtml(fmtPct1(r.cr)) + '</div>' +

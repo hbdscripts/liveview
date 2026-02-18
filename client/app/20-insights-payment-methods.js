@@ -97,6 +97,24 @@
     return '<span class="d-inline-flex align-items-center gap-2">' + img + '<span>' + escapeHtml(safeLabel) + '</span></span>';
   }
 
+  function tablerPaymentProviderForKey(key) {
+    const k = (key == null ? '' : String(key)).trim().toLowerCase();
+    if (!k) return '';
+    if (k === 'visa') return 'visa';
+    if (k === 'mastercard') return 'mastercard';
+    if (k === 'amex') return 'americanexpress';
+    if (k === 'paypal') return 'paypal';
+    if (k === 'klarna') return 'klarna';
+    if (k === 'shop_pay') return 'shop-pay';
+    if (k === 'apple_pay') return 'applepay';
+    if (k === 'google_pay') return 'google-pay';
+    if (k === 'discover') return 'discover';
+    if (k === 'maestro') return 'maestro';
+    if (k === 'diners') return 'dinersclub';
+    if (k === 'unionpay') return 'unionpay';
+    return '';
+  }
+
   const CHART_KEY = 'payment-methods-chart';
   let lastPayload = null;
   let inFlight = null;
@@ -179,18 +197,23 @@
       return;
     }
     body.innerHTML = rows.map(function (r) {
+      const key = r && r.key != null ? String(r.key) : '';
       const label = r && r.label != null ? String(r.label) : 'Other';
       const iconSrc = r && r.iconSrc ? String(r.iconSrc) : '';
       const iconAlt = r && r.iconAlt ? String(r.iconAlt) : label;
       const payCell = '<span class="d-inline-flex align-items-center">' + escapeHtml(label) + '</span>';
-      const iconCell = iconSrc
-        ? '<img class="kexo-payment-method-icon kexo-payment-method-icon--fill" src="' + escapeHtml(iconSrc) + '" alt="' + escapeHtml(iconAlt) + '" loading="lazy" />'
-        : '<i class="fa-light fa-circle-question text-secondary kexo-payment-method-fallback-icon" aria-hidden="true"></i>';
+      const provider = tablerPaymentProviderForKey(key);
+      const iconInner = provider
+        ? '<span class="payment payment-lg payment-provider-' + escapeHtml(provider) + '" aria-hidden="true"></span>'
+        : (iconSrc
+          ? '<img class="kexo-payment-method-icon kexo-payment-method-icon--fill" src="' + escapeHtml(iconSrc) + '" alt="' + escapeHtml(iconAlt) + '" loading="lazy" />'
+          : '<i class="fa-light fa-circle-question text-secondary kexo-payment-method-fallback-icon" aria-hidden="true"></i>');
+      const iconCell = '<span class="d-flex align-items-center justify-content-center w-100 h-100">' + iconInner + '</span>';
       return '' +
         '<div class="grid-row" role="row">' +
           '<div class="grid-cell" role="cell">' + payCell + '</div>' +
           '<div class="grid-cell kexo-payments-icon-col kexo-payment-method-icon-cell" role="cell">' + iconCell + '</div>' +
-          '<div class="grid-cell text-end" role="cell">' + escapeHtml(fmtInt(r.sessions)) + '</div>' +
+          '<div class="grid-cell text-center" role="cell">' + escapeHtml(fmtInt(r.sessions)) + '</div>' +
           '<div class="grid-cell text-end" role="cell">' + escapeHtml(fmtInt(r.carts)) + '</div>' +
           '<div class="grid-cell text-end" role="cell">' + escapeHtml(fmtInt(r.orders)) + '</div>' +
           '<div class="grid-cell text-end" role="cell">' + escapeHtml(fmtPct1(r.cr)) + '</div>' +
