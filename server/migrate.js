@@ -60,6 +60,7 @@ const { up: up052 } = require('./migrations/052_change_pins');
 const { up: up053 } = require('./migrations/053_sessions_click_ids');
 const { up: up054 } = require('./migrations/054_sessions_city_browser');
 const { up: up055 } = require('./migrations/055_purchases_payment_method');
+const { up: up056 } = require('./migrations/056_edge_block_events');
 const { runAdsMigrations } = require('./ads/adsMigrate');
 
 const APP_MIGRATIONS = [
@@ -118,6 +119,7 @@ const APP_MIGRATIONS = [
   ['053_sessions_click_ids', up053],
   ['054_sessions_city_browser', up054],
   ['055_purchases_payment_method', up055],
+  ['056_edge_block_events', up056],
 ];
 
 async function ensureAppMigrationsTable(db) {

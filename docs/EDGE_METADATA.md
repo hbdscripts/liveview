@@ -80,3 +80,23 @@ If Worker headers are missing, the origin fills what it can:
   - **city**: city from origin fallback (`geoip-lite`)
 - UI should display `cf_city` first, then `city`.
 
+## Edge blocks (blocked-only logging)
+
+When the Cloudflare Worker drops/denies a request at the edge (blocked-only branches), it may (sampled) POST an event to the origin:
+
+- **Endpoint**: `POST /api/edge-blocked` (internal; `X-Internal-Secret == INGEST_SECRET`)
+- **Purpose**: operational visibility into edge drops (bots/junk/denies), without logging accepted ingest traffic.
+
+### Payload / storage fields
+
+These are intentionally privacy-safe; **never** send or store raw IP addresses.
+
+- **edge_result**: worker edge result key (e.g. `dropped_bot`, `dropped_junk`, `bad_method`)
+- **blocked_reason**: short reason key (e.g. `bot`, `no_ua`, `origin`, `payload_too_large`, `method`, `path`, `host`)
+- **ray_id**: Cloudflare `cf-ray`
+- **country / colo / asn / verified_bot_category / known_bot**: derived from Cloudflare metadata
+- **ua / origin / referer**: truncated strings (max 512)
+- **ip_prefix**: IPv4 `/24` or IPv6 `/64` prefix only
+- **ip_hash**: non-reversible salted hash (best-effort)
+- **tenant_key**: optional tenant discriminator (typically the ingest host)
+
