@@ -23,7 +23,7 @@ const SESSION_HOURS = 24;
 const appUrl = (config.shopify.appUrl || '').replace(/\/$/, '');
 const apiKey = config.shopify.apiKey;
 const apiSecret = config.shopify.apiSecret;
-const scopes = config.shopify.scopes || 'read_products,read_orders,read_all_orders,write_pixels,read_customer_events,read_reports,read_shopify_payments';
+const scopes = config.shopify.scopes || 'read_products,read_orders,read_all_orders,write_pixels,read_customer_events,read_reports';
 
 function setOauthCookie(res, value) {
   const maxAge = SESSION_HOURS * 60 * 60;

@@ -13,7 +13,7 @@ const { warnOnReject } = require('../shared/warnReject');
 const apiKey = config.shopify.apiKey;
 const apiSecret = config.shopify.apiSecret;
 const appUrl = (config.shopify.appUrl || '').replace(/\/$/, '');
-const scopes = config.shopify.scopes || 'read_products,read_orders,read_all_orders,write_pixels,read_customer_events,read_reports,read_shopify_payments';
+const scopes = config.shopify.scopes || 'read_products,read_orders,read_all_orders,write_pixels,read_customer_events,read_reports';
 
 function parseScopeSet(scopeStr) {
   return new Set(
