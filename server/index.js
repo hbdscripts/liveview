@@ -198,6 +198,8 @@ app.get('/api/shopify-lengths', shopifyLengths.getShopifyLengths);
 app.get('/api/shopify-chain-styles', shopifyChainStyles.getShopifyChainStyles);
 app.get('/api/shopify-worst-variants', shopifyWorstVariants.getShopifyWorstVariants);
 app.get('/api/insights-variants', insightsVariants.getInsightsVariants);
+app.get('/api/payment-types/series', require('./routes/paymentTypes').getPaymentTypesSeries);
+app.get('/api/payment-types/table', require('./routes/paymentTypes').getPaymentTypesTable);
 app.get('/api/insights-variants-suggestions', insightsVariantsSuggestions.getInsightsVariantsSuggestions);
 app.post('/api/insights-variants-suggestions/apply', insightsVariantsSuggestions.postApplyInsightsVariantsSuggestions);
 app.get('/api/worst-products', worstProducts.getWorstProducts);
@@ -465,6 +467,7 @@ insightsPagesRouter.get('/snapshot', (req, res) => sendPage(res, 'insights/snaps
 insightsPagesRouter.get('/countries', (req, res) => sendPage(res, 'insights/countries.html'));
 insightsPagesRouter.get('/products', (req, res) => sendPage(res, 'insights/products.html'));
 insightsPagesRouter.get('/variants', (req, res) => sendPage(res, 'insights/variants.html'));
+insightsPagesRouter.get('/payment-types', (req, res) => sendPage(res, 'insights/payment-types.html'));
 insightsPagesRouter.get('/abandoned-carts', (req, res) => sendPage(res, 'insights/abandoned-carts.html'));
 
 const acquisitionPagesRouter = express.Router();
@@ -514,6 +517,7 @@ app.get('/overview', redirectWithQuery(301, '/dashboard/overview'));
 app.get('/countries', redirectWithQuery(301, '/insights/countries'));
 app.get('/products', redirectWithQuery(301, '/insights/products'));
 app.get('/variants', redirectWithQuery(301, '/insights/variants'));
+app.get('/payment-types', redirectWithQuery(301, '/insights/payment-types'));
 app.get('/abandoned-carts', redirectWithQuery(301, '/insights/abandoned-carts'));
 app.get('/channels', redirectWithQuery(301, '/acquisition/attribution'));
 app.get('/type', redirectWithQuery(301, '/acquisition/devices'));
