@@ -557,6 +557,26 @@
     return { token_type: tokenType, token_value: tokenValue };
   }
 
+  function maybeAutofillSourceKeyFromSelected(selected) {
+    if (!selected || selected.token_type !== 'utm_source') return;
+    var srcKeyEl = document.getElementById('am-source-key');
+    if (!srcKeyEl) return;
+    var current = '';
+    try { current = String(srcKeyEl.value || '').trim(); } catch (_) { current = ''; }
+    var prevAuto = '';
+    try { prevAuto = String(srcKeyEl.getAttribute('data-am-autofill') || '').trim().toLowerCase(); } catch (_) { prevAuto = ''; }
+    // Only overwrite if the field is empty OR it was previously auto-filled by a prior "Use" click.
+    if (current && prevAuto !== 'utm_source') {
+      try { updateSourceIconPreview(); } catch (_) {}
+      return;
+    }
+    try {
+      srcKeyEl.value = normalizeKeyLike(selected.token_value, 32);
+      srcKeyEl.setAttribute('data-am-autofill', 'utm_source');
+    } catch (_) {}
+    try { updateSourceIconPreview(); } catch (_) {}
+  }
+
   function initAttributionMappingSettings(opts) {
     var o = opts && typeof opts === 'object' ? opts : {};
     var rootId = o.rootId ? String(o.rootId) : 'settings-attribution-mapping-root';
@@ -597,13 +617,7 @@
       }
       if (action === 'select-token') {
         _state.selected = readSelectedFromButton(btn);
-        if (_state.selected && _state.selected.token_type === 'utm_source') {
-          var srcKeyEl = document.getElementById('am-source-key');
-          if (srcKeyEl && !String(srcKeyEl.value || '').trim()) {
-            srcKeyEl.value = normalizeKeyLike(_state.selected.token_value, 32);
-            updateSourceIconPreview();
-          }
-        }
+        maybeAutofillSourceKeyFromSelected(_state.selected);
         renderSelected();
         scrollToMappingFields();
         setHint('am-map-msg', '', true);
@@ -697,6 +711,8 @@
       var t = e && e.target ? e.target : null;
       if (!t) return;
       if (t.id === 'am-source-key') {
+        // If the user edits this field, stop treating it as auto-filled.
+        try { t.removeAttribute('data-am-autofill'); } catch (_) {}
         updateSourceIconPreview();
         return;
       }
