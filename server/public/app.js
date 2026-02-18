@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: f569353cfbf816ed
+// checksum: 88457e50673c711e
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -1480,7 +1480,7 @@ const API = '';
           link.className = 'kexo-builder-icon-link';
           link.title = 'Table settings';
           link.setAttribute('aria-label', 'Table settings');
-          link.innerHTML = '<i class="fa-light fa-gear" data-icon-key="table-builder-icon" style="color:#999" aria-hidden="true"></i>';
+          link.innerHTML = '<i class="fa-light fa-gear" data-icon-key="table-builder-icon" aria-hidden="true"></i>';
           link.addEventListener('click', function (e) {
             e.preventDefault();
             e.stopPropagation();
@@ -1517,10 +1517,16 @@ const API = '';
           chartLink.className = 'kexo-builder-icon-link';
           chartLink.title = 'Chart settings';
           chartLink.setAttribute('aria-label', 'Chart settings');
-          chartLink.innerHTML = '<i class="fa-light fa-gear" data-icon-key="chart-builder-icon" style="color:#999" aria-hidden="true"></i>';
+          chartLink.setAttribute('data-kexo-chart-settings-key', chartKey);
+          chartLink.innerHTML = '<i class="fa-light fa-gear" data-icon-key="chart-builder-icon" aria-hidden="true"></i>';
           chartLink.addEventListener('click', function (e) {
             e.preventDefault();
             e.stopPropagation();
+            // Back-compat: if delegation doesn't run for any reason, open via unified builder directly.
+            if (window.KexoChartSettingsBuilder && typeof window.KexoChartSettingsBuilder.openModal === 'function') {
+              window.KexoChartSettingsBuilder.openModal({ chartKey: chartKey, cardTitle: chartCardTitle });
+              return;
+            }
             if (typeof window.KexoLayoutShortcuts !== 'undefined' && typeof window.KexoLayoutShortcuts.openChartModal === 'function') {
               window.KexoLayoutShortcuts.openChartModal({ chartKey: chartKey, cardTitle: chartCardTitle });
             }
