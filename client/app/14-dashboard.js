@@ -3618,6 +3618,14 @@
         var nodes = Array.from(scope.querySelectorAll('[data-kexo-score-popover="1"]'));
         nodes.forEach(function(node) {
           try {
+            // If Bootstrap auto-initialized this node from data-bs-toggle before our code runs,
+            // reconfigure once so we always have a header (title) and a scoped container.
+            if (node.getAttribute('data-kexo-score-popover-configured') !== '1') {
+              try {
+                var existing = Popover.getInstance(node);
+                if (existing) existing.dispose();
+              } catch (_) {}
+            }
             var popover = Popover.getOrCreateInstance(node, {
               trigger: node.getAttribute('data-bs-trigger') || 'click',
               placement: node.getAttribute('data-bs-placement') || 'bottom',
@@ -3626,6 +3634,9 @@
               customClass: 'kexo-score-popover',
               title: 'Kexo Score',
             });
+            if (node.getAttribute('data-kexo-score-popover-configured') !== '1') {
+              node.setAttribute('data-kexo-score-popover-configured', '1');
+            }
             if (node.getAttribute('data-kexo-score-popover-bound') !== '1') {
               node.setAttribute('data-kexo-score-popover-bound', '1');
               node.addEventListener('shown.bs.popover', function onShown() {
