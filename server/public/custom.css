@@ -371,6 +371,8 @@ a {
   vertical-align: middle !important;
   border-bottom: 1px solid var(--tblr-border-color, #e6e7e9) !important;
   line-height: 1.4;
+  text-wrap-mode: nowrap;
+  white-space: nowrap;
 }
 
 /* Last row: no border-bottom so the card/table outer border provides the bottom edge */
@@ -4677,12 +4679,20 @@ body[data-page="snapshot"] #kexo-date-display {
   }
   .page-header .page-title {
     text-align: left;
+    font-size: 15px;
+    margin-left: 15px;
   }
   .kexo-page-header-category-icon {
     display: none;
   }
   .kexo-page-header-title-icon {
     display: none !important;
+  }
+  body[data-page="attribution"] .kexo-page-header-title-icon {
+    display: inline-flex !important;
+  }
+  body[data-page="attribution"] .kexo-page-title-mobile-sep {
+    display: inline-flex !important;
   }
   .page-header .kexo-page-header-date-col {
     display: block;
@@ -4695,6 +4705,17 @@ body[data-page="snapshot"] #kexo-date-display {
   }
 
   /* Sticky: no box-shadow (reduced motion; design uses border instead) */
+}
+
+/* Mobile-only page-title separator (injected by JS for attribution). */
+.kexo-page-title-mobile-sep {
+  display: none;
+  font-size: 12px;
+  opacity: 0.8;
+  margin-right: 5px;
+  vertical-align: middle;
+  align-items: center;
+  justify-content: center;
 }
 
 body[data-page="shipping-cr"] .page-header .page-title,

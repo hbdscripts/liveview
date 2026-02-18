@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: e2b579e5b540f2bf
+// checksum: 1021a355922730f3
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -15296,7 +15296,7 @@ const API = '';
           'abandoned-carts': 'nav-item-sales',
           channels: 'nav-item-channels',
           type: 'nav-item-type',
-          attribution: 'nav-item-channels',
+          attribution: 'nav-item-attribution',
           devices: 'nav-item-type',
           ads: 'nav-item-ads',
           tools: 'nav-item-tools',
@@ -15372,6 +15372,7 @@ const API = '';
               var title = document.querySelector('.page-header .kexo-page-header-title-col .page-title');
               if (title && iconKey) {
                 title.querySelectorAll('.kexo-page-header-title-icon').forEach(function(el) { try { el.remove(); } catch (_) {} });
+                title.querySelectorAll('.kexo-page-title-mobile-sep').forEach(function(el) { try { el.remove(); } catch (_) {} });
                 var pageIcon = document.createElement('i');
                 pageIcon.className = 'fa-jelly fa-circle kexo-page-header-title-icon';
                 pageIcon.setAttribute('aria-hidden', 'true');
@@ -15379,9 +15380,29 @@ const API = '';
                 if (idx >= 1 && idx <= 5) pageIcon.classList.add('kexo-accent-' + String(idx));
                 if (computedColor) pageIcon.style.color = computedColor;
                 title.insertBefore(pageIcon, title.firstChild || null);
+
+                // Mobile-only: Attribution title gets a subtle separator arrow.
+                try {
+                  var isAttribution = (document && document.body && document.body.getAttribute)
+                    ? (String(document.body.getAttribute('data-page') || '').trim().toLowerCase() === 'attribution')
+                    : false;
+                  if (isAttribution) {
+                    var sep = document.createElement('i');
+                    sep.className = 'fa-solid fa-arrow-turn-down-right kexo-page-title-mobile-sep';
+                    sep.setAttribute('aria-hidden', 'true');
+                    sep.setAttribute('data-icon-key', 'page-title-separator');
+                    title.insertBefore(sep, pageIcon.nextSibling || null);
+                  }
+                } catch (_) {}
                 try {
                   if (typeof window.KexoIconTheme === 'object' && typeof window.KexoIconTheme.applyElement === 'function') {
                     window.KexoIconTheme.applyElement(pageIcon);
+                  }
+                } catch (_) {}
+                try {
+                  if (typeof window.KexoIconTheme === 'object' && typeof window.KexoIconTheme.applyElement === 'function') {
+                    var justSep = title.querySelector('.kexo-page-title-mobile-sep');
+                    if (justSep) window.KexoIconTheme.applyElement(justSep);
                   }
                 } catch (_) {}
               }
@@ -22796,7 +22817,7 @@ const API = '';
 })();
 /**
  * Logo rotator: header/footer.
- * - Random (stable per-tab via sessionStorage) between curated assets.
+ * - Random per page load between curated assets.
  * - Single-init, no listeners beyond DOMContentLoaded.
  */
 (function () {
@@ -22821,16 +22842,11 @@ const API = '';
     '/assets/logos/new/dark/5.png',
   ];
 
-  function pickStable(slot, variants) {
+  function pickRandom(variants) {
     var list = Array.isArray(variants) ? variants.filter(Boolean) : [];
     if (!list.length) return '';
-    var key = 'kexo:logo-variant:' + String(slot || 'slot');
-    var existing = '';
-    try { existing = sessionStorage.getItem(key) || ''; } catch (_) { existing = ''; }
-    if (existing && list.indexOf(existing) >= 0) return existing;
     var idx = Math.floor(Math.random() * list.length);
     var chosen = list[Math.max(0, Math.min(list.length - 1, idx))] || list[0];
-    try { sessionStorage.setItem(key, chosen); } catch (_) {}
     return chosen;
   }
 
@@ -22843,7 +22859,7 @@ const API = '';
       } catch (_) {}
       return;
     }
-    var chosen = pickStable(slot, variants);
+    var chosen = pickRandom(variants);
     if (!chosen) return;
     try {
       if (String(img.getAttribute('src') || '') !== String(chosen)) img.setAttribute('src', chosen);

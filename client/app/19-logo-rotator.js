@@ -1,6 +1,6 @@
 /**
  * Logo rotator: header/footer.
- * - Random (stable per-tab via sessionStorage) between curated assets.
+ * - Random per page load between curated assets.
  * - Single-init, no listeners beyond DOMContentLoaded.
  */
 (function () {
@@ -25,16 +25,11 @@
     '/assets/logos/new/dark/5.png',
   ];
 
-  function pickStable(slot, variants) {
+  function pickRandom(variants) {
     var list = Array.isArray(variants) ? variants.filter(Boolean) : [];
     if (!list.length) return '';
-    var key = 'kexo:logo-variant:' + String(slot || 'slot');
-    var existing = '';
-    try { existing = sessionStorage.getItem(key) || ''; } catch (_) { existing = ''; }
-    if (existing && list.indexOf(existing) >= 0) return existing;
     var idx = Math.floor(Math.random() * list.length);
     var chosen = list[Math.max(0, Math.min(list.length - 1, idx))] || list[0];
-    try { sessionStorage.setItem(key, chosen); } catch (_) {}
     return chosen;
   }
 
@@ -47,7 +42,7 @@
       } catch (_) {}
       return;
     }
-    var chosen = pickStable(slot, variants);
+    var chosen = pickRandom(variants);
     if (!chosen) return;
     try {
       if (String(img.getAttribute('src') || '') !== String(chosen)) img.setAttribute('src', chosen);

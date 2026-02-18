@@ -111,7 +111,7 @@
           'abandoned-carts': 'nav-item-sales',
           channels: 'nav-item-channels',
           type: 'nav-item-type',
-          attribution: 'nav-item-channels',
+          attribution: 'nav-item-attribution',
           devices: 'nav-item-type',
           ads: 'nav-item-ads',
           tools: 'nav-item-tools',
@@ -187,6 +187,7 @@
               var title = document.querySelector('.page-header .kexo-page-header-title-col .page-title');
               if (title && iconKey) {
                 title.querySelectorAll('.kexo-page-header-title-icon').forEach(function(el) { try { el.remove(); } catch (_) {} });
+                title.querySelectorAll('.kexo-page-title-mobile-sep').forEach(function(el) { try { el.remove(); } catch (_) {} });
                 var pageIcon = document.createElement('i');
                 pageIcon.className = 'fa-jelly fa-circle kexo-page-header-title-icon';
                 pageIcon.setAttribute('aria-hidden', 'true');
@@ -194,9 +195,29 @@
                 if (idx >= 1 && idx <= 5) pageIcon.classList.add('kexo-accent-' + String(idx));
                 if (computedColor) pageIcon.style.color = computedColor;
                 title.insertBefore(pageIcon, title.firstChild || null);
+
+                // Mobile-only: Attribution title gets a subtle separator arrow.
+                try {
+                  var isAttribution = (document && document.body && document.body.getAttribute)
+                    ? (String(document.body.getAttribute('data-page') || '').trim().toLowerCase() === 'attribution')
+                    : false;
+                  if (isAttribution) {
+                    var sep = document.createElement('i');
+                    sep.className = 'fa-solid fa-arrow-turn-down-right kexo-page-title-mobile-sep';
+                    sep.setAttribute('aria-hidden', 'true');
+                    sep.setAttribute('data-icon-key', 'page-title-separator');
+                    title.insertBefore(sep, pageIcon.nextSibling || null);
+                  }
+                } catch (_) {}
                 try {
                   if (typeof window.KexoIconTheme === 'object' && typeof window.KexoIconTheme.applyElement === 'function') {
                     window.KexoIconTheme.applyElement(pageIcon);
+                  }
+                } catch (_) {}
+                try {
+                  if (typeof window.KexoIconTheme === 'object' && typeof window.KexoIconTheme.applyElement === 'function') {
+                    var justSep = title.querySelector('.kexo-page-title-mobile-sep');
+                    if (justSep) window.KexoIconTheme.applyElement(justSep);
                   }
                 } catch (_) {}
               }

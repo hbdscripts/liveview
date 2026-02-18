@@ -335,6 +335,7 @@ async function handleGetLogin(req, res) {
   })();
 
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-store');
   res.send(getSignInHtml(queryError, { faviconHref, loginLogoSrc, redirectTarget, shopDomain, registered }));
 }
 
@@ -366,6 +367,7 @@ async function handleGetRegister(req, res) {
   })();
 
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-store');
   res.send(getSignUpHtml(queryError, { faviconHref, loginLogoSrc, redirectTarget }));
 }
 

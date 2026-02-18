@@ -949,8 +949,31 @@
       padding: .5rem .75rem;
     }
     .source-googleads-img, .source-icon-img { width: 20px; height: 20px; vertical-align: middle; display: inline-block; }
-    .source-icons { display: inline-flex; align-items: center; gap: 4px; }
-    .source-icons img { width: 20px; height: 20px; }
+    .source-icons { display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0; }
+    .source-icons img {
+      width: 20px !important;
+      height: 20px !important;
+      max-width: 20px !important;
+      max-height: 20px !important;
+      object-fit: contain;
+      display: inline-block;
+    }
+    .source-icons svg {
+      width: 20px !important;
+      height: 20px !important;
+      max-width: 20px !important;
+      max-height: 20px !important;
+      display: block;
+    }
+    .source-icons i {
+      width: 20px;
+      height: 20px;
+      font-size: 20px !important;
+      line-height: 20px !important;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
     .traffic-source-cell { display: inline-flex; align-items: center; gap: 0.5rem; min-width: 0; }
     .traffic-source-label { font-weight: 650; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px; }
     @media (max-width: 1800px) {
