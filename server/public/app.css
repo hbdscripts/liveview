@@ -91,13 +91,11 @@
     .stats-card .by-country-table th:not(:first-child), .stats-card .by-country-table td:not(:first-child) { text-align: center; min-width: 4rem; white-space: nowrap; }
     .stats-card .by-country-table th:last-child, .stats-card .by-country-table td:last-child { padding-right: var(--table-cell-padding-x); min-width: 5rem; }
     .by-country-table th { font-size: var(--table-th-font-size); color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; background: var(--th-bg); }
-    /* Table header abbreviations/icons on small screens (avoid overlaps). */
+    /* Table headers always show text (tables scroll horizontally on mobile). */
     .th-label-long { display: inline; }
     .th-label-short { display: none; align-items: center; justify-content: center; gap: 0.25rem; line-height: 1; }
     .th-label-short svg { width: 16px; height: 16px; display: block; }
     @media (max-width: 768px) {
-      .th-label-long { display: none; }
-      .th-label-short { display: inline-flex; }
       .by-country-table th.th-sort-asc::after,
       .by-country-table th.th-sort-desc::after { margin: -10px 0 0 0; }
     }

@@ -2340,8 +2340,11 @@
 
       function fetchOverviewJson(url, force, timeoutMs) {
         return fetchWithTimeout(url, { credentials: 'same-origin', cache: force ? 'no-store' : 'default' }, timeoutMs || 25000)
-          .then(function(r) { return (r && r.ok) ? r.json() : null; })
-          .catch(function() { return null; });
+          .then(function(r) {
+            if (!r) throw new Error('No response');
+            if (!r.ok) throw new Error('Request failed (' + String(r.status || '') + ')');
+            return r.json();
+          });
       }
 
       function renderOverviewMiniLegend(chartId, labels, colors) {

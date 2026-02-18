@@ -208,6 +208,14 @@
         var animations = !(s.style && s.style.animations === false);
         var supportsIcons = !!(meta && meta.capabilities && meta.capabilities.icons === true);
         var iconsEnabled = supportsIcons ? !!(s.style && s.style.icons === true) : false;
+        var supportsPieLabels = !!(modes && (modes.indexOf('pie') >= 0 || modes.indexOf('donut') >= 0));
+        var pieLabelPosition = (s && s.style && s.style.pieLabelPosition != null) ? String(s.style.pieLabelPosition).trim().toLowerCase() : 'auto';
+        if (pieLabelPosition !== 'auto' && pieLabelPosition !== 'inside' && pieLabelPosition !== 'outside') pieLabelPosition = 'auto';
+        var pieLabelOffset = (s && s.style && Number.isFinite(Number(s.style.pieLabelOffset))) ? Math.round(Number(s.style.pieLabelOffset)) : 16;
+        if (!Number.isFinite(pieLabelOffset)) pieLabelOffset = 16;
+        pieLabelOffset = Math.round(Math.max(-40, Math.min(40, pieLabelOffset)));
+        if (pieLabelPosition === 'outside') pieLabelOffset = Math.max(6, pieLabelOffset);
+        if (pieLabelPosition === 'inside') pieLabelOffset = Math.min(0, pieLabelOffset);
         var finishesCenterLabel = !(s.style && s.style.radialCenterLabel === false);
         var isOverview = chartKey === 'dash-chart-overview-30d';
         var isFinishes = chartKey === 'dash-chart-finishes-30d';
@@ -247,6 +255,27 @@
         body += '</label>';
         body += '<input type="range" class="form-range" min="0" max="100" step="1" value="' + fillOpacityPct + '" data-cs-field="fillOpacity">';
         body += '<div class="form-hint">Lower values make stacked areas easier to read.</div>';
+        body += '</div>';
+        body += '<div class="col-12' + (supportsPieLabels && (mode === 'pie' || mode === 'donut') ? '' : ' d-none') + '" data-cs-mode-group="pie-labels">';
+        body += '<div class="row g-2">';
+        body += '<div class="col-12 col-md-6">';
+        body += '<label class="form-label">Label position</label>';
+        body += '<select class="form-select form-select-sm" data-cs-field="pieLabelPosition">';
+        body += '<option value="auto"' + (pieLabelPosition === 'auto' ? ' selected' : '') + '>Auto</option>';
+        body += '<option value="inside"' + (pieLabelPosition === 'inside' ? ' selected' : '') + '>Inside</option>';
+        body += '<option value="outside"' + (pieLabelPosition === 'outside' ? ' selected' : '') + '>Outside</option>';
+        body += '</select>';
+        body += '<div class="form-hint">Applies to Pie / Donut chart types.</div>';
+        body += '</div>';
+        body += '<div class="col-12 col-md-6">';
+        body += '<label class="form-label d-flex align-items-center justify-content-between">';
+        body += '<span>Label offset</span>';
+        body += '<span class="text-muted small" data-cs-pie-label-offset-value>' + String(pieLabelOffset) + 'px</span>';
+        body += '</label>';
+        body += '<input type="range" class="form-range" min="-40" max="40" step="1" value="' + String(pieLabelOffset) + '" data-cs-field="pieLabelOffset">';
+        body += '<div class="form-hint">Move labels inward (negative) or outward (positive).</div>';
+        body += '</div>';
+        body += '</div>';
         body += '</div>';
         if (isOverview) {
           body += '<div class="col-12"><label class="form-label">Colours</label><div class="row g-2">';
@@ -334,6 +363,34 @@
           sync();
         }
 
+        function bindPieLabelControls() {
+          var posEl = bodyEl.querySelector('[data-cs-field="pieLabelPosition"]');
+          var offEl = bodyEl.querySelector('[data-cs-field="pieLabelOffset"]');
+          var valueEl = bodyEl.querySelector('[data-cs-pie-label-offset-value]');
+          if (!posEl || !offEl) return;
+          function clampOffsetForPosition(raw, pos) {
+            var n = parseInt(String(raw == null ? '' : raw), 10);
+            if (!Number.isFinite(n)) n = pieLabelOffset;
+            n = Math.round(Math.max(-40, Math.min(40, n)));
+            var p = String(pos || '').trim().toLowerCase();
+            if (p === 'outside') n = Math.max(6, n);
+            if (p === 'inside') n = Math.min(0, n);
+            return n;
+          }
+          function sync() {
+            var pos = String(posEl.value || '').trim().toLowerCase();
+            if (pos !== 'auto' && pos !== 'inside' && pos !== 'outside') pos = 'auto';
+            try { posEl.value = pos; } catch (_) {}
+            var next = clampOffsetForPosition(offEl.value, pos);
+            try { offEl.value = String(next); } catch (_) {}
+            if (valueEl) valueEl.textContent = String(next) + 'px';
+          }
+          try { posEl.addEventListener('change', sync); } catch (_) {}
+          try { offEl.addEventListener('input', sync); } catch (_) {}
+          try { offEl.addEventListener('change', sync); } catch (_) {}
+          sync();
+        }
+
         function syncModeControls(modeVal) {
           var m = String(modeVal || '').trim().toLowerCase();
           var fillWrap = bodyEl.querySelector('[data-cs-mode-group="fill-opacity"]');
@@ -343,6 +400,11 @@
             var labelEl = fillWrap.querySelector('[data-cs-fill-opacity-label]');
             if (labelEl) labelEl.textContent = fillOpacityLabelForMode(m);
           }
+          var pieWrap = bodyEl.querySelector('[data-cs-mode-group="pie-labels"]');
+          if (pieWrap) {
+            if (supportsPieLabels && (m === 'pie' || m === 'donut')) pieWrap.classList.remove('d-none');
+            else pieWrap.classList.add('d-none');
+          }
           var finishesWrap = bodyEl.querySelector('[data-cs-mode-group="finishes-center-label"]');
           if (finishesWrap) {
             if (m === 'radialbar') finishesWrap.classList.remove('d-none');
@@ -351,6 +413,7 @@
         }
 
         bindFillOpacityControls();
+        bindPieLabelControls();
         syncModeControls(mode);
         try {
           var modeSelect = bodyEl.querySelector('[data-cs-field="mode"]');
@@ -363,6 +426,8 @@
           var animEl = bodyEl.querySelector('[data-cs-field="animations"]');
           var iconsEl = supportsIcons ? bodyEl.querySelector('[data-cs-field="icons"]') : null;
           var centerEl = isFinishes ? bodyEl.querySelector('[data-cs-field="radialCenterLabel"]') : null;
+          var piePosEl = supportsPieLabels ? bodyEl.querySelector('[data-cs-field="pieLabelPosition"]') : null;
+          var pieOffEl = supportsPieLabels ? bodyEl.querySelector('[data-cs-field="pieLabelOffset"]') : null;
           var styleBase = {};
           try {
             if (s && s.style && typeof s.style === 'object') styleBase = Object.assign({}, s.style);
@@ -370,6 +435,21 @@
           styleBase.animations = !!(animEl && animEl.checked);
           if (supportsIcons) styleBase.icons = !!(iconsEl && iconsEl.checked);
           if (isFinishes) styleBase.radialCenterLabel = !!(centerEl && centerEl.checked);
+          if (piePosEl) {
+            var pp = String(piePosEl.value || '').trim().toLowerCase();
+            if (pp !== 'auto' && pp !== 'inside' && pp !== 'outside') pp = 'auto';
+            styleBase.pieLabelPosition = pp;
+          }
+          if (pieOffEl) {
+            var po = parseInt(String(pieOffEl.value || ''), 10);
+            if (Number.isFinite(po)) {
+              po = Math.round(Math.max(-40, Math.min(40, po)));
+              var refPos = (styleBase && styleBase.pieLabelPosition) ? String(styleBase.pieLabelPosition).trim().toLowerCase() : 'auto';
+              if (refPos === 'outside') po = Math.max(6, po);
+              if (refPos === 'inside') po = Math.min(0, po);
+              styleBase.pieLabelOffset = po;
+            }
+          }
           var fillEl = bodyEl.querySelector('[data-cs-field="fillOpacity"]');
           if (fillEl) {
             var raw = parseInt(String(fillEl.value || ''), 10);

@@ -1575,7 +1575,7 @@ body[data-page="dashboard"] #dash-trending-down tbody td:nth-child(5) {
   user-select: none;
 }
 
-/* Table header labels: text by default; icon-only on mobile */
+/* Table header labels: always show text (tables scroll horizontally on mobile). */
 .th-label-long {
   display: block;
   max-width: 100%;
@@ -1597,8 +1597,15 @@ body[data-page="dashboard"] #dash-trending-down tbody td:nth-child(5) {
 .th-label-short svg { width: 16px; height: 16px; display: block; }
 
 @media (max-width: 768px) {
-  .th-label-long { display: none !important; }
-  .th-label-short { display: inline-flex !important; }
+  /* Mobile tables: give cells more room and rely on horizontal scroll. */
+  .table-scroll-wrap .grid-table,
+  .country-table-wrap .grid-table,
+  .tools-table-wrap .grid-table {
+    min-width: 920px !important;
+  }
+  .table-responsive > table {
+    min-width: 920px;
+  }
 }
 
 /* Standard <table> headers: keep single-line with CSS ellipsis */

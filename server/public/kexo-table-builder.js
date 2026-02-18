@@ -53,7 +53,6 @@
       var cellClass = (col.cellClass || '') + (sortable ? ' sortable' : '');
       var aria = col.ariaLabel != null ? String(col.ariaLabel) : label;
       var defaultSort = col.defaultSort || '';
-      var iconKey = col.iconKey || '';
 
       var cellAttrs = ' class="grid-cell' + (cellClass ? ' ' + escapeHtml(cellClass.trim()) : '') + '" role="columnheader"';
       if (sortable) {
@@ -61,15 +60,8 @@
       }
       if (aria) cellAttrs += ' aria-label="' + escapeHtml(aria) + '"';
 
-      var shortHtml = '';
-      if (iconKey) {
-        shortHtml = '<span class="th-label-short"><i class="fa-solid fa-circle" data-icon-key="' + escapeHtml(iconKey) + '" aria-hidden="true"></i></span>';
-      } else {
-        shortHtml = '<span class="th-label-short"></span>';
-      }
-
       headerCells += '<div' + cellAttrs + '>' +
-        '<span class="th-label-long">' + escapeHtml(label) + '</span>' + shortHtml +
+        '<span class="th-label-long">' + escapeHtml(label) + '</span>' +
         '</div>';
     });
 

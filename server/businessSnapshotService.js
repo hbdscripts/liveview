@@ -2038,7 +2038,21 @@ async function getBusinessSnapshot(options = {}) {
   const rangeKey = rangeKeyFromYmd(currentWindow.startYmd, currentWindow.endYmd);
   const compareRangeKey = rangeKeyFromYmd(previousWindow.startYmd, previousWindow.endYmd);
   const bounds = store.getRangeBounds(rangeKey, nowMs, timeZone);
-  const compareBounds = store.getRangeBounds(compareRangeKey, nowMs, timeZone);
+  let compareBounds = store.getRangeBounds(compareRangeKey, nowMs, timeZone);
+  try {
+    // Match KPI behavior: when viewing "Today" (partial day), compare to yesterday for the
+    // same time-of-day window (not the full previous day).
+    if (rangeKey === 'today' && compareRangeKey === 'yesterday' && compareBounds && bounds) {
+      const dur = Number(bounds.end) - Number(bounds.start);
+      if (Number.isFinite(dur) && dur > 0) {
+        const desiredEnd = Number(compareBounds.start) + dur;
+        const clampedEnd = Math.max(Number(compareBounds.start), Math.min(desiredEnd, Number(compareBounds.end)));
+        if (Number.isFinite(clampedEnd) && clampedEnd > Number(compareBounds.start)) {
+          compareBounds = { start: Number(compareBounds.start), end: clampedEnd };
+        }
+      }
+    }
+  } catch (_) {}
 
   const startYmd = ymdInTimeZone(bounds.start, timeZone);
   const endYmd = ymdInTimeZone(Math.max(bounds.start, bounds.end - 1), timeZone);
