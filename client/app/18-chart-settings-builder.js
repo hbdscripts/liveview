@@ -10,6 +10,7 @@
   var API = (typeof window !== 'undefined' && window.API) ? String(window.API || '') : '';
   var lastOpen = { key: '', at: 0 };
   var inFlight = { controller: null, chartKey: '' };
+  var fallbackBackdrop = null;
 
   function getChartMeta(key) {
     return (typeof window.kexoChartMeta === 'function' ? window.kexoChartMeta(key) : null) || { modes: ['line', 'area'], series: [], defaultMode: 'line', height: 200 };
@@ -74,14 +75,22 @@
     var modal = document.getElementById(MODAL_ID);
     if (!modal) return;
     abortInFlight();
+    var usedBootstrap = false;
     try {
       if (window.bootstrap && window.bootstrap.Modal) {
         var inst = window.bootstrap.Modal.getInstance(modal);
-        if (inst) inst.hide();
+        if (inst) { inst.hide(); usedBootstrap = true; }
       }
     } catch (_) {}
-    modal.classList.remove('show');
-    modal.setAttribute('aria-hidden', 'true');
+    if (usedBootstrap) return;
+    try { modal.style.display = 'none'; } catch (_) {}
+    try { modal.classList.remove('show'); } catch (_) {}
+    try { modal.setAttribute('aria-hidden', 'true'); } catch (_) {}
+    try { if (document && document.body) document.body.classList.remove('modal-open'); } catch (_) {}
+    try {
+      if (fallbackBackdrop && fallbackBackdrop.parentNode) fallbackBackdrop.parentNode.removeChild(fallbackBackdrop);
+    } catch (_) {}
+    fallbackBackdrop = null;
   }
 
   function abortInFlight() {
@@ -101,6 +110,18 @@
     try {
       if (window.bootstrap && window.bootstrap.Modal) {
         window.bootstrap.Modal.getOrCreateInstance(modal, { backdrop: true, keyboard: true }).show();
+        return;
+      }
+    } catch (_) {}
+    // Fallback: display the modal without Bootstrap JS.
+    try { modal.style.display = 'block'; } catch (_) {}
+    try { if (document && document.body) document.body.classList.add('modal-open'); } catch (_) {}
+    try {
+      if (!fallbackBackdrop) {
+        fallbackBackdrop = document.createElement('div');
+        fallbackBackdrop.className = 'modal-backdrop fade show';
+        fallbackBackdrop.addEventListener('click', function () { closeModal(); });
+        document.body.appendChild(fallbackBackdrop);
       }
     } catch (_) {}
   }
@@ -325,12 +346,13 @@
           if (pt === 'mouse' && e.button !== 0) return;
         }
       } catch (_) {}
-      // 1) Prefer explicit settings key on the cog/button.
-      // 2) Fallback to explicit chart key on the element.
-      // 3) Final fallback: nearest wrapper with data-kexo-chart-key / data-chart-key.
+      // Only trigger when clicking an actual settings control (not anywhere inside a chart card).
       var hit = safeClosest(e.target,
-        '[data-kexo-chart-settings-key],.kexo-overview-chart-settings-btn,.kexo-builder-icon-link,' +
-        '[data-chart-key],[data-kexo-chart-key]'
+        '[data-kexo-chart-settings-key],' +
+        '.kexo-overview-chart-settings-btn,' +
+        '.kexo-builder-icon-link[data-kexo-chart-settings-key],' +
+        '.kexo-builder-icon-link[aria-label="Chart settings"],' +
+        '.kexo-builder-icon-link[title="Chart settings"]'
       );
       if (!hit) return;
 

@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 9a5771fed42e5b5c
+// checksum: e7d07d6968b52f47
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -19358,9 +19358,15 @@ const API = '';
             plotOptions: sparkMode === 'bar' ? { bar: { columnWidth: '55%', borderRadius: 2 } } : {},
             grid: { padding: { top: 0, right: 2, bottom: 0, left: 2 } },
             tooltip: { enabled: false },
-            annotations: (baseline === 'zero' || baseline === 'symmetric') && yMin <= 0 && yMax >= 0
-              ? { yaxis: [{ y: 0, strokeDashArray: 2, borderColor: 'rgba(0,0,0,0.15)', borderWidth: 1, opacity: 0.9 }] }
-              : undefined
+            // ApexCharts 4.x can crash when `annotations` is explicitly set to `undefined`.
+            // Always provide an annotations object with empty arrays.
+            annotations: (function () {
+              var a = { xaxis: [], yaxis: [], points: [], texts: [], images: [] };
+              if ((baseline === 'zero' || baseline === 'symmetric') && yMin <= 0 && yMax >= 0) {
+                a.yaxis.push({ y: 0, strokeDashArray: 2, borderColor: 'rgba(0,0,0,0.15)', borderWidth: 1, opacity: 0.9 });
+              }
+              return a;
+            })()
           };
           try {
             var override = sparkCfg.advancedApexOverride;
@@ -22579,6 +22585,7 @@ const API = '';
   var API = (typeof window !== 'undefined' && window.API) ? String(window.API || '') : '';
   var lastOpen = { key: '', at: 0 };
   var inFlight = { controller: null, chartKey: '' };
+  var fallbackBackdrop = null;
 
   function getChartMeta(key) {
     return (typeof window.kexoChartMeta === 'function' ? window.kexoChartMeta(key) : null) || { modes: ['line', 'area'], series: [], defaultMode: 'line', height: 200 };
@@ -22643,14 +22650,22 @@ const API = '';
     var modal = document.getElementById(MODAL_ID);
     if (!modal) return;
     abortInFlight();
+    var usedBootstrap = false;
     try {
       if (window.bootstrap && window.bootstrap.Modal) {
         var inst = window.bootstrap.Modal.getInstance(modal);
-        if (inst) inst.hide();
+        if (inst) { inst.hide(); usedBootstrap = true; }
       }
     } catch (_) {}
-    modal.classList.remove('show');
-    modal.setAttribute('aria-hidden', 'true');
+    if (usedBootstrap) return;
+    try { modal.style.display = 'none'; } catch (_) {}
+    try { modal.classList.remove('show'); } catch (_) {}
+    try { modal.setAttribute('aria-hidden', 'true'); } catch (_) {}
+    try { if (document && document.body) document.body.classList.remove('modal-open'); } catch (_) {}
+    try {
+      if (fallbackBackdrop && fallbackBackdrop.parentNode) fallbackBackdrop.parentNode.removeChild(fallbackBackdrop);
+    } catch (_) {}
+    fallbackBackdrop = null;
   }
 
   function abortInFlight() {
@@ -22670,6 +22685,18 @@ const API = '';
     try {
       if (window.bootstrap && window.bootstrap.Modal) {
         window.bootstrap.Modal.getOrCreateInstance(modal, { backdrop: true, keyboard: true }).show();
+        return;
+      }
+    } catch (_) {}
+    // Fallback: display the modal without Bootstrap JS.
+    try { modal.style.display = 'block'; } catch (_) {}
+    try { if (document && document.body) document.body.classList.add('modal-open'); } catch (_) {}
+    try {
+      if (!fallbackBackdrop) {
+        fallbackBackdrop = document.createElement('div');
+        fallbackBackdrop.className = 'modal-backdrop fade show';
+        fallbackBackdrop.addEventListener('click', function () { closeModal(); });
+        document.body.appendChild(fallbackBackdrop);
       }
     } catch (_) {}
   }
@@ -22894,12 +22921,13 @@ const API = '';
           if (pt === 'mouse' && e.button !== 0) return;
         }
       } catch (_) {}
-      // 1) Prefer explicit settings key on the cog/button.
-      // 2) Fallback to explicit chart key on the element.
-      // 3) Final fallback: nearest wrapper with data-kexo-chart-key / data-chart-key.
+      // Only trigger when clicking an actual settings control (not anywhere inside a chart card).
       var hit = safeClosest(e.target,
-        '[data-kexo-chart-settings-key],.kexo-overview-chart-settings-btn,.kexo-builder-icon-link,' +
-        '[data-chart-key],[data-kexo-chart-key]'
+        '[data-kexo-chart-settings-key],' +
+        '.kexo-overview-chart-settings-btn,' +
+        '.kexo-builder-icon-link[data-kexo-chart-settings-key],' +
+        '.kexo-builder-icon-link[aria-label="Chart settings"],' +
+        '.kexo-builder-icon-link[title="Chart settings"]'
       );
       if (!hit) return;
 

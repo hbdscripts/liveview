@@ -3114,9 +3114,15 @@
             plotOptions: sparkMode === 'bar' ? { bar: { columnWidth: '55%', borderRadius: 2 } } : {},
             grid: { padding: { top: 0, right: 2, bottom: 0, left: 2 } },
             tooltip: { enabled: false },
-            annotations: (baseline === 'zero' || baseline === 'symmetric') && yMin <= 0 && yMax >= 0
-              ? { yaxis: [{ y: 0, strokeDashArray: 2, borderColor: 'rgba(0,0,0,0.15)', borderWidth: 1, opacity: 0.9 }] }
-              : undefined
+            // ApexCharts 4.x can crash when `annotations` is explicitly set to `undefined`.
+            // Always provide an annotations object with empty arrays.
+            annotations: (function () {
+              var a = { xaxis: [], yaxis: [], points: [], texts: [], images: [] };
+              if ((baseline === 'zero' || baseline === 'symmetric') && yMin <= 0 && yMax >= 0) {
+                a.yaxis.push({ y: 0, strokeDashArray: 2, borderColor: 'rgba(0,0,0,0.15)', borderWidth: 1, opacity: 0.9 });
+              }
+              return a;
+            })()
           };
           try {
             var override = sparkCfg.advancedApexOverride;
