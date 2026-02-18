@@ -2393,8 +2393,8 @@ html[data-bs-theme="dark"] .report-build-wrap {
 .kexo-score-ring-wrap--header {
   --kexo-score-track: color-mix(in srgb, black 25%, var(--kexo-header-top-bg, #fff));
   --kexo-score-stroke: 3px;
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   margin: -2px 0 0 0;
   background: transparent !important;
   position: relative;
@@ -2434,7 +2434,7 @@ html[data-bs-theme="dark"] .report-build-wrap {
   z-index: 1;
 }
 .kexo-score-num--header {
-  font-size: 0.75rem;
+  font-size: 0.65rem;
   font-weight: 600;
   color: #fff;
   line-height: 1;
@@ -2503,6 +2503,12 @@ html[data-bs-theme="dark"] .report-build-wrap {
   justify-content: flex-end;
   gap: 0.5rem;
 }
+
+@media (max-width: 767.98px) {
+  .kpi-compare-modal-actions {
+    display: none !important;
+  }
+}
 #kexo-score-modal .kexo-score-modal-mini {
   display: inline-flex;
   align-items: center;
@@ -2510,8 +2516,8 @@ html[data-bs-theme="dark"] .report-build-wrap {
 }
 #kexo-score-modal .kexo-score-ring-wrap--modal {
   --kexo-score-track: rgba(148, 163, 184, 0.3);
-  width: 56px;
-  height: 56px;
+  width: 68px;
+  height: 68px;
   background: transparent !important;
   position: relative;
 }
@@ -2538,10 +2544,14 @@ html[data-bs-theme="dark"] .report-build-wrap {
   stroke-linecap: butt;
 }
 #kexo-score-modal .kexo-score-num--modal {
-  font-size: 0.88rem;
+  font-size: 0.78rem;
   font-weight: 500;
   color: #0f172a;
   line-height: 1;
+}
+
+.kexo-score-popover .popover-header {
+  position: relative;
 }
 #kexo-score-modal .kpi-compare-modal-body {
   padding: 1rem 1.25rem 1.2rem;

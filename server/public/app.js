@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 1f9c39dfaa170407
+// checksum: b0c5f6775c1c0950
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -19216,7 +19216,9 @@ const API = '';
       function formatKexoScoreNumber(rawScore) {
         var n = Number(rawScore);
         if (!Number.isFinite(n)) return '\u2014';
+        n = Math.max(0, Math.min(100, n));
         var rounded = Math.round(n * 10) / 10;
+        if (rounded >= 100) return '100';
         var intRounded = Math.round(rounded);
         if (Math.abs(rounded - intRounded) < 1e-9) return String(intRounded);
         return rounded.toFixed(1).replace(/\.0$/, '');
@@ -19252,7 +19254,8 @@ const API = '';
         var fullGreen = score === 100;
         for (var i = 0; i < 5; i += 1) {
           var segStart = KEXO_RING_START_OFFSET + i * KEXO_RING_SEGMENT_AND_GAP;
-          var fillStart = i * KEXO_RING_SEGMENT_AND_GAP;
+          // Fill length advances across segments only (gaps are always unfilled).
+          var fillStart = i * KEXO_RING_SEGMENT;
           var filled = fullRed ? KEXO_RING_SEGMENT : (fullGreen ? KEXO_RING_SEGMENT : Math.max(0, Math.min(KEXO_RING_SEGMENT, totalFill - fillStart)));
           var fillCircle = svg.querySelector('.kexo-score-ring-fill--' + (i + 1));
           if (fillCircle) {
@@ -19353,7 +19356,7 @@ const API = '';
           score = Math.max(0, Math.min(100, Number(scoreData.score)));
         }
         var empty = score == null;
-        var precise = empty ? '\u2014' : score.toFixed(1);
+        var precise = empty ? '\u2014' : formatKexoScoreNumber(score);
         var pct = empty ? '0' : String(score);
         if (modalScoreNum) modalScoreNum.textContent = precise;
         if (modalRing) {
@@ -19377,6 +19380,9 @@ const API = '';
             if (existing) { existing.hide(); existing.dispose(); }
           } catch (_) {}
         });
+        try {
+          Array.from(scope.querySelectorAll('.popover')).forEach(function(p) { try { p.remove(); } catch (_) {} });
+        } catch (_) {}
       }
 
       function initKexoScorePopovers(scope) {
@@ -19386,9 +19392,7 @@ const API = '';
         var nodes = Array.from(scope.querySelectorAll('[data-kexo-score-popover="1"]'));
         nodes.forEach(function(node) {
           try {
-            var existing = Popover.getInstance(node);
-            if (existing) existing.dispose();
-            var popover = new Popover(node, {
+            var popover = Popover.getOrCreateInstance(node, {
               trigger: node.getAttribute('data-bs-trigger') || 'click',
               placement: node.getAttribute('data-bs-placement') || 'bottom',
               html: false,
@@ -19396,36 +19400,36 @@ const API = '';
               customClass: 'kexo-score-popover',
               title: 'Kexo Score',
             });
-            node.addEventListener('shown.bs.popover', function onShown() {
-              var tip = popover && typeof popover.getTipElement === 'function'
-                ? popover.getTipElement()
-                : (node.getAttribute('aria-describedby') ? document.getElementById(node.getAttribute('aria-describedby')) : scope.querySelector('.popover.show'));
-              if (!tip || !tip.querySelector || tip.querySelector('.kexo-score-popover-close')) return;
-              var header = tip.querySelector('.popover-header');
-              if (!header) {
-                header = document.createElement('div');
-                header.className = 'popover-header';
-                header.textContent = 'Kexo Score';
-                tip.insertBefore(header, tip.firstChild);
-              }
-              var closeBtn = document.createElement('button');
-              closeBtn.type = 'button';
-              closeBtn.className = 'btn-close btn-close-sm kexo-score-popover-close position-absolute top-0 end-0 m-2';
-              closeBtn.setAttribute('aria-label', 'Close');
-              header.style.position = 'relative';
-              header.appendChild(closeBtn);
-            });
+            if (node.getAttribute('data-kexo-score-popover-bound') !== '1') {
+              node.setAttribute('data-kexo-score-popover-bound', '1');
+              node.addEventListener('shown.bs.popover', function onShown() {
+                var tip = popover && typeof popover.getTipElement === 'function'
+                  ? popover.getTipElement()
+                  : (node.getAttribute('aria-describedby') ? document.getElementById(node.getAttribute('aria-describedby')) : scope.querySelector('.popover.show'));
+                if (!tip || !tip.querySelector || tip.querySelector('.kexo-score-popover-close')) return;
+                var header = tip.querySelector('.popover-header');
+                if (!header) return;
+                var closeBtn = document.createElement('button');
+                closeBtn.type = 'button';
+                closeBtn.className = 'btn-close btn-close-sm kexo-score-popover-close position-absolute top-0 end-0 m-2';
+                closeBtn.setAttribute('aria-label', 'Close');
+                header.appendChild(closeBtn);
+              });
+            }
           } catch (_) {}
         });
-        scope.addEventListener('click', function kexoScorePopoverCloseHandler(e) {
-          if (!e.target || !e.target.closest || !e.target.closest('.kexo-score-popover-close')) return;
-          nodes.forEach(function(n) {
-            try {
-              var inst = Popover.getInstance(n);
-              if (inst) inst.hide();
-            } catch (_) {}
+        if (scope.getAttribute('data-kexo-score-popover-scope-bound') !== '1') {
+          scope.setAttribute('data-kexo-score-popover-scope-bound', '1');
+          scope.addEventListener('click', function kexoScorePopoverCloseHandler(e) {
+            if (!e.target || !e.target.closest || !e.target.closest('.kexo-score-popover-close')) return;
+            nodes.forEach(function(n) {
+              try {
+                var inst = Popover.getInstance(n);
+                if (inst) inst.hide();
+              } catch (_) {}
+            });
           });
-        });
+        }
       }
 
       function openKexoScoreModal() {
