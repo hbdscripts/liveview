@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: f44b6abc90547800
+// checksum: 37de40fbb417c29f
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -22261,13 +22261,16 @@ const API = '';
   var HEADER_VARIANTS = [
     '/assets/logos/new/light/1.png',
     '/assets/logos/new/light/2.png',
-    '/assets/logos/new/light/kexo_new2.png',
+    '/assets/logos/new/light/3.png',
+    '/assets/logos/new/light/4.png',
+    '/assets/logos/new/light/5.png',
   ];
   var FOOTER_VARIANTS = [
     '/assets/logos/new/dark/1.png',
     '/assets/logos/new/dark/2.png',
     '/assets/logos/new/dark/3.png',
     '/assets/logos/new/dark/4.png',
+    '/assets/logos/new/dark/5.png',
   ];
 
   function pickStable(slot, variants) {

@@ -321,7 +321,18 @@ async function handleGetLogin(req, res) {
   const loginLogoOverride = normalizeAssetUrl(assetOverrides.loginLogo || assetOverrides.login_logo);
 
   const faviconHref = faviconOverride || (config.assetsBaseUrl ? config.assetsBaseUrl + '/logos/new/kexo.webp?width=100' : '/assets/logos/new/kexo.webp');
-  const loginLogoSrc = loginLogoOverride || '/assets/logos/new/kexo_login.png';
+  const loginLogoSrc = (function pickLoginLogo() {
+    if (loginLogoOverride) return loginLogoOverride;
+    const variants = [
+      '/assets/logos/new/dark/1.png',
+      '/assets/logos/new/dark/2.png',
+      '/assets/logos/new/dark/3.png',
+      '/assets/logos/new/dark/4.png',
+      '/assets/logos/new/dark/5.png',
+    ];
+    const idx = Math.floor(Math.random() * variants.length);
+    return variants[Math.max(0, Math.min(variants.length - 1, idx))] || variants[0];
+  })();
 
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.send(getSignInHtml(queryError, { faviconHref, loginLogoSrc, redirectTarget, shopDomain, registered }));
@@ -341,7 +352,18 @@ async function handleGetRegister(req, res) {
   const faviconOverride = normalizeAssetUrl(assetOverrides.favicon);
   const loginLogoOverride = normalizeAssetUrl(assetOverrides.loginLogo || assetOverrides.login_logo);
   const faviconHref = faviconOverride || (config.assetsBaseUrl ? config.assetsBaseUrl + '/logos/new/kexo.webp?width=100' : '/assets/logos/new/kexo.webp');
-  const loginLogoSrc = loginLogoOverride || '/assets/logos/new/kexo_login.png';
+  const loginLogoSrc = (function pickLoginLogo() {
+    if (loginLogoOverride) return loginLogoOverride;
+    const variants = [
+      '/assets/logos/new/dark/1.png',
+      '/assets/logos/new/dark/2.png',
+      '/assets/logos/new/dark/3.png',
+      '/assets/logos/new/dark/4.png',
+      '/assets/logos/new/dark/5.png',
+    ];
+    const idx = Math.floor(Math.random() * variants.length);
+    return variants[Math.max(0, Math.min(variants.length - 1, idx))] || variants[0];
+  })();
 
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.send(getSignUpHtml(queryError, { faviconHref, loginLogoSrc, redirectTarget }));
