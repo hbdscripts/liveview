@@ -3832,6 +3832,16 @@
       return Array.isArray(fallbackColors) ? fallbackColors : [];
     }
 
+    function chartSizePercentFromUiConfig(key, fallbackPercent) {
+      var it = getChartsUiItem(key);
+      var n = it && it.sizePercent != null ? Number(it.sizePercent) : Number(fallbackPercent);
+      if (!Number.isFinite(n)) n = 100;
+      n = Math.round(n / 5) * 5;
+      if (n < 25) n = 25;
+      if (n > 100) n = 100;
+      return n;
+    }
+
     function chartPieMetricFromUiConfig(key, fallbackMetric) {
       var it = getChartsUiItem(key);
       var raw = it && it.pieMetric != null ? String(it.pieMetric).trim().toLowerCase() : '';

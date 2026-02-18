@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 113dae236e475b08
+// checksum: e2b579e5b540f2bf
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -9214,6 +9214,16 @@ const API = '';
       return Array.isArray(fallbackColors) ? fallbackColors : [];
     }
 
+    function chartSizePercentFromUiConfig(key, fallbackPercent) {
+      var it = getChartsUiItem(key);
+      var n = it && it.sizePercent != null ? Number(it.sizePercent) : Number(fallbackPercent);
+      if (!Number.isFinite(n)) n = 100;
+      n = Math.round(n / 5) * 5;
+      if (n < 25) n = 25;
+      if (n > 100) n = 100;
+      return n;
+    }
+
     function chartPieMetricFromUiConfig(key, fallbackMetric) {
       var it = getChartsUiItem(key);
       var raw = it && it.pieMetric != null ? String(it.pieMetric).trim().toLowerCase() : '';
@@ -16689,6 +16699,15 @@ const API = '';
         var areaOpacityTo = (opts && typeof opts.areaOpacityTo === 'number' && isFinite(opts.areaOpacityTo)) ? opts.areaOpacityTo : 0.02;
         var chartHeight = (opts && Number.isFinite(Number(opts.height))) ? Number(opts.height) : 200;
         if (!Number.isFinite(chartHeight) || chartHeight < 80) chartHeight = 200;
+        try {
+          if (typeof chartSizePercentFromUiConfig === 'function') {
+            var pct = chartSizePercentFromUiConfig(chartId, 100);
+            if (Number.isFinite(pct) && pct > 0 && pct !== 100) {
+              chartHeight = Math.round(chartHeight * (pct / 100));
+              if (chartHeight < 80) chartHeight = 80;
+            }
+          }
+        } catch (_) {}
 
         try {
           if (Array.isArray(labels) && labels.length === 1) labels = [labels[0], labels[0]];
@@ -17393,6 +17412,16 @@ const API = '';
           120,
           440
         );
+        try {
+          if (typeof chartSizePercentFromUiConfig === 'function') {
+            var pct = chartSizePercentFromUiConfig(chartId, 100);
+            if (Number.isFinite(pct) && pct > 0 && pct !== 100) {
+              chartHeight = Math.round(chartHeight * (pct / 100));
+              if (chartHeight < 120) chartHeight = 120;
+              if (chartHeight > 440) chartHeight = 440;
+            }
+          }
+        } catch (_) {}
         var apexOpts = {
           chart: {
             type: chartType,
@@ -17852,6 +17881,16 @@ const API = '';
         var fallbackColors = (opts && Array.isArray(opts.colors) && opts.colors.length) ? opts.colors : ['#4b94e4', '#3eb3ab', '#f59e34', '#8b5cf6', '#ef4444'];
         var colors = (typeof chartColorsFromUiConfig === 'function') ? chartColorsFromUiConfig(chartId, fallbackColors) : fallbackColors;
         var chartHeight = resolveOverviewChartHeight(chartEl, (opts && Number.isFinite(Number(opts.height))) ? Number(opts.height) : 180, 120, 440);
+        try {
+          if (typeof chartSizePercentFromUiConfig === 'function') {
+            var pct = chartSizePercentFromUiConfig(chartId, 100);
+            if (Number.isFinite(pct) && pct > 0 && pct !== 100) {
+              chartHeight = Math.round(chartHeight * (pct / 100));
+              if (chartHeight < 120) chartHeight = 120;
+              if (chartHeight > 440) chartHeight = 440;
+            }
+          }
+        } catch (_) {}
         var uiStyle = (typeof chartStyleFromUiConfig === 'function') ? chartStyleFromUiConfig(chartId) : null;
 
         var labelsRef = labels;
@@ -17954,6 +17993,16 @@ const API = '';
         var fallbackColors = (opts && Array.isArray(opts.colors) && opts.colors.length) ? opts.colors : ['#4b94e4', '#3eb3ab', '#f59e34', '#8b5cf6', '#ef4444'];
         var colors = (typeof chartColorsFromUiConfig === 'function') ? chartColorsFromUiConfig(chartId, fallbackColors) : fallbackColors;
         var chartHeight = resolveOverviewChartHeight(chartEl, (opts && Number.isFinite(Number(opts.height))) ? Number(opts.height) : 180, 120, 440);
+        try {
+          if (typeof chartSizePercentFromUiConfig === 'function') {
+            var pct = chartSizePercentFromUiConfig(chartId, 100);
+            if (Number.isFinite(pct) && pct > 0 && pct !== 100) {
+              chartHeight = Math.round(chartHeight * (pct / 100));
+              if (chartHeight < 120) chartHeight = 120;
+              if (chartHeight > 440) chartHeight = 440;
+            }
+          }
+        } catch (_) {}
         var uiStyle = (typeof chartStyleFromUiConfig === 'function') ? chartStyleFromUiConfig(chartId) : null;
         var labelsRef = labels;
         var valuesRef = values;

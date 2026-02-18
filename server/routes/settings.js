@@ -213,7 +213,11 @@ function defaultKpiUiConfigV1() {
 }
 
 function defaultChartsUiConfigV1() {
-  const withStyle = (item, styleOverride) => ({ ...item, style: { ...defaultChartStyleConfig(), ...(styleOverride && typeof styleOverride === 'object' ? styleOverride : {}) } });
+  const withStyle = (item, styleOverride) => ({
+    ...item,
+    sizePercent: Number.isFinite(Number(item && item.sizePercent)) ? Math.round(Number(item.sizePercent)) : 100,
+    style: { ...defaultChartStyleConfig(), ...(styleOverride && typeof styleOverride === 'object' ? styleOverride : {}) },
+  });
   return {
     v: 1,
     defaultsVersion: CHARTS_UI_DEFAULTS_VERSION,
@@ -221,17 +225,17 @@ function defaultChartsUiConfigV1() {
     // Guardrail: charts + KPI bundle UI defaults are user-owned via Settings and normalized below.
     // Keep these defaults/allowed lists aligned with kexo-chart-defs.js and settings-page.js.
     charts: [
-      withStyle({ key: 'dash-chart-overview-30d', label: 'Dashboard · 7 Day Overview', enabled: true, mode: 'area', colors: ['#3eb3ab', '#ef4444'], advancedApexOverride: {} }, { animations: false }),
+      withStyle({ key: 'dash-chart-overview-30d', label: 'Dashboard · 7 Day Overview', enabled: true, mode: 'area', sizePercent: 80, colors: ['#3eb3ab', '#ef4444'], advancedApexOverride: {} }, { animations: false }),
       withStyle(
-        { key: 'dash-chart-finishes-30d', label: 'Dashboard · Finishes (7 Days)', enabled: true, mode: 'radialbar', colors: ['#f59e34', '#94a3b8', '#8b5cf6', '#4b94e4', '#3eb3ab'], advancedApexOverride: {} },
+        { key: 'dash-chart-finishes-30d', label: 'Dashboard · Finishes (7 Days)', enabled: true, mode: 'radialbar', sizePercent: 100, colors: ['#f59e34', '#94a3b8', '#8b5cf6', '#4b94e4', '#3eb3ab'], advancedApexOverride: {} },
         { animations: false }
       ),
       withStyle(
-        { key: 'dash-chart-devices-30d', label: 'Dashboard · Devices (7 Days)', enabled: true, mode: 'bar-horizontal', colors: ['#4b94e4', '#3eb3ab', '#f59e34', '#8b5cf6', '#ef4444'], advancedApexOverride: {} },
+        { key: 'dash-chart-devices-30d', label: 'Dashboard · Devices (7 Days)', enabled: true, mode: 'bar-horizontal', sizePercent: 80, colors: ['#4b94e4', '#3eb3ab', '#f59e34', '#8b5cf6', '#ef4444'], advancedApexOverride: {} },
         { animations: false }
       ),
       withStyle(
-        { key: 'dash-chart-attribution-30d', label: 'Dashboard · Attribution (7 Days)', enabled: true, mode: 'donut', colors: ['#4b94e4', '#3eb3ab', '#f59e34', '#8b5cf6', '#ef4444'], advancedApexOverride: {} },
+        { key: 'dash-chart-attribution-30d', label: 'Dashboard · Attribution (7 Days)', enabled: true, mode: 'donut', sizePercent: 70, colors: ['#4b94e4', '#3eb3ab', '#f59e34', '#8b5cf6', '#ef4444'], advancedApexOverride: {} },
         { animations: false, pieDonut: true, pieDonutSize: 64, pieLabelPosition: 'outside', pieLabelContent: 'label', pieLabelOffset: 18 }
       ),
       withStyle({ key: 'live-online-chart', label: 'Dashboard · Live Online', enabled: true, mode: 'map-flat', colors: ['#16a34a'], advancedApexOverride: {} }),
@@ -837,6 +841,7 @@ function normalizeChartsList(rawList, defaults, options) {
         label: normalizeText(item.label, def.label),
         enabled: normalizeBool(item.enabled, def.enabled),
         mode,
+        sizePercent: normalizeSizePercent(item.sizePercent, def.sizePercent != null ? def.sizePercent : 100),
         colors: normalizeColorList(item.colors, def.colors),
         style: normalizeChartStyle(item.style, def.style || defaultChartStyleConfig()),
         advancedApexOverride: normalizeApexOverrideObject(item.advancedApexOverride, def.advancedApexOverride || {}),
@@ -873,6 +878,14 @@ function parseBoundedNumber(value, fallback, min, max) {
   if (!Number.isFinite(n)) n = min;
   if (n < min) n = min;
   if (n > max) n = max;
+  return n;
+}
+
+function normalizeSizePercent(value, fallback) {
+  let n = parseBoundedNumber(value, fallback != null ? fallback : 100, 25, 100);
+  n = Math.round(n / 5) * 5;
+  if (n < 25) n = 25;
+  if (n > 100) n = 100;
   return n;
 }
 
@@ -2000,6 +2013,7 @@ async function getChartSettings(req, res) {
       label: chartKey,
       enabled: true,
       mode: 'line',
+      sizePercent: 100,
       colors: ['#3eb3ab'],
       style: defaultChartStyleConfig(),
       advancedApexOverride: {},
