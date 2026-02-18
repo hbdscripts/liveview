@@ -1744,12 +1744,12 @@ function downsampleWeekly({ labelsYmd, revenueGbp, costGbp, orders, sessions, co
 }
 
 async function readCheckoutOrdersTimeseries(shop, startMs, endMs, timeZone) {
-  const out = new Map(); // ymd -> { orders, revenueGbp }
+  const out = new Map(); // ymd -> { orders, revenueGbp, taxGbp }
   if (!shop) return out;
   const db = getDb();
   const rows = await db.all(
     `
-      SELECT created_at, COALESCE(NULLIF(TRIM(currency), ''), 'GBP') AS currency, total_price
+      SELECT created_at, COALESCE(NULLIF(TRIM(currency), ''), 'GBP') AS currency, total_price, total_tax
       FROM orders_shopify
       WHERE shop = ?
         AND created_at >= ? AND created_at < ?
@@ -1772,12 +1772,47 @@ async function readCheckoutOrdersTimeseries(shop, startMs, endMs, timeZone) {
     const currency = fx.normalizeCurrency(row && row.currency != null ? String(row.currency) : '') || 'GBP';
     const gbp = fx.convertToGbp(amount, currency, ratesToGbp);
     if (typeof gbp !== 'number' || !Number.isFinite(gbp)) continue;
-    const current = out.get(ymd) || { orders: 0, revenueGbp: 0 };
+    const taxAmount = row && row.total_tax != null ? Number(row.total_tax) : 0;
+    const taxGbp = (Number.isFinite(taxAmount) && taxAmount > 0)
+      ? fx.convertToGbp(taxAmount, currency, ratesToGbp)
+      : 0;
+    const current = out.get(ymd) || { orders: 0, revenueGbp: 0, taxGbp: 0 };
     current.orders += 1;
     current.revenueGbp += gbp;
+    if (typeof taxGbp === 'number' && Number.isFinite(taxGbp) && taxGbp > 0) current.taxGbp += taxGbp;
     out.set(ymd, current);
   }
   return out;
+}
+
+async function readTruthCheckoutTaxTotalGbp(shop, startMs, endMs) {
+  if (!shop) return 0;
+  const db = getDb();
+  const rows = await db.all(
+    `
+      SELECT COALESCE(NULLIF(TRIM(currency), ''), 'GBP') AS currency, total_tax
+      FROM orders_shopify
+      WHERE shop = ?
+        AND created_at >= ? AND created_at < ?
+        AND ${isPaidOrderWhereClause('')}
+        AND checkout_token IS NOT NULL
+        AND TRIM(checkout_token) != ''
+        AND total_tax IS NOT NULL
+    `,
+    [shop, startMs, endMs]
+  );
+  if (!rows || !rows.length) return 0;
+  const ratesToGbp = await fx.getRatesToGbp();
+  let total = 0;
+  for (const row of rows) {
+    const amount = row && row.total_tax != null ? Number(row.total_tax) : NaN;
+    if (!Number.isFinite(amount) || amount <= 0) continue;
+    const currency = fx.normalizeCurrency(row && row.currency != null ? String(row.currency) : '') || 'GBP';
+    const gbp = fx.convertToGbp(amount, currency, ratesToGbp);
+    if (typeof gbp !== 'number' || !Number.isFinite(gbp)) continue;
+    total += gbp;
+  }
+  return round2(total) || 0;
 }
 
 function listHourKeysForBounds(startMs, endMs, timeZone) {
@@ -2064,6 +2099,7 @@ async function getBusinessSnapshot(options = {}) {
     chartDays,
     revenueDaily,
     ordersDaily,
+    taxDaily,
     cogsTotal,
     deductionsDetailed,
     adsByYmd,
@@ -2076,6 +2112,7 @@ async function getBusinessSnapshot(options = {}) {
     includeKlarnaFees,
     shippingTotal,
     includeShipping,
+    includeTax,
   }) {
     const days = Array.isArray(chartDays) ? chartDays : [];
     const rev = Array.isArray(revenueDaily) ? revenueDaily : [];
@@ -2141,6 +2178,12 @@ async function getBusinessSnapshot(options = {}) {
     const shippingDaily = includeShipping && Number(shippingTotal) > 0 && ordTotalDaily > 0
       ? ord.map((w) => round2((Number(shippingTotal) * (Number(w) || 0)) / ordTotalDaily) || 0)
       : days.map(() => 0);
+    const taxPerDay = includeTax
+      ? (Array.isArray(taxDaily) ? taxDaily : []).map((v) => {
+        const n = Number(v) || 0;
+        return round2(n) || 0;
+      })
+      : days.map(() => 0);
     const costDaily = days.map((_, i) => {
       const a = Number(cogsDaily[i]) || 0;
       const b = Number(expensesDaily[i]) || 0;
@@ -2149,7 +2192,8 @@ async function getBusinessSnapshot(options = {}) {
       const eVal = Number(paymentFeesDaily[i]) || 0;
       const fVal = Number(klarnaFeesDaily[i]) || 0;
       const gVal = Number(shippingDaily[i]) || 0;
-      return round2(a + b + cVal + dVal + eVal + fVal + gVal) || 0;
+      const hVal = Number(taxPerDay[i]) || 0;
+      return round2(a + b + cVal + dVal + eVal + fVal + gVal + hVal) || 0;
     });
     return {
       costDaily,
@@ -2166,9 +2210,10 @@ async function getBusinessSnapshot(options = {}) {
   const includeShopifyAppBills = !!(profitRules && profitRules.integrations && profitRules.integrations.includeShopifyAppBills === true);
   const includePaymentFees = !!(profitRules && profitRules.integrations && profitRules.integrations.includePaymentFees === true);
   const includeKlarnaFees = !!(profitRules && profitRules.integrations && profitRules.integrations.includeKlarnaFees === true);
-  const anyIntegrationEnabled = includeGoogleAdsSpend || includePaymentFees || includeKlarnaFees;
-  const profitConfigured = !!(profitRules && profitRules.enabled === true && (rulesEnabled || anyIntegrationEnabled));
   const shippingEnabled = !!(profitRules && profitRules.shipping && profitRules.shipping.enabled === true);
+  const includeShopifyTaxes = !!(profitRules && profitRules.integrations && profitRules.integrations.includeShopifyTaxes === true);
+  const anyCostSourceEnabled = includeGoogleAdsSpend || includeShopifyAppBills || includePaymentFees || includeKlarnaFees || includeShopifyTaxes || shippingEnabled;
+  const profitConfigured = !!(profitRules && profitRules.enabled === true && (rulesEnabled || anyCostSourceEnabled));
 
   const [
     sessionsNowTs,
@@ -2283,6 +2328,7 @@ async function getBusinessSnapshot(options = {}) {
   function buildDailySeries(days, ordersMap, sessionMap, convMap, customerMap, spendMap, clicksMap) {
     const revenueGbp = [];
     const ordersArr = [];
+    const taxGbp = [];
     const sessionsArr = [];
     const conversionRateArr = [];
     const aovArr = [];
@@ -2293,6 +2339,7 @@ async function getBusinessSnapshot(options = {}) {
     for (const ymd of days || []) {
       const orderRow = ordersMap && ordersMap.get ? ordersMap.get(ymd) : null;
       const rev = orderRow && orderRow.revenueGbp != null ? Number(orderRow.revenueGbp) : 0;
+      const tax = orderRow && orderRow.taxGbp != null ? Number(orderRow.taxGbp) : 0;
       const ord = orderRow && orderRow.orders != null ? Number(orderRow.orders) : 0;
       const ses = sessionMap && sessionMap.has && sessionMap.has(ymd) ? toNumber(sessionMap.get(ymd)) : null;
       const conv = convMap && convMap.has && convMap.has(ymd) ? toNumber(convMap.get(ymd)) : null;
@@ -2302,9 +2349,11 @@ async function getBusinessSnapshot(options = {}) {
       const spend = spendMap && spendMap.get ? Number(spendMap.get(ymd) || 0) : 0;
       const clicks = clicksMap && clicksMap.get ? Number(clicksMap.get(ymd) || 0) : 0;
       const revSafe = round2(rev) || 0;
+      const taxSafe = (Number.isFinite(tax) && tax > 0) ? (round2(tax) || 0) : 0;
       const ordSafe = Number.isFinite(ord) ? ord : 0;
       revenueGbp.push(revSafe);
       ordersArr.push(ordSafe);
+      taxGbp.push(taxSafe);
       sessionsArr.push(ses);
       conversionRateArr.push(conv);
       aovArr.push(ordSafe > 0 ? (round2(revSafe / ordSafe) || 0) : null);
@@ -2316,6 +2365,7 @@ async function getBusinessSnapshot(options = {}) {
     return {
       revenueGbp,
       orders: ordersArr,
+      taxGbp,
       sessions: sessionsArr,
       conversionRate: conversionRateArr,
       aov: aovArr,
@@ -2396,11 +2446,15 @@ async function getBusinessSnapshot(options = {}) {
   const shopifyFeesPrevCost = includeKlarnaFees ? shopifyFeesPrevAll : 0;
   const shippingNowCost = shippingEnabled && summaryNow ? computeShippingCostFromSummary(summaryNow, profitRules.shipping) : 0;
   const shippingPrevCost = shippingEnabled && summaryPrev ? computeShippingCostFromSummary(summaryPrev, profitRules.shipping) : 0;
-  const costNow = (cogsNow != null || customExpensesNow > 0 || adsSpendNowCost > 0 || appBillsNowCost > 0 || paymentFeesNowCost > 0 || shopifyFeesNowCost > 0 || shippingNowCost > 0)
-    ? round2((cogsNow || 0) + customExpensesNow + adsSpendNowCost + appBillsNowCost + paymentFeesNowCost + shopifyFeesNowCost + shippingNowCost)
+  const taxesNowAll = sumNumeric(dailyNow.taxGbp);
+  const taxesPrevAll = sumNumeric(dailyPrev.taxGbp);
+  const taxesNowCost = includeShopifyTaxes ? taxesNowAll : 0;
+  const taxesPrevCost = includeShopifyTaxes ? taxesPrevAll : 0;
+  const costNow = (cogsNow != null || customExpensesNow > 0 || adsSpendNowCost > 0 || appBillsNowCost > 0 || paymentFeesNowCost > 0 || shopifyFeesNowCost > 0 || shippingNowCost > 0 || taxesNowCost > 0)
+    ? round2((cogsNow || 0) + customExpensesNow + adsSpendNowCost + appBillsNowCost + paymentFeesNowCost + shopifyFeesNowCost + shippingNowCost + taxesNowCost)
     : null;
-  const costPrev = (cogsPrev != null || customExpensesPrev > 0 || adsSpendPrevCost > 0 || appBillsPrevCost > 0 || paymentFeesPrevCost > 0 || shopifyFeesPrevCost > 0 || shippingPrevCost > 0)
-    ? round2((cogsPrev || 0) + customExpensesPrev + adsSpendPrevCost + appBillsPrevCost + paymentFeesPrevCost + shopifyFeesPrevCost + shippingPrevCost)
+  const costPrev = (cogsPrev != null || customExpensesPrev > 0 || adsSpendPrevCost > 0 || appBillsPrevCost > 0 || paymentFeesPrevCost > 0 || shopifyFeesPrevCost > 0 || shippingPrevCost > 0 || taxesPrevCost > 0)
+    ? round2((cogsPrev || 0) + customExpensesPrev + adsSpendPrevCost + appBillsPrevCost + paymentFeesPrevCost + shopifyFeesPrevCost + shippingPrevCost + taxesPrevCost)
     : null;
 
   const costBreakdownNow = [];
@@ -2418,6 +2472,7 @@ async function getBusinessSnapshot(options = {}) {
   if (includePaymentFees || paymentFeesNowCost > 0) costBreakdownNow.push({ label: 'Transaction Fees', amountGbp: round2(paymentFeesNowCost) || 0 });
   if (shopifyFeesNowCost > 0) costBreakdownNow.push({ label: 'Shopify Fees', amountGbp: round2(shopifyFeesNowCost) || 0 });
   if (shippingNowCost > 0) costBreakdownNow.push({ label: 'Shipping', amountGbp: round2(shippingNowCost) || 0 });
+  if (includeShopifyTaxes || taxesNowAll > 0) costBreakdownNow.push({ label: 'Tax', amountGbp: round2(taxesNowCost) || 0 });
 
   const costBreakdownPrevious = [];
   if (cogsPrev != null) costBreakdownPrevious.push({ label: 'Cost of Goods', amountGbp: round2(cogsPrev) || 0 });
@@ -2434,11 +2489,13 @@ async function getBusinessSnapshot(options = {}) {
   if (includePaymentFees || paymentFeesPrevCost > 0) costBreakdownPrevious.push({ label: 'Transaction Fees', amountGbp: round2(paymentFeesPrevCost) || 0 });
   if (shopifyFeesPrevCost > 0) costBreakdownPrevious.push({ label: 'Shopify Fees', amountGbp: round2(shopifyFeesPrevCost) || 0 });
   if (shippingPrevCost > 0) costBreakdownPrevious.push({ label: 'Shipping', amountGbp: round2(shippingPrevCost) || 0 });
+  if (includeShopifyTaxes || taxesPrevAll > 0) costBreakdownPrevious.push({ label: 'Tax', amountGbp: round2(taxesPrevCost) || 0 });
 
   const nowCostSeries = buildCostDailySeries({
     chartDays,
     revenueDaily: dailyNow.revenueGbp,
     ordersDaily: dailyNow.orders,
+    taxDaily: dailyNow.taxGbp,
     cogsTotal: cogsNow,
     deductionsDetailed: rulesEnabled ? deductionsNowDetailed : { lines: [] },
     adsByYmd: adsNowByYmd,
@@ -2451,11 +2508,13 @@ async function getBusinessSnapshot(options = {}) {
     includeKlarnaFees,
     shippingTotal: shippingNowCost,
     includeShipping: shippingEnabled,
+    includeTax: includeShopifyTaxes,
   });
   const prevCostSeries = buildCostDailySeries({
     chartDays: chartDaysPrev,
     revenueDaily: dailyPrev.revenueGbp,
     ordersDaily: dailyPrev.orders,
+    taxDaily: dailyPrev.taxGbp,
     cogsTotal: cogsPrev,
     deductionsDetailed: rulesEnabled ? deductionsPrevDetailed : { lines: [] },
     adsByYmd: adsPrevByYmd,
@@ -2468,6 +2527,7 @@ async function getBusinessSnapshot(options = {}) {
     includeKlarnaFees,
     shippingTotal: shippingPrevCost,
     includeShipping: shippingEnabled,
+    includeTax: includeShopifyTaxes,
   });
   dailyNow.costGbp = nowCostSeries.costDaily;
   dailyPrev.costGbp = prevCostSeries.costDaily;
@@ -2609,18 +2669,22 @@ async function getBusinessSnapshot(options = {}) {
   try {
     profitSection.enabled = !!(profitRules && profitRules.enabled === true);
     profitSection.hasEnabledRules = rulesEnabled;
-    profitSection.hasEnabledIntegration = anyIntegrationEnabled;
+    profitSection.hasEnabledIntegration = anyCostSourceEnabled;
     if (profitConfigured) {
       const deductionsNow = (rulesEnabled ? (Number(deductionsNowDetailed.total) || 0) : 0)
         + (includeGoogleAdsSpend ? adsSpendNowAll : 0)
         + (includeShopifyAppBills ? appBillsNowAll : 0)
         + (includePaymentFees ? paymentFeesNowAll : 0)
-        + (includeKlarnaFees ? shopifyFeesNowAll : 0);
+        + (includeKlarnaFees ? shopifyFeesNowAll : 0)
+        + (includeShopifyTaxes ? taxesNowAll : 0)
+        + (shippingEnabled ? shippingNowCost : 0);
       const deductionsPrev = (rulesEnabled ? (Number(deductionsPrevDetailed.total) || 0) : 0)
         + (includeGoogleAdsSpend ? adsSpendPrevAll : 0)
         + (includeShopifyAppBills ? appBillsPrevAll : 0)
         + (includePaymentFees ? paymentFeesPrevAll : 0)
-        + (includeKlarnaFees ? shopifyFeesPrevAll : 0);
+        + (includeKlarnaFees ? shopifyFeesPrevAll : 0)
+        + (includeShopifyTaxes ? taxesPrevAll : 0)
+        + (shippingEnabled ? shippingPrevCost : 0);
       const cogsNowForProfit = cogsNow != null ? (Number(cogsNow) || 0) : 0;
       const cogsPrevForProfit = cogsPrev != null ? (Number(cogsPrev) || 0) : 0;
       const totalCostNowForProfit = toNumber(costNow) != null ? (Number(costNow) || 0) : (cogsNowForProfit + deductionsNow);
@@ -2810,6 +2874,7 @@ async function getCostBreakdown({ rangeKey } = {}) {
   const includeGoogleAdsSpend = !!(profitRules && profitRules.integrations && profitRules.integrations.includeGoogleAdsSpend === true);
   const includePaymentFees = !!(profitRules && profitRules.integrations && profitRules.integrations.includePaymentFees === true);
   const includeShopifyAppBills = !!(profitRules && profitRules.integrations && profitRules.integrations.includeShopifyAppBills === true);
+  const includeShopifyTaxes = !!(profitRules && profitRules.integrations && profitRules.integrations.includeShopifyTaxes === true);
   const shippingActive = !!(shippingCfg && shippingCfg.enabled === true);
   const rulesActive = !!(profitRules && profitRules.enabled === true);
 
@@ -2857,17 +2922,19 @@ async function getCostBreakdown({ rangeKey } = {}) {
       diagnostics: null,
     });
 
-  const [summary, cogsRaw, ads, shopifyCosts] = await Promise.all([
+  const [summary, cogsRaw, ads, shopifyCosts, taxAmountRaw] = await Promise.all([
     summaryPromise,
     cogsPromise,
     adsPromise,
     shopifyCostsPromise,
+    shop ? readTruthCheckoutTaxTotalGbp(shop, startTs, endTs).catch(() => 0) : Promise.resolve(0),
   ]);
 
   const cogsAmount = (cogsRaw != null && Number.isFinite(Number(cogsRaw))) ? (round2(Number(cogsRaw)) || 0) : null;
   const adsAmount = round2(Number(ads && ads.totalGbp) || 0) || 0;
   const paymentFeesAmount = round2(Number(shopifyCosts && shopifyCosts.paymentFeesTotalGbp) || 0) || 0;
   const appBillsAmount = round2(Number(shopifyCosts && shopifyCosts.appBillsTotalGbp) || 0) || 0;
+  const taxAmount = round2(Number(taxAmountRaw) || 0) || 0;
 
   const rulesDetailed = (summary && rulesWouldApply) ? computeProfitDeductionsDetailed(summary, profitRules) : { total: 0, lines: [] };
   const rulesAmount = round2(Number(rulesDetailed && rulesDetailed.total) || 0) || 0;
@@ -3024,6 +3091,15 @@ async function getCostBreakdown({ rangeKey } = {}) {
     amount: appBillsAmount,
     currency: 'GBP',
     notes: shopifyBalanceAvailable ? (appBillsAmount > 0 ? '' : 'No bills in range') : shopifyNote,
+  });
+  items.push({
+    key: 'tax',
+    label: 'Tax',
+    configured: !!shop,
+    active: includeShopifyTaxes,
+    amount: taxAmount,
+    currency: 'GBP',
+    notes: shop ? (taxAmount > 0 ? '' : 'No tax in range') : 'Unavailable',
   });
   items.push({
     key: 'shipping',

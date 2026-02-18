@@ -57,6 +57,7 @@ function defaultProfitRulesConfigV1() {
       includeShopifyAppBills: false,
       includePaymentFees: false,
       includeKlarnaFees: false,
+      includeShopifyTaxes: false,
     },
     rules: [],
     shipping: defaultShippingConfig(),
@@ -179,6 +180,7 @@ function normalizeProfitRulesConfigV1(raw) {
       includeShopifyAppBills: integ && integ.includeShopifyAppBills === true,
       includePaymentFees: integ && integ.includePaymentFees === true,
       includeKlarnaFees: integ && integ.includeKlarnaFees === true,
+      includeShopifyTaxes: integ && integ.includeShopifyTaxes === true,
     };
   } catch (_) {
     out.integrations = {
@@ -186,6 +188,7 @@ function normalizeProfitRulesConfigV1(raw) {
       includeShopifyAppBills: false,
       includePaymentFees: false,
       includeKlarnaFees: false,
+      includeShopifyTaxes: false,
     };
   }
 

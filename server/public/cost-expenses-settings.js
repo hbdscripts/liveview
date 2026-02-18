@@ -58,6 +58,7 @@
         includeShopifyAppBills: false,
         includePaymentFees: false,
         includeKlarnaFees: false,
+        includeShopifyTaxes: false,
       },
       rules: [],
       shipping: { enabled: false, worldwideDefaultGbp: 0, overrides: [] },
@@ -75,6 +76,7 @@
         includeShopifyAppBills: raw.integrations.includeShopifyAppBills === true,
         includePaymentFees: raw.integrations.includePaymentFees === true,
         includeKlarnaFees: raw.integrations.includeKlarnaFees === true,
+        includeShopifyTaxes: raw.integrations.includeShopifyTaxes === true,
       };
     }
     if (Array.isArray(raw.rules)) {
@@ -257,10 +259,12 @@
     var googleAds = document.getElementById('cost-expenses-google-ads');
     var paymentFees = document.getElementById('cost-expenses-payment-fees');
     var appBills = document.getElementById('cost-expenses-app-bills');
+    var taxEl = document.getElementById('cost-expenses-tax');
     var rulesEnabledEl = document.getElementById('cost-expenses-rules-enabled');
     if (googleAds) googleAds.checked = !!(cfg.integrations && cfg.integrations.includeGoogleAdsSpend);
     if (paymentFees) paymentFees.checked = !!(cfg.integrations && cfg.integrations.includePaymentFees);
     if (appBills) appBills.checked = !!(cfg.integrations && cfg.integrations.includeShopifyAppBills);
+    if (taxEl) taxEl.checked = !!(cfg.integrations && cfg.integrations.includeShopifyTaxes);
     if (rulesEnabledEl) rulesEnabledEl.checked = cfg.enabled === true;
 
     var worldwideEl = document.getElementById('cost-expenses-shipping-worldwide');
@@ -386,6 +390,7 @@
         state.config.integrations.includeGoogleAdsSpend = document.getElementById('cost-expenses-google-ads').checked;
         state.config.integrations.includePaymentFees = document.getElementById('cost-expenses-payment-fees').checked;
         state.config.integrations.includeShopifyAppBills = document.getElementById('cost-expenses-app-bills').checked;
+        state.config.integrations.includeShopifyTaxes = document.getElementById('cost-expenses-tax').checked;
         state.config.enabled = document.getElementById('cost-expenses-rules-enabled').checked;
         state.config.shipping = readShippingFromUi();
         setMsg('Saving...', true);

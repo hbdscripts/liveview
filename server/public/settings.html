@@ -742,7 +742,8 @@
               </li>
             </ul>
             <div id="settings-cost-expenses-panel-cost-sources" class="settings-cost-expenses-panel active" role="tabpanel" aria-labelledby="settings-cost-expenses-tab-cost-sources">
-              <h4 class="mb-3" title="Toggle which cost sources are included in Snapshot and Overview cost totals.">Included cost sources <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></h4>
+              <h4 class="mb-1">Enable/Disable Costs</h4>
+              <div class="text-muted small mb-3">Choose which costs are included in profit KPIs and the Insights Snapshot.</div>
               <div id="settings-cost-expenses-sources">
                 <div class="row g-3">
                   <div class="col-12 col-md-6 col-lg-4">
@@ -755,6 +756,12 @@
                     <label class="form-check form-switch d-flex align-items-center gap-2">
                       <input class="form-check-input" type="checkbox" id="cost-expenses-payment-fees" />
                       <span class="form-check-label">Transaction Fees</span>
+                    </label>
+                  </div>
+                  <div class="col-12 col-md-6 col-lg-4">
+                    <label class="form-check form-switch d-flex align-items-center gap-2">
+                      <input class="form-check-input" type="checkbox" id="cost-expenses-tax" />
+                      <span class="form-check-label">Tax</span>
                     </label>
                   </div>
                   <div class="col-12 col-md-6 col-lg-4">
@@ -774,7 +781,6 @@
                       <input class="form-check-input" type="checkbox" id="cost-expenses-rules-enabled" />
                       <span class="form-check-label">Include custom rules in cost</span>
                     </label>
-                    <div class="form-hint mt-1">Affects estimated profit and cost totals.</div>
                   </div>
                 </div>
               </div>
