@@ -189,6 +189,40 @@
         { key: 'rev', label: 'Rev', iconKey: 'table-icon-revenue' }
       ]
     },
+    'browsers-table': {
+      wrapClass: 'country-table-wrap',
+      tableClass: 'by-country-table',
+      ariaLabel: 'Browsers',
+      bodyId: 'browsers-body',
+      emptyMessage: 'No browser data.',
+      columns: [
+        { key: 'browser', label: 'Browser', sortable: false },
+        { key: 'sessions', label: 'Sessions', sortable: false, iconKey: 'table-icon-sessions' },
+        { key: 'carts', label: 'Carts', sortable: false },
+        { key: 'orders', label: 'Orders', sortable: false, iconKey: 'table-icon-orders' },
+        { key: 'cr', label: 'CR%', sortable: false, iconKey: 'table-icon-cr' },
+        { key: 'vpv', label: 'VPV', sortable: false, iconKey: 'table-icon-vpv' },
+        { key: 'rev', label: 'Rev', sortable: false, iconKey: 'table-icon-revenue' },
+        { key: 'aov', label: 'AOV', sortable: false }
+      ]
+    },
+    'payment-types-table': {
+      wrapClass: 'country-table-wrap',
+      tableClass: 'by-country-table',
+      ariaLabel: 'Payment types',
+      bodyId: 'payment-types-body',
+      emptyMessage: 'No payment types.',
+      columns: [
+        { key: 'payment', label: 'Payment', sortable: false },
+        { key: 'sessions', label: 'Sessions', sortable: false, iconKey: 'table-icon-sessions' },
+        { key: 'carts', label: 'Carts', sortable: false },
+        { key: 'orders', label: 'Orders', sortable: false, iconKey: 'table-icon-orders' },
+        { key: 'cr', label: 'CR%', sortable: false, iconKey: 'table-icon-cr' },
+        { key: 'vpv', label: 'VPV', sortable: false, iconKey: 'table-icon-vpv' },
+        { key: 'rev', label: 'Rev', sortable: false, iconKey: 'table-icon-revenue' },
+        { key: 'aov', label: 'AOV', sortable: false }
+      ]
+    },
     'variants-table': {
       wrapClass: 'country-table-wrap',
       tableClass: 'by-country-table best-variants-table',

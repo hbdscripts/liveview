@@ -187,23 +187,23 @@
     if (!body) return;
     var rows = payload && Array.isArray(payload.rows) ? payload.rows : [];
     if (!rows.length) {
-      body.innerHTML = '<tr><td class="text-secondary" colspan="8">No sessions found for this range.</td></tr>';
+      body.innerHTML = '<div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">No sessions found for this range.</div></div>';
       return;
     }
     body.innerHTML = rows.map(function (r) {
       var key = r && r.ua_browser != null ? String(r.ua_browser) : '';
       var label = browserLabel(key);
       return '' +
-        '<tr>' +
-          '<td>' + escapeHtml(label) + '</td>' +
-          '<td class="text-end">' + escapeHtml(fmtInt(r.sessions)) + '</td>' +
-          '<td class="text-end">' + escapeHtml(fmtInt(r.carts)) + '</td>' +
-          '<td class="text-end">' + escapeHtml(fmtInt(r.orders)) + '</td>' +
-          '<td class="text-end">' + escapeHtml(fmtPct1(r.cr)) + '</td>' +
-          '<td class="text-end">' + escapeHtml(fmtMoneyGbp2(r.vpv)) + '</td>' +
-          '<td class="text-end">' + escapeHtml(fmtMoneyGbp2(r.revenue)) + '</td>' +
-          '<td class="text-end">' + escapeHtml(fmtMoneyGbp2(r.aov)) + '</td>' +
-        '</tr>';
+        '<div class="grid-row" role="row">' +
+          '<div class="grid-cell" role="cell">' + escapeHtml(label) + '</div>' +
+          '<div class="grid-cell" role="cell">' + escapeHtml(fmtInt(r.sessions)) + '</div>' +
+          '<div class="grid-cell" role="cell">' + escapeHtml(fmtInt(r.carts)) + '</div>' +
+          '<div class="grid-cell" role="cell">' + escapeHtml(fmtInt(r.orders)) + '</div>' +
+          '<div class="grid-cell" role="cell">' + escapeHtml(fmtPct1(r.cr)) + '</div>' +
+          '<div class="grid-cell" role="cell">' + escapeHtml(fmtMoneyGbp2(r.vpv)) + '</div>' +
+          '<div class="grid-cell" role="cell">' + escapeHtml(fmtMoneyGbp2(r.revenue)) + '</div>' +
+          '<div class="grid-cell" role="cell">' + escapeHtml(fmtMoneyGbp2(r.aov)) + '</div>' +
+        '</div>';
     }).join('');
   }
 
@@ -219,7 +219,7 @@
     var legendEl = document.getElementById('browsers-legend');
     if (legendEl) legendEl.innerHTML = '';
     var body = document.getElementById('browsers-body');
-    if (body) body.innerHTML = '<tr><td class="text-secondary" colspan="8">Loading…</td></tr>';
+    if (body) body.innerHTML = '<div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">Loading…</div></div>';
   }
 
   function load() {
@@ -249,7 +249,7 @@
       }
       if (!tablePayload || !tablePayload.ok) {
         var body = document.getElementById('browsers-body');
-        if (body) body.innerHTML = '<tr><td class="text-danger" colspan="8">Failed to load table.</td></tr>';
+        if (body) body.innerHTML = '<div class="grid-row" role="row"><div class="grid-cell empty span-all text-danger" role="cell">Failed to load table.</div></div>';
       } else {
         renderTable(tablePayload);
       }
@@ -259,7 +259,7 @@
       var chartEl = document.getElementById('browsers-chart');
       if (chartEl) chartEl.innerHTML = '<div class="text-danger">Failed to load browsers.</div>';
       var body = document.getElementById('browsers-body');
-      if (body) body.innerHTML = '<tr><td class="text-danger" colspan="8">Failed to load browsers.</td></tr>';
+      if (body) body.innerHTML = '<div class="grid-row" role="row"><div class="grid-cell empty span-all text-danger" role="cell">Failed to load browsers.</div></div>';
     });
   }
 

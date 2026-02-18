@@ -1,0 +1,13 @@
+---
+description: Use KEXO table builder for new data tables
+globs: server/public/**/*
+alwaysApply: false
+---
+
+# Table builder required
+- New data tables must use `buildKexoGridTable` (or `buildKexoNativeTable` for dashboard-style tables).
+- Add the table definition to `server/public/kexo-table-defs.js` (`KEXO_TABLE_DEFS` or `KEXO_NATIVE_TABLE_DEFS`).
+- HTML should mount tables with `data-kexo-table="table-id"` and include card metadata (`data-table-id`, `data-table-class`, `data-table-zone`).
+- Page JS should render body rows as `.grid-row` / `.grid-cell` inside the grid body (`<div id="<tableId>-body">`).
+
+Avoid hand-built `<table>` markup for new pages.

@@ -9,8 +9,8 @@ Read this file before making changes. If you change **core paths** (routes, auth
 ## Route map (canonical pages)
 
 - **Dashboard:** `/dashboard/overview`, `/dashboard/live`, `/dashboard/sales`, `/dashboard/table`
-- **Insights:** `/insights/snapshot`, `/insights/countries`, `/insights/products`, `/insights/variants`, `/insights/abandoned-carts`
-- **Acquisition:** `/acquisition/attribution`, `/acquisition/devices`
+- **Insights:** `/insights/snapshot`, `/insights/countries`, `/insights/products`, `/insights/variants`, `/insights/abandoned-carts`, `/insights/payment-types`
+- **Acquisition:** `/acquisition/attribution`, `/acquisition/devices`, `/acquisition/browsers`
 - **Integrations:** `/integrations/google-ads`
 - **Tools:** `/tools/compare-conversion-rate`, `/tools/shipping-cr`, `/tools/click-order-lookup`, `/tools/change-pins`
 - **Settings:** `/settings` (tabs: kexo, integrations, layout, attribution, insights, cost-expenses, admin). Layout has Tables, KPIs, Date ranges only (chart settings via cog on each chart). Admin-only content gated by `isMasterRequest`.
@@ -26,6 +26,7 @@ Templates under `server/public/**`; served via `sendPage()` in `server/index.js`
 - **Settings page** must **never** show the page-body overlay loader (locked off in frontend/runtime).
 - Modal convention: dark overlays (`.modal-backdrop`); custom modals must match.
 - KPI/chart styling: do not hardcode sparkline/delta colors; use `charts_ui_config_v1.kpiBundles`.
+- New data tables in `server/public/**` must use `kexo-table-builder.js` + `kexo-table-defs.js` (`data-kexo-table` mounts, table IDs in `KEXO_TABLE_DEFS`).
 - Diagnostics: when adding/moving/removing dashboard sections, update `server/trackerDefinitions.js`.
 
 ---

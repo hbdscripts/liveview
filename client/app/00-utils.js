@@ -61,6 +61,7 @@
     if (s === 'amex') s = 'americanexpress';
     if (s === 'apple-pay') s = 'applepay';
     if (s === 'shop-pay') s = 'shop-pay';
+    if (s === 'shopify-payments' || s === 'shopifypayments') s = 'shopify-payments';
     return s.length > 64 ? s.slice(0, 64) : s;
   }
 
@@ -76,6 +77,7 @@
       'google-pay': { label: 'Google Pay', tablerKey: 'google-pay' },
       klarna: { label: 'Klarna', tablerKey: 'klarna' },
       'shop-pay': { label: 'Shop Pay', tablerKey: 'shop-pay' },
+      'shopify-payments': { label: 'Shopify Payments', tablerKey: 'shop-pay' },
     };
     return map[k] || { label: k, tablerKey: null };
   }

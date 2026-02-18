@@ -49,29 +49,12 @@
 
   <div class="row g-3">
     <div class="col-12">
-      <div class="card" data-no-card-collapse="1">
+      <div class="card" data-no-card-collapse="1" data-table-class="live" data-table-zone="browsers-main" data-table-id="browsers-table">
         <div class="card-header">
-          <h3 class="card-title">Browser breakdown</h3>
+          <h3 class="card-title" data-kexo-table-title="1">Browser breakdown</h3>
         </div>
-        <div class="table-responsive">
-          <table class="table table-sm table-vcenter card-table" aria-label="Browsers table">
-            <thead>
-              <tr>
-                <th>Browser</th>
-                <th class="text-end">Sessions</th>
-                <th class="text-end">Carts</th>
-                <th class="text-end">Orders</th>
-                <th class="text-end">CR%</th>
-                <th class="text-end">VPV</th>
-                <th class="text-end">Revenue</th>
-                <th class="text-end">AOV</th>
-              </tr>
-            </thead>
-            <tbody id="browsers-body">
-              <tr><td class="text-secondary" colspan="8">Loading…</td></tr>
-            </tbody>
-          </table>
-        </div>
+        <div id="browsers-table-mount" data-kexo-table="browsers-table"></div>
+        <div class="card-footer d-flex align-items-center justify-content-center is-hidden" id="browsers-pagination" aria-label="Browsers pagination"></div>
       </div>
     </div>
   </div>

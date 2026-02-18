@@ -545,6 +545,22 @@ function defaultTablesUiConfigV1() {
         ],
       },
       {
+        key: 'payment-types',
+        label: 'Insights · Payment Types',
+        tables: [
+          {
+            id: 'payment-types-table',
+            name: 'Payment Types',
+            tableClass: 'live',
+            zone: 'payment-types-main',
+            order: 1,
+            inGrid: false,
+            rows: { default: 20, options: [20, 30, 40, 50] },
+            sticky: { minWidth: null, maxWidth: null },
+          },
+        ],
+      },
+      {
         key: 'attribution',
         label: 'Acquisition · Attribution',
         tables: [
@@ -569,6 +585,22 @@ function defaultTablesUiConfigV1() {
             name: 'Devices',
             tableClass: 'live',
             zone: 'devices-main',
+            order: 1,
+            inGrid: false,
+            rows: { default: 20, options: [20, 30, 40, 50] },
+            sticky: { minWidth: null, maxWidth: null },
+          },
+        ],
+      },
+      {
+        key: 'browsers',
+        label: 'Acquisition · Browsers',
+        tables: [
+          {
+            id: 'browsers-table',
+            name: 'Browsers',
+            tableClass: 'live',
+            zone: 'browsers-main',
             order: 1,
             inGrid: false,
             rows: { default: 20, options: [20, 30, 40, 50] },
