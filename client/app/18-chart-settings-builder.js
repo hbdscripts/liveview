@@ -208,7 +208,9 @@
         var animations = !(s.style && s.style.animations === false);
         var supportsIcons = !!(meta && meta.capabilities && meta.capabilities.icons === true);
         var iconsEnabled = supportsIcons ? !!(s.style && s.style.icons === true) : false;
+        var finishesCenterLabel = !(s.style && s.style.radialCenterLabel === false);
         var isOverview = chartKey === 'dash-chart-overview-30d';
+        var isFinishes = chartKey === 'dash-chart-finishes-30d';
         var colors = (s.colors && Array.isArray(s.colors)) ? s.colors : (meta.series && meta.series.length ? ['#3eb3ab', '#ef4444', '#2fb344', '#d63939'].slice(0, meta.series.length) : ['#3eb3ab']);
         var rev = (isOverview && colors[0]) ? colors[0] : '#3eb3ab';
         var cost = (isOverview && colors[1]) ? colors[1] : '#ef4444';
@@ -231,6 +233,12 @@
         body += '<div class="col-12"><label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-cs-field="animations"' + (animations ? ' checked' : '') + '><span class="form-check-label ms-2">Animations</span></label></div>';
         if (supportsIcons) {
           body += '<div class="col-12"><label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-cs-field="icons"' + (iconsEnabled ? ' checked' : '') + '><span class="form-check-label ms-2">Icons</span></label><div class="form-hint">Show source icons in the chart legend.</div></div>';
+        }
+        if (isFinishes) {
+          body += '<div class="col-12' + (String(mode || '').toLowerCase() === 'radialbar' ? '' : ' d-none') + '" data-cs-mode-group="finishes-center-label">';
+          body += '<label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-cs-field="radialCenterLabel"' + (finishesCenterLabel ? ' checked' : '') + '><span class="form-check-label ms-2">Show best finish in center</span></label>';
+          body += '<div class="form-hint">Only applies to the Radial Bar chart type.</div>';
+          body += '</div>';
         }
         body += '<div class="col-12' + (fillOpacityVisible ? '' : ' d-none') + '" data-cs-mode-group="fill-opacity">';
         body += '<label class="form-label d-flex align-items-center justify-content-between">';
@@ -335,6 +343,11 @@
             var labelEl = fillWrap.querySelector('[data-cs-fill-opacity-label]');
             if (labelEl) labelEl.textContent = fillOpacityLabelForMode(m);
           }
+          var finishesWrap = bodyEl.querySelector('[data-cs-mode-group="finishes-center-label"]');
+          if (finishesWrap) {
+            if (m === 'radialbar') finishesWrap.classList.remove('d-none');
+            else finishesWrap.classList.add('d-none');
+          }
         }
 
         bindFillOpacityControls();
@@ -349,12 +362,14 @@
           var sizeEl = bodyEl.querySelector('[data-cs-field="sizePercent"]');
           var animEl = bodyEl.querySelector('[data-cs-field="animations"]');
           var iconsEl = supportsIcons ? bodyEl.querySelector('[data-cs-field="icons"]') : null;
+          var centerEl = isFinishes ? bodyEl.querySelector('[data-cs-field="radialCenterLabel"]') : null;
           var styleBase = {};
           try {
             if (s && s.style && typeof s.style === 'object') styleBase = Object.assign({}, s.style);
           } catch (_) { styleBase = {}; }
           styleBase.animations = !!(animEl && animEl.checked);
           if (supportsIcons) styleBase.icons = !!(iconsEl && iconsEl.checked);
+          if (isFinishes) styleBase.radialCenterLabel = !!(centerEl && centerEl.checked);
           var fillEl = bodyEl.querySelector('[data-cs-field="fillOpacity"]');
           if (fillEl) {
             var raw = parseInt(String(fillEl.value || ''), 10);

@@ -742,6 +742,22 @@
         return out;
       }
 
+      function scaleHeightForChartSizePercent(chartId, height, min, max) {
+        var h = Number(height);
+        if (!Number.isFinite(h) || h <= 0) return height;
+        try {
+          if (typeof chartSizePercentFromUiConfig === 'function') {
+            var pct = chartSizePercentFromUiConfig(chartId, 100);
+            if (Number.isFinite(pct) && pct > 0 && pct !== 100) {
+              h = Math.round(h * (pct / 100));
+            }
+          }
+        } catch (_) {}
+        if (Number.isFinite(min) && h < min) h = min;
+        if (Number.isFinite(max) && h > max) h = max;
+        return Math.round(h);
+      }
+
       function overviewMiniChartIds() {
         return ['dash-chart-finishes-30d', 'dash-chart-devices-30d', 'dash-chart-attribution-30d', 'dash-chart-overview-30d'];
       }
@@ -815,6 +831,7 @@
               var chartEl = document.getElementById(chartId);
               if (!chartEl) return;
               var h = resolveOverviewChartHeight(chartEl, 180, 120, 440);
+              h = scaleHeightForChartSizePercent(chartId, h, 120, 440);
               if (h > 0) chart.updateOptions({ chart: { height: h } }, false, false, false);
             });
           } catch (_) {}
@@ -1318,6 +1335,7 @@
         var fallbackColors = (opts && Array.isArray(opts.colors) && opts.colors.length) ? opts.colors : ['#f59e34', '#94a3b8', '#8b5cf6', '#4b94e4', '#3eb3ab'];
         var colors = (typeof chartColorsFromUiConfig === 'function') ? chartColorsFromUiConfig(chartId, fallbackColors) : fallbackColors;
         var chartHeight = resolveOverviewChartHeight(chartEl, (opts && Number.isFinite(Number(opts.height))) ? Number(opts.height) : 180, 120, 440);
+        chartHeight = scaleHeightForChartSizePercent(chartId, chartHeight, 120, 440);
         var uiStyle = (typeof chartStyleFromUiConfig === 'function') ? chartStyleFromUiConfig(chartId) : null;
         var labelsRef = labels;
         var valuesRef = values;
@@ -1329,11 +1347,28 @@
             if (rv > bestRev) { bestRev = rv; defaultIdx = k; }
           }
         } catch (_) { defaultIdx = 0; }
-        function upsertRadialCenterLabel(selectedIdx) {
-          var idx = Number.isFinite(Number(selectedIdx)) ? Number(selectedIdx) : defaultIdx;
-          if (idx < 0 || idx >= labelsRef.length) idx = defaultIdx;
-          var name = (idx >= 0 && idx < labelsRef.length) ? labelsRef[idx] : '';
-          var rev = (idx >= 0 && idx < valuesRef.length) ? valuesRef[idx] : 0;
+        try {
+          chartEl.__kexoFinishesRadialCenter = {
+            enabled: !(uiStyle && uiStyle.radialCenterLabel === false),
+            defaultIdx: defaultIdx,
+            labels: labelsRef,
+            values: valuesRef,
+          };
+        } catch (_) {}
+        function syncFinishesRadialCenterLabel(selectedIdx) {
+          var st = null;
+          try { st = chartEl && chartEl.__kexoFinishesRadialCenter ? chartEl.__kexoFinishesRadialCenter : null; } catch (_) { st = null; }
+          if (!chartEl || !st || st.enabled !== true) {
+            try {
+              var existing = chartEl ? chartEl.querySelector('.kexo-radial-center-label-wrap') : null;
+              if (existing) existing.remove();
+            } catch (_) {}
+            return;
+          }
+          var idx = Number.isFinite(Number(selectedIdx)) ? Number(selectedIdx) : st.defaultIdx;
+          if (idx < 0 || idx >= st.labels.length) idx = st.defaultIdx;
+          var name = (idx >= 0 && idx < st.labels.length) ? st.labels[idx] : '';
+          var rev = (idx >= 0 && idx < st.values.length) ? st.values[idx] : 0;
           var revStr = formatRevenue(normalizeOverviewMetric(rev)) || '\u2014';
           try { if (chartEl && chartEl.style) chartEl.style.position = 'relative'; } catch (_) {}
           var el = null;
@@ -1355,15 +1390,15 @@
             toolbar: { show: !!(uiStyle && uiStyle.toolbar === true) },
             animations: { enabled: !!(uiStyle && uiStyle.animations === true), easing: 'easeinout', speed: 280 },
             events: {
-              mounted: function() { try { upsertRadialCenterLabel(defaultIdx); } catch (_) {} },
-              updated: function() { try { upsertRadialCenterLabel(defaultIdx); } catch (_) {} },
+              mounted: function() { try { syncFinishesRadialCenterLabel(defaultIdx); } catch (_) {} },
+              updated: function() { try { syncFinishesRadialCenterLabel(defaultIdx); } catch (_) {} },
               dataPointMouseEnter: function(event, chartCtx, config) {
                 try {
                   var idx = config && Number.isFinite(Number(config.seriesIndex)) ? Number(config.seriesIndex) : -1;
-                  if (idx >= 0) upsertRadialCenterLabel(idx);
+                  if (idx >= 0) syncFinishesRadialCenterLabel(idx);
                 } catch (_) {}
               },
-              dataPointMouseLeave: function() { try { upsertRadialCenterLabel(defaultIdx); } catch (_) {} }
+              dataPointMouseLeave: function() { try { syncFinishesRadialCenterLabel(defaultIdx); } catch (_) {} }
             }
           },
           plotOptions: {
@@ -1392,7 +1427,7 @@
               var rev = (idx >= 0 && idx < valuesRef.length) ? valuesRef[idx] : 0;
               var pct = (ctx && Array.isArray(ctx.series) && idx >= 0 && idx < ctx.series.length) ? Number(ctx.series[idx]) : null;
               var pctStr = (pct != null && Number.isFinite(pct)) ? pct.toFixed(1) + '%' : '\u2014';
-              try { if (idx >= 0) upsertRadialCenterLabel(idx); } catch (_) {}
+              try { if (idx >= 0) syncFinishesRadialCenterLabel(idx); } catch (_) {}
               return '<div class="kexo-tooltip-card p-2"><div class="fw-semibold">' + escapeHtml(name || '') + '</div><div>Revenue: ' + escapeHtml(formatRevenue(normalizeOverviewMetric(rev)) || '\u2014') + '</div><div>Share: ' + escapeHtml(pctStr) + '</div></div>';
             }
           },
@@ -1407,12 +1442,18 @@
         } catch (_) {}
         try {
           upsertDashboardApexChart(chartId, chartEl, apexOpts, function() {
-            try { upsertRadialCenterLabel(defaultIdx); } catch (_) {}
+            try { syncFinishesRadialCenterLabel(defaultIdx); } catch (_) {}
           });
           try {
             if (chartEl && !chartEl.__kexoRadialCenterLeaveBound) {
               chartEl.__kexoRadialCenterLeaveBound = true;
-              chartEl.addEventListener('mouseleave', function () { try { upsertRadialCenterLabel(defaultIdx); } catch (_) {} });
+              chartEl.addEventListener('mouseleave', function () {
+                try {
+                  var st = chartEl && chartEl.__kexoFinishesRadialCenter ? chartEl.__kexoFinishesRadialCenter : null;
+                  var idx = st && Number.isFinite(Number(st.defaultIdx)) ? Number(st.defaultIdx) : 0;
+                  syncFinishesRadialCenterLabel(idx);
+                } catch (_) {}
+              });
             }
           } catch (_) {}
         } catch (err) {
@@ -1432,6 +1473,7 @@
         var fallbackColors = (opts && Array.isArray(opts.colors) && opts.colors.length) ? opts.colors : ['#f59e34', '#94a3b8', '#8b5cf6', '#4b94e4', '#3eb3ab'];
         var colors = (typeof chartColorsFromUiConfig === 'function') ? chartColorsFromUiConfig(chartId, fallbackColors) : fallbackColors;
         var chartHeight = resolveOverviewChartHeight(chartEl, (opts && Number.isFinite(Number(opts.height))) ? Number(opts.height) : 180, 120, 440);
+        chartHeight = scaleHeightForChartSizePercent(chartId, chartHeight, 120, 440);
         var uiStyle = (typeof chartStyleFromUiConfig === 'function') ? chartStyleFromUiConfig(chartId) : null;
         var horizontal = opts && opts.horizontal !== false;
         var apexOpts = {
@@ -2255,9 +2297,9 @@
         for (var i = 0; i < len; i++) {
           var ymd = labelsYmd[i] != null ? String(labelsYmd[i]) : '';
           labels.push(ymd ? formatOverviewBucketLabel(ymd, granularity) : String(i + 1));
-          var rev = normalizeOverviewMetric(revenueGbp[i]);
-          var cst = normalizeOverviewMetric(costGbp[i]);
-          var pft = (typeof rev === 'number' && typeof cst === 'number') ? rev - cst : 0;
+          var rev = Math.round(normalizeOverviewMetric(revenueGbp[i]) * 100) / 100;
+          var cst = Math.round(normalizeOverviewMetric(costGbp[i]) * 100) / 100;
+          var pft = (typeof rev === 'number' && typeof cst === 'number') ? (Math.round((rev - cst) * 100) / 100) : 0;
           revenue.push(rev);
           cost.push(cst);
           profit.push(pft);
