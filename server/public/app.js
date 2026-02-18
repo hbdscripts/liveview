@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 0ac2f7bfa6d667bc
+// checksum: 73d10aacee1c5cd4
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -21919,6 +21919,7 @@ const API = '';
   var MODAL_ID = 'kexo-chart-settings-modal';
   var CHARTS_LS_KEY = 'kexo:charts-ui-config:v1';
   var API = (typeof window !== 'undefined' && window.API) ? String(window.API || '') : '';
+  var lastOpen = { key: '', at: 0 };
 
   function getChartMeta(key) {
     return (typeof window.kexoChartMeta === 'function' ? window.kexoChartMeta(key) : null) || { modes: ['line', 'area'], series: [], defaultMode: 'line', height: 200 };
@@ -22007,10 +22008,30 @@ const API = '';
     }).join('');
   }
 
+  function writeChartsUiConfigCacheFromServer(cfg) {
+    if (!cfg || cfg.v !== 1) return;
+    var toStore;
+    try {
+      toStore = Object.assign({}, cfg, { schemaVersion: 1, updatedAt: Date.now() });
+    } catch (_) {
+      toStore = cfg;
+    }
+    try {
+      (typeof safeWriteLocalStorageJson === 'function'
+        ? safeWriteLocalStorageJson
+        : function (k, v) { try { localStorage.setItem(k, typeof v === 'string' ? v : JSON.stringify(v)); } catch (_) {} }
+      )(CHARTS_LS_KEY, toStore);
+    } catch (_) {}
+  }
+
   function openModal(opts) {
     var chartKey = (opts && opts.chartKey != null) ? String(opts.chartKey).trim().toLowerCase() : '';
     var cardTitle = (opts && opts.cardTitle != null) ? String(opts.cardTitle).trim() : chartKey;
     if (!chartKey) return;
+    var now = Date.now();
+    if (lastOpen.key === chartKey && (now - lastOpen.at) < 250) return;
+    lastOpen.key = chartKey;
+    lastOpen.at = now;
 
     var modal = ensureModal();
     var titleEl = document.getElementById(MODAL_ID + '-title');
@@ -22104,7 +22125,8 @@ const API = '';
             .then(function (r) { return r.json(); })
             .then(function (data) {
               if (data && data.ok && data.chartsUiConfig) {
-                try { localStorage.setItem(CHARTS_LS_KEY, JSON.stringify(data.chartsUiConfig)); } catch (_) {}
+                // Server response is the only source of truth post-save.
+                writeChartsUiConfigCacheFromServer(data.chartsUiConfig);
                 try { window.dispatchEvent(new CustomEvent('kexo:chartsUiConfigUpdated', { detail: data.chartsUiConfig })); } catch (_) {}
                 setMsg('Saved.', true);
                 closeModal();
