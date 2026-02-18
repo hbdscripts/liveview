@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 63525d064a1ae375
+// checksum: 7471518521bf3166
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -52,6 +52,42 @@
   function fetchJson(url, opts) {
     var options = Object.assign({ credentials: 'same-origin', cache: 'no-store' }, opts || {});
     return fetch(url, options).then(function(r) { return r.json(); });
+  }
+
+  function normalizePaymentProviderKey(v) {
+    if (v == null) return null;
+    var s = String(v).trim().toLowerCase();
+    if (!s) return null;
+    if (s === 'null' || s === 'undefined' || s === 'true' || s === 'false' || s === '[object object]') return null;
+    s = s.replace(/[^a-z0-9_-]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+    if (!s) return null;
+    if (s === 'american-express') s = 'americanexpress';
+    if (s === 'amex') s = 'americanexpress';
+    if (s === 'apple-pay') s = 'applepay';
+    if (s === 'shop-pay') s = 'shop-pay';
+    return s.length > 64 ? s.slice(0, 64) : s;
+  }
+
+  function paymentProviderMeta(key) {
+    var k = normalizePaymentProviderKey(key);
+    if (!k) return null;
+    var map = {
+      visa: { label: 'Visa', tablerKey: 'visa' },
+      mastercard: { label: 'Mastercard', tablerKey: 'mastercard' },
+      americanexpress: { label: 'American Express', tablerKey: 'americanexpress' },
+      paypal: { label: 'PayPal', tablerKey: 'paypal' },
+      applepay: { label: 'Apple Pay', tablerKey: 'applepay' },
+      'google-pay': { label: 'Google Pay', tablerKey: 'google-pay' },
+      klarna: { label: 'Klarna', tablerKey: 'klarna' },
+      'shop-pay': { label: 'Shop Pay', tablerKey: 'shop-pay' },
+    };
+    return map[k] || { label: k, tablerKey: null };
+  }
+
+  function tablerPaymentClassName(providerKey) {
+    var meta = paymentProviderMeta(providerKey);
+    if (!meta || !meta.tablerKey) return '';
+    return 'payment payment-provider-' + meta.tablerKey;
   }
 const API = '';
     const PAGE = (document.body && document.body.getAttribute('data-page')) || '';

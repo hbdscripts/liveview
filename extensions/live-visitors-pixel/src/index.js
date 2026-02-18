@@ -115,6 +115,60 @@ register(({ analytics, init, browser, settings }) => {
     return null;
   }
 
+  function safeKey(v, maxLen = 64) {
+    if (v == null) return null;
+    const t = typeof v;
+    if (t !== 'string' && t !== 'number') return null;
+    let s = String(v).trim().toLowerCase();
+    if (!s) return null;
+    if (s === 'null' || s === 'undefined' || s === 'true' || s === 'false' || s === '[object object]') return null;
+    s = s.replace(/[^a-z0-9_-]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+    if (!s) return null;
+    return s.length > maxLen ? s.slice(0, maxLen) : s;
+  }
+
+  function safeText(v, maxLen = 96) {
+    if (v == null) return null;
+    const t = typeof v;
+    if (t !== 'string' && t !== 'number') return null;
+    let s = String(v).trim();
+    if (!s) return null;
+    const low = s.toLowerCase();
+    if (low === 'null' || low === 'undefined' || low === 'true' || low === 'false' || low === '[object object]') return null;
+    // Privacy: never send/store digits (avoids PAN fragments in method labels).
+    s = s.replace(/[0-9]/g, '').replace(/\s+/g, ' ').trim();
+    if (!s) return null;
+    return s.length > maxLen ? s.slice(0, maxLen) : s;
+  }
+
+  function pickBestTransaction(transactions) {
+    if (!Array.isArray(transactions) || !transactions.length) return null;
+    let best = null;
+    let bestScore = -1e9;
+
+    for (const t of transactions) {
+      if (!t || typeof t !== 'object') continue;
+      const status = safeKey(t.status ?? t.state ?? t.paymentStatus ?? t.result, 32);
+      const kind = safeKey(t.kind ?? t.type ?? t.transactionType, 32);
+      const gateway = safeKey(t.gateway ?? t.paymentGateway ?? t.processor, 64);
+      const methodType = safeKey(t.paymentMethod?.type ?? t.paymentMethodType ?? t.methodType ?? t.method, 32);
+
+      let score = 0;
+      if (status === 'success' || status === 'succeeded' || status === 'paid' || status === 'completed') score += 100;
+      if (status === 'failure' || status === 'failed' || status === 'error' || status === 'declined') score -= 100;
+      if (kind === 'sale' || kind === 'capture' || kind === 'authorization' || kind === 'auth') score += 30;
+      if (gateway) score += 20;
+      if (methodType) score += 10;
+      if (t.amount?.amount != null || t.amount != null) score += 5;
+
+      if (score > bestScore) {
+        bestScore = score;
+        best = t;
+      }
+    }
+    return best;
+  }
+
   function cartMoneyFromCart(cart) {
     const cost = cart?.cost?.totalAmount;
     let amount = parseAmount(cost?.amount);
@@ -448,13 +502,23 @@ register(({ analytics, init, browser, settings }) => {
         if (!s) return null;
         return s;
       })();
-      send(payload('checkout_completed', {
+      const bestTx = pickBestTransaction(checkout?.transactions);
+      const paymentGateway = safeKey(bestTx?.gateway ?? bestTx?.paymentGateway ?? bestTx?.processor);
+      const paymentMethodType = safeKey(bestTx?.paymentMethod?.type ?? bestTx?.paymentMethodType ?? bestTx?.type ?? bestTx?.kind);
+      const paymentMethodName = safeText(bestTx?.paymentMethod?.name ?? bestTx?.paymentMethod?.type ?? bestTx?.gateway);
+
+      const extra = {
         checkout_completed: true,
         order_total: orderTotal,
         order_currency: orderCurrency,
         order_id: orderId,
         checkout_token: checkoutToken,
-      }));
+      };
+      if (paymentGateway) extra.payment_gateway = paymentGateway;
+      if (paymentMethodName) extra.payment_method_name = paymentMethodName;
+      if (paymentMethodType) extra.payment_method_type = paymentMethodType;
+
+      send(payload('checkout_completed', extra));
     } catch (_) {}
   });
 });

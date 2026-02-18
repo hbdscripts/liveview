@@ -121,6 +121,7 @@ const WHITELIST = new Set([
   'variant_title', 'quantity_delta', 'price', 'cart_qty', 'cart_value', 'cart_currency',
   'order_total', 'order_currency', 'checkout_started', 'checkout_completed',
   'order_id', 'checkout_token',
+  'payment_gateway', 'payment_method_name', 'payment_method_type',
   'country_code', 'device', 'network_speed', 'ts', 'customer_privacy_debug',
   'ua_device_type', 'ua_platform', 'ua_model',
   'utm_campaign', 'utm_source', 'utm_medium', 'utm_content', 'utm_term',
@@ -165,6 +166,32 @@ function trimLower(v, maxLen = 256) {
   if (!s) return null;
   const out = s.length > maxLen ? s.slice(0, maxLen) : s;
   return out.toLowerCase();
+}
+
+function normalizePaymentKey(v, maxLen = 64) {
+  if (v == null) return null;
+  const t = typeof v;
+  if (t !== 'string' && t !== 'number') return null;
+  let s = String(v).trim().toLowerCase();
+  if (!s) return null;
+  if (s === 'null' || s === 'undefined' || s === 'true' || s === 'false' || s === '[object object]') return null;
+  s = s.replace(/[^a-z0-9_-]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+  if (!s) return null;
+  return s.length > maxLen ? s.slice(0, maxLen) : s;
+}
+
+function normalizePaymentLabel(v, maxLen = 96) {
+  if (v == null) return null;
+  const t = typeof v;
+  if (t !== 'string' && t !== 'number') return null;
+  let s = String(v).trim();
+  if (!s) return null;
+  const low = s.toLowerCase();
+  if (low === 'null' || low === 'undefined' || low === 'true' || low === 'false' || low === '[object object]') return null;
+  // Privacy: never persist digits (avoids PAN fragments in method labels).
+  s = s.replace(/[0-9]/g, '').replace(/\s+/g, ' ').trim();
+  if (!s) return null;
+  return s.length > maxLen ? s.slice(0, maxLen) : s;
 }
 
 function safeUrlHost(url) {
@@ -1158,18 +1185,61 @@ async function insertPurchase(payload, sessionId, countryCode) {
     return s.length > 128 ? s.slice(0, 128) : s;
   })();
   const country = normalizeCountry(countryCode) || null;
+  const paymentGateway = normalizePaymentKey(payload.payment_gateway, 64);
+  const paymentMethodName = normalizePaymentLabel(payload.payment_method_name, 96);
+  const paymentMethodType = normalizePaymentKey(payload.payment_method_type, 32);
 
   if (config.dbUrl) {
     await db.run(`
-      INSERT INTO purchases (purchase_key, session_id, visitor_id, purchased_at, order_total, order_currency, order_id, checkout_token, country_code)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-      ON CONFLICT (purchase_key) DO NOTHING
-    `, [purchaseKey, sessionId, payload.visitor_id ?? null, now, Number.isNaN(orderTotal) ? null : orderTotal, orderCurrency, orderId, checkoutToken, country]);
+      INSERT INTO purchases (
+        purchase_key, session_id, visitor_id, purchased_at,
+        order_total, order_currency, order_id, checkout_token, country_code,
+        payment_gateway, payment_method_name, payment_method_type
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+      ON CONFLICT (purchase_key) DO UPDATE SET
+        order_total = COALESCE(purchases.order_total, EXCLUDED.order_total),
+        order_currency = COALESCE(purchases.order_currency, EXCLUDED.order_currency),
+        order_id = COALESCE(purchases.order_id, EXCLUDED.order_id),
+        checkout_token = COALESCE(purchases.checkout_token, EXCLUDED.checkout_token),
+        country_code = COALESCE(purchases.country_code, EXCLUDED.country_code),
+        payment_gateway = COALESCE(purchases.payment_gateway, EXCLUDED.payment_gateway),
+        payment_method_name = COALESCE(purchases.payment_method_name, EXCLUDED.payment_method_name),
+        payment_method_type = COALESCE(purchases.payment_method_type, EXCLUDED.payment_method_type)
+    `, [
+      purchaseKey, sessionId, payload.visitor_id ?? null, now,
+      Number.isNaN(orderTotal) ? null : orderTotal, orderCurrency, orderId, checkoutToken, country,
+      paymentGateway, paymentMethodName, paymentMethodType,
+    ]);
   } else {
     await db.run(`
-      INSERT OR IGNORE INTO purchases (purchase_key, session_id, visitor_id, purchased_at, order_total, order_currency, order_id, checkout_token, country_code)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `, [purchaseKey, sessionId, payload.visitor_id ?? null, now, Number.isNaN(orderTotal) ? null : orderTotal, orderCurrency, orderId, checkoutToken, country]);
+      INSERT OR IGNORE INTO purchases (
+        purchase_key, session_id, visitor_id, purchased_at,
+        order_total, order_currency, order_id, checkout_token, country_code,
+        payment_gateway, payment_method_name, payment_method_type
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [
+      purchaseKey, sessionId, payload.visitor_id ?? null, now,
+      Number.isNaN(orderTotal) ? null : orderTotal, orderCurrency, orderId, checkoutToken, country,
+      paymentGateway, paymentMethodName, paymentMethodType,
+    ]);
+    await db.run(`
+      UPDATE purchases
+         SET order_total = COALESCE(order_total, ?),
+             order_currency = COALESCE(order_currency, ?),
+             order_id = COALESCE(order_id, ?),
+             checkout_token = COALESCE(checkout_token, ?),
+             country_code = COALESCE(country_code, ?),
+             payment_gateway = COALESCE(payment_gateway, ?),
+             payment_method_name = COALESCE(payment_method_name, ?),
+             payment_method_type = COALESCE(payment_method_type, ?)
+       WHERE purchase_key = ?
+    `, [
+      Number.isNaN(orderTotal) ? null : orderTotal, orderCurrency, orderId, checkoutToken, country,
+      paymentGateway, paymentMethodName, paymentMethodType,
+      purchaseKey,
+    ]).catch(() => null);
   }
   // Never delete purchase rows (project rule: no DB deletes without backup). Dedupe is done in stats queries only.
 }
