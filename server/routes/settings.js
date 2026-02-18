@@ -1983,11 +1983,74 @@ async function getThemeVarsCss(req, res) {
   res.type('text/css').send(css + (extraCss ? ('\n' + extraCss) : ''));
 }
 
+const CHART_SETTINGS_BODY_LIMIT = 80000;
+
+async function getChartSettings(req, res) {
+  try {
+    const chartKey = (req.params.chartKey || '').trim().toLowerCase();
+    if (!chartKey || !CHART_UI_KEY_SET.has(chartKey)) {
+      return res.status(400).json({ ok: false, error: 'Invalid chart key' });
+    }
+    const raw = await store.getSetting(CHARTS_UI_CONFIG_V1_KEY);
+    const cfg = normalizeChartsUiConfigV1(raw);
+    const def = defaultChartsUiConfigV1();
+    const entry = (cfg.charts || []).find((c) => c && c.key === chartKey);
+    const defaultEntry = (def.charts || []).find((c) => c && c.key === chartKey) || {
+      key: chartKey,
+      label: chartKey,
+      enabled: true,
+      mode: 'line',
+      colors: ['#3eb3ab'],
+      style: defaultChartStyleConfig(),
+      advancedApexOverride: {},
+    };
+    return res.json({ ok: true, chartKey, settings: entry || defaultEntry });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: e && e.message ? String(e.message) : 'Failed to load chart settings' });
+  }
+}
+
+async function putChartSettings(req, res) {
+  try {
+    const chartKey = (req.params.chartKey || '').trim().toLowerCase();
+    if (!chartKey || !CHART_UI_KEY_SET.has(chartKey)) {
+      return res.status(400).json({ ok: false, error: 'Invalid chart key' });
+    }
+    const body = req.body && typeof req.body === 'object' ? req.body : {};
+    const settings = body.settings && typeof body.settings === 'object' ? body.settings : {};
+    const raw = await store.getSetting(CHARTS_UI_CONFIG_V1_KEY);
+    const cfg = normalizeChartsUiConfigV1(raw);
+    const def = defaultChartsUiConfigV1();
+    const defEntry = (def.charts || []).find((c) => c && c.key === chartKey);
+    const existingIdx = (cfg.charts || []).findIndex((c) => c && c.key === chartKey);
+    const merged = { ...(existingIdx >= 0 ? cfg.charts[existingIdx] : defEntry), ...settings };
+    const normalizedList = normalizeChartsList([merged], def.charts || [], {});
+    const normalizedOne = normalizedList[0];
+    if (!normalizedOne || normalizedOne.key !== chartKey) {
+      return res.status(400).json({ ok: false, error: 'Normalization failed' });
+    }
+    const nextCharts = [...(cfg.charts || [])];
+    if (existingIdx >= 0) nextCharts[existingIdx] = normalizedOne;
+    else nextCharts.push(normalizedOne);
+    const nextCfg = { ...cfg, charts: nextCharts };
+    const json = JSON.stringify(nextCfg);
+    if (json.length > CHART_SETTINGS_BODY_LIMIT) {
+      return res.status(413).json({ ok: false, error: 'Chart config too large' });
+    }
+    await store.setSetting(CHARTS_UI_CONFIG_V1_KEY, json);
+    return res.json({ ok: true, chartsUiConfig: nextCfg });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: e && e.message ? String(e.message) : 'Failed to save chart settings' });
+  }
+}
+
 module.exports = {
   getSettings,
   postSettings,
   getProfitRules,
   putProfitRules,
+  getChartSettings,
+  putChartSettings,
   normalizePixelSessionMode,
   PIXEL_SESSION_MODE_KEY,
   getThemeDefaults,

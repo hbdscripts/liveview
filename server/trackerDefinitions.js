@@ -975,7 +975,7 @@ const TRACKER_TABLE_DEFINITIONS = [
     id: 'settings_charts_panel',
     page: 'Settings',
     name: 'Charts settings panel',
-    ui: { elementIds: ['settings-charts-root', 'settings-charts-save-btn', 'settings-charts-reset-btn'] },
+    ui: { elementIds: [] },
     endpoint: { method: 'GET/POST', path: '/api/settings', params: ['chartsUiConfig (POST body)'] },
     sources: [
       { kind: 'db', tables: ['settings'], note: 'charts_ui_config_v1 persisted in settings table' },

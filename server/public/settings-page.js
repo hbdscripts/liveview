@@ -53,9 +53,10 @@
         keep.set('kexoTab', rawKexo);
       }
       var rawLayout = String(params.get('layoutTab') || params.get('layout') || '').trim().toLowerCase();
-      if ((rawLayout === 'tables' || rawLayout === 'charts' || rawLayout === 'kpis' || rawLayout === 'date-ranges') && keep.get('tab') === 'layout') {
+      if ((rawLayout === 'tables' || rawLayout === 'kpis' || rawLayout === 'date-ranges') && keep.get('tab') === 'layout') {
         keep.set('layoutTab', rawLayout);
       }
+      if (rawLayout === 'charts') keep.set('layoutTab', 'tables');
       var rawIntegrations = String(params.get('integrationsTab') || '').trim().toLowerCase();
       if ((rawIntegrations === 'shopify' || rawIntegrations === 'googleads') && keep.get('tab') === 'integrations') {
         keep.set('integrationsTab', rawIntegrations);
@@ -106,11 +107,9 @@
   }
 
   var kpiUiConfigCache = null;
-  var chartsUiConfigCache = null;
   var tablesUiConfigCache = null;
   var insightsVariantsConfigCache = null;
   var insightsVariantsDraft = null;
-  var chartsUiPanelRendered = false;
   var tablesUiPanelRendered = false;
   var insightsIgnoreModalBackdropEl = null;
   var insightsSuggestModalBackdropEl = null;
@@ -159,7 +158,7 @@
         initialKexoSubTab = (t === 'theme') ? 'theme-display' : 'general';
         return 'kexo';
       }
-      if (t === 'charts' || t === 'kpis') {
+      if (t === 'kpis') {
         initialLayoutSubTab = t;
         return 'layout';
       }
@@ -178,7 +177,8 @@
         var lm = /[?&](?:layoutTab|layout)=([^&]+)/.exec(window.location.search || '');
         if (lm && lm[1]) {
           var lk = lm[1].toLowerCase().replace(/\s+/g, '-');
-          if (lk === 'tables' || lk === 'charts' || lk === 'kpis' || lk === 'date-ranges') initialLayoutSubTab = lk;
+          if (lk === 'tables' || lk === 'kpis' || lk === 'date-ranges') initialLayoutSubTab = lk;
+          else if (lk === 'charts') initialLayoutSubTab = 'tables';
         }
       }
       if (t === 'integrations') {
@@ -225,8 +225,12 @@
       initialKexoSubTab = hash === 'theme' ? 'theme-display' : 'general';
       return 'kexo';
     }
-    if (hash === 'charts' || hash === 'kpis') {
+    if (hash === 'kpis') {
       initialLayoutSubTab = hash;
+      return 'layout';
+    }
+    if (hash === 'charts') {
+      initialLayoutSubTab = 'tables';
       return 'layout';
     }
     if (hash && TAB_MAP[hash]) return hash;
@@ -238,7 +242,7 @@
     params.set('tab', key);
     if (key === 'layout') {
       var layoutKey = getActiveLayoutSubTab();
-      if (layoutKey === 'tables' || layoutKey === 'charts' || layoutKey === 'kpis' || layoutKey === 'date-ranges') params.set('layoutTab', layoutKey);
+      if (layoutKey === 'tables' || layoutKey === 'kpis' || layoutKey === 'date-ranges') params.set('layoutTab', layoutKey);
     }
     if (key === 'integrations') {
       var integrationsKey = getActiveIntegrationsSubTab();
@@ -302,11 +306,6 @@
     return 'shipping';
   }
 
-  function renderChartsWhenVisible() {
-    if (chartsUiPanelRendered) return;
-    renderChartsUiPanel(chartsUiConfigCache || defaultChartsUiConfigV1());
-    chartsUiPanelRendered = true;
-  }
 
   function renderTablesWhenVisible() {
     if (tablesUiPanelRendered) return;
@@ -351,7 +350,6 @@
     }
     if (key === 'layout') {
       try { renderTablesWhenVisible(); } catch (_) {}
-      try { renderChartsWhenVisible(); } catch (_) {}
     }
     if (key === 'insights') {
       try {
@@ -511,7 +509,6 @@
       panelClass: 'settings-layout-panel',
       tabs: [
         { key: 'tables', label: 'Tables', panelId: 'settings-layout-panel-tables' },
-        { key: 'charts', label: 'Charts', panelId: 'settings-layout-panel-charts' },
         { key: 'kpis', label: 'KPIs', panelId: 'settings-layout-panel-kpis' },
         { key: 'date-ranges', label: 'Date ranges', panelId: 'settings-layout-panel-date-ranges' },
       ],
@@ -544,15 +541,9 @@
       });
     }
     var tablesEl = document.getElementById('settings-layout-accordion-tables');
-    var chartsEl = document.getElementById('settings-layout-accordion-charts');
     if (tablesEl) {
       tablesEl.addEventListener('shown.bs.collapse', function () {
         try { renderTablesWhenVisible(); } catch (_) {}
-      });
-    }
-    if (chartsEl) {
-      chartsEl.addEventListener('shown.bs.collapse', function () {
-        try { renderChartsWhenVisible(); } catch (_) {}
       });
     }
     var variantsEl = document.getElementById('settings-insights-accordion-variants');
@@ -1126,7 +1117,6 @@
         var sessionMode = data.pixelSessionMode || 'legacy';
         var overrides = data.assetOverrides || {};
         kpiUiConfigCache = data.kpiUiConfig || null;
-        chartsUiConfigCache = data.chartsUiConfig || null;
         tablesUiConfigCache = data.tablesUiConfig || null;
         insightsVariantsConfigCache = data.insightsVariantsConfig || null;
         var generalDateFormat = normalizeDateLabelFormat(
@@ -1177,8 +1167,7 @@
         try {
           if (getActiveSettingsTab() === 'layout') {
             var sub = getActiveLayoutSubTab();
-            if (sub === 'charts') renderChartsWhenVisible();
-            else if (sub === 'tables') renderTablesWhenVisible();
+            if (sub === 'tables') renderTablesWhenVisible();
           }
         } catch (_) {}
       })
@@ -2672,13 +2661,12 @@
       tabSelector: '#settings-layout-main-tabs [data-settings-layout-tab]',
       tabAttr: 'data-settings-layout-tab',
       panelIdPrefix: 'settings-layout-panel-',
-      keys: ['tables', 'charts', 'kpis', 'date-ranges'],
-      initialKey: initialKey || activeLayoutSubTab || 'tables',
+      keys: ['tables', 'kpis', 'date-ranges'],
+      initialKey: (function () { var k = initialKey || activeLayoutSubTab || 'tables'; return k === 'charts' ? 'tables' : k; })(),
       onActivate: function (key) {
         activeLayoutSubTab = key;
         if (getActiveSettingsTab() === 'layout') {
           if (key === 'tables') try { renderTablesWhenVisible(); } catch (_) {}
-          else if (key === 'charts') try { renderChartsWhenVisible(); } catch (_) {}
           updateUrl('layout');
         }
       },
@@ -4858,7 +4846,6 @@
     wireInsightsVariantsSuggestModal();
     wireInsightsVariantsMergeModal();
     wireInsightsVariantsWarningsModal();
-    wireChartsSaveReset();
     wireLayoutTablesSaveReset();
   }
 

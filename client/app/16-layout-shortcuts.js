@@ -41,64 +41,6 @@
     return (Array.isArray(list) ? list : []).map(function (n) { return String(n); }).join(', ');
   }
 
-  function getChartMeta(key) {
-    return (typeof window.kexoChartMeta === 'function' ? window.kexoChartMeta(key) : null) || { modes: ['line', 'area'], series: [] };
-  }
-
-  function defaultChartStyleConfig() {
-    return {
-      curve: 'smooth',
-      strokeWidth: 2.6,
-      dashArray: 0,
-      markerSize: 3,
-      fillOpacity: 0.18,
-      gridDash: 3,
-      dataLabels: 'auto',
-      toolbar: false,
-      animations: true,
-      pieDonut: false,
-      pieDonutSize: 64,
-      pieLabelPosition: 'auto',
-      pieLabelContent: 'percent',
-      pieLabelOffset: 0,
-      pieCountryFlags: false,
-      kexoRenderer: 'pie',
-    };
-  }
-
-  function safeNumber(v, def, min, max) {
-    var n = Number(v);
-    if (!Number.isFinite(n)) n = Number(def);
-    if (!Number.isFinite(n)) n = min;
-    if (n < min) n = min;
-    if (n > max) n = max;
-    return n;
-  }
-
-  function normalizeHexColor(value, fallback) {
-    var raw = value == null ? '' : String(value).trim().toLowerCase();
-    return /^#[0-9a-f]{6}$/.test(raw) ? raw : fallback;
-  }
-
-  function prettyJson(value) {
-    try {
-      var obj = (value && typeof value === 'object' && !Array.isArray(value)) ? value : {};
-      return JSON.stringify(obj, null, 2) || '{}';
-    } catch (_) { return '{}'; }
-  }
-
-  function selectOptionsHtml(modes, selected) {
-    var sel = String(selected || '').trim().toLowerCase();
-    var opts = Array.isArray(modes) ? modes : [];
-    var CHART_MODE_LABEL = (typeof window.KEXO_CHART_MODE_LABEL === 'object' && window.KEXO_CHART_MODE_LABEL) || {};
-    return opts.map(function (m) {
-      var val = String(m || '').trim().toLowerCase();
-      if (!val) return '';
-      var label = CHART_MODE_LABEL[val] || val;
-      return '<option value="' + escapeHtml(val) + '"' + (val === sel ? ' selected' : '') + '>' + escapeHtml(label) + '</option>';
-    }).join('');
-  }
-
   function defaultSingleTableRow(pageKey, tableId) {
     return {
       id: tableId,
@@ -653,86 +595,9 @@
   }
 
   function openChartModal(opts) {
-    var chartKey = (opts && opts.chartKey != null) ? String(opts.chartKey).trim().toLowerCase() : '';
-    var cardTitle = (opts && opts.cardTitle != null) ? String(opts.cardTitle).trim() : chartKey;
-    if (!chartKey) return;
-
-    var modal = ensureModal();
-    var titleEl = document.getElementById(MODAL_ID + '-title');
-    var bodyEl = document.getElementById(MODAL_ID + '-body');
-    var saveBtn = document.getElementById(MODAL_ID + '-save-btn');
-    if (titleEl) titleEl.textContent = 'Chart: ' + cardTitle;
-    if (!bodyEl) return;
-
-    setMsg('Loading…', null);
-    var api = (typeof API !== 'undefined' ? API : '') || '';
-    fetch(api + '/api/settings', { credentials: 'same-origin', cache: 'no-store' })
-      .then(function (r) { return r.json(); })
-      .then(function (data) {
-        var cfg = (data && data.ok && data.chartsUiConfig) ? data.chartsUiConfig : null;
-        if (!cfg || cfg.v !== 1 || !Array.isArray(cfg.charts)) {
-          cfg = (typeof safeReadLocalStorageJson === 'function' ? safeReadLocalStorageJson(CHARTS_LS_KEY) : null) || { v: 1, hideOnMobile: true, charts: [], kpiBundles: {} };
-        }
-        var idx = findChartIndex(cfg, chartKey);
-        var item = (idx >= 0 && cfg.charts[idx]) ? cfg.charts[idx] : defaultSingleChart(chartKey);
-        bodyEl.innerHTML = renderChartModalBody(item, chartKey);
-        bodyEl.setAttribute('data-kexo-layout-mode', 'chart');
-        bodyEl.setAttribute('data-kexo-layout-chart-key', chartKey);
-        bodyEl.removeAttribute('data-kexo-layout-page-key');
-        bodyEl.removeAttribute('data-kexo-layout-table-id');
-        setMsg('', null);
-        refreshChartSettingsUi(bodyEl, chartKey);
-        syncColorSwatches(bodyEl);
-        bodyEl.addEventListener('input', function () { syncColorSwatches(bodyEl); });
-        bodyEl.addEventListener('change', function () {
-          syncColorSwatches(bodyEl);
-          refreshChartSettingsUi(bodyEl, chartKey);
-        });
-
-        saveBtn.replaceWith(saveBtn.cloneNode(true));
-        document.getElementById(MODAL_ID + '-save-btn').addEventListener('click', function () {
-          var patch = readChartModalBody(bodyEl, chartKey);
-          if (!patch) return;
-          setMsg('Saving…', null);
-          var nextCfg = JSON.parse(JSON.stringify(cfg));
-          var i = findChartIndex(nextCfg, chartKey);
-          var row = { key: chartKey, enabled: patch.enabled, label: patch.label, mode: patch.mode, colors: patch.colors, style: patch.style, advancedApexOverride: patch.advancedApexOverride, pieMetric: patch.pieMetric };
-          if (i >= 0) nextCfg.charts[i] = row;
-          else nextCfg.charts.push(row);
-          saveChartsUiConfig(nextCfg).then(function (data) {
-            if (data && data.ok) {
-              setMsg('Saved.', true);
-              closeModal();
-            } else {
-              setMsg((data && data.error) ? String(data.error) : 'Save failed', false);
-            }
-          }).catch(function () { setMsg('Save failed', false); });
-        });
-        showModal();
-      })
-      .catch(function () {
-        setMsg('Could not load settings.', false);
-        var item = defaultSingleChart(chartKey);
-        bodyEl.innerHTML = renderChartModalBody(item, chartKey);
-        bodyEl.setAttribute('data-kexo-layout-mode', 'chart');
-        bodyEl.setAttribute('data-kexo-layout-chart-key', chartKey);
-        bodyEl.removeAttribute('data-kexo-layout-page-key');
-        bodyEl.removeAttribute('data-kexo-layout-table-id');
-        refreshChartSettingsUi(bodyEl, chartKey);
-        syncColorSwatches(bodyEl);
-        saveBtn.replaceWith(saveBtn.cloneNode(true));
-        document.getElementById(MODAL_ID + '-save-btn').addEventListener('click', function () {
-          var patch = readChartModalBody(bodyEl, chartKey);
-          if (!patch) return;
-          setMsg('Saving…', null);
-          var nextCfg = { v: 1, hideOnMobile: true, charts: [], kpiBundles: {} };
-          nextCfg.charts.push({ key: chartKey, enabled: patch.enabled, label: patch.label, mode: patch.mode, colors: patch.colors, style: patch.style, advancedApexOverride: patch.advancedApexOverride, pieMetric: patch.pieMetric });
-          saveChartsUiConfig(nextCfg).then(function (data) {
-            if (data && data.ok) { setMsg('Saved.', true); closeModal(); } else { setMsg((data && data.error) ? String(data.error) : 'Save failed', false); }
-          }).catch(function () { setMsg('Save failed', false); });
-        });
-        showModal();
-      });
+    if (window.KexoChartSettingsBuilder && typeof window.KexoChartSettingsBuilder.openModal === 'function') {
+      window.KexoChartSettingsBuilder.openModal(opts);
+    }
   }
 
   function initModalClose() {
@@ -765,9 +630,6 @@
       saveChartsUiConfig: saveChartsUiConfig,
       renderTableModalBody: renderTableModalBody,
       readTableModalBody: readTableModalBody,
-      renderChartModalBody: renderChartModalBody,
-      readChartModalBody: readChartModalBody,
-      refreshChartSettingsUi: refreshChartSettingsUi,
     };
   } catch (_) {}
 

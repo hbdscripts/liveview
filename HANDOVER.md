@@ -13,7 +13,7 @@ Read this file before making changes. If you change **core paths** (routes, auth
 - **Acquisition:** `/acquisition/attribution`, `/acquisition/devices`
 - **Integrations:** `/integrations/google-ads`
 - **Tools:** `/tools/compare-conversion-rate`, `/tools/shipping-cr`, `/tools/click-order-lookup`, `/tools/change-pins`
-- **Settings:** `/settings` (tabs: kexo, integrations, layout, attribution, insights, cost-expenses, admin). Admin-only content gated by `isMasterRequest`.
+- **Settings:** `/settings` (tabs: kexo, integrations, layout, attribution, insights, cost-expenses, admin). Layout has Tables, KPIs, Date ranges only (chart settings via cog on each chart). Admin-only content gated by `isMasterRequest`.
 - **Auth:** `/app/login` (Google); `/admin` → redirect to `/settings?tab=admin` or `/settings?tab=kexo`
 - **Root `/`:** Shopify embed or redirect to dashboard/login
 
@@ -45,7 +45,7 @@ Templates under `server/public/**`; served via `sendPage()` in `server/index.js`
 - **Ingest:** `POST /api/ingest` → `server/store.js`
 - **Auth:** `server/middleware/dashboardAuth.js` (Shopify embed + OAuth cookie); `server/routes/login.js`, `oauthLogin.js`, `auth.js`, `localAuth.js`
 - **KPIs / dashboard:** `GET /api/kpis`, `/api/kpis-expanded-extra`, `/api/kexo-score`, `/api/dashboard-series`, `/api/business-snapshot`; `server/store.js`, `server/routes/dashboardSeries.js`, `server/businessSnapshotService.js`
-- **Settings:** `GET/POST /api/settings`; `server/public/settings.html`, `settings-page.js`
+- **Settings:** `GET/POST /api/settings`; `GET/PUT /api/chart-settings/:chartKey` (per-chart settings; stored in same `charts_ui_config_v1` blob); `server/public/settings.html`, `settings-page.js`; chart cog opens unified modal from `client/app/18-chart-settings-builder.js`.
 - **Frontend bundle:** `server/public/app.js` is **generated** from `client/app/*.js` via `scripts/build-app-js.js` and `client/app/manifest.txt`. After any `client/app/**` edit, run `npm run build:app`.
 
 ---
@@ -53,3 +53,4 @@ Templates under `server/public/**`; served via `sendPage()` in `server/index.js`
 ## Changelog (this consolidation)
 
 - 2026-02-18: Cleanup/standardise branch: Phase 0 safety branch; Phase 2 docs consolidation (HANDOVER.md, docs/CONFIG, ARCHITECTURE, METRICS); Phase 3 single config source (server/config.js); Phase 4 shared client utils (00-utils.js, formatters/fetchJson); Phase 5 upgrade.html head-theme include; Phase 6 validation (npm test, migrate, smoke /health, /api/version, /app/login).
+- 2026-02-18: Charts and UI standardise branch: Phase 1 Tabler UI contract, UI kit, ui:check, Phase 2 AGENT_RULES + wrappers; Phase 3 unified chart settings: Settings Charts panel removed; GET/PUT /api/chart-settings/:chartKey; 18-chart-settings-builder.js (cog → modal: type, size, animation, big-chart colours); chart modal removed from 16-layout-shortcuts (delegates to 18).
