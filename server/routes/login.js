@@ -12,6 +12,23 @@
 const config = require('../config');
 const oauthLogin = require('./oauthLogin');
 const store = require('../store');
+const fs = require('fs');
+const path = require('path');
+
+const LOGIN_LOGO_EXT = /\.(png|webp|jpe?g)$/i;
+
+function listLogoFiles(dir) {
+  let files = [];
+  try {
+    files = fs.readdirSync(dir).filter((f) => typeof f === 'string' && LOGIN_LOGO_EXT.test(f));
+  } catch (_) {}
+  return files;
+}
+
+function pickRandomFile(files) {
+  if (!Array.isArray(files) || files.length <= 0) return null;
+  return files[Math.floor(Math.random() * files.length)] || files[0] || null;
+}
 
 const ERROR_MESSAGES = {
   google_not_configured: 'Google sign-in is not configured.',
@@ -138,16 +155,7 @@ function getSignInHtml(queryError, opts) {
   const hasShopifyOAuth = !!(config.shopify && config.shopify.apiKey && config.shopify.apiSecret && config.shopify.appUrl);
   const shopDomain = (opts && opts.shopDomain) ? String(opts.shopDomain).trim().toLowerCase() : '';
   const faviconHref = (opts && opts.faviconHref) ? String(opts.faviconHref) : '';
-  const loginLogoSrc = (function pickLoginLogoVariant() {
-    const variants = [
-      '/assets/logos/new/dark/1.png',
-      '/assets/logos/new/dark/2.png',
-      '/assets/logos/new/dark/3.png',
-      '/assets/logos/new/dark/4.png',
-    ];
-    const idx = Math.floor(Math.random() * variants.length);
-    return variants[Math.max(0, Math.min(variants.length - 1, idx))] || variants[0];
-  })();
+  const loginLogoSrc = (opts && opts.loginLogoSrc) ? String(opts.loginLogoSrc) : '/assets/logos/new/dark/1.png';
   const redirectTarget = normalizeSafeRedirectPath((opts && opts.redirectTarget) || '/dashboard/overview');
   const registered = !!(opts && opts.registered);
 
@@ -227,16 +235,7 @@ function getSignInHtml(queryError, opts) {
 
 function getSignUpHtml(queryError, opts) {
   const faviconHref = (opts && opts.faviconHref) ? String(opts.faviconHref) : '';
-  const loginLogoSrc = (function pickLoginLogoVariant() {
-    const variants = [
-      '/assets/logos/new/dark/1.png',
-      '/assets/logos/new/dark/2.png',
-      '/assets/logos/new/dark/3.png',
-      '/assets/logos/new/dark/4.png',
-    ];
-    const idx = Math.floor(Math.random() * variants.length);
-    return variants[Math.max(0, Math.min(variants.length - 1, idx))] || variants[0];
-  })();
+  const loginLogoSrc = (opts && opts.loginLogoSrc) ? String(opts.loginLogoSrc) : '/assets/logos/new/dark/1.png';
   const redirectTarget = normalizeSafeRedirectPath((opts && opts.redirectTarget) || '/dashboard/overview');
   const signInHref = '/app/login?redirect=' + encodeURIComponent(redirectTarget);
 
@@ -323,15 +322,11 @@ async function handleGetLogin(req, res) {
   const faviconHref = faviconOverride || (config.assetsBaseUrl ? config.assetsBaseUrl + '/logos/new/kexo.webp?width=100' : '/assets/logos/new/kexo.webp');
   const loginLogoSrc = (function pickLoginLogo() {
     if (loginLogoOverride) return loginLogoOverride;
-    const variants = [
-      '/assets/logos/new/dark/1.png',
-      '/assets/logos/new/dark/2.png',
-      '/assets/logos/new/dark/3.png',
-      '/assets/logos/new/dark/4.png',
-      '/assets/logos/new/dark/5.png',
-    ];
-    const idx = Math.floor(Math.random() * variants.length);
-    return variants[Math.max(0, Math.min(variants.length - 1, idx))] || variants[0];
+    const darkDir = path.join(__dirname, '..', '..', 'assets', 'logos', 'new', 'dark');
+    const files = listLogoFiles(darkDir);
+    const chosen = pickRandomFile(files);
+    if (!chosen) return '/assets/logos/new/dark/1.png';
+    return '/assets/logos/new/dark/' + encodeURIComponent(String(chosen));
   })();
 
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
@@ -355,15 +350,11 @@ async function handleGetRegister(req, res) {
   const faviconHref = faviconOverride || (config.assetsBaseUrl ? config.assetsBaseUrl + '/logos/new/kexo.webp?width=100' : '/assets/logos/new/kexo.webp');
   const loginLogoSrc = (function pickLoginLogo() {
     if (loginLogoOverride) return loginLogoOverride;
-    const variants = [
-      '/assets/logos/new/dark/1.png',
-      '/assets/logos/new/dark/2.png',
-      '/assets/logos/new/dark/3.png',
-      '/assets/logos/new/dark/4.png',
-      '/assets/logos/new/dark/5.png',
-    ];
-    const idx = Math.floor(Math.random() * variants.length);
-    return variants[Math.max(0, Math.min(variants.length - 1, idx))] || variants[0];
+    const darkDir = path.join(__dirname, '..', '..', 'assets', 'logos', 'new', 'dark');
+    const files = listLogoFiles(darkDir);
+    const chosen = pickRandomFile(files);
+    if (!chosen) return '/assets/logos/new/dark/1.png';
+    return '/assets/logos/new/dark/' + encodeURIComponent(String(chosen));
   })();
 
   res.setHeader('Content-Type', 'text/html; charset=utf-8');

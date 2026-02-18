@@ -137,6 +137,7 @@ app.get('/api/settings/profit-rules', requireMaster.middleware, settings.getProf
 app.get('/api/theme-defaults', settings.getThemeDefaults);
 app.post('/api/theme-defaults', settings.postThemeDefaults);
 app.get('/api/asset-overrides', assets.getAssetOverrides);
+app.get('/api/header-logo', assets.getHeaderLogo);
 app.get('/api/footer-logo', assets.getFooterLogo);
 app.post(
   '/api/assets/upload',

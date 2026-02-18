@@ -191,25 +191,52 @@ async function postUploadAsset(req, res) {
 
 const FOOTER_LOGO_EXT = /\.(png|webp|jpe?g)$/i;
 
-function getFooterLogo(req, res) {
-  const footerDir = path.join(__dirname, '..', '..', 'assets', 'logos', 'new', 'footer');
+function listLogoFiles(dir) {
   let files = [];
   try {
-    files = fs.readdirSync(footerDir).filter(function (f) {
-      return FOOTER_LOGO_EXT.test(f);
+    files = fs.readdirSync(dir).filter(function (f) {
+      return typeof f === 'string' && FOOTER_LOGO_EXT.test(f);
     });
   } catch (_) {}
-  const chosen = files.length ? files[Math.floor(Math.random() * files.length)] : null;
-  if (!chosen) {
-    return res.status(404).send('No footer logos found');
-  }
-  res.redirect(302, '/assets/logos/new/footer/' + encodeURIComponent(chosen));
+  return files;
+}
+
+function pickRandomFile(files) {
+  if (!Array.isArray(files) || files.length <= 0) return null;
+  return files[Math.floor(Math.random() * files.length)] || files[0] || null;
+}
+
+function redirectNoStore(res, url) {
+  res.setHeader('Cache-Control', 'no-store');
+  res.redirect(302, url);
+}
+
+function getHeaderLogo(req, res) {
+  const lightDir = path.join(__dirname, '..', '..', 'assets', 'logos', 'new', 'light');
+  const files = listLogoFiles(lightDir);
+  const chosen = pickRandomFile(files);
+  if (!chosen) return redirectNoStore(res, '/assets/logos/new/light/1.png');
+  return redirectNoStore(res, '/assets/logos/new/light/' + encodeURIComponent(chosen));
+}
+
+function getFooterLogo(req, res) {
+  const footerDir = path.join(__dirname, '..', '..', 'assets', 'logos', 'new', 'footer');
+  const darkDir = path.join(__dirname, '..', '..', 'assets', 'logos', 'new', 'dark');
+
+  const footerFiles = listLogoFiles(footerDir);
+  const darkFiles = footerFiles.length ? [] : listLogoFiles(darkDir);
+  const chosen = pickRandomFile(footerFiles.length ? footerFiles : darkFiles);
+  if (!chosen) return redirectNoStore(res, '/assets/logos/new/dark/1.png');
+
+  const base = footerFiles.length ? '/assets/logos/new/footer/' : '/assets/logos/new/dark/';
+  return redirectNoStore(res, base + encodeURIComponent(chosen));
 }
 
 module.exports = {
   uploadSingle: upload.single('file'),
   getAssetOverrides,
   postUploadAsset,
+  getHeaderLogo,
   getFooterLogo,
 };
 
