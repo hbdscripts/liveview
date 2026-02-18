@@ -89,11 +89,12 @@ async function getKpis(req, res) {
               force,
             },
             async () => {
+              const singleDay = sinceYmd === untilYmd;
               const snapshot = await businessSnapshotService.getBusinessSnapshot({
                 mode: 'range',
                 since: sinceYmd,
                 until: untilYmd,
-                granularity: 'day',
+                granularity: singleDay ? 'hour' : 'day',
               });
               const fin = snapshot && snapshot.financial && typeof snapshot.financial === 'object'
                 ? snapshot.financial
@@ -118,12 +119,32 @@ async function getKpis(req, res) {
               const profitNow = (revNow != null && costNow != null) ? round2(revNow - costNow) : null;
               const profitPrev = (revPrev != null && costPrev != null) ? round2(revPrev - costPrev) : null;
 
+              let profitSparkline = null;
+              try {
+                const series = snapshot && snapshot.series && typeof snapshot.series === 'object' ? snapshot.series : null;
+                const revSeries = Array.isArray(series && series.revenueGbp) ? series.revenueGbp : null;
+                const costSeries = Array.isArray(series && series.costGbp) ? series.costGbp : null;
+                if (revSeries && costSeries) {
+                  const n = Math.min(revSeries.length, costSeries.length);
+                  if (n >= 2) {
+                    const out = [];
+                    for (let i = 0; i < n; i += 1) {
+                      const r = numOrNull(revSeries[i]);
+                      const c = numOrNull(costSeries[i]);
+                      out.push((r != null && c != null) ? round2(r - c) : null);
+                    }
+                    profitSparkline = out;
+                  }
+                }
+              } catch (_) {}
+
               return {
                 profitKpiAllowed,
                 profitNow: profitKpiAllowed ? profitNow : null,
                 profitPrev: profitKpiAllowed ? profitPrev : null,
                 costNow: profitKpiAllowed ? costNow : null,
                 costPrev: profitKpiAllowed ? costPrev : null,
+                profitSparkline: profitKpiAllowed ? profitSparkline : null,
               };
             }
           );
@@ -137,6 +158,9 @@ async function getKpis(req, res) {
           if (!payload.compare || typeof payload.compare !== 'object') payload.compare = {};
           payload.compare.profit = safeProfitData ? safeProfitData.profitPrev : null;
           payload.compare.cost = safeProfitData ? safeProfitData.costPrev : null;
+          payload.profitSparkline = (profitKpiAllowed && safeProfitData && Array.isArray(safeProfitData.profitSparkline))
+            ? safeProfitData.profitSparkline
+            : null;
         }
       } catch (_) {}
     }

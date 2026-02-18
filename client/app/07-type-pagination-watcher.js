@@ -3012,9 +3012,17 @@
       setCondensedSparklineTone('cond-kpi-aov-sparkline', aovVal, compareAovVal);
       setCondensedSparklineTone('cond-kpi-bounce-sparkline', bounceVal, compareBounceVal, true);
       if (!condensedSparklineOverrides || typeof condensedSparklineOverrides !== 'object') condensedSparklineOverrides = {};
-      condensedSparklineOverrides['cond-kpi-profit-sparkline'] = (profitVal != null && compareProfitVal != null)
-        ? [compareProfitVal, profitVal]
-        : null;
+      var profitSparkline = (data && Array.isArray(data.profitSparkline)) ? data.profitSparkline : null;
+      if (!profitKpiAllowed) {
+        condensedSparklineOverrides['cond-kpi-profit-sparkline'] = null;
+      } else if (profitSparkline && profitSparkline.length >= 2) {
+        condensedSparklineOverrides['cond-kpi-profit-sparkline'] = profitSparkline.slice();
+      } else {
+        condensedSparklineOverrides['cond-kpi-profit-sparkline'] = (profitVal != null && compareProfitVal != null)
+          ? [compareProfitVal, profitVal]
+          : null;
+      }
+      try { if (condensedSeriesCache) renderCondensedSparklines(condensedSeriesCache); } catch (_) {}
       try { updateCondensedKpiOverflow(); } catch (_) {}
 
       // Header quick KPIs (compact)

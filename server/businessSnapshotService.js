@@ -2042,7 +2042,16 @@ async function getBusinessSnapshot(options = {}) {
   try {
     // Match KPI behavior: when viewing "Today" (partial day), compare to yesterday for the
     // same time-of-day window (not the full previous day).
-    if (rangeKey === 'today' && compareRangeKey === 'yesterday' && compareBounds && bounds) {
+    const safeNowYmd = (resolved && resolved.nowYmd) ? String(resolved.nowYmd).slice(0, 10) : String(nowYmd || '').slice(0, 10);
+    const yesterdayYmd = safeNowYmd ? ymdAddDays(safeNowYmd, -1) : '';
+    const isTodaySingleDay =
+      !!(currentWindow && currentWindow.startYmd && currentWindow.endYmd && currentWindow.startYmd === currentWindow.endYmd && currentWindow.endYmd === safeNowYmd);
+    const isYesterdaySingleDay =
+      !!(previousWindow && previousWindow.startYmd && previousWindow.endYmd && previousWindow.startYmd === previousWindow.endYmd && previousWindow.endYmd === yesterdayYmd);
+    const shouldAlignSameTime =
+      (rangeKey === 'today' && compareRangeKey === 'yesterday') || (isTodaySingleDay && isYesterdaySingleDay);
+
+    if (shouldAlignSameTime && compareBounds && bounds) {
       const dur = Number(bounds.end) - Number(bounds.start);
       if (Number.isFinite(dur) && dur > 0) {
         const desiredEnd = Number(compareBounds.start) + dur;
