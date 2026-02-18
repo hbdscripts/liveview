@@ -43,6 +43,7 @@
     try {
       if (String(img.getAttribute('src') || '') !== String(chosen)) img.setAttribute('src', chosen);
       img.setAttribute('data-kexo-logo-rotated', '1');
+      img.setAttribute('data-kexo-logo-ready', '1');
     } catch (_) {}
   }
 

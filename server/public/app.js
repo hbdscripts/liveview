@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 35d2c9bfe653b5fa
+// checksum: f44b6abc90547800
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -22291,6 +22291,7 @@ const API = '';
     try {
       if (String(img.getAttribute('src') || '') !== String(chosen)) img.setAttribute('src', chosen);
       img.setAttribute('data-kexo-logo-rotated', '1');
+      img.setAttribute('data-kexo-logo-ready', '1');
     } catch (_) {}
   }
 

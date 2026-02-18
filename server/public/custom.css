@@ -4009,6 +4009,16 @@ html[data-bs-theme="dark"] .report-build-wrap {
     margin: 0 0 7px 0;
     padding: 0;
 }
+
+/* Prevent logo flash: keep header/footer logo hidden until JS picks variant. */
+img[data-kexo-logo-slot="header"],
+img[data-kexo-logo-slot="footer"] {
+  visibility: hidden;
+}
+img[data-kexo-logo-slot="header"][data-kexo-logo-ready="1"],
+img[data-kexo-logo-slot="footer"][data-kexo-logo-ready="1"] {
+  visibility: visible;
+}
 .kexo-top-strip-settings-toggle {
   display: inline-flex;
   align-items: center;
