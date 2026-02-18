@@ -1161,42 +1161,6 @@
       return '<div class="last-action-cell">' + escapeHtml(display) + '</div>';
     }
 
-    function formatMoney(amount, currencyCode) {
-      if (amount == null || typeof amount !== 'number') return '';
-      const code = (currencyCode || 'GBP').toUpperCase();
-      const sym = code === 'GBP' ? '\u00A3' : code === 'USD' ? '$' : code === 'EUR' ? '\u20AC' : code + ' ';
-      return sym + (amount % 1 === 0 ? amount : amount.toFixed(2));
-    }
-
-    function formatCompactNumber(amount) {
-      const raw = typeof amount === 'number' ? amount : Number(amount);
-      const n = Number.isFinite(raw) ? Math.abs(raw) : 0;
-      if (n < 1000) return String(Math.round(n));
-      if (n >= 1e9) {
-        const v = n / 1e9;
-        const dec = v < 100 ? 1 : 0;
-        return v.toFixed(dec).replace(/\.0$/, '') + 'b';
-      }
-      if (n >= 1e6) {
-        const v = n / 1e6;
-        const dec = v < 100 ? 1 : 0;
-        return v.toFixed(dec).replace(/\.0$/, '') + 'm';
-      }
-      // n >= 1e3
-      const v = n / 1e3;
-      const dec = v < 100 ? 1 : 0;
-      return v.toFixed(dec).replace(/\.0$/, '') + 'k';
-    }
-
-    function formatMoneyCompact(amount, currencyCode) {
-      if (amount == null || typeof amount !== 'number') return '';
-      const code = (currencyCode || 'GBP').toUpperCase();
-      const sym = code === 'GBP' ? '\u00A3' : code === 'USD' ? '$' : code === 'EUR' ? '\u20AC' : code + ' ';
-      const n = Number.isFinite(amount) ? amount : 0;
-      const sign = n < 0 ? '-' : '';
-      return sign + sym + formatCompactNumber(n);
-    }
-
     function sourceLabel(s) {
       const parts = [];
       if (s.utm_source && String(s.utm_source).trim()) parts.push('utm_source: ' + escapeHtml(String(s.utm_source).trim()));

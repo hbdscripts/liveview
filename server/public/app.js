@@ -1,7 +1,58 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 518249e7bf0edfae
+// checksum: cb1ac714057efc2d
 
 (function () {
+  // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
+  function formatMoney(amount, currencyCode) {
+    if (amount == null || typeof amount !== 'number') return '';
+    var code = (currencyCode || 'GBP').toUpperCase();
+    var sym = code === 'GBP' ? '\u00A3' : code === 'USD' ? '$' : code === 'EUR' ? '\u20AC' : code + ' ';
+    return sym + (amount % 1 === 0 ? amount : amount.toFixed(2));
+  }
+
+  function formatCompactNumber(amount) {
+    var raw = typeof amount === 'number' ? amount : Number(amount);
+    var n = Number.isFinite(raw) ? Math.abs(raw) : 0;
+    if (n < 1000) return String(Math.round(n));
+    if (n >= 1e9) {
+      var v = n / 1e9;
+      var dec = v < 100 ? 1 : 0;
+      return v.toFixed(dec).replace(/\.0$/, '') + 'b';
+    }
+    if (n >= 1e6) {
+      var v = n / 1e6;
+      var dec = v < 100 ? 1 : 0;
+      return v.toFixed(dec).replace(/\.0$/, '') + 'm';
+    }
+    var v = n / 1e3;
+    var dec = v < 100 ? 1 : 0;
+    return v.toFixed(dec).replace(/\.0$/, '') + 'k';
+  }
+
+  function formatMoneyCompact(amount, currencyCode) {
+    if (amount == null || typeof amount !== 'number') return '';
+    var code = (currencyCode || 'GBP').toUpperCase();
+    var sym = code === 'GBP' ? '\u00A3' : code === 'USD' ? '$' : code === 'EUR' ? '\u20AC' : code + ' ';
+    var n = Number.isFinite(amount) ? amount : 0;
+    var sign = n < 0 ? '-' : '';
+    return sign + sym + formatCompactNumber(n);
+  }
+
+  function fmtPct(n) {
+    if (n == null || !Number.isFinite(n)) return '\u2014';
+    return n.toFixed(1) + '%';
+  }
+
+  function fmtMoneyGbp(n) {
+    var x = (typeof n === 'number') ? n : Number(n);
+    if (!Number.isFinite(x)) return '\u2014';
+    try { return '\u00A3' + x.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); } catch (_) { return '\u00A3' + x.toFixed(2); }
+  }
+
+  function fetchJson(url, opts) {
+    var options = Object.assign({ credentials: 'same-origin', cache: 'no-store' }, opts || {});
+    return fetch(url, options).then(function(r) { return r.json(); });
+  }
 const API = '';
     const PAGE = (document.body && document.body.getAttribute('data-page')) || '';
     try { if (typeof window.kexoSetContext === 'function') window.kexoSetContext(PAGE || 'unknown', { page: PAGE || 'unknown' }); } catch (_) {}
@@ -2679,42 +2730,6 @@ const API = '';
       }
 
       return '<div class="last-action-cell">' + escapeHtml(display) + '</div>';
-    }
-
-    function formatMoney(amount, currencyCode) {
-      if (amount == null || typeof amount !== 'number') return '';
-      const code = (currencyCode || 'GBP').toUpperCase();
-      const sym = code === 'GBP' ? '\u00A3' : code === 'USD' ? '$' : code === 'EUR' ? '\u20AC' : code + ' ';
-      return sym + (amount % 1 === 0 ? amount : amount.toFixed(2));
-    }
-
-    function formatCompactNumber(amount) {
-      const raw = typeof amount === 'number' ? amount : Number(amount);
-      const n = Number.isFinite(raw) ? Math.abs(raw) : 0;
-      if (n < 1000) return String(Math.round(n));
-      if (n >= 1e9) {
-        const v = n / 1e9;
-        const dec = v < 100 ? 1 : 0;
-        return v.toFixed(dec).replace(/\.0$/, '') + 'b';
-      }
-      if (n >= 1e6) {
-        const v = n / 1e6;
-        const dec = v < 100 ? 1 : 0;
-        return v.toFixed(dec).replace(/\.0$/, '') + 'm';
-      }
-      // n >= 1e3
-      const v = n / 1e3;
-      const dec = v < 100 ? 1 : 0;
-      return v.toFixed(dec).replace(/\.0$/, '') + 'k';
-    }
-
-    function formatMoneyCompact(amount, currencyCode) {
-      if (amount == null || typeof amount !== 'number') return '';
-      const code = (currencyCode || 'GBP').toUpperCase();
-      const sym = code === 'GBP' ? '\u00A3' : code === 'USD' ? '$' : code === 'EUR' ? '\u20AC' : code + ' ';
-      const n = Number.isFinite(amount) ? amount : 0;
-      const sign = n < 0 ? '-' : '';
-      return sign + sym + formatCompactNumber(n);
     }
 
     function sourceLabel(s) {
@@ -15786,7 +15801,6 @@ const API = '';
         return formatRevenue(v) || '\u2014';
       }
       function fmtNum(n) { return n != null ? n.toLocaleString() : '\u2014'; }
-      function fmtPct(n) { return n != null ? n.toFixed(1) + '%' : '\u2014'; }
       function shortDate(ymd) {
         var parts = ymd.split('-');
         var d = parseInt(parts[2], 10);
@@ -20407,18 +20421,6 @@ const API = '';
         var x = (typeof n === 'number') ? n : Number(n);
         if (!isFinite(x)) return '\u2014';
         try { return x.toLocaleString('en-GB'); } catch (_) { return String(Math.round(x)); }
-      }
-
-      function fmtMoneyGbp(n) {
-        var x = (typeof n === 'number') ? n : Number(n);
-        if (!isFinite(x)) return '\u2014';
-        try { return '\u00A3' + x.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); } catch (_) { return '\u00A3' + x.toFixed(2); }
-      }
-
-      function fmtPct(n) {
-        var x = (typeof n === 'number') ? n : Number(n);
-        if (!isFinite(x)) return '\u2014';
-        return x.toFixed(2) + '%';
       }
 
       function labelForTs(ts, isHourly) {

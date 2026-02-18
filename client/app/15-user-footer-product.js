@@ -569,18 +569,6 @@
         try { return x.toLocaleString('en-GB'); } catch (_) { return String(Math.round(x)); }
       }
 
-      function fmtMoneyGbp(n) {
-        var x = (typeof n === 'number') ? n : Number(n);
-        if (!isFinite(x)) return '\u2014';
-        try { return '\u00A3' + x.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); } catch (_) { return '\u00A3' + x.toFixed(2); }
-      }
-
-      function fmtPct(n) {
-        var x = (typeof n === 'number') ? n : Number(n);
-        if (!isFinite(x)) return '\u2014';
-        return x.toFixed(2) + '%';
-      }
-
       function labelForTs(ts, isHourly) {
         try {
           var d = new Date(Number(ts));

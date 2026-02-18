@@ -54,7 +54,6 @@
         return formatRevenue(v) || '\u2014';
       }
       function fmtNum(n) { return n != null ? n.toLocaleString() : '\u2014'; }
-      function fmtPct(n) { return n != null ? n.toFixed(1) + '%' : '\u2014'; }
       function shortDate(ymd) {
         var parts = ymd.split('-');
         var d = parseInt(parts[2], 10);
