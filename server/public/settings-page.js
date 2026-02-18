@@ -2704,7 +2704,7 @@
 
       if (viewKey === 'icons-assets') {
         if (assetsCard.parentElement !== iconsPanel) iconsPanel.appendChild(assetsCard);
-        if (themeCard.parentElement !== themePanel) themePanel.appendChild(themeCard);
+        if (themeCard.parentElement !== iconsPanel) iconsPanel.appendChild(themeCard);
         return;
       }
 
@@ -2728,10 +2728,13 @@
       onActivate: function (key) {
         activeKexoSubTab = key;
         placeBrandCards(key);
-        if (key === 'theme-display' || key === 'brand-appearance') {
+        var requestedThemeSubtab = null;
+        if (key === 'icons-assets' || key === 'brand-appearance') requestedThemeSubtab = 'icons';
+        else if (key === 'theme-display') requestedThemeSubtab = 'header';
+        if (requestedThemeSubtab) {
           try {
-            try { window.__kexoThemeRequestedSubtab = 'icons'; } catch (_) {}
-            if (typeof window.kexoThemeActivateSubtab === 'function') window.kexoThemeActivateSubtab('icons');
+            try { window.__kexoThemeRequestedSubtab = requestedThemeSubtab; } catch (_) {}
+            if (typeof window.kexoThemeActivateSubtab === 'function') window.kexoThemeActivateSubtab(requestedThemeSubtab);
           } catch (_) {}
         }
         if (getActiveSettingsTab() === 'kexo') updateUrl('kexo');
@@ -4750,6 +4753,11 @@
   }
 
   function init() {
+    try {
+      var tooltipRoot = document.querySelector('.page-body') || document.body;
+      if (typeof window.initKexoTooltips === 'function') window.initKexoTooltips(tooltipRoot);
+    } catch (_) {}
+
     function syncFromUrl() {
       var tab = getTabFromQuery() || getTabFromHash() || 'kexo';
       if (initialKexoSubTab) activeKexoSubTab = initialKexoSubTab;

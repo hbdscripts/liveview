@@ -90,8 +90,27 @@
     .admin-users-pane.active { display: block; }
     .settings-nav-category { margin-bottom: 0.15rem; }
     .settings-nav-category > .list-group-item:first-child { border-radius: var(--tblr-border-radius, .375rem); }
-    .settings-nav-children { padding-left: 1rem; }
+    .settings-nav-children { padding-left: 0; }
     .settings-nav-children .list-group-item { border-radius: var(--tblr-border-radius, .375rem); font-size: 0.9375rem; }
+    .settings-nav-child {
+      position: relative;
+      padding-top: 5px !important;
+      padding-bottom: 5px !important;
+      padding-left: calc(1rem + 25px) !important;
+    }
+    .settings-nav-child::before {
+      content: '›';
+      position: absolute;
+      left: 1rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--tblr-primary, #206bc4);
+      opacity: 0.5;
+      font-size: 0.9em;
+    }
+    .settings-nav-child.active::before {
+      opacity: 1;
+    }
     @media (max-width: 768px) {
       .settings-charts-color-grid { grid-template-columns: 1fr; }
     }

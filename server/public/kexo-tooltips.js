@@ -50,8 +50,16 @@
     return null;
   }
 
+  function hasBoundAncestor(root) {
+    for (var n = root && root.parentNode; n; n = n.parentNode) {
+      if (n.getAttribute && n.getAttribute('data-kexo-tooltips-bound') === '1') return true;
+    }
+    return false;
+  }
+
   function initKexoTooltips(root) {
     if (!root || !root.querySelector) return;
+    if (hasBoundAncestor(root)) return;
     if (root.getAttribute && root.getAttribute('data-kexo-tooltips-bound') === '1') return;
     root.setAttribute('data-kexo-tooltips-bound', '1');
     root.classList.add('kexo-has-tooltips');
