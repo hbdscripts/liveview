@@ -2841,7 +2841,7 @@
             colors: [sparkColor],
             markers: { size: 0 },
             grid: { padding: { top: 0, right: 0, bottom: -2, left: 0 } },
-            tooltip: { enabled: false }
+            tooltip: { enabled: true }
           });
           chart.render();
         } catch (_) {}

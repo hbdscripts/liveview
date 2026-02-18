@@ -344,7 +344,12 @@
         forceNiceScale: true,
       },
       grid: { borderColor: '#f0f0f0', strokeDashArray: 3 },
-      tooltip: { y: { formatter: yFmt } },
+      tooltip: {
+        enabled: true,
+        intersect: false,
+        shared: apexSeries.length > 1,
+        y: { formatter: yFmt }
+      },
       legend: { show: apexSeries.length > 1, position: 'top', fontSize: '11px' },
       dataLabels: (showEndLabels && chartType === 'line') ? { enabled: true } : { enabled: false },
       markers: { size: chartType === 'line' ? 4 : 0, hover: { size: 6 } },
@@ -358,7 +363,7 @@
       apexOpts.stroke = { show: false };
       apexOpts.yaxis = undefined;
       apexOpts.xaxis = undefined;
-      apexOpts.tooltip = { y: { formatter: yFmt } };
+      apexOpts.tooltip = { enabled: true, y: { formatter: yFmt } };
     }
     if (chartStyle) {
       deepMergeInto(apexOpts, chartStyleOverride(chartStyle, chartType));
@@ -444,7 +449,7 @@
           colors: showCompare ? [color, compareColor] : [color],
           markers: { size: 0 },
           grid: { padding: { top: 0, right: 0, bottom: -2, left: 0 } },
-          tooltip: { enabled: false },
+          tooltip: { enabled: true },
           legend: { show: false }
         };
         if (mode === 'bar') {

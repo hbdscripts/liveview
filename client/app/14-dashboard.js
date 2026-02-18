@@ -480,6 +480,7 @@
         dashChartConfigs[chartId] = { labels: labels, datasets: datasets, opts: Object.assign({}, opts || {}, { chartType: chartType, chartScope: chartScope }) };
 
         var uiStyle = (typeof chartStyleFromUiConfig === 'function') ? chartStyleFromUiConfig(chartId) : null;
+        var horizontal = !(opts && opts.horizontal === false);
         var fillOpacityVal = (uiStyle && Number.isFinite(Number(uiStyle.fillOpacity))) ? Math.max(0, Math.min(1, Number(uiStyle.fillOpacity))) : null;
         var areaOpacityFrom = (opts && typeof opts.areaOpacityFrom === 'number' && isFinite(opts.areaOpacityFrom)) ? opts.areaOpacityFrom : 0.15;
         var areaOpacityTo = (opts && typeof opts.areaOpacityTo === 'number' && isFinite(opts.areaOpacityTo)) ? opts.areaOpacityTo : 0.02;
@@ -537,6 +538,15 @@
             : function(v) { return v != null ? Number(v).toLocaleString() : '\u2014'; };
           var legendPos = (opts && opts.legendPosition != null) ? String(opts.legendPosition).trim().toLowerCase() : 'top';
           if (legendPos !== 'top' && legendPos !== 'bottom' && legendPos !== 'left' && legendPos !== 'right') legendPos = 'top';
+          var customTooltip = (opts && typeof opts.tooltipCustom === 'function') ? opts.tooltipCustom : null;
+          var tooltipConfig = {
+            enabled: true,
+            // For dense charts (especially the Overview Revenue/Cost/Profit), avoid requiring a direct point intersect.
+            intersect: false,
+            shared: apexSeries.length > 1,
+            y: { formatter: yFmt }
+          };
+          if (customTooltip) tooltipConfig.custom = customTooltip;
 
           var baseOpacity = fillOpacityVal != null ? fillOpacityVal : 1;
           var areaFrom = fillOpacityVal != null ? fillOpacityVal * areaOpacityFrom : areaOpacityFrom;
@@ -573,13 +583,7 @@
               forceNiceScale: true
             },
             grid: { borderColor: '#f0f0f0', strokeDashArray: 3 },
-            tooltip: {
-              enabled: true,
-              // For dense charts (especially the Overview Revenue/Cost/Profit), avoid requiring a direct point intersect.
-              intersect: false,
-              shared: apexSeries.length > 1,
-              y: { formatter: yFmt }
-            },
+            tooltip: tooltipConfig,
             legend: { show: apexSeries.length > 1, position: legendPos, fontSize: '11px' },
             dataLabels: (showEndLabels && chartType === 'line') ? {
               enabled: true,
@@ -599,6 +603,10 @@
             markers: { size: chartType === 'line' ? 3 : 0, hover: { size: 5 } },
             noData: { text: 'No data available', style: { fontSize: '13px', color: '#626976' } }
           };
+          if (stacked) {
+            apexOpts.chart.stacked = true;
+            apexOpts.chart.stackType = 'normal';
+          }
           try {
             var chartOverride = chartAdvancedOverrideFromUiConfig(chartId, chartType);
             if (chartOverride && isPlainObject(chartOverride) && Object.keys(chartOverride).length) {
@@ -1256,7 +1264,7 @@
             dropShadow: { enabled: false }
           },
           plotOptions: { pie: { dataLabels: { offset: pieLabelOffset, minAngleToShowLabel: 8 }, expandOnClick: false } },
-          tooltip: { y: { formatter: valueFormatter } },
+          tooltip: { enabled: true, y: { formatter: valueFormatter } },
           noData: { text: 'No data available', style: { fontSize: '13px', color: '#626976' } }
         };
         if (Number.isFinite(pieStartAngle)) apexOpts.plotOptions.pie.startAngle = pieStartAngle;
@@ -1437,7 +1445,7 @@
           legend: { show: false },
           dataLabels: { enabled: false },
           fill: { opacity: (uiStyle && Number.isFinite(Number(uiStyle.fillOpacity))) ? Math.max(0, Math.min(1, Number(uiStyle.fillOpacity))) : 1 },
-          tooltip: { y: { formatter: function(v) { return formatRevenue(normalizeOverviewMetric(v)) || '\u2014'; } } },
+          tooltip: { enabled: true, y: { formatter: function(v) { return formatRevenue(normalizeOverviewMetric(v)) || '\u2014'; } } },
           noData: { text: 'No data available', style: { fontSize: '13px', color: '#626976' } }
         };
         try {
@@ -1536,6 +1544,7 @@
           stroke: { show: false, width: 0 },
           states: { normal: { filter: { type: 'none', value: 0 } }, hover: { filter: { type: 'none', value: 0 } }, active: { filter: { type: 'none', value: 0 } } },
           tooltip: {
+            enabled: true,
             custom: function(opts) {
               var idx = opts && opts.dataPointIndex != null ? opts.dataPointIndex : -1;
               var name = (idx >= 0 && idx < namesRef.length) ? namesRef[idx] : '';
@@ -1685,11 +1694,14 @@
         var revenuesRef = revenues;
         var platformRef = platformKeys;
 
+        var plotOptions = { bar: { horizontal: horizontal, borderRadius: 0, distributed: true, dataLabels: { hideOverflowingLabels: false } } };
+        if (horizontal) plotOptions.bar.barHeight = '54%';
+        else plotOptions.bar.columnWidth = '55%';
         var apexOpts = {
           chart: { type: 'bar', height: chartHeight, offsetY: -4, fontFamily: 'Inter, sans-serif', toolbar: { show: false }, animations: { enabled: !!(uiStyle && uiStyle.animations === true) } },
-          plotOptions: { bar: { horizontal: true, borderRadius: 0, distributed: true, barHeight: '54%', dataLabels: { hideOverflowingLabels: false } } },
+          plotOptions: plotOptions,
           series: [{ name: 'Sessions', data: values }],
-          xaxis: { categories: labels, labels: { show: false } },
+          xaxis: { categories: labels, labels: { show: !horizontal } },
           yaxis: { labels: { show: false } },
           grid: { show: false, padding: { bottom: 10, left: 6, right: 8, top: 0 } },
           colors: colors,
@@ -1699,6 +1711,7 @@
           stroke: { show: false, width: 0 },
           states: { normal: { filter: { type: 'none', value: 0 } }, hover: { filter: { type: 'none', value: 0 } }, active: { filter: { type: 'none', value: 0 } } },
           tooltip: {
+            enabled: true,
             custom: function(tip) {
               var idx = tip && tip.dataPointIndex != null ? tip.dataPointIndex : -1;
               var name = (idx >= 0 && idx < labelsRef.length) ? labelsRef[idx] : '';
@@ -1709,7 +1722,7 @@
               var crStr = (sess > 0) ? ((ord / sess) * 100).toFixed(1) + '%' : '\u2014';
               var iconHtml = platformIconHtmlForKey(pKey, name);
               return '<div class="kexo-tooltip-card p-2">' +
-                '<div class="fw-semibold" style="display:flex;align-items:center;gap:6px">' + iconHtml + escapeHtml(name || '') + '</div>' +
+                '<div class="fw-semibold d-flex align-items-center gap-2">' + iconHtml + escapeHtml(name || '') + '</div>' +
                 '<div>Sessions: ' + escapeHtml(fmtNum(sess)) + '</div>' +
                 '<div>Orders: ' + escapeHtml(fmtNum(ord)) + '</div>' +
                 '<div>Conversion: ' + escapeHtml(crStr) + '</div>' +
@@ -1727,7 +1740,8 @@
 
         try {
           upsertDashboardApexChart(chartId, chartEl, apexOpts);
-          setOverviewDevicesYIcons(chartId, renderedRows);
+          if (horizontal) setOverviewDevicesYIcons(chartId, renderedRows);
+          else clearOverviewDevicesYIcons(chartId);
           try {
             var legendEl = chartEl.parentElement && chartEl.parentElement.parentElement && chartEl.parentElement.parentElement.querySelector
               ? chartEl.parentElement.parentElement.querySelector('[data-overview-legend="' + chartId + '"]')
@@ -1808,6 +1822,7 @@
           stroke: { show: false, width: 0 },
           states: { normal: { filter: { type: 'none', value: 0 } }, hover: { filter: { type: 'none', value: 0 } }, active: { filter: { type: 'none', value: 0 } } },
           tooltip: {
+            enabled: true,
             custom: function(opts) {
               var idx = opts && opts.dataPointIndex != null ? opts.dataPointIndex : -1;
               var name = (idx >= 0 && idx < labelsRef.length) ? labelsRef[idx] : '';
@@ -2056,6 +2071,9 @@
         }
         var labels = finalSources.map(function(s) { return s && s.label ? String(s.label) : ''; });
         var values = finalSources.map(function(s) { return s && s.revenue_gbp ? s.revenue_gbp : 0; });
+        var crPcts = finalSources.map(function(s) { return (s && Number.isFinite(Number(s.conversion_pct))) ? Number(s.conversion_pct) : null; });
+        var fallbackColors = ['#4b94e4', '#3eb3ab', '#f59e34', '#8b5cf6', '#ef4444'];
+        var colors = (typeof chartColorsFromUiConfig === 'function') ? chartColorsFromUiConfig(chartId, fallbackColors) : fallbackColors;
         try {
           var legendHost2 = document.querySelector('[data-overview-legend="' + chartId + '"]');
           if (legendHost2) {
@@ -2067,18 +2085,52 @@
             }).join('');
           }
         } catch (_) {}
-        renderOverviewPieChart(chartId, labels, values, {
-          colors: ['#4b94e4', '#3eb3ab', '#f59e34', '#8b5cf6', '#ef4444'],
-          valueFormatter: function(v) { return formatRevenue(normalizeOverviewMetric(v)) || '\u2014'; },
-          height: 180,
-          dataLabels: false,
-          showLegend: false,
-          donut: mode === 'donut',
-          pieStartAngle: -90,
-          pieEndAngle: 270,
-          pieCustomScale: 0.70,
-          afterRender: null
-        });
+        if (mode === 'bar-horizontal' || mode === 'bar' || mode === 'bar-distributed') {
+          renderOverviewAttributionDistributedBar(chartId, finalSources, {
+            colors: colors,
+            height: 180,
+            horizontal: mode === 'bar-horizontal'
+          });
+        } else if (mode === 'line' || mode === 'area' || mode === 'multi-line-labels') {
+          var labelsRef = labels;
+          var valuesRef = values;
+          var crPctsRef = crPcts;
+          makeChart(chartId, labels, [{
+            label: 'Revenue',
+            data: values,
+            borderColor: (colors && colors[0]) || DASH_ACCENT,
+            backgroundColor: (colors && colors[0]) ? (colors[0] + '33') : DASH_ACCENT_LIGHT,
+            fill: mode === 'area',
+            borderWidth: 2
+          }], {
+            currency: true,
+            chartType: mode,
+            height: 180,
+            tooltipCustom: function(tip) {
+              var idx = tip && tip.dataPointIndex != null ? tip.dataPointIndex : -1;
+              var name = (idx >= 0 && idx < labelsRef.length) ? labelsRef[idx] : '';
+              var rev = (idx >= 0 && idx < valuesRef.length) ? valuesRef[idx] : 0;
+              var cr = (idx >= 0 && idx < crPctsRef.length) ? crPctsRef[idx] : null;
+              var crStr = cr != null && Number.isFinite(cr) ? cr.toFixed(1) + '%' : '\u2014';
+              return '<div class="kexo-tooltip-card p-2"><div class="fw-semibold">' + escapeHtml(name || '') + '</div><div>Revenue: ' + escapeHtml(formatRevenue(rev) || '\u2014') + '</div><div>Conversion: ' + escapeHtml(crStr) + '</div></div>';
+            }
+          });
+        } else if (mode === 'radialbar') {
+          renderOverviewFinishesRadialBar(chartId, labels, values, { colors: colors, height: 180, showLegend: false });
+        } else {
+          renderOverviewPieChart(chartId, labels, values, {
+            colors: colors,
+            valueFormatter: function(v) { return formatRevenue(normalizeOverviewMetric(v)) || '\u2014'; },
+            height: 180,
+            dataLabels: false,
+            showLegend: false,
+            donut: mode === 'donut',
+            pieStartAngle: -90,
+            pieEndAngle: 270,
+            pieCustomScale: 0.70,
+            afterRender: null
+          });
+        }
         try { scheduleOverviewHeightSync(); } catch (_) {}
       }
 
@@ -2453,7 +2505,50 @@
               clearOverviewDevicesYIcons(chartId);
               return;
             }
-            renderOverviewDevicesHorizontalBar(chartId, platforms, Object.assign({}, devicesOpts, { horizontal: true }));
+            var devicesMode = (typeof chartModeFromUiConfig === 'function')
+              ? String(chartModeFromUiConfig(chartId, 'bar-horizontal') || 'bar-horizontal').trim().toLowerCase()
+              : 'bar-horizontal';
+            devicesMode = validateChartType(chartId, devicesMode, 'bar-horizontal');
+            if (devicesMode === 'bar-horizontal' || devicesMode === 'bar' || devicesMode === 'bar-distributed') {
+              renderOverviewDevicesHorizontalBar(chartId, platforms, Object.assign({}, devicesOpts, { horizontal: devicesMode === 'bar-horizontal' }));
+            } else if (devicesMode === 'line' || devicesMode === 'area' || devicesMode === 'multi-line-labels') {
+              var labels = platforms.map(function(p) { return p && p.label ? String(p.label) : ''; });
+              var values = platforms.map(function(p) { return p && Number.isFinite(Number(p.sessions)) ? Number(p.sessions) : 0; });
+              var orders = platforms.map(function(p) { return p && Number.isFinite(Number(p.orders)) ? Number(p.orders) : 0; });
+              var revenues = platforms.map(function(p) { return p && Number.isFinite(Number(p.revenue_gbp)) ? Number(p.revenue_gbp) : 0; });
+              var keys = platforms.map(function(p) { return p && p.platform != null ? String(p.platform) : ''; });
+              makeChart(chartId, labels, [{
+                label: 'Sessions',
+                data: values,
+                borderColor: (devicesColors && devicesColors[0]) || DASH_BLUE,
+                backgroundColor: (devicesColors && devicesColors[0]) ? (devicesColors[0] + '33') : DASH_BLUE_LIGHT,
+                fill: devicesMode === 'area',
+                borderWidth: 2
+              }], {
+                chartType: devicesMode,
+                height: 180,
+                tooltipCustom: function(tip) {
+                  var idx = tip && tip.dataPointIndex != null ? tip.dataPointIndex : -1;
+                  var name = (idx >= 0 && idx < labels.length) ? labels[idx] : '';
+                  var sess = (idx >= 0 && idx < values.length) ? values[idx] : 0;
+                  var ord = (idx >= 0 && idx < orders.length) ? orders[idx] : 0;
+                  var rev = (idx >= 0 && idx < revenues.length) ? revenues[idx] : 0;
+                  var pKey = (idx >= 0 && idx < keys.length) ? keys[idx] : '';
+                  var crStr = (sess > 0) ? ((ord / sess) * 100).toFixed(1) + '%' : '\u2014';
+                  var iconHtml = platformIconHtmlForKey(pKey, name);
+                  return '<div class="kexo-tooltip-card p-2">' +
+                    '<div class="fw-semibold d-flex align-items-center gap-2">' + iconHtml + escapeHtml(name || '') + '</div>' +
+                    '<div>Sessions: ' + escapeHtml(fmtNum(sess)) + '</div>' +
+                    '<div>Orders: ' + escapeHtml(fmtNum(ord)) + '</div>' +
+                    '<div>Conversion: ' + escapeHtml(crStr) + '</div>' +
+                    '<div>Revenue: ' + escapeHtml(formatRevenue(normalizeOverviewMetric(rev)) || '\u2014') + '</div>' +
+                  '</div>';
+                }
+              });
+              clearOverviewDevicesYIcons(chartId);
+            } else {
+              renderOverviewDevicesHorizontalBar(chartId, platforms, Object.assign({}, devicesOpts, { horizontal: true }));
+            }
           };
         } else if (chartId === 'dash-chart-attribution-30d') {
           try {
@@ -3113,7 +3208,7 @@
             markers: { size: 0 },
             plotOptions: sparkMode === 'bar' ? { bar: { columnWidth: '55%', borderRadius: 2 } } : {},
             grid: { padding: { top: 0, right: 2, bottom: 0, left: 2 } },
-            tooltip: { enabled: false },
+            tooltip: { enabled: true },
             // ApexCharts 4.x can crash when `annotations` is explicitly set to `undefined`.
             // Always provide an annotations object with empty arrays.
             annotations: (function () {

@@ -214,6 +214,11 @@
         var cost = (isOverview && colors[1]) ? colors[1] : '#ef4444';
         var profitPos = (isOverview && colors[2]) ? colors[2] : '#2fb344';
         var profitNeg = (isOverview && colors[3]) ? colors[3] : '#d63939';
+        var fillOpacityRaw = (s && s.style && Number.isFinite(Number(s.style.fillOpacity)))
+          ? Math.max(0, Math.min(1, Number(s.style.fillOpacity)))
+          : 0.18;
+        var fillOpacityPct = Math.round(fillOpacityRaw * 100);
+        var fillOpacityVisible = (mode === 'area' || mode === 'stacked-area' || mode === 'bar' || mode === 'stacked-bar');
 
         var body = '';
         body += '<div class="row g-3">';
@@ -227,6 +232,14 @@
         if (supportsIcons) {
           body += '<div class="col-12"><label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-cs-field="icons"' + (iconsEnabled ? ' checked' : '') + '><span class="form-check-label ms-2">Icons</span></label><div class="form-hint">Show source icons in the chart legend.</div></div>';
         }
+        body += '<div class="col-12' + (fillOpacityVisible ? '' : ' d-none') + '" data-cs-mode-group="fill-opacity">';
+        body += '<label class="form-label d-flex align-items-center justify-content-between">';
+        body += '<span data-cs-fill-opacity-label>Area fill opacity</span>';
+        body += '<span class="text-muted small" data-cs-fill-opacity-value>' + fillOpacityPct + '%</span>';
+        body += '</label>';
+        body += '<input type="range" class="form-range" min="0" max="100" step="1" value="' + fillOpacityPct + '" data-cs-field="fillOpacity">';
+        body += '<div class="form-hint">Lower values make stacked areas easier to read.</div>';
+        body += '</div>';
         if (isOverview) {
           body += '<div class="col-12"><label class="form-label">Colours</label><div class="row g-2">';
           body += '<div class="col-6 col-md-3"><label class="form-label small">Revenue</label><div class="kexo-color-input"><input type="text" class="form-control form-control-sm" data-kexo-color-input data-cs-field="color-revenue" value="' + escapeHtml(rev) + '" placeholder="#3eb3ab"><span class="kexo-color-swatch" data-kexo-color-swatch aria-hidden="true"></span></div></div>';
@@ -283,6 +296,54 @@
         }
         bindColorPreviews();
 
+        function modeSupportsFillOpacity(modeVal) {
+          var m = String(modeVal || '').trim().toLowerCase();
+          return (m === 'area' || m === 'stacked-area' || m === 'bar' || m === 'stacked-bar');
+        }
+
+        function fillOpacityLabelForMode(modeVal) {
+          var m = String(modeVal || '').trim().toLowerCase();
+          if (m === 'stacked-area') return 'Stacked area opacity';
+          if (m === 'area') return 'Area fill opacity';
+          if (m === 'stacked-bar') return 'Stacked bar opacity';
+          if (m === 'bar') return 'Bar opacity';
+          return 'Fill opacity';
+        }
+
+        function bindFillOpacityControls() {
+          var input = bodyEl.querySelector('[data-cs-field="fillOpacity"]');
+          var valueEl = bodyEl.querySelector('[data-cs-fill-opacity-value]');
+          if (!input) return;
+          function sync() {
+            var raw = parseInt(String(input.value || ''), 10);
+            if (!Number.isFinite(raw)) raw = fillOpacityPct;
+            raw = Math.max(0, Math.min(100, raw));
+            try { input.value = String(raw); } catch (_) {}
+            if (valueEl) valueEl.textContent = raw + '%';
+          }
+          try { input.addEventListener('input', sync); } catch (_) {}
+          try { input.addEventListener('change', sync); } catch (_) {}
+          sync();
+        }
+
+        function syncModeControls(modeVal) {
+          var m = String(modeVal || '').trim().toLowerCase();
+          var fillWrap = bodyEl.querySelector('[data-cs-mode-group="fill-opacity"]');
+          if (fillWrap) {
+            if (modeSupportsFillOpacity(m)) fillWrap.classList.remove('d-none');
+            else fillWrap.classList.add('d-none');
+            var labelEl = fillWrap.querySelector('[data-cs-fill-opacity-label]');
+            if (labelEl) labelEl.textContent = fillOpacityLabelForMode(m);
+          }
+        }
+
+        bindFillOpacityControls();
+        syncModeControls(mode);
+        try {
+          var modeSelect = bodyEl.querySelector('[data-cs-field="mode"]');
+          if (modeSelect) modeSelect.addEventListener('change', function () { syncModeControls(modeSelect.value); });
+        } catch (_) {}
+
         function readForm() {
           var modeEl = bodyEl.querySelector('[data-cs-field="mode"]');
           var sizeEl = bodyEl.querySelector('[data-cs-field="sizePercent"]');
@@ -294,6 +355,11 @@
           } catch (_) { styleBase = {}; }
           styleBase.animations = !!(animEl && animEl.checked);
           if (supportsIcons) styleBase.icons = !!(iconsEl && iconsEl.checked);
+          var fillEl = bodyEl.querySelector('[data-cs-field="fillOpacity"]');
+          if (fillEl) {
+            var raw = parseInt(String(fillEl.value || ''), 10);
+            if (Number.isFinite(raw)) styleBase.fillOpacity = Math.max(0, Math.min(1, raw / 100));
+          }
           var out = {
             key: chartKey,
             mode: (modeEl && modeEl.value) ? String(modeEl.value).trim().toLowerCase() : mode,

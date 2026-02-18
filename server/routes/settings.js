@@ -36,6 +36,7 @@ const PAGE_LOADER_ENABLED_V1_KEY = 'page_loader_enabled_v1'; // JSON object (per
 const KPI_UI_KEYS = [
   'orders',
   'revenue',
+  'profit',
   'conv',
   'vpv',
   'roas',
@@ -95,7 +96,7 @@ const CHART_KPI_BUNDLE_KEY_SET = new Set(CHART_KPI_BUNDLE_KEYS);
 const CHART_ALLOWED_MODES = Object.freeze({
   'dash-chart-overview-30d': ['area', 'bar', 'line', 'multi-line-labels', 'combo', 'stacked-area', 'stacked-bar'],
   'dash-chart-finishes-30d': ['radialbar', 'pie', 'donut', 'bar-horizontal', 'bar', 'bar-distributed', 'line', 'area', 'multi-line-labels'],
-  'dash-chart-devices-30d': ['bar-horizontal'],
+  'dash-chart-devices-30d': ['bar-horizontal', 'bar', 'bar-distributed', 'line', 'area', 'multi-line-labels'],
   'dash-chart-countries-30d': ['bar-horizontal', 'bar', 'bar-distributed', 'radialbar', 'pie', 'donut', 'line', 'area', 'multi-line-labels'],
   'dash-chart-attribution-30d': ['bar-distributed', 'bar-horizontal', 'bar', 'line', 'area', 'multi-line-labels', 'pie', 'donut', 'radialbar'],
   'live-online-chart': ['map-animated', 'map-flat'],
@@ -173,6 +174,7 @@ function defaultKpiUiConfigV1() {
       header: [
         { key: 'orders', label: 'Orders', enabled: true },
         { key: 'revenue', label: 'Revenue', enabled: true },
+        { key: 'profit', label: 'Profit', enabled: true },
         { key: 'conv', label: 'Conversion Rate', enabled: true },
         { key: 'vpv', label: 'Value per Visit', enabled: false },
         { key: 'roas', label: 'ADS ROAS', enabled: true },
@@ -187,6 +189,7 @@ function defaultKpiUiConfigV1() {
       ],
       dashboard: [
         { key: 'revenue', label: 'Revenue', enabled: true },
+        { key: 'profit', label: 'Profit', enabled: true },
         { key: 'orders', label: 'Orders', enabled: true },
         { key: 'conv', label: 'Conversion Rate', enabled: true },
         { key: 'vpv', label: 'Value per Visit', enabled: false },
@@ -1941,6 +1944,7 @@ async function getThemeVarsCss(req, res) {
     const sparklineIdByKey = {
       orders: 'cond-kpi-orders-sparkline',
       revenue: 'cond-kpi-revenue-sparkline',
+      profit: 'cond-kpi-profit-sparkline',
       conv: 'cond-kpi-conv-sparkline',
       roas: 'cond-kpi-roas-sparkline',
       sessions: 'cond-kpi-sessions-sparkline',
@@ -1954,6 +1958,7 @@ async function getThemeVarsCss(req, res) {
     };
     const dashboardValueIdByKey = {
       revenue: 'dash-kpi-revenue',
+      profit: 'dash-kpi-profit',
       orders: 'dash-kpi-orders',
       conv: 'dash-kpi-conv',
       aov: 'dash-kpi-aov',
