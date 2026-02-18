@@ -21,7 +21,7 @@
       ariaLabel: 'Sessions',
       bodyId: 'table-body',
       columns: [
-        { key: 'landing', label: 'Landing Page', cellClass: 'landing-cell', iconKey: 'table-short-landing' },
+        { key: 'landing', label: 'Page', cellClass: 'landing-cell', iconKey: 'table-short-landing' },
         { key: 'compliance', label: '', ariaLabel: 'Compliance', sortable: false, cellClass: 'compliance-cell' },
         { key: 'from', label: 'GEO', iconKey: 'table-short-geo' },
         { key: 'source', label: 'Source', cellClass: 'source-cell', iconKey: 'table-short-source' },
@@ -29,6 +29,8 @@
         { key: 'cart', label: 'Cart', cellClass: 'cart-value-cell', iconKey: 'table-short-cart' },
         { key: 'arrived', label: 'Arrived', iconKey: 'table-short-arrived' },
         { key: 'last_seen', label: 'Seen', iconKey: 'table-short-seen' },
+        { key: 'actions', label: 'Actions', sortable: false, cellClass: 'text-end' },
+        { key: 'exit', label: 'Exit', sortable: false, cellClass: 'text-end' },
         { key: 'history', label: 'Visits', iconKey: 'table-short-history' },
         { key: '', label: 'Consent (debug)', sortable: false, cellClass: 'consent-col is-hidden', iconKey: 'table-short-consent' }
       ]

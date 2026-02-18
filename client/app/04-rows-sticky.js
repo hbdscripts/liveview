@@ -848,6 +848,36 @@
       return d + (d === 1 ? ' day' : ' days') + ' ago';
     }
 
+    function formatExitDelta(ms) {
+      var n = typeof ms === 'number' ? ms : Number(ms);
+      if (!Number.isFinite(n) || n < 0) return '\u2014';
+      var s = Math.round(n / 1000);
+      if (s < 60) return String(s) + 's';
+      var m = Math.floor(s / 60);
+      var rem = s % 60;
+      if (m < 60) return String(m) + 'm ' + String(rem) + 's';
+      var h = Math.floor(m / 60);
+      var remM = m % 60;
+      return String(h) + 'h ' + String(remM) + 'm';
+    }
+
+    function sessionActionsCount(s) {
+      var n = s && s.actions_count != null ? Number(s.actions_count) : null;
+      if (typeof n !== 'number' || !Number.isFinite(n) || n < 0) return 0;
+      return Math.round(n);
+    }
+
+    function sessionExitLabel(s) {
+      // Live view: still active, no meaningful "exit" yet.
+      if (sessionsTotal == null && filter === 'active') return 'Live';
+      var lastSeen = toMs(s && s.last_seen);
+      var lastEvent = toMs(s && s.last_event_ts);
+      if (lastSeen == null || lastEvent == null) return '\u2014';
+      var delta = lastSeen - lastEvent;
+      if (!Number.isFinite(delta) || delta < 0) return '\u2014';
+      return formatExitDelta(delta);
+    }
+
     function formatSaleTime(ms) {
       const n = toMs(ms);
       if (n == null) return '\u2014';
@@ -1489,6 +1519,8 @@
       const countryCode = s.country_code || 'XX';
       const visits = (s.returning_count != null ? s.returning_count : 0) + 1;
       const visitsLabel = String(visits);
+      const actionsLabel = String(sessionActionsCount(s));
+      const exitLabel = String(sessionExitLabel(s) || '\u2014');
       const cartValueNum = s.cart_value != null ? Number(s.cart_value) : NaN;
       const cartVal = s.has_purchased ? '' : ((s.cart_value != null && !Number.isNaN(cartValueNum))
         ? formatMoney(Math.floor(cartValueNum), s.cart_currency)
@@ -1519,6 +1551,8 @@
         <div class="grid-cell cart-value-cell" role="cell">${cartOrSaleCell}</div>
         <div class="grid-cell arrived-cell" role="cell"><span data-started="${s.started_at}">${arrivedAgo(s.started_at)}</span></div>
         <div class="grid-cell last-seen-cell" role="cell"><span data-last-seen="${s.last_seen}">${arrivedAgo(s.last_seen)}</span></div>
+        <div class="grid-cell text-end" role="cell">${escapeHtml(actionsLabel)}</div>
+        <div class="grid-cell text-end" role="cell">${escapeHtml(exitLabel)}</div>
         <div class="grid-cell" role="cell">${visitsLabel}</div>
         <div class="grid-cell consent-debug consent-col is-hidden" role="cell">${escapeHtml(consentDebug)}</div>
       </div>`;

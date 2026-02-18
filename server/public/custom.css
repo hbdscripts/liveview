@@ -1554,6 +1554,9 @@ body[data-page="dashboard"] #dash-trending-down tbody td:nth-child(5) {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: #334155;
 }
 
 .th-label-short {

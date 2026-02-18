@@ -1116,6 +1116,67 @@ async function insertPurchase(payload, sessionId, countryCode) {
 const TODAY_WINDOW_MINUTES = 24 * 60;
 const ALL_SESSIONS_WINDOW_MINUTES = 60;
 
+async function attachSessionActionStats(sessions) {
+  const db = getDb();
+  const list = Array.isArray(sessions) ? sessions : [];
+  if (!list.length) return;
+
+  const ids = [];
+  for (const s of list) {
+    const sid = (s && s.session_id != null) ? String(s.session_id).trim() : '';
+    if (sid) ids.push(sid);
+  }
+  if (!ids.length) return;
+
+  const seen = new Set();
+  const uniq = [];
+  for (const id of ids) {
+    if (seen.has(id)) continue;
+    seen.add(id);
+    uniq.push(id);
+  }
+
+  const CHUNK = 200;
+  const map = new Map(); // session_id -> { actions_count, last_event_ts }
+
+  for (let start = 0; start < uniq.length; start += CHUNK) {
+    const chunk = uniq.slice(start, start + CHUNK);
+    if (!chunk.length) continue;
+
+    let sql = `
+      SELECT session_id, COUNT(*) AS actions_count, MAX(ts) AS last_event_ts
+      FROM events
+      WHERE session_id IN (
+    `;
+    const params = [];
+    let idx = 0;
+    const ph = () => (config.dbUrl ? `$${++idx}` : '?');
+    sql += chunk.map(() => ph()).join(', ');
+    sql += `)
+      GROUP BY session_id
+    `;
+    params.push(...chunk);
+
+    const rows = await db.all(sql, params);
+    for (const r of rows || []) {
+      const sid = r && r.session_id != null ? String(r.session_id) : '';
+      if (!sid) continue;
+      map.set(sid, {
+        actions_count: r.actions_count != null ? Number(r.actions_count) : 0,
+        last_event_ts: r.last_event_ts != null ? Number(r.last_event_ts) : null,
+      });
+    }
+  }
+
+  for (const s of list) {
+    const sid = (s && s.session_id != null) ? String(s.session_id).trim() : '';
+    if (!sid) continue;
+    const stats = map.get(sid);
+    s.actions_count = stats && Number.isFinite(stats.actions_count) ? Math.max(0, Math.round(stats.actions_count)) : 0;
+    s.last_event_ts = (stats && stats.last_event_ts != null && Number.isFinite(stats.last_event_ts)) ? Number(stats.last_event_ts) : null;
+  }
+}
+
 async function listSessions(filter) {
   const db = getDb();
   const now = Date.now();
@@ -1181,6 +1242,7 @@ async function listSessions(filter) {
     out.recovered_at = r.recovered_at != null ? Number(r.recovered_at) : null;
     return out;
   });
+  await attachSessionActionStats(sessions);
   await shopifyLandingMeta.enrichSessionsWithLandingTitles(sessions);
   return sessions;
 }
@@ -1699,6 +1761,7 @@ async function listSessionsByRange(rangeKey, timeZone, limit, offset) {
     return out;
   });
 
+  await attachSessionActionStats(sessions);
   await shopifyLandingMeta.enrichSessionsWithLandingTitles(sessions);
   return { sessions, total };
 }
