@@ -52,4 +52,4 @@ Templates under `server/public/**`; served via `sendPage()` in `server/index.js`
 
 ## Changelog (this consolidation)
 
-- 2026-02-18: Replaced HANDOVER.txt and scattered docs with HANDOVER.md + docs/CONFIG.md, docs/ARCHITECTURE.md, docs/METRICS.md. Removed .cursor rules, audit artefacts, and legacy doc files.
+- 2026-02-18: Cleanup/standardise branch: Phase 0 safety branch; Phase 2 docs consolidation (HANDOVER.md, docs/CONFIG, ARCHITECTURE, METRICS); Phase 3 single config source (server/config.js); Phase 4 shared client utils (00-utils.js, formatters/fetchJson); Phase 5 upgrade.html head-theme include; Phase 6 validation (npm test, migrate, smoke /health, /api/version, /app/login).
