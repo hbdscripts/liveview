@@ -6,20 +6,8 @@ function toBooleanMap(keys) {
   return out;
 }
 
-const LOCKED_SETTINGS_ICON_KEYS = Object.freeze(toBooleanMap([
-  'settings-tab-theme',
-  'settings-tab-data-reporting',
-  'settings-tab-integrations',
-  'settings-tab-sources',
-  'settings-tab-kpis',
-  'settings-tab-insights',
-  'settings-tab-charts',
-  'settings-tab-layout',
-  'settings-tab-diagnostics',
-  'settings-diagnostics-refresh',
-  'settings-diagnostics-reconcile',
-  'settings-tab-cost-expenses',
-]));
+// Settings left menu and panel titles no longer use icons; keys unmapped from theme/icon picker.
+const LOCKED_SETTINGS_ICON_KEYS = Object.freeze({});
 
 const LEGACY_THEME_ICON_KEYS = Object.freeze(toBooleanMap([
   'mobile-menu',
@@ -34,9 +22,6 @@ const LEGACY_THEME_ICON_KEYS = Object.freeze(toBooleanMap([
 
 const REQUIRED_ACTIVE_ICON_KEYS = Object.freeze([
   'nav-item-admin',
-  'admin-tab-controls',
-  'admin-tab-diagnostics',
-  'admin-tab-users',
   'footer-settings-toggle',
   'nav-dropdown-arrow',
   'chart-builder-icon',
@@ -97,21 +82,6 @@ const ICON_GLYPH_DEFAULTS = Object.freeze({
   'table-icon-variants-orders': 'fa-box-open',
   'table-icon-variants-cr': 'fa-percent',
   'table-icon-variants-revenue': 'fa-sterling-sign',
-  'settings-tab-theme': 'fa-palette',
-  'settings-tab-data-reporting': 'fa-chart-column',
-  'settings-tab-integrations': 'fa-plug',
-  'settings-tab-sources': 'fa-map-location-dot',
-  'settings-tab-kpis': 'fa-gauge-high',
-  'settings-tab-insights': 'fa-chart-pie',
-  'settings-tab-charts': 'fa-chart-pie',
-  'settings-tab-layout': 'fa-table-columns',
-  'settings-tab-diagnostics': 'fa-chart-line',
-  'settings-diagnostics-refresh': 'fa-rotate-right',
-  'settings-diagnostics-reconcile': 'fa-sliders',
-  'settings-tab-cost-expenses': 'fa-sterling-sign',
-  'admin-tab-controls': 'fa-sliders',
-  'admin-tab-diagnostics': 'fa-chart-line',
-  'admin-tab-users': 'fa-users',
   'footer-refresh': 'fa-rotate-right',
   'footer-sound': 'fa-volume-high',
   'footer-sound-muted': 'fa-volume-xmark',
