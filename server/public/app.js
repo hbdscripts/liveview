@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: d4d8e526da94c86e
+// checksum: edf07f17dfdea061
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -18869,97 +18869,68 @@ const API = '';
             }
           };
         } else if (chartId === 'dash-chart-devices-30d') {
-          var deviceRows = payload && payload.devices && Array.isArray(payload.devices.rows) ? payload.devices.rows : [];
-          var agg = {
-            ios: { sessions: 0, orders: 0, revenue: 0 },
-            android: { sessions: 0, orders: 0, revenue: 0 },
-            windows: { sessions: 0, orders: 0, revenue: 0 },
-            mac: { sessions: 0, orders: 0, revenue: 0 },
-            linux: { sessions: 0, orders: 0, revenue: 0 },
-          };
-          (deviceRows || []).forEach(function(d) {
-            if (!d || !Array.isArray(d.platforms)) return;
-            (d.platforms || []).forEach(function(p) {
-              var key = p && p.platform != null ? String(p.platform).trim().toLowerCase() : '';
-              if (!key || !agg[key]) return;
-              agg[key].sessions += normalizeOverviewMetric(p.sessions);
-              agg[key].orders += normalizeOverviewMetric(p.orders);
-              agg[key].revenue += normalizeOverviewMetric(p.revenue_gbp);
-            });
+          var dim = payload && payload.dimension != null
+            ? String(payload.dimension).trim().toLowerCase()
+            : ((typeof chartDimensionFromUiConfig === 'function') ? chartDimensionFromUiConfig(chartId, 'device') : 'device');
+          dim = normalizeOverviewDevicesDimension(dim);
+          var metric = payload && payload.metric != null ? String(payload.metric).trim().toLowerCase() : 'sessions';
+          if (metric !== 'sessions' && metric !== 'orders' && metric !== 'revenue') metric = 'sessions';
+          var rawRows = payload && Array.isArray(payload.rows) ? payload.rows : [];
+          var rows = [];
+          (rawRows || []).forEach(function(r) {
+            if (!r || typeof r !== 'object') return;
+            var key = r.key != null ? String(r.key).trim().toLowerCase() : '';
+            var label = r.label != null ? String(r.label).trim() : key;
+            var sessions = Math.max(0, Math.round(normalizeOverviewMetric(r.sessions)));
+            var orders = Math.max(0, Math.round(normalizeOverviewMetric(r.orders)));
+            var revenue = Math.round(normalizeOverviewMetric(r.revenue_gbp) * 100) / 100;
+            if (!label) label = key || '\u2014';
+            if (!(sessions > 0 || orders > 0 || revenue > 0)) return;
+            rows.push({ key: key, label: label, sessions: sessions, orders: orders, revenue_gbp: revenue });
           });
-          var orderKeys = ['ios', 'android', 'windows', 'mac', 'linux'];
-          var platforms = [];
-          orderKeys.forEach(function(k) {
-            var a = agg[k];
-            if (!a) return;
-            var s = Math.max(0, Math.round(normalizeOverviewMetric(a.sessions)));
-            var o = Math.max(0, Math.round(normalizeOverviewMetric(a.orders)));
-            var r = Math.round(normalizeOverviewMetric(a.revenue) * 100) / 100;
-            if (!(s > 0 || o > 0 || r > 0)) return;
-            platforms.push({ platform: k, label: platformLabelForKey(k), sessions: s, orders: o, revenue_gbp: r });
-          });
-          payloadSig = JSON.stringify(platforms.map(function(r) {
-            return [String(r.platform || ''), normalizeOverviewMetric(r.sessions), normalizeOverviewMetric(r.orders), normalizeOverviewMetric(r.revenue_gbp)];
-          }).concat([rk])) || '';
+          rows = rows.slice(0, 5);
+          payloadSig = JSON.stringify({ rk: rk, dim: dim, metric: metric, rows: rows.map(function(r) {
+            return [String(r.key || ''), normalizeOverviewMetric(r.sessions), normalizeOverviewMetric(r.orders), normalizeOverviewMetric(r.revenue_gbp)];
+          }) }) || '';
           doRender = function() {
             var fallbackColors2 = ['#4b94e4', '#3eb3ab', '#f59e34', '#8b5cf6', '#ef4444'];
             var devicesColors = (typeof chartColorsFromUiConfig === 'function') ? chartColorsFromUiConfig(chartId, fallbackColors2) : fallbackColors2;
-            var devicesOpts = { colors: devicesColors, height: 180 };
+            var devicesOpts = { colors: devicesColors, height: 180, horizontal: true, dimension: dim, metric: metric };
+            var uiStyle = (typeof chartStyleFromUiConfig === 'function') ? chartStyleFromUiConfig(chartId) : null;
+            var showIcons = !!(uiStyle && uiStyle.icons === true);
+            var showLabels = !(uiStyle && uiStyle.showLabels === false);
+
+            if (!rows.length) {
+              renderOverviewChartEmpty(chartId, dim === 'browser' ? 'No browser data' : (dim === 'payment_method' ? 'No payment method data' : 'No device data'));
+              clearOverviewDevicesYIcons(chartId);
+              renderOverviewMiniLegend(chartId, [], []);
+              return;
+            }
+
+            var devicesMode = (typeof chartModeFromUiConfig === 'function')
+              ? String(chartModeFromUiConfig(chartId, 'bar-horizontal') || 'bar-horizontal').trim().toLowerCase()
+              : 'bar-horizontal';
+            devicesMode = validateChartType(chartId, devicesMode, 'bar-horizontal');
+
+            if (devicesMode === 'radialbar') {
+              if (typeof renderOverviewDevicesRadialBar === 'function') {
+                renderOverviewDevicesRadialBar(chartId, rows, Object.assign({}, devicesOpts, { showIcons: showIcons, showLabels: showLabels }));
+              } else {
+                renderOverviewDevicesHorizontalBar(chartId, rows, Object.assign({}, devicesOpts, { showIcons: showIcons, showLabels: showLabels }));
+              }
+              clearOverviewDevicesYIcons(chartId);
+              if (showLabels) renderOverviewMiniLegend(chartId, rows.map(function(r) { return r.label; }), devicesColors);
+              else renderOverviewMiniLegend(chartId, [], []);
+              return;
+            }
+
             try {
               var legendEl = document.getElementById(chartId) && document.getElementById(chartId).parentElement
                 ? document.getElementById(chartId).parentElement.parentElement.querySelector('[data-overview-legend="' + chartId + '"]')
                 : null;
               if (legendEl) legendEl.innerHTML = '';
             } catch (_) {}
-            if (!platforms.length) {
-              renderOverviewChartEmpty(chartId, 'No device data');
-              clearOverviewDevicesYIcons(chartId);
-              return;
-            }
-            var devicesMode = (typeof chartModeFromUiConfig === 'function')
-              ? String(chartModeFromUiConfig(chartId, 'bar-horizontal') || 'bar-horizontal').trim().toLowerCase()
-              : 'bar-horizontal';
-            devicesMode = validateChartType(chartId, devicesMode, 'bar-horizontal');
-            if (devicesMode === 'bar-horizontal' || devicesMode === 'bar' || devicesMode === 'bar-distributed') {
-              renderOverviewDevicesHorizontalBar(chartId, platforms, Object.assign({}, devicesOpts, { horizontal: devicesMode === 'bar-horizontal' }));
-            } else if (devicesMode === 'line' || devicesMode === 'area' || devicesMode === 'multi-line-labels') {
-              var labels = platforms.map(function(p) { return p && p.label ? String(p.label) : ''; });
-              var values = platforms.map(function(p) { return p && Number.isFinite(Number(p.sessions)) ? Number(p.sessions) : 0; });
-              var orders = platforms.map(function(p) { return p && Number.isFinite(Number(p.orders)) ? Number(p.orders) : 0; });
-              var revenues = platforms.map(function(p) { return p && Number.isFinite(Number(p.revenue_gbp)) ? Number(p.revenue_gbp) : 0; });
-              var keys = platforms.map(function(p) { return p && p.platform != null ? String(p.platform) : ''; });
-              makeChart(chartId, labels, [{
-                label: 'Sessions',
-                data: values,
-                borderColor: (devicesColors && devicesColors[0]) || DASH_BLUE,
-                backgroundColor: (devicesColors && devicesColors[0]) ? (devicesColors[0] + '33') : DASH_BLUE_LIGHT,
-                fill: devicesMode === 'area',
-                borderWidth: 2
-              }], {
-                chartType: devicesMode,
-                height: 180,
-                tooltipCustom: function(tip) {
-                  var idx = tip && tip.dataPointIndex != null ? tip.dataPointIndex : -1;
-                  var name = (idx >= 0 && idx < labels.length) ? labels[idx] : '';
-                  var sess = (idx >= 0 && idx < values.length) ? values[idx] : 0;
-                  var ord = (idx >= 0 && idx < orders.length) ? orders[idx] : 0;
-                  var rev = (idx >= 0 && idx < revenues.length) ? revenues[idx] : 0;
-                  var pKey = (idx >= 0 && idx < keys.length) ? keys[idx] : '';
-                  var crStr = (sess > 0) ? ((ord / sess) * 100).toFixed(1) + '%' : '\u2014';
-                  var iconHtml = platformIconHtmlForKey(pKey, name);
-                  return '<div class="kexo-tooltip-card p-2">' +
-                    '<div class="fw-semibold d-flex align-items-center gap-2">' + iconHtml + escapeHtml(name || '') + '</div>' +
-                    '<div>Sessions: ' + escapeHtml(fmtNum(sess)) + '</div>' +
-                    '<div>Orders: ' + escapeHtml(fmtNum(ord)) + '</div>' +
-                    '<div>Conversion: ' + escapeHtml(crStr) + '</div>' +
-                    '<div>Revenue: ' + escapeHtml(fmtGbp(normalizeOverviewMetric(rev)) || '\u2014') + '</div>' +
-                  '</div>';
-                }
-              });
-              clearOverviewDevicesYIcons(chartId);
-            } else {
-              renderOverviewDevicesHorizontalBar(chartId, platforms, Object.assign({}, devicesOpts, { horizontal: true }));
-            }
+            renderOverviewDevicesHorizontalBar(chartId, rows, Object.assign({}, devicesOpts, { showIcons: showIcons, showLabels: showLabels }));
           };
         } else if (chartId === 'dash-chart-attribution-30d') {
           try {
@@ -19560,8 +19531,22 @@ const API = '';
           var yMin = -1;
           var yMax = 1;
           if (baseline === 'percent') {
+            // Percent KPIs like Conversion Rate are often in the 0-10% range.
+            // A fixed 0-100 axis can make the sparkline look "missing" (flat on the bottom).
+            // Keep the 0-100 frame for larger percent metrics (e.g. Bounce Rate), but zoom small ranges.
             yMin = 0;
             yMax = 100;
+            var zoomPercent = !allZero && maxVal <= 20;
+            if (zoomPercent) {
+              var pctPad = Math.max(0.5, span * 0.25);
+              yMin = Math.max(0, minVal - pctPad);
+              yMax = Math.min(100, maxVal + pctPad);
+              if ((yMax - yMin) < 2) {
+                var mid = (yMax + yMin) / 2;
+                yMin = Math.max(0, mid - 1);
+                yMax = Math.min(100, mid + 1);
+              }
+            }
           } else if (!allZero) {
             var pad = Math.max(1e-6, span * 0.12);
             yMin = minVal - pad;

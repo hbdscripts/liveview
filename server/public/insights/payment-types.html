@@ -16,7 +16,7 @@
   <link rel="stylesheet" href="/diagnostics-modal.css" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
   <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js" defer></script>
-  <title>Kexo · Payment Types</title>
+  <title>Kexo · Payment Methods</title>
   <script src="https://cdn.jsdelivr.net/npm/apexcharts@4.7.0/dist/apexcharts.min.js" defer></script>
 </head>
 <body class="" data-page="payment-types">
@@ -26,7 +26,7 @@
             <div class="row align-items-center">
               <div class="col">
                 <div class="page-pretitle">Insights</div>
-                <h2 class="page-title">Payment Types</h2>
+                <h2 class="page-title">Payment Methods</h2>
               </div>
             </div>
           </div>
@@ -34,14 +34,13 @@
 <div id="tab-panel-payment-types" class="main-tab-panel" role="tabpanel" aria-labelledby="nav-tab-payment-types">
   <div class="row g-3 mb-3">
     <div class="col-12">
-      <div class="card" data-no-card-collapse="1">
+      <div class="card" data-no-card-collapse="1" data-kexo-chart-key="payment-methods-chart">
         <div class="card-header">
-          <h3 class="card-title">Revenue by payment type</h3>
-          <div class="text-secondary small ms-auto" id="payment-types-updated">Updated &mdash;</div>
+          <h3 class="card-title">Revenue by payment method</h3>
+          <div class="text-secondary small ms-auto" id="payment-methods-updated">Updated &mdash;</div>
         </div>
         <div class="card-body">
-          <div class="dash-chart-wrap kexo-chart-wrap-min-320" id="payment-types-chart"></div>
-          <div class="d-flex flex-wrap gap-2 mt-3" id="payment-types-legend" aria-label="Payment type legend"></div>
+          <div class="dash-chart-wrap kexo-chart-wrap-min-320" id="payment-methods-chart"></div>
         </div>
       </div>
     </div>
@@ -51,7 +50,7 @@
     <div class="col-12">
       <div class="card" data-no-card-collapse="1" data-table-class="live" data-table-zone="payment-types-main" data-table-id="payment-types-table">
         <div class="card-header">
-          <h3 class="card-title" data-kexo-table-title="1">Payment type breakdown</h3>
+          <h3 class="card-title" data-kexo-table-title="1">Payment method breakdown</h3>
         </div>
         <div id="payment-types-table-mount" data-kexo-table="payment-types-table"></div>
         <div class="card-footer d-flex align-items-center justify-content-center is-hidden" id="payment-types-pagination" aria-label="Payment types pagination"></div>

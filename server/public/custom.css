@@ -4352,6 +4352,22 @@ img[data-kexo-logo-slot="footer"][data-kexo-logo-ready="1"] {
   height: -webkit-fill-available;
   border-radius: 0;
 }
+/* Safari macOS: prevent header dropdowns from filling viewport */
+@supports (-webkit-hyphens:none) {
+  @media (min-width: 992px) {
+    .kexo-header-stack .kexo-desktop-nav-list .nav-link[aria-expanded="true"] {
+      height: auto !important;
+    }
+    .kexo-header-stack .kexo-desktop-nav .dropdown-menu {
+      position: absolute !important;
+      inset: auto !important;
+      height: auto !important;
+      min-height: unset !important;
+      max-height: calc(100vh - 120px);
+      overflow: auto;
+    }
+  }
+}
 /* Active category (dropdown closed): coloured icon at full opacity */
 .kexo-desktop-nav-list .nav-item.dropdown.active:not(.show) > .nav-link > .kexo-nav-svg,
 .kexo-desktop-nav-list .nav-item.dropdown.active:not(.show) > .nav-link > i[class*="fa-"] {
@@ -5518,6 +5534,10 @@ body[data-bs-theme="dark"] .kexo-upgrade-locked .kexo-upgrade-lock-overlay {
 /* Settings page (moved from inline <style> in settings.html) */
 .settings-panel { display: none; }
 .settings-panel.active { display: block; }
+.list-group-transparent .list-group-item.active{
+  font-weight:var(--tblr-font-weight-bold);
+  font-size:14px;
+}
 .list-group.list-group-transparent .list-group-item.active:hover { text-decoration: none !important; }
 .settings-integrations-panel { display: none; }
 .settings-integrations-panel.active { display: block; }
@@ -5581,11 +5601,32 @@ body[data-bs-theme="dark"] .kexo-upgrade-locked .kexo-upgrade-lock-overlay {
 .admin-users-pane { display: none; }
 .admin-users-pane.active { display: block; }
 .settings-nav-category { margin-bottom: 0.15rem; }
-.settings-nav-category > .list-group-item:first-child { border-radius: var(--tblr-border-radius, .375rem); }
+.settings-nav-category > .list-group-item:first-child{
+  border-radius:var(--tblr-border-radius,.375rem);
+  padding:0;
+  min-height:30px;
+  line-height:30px;
+  text-indent:15px;
+  font-weight:600;
+  color:color-mix(in srgb, black calc(var(--kexo-menu-opacity-filter, 0) * 100%), var(--kexo-top-menu-bg, var(--kexo-header-main-bg, #fff))) !important;
+}
 .settings-nav-children { padding-left: 0; }
 .settings-nav-children .list-group-item { border-radius: var(--tblr-border-radius, .375rem); font-size: 0.9375rem; }
-.settings-nav-child { position: relative; padding-top: 5px !important; padding-bottom: 5px !important; padding-left: calc(1rem + 25px) !important; }
-.settings-nav-child::before { content: '›'; position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--tblr-primary, #206bc4); opacity: 0.5; font-size: 0.9em; }
+.settings-nav-child{
+  position:relative;
+  padding-left:42px;
+}
+.settings-nav-child::before{
+  content:'›';
+  position:absolute;
+  left:25px;
+  top:50%;
+  transform:translateY(-50%);
+  color:var(--tblr-primary,#206bc4);
+  opacity:.5;
+  font-size:.9em;
+  pointer-events:none;
+}
 .settings-nav-child.active::before { opacity: 1; }
 
 /* Settings mobile menu (hamburger drawer). Sidebar hidden on mobile. */

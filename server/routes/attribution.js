@@ -990,6 +990,43 @@ async function postAttributionIcons(req, res) {
   res.json({ ok: true, upserted: { sources: upsertedSources, variants: upsertedVariants } });
 }
 
+async function patchAttributionRule(req, res) {
+  const ruleId = sanitizeRuleId(req && req.params ? req.params.id : '');
+  if (!ruleId) return res.status(400).json({ ok: false, error: 'Invalid rule id' });
+  const body = req && req.body && typeof req.body === 'object' ? req.body : {};
+  const destVariantKey = normalizeVariantKey(body.variant_key != null ? body.variant_key : (body.variantKey != null ? body.variantKey : ''));
+  if (!destVariantKey) return res.status(400).json({ ok: false, error: 'Invalid destination variant_key' });
+
+  const db = getDb();
+  const now = Date.now();
+
+  try {
+    const v = await db.get('SELECT variant_key FROM attribution_variants WHERE variant_key = ?', [destVariantKey]);
+    if (!v) return res.status(400).json({ ok: false, error: 'Destination variant does not exist' });
+  } catch (_) {
+    return res.status(500).json({ ok: false, error: 'Could not validate destination' });
+  }
+
+  let changes = 0;
+  try {
+    const r = await db.run(
+      'UPDATE attribution_rules SET variant_key = ?, updated_at = ? WHERE id = ?',
+      [destVariantKey, now, ruleId]
+    );
+    changes = r && typeof r.changes === 'number' ? r.changes : 0;
+  } catch (err) {
+    Sentry.captureException(err, { extra: { route: 'attribution.rule.patch', ruleId } });
+    return res.status(500).json({ ok: false, error: 'Failed to update rule' });
+  }
+
+  if (!changes) return res.status(404).json({ ok: false, error: 'Rule not found' });
+
+  invalidateAttributionConfigCache();
+  try { await writeAudit('admin', 'attribution_rule_move', { ts: now, ruleId, variantKey: destVariantKey }); } catch (_) {}
+  res.setHeader('Cache-Control', 'no-store');
+  res.json({ ok: true, id: ruleId, variant_key: destVariantKey, now });
+}
+
 module.exports = {
   getAttributionReport,
   getAttributionPrefs,
@@ -998,6 +1035,7 @@ module.exports = {
   postAttributionConfig,
   getAttributionObserved,
   postAttributionMap,
+  patchAttributionRule,
   postAttributionIcons,
 };
 

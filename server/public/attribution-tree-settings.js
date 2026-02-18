@@ -74,12 +74,36 @@
       .catch(function () { return { ok: false, status: 0, error: 'Request failed' }; });
   }
 
+  function apiPatchJson(url, payload) {
+    return fetchWithTimeout(url, {
+      method: 'PATCH',
+      credentials: 'same-origin',
+      cache: 'no-store',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload || {}),
+    }, 25000)
+      .then(function (r) {
+        return r.json().catch(function () { return null; }).then(function (body) {
+          if (r && r.ok) return body;
+          return { ok: false, status: r && r.status, error: (body && body.error) || (r && r.status === 403 ? 'Admin only' : 'Request failed') };
+        });
+      })
+      .catch(function () { return { ok: false, status: 0, error: 'Request failed' }; });
+  }
+
   function fetchConfig() {
     return apiGetJson(API + '/api/attribution/config');
   }
 
   function saveIcons(payload) {
     return apiPostJson(API + '/api/attribution/icons', payload);
+  }
+
+  function moveRule(ruleId, destVariantKey) {
+    var id = trimLower(ruleId, 80);
+    var variantKey = normalizeVariantKey(destVariantKey);
+    if (!id || !variantKey) return Promise.resolve({ ok: false, status: 0, error: 'Missing rule id or destination' });
+    return apiPatchJson(API + '/api/attribution/rules/' + encodeURIComponent(id), { variant_key: variantKey });
   }
 
   function titleFromKey(key) {
@@ -246,17 +270,19 @@
     _state.expanded = next;
   }
 
-  function renderRuleRow(rule) {
+  function renderRuleRow(rule, variantKey) {
     var id = (rule && rule.id) ? String(rule.id) : '';
     var label = (rule && rule.label) ? String(rule.label) : '';
     var match = (rule && rule.match_json) ? rule.match_json : (rule && rule.match ? JSON.stringify(rule.match) : '{}');
     var matchStr = typeof match === 'string' ? match : JSON.stringify(match);
     var summary = matchStr.length > 60 ? matchStr.slice(0, 57) + '…' : matchStr;
+    var vk = normalizeVariantKey(variantKey);
     return '<div class="am-tree-row am-tree-rule">' +
       '<span class="am-tree-pad am-tree-pad-3"></span>' +
       '<span class="am-tree-cell"><code class="small">' + escapeHtml(id || '—') + '</code></span>' +
       '<span class="am-tree-cell text-secondary small">' + escapeHtml(label || '—') + '</span>' +
       '<span class="am-tree-cell text-muted small" title="' + escapeHtml(matchStr) + '">' + escapeHtml(summary) + '</span>' +
+      '<span class="am-tree-cell text-end"><button type="button" class="btn btn-outline-secondary btn-sm" data-am-tree-action="move-rule" data-rule-id="' + escapeHtml(id) + '" data-current-variant-key="' + escapeHtml(vk) + '">Move</button></span>' +
       '</div>';
   }
 
@@ -267,7 +293,7 @@
     var ruleCount = Array.isArray(variant.rules) ? variant.rules.length : 0;
     var expandedKey = 'v:' + vk;
     var isOpen = isExpanded(expandedKey);
-    var ruleRows = (variant.rules || []).map(function (r) { return renderRuleRow(r); }).join('');
+    var ruleRows = (variant.rules || []).map(function (r) { return renderRuleRow(r, vk); }).join('');
     return '<div class="am-tree-node am-tree-variant" data-variant-key="' + escapeHtml(vk) + '">' +
       '<div class="am-tree-row am-tree-variant-head">' +
       '<span class="am-tree-pad am-tree-pad-2"></span>' +
@@ -372,6 +398,193 @@
     root.innerHTML = html;
   }
 
+  var _moveModalBackdropEl = null;
+
+  function ensureMoveModal() {
+    var existing = document.getElementById('am-rule-move-modal');
+    if (existing) return existing;
+    var wrap = document.createElement('div');
+    wrap.innerHTML = '' +
+      '<div class="modal fade" id="am-rule-move-modal" tabindex="-1" aria-hidden="true" aria-label="Move attribution rule">' +
+        '<div class="modal-dialog modal-dialog-centered">' +
+          '<div class="modal-content">' +
+            '<div class="modal-header">' +
+              '<h5 class="modal-title">Move rule</h5>' +
+              '<button type="button" class="btn-close" data-am-move-close aria-label="Close"></button>' +
+            '</div>' +
+            '<div class="modal-body">' +
+              '<div class="text-secondary small mb-2">This affects new sessions; historical data requires reprocess/backfill.</div>' +
+              '<div class="mb-2"><div class="small text-secondary">Rule</div><div><code id="am-move-rule-id">—</code></div></div>' +
+              '<div class="mb-3">' +
+                '<label class="form-label" for="am-move-dest-variant">Destination</label>' +
+                '<select class="form-select" id="am-move-dest-variant"></select>' +
+              '</div>' +
+              '<div class="form-hint" id="am-move-msg"></div>' +
+            '</div>' +
+            '<div class="modal-footer">' +
+              '<button type="button" class="btn btn-outline-secondary" data-am-move-close>Cancel</button>' +
+              '<button type="button" class="btn btn-primary" id="am-move-confirm">Move</button>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    var modalEl = wrap.firstChild;
+    document.body.appendChild(modalEl);
+    return modalEl;
+  }
+
+  function getBootstrapModal(modalEl) {
+    try {
+      if (typeof bootstrap === 'undefined' || !bootstrap.Modal) return null;
+      return bootstrap.Modal.getOrCreateInstance(modalEl);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function closeMoveModal(modalEl) {
+    var modal = getBootstrapModal(modalEl);
+    if (modal) {
+      modal.hide();
+      try {
+        if (_moveModalBackdropEl && _moveModalBackdropEl.parentNode) _moveModalBackdropEl.parentNode.removeChild(_moveModalBackdropEl);
+        _moveModalBackdropEl = null;
+      } catch (_) {}
+      return;
+    }
+    modalEl.classList.remove('show');
+    modalEl.style.display = 'none';
+    modalEl.setAttribute('aria-hidden', 'true');
+    try {
+      document.body.classList.remove('modal-open');
+      if (_moveModalBackdropEl && _moveModalBackdropEl.parentNode) _moveModalBackdropEl.parentNode.removeChild(_moveModalBackdropEl);
+      _moveModalBackdropEl = null;
+    } catch (_) {}
+  }
+
+  function openMoveModal(ruleId, currentVariantKey) {
+    var rid = trimLower(ruleId, 80);
+    var curVk = normalizeVariantKey(currentVariantKey);
+    if (!rid) return;
+    var modalEl = ensureMoveModal();
+    if (!modalEl) return;
+
+    modalEl.setAttribute('data-am-move-rule-id', rid);
+    modalEl.setAttribute('data-am-move-current-variant-key', curVk || '');
+
+    var idEl = modalEl.querySelector('#am-move-rule-id');
+    if (idEl) idEl.textContent = rid;
+    var msgEl = modalEl.querySelector('#am-move-msg');
+    if (msgEl) { msgEl.textContent = ''; msgEl.className = 'form-hint'; }
+
+    var selectEl = modalEl.querySelector('#am-move-dest-variant');
+    if (selectEl) {
+      var cfg = _state && _state.config && _state.config.config ? _state.config.config : null;
+      var channels = cfg && Array.isArray(cfg.channels) ? cfg.channels : [];
+      var sources = cfg && Array.isArray(cfg.sources) ? cfg.sources : [];
+      var variants = cfg && Array.isArray(cfg.variants) ? cfg.variants : [];
+
+      var channelLabelByKey = {};
+      channels.forEach(function (c) {
+        var k = trimLower(c && c.channel_key, 32);
+        if (k) channelLabelByKey[k] = (c && c.label) ? String(c.label) : titleFromKey(k);
+      });
+      var sourceLabelByKey = {};
+      sources.forEach(function (s) {
+        var k = trimLower(s && s.source_key, 32);
+        if (k) sourceLabelByKey[k] = (s && s.label) ? String(s.label) : titleFromKey(k);
+      });
+
+      var items = variants
+        .map(function (v) {
+          var vk = normalizeVariantKey(v && (v.variant_key != null ? v.variant_key : v.key));
+          if (!vk) return null;
+          var ch = trimLower(v && v.channel_key, 32) || 'other';
+          var src = trimLower(v && v.source_key, 32) || 'other';
+          var vLabel = (v && v.label) ? String(v.label) : titleFromKey(vk);
+          var chLabel = channelLabelByKey[ch] || titleFromKey(ch);
+          var srcLabel = sourceLabelByKey[src] || titleFromKey(src);
+          return { key: vk, label: chLabel + ' \u2192 ' + srcLabel + ' \u2192 ' + vLabel + ' (' + vk + ')' };
+        })
+        .filter(Boolean)
+        .sort(function (a, b) { return String(a.label).localeCompare(String(b.label)); });
+
+      selectEl.innerHTML = items.map(function (it) {
+        return '<option value="' + escapeHtml(it.key) + '">' + escapeHtml(it.label) + '</option>';
+      }).join('');
+      try { selectEl.value = curVk || (items[0] ? items[0].key : ''); } catch (_) {}
+    }
+
+    if (modalEl.getAttribute('data-am-move-wired') !== '1') {
+      modalEl.setAttribute('data-am-move-wired', '1');
+      modalEl.addEventListener('click', function (e) {
+        var t = e && e.target ? e.target : null;
+        var closeBtn = t && t.closest ? t.closest('[data-am-move-close]') : null;
+        if (closeBtn) {
+          e.preventDefault();
+          closeMoveModal(modalEl);
+        }
+      });
+
+      var confirmBtn = modalEl.querySelector('#am-move-confirm');
+      if (confirmBtn) {
+        confirmBtn.addEventListener('click', function () {
+          var rid = trimLower(modalEl.getAttribute('data-am-move-rule-id') || '', 80);
+          var curVk = normalizeVariantKey(modalEl.getAttribute('data-am-move-current-variant-key') || '');
+          var sel = modalEl.querySelector('#am-move-dest-variant');
+          var dest = normalizeVariantKey(sel ? sel.value : '');
+          var msgEl = modalEl.querySelector('#am-move-msg');
+          function setMsg(text, cls) {
+            if (!msgEl) return;
+            msgEl.textContent = text || '';
+            msgEl.className = 'form-hint ' + (cls || '');
+          }
+          if (!rid || !dest) {
+            setMsg('Choose a destination.', 'text-danger');
+            return;
+          }
+          if (dest === curVk) {
+            closeMoveModal(modalEl);
+            return;
+          }
+          try { confirmBtn.disabled = true; } catch (_) {}
+          setMsg('Saving\u2026', 'text-secondary');
+          moveRule(rid, dest).then(function (resp) {
+            if (resp && resp.ok) {
+              setMsg('Moved.', 'text-success');
+              setTimeout(function () {
+                closeMoveModal(modalEl);
+                _state.config = null;
+                loadAndRender();
+              }, 250);
+            } else {
+              setMsg((resp && resp.error) ? String(resp.error) : 'Move failed', 'text-danger');
+            }
+          }).finally(function () {
+            try { confirmBtn.disabled = false; } catch (_) {}
+          });
+        });
+      }
+    }
+
+    var modal = getBootstrapModal(modalEl);
+    if (modal) {
+      modal.show();
+      return;
+    }
+    modalEl.style.display = 'block';
+    modalEl.classList.add('show');
+    modalEl.setAttribute('aria-hidden', 'false');
+    try { document.body.classList.add('modal-open'); } catch (_) {}
+    if (!_moveModalBackdropEl || !_moveModalBackdropEl.parentNode) {
+      _moveModalBackdropEl = document.createElement('div');
+      _moveModalBackdropEl.className = 'modal-backdrop fade show';
+      _moveModalBackdropEl.setAttribute('aria-hidden', 'true');
+      _moveModalBackdropEl.addEventListener('click', function () { closeMoveModal(modalEl); });
+      document.body.appendChild(_moveModalBackdropEl);
+    }
+  }
+
   function wireTree(root) {
     if (!root || root.getAttribute('data-am-tree-wired') === '1') return;
     root.setAttribute('data-am-tree-wired', '1');
@@ -382,6 +595,12 @@
       if (treeAction) {
         e.preventDefault();
         var action = String(treeAction.getAttribute('data-am-tree-action') || '').trim().toLowerCase();
+        if (action === 'move-rule') {
+          var rid = treeAction.getAttribute('data-rule-id') || '';
+          var curVk = treeAction.getAttribute('data-current-variant-key') || '';
+          openMoveModal(rid, curVk);
+          return;
+        }
         if (action === 'expand-all') {
           setAllExpanded(true);
           renderTree(root, _state.treeModel);
