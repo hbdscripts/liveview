@@ -3354,8 +3354,9 @@ html[data-bs-theme="dark"] .report-build-wrap {
   align-items: center;
 }
 .kexo-footer-logo img {
-  width: 25px;
+  width: 65px;
   height: auto;
+  margin: 5px 0 10px;
 }
 /* Footer: kexo-footer-action for custom styling (no btn-icon hover) */
 .kexo-footer .kexo-footer-action {
@@ -3706,10 +3707,10 @@ html[data-bs-theme="dark"] .report-build-wrap {
     padding: var(--kexo-header-strip-padding, 0 .5rem);
   }
   .kexo-desktop-brand-link {
-    padding: .25rem;
+    padding: 0;
   }
   .kexo-desktop-brand-link img {
-    max-height: 32px;
+    max-height: 34px;
     width: auto;
   }
   .kexo-top-strip-online {
@@ -3948,8 +3949,9 @@ html[data-bs-theme="dark"] .report-build-wrap {
 .kexo-desktop-top-strip {
   position: relative;
   width: 100%;
-  min-height: 2.5rem;
-  background: color-mix(in srgb, black calc(var(--kexo-strip-opacity-filter, 0) * 100%), var(--kexo-header-top-bg, #fff));
+    min-height: 3.5rem;
+    padding-top: 6px;
+    background: color-mix(in srgb, black calc(var(--kexo-strip-opacity-filter, 0) * 100%), var(--kexo-header-top-bg, #fff));
   color: var(--kexo-header-top-text-color, #1f2937);
 }
 .kexo-desktop-top-strip-container {
@@ -3992,7 +3994,7 @@ html[data-bs-theme="dark"] .report-build-wrap {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: .35rem .5rem;
+    padding: 0;
   color: inherit;
   text-decoration: none;
 }
@@ -4003,8 +4005,9 @@ html[data-bs-theme="dark"] .report-build-wrap {
 }
 .kexo-desktop-brand-link img {
   display: block;
-  height: 36px;
-  padding: 0 0 5px;
+    height: 34px;
+    margin: 0 0 7px 0;
+    padding: 0;
 }
 .kexo-top-strip-settings-toggle {
   display: inline-flex;
@@ -4623,6 +4626,7 @@ body[data-page="snapshot"] #kexo-date-display {
   .page-header .row.align-items-center {
     margin: 0 !important;
     display: block !important;
+    position: relative;
   }
   .page-header .page-title {
     text-align: left;
@@ -4634,15 +4638,12 @@ body[data-page="snapshot"] #kexo-date-display {
     display: none !important;
   }
   .page-header .kexo-page-header-date-col {
-    display: flex;
-    justify-content: flex-end;
-    width: 100%;
-    margin-top: 6px;
+    display: block;
+    top: 0;
+    position: absolute;
+    right: 20px;
   }
   .page-header .kexo-page-header-date-col .kexo-date-btn {
-    position: static;
-    top: auto;
-    right: auto;
     font-size: 15px !important;
   }
 
