@@ -5,6 +5,45 @@
 (function () {
   'use strict';
 
+  function createDedupeCache(maxEntries, defaultTtlMs) {
+    var max = Number(maxEntries);
+    if (!Number.isFinite(max) || max < 10) max = 200;
+    var ttl = Number(defaultTtlMs);
+    if (!Number.isFinite(ttl) || ttl < 1000) ttl = 15000;
+    var map = Object.create(null);
+    var keys = [];
+    function cleanup(now) {
+      if (!keys.length) return;
+      var cutoff = now - ttl;
+      if (cutoff <= 0) return;
+      for (var i = 0; i < keys.length; i++) {
+        var k = keys[i];
+        if (!k) continue;
+        var t = map[k] || 0;
+        if (t && t >= cutoff) break;
+        delete map[k];
+        keys[i] = null;
+      }
+      if (keys.length > max * 2) keys = keys.filter(Boolean);
+    }
+    return function dedupe(keyRaw, ttlOverride) {
+      var key = keyRaw == null ? '' : String(keyRaw);
+      key = key.trim().slice(0, 600);
+      if (!key) return false;
+      var now = Date.now();
+      var useTtl = Number(ttlOverride);
+      if (!Number.isFinite(useTtl) || useTtl < 500) useTtl = ttl;
+      var last = map[key] || 0;
+      if (last && (now - last) < useTtl) return true;
+      map[key] = now;
+      keys.push(key);
+      if (keys.length > max) cleanup(now);
+      return false;
+    };
+  }
+
+  var kexoDedupe = createDedupeCache(250, 15000);
+
   function hasSentry() {
     try { return typeof window !== 'undefined' && window.Sentry && typeof window.Sentry.captureException === 'function'; } catch (_) { return false; }
   }
@@ -136,6 +175,80 @@
   window.kexoCaptureMessage = kexoCaptureMessage;
   window.kexoSetContext = kexoSetContext;
   window.kexoFetch = kexoFetch;
+
+  (function installGlobalErrorHandlers() {
+    if (typeof window === 'undefined') return;
+    if (window.__kexoSentryGlobalHandlersApplied) return;
+
+    function shouldSkipGlobalError(message) {
+      var msg = message == null ? '' : String(message);
+      if (!msg) return false;
+      if (/ResizeObserver loop limit exceeded/i.test(msg)) return true;
+      if (/ResizeObserver loop completed with undelivered notifications/i.test(msg)) return true;
+      return false;
+    }
+
+    function onError(evt) {
+      try {
+        if (!evt) return;
+        var err = evt.error;
+        var msg = (evt.message != null ? String(evt.message) : '') || (err && err.message ? String(err.message) : '') || 'window.error';
+        if (shouldSkipGlobalError(msg)) return;
+        var filename = evt.filename != null ? String(evt.filename) : '';
+        var lineno = evt.lineno != null ? Number(evt.lineno) : 0;
+        var colno = evt.colno != null ? Number(evt.colno) : 0;
+        var key = 'winerr:' + msg + '|' + filename + ':' + lineno + ':' + colno;
+        if (kexoDedupe(key, 20000)) return;
+        kexoBreadcrumb('window', 'error', { message: msg, filename: filename, lineno: lineno, colno: colno });
+        if (err && typeof err === 'object') {
+          kexoCaptureError(err, { context: 'window.error', message: msg, filename: filename, lineno: lineno, colno: colno });
+        } else {
+          kexoCaptureMessage(msg, { context: 'window.error', filename: filename, lineno: lineno, colno: colno }, 'error');
+        }
+      } catch (_) {}
+    }
+
+    function onUnhandledRejection(evt) {
+      try {
+        if (!evt) return;
+        var reason = evt.reason;
+        var msg = '';
+        try { msg = reason && reason.message ? String(reason.message) : String(reason || 'unhandledrejection'); } catch (_) { msg = 'unhandledrejection'; }
+        if (shouldSkipGlobalError(msg)) return;
+        var key = 'unhandledrejection:' + msg;
+        if (kexoDedupe(key, 20000)) return;
+        kexoBreadcrumb('window', 'unhandledrejection', { message: String(msg).slice(0, 400) });
+        var err = null;
+        if (reason && typeof reason === 'object' && reason.name && reason.message) err = reason;
+        else err = new Error(String(msg).slice(0, 400));
+        kexoCaptureError(err, { context: 'window.unhandledrejection', message: String(msg).slice(0, 400) });
+      } catch (_) {}
+    }
+
+    try { window.addEventListener('error', onError, true); } catch (_) {}
+    try { window.addEventListener('unhandledrejection', onUnhandledRejection); } catch (_) {}
+    window.__kexoSentryGlobalHandlersApplied = true;
+  })();
+
+  (function installDebugHook() {
+    if (typeof window === 'undefined') return;
+    function debugEnabled() {
+      try { if (window.location && window.location.hostname === 'localhost') return true; } catch (_) {}
+      try { if (window.location && String(window.location.search || '').indexOf('debugSentry=1') >= 0) return true; } catch (_) {}
+      try { if (typeof localStorage !== 'undefined' && localStorage && localStorage.getItem('kexo:debug-sentry') === '1') return true; } catch (_) {}
+      return false;
+    }
+    window.__kexoDebugSentry = function () {
+      if (!debugEnabled()) return false;
+      try {
+        var err = new Error('kexo_debug_sentry_frontend');
+        kexoCaptureError(err, { context: 'debug.sentry', page: (document.body && document.body.getAttribute('data-page')) || '' });
+        return true;
+      } catch (_) {
+        return false;
+      }
+    };
+  })();
 
   (function patchConsoleErrorForChartFailures() {
     if (typeof window === 'undefined') return;

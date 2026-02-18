@@ -3,7 +3,7 @@
  * IMPORTANT: instrument.js must be required first so Sentry initializes before anything else.
  */
 
-require('./instrument.js');
+const sentry = require('./instrument.js');
 
 const Sentry = require('@sentry/node');
 const config = require('./config');
@@ -79,6 +79,11 @@ const PORT = config.port;
 function warnBackgroundFailure(tag, err) {
   try {
     console.warn(tag, err && err.message ? String(err.message).slice(0, 220) : err);
+  } catch (_) {}
+  try {
+    if (sentry && typeof sentry.captureException === 'function') {
+      sentry.captureException(err, { context: 'background', tag: String(tag || '').slice(0, 120) }, 'warning');
+    }
   } catch (_) {}
 }
 
@@ -762,7 +767,7 @@ async function migrateAndStart() {
     if (r && r.skipped) console.log('[ads.migrate] skipped:', r.reason);
     else console.log('[ads.migrate] applied:', r && r.applied != null ? r.applied : 0);
   } catch (e) {
-    console.error('[ads.migrate] failed (continuing):', e);
+    warnBackgroundFailure('[ads.migrate] failed (continuing):', e);
   }
 
   if (preBackup) {
@@ -823,7 +828,7 @@ async function migrateAndStart() {
           const scopeKey = salesTruth.scopeForRangeKey(rangeKey, 'range');
           await salesTruth.ensureReconciled(shop, bounds.start, bounds.end, scopeKey);
         } catch (err) {
-          try { console.warn('[truth-sync] warmup failed:', err && err.message ? String(err.message).slice(0, 220) : err); } catch (_) {}
+          warnBackgroundFailure('[truth-sync] warmup failed:', err);
         } finally {
           inFlight = false;
         }
@@ -871,12 +876,17 @@ async function migrateAndStart() {
 
 migrateAndStart().catch(err => {
   console.error('Migration failed:', err);
+  try {
+    if (sentry && typeof sentry.captureException === 'function') {
+      sentry.captureException(err, { context: 'startup.migrateAndStart' }, 'fatal');
+    }
+  } catch (_) {}
   process.exit(1);
 });
 
 // TTL cleanup every 2 minutes
 setInterval(() => {
-  cleanup.run().catch(err => console.error('Cleanup error:', err));
+  cleanup.run().catch(err => warnBackgroundFailure('[cleanup] run failed:', err));
 }, 2 * 60 * 1000);
 
 // Ads spend sync runs in the background so the Ads table can refresh without wiping UI.
@@ -919,7 +929,7 @@ setInterval(() => {
       if (spend && spend.ok) console.log('[ads-sync] spend:', spend.upserts, 'upserts', spend.apiVersion ? '(' + spend.apiVersion + ')' : '');
       else console.warn('[ads-sync] spend failed:', spend && spend.error ? spend.error : 'failed');
     } catch (err) {
-      console.error('[ads-sync] spend error:', err && err.message ? err.message : err);
+      warnBackgroundFailure('[ads-sync] spend error:', err);
     } finally {
       spendInFlight = false;
     }
@@ -936,7 +946,7 @@ setInterval(() => {
       if (out && out.ok) console.log('[ads-sync] geo:', out.upserts || 0, 'upserts', out.apiVersion ? '(' + out.apiVersion + ')' : '');
       else console.warn('[ads-sync] geo failed:', out && out.error ? out.error : 'failed');
     } catch (err) {
-      console.error('[ads-sync] geo error:', err && err.message ? err.message : err);
+      warnBackgroundFailure('[ads-sync] geo error:', err);
     } finally {
       geoInFlight = false;
     }
@@ -953,7 +963,7 @@ setInterval(() => {
       if (out && out.ok) console.log('[ads-sync] device:', out.upserts || 0, 'upserts', out.apiVersion ? '(' + out.apiVersion + ')' : '');
       else console.warn('[ads-sync] device failed:', out && out.error ? out.error : 'failed');
     } catch (err) {
-      console.error('[ads-sync] device error:', err && err.message ? err.message : err);
+      warnBackgroundFailure('[ads-sync] device error:', err);
     } finally {
       deviceInFlight = false;
     }
@@ -970,7 +980,7 @@ setInterval(() => {
       if (out && out.ok) console.log('[ads-sync] gclid backfill:', out.updated || 0, 'updated');
       else console.warn('[ads-sync] gclid backfill failed:', out && out.error ? out.error : 'failed');
     } catch (err) {
-      console.error('[ads-sync] gclid backfill error:', err && err.message ? err.message : err);
+      warnBackgroundFailure('[ads-sync] gclid backfill error:', err);
     } finally {
       gclidInFlight = false;
     }
@@ -999,7 +1009,7 @@ setInterval(() => {
         console.warn('[ads-sync] attribution failed:', out && out.error ? out.error : 'failed');
       }
     } catch (err) {
-      console.error('[ads-sync] attribution error:', err && err.message ? err.message : err);
+      warnBackgroundFailure('[ads-sync] attribution error:', err);
     } finally {
       attrInFlight = false;
     }
@@ -1089,7 +1099,7 @@ setInterval(() => {
       const { runPostbackCycle } = require('./ads/googleAdsPostback');
       await runPostbackCycle(shop, { postbackEnabled: true });
     } catch (err) {
-      try { console.warn('[postback] run failed:', err && err.message ? String(err.message).slice(0, 220) : err); } catch (_) {}
+      warnBackgroundFailure('[postback] run failed:', err);
     } finally {
       postbackInFlight = false;
     }

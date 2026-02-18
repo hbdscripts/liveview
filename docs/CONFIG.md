@@ -64,3 +64,10 @@ To block known bots at the edge so they never reach the app:
 ## Sentry
 
 Set `SENTRY_DSN` in Railway or `.env` from Sentry → Settings → Client Keys (DSN). Leave empty to disable.
+
+### Verifying capture (safe + controlled)
+
+- **Backend**: when `SENTRY_DSN` is set, open `GET /debug-sentry` to throw a test error (server-side) and confirm it appears in Sentry.
+- **Frontend**:
+  - **Local dev**: run `window.__kexoDebugSentry()` in the browser console.
+  - **Production/staging**: either add `?debugSentry=1` to the URL then run `window.__kexoDebugSentry()`, or set `localStorage.setItem('kexo:debug-sentry','1')` and refresh.

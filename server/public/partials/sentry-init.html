@@ -14,7 +14,39 @@
         /Failed to fetch/i,
         /NetworkError when attempting to fetch resource/i,
         /signal is aborted without reason/i
-      ]
+      ],
+      beforeSend: function (event, hint) {
+        try {
+          var ex = event && event.exception && event.exception.values && event.exception.values[0] ? event.exception.values[0] : null;
+          var msg = '';
+          if (ex && (ex.type || ex.value)) msg = String(ex.type || '') + ':' + String(ex.value || '');
+          else if (event && event.message) msg = String(event.message);
+          else msg = 'event';
+          msg = msg.slice(0, 260);
+          if (!msg) return event;
+          var cache = window.__kexoSentryDedupeV1;
+          if (!cache || typeof cache !== 'object') {
+            cache = { map: Object.create(null), keys: [] };
+            window.__kexoSentryDedupeV1 = cache;
+          }
+          var now = Date.now();
+          var last = cache.map[msg] || 0;
+          if (last && (now - last) < 15000) return null;
+          cache.map[msg] = now;
+          cache.keys.push(msg);
+          if (cache.keys.length > 300) {
+            var cutoff = now - 15000;
+            cache.keys = cache.keys.filter(function (k) {
+              if (!k) return false;
+              var t = cache.map[k] || 0;
+              if (t && t >= cutoff) return true;
+              delete cache.map[k];
+              return false;
+            });
+          }
+        } catch (_) {}
+        return event;
+      }
     });
   }
 })();
