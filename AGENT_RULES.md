@@ -1,6 +1,6 @@
 # Kexo agent rules
 
-- **Commit + push** after every logical change group.
+- **Commit often. Push safely.** Commit after every logical change group, but **push to a branch** by default (not `main`).
 - **Deploy means push**: if the user asks to deploy, do not stop at committing—**push to `origin`** (normally `main`). Railway auto-deploys from git; **push to main is sufficient** (do **not** run `railway up` manually).
 - **Push proof:** After each push run and paste output of:
   - `git rev-parse HEAD`
@@ -13,3 +13,21 @@
 - No dead code; remove unused routes/files when replacing systems.
 - No console spam in production (keep only logs that are clearly needed).
 - Always list files to delete before deleting.
+
+---
+
+## Multi-agent / parallel work safety (required)
+
+When multiple agents (or humans) may touch the repo at the same time, follow this to avoid clobbering each other.
+
+- **Branch-by-default**: create a topic branch for each task (e.g. `agent/2026-02-18-settings-mobile-menu`).
+  - Only land changes on `main` when the user explicitly asks to **deploy**.
+- **Sync before work and before commit**:
+  - Run `git fetch origin` at the start of the task.
+  - If `origin/main` moved since you started, rebase your branch on top (and re-run required builds like `npm run build:app`).
+- **Never discard unknown edits**:
+  - Do not run `git restore .`, `git checkout -- .`, `git reset --hard`, or similar “wipe” commands unless you are **certain** you are discarding only your own local changes.
+  - If the working tree changes unexpectedly: stop, inspect `git status` + `git diff`, and prefer `git stash -u` to preserve work while investigating.
+- **Handover discipline**:
+  - If you touched core paths (routes/auth/dashboard UX/ingest/schema/deploy), update `HANDOVER.md` in the same commit.
+  - When pausing, leave a short note in `HANDOVER.md` describing the branch, what changed, and next steps.

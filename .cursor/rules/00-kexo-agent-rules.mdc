@@ -8,6 +8,13 @@ alwaysApply: true
 
 See **AGENT_RULES.md** at repo root for full rules.
 
+## Multi-agent safety (must follow)
+
+- **Branch-by-default**: work on a topic branch; only push to `main` when the user explicitly requests deploy.
+- **Never discard unknown changes**: do not use `git restore .`, `git checkout -- .`, or `git reset --hard` unless you are 100% sure you’re discarding only your own work.
+- **Sync early**: `git fetch origin` before starting and before committing if other commits may have landed.
+- **If anything changes unexpectedly**: stop, inspect (`git status`, `git diff`), and prefer `git stash -u` while investigating.
+
 **Push proof (after every push):** run and paste:
 
 ```
