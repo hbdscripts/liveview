@@ -129,6 +129,19 @@
     if (ok === false) el.classList.add('text-danger');
   }
 
+  function syncExcludedHints() {
+    var shippingToggle = document.getElementById('cost-expenses-shipping-enabled');
+    var rulesToggle = document.getElementById('cost-expenses-rules-enabled');
+    var shippingHint = document.getElementById('cost-expenses-shipping-excluded-hint');
+    var rulesHint = document.getElementById('cost-expenses-rules-excluded-hint');
+
+    var shippingIncluded = !!(shippingToggle && shippingToggle.checked === true);
+    var rulesIncluded = !!(rulesToggle && rulesToggle.checked === true);
+
+    if (shippingHint) shippingHint.classList.toggle('is-hidden', !shippingToggle || shippingIncluded);
+    if (rulesHint) rulesHint.classList.toggle('is-hidden', !rulesToggle || rulesIncluded);
+  }
+
   function renderShippingOverrides() {
     var wrap = document.getElementById('cost-expenses-shipping-overrides-wrap');
     var dupWarn = document.getElementById('cost-expenses-shipping-dup-warn');
@@ -244,16 +257,17 @@
     var googleAds = document.getElementById('cost-expenses-google-ads');
     var paymentFees = document.getElementById('cost-expenses-payment-fees');
     var appBills = document.getElementById('cost-expenses-app-bills');
-    var profitEnabled = document.getElementById('cost-expenses-profit-enabled');
+    var rulesEnabledEl = document.getElementById('cost-expenses-rules-enabled');
     if (googleAds) googleAds.checked = !!(cfg.integrations && cfg.integrations.includeGoogleAdsSpend);
     if (paymentFees) paymentFees.checked = !!(cfg.integrations && cfg.integrations.includePaymentFees);
     if (appBills) appBills.checked = !!(cfg.integrations && cfg.integrations.includeShopifyAppBills);
-    if (profitEnabled) profitEnabled.checked = cfg.enabled === true;
+    if (rulesEnabledEl) rulesEnabledEl.checked = cfg.enabled === true;
 
     var worldwideEl = document.getElementById('cost-expenses-shipping-worldwide');
     var shippingEnabledEl = document.getElementById('cost-expenses-shipping-enabled');
     if (worldwideEl) worldwideEl.value = (cfg.shipping && cfg.shipping.worldwideDefaultGbp != null) ? cfg.shipping.worldwideDefaultGbp : 0;
     if (shippingEnabledEl) shippingEnabledEl.checked = !!(cfg.shipping && cfg.shipping.enabled);
+    syncExcludedHints();
   }
 
   function setActiveSubTab(sub, opts) {
@@ -372,7 +386,7 @@
         state.config.integrations.includeGoogleAdsSpend = document.getElementById('cost-expenses-google-ads').checked;
         state.config.integrations.includePaymentFees = document.getElementById('cost-expenses-payment-fees').checked;
         state.config.integrations.includeShopifyAppBills = document.getElementById('cost-expenses-app-bills').checked;
-        state.config.enabled = document.getElementById('cost-expenses-profit-enabled').checked;
+        state.config.enabled = document.getElementById('cost-expenses-rules-enabled').checked;
         state.config.shipping = readShippingFromUi();
         setMsg('Saving...', true);
         fetchJson(API + '/api/settings/profit-rules', {
@@ -384,6 +398,7 @@
           setMsg('Saved.', true);
           renderShippingOverrides();
           renderRulesTable();
+          syncExcludedHints();
         }).catch(function () {
           setMsg('Failed to save.', false);
         });
@@ -406,6 +421,9 @@
 
     root.addEventListener('change', function (e) {
       var target = e.target;
+      if (target && (target.id === 'cost-expenses-shipping-enabled' || target.id === 'cost-expenses-rules-enabled')) {
+        syncExcludedHints();
+      }
       if (target && (target.getAttribute('data-override-priority') !== null || target.getAttribute('data-override-enabled') !== null || target.getAttribute('data-override-price') !== null || target.getAttribute('data-override-countries') !== null)) {
         state.config = state.config || defaultConfig();
         state.config.shipping = readShippingFromUi();
