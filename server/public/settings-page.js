@@ -43,24 +43,17 @@
       var rawKexo = String(params.get('kexoTab') || params.get('kexo') || '').trim().toLowerCase();
       if (!rawKexo) {
         var legacyTab = String(params.get('tab') || '').trim().toLowerCase();
-        if (legacyTab === 'theme') rawKexo = 'ui';
+        if (legacyTab === 'theme') rawKexo = 'theme-display';
         else if (legacyTab === 'general' || legacyTab === 'assets') rawKexo = 'general';
       }
-      var allowedKexo = {
-        general: true,
-        ui: true, // legacy
-        icons: true,
-        header: true,
-        color: true,
-        fonts: true,
-        notifications: true,
-      };
+      var kexoToNew = { ui: 'brand-appearance', icons: 'icons-assets', header: 'theme-display', color: 'theme-display', fonts: 'theme-display', notifications: 'theme-display' };
+      if (kexoToNew[rawKexo]) rawKexo = kexoToNew[rawKexo];
+      var allowedKexo = { general: true, 'brand-appearance': true, 'icons-assets': true, 'theme-display': true };
       if (allowedKexo[rawKexo] && keep.get('tab') === 'kexo') {
-        // Keep legacy 'ui' for backwards links; it maps to Icons at runtime.
         keep.set('kexoTab', rawKexo);
       }
       var rawLayout = String(params.get('layoutTab') || params.get('layout') || '').trim().toLowerCase();
-      if ((rawLayout === 'tables' || rawLayout === 'charts' || rawLayout === 'kpis') && keep.get('tab') === 'layout') {
+      if ((rawLayout === 'tables' || rawLayout === 'charts' || rawLayout === 'kpis' || rawLayout === 'date-ranges') && keep.get('tab') === 'layout') {
         keep.set('layoutTab', rawLayout);
       }
       var rawIntegrations = String(params.get('integrationsTab') || '').trim().toLowerCase();
@@ -153,7 +146,7 @@
       var t = m[1].toLowerCase().replace(/\s+/g, '-');
       if (t === 'sources') t = 'attribution';
       if (t === 'general' || t === 'assets' || t === 'theme') {
-        initialKexoSubTab = (t === 'theme') ? 'icons' : 'general';
+        initialKexoSubTab = (t === 'theme') ? 'theme-display' : 'general';
         return 'kexo';
       }
       if (t === 'charts' || t === 'kpis') {
@@ -164,7 +157,9 @@
         var km = /[?&](?:kexoTab|kexo)=([^&]+)/.exec(window.location.search || '');
         if (km && km[1]) {
           var kk = km[1].toLowerCase().replace(/\s+/g, '-');
-          if (kk === 'general' || kk === 'ui' || kk === 'icons' || kk === 'header' || kk === 'color' || kk === 'fonts' || kk === 'notifications') {
+          var kexoMap = { ui: 'brand-appearance', icons: 'icons-assets', header: 'theme-display', color: 'theme-display', fonts: 'theme-display', notifications: 'theme-display' };
+          if (kexoMap[kk]) kk = kexoMap[kk];
+          if (kk === 'general' || kk === 'brand-appearance' || kk === 'icons-assets' || kk === 'theme-display') {
             initialKexoSubTab = kk;
           }
         }
@@ -173,7 +168,7 @@
         var lm = /[?&](?:layoutTab|layout)=([^&]+)/.exec(window.location.search || '');
         if (lm && lm[1]) {
           var lk = lm[1].toLowerCase().replace(/\s+/g, '-');
-          if (lk === 'tables' || lk === 'charts' || lk === 'kpis') initialLayoutSubTab = lk;
+          if (lk === 'tables' || lk === 'charts' || lk === 'kpis' || lk === 'date-ranges') initialLayoutSubTab = lk;
         }
       }
       if (t === 'integrations') {
@@ -217,7 +212,7 @@
     var hash = (window.location.hash || '').replace(/^#/, '').toLowerCase();
     if (hash === 'sources') return 'attribution';
     if (hash === 'general' || hash === 'assets' || hash === 'theme') {
-      initialKexoSubTab = hash === 'theme' ? 'icons' : 'general';
+      initialKexoSubTab = hash === 'theme' ? 'theme-display' : 'general';
       return 'kexo';
     }
     if (hash === 'charts' || hash === 'kpis') {
@@ -323,7 +318,9 @@
   }
 
   function activateTab(key) {
-    document.querySelectorAll('[data-settings-tab]').forEach(function (el) {
+    var tablist = document.getElementById('settings-category-tablist');
+    if (!tablist) return;
+    tablist.querySelectorAll('a[data-settings-tab]').forEach(function (el) {
       var tabKey = el.getAttribute('data-settings-tab');
       var isCategoryMatch = (tabKey === key);
       var isActive;
@@ -2695,7 +2692,7 @@
       tabAttr: 'data-settings-kexo-tab',
       panelIdPrefix: 'settings-kexo-panel-',
       keys: ['general', 'brand-appearance', 'icons-assets', 'theme-display'],
-      tabToPanel: { general: 'general', 'brand-appearance': 'brand-appearance', 'icons-assets': 'icons-assets', 'theme-display': 'brand-appearance' },
+      tabToPanel: { general: 'general', 'brand-appearance': 'brand-appearance', 'icons-assets': 'brand-appearance', 'theme-display': 'brand-appearance' },
       initialKey: initialKey || activeKexoSubTab || 'general',
       onActivate: function (key) {
         activeKexoSubTab = key;
@@ -4740,47 +4737,50 @@
     wireAdminSubTabs(initialAdminSubTab);
     activateTab(initialTab);
 
-    document.querySelectorAll('[data-settings-tab]').forEach(function (el) {
-      el.addEventListener('click', function (e) {
-        e.preventDefault();
-        var key = el.getAttribute('data-settings-tab');
-        if (!key) return;
-        if (el.classList.contains('settings-nav-child')) {
-          var subAttr = (key === 'kexo' && 'data-settings-kexo-tab') || (key === 'layout' && 'data-settings-layout-tab') || (key === 'integrations' && 'data-settings-integrations-tab') || (key === 'attribution' && 'data-settings-attribution-tab') || (key === 'cost-expenses' && 'data-settings-cost-expenses-tab') || (key === 'admin' && 'data-settings-admin-tab');
-          var subKey = subAttr ? el.getAttribute(subAttr) : null;
-          if (subKey) {
-            if (key === 'kexo') initialKexoSubTab = subKey;
-            else if (key === 'layout') initialLayoutSubTab = subKey;
-            else if (key === 'integrations') initialIntegrationsSubTab = subKey;
-            else if (key === 'attribution') initialAttributionSubTab = subKey;
-            else if (key === 'cost-expenses') initialCostExpensesSubTab = subKey;
-            else if (key === 'admin') initialAdminSubTab = subKey;
-          }
-          if (el.getAttribute('href')) {
-            try { history.replaceState(null, '', el.getAttribute('href')); } catch (_) {}
-          }
-        }
-        activateTab(key);
-        if (el.classList.contains('settings-nav-child') && key === 'kexo' && initialKexoSubTab) wireKexoSubTabs(initialKexoSubTab);
-        else if (el.classList.contains('settings-nav-child') && key === 'layout' && initialLayoutSubTab) wireLayoutSubTabs(initialLayoutSubTab);
-        else if (el.classList.contains('settings-nav-child') && key === 'integrations') wireIntegrationsSubTabs();
-        else if (el.classList.contains('settings-nav-child') && key === 'attribution' && initialAttributionSubTab) wireAttributionSubTabs(initialAttributionSubTab);
-        else if (el.classList.contains('settings-nav-child') && key === 'cost-expenses' && initialCostExpensesSubTab) {
-          var costExpensesSub = initialCostExpensesSubTab;
-          document.querySelectorAll('[data-settings-cost-expenses-tab]').forEach(function (btn) {
-            var sub = String(btn.getAttribute('data-settings-cost-expenses-tab') || '').trim().toLowerCase();
-            var isActive = (sub === costExpensesSub);
-            btn.classList.toggle('active', isActive);
-            btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
-            var panelId = btn.getAttribute('aria-controls');
-            if (panelId) {
-              var panel = document.getElementById(panelId);
-              if (panel) panel.classList.toggle('active', isActive);
+    var tablist = document.getElementById('settings-category-tablist');
+    if (tablist) {
+      tablist.querySelectorAll('a[data-settings-tab]').forEach(function (el) {
+        el.addEventListener('click', function (e) {
+          e.preventDefault();
+          var key = el.getAttribute('data-settings-tab');
+          if (!key) return;
+          if (el.classList.contains('settings-nav-child')) {
+            var subAttr = (key === 'kexo' && 'data-settings-kexo-tab') || (key === 'layout' && 'data-settings-layout-tab') || (key === 'integrations' && 'data-settings-integrations-tab') || (key === 'attribution' && 'data-settings-attribution-tab') || (key === 'cost-expenses' && 'data-settings-cost-expenses-tab') || (key === 'admin' && 'data-settings-admin-tab');
+            var subKey = subAttr ? el.getAttribute(subAttr) : null;
+            if (subKey) {
+              if (key === 'kexo') { initialKexoSubTab = subKey; activeKexoSubTab = subKey; }
+              else if (key === 'layout') { initialLayoutSubTab = subKey; activeLayoutSubTab = subKey; }
+              else if (key === 'integrations') initialIntegrationsSubTab = subKey;
+              else if (key === 'attribution') initialAttributionSubTab = subKey;
+              else if (key === 'cost-expenses') initialCostExpensesSubTab = subKey;
+              else if (key === 'admin') initialAdminSubTab = subKey;
             }
-          });
-        } else if (el.classList.contains('settings-nav-child') && key === 'admin' && initialAdminSubTab) wireAdminSubTabs(initialAdminSubTab);
+            if (el.getAttribute('href')) {
+              try { history.replaceState(null, '', el.getAttribute('href')); } catch (_) {}
+            }
+          }
+          activateTab(key);
+          if (el.classList.contains('settings-nav-child') && key === 'kexo' && initialKexoSubTab) wireKexoSubTabs(initialKexoSubTab);
+          else if (el.classList.contains('settings-nav-child') && key === 'layout' && initialLayoutSubTab) wireLayoutSubTabs(initialLayoutSubTab);
+          else if (el.classList.contains('settings-nav-child') && key === 'integrations') wireIntegrationsSubTabs();
+          else if (el.classList.contains('settings-nav-child') && key === 'attribution' && initialAttributionSubTab) wireAttributionSubTabs(initialAttributionSubTab);
+          else if (el.classList.contains('settings-nav-child') && key === 'cost-expenses' && initialCostExpensesSubTab) {
+            var costExpensesSub = initialCostExpensesSubTab;
+            document.querySelectorAll('[data-settings-cost-expenses-tab]').forEach(function (btn) {
+              var sub = String(btn.getAttribute('data-settings-cost-expenses-tab') || '').trim().toLowerCase();
+              var isActive = (sub === costExpensesSub);
+              btn.classList.toggle('active', isActive);
+              btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+              var panelId = btn.getAttribute('aria-controls');
+              if (panelId) {
+                var panel = document.getElementById(panelId);
+                if (panel) panel.classList.toggle('active', isActive);
+              }
+            });
+          } else if (el.classList.contains('settings-nav-child') && key === 'admin' && initialAdminSubTab) wireAdminSubTabs(initialAdminSubTab);
+        });
       });
-    });
+    }
 
     window.addEventListener('popstate', function () {
       activateTab(getTabFromQuery() || getTabFromHash() || 'kexo');

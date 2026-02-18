@@ -105,7 +105,7 @@
     <!-- Left nav: category tablist with children -->
     <div class="col-lg-3 mb-4 mb-lg-0" role="presentation">
       <div class="list-group list-group-transparent" id="settings-category-tablist" role="tablist" aria-label="Settings categories">
-        <div class="settings-nav-category" data-settings-tab="kexo">
+        <div class="settings-nav-category">
           <a href="/settings?tab=kexo&kexoTab=general" class="list-group-item list-group-item-action d-flex align-items-center" id="settings-tab-kexo" role="tab" data-settings-tab="kexo" aria-controls="settings-panel-kexo">Kexo</a>
           <div class="settings-nav-children">
             <a href="/settings?tab=kexo&kexoTab=general" class="list-group-item list-group-item-action settings-nav-child" data-settings-tab="kexo" data-settings-kexo-tab="general" role="tab" aria-controls="settings-panel-kexo">General</a>
@@ -114,14 +114,14 @@
             <a href="/settings?tab=kexo&kexoTab=theme-display" class="list-group-item list-group-item-action settings-nav-child" data-settings-tab="kexo" data-settings-kexo-tab="theme-display" role="tab" aria-controls="settings-panel-kexo">Theme &amp; display</a>
           </div>
         </div>
-        <div class="settings-nav-category" data-settings-tab="integrations">
+        <div class="settings-nav-category">
           <a href="/settings?tab=integrations&integrationsTab=shopify" class="list-group-item list-group-item-action d-flex align-items-center" id="settings-tab-integrations" role="tab" data-settings-tab="integrations" aria-controls="settings-panel-integrations">Integrations</a>
           <div class="settings-nav-children">
             <a href="/settings?tab=integrations&integrationsTab=shopify" class="list-group-item list-group-item-action settings-nav-child" data-settings-tab="integrations" data-settings-integrations-tab="shopify" role="tab" aria-controls="settings-panel-integrations">Shopify</a>
             <a href="/settings?tab=integrations&integrationsTab=googleads" class="list-group-item list-group-item-action settings-nav-child" data-settings-tab="integrations" data-settings-integrations-tab="googleads" role="tab" aria-controls="settings-panel-integrations">Google Ads</a>
           </div>
         </div>
-        <div class="settings-nav-category" data-settings-tab="layout">
+        <div class="settings-nav-category">
           <a href="/settings?tab=layout&layoutTab=tables" class="list-group-item list-group-item-action d-flex align-items-center" id="settings-tab-layout" role="tab" data-settings-tab="layout" aria-controls="settings-panel-layout">Dashboards &amp; layout</a>
           <div class="settings-nav-children">
             <a href="/settings?tab=layout&layoutTab=tables" class="list-group-item list-group-item-action settings-nav-child" data-settings-tab="layout" data-settings-layout-tab="tables" role="tab" aria-controls="settings-panel-layout">Tables</a>
@@ -130,21 +130,21 @@
             <a href="/settings?tab=layout&layoutTab=date-ranges" class="list-group-item list-group-item-action settings-nav-child" data-settings-tab="layout" data-settings-layout-tab="date-ranges" role="tab" aria-controls="settings-panel-layout">Date ranges</a>
           </div>
         </div>
-        <div class="settings-nav-category" data-settings-tab="attribution">
+        <div class="settings-nav-category">
           <a href="/settings?tab=attribution&attributionTab=mapping" class="list-group-item list-group-item-action d-flex align-items-center" id="settings-tab-attribution" role="tab" data-settings-tab="attribution" aria-controls="settings-panel-attribution">Attribution</a>
           <div class="settings-nav-children">
             <a href="/settings?tab=attribution&attributionTab=mapping" class="list-group-item list-group-item-action settings-nav-child" data-settings-tab="attribution" data-settings-attribution-tab="mapping" role="tab" aria-controls="settings-panel-attribution">Mapping rules</a>
             <a href="/settings?tab=attribution&attributionTab=tree" class="list-group-item list-group-item-action settings-nav-child" data-settings-tab="attribution" data-settings-attribution-tab="tree" role="tab" aria-controls="settings-panel-attribution">Channel tree</a>
           </div>
         </div>
-        <div class="settings-nav-category" data-settings-tab="insights">
+        <div class="settings-nav-category">
           <a href="/settings?tab=insights" class="list-group-item list-group-item-action d-flex align-items-center" id="settings-tab-insights" role="tab" data-settings-tab="insights" aria-controls="settings-panel-insights">Insights configuration</a>
           <div class="settings-nav-children">
             <a href="/settings?tab=insights" class="list-group-item list-group-item-action settings-nav-child" data-settings-tab="insights" role="tab" aria-controls="settings-panel-insights">Variants</a>
           </div>
         </div>
         <!-- KEXO_COST_EXPENSES_NAV_START -->
-        <div class="settings-nav-category" data-settings-tab="cost-expenses">
+        <div class="settings-nav-category">
           <a href="/settings?tab=cost-expenses&costExpensesTab=cost-sources" class="list-group-item list-group-item-action d-flex align-items-center" id="settings-tab-cost-expenses" role="tab" data-settings-tab="cost-expenses" aria-controls="settings-panel-cost-expenses">Costs &amp; profit</a>
           <div class="settings-nav-children">
             <a href="/settings?tab=cost-expenses&costExpensesTab=cost-sources" class="list-group-item list-group-item-action settings-nav-child" data-settings-tab="cost-expenses" data-settings-cost-expenses-tab="cost-sources" role="tab" aria-controls="settings-panel-cost-expenses">Cost sources</a>
@@ -154,7 +154,7 @@
         </div>
         <!-- KEXO_COST_EXPENSES_NAV_END -->
         <!-- KEXO_ADMIN_NAV_START -->
-        <div class="settings-nav-category kexo-admin-only d-none" data-settings-tab="admin">
+        <div class="settings-nav-category kexo-admin-only d-none">
           <a href="/settings?tab=admin&adminTab=users" class="list-group-item list-group-item-action d-flex align-items-center" id="settings-tab-admin" role="tab" data-settings-tab="admin" aria-controls="settings-panel-admin">Admin (admin-only)</a>
           <div class="settings-nav-children">
             <a href="/settings?tab=admin&adminTab=users" class="list-group-item list-group-item-action settings-nav-child" data-settings-tab="admin" data-settings-admin-tab="users" role="tab" aria-controls="settings-panel-admin">Users &amp; roles</a>
@@ -313,8 +313,8 @@
                 </h4>
                 <div id="settings-kexo-accordion-icons-assets" class="accordion-collapse collapse" data-bs-parent="#settings-kexo-accordion">
                   <div class="accordion-body">
-            <div id="settings-kexo-panel-icons-assets">
-              <p class="text-muted">Configure in <strong>Brand &amp; appearance</strong> above.</p>
+            <div id="settings-kexo-panel-icons-assets" class="settings-kexo-panel">
+              <!-- Content shown via Brand &amp; appearance panel when this sub-tab is selected -->
             </div>
                   </div>
                 </div>
@@ -325,8 +325,8 @@
                 </h4>
                 <div id="settings-kexo-accordion-theme-display" class="accordion-collapse collapse" data-bs-parent="#settings-kexo-accordion">
                   <div class="accordion-body">
-            <div id="settings-kexo-panel-theme-display">
-              <p class="text-muted">Configure in <strong>Brand &amp; appearance</strong> above.</p>
+            <div id="settings-kexo-panel-theme-display" class="settings-kexo-panel">
+              <!-- Content shown via Brand &amp; appearance panel when this sub-tab is selected -->
             </div>
                   </div>
                 </div>
