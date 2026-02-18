@@ -91,8 +91,17 @@ async function getPaymentMethodsReport(req, res) {
   const db = getDb();
 
   try {
-    const [ratesToGbp, rowsCounts, rowsCarts, rowsRevenue, rowsSeries] = await Promise.all([
+    const [ratesToGbp, totalSessionsRow, rowsCounts, rowsCarts, rowsRevenue, rowsSeries] = await Promise.all([
       fx.getRatesToGbp().catch(() => null),
+      db.get(
+        `
+        SELECT COUNT(*) AS sessions
+        FROM sessions
+        WHERE started_at >= ? AND started_at < ?
+          AND (cf_known_bot IS NULL OR cf_known_bot = 0)
+        `.trim(),
+        [start, end]
+      ).catch(() => null),
       db.all(
         `
         SELECT
@@ -155,6 +164,9 @@ async function getPaymentMethodsReport(req, res) {
       ),
     ]);
 
+    const totalSessions = totalSessionsRow && totalSessionsRow.sessions != null ? Number(totalSessionsRow.sessions) : 0;
+    const denomSessions = Number.isFinite(totalSessions) && totalSessions > 0 ? totalSessions : 0;
+
     // carts + revenue maps by canonical key
     const cartsByKey = new Map();
     for (const r of rowsCarts || []) {
@@ -195,8 +207,10 @@ async function getPaymentMethodsReport(req, res) {
       const orders = base.orders || 0;
       const carts = cartsByKey.get(k) || 0;
       const revenue = revenueByKey.get(k) || 0;
-      const cr = percentOrNull(orders, sessions, { decimals: 1 });
-      const vpv = ratioOrNull(revenue, sessions, { decimals: 2 });
+      // Important: use ALL sessions in the range as the denominator (not just purchaser sessions),
+      // otherwise CR is ~100% for every payment method.
+      const cr = percentOrNull(orders, denomSessions, { decimals: 2 });
+      const vpv = ratioOrNull(revenue, denomSessions, { decimals: 2 });
       const aov = ratioOrNull(revenue, orders, { decimals: 2 });
       const meta = metaByKey.get(k) || { key: k, label: k, iconSrc: null, iconAlt: k };
       outRows.push({
@@ -292,6 +306,7 @@ async function getPaymentMethodsReport(req, res) {
       start,
       end,
       currency: 'GBP',
+      totalSessions: denomSessions,
       categories,
       series,
       rows: outRows.slice(0, 40),
