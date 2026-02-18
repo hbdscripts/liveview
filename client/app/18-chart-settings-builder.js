@@ -228,7 +228,7 @@
           ? Math.max(0, Math.min(1, Number(s.style.fillOpacity)))
           : 0.18;
         var fillOpacityPct = Math.round(fillOpacityRaw * 100);
-        var fillOpacityVisible = (mode === 'area' || mode === 'stacked-area' || mode === 'bar' || mode === 'stacked-bar');
+        var fillOpacityVisible = (String(mode || '').trim().toLowerCase() !== 'map');
 
         var body = '';
         body += '<div class="row g-3">';
@@ -254,7 +254,7 @@
         body += '<span class="text-muted small" data-cs-fill-opacity-value>' + fillOpacityPct + '%</span>';
         body += '</label>';
         body += '<input type="range" class="form-range" min="0" max="100" step="1" value="' + fillOpacityPct + '" data-cs-field="fillOpacity">';
-        body += '<div class="form-hint">Lower values make stacked areas easier to read.</div>';
+        body += '<div class="form-hint">Lower values make chart fills more transparent.</div>';
         body += '</div>';
         body += '<div class="col-12' + (supportsPieLabels && (mode === 'pie' || mode === 'donut') ? '' : ' d-none') + '" data-cs-mode-group="pie-labels">';
         body += '<div class="row g-2">';
@@ -335,7 +335,7 @@
 
         function modeSupportsFillOpacity(modeVal) {
           var m = String(modeVal || '').trim().toLowerCase();
-          return (m === 'area' || m === 'stacked-area' || m === 'bar' || m === 'stacked-bar');
+          return (m !== 'map');
         }
 
         function fillOpacityLabelForMode(modeVal) {
@@ -344,7 +344,10 @@
           if (m === 'area') return 'Area fill opacity';
           if (m === 'stacked-bar') return 'Stacked bar opacity';
           if (m === 'bar') return 'Bar opacity';
-          return 'Fill opacity';
+          if (m === 'line' || m === 'multi-line-labels') return 'Line opacity';
+          if (m === 'pie' || m === 'donut') return 'Slice opacity';
+          if (m === 'radialbar') return 'Ring opacity';
+          return 'Series opacity';
         }
 
         function bindFillOpacityControls() {

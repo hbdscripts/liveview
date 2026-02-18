@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 9686a0378089eaf0
+// checksum: d4d8e526da94c86e
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -16384,7 +16384,8 @@ const API = '';
       function fmtGbp(n) {
         var v = (typeof n === 'number') ? n : Number(n);
         if (!isFinite(v)) return '\u2014';
-        return formatRevenue(v) || '\u2014';
+        if (typeof formatRevenue0 === 'function') return formatRevenue0(v) || '\u2014';
+        try { return '\u00A3' + Math.round(v).toLocaleString('en-GB'); } catch (_) { return '\u00A3' + String(Math.round(v)); }
       }
       function fmtNum(n) { return n != null ? n.toLocaleString() : '\u2014'; }
       function shortDate(ymd) {
@@ -16867,16 +16868,26 @@ const API = '';
             if (minV != null && minV < 0) yMinOverride = minV - Math.max(1e-6, Math.abs(minV) * 0.12);
           } catch (_) {}
           var yFmt = (opts && opts.pct) ? function(v) { return v != null ? Number(v).toFixed(1) + '%' : '\u2014'; }
-            : (opts && opts.currency) ? function(v) { return v != null ? (formatRevenue(Number(v)) || '\u2014') : '\u2014'; }
+            : (opts && opts.currency) ? function(v) {
+              if (v == null) return '\u2014';
+              var n = Number(v);
+              if (!isFinite(n)) return '\u2014';
+              if (typeof formatRevenue0 === 'function') return formatRevenue0(n) || '\u2014';
+              try { return '\u00A3' + Math.round(n).toLocaleString('en-GB'); } catch (_) { return '\u00A3' + String(Math.round(n)); }
+            }
             : function(v) { return v != null ? Number(v).toLocaleString() : '\u2014'; };
           var legendPos = (opts && opts.legendPosition != null) ? String(opts.legendPosition).trim().toLowerCase() : 'top';
           if (legendPos !== 'top' && legendPos !== 'bottom' && legendPos !== 'left' && legendPos !== 'right') legendPos = 'top';
           var customTooltip = (opts && typeof opts.tooltipCustom === 'function') ? opts.tooltipCustom : null;
+          var tooltipShared = (opts && typeof opts.tooltipShared === 'boolean') ? !!opts.tooltipShared : (apexSeries.length > 1);
+          var tooltipIntersect = (opts && typeof opts.tooltipIntersect === 'boolean') ? !!opts.tooltipIntersect : false;
+          var tooltipFollowCursor = (opts && typeof opts.tooltipFollowCursor === 'boolean') ? !!opts.tooltipFollowCursor : false;
           var tooltipConfig = {
             enabled: true,
             // For dense charts (especially the Overview Revenue/Cost/Profit), avoid requiring a direct point intersect.
-            intersect: false,
-            shared: apexSeries.length > 1,
+            intersect: tooltipIntersect,
+            shared: tooltipShared,
+            followCursor: tooltipFollowCursor,
             y: { formatter: yFmt }
           };
           if (customTooltip) tooltipConfig.custom = customTooltip;
@@ -16889,6 +16900,9 @@ const API = '';
             : { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: areaFrom, opacityTo: areaTo, stops: [0, 100] } };
           var animationsEnabled = !!(uiStyle && uiStyle.animations === true);
 
+          var markerSize = (opts && Number.isFinite(Number(opts.markerSize)))
+            ? Math.max(0, Number(opts.markerSize))
+            : (chartType === 'line' ? 3 : 0);
           var apexOpts = {
             chart: {
               type: chartType,
@@ -16933,7 +16947,7 @@ const API = '';
               background: { enabled: true, borderRadius: 4, padding: 3, opacity: 0.85 },
               offsetY: -3
             } : { enabled: false },
-            markers: { size: chartType === 'line' ? 3 : 0, hover: { size: 5 } },
+            markers: { size: markerSize, hover: { size: 5 } },
             noData: { text: 'No data available', style: { fontSize: '13px', color: '#626976' } }
           };
           if (stacked) {
@@ -16946,6 +16960,14 @@ const API = '';
               apexOpts = deepMergeOptions(apexOpts, chartOverride);
             }
           } catch (_) {}
+          if (opts && opts.forceTooltip === true) {
+            apexOpts.tooltip = Object.assign({}, apexOpts.tooltip || {}, {
+              enabled: true,
+              shared: true,
+              intersect: false,
+              followCursor: true
+            });
+          }
 
           return upsertDashboardApexChart(chartId, el, apexOpts, function(chart) {
             try { applyChangePinsOverlayToChart(chartId, chart, labels || []); } catch (_) {}
@@ -17522,7 +17544,7 @@ const API = '';
         var colors = chartColorsFromUiConfig(chartId, fallbackColors);
         var valueFormatter = (opts && typeof opts.valueFormatter === 'function')
           ? opts.valueFormatter
-          : function(v) { return formatRevenue(normalizeOverviewMetric(v)) || '\u2014'; };
+          : function(v) { return fmtGbp(normalizeOverviewMetric(v)) || '\u2014'; };
         var donut = (opts && typeof opts.donut === 'boolean')
           ? !!opts.donut
           : !!uiStyle.pieDonut;
@@ -17702,7 +17724,7 @@ const API = '';
           if (idx < 0 || idx >= st.labels.length) idx = st.defaultIdx;
           var name = (idx >= 0 && idx < st.labels.length) ? st.labels[idx] : '';
           var rev = (idx >= 0 && idx < st.values.length) ? st.values[idx] : 0;
-          var revStr = formatRevenue(normalizeOverviewMetric(rev)) || '\u2014';
+          var revStr = fmtGbp(normalizeOverviewMetric(rev)) || '\u2014';
           try { if (chartEl && chartEl.style) chartEl.style.position = 'relative'; } catch (_) {}
           var el = null;
           try { el = chartEl.querySelector('.kexo-radial-center-label-wrap'); } catch (_) { el = null; }
@@ -17761,7 +17783,7 @@ const API = '';
               var pct = (ctx && Array.isArray(ctx.series) && idx >= 0 && idx < ctx.series.length) ? Number(ctx.series[idx]) : null;
               var pctStr = (pct != null && Number.isFinite(pct)) ? pct.toFixed(1) + '%' : '\u2014';
               try { if (idx >= 0) syncFinishesRadialCenterLabel(idx); } catch (_) {}
-              return '<div class="kexo-tooltip-card p-2"><div class="fw-semibold">' + escapeHtml(name || '') + '</div><div>Revenue: ' + escapeHtml(formatRevenue(normalizeOverviewMetric(rev)) || '\u2014') + '</div><div>Share: ' + escapeHtml(pctStr) + '</div></div>';
+              return '<div class="kexo-tooltip-card p-2"><div class="fw-semibold">' + escapeHtml(name || '') + '</div><div>Revenue: ' + escapeHtml(fmtGbp(normalizeOverviewMetric(rev)) || '\u2014') + '</div><div>Share: ' + escapeHtml(pctStr) + '</div></div>';
             }
           },
           states: { normal: { filter: { type: 'none', value: 0 } }, hover: { filter: { type: 'none', value: 0 } }, active: { filter: { type: 'none', value: 0 } } },
@@ -17820,7 +17842,7 @@ const API = '';
           legend: { show: false },
           dataLabels: { enabled: false },
           fill: { opacity: (uiStyle && Number.isFinite(Number(uiStyle.fillOpacity))) ? Math.max(0, Math.min(1, Number(uiStyle.fillOpacity))) : 1 },
-          tooltip: { enabled: true, y: { formatter: function(v) { return formatRevenue(normalizeOverviewMetric(v)) || '\u2014'; } } },
+          tooltip: { enabled: true, y: { formatter: function(v) { return fmtGbp(normalizeOverviewMetric(v)) || '\u2014'; } } },
           noData: { text: 'No data available', style: { fontSize: '13px', color: '#626976' } }
         };
         try {
@@ -17927,7 +17949,7 @@ const API = '';
               var cr = (idx >= 0 && idx < crPctsRef.length) ? crPctsRef[idx] : null;
               var crStr = cr != null && Number.isFinite(cr) ? cr.toFixed(1) + '%' : '\u2014';
               var flagHtml = (showFlagsRef && idx >= 0 && idx < countryCodesRef.length) ? countryCodeToFlagHtml(countryCodesRef[idx]) : '';
-              return '<div class="kexo-tooltip-card p-2"><div class="fw-semibold">' + (flagHtml || '') + escapeHtml(name || '') + '</div><div>Revenue: ' + escapeHtml(formatRevenue(rev) || '\u2014') + '</div><div>Conversion: ' + escapeHtml(crStr) + '</div></div>';
+              return '<div class="kexo-tooltip-card p-2"><div class="fw-semibold">' + (flagHtml || '') + escapeHtml(name || '') + '</div><div>Revenue: ' + escapeHtml(fmtGbp(rev) || '\u2014') + '</div><div>Conversion: ' + escapeHtml(crStr) + '</div></div>';
             }
           },
           noData: { text: 'No data available', style: { fontSize: '13px', color: '#626976' } }
@@ -18069,6 +18091,7 @@ const API = '';
         var revenuesRef = revenues;
         var platformRef = platformKeys;
 
+        var horizontal = !!(opts && opts.horizontal);
         var plotOptions = { bar: { horizontal: horizontal, borderRadius: 0, distributed: true, dataLabels: { hideOverflowingLabels: false } } };
         if (horizontal) plotOptions.bar.barHeight = '54%';
         else plotOptions.bar.columnWidth = '55%';
@@ -18101,7 +18124,7 @@ const API = '';
                 '<div>Sessions: ' + escapeHtml(fmtNum(sess)) + '</div>' +
                 '<div>Orders: ' + escapeHtml(fmtNum(ord)) + '</div>' +
                 '<div>Conversion: ' + escapeHtml(crStr) + '</div>' +
-                '<div>Revenue: ' + escapeHtml(formatRevenue(normalizeOverviewMetric(rev)) || '\u2014') + '</div>' +
+                '<div>Revenue: ' + escapeHtml(fmtGbp(normalizeOverviewMetric(rev)) || '\u2014') + '</div>' +
               '</div>';
             }
           },
@@ -18204,7 +18227,7 @@ const API = '';
               var rev = (idx >= 0 && idx < valuesRef.length) ? valuesRef[idx] : 0;
               var cr = (idx >= 0 && idx < crPctsRef.length) ? crPctsRef[idx] : null;
               var crStr = cr != null && Number.isFinite(cr) ? cr.toFixed(1) + '%' : '\u2014';
-              return '<div class="kexo-tooltip-card p-2"><div class="fw-semibold">' + escapeHtml(name) + '</div><div>Revenue: ' + escapeHtml(formatRevenue(rev) || '\u2014') + '</div><div>Conversion: ' + escapeHtml(crStr) + '</div></div>';
+              return '<div class="kexo-tooltip-card p-2"><div class="fw-semibold">' + escapeHtml(name) + '</div><div>Revenue: ' + escapeHtml(fmtGbp(rev) || '\u2014') + '</div><div>Conversion: ' + escapeHtml(crStr) + '</div></div>';
             }
           },
           noData: { text: 'No data available', style: { fontSize: '13px', color: '#626976' } }
@@ -18487,7 +18510,7 @@ const API = '';
               var rev = (idx >= 0 && idx < valuesRef.length) ? valuesRef[idx] : 0;
               var cr = (idx >= 0 && idx < crPctsRef.length) ? crPctsRef[idx] : null;
               var crStr = cr != null && Number.isFinite(cr) ? cr.toFixed(1) + '%' : '\u2014';
-              return '<div class="kexo-tooltip-card p-2"><div class="fw-semibold">' + escapeHtml(name || '') + '</div><div>Revenue: ' + escapeHtml(formatRevenue(rev) || '\u2014') + '</div><div>Conversion: ' + escapeHtml(crStr) + '</div></div>';
+              return '<div class="kexo-tooltip-card p-2"><div class="fw-semibold">' + escapeHtml(name || '') + '</div><div>Revenue: ' + escapeHtml(fmtGbp(rev) || '\u2014') + '</div><div>Conversion: ' + escapeHtml(crStr) + '</div></div>';
             }
           });
         } else if (mode === 'radialbar') {
@@ -18495,7 +18518,7 @@ const API = '';
         } else {
           renderOverviewPieChart(chartId, labels, values, {
             colors: colors,
-            valueFormatter: function(v) { return formatRevenue(normalizeOverviewMetric(v)) || '\u2014'; },
+            valueFormatter: function(v) { return fmtGbp(normalizeOverviewMetric(v)) || '\u2014'; },
             height: 180,
             dataLabels: false,
             showLegend: false,
@@ -18630,9 +18653,9 @@ const API = '';
         for (var i = 0; i < len; i++) {
           var ymd = labelsYmd[i] != null ? String(labelsYmd[i]) : '';
           labels.push(ymd ? formatOverviewBucketLabel(ymd, granularity) : String(i + 1));
-          var rev = Math.round(normalizeOverviewMetric(revenueGbp[i]) * 100) / 100;
-          var cst = Math.round(normalizeOverviewMetric(costGbp[i]) * 100) / 100;
-          var pft = (typeof rev === 'number' && typeof cst === 'number') ? (Math.round((rev - cst) * 100) / 100) : 0;
+          var rev = Math.round(normalizeOverviewMetric(revenueGbp[i]));
+          var cst = Math.round(normalizeOverviewMetric(costGbp[i]));
+          var pft = (typeof rev === 'number' && typeof cst === 'number') ? Math.round(rev - cst) : 0;
           revenue.push(rev);
           cost.push(cst);
           profit.push(pft);
@@ -18668,7 +18691,17 @@ const API = '';
           backgroundColor: 'rgba(34,197,94,0.14)',
           fill: true,
           borderWidth: 2
-        }], { currency: true, chartType: overviewChartType, height: chartHeight, legendPosition: 'bottom' });
+        }], {
+          currency: true,
+          chartType: overviewChartType,
+          height: chartHeight,
+          legendPosition: 'bottom',
+          forceTooltip: true,
+          tooltipShared: true,
+          tooltipIntersect: false,
+          tooltipFollowCursor: true,
+          markerSize: 3
+        });
       }
 
       function fetchOverviewJson(url, force, timeoutMs) {
@@ -18808,7 +18841,7 @@ const API = '';
           doRender = function() {
             var finishesOpts = {
               colors: colors,
-              valueFormatter: function(v) { return formatRevenue(normalizeOverviewMetric(v)) || '\u2014'; },
+              valueFormatter: function(v) { return fmtGbp(normalizeOverviewMetric(v)) || '\u2014'; },
               height: 180
             };
             var finishesMode = (typeof chartModeFromUiConfig === 'function') ? String(chartModeFromUiConfig(chartId, 'radialbar') || 'radialbar').trim().toLowerCase() : 'radialbar';
@@ -18919,7 +18952,7 @@ const API = '';
                     '<div>Sessions: ' + escapeHtml(fmtNum(sess)) + '</div>' +
                     '<div>Orders: ' + escapeHtml(fmtNum(ord)) + '</div>' +
                     '<div>Conversion: ' + escapeHtml(crStr) + '</div>' +
-                    '<div>Revenue: ' + escapeHtml(formatRevenue(normalizeOverviewMetric(rev)) || '\u2014') + '</div>' +
+                    '<div>Revenue: ' + escapeHtml(fmtGbp(normalizeOverviewMetric(rev)) || '\u2014') + '</div>' +
                   '</div>';
                 }
               });
@@ -18994,7 +19027,7 @@ const API = '';
         var finishesChartId = 'dash-chart-finishes-30d';
         var finishesOpts = {
           colors: ['#f59e34', '#94a3b8', '#8b5cf6', '#4b94e4', '#3eb3ab'],
-          valueFormatter: function(v) { return formatRevenue(normalizeOverviewMetric(v)) || '\u2014'; },
+          valueFormatter: function(v) { return fmtGbp(normalizeOverviewMetric(v)) || '\u2014'; },
           height: 180
         };
         var finishesMode = (typeof chartModeFromUiConfig === 'function') ? String(chartModeFromUiConfig(finishesChartId, 'radialbar') || 'radialbar').trim().toLowerCase() : 'radialbar';
@@ -19107,7 +19140,7 @@ const API = '';
           });
           renderOverviewPieChart(countriesChartId, countryLabels, countryValues, {
             colors: countriesOpts.colors,
-            valueFormatter: function(v) { return formatRevenue(normalizeOverviewMetric(v)) || '\u2014'; },
+            valueFormatter: function(v) { return fmtGbp(normalizeOverviewMetric(v)) || '\u2014'; },
             height: countriesOpts.height,
             donut: countriesMode === 'donut',
             countryCodes: showFlags ? countryCodesForMini : null
@@ -23061,7 +23094,7 @@ const API = '';
           ? Math.max(0, Math.min(1, Number(s.style.fillOpacity)))
           : 0.18;
         var fillOpacityPct = Math.round(fillOpacityRaw * 100);
-        var fillOpacityVisible = (mode === 'area' || mode === 'stacked-area' || mode === 'bar' || mode === 'stacked-bar');
+        var fillOpacityVisible = (String(mode || '').trim().toLowerCase() !== 'map');
 
         var body = '';
         body += '<div class="row g-3">';
@@ -23087,7 +23120,7 @@ const API = '';
         body += '<span class="text-muted small" data-cs-fill-opacity-value>' + fillOpacityPct + '%</span>';
         body += '</label>';
         body += '<input type="range" class="form-range" min="0" max="100" step="1" value="' + fillOpacityPct + '" data-cs-field="fillOpacity">';
-        body += '<div class="form-hint">Lower values make stacked areas easier to read.</div>';
+        body += '<div class="form-hint">Lower values make chart fills more transparent.</div>';
         body += '</div>';
         body += '<div class="col-12' + (supportsPieLabels && (mode === 'pie' || mode === 'donut') ? '' : ' d-none') + '" data-cs-mode-group="pie-labels">';
         body += '<div class="row g-2">';
@@ -23168,7 +23201,7 @@ const API = '';
 
         function modeSupportsFillOpacity(modeVal) {
           var m = String(modeVal || '').trim().toLowerCase();
-          return (m === 'area' || m === 'stacked-area' || m === 'bar' || m === 'stacked-bar');
+          return (m !== 'map');
         }
 
         function fillOpacityLabelForMode(modeVal) {
@@ -23177,7 +23210,10 @@ const API = '';
           if (m === 'area') return 'Area fill opacity';
           if (m === 'stacked-bar') return 'Stacked bar opacity';
           if (m === 'bar') return 'Bar opacity';
-          return 'Fill opacity';
+          if (m === 'line' || m === 'multi-line-labels') return 'Line opacity';
+          if (m === 'pie' || m === 'donut') return 'Slice opacity';
+          if (m === 'radialbar') return 'Ring opacity';
+          return 'Series opacity';
         }
 
         function bindFillOpacityControls() {
