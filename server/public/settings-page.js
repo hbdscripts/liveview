@@ -303,9 +303,11 @@
   function getActiveCostExpensesSubTab() {
     var key = (activeCostExpensesSubTab || initialCostExpensesSubTab || 'cost-sources');
     key = String(key || '').trim().toLowerCase();
+    if (key === 'breakdown') return 'breakdown';
     if (key === 'cost-sources') return 'cost-sources';
     if (key === 'rules') return 'rules';
-    return 'shipping';
+    if (key === 'shipping') return 'shipping';
+    return 'cost-sources';
   }
 
 
@@ -4737,6 +4739,15 @@
 
     function syncFromUrl() {
       var tab = getTabFromQuery() || getTabFromHash() || 'kexo';
+      // Fail-safe: if the URL explicitly requests cost-expenses, honor it on direct loads.
+      // This prevents falling back to Kexo when query parsing or DOM timing is off.
+      try {
+        var params = new URLSearchParams(window.location.search || '');
+        var requested = String(params.get('tab') || '').trim().toLowerCase();
+        if (requested === 'cost-expenses' && document.getElementById('settings-tab-cost-expenses')) {
+          tab = 'cost-expenses';
+        }
+      } catch (_) {}
       if (initialKexoSubTab) activeKexoSubTab = initialKexoSubTab;
       if (initialLayoutSubTab) activeLayoutSubTab = initialLayoutSubTab;
       if (initialIntegrationsSubTab) activeIntegrationsSubTab = initialIntegrationsSubTab;
@@ -4808,7 +4819,7 @@
       document.documentElement.setAttribute('data-kexo-cost-expenses-sync-bound', '1');
       window.addEventListener('kexo:costExpensesTabChanged', function (e) {
         var key = e && e.detail && e.detail.key != null ? String(e.detail.key).trim().toLowerCase() : '';
-        if (key !== 'cost-sources' && key !== 'shipping' && key !== 'rules') return;
+        if (key !== 'cost-sources' && key !== 'shipping' && key !== 'rules' && key !== 'breakdown') return;
         initialCostExpensesSubTab = key;
         activeCostExpensesSubTab = key;
         if (getActiveSettingsTab() === 'cost-expenses') {
