@@ -2,7 +2,7 @@
 
 A private (custom) Shopify app that shows a near-real-time **Live Visitors** table in Shopify admin. Uses Shopify Customer Events (Web Pixel) only; no third-party trackers. Privacy-safe (no PII), config-first, fail-open storefront.
 
-**New to this app?** Use the **[Step-by-step install guide (INSTALL.md)](INSTALL.md)** for a full walkthrough: preparing files, creating the app in Shopify (Partners or Custom app), finding every value, deploying, configuring the pixel, installing on the store, and verifying.
+Install steps are below (clone, env, Shopify app, pixel, deploy). See [docs/CONFIG.md](docs/CONFIG.md) for env vars and runtime toggles.
 
 ## Prerequisites
 
@@ -54,7 +54,7 @@ A private (custom) Shopify app that shows a near-real-time **Live Visitors** tab
 - Run the Node server behind a reverse proxy (e.g. Nginx) or on a platform (Heroku, Railway, Fly.io).
 - **Railway**: Auto-deploys from git; push to main is sufficient. Do not run `railway up` manually.
 - Set all required env vars (see `.env.example`).
-- **Persistent data (Railway / Fly / Heroku):** If you leave `DB_URL` empty, the app uses SQLite and writes to a file. On Railway (and similar platforms) the filesystem is **ephemeral**—data is lost on every deploy or restart. To keep sessions and stats when you leave the page or redeploy, add a **PostgreSQL** database and set `DB_URL` to its connection string. See [config/APP_CONFIG.md](config/APP_CONFIG.md#database-on-railway) for Railway steps.
+- **Persistent data (Railway / Fly / Heroku):** If you leave `DB_URL` empty, the app uses SQLite and writes to a file. On Railway (and similar platforms) the filesystem is **ephemeral**—data is lost on every deploy or restart. To keep sessions and stats when you leave the page or redeploy, add a **PostgreSQL** database and set `DB_URL` to its connection string. See [docs/CONFIG.md](docs/CONFIG.md) for Railway steps.
 - Ensure the ingest endpoint is reachable from the storefront (CORS allows `Origin: null`).
 - Run migrations on first deploy: `npm run migrate` (or run them at app startup; the app runs them automatically).
 
@@ -145,7 +145,7 @@ The project runs **Shopify CLI directly** from scripts (like theme check in anot
   - Verify by opening the dashboard → Settings → Diagnostics → Definitions and confirming the moved items show **UI OK** (and removed items no longer appear).
 - `extensions/live-visitors-pixel/` – Web Pixel extension (`shopify.extension.toml` + `src/index.js`).
 - `.env.example` – All env vars with short descriptions.
-- `config/APP_CONFIG.md` – Where to get credentials, URLs, ingest secret, common mistakes.
+- `docs/CONFIG.md` – Env vars, URLs, ingest secret, common mistakes.
 
 ## Env vars you must set
 
