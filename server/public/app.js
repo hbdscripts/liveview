@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 525ae35ebde4d1c0
+// checksum: 14d48313a90081fa
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -16347,7 +16347,13 @@ const API = '';
               forceNiceScale: true
             },
             grid: { borderColor: '#f0f0f0', strokeDashArray: 3 },
-            tooltip: { y: { formatter: yFmt } },
+            tooltip: {
+              enabled: true,
+              // For dense charts (especially the Overview Revenue/Cost/Profit), avoid requiring a direct point intersect.
+              intersect: false,
+              shared: apexSeries.length > 1,
+              y: { formatter: yFmt }
+            },
             legend: { show: apexSeries.length > 1, position: legendPos, fontSize: '11px' },
             dataLabels: (showEndLabels && chartType === 'line') ? {
               enabled: true,

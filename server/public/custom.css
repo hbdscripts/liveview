@@ -3173,8 +3173,7 @@ html[data-bs-theme="dark"] .report-build-wrap {
 }
 .card[data-kexo-chart-key],
 [data-kexo-chart-key] > .card {
-  overflow-x: hidden;
-  overflow-y: visible;
+  overflow: visible;
 }
 [data-kexo-chart-key].card > .card-body,
 [data-kexo-chart-key] > .card > .card-body {
@@ -3184,6 +3183,12 @@ html[data-bs-theme="dark"] .report-build-wrap {
 .apexcharts-xaxistooltip,
 .apexcharts-yaxistooltip {
   z-index: 1080 !important;
+}
+.apexcharts-canvas,
+.apexcharts-inner,
+.apexcharts-graphical,
+.apexcharts-svg {
+  overflow: visible !important;
 }
 .apexcharts-grid,
 .apexcharts-gridlines-horizontal,
@@ -3218,7 +3223,7 @@ html[data-bs-theme="dark"] .report-build-wrap {
   width: 100%;
   flex: 1 1 auto;
   min-height: 0;
-  overflow-x: hidden;
+  overflow: visible;
 }
 .kexo-overview-mini-chart {
   min-height: 120px;
