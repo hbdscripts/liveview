@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: b0c5f6775c1c0950
+// checksum: 7081b592b2106e05
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -22189,16 +22189,25 @@ const API = '';
   function initDelegation() {
     if (bound) return;
     bound = true;
+    // Capture phase so we still handle clicks even if other handlers stop propagation.
     document.addEventListener('click', function (e) {
-      var t = e && e.target && (e.target.closest ? e.target.closest('[data-kexo-chart-settings-key], [data-chart-key], [data-kexo-chart-key]') : null);
+      if (!e || !e.target || !e.target.closest) return;
+      if (e.__kexoChartSettingsHandled) return;
+      var t = e.target.closest(
+        'button[data-kexo-chart-settings-key],a[data-kexo-chart-settings-key],[role="button"][data-kexo-chart-settings-key],' +
+        'button[data-chart-key],a[data-chart-key],[role="button"][data-chart-key],' +
+        'button[data-kexo-chart-key],a[data-kexo-chart-key],[role="button"][data-kexo-chart-key]'
+      );
       if (!t) return;
       var key = t.getAttribute('data-kexo-chart-settings-key') || t.getAttribute('data-chart-key') || t.getAttribute('data-kexo-chart-key');
       if (!key) return;
       var chartKey = String(key).trim();
       if (!chartKey) return;
       e.preventDefault();
+      try { e.__kexoChartSettingsHandled = true; } catch (_) {}
+      try { if (typeof e.stopPropagation === 'function') e.stopPropagation(); } catch (_) {}
       openModal({ chartKey: chartKey, cardTitle: chartKey });
-    });
+    }, true);
   }
 
   if (document.readyState === 'loading') {
