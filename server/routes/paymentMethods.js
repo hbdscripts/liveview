@@ -31,6 +31,17 @@ function dayStartUtcMs(ms) {
   }
 }
 
+function hourStartMs(ms) {
+  const n = typeof ms === 'number' ? ms : Number(ms);
+  if (!Number.isFinite(n)) return null;
+  try {
+    const d = new Date(n);
+    return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), d.getUTCHours());
+  } catch (_) {
+    return null;
+  }
+}
+
 function buildDayCategories(startMs, endMs) {
   const start = dayStartUtcMs(startMs);
   const end = dayStartUtcMs(endMs);
@@ -45,6 +56,36 @@ function buildDayCategories(startMs, endMs) {
   if (!out.length) {
     const k = dayKeyUtc(startMs);
     if (k) out.push(k);
+  }
+  return out;
+}
+
+function isHourlyRange(rangeKey, startMs, endMs) {
+  const k = s(rangeKey).trim().toLowerCase();
+  if (k === 'today' || k === 'yesterday') return true;
+  const span = Number(endMs) - Number(startMs);
+  return Number.isFinite(span) && span > 0 && span <= (36 * 60 * 60 * 1000);
+}
+
+function buildHourCategories(startMs, endMs, timeZone) {
+  const start = hourStartMs(startMs);
+  const end = hourStartMs(endMs);
+  if (start == null || end == null) return [];
+  const out = [];
+  for (let t = start; t < end; t += 60 * 60 * 1000) {
+    try {
+      if (timeZone) {
+        out.push(new Date(t).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone }));
+      } else {
+        out.push(new Date(t).toISOString().slice(11, 16));
+      }
+    } catch (_) {
+      out.push(new Date(t).toISOString().slice(11, 16));
+    }
+  }
+  if (out.length < 2) {
+    // Ensure at least two buckets so ApexCharts can draw a line.
+    out.push(out[0] || '00:00');
   }
   return out;
 }
@@ -237,10 +278,11 @@ async function getPaymentMethodsReport(req, res) {
       return (b.sessions || 0) - (a.sessions || 0);
     });
 
-    // series: revenue by day for top methods (by total revenue)
-    const categories = buildDayCategories(start, end);
-    const idxByDay = new Map();
-    categories.forEach((d, i) => idxByDay.set(d, i));
+    // series: revenue for top methods (by total revenue)
+    const hourly = isHourlyRange(range, start, end);
+    const categories = hourly ? buildHourCategories(start, end, timeZone) : buildDayCategories(start, end);
+    const idxByDay = hourly ? null : new Map();
+    if (idxByDay) categories.forEach((d, i) => idxByDay.set(d, i));
 
     const totals = new Map(); // key -> total revenue gbp
     const seriesMap = new Map(); // key -> data[]
@@ -270,8 +312,17 @@ async function getPaymentMethodsReport(req, res) {
     for (const r of rowsSeries || []) {
       const ts = r && r.purchased_at != null ? Number(r.purchased_at) : NaN;
       if (!Number.isFinite(ts)) continue;
-      const day = dayKeyUtc(ts);
-      if (!day || !idxByDay.has(day)) continue;
+      let i = -1;
+      if (hourly) {
+        i = Math.floor((ts - start) / (60 * 60 * 1000));
+        if (!Number.isFinite(i)) continue;
+        if (i < 0) continue;
+        if (i >= categories.length) i = categories.length - 1;
+      } else {
+        const day = dayKeyUtc(ts);
+        if (!day || !idxByDay || !idxByDay.has(day)) continue;
+        i = idxByDay.get(day);
+      }
       const amt = r && r.order_total != null ? Number(r.order_total) : NaN;
       if (!Number.isFinite(amt)) continue;
       const cur = s(r.order_currency).trim().toUpperCase() || 'GBP';
@@ -279,7 +330,6 @@ async function getPaymentMethodsReport(req, res) {
       if (gbp == null) continue;
       const meta = comboMeta(r);
       const arr = ensureSeries(meta.key);
-      const i = idxByDay.get(day);
       arr[i] += gbp;
       totals.set(meta.key, (totals.get(meta.key) || 0) + gbp);
     }

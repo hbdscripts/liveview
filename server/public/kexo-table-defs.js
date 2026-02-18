@@ -214,13 +214,14 @@
       emptyMessage: 'No payment methods.',
       columns: [
         { key: 'payment', label: 'Payment', sortable: false },
-        { key: 'sessions', label: 'Sessions', sortable: false, iconKey: 'table-icon-sessions' },
-        { key: 'carts', label: 'Carts', sortable: false },
-        { key: 'orders', label: 'Orders', sortable: false, iconKey: 'table-icon-orders' },
-        { key: 'cr', label: 'CR%', sortable: false, iconKey: 'table-icon-cr' },
-        { key: 'vpv', label: 'VPV', sortable: false, iconKey: 'table-icon-vpv' },
-        { key: 'rev', label: 'Rev', sortable: false, iconKey: 'table-icon-revenue' },
-        { key: 'aov', label: 'AOV', sortable: false }
+        { key: 'icon', label: '', sortable: false, cellClass: 'kexo-payments-icon-col' },
+        { key: 'sessions', label: 'Sessions', sortable: false, iconKey: 'table-icon-sessions', cellClass: 'text-end' },
+        { key: 'carts', label: 'Carts', sortable: false, cellClass: 'text-end' },
+        { key: 'orders', label: 'Orders', sortable: false, iconKey: 'table-icon-orders', cellClass: 'text-end' },
+        { key: 'cr', label: 'CR%', sortable: false, iconKey: 'table-icon-cr', cellClass: 'text-end' },
+        { key: 'vpv', label: 'VPV', sortable: false, iconKey: 'table-icon-vpv', cellClass: 'text-end' },
+        { key: 'rev', label: 'Rev', sortable: false, iconKey: 'table-icon-revenue', cellClass: 'text-end' },
+        { key: 'aov', label: 'AOV', sortable: false, cellClass: 'text-end' }
       ]
     },
     'variants-table': {

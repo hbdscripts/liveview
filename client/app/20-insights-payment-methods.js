@@ -92,7 +92,7 @@
     const safeLabel = label != null ? String(label) : 'Other';
     const safeAlt = iconAlt != null ? String(iconAlt) : safeLabel;
     const img = iconSrc
-      ? '<img class="kexo-payment-method-icon" src="' + escapeHtml(iconSrc) + '" alt="' + escapeHtml(safeAlt) + '" loading="lazy" />'
+      ? '<img class="kexo-payment-method-icon kexo-payment-method-icon--fill" src="' + escapeHtml(iconSrc) + '" alt="' + escapeHtml(safeAlt) + '" loading="lazy" />'
       : '<i class="fa-light fa-circle-question text-secondary kexo-payment-method-fallback-icon" aria-hidden="true"></i>';
     return '<span class="d-inline-flex align-items-center gap-2">' + img + '<span>' + escapeHtml(safeLabel) + '</span></span>';
   }
@@ -115,7 +115,9 @@
 
     const categories = categoriesRaw.map(function (v) {
       try {
-        if (typeof formatYmdShort === 'function') return formatYmdShort(String(v || ''));
+        const s = String(v || '');
+        // Only apply date formatter to YYYY-MM-DD categories; hourly buckets are already formatted.
+        if (/^\d{4}-\d{2}-\d{2}/.test(s) && typeof formatYmdShort === 'function') return formatYmdShort(s);
       } catch (_) {}
       return String(v || '');
     });
@@ -180,17 +182,21 @@
       const label = r && r.label != null ? String(r.label) : 'Other';
       const iconSrc = r && r.iconSrc ? String(r.iconSrc) : '';
       const iconAlt = r && r.iconAlt ? String(r.iconAlt) : label;
-      const payCell = renderPaymentCell(iconSrc, iconAlt, label);
+      const payCell = '<span class="d-inline-flex align-items-center">' + escapeHtml(label) + '</span>';
+      const iconCell = iconSrc
+        ? '<img class="kexo-payment-method-icon kexo-payment-method-icon--fill" src="' + escapeHtml(iconSrc) + '" alt="' + escapeHtml(iconAlt) + '" loading="lazy" />'
+        : '<i class="fa-light fa-circle-question text-secondary kexo-payment-method-fallback-icon" aria-hidden="true"></i>';
       return '' +
         '<div class="grid-row" role="row">' +
           '<div class="grid-cell" role="cell">' + payCell + '</div>' +
-          '<div class="grid-cell" role="cell">' + escapeHtml(fmtInt(r.sessions)) + '</div>' +
-          '<div class="grid-cell" role="cell">' + escapeHtml(fmtInt(r.carts)) + '</div>' +
-          '<div class="grid-cell" role="cell">' + escapeHtml(fmtInt(r.orders)) + '</div>' +
-          '<div class="grid-cell" role="cell">' + escapeHtml(fmtPct1(r.cr)) + '</div>' +
-          '<div class="grid-cell" role="cell">' + escapeHtml(fmtMoneyGbp2(r.vpv)) + '</div>' +
-          '<div class="grid-cell" role="cell">' + escapeHtml(fmtMoneyGbp2(r.revenue)) + '</div>' +
-          '<div class="grid-cell" role="cell">' + escapeHtml(fmtMoneyGbp2(r.aov)) + '</div>' +
+          '<div class="grid-cell kexo-payments-icon-col kexo-payment-method-icon-cell" role="cell">' + iconCell + '</div>' +
+          '<div class="grid-cell text-end" role="cell">' + escapeHtml(fmtInt(r.sessions)) + '</div>' +
+          '<div class="grid-cell text-end" role="cell">' + escapeHtml(fmtInt(r.carts)) + '</div>' +
+          '<div class="grid-cell text-end" role="cell">' + escapeHtml(fmtInt(r.orders)) + '</div>' +
+          '<div class="grid-cell text-end" role="cell">' + escapeHtml(fmtPct1(r.cr)) + '</div>' +
+          '<div class="grid-cell text-end" role="cell">' + escapeHtml(fmtMoneyGbp2(r.vpv)) + '</div>' +
+          '<div class="grid-cell text-end" role="cell">' + escapeHtml(fmtMoneyGbp2(r.revenue)) + '</div>' +
+          '<div class="grid-cell text-end" role="cell">' + escapeHtml(fmtMoneyGbp2(r.aov)) + '</div>' +
         '</div>';
     }).join('');
   }
