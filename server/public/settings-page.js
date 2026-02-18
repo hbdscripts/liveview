@@ -129,6 +129,16 @@
   var initialCostExpensesSubTab = null;
   var activeLayoutSubTab = 'tables';
   var activeKexoSubTab = 'general';
+  var activeIntegrationsSubTab = 'shopify';
+  var activeAttributionSubTab = 'mapping';
+  var activeAdminSubTab = 'users';
+  var activeCostExpensesSubTab = 'cost-sources';
+
+  var layoutTabsetApi = null;
+  var kexoTabsetApi = null;
+  var integrationsTabsetApi = null;
+  var attributionTabsetApi = null;
+  var adminTabsetApi = null;
 
   var TAB_MAP = {
     kexo: 'settings-panel-kexo',
@@ -261,45 +271,32 @@
   }
 
   function getActiveLayoutSubTab() {
-    var tab = document.querySelector('[data-settings-layout-tab].active');
-    if (!tab) return activeLayoutSubTab || 'tables';
-    var key = String(tab.getAttribute('data-settings-layout-tab') || '').trim().toLowerCase();
-    return key || (activeLayoutSubTab || 'tables');
+    return activeLayoutSubTab || 'tables';
   }
 
   function getActiveIntegrationsSubTab() {
-    var tab = document.querySelector('[data-settings-integrations-tab].active');
-    if (!tab) return initialIntegrationsSubTab || 'shopify';
-    var key = String(tab.getAttribute('data-settings-integrations-tab') || '').trim().toLowerCase();
+    var key = activeIntegrationsSubTab || initialIntegrationsSubTab || 'shopify';
     return key === 'googleads' ? 'googleads' : 'shopify';
   }
 
   function getActiveKexoSubTab() {
-    var tab = document.querySelector('[data-settings-kexo-tab].active');
-    if (!tab) return activeKexoSubTab || 'general';
-    var key = String(tab.getAttribute('data-settings-kexo-tab') || '').trim().toLowerCase();
-    return key || (activeKexoSubTab || 'general');
+    return activeKexoSubTab || 'general';
   }
 
   function getActiveAttributionSubTab() {
-    var tab = document.querySelector('[data-settings-attribution-tab].active');
-    if (!tab) return 'mapping';
-    var key = String(tab.getAttribute('data-settings-attribution-tab') || '').trim().toLowerCase();
+    var key = activeAttributionSubTab || initialAttributionSubTab || 'mapping';
     return key === 'tree' ? 'tree' : 'mapping';
   }
 
   function getActiveAdminSubTab() {
-    var tab = document.querySelector('[data-settings-admin-tab].active');
-    if (!tab) return initialAdminSubTab || 'controls';
-    var key = String(tab.getAttribute('data-settings-admin-tab') || '').trim().toLowerCase();
-    if (key === 'diagnostics' || key === 'users') return key;
+    var key = activeAdminSubTab || initialAdminSubTab || 'users';
+    if (key === 'users' || key === 'diagnostics') return key;
     return 'controls';
   }
 
   function getActiveCostExpensesSubTab() {
-    var tab = document.querySelector('[data-settings-cost-expenses-tab].active');
-    if (!tab) return initialCostExpensesSubTab || 'cost-sources';
-    var key = String(tab.getAttribute('data-settings-cost-expenses-tab') || '').trim().toLowerCase();
+    var key = (activeCostExpensesSubTab || initialCostExpensesSubTab || 'cost-sources');
+    key = String(key || '').trim().toLowerCase();
     if (key === 'cost-sources') return 'cost-sources';
     if (key === 'rules') return 'rules';
     return 'shipping';
@@ -326,9 +323,14 @@
       var isActive;
       if (el.classList.contains('settings-nav-child')) {
         var subAttr = (tabKey === 'kexo' && 'data-settings-kexo-tab') || (tabKey === 'layout' && 'data-settings-layout-tab') || (tabKey === 'integrations' && 'data-settings-integrations-tab') || (tabKey === 'attribution' && 'data-settings-attribution-tab') || (tabKey === 'cost-expenses' && 'data-settings-cost-expenses-tab') || (tabKey === 'admin' && 'data-settings-admin-tab');
-        var subKey = subAttr ? el.getAttribute(subAttr) : null;
-        var currentSub = tabKey === 'kexo' ? getActiveKexoSubTab() : (tabKey === 'layout' ? getActiveLayoutSubTab() : (tabKey === 'integrations' ? getActiveIntegrationsSubTab() : (tabKey === 'attribution' ? getActiveAttributionSubTab() : (tabKey === 'cost-expenses' ? getActiveCostExpensesSubTab() : (tabKey === 'admin' ? getActiveAdminSubTab() : null))));
-        isActive = isCategoryMatch && subKey && (String(subKey).toLowerCase() === String(currentSub || '').toLowerCase());
+        if (!subAttr) {
+          // Some categories (e.g. Insights) use a single child label; treat it as active when the category is active.
+          isActive = isCategoryMatch;
+        } else {
+          var subKey = el.getAttribute(subAttr);
+          var currentSub = tabKey === 'kexo' ? getActiveKexoSubTab() : (tabKey === 'layout' ? getActiveLayoutSubTab() : (tabKey === 'integrations' ? getActiveIntegrationsSubTab() : (tabKey === 'attribution' ? getActiveAttributionSubTab() : (tabKey === 'cost-expenses' ? getActiveCostExpensesSubTab() : (tabKey === 'admin' ? getActiveAdminSubTab() : null)))));
+          isActive = isCategoryMatch && subKey && (String(subKey).toLowerCase() === String(currentSub || '').toLowerCase());
+        }
       } else {
         isActive = isCategoryMatch;
       }
@@ -362,7 +364,7 @@
       try {
         if (typeof window.initCostExpensesSettings === 'function') window.initCostExpensesSettings();
       } catch (_) {}
-      var costExpensesSub = initialCostExpensesSubTab || 'cost-sources';
+      var costExpensesSub = getActiveCostExpensesSubTab();
       document.querySelectorAll('[data-settings-cost-expenses-tab]').forEach(function (btn) {
         var sub = String(btn.getAttribute('data-settings-cost-expenses-tab') || '').trim().toLowerCase();
         var isActive = (sub === costExpensesSub);
@@ -417,15 +419,15 @@
         var li = document.createElement('li');
         li.className = 'nav-item';
         li.setAttribute('role', 'presentation');
-        var btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'nav-link' + (idx === 0 ? ' active' : '');
-        btn.setAttribute('role', 'tab');
-        btn.setAttribute('aria-selected', idx === 0 ? 'true' : 'false');
-        btn.setAttribute(tabAttr, key);
-        btn.id = navId + '-tab-' + key;
-        btn.textContent = label;
-        li.appendChild(btn);
+        var link = document.createElement('a');
+        link.href = '#';
+        link.className = 'nav-link' + (idx === 0 ? ' active' : '');
+        link.setAttribute('role', 'tab');
+        link.setAttribute('aria-selected', idx === 0 ? 'true' : 'false');
+        link.setAttribute(tabAttr, key);
+        link.id = navId + '-tab-' + key;
+        link.textContent = label;
+        li.appendChild(link);
         nav.appendChild(li);
       });
       host.insertBefore(nav, accordion);
@@ -466,7 +468,7 @@
         { key: 'general', label: 'General', panelId: 'settings-kexo-panel-general' },
         { key: 'brand-appearance', label: 'Brand & appearance', panelId: 'settings-kexo-panel-brand-appearance' },
         { key: 'icons-assets', label: 'Icons & assets', panelId: 'settings-kexo-panel-icons-assets' },
-        { key: 'theme-display', label: 'Theme & display', panelId: 'settings-kexo-panel-brand-appearance' },
+        { key: 'theme-display', label: 'Theme & display', panelId: 'settings-kexo-panel-theme-display' },
       ],
     });
 
@@ -604,12 +606,14 @@
       if (onActivate) onActivate(key);
     }
     tabs.forEach(function (tab) {
-      tab.addEventListener('click', function () {
+      tab.addEventListener('click', function (e) {
+        try { if (e && typeof e.preventDefault === 'function') e.preventDefault(); } catch (_) {}
         var k = (tab.getAttribute && tab.getAttribute(tabAttr)) || keys[0];
         activate(k);
       });
     });
     activate(initialKey);
+    return { activate: activate };
   }
 
   function escapeHtml(s) {
@@ -802,13 +806,14 @@
   }
 
   function wireIntegrationsSubTabs() {
-    wireKexoTabset({
-      tabSelector: '[data-settings-integrations-tab]',
+    integrationsTabsetApi = wireKexoTabset({
+      tabSelector: '#settings-integrations-main-tabs [data-settings-integrations-tab]',
       tabAttr: 'data-settings-integrations-tab',
       panelIdPrefix: 'settings-integrations-panel-',
       keys: ['shopify', 'googleads'],
       initialKey: initialIntegrationsSubTab || 'shopify',
-      onActivate: function () {
+      onActivate: function (key) {
+        activeIntegrationsSubTab = key;
         if (getActiveSettingsTab() === 'integrations') updateUrl('integrations');
       },
     });
@@ -2663,8 +2668,8 @@
   }
 
   function wireLayoutSubTabs(initialKey) {
-    wireKexoTabset({
-      tabSelector: '[data-settings-layout-tab]',
+    layoutTabsetApi = wireKexoTabset({
+      tabSelector: '#settings-layout-main-tabs [data-settings-layout-tab]',
       tabAttr: 'data-settings-layout-tab',
       panelIdPrefix: 'settings-layout-panel-',
       keys: ['tables', 'charts', 'kpis', 'date-ranges'],
@@ -2674,39 +2679,55 @@
         if (getActiveSettingsTab() === 'layout') {
           if (key === 'tables') try { renderTablesWhenVisible(); } catch (_) {}
           else if (key === 'charts') try { renderChartsWhenVisible(); } catch (_) {}
+          updateUrl('layout');
         }
       },
     });
   }
 
   function wireKexoSubTabs(initialKey) {
-    var THEME_MAP = {
-      icons: 'icons',
-      header: 'header',
-      color: 'color',
-      fonts: 'fonts',
-      notifications: 'sale-notification',
-    };
-    wireKexoTabset({
-      tabSelector: '[data-settings-kexo-tab]',
+    function placeBrandCards(viewKey) {
+      var brandPanel = document.getElementById('settings-kexo-panel-brand-appearance');
+      var iconsPanel = document.getElementById('settings-kexo-panel-icons-assets');
+      var themePanel = document.getElementById('settings-kexo-panel-theme-display');
+      if (!brandPanel || !iconsPanel || !themePanel) return;
+
+      var assetsCard = document.querySelector('#settings-panel-kexo .kexo-brand-assets');
+      var themeCard = document.querySelector('#settings-panel-kexo .kexo-brand-theme');
+      if (!assetsCard || !themeCard) return;
+
+      if (viewKey === 'brand-appearance') {
+        if (assetsCard.parentElement !== brandPanel) brandPanel.appendChild(assetsCard);
+        if (themeCard.parentElement !== brandPanel) brandPanel.appendChild(themeCard);
+        return;
+      }
+
+      if (viewKey === 'icons-assets') {
+        if (assetsCard.parentElement !== iconsPanel) iconsPanel.appendChild(assetsCard);
+        if (themeCard.parentElement !== themePanel) themePanel.appendChild(themeCard);
+        return;
+      }
+
+      if (viewKey === 'theme-display') {
+        if (assetsCard.parentElement !== iconsPanel) iconsPanel.appendChild(assetsCard);
+        if (themeCard.parentElement !== themePanel) themePanel.appendChild(themeCard);
+        return;
+      }
+
+      // Default: keep the content assembled under Brand & appearance.
+      if (assetsCard.parentElement !== brandPanel) brandPanel.appendChild(assetsCard);
+      if (themeCard.parentElement !== brandPanel) brandPanel.appendChild(themeCard);
+    }
+
+    kexoTabsetApi = wireKexoTabset({
+      tabSelector: '#settings-kexo-main-tabs [data-settings-kexo-tab]',
       tabAttr: 'data-settings-kexo-tab',
       panelIdPrefix: 'settings-kexo-panel-',
       keys: ['general', 'brand-appearance', 'icons-assets', 'theme-display'],
-      tabToPanel: { general: 'general', 'brand-appearance': 'brand-appearance', 'icons-assets': 'brand-appearance', 'theme-display': 'brand-appearance' },
       initialKey: initialKey || activeKexoSubTab || 'general',
       onActivate: function (key) {
         activeKexoSubTab = key;
-        var brandPanel = document.getElementById('settings-kexo-panel-brand-appearance');
-        if (brandPanel) {
-          var assetsSection = brandPanel.querySelector('.kexo-brand-assets');
-          var themeSection = brandPanel.querySelector('.kexo-brand-theme');
-          if (assetsSection) assetsSection.style.display = (key === 'theme-display') ? 'none' : '';
-          if (themeSection) themeSection.style.display = (key === 'icons-assets') ? 'none' : '';
-        }
-        var titleEl = document.getElementById('settings-theme-title-text');
-        if (titleEl) {
-          titleEl.textContent = key === 'theme-display' ? 'Theme & display' : (key === 'brand-appearance' ? 'Brand & appearance' : (key === 'icons-assets' ? 'Icons & assets' : 'Theme'));
-        }
+        placeBrandCards(key);
         if (key === 'theme-display' || key === 'brand-appearance') {
           try {
             try { window.__kexoThemeRequestedSubtab = 'icons'; } catch (_) {}
@@ -2719,33 +2740,35 @@
   }
 
   function wireAttributionSubTabs(initialKey) {
-    wireKexoTabset({
-      tabSelector: '[data-settings-attribution-tab]',
+    attributionTabsetApi = wireKexoTabset({
+      tabSelector: '#settings-attribution-main-tabs [data-settings-attribution-tab]',
       tabAttr: 'data-settings-attribution-tab',
       panelIdPrefix: 'settings-attribution-panel-',
       keys: ['mapping', 'tree'],
       initialKey: initialKey || 'mapping',
       onActivate: function (key) {
+        activeAttributionSubTab = key;
         if (getActiveSettingsTab() === 'attribution') {
           if (key === 'mapping' && typeof window.initAttributionMappingSettings === 'function') {
             try { window.initAttributionMappingSettings({ rootId: 'settings-attribution-mapping-root' }); } catch (_) {}
           } else if (key === 'tree' && typeof window.initAttributionTreeView === 'function') {
             try { window.initAttributionTreeView({ rootId: 'settings-attribution-tree-root' }); } catch (_) {}
           }
+          updateUrl('attribution');
         }
-        updateUrl(getActiveSettingsTab() || 'kexo');
       },
     });
   }
 
   function wireAdminSubTabs(initialKey) {
-    wireKexoTabset({
-      tabSelector: '[data-settings-admin-tab]',
+    adminTabsetApi = wireKexoTabset({
+      tabSelector: '#settings-admin-main-tabs [data-settings-admin-tab]',
       tabAttr: 'data-settings-admin-tab',
       panelIdPrefix: 'admin-panel-',
       keys: ['users', 'diagnostics', 'controls'],
       initialKey: initialKey || initialAdminSubTab || 'users',
-      onActivate: function () {
+      onActivate: function (key) {
+        activeAdminSubTab = key;
         if (getActiveSettingsTab() === 'admin') updateUrl('admin');
       },
     });
@@ -4727,63 +4750,77 @@
   }
 
   function init() {
-    var initialTab = getTabFromQuery() || getTabFromHash() || 'kexo';
+    function syncFromUrl() {
+      var tab = getTabFromQuery() || getTabFromHash() || 'kexo';
+      if (initialKexoSubTab) activeKexoSubTab = initialKexoSubTab;
+      if (initialLayoutSubTab) activeLayoutSubTab = initialLayoutSubTab;
+      if (initialIntegrationsSubTab) activeIntegrationsSubTab = initialIntegrationsSubTab;
+      if (initialAttributionSubTab) activeAttributionSubTab = initialAttributionSubTab;
+      if (initialAdminSubTab) activeAdminSubTab = initialAdminSubTab;
+      if (initialCostExpensesSubTab) activeCostExpensesSubTab = initialCostExpensesSubTab;
+
+      activateTab(tab);
+      try {
+        if (tab === 'kexo' && kexoTabsetApi) kexoTabsetApi.activate(getActiveKexoSubTab());
+        else if (tab === 'layout' && layoutTabsetApi) layoutTabsetApi.activate(getActiveLayoutSubTab());
+        else if (tab === 'integrations' && integrationsTabsetApi) integrationsTabsetApi.activate(getActiveIntegrationsSubTab());
+        else if (tab === 'attribution' && attributionTabsetApi) attributionTabsetApi.activate(getActiveAttributionSubTab());
+        else if (tab === 'admin' && adminTabsetApi) adminTabsetApi.activate(getActiveAdminSubTab());
+      } catch (_) {}
+    }
+
     prepareSettingsMainTabs();
     // Layout is now a multi-tab section (Tables / Charts / KPIs). If the URL used legacy
     // `tab=charts` or `tab=kpis`, preselect the right Layout subtab BEFORE activating the panel.
     wireLayoutSubTabs(initialLayoutSubTab);
     wireKexoSubTabs(initialKexoSubTab);
+    wireIntegrationsSubTabs();
     wireAttributionSubTabs(initialAttributionSubTab);
     wireAdminSubTabs(initialAdminSubTab);
-    activateTab(initialTab);
+    syncFromUrl();
 
     var tablist = document.getElementById('settings-category-tablist');
     if (tablist) {
-      tablist.querySelectorAll('a[data-settings-tab]').forEach(function (el) {
-        el.addEventListener('click', function (e) {
-          e.preventDefault();
-          var key = el.getAttribute('data-settings-tab');
-          if (!key) return;
-          if (el.classList.contains('settings-nav-child')) {
-            var subAttr = (key === 'kexo' && 'data-settings-kexo-tab') || (key === 'layout' && 'data-settings-layout-tab') || (key === 'integrations' && 'data-settings-integrations-tab') || (key === 'attribution' && 'data-settings-attribution-tab') || (key === 'cost-expenses' && 'data-settings-cost-expenses-tab') || (key === 'admin' && 'data-settings-admin-tab');
-            var subKey = subAttr ? el.getAttribute(subAttr) : null;
-            if (subKey) {
-              if (key === 'kexo') { initialKexoSubTab = subKey; activeKexoSubTab = subKey; }
-              else if (key === 'layout') { initialLayoutSubTab = subKey; activeLayoutSubTab = subKey; }
-              else if (key === 'integrations') initialIntegrationsSubTab = subKey;
-              else if (key === 'attribution') initialAttributionSubTab = subKey;
-              else if (key === 'cost-expenses') initialCostExpensesSubTab = subKey;
-              else if (key === 'admin') initialAdminSubTab = subKey;
-            }
-            if (el.getAttribute('href')) {
-              try { history.replaceState(null, '', el.getAttribute('href')); } catch (_) {}
-            }
+      tablist.addEventListener('click', function (e) {
+        var a = null;
+        try { a = e && e.target && e.target.closest ? e.target.closest('a[data-settings-tab]') : null; } catch (_) {}
+        if (!a || !tablist.contains(a)) return;
+        try { e.preventDefault(); } catch (_) {}
+        var key = a.getAttribute('data-settings-tab');
+        if (!key) return;
+
+        var subKey = null;
+        if (a.classList.contains('settings-nav-child')) {
+          var subAttr = (key === 'kexo' && 'data-settings-kexo-tab') || (key === 'layout' && 'data-settings-layout-tab') || (key === 'integrations' && 'data-settings-integrations-tab') || (key === 'attribution' && 'data-settings-attribution-tab') || (key === 'cost-expenses' && 'data-settings-cost-expenses-tab') || (key === 'admin' && 'data-settings-admin-tab');
+          subKey = subAttr ? a.getAttribute(subAttr) : null;
+          if (subKey) {
+            if (key === 'kexo') { initialKexoSubTab = subKey; activeKexoSubTab = subKey; }
+            else if (key === 'layout') { initialLayoutSubTab = subKey; activeLayoutSubTab = subKey; }
+            else if (key === 'integrations') { initialIntegrationsSubTab = subKey; activeIntegrationsSubTab = subKey; }
+            else if (key === 'attribution') { initialAttributionSubTab = subKey; activeAttributionSubTab = subKey; }
+            else if (key === 'cost-expenses') { initialCostExpensesSubTab = subKey; activeCostExpensesSubTab = subKey; }
+            else if (key === 'admin') { initialAdminSubTab = subKey; activeAdminSubTab = subKey; }
           }
-          activateTab(key);
-          if (el.classList.contains('settings-nav-child') && key === 'kexo' && initialKexoSubTab) wireKexoSubTabs(initialKexoSubTab);
-          else if (el.classList.contains('settings-nav-child') && key === 'layout' && initialLayoutSubTab) wireLayoutSubTabs(initialLayoutSubTab);
-          else if (el.classList.contains('settings-nav-child') && key === 'integrations') wireIntegrationsSubTabs();
-          else if (el.classList.contains('settings-nav-child') && key === 'attribution' && initialAttributionSubTab) wireAttributionSubTabs(initialAttributionSubTab);
-          else if (el.classList.contains('settings-nav-child') && key === 'cost-expenses' && initialCostExpensesSubTab) {
-            var costExpensesSub = initialCostExpensesSubTab;
-            document.querySelectorAll('[data-settings-cost-expenses-tab]').forEach(function (btn) {
-              var sub = String(btn.getAttribute('data-settings-cost-expenses-tab') || '').trim().toLowerCase();
-              var isActive = (sub === costExpensesSub);
-              btn.classList.toggle('active', isActive);
-              btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
-              var panelId = btn.getAttribute('aria-controls');
-              if (panelId) {
-                var panel = document.getElementById(panelId);
-                if (panel) panel.classList.toggle('active', isActive);
-              }
-            });
-          } else if (el.classList.contains('settings-nav-child') && key === 'admin' && initialAdminSubTab) wireAdminSubTabs(initialAdminSubTab);
-        });
+        }
+
+        if (a.getAttribute('href')) {
+          try { history.replaceState(null, '', a.getAttribute('href')); } catch (_) {}
+        }
+
+        activateTab(key);
+        try {
+          if (!subKey) return;
+          if (key === 'kexo' && kexoTabsetApi) kexoTabsetApi.activate(subKey);
+          else if (key === 'layout' && layoutTabsetApi) layoutTabsetApi.activate(subKey);
+          else if (key === 'integrations' && integrationsTabsetApi) integrationsTabsetApi.activate(subKey);
+          else if (key === 'attribution' && attributionTabsetApi) attributionTabsetApi.activate(subKey);
+          else if (key === 'admin' && adminTabsetApi) adminTabsetApi.activate(subKey);
+        } catch (_) {}
       });
     }
 
     window.addEventListener('popstate', function () {
-      activateTab(getTabFromQuery() || getTabFromHash() || 'kexo');
+      syncFromUrl();
     });
 
     var loaderEnabled = isSettingsPageLoaderEnabled();
@@ -4802,7 +4839,7 @@
     wirePlanBasedBrandingLocks();
     wireAssets();
     wireGeneralSettingsSave();
-    wireIntegrationsSubTabs();
+    // Integrations main-tabs are wired above so left-nav child clicks can activate them.
     wireGoogleAdsActions();
     wireKpisLayoutSubTabs();
     wireInsightsLayoutSubTabs();
