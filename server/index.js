@@ -19,6 +19,7 @@ const ingestRouter = require('./routes/ingest');
 const streamRouter = require('./routes/stream');
 const sessionsRouter = require('./routes/sessions');
 const configStatus = require('./routes/configStatus');
+const versionRoute = require('./routes/version');
 const shopifySessions = require('./routes/shopifySessions');
 const statsRouter = require('./routes/stats');
 const kpisRouter = require('./routes/kpis');
@@ -359,16 +360,8 @@ const ASSET_VERSION = (() => {
 })();
 
 // Expose a deploy/version signal for clients (helps recover from long-idle tabs + embed caching).
-app.get('/api/version', (req, res) => {
-  res.setHeader('Cache-Control', 'no-store');
-  const payload = {
-    version: String((pkg && pkg.version) || '0.0.0'),
-    assetVersion: ASSET_VERSION ? String(ASSET_VERSION) : null,
-  };
-  const dsn = (config.sentryDsn || '').trim();
-  if (dsn) payload.sentryDsn = dsn;
-  res.json(payload);
-});
+const versionHandler = versionRoute.makeHandler({ pkg, config, assetVersion: ASSET_VERSION });
+app.get('/api/version', versionHandler);
 
 function applyAssetVersionToHtml(html) {
   if (!ASSET_VERSION) return html;
