@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 06a40154e62bbf85
+// checksum: f569353cfbf816ed
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -22460,7 +22460,9 @@ const API = '';
       openBtn.addEventListener('click', function (e) {
         e.preventDefault();
         try {
-          window.open('/settings?tab=cost-expenses&costExpensesTab=rules', '_blank', 'noopener,noreferrer');
+          var url = '/settings?tab=cost-expenses&costExpensesTab=rules';
+          if (typeof window !== 'undefined' && window.location && typeof window.location.assign === 'function') window.location.assign(url);
+          else window.location.href = url;
         } catch (_) {}
       });
     }

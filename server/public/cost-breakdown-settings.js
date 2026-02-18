@@ -87,14 +87,17 @@
     items.forEach(function (it) {
       if (!it || typeof it !== 'object') return;
       var label = it.label != null ? String(it.label) : '';
+      var isDetail = it.is_detail === true || it.parent_key != null;
       var active = it.active === true;
       var statusLabel = active ? 'Active' : 'Inactive';
       var badgeCls = active ? 'bg-success-lt' : 'bg-secondary-lt';
       var amount = formatAmount(it.amount, it.currency || currency);
       var notes = it.notes != null ? String(it.notes) : '';
       var rowCls = active ? '' : 'text-muted opacity-75';
+      if (isDetail) rowCls = (rowCls ? rowCls + ' ' : '') + 'table-light';
+      var labelHtml = isDetail ? ('<div class="ps-4">' + esc(label) + '</div>') : esc(label);
       html += '<tr class="' + rowCls + '">' +
-        '<td>' + esc(label) + '</td>' +
+        '<td>' + labelHtml + '</td>' +
         '<td><span class="badge ' + badgeCls + '">' + esc(statusLabel) + '</span></td>' +
         '<td class="text-end">' + esc(amount) + '</td>' +
         '<td class="text-muted small">' + esc(notes) + '</td>' +

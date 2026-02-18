@@ -2876,6 +2876,115 @@ async function getCostBreakdown({ rangeKey } = {}) {
     ? computeShippingCostFromSummary(summary, { ...shippingCfg, enabled: true })
     : 0;
 
+  const shippingDetails = [];
+  if (summary && shippingConfigured) {
+    const defaultGbp = Math.max(0, Number(shippingCfg.worldwideDefaultGbp) || 0);
+    const enabledOverrides = (Array.isArray(overrides) ? overrides : [])
+      .filter((o) => o && o.enabled !== false)
+      .map((o, idx) => {
+        const countries = Array.isArray(o.countries) ? o.countries : [];
+        const normalized = countries.map((c) => normalizeCountryCode(c)).filter(Boolean);
+        return {
+          idx,
+          priceGbp: Math.max(0, Number(o.priceGbp) || 0),
+          countries: new Set(normalized),
+          countriesLabel: normalized.join(', '),
+          orders: 0,
+          amountGbp: 0,
+        };
+      });
+    const defaultBucket = { orders: 0, amountGbp: 0 };
+    for (const [countryCode, data] of (summary.byCountry || new Map())) {
+      const orders = Number(data && data.orders) || 0;
+      if (orders <= 0) continue;
+      const code = normalizeCountryCode(countryCode) || String(countryCode || '').trim().toUpperCase().slice(0, 2);
+      if (!code) continue;
+      let matched = null;
+      for (const ov of enabledOverrides) {
+        if (ov && ov.countries && ov.countries.has(code)) { matched = ov; break; }
+      }
+      if (matched) {
+        matched.orders += orders;
+        matched.amountGbp += orders * matched.priceGbp;
+      } else {
+        defaultBucket.orders += orders;
+        defaultBucket.amountGbp += orders * defaultGbp;
+      }
+    }
+    enabledOverrides.forEach((ov, n) => {
+      const amt = round2(Number(ov.amountGbp) || 0) || 0;
+      const countriesLabel = ov.countriesLabel || '';
+      const label = countriesLabel ? ('Override: ' + countriesLabel) : ('Override #' + (n + 1));
+      const notes = (countriesLabel ? (countriesLabel + ' · ') : '')
+        + (ov.orders || 0) + ' orders × £' + (Number(ov.priceGbp) || 0).toFixed(2);
+      shippingDetails.push({
+        key: 'shipping_override_' + String(n + 1),
+        parent_key: 'shipping',
+        is_detail: true,
+        label,
+        configured: true,
+        active: shippingActive,
+        amount: amt,
+        currency: 'GBP',
+        notes,
+      });
+    });
+    if (defaultBucket.orders > 0 || defaultGbp > 0) {
+      const amt = round2(Number(defaultBucket.amountGbp) || 0) || 0;
+      const notes = defaultBucket.orders + ' orders × £' + defaultGbp.toFixed(2);
+      shippingDetails.push({
+        key: 'shipping_default',
+        parent_key: 'shipping',
+        is_detail: true,
+        label: 'Worldwide default',
+        configured: defaultGbp > 0,
+        active: shippingActive,
+        amount: amt,
+        currency: 'GBP',
+        notes,
+      });
+    }
+  }
+
+  const ruleDetails = [];
+  if (summary && rulesConfigured) {
+    const normalized = normalizeProfitRulesConfigV1(profitRules);
+    const list = Array.isArray(normalized && normalized.rules) ? normalized.rules : [];
+    for (const rule of list) {
+      if (!rule || rule.enabled !== true) continue;
+      const scoped = selectedScopeTotals(summary, rule.appliesTo);
+      const value = Number(rule.value) || 0;
+      let deduction = 0;
+      if (rule.type === PROFIT_RULE_TYPES.percentRevenue) deduction = scoped.revenueGbp * (value / 100);
+      else if (rule.type === PROFIT_RULE_TYPES.fixedPerOrder) deduction = scoped.orders * value;
+      else if (rule.type === PROFIT_RULE_TYPES.fixedPerPeriod) deduction = value;
+      if (!Number.isFinite(deduction) || deduction < 0) deduction = 0;
+      const scopeLabel = (rule.appliesTo && rule.appliesTo.mode === 'countries' && Array.isArray(rule.appliesTo.countries) && rule.appliesTo.countries.length)
+        ? rule.appliesTo.countries.join(', ')
+        : 'ALL';
+      const typeLabel = rule.type === PROFIT_RULE_TYPES.fixedPerOrder
+        ? 'Fixed per order'
+        : rule.type === PROFIT_RULE_TYPES.fixedPerPeriod
+          ? 'Fixed per period'
+          : '% of revenue';
+      const valueLabel = rule.type === PROFIT_RULE_TYPES.percentRevenue
+        ? (value.toFixed(2).replace(/\.00$/, '') + '%')
+        : ('£' + value.toFixed(2));
+      ruleDetails.push({
+        key: 'rule_' + (rule.id ? String(rule.id).slice(0, 64) : String(ruleDetails.length + 1)),
+        parent_key: 'rules',
+        is_detail: true,
+        label: rule.name ? String(rule.name) : 'Expense',
+        configured: true,
+        active: rulesActive,
+        amount: round2(deduction) || 0,
+        currency: 'GBP',
+        notes: scopeLabel + ' · ' + typeLabel + ' · ' + valueLabel,
+      });
+      if (ruleDetails.length >= 100) break;
+    }
+  }
+
   const shopifyBalanceAvailable = !!(shopifyCosts && shopifyCosts.available === true);
   const shopifyNote = shopifyBalanceAvailable ? '' : (shopifyCosts && shopifyCosts.error ? String(shopifyCosts.error) : 'Unavailable');
 
@@ -2927,6 +3036,7 @@ async function getCostBreakdown({ rangeKey } = {}) {
       ? ((Number(shippingCfg.worldwideDefaultGbp) || 0) > 0 ? 'Using worldwide default' : (overrides.length ? 'Using country overrides' : ''))
       : 'Not configured',
   });
+  shippingDetails.forEach((d) => items.push(d));
   items.push({
     key: 'rules',
     label: 'Rules & adjustments',
@@ -2936,6 +3046,7 @@ async function getCostBreakdown({ rangeKey } = {}) {
     currency: 'GBP',
     notes: rulesConfigured ? (enabledRulesCount > 0 ? (enabledRulesCount + ' rule(s) enabled') : 'No enabled rules') : 'No rules defined',
   });
+  ruleDetails.forEach((d) => items.push(d));
 
   let activeTotal = 0;
   let inactiveTotal = 0;

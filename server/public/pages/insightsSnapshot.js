@@ -1236,7 +1236,9 @@
     if (openBtn) {
       openBtn.addEventListener('click', function onOpenProfitRules() {
         try {
-          window.open('/settings?tab=cost-expenses&costExpensesTab=rules', '_blank', 'noopener,noreferrer');
+          const url = '/settings?tab=cost-expenses&costExpensesTab=rules';
+          if (typeof window !== 'undefined' && window.location && typeof window.location.assign === 'function') window.location.assign(url);
+          else window.location.href = url;
         } catch (_) {}
       });
     }

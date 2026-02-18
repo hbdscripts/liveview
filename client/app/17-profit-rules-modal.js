@@ -384,7 +384,9 @@
       openBtn.addEventListener('click', function (e) {
         e.preventDefault();
         try {
-          window.open('/settings?tab=cost-expenses&costExpensesTab=rules', '_blank', 'noopener,noreferrer');
+          var url = '/settings?tab=cost-expenses&costExpensesTab=rules';
+          if (typeof window !== 'undefined' && window.location && typeof window.location.assign === 'function') window.location.assign(url);
+          else window.location.href = url;
         } catch (_) {}
       });
     }
