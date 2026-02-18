@@ -99,7 +99,7 @@
         btn.classList.add('spinning');
         btn.disabled = true;
       }
-      setDiagnosticsActionMsg('Reconciling Shopify truth (7d)???', true);
+      setDiagnosticsActionMsg('Reconciling Shopify truth (7d)\u2026', true);
       const p = fetch(getReconcileSalesUrl({ force: true }), {
         method: 'POST',
         credentials: 'same-origin',
@@ -157,14 +157,14 @@
         configStatusEl.innerHTML =
           '<div class="d-flex align-items-center gap-2 text-secondary">' +
             '<div class="spinner-border spinner-border-sm text-primary" role="status" aria-hidden="true"></div>' +
-            '<div>Loading diagnostics???</div>' +
+            '<div>Loading diagnostics\u2026</div>' +
           '</div>' +
           '<div id="settings-diagnostics-loading-step" class="text-secondary small mt-2">\u2014</div>';
         diagnosticsStepEl = configStatusEl.querySelector('#settings-diagnostics-loading-step');
         if (diagnosticsStepEl) diagnosticsStepEl.textContent = 'Connecting to diagnostics services';
       }
       if (compareOpen && compareStatusEl) {
-        compareStatusEl.innerHTML = '<div class="kpi-compare-loading"><div class="report-build-wrap"><div class="spinner-border text-primary" role="status"></div><div class="report-build-title">building KPI comparison</div><div class="report-build-step">???</div></div></div>';
+        compareStatusEl.innerHTML = '<div class="kpi-compare-loading"><div class="report-build-wrap"><div class="spinner-border text-primary" role="status"></div><div class="report-build-title">building KPI comparison</div><div class="report-build-step">\u2026</div></div></div>';
         compareStepEl = compareStatusEl.querySelector('.report-build-step');
         if (compareStepEl) compareStepEl.textContent = 'Loading KPI sources';
       }
@@ -478,7 +478,7 @@
                     const note2 = (s && s.note) ? String(s.note) : '';
                     let line = '<strong>' + escapeHtml(kind) + '</strong>';
                     if (st.length) line += ' ?? ' + escapeHtml(st.join(', '));
-                    if (note2) line += ' ??? ' + escapeHtml(note2);
+                    if (note2) line += ' \u2014 ' + escapeHtml(note2);
                     out += '<li>' + line + '</li>';
                   }
                   out += '</ul>';
@@ -939,7 +939,7 @@
           if (db && db.tables) {
             var t = db.tables;
             var bits = [];
-            function add(name, ok) { bits.push(name + (ok ? ' ???' : ' ???')); }
+            function add(name, ok) { bits.push(name + (ok ? ' \u2713' : ' \u2717')); }
             add('settings', !!t.settings);
             add('shop_sessions', !!t.shop_sessions);
             add('visitors', !!t.visitors);
@@ -1190,7 +1190,7 @@
                     setMsg('Nothing to copy', false);
                     return;
                   }
-                  setMsg('Copying???', true);
+                  setMsg('Copying\u2026', true);
                   if (navigator && navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
                     navigator.clipboard.writeText(text)
                       .then(function() { setMsg('Copied (' + text.length + ' chars)', true); })
@@ -1266,7 +1266,7 @@
             const refreshMonthBtn = document.getElementById('ga-refresh-month-btn');
             if (statusBtn) {
               statusBtn.onclick = function() {
-                setGaMsg('Fetching status???', true);
+                setGaMsg('Fetching status\u2026', true);
                 fetchJson((API || '') + '/api/ads/status', { credentials: 'same-origin', cache: 'no-store' })
                   .then(function(r) {
                     setGaOutput({ endpoint: 'GET /api/ads/status', status: r.status, ok: r.ok, body: r.json || r.text });
@@ -1280,7 +1280,7 @@
             }
             if (summaryBtn) {
               summaryBtn.onclick = function() {
-                setGaMsg('Fetching summary???', true);
+                setGaMsg('Fetching summary\u2026', true);
                 fetchJson((API || '') + '/api/ads/summary?range=7d', { credentials: 'same-origin', cache: 'no-store' })
                   .then(function(r) {
                     setGaOutput({ endpoint: 'GET /api/ads/summary?range=7d', status: r.status, ok: r.ok, body: r.json || r.text });
@@ -1293,7 +1293,7 @@
               };
             }
             function doRefresh(rangeKey) {
-              setGaMsg('Refreshing ' + rangeKey + '???', true);
+              setGaMsg('Refreshing ' + rangeKey + '\u2026', true);
               fetchJson((API || '') + '/api/ads/refresh?range=' + encodeURIComponent(rangeKey), {
                 method: 'POST',
                 credentials: 'same-origin',
@@ -1321,7 +1321,7 @@
                 const enabled = !!toggle.checked;
                 const nextMode = enabled ? 'shared_ttl' : 'legacy';
                 toggle.disabled = true;
-                if (msgEl) msgEl.textContent = 'Saving???';
+                if (msgEl) msgEl.textContent = 'Saving\u2026';
                 fetch(API + '/api/settings', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
@@ -1339,7 +1339,7 @@
                   .then(function() {
                     const shop = getShopParam();
                     if (shop && /\.myshopify\.com$/i.test(shop)) {
-                      if (msgEl) msgEl.textContent = 'Saved. Syncing pixel settings???';
+                      if (msgEl) msgEl.textContent = 'Saved. Syncing pixel settings\u2026';
                       return fetch(API + '/api/pixel/ensure?shop=' + encodeURIComponent(shop), { credentials: 'same-origin', cache: 'no-store' })
                         .then(function(r) { return r.ok ? r.json() : null; })
                         .catch(function() { return null; });

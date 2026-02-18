@@ -3342,7 +3342,6 @@
             if (d == null) d = 0;
             var abs = Math.abs(d);
             var s = fmtGbp(abs);
-            if (s === '\u2014') s = '??0.00';
             if (d > 0) return '+' + s;
             if (d < 0) return '-' + s;
             return s;

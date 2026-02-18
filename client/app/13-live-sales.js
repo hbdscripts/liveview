@@ -169,7 +169,7 @@
             if (Number.isFinite(n)) amountGbp = n;
           }
           if (amountGbp != null && Number.isFinite(amountGbp)) {
-            setSaleToastContent({ countryCode: cc || 'XX', productTitle: (productTitle || curTitle || '???'), amountGbp });
+            setSaleToastContent({ countryCode: cc || 'XX', productTitle: (productTitle || curTitle || '\u2014'), amountGbp });
           }
         } catch (_) {}
       }

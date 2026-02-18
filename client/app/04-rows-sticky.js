@@ -1389,7 +1389,7 @@
       if (s.utm_medium != null && String(s.utm_medium).trim() !== '') lines.push('utm_medium: ' + String(s.utm_medium).trim());
       if (s.utm_campaign != null && String(s.utm_campaign).trim() !== '') lines.push('utm_campaign: ' + String(s.utm_campaign).trim());
       if (s.utm_content != null && String(s.utm_content).trim() !== '') lines.push('utm_content: ' + String(s.utm_content).trim());
-      if (lines.length === 0) return '???';
+      if (lines.length === 0) return '\u2014';
       return lines.join('\n');
     }
 
@@ -2107,7 +2107,7 @@
           '</div>' +
           '<div class="fraud-analysis">' +
             '<div class="mb-2" style="font-weight:500">Analysis</div>' +
-            '<div class="fraud-summary">' + escapeHtml(summary || '???') + '</div>' +
+            '<div class="fraud-summary">' + escapeHtml(summary || '\u2014') + '</div>' +
             (reasonsHtml ? ('<div class="mt-2">' + reasonsHtml + '</div>') : '') +
             (rec ? ('<div class="mt-2 text-muted"><span style="font-weight:500">Suggested action:</span> ' + escapeHtml(rec) + '</div>') : '') +
           '</div>' +

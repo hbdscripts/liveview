@@ -362,7 +362,7 @@
                   '<div style="display:flex;align-items:center;margin-bottom:4px;">' + thumb +
                     '<div style="font-weight:600;font-size:12px;line-height:1.2;">' + escapeHtml(row.title) + '</div>' +
                   '</div>' +
-                  '<div style="font-size:12px;color:#475569;">Revenue: <strong style="color:#0f172a;">' + escapeHtml(formatRevenue(row.revenue) || '???') + '</strong></div>' +
+                  '<div style="font-size:12px;color:#475569;">Revenue: <strong style="color:#0f172a;">' + escapeHtml(formatRevenue(row.revenue) || '\u2014') + '</strong></div>' +
                 '</div>';
               }
             },
@@ -417,7 +417,7 @@
                 var last = w && w.globals && Array.isArray(w.globals.labels) ? (w.globals.labels.length - 1) : -1;
                 if (dp !== last) return '';
               } catch (_) { return ''; }
-              return formatRevenue(Number(val)) || '???';
+              return formatRevenue(Number(val)) || '\u2014';
             },
             style: { fontSize: '10px' },
             background: { enabled: true, borderRadius: 4, padding: 3, opacity: 0.85 },
@@ -438,7 +438,7 @@
             forceNiceScale: true,
             labels: {
               style: { fontSize: '11px' },
-              formatter: function(value) { return formatRevenue(Number(value)) || '???'; }
+              formatter: function(value) { return formatRevenue(Number(value)) || '\u2014'; }
             }
           },
           tooltip: {
@@ -453,7 +453,7 @@
                 '<div style="display:flex;align-items:center;margin-bottom:4px;">' + thumb +
                   '<div style="font-weight:600;font-size:12px;line-height:1.2;">' + escapeHtml(row.title) + '</div>' +
                 '</div>' +
-                '<div style="font-size:12px;color:#475569;">Revenue: <strong style="color:#0f172a;">' + escapeHtml(formatRevenue(row.revenue) || '???') + '</strong></div>' +
+                '<div style="font-size:12px;color:#475569;">Revenue: <strong style="color:#0f172a;">' + escapeHtml(formatRevenue(row.revenue) || '\u2014') + '</strong></div>' +
               '</div>';
             }
           },
@@ -705,7 +705,7 @@
     }
 
     function formatSessions(n) {
-      if (n == null || typeof n !== 'number') return '???';
+      if (n == null || typeof n !== 'number') return '\u2014';
       return n.toLocaleString();
     }
 
@@ -824,9 +824,9 @@
         const iso = (r.country_code || 'XX').toUpperCase().slice(0, 2);
         const label = countryLabelFull(iso);
         const flag = flagImg(iso, label);
-        const revenue = r && r.revenue != null ? formatRevenueTableHtml(r.revenue) : '???';
-        const aov = r && r.aov != null ? formatRevenueTableHtml(r.aov) : '???';
-        const cr = r && r.conversion != null ? pct(r.conversion) : '???';
+        const revenue = r && r.revenue != null ? formatRevenueTableHtml(r.revenue) : '\u2014';
+        const aov = r && r.aov != null ? formatRevenueTableHtml(r.aov) : '\u2014';
+        const cr = r && r.conversion != null ? pct(r.conversion) : '\u2014';
         return '<div class="grid-row" role="row">' +
           '<div class="grid-cell" role="cell"><span class="country-cell">' + flag + '<span class="country-label"><span class="country-name">' + escapeHtml(label) + '</span></span></span></div>' +
           '<div class="grid-cell" role="cell">' + revenue + '</div>' +
@@ -841,7 +841,7 @@
       if (!grid) return;
       const rows = (data && Array.isArray(data.finishes)) ? data.finishes : [];
       if (rows.length === 0) {
-        const msg = finishesLoading ? 'Loading finishes???' : 'No data';
+        const msg = finishesLoading ? 'Loading finishes\u2026' : 'No data';
         grid.innerHTML = '<div class="aov-card aov-card-empty">' + escapeHtml(msg) + '</div>';
         return;
       }
@@ -867,10 +867,10 @@
       grid.innerHTML = ordered.map(function(r) {
         const label = (r && r.label != null) ? String(r.label) : '';
         const revenue = (r && r.revenueGbp != null) ? Number(r.revenueGbp) : null;
-        const value = (revenue != null && Number.isFinite(revenue)) ? formatRevenueTableHtml(revenue) : '???';
+        const value = (revenue != null && Number.isFinite(revenue)) ? formatRevenueTableHtml(revenue) : '\u2014';
         const cr = crPillHtml(r && r.cr);
         return '<div class="aov-card">' +
-          '<div class="aov-card-left">' + iconFor(r && r.key) + '<span class="aov-card-name">' + escapeHtml(label || '???') + '</span></div>' +
+          '<div class="aov-card-left">' + iconFor(r && r.key) + '<span class="aov-card-name">' + escapeHtml(label || '\u2014') + '</span></div>' +
           '<div class="aov-card-value"><span class="aov-card-value-main">' + value + '</span>' + cr + '</div>' +
         '</div>';
       }).join('');
@@ -881,7 +881,7 @@
       if (!grid) return;
       const rows = (data && Array.isArray(data.lengths)) ? data.lengths : [];
       if (rows.length === 0) {
-        const msg = lengthsLoading ? 'Loading lengths???' : 'No data';
+        const msg = lengthsLoading ? 'Loading lengths\u2026' : 'No data';
         grid.innerHTML = '<div class="aov-card aov-card-empty">' + escapeHtml(msg) + '</div>';
         return;
       }
@@ -894,10 +894,10 @@
         const inches = (r && r.inches != null) ? Number(r.inches) : null;
         const label = (r && r.label != null) ? String(r.label) : (inches != null && Number.isFinite(inches) ? (String(inches) + '"') : '');
         const revenue = (r && r.revenueGbp != null) ? Number(r.revenueGbp) : null;
-        const value = (revenue != null && Number.isFinite(revenue)) ? formatRevenueTableHtml(revenue) : '???';
+        const value = (revenue != null && Number.isFinite(revenue)) ? formatRevenueTableHtml(revenue) : '\u2014';
         const cr = crPillHtml(r && r.cr);
-        const icon = '<span class="length-icon" aria-hidden="true"><span class="length-icon-text">' + escapeHtml(label || '???') + '</span></span>';
-        const sr = '<span class="aov-card-name sr-only">' + escapeHtml((label || '???') + ' Inches') + '</span>';
+        const icon = '<span class="length-icon" aria-hidden="true"><span class="length-icon-text">' + escapeHtml(label || '\u2014') + '</span></span>';
+        const sr = '<span class="aov-card-name sr-only">' + escapeHtml((label || '\u2014') + ' Inches') + '</span>';
         return '<div class="aov-card aov-card--length">' +
           '<div class="aov-card-left">' + icon + sr + '</div>' +
           '<div class="aov-card-value"><span class="aov-card-value-main">' + value + '</span>' + cr + '</div>' +
@@ -1120,7 +1120,7 @@
         const label = countryLabel(code);
         const conversion = pct(r.conversion);
         const salesCount = r.converted != null ? Number(r.converted) : 0;
-        const clicks = r.total != null ? formatSessions(r.total) : '???';
+        const clicks = r.total != null ? formatSessions(r.total) : '\u2014';
         const revenue = formatRevenueTableHtml(r.revenue);
         const vpvNum = countryVpv(r);
         const vpv = vpvNum != null ? formatRevenue(vpvNum) : '\u2014';
@@ -1489,8 +1489,8 @@
               );
               return;
             }
-            const revHtml = formatRevenue(Number(rev) || 0) || '???';
-            const ordHtml = ord ? (formatSessions(ord) + ' orders') : '???';
+            const revHtml = formatRevenue(Number(rev) || 0) || '\u2014';
+            const ordHtml = ord ? (formatSessions(ord) + ' orders') : '\u2014';
             setVectorMapTooltipContent(
               tooltip,
               '<div style="min-width:180px">' +
@@ -1573,14 +1573,14 @@
       tbody.innerHTML = pageRows.map(r => {
         const iso = (r.country_code || 'XX').toUpperCase().slice(0, 2);
         const label = countryLabel(iso);
-        const productTitle = (r.product_title && String(r.product_title).trim()) ? String(r.product_title).trim() : '???';
+        const productTitle = (r.product_title && String(r.product_title).trim()) ? String(r.product_title).trim() : '\u2014';
         const productHandle = (r && r.product_handle != null) ? String(r.product_handle).trim() : '';
         const productId = (r && r.product_id) ? String(r.product_id).replace(/^gid:\/\/shopify\/Product\//i, '').trim() : '';
         const mainBase = getMainBaseUrl();
         const productUrl = (mainBase && productHandle) ? (mainBase + '/products/' + encodeURIComponent(productHandle)) : '#';
         const conversion = pct(r.conversion);
         const salesCount = r.converted != null ? Number(r.converted) : 0;
-        const clicks = r.total != null ? formatSessions(r.total) : '???';
+        const clicks = r.total != null ? formatSessions(r.total) : '\u2014';
         const revenue = formatRevenueTableHtml(r.revenue);
         const vpvNum = (r && r.total > 0 && r.revenue != null) ? (r.revenue / r.total) : null;
         const vpv = vpvNum != null ? formatRevenue(vpvNum) : '\u2014';
@@ -3260,19 +3260,19 @@
         node.textContent = String(textValue);
       }
 
-      setDashValueText('dash-kpi-revenue', salesVal != null ? formatRevenue0(salesVal) : null);
-      setDashValueText('dash-kpi-orders', ordersVal != null ? Math.round(ordersVal).toLocaleString() : null);
-      setDashValueText('dash-kpi-sessions', sessionsVal != null ? formatSessions(sessionsVal) : null);
-      setDashValueText('dash-kpi-conv', convVal != null ? pct(convVal) : null);
-      setDashValueText('dash-kpi-vpv', vpvVal != null ? formatRevenue(vpvVal) : null);
-      setDashValueText('dash-kpi-aov', aovVal != null ? formatRevenue0(aovVal) : null);
-      setDashValueText('dash-kpi-bounce', bounceVal != null ? pct(bounceVal) : null);
-      setDashValueText('dash-kpi-returning', returningVal != null ? Math.round(returningVal).toLocaleString() : null);
-      setDashValueText('dash-kpi-roas', roasVal != null ? roasVal.toFixed(2) + 'x' : null);
-      setDashValueText('dash-kpi-items', itemsVal != null ? Math.round(itemsVal).toLocaleString() : null);
-      setDashValueText('dash-kpi-fulfilled', fulfilledVal != null ? Math.round(fulfilledVal).toLocaleString() : null);
-      setDashValueText('dash-kpi-returns', returnsVal != null ? formatNegativeCurrencyOrZero(returnsVal, true) : null);
-      setDashValueText('dash-kpi-cogs', cogsVal != null ? formatRevenue0(cogsVal) : null);
+      setDashValueText('dash-kpi-revenue', salesVal != null ? formatRevenue0(salesVal) : '\u2014');
+      setDashValueText('dash-kpi-orders', ordersVal != null ? Math.round(ordersVal).toLocaleString() : '\u2014');
+      setDashValueText('dash-kpi-sessions', sessionsVal != null ? formatSessions(sessionsVal) : '\u2014');
+      setDashValueText('dash-kpi-conv', convVal != null ? pct(convVal) : '\u2014');
+      setDashValueText('dash-kpi-vpv', vpvVal != null ? formatRevenue(vpvVal) : '\u2014');
+      setDashValueText('dash-kpi-aov', aovVal != null ? formatRevenue0(aovVal) : '\u2014');
+      setDashValueText('dash-kpi-bounce', bounceVal != null ? pct(bounceVal) : '\u2014');
+      setDashValueText('dash-kpi-returning', returningVal != null ? Math.round(returningVal).toLocaleString() : '\u2014');
+      setDashValueText('dash-kpi-roas', roasVal != null ? roasVal.toFixed(2) + 'x' : '\u2014');
+      setDashValueText('dash-kpi-items', itemsVal != null ? Math.round(itemsVal).toLocaleString() : '\u2014');
+      setDashValueText('dash-kpi-fulfilled', fulfilledVal != null ? Math.round(fulfilledVal).toLocaleString() : '\u2014');
+      setDashValueText('dash-kpi-returns', returnsVal != null ? formatNegativeCurrencyOrZero(returnsVal, true) : '\u2014');
+      setDashValueText('dash-kpi-cogs', cogsVal != null ? formatRevenue0(cogsVal) : '\u2014');
 
       function renderCompareSlot(slotSuffix, values) {
         values = values || {};
@@ -3290,19 +3290,19 @@
         var returns = values.returns;
         var cogs = values.cogs;
 
-        setDashValueText('dash-revenue-' + slotSuffix, sales != null ? formatRevenue0(sales) : null);
-        setDashValueText('dash-orders-' + slotSuffix, orders != null ? Math.round(orders).toLocaleString() : null);
-        setDashValueText('dash-sessions-' + slotSuffix, sessions != null ? formatSessions(sessions) : null);
-        setDashValueText('dash-conv-' + slotSuffix, conv != null ? pct(conv) : null);
-        setDashValueText('dash-vpv-' + slotSuffix, vpv != null ? formatRevenue(vpv) : null);
-        setDashValueText('dash-aov-' + slotSuffix, aov != null ? formatRevenue0(aov) : null);
-        setDashValueText('dash-bounce-' + slotSuffix, bounce != null ? pct(bounce) : null);
-        setDashValueText('dash-returning-' + slotSuffix, returning != null ? Math.round(returning).toLocaleString() : null);
-        setDashValueText('dash-roas-' + slotSuffix, roas != null ? roas.toFixed(2) + 'x' : null);
-        setDashValueText('dash-items-' + slotSuffix, items != null ? Math.round(items).toLocaleString() : null);
-        setDashValueText('dash-fulfilled-' + slotSuffix, fulfilled != null ? Math.round(fulfilled).toLocaleString() : null);
-        setDashValueText('dash-returns-' + slotSuffix, returns != null ? formatNegativeCurrencyOrZero(returns, true) : null);
-        setDashValueText('dash-cogs-' + slotSuffix, cogs != null ? formatRevenue0(cogs) : null);
+        setDashValueText('dash-revenue-' + slotSuffix, sales != null ? formatRevenue0(sales) : '\u2014');
+        setDashValueText('dash-orders-' + slotSuffix, orders != null ? Math.round(orders).toLocaleString() : '\u2014');
+        setDashValueText('dash-sessions-' + slotSuffix, sessions != null ? formatSessions(sessions) : '\u2014');
+        setDashValueText('dash-conv-' + slotSuffix, conv != null ? pct(conv) : '\u2014');
+        setDashValueText('dash-vpv-' + slotSuffix, vpv != null ? formatRevenue(vpv) : '\u2014');
+        setDashValueText('dash-aov-' + slotSuffix, aov != null ? formatRevenue0(aov) : '\u2014');
+        setDashValueText('dash-bounce-' + slotSuffix, bounce != null ? pct(bounce) : '\u2014');
+        setDashValueText('dash-returning-' + slotSuffix, returning != null ? Math.round(returning).toLocaleString() : '\u2014');
+        setDashValueText('dash-roas-' + slotSuffix, roas != null ? roas.toFixed(2) + 'x' : '\u2014');
+        setDashValueText('dash-items-' + slotSuffix, items != null ? Math.round(items).toLocaleString() : '\u2014');
+        setDashValueText('dash-fulfilled-' + slotSuffix, fulfilled != null ? Math.round(fulfilled).toLocaleString() : '\u2014');
+        setDashValueText('dash-returns-' + slotSuffix, returns != null ? formatNegativeCurrencyOrZero(returns, true) : '\u2014');
+        setDashValueText('dash-cogs-' + slotSuffix, cogs != null ? formatRevenue0(cogs) : '\u2014');
       }
 
       function applyDashDelta(key, current, baseline, invert) {

@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 193953a218e27ab5
+// checksum: 518249e7bf0edfae
 
 (function () {
 const API = '';
@@ -2909,7 +2909,7 @@ const API = '';
       if (s.utm_medium != null && String(s.utm_medium).trim() !== '') lines.push('utm_medium: ' + String(s.utm_medium).trim());
       if (s.utm_campaign != null && String(s.utm_campaign).trim() !== '') lines.push('utm_campaign: ' + String(s.utm_campaign).trim());
       if (s.utm_content != null && String(s.utm_content).trim() !== '') lines.push('utm_content: ' + String(s.utm_content).trim());
-      if (lines.length === 0) return '???';
+      if (lines.length === 0) return '\u2014';
       return lines.join('\n');
     }
 
@@ -3627,7 +3627,7 @@ const API = '';
           '</div>' +
           '<div class="fraud-analysis">' +
             '<div class="mb-2" style="font-weight:500">Analysis</div>' +
-            '<div class="fraud-summary">' + escapeHtml(summary || '???') + '</div>' +
+            '<div class="fraud-summary">' + escapeHtml(summary || '\u2014') + '</div>' +
             (reasonsHtml ? ('<div class="mt-2">' + reasonsHtml + '</div>') : '') +
             (rec ? ('<div class="mt-2 text-muted"><span style="font-weight:500">Suggested action:</span> ' + escapeHtml(rec) + '</div>') : '') +
           '</div>' +
@@ -3871,7 +3871,7 @@ const API = '';
     }
 
     function formatRevenueTableHtml(num) {
-      if (num == null || typeof num !== 'number' || !Number.isFinite(num)) return '???';
+      if (num == null || typeof num !== 'number' || !Number.isFinite(num)) return '\u2014';
       if (isIconMode()) return '\u00A3' + Math.round(num).toLocaleString('en-GB');
       if (num % 1 === 0) return '\u00A3' + num.toLocaleString('en-GB');
       let fixed = null;
@@ -4608,7 +4608,7 @@ const API = '';
         const createdAt = sale.createdAt != null ? sale.createdAt : null;
         setSaleToastContent({
           countryCode: cc || 'XX',
-          productTitle: product || (document.getElementById('sale-toast-product') ? document.getElementById('sale-toast-product').textContent : '???'),
+          productTitle: product || (document.getElementById('sale-toast-product') ? document.getElementById('sale-toast-product').textContent : '\u2014'),
           amountGbp: (amount != null && Number.isFinite(amount)) ? amount : null,
           productHandle: productHandle || '',
           productThumbUrl: productThumbUrl || '',
@@ -5162,13 +5162,13 @@ const API = '';
       var pageRows = rows.slice(start, start + pageSize);
       const mainBase = getMainBaseUrl();
       tbody.innerHTML = pageRows.map(function(r) {
-        var title = r && r.title ? String(r.title) : '???';
+        var title = r && r.title ? String(r.title) : '\u2014';
         var orders = r && r.orders != null ? Number(r.orders) : 0;
         var sessions = r && r.sessions != null ? Number(r.sessions) : 0;
         var revNum = r && r.revenueGbp != null ? Number(r.revenueGbp) : null;
         if (!Number.isFinite(revNum)) revNum = null;
-        var rev = revNum != null ? formatRevenueTableHtml(revNum) : '???';
-        var cr = r && r.cr != null ? pct(r.cr) : '???';
+        var rev = revNum != null ? formatRevenueTableHtml(revNum) : '\u2014';
+        var cr = r && r.cr != null ? pct(r.cr) : '\u2014';
         var vpvNum = (revNum != null && sessions > 0) ? (revNum / sessions) : null;
         var vpv = (vpvNum != null && Number.isFinite(vpvNum)) ? formatRevenue(vpvNum) : '\u2014';
         var handle = r && r.handle ? String(r.handle) : '';
@@ -5608,7 +5608,7 @@ const API = '';
                   '<div style="display:flex;align-items:center;margin-bottom:4px;">' + thumb +
                     '<div style="font-weight:600;font-size:12px;line-height:1.2;">' + escapeHtml(row.title) + '</div>' +
                   '</div>' +
-                  '<div style="font-size:12px;color:#475569;">Revenue: <strong style="color:#0f172a;">' + escapeHtml(formatRevenue(row.revenue) || '???') + '</strong></div>' +
+                  '<div style="font-size:12px;color:#475569;">Revenue: <strong style="color:#0f172a;">' + escapeHtml(formatRevenue(row.revenue) || '\u2014') + '</strong></div>' +
                 '</div>';
               }
             },
@@ -5663,7 +5663,7 @@ const API = '';
                 var last = w && w.globals && Array.isArray(w.globals.labels) ? (w.globals.labels.length - 1) : -1;
                 if (dp !== last) return '';
               } catch (_) { return ''; }
-              return formatRevenue(Number(val)) || '???';
+              return formatRevenue(Number(val)) || '\u2014';
             },
             style: { fontSize: '10px' },
             background: { enabled: true, borderRadius: 4, padding: 3, opacity: 0.85 },
@@ -5684,7 +5684,7 @@ const API = '';
             forceNiceScale: true,
             labels: {
               style: { fontSize: '11px' },
-              formatter: function(value) { return formatRevenue(Number(value)) || '???'; }
+              formatter: function(value) { return formatRevenue(Number(value)) || '\u2014'; }
             }
           },
           tooltip: {
@@ -5699,7 +5699,7 @@ const API = '';
                 '<div style="display:flex;align-items:center;margin-bottom:4px;">' + thumb +
                   '<div style="font-weight:600;font-size:12px;line-height:1.2;">' + escapeHtml(row.title) + '</div>' +
                 '</div>' +
-                '<div style="font-size:12px;color:#475569;">Revenue: <strong style="color:#0f172a;">' + escapeHtml(formatRevenue(row.revenue) || '???') + '</strong></div>' +
+                '<div style="font-size:12px;color:#475569;">Revenue: <strong style="color:#0f172a;">' + escapeHtml(formatRevenue(row.revenue) || '\u2014') + '</strong></div>' +
               '</div>';
             }
           },
@@ -5951,7 +5951,7 @@ const API = '';
     }
 
     function formatSessions(n) {
-      if (n == null || typeof n !== 'number') return '???';
+      if (n == null || typeof n !== 'number') return '\u2014';
       return n.toLocaleString();
     }
 
@@ -6070,9 +6070,9 @@ const API = '';
         const iso = (r.country_code || 'XX').toUpperCase().slice(0, 2);
         const label = countryLabelFull(iso);
         const flag = flagImg(iso, label);
-        const revenue = r && r.revenue != null ? formatRevenueTableHtml(r.revenue) : '???';
-        const aov = r && r.aov != null ? formatRevenueTableHtml(r.aov) : '???';
-        const cr = r && r.conversion != null ? pct(r.conversion) : '???';
+        const revenue = r && r.revenue != null ? formatRevenueTableHtml(r.revenue) : '\u2014';
+        const aov = r && r.aov != null ? formatRevenueTableHtml(r.aov) : '\u2014';
+        const cr = r && r.conversion != null ? pct(r.conversion) : '\u2014';
         return '<div class="grid-row" role="row">' +
           '<div class="grid-cell" role="cell"><span class="country-cell">' + flag + '<span class="country-label"><span class="country-name">' + escapeHtml(label) + '</span></span></span></div>' +
           '<div class="grid-cell" role="cell">' + revenue + '</div>' +
@@ -6087,7 +6087,7 @@ const API = '';
       if (!grid) return;
       const rows = (data && Array.isArray(data.finishes)) ? data.finishes : [];
       if (rows.length === 0) {
-        const msg = finishesLoading ? 'Loading finishes???' : 'No data';
+        const msg = finishesLoading ? 'Loading finishes\u2026' : 'No data';
         grid.innerHTML = '<div class="aov-card aov-card-empty">' + escapeHtml(msg) + '</div>';
         return;
       }
@@ -6113,10 +6113,10 @@ const API = '';
       grid.innerHTML = ordered.map(function(r) {
         const label = (r && r.label != null) ? String(r.label) : '';
         const revenue = (r && r.revenueGbp != null) ? Number(r.revenueGbp) : null;
-        const value = (revenue != null && Number.isFinite(revenue)) ? formatRevenueTableHtml(revenue) : '???';
+        const value = (revenue != null && Number.isFinite(revenue)) ? formatRevenueTableHtml(revenue) : '\u2014';
         const cr = crPillHtml(r && r.cr);
         return '<div class="aov-card">' +
-          '<div class="aov-card-left">' + iconFor(r && r.key) + '<span class="aov-card-name">' + escapeHtml(label || '???') + '</span></div>' +
+          '<div class="aov-card-left">' + iconFor(r && r.key) + '<span class="aov-card-name">' + escapeHtml(label || '\u2014') + '</span></div>' +
           '<div class="aov-card-value"><span class="aov-card-value-main">' + value + '</span>' + cr + '</div>' +
         '</div>';
       }).join('');
@@ -6127,7 +6127,7 @@ const API = '';
       if (!grid) return;
       const rows = (data && Array.isArray(data.lengths)) ? data.lengths : [];
       if (rows.length === 0) {
-        const msg = lengthsLoading ? 'Loading lengths???' : 'No data';
+        const msg = lengthsLoading ? 'Loading lengths\u2026' : 'No data';
         grid.innerHTML = '<div class="aov-card aov-card-empty">' + escapeHtml(msg) + '</div>';
         return;
       }
@@ -6140,10 +6140,10 @@ const API = '';
         const inches = (r && r.inches != null) ? Number(r.inches) : null;
         const label = (r && r.label != null) ? String(r.label) : (inches != null && Number.isFinite(inches) ? (String(inches) + '"') : '');
         const revenue = (r && r.revenueGbp != null) ? Number(r.revenueGbp) : null;
-        const value = (revenue != null && Number.isFinite(revenue)) ? formatRevenueTableHtml(revenue) : '???';
+        const value = (revenue != null && Number.isFinite(revenue)) ? formatRevenueTableHtml(revenue) : '\u2014';
         const cr = crPillHtml(r && r.cr);
-        const icon = '<span class="length-icon" aria-hidden="true"><span class="length-icon-text">' + escapeHtml(label || '???') + '</span></span>';
-        const sr = '<span class="aov-card-name sr-only">' + escapeHtml((label || '???') + ' Inches') + '</span>';
+        const icon = '<span class="length-icon" aria-hidden="true"><span class="length-icon-text">' + escapeHtml(label || '\u2014') + '</span></span>';
+        const sr = '<span class="aov-card-name sr-only">' + escapeHtml((label || '\u2014') + ' Inches') + '</span>';
         return '<div class="aov-card aov-card--length">' +
           '<div class="aov-card-left">' + icon + sr + '</div>' +
           '<div class="aov-card-value"><span class="aov-card-value-main">' + value + '</span>' + cr + '</div>' +
@@ -6366,7 +6366,7 @@ const API = '';
         const label = countryLabel(code);
         const conversion = pct(r.conversion);
         const salesCount = r.converted != null ? Number(r.converted) : 0;
-        const clicks = r.total != null ? formatSessions(r.total) : '???';
+        const clicks = r.total != null ? formatSessions(r.total) : '\u2014';
         const revenue = formatRevenueTableHtml(r.revenue);
         const vpvNum = countryVpv(r);
         const vpv = vpvNum != null ? formatRevenue(vpvNum) : '\u2014';
@@ -6735,8 +6735,8 @@ const API = '';
               );
               return;
             }
-            const revHtml = formatRevenue(Number(rev) || 0) || '???';
-            const ordHtml = ord ? (formatSessions(ord) + ' orders') : '???';
+            const revHtml = formatRevenue(Number(rev) || 0) || '\u2014';
+            const ordHtml = ord ? (formatSessions(ord) + ' orders') : '\u2014';
             setVectorMapTooltipContent(
               tooltip,
               '<div style="min-width:180px">' +
@@ -6819,14 +6819,14 @@ const API = '';
       tbody.innerHTML = pageRows.map(r => {
         const iso = (r.country_code || 'XX').toUpperCase().slice(0, 2);
         const label = countryLabel(iso);
-        const productTitle = (r.product_title && String(r.product_title).trim()) ? String(r.product_title).trim() : '???';
+        const productTitle = (r.product_title && String(r.product_title).trim()) ? String(r.product_title).trim() : '\u2014';
         const productHandle = (r && r.product_handle != null) ? String(r.product_handle).trim() : '';
         const productId = (r && r.product_id) ? String(r.product_id).replace(/^gid:\/\/shopify\/Product\//i, '').trim() : '';
         const mainBase = getMainBaseUrl();
         const productUrl = (mainBase && productHandle) ? (mainBase + '/products/' + encodeURIComponent(productHandle)) : '#';
         const conversion = pct(r.conversion);
         const salesCount = r.converted != null ? Number(r.converted) : 0;
-        const clicks = r.total != null ? formatSessions(r.total) : '???';
+        const clicks = r.total != null ? formatSessions(r.total) : '\u2014';
         const revenue = formatRevenueTableHtml(r.revenue);
         const vpvNum = (r && r.total > 0 && r.revenue != null) ? (r.revenue / r.total) : null;
         const vpv = vpvNum != null ? formatRevenue(vpvNum) : '\u2014';
@@ -8506,19 +8506,19 @@ const API = '';
         node.textContent = String(textValue);
       }
 
-      setDashValueText('dash-kpi-revenue', salesVal != null ? formatRevenue0(salesVal) : null);
-      setDashValueText('dash-kpi-orders', ordersVal != null ? Math.round(ordersVal).toLocaleString() : null);
-      setDashValueText('dash-kpi-sessions', sessionsVal != null ? formatSessions(sessionsVal) : null);
-      setDashValueText('dash-kpi-conv', convVal != null ? pct(convVal) : null);
-      setDashValueText('dash-kpi-vpv', vpvVal != null ? formatRevenue(vpvVal) : null);
-      setDashValueText('dash-kpi-aov', aovVal != null ? formatRevenue0(aovVal) : null);
-      setDashValueText('dash-kpi-bounce', bounceVal != null ? pct(bounceVal) : null);
-      setDashValueText('dash-kpi-returning', returningVal != null ? Math.round(returningVal).toLocaleString() : null);
-      setDashValueText('dash-kpi-roas', roasVal != null ? roasVal.toFixed(2) + 'x' : null);
-      setDashValueText('dash-kpi-items', itemsVal != null ? Math.round(itemsVal).toLocaleString() : null);
-      setDashValueText('dash-kpi-fulfilled', fulfilledVal != null ? Math.round(fulfilledVal).toLocaleString() : null);
-      setDashValueText('dash-kpi-returns', returnsVal != null ? formatNegativeCurrencyOrZero(returnsVal, true) : null);
-      setDashValueText('dash-kpi-cogs', cogsVal != null ? formatRevenue0(cogsVal) : null);
+      setDashValueText('dash-kpi-revenue', salesVal != null ? formatRevenue0(salesVal) : '\u2014');
+      setDashValueText('dash-kpi-orders', ordersVal != null ? Math.round(ordersVal).toLocaleString() : '\u2014');
+      setDashValueText('dash-kpi-sessions', sessionsVal != null ? formatSessions(sessionsVal) : '\u2014');
+      setDashValueText('dash-kpi-conv', convVal != null ? pct(convVal) : '\u2014');
+      setDashValueText('dash-kpi-vpv', vpvVal != null ? formatRevenue(vpvVal) : '\u2014');
+      setDashValueText('dash-kpi-aov', aovVal != null ? formatRevenue0(aovVal) : '\u2014');
+      setDashValueText('dash-kpi-bounce', bounceVal != null ? pct(bounceVal) : '\u2014');
+      setDashValueText('dash-kpi-returning', returningVal != null ? Math.round(returningVal).toLocaleString() : '\u2014');
+      setDashValueText('dash-kpi-roas', roasVal != null ? roasVal.toFixed(2) + 'x' : '\u2014');
+      setDashValueText('dash-kpi-items', itemsVal != null ? Math.round(itemsVal).toLocaleString() : '\u2014');
+      setDashValueText('dash-kpi-fulfilled', fulfilledVal != null ? Math.round(fulfilledVal).toLocaleString() : '\u2014');
+      setDashValueText('dash-kpi-returns', returnsVal != null ? formatNegativeCurrencyOrZero(returnsVal, true) : '\u2014');
+      setDashValueText('dash-kpi-cogs', cogsVal != null ? formatRevenue0(cogsVal) : '\u2014');
 
       function renderCompareSlot(slotSuffix, values) {
         values = values || {};
@@ -8536,19 +8536,19 @@ const API = '';
         var returns = values.returns;
         var cogs = values.cogs;
 
-        setDashValueText('dash-revenue-' + slotSuffix, sales != null ? formatRevenue0(sales) : null);
-        setDashValueText('dash-orders-' + slotSuffix, orders != null ? Math.round(orders).toLocaleString() : null);
-        setDashValueText('dash-sessions-' + slotSuffix, sessions != null ? formatSessions(sessions) : null);
-        setDashValueText('dash-conv-' + slotSuffix, conv != null ? pct(conv) : null);
-        setDashValueText('dash-vpv-' + slotSuffix, vpv != null ? formatRevenue(vpv) : null);
-        setDashValueText('dash-aov-' + slotSuffix, aov != null ? formatRevenue0(aov) : null);
-        setDashValueText('dash-bounce-' + slotSuffix, bounce != null ? pct(bounce) : null);
-        setDashValueText('dash-returning-' + slotSuffix, returning != null ? Math.round(returning).toLocaleString() : null);
-        setDashValueText('dash-roas-' + slotSuffix, roas != null ? roas.toFixed(2) + 'x' : null);
-        setDashValueText('dash-items-' + slotSuffix, items != null ? Math.round(items).toLocaleString() : null);
-        setDashValueText('dash-fulfilled-' + slotSuffix, fulfilled != null ? Math.round(fulfilled).toLocaleString() : null);
-        setDashValueText('dash-returns-' + slotSuffix, returns != null ? formatNegativeCurrencyOrZero(returns, true) : null);
-        setDashValueText('dash-cogs-' + slotSuffix, cogs != null ? formatRevenue0(cogs) : null);
+        setDashValueText('dash-revenue-' + slotSuffix, sales != null ? formatRevenue0(sales) : '\u2014');
+        setDashValueText('dash-orders-' + slotSuffix, orders != null ? Math.round(orders).toLocaleString() : '\u2014');
+        setDashValueText('dash-sessions-' + slotSuffix, sessions != null ? formatSessions(sessions) : '\u2014');
+        setDashValueText('dash-conv-' + slotSuffix, conv != null ? pct(conv) : '\u2014');
+        setDashValueText('dash-vpv-' + slotSuffix, vpv != null ? formatRevenue(vpv) : '\u2014');
+        setDashValueText('dash-aov-' + slotSuffix, aov != null ? formatRevenue0(aov) : '\u2014');
+        setDashValueText('dash-bounce-' + slotSuffix, bounce != null ? pct(bounce) : '\u2014');
+        setDashValueText('dash-returning-' + slotSuffix, returning != null ? Math.round(returning).toLocaleString() : '\u2014');
+        setDashValueText('dash-roas-' + slotSuffix, roas != null ? roas.toFixed(2) + 'x' : '\u2014');
+        setDashValueText('dash-items-' + slotSuffix, items != null ? Math.round(items).toLocaleString() : '\u2014');
+        setDashValueText('dash-fulfilled-' + slotSuffix, fulfilled != null ? Math.round(fulfilled).toLocaleString() : '\u2014');
+        setDashValueText('dash-returns-' + slotSuffix, returns != null ? formatNegativeCurrencyOrZero(returns, true) : '\u2014');
+        setDashValueText('dash-cogs-' + slotSuffix, cogs != null ? formatRevenue0(cogs) : '\u2014');
       }
 
       function applyDashDelta(key, current, baseline, invert) {
@@ -11583,8 +11583,8 @@ const API = '';
         chartCfg = {
           series: [{ name: 'Revenue', data: rows.map(function(r) { return Number(r && r.revenue) || 0; }) }],
           colors: ['#0d9488'],
-          yFormatter: function(v) { return formatRevenue(Number(v)) || '???'; },
-          tooltipFormatter: function(v) { return formatRevenue(Number(v)) || '???'; },
+          yFormatter: function(v) { return formatRevenue(Number(v)) || '\u2014'; },
+          tooltipFormatter: function(v) { return formatRevenue(Number(v)) || '\u2014'; },
         };
       } else {
         chartCfg = {
@@ -12358,7 +12358,7 @@ const API = '';
           '<span class="side-panel-label">Lookup</span>' +
           '<span class="side-panel-value">' +
             '<a href="' + escapeHtml(href) + '" target="_blank" rel="noopener">Open in Lookup</a>' +
-            (loading ? '<span class="muted ms-2">Loading IDs???</span>' : '') +
+            (loading ? '<span class="muted ms-2">Loading IDs\u2026</span>' : '') +
           '</span>' +
         '</div>';
 
@@ -12537,7 +12537,7 @@ const API = '';
           { k: 'Kexo order key', v: r.purchase_key, copy: true },
           { k: 'Visitor ID', v: r.visitor_id, copy: false },
         ].filter(function (x) { return x && x.v != null && String(x.v).trim() !== ''; });
-        if (!rows.length) return '<div class="text-muted">???</div>';
+        if (!rows.length) return '<div class="text-muted">\u2014</div>';
 
         if (mode === 'drawer') {
           return rows.map(function (row) {
@@ -12566,7 +12566,7 @@ const API = '';
           if (!path && e.product_handle) path = '/products/' + (e.product_handle || '');
           if (path && !path.startsWith('/')) path = '/' + path;
           var pathLabel = path || (e.product_handle || '');
-          var text = (formatTs(e.ts) || '???') + ' ' + esc(e.type) + ' ' + esc(pathLabel) + (e.qty_delta != null ? (' ??' + esc(e.qty_delta)) : '');
+          var text = (formatTs(e.ts) || '\u2014') + ' ' + esc(e.type) + ' ' + esc(pathLabel) + (e.qty_delta != null ? (' \u2014 ' + esc(e.qty_delta)) : '');
           return '<li><span>' + text + '</span></li>';
         }).join('');
         return '<ul class="side-panel-events kexo-lookup-events">' + items + '</ul>';
@@ -12602,7 +12602,7 @@ const API = '';
         if (mode === 'drawer') {
           return '' +
             gauge +
-            '<div class="side-panel-detail-row"><span class="side-panel-label">Summary</span><span class="side-panel-value">' + esc(picked.summary || '???') + '</span></div>' +
+            '<div class="side-panel-detail-row"><span class="side-panel-label">Summary</span><span class="side-panel-value">' + esc(picked.summary || '\u2014') + '</span></div>' +
             (reasonsHtml ? ('<div class="kexo-fraud-reasons-wrap">' + reasonsHtml + '</div>') : '') +
             '<div class="mt-2">' + flagsHtml + '</div>' +
             '<div class="mt-2">' + evidenceDetails + '</div>';
@@ -12612,7 +12612,7 @@ const API = '';
           gauge +
           '<div class="mt-2">' +
             '<div class="text-muted small">Summary</div>' +
-            '<div>' + esc(picked.summary || '???') + '</div>' +
+            '<div>' + esc(picked.summary || '\u2014') + '</div>' +
             (reasonsHtml ? ('<div class="mt-2">' + reasonsHtml + '</div>') : '') +
             '<div class="mt-2">' + flagsHtml + '</div>' +
             '<div class="mt-2">' + evidenceDetails + '</div>' +
@@ -12658,15 +12658,15 @@ const API = '';
           var sessionMini = '';
           try {
             if (session && typeof session === 'object') {
-              var started = formatTs(session.started_at) || '???';
-              var seen = formatTs(session.last_seen) || '???';
+              var started = formatTs(session.started_at) || '\u2014';
+              var seen = formatTs(session.last_seen) || '\u2014';
               var cartQty = (session.cart_qty != null) ? String(session.cart_qty) : '0';
               sessionMini = '' +
                 '<div class="side-panel-detail-row"><span class="side-panel-label">Started</span><span class="side-panel-value">' + esc(started) + '</span></div>' +
                 '<div class="side-panel-detail-row"><span class="side-panel-label">Seen</span><span class="side-panel-value">' + esc(seen) + '</span></div>' +
                 '<div class="side-panel-detail-row"><span class="side-panel-label">Cart qty</span><span class="side-panel-value">' + esc(cartQty) + '</span></div>';
               if (session.has_purchased) {
-                var sale = formatMoney(session.order_total, session.order_currency) || '???';
+                var sale = formatMoney(session.order_total, session.order_currency) || '\u2014';
                 sessionMini += '<div class="side-panel-detail-row"><span class="side-panel-label">Sale</span><span class="side-panel-value">' + esc(sale) + (session.purchased_at ? (' <span class="text-muted">(' + esc(formatTs(session.purchased_at) || '') + ')</span>') : '') + '</span></div>';
               }
             }
@@ -12905,7 +12905,7 @@ const API = '';
                 var fullUrl = '';
                 try { fullUrl = buildFullEntryUrlForCopy(session) || ''; } catch (_) { fullUrl = ''; }
                 var copyUrl = fullUrl || entryUrl;
-                var html = '<div class="side-panel-source-text">' + escapeHtml(String(srcText || '???')).replace(/\n/g, '<br>') + '</div>';
+                var html = '<div class="side-panel-source-text">' + escapeHtml(String(srcText || '\u2014')).replace(/\n/g, '<br>') + '</div>';
                 if (copyUrl) {
                   html += '<div class="side-panel-source-actions"><a href="#" class="kexo-copy-link" data-kexo-copy="' + escapeHtml(copyUrl) + '">Copy URL</a></div>';
                 }
@@ -13033,7 +13033,7 @@ const API = '';
         btn.classList.add('spinning');
         btn.disabled = true;
       }
-      setDiagnosticsActionMsg('Reconciling Shopify truth (7d)???', true);
+      setDiagnosticsActionMsg('Reconciling Shopify truth (7d)\u2026', true);
       const p = fetch(getReconcileSalesUrl({ force: true }), {
         method: 'POST',
         credentials: 'same-origin',
@@ -13091,14 +13091,14 @@ const API = '';
         configStatusEl.innerHTML =
           '<div class="d-flex align-items-center gap-2 text-secondary">' +
             '<div class="spinner-border spinner-border-sm text-primary" role="status" aria-hidden="true"></div>' +
-            '<div>Loading diagnostics???</div>' +
+            '<div>Loading diagnostics\u2026</div>' +
           '</div>' +
           '<div id="settings-diagnostics-loading-step" class="text-secondary small mt-2">\u2014</div>';
         diagnosticsStepEl = configStatusEl.querySelector('#settings-diagnostics-loading-step');
         if (diagnosticsStepEl) diagnosticsStepEl.textContent = 'Connecting to diagnostics services';
       }
       if (compareOpen && compareStatusEl) {
-        compareStatusEl.innerHTML = '<div class="kpi-compare-loading"><div class="report-build-wrap"><div class="spinner-border text-primary" role="status"></div><div class="report-build-title">building KPI comparison</div><div class="report-build-step">???</div></div></div>';
+        compareStatusEl.innerHTML = '<div class="kpi-compare-loading"><div class="report-build-wrap"><div class="spinner-border text-primary" role="status"></div><div class="report-build-title">building KPI comparison</div><div class="report-build-step">\u2026</div></div></div>';
         compareStepEl = compareStatusEl.querySelector('.report-build-step');
         if (compareStepEl) compareStepEl.textContent = 'Loading KPI sources';
       }
@@ -13412,7 +13412,7 @@ const API = '';
                     const note2 = (s && s.note) ? String(s.note) : '';
                     let line = '<strong>' + escapeHtml(kind) + '</strong>';
                     if (st.length) line += ' ?? ' + escapeHtml(st.join(', '));
-                    if (note2) line += ' ??? ' + escapeHtml(note2);
+                    if (note2) line += ' \u2014 ' + escapeHtml(note2);
                     out += '<li>' + line + '</li>';
                   }
                   out += '</ul>';
@@ -13873,7 +13873,7 @@ const API = '';
           if (db && db.tables) {
             var t = db.tables;
             var bits = [];
-            function add(name, ok) { bits.push(name + (ok ? ' ???' : ' ???')); }
+            function add(name, ok) { bits.push(name + (ok ? ' \u2713' : ' \u2717')); }
             add('settings', !!t.settings);
             add('shop_sessions', !!t.shop_sessions);
             add('visitors', !!t.visitors);
@@ -14124,7 +14124,7 @@ const API = '';
                     setMsg('Nothing to copy', false);
                     return;
                   }
-                  setMsg('Copying???', true);
+                  setMsg('Copying\u2026', true);
                   if (navigator && navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
                     navigator.clipboard.writeText(text)
                       .then(function() { setMsg('Copied (' + text.length + ' chars)', true); })
@@ -14200,7 +14200,7 @@ const API = '';
             const refreshMonthBtn = document.getElementById('ga-refresh-month-btn');
             if (statusBtn) {
               statusBtn.onclick = function() {
-                setGaMsg('Fetching status???', true);
+                setGaMsg('Fetching status\u2026', true);
                 fetchJson((API || '') + '/api/ads/status', { credentials: 'same-origin', cache: 'no-store' })
                   .then(function(r) {
                     setGaOutput({ endpoint: 'GET /api/ads/status', status: r.status, ok: r.ok, body: r.json || r.text });
@@ -14214,7 +14214,7 @@ const API = '';
             }
             if (summaryBtn) {
               summaryBtn.onclick = function() {
-                setGaMsg('Fetching summary???', true);
+                setGaMsg('Fetching summary\u2026', true);
                 fetchJson((API || '') + '/api/ads/summary?range=7d', { credentials: 'same-origin', cache: 'no-store' })
                   .then(function(r) {
                     setGaOutput({ endpoint: 'GET /api/ads/summary?range=7d', status: r.status, ok: r.ok, body: r.json || r.text });
@@ -14227,7 +14227,7 @@ const API = '';
               };
             }
             function doRefresh(rangeKey) {
-              setGaMsg('Refreshing ' + rangeKey + '???', true);
+              setGaMsg('Refreshing ' + rangeKey + '\u2026', true);
               fetchJson((API || '') + '/api/ads/refresh?range=' + encodeURIComponent(rangeKey), {
                 method: 'POST',
                 credentials: 'same-origin',
@@ -14255,7 +14255,7 @@ const API = '';
                 const enabled = !!toggle.checked;
                 const nextMode = enabled ? 'shared_ttl' : 'legacy';
                 toggle.disabled = true;
-                if (msgEl) msgEl.textContent = 'Saving???';
+                if (msgEl) msgEl.textContent = 'Saving\u2026';
                 fetch(API + '/api/settings', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
@@ -14273,7 +14273,7 @@ const API = '';
                   .then(function() {
                     const shop = getShopParam();
                     if (shop && /\.myshopify\.com$/i.test(shop)) {
-                      if (msgEl) msgEl.textContent = 'Saved. Syncing pixel settings???';
+                      if (msgEl) msgEl.textContent = 'Saved. Syncing pixel settings\u2026';
                       return fetch(API + '/api/pixel/ensure?shop=' + encodeURIComponent(shop), { credentials: 'same-origin', cache: 'no-store' })
                         .then(function(r) { return r.ok ? r.json() : null; })
                         .catch(function() { return null; });
@@ -14345,11 +14345,11 @@ const API = '';
       const reconcileBtn = document.getElementById('config-reconcile-btn');
       const rangeSel = document.getElementById('diagnostics-overview-range');
       if (rangeSel) rangeSel.addEventListener('change', function() {
-        setDiagnosticsActionMsg('Loading overview???', true);
+        setDiagnosticsActionMsg('Loading overview\u2026', true);
         try { refreshConfigStatus({ force: true, preserveView: true }); } catch (_) {}
       });
       if (refreshBtn) refreshBtn.addEventListener('click', function() {
-        setDiagnosticsActionMsg('Refreshing diagnostics???', true);
+        setDiagnosticsActionMsg('Refreshing diagnostics\u2026', true);
         try { refreshConfigStatus({ force: true, preserveView: true }); } catch (_) {}
       });
       if (reconcileBtn) reconcileBtn.addEventListener('click', function() { try { reconcileSalesTruth({}); } catch (_) {} });
@@ -15661,7 +15661,7 @@ const API = '';
             if (Number.isFinite(n)) amountGbp = n;
           }
           if (amountGbp != null && Number.isFinite(amountGbp)) {
-            setSaleToastContent({ countryCode: cc || 'XX', productTitle: (productTitle || curTitle || '???'), amountGbp });
+            setSaleToastContent({ countryCode: cc || 'XX', productTitle: (productTitle || curTitle || '\u2014'), amountGbp });
           }
         } catch (_) {}
       }
@@ -19074,7 +19074,6 @@ const API = '';
             if (d == null) d = 0;
             var abs = Math.abs(d);
             var s = fmtGbp(abs);
-            if (s === '\u2014') s = '??0.00';
             if (d > 0) return '+' + s;
             if (d < 0) return '-' + s;
             return s;
@@ -20101,7 +20100,7 @@ const API = '';
               var statusCls = it.ok ? 'kexo-status-indicator--online' : 'kexo-status-indicator--offline';
               var esc = function(s) { return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); };
               html += '<div class="kexo-footer-diagnostics-tag">';
-              html += '<a href="/settings?tab=admin&adminTab=diagnostics" class="kexo-footer-diagnostics-tag-link" title="' + esc(it.label) + ' ' + esc(it.status) + ' ??? click for diagnostics">';
+              html += '<a href="/settings?tab=admin&adminTab=diagnostics" class="kexo-footer-diagnostics-tag-link" title="' + esc(it.label) + ' ' + esc(it.status) + ' \u2014 click for diagnostics">';
               html += '<span class="kexo-footer-diagnostics-label">' + esc(it.label) + '</span>';
               html += '</a>';
               html += '<span class="kexo-footer-diagnostics-status">';
@@ -20236,7 +20235,7 @@ const API = '';
                 '</div>' +
               '</div>' +
               '<div class="modal-body">' +
-                '<div id="product-insights-status" class="text-muted">Loading???</div>' +
+                '<div id="product-insights-status" class="text-muted">Loading\u2026</div>' +
                 '<div id="product-insights-body" style="display:none">' +
                   '<div class="row g-3">' +
                     '<div class="col-12 col-lg-5" id="product-insights-col-left">' +
@@ -20406,19 +20405,19 @@ const API = '';
 
       function fmtNum(n) {
         var x = (typeof n === 'number') ? n : Number(n);
-        if (!isFinite(x)) return '???';
+        if (!isFinite(x)) return '\u2014';
         try { return x.toLocaleString('en-GB'); } catch (_) { return String(Math.round(x)); }
       }
 
       function fmtMoneyGbp(n) {
         var x = (typeof n === 'number') ? n : Number(n);
-        if (!isFinite(x)) return '???';
-        try { return '??' + x.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); } catch (_) { return '??' + x.toFixed(2); }
+        if (!isFinite(x)) return '\u2014';
+        try { return '\u00A3' + x.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); } catch (_) { return '\u00A3' + x.toFixed(2); }
       }
 
       function fmtPct(n) {
         var x = (typeof n === 'number') ? n : Number(n);
-        if (!isFinite(x)) return '???';
+        if (!isFinite(x)) return '\u2014';
         return x.toFixed(2) + '%';
       }
 
@@ -20817,13 +20816,13 @@ const API = '';
             return '<tr><td>' + escapeHtml(label) + '</td><td class="w-1 fw-bold text-end">' + escapeHtml(value) + '</td></tr>';
           }
           if (isPage) {
-            var sessions = metrics && metrics.sessions != null ? fmtNum(metrics.sessions) : '???';
-            var pageViews = metrics && metrics.pageViews != null ? fmtNum(metrics.pageViews) : '???';
-            var purchasedSessions = metrics && metrics.purchasedSessions != null ? fmtNum(metrics.purchasedSessions) : '???';
-            var checkoutStartedSessions = metrics && metrics.checkoutStartedSessions != null ? fmtNum(metrics.checkoutStartedSessions) : '???';
-            var revenue2 = metrics && metrics.revenueGbp != null ? fmtMoneyGbp(metrics.revenueGbp) : '???';
-            var cr2 = metrics && metrics.cr != null ? fmtPct(metrics.cr) : '???';
-            var rps = metrics && metrics.revPerSession != null ? fmtMoneyGbp(metrics.revPerSession) : '???';
+            var sessions = metrics && metrics.sessions != null ? fmtNum(metrics.sessions) : '\u2014';
+            var pageViews = metrics && metrics.pageViews != null ? fmtNum(metrics.pageViews) : '\u2014';
+            var purchasedSessions = metrics && metrics.purchasedSessions != null ? fmtNum(metrics.purchasedSessions) : '\u2014';
+            var checkoutStartedSessions = metrics && metrics.checkoutStartedSessions != null ? fmtNum(metrics.checkoutStartedSessions) : '\u2014';
+            var revenue2 = metrics && metrics.revenueGbp != null ? fmtMoneyGbp(metrics.revenueGbp) : '\u2014';
+            var cr2 = metrics && metrics.cr != null ? fmtPct(metrics.cr) : '\u2014';
+            var rps = metrics && metrics.revPerSession != null ? fmtMoneyGbp(metrics.revPerSession) : '\u2014';
             mt.innerHTML =
               row('Revenue', revenue2) +
               row('Purchased sessions', purchasedSessions) +
@@ -20833,22 +20832,22 @@ const API = '';
               row('Purchase rate', cr2) +
               row('Revenue / Session', rps);
           } else {
-            var revenue = metrics && metrics.revenueGbp != null ? fmtMoneyGbp(metrics.revenueGbp) : '???';
-            var units = metrics && metrics.units != null ? fmtNum(metrics.units) : '???';
-            var views = metrics && metrics.views != null ? fmtNum(metrics.views) : '???';
-            var atc = metrics && metrics.addToCart != null ? fmtNum(metrics.addToCart) : '???';
-            var cs = metrics && metrics.checkoutStarted != null ? fmtNum(metrics.checkoutStarted) : '???';
-            var atcRate = metrics && metrics.atcRate != null ? fmtPct(metrics.atcRate) : '???';
-            var clicks = metrics && metrics.clicks != null ? fmtNum(metrics.clicks) : '???';
-            var conv = metrics && metrics.orders != null ? fmtNum(metrics.orders) : '???';
-            var cr = metrics && metrics.cr != null ? fmtPct(metrics.cr) : '???';
-            var rpc = metrics && metrics.revPerClick != null ? fmtMoneyGbp(metrics.revPerClick) : '???';
-            var rpv = metrics && metrics.revPerView != null ? fmtMoneyGbp(metrics.revPerView) : '???';
-            var totalSales = details && details.totalSalesLifetime != null ? fmtNum(details.totalSalesLifetime) : '???';
-            var totalRev = details && details.totalRevenueLifetimeGbp != null ? fmtMoneyGbp(details.totalRevenueLifetimeGbp) : '???';
-            var cogs = details && details.costOfGoodsLifetimeGbp != null ? fmtMoneyGbp(details.costOfGoodsLifetimeGbp) : '???';
-            var stockUnits = details && details.inventoryUnits != null ? fmtNum(details.inventoryUnits) : '???';
-            var stockVariants = details && details.inStockVariants != null ? fmtNum(details.inStockVariants) : '???';
+            var revenue = metrics && metrics.revenueGbp != null ? fmtMoneyGbp(metrics.revenueGbp) : '\u2014';
+            var units = metrics && metrics.units != null ? fmtNum(metrics.units) : '\u2014';
+            var views = metrics && metrics.views != null ? fmtNum(metrics.views) : '\u2014';
+            var atc = metrics && metrics.addToCart != null ? fmtNum(metrics.addToCart) : '\u2014';
+            var cs = metrics && metrics.checkoutStarted != null ? fmtNum(metrics.checkoutStarted) : '\u2014';
+            var atcRate = metrics && metrics.atcRate != null ? fmtPct(metrics.atcRate) : '\u2014';
+            var clicks = metrics && metrics.clicks != null ? fmtNum(metrics.clicks) : '\u2014';
+            var conv = metrics && metrics.orders != null ? fmtNum(metrics.orders) : '\u2014';
+            var cr = metrics && metrics.cr != null ? fmtPct(metrics.cr) : '\u2014';
+            var rpc = metrics && metrics.revPerClick != null ? fmtMoneyGbp(metrics.revPerClick) : '\u2014';
+            var rpv = metrics && metrics.revPerView != null ? fmtMoneyGbp(metrics.revPerView) : '\u2014';
+            var totalSales = details && details.totalSalesLifetime != null ? fmtNum(details.totalSalesLifetime) : '\u2014';
+            var totalRev = details && details.totalRevenueLifetimeGbp != null ? fmtMoneyGbp(details.totalRevenueLifetimeGbp) : '\u2014';
+            var cogs = details && details.costOfGoodsLifetimeGbp != null ? fmtMoneyGbp(details.costOfGoodsLifetimeGbp) : '\u2014';
+            var stockUnits = details && details.inventoryUnits != null ? fmtNum(details.inventoryUnits) : '\u2014';
+            var stockVariants = details && details.inStockVariants != null ? fmtNum(details.inStockVariants) : '\u2014';
             mt.innerHTML =
               row('Clicks', clicks) +
               row('Conversions', conv) +
@@ -20858,7 +20857,7 @@ const API = '';
               row('Views (pixel)', views) +
               row('Add to cart', atc) +
               row('Checkout started', cs) +
-              row('View ??? Cart rate', atcRate) +
+              row('View to Cart rate', atcRate) +
               row('Revenue / Click', rpc) +
               row('Revenue / View', rpv) +
               row('In stock (units)', stockUnits) +
@@ -20880,7 +20879,7 @@ const API = '';
               var flag = flagImg(iso, name);
               var conv = (r && r.orders != null) ? (Number(r.orders) || 0) : 0;
               var rev = (r && r.revenueGbp != null) ? Number(r.revenueGbp) : null;
-              var revText = (rev != null && isFinite(rev)) ? fmtMoneyGbp(rev) : '???';
+              var revText = (rev != null && isFinite(rev)) ? fmtMoneyGbp(rev) : '\u2014';
               return '' +
                 '<div class="d-flex align-items-center justify-content-between">' +
                   '<div class="d-flex align-items-center gap-2 min-w-0">' +
@@ -20905,7 +20904,7 @@ const API = '';
 
       function load() {
         ensureDom();
-        setStatus('Loading???');
+        setStatus('Loading\u2026');
 
         var shop = null;
         try { shop = getShopParam() || shopForSalesFallback || null; } catch (_) { shop = null; }

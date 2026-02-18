@@ -1718,8 +1718,8 @@
         chartCfg = {
           series: [{ name: 'Revenue', data: rows.map(function(r) { return Number(r && r.revenue) || 0; }) }],
           colors: ['#0d9488'],
-          yFormatter: function(v) { return formatRevenue(Number(v)) || '???'; },
-          tooltipFormatter: function(v) { return formatRevenue(Number(v)) || '???'; },
+          yFormatter: function(v) { return formatRevenue(Number(v)) || '\u2014'; },
+          tooltipFormatter: function(v) { return formatRevenue(Number(v)) || '\u2014'; },
         };
       } else {
         chartCfg = {
@@ -2493,7 +2493,7 @@
           '<span class="side-panel-label">Lookup</span>' +
           '<span class="side-panel-value">' +
             '<a href="' + escapeHtml(href) + '" target="_blank" rel="noopener">Open in Lookup</a>' +
-            (loading ? '<span class="muted ms-2">Loading IDs???</span>' : '') +
+            (loading ? '<span class="muted ms-2">Loading IDs\u2026</span>' : '') +
           '</span>' +
         '</div>';
 
@@ -2672,7 +2672,7 @@
           { k: 'Kexo order key', v: r.purchase_key, copy: true },
           { k: 'Visitor ID', v: r.visitor_id, copy: false },
         ].filter(function (x) { return x && x.v != null && String(x.v).trim() !== ''; });
-        if (!rows.length) return '<div class="text-muted">???</div>';
+        if (!rows.length) return '<div class="text-muted">\u2014</div>';
 
         if (mode === 'drawer') {
           return rows.map(function (row) {
@@ -2701,7 +2701,7 @@
           if (!path && e.product_handle) path = '/products/' + (e.product_handle || '');
           if (path && !path.startsWith('/')) path = '/' + path;
           var pathLabel = path || (e.product_handle || '');
-          var text = (formatTs(e.ts) || '???') + ' ' + esc(e.type) + ' ' + esc(pathLabel) + (e.qty_delta != null ? (' ??' + esc(e.qty_delta)) : '');
+          var text = (formatTs(e.ts) || '\u2014') + ' ' + esc(e.type) + ' ' + esc(pathLabel) + (e.qty_delta != null ? (' \u2014 ' + esc(e.qty_delta)) : '');
           return '<li><span>' + text + '</span></li>';
         }).join('');
         return '<ul class="side-panel-events kexo-lookup-events">' + items + '</ul>';
@@ -2737,7 +2737,7 @@
         if (mode === 'drawer') {
           return '' +
             gauge +
-            '<div class="side-panel-detail-row"><span class="side-panel-label">Summary</span><span class="side-panel-value">' + esc(picked.summary || '???') + '</span></div>' +
+            '<div class="side-panel-detail-row"><span class="side-panel-label">Summary</span><span class="side-panel-value">' + esc(picked.summary || '\u2014') + '</span></div>' +
             (reasonsHtml ? ('<div class="kexo-fraud-reasons-wrap">' + reasonsHtml + '</div>') : '') +
             '<div class="mt-2">' + flagsHtml + '</div>' +
             '<div class="mt-2">' + evidenceDetails + '</div>';
@@ -2747,7 +2747,7 @@
           gauge +
           '<div class="mt-2">' +
             '<div class="text-muted small">Summary</div>' +
-            '<div>' + esc(picked.summary || '???') + '</div>' +
+            '<div>' + esc(picked.summary || '\u2014') + '</div>' +
             (reasonsHtml ? ('<div class="mt-2">' + reasonsHtml + '</div>') : '') +
             '<div class="mt-2">' + flagsHtml + '</div>' +
             '<div class="mt-2">' + evidenceDetails + '</div>' +
@@ -2793,15 +2793,15 @@
           var sessionMini = '';
           try {
             if (session && typeof session === 'object') {
-              var started = formatTs(session.started_at) || '???';
-              var seen = formatTs(session.last_seen) || '???';
+              var started = formatTs(session.started_at) || '\u2014';
+              var seen = formatTs(session.last_seen) || '\u2014';
               var cartQty = (session.cart_qty != null) ? String(session.cart_qty) : '0';
               sessionMini = '' +
                 '<div class="side-panel-detail-row"><span class="side-panel-label">Started</span><span class="side-panel-value">' + esc(started) + '</span></div>' +
                 '<div class="side-panel-detail-row"><span class="side-panel-label">Seen</span><span class="side-panel-value">' + esc(seen) + '</span></div>' +
                 '<div class="side-panel-detail-row"><span class="side-panel-label">Cart qty</span><span class="side-panel-value">' + esc(cartQty) + '</span></div>';
               if (session.has_purchased) {
-                var sale = formatMoney(session.order_total, session.order_currency) || '???';
+                var sale = formatMoney(session.order_total, session.order_currency) || '\u2014';
                 sessionMini += '<div class="side-panel-detail-row"><span class="side-panel-label">Sale</span><span class="side-panel-value">' + esc(sale) + (session.purchased_at ? (' <span class="text-muted">(' + esc(formatTs(session.purchased_at) || '') + ')</span>') : '') + '</span></div>';
               }
             }
@@ -3040,7 +3040,7 @@
                 var fullUrl = '';
                 try { fullUrl = buildFullEntryUrlForCopy(session) || ''; } catch (_) { fullUrl = ''; }
                 var copyUrl = fullUrl || entryUrl;
-                var html = '<div class="side-panel-source-text">' + escapeHtml(String(srcText || '???')).replace(/\n/g, '<br>') + '</div>';
+                var html = '<div class="side-panel-source-text">' + escapeHtml(String(srcText || '\u2014')).replace(/\n/g, '<br>') + '</div>';
                 if (copyUrl) {
                   html += '<div class="side-panel-source-actions"><a href="#" class="kexo-copy-link" data-kexo-copy="' + escapeHtml(copyUrl) + '">Copy URL</a></div>';
                 }

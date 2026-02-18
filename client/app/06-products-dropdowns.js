@@ -319,13 +319,13 @@
       var pageRows = rows.slice(start, start + pageSize);
       const mainBase = getMainBaseUrl();
       tbody.innerHTML = pageRows.map(function(r) {
-        var title = r && r.title ? String(r.title) : '???';
+        var title = r && r.title ? String(r.title) : '\u2014';
         var orders = r && r.orders != null ? Number(r.orders) : 0;
         var sessions = r && r.sessions != null ? Number(r.sessions) : 0;
         var revNum = r && r.revenueGbp != null ? Number(r.revenueGbp) : null;
         if (!Number.isFinite(revNum)) revNum = null;
-        var rev = revNum != null ? formatRevenueTableHtml(revNum) : '???';
-        var cr = r && r.cr != null ? pct(r.cr) : '???';
+        var rev = revNum != null ? formatRevenueTableHtml(revNum) : '\u2014';
+        var cr = r && r.cr != null ? pct(r.cr) : '\u2014';
         var vpvNum = (revNum != null && sessions > 0) ? (revNum / sessions) : null;
         var vpv = (vpvNum != null && Number.isFinite(vpvNum)) ? formatRevenue(vpvNum) : '\u2014';
         var handle = r && r.handle ? String(r.handle) : '';

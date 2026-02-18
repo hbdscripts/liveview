@@ -175,7 +175,7 @@
     }
 
     function formatRevenueTableHtml(num) {
-      if (num == null || typeof num !== 'number' || !Number.isFinite(num)) return '???';
+      if (num == null || typeof num !== 'number' || !Number.isFinite(num)) return '\u2014';
       if (isIconMode()) return '\u00A3' + Math.round(num).toLocaleString('en-GB');
       if (num % 1 === 0) return '\u00A3' + num.toLocaleString('en-GB');
       let fixed = null;
@@ -912,7 +912,7 @@
         const createdAt = sale.createdAt != null ? sale.createdAt : null;
         setSaleToastContent({
           countryCode: cc || 'XX',
-          productTitle: product || (document.getElementById('sale-toast-product') ? document.getElementById('sale-toast-product').textContent : '???'),
+          productTitle: product || (document.getElementById('sale-toast-product') ? document.getElementById('sale-toast-product').textContent : '\u2014'),
           amountGbp: (amount != null && Number.isFinite(amount)) ? amount : null,
           productHandle: productHandle || '',
           productThumbUrl: productThumbUrl || '',

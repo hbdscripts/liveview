@@ -260,7 +260,7 @@
               var statusCls = it.ok ? 'kexo-status-indicator--online' : 'kexo-status-indicator--offline';
               var esc = function(s) { return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); };
               html += '<div class="kexo-footer-diagnostics-tag">';
-              html += '<a href="/settings?tab=admin&adminTab=diagnostics" class="kexo-footer-diagnostics-tag-link" title="' + esc(it.label) + ' ' + esc(it.status) + ' ??? click for diagnostics">';
+              html += '<a href="/settings?tab=admin&adminTab=diagnostics" class="kexo-footer-diagnostics-tag-link" title="' + esc(it.label) + ' ' + esc(it.status) + ' \u2014 click for diagnostics">';
               html += '<span class="kexo-footer-diagnostics-label">' + esc(it.label) + '</span>';
               html += '</a>';
               html += '<span class="kexo-footer-diagnostics-status">';
@@ -395,7 +395,7 @@
                 '</div>' +
               '</div>' +
               '<div class="modal-body">' +
-                '<div id="product-insights-status" class="text-muted">Loading???</div>' +
+                '<div id="product-insights-status" class="text-muted">Loading\u2026</div>' +
                 '<div id="product-insights-body" style="display:none">' +
                   '<div class="row g-3">' +
                     '<div class="col-12 col-lg-5" id="product-insights-col-left">' +
@@ -565,19 +565,19 @@
 
       function fmtNum(n) {
         var x = (typeof n === 'number') ? n : Number(n);
-        if (!isFinite(x)) return '???';
+        if (!isFinite(x)) return '\u2014';
         try { return x.toLocaleString('en-GB'); } catch (_) { return String(Math.round(x)); }
       }
 
       function fmtMoneyGbp(n) {
         var x = (typeof n === 'number') ? n : Number(n);
-        if (!isFinite(x)) return '???';
-        try { return '??' + x.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); } catch (_) { return '??' + x.toFixed(2); }
+        if (!isFinite(x)) return '\u2014';
+        try { return '\u00A3' + x.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); } catch (_) { return '\u00A3' + x.toFixed(2); }
       }
 
       function fmtPct(n) {
         var x = (typeof n === 'number') ? n : Number(n);
-        if (!isFinite(x)) return '???';
+        if (!isFinite(x)) return '\u2014';
         return x.toFixed(2) + '%';
       }
 
@@ -976,13 +976,13 @@
             return '<tr><td>' + escapeHtml(label) + '</td><td class="w-1 fw-bold text-end">' + escapeHtml(value) + '</td></tr>';
           }
           if (isPage) {
-            var sessions = metrics && metrics.sessions != null ? fmtNum(metrics.sessions) : '???';
-            var pageViews = metrics && metrics.pageViews != null ? fmtNum(metrics.pageViews) : '???';
-            var purchasedSessions = metrics && metrics.purchasedSessions != null ? fmtNum(metrics.purchasedSessions) : '???';
-            var checkoutStartedSessions = metrics && metrics.checkoutStartedSessions != null ? fmtNum(metrics.checkoutStartedSessions) : '???';
-            var revenue2 = metrics && metrics.revenueGbp != null ? fmtMoneyGbp(metrics.revenueGbp) : '???';
-            var cr2 = metrics && metrics.cr != null ? fmtPct(metrics.cr) : '???';
-            var rps = metrics && metrics.revPerSession != null ? fmtMoneyGbp(metrics.revPerSession) : '???';
+            var sessions = metrics && metrics.sessions != null ? fmtNum(metrics.sessions) : '\u2014';
+            var pageViews = metrics && metrics.pageViews != null ? fmtNum(metrics.pageViews) : '\u2014';
+            var purchasedSessions = metrics && metrics.purchasedSessions != null ? fmtNum(metrics.purchasedSessions) : '\u2014';
+            var checkoutStartedSessions = metrics && metrics.checkoutStartedSessions != null ? fmtNum(metrics.checkoutStartedSessions) : '\u2014';
+            var revenue2 = metrics && metrics.revenueGbp != null ? fmtMoneyGbp(metrics.revenueGbp) : '\u2014';
+            var cr2 = metrics && metrics.cr != null ? fmtPct(metrics.cr) : '\u2014';
+            var rps = metrics && metrics.revPerSession != null ? fmtMoneyGbp(metrics.revPerSession) : '\u2014';
             mt.innerHTML =
               row('Revenue', revenue2) +
               row('Purchased sessions', purchasedSessions) +
@@ -992,22 +992,22 @@
               row('Purchase rate', cr2) +
               row('Revenue / Session', rps);
           } else {
-            var revenue = metrics && metrics.revenueGbp != null ? fmtMoneyGbp(metrics.revenueGbp) : '???';
-            var units = metrics && metrics.units != null ? fmtNum(metrics.units) : '???';
-            var views = metrics && metrics.views != null ? fmtNum(metrics.views) : '???';
-            var atc = metrics && metrics.addToCart != null ? fmtNum(metrics.addToCart) : '???';
-            var cs = metrics && metrics.checkoutStarted != null ? fmtNum(metrics.checkoutStarted) : '???';
-            var atcRate = metrics && metrics.atcRate != null ? fmtPct(metrics.atcRate) : '???';
-            var clicks = metrics && metrics.clicks != null ? fmtNum(metrics.clicks) : '???';
-            var conv = metrics && metrics.orders != null ? fmtNum(metrics.orders) : '???';
-            var cr = metrics && metrics.cr != null ? fmtPct(metrics.cr) : '???';
-            var rpc = metrics && metrics.revPerClick != null ? fmtMoneyGbp(metrics.revPerClick) : '???';
-            var rpv = metrics && metrics.revPerView != null ? fmtMoneyGbp(metrics.revPerView) : '???';
-            var totalSales = details && details.totalSalesLifetime != null ? fmtNum(details.totalSalesLifetime) : '???';
-            var totalRev = details && details.totalRevenueLifetimeGbp != null ? fmtMoneyGbp(details.totalRevenueLifetimeGbp) : '???';
-            var cogs = details && details.costOfGoodsLifetimeGbp != null ? fmtMoneyGbp(details.costOfGoodsLifetimeGbp) : '???';
-            var stockUnits = details && details.inventoryUnits != null ? fmtNum(details.inventoryUnits) : '???';
-            var stockVariants = details && details.inStockVariants != null ? fmtNum(details.inStockVariants) : '???';
+            var revenue = metrics && metrics.revenueGbp != null ? fmtMoneyGbp(metrics.revenueGbp) : '\u2014';
+            var units = metrics && metrics.units != null ? fmtNum(metrics.units) : '\u2014';
+            var views = metrics && metrics.views != null ? fmtNum(metrics.views) : '\u2014';
+            var atc = metrics && metrics.addToCart != null ? fmtNum(metrics.addToCart) : '\u2014';
+            var cs = metrics && metrics.checkoutStarted != null ? fmtNum(metrics.checkoutStarted) : '\u2014';
+            var atcRate = metrics && metrics.atcRate != null ? fmtPct(metrics.atcRate) : '\u2014';
+            var clicks = metrics && metrics.clicks != null ? fmtNum(metrics.clicks) : '\u2014';
+            var conv = metrics && metrics.orders != null ? fmtNum(metrics.orders) : '\u2014';
+            var cr = metrics && metrics.cr != null ? fmtPct(metrics.cr) : '\u2014';
+            var rpc = metrics && metrics.revPerClick != null ? fmtMoneyGbp(metrics.revPerClick) : '\u2014';
+            var rpv = metrics && metrics.revPerView != null ? fmtMoneyGbp(metrics.revPerView) : '\u2014';
+            var totalSales = details && details.totalSalesLifetime != null ? fmtNum(details.totalSalesLifetime) : '\u2014';
+            var totalRev = details && details.totalRevenueLifetimeGbp != null ? fmtMoneyGbp(details.totalRevenueLifetimeGbp) : '\u2014';
+            var cogs = details && details.costOfGoodsLifetimeGbp != null ? fmtMoneyGbp(details.costOfGoodsLifetimeGbp) : '\u2014';
+            var stockUnits = details && details.inventoryUnits != null ? fmtNum(details.inventoryUnits) : '\u2014';
+            var stockVariants = details && details.inStockVariants != null ? fmtNum(details.inStockVariants) : '\u2014';
             mt.innerHTML =
               row('Clicks', clicks) +
               row('Conversions', conv) +
@@ -1017,7 +1017,7 @@
               row('Views (pixel)', views) +
               row('Add to cart', atc) +
               row('Checkout started', cs) +
-              row('View ??? Cart rate', atcRate) +
+              row('View to Cart rate', atcRate) +
               row('Revenue / Click', rpc) +
               row('Revenue / View', rpv) +
               row('In stock (units)', stockUnits) +
@@ -1039,7 +1039,7 @@
               var flag = flagImg(iso, name);
               var conv = (r && r.orders != null) ? (Number(r.orders) || 0) : 0;
               var rev = (r && r.revenueGbp != null) ? Number(r.revenueGbp) : null;
-              var revText = (rev != null && isFinite(rev)) ? fmtMoneyGbp(rev) : '???';
+              var revText = (rev != null && isFinite(rev)) ? fmtMoneyGbp(rev) : '\u2014';
               return '' +
                 '<div class="d-flex align-items-center justify-content-between">' +
                   '<div class="d-flex align-items-center gap-2 min-w-0">' +
@@ -1064,7 +1064,7 @@
 
       function load() {
         ensureDom();
-        setStatus('Loading???');
+        setStatus('Loading\u2026');
 
         var shop = null;
         try { shop = getShopParam() || shopForSalesFallback || null; } catch (_) { shop = null; }

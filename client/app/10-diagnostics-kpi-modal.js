@@ -2,11 +2,11 @@
       const reconcileBtn = document.getElementById('config-reconcile-btn');
       const rangeSel = document.getElementById('diagnostics-overview-range');
       if (rangeSel) rangeSel.addEventListener('change', function() {
-        setDiagnosticsActionMsg('Loading overview???', true);
+        setDiagnosticsActionMsg('Loading overview\u2026', true);
         try { refreshConfigStatus({ force: true, preserveView: true }); } catch (_) {}
       });
       if (refreshBtn) refreshBtn.addEventListener('click', function() {
-        setDiagnosticsActionMsg('Refreshing diagnostics???', true);
+        setDiagnosticsActionMsg('Refreshing diagnostics\u2026', true);
         try { refreshConfigStatus({ force: true, preserveView: true }); } catch (_) {}
       });
       if (reconcileBtn) reconcileBtn.addEventListener('click', function() { try { reconcileSalesTruth({}); } catch (_) {} });
