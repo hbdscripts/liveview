@@ -2738,6 +2738,10 @@
                 cardTitle = titleEl && titleEl.textContent ? String(titleEl.textContent).trim() : '';
               } catch (_) {}
               try {
+                if (window.KexoChartSettingsBuilder && typeof window.KexoChartSettingsBuilder.openModal === 'function') {
+                  window.KexoChartSettingsBuilder.openModal({ chartKey: chartKey, cardTitle: cardTitle || chartKey });
+                  return;
+                }
                 if (window.KexoLayoutShortcuts && typeof window.KexoLayoutShortcuts.openChartModal === 'function') {
                   window.KexoLayoutShortcuts.openChartModal({ chartKey: chartKey, cardTitle: cardTitle || chartKey });
                 }

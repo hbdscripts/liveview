@@ -130,11 +130,20 @@
     if (!bodyEl) return;
 
     setMsg('Loading…', null);
+    bodyEl.innerHTML = '<div class="text-muted">Loading…</div>';
+    showModal();
     fetch(API + '/api/chart-settings/' + encodeURIComponent(chartKey), { credentials: 'same-origin', cache: 'no-store' })
-      .then(function (r) { return r.json(); })
+      .then(function (r) {
+        if (!r) return null;
+        // Always try to surface a useful error in the modal instead of failing silently.
+        return r.json().catch(function () {
+          return { ok: false, error: 'Request failed (' + String(r.status || '') + ')' };
+        });
+      })
       .then(function (data) {
         if (!data || !data.ok) {
           setMsg('Failed to load settings', false);
+          bodyEl.innerHTML = '<div class="text-muted">Could not load settings.</div>';
           return;
         }
         var s = data.settings || {};
@@ -201,6 +210,7 @@
           return out;
         }
 
+        if (!saveBtn) return;
         saveBtn.replaceWith(saveBtn.cloneNode(true));
         document.getElementById(MODAL_ID + '-save').addEventListener('click', function () {
           var payload = readForm();
@@ -225,10 +235,10 @@
             })
             .catch(function () { setMsg('Save failed', false); });
         });
-        showModal();
       })
       .catch(function () {
         setMsg('Could not load settings.', false);
+        if (bodyEl) bodyEl.innerHTML = '<div class="text-muted">Could not load settings.</div>';
       });
   }
 

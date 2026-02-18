@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 4f2b7acd5ca7dfd3
+// checksum: 77f0370c1b34a568
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -18519,6 +18519,10 @@ const API = '';
                 cardTitle = titleEl && titleEl.textContent ? String(titleEl.textContent).trim() : '';
               } catch (_) {}
               try {
+                if (window.KexoChartSettingsBuilder && typeof window.KexoChartSettingsBuilder.openModal === 'function') {
+                  window.KexoChartSettingsBuilder.openModal({ chartKey: chartKey, cardTitle: cardTitle || chartKey });
+                  return;
+                }
                 if (window.KexoLayoutShortcuts && typeof window.KexoLayoutShortcuts.openChartModal === 'function') {
                   window.KexoLayoutShortcuts.openChartModal({ chartKey: chartKey, cardTitle: cardTitle || chartKey });
                 }
@@ -22082,11 +22086,20 @@ const API = '';
     if (!bodyEl) return;
 
     setMsg('Loading…', null);
+    bodyEl.innerHTML = '<div class="text-muted">Loading…</div>';
+    showModal();
     fetch(API + '/api/chart-settings/' + encodeURIComponent(chartKey), { credentials: 'same-origin', cache: 'no-store' })
-      .then(function (r) { return r.json(); })
+      .then(function (r) {
+        if (!r) return null;
+        // Always try to surface a useful error in the modal instead of failing silently.
+        return r.json().catch(function () {
+          return { ok: false, error: 'Request failed (' + String(r.status || '') + ')' };
+        });
+      })
       .then(function (data) {
         if (!data || !data.ok) {
           setMsg('Failed to load settings', false);
+          bodyEl.innerHTML = '<div class="text-muted">Could not load settings.</div>';
           return;
         }
         var s = data.settings || {};
@@ -22153,6 +22166,7 @@ const API = '';
           return out;
         }
 
+        if (!saveBtn) return;
         saveBtn.replaceWith(saveBtn.cloneNode(true));
         document.getElementById(MODAL_ID + '-save').addEventListener('click', function () {
           var payload = readForm();
@@ -22177,10 +22191,10 @@ const API = '';
             })
             .catch(function () { setMsg('Save failed', false); });
         });
-        showModal();
       })
       .catch(function () {
         setMsg('Could not load settings.', false);
+        if (bodyEl) bodyEl.innerHTML = '<div class="text-muted">Could not load settings.</div>';
       });
   }
 
