@@ -17,3 +17,4 @@
 16-layout-shortcuts.js
 17-profit-rules-modal.js
 18-chart-settings-builder.js
+19-logo-rotator.js

@@ -138,7 +138,16 @@ function getSignInHtml(queryError, opts) {
   const hasShopifyOAuth = !!(config.shopify && config.shopify.apiKey && config.shopify.apiSecret && config.shopify.appUrl);
   const shopDomain = (opts && opts.shopDomain) ? String(opts.shopDomain).trim().toLowerCase() : '';
   const faviconHref = (opts && opts.faviconHref) ? String(opts.faviconHref) : '';
-  const loginLogoSrc = (opts && opts.loginLogoSrc) ? String(opts.loginLogoSrc) : '/assets/logos/new/kexo_login.png';
+  const loginLogoSrc = (function pickLoginLogoVariant() {
+    const variants = [
+      '/assets/logos/new/dark/1.png',
+      '/assets/logos/new/dark/2.png',
+      '/assets/logos/new/dark/3.png',
+      '/assets/logos/new/dark/4.png',
+    ];
+    const idx = Math.floor(Math.random() * variants.length);
+    return variants[Math.max(0, Math.min(variants.length - 1, idx))] || variants[0];
+  })();
   const redirectTarget = normalizeSafeRedirectPath((opts && opts.redirectTarget) || '/dashboard/overview');
   const registered = !!(opts && opts.registered);
 
@@ -218,7 +227,16 @@ function getSignInHtml(queryError, opts) {
 
 function getSignUpHtml(queryError, opts) {
   const faviconHref = (opts && opts.faviconHref) ? String(opts.faviconHref) : '';
-  const loginLogoSrc = (opts && opts.loginLogoSrc) ? String(opts.loginLogoSrc) : '/assets/logos/new/kexo_login.png';
+  const loginLogoSrc = (function pickLoginLogoVariant() {
+    const variants = [
+      '/assets/logos/new/dark/1.png',
+      '/assets/logos/new/dark/2.png',
+      '/assets/logos/new/dark/3.png',
+      '/assets/logos/new/dark/4.png',
+    ];
+    const idx = Math.floor(Math.random() * variants.length);
+    return variants[Math.max(0, Math.min(variants.length - 1, idx))] || variants[0];
+  })();
   const redirectTarget = normalizeSafeRedirectPath((opts && opts.redirectTarget) || '/dashboard/overview');
   const signInHref = '/app/login?redirect=' + encodeURIComponent(redirectTarget);
 
