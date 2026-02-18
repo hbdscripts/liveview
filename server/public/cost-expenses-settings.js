@@ -1,6 +1,6 @@
 /**
  * Cost & Expenses settings – master-only panel.
- * Loads/saves profit rules (GET/PUT /api/settings/profit-rules), fetches GET /api/cost/health for badges,
+ * Loads/saves profit rules (GET/PUT /api/settings/profit-rules).
  * Shipping tab (worldwide + overrides), Rules tab (profit rules table + form).
  */
 (function () {
@@ -14,7 +14,6 @@
   var API = (typeof window !== 'undefined' && window.API) ? String(window.API || '') : '';
   var state = {
     config: null,
-    health: null,
     editingRuleId: '',
     uiBound: false,
     loadInFlight: null,
@@ -128,25 +127,6 @@
     el.classList.remove('text-success', 'text-danger');
     if (ok === true) el.classList.add('text-success');
     if (ok === false) el.classList.add('text-danger');
-  }
-
-  function renderHealthBadges(health) {
-    var sources = (health && health.sources) ? health.sources : {};
-    var ids = ['google-ads', 'payment-fees', 'shopify-fees', 'app-bills', 'cogs'];
-    var keys = ['googleAds', 'shopifyPayments', 'shopifyFees', 'appBills', 'cogs'];
-    for (var i = 0; i < ids.length; i++) {
-      var el = document.getElementById('cost-expenses-health-' + ids[i]);
-      if (!el) continue;
-      var s = sources[keys[i]];
-      var text = (s && s.statusText) ? String(s.statusText) : '—';
-      el.textContent = text;
-      el.className = 'badge ms-auto ms-2';
-      if (s && s.status === 'ok') el.classList.add('bg-success-lt');
-      else if (s && (s.status === 'connected' || s.status === 'ok')) el.classList.add('bg-success-lt');
-      else if (s && (s.status === 'scope_missing' || s.status === 'missing')) el.classList.add('bg-warning-lt');
-      else if (s && s.status === 'error') el.classList.add('bg-danger-lt');
-      else el.classList.add('bg-secondary-lt');
-    }
   }
 
   function renderShippingOverrides() {
@@ -473,16 +453,9 @@
 
   function load() {
     if (state.loadInFlight) return state.loadInFlight;
-    state.loadInFlight = Promise.all([
-      fetchJson(API + '/api/settings/profit-rules'),
-      fetchJson(API + '/api/cost/health'),
-    ]).then(function (results) {
-      var configPayload = results[0];
-      var healthPayload = results[1];
+    state.loadInFlight = fetchJson(API + '/api/settings/profit-rules').then(function (configPayload) {
       state.config = normalizeConfig(configPayload && configPayload.profitRules);
-      state.health = healthPayload;
       applyConfigToInputs();
-      renderHealthBadges(state.health);
       renderShippingOverrides();
       renderRulesTable();
       bindUi();
@@ -493,7 +466,6 @@
       setMsg('Failed to load.', false);
       state.config = defaultConfig();
       applyConfigToInputs();
-      renderHealthBadges({});
       renderShippingOverrides();
       renderRulesTable();
       bindUi();
