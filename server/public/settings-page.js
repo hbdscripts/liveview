@@ -108,6 +108,7 @@
   }
 
   var kpiUiConfigCache = null;
+  var profitRulesCache = null;
   var tablesUiConfigCache = null;
   var insightsVariantsConfigCache = null;
   var insightsVariantsDraft = null;
@@ -1120,6 +1121,7 @@
         var sessionMode = data.pixelSessionMode || 'legacy';
         var overrides = data.assetOverrides || {};
         kpiUiConfigCache = data.kpiUiConfig || null;
+        profitRulesCache = data.profitRules || null;
         tablesUiConfigCache = data.tablesUiConfig || null;
         insightsVariantsConfigCache = data.insightsVariantsConfig || null;
         var generalDateFormat = normalizeDateLabelFormat(
@@ -1722,6 +1724,7 @@
         header: [
           { key: 'orders', label: 'Orders', enabled: true },
           { key: 'revenue', label: 'Revenue', enabled: true },
+          { key: 'profit', label: 'Profit', enabled: true },
           { key: 'conv', label: 'Conversion Rate', enabled: true },
           { key: 'vpv', label: 'Value per Visit', enabled: false },
           { key: 'roas', label: 'ADS ROAS', enabled: true },
@@ -1736,6 +1739,7 @@
         ],
         dashboard: [
           { key: 'revenue', label: 'Revenue', enabled: true },
+          { key: 'profit', label: 'Profit', enabled: true },
           { key: 'orders', label: 'Orders', enabled: true },
           { key: 'conv', label: 'Conversion Rate', enabled: true },
           { key: 'vpv', label: 'Value per Visit', enabled: false },
@@ -1760,6 +1764,10 @@
         { key: 'custom', label: 'Custom\u2026', enabled: true },
       ],
     };
+  }
+
+  function isProfitKpiGateEnabled() {
+    return !!(profitRulesCache && typeof profitRulesCache === 'object' && profitRulesCache.enabled === true);
   }
 
   function normalizeDateLabelFormat(raw) {
@@ -4417,8 +4425,10 @@
           if (!key) return '';
           var label = it.label != null ? String(it.label) : key;
           var enabled = !!it.enabled;
+          var profitLocked = key === 'profit' && !isProfitKpiGateEnabled();
+          if (profitLocked) enabled = false;
           return '<tr data-kpi-key="' + escapeHtml(key) + '">' +
-            '<td><label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-field="enabled" ' + (enabled ? 'checked' : '') + '></label></td>' +
+            '<td><label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-field="enabled" ' + (enabled ? 'checked' : '') + (profitLocked ? ' disabled' : '') + '></label></td>' +
             '<td><input type="text" class="form-control form-control-sm" data-field="label" value="' + escapeHtml(label) + '"></td>' +
             '<td class="text-muted small">' + escapeHtml(key) + '</td>' +
             '<td class="text-end"><div class="btn-group btn-group-sm" role="group" aria-label="Reorder">' +
@@ -4438,8 +4448,10 @@
         if (!key) return;
         var label = it.label != null ? String(it.label) : key;
         var enabled = !!it.enabled;
+        var profitLocked = key === 'profit' && !isProfitKpiGateEnabled();
+        if (profitLocked) enabled = false;
         html += '<tr data-kpi-key="' + escapeHtml(key) + '">' +
-          '<td><label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-field="enabled" ' + (enabled ? 'checked' : '') + '></label></td>' +
+          '<td><label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-field="enabled" ' + (enabled ? 'checked' : '') + (profitLocked ? ' disabled' : '') + '></label></td>' +
           '<td><input type="text" class="form-control form-control-sm" data-field="label" value="' + escapeHtml(label) + '"></td>' +
           '<td class="text-muted small">' + escapeHtml(key) + '</td>' +
           '<td class="text-end"><div class="btn-group btn-group-sm" role="group" aria-label="Reorder">' +
@@ -4766,6 +4778,10 @@
     }
 
     prepareSettingsMainTabs();
+    // Sync the active panel from the URL *before* wiring sub-tab tabsets.
+    // Some tabsets fire `onActivate` immediately during initialization; if the DOM default
+    // panel is still active (Kexo → General), that can overwrite deep-links via updateUrl().
+    syncFromUrl();
     // Layout is now a multi-tab section (Tables / Charts / KPIs). If the URL used legacy
     // `tab=charts` or `tab=kpis`, preselect the right Layout subtab BEFORE activating the panel.
     wireLayoutSubTabs(initialLayoutSubTab);
@@ -4773,7 +4789,6 @@
     wireIntegrationsSubTabs();
     wireAttributionSubTabs(initialAttributionSubTab);
     wireAdminSubTabs(initialAdminSubTab);
-    syncFromUrl();
 
     var tablist = document.getElementById('settings-category-tablist');
     if (tablist) {

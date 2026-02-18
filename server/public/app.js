@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 4b52d9a4a45b1449
+// checksum: 2427e5029e7f5f88
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -7871,6 +7871,7 @@ const API = '';
       const ids = [
         'cond-kpi-orders',
         'cond-kpi-revenue',
+        'cond-kpi-profit',
         'cond-kpi-sessions',
         'cond-kpi-conv',
         'cond-kpi-vpv',
@@ -7922,6 +7923,19 @@ const API = '';
     const KPI_STABLE_PCT = 5; // ??5 percentage points (already-percent deltas)
     const DASHBOARD_NEUTRAL_DELTA_KEYS = new Set(['cogs', 'fulfilled', 'returns', 'items']);
     const DASHBOARD_NEUTRAL_TONE_HEX = '#999';
+    let runtimeProfitKpiAllowed = false;
+
+    function setRuntimeProfitKpiAllowed(nextAllowed) {
+      var allowed = !!nextAllowed;
+      if (runtimeProfitKpiAllowed === allowed) return;
+      runtimeProfitKpiAllowed = allowed;
+      try {
+        if (kpiUiConfigV1 && kpiUiConfigV1.v === 1) {
+          applyCondensedKpiUiConfig(kpiUiConfigV1);
+          applyDashboardKpiUiConfig(kpiUiConfigV1);
+        }
+      } catch (_) {}
+    }
 
     function cssVarColor(name, fallback) {
       try {
@@ -8170,6 +8184,7 @@ const API = '';
       var map = {
         'cond-kpi-orders-sparkline': function(d) { return d.orders; },
         'cond-kpi-revenue-sparkline': function(d) { return d.revenue; },
+        'cond-kpi-profit-sparkline': function() { return null; },
         'cond-kpi-conv-sparkline': function(d) { return d.convRate; },
         'cond-kpi-vpv-sparkline': function(d) {
           var rev = d && typeof d.revenue === 'number' ? d.revenue : 0;
@@ -8272,8 +8287,11 @@ const API = '';
       const vpvMap = data && data.vpv ? data.vpv : {};
       const aovMap = data && data.aov ? data.aov : {};
       const bounceMap = data && data.bounce ? data.bounce : {};
+      const costMap = data && data.cost ? data.cost : {};
+      const profitMap = data && data.profit ? data.profit : {};
       const condOrdersEl = document.getElementById('cond-kpi-orders');
       const condRevenueEl = document.getElementById('cond-kpi-revenue');
+      const condProfitEl = document.getElementById('cond-kpi-profit');
       const condConvEl = document.getElementById('cond-kpi-conv');
       const condVpvEl = document.getElementById('cond-kpi-vpv');
       const condSessionsEl = document.getElementById('cond-kpi-sessions');
@@ -8291,10 +8309,18 @@ const API = '';
       const topbarConvDeltaEl = document.getElementById('topbar-kpi-conv-delta');
       const topbarConvDeltaTextEl = document.getElementById('topbar-kpi-conv-delta-text');
       const kpiRange = getStatsRange();
+      const profitKpiAllowed = !!(data && data.profitKpiAllowed === true);
+      setRuntimeProfitKpiAllowed(profitKpiAllowed);
       const forRange = breakdown[kpiRange];
       const sessionsVal = forRange != null && typeof forRange.human_sessions === 'number' ? forRange.human_sessions : null;
       const orderCountVal = typeof convertedCountMap[kpiRange] === 'number' ? convertedCountMap[kpiRange] : null;
       const revenueVal = typeof sales[kpiRange] === 'number' ? sales[kpiRange] : null;
+      const costVal = typeof costMap[kpiRange] === 'number' ? costMap[kpiRange] : null;
+      let profitVal = typeof profitMap[kpiRange] === 'number' ? profitMap[kpiRange] : null;
+      if (profitVal == null && revenueVal != null && costVal != null) {
+        profitVal = Math.round((revenueVal - costVal) * 100) / 100;
+      }
+      if (!profitKpiAllowed) profitVal = null;
       const returningVal = typeof returningCustomerCountMap[kpiRange] === 'number' ? returningCustomerCountMap[kpiRange] : null;
       const convVal = typeof conv[kpiRange] === 'number' ? conv[kpiRange] : null;
       const vpvVal = typeof vpvMap[kpiRange] === 'number' ? vpvMap[kpiRange] : null;
@@ -8306,6 +8332,12 @@ const API = '';
       const compareSessionsVal = compareBreakdown && typeof compareBreakdown.human_sessions === 'number' ? compareBreakdown.human_sessions : null;
       const compareOrdersVal = compare && typeof compare.convertedCount === 'number' ? compare.convertedCount : null;
       const compareRevenueVal = compare && typeof compare.sales === 'number' ? compare.sales : null;
+      const compareCostVal = compare && typeof compare.cost === 'number' ? compare.cost : null;
+      let compareProfitVal = compare && typeof compare.profit === 'number' ? compare.profit : null;
+      if (compareProfitVal == null && compareRevenueVal != null && compareCostVal != null) {
+        compareProfitVal = Math.round((compareRevenueVal - compareCostVal) * 100) / 100;
+      }
+      if (!profitKpiAllowed) compareProfitVal = null;
       const compareReturningVal = compare && typeof compare.returningCustomerCount === 'number' ? compare.returningCustomerCount : null;
       const compareConvVal = compare && typeof compare.conversion === 'number' ? compare.conversion : null;
       const compareVpvVal = compare && typeof compare.vpv === 'number' ? compare.vpv : null;
@@ -8339,6 +8371,7 @@ const API = '';
 
       if (condOrdersEl) condOrdersEl.textContent = orderCountVal != null ? formatSessions(orderCountVal) : '\u2014';
       if (condRevenueEl) condRevenueEl.textContent = revenueVal != null ? formatRevenue(revenueVal) : '\u2014';
+      if (condProfitEl) condProfitEl.textContent = profitVal != null ? formatRevenue(profitVal) : '\u2014';
       if (condSessionsEl) condSessionsEl.textContent = sessionsVal != null ? formatSessions(sessionsVal) : '\u2014';
       if (condConvEl) condConvEl.textContent = convVal != null ? pct(convVal) : '\u2014';
       if (condVpvEl) condVpvEl.textContent = vpvVal != null ? formatRevenue(vpvVal) : '\u2014';
@@ -8348,6 +8381,7 @@ const API = '';
       if (condBounceEl) condBounceEl.textContent = bounceVal != null ? pct(bounceVal) : '\u2014';
       applyCondensedKpiDelta('orders', orderCountVal, compareOrdersVal, false);
       applyCondensedKpiDelta('revenue', revenueVal, compareRevenueVal, false);
+      applyCondensedKpiDelta('profit', profitVal, compareProfitVal, false);
       applyCondensedKpiDelta('sessions', sessionsVal, compareSessionsVal, false);
       applyCondensedKpiDelta('conv', convVal, compareConvVal, false);
       applyCondensedKpiDelta('vpv', vpvVal, compareVpvVal, false);
@@ -8357,6 +8391,7 @@ const API = '';
       applyCondensedKpiDelta('bounce', bounceVal, compareBounceVal, true);
       setCondensedSparklineTone('cond-kpi-orders-sparkline', orderCountVal, compareOrdersVal);
       setCondensedSparklineTone('cond-kpi-revenue-sparkline', revenueVal, compareRevenueVal);
+      setCondensedSparklineTone('cond-kpi-profit-sparkline', profitVal, compareProfitVal);
       setCondensedSparklineTone('cond-kpi-conv-sparkline', convVal, compareConvVal);
       setCondensedSparklineTone('cond-kpi-vpv-sparkline', vpvVal, compareVpvVal);
       setCondensedSparklineTone('cond-kpi-roas-sparkline', roasVal, compareRoasVal);
@@ -8364,6 +8399,10 @@ const API = '';
       setCondensedSparklineTone('cond-kpi-returning-sparkline', returningVal, compareReturningVal);
       setCondensedSparklineTone('cond-kpi-aov-sparkline', aovVal, compareAovVal);
       setCondensedSparklineTone('cond-kpi-bounce-sparkline', bounceVal, compareBounceVal, true);
+      if (!condensedSparklineOverrides || typeof condensedSparklineOverrides !== 'object') condensedSparklineOverrides = {};
+      condensedSparklineOverrides['cond-kpi-profit-sparkline'] = (profitVal != null && compareProfitVal != null)
+        ? [compareProfitVal, profitVal]
+        : null;
       try { updateCondensedKpiOverflow(); } catch (_) {}
 
       // Header quick KPIs (compact)
@@ -8622,8 +8661,18 @@ const API = '';
         return (typeof v === 'number' && Number.isFinite(v)) ? v : null;
       }
 
+      function round2Local(v) {
+        return (typeof v === 'number' && Number.isFinite(v)) ? (Math.round(v * 100) / 100) : null;
+      }
+
       var main = primaryData;
+      var profitKpiAllowed = !!(main && main.profitKpiAllowed === true);
+      setRuntimeProfitKpiAllowed(profitKpiAllowed);
       var salesVal = numFromMap(main, 'sales', kpiRange);
+      var costVal = numFromMap(main, 'cost', kpiRange);
+      var profitVal = numFromMap(main, 'profit', kpiRange);
+      if (profitVal == null && salesVal != null && costVal != null) profitVal = round2Local(salesVal - costVal);
+      if (!profitKpiAllowed) profitVal = null;
       var ordersVal = numFromMap(main, 'convertedCount', kpiRange);
       var sessionsVal = sessionsFromBreakdownMap(main, kpiRange);
       var convVal = numFromMap(main, 'conversion', kpiRange);
@@ -8649,6 +8698,7 @@ const API = '';
       }
 
       setDashValueText('dash-kpi-revenue', salesVal != null ? formatRevenue0(salesVal) : '\u2014');
+      setDashValueText('dash-kpi-profit', profitVal != null ? formatRevenue0(profitVal) : '\u2014');
       setDashValueText('dash-kpi-orders', ordersVal != null ? Math.round(ordersVal).toLocaleString() : '\u2014');
       setDashValueText('dash-kpi-sessions', sessionsVal != null ? formatSessions(sessionsVal) : '\u2014');
       setDashValueText('dash-kpi-conv', convVal != null ? pct(convVal) : '\u2014');
@@ -8665,6 +8715,7 @@ const API = '';
       function renderCompareSlot(slotSuffix, values) {
         values = values || {};
         var sales = values.sales;
+        var profit = values.profit;
         var orders = values.orders;
         var sessions = values.sessions;
         var conv = values.conv;
@@ -8679,6 +8730,7 @@ const API = '';
         var cogs = values.cogs;
 
         setDashValueText('dash-revenue-' + slotSuffix, sales != null ? formatRevenue0(sales) : '\u2014');
+        setDashValueText('dash-profit-' + slotSuffix, profit != null ? formatRevenue0(profit) : '\u2014');
         setDashValueText('dash-orders-' + slotSuffix, orders != null ? Math.round(orders).toLocaleString() : '\u2014');
         setDashValueText('dash-sessions-' + slotSuffix, sessions != null ? formatSessions(sessions) : '\u2014');
         setDashValueText('dash-conv-' + slotSuffix, conv != null ? pct(conv) : '\u2014');
@@ -8775,6 +8827,10 @@ const API = '';
       var primaryCompare = main && main.compare ? main.compare : null;
       var primaryExtrasCompare = extrasMain && extrasMain.compare ? extrasMain.compare : null;
       var salesBase = numFromCompare(primaryCompare, 'sales');
+      var costBase = numFromCompare(primaryCompare, 'cost');
+      var profitBase = numFromCompare(primaryCompare, 'profit');
+      if (profitBase == null && salesBase != null && costBase != null) profitBase = round2Local(salesBase - costBase);
+      if (!profitKpiAllowed) profitBase = null;
       var ordersBase = numFromCompare(primaryCompare, 'convertedCount');
       var sessionsBase = sessionsFromBreakdownCompare(primaryCompare);
       var convBase = numFromCompare(primaryCompare, 'conversion');
@@ -8789,6 +8845,7 @@ const API = '';
       var cogsBase = primaryExtrasCompare && typeof primaryExtrasCompare.cogs === 'number' ? primaryExtrasCompare.cogs : null;
 
       applyDashDelta('revenue', salesVal, salesBase, false);
+      applyDashDelta('profit', profitVal, profitBase, false);
       applyDashDelta('orders', ordersVal, ordersBase, false);
       applyDashDelta('sessions', sessionsVal, sessionsBase, false);
       applyDashDelta('conv', convVal, convBase, false);
@@ -8803,6 +8860,7 @@ const API = '';
       applyDashDelta('cogs', cogsVal, cogsBase, true);
       renderCompareSlot('yesterday', {
         sales: salesBase,
+        profit: profitBase,
         orders: ordersBase,
         sessions: sessionsBase,
         conv: convBase,
@@ -8843,8 +8901,14 @@ const API = '';
         var secondary = _dashKpisSecondary;
         var secondaryRangeKey = '7d';
         var secondaryExtras = _dashKpiExtrasSecondary;
+        var secondarySales = numFromMap(secondary, 'sales', secondaryRangeKey);
+        var secondaryCost = numFromMap(secondary, 'cost', secondaryRangeKey);
+        var secondaryProfit = numFromMap(secondary, 'profit', secondaryRangeKey);
+        if (secondaryProfit == null && secondarySales != null && secondaryCost != null) secondaryProfit = round2Local(secondarySales - secondaryCost);
+        if (!profitKpiAllowed) secondaryProfit = null;
         renderCompareSlot('7d', {
-          sales: numFromMap(secondary, 'sales', secondaryRangeKey),
+          sales: secondarySales,
+          profit: secondaryProfit,
           orders: numFromMap(secondary, 'convertedCount', secondaryRangeKey),
           sessions: sessionsFromBreakdownMap(secondary, secondaryRangeKey),
           conv: numFromMap(secondary, 'conversion', secondaryRangeKey),
@@ -9551,6 +9615,7 @@ const API = '';
       var idByKey = {
         orders: 'cond-kpi-orders',
         revenue: 'cond-kpi-revenue',
+        profit: 'cond-kpi-profit',
         conv: 'cond-kpi-conv',
         vpv: 'cond-kpi-vpv',
         roas: 'cond-kpi-roas',
@@ -9586,6 +9651,7 @@ const API = '';
           if (lbl) labelEl.textContent = lbl;
         }
         var enabled = item.enabled !== false;
+        if (key === 'profit' && !runtimeProfitKpiAllowed) enabled = false;
         chip.classList.toggle('is-user-disabled', !enabled);
         frag.appendChild(chip);
         seen.add(chip);
@@ -9593,6 +9659,10 @@ const API = '';
 
       allChips.forEach(function(chip) {
         if (!chip || seen.has(chip)) return;
+        try {
+          var isProfitChip = !!(chip.querySelector && chip.querySelector('#cond-kpi-profit'));
+          if (isProfitChip) chip.classList.toggle('is-user-disabled', !runtimeProfitKpiAllowed);
+        } catch (_) {}
         frag.appendChild(chip);
       });
 
@@ -9641,6 +9711,7 @@ const API = '';
 
       var idByKey = {
         revenue: 'dash-kpi-revenue',
+        profit: 'dash-kpi-profit',
         orders: 'dash-kpi-orders',
         conv: 'dash-kpi-conv',
         vpv: 'dash-kpi-vpv',
@@ -9655,7 +9726,7 @@ const API = '';
         items: 'dash-kpi-items',
         kexo_score: 'dash-kpi-kexo-score',
       };
-      var defaultKpiOrder = ['revenue', 'orders', 'conv', 'vpv', 'aov', 'sessions', 'bounce', 'returning', 'roas', 'kexo_score', 'cogs', 'fulfilled', 'returns', 'items'];
+      var defaultKpiOrder = ['revenue', 'profit', 'orders', 'conv', 'vpv', 'aov', 'sessions', 'bounce', 'returning', 'roas', 'kexo_score', 'cogs', 'fulfilled', 'returns', 'items'];
       var colByKey = {};
       var keyByCol = new Map();
       Object.keys(idByKey).forEach(function(key) {
@@ -9709,6 +9780,7 @@ const API = '';
             if (lbl) labelEl.textContent = lbl;
           }
           var enabled = item.enabled !== false;
+          if (key === 'profit' && !runtimeProfitKpiAllowed) enabled = false;
           col.classList.toggle('is-user-disabled', !enabled);
           var bucket = chooseBucket(key, enabled);
           if (bucket === 'top') fragPrimary.appendChild(col);
@@ -9718,9 +9790,10 @@ const API = '';
         });
         allCols.forEach(function(col) {
           if (!col || seen.has(col)) return;
-          col.classList.remove('is-user-disabled');
           var key = keyByCol && keyByCol.get ? (keyByCol.get(col) || '') : '';
-          var bucket = chooseBucket(key, true);
+          var enabled = !(key === 'profit' && !runtimeProfitKpiAllowed);
+          col.classList.toggle('is-user-disabled', !enabled);
+          var bucket = chooseBucket(key, enabled);
           if (bucket === 'top') fragPrimary.appendChild(col);
           else if (bucket === 'mid') fragMid.appendChild(col);
           else fragLower.appendChild(col);
@@ -9729,7 +9802,9 @@ const API = '';
         defaultKpiOrder.forEach(function(key) {
           var col = colByKey[key];
           if (!col || seen.has(col)) return;
-          var bucket = chooseBucket(key, true);
+          var enabled = !(key === 'profit' && !runtimeProfitKpiAllowed);
+          col.classList.toggle('is-user-disabled', !enabled);
+          var bucket = chooseBucket(key, enabled);
           if (bucket === 'top') fragPrimary.appendChild(col);
           else if (bucket === 'mid') fragMid.appendChild(col);
           else fragLower.appendChild(col);
@@ -9738,7 +9813,9 @@ const API = '';
         allCols.forEach(function(col) {
           if (!col || seen.has(col)) return;
           var key = keyByCol && keyByCol.get ? (keyByCol.get(col) || '') : '';
-          var bucket = chooseBucket(key, true);
+          var enabled = !(key === 'profit' && !runtimeProfitKpiAllowed);
+          col.classList.toggle('is-user-disabled', !enabled);
+          var bucket = chooseBucket(key, enabled);
           if (bucket === 'top') fragPrimary.appendChild(col);
           else if (bucket === 'mid') fragMid.appendChild(col);
           else fragLower.appendChild(col);

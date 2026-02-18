@@ -6,6 +6,36 @@ const Sentry = require('@sentry/node');
 const store = require('../store');
 const reportCache = require('../reportCache');
 const { normalizeRangeKey } = require('../rangeKey');
+const businessSnapshotService = require('../businessSnapshotService');
+
+function ymdInTimeZone(ts, timeZone) {
+  try {
+    const fmt = new Intl.DateTimeFormat('en-CA', {
+      timeZone: timeZone || 'UTC',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+    const ymd = fmt.format(new Date(Number(ts) || Date.now()));
+    if (/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return ymd;
+  } catch (_) {}
+  try {
+    return new Date(Number(ts) || Date.now()).toISOString().slice(0, 10);
+  } catch (_) {
+    return null;
+  }
+}
+
+function numOrNull(v) {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
+function round2(v) {
+  const n = numOrNull(v);
+  if (n == null) return null;
+  return Math.round(n * 100) / 100;
+}
 
 async function getKpis(req, res) {
   Sentry.addBreadcrumb({ category: 'api', message: 'kpis.get', data: { range: req?.query?.range } });
@@ -41,7 +71,76 @@ async function getKpis(req, res) {
     if (timing || totalMs > 1200) {
       console.log('[kpis] range=%s ms_total=%s cacheHit=%s', rangeKey, totalMs, cached && cached.cacheHit ? 1 : 0);
     }
-    res.json(cached && cached.ok ? cached.data : null);
+    const payload = cached && cached.ok ? cached.data : null;
+    if (payload && typeof payload === 'object') {
+      try {
+        const sinceYmd = ymdInTimeZone(bounds.start, timeZone);
+        const untilYmd = ymdInTimeZone(Math.max(bounds.start, bounds.end - 1), timeZone);
+        if (sinceYmd && untilYmd) {
+          const profitCached = await reportCache.getOrComputeJson(
+            {
+              shop: '',
+              endpoint: 'kpis_profit',
+              rangeKey,
+              rangeStartTs: bounds.start,
+              rangeEndTs: bounds.end,
+              params: { rangeKey, since: sinceYmd, until: untilYmd },
+              ttlMs: 120 * 1000,
+              force,
+            },
+            async () => {
+              const snapshot = await businessSnapshotService.getBusinessSnapshot({
+                mode: 'range',
+                since: sinceYmd,
+                until: untilYmd,
+                granularity: 'day',
+              });
+              const fin = snapshot && snapshot.financial && typeof snapshot.financial === 'object'
+                ? snapshot.financial
+                : null;
+              const profitMeta = fin && fin.profit && typeof fin.profit === 'object'
+                ? fin.profit
+                : null;
+              const costMetric = fin && fin.cost && typeof fin.cost === 'object'
+                ? fin.cost
+                : null;
+              const revenueMetric = fin && fin.revenue && typeof fin.revenue === 'object'
+                ? fin.revenue
+                : null;
+
+              const costNow = numOrNull(costMetric && costMetric.value);
+              const costPrev = numOrNull(costMetric && costMetric.previous);
+              const revNow = numOrNull(revenueMetric && revenueMetric.value);
+              const revPrev = numOrNull(revenueMetric && revenueMetric.previous);
+
+              const profitEnabled = !!(profitMeta && profitMeta.enabled === true);
+              const profitKpiAllowed = profitEnabled;
+              const profitNow = (revNow != null && costNow != null) ? round2(revNow - costNow) : null;
+              const profitPrev = (revPrev != null && costPrev != null) ? round2(revPrev - costPrev) : null;
+
+              return {
+                profitKpiAllowed,
+                profitNow: profitKpiAllowed ? profitNow : null,
+                profitPrev: profitKpiAllowed ? profitPrev : null,
+                costNow: profitKpiAllowed ? costNow : null,
+                costPrev: profitKpiAllowed ? costPrev : null,
+              };
+            }
+          );
+          const profitData = profitCached && profitCached.ok ? profitCached.data : null;
+          const safeProfitData = profitData && typeof profitData === 'object' ? profitData : null;
+          const profitKpiAllowed = !!(safeProfitData && safeProfitData.profitKpiAllowed === true);
+
+          payload.profitKpiAllowed = profitKpiAllowed;
+          payload.profit = { [rangeKey]: safeProfitData ? safeProfitData.profitNow : null };
+          payload.cost = { [rangeKey]: safeProfitData ? safeProfitData.costNow : null };
+          if (!payload.compare || typeof payload.compare !== 'object') payload.compare = {};
+          payload.compare.profit = safeProfitData ? safeProfitData.profitPrev : null;
+          payload.compare.cost = safeProfitData ? safeProfitData.costPrev : null;
+        }
+      } catch (_) {}
+    }
+    res.json(payload);
   } catch (err) {
     Sentry.captureException(err, { extra: { route: 'kpis', rangeKey } });
     console.error('[kpis]', err);
