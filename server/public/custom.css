@@ -1242,6 +1242,38 @@ body:not([data-page="settings"]) .table-responsive table td:first-child .country
   margin-inline-end: 0.5rem;
   flex-shrink: 0;
 }
+
+/* Attribution table: cap icon specs (img/svg/i) to 20px */
+body[data-page="attribution"] #attribution-mount .source-icons {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+body[data-page="attribution"] #attribution-mount .source-icons img {
+  width: 20px;
+  height: 20px;
+  max-width: 20px;
+  max-height: 20px;
+  object-fit: contain;
+  display: inline-block;
+}
+body[data-page="attribution"] #attribution-mount .source-icons svg {
+  width: 20px;
+  height: 20px;
+  max-width: 20px;
+  max-height: 20px;
+  display: block;
+}
+body[data-page="attribution"] #attribution-mount .source-icons i {
+  width: 20px;
+  height: 20px;
+  font-size: 20px;
+  line-height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
 .dash-attribution-icon-row {
   display: flex;
   justify-content: space-between;
