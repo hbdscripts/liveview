@@ -272,7 +272,7 @@
 
   function setActiveSubTab(sub, opts) {
     var s = String(sub || '').trim().toLowerCase();
-    if (s !== 'cost-sources' && s !== 'shipping' && s !== 'rules') return;
+    if (s !== 'cost-sources' && s !== 'shipping' && s !== 'rules' && s !== 'breakdown') return;
     var o = opts && typeof opts === 'object' ? opts : {};
     document.querySelectorAll('[data-settings-cost-expenses-tab]').forEach(function (btn) {
       var btnSub = String(btn.getAttribute('data-settings-cost-expenses-tab') || '').trim().toLowerCase();
@@ -473,7 +473,7 @@
     document.querySelectorAll('[data-settings-cost-expenses-tab]').forEach(function (btn) {
       btn.addEventListener('click', function () {
         var sub = (btn.getAttribute('data-settings-cost-expenses-tab') || '').trim().toLowerCase();
-        if (sub !== 'cost-sources' && sub !== 'shipping' && sub !== 'rules') return;
+        if (sub !== 'cost-sources' && sub !== 'shipping' && sub !== 'rules' && sub !== 'breakdown') return;
         setActiveSubTab(sub, { updateUrl: true });
       });
     });
@@ -482,7 +482,7 @@
     try {
       var params = new URLSearchParams(window.location.search || '');
       var initial = String(params.get('costExpensesTab') || '').trim().toLowerCase();
-      if (initial === 'cost-sources' || initial === 'shipping' || initial === 'rules') setActiveSubTab(initial, { updateUrl: false });
+      if (initial === 'cost-sources' || initial === 'shipping' || initial === 'rules' || initial === 'breakdown') setActiveSubTab(initial, { updateUrl: false });
       else setActiveSubTab('cost-sources', { updateUrl: false });
     } catch (_) {}
   }
@@ -526,7 +526,7 @@
     if (tab === 'cost-expenses') {
       try { window.initCostExpensesSettings(); } catch (_) {}
       var sub = String(params.get('costExpensesTab') || '').trim().toLowerCase();
-      if (sub === 'shipping' || sub === 'rules') setActiveSubTab(sub, { updateUrl: false });
+      if (sub === 'shipping' || sub === 'rules' || sub === 'breakdown') setActiveSubTab(sub, { updateUrl: false });
     }
   } catch (_) {}
 })();

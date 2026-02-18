@@ -37,7 +37,7 @@
         else keep.set('tab', rawTab);
       }
       var rawCostExpenses = String(params.get('costExpensesTab') || '').trim().toLowerCase();
-      if ((rawCostExpenses === 'cost-sources' || rawCostExpenses === 'shipping' || rawCostExpenses === 'rules') && keep.get('tab') === 'cost-expenses') {
+      if ((rawCostExpenses === 'cost-sources' || rawCostExpenses === 'shipping' || rawCostExpenses === 'rules' || rawCostExpenses === 'breakdown') && keep.get('tab') === 'cost-expenses') {
         keep.set('costExpensesTab', rawCostExpenses);
       }
       var rawKexo = String(params.get('kexoTab') || params.get('kexo') || '').trim().toLowerCase();
@@ -208,7 +208,7 @@
         var cem = /[?&]costExpensesTab=([^&]+)/.exec(window.location.search || '');
         if (cem && cem[1]) {
           var cek = cem[1].toLowerCase().replace(/\s+/g, '-');
-          if (cek === 'cost-sources' || cek === 'shipping' || cek === 'rules') initialCostExpensesSubTab = cek;
+          if (cek === 'cost-sources' || cek === 'shipping' || cek === 'rules' || cek === 'breakdown') initialCostExpensesSubTab = cek;
         }
       }
       if (TAB_MAP[t]) {
@@ -264,7 +264,7 @@
     }
     if (key === 'cost-expenses') {
       var costExpensesKey = getActiveCostExpensesSubTab();
-      if (costExpensesKey === 'cost-sources' || costExpensesKey === 'shipping' || costExpensesKey === 'rules') params.set('costExpensesTab', costExpensesKey);
+      if (costExpensesKey === 'cost-sources' || costExpensesKey === 'shipping' || costExpensesKey === 'rules' || costExpensesKey === 'breakdown') params.set('costExpensesTab', costExpensesKey);
     }
     var url = window.location.pathname + '?' + params.toString();
     try { history.replaceState(null, '', url); } catch (_) {}

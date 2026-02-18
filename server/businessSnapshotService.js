@@ -2781,8 +2781,189 @@ async function getBusinessSnapshot(options = {}) {
   };
 }
 
+async function getCostBreakdown({ rangeKey } = {}) {
+  const nowMs = Date.now();
+  const timeZone = store.resolveAdminTimeZone();
+  const rawRange = rangeKey != null ? String(rangeKey).trim().toLowerCase() : '';
+  const safeRange = (rawRange === 'today' || rawRange === 'yesterday' || rawRange === '7d' || rawRange === '30d') ? rawRange : '7d';
+  const bounds = store.getRangeBounds(safeRange, nowMs, timeZone);
+  const startTs = bounds && bounds.start != null ? Number(bounds.start) : nowMs;
+  const endTs = bounds && bounds.end != null ? Number(bounds.end) : nowMs;
+
+  const shop = salesTruth.resolveShopForSales('');
+  const token = shop ? await salesTruth.getAccessToken(shop) : '';
+  const startYmd = ymdInTimeZone(startTs, timeZone) || new Date(startTs).toISOString().slice(0, 10);
+  const endYmd = ymdInTimeZone(Math.max(startTs, endTs - 1), timeZone) || new Date(Math.max(startTs, endTs - 1)).toISOString().slice(0, 10);
+
+  const profitRules = await readProfitRulesConfig();
+  const rulesList = Array.isArray(profitRules && profitRules.rules) ? profitRules.rules : [];
+  const enabledRulesCount = rulesList.filter((r) => r && r.enabled === true).length;
+  const rulesConfigured = rulesList.length > 0;
+  const rulesWouldApply = enabledRulesCount > 0;
+
+  const shippingCfg = profitRules && profitRules.shipping && typeof profitRules.shipping === 'object'
+    ? profitRules.shipping
+    : { enabled: false, worldwideDefaultGbp: 0, overrides: [] };
+  const overrides = Array.isArray(shippingCfg.overrides) ? shippingCfg.overrides : [];
+  const shippingConfigured = (Number(shippingCfg.worldwideDefaultGbp) || 0) > 0 || overrides.length > 0;
+
+  const includeGoogleAdsSpend = !!(profitRules && profitRules.integrations && profitRules.integrations.includeGoogleAdsSpend === true);
+  const includePaymentFees = !!(profitRules && profitRules.integrations && profitRules.integrations.includePaymentFees === true);
+  const includeShopifyAppBills = !!(profitRules && profitRules.integrations && profitRules.integrations.includeShopifyAppBills === true);
+  const shippingActive = !!(shippingCfg && shippingCfg.enabled === true);
+  const rulesActive = !!(profitRules && profitRules.enabled === true);
+
+  const needsOrderSummary = !!shop && (rulesWouldApply || shippingConfigured);
+  const summaryPromise = needsOrderSummary
+    ? readOrderCountrySummary(shop, startTs, endTs).catch(() => null)
+    : Promise.resolve(null);
+
+  const cogsPromise = (shop && token)
+    ? readCogsTotalGbpFromLineItems(shop, token, startTs, endTs).catch(() => null)
+    : Promise.resolve(null);
+
+  const adsPromise = readGoogleAdsSpendDailyGbp(startTs, endTs, timeZone).catch(() => ({
+    totalGbp: 0,
+    byYmd: new Map(),
+    totalClicks: 0,
+    clicksByYmd: new Map(),
+  }));
+
+  const shopifyCostsPromise = (shop && token)
+    ? readShopifyBalanceCostsGbp(shop, token, startYmd, endYmd, timeZone).catch(() => ({
+      available: false,
+      error: 'shopify_cost_lookup_failed',
+      paymentFeesTotalGbp: 0,
+      shopifyFeesTotalGbp: 0,
+      klarnaFeesTotalGbp: 0,
+      appBillsTotalGbp: 0,
+      paymentFeesByYmd: new Map(),
+      shopifyFeesByYmd: new Map(),
+      klarnaFeesByYmd: new Map(),
+      appBillsByYmd: new Map(),
+      diagnostics: null,
+    }))
+    : Promise.resolve({
+      available: false,
+      error: 'missing_shop_or_token',
+      paymentFeesTotalGbp: 0,
+      shopifyFeesTotalGbp: 0,
+      klarnaFeesTotalGbp: 0,
+      appBillsTotalGbp: 0,
+      paymentFeesByYmd: new Map(),
+      shopifyFeesByYmd: new Map(),
+      klarnaFeesByYmd: new Map(),
+      appBillsByYmd: new Map(),
+      diagnostics: null,
+    });
+
+  const [summary, cogsRaw, ads, shopifyCosts] = await Promise.all([
+    summaryPromise,
+    cogsPromise,
+    adsPromise,
+    shopifyCostsPromise,
+  ]);
+
+  const cogsAmount = (cogsRaw != null && Number.isFinite(Number(cogsRaw))) ? (round2(Number(cogsRaw)) || 0) : null;
+  const adsAmount = round2(Number(ads && ads.totalGbp) || 0) || 0;
+  const paymentFeesAmount = round2(Number(shopifyCosts && shopifyCosts.paymentFeesTotalGbp) || 0) || 0;
+  const appBillsAmount = round2(Number(shopifyCosts && shopifyCosts.appBillsTotalGbp) || 0) || 0;
+
+  const rulesDetailed = (summary && rulesWouldApply) ? computeProfitDeductionsDetailed(summary, profitRules) : { total: 0, lines: [] };
+  const rulesAmount = round2(Number(rulesDetailed && rulesDetailed.total) || 0) || 0;
+
+  const shippingAmount = (summary && shippingConfigured)
+    ? computeShippingCostFromSummary(summary, { ...shippingCfg, enabled: true })
+    : 0;
+
+  const shopifyBalanceAvailable = !!(shopifyCosts && shopifyCosts.available === true);
+  const shopifyNote = shopifyBalanceAvailable ? '' : (shopifyCosts && shopifyCosts.error ? String(shopifyCosts.error) : 'Unavailable');
+
+  const items = [];
+  items.push({
+    key: 'cogs',
+    label: 'Cost of Goods',
+    configured: cogsAmount != null,
+    active: cogsAmount != null,
+    amount: cogsAmount != null ? cogsAmount : 0,
+    currency: 'GBP',
+    notes: cogsAmount == null ? 'Unavailable for this range' : '',
+  });
+  items.push({
+    key: 'google_ads',
+    label: 'Google Ads spend',
+    configured: includeGoogleAdsSpend || adsAmount > 0,
+    active: includeGoogleAdsSpend,
+    amount: adsAmount,
+    currency: 'GBP',
+    notes: adsAmount > 0 ? '' : 'No spend data for range',
+  });
+  items.push({
+    key: 'transaction_fees',
+    label: 'Transaction Fees',
+    configured: shopifyBalanceAvailable,
+    active: includePaymentFees,
+    amount: paymentFeesAmount,
+    currency: 'GBP',
+    notes: shopifyBalanceAvailable ? (paymentFeesAmount > 0 ? '' : 'No fees in range') : shopifyNote,
+  });
+  items.push({
+    key: 'shopify_app_bills',
+    label: 'Shopify app bills',
+    configured: shopifyBalanceAvailable,
+    active: includeShopifyAppBills,
+    amount: appBillsAmount,
+    currency: 'GBP',
+    notes: shopifyBalanceAvailable ? (appBillsAmount > 0 ? '' : 'No bills in range') : shopifyNote,
+  });
+  items.push({
+    key: 'shipping',
+    label: 'Shipping costs',
+    configured: shippingConfigured,
+    active: shippingActive,
+    amount: round2(Number(shippingAmount) || 0) || 0,
+    currency: 'GBP',
+    notes: shippingConfigured
+      ? ((Number(shippingCfg.worldwideDefaultGbp) || 0) > 0 ? 'Using worldwide default' : (overrides.length ? 'Using country overrides' : ''))
+      : 'Not configured',
+  });
+  items.push({
+    key: 'rules',
+    label: 'Rules & adjustments',
+    configured: rulesConfigured,
+    active: rulesActive,
+    amount: rulesAmount,
+    currency: 'GBP',
+    notes: rulesConfigured ? (enabledRulesCount > 0 ? (enabledRulesCount + ' rule(s) enabled') : 'No enabled rules') : 'No rules defined',
+  });
+
+  let activeTotal = 0;
+  let inactiveTotal = 0;
+  for (const it of items) {
+    const amt = Number(it && it.amount) || 0;
+    if (it && it.active === true) activeTotal += amt;
+    else inactiveTotal += amt;
+  }
+
+  return {
+    ok: true,
+    range: {
+      key: safeRange,
+      start_ts: startTs,
+      end_ts: endTs,
+    },
+    items,
+    totals: {
+      active_total: round2(activeTotal) || 0,
+      inactive_total: round2(inactiveTotal) || 0,
+      currency: 'GBP',
+    },
+  };
+}
+
 module.exports = {
   getBusinessSnapshot,
+  getCostBreakdown,
   resolveSnapshotWindows,
   readShopifyBalanceCostsGbp,
 };

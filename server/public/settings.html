@@ -737,6 +737,9 @@
               <li class="nav-item" role="presentation">
                 <button class="nav-link" type="button" role="tab" id="settings-cost-expenses-tab-rules" data-settings-cost-expenses-tab="rules" aria-selected="false" aria-controls="settings-cost-expenses-panel-rules">Rules &amp; adjustments</button>
               </li>
+              <li class="nav-item" role="presentation">
+                <button class="nav-link" type="button" role="tab" id="settings-cost-expenses-tab-breakdown" data-settings-cost-expenses-tab="breakdown" aria-selected="false" aria-controls="settings-cost-expenses-panel-breakdown">Cost Breakdown</button>
+              </li>
             </ul>
             <div id="settings-cost-expenses-panel-cost-sources" class="settings-cost-expenses-panel active" role="tabpanel" aria-labelledby="settings-cost-expenses-tab-cost-sources">
               <h4 class="mb-3" title="Toggle which cost sources are included in Snapshot and Overview cost totals.">Included cost sources <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></h4>
@@ -864,6 +867,48 @@
                   <div class="d-flex gap-2 mt-3">
                     <button type="button" class="btn btn-primary" id="cost-expenses-rule-save-btn">Save rule</button>
                     <button type="button" class="btn btn-ghost-secondary" id="cost-expenses-rule-cancel-btn">Cancel</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div id="settings-cost-expenses-panel-breakdown" class="settings-cost-expenses-panel" role="tabpanel" aria-labelledby="settings-cost-expenses-tab-breakdown">
+              <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
+                <h4 class="m-0">Cost Breakdown</h4>
+                <div class="btn-group" role="group" aria-label="Cost breakdown date range" id="cost-breakdown-range-group">
+                  <button type="button" class="btn btn-sm btn-outline-primary" data-cost-breakdown-range="today">Today</button>
+                  <button type="button" class="btn btn-sm btn-outline-primary" data-cost-breakdown-range="yesterday">Yesterday</button>
+                  <button type="button" class="btn btn-sm btn-outline-primary" data-cost-breakdown-range="7d">7 Days</button>
+                  <button type="button" class="btn btn-sm btn-outline-primary" data-cost-breakdown-range="30d">30 Days</button>
+                </div>
+              </div>
+              <div class="text-muted small mb-2">Inactive rows are shown muted but amounts are still calculated for comparison.</div>
+              <div id="cost-breakdown-msg" class="form-hint mb-2"></div>
+              <div class="table-responsive">
+                <table class="table table-sm align-middle">
+                  <thead>
+                    <tr>
+                      <th>Cost item</th>
+                      <th>Status</th>
+                      <th class="text-end">Amount</th>
+                      <th>Notes</th>
+                    </tr>
+                  </thead>
+                  <tbody id="cost-breakdown-table-body">
+                    <tr><td colspan="4" class="text-muted small">Select a date range to load a breakdown.</td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="card card-sm mt-3">
+                <div class="card-body">
+                  <div class="row g-2">
+                    <div class="col-12 col-md-6">
+                      <div class="text-muted small">Total Active Costs</div>
+                      <div class="h3 m-0" id="cost-breakdown-total-active">—</div>
+                    </div>
+                    <div class="col-12 col-md-6">
+                      <div class="text-muted small">Total Inactive Costs</div>
+                      <div class="h3 m-0" id="cost-breakdown-total-inactive">—</div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1185,6 +1230,7 @@
   <script src="/attribution-tree-settings.js"></script>
   <!-- KEXO_COST_EXPENSES_SCRIPT_START -->
   <script src="/cost-expenses-settings.js"></script>
+  <script src="/cost-breakdown-settings.js"></script>
   <!-- KEXO_COST_EXPENSES_SCRIPT_END -->
   <script src="/settings-page.js"></script>
   <!-- KEXO_ADMIN_SCRIPT_START -->
