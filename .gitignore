@@ -16,6 +16,8 @@ build/
 .env.development
 live_visitors.sqlite
 
-.cursor/worktrees.json
+.cursor/**
+!.cursor/rules/
+!.cursor/rules/00-kexo-agent-rules.mdc
 kexo-todos.txt
 *.psd
