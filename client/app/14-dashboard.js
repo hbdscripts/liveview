@@ -3478,7 +3478,10 @@
           var filled = fullRed ? KEXO_RING_SEGMENT : (fullGreen ? KEXO_RING_SEGMENT : Math.max(0, Math.min(KEXO_RING_SEGMENT, totalFill - fillStart)));
           var fillCircle = svg.querySelector('.kexo-score-ring-fill--' + (i + 1));
           if (fillCircle) {
-            fillCircle.setAttribute('stroke-dasharray', filled.toFixed(2) + ' 9999');
+            // IMPORTANT: keep dasharray sum bounded to circumference so large dashoffsets
+            // don't land in an effectively infinite gap (which can hide segments).
+            var gap = Math.max(0, KEXO_RING_CIRCUMFERENCE - filled);
+            fillCircle.setAttribute('stroke-dasharray', filled.toFixed(2) + ' ' + gap.toFixed(2));
             fillCircle.setAttribute('stroke-dashoffset', (-segStart).toFixed(2));
             if (fullRed) fillCircle.style.stroke = 'var(--kexo-accent-5, #ef4444)';
             else if (fullGreen) fillCircle.style.stroke = 'var(--kexo-accent-2, #3eb3ab)';
