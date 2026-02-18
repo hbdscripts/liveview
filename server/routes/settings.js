@@ -88,17 +88,18 @@ const CHART_UI_KEYS = [
   'products-chart',
   'abandoned-carts-chart',
   'countries-map-chart',
+  'payment-methods-chart',
 ];
 const CHART_UI_KEY_SET = new Set(CHART_UI_KEYS);
 const CHART_KPI_BUNDLE_KEYS = ['dashboardCards', 'headerStrip', 'yearlySnapshot'];
 const CHART_KPI_BUNDLE_KEY_SET = new Set(CHART_KPI_BUNDLE_KEYS);
 
 const CHART_ALLOWED_MODES = Object.freeze({
-  'dash-chart-overview-30d': ['area', 'bar', 'line', 'multi-line-labels', 'combo', 'stacked-area', 'stacked-bar'],
-  'dash-chart-finishes-30d': ['radialbar', 'pie', 'donut', 'bar-horizontal', 'bar', 'bar-distributed', 'line', 'area', 'multi-line-labels'],
-  'dash-chart-devices-30d': ['bar-horizontal', 'bar', 'bar-distributed', 'line', 'area', 'multi-line-labels'],
+  'dash-chart-overview-30d': ['line', 'area', 'bar', 'stacked-bar'],
+  'dash-chart-finishes-30d': ['radialbar', 'bar-horizontal'],
+  'dash-chart-devices-30d': ['bar-horizontal', 'radialbar'],
   'dash-chart-countries-30d': ['bar-horizontal', 'bar', 'bar-distributed', 'radialbar', 'pie', 'donut', 'line', 'area', 'multi-line-labels'],
-  'dash-chart-attribution-30d': ['bar-distributed', 'bar-horizontal', 'bar', 'line', 'area', 'multi-line-labels', 'pie', 'donut', 'radialbar'],
+  'dash-chart-attribution-30d': ['radialbar', 'pie', 'donut'],
   'live-online-chart': ['map-animated', 'map-flat'],
   'sales-overview-chart': ['area', 'line', 'bar', 'multi-line-labels'],
   'date-overview-chart': ['area', 'line', 'bar', 'multi-line-labels'],
@@ -108,6 +109,7 @@ const CHART_ALLOWED_MODES = Object.freeze({
   'products-chart': ['line', 'area', 'bar', 'pie', 'multi-line-labels'],
   'abandoned-carts-chart': ['line', 'area', 'bar', 'multi-line-labels'],
   'countries-map-chart': ['map-animated', 'map-flat'],
+  'payment-methods-chart': ['line', 'area', 'bar', 'multi-line-labels'],
 });
 
 // One-time migrations for chart defaults that should never override user choices after the first run.
@@ -122,9 +124,15 @@ function defaultChartStyleConfig() {
     fillOpacity: 0.18,
     gridDash: 3,
     dataLabels: 'auto',
+    bucketMode: 'all',
+    barColumnWidth: 60,
+    barHeight: 60,
+    radialThickness: 42,
     toolbar: false,
     animations: false,
     icons: false,
+    showLabels: true,
+    bottomLabels: true,
     radialCenterLabel: true,
     pieDonut: false,
     pieDonutSize: 66,
@@ -230,18 +238,21 @@ function defaultChartsUiConfigV1() {
     // Guardrail: charts + KPI bundle UI defaults are user-owned via Settings and normalized below.
     // Keep these defaults/allowed lists aligned with kexo-chart-defs.js and settings-page.js.
     charts: [
-      withStyle({ key: 'dash-chart-overview-30d', label: 'Dashboard · 7 Day Overview', enabled: true, mode: 'area', sizePercent: 80, colors: ['#3eb3ab', '#ef4444'], advancedApexOverride: {} }, { animations: false }),
       withStyle(
-        { key: 'dash-chart-finishes-30d', label: 'Dashboard · Finishes (7 Days)', enabled: true, mode: 'radialbar', sizePercent: 100, colors: ['#f59e34', '#94a3b8', '#8b5cf6', '#4b94e4', '#3eb3ab'], advancedApexOverride: {} },
-        { animations: false }
+        { key: 'dash-chart-overview-30d', label: 'Dashboard · 7 Day Overview', enabled: true, mode: 'area', sizePercent: 80, colors: ['#3eb3ab', '#ef4444'], advancedApexOverride: {} },
+        { animations: false, bucketMode: 'all', dataLabels: 'off', barColumnWidth: 60, strokeWidth: 2.6 }
       ),
       withStyle(
-        { key: 'dash-chart-devices-30d', label: 'Dashboard · Devices (7 Days)', enabled: true, mode: 'bar-horizontal', sizePercent: 80, colors: ['#4b94e4', '#3eb3ab', '#f59e34', '#8b5cf6', '#ef4444'], advancedApexOverride: {} },
-        { animations: false }
+        { key: 'dash-chart-finishes-30d', label: 'Dashboard · Finishes (7 Days)', enabled: true, mode: 'radialbar', sizePercent: 100, colors: ['#f59e34', '#94a3b8', '#8b5cf6', '#4b94e4', '#3eb3ab'], advancedApexOverride: {} },
+        { animations: false, radialThickness: 42, barHeight: 60 }
+      ),
+      withStyle(
+        { key: 'dash-chart-devices-30d', label: 'Dashboard · Devices (7 Days)', enabled: true, mode: 'bar-horizontal', dimension: 'device', sizePercent: 80, colors: ['#4b94e4', '#3eb3ab', '#f59e34', '#8b5cf6', '#ef4444'], advancedApexOverride: {} },
+        { animations: false, icons: true, showLabels: true, barHeight: 54, radialThickness: 42 }
       ),
       withStyle(
         { key: 'dash-chart-attribution-30d', label: 'Dashboard · Attribution (7 Days)', enabled: true, mode: 'donut', sizePercent: 70, colors: ['#4b94e4', '#3eb3ab', '#f59e34', '#8b5cf6', '#ef4444'], advancedApexOverride: {} },
-        { animations: false, icons: true, pieDonut: true, pieDonutSize: 64, pieLabelPosition: 'outside', pieLabelContent: 'label', pieLabelOffset: 18 }
+        { animations: false, icons: true, bottomLabels: true, pieDonut: true, pieDonutSize: 64, pieLabelPosition: 'outside', pieLabelContent: 'label', pieLabelOffset: 18 }
       ),
       withStyle({ key: 'live-online-chart', label: 'Dashboard · Live Online', enabled: true, mode: 'map-flat', colors: ['#16a34a'], advancedApexOverride: {} }),
       withStyle({ key: 'sales-overview-chart', label: 'Dashboard · Sales Trend', enabled: true, mode: 'area', colors: ['#0d9488'], advancedApexOverride: {} }),
@@ -547,11 +558,11 @@ function defaultTablesUiConfigV1() {
       },
       {
         key: 'payment-types',
-        label: 'Insights · Payment Types',
+        label: 'Insights · Payment Methods',
         tables: [
           {
             id: 'payment-types-table',
-            name: 'Payment Types',
+            name: 'Payment Methods',
             tableClass: 'live',
             zone: 'payment-types-main',
             order: 1,
@@ -682,6 +693,31 @@ function normalizeChartModeForKey(key, value, fallback) {
   // Extremely defensive: pick first allowed or a safe fallback.
   if (allowed && allowed.length) return allowed[0];
   return 'line';
+}
+
+function normalizeDashboardBreakdownDimension(value, fallback) {
+  const fbRaw = fallback == null ? '' : String(fallback).trim().toLowerCase();
+  const fb =
+    fbRaw === 'browser' || fbRaw === 'payment_method'
+      ? fbRaw
+      : 'device';
+  const raw = value == null ? '' : String(value).trim().toLowerCase();
+  if (!raw) return fb;
+  if (raw === 'device' || raw === 'devices' || raw === 'platform' || raw === 'platforms') return 'device';
+  if (raw === 'browser' || raw === 'browsers') return 'browser';
+  if (
+    raw === 'payment_method' ||
+    raw === 'payment_methods' ||
+    raw === 'payment-method' ||
+    raw === 'payment-methods' ||
+    raw === 'paymentmethod' ||
+    raw === 'paymentmethods' ||
+    raw === 'payment types' ||
+    raw === 'payment type' ||
+    raw === 'payment_types' ||
+    raw === 'payment_type'
+  ) return 'payment_method';
+  return fb;
 }
 
 function normalizeColorList(rawList, defaults) {
@@ -883,6 +919,9 @@ function normalizeChartsList(rawList, defaults, options) {
         style: normalizeChartStyle(item.style, def.style || defaultChartStyleConfig()),
         advancedApexOverride: normalizeApexOverrideObject(item.advancedApexOverride, def.advancedApexOverride || {}),
       };
+      if (key === 'dash-chart-devices-30d') {
+        normalized.dimension = normalizeDashboardBreakdownDimension(item.dimension, def.dimension || 'device');
+      }
       // Optional: pie metric (only meaningful for pie-capable charts)
       if ((CHART_ALLOWED_MODES[key] || []).includes('pie')) {
         normalized.pieMetric = normalizePieMetric(item.pieMetric, def.pieMetric || 'sessions');
@@ -972,6 +1011,7 @@ function normalizeChartStyle(raw, fallback) {
   const src = raw && typeof raw === 'object' ? raw : {};
   const curveRaw = String(src.curve != null ? src.curve : def.curve).trim().toLowerCase();
   const dataLabelsRaw = String(src.dataLabels != null ? src.dataLabels : def.dataLabels).trim().toLowerCase();
+  const bucketModeRaw = String(src.bucketMode != null ? src.bucketMode : def.bucketMode).trim().toLowerCase();
   const pieLabelPositionRaw = String(src.pieLabelPosition != null ? src.pieLabelPosition : def.pieLabelPosition).trim().toLowerCase();
   const pieLabelContentRaw = String(src.pieLabelContent != null ? src.pieLabelContent : def.pieLabelContent).trim().toLowerCase();
   return {
@@ -982,9 +1022,15 @@ function normalizeChartStyle(raw, fallback) {
     fillOpacity: parseBoundedNumber(src.fillOpacity, def.fillOpacity != null ? def.fillOpacity : 0.18, 0, 1),
     gridDash: parseBoundedNumber(src.gridDash, def.gridDash != null ? def.gridDash : 3, 0, 16),
     dataLabels: ['auto', 'on', 'off'].includes(dataLabelsRaw) ? dataLabelsRaw : String(def.dataLabels || 'auto'),
+    bucketMode: ['all', 'latest'].includes(bucketModeRaw) ? bucketModeRaw : String(def.bucketMode || 'all'),
+    barColumnWidth: Math.round(parseBoundedNumber(src.barColumnWidth, def.barColumnWidth != null ? def.barColumnWidth : 60, 10, 100)),
+    barHeight: Math.round(parseBoundedNumber(src.barHeight, def.barHeight != null ? def.barHeight : 60, 10, 100)),
+    radialThickness: Math.round(parseBoundedNumber(src.radialThickness, def.radialThickness != null ? def.radialThickness : 42, 8, 90)),
     toolbar: normalizeBool(src.toolbar, def.toolbar === true),
     animations: normalizeBool(src.animations, def.animations !== false),
     icons: normalizeBool(src.icons, def.icons === true),
+    showLabels: normalizeBool(src.showLabels, def.showLabels !== false),
+    bottomLabels: normalizeBool(src.bottomLabels, def.bottomLabels !== false),
     radialCenterLabel: normalizeBool(src.radialCenterLabel, def.radialCenterLabel !== false),
     pieDonut: normalizeBool(src.pieDonut, def.pieDonut === true),
     pieDonutSize: Math.round(parseBoundedNumber(src.pieDonutSize, def.pieDonutSize != null ? def.pieDonutSize : 66, 30, 90)),

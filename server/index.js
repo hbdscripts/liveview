@@ -210,6 +210,7 @@ app.get('/api/shopify-worst-variants', shopifyWorstVariants.getShopifyWorstVaria
 app.get('/api/insights-variants', insightsVariants.getInsightsVariants);
 app.get('/api/payment-types/series', require('./routes/paymentTypes').getPaymentTypesSeries);
 app.get('/api/payment-types/table', require('./routes/paymentTypes').getPaymentTypesTable);
+app.get('/api/payment-methods/report', require('./routes/paymentMethods').getPaymentMethodsReport);
 app.get('/api/insights-variants-suggestions', insightsVariantsSuggestions.getInsightsVariantsSuggestions);
 app.post('/api/insights-variants-suggestions/apply', insightsVariantsSuggestions.postApplyInsightsVariantsSuggestions);
 app.get('/api/worst-products', worstProducts.getWorstProducts);
@@ -479,6 +480,8 @@ insightsPagesRouter.get('/countries', (req, res) => sendPage(res, 'insights/coun
 insightsPagesRouter.get('/products', (req, res) => sendPage(res, 'insights/products.html'));
 insightsPagesRouter.get('/variants', (req, res) => sendPage(res, 'insights/variants.html'));
 insightsPagesRouter.get('/payment-types', (req, res) => sendPage(res, 'insights/payment-types.html'));
+// Alias: keep /payment-types working but allow canonical naming in UI/links.
+insightsPagesRouter.get('/payment-methods', (req, res) => sendPage(res, 'insights/payment-types.html'));
 insightsPagesRouter.get('/abandoned-carts', (req, res) => sendPage(res, 'insights/abandoned-carts.html'));
 
 const acquisitionPagesRouter = express.Router();
@@ -530,6 +533,7 @@ app.get('/countries', redirectWithQuery(301, '/insights/countries'));
 app.get('/products', redirectWithQuery(301, '/insights/products'));
 app.get('/variants', redirectWithQuery(301, '/insights/variants'));
 app.get('/payment-types', redirectWithQuery(301, '/insights/payment-types'));
+app.get('/payment-methods', redirectWithQuery(301, '/insights/payment-methods'));
 app.get('/abandoned-carts', redirectWithQuery(301, '/insights/abandoned-carts'));
 app.get('/channels', redirectWithQuery(301, '/acquisition/attribution'));
 app.get('/type', redirectWithQuery(301, '/acquisition/devices'));
@@ -660,6 +664,7 @@ const { up: up053 } = require('./migrations/053_sessions_click_ids');
 const { up: up054 } = require('./migrations/054_sessions_city_browser');
 const { up: up055 } = require('./migrations/055_purchases_payment_method');
 const { up: up056 } = require('./migrations/056_edge_block_events');
+const { up: up057 } = require('./migrations/057_purchases_payment_method_key');
 const backup = require('./backup');
 const { writeAudit } = require('./audit');
 const { runAdsMigrations } = require('./ads/adsMigrate');
@@ -721,6 +726,7 @@ const APP_MIGRATIONS = [
   ['054_sessions_city_browser', up054],
   ['055_purchases_payment_method', up055],
   ['056_edge_block_events', up056],
+  ['057_purchases_payment_method_key', up057],
 ];
 
 async function ensureAppMigrationsTable(db) {

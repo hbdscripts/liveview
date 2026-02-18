@@ -506,6 +506,13 @@ register(({ analytics, init, browser, settings }) => {
       const paymentGateway = safeKey(bestTx?.gateway ?? bestTx?.paymentGateway ?? bestTx?.processor);
       const paymentMethodType = safeKey(bestTx?.paymentMethod?.type ?? bestTx?.paymentMethodType ?? bestTx?.type ?? bestTx?.kind);
       const paymentMethodName = safeText(bestTx?.paymentMethod?.name ?? bestTx?.paymentMethod?.type ?? bestTx?.gateway);
+      const paymentCardBrand = safeKey(
+        bestTx?.paymentMethod?.brand ??
+        bestTx?.paymentMethod?.cardBrand ??
+        bestTx?.paymentDetails?.cardBrand ??
+        bestTx?.paymentDetails?.brand ??
+        bestTx?.cardBrand
+      );
 
       const extra = {
         checkout_completed: true,
@@ -517,6 +524,7 @@ register(({ analytics, init, browser, settings }) => {
       if (paymentGateway) extra.payment_gateway = paymentGateway;
       if (paymentMethodName) extra.payment_method_name = paymentMethodName;
       if (paymentMethodType) extra.payment_method_type = paymentMethodType;
+      if (paymentCardBrand) extra.payment_card_brand = paymentCardBrand;
 
       send(payload('checkout_completed', extra));
     } catch (_) {}

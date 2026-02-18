@@ -209,9 +209,9 @@
     'payment-types-table': {
       wrapClass: 'country-table-wrap',
       tableClass: 'by-country-table',
-      ariaLabel: 'Payment types',
+      ariaLabel: 'Payment methods',
       bodyId: 'payment-types-body',
-      emptyMessage: 'No payment types.',
+      emptyMessage: 'No payment methods.',
       columns: [
         { key: 'payment', label: 'Payment', sortable: false },
         { key: 'sessions', label: 'Sessions', sortable: false, iconKey: 'table-icon-sessions' },

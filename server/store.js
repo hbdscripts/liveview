@@ -15,6 +15,7 @@ const reportCache = require('./reportCache');
 const { deriveAttribution } = require('./attribution/deriveAttribution');
 const { warnOnReject } = require('./shared/warnReject');
 const { ratioOrNull } = require('./metrics');
+const { normalizePaymentMethod } = require('./paymentMethods/normalizePaymentMethod');
 
 // Best-effort Shopify truth warmup (must not block request paths).
 let _truthNudgeLastAt = 0;
@@ -121,7 +122,7 @@ const WHITELIST = new Set([
   'variant_title', 'quantity_delta', 'price', 'cart_qty', 'cart_value', 'cart_currency',
   'order_total', 'order_currency', 'checkout_started', 'checkout_completed',
   'order_id', 'checkout_token',
-  'payment_gateway', 'payment_method_name', 'payment_method_type',
+  'payment_gateway', 'payment_method_name', 'payment_method_type', 'payment_card_brand',
   'country_code', 'device', 'network_speed', 'ts', 'customer_privacy_debug',
   'ua_device_type', 'ua_platform', 'ua_model',
   'utm_campaign', 'utm_source', 'utm_medium', 'utm_content', 'utm_term',
@@ -1199,15 +1200,25 @@ async function insertPurchase(payload, sessionId, countryCode) {
   const paymentGateway = normalizePaymentKey(payload.payment_gateway, 64);
   const paymentMethodName = normalizePaymentLabel(payload.payment_method_name, 96);
   const paymentMethodType = normalizePaymentKey(payload.payment_method_type, 32);
+  const paymentCardBrand = normalizePaymentKey(payload.payment_card_brand, 32);
+  const paymentMethod = normalizePaymentMethod({
+    gateway: paymentGateway,
+    methodType: paymentMethodType,
+    methodName: paymentMethodName,
+    cardBrand: paymentCardBrand,
+  });
+  const paymentMethodKey = paymentMethod && paymentMethod.key ? String(paymentMethod.key) : 'other';
+  const paymentMethodLabel = paymentMethod && paymentMethod.label ? String(paymentMethod.label) : 'Other';
 
   if (config.dbUrl) {
     await db.run(`
       INSERT INTO purchases (
         purchase_key, session_id, visitor_id, purchased_at,
         order_total, order_currency, order_id, checkout_token, country_code,
-        payment_gateway, payment_method_name, payment_method_type
+        payment_gateway, payment_method_name, payment_method_type, payment_card_brand,
+        payment_method_key, payment_method_label
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
       ON CONFLICT (purchase_key) DO UPDATE SET
         order_total = COALESCE(purchases.order_total, EXCLUDED.order_total),
         order_currency = COALESCE(purchases.order_currency, EXCLUDED.order_currency),
@@ -1216,24 +1227,36 @@ async function insertPurchase(payload, sessionId, countryCode) {
         country_code = COALESCE(purchases.country_code, EXCLUDED.country_code),
         payment_gateway = COALESCE(purchases.payment_gateway, EXCLUDED.payment_gateway),
         payment_method_name = COALESCE(purchases.payment_method_name, EXCLUDED.payment_method_name),
-        payment_method_type = COALESCE(purchases.payment_method_type, EXCLUDED.payment_method_type)
+        payment_method_type = COALESCE(purchases.payment_method_type, EXCLUDED.payment_method_type),
+        payment_card_brand = COALESCE(purchases.payment_card_brand, EXCLUDED.payment_card_brand),
+        payment_method_key = CASE
+          WHEN purchases.payment_method_key IS NULL OR purchases.payment_method_key = 'other' THEN EXCLUDED.payment_method_key
+          ELSE purchases.payment_method_key
+        END,
+        payment_method_label = CASE
+          WHEN purchases.payment_method_label IS NULL OR purchases.payment_method_key IS NULL OR purchases.payment_method_key = 'other' THEN EXCLUDED.payment_method_label
+          ELSE purchases.payment_method_label
+        END
     `, [
       purchaseKey, sessionId, payload.visitor_id ?? null, now,
       Number.isNaN(orderTotal) ? null : orderTotal, orderCurrency, orderId, checkoutToken, country,
-      paymentGateway, paymentMethodName, paymentMethodType,
+      paymentGateway, paymentMethodName, paymentMethodType, paymentCardBrand,
+      paymentMethodKey, paymentMethodLabel,
     ]);
   } else {
     await db.run(`
       INSERT OR IGNORE INTO purchases (
         purchase_key, session_id, visitor_id, purchased_at,
         order_total, order_currency, order_id, checkout_token, country_code,
-        payment_gateway, payment_method_name, payment_method_type
+        payment_gateway, payment_method_name, payment_method_type, payment_card_brand,
+        payment_method_key, payment_method_label
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       purchaseKey, sessionId, payload.visitor_id ?? null, now,
       Number.isNaN(orderTotal) ? null : orderTotal, orderCurrency, orderId, checkoutToken, country,
-      paymentGateway, paymentMethodName, paymentMethodType,
+      paymentGateway, paymentMethodName, paymentMethodType, paymentCardBrand,
+      paymentMethodKey, paymentMethodLabel,
     ]);
     await db.run(`
       UPDATE purchases
@@ -1244,11 +1267,23 @@ async function insertPurchase(payload, sessionId, countryCode) {
              country_code = COALESCE(country_code, ?),
              payment_gateway = COALESCE(payment_gateway, ?),
              payment_method_name = COALESCE(payment_method_name, ?),
-             payment_method_type = COALESCE(payment_method_type, ?)
+             payment_method_type = COALESCE(payment_method_type, ?),
+             payment_card_brand = COALESCE(payment_card_brand, ?),
+             payment_method_key = CASE
+               WHEN payment_method_key IS NULL OR payment_method_key = 'other' THEN ?
+               ELSE payment_method_key
+             END,
+             payment_method_label = CASE
+               WHEN payment_method_label IS NULL OR payment_method_key IS NULL OR payment_method_key = 'other' THEN ?
+               ELSE payment_method_label
+             END
        WHERE purchase_key = ?
     `, [
       Number.isNaN(orderTotal) ? null : orderTotal, orderCurrency, orderId, checkoutToken, country,
       paymentGateway, paymentMethodName, paymentMethodType,
+      paymentCardBrand,
+      paymentMethodKey,
+      paymentMethodLabel,
       purchaseKey,
     ]).catch(() => null);
   }

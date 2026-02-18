@@ -5,6 +5,14 @@ const fx = require('../fx');
 const { normalizeRangeKey } = require('../rangeKey');
 const { percentOrNull, ratioOrNull } = require('../metrics');
 
+// NOTE (audit): These legacy endpoints group by `purchases.payment_gateway`.
+// That field is a processor/gateway identifier, so the UI can show values like
+// "shopify_payments" or fall back to "unknown" when null/blank.
+//
+// The rebuilt Insights → Payment Methods page uses `/api/payment-methods/report`
+// and a shared server-side normaliser (see `server/paymentMethods/normalizePaymentMethod.js`)
+// to surface customer-facing methods (Visa/Mastercard/Amex, PayPal, Klarna, Shop Pay, etc.)
+// with a controlled fallback of `Other` (never `unknown`).
 function s(v) { try { return v == null ? '' : String(v); } catch (_) { return ''; } }
 
 function safeRangeKey(raw) {

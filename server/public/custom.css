@@ -5744,3 +5744,18 @@ body[data-page="snapshot"] #kexo-date-display { display: none !important; }
 #tab-panel-products .stats-row { display: flex; flex-wrap: wrap; gap: 1rem; align-items: stretch; }
 #tab-panel-products .stats-row > .stats-card { flex: 1 1 520px; min-width: min(320px, 100%); }
 #tab-panel-products .stats-row + .stats-row { margin-top: 1rem; }
+
+/* Payment methods (Insights) */
+.kexo-payment-method-icon {
+  width: 26px;
+  height: 18px;
+  display: inline-block;
+  object-fit: contain;
+}
+.kexo-payment-method-fallback-icon {
+  width: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+}
