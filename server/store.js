@@ -1446,6 +1446,32 @@ function getRangeBounds(rangeKey, nowMs, timeZone) {
       }
     }
   }
+  // Partial day: p:YYYY-MM-DD:HH:MM (in admin timezone)
+  if (typeof rangeKey === 'string' && rangeKey.startsWith('p:')) {
+    const m = rangeKey.match(/^p:(\d{4})-(\d{2})-(\d{2}):(\d{2}):(\d{2})$/);
+    if (m) {
+      const year = parseInt(m[1], 10);
+      const month = parseInt(m[2], 10);
+      const day = parseInt(m[3], 10);
+      const hh = parseInt(m[4], 10);
+      const mm = parseInt(m[5], 10);
+      if (
+        Number.isFinite(year) && Number.isFinite(month) && Number.isFinite(day) &&
+        Number.isFinite(hh) && Number.isFinite(mm) &&
+        month >= 1 && month <= 12 && day >= 1 && day <= 31 &&
+        hh >= 0 && hh <= 23 && mm >= 0 && mm <= 59
+      ) {
+        const start = zonedTimeToUtcMs(year, month, day, 0, 0, 0, timeZone);
+        const endTarget = zonedTimeToUtcMs(year, month, day, hh, mm, 0, timeZone);
+        const nextParts = addDaysToParts({ year, month, day }, 1);
+        const endFull = zonedTimeToUtcMs(nextParts.year, nextParts.month, nextParts.day, 0, 0, 0, timeZone);
+        let end = Math.min(endTarget, endFull);
+        if (end > nowMs) end = nowMs;
+        if (start >= nowMs) return { start: nowMs, end: nowMs };
+        return { start, end: Math.max(start, end) };
+      }
+    }
+  }
   // Custom range: r:YYYY-MM-DD:YYYY-MM-DD (inclusive, admin timezone)
   if (typeof rangeKey === 'string' && rangeKey.startsWith('r:')) {
     const m = rangeKey.match(/^r:(\d{4})-(\d{2})-(\d{2}):(\d{4})-(\d{2})-(\d{2})$/);
@@ -3166,10 +3192,11 @@ async function getStats(options = {}) {
       (typeof options.range === 'string' ? options.range : '');
   const requestedRange = requestedRangeRaw ? String(requestedRangeRaw).trim().toLowerCase() : '';
   const isDayKey = requestedRange && /^d:\d{4}-\d{2}-\d{2}$/.test(requestedRange);
+  const isPartialKey = requestedRange && /^p:\d{4}-\d{2}-\d{2}:\d{2}:\d{2}$/.test(requestedRange);
   const isRangeKey = requestedRange && /^r:\d{4}-\d{2}-\d{2}:\d{4}-\d{2}-\d{2}$/.test(requestedRange);
   const allowedLegacy = new Set(['3d', '7d', '14d', '30d', 'month']);
   const rangeKeys = DEFAULT_RANGE_KEYS.slice();
-  if (requestedRange && !rangeKeys.includes(requestedRange) && (isDayKey || isRangeKey || allowedLegacy.has(requestedRange))) {
+  if (requestedRange && !rangeKeys.includes(requestedRange) && (isDayKey || isPartialKey || isRangeKey || allowedLegacy.has(requestedRange))) {
     rangeKeys.push(requestedRange);
   }
   const ranges = {};
@@ -3295,9 +3322,10 @@ async function getKpis(options = {}) {
       (typeof options.range === 'string' ? options.range : '');
   const requestedRange = requestedRangeRaw ? String(requestedRangeRaw).trim().toLowerCase() : '';
   const isDayKey = requestedRange && /^d:\d{4}-\d{2}-\d{2}$/.test(requestedRange);
+  const isPartialKey = requestedRange && /^p:\d{4}-\d{2}-\d{2}:\d{2}:\d{2}$/.test(requestedRange);
   const isRangeKey = requestedRange && /^r:\d{4}-\d{2}-\d{2}:\d{4}-\d{2}-\d{2}$/.test(requestedRange);
   const allowedLegacy = new Set(['today', 'yesterday', '3d', '7d', '14d', '30d', 'month']);
-  const rangeKey = (DEFAULT_RANGE_KEYS.includes(requestedRange) || isDayKey || isRangeKey || allowedLegacy.has(requestedRange))
+  const rangeKey = (DEFAULT_RANGE_KEYS.includes(requestedRange) || isDayKey || isPartialKey || isRangeKey || allowedLegacy.has(requestedRange))
     ? requestedRange
     : 'today';
 

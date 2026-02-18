@@ -181,7 +181,8 @@ router.get('/change-pins/:id/effect', async (req, res) => {
   try {
     const id = req?.params?.id;
     const windowDays = req?.query?.window_days;
-    const out = await changePins.getPinEffect(id, { window_days: windowDays });
+    const preset = req?.query?.preset;
+    const out = await changePins.getPinEffect(id, { preset, window_days: windowDays });
     res.json(out);
   } catch (err) {
     Sentry.captureException(err, { extra: { route: 'tools.change-pins.effect' } });

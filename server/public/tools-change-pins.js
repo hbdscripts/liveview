@@ -157,12 +157,77 @@
     archiveBtn: qs('#pin-archive-btn'),
     unarchiveBtn: qs('#pin-unarchive-btn'),
     // effect (stats + edit each have a results div)
-    effectWindow: qs('#effect-window'),
+    effectPreset: qs('#effect-preset'),
+    effectCustomDaysWrap: qs('#effect-custom-days-wrap'),
+    effectCustomDays: qs('#effect-custom-days'),
     effectRefresh: qs('#effect-refresh'),
     effectNote: qs('#effect-note'),
     effectResultsStats: qs('#effect-results-stats'),
     effectResultsEdit: qs('#effect-results-edit'),
   };
+
+  function clampInt(v, fallback, min, max) {
+    var n = parseInt(String(v), 10);
+    if (!Number.isFinite(n)) return fallback;
+    return Math.min(max, Math.max(min, n));
+  }
+
+  function hmToMinutes(hm) {
+    var s = String(hm || '').trim();
+    var m = s.match(/^(\d{2}):(\d{2})$/);
+    if (!m) return null;
+    var hh = parseInt(m[1], 10);
+    var mm = parseInt(m[2], 10);
+    if (!Number.isFinite(hh) || !Number.isFinite(mm)) return null;
+    if (hh < 0 || hh > 23 || mm < 0 || mm > 59) return null;
+    return (hh * 60) + mm;
+  }
+
+  function pinEventHmInTz(pin) {
+    try {
+      if (pin && pin.event_ts) return hmInTzFromMs(pin.event_ts);
+    } catch (_) {}
+    return '';
+  }
+
+  function isTodayPresetAllowedForPin(pin) {
+    // If pin time-of-day is known and occurs after current time-of-day, Today is not comparable yet.
+    var pinHm = pinEventHmInTz(pin);
+    if (!pinHm) return true;
+    var nowHm = hmInTzFromMs(Date.now());
+    var pinM = hmToMinutes(pinHm);
+    var nowM = hmToMinutes(nowHm);
+    if (pinM == null || nowM == null) return true;
+    return pinM <= nowM;
+  }
+
+  function applyCompareUiConstraints() {
+    if (!els.effectPreset) return;
+    var pin = state.selected;
+    var allowToday = isTodayPresetAllowedForPin(pin);
+    try {
+      var opt = els.effectPreset.querySelector('option[value="today"]');
+      if (opt) {
+        opt.disabled = !allowToday;
+        opt.title = !allowToday
+          ? 'Not available yet: this pin time is later than the current time-of-day'
+          : '';
+      }
+    } catch (_) {}
+    if (!allowToday && els.effectPreset.value === 'today') {
+      els.effectPreset.value = 'yesterday';
+    }
+  }
+
+  function applyCustomDaysVisibility() {
+    if (!els.effectPreset) return;
+    var isCustom = String(els.effectPreset.value || '') === 'custom';
+    if (els.effectCustomDaysWrap) els.effectCustomDaysWrap.classList.toggle('is-hidden', !isCustom);
+    if (isCustom && els.effectCustomDays) {
+      var cur = clampInt(els.effectCustomDays.value, 7, 1, 60);
+      els.effectCustomDays.value = String(cur);
+    }
+  }
 
   function setNote(el, msg, isError) {
     if (!el) return;
@@ -338,6 +403,8 @@
     renderPinsTable(state.pins);
     applyView();
     renderSelectedDetail();
+    applyCompareUiConstraints();
+    applyCustomDaysVisibility();
     refreshEffect();
   }
 
@@ -403,12 +470,25 @@
   function refreshEffect() {
     if (!state.selected) return;
     var pinId = state.selected.id;
-    var w = els.effectWindow ? safeStr(els.effectWindow.value) : '7';
-    var win = Number(w) || 7;
+    var preset = els.effectPreset ? safeStr(els.effectPreset.value) : '7';
+    var params = [];
+    if (preset === 'today') {
+      params.push('preset=today');
+    } else if (preset === 'yesterday') {
+      params.push('preset=yesterday');
+    } else if (preset === 'custom') {
+      var d = clampInt(els.effectCustomDays ? els.effectCustomDays.value : '', 7, 1, 60);
+      params.push('preset=window');
+      params.push('window_days=' + encodeURIComponent(String(d)));
+    } else {
+      var win = clampInt(preset, 7, 1, 60);
+      params.push('preset=window');
+      params.push('window_days=' + encodeURIComponent(String(win)));
+    }
     setNote(els.effectNote, 'Loading…', false);
     if (els.effectResultsStats) els.effectResultsStats.innerHTML = '';
     if (els.effectResultsEdit) els.effectResultsEdit.innerHTML = '';
-    fetchJson('/api/tools/change-pins/' + encodeURIComponent(String(pinId)) + '/effect?window_days=' + encodeURIComponent(String(win)), { credentials: 'same-origin', cache: 'no-store' })
+    fetchJson('/api/tools/change-pins/' + encodeURIComponent(String(pinId)) + '/effect' + (params.length ? ('?' + params.join('&')) : ''), { credentials: 'same-origin', cache: 'no-store' })
       .then(function (data) {
         if (!data || !data.ok) {
           setNote(els.effectNote, 'Failed to load effect.', true);
@@ -447,9 +527,32 @@
     }
 
     var html = '';
+    function fmtRange(r) {
+      if (!r) return '';
+      var kind = r.kind != null ? String(r.kind).trim().toLowerCase() : '';
+      var a = r.start_ymd != null ? String(r.start_ymd) : '';
+      var b = r.end_ymd != null ? String(r.end_ymd) : '';
+      var endHm = r.end_hm != null ? String(r.end_hm) : '';
+      if (kind === 'partial_day') {
+        return a + (endHm ? (' (00:00 → ' + endHm + ')') : '');
+      }
+      if (kind === 'day') return a || b;
+      if (a && b) return a + ' → ' + b;
+      return a || b || '';
+    }
+
+    var preset = payload && payload.preset != null ? String(payload.preset).trim().toLowerCase() : '';
+    var hint = '';
+    if (preset === 'today') hint = 'Today compares elapsed time (00:00 → now) vs the pin day (00:00 → same time-of-day).';
+    else if (preset === 'yesterday') hint = 'Yesterday compares the full day vs the full day the pin was added.';
+    else if (preset === 'window') hint = 'Window compares a fixed number of days before vs after the pin date.';
+
+    if (hint) {
+      html += '<div class="tools-note tools-note--tight">' + esc(hint) + '</div>';
+    }
     html += '<div class="tools-note tools-note--spaced">' +
-      '<span class="tools-ba-label">Before:</span> <span class="tools-ba-value">' + esc(payload.ranges && payload.ranges.before ? (payload.ranges.before.start_ymd + ' → ' + payload.ranges.before.end_ymd) : '') + '</span>' +
-      ' · <span class="tools-ba-label">After:</span> <span class="tools-ba-value">' + esc(payload.ranges && payload.ranges.after ? (payload.ranges.after.start_ymd + ' → ' + payload.ranges.after.end_ymd) : '') + '</span>' +
+      '<span class="tools-ba-label">Before:</span> <span class="tools-ba-value">' + esc(payload.ranges && payload.ranges.before ? fmtRange(payload.ranges.before) : '') + '</span>' +
+      ' · <span class="tools-ba-label">After:</span> <span class="tools-ba-value">' + esc(payload.ranges && payload.ranges.after ? fmtRange(payload.ranges.after) : '') + '</span>' +
       '</div>';
     html += '<div class="tools-summary">';
     html += metric('Revenue', before.revenue, after.revenue, d.revenue && d.revenue.abs, d.revenue && d.revenue.pct, fmtMoney);
@@ -527,6 +630,27 @@
       applyDetailSubview();
       if (state.effect) renderEffect(state.effect);
     });
+
+    if (els.effectPreset) {
+      els.effectPreset.addEventListener('change', function () {
+        applyCustomDaysVisibility();
+        applyCompareUiConstraints();
+        refreshEffect();
+      });
+    }
+    if (els.effectCustomDays) {
+      els.effectCustomDays.addEventListener('change', function () {
+        applyCustomDaysVisibility();
+        if (els.effectPreset && els.effectPreset.value === 'custom') refreshEffect();
+      });
+      els.effectCustomDays.addEventListener('keydown', function (e) {
+        if (!e || e.key !== 'Enter') return;
+        try { e.preventDefault(); } catch (_) {}
+        applyCustomDaysVisibility();
+        if (els.effectPreset && els.effectPreset.value === 'custom') refreshEffect();
+      });
+    }
+    if (els.effectRefresh) els.effectRefresh.addEventListener('click', function () { refreshEffect(); });
 
     if (els.pinsTable) {
       els.pinsTable.addEventListener('click', function (e) {
@@ -610,8 +734,8 @@
           }
         });
     });
-
-    if (els.effectRefresh) els.effectRefresh.addEventListener('click', function () { refreshEffect(); });
+    applyCompareUiConstraints();
+    applyCustomDaysVisibility();
 
     loadPins();
   }

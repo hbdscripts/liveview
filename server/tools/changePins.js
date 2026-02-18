@@ -513,22 +513,81 @@ function delta(a, b) {
   return { abs, pct };
 }
 
+function hmInTzFromMs(ms, timeZone) {
+  const n = Number(ms);
+  if (!Number.isFinite(n)) return '';
+  try {
+    return new Date(n).toLocaleTimeString('en-GB', {
+      timeZone,
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    });
+  } catch (_) {
+    return '';
+  }
+}
+
 async function getPinEffect(id, opts = {}) {
   const pin = await getPinById(id);
   if (!pin.ok) return pin;
 
-  const windowDays = clampInt(opts.window_days, 7, 1, 60);
   const eventYmd = pin.pin.event_ymd;
   if (!eventYmd) return { ok: false, error: 'missing_event_ymd' };
 
-  const beforeStart = ymdAddDays(eventYmd, -windowDays);
-  const beforeEnd = ymdAddDays(eventYmd, -1);
-  const afterStart = eventYmd;
-  const afterEnd = ymdAddDays(eventYmd, windowDays - 1);
-  if (!beforeStart || !beforeEnd || !afterStart || !afterEnd) return { ok: false, error: 'invalid_window' };
+  const tz = store.resolveAdminTimeZone();
+  const now = Date.now();
+  const presetRaw = opts && opts.preset != null ? String(opts.preset).trim().toLowerCase() : '';
+  const preset = presetRaw === 'today' || presetRaw === 'yesterday' || presetRaw === 'window'
+    ? presetRaw
+    : 'window';
 
-  const beforeKey = `r:${beforeStart}:${beforeEnd}`;
-  const afterKey = `r:${afterStart}:${afterEnd}`;
+  let windowDays = null;
+  let beforeKey = '';
+  let afterKey = '';
+  let ranges = null;
+
+  if (preset === 'today') {
+    const todayYmd = ymdTodayInTz(tz);
+    if (!todayYmd) return { ok: false, error: 'invalid_today' };
+    const endHm = hmInTzFromMs(now, tz);
+    if (!endHm) return { ok: false, error: 'invalid_now_hm' };
+
+    const pinHm = pin.pin && pin.pin.event_ts ? hmInTzFromMs(pin.pin.event_ts, tz) : '';
+    if (pinHm && pinHm > endHm) return { ok: false, error: 'today_not_available_yet' };
+
+    beforeKey = `p:${eventYmd}:${endHm}`;
+    afterKey = `p:${todayYmd}:${endHm}`;
+    ranges = {
+      before: { rangeKey: beforeKey, kind: 'partial_day', start_ymd: eventYmd, end_ymd: eventYmd, end_hm: endHm },
+      after: { rangeKey: afterKey, kind: 'partial_day', start_ymd: todayYmd, end_ymd: todayYmd, end_hm: endHm },
+    };
+  } else if (preset === 'yesterday') {
+    const todayYmd = ymdTodayInTz(tz);
+    const ymd = todayYmd ? ymdAddDays(todayYmd, -1) : '';
+    if (!ymd) return { ok: false, error: 'invalid_yesterday' };
+    beforeKey = `d:${eventYmd}`;
+    afterKey = `d:${ymd}`;
+    ranges = {
+      before: { rangeKey: beforeKey, kind: 'day', start_ymd: eventYmd, end_ymd: eventYmd },
+      after: { rangeKey: afterKey, kind: 'day', start_ymd: ymd, end_ymd: ymd },
+    };
+  } else {
+    windowDays = clampInt(opts.window_days, 7, 1, 60);
+    const beforeStart = ymdAddDays(eventYmd, -windowDays);
+    const beforeEnd = ymdAddDays(eventYmd, -1);
+    const afterStart = eventYmd;
+    const afterEnd = ymdAddDays(eventYmd, windowDays - 1);
+    if (!beforeStart || !beforeEnd || !afterStart || !afterEnd) return { ok: false, error: 'invalid_window' };
+    beforeKey = `r:${beforeStart}:${beforeEnd}`;
+    afterKey = `r:${afterStart}:${afterEnd}`;
+    ranges = {
+      before: { rangeKey: beforeKey, kind: 'range', start_ymd: beforeStart, end_ymd: beforeEnd },
+      after: { rangeKey: afterKey, kind: 'range', start_ymd: afterStart, end_ymd: afterEnd },
+    };
+  }
+
+  if (!beforeKey || !afterKey || !ranges) return { ok: false, error: 'invalid_range' };
 
   const cacheTtlMs = 2 * 60 * 1000;
   const cached = await reportCache.getOrComputeJson(
@@ -538,7 +597,7 @@ async function getPinEffect(id, opts = {}) {
       rangeKey: afterKey,
       rangeStartTs: 0,
       rangeEndTs: 0,
-      params: { pinId: Number(pin.pin.id) || 0, beforeKey, afterKey, windowDays },
+      params: { pinId: Number(pin.pin.id) || 0, preset, beforeKey, afterKey, windowDays },
       ttlMs: cacheTtlMs,
       force: false,
     },
@@ -554,11 +613,9 @@ async function getPinEffect(id, opts = {}) {
       return {
         ok: true,
         pin: pin.pin,
+        preset,
         window_days: windowDays,
-        ranges: {
-          before: { rangeKey: beforeKey, start_ymd: beforeStart, end_ymd: beforeEnd },
-          after: { rangeKey: afterKey, start_ymd: afterStart, end_ymd: afterEnd },
-        },
+        ranges,
         before,
         after,
         delta: {

@@ -160,6 +160,28 @@
               </div>
             </div>
             <div class="card-body">
+              <div class="tools-grid tools-form-block" id="pin-compare-block">
+                <div class="tools-field">
+                  <label class="tools-label form-label">Compare</label>
+                  <div class="tools-input-row">
+                    <select class="form-select" id="effect-preset" aria-label="Compare preset">
+                      <option value="today">Today</option>
+                      <option value="yesterday">Yesterday</option>
+                      <option value="7">7 days</option>
+                      <option value="14">14 days</option>
+                      <option value="30">30 days</option>
+                      <option value="custom">Custom…</option>
+                    </select>
+                    <div class="input-icon tools-input-icon is-hidden" id="effect-custom-days-wrap">
+                      <span class="input-icon-addon"><i class="fa-light fa-calendar-days" aria-hidden="true"></i></span>
+                      <input class="form-control" type="number" id="effect-custom-days" min="1" max="60" step="1" placeholder="Days (1–60)" inputmode="numeric" />
+                    </div>
+                    <button class="btn btn-outline-secondary" type="button" id="effect-refresh">Refresh</button>
+                    <div class="tools-note" id="effect-note"></div>
+                  </div>
+                </div>
+              </div>
+
               <div id="detail-stats-view" class="tools-detail-stats">
                 <div id="effect-results-stats" class="tools-results"></div>
                 <div class="tools-detail-actions">
@@ -216,18 +238,6 @@
                   <div class="tools-field">
                     <label class="tools-label form-label">Notes</label>
                     <textarea class="form-control" id="edit-notes" rows="2"></textarea>
-                  </div>
-                  <div class="tools-field">
-                    <label class="tools-label form-label">Effect</label>
-                    <div class="tools-input-row">
-                      <select class="form-select" id="effect-window">
-                        <option value="7">7 days</option>
-                        <option value="14">14 days</option>
-                        <option value="30">30 days</option>
-                      </select>
-                      <button class="btn btn-outline-secondary" type="button" id="effect-refresh">Refresh effect</button>
-                      <div class="tools-note" id="effect-note"></div>
-                    </div>
                   </div>
                   <div id="effect-results-edit" class="tools-results"></div>
                   <div class="tools-field">
