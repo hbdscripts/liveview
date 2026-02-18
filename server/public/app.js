@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 0efc6ce380a211da
+// checksum: dea5f33b23c51074
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -22219,11 +22219,21 @@ const API = '';
   function initDelegation() {
     if (bound) return;
     bound = true;
+    function safeClosest(node, selector) {
+      try {
+        var el = node && node.nodeType === 1 ? node : (node && node.parentElement ? node.parentElement : null);
+        while (el && el !== document && el.nodeType === 1) {
+          if (el.matches && el.matches(selector)) return el;
+          el = el.parentElement;
+        }
+      } catch (_) {}
+      return null;
+    }
     // Capture phase so we still handle clicks even if other handlers stop propagation.
     document.addEventListener('click', function (e) {
-      if (!e || !e.target || !e.target.closest) return;
+      if (!e || !e.target) return;
       if (e.__kexoChartSettingsHandled) return;
-      var t = e.target.closest(
+      var t = safeClosest(e.target,
         'button[data-kexo-chart-settings-key],a[data-kexo-chart-settings-key],[role="button"][data-kexo-chart-settings-key],' +
         'button[data-chart-key],a[data-chart-key],[role="button"][data-chart-key],' +
         'button[data-kexo-chart-key],a[data-kexo-chart-key],[role="button"][data-kexo-chart-key]'
@@ -22240,10 +22250,10 @@ const API = '';
     }, true);
   }
 
+  // Bind immediately (safe even while DOM is still loading).
+  initDelegation();
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initDelegation);
-  } else {
-    initDelegation();
   }
 })();
 /**
