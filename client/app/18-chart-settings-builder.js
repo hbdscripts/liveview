@@ -9,6 +9,7 @@
   var CHARTS_LS_KEY = 'kexo:charts-ui-config:v1';
   var API = (typeof window !== 'undefined' && window.API) ? String(window.API || '') : '';
   var lastOpen = { key: '', at: 0 };
+  var inFlight = { controller: null, chartKey: '' };
 
   function getChartMeta(key) {
     return (typeof window.kexoChartMeta === 'function' ? window.kexoChartMeta(key) : null) || { modes: ['line', 'area'], series: [], defaultMode: 'line', height: 200 };
@@ -51,6 +52,13 @@
     el.querySelectorAll('[data-kexo-chart-settings-close]').forEach(function (btn) {
       btn.addEventListener('click', function () { closeModal(); });
     });
+    // Ensure we always cleanup in-flight requests when the modal closes.
+    try {
+      if (el.getAttribute('data-kexo-chart-settings-lifecycle') !== '1') {
+        el.setAttribute('data-kexo-chart-settings-lifecycle', '1');
+        el.addEventListener('hidden.bs.modal', function () { abortInFlight(); });
+      }
+    } catch (_) {}
     return el;
   }
 
@@ -65,6 +73,7 @@
   function closeModal() {
     var modal = document.getElementById(MODAL_ID);
     if (!modal) return;
+    abortInFlight();
     try {
       if (window.bootstrap && window.bootstrap.Modal) {
         var inst = window.bootstrap.Modal.getInstance(modal);
@@ -73,6 +82,16 @@
     } catch (_) {}
     modal.classList.remove('show');
     modal.setAttribute('aria-hidden', 'true');
+  }
+
+  function abortInFlight() {
+    try {
+      if (inFlight && inFlight.controller && typeof inFlight.controller.abort === 'function') {
+        inFlight.controller.abort();
+      }
+    } catch (_) {}
+    try { inFlight.controller = null; } catch (_) {}
+    try { inFlight.chartKey = ''; } catch (_) {}
   }
 
   function showModal() {
@@ -132,7 +151,18 @@
     setMsg('Loading…', null);
     bodyEl.innerHTML = '<div class="text-muted">Loading…</div>';
     showModal();
-    fetch(API + '/api/chart-settings/' + encodeURIComponent(chartKey), { credentials: 'same-origin', cache: 'no-store' })
+    abortInFlight();
+    try {
+      inFlight.chartKey = chartKey;
+      inFlight.controller = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+    } catch (_) {
+      inFlight.controller = null;
+    }
+    fetch(API + '/api/chart-settings/' + encodeURIComponent(chartKey), {
+      credentials: 'same-origin',
+      cache: 'no-store',
+      signal: inFlight.controller ? inFlight.controller.signal : undefined,
+    })
       .then(function (r) {
         if (!r) return null;
         // Always try to surface a useful error in the modal instead of failing silently.
@@ -237,6 +267,10 @@
         });
       })
       .catch(function () {
+        // Ignore aborts (close/back) to avoid showing a spurious error.
+        try {
+          if (inFlight && inFlight.controller && inFlight.controller.signal && inFlight.controller.signal.aborted) return;
+        } catch (_) {}
         setMsg('Could not load settings.', false);
         if (bodyEl) bodyEl.innerHTML = '<div class="text-muted">Could not load settings.</div>';
       });
@@ -248,8 +282,17 @@
 
   var bound = false;
   function initDelegation() {
+    try {
+      if (document && document.documentElement && document.documentElement.getAttribute('data-kexo-chart-settings-delegation') === '1') {
+        bound = true;
+        return;
+      }
+    } catch (_) {}
     if (bound) return;
     bound = true;
+    try {
+      if (document && document.documentElement) document.documentElement.setAttribute('data-kexo-chart-settings-delegation', '1');
+    } catch (_) {}
     function safeClosest(node, selector) {
       try {
         var el = node && node.nodeType === 1 ? node : (node && node.parentElement ? node.parentElement : null);
@@ -264,20 +307,39 @@
     document.addEventListener('click', function (e) {
       if (!e || !e.target) return;
       if (e.__kexoChartSettingsHandled) return;
-      var t = safeClosest(e.target,
-        'button[data-kexo-chart-settings-key],a[data-kexo-chart-settings-key],[role="button"][data-kexo-chart-settings-key],' +
-        'button[data-chart-key],a[data-chart-key],[role="button"][data-chart-key],' +
-        'button[data-kexo-chart-key],a[data-kexo-chart-key],[role="button"][data-kexo-chart-key]'
+      // 1) Prefer explicit settings key on the cog/button.
+      // 2) Fallback to explicit chart key on the element.
+      // 3) Final fallback: nearest wrapper with data-kexo-chart-key / data-chart-key.
+      var hit = safeClosest(e.target,
+        '[data-kexo-chart-settings-key],.kexo-overview-chart-settings-btn,' +
+        '[data-chart-key],[data-kexo-chart-key]'
       );
-      if (!t) return;
-      var key = t.getAttribute('data-kexo-chart-settings-key') || t.getAttribute('data-chart-key') || t.getAttribute('data-kexo-chart-key');
-      if (!key) return;
-      var chartKey = String(key).trim();
+      if (!hit) return;
+
+      var chartKey = '';
+      try {
+        chartKey = String(hit.getAttribute('data-kexo-chart-settings-key') || '').trim();
+      } catch (_) { chartKey = ''; }
+      if (!chartKey) {
+        try { chartKey = String(hit.getAttribute('data-kexo-chart-key') || hit.getAttribute('data-chart-key') || '').trim(); } catch (_) { chartKey = ''; }
+      }
+      if (!chartKey) {
+        try {
+          var wrap = hit.closest ? hit.closest('[data-kexo-chart-key],[data-chart-key]') : null;
+          chartKey = wrap ? String(wrap.getAttribute('data-kexo-chart-key') || wrap.getAttribute('data-chart-key') || '').trim() : '';
+        } catch (_) { chartKey = ''; }
+      }
       if (!chartKey) return;
       e.preventDefault();
       try { e.__kexoChartSettingsHandled = true; } catch (_) {}
       try { if (typeof e.stopPropagation === 'function') e.stopPropagation(); } catch (_) {}
-      openModal({ chartKey: chartKey, cardTitle: chartKey });
+      var title = '';
+      try {
+        var card = hit.closest ? hit.closest('.card') : null;
+        var titleEl = card ? card.querySelector('.card-title,.subheader') : null;
+        title = titleEl && titleEl.textContent ? String(titleEl.textContent).trim() : '';
+      } catch (_) { title = ''; }
+      openModal({ chartKey: chartKey, cardTitle: title || chartKey });
     }, true);
   }
 
