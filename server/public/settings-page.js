@@ -14,6 +14,27 @@
     if (typeof window !== 'undefined' && window.API) API = String(window.API || '');
   } catch (_) {}
 
+  function fetchWithTimeout(url, options, timeoutMs) {
+    var ms = typeof timeoutMs === 'number' ? timeoutMs : 25000;
+    ms = Math.max(0, Number(ms) || 0);
+    if (typeof fetch !== 'function') {
+      return Promise.reject(new Error('fetch not available'));
+    }
+    if (typeof AbortController === 'undefined' || ms === 0) {
+      return fetch(url, options || {});
+    }
+    var ctrl = new AbortController();
+    var timer = setTimeout(function () {
+      try { ctrl.abort(); } catch (_) {}
+    }, ms);
+    var opts = options && typeof options === 'object' ? { ...options } : {};
+    opts.signal = ctrl.signal;
+    return fetch(url, opts).then(
+      function (res) { try { clearTimeout(timer); } catch (_) {} return res; },
+      function (err) { try { clearTimeout(timer); } catch (_) {} throw err; }
+    );
+  }
+
   function normalizeSettingsUrlQueryEarly() {
     try {
       if (!window.history || typeof window.history.replaceState !== 'function') return;
