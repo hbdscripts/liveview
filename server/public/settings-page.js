@@ -14,6 +14,9 @@
     if (typeof window !== 'undefined' && window.API) API = String(window.API || '');
   } catch (_) {}
 
+  // Persist the shop parameter even if the Settings UI rewrites the URL.
+  var _settingsShopParamCache = '';
+
   function fetchWithTimeout(url, options, timeoutMs) {
     var ms = typeof timeoutMs === 'number' ? timeoutMs : 25000;
     ms = Math.max(0, Number(ms) || 0);
@@ -89,6 +92,9 @@
       }
       var rawShop = String(params.get('shop') || '').trim();
       if (rawShop) keep.set('shop', rawShop);
+      // Preserve Google Ads OAuth marker so the UI can show a useful hint after redirect.
+      var rawAdsOauth = String(params.get('ads_oauth') || '').trim();
+      if (rawAdsOauth) keep.set('ads_oauth', rawAdsOauth);
       var nextSearch = keep.toString();
       var nextUrl = window.location.pathname + (nextSearch ? ('?' + nextSearch) : '') + (window.location.hash || '');
       var curUrl = window.location.pathname + rawSearch + (window.location.hash || '');
@@ -288,6 +294,15 @@
       var costExpensesKey = getActiveCostExpensesSubTab();
       if (costExpensesKey === 'cost-sources' || costExpensesKey === 'shipping' || costExpensesKey === 'rules' || costExpensesKey === 'breakdown') params.set('costExpensesTab', costExpensesKey);
     }
+    // Preserve shop and Google Ads OAuth marker (used to show post-redirect hints).
+    try {
+      var sp = getShopParam();
+      if (sp) params.set('shop', sp);
+    } catch (_) {}
+    try {
+      var ao = String(new URLSearchParams(window.location.search || '').get('ads_oauth') || '').trim();
+      if (ao) params.set('ads_oauth', ao);
+    } catch (_) {}
     var url = window.location.pathname + '?' + params.toString();
     try { history.replaceState(null, '', url); } catch (_) {}
   }
@@ -1719,8 +1734,10 @@
   function getShopParam() {
     try {
       var m = /[?&]shop=([^&]+)/.exec(window.location.search || '');
-      return m && m[1] ? decodeURIComponent(m[1]) : '';
-    } catch (_) { return ''; }
+      var v = m && m[1] ? decodeURIComponent(m[1]) : '';
+      if (v) _settingsShopParamCache = v;
+      return v || _settingsShopParamCache || '';
+    } catch (_) { return _settingsShopParamCache || ''; }
   }
 
   function loadConfigAndPopulate() {

@@ -98,17 +98,24 @@ async function handleGoogleAdsCallback(query = {}) {
 
   const decoded = stateDecode(state || '');
   const redirect = (decoded && decoded.r && isSafeRelativeRedirectPath(decoded.r)) ? decoded.r : '/';
+  const shop = (decoded && decoded.shop && typeof decoded.shop === 'string') ? String(decoded.shop).trim().toLowerCase() : '';
 
-  if (!code || !decoded || !decoded.rnd) return { ok: false, error: 'invalid_state', redirect };
+  if (!code || !decoded || !decoded.rnd) return { ok: false, error: 'invalid_state', redirect, shop };
 
   const tokens = await exchangeCodeForTokens(String(code));
 
   const refreshToken = tokens && tokens.refresh_token ? String(tokens.refresh_token) : '';
   if (!refreshToken) {
-    return { ok: false, error: 'missing_refresh_token', redirect };
+    // Google may omit refresh_token on subsequent consents. If we already have one stored, keep the connection.
+    try {
+      const existing = await getGoogleAdsConfig(shop || undefined);
+      if (existing && existing.refresh_token) {
+        return { ok: true, redirect, shop };
+      }
+    } catch (_) {}
+    return { ok: false, error: 'missing_refresh_token', redirect, shop };
   }
 
-  const shop = (decoded && decoded.shop && typeof decoded.shop === 'string') ? String(decoded.shop).trim().toLowerCase() : '';
   const existing = await getGoogleAdsConfig(shop || undefined);
   const next = {
     ...(existing && typeof existing === 'object' ? existing : {}),
@@ -123,7 +130,7 @@ async function handleGoogleAdsCallback(query = {}) {
 
   await setGoogleAdsConfig(next, shop || undefined);
 
-  return { ok: true, redirect };
+  return { ok: true, redirect, shop };
 }
 
 module.exports = {

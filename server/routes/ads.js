@@ -38,14 +38,44 @@ router.get('/google/connect', async (req, res) => {
 router.get('/google/callback', async (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
   try {
+    function maybeAddParam(path, key, value) {
+      const raw = path != null ? String(path) : '/';
+      const k = key != null ? String(key) : '';
+      const v = value != null ? String(value) : '';
+      if (!k || !v) return raw;
+      try {
+        const u = new URL(raw, 'http://kexo.local');
+        if (!u.searchParams.get(k)) u.searchParams.set(k, v);
+        return u.pathname + (u.search || '') + (u.hash || '');
+      } catch (_) {
+        if (raw.indexOf(k + '=') >= 0) return raw;
+        return raw + (raw.includes('?') ? '&' : '?') + encodeURIComponent(k) + '=' + encodeURIComponent(v);
+      }
+    }
+    function setParam(path, key, value) {
+      const raw = path != null ? String(path) : '/';
+      const k = key != null ? String(key) : '';
+      const v = value != null ? String(value) : '';
+      if (!k) return raw;
+      try {
+        const u = new URL(raw, 'http://kexo.local');
+        u.searchParams.set(k, v);
+        return u.pathname + (u.search || '') + (u.hash || '');
+      } catch (_) {
+        return raw + (raw.includes('?') ? '&' : '?') + encodeURIComponent(k) + '=' + encodeURIComponent(v);
+      }
+    }
+
     const result = await handleGoogleAdsCallback(req.query || {});
-    const redirect = result && result.redirect ? String(result.redirect) : '/';
+    let redirect = result && result.redirect ? String(result.redirect) : '/';
+    const shop = result && result.shop ? String(result.shop).trim().toLowerCase() : '';
+    if (shop) redirect = maybeAddParam(redirect, 'shop', shop);
     if (!result || !result.ok) {
       const e = result && result.error ? String(result.error) : 'oauth_failed';
-      res.redirect(302, redirect + (redirect.includes('?') ? '&' : '?') + 'ads_oauth=' + encodeURIComponent(e));
+      res.redirect(302, setParam(redirect, 'ads_oauth', e));
       return;
     }
-    res.redirect(302, redirect + (redirect.includes('?') ? '&' : '?') + 'ads_oauth=ok');
+    res.redirect(302, setParam(redirect, 'ads_oauth', 'ok'));
   } catch (err) {
     Sentry.captureException(err, { extra: { route: 'ads.google.callback' } });
     console.error('[ads.google.callback]', err);
