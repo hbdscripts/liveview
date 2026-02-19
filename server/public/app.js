@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 5bb6024390e5dfc1
+// checksum: 05ed368eb06747ea
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -21377,16 +21377,22 @@ const API = '';
           var label = r.label != null ? String(r.label) : '';
           var value = r.valueGbp != null ? Number(r.valueGbp) : Number(r.value);
           var pct = r.pct != null ? Number(r.pct) : 0;
+          var placeholder = !!(r && r.placeholder === true);
           if (!Number.isFinite(value)) value = 0;
           if (!Number.isFinite(pct)) pct = 0;
           pct = Math.max(0, Math.min(100, pct));
           var icon = r.iconHtml != null ? String(r.iconHtml) : '';
-          var tip = (label ? (label + '\n') : '') + 'Revenue: ' + fmtGbp2(value) + '\nShare: ' + (Math.round(pct * 10) / 10).toFixed(1) + '%';
+          var tip = placeholder
+            ? ((label ? (label + '\n') : '') + 'No data yet')
+            : ((label ? (label + '\n') : '') + 'Revenue: ' + fmtGbp2(value) + '\nShare: ' + (Math.round(pct * 10) / 10).toFixed(1) + '%');
+          var valueText = placeholder ? '\u2014' : fmtGbp2(value);
           html += '<li class="kexo-widget-row" title="' + escapeHtml(tip) + '">' +
             '<span class="kexo-widget-row-icon" aria-hidden="true">' + icon + '</span>' +
             '<span class="kexo-widget-row-label">' + escapeHtml(label || '—') + '</span>' +
-            '<span class="kexo-widget-row-value">' + escapeHtml(fmtGbp2(value)) + '</span>' +
-            '<div class="kexo-widget-row-bar"><span style="' + (accentCss ? escapeHtml(accentCss) : '') + '" data-kexo-bar-fill="' + escapeHtml(String(pct)) + '"></span></div>' +
+            '<span class="kexo-widget-row-value">' + escapeHtml(valueText) + '</span>' +
+            '<div class="kexo-widget-row-bar"><span style="' + (accentCss ? escapeHtml(accentCss) : '') + '"' +
+              (placeholder ? ' data-kexo-placeholder="1"' : '') +
+              ' data-kexo-bar-fill="' + escapeHtml(String(pct)) + '"></span></div>' +
           '</li>';
         });
         html += '</ul>';
@@ -21540,18 +21546,20 @@ const API = '';
                 '></circle>' +
               '</svg>' +
               '<div class="position-absolute top-50 start-50 translate-middle text-center" style="line-height:1.05">' +
-                (icon ? ('<div style="font-size:0.95rem;margin-bottom:0.15rem" aria-hidden="true">' + icon + '</div>') : '') +
                 '<div class="fw-bold" style="font-size:0.95rem">' + escapeHtml(pctText) + '</div>' +
               '</div>' +
             '</div>' +
             '<div class="min-w-0 w-100">' +
-              '<div class="fw-semibold text-truncate" title="' + escapeHtml(label) + '">' + escapeHtml(label || '—') + '</div>' +
+              '<div class="d-flex align-items-center justify-content-center gap-2 fw-semibold" title="' + escapeHtml(label) + '">' +
+                (icon ? ('<span aria-hidden="true" style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px">' + icon + '</span>') : '') +
+                '<span class="text-truncate" style="max-width: 100%;">' + escapeHtml(label || '—') + '</span>' +
+              '</div>' +
               '<div class="text-muted" style="font-size:0.8125rem">' + escapeHtml(valText) + '</div>' +
             '</div>' +
           '</div>';
 
-        host.innerHTML = topHtml + '<div class="mt-2" id="' + escapeHtml(mountId + '-vbars') + '"></div>';
-        renderWidgetVbars(mountId + '-vbars', barRows, accentCss);
+        host.innerHTML = topHtml + '<div class="mt-2" id="' + escapeHtml(mountId + '-list') + '"></div>';
+        renderWidgetList(mountId + '-list', barRows, accentCss);
         animateWidgetRadials(host);
       }
 
