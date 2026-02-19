@@ -3264,15 +3264,8 @@ html[data-bs-theme="dark"] .report-build-wrap {
 
 /* Dashboard widgets (custom HTML/CSS/SVG charts) */
 .kexo-dashboard-widgets-row {
-  display: grid;
-  grid-template-columns: 1fr;
+  display: block;
   gap: 0.75rem;
-}
-@media (min-width: 1200px) {
-  .kexo-dashboard-widgets-row {
-    grid-template-columns: 5fr 7fr;
-    align-items: stretch;
-  }
 }
 .kexo-dashboard-widgets-col {
   min-width: 0;
@@ -3281,6 +3274,26 @@ html[data-bs-theme="dark"] .report-build-wrap {
   display: grid;
   grid-template-columns: 1fr;
   gap: 0.75rem;
+}
+.kexo-dashboard-widgets-grid-all {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+}
+@media (min-width: 768px) {
+  .kexo-dashboard-widgets-grid-all {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (min-width: 992px) {
+  .kexo-dashboard-widgets-grid-all {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (min-width: 1200px) {
+  .kexo-dashboard-widgets-grid-all {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
 }
 @media (min-width: 768px) {
   .kexo-dashboard-widgets-grid-left {
@@ -3294,6 +3307,20 @@ html[data-bs-theme="dark"] .report-build-wrap {
   .kexo-dashboard-widgets-grid-right {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
+}
+.kexo-widget-title-chevron {
+  cursor: pointer;
+  user-select: none;
+}
+.kexo-widget-title-chevron:hover {
+  color: var(--tblr-primary, #3eb3ab);
+}
+.kexo-dashboard-widgets-row {
+  position: relative;
+}
+.kexo-widget-sort-menu {
+  right: 0.75rem;
+  top: auto;
 }
 
 .kexo-widget-card {

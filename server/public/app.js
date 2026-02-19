@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: d58c8e9b32e9e884
+// checksum: 7f8aaeaa169c32f5
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -21237,7 +21237,7 @@ const API = '';
 
       function readDashWidgetsPrefs() {
         if (dashWidgetsPrefsCache) return dashWidgetsPrefsCache;
-        var fallback = { v: 1, variantTableId: '', devicesDim: 'devices' };
+        var fallback = { v: 1, variantTableId: '', devicesDim: 'devices', sortBy: 'revenue' };
         try {
           var raw = localStorage.getItem(DASH_WIDGETS_LS_KEY);
           if (!raw) return (dashWidgetsPrefsCache = fallback);
@@ -21247,6 +21247,8 @@ const API = '';
           out.v = 1;
           out.variantTableId = out.variantTableId != null ? String(out.variantTableId) : '';
           out.devicesDim = (String(out.devicesDim || 'devices').trim().toLowerCase() === 'browsers') ? 'browsers' : 'devices';
+          var sb = String(out.sortBy || 'revenue').trim().toLowerCase();
+          out.sortBy = (sb === 'conversion' || sb === 'clicks') ? sb : 'revenue';
           return (dashWidgetsPrefsCache = out);
         } catch (_) {
           return (dashWidgetsPrefsCache = fallback);
@@ -21259,9 +21261,26 @@ const API = '';
         out.v = 1;
         out.variantTableId = out.variantTableId != null ? String(out.variantTableId) : '';
         out.devicesDim = (String(out.devicesDim || 'devices').trim().toLowerCase() === 'browsers') ? 'browsers' : 'devices';
+        var sb = String(out.sortBy || 'revenue').trim().toLowerCase();
+        out.sortBy = (sb === 'conversion' || sb === 'clicks') ? sb : 'revenue';
         dashWidgetsPrefsCache = out;
         try { localStorage.setItem(DASH_WIDGETS_LS_KEY, JSON.stringify(out)); } catch (_) {}
         return out;
+      }
+
+      function applyDashWidgetSort() {
+        var sortBy = (readDashWidgetsPrefs().sortBy || 'revenue').trim().toLowerCase();
+        var container = document.getElementById('dash-widgets-grid-all');
+        if (!container) return;
+        var cards = Array.from(container.querySelectorAll('.kexo-widget-card[data-kexo-widget]'));
+        if (!cards.length) return;
+        var key = sortBy === 'conversion' ? 'conversion' : (sortBy === 'clicks' ? 'sessions' : 'revenue');
+        cards.sort(function (a, b) {
+          var va = parseFloat(a.getAttribute('data-kexo-widget-' + key) || 0) || 0;
+          var vb = parseFloat(b.getAttribute('data-kexo-widget-' + key) || 0) || 0;
+          return vb - va;
+        });
+        cards.forEach(function (c) { container.appendChild(c); });
       }
 
       function closeAllWidgetMenus() {
@@ -21313,6 +21332,34 @@ const API = '';
           document.addEventListener('click', function(e) {
             var t = e && e.target ? e.target : null;
             if (!t || !t.closest) return;
+
+            var settingsBtn = t.closest('[data-kexo-widget-settings]');
+            if (settingsBtn) {
+              e.preventDefault();
+              e.stopPropagation();
+              toggleWidgetMenu('sort');
+              var menu = document.getElementById('dash-widget-sort-menu');
+              if (menu) {
+                var rect = settingsBtn.getBoundingClientRect();
+                menu.style.position = 'fixed';
+                menu.style.top = (rect.bottom + 4) + 'px';
+                menu.style.right = (window.innerWidth - rect.right) + 'px';
+                menu.style.left = 'auto';
+              }
+              return;
+            }
+
+            var sortBtn = t.closest('[data-kexo-widget-sort]');
+            if (sortBtn) {
+              e.preventDefault();
+              var sortBy = String(sortBtn.getAttribute('data-kexo-widget-sort') || 'revenue').trim().toLowerCase();
+              if (sortBy === 'conversion' || sortBy === 'clicks' || sortBy === 'revenue') {
+                writeDashWidgetsPrefs({ sortBy: sortBy });
+                closeAllWidgetMenus();
+                applyDashWidgetSort();
+              }
+              return;
+            }
 
             var dd = t.closest('[data-kexo-widget-dropdown]');
             if (dd) {
@@ -21591,8 +21638,8 @@ const API = '';
           '<div class="d-flex align-items-center gap-3" style="gap:0.75rem">' +
             '<div class="position-relative flex-shrink-0" style="width:' + size + 'px;height:' + size + 'px;margin-left:' + escapeHtml(String(ringOffsetPx)) + 'px" title="' + escapeHtml(tip) + '">' +
               '<svg width="' + size + '" height="' + size + '" viewBox="0 0 ' + size + ' ' + size + '" aria-hidden="true">' +
-                '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="rgba(15,23,42,0.10)" stroke-width="4"></circle>' +
-                '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="' + escapeHtml(radialStroke) + '" stroke-width="4" stroke-linecap="round"' +
+                '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="rgba(15,23,42,0.10)" stroke-width="8"></circle>' +
+                '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="' + escapeHtml(radialStroke) + '" stroke-width="8" stroke-linecap="round"' +
                   ' style="transform: rotate(-90deg); transform-origin: ' + cx + 'px ' + cy + 'px; transition: stroke-dashoffset 520ms cubic-bezier(.2,.9,.2,1);"' +
                   ' stroke-dasharray="' + escapeHtml(String(circ)) + '" stroke-dashoffset="' + escapeHtml(String(circ)) + '"' +
                   ' data-kexo-radial-pct="' + escapeHtml(String(placeholder ? 0 : pct)) + '" data-kexo-radial-circ="' + escapeHtml(String(circ)) + '"' +
@@ -21604,7 +21651,6 @@ const API = '';
             '</div>' +
             '<div class="min-w-0 flex-fill text-start">' +
               '<div class="d-flex align-items-center gap-2 fw-semibold" title="' + escapeHtml(label) + '">' +
-                (icon ? ('<span class="kexo-widget-top-icon" aria-hidden="true" style="display:inline-flex;align-items:center;justify-content:center;width:' + iconSize + 'px;height:' + iconSize + 'px;font-size:1rem;flex-shrink:0">' + icon + '</span>') : '') +
                 '<span class="text-truncate" style="max-width: 100%;">' + escapeHtml(label || '—') + '</span>' +
               '</div>' +
               '<div class="text-muted" style="font-size:0.8125rem">' + escapeHtml(valText) + '</div>' +
@@ -21614,6 +21660,17 @@ const API = '';
         host.innerHTML = topHtml + '<div class="mt-2" id="' + escapeHtml(mountId + '-list') + '"></div>';
         renderWidgetList(mountId + '-list', barRows, accentCss);
         animateWidgetRadials(host);
+        var card = host.closest('.kexo-widget-card[data-kexo-widget]');
+        if (card && Array.isArray(barRows)) {
+          var revenue = barRows.reduce(function (acc, r) { return acc + (Number(r && r.valueGbp) || 0); }, 0) || 0;
+          var sessions = options.sessions != null ? Number(options.sessions) : 0;
+          var conversion = options.conversionPct != null ? Number(options.conversionPct) : 0;
+          if (!Number.isFinite(sessions)) sessions = 0;
+          if (!Number.isFinite(conversion)) conversion = 0;
+          card.setAttribute('data-kexo-widget-revenue', String(revenue));
+          card.setAttribute('data-kexo-widget-sessions', String(sessions));
+          card.setAttribute('data-kexo-widget-conversion', String(conversion));
+        }
       }
 
       function polarToCartesian(cx, cy, r, angleDeg) {
@@ -21840,15 +21897,46 @@ const API = '';
               } else {
                 var payload2 = (data && data.ok && data.payload) ? data.payload : data;
                 var list2 = payload2 && payload2.devices && Array.isArray(payload2.devices.rows) ? payload2.devices.rows : (payload2 && Array.isArray(payload2.rows) ? payload2.rows : []);
-                rows = list2.map(function (r) {
-                  var label = r && (r.device_type || r.device || r.name) ? String(r.device_type || r.device || r.name) : '—';
-                  var value = r && (r.revenue_gbp != null || r.revenue != null) ? Number(r.revenue_gbp != null ? r.revenue_gbp : r.revenue) : 0;
-                  if (!Number.isFinite(value)) value = 0;
-                  var k = label.toLowerCase();
-                  var iconKey = (k.indexOf('mobile') >= 0) ? 'type-device-mobile' : (k.indexOf('tablet') >= 0 ? 'type-device-tablet' : 'type-device-desktop');
-                  var icon = (k.indexOf('mobile') >= 0) ? 'fa-mobile-screen' : (k.indexOf('tablet') >= 0 ? 'fa-tablet-screen-button' : 'fa-desktop');
-                  return { label: label, valueGbp: value, iconHtml: '<i class="fa-light ' + escapeHtml(icon) + '" data-icon-key="' + escapeHtml(iconKey) + '" aria-hidden="true"></i>' };
+                var platformMap = {};
+                var totalSessions = 0;
+                var totalConversion = 0;
+                list2.forEach(function (r) {
+                  var platforms = r && Array.isArray(r.platforms) ? r.platforms : [];
+                  if (platforms.length > 0) {
+                    platforms.forEach(function (p) {
+                      var plabel = p && (p.platform || p.device_type) ? String(p.platform || p.device_type) : '—';
+                      plabel = plabel.charAt(0).toUpperCase() + plabel.slice(1).toLowerCase();
+                      if (plabel === 'Unknown' || plabel === 'Other') plabel = p.platform || p.device_type || plabel;
+                      var pval = p && (p.revenue_gbp != null || p.revenue != null) ? Number(p.revenue_gbp != null ? p.revenue_gbp : p.revenue) : 0;
+                      if (!Number.isFinite(pval)) pval = 0;
+                      var psess = p && p.sessions != null ? Number(p.sessions) : 0;
+                      if (!platformMap[plabel]) platformMap[plabel] = { revenue: 0, sessions: 0 };
+                      platformMap[plabel].revenue += pval;
+                      platformMap[plabel].sessions += psess;
+                    });
+                  } else {
+                    var label = r && (r.device_type || r.device || r.name) ? String(r.device_type || r.device || r.name) : '—';
+                    var value = r && (r.revenue_gbp != null || r.revenue != null) ? Number(r.revenue_gbp != null ? r.revenue_gbp : r.revenue) : 0;
+                    if (!Number.isFinite(value)) value = 0;
+                    var sess = r && r.sessions != null ? Number(r.sessions) : 0;
+                    if (!platformMap[label]) platformMap[label] = { revenue: 0, sessions: 0 };
+                    platformMap[label].revenue += value;
+                    platformMap[label].sessions += sess;
+                  }
+                  totalSessions += (r && r.sessions != null ? Number(r.sessions) : 0) || 0;
+                  var cv = r && r.conversion_pct != null ? Number(r.conversion_pct) : null;
+                  if (cv != null && Number.isFinite(cv)) totalConversion = (totalConversion + cv) / (totalConversion === 0 ? 1 : 2);
                 });
+                var platformKeys = Object.keys(platformMap).sort(function (a, b) { return (platformMap[b].revenue || 0) - (platformMap[a].revenue || 0); });
+                rows = platformKeys.map(function (plabel) {
+                  var p = platformMap[plabel];
+                  var value = p.revenue || 0;
+                  var k = plabel.toLowerCase();
+                  var iconKey = (k.indexOf('android') >= 0) ? 'type-platform-android' : (k.indexOf('ios') >= 0 || k.indexOf('mac') >= 0) ? 'type-platform-ios' : (k.indexOf('windows') >= 0) ? 'type-platform-windows' : (k.indexOf('linux') >= 0) ? 'type-platform-linux' : 'type-device-desktop';
+                  var icon = (k.indexOf('android') >= 0) ? 'fa-brands fa-android' : (k.indexOf('ios') >= 0 || k.indexOf('mac') >= 0) ? 'fa-brands fa-apple' : (k.indexOf('windows') >= 0) ? 'fa-brands fa-windows' : (k.indexOf('linux') >= 0) ? 'fa-brands fa-linux' : 'fa-light fa-desktop';
+                  return { label: plabel, valueGbp: value, iconHtml: '<i class="fa-light ' + escapeHtml(icon) + '" data-icon-key="' + escapeHtml(iconKey) + '" aria-hidden="true"></i>', sessions: p.sessions };
+                });
+                totalSessions = platformKeys.reduce(function (acc, k) { return acc + (platformMap[k].sessions || 0); }, 0);
               }
               if (kpiSaysNoSales) { rows = rows.map(function (r) { return Object.assign({}, r || {}, { valueGbp: 0 }); }); }
               var currentTop = withSharePct(rows, WIDGET_TOP_N);
@@ -21863,9 +21951,13 @@ const API = '';
                 var sig = widgetSig({ rk: rk, dim: prefs.devicesDim, current: currentTop, placeholders: placeholders });
                 if (!force && dashWidgetLastRenderSig[mountId] && dashWidgetLastRenderSig[mountId] === sig) return;
                 dashWidgetLastRenderSig[mountId] = sig;
+                var devSessions = rows.reduce(function (acc, r) { return acc + (Number(r.sessions) || 0); }, 0);
+                var devConv = list2.length && list2[0] && list2[0].conversion_pct != null ? Number(list2[0].conversion_pct) : 0;
                 renderWidgetRadialAndVbars(mountId, topRow, barRows, {
                   accentCss: 'background: var(--kexo-accent-2, #3eb3ab);',
-                  ringStroke: 'var(--kexo-accent-2, #3eb3ab)'
+                  ringStroke: 'var(--kexo-accent-2, #3eb3ab)',
+                  sessions: devSessions,
+                  conversionPct: devConv
                 });
               }
 
@@ -21889,14 +21981,30 @@ const API = '';
                 }
                 var yPayload2 = (yData && yData.ok && yData.payload) ? yData.payload : yData;
                 var yList2 = yPayload2 && yPayload2.devices && Array.isArray(yPayload2.devices.rows) ? yPayload2.devices.rows : (yPayload2 && Array.isArray(yPayload2.rows) ? yPayload2.rows : []);
-                var yRows2 = yList2.map(function (r) {
-                  var label = r && (r.device_type || r.device || r.name) ? String(r.device_type || r.device || r.name) : '—';
-                  var value = r && (r.revenue_gbp != null || r.revenue != null) ? Number(r.revenue_gbp != null ? r.revenue_gbp : r.revenue) : 0;
-                  if (!Number.isFinite(value)) value = 0;
-                  var k = label.toLowerCase();
-                  var iconKey = (k.indexOf('mobile') >= 0) ? 'type-device-mobile' : (k.indexOf('tablet') >= 0 ? 'type-device-tablet' : 'type-device-desktop');
-                  var icon = (k.indexOf('mobile') >= 0) ? 'fa-mobile-screen' : (k.indexOf('tablet') >= 0 ? 'fa-tablet-screen-button' : 'fa-desktop');
-                  return { label: label, valueGbp: value, iconHtml: '<i class="fa-light ' + escapeHtml(icon) + '" data-icon-key="' + escapeHtml(iconKey) + '" aria-hidden="true"></i>' };
+                var yPlatformMap = {};
+                yList2.forEach(function (r) {
+                  var platforms = r && Array.isArray(r.platforms) ? r.platforms : [];
+                  if (platforms.length > 0) {
+                    platforms.forEach(function (p) {
+                      var plabel = p && (p.platform || p.device_type) ? String(p.platform || p.device_type) : '—';
+                      plabel = plabel.charAt(0).toUpperCase() + plabel.slice(1).toLowerCase();
+                      var pval = p && (p.revenue_gbp != null || p.revenue != null) ? Number(p.revenue_gbp != null ? p.revenue_gbp : p.revenue) : 0;
+                      if (!Number.isFinite(pval)) pval = 0;
+                      if (!yPlatformMap[plabel]) yPlatformMap[plabel] = 0;
+                      yPlatformMap[plabel] += pval;
+                    });
+                  } else {
+                    var label = r && (r.device_type || r.device || r.name) ? String(r.device_type || r.device || r.name) : '—';
+                    var value = r && (r.revenue_gbp != null || r.revenue != null) ? Number(r.revenue_gbp != null ? r.revenue_gbp : r.revenue) : 0;
+                    if (!Number.isFinite(value)) value = 0;
+                    if (!yPlatformMap[label]) yPlatformMap[label] = 0;
+                    yPlatformMap[label] += value;
+                  }
+                });
+                var yRows2 = Object.keys(yPlatformMap).sort(function (a, b) { return (yPlatformMap[b] || 0) - (yPlatformMap[a] || 0); }).map(function (plabel) {
+                  var k = plabel.toLowerCase();
+                  var icon = (k.indexOf('android') >= 0) ? 'fa-brands fa-android' : (k.indexOf('ios') >= 0 || k.indexOf('mac') >= 0) ? 'fa-brands fa-apple' : (k.indexOf('windows') >= 0) ? 'fa-brands fa-windows' : (k.indexOf('linux') >= 0) ? 'fa-brands fa-linux' : 'fa-light fa-desktop';
+                  return { label: plabel, valueGbp: yPlatformMap[plabel] || 0, iconHtml: '<i class="fa-light ' + escapeHtml(icon) + '" aria-hidden="true"></i>' };
                 });
                 return renderWithFallback(yRows2);
               });
@@ -22102,7 +22210,9 @@ const API = '';
         // Older environments may not support Promise.allSettled.
         return Promise.all(tasks.map(function (p) {
           return Promise.resolve(p).then(function (v) { return { status: 'fulfilled', value: v }; }, function (err) { return { status: 'rejected', reason: err }; });
-        }));
+        })).then(function () {
+          try { applyDashWidgetSort(); } catch (_) {}
+        });
       }
 
       window.refreshDashboard = function(opts) {

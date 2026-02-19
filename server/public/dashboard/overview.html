@@ -355,19 +355,18 @@
       </div>
       <div class="kexo-overview-cell kexo-overview-widgets">
         <div class="kexo-dashboard-widgets-row" id="dash-widgets-row" aria-label="Dashboard widgets">
-          <div class="kexo-dashboard-widgets-col kexo-dashboard-widgets-col-left">
-            <div class="kexo-dashboard-widgets-grid kexo-dashboard-widgets-grid-left" id="dash-widgets-grid-left" aria-label="Dashboard widgets (left)">
+          <div class="kexo-dashboard-widgets-grid kexo-dashboard-widgets-grid-all" id="dash-widgets-grid-all" aria-label="Dashboard widgets">
               <!-- Widget 1: Variant radial -->
               <div class="card kexo-widget-card" data-kexo-widget="variant">
                 <div class="card-body kexo-widget-card-body">
                   <div class="kexo-widget-head">
-                    <div class="kexo-widget-title">
-                      Variants
+                    <div class="kexo-widget-title kexo-widget-title-chevron" data-kexo-widget-dropdown="variant" role="button" tabindex="0" aria-haspopup="menu" aria-expanded="false" aria-controls="dash-widget-variant-menu">
+                      <span data-kexo-widget-dropdown-label="variant">Variants</span>
+                      <i class="fa-light fa-chevron-down ms-1 kexo-widget-chevron" aria-hidden="true"></i>
                     </div>
                     <div class="kexo-widget-head-right">
-                      <button type="button" class="btn btn-sm btn-ghost-secondary kexo-widget-dropdown-btn" data-kexo-widget-dropdown="variant" aria-haspopup="menu" aria-expanded="false" aria-controls="dash-widget-variant-menu">
-                        <span data-kexo-widget-dropdown-label="variant">Table</span>
-                        <i class="fa-light fa-chevron-down ms-1" aria-hidden="true"></i>
+                      <button type="button" class="btn btn-icon btn-ghost-secondary kexo-widget-settings-btn" data-kexo-widget-settings aria-label="Widget sort" title="Sort cards">
+                        <i class="fa-light fa-gear" aria-hidden="true"></i>
                       </button>
                     </div>
                   </div>
@@ -382,13 +381,13 @@
               <div class="card kexo-widget-card" data-kexo-widget="devices">
                 <div class="card-body kexo-widget-card-body">
                   <div class="kexo-widget-head">
-                    <div class="kexo-widget-title">
-                      Devices
+                    <div class="kexo-widget-title kexo-widget-title-chevron" data-kexo-widget-dropdown="devices" role="button" tabindex="0" aria-haspopup="menu" aria-expanded="false" aria-controls="dash-widget-devices-menu">
+                      <span data-kexo-widget-dropdown-label="devices">Devices</span>
+                      <i class="fa-light fa-chevron-down ms-1 kexo-widget-chevron" aria-hidden="true"></i>
                     </div>
                     <div class="kexo-widget-head-right">
-                      <button type="button" class="btn btn-sm btn-ghost-secondary kexo-widget-dropdown-btn" data-kexo-widget-dropdown="devices" aria-haspopup="menu" aria-expanded="false" aria-controls="dash-widget-devices-menu">
-                        <span data-kexo-widget-dropdown-label="devices">Devices</span>
-                        <i class="fa-light fa-chevron-down ms-1" aria-hidden="true"></i>
+                      <button type="button" class="btn btn-icon btn-ghost-secondary kexo-widget-settings-btn" data-kexo-widget-settings aria-label="Widget sort" title="Sort cards">
+                        <i class="fa-light fa-gear" aria-hidden="true"></i>
                       </button>
                     </div>
                   </div>
@@ -401,17 +400,15 @@
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
-
-          <div class="kexo-dashboard-widgets-col kexo-dashboard-widgets-col-right">
-            <div class="kexo-dashboard-widgets-grid kexo-dashboard-widgets-grid-right" id="dash-widgets-grid-right" aria-label="Dashboard widgets (right)">
               <!-- Widget 3: Attribution -->
               <div class="card kexo-widget-card" data-kexo-widget="attribution">
                 <div class="card-body kexo-widget-card-body">
                   <div class="kexo-widget-head">
-                    <div class="kexo-widget-title">
-                      Attribution
+                    <div class="kexo-widget-title">Attribution</div>
+                    <div class="kexo-widget-head-right">
+                      <button type="button" class="btn btn-icon btn-ghost-secondary kexo-widget-settings-btn" data-kexo-widget-settings aria-label="Widget sort" title="Sort cards">
+                        <i class="fa-light fa-gear" aria-hidden="true"></i>
+                      </button>
                     </div>
                   </div>
                   <div class="kexo-widget-body">
@@ -425,8 +422,11 @@
               <div class="card kexo-widget-card" data-kexo-widget="payment-types">
                 <div class="card-body kexo-widget-card-body">
                   <div class="kexo-widget-head">
-                    <div class="kexo-widget-title">
-                      Payment methods
+                    <div class="kexo-widget-title">Payment methods</div>
+                    <div class="kexo-widget-head-right">
+                      <button type="button" class="btn btn-icon btn-ghost-secondary kexo-widget-settings-btn" data-kexo-widget-settings aria-label="Widget sort" title="Sort cards">
+                        <i class="fa-light fa-gear" aria-hidden="true"></i>
+                      </button>
                     </div>
                   </div>
                   <div class="kexo-widget-body">
@@ -440,8 +440,11 @@
               <div class="card kexo-widget-card" data-kexo-widget="abandoned">
                 <div class="card-body kexo-widget-card-body">
                   <div class="kexo-widget-head">
-                    <div class="kexo-widget-title">
-                      Abandoned Carts
+                    <div class="kexo-widget-title">Abandoned Carts</div>
+                    <div class="kexo-widget-head-right">
+                      <button type="button" class="btn btn-icon btn-ghost-secondary kexo-widget-settings-btn" data-kexo-widget-settings aria-label="Widget sort" title="Sort cards">
+                        <i class="fa-light fa-gear" aria-hidden="true"></i>
+                      </button>
                     </div>
                   </div>
                   <div class="kexo-widget-body">
@@ -450,7 +453,11 @@
                   <div class="kexo-widget-menu is-hidden" id="dash-widget-abandoned-menu" role="menu" aria-hidden="true" data-kexo-widget-menu="abandoned"></div>
                 </div>
               </div>
-            </div>
+          </div>
+          <div class="kexo-widget-menu is-hidden kexo-widget-sort-menu" id="dash-widget-sort-menu" role="menu" aria-hidden="true" data-kexo-widget-menu="sort">
+            <button type="button" class="kexo-widget-menu-item" role="menuitem" data-kexo-widget-sort="revenue">Revenue</button>
+            <button type="button" class="kexo-widget-menu-item" role="menuitem" data-kexo-widget-sort="conversion">Conversion Rate</button>
+            <button type="button" class="kexo-widget-menu-item" role="menuitem" data-kexo-widget-sort="clicks">Clicks</button>
           </div>
         </div>
       </div>
