@@ -130,10 +130,10 @@
   function iconSpecToPreviewHtml(spec, label) {
     var s = spec != null ? String(spec).trim() : '';
     var l = label != null ? String(label).trim() : '';
-    if (!s) return '<span class="text-muted small">?</span>';
+    if (!s) return '';
     if (/^<svg[\s>]/i.test(s)) {
       var safeSvg = sanitizeSvgMarkup(s);
-      if (!safeSvg) return '<span class="text-muted small">?</span>';
+      if (!safeSvg) return '';
       return '<span class="am-tree-icon-preview" title="' + escapeHtml(l) + '">' + safeSvg + '</span>';
     }
     if (/^(https?:\/\/|\/\/|\/)/i.test(s)) return '<span class="am-tree-icon-preview"><img src="' + escapeHtml(s) + '" alt="" width="20" height="20" style="vertical-align:middle"></span>';
@@ -206,7 +206,7 @@
         variantList.forEach(function (variant) {
           var vk = normalizeVariantKey(variant && (variant.variant_key != null ? variant.variant_key : ''));
           var vLabel = (variant && variant.label) ? String(variant.label) : titleFromKey(vk);
-          var vIcon = (variant && variant.icon_spec != null) ? String(variant.icon_spec) : '';
+          var vIcon = (variant && variant.icon_spec != null && String(variant.icon_spec).trim()) ? String(variant.icon_spec) : sourceIcon;
           var ruleList = rulesByVariant[vk] || [];
           variantRows.push({
             type: 'variant',
@@ -286,10 +286,11 @@
       '</div>';
   }
 
-  function renderVariantRow(variant, channelKey, sourceKey) {
+  function renderVariantRow(variant, channelKey, sourceKey, sourceIconSpec) {
     var vk = variant.variant_key || '';
     var label = variant.label || titleFromKey(vk);
-    var iconSpec = variant.icon_spec != null ? String(variant.icon_spec) : '';
+    var explicitIcon = variant.icon_spec != null ? String(variant.icon_spec) : '';
+    var iconSpec = (explicitIcon && explicitIcon.trim()) ? explicitIcon : (sourceIconSpec || '');
     var ruleCount = Array.isArray(variant.rules) ? variant.rules.length : 0;
     var hasRules = ruleCount > 0;
     var expandedKey = 'v:' + vk;
@@ -306,7 +307,7 @@
       '<span class="am-tree-cell am-tree-label">' + iconSpecToPreviewHtml(iconSpec, label) + ' <strong>' + escapeHtml(label) + '</strong> <code class="small">' + escapeHtml(vk) + '</code></span>' +
       '<span class="am-tree-cell text-muted small">' + String(ruleCount) + ' rule(s)</span>' +
       '<span class="am-tree-cell d-flex align-items-center gap-2 justify-content-end">' +
-        '<button type="button" class="btn btn-outline-secondary btn-sm" data-am-tree-action="edit-variant" data-variant-key="' + escapeHtml(vk) + '" data-current-channel-key="' + escapeHtml(channelKey || '') + '" data-current-source-key="' + escapeHtml(sourceKey || '') + '" data-label="' + escapeHtml(label) + '" data-icon-spec="' + escapeHtml(iconSpec) + '">Edit variant</button>' +
+        '<button type="button" class="btn btn-outline-secondary btn-sm" data-am-tree-action="edit-variant" data-variant-key="' + escapeHtml(vk) + '" data-current-channel-key="' + escapeHtml(channelKey || '') + '" data-current-source-key="' + escapeHtml(sourceKey || '') + '" data-label="' + escapeHtml(label) + '" data-icon-spec="' + escapeHtml(explicitIcon) + '">Edit variant</button>' +
       '</span>' +
       '</div>' +
       '<div class="am-tree-children' + (isOpen ? '' : ' is-hidden') + '" data-am-tree-children="' + escapeHtml(expandedKey) + '">' +
@@ -322,7 +323,7 @@
     var hasVariants = Array.isArray(source.variants) && source.variants.length > 0;
     var expandedKey = 's:' + channelKey + '|' + sk;
     var isOpen = isExpanded(expandedKey);
-    var variantHtml = (source.variants || []).map(function (v) { return renderVariantRow(v, channelKey, sk); }).join('');
+    var variantHtml = (source.variants || []).map(function (v) { return renderVariantRow(v, channelKey, sk, iconSpec); }).join('');
     var toggleHtml = hasVariants
       ? '<button type="button" class="am-tree-toggle btn btn-link btn-sm p-0 me-1" data-am-tree-toggle="' + escapeHtml(expandedKey) + '" aria-expanded="' + (isOpen ? 'true' : 'false') + '">' +
         '<i class="fa fa-chevron-' + (isOpen ? 'down' : 'right') + ' small" aria-hidden="true"></i></button>'
@@ -712,7 +713,7 @@
       if (newChannelHintEl) newChannelHintEl.textContent = 'If provided, a new channel is created and the source is assigned to it.';
     } else {
       if (titleEl) titleEl.textContent = 'Edit variant';
-      if (descEl) descEl.textContent = 'Assign this variant to a channel and optionally set its icon.';
+      if (descEl) descEl.textContent = 'Assign this variant to a channel and optionally set its icon. Icon inherits from source when empty.';
       if (channelLabelEl) channelLabelEl.textContent = 'Channel for this variant';
       if (newChannelLabelEl) newChannelLabelEl.textContent = 'Or create new channel';
       if (newChannelHintEl) newChannelHintEl.textContent = 'If provided, a new channel is created and the variant is assigned to it.';
