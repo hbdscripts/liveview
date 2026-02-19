@@ -4691,9 +4691,10 @@
         var valText = placeholder ? '\u2014' : fmtGbp2(value);
         var pctText = placeholder ? '\u2014' : (String(Math.round(pct)) + '%');
 
+        var iconSize = 28;
         var topHtml =
-          '<div class="d-flex flex-column align-items-center text-center" style="gap:0.35rem">' +
-            '<div class="position-relative" style="width:' + size + 'px;height:' + size + 'px;flex:0 0 ' + size + 'px" title="' + escapeHtml(tip) + '">' +
+          '<div class="d-flex align-items-center gap-3" style="gap:0.75rem">' +
+            '<div class="position-relative flex-shrink-0" style="width:' + size + 'px;height:' + size + 'px" title="' + escapeHtml(tip) + '">' +
               '<svg width="' + size + '" height="' + size + '" viewBox="0 0 ' + size + ' ' + size + '" aria-hidden="true">' +
                 '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="rgba(15,23,42,0.10)" stroke-width="10"></circle>' +
                 '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="' + escapeHtml(radialStroke) + '" stroke-width="10" stroke-linecap="round"' +
@@ -4706,9 +4707,9 @@
                 '<div class="fw-bold" style="font-size:0.95rem">' + escapeHtml(pctText) + '</div>' +
               '</div>' +
             '</div>' +
-            '<div class="min-w-0 w-100">' +
-              '<div class="d-flex align-items-center justify-content-center gap-2 fw-semibold" title="' + escapeHtml(label) + '">' +
-                (icon ? ('<span aria-hidden="true" style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px">' + icon + '</span>') : '') +
+            '<div class="min-w-0 flex-fill text-start">' +
+              '<div class="d-flex align-items-center gap-2 fw-semibold" title="' + escapeHtml(label) + '">' +
+                (icon ? ('<span aria-hidden="true" style="display:inline-flex;align-items:center;justify-content:center;width:' + iconSize + 'px;height:' + iconSize + 'px;font-size:1.15rem;flex-shrink:0">' + icon + '</span>') : '') +
                 '<span class="text-truncate" style="max-width: 100%;">' + escapeHtml(label || '—') + '</span>' +
               '</div>' +
               '<div class="text-muted" style="font-size:0.8125rem">' + escapeHtml(valText) + '</div>' +

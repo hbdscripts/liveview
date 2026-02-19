@@ -1100,6 +1100,7 @@
               if (activeMainTab === 'attribution' && typeof refreshAttribution === 'function') refreshAttribution({ force: false });
               if (activeMainTab === 'devices' && typeof refreshDevices === 'function') refreshDevices({ force: false });
               if (activeMainTab === 'browsers' && typeof refreshBrowsers === 'function') refreshBrowsers({ force: false });
+              if (typeof requestDashboardWidgetsRefresh === 'function') requestDashboardWidgetsRefresh({ force: false });
             }
           }
           storeBaseUrlLoaded = true;
