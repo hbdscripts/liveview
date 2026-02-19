@@ -1820,14 +1820,24 @@
   }
 
   function patchSpendProfitRoas(root, summary) {
-    if (!root || !summary || !summary.totals) return false;
+    if (!root || !summary) return false;
     var currency = (summary && summary.currency) || 'GBP';
-    var campaigns = summary && Array.isArray(summary.campaigns) ? summary.campaigns : [];
-    if (!campaigns.length) return false;
+    var allCampaigns = summary && Array.isArray(summary.campaigns) ? summary.campaigns : [];
+    if (!allCampaigns.length) return false;
+    var campaigns = allCampaigns;
+    var hidePaused = false;
+    try { hidePaused = getAdsHidePaused(); } catch (_) { hidePaused = false; }
+    if (hidePaused && campaigns && campaigns.length) {
+      campaigns = campaigns.filter(function (c) {
+        if (!c) return false;
+        var st = c.campaignStatus != null ? String(c.campaignStatus) : '';
+        return (st || '').trim().toUpperCase() !== 'PAUSED';
+      });
+    }
 
     var map = new Map();
-    for (var i = 0; i < campaigns.length; i++) {
-      var c = campaigns[i];
+    for (var i = 0; i < allCampaigns.length; i++) {
+      var c = allCampaigns[i];
       if (!c || !c.campaignId) continue;
       map.set(String(c.campaignId), c);
     }
@@ -1864,7 +1874,7 @@
       setProfitCellClass(cells[7], pr);
     }
 
-    var totals = summary && summary.totals ? summary.totals : null;
+    var totals = computeCampaignTotals(campaigns);
     var totalsFooter = document.getElementById('ads-footer');
     var tRow = totalsFooter ? totalsFooter.querySelector('.ads-totals-row') : null;
     if (totals && tRow) {
@@ -1872,7 +1882,7 @@
       if (!tCells || tCells.length < 8) return false;
       patchText(tCells[1], fmtNum(totals.clicks));
       patchText(tCells[2], fmtNum(totals.impressions));
-      patchText(tCells[3], fmtNum(totals.conversions != null ? totals.conversions : totals.orders));
+      patchText(tCells[3], fmtNum(totals.orders));
       patchText(tCells[4], fmtMoney(totals.revenue, currency));
       patchText(tCells[5], fmtMoney(totals.spend, currency));
       patchText(tCells[6], fmtRoas(totals.roas));
@@ -2113,7 +2123,7 @@
     ensureModalCss();
 
     var providers = status && status.providers ? status.providers : [];
-    var totals = summary && summary.totals ? summary.totals : {};
+    var apiTotals = summary && summary.totals ? summary.totals : {};
     var allCampaigns = summary && Array.isArray(summary.campaigns) ? summary.campaigns : [];
     var campaigns = allCampaigns;
     var hidePaused = false;
@@ -2176,13 +2186,13 @@
         function dm(a, b) { return Math.abs((Number(a) || 0) - (Number(b) || 0)); }
         function di(a, b) { return Math.abs((Math.floor(Number(a) || 0)) - (Math.floor(Number(b) || 0))); }
         var mismatches = [];
-        if (dm(sum.spend, totals.spend) > tolMoney) mismatches.push('spend');
-        if (dm(sum.revenue, totals.revenue) > tolMoney) mismatches.push('revenue');
-        if (dm(sum.profit, totals.profit) > tolMoney) mismatches.push('profit');
-        if (di(sum.clicks, totals.clicks) > 0) mismatches.push('clicks');
-        if (di(sum.impressions, totals.impressions) > 0) mismatches.push('impressions');
+        if (dm(sum.spend, apiTotals.spend) > tolMoney) mismatches.push('spend');
+        if (dm(sum.revenue, apiTotals.revenue) > tolMoney) mismatches.push('revenue');
+        if (dm(sum.profit, apiTotals.profit) > tolMoney) mismatches.push('profit');
+        if (di(sum.clicks, apiTotals.clicks) > 0) mismatches.push('clicks');
+        if (di(sum.impressions, apiTotals.impressions) > 0) mismatches.push('impressions');
         if (mismatches.length) {
-          console.warn('[ads] totals mismatch (api vs sum(campaigns))', { mismatches: mismatches, api: totals, sum: sum });
+          console.warn('[ads] totals mismatch (api vs sum(campaigns))', { mismatches: mismatches, api: apiTotals, sum: sum });
         }
       } catch (_) {}
     })();
@@ -2190,15 +2200,16 @@
     var bodyHtml = '';
 
     // Totals row (render in card footer)
-    var tProfit = totals.profit != null ? Number(totals.profit) : 0;
+    var tableTotals = computeCampaignTotals(campaigns);
+    var tProfit = tableTotals.profit != null ? Number(tableTotals.profit) : 0;
     var totalsRowHtml = gridRow([
       { html: '<strong>Total</strong>' },
-      { html: esc(fmtNum(totals.clicks)), cls: ' text-end' },
-      { html: esc(fmtNum(totals.impressions)), cls: ' text-end' },
-      { html: esc(fmtNum(totals.conversions != null ? totals.conversions : totals.orders)), cls: ' text-end' },
-      { html: esc(fmtMoney(totals.revenue, currency)), cls: ' text-end' },
-      { html: esc(fmtMoney(totals.spend, currency)), cls: ' text-end' },
-      { html: esc(fmtRoas(totals.roas)), cls: ' text-end' },
+      { html: esc(fmtNum(tableTotals.clicks)), cls: ' text-end' },
+      { html: esc(fmtNum(tableTotals.impressions)), cls: ' text-end' },
+      { html: esc(fmtNum(tableTotals.orders)), cls: ' text-end' },
+      { html: esc(fmtMoney(tableTotals.revenue, currency)), cls: ' text-end' },
+      { html: esc(fmtMoney(tableTotals.spend, currency)), cls: ' text-end' },
+      { html: esc(fmtRoas(tableTotals.roas)), cls: ' text-end' },
       { html: esc(fmtMoney(tProfit, currency)), cls: ' text-end ' + profitClass(tProfit) },
     ], false, 'ads-totals-row');
 
