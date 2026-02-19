@@ -180,7 +180,6 @@
     if (LOCKED_GLYPH_THEME_KEYS.indexOf(k) >= 0) return false;
     var name = glyphNameFromThemeKey(k);
     if (LEGACY_THEME_ICON_KEYS[name]) return false;
-    if (name.indexOf('payment-method-') === 0) return false;
     return true;
   });
   var KEYS = Object.keys(DEFAULTS).filter(function (k) {

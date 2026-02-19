@@ -2294,26 +2294,6 @@
       else msg.className = 'form-hint ms-2 text-secondary';
     }
 
-    function escapeHtml(v) {
-      if (v == null) return '';
-      var s = String(v);
-      return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-    }
-
-    if (rows.children.length === 0) {
-      PAYMENT_METHODS_WITH_ASSETS.forEach(function (pm) {
-        var col = document.createElement('div');
-        col.className = 'col-12 col-lg-6';
-        col.innerHTML =
-          '<label class="form-label d-flex align-items-center gap-2" for="settings-payment-' + escapeHtml(pm.key) + '">' +
-          '<img src="' + escapeHtml(pm.defaultSrc) + '" alt="" width="24" height="16" class="rounded" style="object-fit:contain" />' +
-          '<span>' + escapeHtml(pm.label) + '</span>' +
-          '</label>' +
-          '<input type="url" class="form-control" id="settings-payment-' + escapeHtml(pm.key) + '" placeholder="https://… (leave empty for default)" data-payment-key="' + escapeHtml(pm.key) + '" />';
-        rows.appendChild(col);
-      });
-    }
-
     form.addEventListener('submit', function (e) {
       e.preventDefault();
       var patch = {};
