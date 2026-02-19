@@ -338,6 +338,32 @@
         var startX = 0;
         var startW = getBounds(wrap).def;
         var resizing = false;
+        var didDrag = false;
+
+        function ensureResizeClickGuard() {
+          try {
+            var root = document.documentElement;
+            if (!root || root.getAttribute('data-kexo-sticky-resize-click-guard') === '1') return;
+            root.setAttribute('data-kexo-sticky-resize-click-guard', '1');
+          } catch (_) {}
+          try {
+            document.addEventListener('click', function (e) {
+              var until = Number(window.__kexoStickyResizeSuppressClickUntil || 0);
+              if (!Number.isFinite(until) || until <= 0) return;
+              if (Date.now() > until) return;
+              // A resize drag ends with a "click" on the header; eat it so it doesn't trigger sort/reorder.
+              try { e.preventDefault(); } catch (_) {}
+              try { e.stopPropagation(); } catch (_) {}
+              try { if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation(); } catch (_) {}
+              try { window.__kexoStickyResizeSuppressClickUntil = 0; } catch (_) {}
+            }, true);
+          } catch (_) {}
+        }
+
+        function suppressNextClick() {
+          ensureResizeClickGuard();
+          try { window.__kexoStickyResizeSuppressClickUntil = Date.now() + 600; } catch (_) {}
+        }
 
         function stopResize(e) {
           if (!resizing) return;
@@ -348,6 +374,7 @@
           try { if (e && e.pointerId != null) handle.releasePointerCapture(e.pointerId); } catch (_) {}
           markResizeInteraction(wrap);
           saveWidth(wrap, wrapWidth(wrap));
+          if (didDrag) suppressNextClick();
         }
 
         handle.addEventListener('pointerdown', function(e) {
@@ -357,6 +384,7 @@
           e.preventDefault();
           e.stopPropagation();
           resizing = true;
+          didDrag = false;
           startX = e.clientX;
           startW = wrapWidth(wrap);
           wrap.classList.add('is-resizing-first-col');
@@ -368,6 +396,9 @@
           if (!resizing) return;
           e.preventDefault();
           e.stopPropagation();
+          if (!didDrag) {
+            try { didDrag = Math.abs((e.clientX || 0) - (startX || 0)) > 2; } catch (_) { didDrag = true; }
+          }
           var next = startW + (e.clientX - startX);
           applyWidthToGroup(wrap, next);
           markResizeInteraction(wrap);
@@ -376,6 +407,11 @@
         handle.addEventListener('pointerup', stopResize);
         handle.addEventListener('pointercancel', stopResize);
         handle.addEventListener('lostpointercapture', stopResize);
+        handle.addEventListener('click', function (e) {
+          // Prevent header click/sort when user interacts with the resize handle.
+          try { e.preventDefault(); } catch (_) {}
+          try { e.stopPropagation(); } catch (_) {}
+        }, true);
       }
 
       var STICKY_DEBOUNCE_MS = 60;
