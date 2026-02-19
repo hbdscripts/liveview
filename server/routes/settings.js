@@ -390,7 +390,7 @@ function defaultTablesUiConfigV1() {
             zone: 'dashboard-trending-up',
             order: 3,
             inGrid: true,
-            rows: { default: 5, options: [5, 10] },
+            rows: { default: 5, options: [5] },
             sticky: { minWidth: null, maxWidth: null },
           },
           {
@@ -400,7 +400,7 @@ function defaultTablesUiConfigV1() {
             zone: 'dashboard-trending-down',
             order: 4,
             inGrid: true,
-            rows: { default: 5, options: [5, 10] },
+            rows: { default: 5, options: [5] },
             sticky: { minWidth: null, maxWidth: null },
           },
         ],
@@ -900,8 +900,8 @@ function normalizeTablesUiConfigV1(raw) {
         const nextOptions = normalizeRowOptions(rawTable.rows && rawTable.rows.options, defaultRowOptions);
         const nextDefault = pickDefaultRows(rawTable.rows && rawTable.rows.default, nextOptions, table.rows && table.rows.default);
         table.rows = { default: nextDefault, options: nextOptions };
-        // Guardrail: Dashboard Top Products/Countries are always 5 rows per page (pagination still uses up to 10 server rows).
-        if (id === 'dash-top-products' || id === 'dash-top-countries') {
+        // Guardrail: Dashboard Top Products, Countries, Trending Up/Down are always 5 rows, no pagination.
+        if (id === 'dash-top-products' || id === 'dash-top-countries' || id === 'dash-trending-up' || id === 'dash-trending-down') {
           table.rows = { default: 5, options: [5] };
         }
 

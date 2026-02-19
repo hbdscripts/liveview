@@ -14,8 +14,8 @@ const reportCache = require('../reportCache');
 const productMetaCache = require('../shopifyProductMetaCache');
 const { warnOnReject } = require('../shared/warnReject');
 
-const DASHBOARD_TOP_TABLE_MAX_ROWS = 10;
-const DASHBOARD_TRENDING_MAX_ROWS = 10;
+const DASHBOARD_TOP_TABLE_MAX_ROWS = 5;
+const DASHBOARD_TRENDING_MAX_ROWS = 5;
 
 // Best-effort truth warmup. Must never block the request path.
 let _truthNudgeLastAt = 0;

@@ -2486,8 +2486,8 @@
           tables: [
             { id: 'dash-top-products', name: 'Top Products', tableClass: 'dashboard', zone: 'dashboard-top-products', order: 1, inGrid: true, rows: { default: 5, options: [5] }, sticky: { minWidth: null, maxWidth: null } },
             { id: 'dash-top-countries', name: 'Top Countries', tableClass: 'dashboard', zone: 'dashboard-top-countries', order: 2, inGrid: true, rows: { default: 5, options: [5] }, sticky: { minWidth: null, maxWidth: null } },
-            { id: 'dash-trending-up', name: 'Trending Up', tableClass: 'dashboard', zone: 'dashboard-trending-up', order: 3, inGrid: true, rows: { default: 5, options: [5, 10] }, sticky: { minWidth: null, maxWidth: null } },
-            { id: 'dash-trending-down', name: 'Trending Down', tableClass: 'dashboard', zone: 'dashboard-trending-down', order: 4, inGrid: true, rows: { default: 5, options: [5, 10] }, sticky: { minWidth: null, maxWidth: null } },
+            { id: 'dash-trending-up', name: 'Trending Up', tableClass: 'dashboard', zone: 'dashboard-trending-up', order: 3, inGrid: true, rows: { default: 5, options: [5] }, sticky: { minWidth: null, maxWidth: null } },
+            { id: 'dash-trending-down', name: 'Trending Down', tableClass: 'dashboard', zone: 'dashboard-trending-down', order: 4, inGrid: true, rows: { default: 5, options: [5] }, sticky: { minWidth: null, maxWidth: null } },
           ],
         },
         {
