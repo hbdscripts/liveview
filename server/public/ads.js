@@ -2154,13 +2154,13 @@
 
       bodyHtml += gridRow([
         { html: '<span class="ads-campaign-name">' + esc(cName) + '</span>' },
-        { html: esc(fmtNum(c.clicks)), cls: ' text-end' },
-        { html: esc(fmtNum(c.impressions)), cls: ' text-end' },
-        { html: esc(fmtNum(c.orders)), cls: ' text-end' },
-        { html: esc(fmtMoney(c.revenue, currency)), cls: ' text-end' },
-        { html: esc(fmtMoney(c.spend, currency)), cls: ' text-end' },
-        { html: esc(fmtRoas(c.roas)), cls: ' text-end' },
-        { html: esc(fmtMoney(pr, currency)), cls: ' text-end ' + profitClass(pr) },
+        { html: esc(fmtNum(c.clicks)), cls: ' text-center' },
+        { html: esc(fmtNum(c.impressions)), cls: ' text-center' },
+        { html: esc(fmtNum(c.orders)), cls: ' text-center' },
+        { html: esc(fmtMoney(c.revenue, currency)), cls: ' text-center' },
+        { html: esc(fmtMoney(c.spend, currency)), cls: ' text-center' },
+        { html: esc(fmtRoas(c.roas)), cls: ' text-center' },
+        { html: esc(fmtMoney(pr, currency)), cls: ' text-center ' + profitClass(pr) },
       ], false, rowClass, ' data-campaign-id="' + esc(cId) + '" data-campaign-name="' + esc(cName) + '"');
     }
 
@@ -2170,13 +2170,13 @@
       var tProfit = tableTotals.profit != null ? Number(tableTotals.profit) : 0;
       bodyHtml += gridRow([
         { html: '<strong>Total</strong>' },
-        { html: esc(fmtNum(tableTotals.clicks)), cls: ' text-end' },
-        { html: esc(fmtNum(tableTotals.impressions)), cls: ' text-end' },
-        { html: esc(fmtNum(tableTotals.orders)), cls: ' text-end' },
-        { html: esc(fmtMoney(tableTotals.revenue, currency)), cls: ' text-end' },
-        { html: esc(fmtMoney(tableTotals.spend, currency)), cls: ' text-end' },
-        { html: esc(fmtRoas(tableTotals.roas)), cls: ' text-end' },
-        { html: esc(fmtMoney(tProfit, currency)), cls: ' text-end ' + profitClass(tProfit) },
+        { html: esc(fmtNum(tableTotals.clicks)), cls: ' text-center' },
+        { html: esc(fmtNum(tableTotals.impressions)), cls: ' text-center' },
+        { html: esc(fmtNum(tableTotals.orders)), cls: ' text-center' },
+        { html: esc(fmtMoney(tableTotals.revenue, currency)), cls: ' text-center' },
+        { html: esc(fmtMoney(tableTotals.spend, currency)), cls: ' text-center' },
+        { html: esc(fmtRoas(tableTotals.roas)), cls: ' text-center' },
+        { html: esc(fmtMoney(tProfit, currency)), cls: ' text-center ' + profitClass(tProfit) },
       ], false, 'ads-totals-row');
     }
 
