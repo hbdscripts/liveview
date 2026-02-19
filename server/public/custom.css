@@ -3418,6 +3418,16 @@ html[data-bs-theme="dark"] .report-build-wrap {
   white-space: nowrap;
   max-width: 100%;
 }
+.kexo-ovw-ring-metric {
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.1;
+  color: var(--tblr-body-color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
 .kexo-ovw-ring-sub {
   font-size: 0.7rem;
   line-height: 1.1;

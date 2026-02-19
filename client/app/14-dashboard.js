@@ -5586,6 +5586,7 @@
                 '<div class="kexo-ovw-ring-center">' +
                   (icon ? ('<div class="kexo-ovw-ring-icon" aria-hidden="true">' + icon + '</div>') : '') +
                   '<div class="kexo-ovw-ring-value">' + escapeHtml(labelText) + '</div>' +
+                  '<div class="kexo-ovw-ring-metric">' + escapeHtml(valueText) + '</div>' +
                 '</div>' +
               '</div>' +
               '<div class="kexo-ovw-ring-share">' + escapeHtml(shareText) + '</div>' +

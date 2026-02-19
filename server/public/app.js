@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: b1e0e11ef257291a
+// checksum: f526a9660a56cd48
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -22699,6 +22699,7 @@ const API = '';
                 '<div class="kexo-ovw-ring-center">' +
                   (icon ? ('<div class="kexo-ovw-ring-icon" aria-hidden="true">' + icon + '</div>') : '') +
                   '<div class="kexo-ovw-ring-value">' + escapeHtml(labelText) + '</div>' +
+                  '<div class="kexo-ovw-ring-metric">' + escapeHtml(valueText) + '</div>' +
                 '</div>' +
               '</div>' +
               '<div class="kexo-ovw-ring-share">' + escapeHtml(shareText) + '</div>' +
