@@ -3683,22 +3683,28 @@
           var prodStart = (dashTopProductsPage - 1) * prodPageSize;
           var productsPageRows = products.slice(prodStart, prodStart + prodPageSize);
           var prodTotal = productsPageRows.reduce(function (acc, p) { return acc + (Number(p && p.revenue) || 0); }, 0) || 0;
+          var mainBase = getMainBaseUrl && getMainBaseUrl();
           var prodRows = productsPageRows.map(function (p) {
             var rev = Number(p && p.revenue) || 0;
             var pct = prodTotal > 0 ? (rev / prodTotal) * 100 : 0;
             var crVal = (p && typeof p.cr === 'number' && isFinite(p.cr)) ? p.cr : null;
-            var sessions = (p && typeof p.sessions === 'number' && isFinite(p.sessions)) ? p.sessions : null;
-            var orders = (p && typeof p.orders === 'number' && isFinite(p.orders)) ? p.orders : 0;
             var label = p && p.title ? String(p.title) : 'Unknown';
+            var handle = (p && p.handle) ? String(p.handle).trim().toLowerCase() : '';
+            var productId = (p && p.product_id) ? String(p.product_id).replace(/^gid:\/\/shopify\/Product\//i, '').trim() : '';
+            var productUrl = (mainBase && handle) ? (mainBase + '/products/' + encodeURIComponent(handle)) : '#';
             return {
               label: label,
               thumbUrl: p && p.thumb_url ? String(p.thumb_url) : null,
               valueGbp: rev,
               cr: crVal,
-              pct: pct
+              pct: pct,
+              productHandle: handle || null,
+              productId: productId && /^\d+$/.test(productId) ? productId : null,
+              productTitle: label,
+              productUrl: productUrl
             };
           });
-          renderDashTopList('dash-top-products-body', prodRows, { accentCss: 'background: var(--kexo-accent-1, #4b94e4);' });
+          renderDashTopList('dash-top-products-body', prodRows, { accentCss: 'background: #3eb3ab;' });
         }
 
         var countryBody = el('dash-top-countries-body');
@@ -3727,7 +3733,7 @@
               pct: pct
             };
           });
-          renderDashTopList('dash-top-countries-body', countryRows, { accentCss: 'background: var(--kexo-accent-2, #3eb3ab);' });
+          renderDashTopList('dash-top-countries-body', countryRows, { accentCss: 'background: #3eb3ab;' });
         }
 
         function fmtSignedGbp(v) {
@@ -3752,13 +3758,17 @@
             var pageStart = (page - 1) * pageSize;
             var pageRows = rows.slice(pageStart, pageStart + pageSize);
             var totalAbs = pageRows.reduce(function (acc, p) { return acc + Math.abs(Number(p && p.deltaRevenue) || 0); }, 0) || 0;
+            var mainBaseTr = getMainBaseUrl && getMainBaseUrl();
             var listRows = pageRows.map(function (p) {
               var d = (p && typeof p.deltaRevenue === 'number' && isFinite(p.deltaRevenue)) ? p.deltaRevenue : 0;
               var absD = Math.abs(d);
               var pct = totalAbs > 0 ? (absD / totalAbs) * 100 : 0;
               var crVal = (p && typeof p.cr === 'number' && isFinite(p.cr)) ? p.cr : null;
               var label = p && p.title ? String(p.title) : 'Unknown';
-              var valueDisplay = (d >= 0 ? '+' : '') + fmtSignedGbp(d);
+              var handle = (p && p.handle) ? String(p.handle).trim().toLowerCase() : '';
+              var productId = (p && p.product_id) ? String(p.product_id).replace(/^gid:\/\/shopify\/Product\//i, '').trim() : '';
+              var productUrl = (mainBaseTr && handle) ? (mainBaseTr + '/products/' + encodeURIComponent(handle)) : '#';
+              var valueDisplay = fmtSignedGbp(d);
               var valueClass = d < 0 ? 'text-red' : 'text-green';
               return {
                 label: label,
@@ -3767,10 +3777,14 @@
                 valueClass: valueClass,
                 valueGbp: d,
                 cr: crVal,
-                pct: pct
+                pct: pct,
+                productHandle: handle || null,
+                productId: productId && /^\d+$/.test(productId) ? productId : null,
+                productTitle: label,
+                productUrl: productUrl
               };
             });
-            var accentCss = isUp ? 'background: var(--kexo-accent-1, #4b94e4);' : 'background: var(--kexo-accent-2, #3eb3ab);';
+            var accentCss = isUp ? 'background: #3eb3ab;' : 'background: #ef4444;';
             renderDashTopList(tableId + '-body', listRows, { accentCss: accentCss });
             return;
           }
@@ -4335,6 +4349,14 @@
           title: 'Preparing dashboard overview',
           initialStep: 'Loading dashboard data',
         });
+        var buildFinishTimeout = null;
+        if (!silent && typeof build.finish === 'function') {
+          buildFinishTimeout = setTimeout(function() {
+            buildFinishTimeout = null;
+            dashLoading = false;
+            try { build.finish(); } catch (_) {}
+          }, 35000);
+        }
         var url = API + '/api/dashboard-series?range=' + encodeURIComponent(rangeKey) + (force ? ('&force=1&_=' + Date.now()) : '');
         var forceMini = !!force;
         if (silent && forceMini && String(reason || '').trim().toLowerCase() !== 'new-sale') {
@@ -4373,7 +4395,11 @@
             console.error('[dashboard] fetch error:', err);
           })
           .finally(function() {
-            build.finish();
+            if (buildFinishTimeout != null) {
+              try { clearTimeout(buildFinishTimeout); } catch (_) {}
+              buildFinishTimeout = null;
+            }
+            try { build.finish(); } catch (_) {}
           });
       }
 
@@ -4643,7 +4669,18 @@
           var valueClass = (r.valueClass != null && String(r.valueClass)) ? (' ' + String(r.valueClass).trim()) : '';
           var iconHtml = r.iconHtml != null ? String(r.iconHtml) : '';
           if (r.thumbUrl) {
-            iconHtml = '<img src="' + escapeHtml(String(r.thumbUrl)) + '" alt="" width="40" height="40" class="kexo-dash-top-thumb" loading="lazy">';
+            var thumbImg = '<img src="' + escapeHtml(String(r.thumbUrl)) + '" alt="" width="40" height="40" class="kexo-dash-top-thumb" loading="lazy">';
+            var canOpen = (r.productHandle && String(r.productHandle)) || (r.productId && String(r.productId));
+            var productUrl = (r.productUrl != null && String(r.productUrl) !== '' && String(r.productUrl) !== '#') ? String(r.productUrl) : '#';
+            if (canOpen) {
+              iconHtml = '<a class="kexo-product-link kexo-dash-top-thumb-link js-product-modal-link" href="' + escapeHtml(productUrl) + '" target="_blank" rel="noopener"' +
+                (r.productHandle ? (' data-product-handle="' + escapeHtml(String(r.productHandle)) + '"') : '') +
+                (r.productId ? (' data-product-id="' + escapeHtml(String(r.productId)) + '"') : '') +
+                (r.productTitle != null ? (' data-product-title="' + escapeHtml(String(r.productTitle)) + '"') : '') +
+                '>' + thumbImg + '</a>';
+            } else {
+              iconHtml = thumbImg;
+            }
           }
           if (!iconHtml) iconHtml = '<span class="kexo-dash-top-row-icon-placeholder" aria-hidden="true"></span>';
           html += '<li class="kexo-dash-top-row" title="' + escapeHtml(label) + '">' +
@@ -4823,7 +4860,6 @@
         var options = (opts && typeof opts === 'object') ? opts : {};
         var accentCss = options.accentCss ? String(options.accentCss) : '';
         var ringStrokeCss = options.ringStroke ? String(options.ringStroke) : 'var(--kexo-accent-1, #4b94e4)';
-        var ringOffsetPx = Number.isFinite(Number(options.ringOffsetPx)) ? Number(options.ringOffsetPx) : -10;
         var placeholder = !!(topRow && topRow.placeholder === true);
         var pct = topRow.pct != null ? Number(topRow.pct) : 0;
         if (!Number.isFinite(pct)) pct = 0;
@@ -4833,8 +4869,9 @@
         if (!Number.isFinite(value)) value = 0;
         var icon = topRow.iconHtml != null ? String(topRow.iconHtml) : '';
 
-        var size = 99; // +30% from 76
-        var r = 36;    // +30% from 28
+        var size = 180;
+        var r = 72;
+        var strokeW = 12;
         var cx = Math.round(size / 2);
         var cy = Math.round(size / 2);
         var circ = Math.round(2 * Math.PI * r * 1000) / 1000;
@@ -4846,32 +4883,29 @@
         var valText = placeholder ? '\u2014' : fmtGbp2(value);
         var pctText = placeholder ? '\u2014' : (String(Math.round(pct)) + '%');
 
-        var iconSize = 20;
         var topHtml =
-          '<div class="d-flex align-items-center gap-3" style="gap:0.75rem">' +
-            '<div class="position-relative flex-shrink-0" style="width:' + size + 'px;height:' + size + 'px;margin-left:' + escapeHtml(String(ringOffsetPx)) + 'px" title="' + escapeHtml(tip) + '">' +
+          '<div class="kexo-widget-radial-centered d-flex flex-column align-items-center text-center">' +
+            '<div class="position-relative flex-shrink-0 kexo-widget-radial-wrap" style="width:' + size + 'px;height:' + size + 'px" title="' + escapeHtml(tip) + '">' +
               '<svg width="' + size + '" height="' + size + '" viewBox="0 0 ' + size + ' ' + size + '" aria-hidden="true">' +
-                '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="rgba(15,23,42,0.10)" stroke-width="8"></circle>' +
-                '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="' + escapeHtml(radialStroke) + '" stroke-width="8" stroke-linecap="round"' +
+                '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="rgba(15,23,42,0.10)" stroke-width="' + strokeW + '"></circle>' +
+                '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="' + escapeHtml(radialStroke) + '" stroke-width="' + strokeW + '" stroke-linecap="round"' +
                   ' style="transform: rotate(-90deg); transform-origin: ' + cx + 'px ' + cy + 'px; transition: stroke-dashoffset 520ms cubic-bezier(.2,.9,.2,1);"' +
                   ' stroke-dasharray="' + escapeHtml(String(circ)) + '" stroke-dashoffset="' + escapeHtml(String(circ)) + '"' +
                   ' data-kexo-radial-pct="' + escapeHtml(String(placeholder ? 0 : pct)) + '" data-kexo-radial-circ="' + escapeHtml(String(circ)) + '"' +
                 '></circle>' +
               '</svg>' +
-              '<div class="position-absolute top-50 start-50 translate-middle text-center" style="line-height:1.05">' +
-                '<div class="fw-bold" style="font-size:0.95rem">' + escapeHtml(pctText) + '</div>' +
+              '<div class="position-absolute top-50 start-50 translate-middle text-center kexo-widget-radial-inner">' +
+                (icon ? '<div class="kexo-widget-radial-icon mb-1">' + icon + '</div>' : '') +
+                '<div class="fw-bold kexo-widget-radial-pct">' + escapeHtml(pctText) + '</div>' +
+                '<div class="text-muted small kexo-widget-radial-revenue">' + escapeHtml(valText) + '</div>' +
               '</div>' +
             '</div>' +
-            '<div class="min-w-0 flex-fill text-start">' +
-              '<div class="d-flex align-items-center gap-2 fw-semibold" title="' + escapeHtml(label) + '">' +
-                '<span class="text-truncate" style="max-width: 100%;">' + escapeHtml(label || '—') + '</span>' +
-              '</div>' +
-              '<div class="text-muted" style="font-size:0.8125rem">' + escapeHtml(valText) + '</div>' +
-            '</div>' +
+            '<div class="fw-semibold text-truncate mt-2 kexo-widget-radial-label" style="max-width:100%" title="' + escapeHtml(label) + '">' + escapeHtml(label || '—') + '</div>' +
           '</div>';
 
-        host.innerHTML = topHtml + '<div class="mt-2" id="' + escapeHtml(mountId + '-list') + '"></div>';
-        renderWidgetList(mountId + '-list', barRows, accentCss);
+        host.innerHTML = topHtml + '<div class="mt-3" id="' + escapeHtml(mountId + '-list') + '"></div>';
+        var listRows = Array.isArray(barRows) ? barRows.slice(1, 4) : [];
+        renderWidgetList(mountId + '-list', listRows, accentCss);
         animateWidgetRadials(host);
         var card = host.closest('.kexo-widget-card[data-kexo-widget]');
         if (card && Array.isArray(barRows)) {
@@ -5056,8 +5090,8 @@
                 if (!force && dashWidgetLastRenderSig[mountId] && dashWidgetLastRenderSig[mountId] === sig) return;
                 dashWidgetLastRenderSig[mountId] = sig;
                 renderWidgetRadialAndVbars(mountId, topRow, barRows, {
-                  accentCss: 'background: var(--kexo-accent-1, #4b94e4);',
-                  ringStroke: 'var(--kexo-accent-1, #4b94e4)'
+                  accentCss: 'background: #353d4a;',
+                  ringStroke: '#353d4a'
                 });
               }
 
@@ -5069,88 +5103,63 @@
             })
         );
 
-        // Devices / Browsers
+        function browserIconHtmlForKey(rawKey, label) {
+          var k = (rawKey == null ? '' : String(rawKey)).trim().toLowerCase();
+          var titleAttr = label ? (' title="' + escapeHtml(label) + '"') : '';
+          if (!k) return '<i class="fa-light fa-globe" aria-hidden="true"' + titleAttr + '></i>';
+          if (k.indexOf('chrome') >= 0 && k.indexOf('chromium') < 0) return '<i class="fa-brands fa-chrome" data-icon-key="type-browser-chrome" aria-hidden="true"' + titleAttr + '></i>';
+          if (k.indexOf('safari') >= 0 && k.indexOf('chrome') < 0) return '<i class="fa-brands fa-safari" data-icon-key="type-browser-safari" aria-hidden="true"' + titleAttr + '></i>';
+          if (k.indexOf('edge') >= 0) return '<i class="fa-brands fa-edge" data-icon-key="type-browser-edge" aria-hidden="true"' + titleAttr + '></i>';
+          if (k.indexOf('firefox') >= 0) return '<i class="fa-brands fa-firefox-browser" data-icon-key="type-browser-firefox" aria-hidden="true"' + titleAttr + '></i>';
+          if (k.indexOf('opera') >= 0) return '<i class="fa-brands fa-opera" data-icon-key="type-browser-opera" aria-hidden="true"' + titleAttr + '></i>';
+          return '<i class="fa-light fa-globe" data-icon-key="type-browser-other" aria-hidden="true"' + titleAttr + '></i>';
+        }
+
+        // Devices (separate card)
         tasks.push(
-          fetchWidgetJson((prefs.devicesDim === 'browsers' ? 'browsers' : 'devices') + '|' + rk, (prefs.devicesDim === 'browsers') ? brUrl : devUrl, force, 25000)
+          fetchWidgetJson('devices|' + rk, devUrl, force, 25000)
             .then(function (data) {
               var mountId = 'dash-widget-devices-mount';
               if (!data) { setWidgetEmpty(mountId, 'No data'); return; }
-              var ddLabel = document.querySelector('[data-kexo-widget-dropdown-label="devices"]');
-              if (ddLabel) ddLabel.textContent = (prefs.devicesDim === 'browsers') ? 'Browsers' : 'Devices';
               var devMenu = document.getElementById('dash-widget-devices-menu');
               if (devMenu) {
-                devMenu.innerHTML =
-                  '<button type="button" class="kexo-widget-menu-item" role="menuitem" data-kexo-widget-action="refresh">Refresh</button>' +
-                  '<button type="button" class="kexo-widget-menu-item" role="menuitem" data-kexo-widget-dimension="devices" data-kexo-widget-dimension-value="devices">Devices</button>' +
-                  '<button type="button" class="kexo-widget-menu-item" role="menuitem" data-kexo-widget-dimension="devices" data-kexo-widget-dimension-value="browsers">Browsers</button>';
+                devMenu.innerHTML = '<button type="button" class="kexo-widget-menu-item" role="menuitem" data-kexo-widget-action="refresh">Refresh</button>';
               }
-
-              function browserIconHtmlForKey(rawKey, label) {
-                var k = (rawKey == null ? '' : String(rawKey)).trim().toLowerCase();
-                var titleAttr = label ? (' title="' + escapeHtml(label) + '"') : '';
-                if (!k) return '<i class="fa-light fa-globe" aria-hidden="true"' + titleAttr + '></i>';
-                if (k.indexOf('chrome') >= 0 && k.indexOf('chromium') < 0) return '<i class="fa-brands fa-chrome" data-icon-key="type-browser-chrome" aria-hidden="true"' + titleAttr + '></i>';
-                if (k.indexOf('safari') >= 0 && k.indexOf('chrome') < 0) return '<i class="fa-brands fa-safari" data-icon-key="type-browser-safari" aria-hidden="true"' + titleAttr + '></i>';
-                if (k.indexOf('edge') >= 0) return '<i class="fa-brands fa-edge" data-icon-key="type-browser-edge" aria-hidden="true"' + titleAttr + '></i>';
-                if (k.indexOf('firefox') >= 0) return '<i class="fa-brands fa-firefox-browser" data-icon-key="type-browser-firefox" aria-hidden="true"' + titleAttr + '></i>';
-                if (k.indexOf('opera') >= 0) return '<i class="fa-brands fa-opera" data-icon-key="type-browser-opera" aria-hidden="true"' + titleAttr + '></i>';
-                return '<i class="fa-light fa-globe" data-icon-key="type-browser-other" aria-hidden="true"' + titleAttr + '></i>';
-              }
-
-              var rows = [];
-              if (prefs.devicesDim === 'browsers') {
-                var payload = (data && data.ok && data.payload) ? data.payload : data;
-                var list = payload && Array.isArray(payload.rows) ? payload.rows : (Array.isArray(data.rows) ? data.rows : []);
-                rows = list.map(function (r) {
-                  var label = r && (r.ua_browser || r.browser || r.name) ? String(r.ua_browser || r.browser || r.name) : '—';
+              var payload2 = (data && data.ok && data.payload) ? data.payload : data;
+              var list2 = payload2 && payload2.devices && Array.isArray(payload2.devices.rows) ? payload2.devices.rows : (payload2 && Array.isArray(payload2.rows) ? payload2.rows : []);
+              var platformMap = {};
+              list2.forEach(function (r) {
+                var platforms = r && Array.isArray(r.platforms) ? r.platforms : [];
+                if (platforms.length > 0) {
+                  platforms.forEach(function (p) {
+                    var plabel = p && (p.platform || p.device_type) ? String(p.platform || p.device_type) : '—';
+                    plabel = plabel.charAt(0).toUpperCase() + plabel.slice(1).toLowerCase();
+                    if (plabel === 'Unknown' || plabel === 'Other') plabel = p.platform || p.device_type || plabel;
+                    var pval = p && (p.revenue_gbp != null || p.revenue != null) ? Number(p.revenue_gbp != null ? p.revenue_gbp : p.revenue) : 0;
+                    if (!Number.isFinite(pval)) pval = 0;
+                    var psess = p && p.sessions != null ? Number(p.sessions) : 0;
+                    if (!platformMap[plabel]) platformMap[plabel] = { revenue: 0, sessions: 0 };
+                    platformMap[plabel].revenue += pval;
+                    platformMap[plabel].sessions += psess;
+                  });
+                } else {
+                  var label = r && (r.device_type || r.device || r.name) ? String(r.device_type || r.device || r.name) : '—';
                   var value = r && (r.revenue_gbp != null || r.revenue != null) ? Number(r.revenue_gbp != null ? r.revenue_gbp : r.revenue) : 0;
                   if (!Number.isFinite(value)) value = 0;
-                  return { label: label, valueGbp: value, iconHtml: browserIconHtmlForKey(label, label), sessions: r && r.sessions != null ? Number(r.sessions) : 0 };
-                });
-              } else {
-                var payload2 = (data && data.ok && data.payload) ? data.payload : data;
-                var list2 = payload2 && payload2.devices && Array.isArray(payload2.devices.rows) ? payload2.devices.rows : (payload2 && Array.isArray(payload2.rows) ? payload2.rows : []);
-                var platformMap = {};
-                var totalSessions = 0;
-                var totalConversion = 0;
-                list2.forEach(function (r) {
-                  var platforms = r && Array.isArray(r.platforms) ? r.platforms : [];
-                  if (platforms.length > 0) {
-                    platforms.forEach(function (p) {
-                      var plabel = p && (p.platform || p.device_type) ? String(p.platform || p.device_type) : '—';
-                      plabel = plabel.charAt(0).toUpperCase() + plabel.slice(1).toLowerCase();
-                      if (plabel === 'Unknown' || plabel === 'Other') plabel = p.platform || p.device_type || plabel;
-                      var pval = p && (p.revenue_gbp != null || p.revenue != null) ? Number(p.revenue_gbp != null ? p.revenue_gbp : p.revenue) : 0;
-                      if (!Number.isFinite(pval)) pval = 0;
-                      var psess = p && p.sessions != null ? Number(p.sessions) : 0;
-                      if (!platformMap[plabel]) platformMap[plabel] = { revenue: 0, sessions: 0 };
-                      platformMap[plabel].revenue += pval;
-                      platformMap[plabel].sessions += psess;
-                    });
-                  } else {
-                    var label = r && (r.device_type || r.device || r.name) ? String(r.device_type || r.device || r.name) : '—';
-                    var value = r && (r.revenue_gbp != null || r.revenue != null) ? Number(r.revenue_gbp != null ? r.revenue_gbp : r.revenue) : 0;
-                    if (!Number.isFinite(value)) value = 0;
-                    var sess = r && r.sessions != null ? Number(r.sessions) : 0;
-                    if (!platformMap[label]) platformMap[label] = { revenue: 0, sessions: 0 };
-                    platformMap[label].revenue += value;
-                    platformMap[label].sessions += sess;
-                  }
-                  totalSessions += (r && r.sessions != null ? Number(r.sessions) : 0) || 0;
-                  var cv = r && r.conversion_pct != null ? Number(r.conversion_pct) : null;
-                  if (cv != null && Number.isFinite(cv)) totalConversion = (totalConversion + cv) / (totalConversion === 0 ? 1 : 2);
-                });
-                var platformKeys = Object.keys(platformMap).sort(function (a, b) { return (platformMap[b].revenue || 0) - (platformMap[a].revenue || 0); });
-                rows = platformKeys.map(function (plabel) {
-                  var p = platformMap[plabel];
-                  var value = p.revenue || 0;
-                  var k = plabel.toLowerCase();
-                  var iconKey = (k.indexOf('android') >= 0) ? 'type-platform-android' : (k.indexOf('ios') >= 0 || k.indexOf('mac') >= 0) ? 'type-platform-ios' : (k.indexOf('windows') >= 0) ? 'type-platform-windows' : (k.indexOf('linux') >= 0) ? 'type-platform-linux' : 'type-device-desktop';
-                  var icon = (k.indexOf('android') >= 0) ? 'fa-brands fa-android' : (k.indexOf('ios') >= 0 || k.indexOf('mac') >= 0) ? 'fa-brands fa-apple' : (k.indexOf('windows') >= 0) ? 'fa-brands fa-windows' : (k.indexOf('linux') >= 0) ? 'fa-brands fa-linux' : 'fa-light fa-desktop';
-                  return { label: plabel, valueGbp: value, iconHtml: '<i class="fa-light ' + escapeHtml(icon) + '" data-icon-key="' + escapeHtml(iconKey) + '" aria-hidden="true"></i>', sessions: p.sessions };
-                });
-                totalSessions = platformKeys.reduce(function (acc, k) { return acc + (platformMap[k].sessions || 0); }, 0);
-              }
+                  var sess = r && r.sessions != null ? Number(r.sessions) : 0;
+                  if (!platformMap[label]) platformMap[label] = { revenue: 0, sessions: 0 };
+                  platformMap[label].revenue += value;
+                  platformMap[label].sessions += sess;
+                }
+              });
+              var platformKeys = Object.keys(platformMap).sort(function (a, b) { return (platformMap[b].revenue || 0) - (platformMap[a].revenue || 0); });
+              var rows = platformKeys.map(function (plabel) {
+                var p = platformMap[plabel];
+                var value = p.revenue || 0;
+                var k = plabel.toLowerCase();
+                var icon = (k.indexOf('android') >= 0) ? 'fa-brands fa-android' : (k.indexOf('ios') >= 0 || k.indexOf('mac') >= 0) ? 'fa-brands fa-apple' : (k.indexOf('windows') >= 0) ? 'fa-brands fa-windows' : (k.indexOf('linux') >= 0) ? 'fa-brands fa-linux' : 'fa-light fa-desktop';
+                return { label: plabel, valueGbp: value, iconHtml: '<i class="fa-light ' + escapeHtml(icon) + '" data-icon-key="type-platform-' + escapeHtml(k) + '" aria-hidden="true"></i>', sessions: p.sessions };
+              });
               if (kpiSaysNoSales) { rows = rows.map(function (r) { return Object.assign({}, r || {}, { valueGbp: 0 }); }); }
               var currentTop = withSharePct(rows, WIDGET_TOP_N);
               var hasCurrent = currentTop.some(function (r) { return r && Number(r.valueGbp || 0) > 0; });
@@ -5161,37 +5170,23 @@
                 var barRows = mergeCurrentWithPlaceholders(currentTop, placeholders, WIDGET_TOP_N);
                 var topRow = hasCurrent ? (currentTop[0] || null) : (placeholders[0] || barRows[0] || null);
                 if (topRow && !hasCurrent) topRow.placeholder = true;
-                var sig = widgetSig({ rk: rk, dim: prefs.devicesDim, current: currentTop, placeholders: placeholders });
+                var sig = widgetSig({ rk: rk, dim: 'devices', current: currentTop, placeholders: placeholders });
                 if (!force && dashWidgetLastRenderSig[mountId] && dashWidgetLastRenderSig[mountId] === sig) return;
                 dashWidgetLastRenderSig[mountId] = sig;
                 var devSessions = rows.reduce(function (acc, r) { return acc + (Number(r && r.sessions) || 0); }, 0);
-                var devConv = (prefs.devicesDim === 'browsers' || !list2 || !list2.length) ? 0 : (list2[0] && list2[0].conversion_pct != null ? Number(list2[0].conversion_pct) : 0);
+                var devConv = !list2 || !list2.length ? 0 : (list2[0] && list2[0].conversion_pct != null ? Number(list2[0].conversion_pct) : 0);
                 renderWidgetRadialAndVbars(mountId, topRow, barRows, {
-                  accentCss: 'background: var(--kexo-accent-2, #3eb3ab);',
-                  ringStroke: 'var(--kexo-accent-2, #3eb3ab)',
+                  accentCss: 'background: #353d4a;',
+                  ringStroke: '#353d4a',
                   sessions: devSessions,
                   conversionPct: devConv
                 });
               }
 
               if (!needsFallback) return renderWithFallback([]);
-              var yUrl = (prefs.devicesDim === 'browsers')
-                ? (API + '/api/browsers/table?range=' + encodeURIComponent(fallbackRangeKey) + (force ? ('&force=1&_=' + Date.now()) : ''))
-                : (API + '/api/devices/report?range=' + encodeURIComponent(fallbackRangeKey) + (force ? ('&force=1&_=' + Date.now()) : ''));
-              var yKey = (prefs.devicesDim === 'browsers' ? 'browsers' : 'devices') + '|' + fallbackRangeKey;
-              return fetchWidgetJson(yKey, yUrl, force, 25000).then(function (yData) {
+              var yUrl = API + '/api/devices/report?range=' + encodeURIComponent(fallbackRangeKey) + (force ? ('&force=1&_=' + Date.now()) : '');
+              return fetchWidgetJson('devices|' + fallbackRangeKey, yUrl, force, 25000).then(function (yData) {
                 if (!yData) return renderWithFallback([]);
-                if (prefs.devicesDim === 'browsers') {
-                  var yPayload = (yData && yData.ok && yData.payload) ? yData.payload : yData;
-                  var yList = yPayload && Array.isArray(yPayload.rows) ? yPayload.rows : (Array.isArray(yData.rows) ? yData.rows : []);
-                  var yRows = yList.map(function (r) {
-                    var label = r && (r.ua_browser || r.browser || r.name) ? String(r.ua_browser || r.browser || r.name) : '—';
-                    var value = r && (r.revenue_gbp != null || r.revenue != null) ? Number(r.revenue_gbp != null ? r.revenue_gbp : r.revenue) : 0;
-                    if (!Number.isFinite(value)) value = 0;
-                    return { label: label, valueGbp: value, iconHtml: browserIconHtmlForKey(label, label) };
-                  });
-                  return renderWithFallback(yRows);
-                }
                 var yPayload2 = (yData && yData.ok && yData.payload) ? yData.payload : yData;
                 var yList2 = yPayload2 && yPayload2.devices && Array.isArray(yPayload2.devices.rows) ? yPayload2.devices.rows : (yPayload2 && Array.isArray(yPayload2.rows) ? yPayload2.rows : []);
                 var yPlatformMap = {};
@@ -5220,6 +5215,60 @@
                   return { label: plabel, valueGbp: yPlatformMap[plabel] || 0, iconHtml: '<i class="fa-light ' + escapeHtml(icon) + '" aria-hidden="true"></i>' };
                 });
                 return renderWithFallback(yRows2);
+              });
+            })
+        );
+
+        // Browsers (separate card)
+        tasks.push(
+          fetchWidgetJson('browsers|' + rk, brUrl, force, 25000)
+            .then(function (data) {
+              var mountId = 'dash-widget-browsers-mount';
+              if (!data) { setWidgetEmpty(mountId, 'No data'); return; }
+              var brMenu = document.getElementById('dash-widget-browsers-menu');
+              if (brMenu) {
+                brMenu.innerHTML = '<button type="button" class="kexo-widget-menu-item" role="menuitem" data-kexo-widget-action="refresh">Refresh</button>';
+              }
+              var payload = (data && data.ok && data.payload) ? data.payload : data;
+              var list = payload && Array.isArray(payload.rows) ? payload.rows : (Array.isArray(data.rows) ? data.rows : []);
+              var rows = list.map(function (r) {
+                var label = r && (r.ua_browser || r.browser || r.name) ? String(r.ua_browser || r.browser || r.name) : '—';
+                var value = r && (r.revenue_gbp != null || r.revenue != null) ? Number(r.revenue_gbp != null ? r.revenue_gbp : r.revenue) : 0;
+                if (!Number.isFinite(value)) value = 0;
+                return { label: label, valueGbp: value, iconHtml: browserIconHtmlForKey(label, label), sessions: r && r.sessions != null ? Number(r.sessions) : 0 };
+              });
+              if (kpiSaysNoSales) { rows = rows.map(function (r) { return Object.assign({}, r || {}, { valueGbp: 0 }); }); }
+              var currentTop = withSharePct(rows, WIDGET_TOP_N);
+              var hasCurrent = currentTop.some(function (r) { return r && Number(r.valueGbp || 0) > 0; });
+              var needsFallback = !!fallbackRangeKey && (!hasCurrent || currentTop.length < WIDGET_TOP_N);
+
+              function renderWithFallback(yRows) {
+                var placeholders = makePlaceholderRowsFromYesterday(yRows, WIDGET_TOP_N);
+                var barRows = mergeCurrentWithPlaceholders(currentTop, placeholders, WIDGET_TOP_N);
+                var topRow = hasCurrent ? (currentTop[0] || null) : (placeholders[0] || barRows[0] || null);
+                if (topRow && !hasCurrent) topRow.placeholder = true;
+                var sig = widgetSig({ rk: rk, dim: 'browsers', current: currentTop, placeholders: placeholders });
+                if (!force && dashWidgetLastRenderSig[mountId] && dashWidgetLastRenderSig[mountId] === sig) return;
+                dashWidgetLastRenderSig[mountId] = sig;
+                renderWidgetRadialAndVbars(mountId, topRow, barRows, {
+                  accentCss: 'background: #353d4a;',
+                  ringStroke: '#353d4a'
+                });
+              }
+
+              if (!needsFallback) return renderWithFallback([]);
+              var yUrl = API + '/api/browsers/table?range=' + encodeURIComponent(fallbackRangeKey) + (force ? ('&force=1&_=' + Date.now()) : '');
+              return fetchWidgetJson('browsers|' + fallbackRangeKey, yUrl, force, 25000).then(function (yData) {
+                if (!yData) return renderWithFallback([]);
+                var yPayload = (yData && yData.ok && yData.payload) ? yData.payload : yData;
+                var yList = yPayload && Array.isArray(yPayload.rows) ? yPayload.rows : (Array.isArray(yData.rows) ? yData.rows : []);
+                var yRows = yList.map(function (r) {
+                  var label = r && (r.ua_browser || r.browser || r.name) ? String(r.ua_browser || r.browser || r.name) : '—';
+                  var value = r && (r.revenue_gbp != null || r.revenue != null) ? Number(r.revenue_gbp != null ? r.revenue_gbp : r.revenue) : 0;
+                  if (!Number.isFinite(value)) value = 0;
+                  return { label: label, valueGbp: value, iconHtml: browserIconHtmlForKey(label, label) };
+                });
+                return renderWithFallback(yRows);
               });
             })
         );
@@ -5264,8 +5313,8 @@
                 if (!force && dashWidgetLastRenderSig[mountId] && dashWidgetLastRenderSig[mountId] === sig) return;
                 dashWidgetLastRenderSig[mountId] = sig;
                 renderWidgetRadialAndVbars(mountId, topRow, barRows, {
-                  accentCss: 'background: var(--kexo-accent-3, #f59e34);',
-                  ringStroke: 'var(--kexo-accent-3, #f59e34)'
+                  accentCss: 'background: #353d4a;',
+                  ringStroke: '#353d4a'
                 });
               }
 
@@ -5334,8 +5383,8 @@
                 if (!force && dashWidgetLastRenderSig[mountId] && dashWidgetLastRenderSig[mountId] === sig) return;
                 dashWidgetLastRenderSig[mountId] = sig;
                 renderWidgetRadialAndVbars(mountId, topRow, barRows, {
-                  accentCss: 'background: var(--kexo-accent-5, #6681e8);',
-                  ringStroke: 'var(--kexo-accent-5, #6681e8)'
+                  accentCss: 'background: #353d4a;',
+                  ringStroke: '#353d4a'
                 });
               }
 
@@ -5396,8 +5445,8 @@
                 if (!force && dashWidgetLastRenderSig[mountId] && dashWidgetLastRenderSig[mountId] === sig) return;
                 dashWidgetLastRenderSig[mountId] = sig;
                 renderWidgetRadialAndVbars(mountId, topRow, barRows, {
-                  accentCss: 'background: var(--kexo-accent-4, #e4644b);',
-                  ringStroke: 'var(--kexo-accent-4, #e4644b)'
+                  accentCss: 'background: #e4644b;',
+                  ringStroke: '#e4644b'
                 });
               }
 
@@ -5424,7 +5473,8 @@
         return Promise.all(tasks.map(function (p) {
           return Promise.resolve(p).then(function (v) { return { status: 'fulfilled', value: v }; }, function (err) { return { status: 'rejected', reason: err }; });
         })).then(function () {
-          try { applyDashWidgetSort(); } catch (_) {}
+          // Do not re-sort cards here: dropdown/date changes should only update content, not move cards.
+          // applyDashWidgetSort() runs only when the user explicitly chooses Sort by Revenue/Conversion/Clicks.
         });
       }
 

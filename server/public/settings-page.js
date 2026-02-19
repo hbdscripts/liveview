@@ -1623,6 +1623,7 @@
     var settings = c && c.settings ? c.settings : {};
     var ingest = c && c.ingest ? c.ingest : {};
     var ads = c && c.ads && c.ads.status ? c.ads.status : {};
+    var oauthEnabled = !!(c && c.ads && c.ads.googleAdsOAuthEnabled);
     var shopParam = getShopParam();
     var providers = Array.isArray(ads.providers) ? ads.providers : [];
     var ga = providers.find(function (p) { return p && String(p.key || '').toLowerCase() === 'google_ads'; }) || {};
@@ -1680,6 +1681,9 @@
     var connDisconnectedEl = document.getElementById('settings-ga-connection-disconnected');
     var connConnectedEl = document.getElementById('settings-ga-connection-connected');
     var whenConnectedEl = document.getElementById('settings-ga-when-connected');
+    var connectHintEl = document.getElementById('settings-ga-connect-hint');
+    var signInBtn = document.getElementById('settings-ga-signin-btn');
+    var disconnectBtn = document.getElementById('settings-ga-disconnect-btn');
     var oauthParam = '';
     try {
       var om = /[?&]ads_oauth=([^&]+)/.exec(window.location.search || '');
@@ -1691,11 +1695,20 @@
     if (connDisconnectedEl) connDisconnectedEl.classList.toggle('d-none', showConnectedUi);
     if (connConnectedEl) connConnectedEl.classList.toggle('d-none', !showConnectedUi);
     if (whenConnectedEl) whenConnectedEl.classList.toggle('d-none', !showConnectedUi);
+    // When OAuth disabled: hide Sign in button and connect hint; show env message instead.
+    if (connectHintEl) connectHintEl.classList.toggle('d-none', !oauthEnabled);
+    if (signInBtn) signInBtn.classList.toggle('d-none', !oauthEnabled);
+    if (disconnectBtn) disconnectBtn.classList.toggle('d-none', !oauthEnabled);
 
     // Connection hint: show OAuth result and/or missing setup guidance.
     var connMsgEl = document.getElementById('settings-ga-connection-msg');
     (function patchConnHint() {
       if (!connMsgEl) return;
+      if (!oauthEnabled) {
+        connMsgEl.textContent = 'Configured via server settings (GOOGLE_ADS_*). Set GOOGLE_ADS_OAUTH_ENABLED=1 to enable Sign in with Google.';
+        connMsgEl.className = 'form-hint text-muted';
+        return;
+      }
       var oauth = '';
       try {
         var m = /[?&]ads_oauth=([^&]+)/.exec(window.location.search || '');
@@ -1728,8 +1741,7 @@
     var sp = getShopParam();
     var connectBase = (typeof API !== 'undefined' ? API : '') + '/api/ads/google/connect?redirect=' + encodeURIComponent('/settings?tab=integrations&integrationsTab=googleads');
     if (sp) connectBase += '&shop=' + encodeURIComponent(sp);
-    var signIn = document.getElementById('settings-ga-signin-btn');
-    if (signIn) signIn.setAttribute('href', connectBase);
+    if (signInBtn) signInBtn.setAttribute('href', connectBase);
 
     var campaignsLink = document.getElementById('settings-ga-campaigns-link');
     if (campaignsLink) campaignsLink.setAttribute('href', '/integrations/google-ads' + (sp ? ('?shop=' + encodeURIComponent(sp)) : ''));
@@ -5329,10 +5341,7 @@
   function renderKpiPlacementPreview() {
     var root = document.getElementById('settings-kpis-placement-preview');
     if (!root) return;
-    var list = readKpiTable('settings-kpis-dashboard-root', 'dashboard')
-      .filter(function (it) { return it && it.enabled !== false; })
-      .map(function (it) { return String((it.label || it.key || '').trim() || it.key || '').trim(); })
-      .filter(Boolean);
+    var list = []
     function slice(start, end) {
       return list.slice(start, end).map(function (label) {
         return '<span class="badge bg-secondary-lt">' + escapeHtml(label) + '</span>';
@@ -5383,26 +5392,22 @@
   }
 
   function renderKpisUiPanel(cfg) {
-    var dashRoot = document.getElementById('settings-kpis-dashboard-root');
     var headRoot = document.getElementById('settings-kpis-header-root');
     var rangesRoot = document.getElementById('settings-date-ranges-root');
-    if (!dashRoot || !headRoot || !rangesRoot) return;
+    if (!headRoot || !rangesRoot) return;
     var def = defaultKpiUiConfigV1();
     var c = cfg && typeof cfg === 'object' ? cfg : def;
     var options = c.options || {};
     var condensed = options.condensed || {};
-    var dashboard = options.dashboard || {};
     var general = options.general || {};
 
     var optCondDelta = document.getElementById('settings-kpi-opt-condensed-delta');
     var optCondProg = document.getElementById('settings-kpi-opt-condensed-progress');
     var optCondSpark = document.getElementById('settings-kpi-opt-condensed-sparkline');
-    var optDashDelta = document.getElementById('settings-kpi-opt-dashboard-delta');
     var generalDateFormatEl = document.getElementById('settings-general-date-format');
     if (optCondDelta) optCondDelta.checked = condensed.showDelta !== false;
     if (optCondProg) optCondProg.checked = condensed.showProgress !== false;
     if (optCondSpark) optCondSpark.checked = condensed.showSparkline !== false;
-    if (optDashDelta) optDashDelta.checked = dashboard.showDelta !== false;
     if (generalDateFormatEl) generalDateFormatEl.value = normalizeDateLabelFormat(general.dateLabelFormat);
 
     // Header KPI strip visibility per page.
@@ -5422,7 +5427,6 @@
       });
     } catch (_) {}
 
-    renderKpiTable('settings-kpis-dashboard-root', (c.kpis && c.kpis.dashboard) ? c.kpis.dashboard : [], 'dashboard');
     renderKpiTable('settings-kpis-header-root', (c.kpis && c.kpis.header) ? c.kpis.header : [], 'header');
     renderDateRangesTable('settings-date-ranges-root', c.dateRanges || []);
   }
@@ -5448,7 +5452,6 @@
     var optCondDelta = document.getElementById('settings-kpi-opt-condensed-delta');
     var optCondProg = document.getElementById('settings-kpi-opt-condensed-progress');
     var optCondSpark = document.getElementById('settings-kpi-opt-condensed-sparkline');
-    var optDashDelta = document.getElementById('settings-kpi-opt-dashboard-delta');
     var generalDateFormatEl = document.getElementById('settings-general-date-format');
     return {
       v: 1,
@@ -5458,9 +5461,6 @@
           showProgress: !!(optCondProg && optCondProg.checked),
           showSparkline: !!(optCondSpark && optCondSpark.checked),
         },
-        dashboard: {
-          showDelta: !!(optDashDelta && optDashDelta.checked),
-        },
         general: {
           dateLabelFormat: normalizeDateLabelFormat(generalDateFormatEl && generalDateFormatEl.value),
         },
@@ -5469,7 +5469,6 @@
         pages: readHeaderStripPagesFromDom(),
       },
       kpis: {
-        dashboard: readKpiTable('settings-kpis-dashboard-root', 'dashboard'),
         header: readKpiTable('settings-kpis-header-root', 'header'),
       },
       dateRanges: readDateRangesTable('settings-date-ranges-root'),

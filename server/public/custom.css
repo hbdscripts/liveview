@@ -3410,6 +3410,44 @@ html[data-bs-theme="dark"] .report-build-wrap {
   outline: none;
 }
 
+/* Centered radial (top circle) layout */
+.kexo-widget-radial-centered {
+  width: 100%;
+}
+.kexo-widget-radial-wrap {
+  margin: 0 auto;
+}
+.kexo-widget-radial-inner {
+  width: 100%;
+  line-height: 1.2;
+}
+.kexo-widget-radial-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.kexo-widget-radial-icon img,
+.kexo-widget-radial-icon i {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  font-size: 1.25rem;
+}
+.kexo-widget-radial-icon i {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.kexo-widget-radial-pct {
+  font-size: 1.1rem;
+}
+.kexo-widget-radial-revenue {
+  font-size: 0.8125rem;
+}
+.kexo-widget-radial-label {
+  font-size: 0.8125rem;
+}
+
 /* Horizontal bar list */
 .kexo-widget-list {
   display: flex;
@@ -3482,6 +3520,9 @@ html[data-bs-theme="dark"] .report-build-wrap {
 }
 
 /* Dashboard top tables card-style list (Top Products, Top Countries, Trending) */
+.kexo-dash-top-list-wrap {
+  padding: 0.75rem 1rem;
+}
 .kexo-dash-top-list {
   display: flex;
   flex-direction: column;
@@ -3490,13 +3531,15 @@ html[data-bs-theme="dark"] .report-build-wrap {
   padding: 0;
   list-style: none;
 }
+/* Grid: icon | label | CR (middle) | value */
 .kexo-dash-top-row {
   display: grid;
-  grid-template-columns: 40px 1fr auto auto;
+  grid-template-columns: 40px 1fr minmax(4rem, auto) auto;
   align-items: center;
   gap: 0.5rem;
 }
 .kexo-dash-top-row-icon {
+  grid-column: 1;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -3505,12 +3548,20 @@ html[data-bs-theme="dark"] .report-build-wrap {
   flex-shrink: 0;
   color: var(--tblr-secondary);
 }
+.kexo-dash-top-row-label { grid-column: 2; }
+.kexo-dash-top-row-cr { grid-column: 3; }
+.kexo-dash-top-row-value { grid-column: 4; }
 .kexo-dash-top-row-icon img.kexo-dash-top-thumb,
-.kexo-dash-top-row-icon .kexo-dash-top-flag-wrap {
+.kexo-dash-top-row-icon .kexo-dash-top-flag-wrap,
+.kexo-dash-top-row-icon .kexo-dash-top-thumb-link {
   width: 40px;
   height: 40px;
   object-fit: contain;
   display: block;
+}
+.kexo-dash-top-thumb-link {
+  display: block;
+  line-height: 0;
 }
 .kexo-dash-top-thumb {
   width: 40px !important;
@@ -3530,6 +3581,8 @@ html[data-bs-theme="dark"] .report-build-wrap {
   width: 40px !important;
   height: 40px !important;
   background-size: contain !important;
+  border: none !important;
+  box-shadow: none !important;
 }
 .kexo-dash-top-row-icon-placeholder {
   display: block;

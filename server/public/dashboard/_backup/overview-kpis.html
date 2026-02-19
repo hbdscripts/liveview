@@ -1,0 +1,439 @@
+<!-- Backup of dashboard KPI grids removed from overview.html. Restore by re-inserting into overview. -->
+
+      <div class="kexo-overview-cell kexo-overview-kpi-top">
+    <!-- Enhanced KPI Cards -->
+    <div class="row g-3" id="dash-kpi-grid">
+      <!-- Revenue Card with Trend -->
+      <div class="col-sm-6 col-lg-3">
+        <div class="card">
+          <div class="card-body">
+            <div class="d-flex align-items-center">
+              <div class="subheader">Revenue</div>
+            </div>
+            <div class="d-flex align-items-baseline">
+              <div class="h1 mb-0 me-2" id="dash-kpi-revenue">&mdash;</div>
+              <div class="dash-kpi-delta ms-auto is-hidden" id="dash-kpi-revenue-delta" data-dir="none">
+                <i class="fa-jelly fa-arrow-trend-up" data-icon-key="dash-kpi-delta-up" aria-hidden="true"></i>
+                <span id="dash-kpi-revenue-delta-text">&mdash;</span>
+              </div>
+            </div>
+            <div class="dash-kpi-sparkline-wrap">
+              <div id="dash-revenue-sparkline" class="kexo-dash-sparkline-height"></div>
+            </div>
+            <div class="dash-kpi-compare-row mt-1">
+              <div class="dash-kpi-compare-item">
+                <span class="text-muted small">Yesterday:</span>
+                <span class="fw-bold" id="dash-revenue-yesterday">&mdash;</span>
+              </div>
+              <div class="dash-kpi-compare-item text-end">
+                <span class="text-muted small">7 Day:</span>
+                <span class="fw-bold" id="dash-revenue-7d">&mdash;</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Orders Card with Progress -->
+      <div class="col-sm-6 col-lg-3">
+        <div class="card">
+          <div class="card-body">
+            <div class="d-flex align-items-center">
+              <div class="subheader">Orders</div>
+            </div>
+            <div class="d-flex align-items-baseline">
+              <div class="h1 mb-0 me-2" id="dash-kpi-orders">&mdash;</div>
+              <div class="dash-kpi-delta ms-auto is-hidden" id="dash-kpi-orders-delta" data-dir="none">
+                <i class="fa-jelly fa-arrow-trend-up" data-icon-key="dash-kpi-delta-up" aria-hidden="true"></i>
+                <span id="dash-kpi-orders-delta-text">&mdash;</span>
+              </div>
+            </div>
+            <div class="dash-kpi-sparkline-wrap">
+              <div id="dash-orders-sparkline" class="kexo-dash-sparkline-height"></div>
+            </div>
+            <div class="dash-kpi-compare-row mt-1">
+              <div class="dash-kpi-compare-item">
+                <span class="text-muted small">Yesterday:</span>
+                <span class="fw-bold" id="dash-orders-yesterday">&mdash;</span>
+              </div>
+              <div class="dash-kpi-compare-item text-end">
+                <span class="text-muted small">7 Day:</span>
+                <span class="fw-bold" id="dash-orders-7d">&mdash;</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Conversion Rate Card with Gauge -->
+      <div class="col-sm-6 col-lg-3">
+        <div class="card">
+          <div class="card-body">
+            <div class="subheader">Conversion Rate</div>
+            <div class="d-flex align-items-baseline">
+              <div class="h1 mb-0 me-2" id="dash-kpi-conv">&mdash;</div>
+              <div class="dash-kpi-delta ms-auto is-hidden" id="dash-kpi-conv-delta" data-dir="none">
+                <i class="fa-jelly fa-arrow-trend-up" data-icon-key="dash-kpi-delta-up" aria-hidden="true"></i>
+                <span id="dash-kpi-conv-delta-text">&mdash;</span>
+              </div>
+            </div>
+            <div class="dash-kpi-sparkline-wrap">
+              <div id="dash-conv-sparkline" class="kexo-dash-sparkline-height"></div>
+            </div>
+            <div class="dash-kpi-compare-row mt-1">
+              <div class="dash-kpi-compare-item">
+                <span class="text-muted small">Yesterday:</span>
+                <span class="fw-bold" id="dash-conv-yesterday">&mdash;</span>
+              </div>
+              <div class="dash-kpi-compare-item text-end">
+                <span class="text-muted small">7 Day:</span>
+                <span class="fw-bold" id="dash-conv-7d">&mdash;</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Value per Visit Card -->
+      <div class="col-sm-6 col-lg-3">
+        <div class="card">
+          <div class="card-body">
+            <div class="subheader">Value per Visit</div>
+            <div class="d-flex align-items-baseline">
+              <div class="h1 mb-0 me-2" id="dash-kpi-vpv">&mdash;</div>
+              <div class="dash-kpi-delta ms-auto is-hidden" id="dash-kpi-vpv-delta" data-dir="none">
+                <i class="fa-jelly fa-arrow-trend-up" data-icon-key="dash-kpi-delta-up" aria-hidden="true"></i>
+                <span id="dash-kpi-vpv-delta-text">&mdash;</span>
+              </div>
+            </div>
+            <div class="dash-kpi-sparkline-wrap">
+              <div id="dash-vpv-sparkline" class="kexo-dash-sparkline-height"></div>
+            </div>
+            <div class="dash-kpi-compare-row mt-1">
+              <div class="dash-kpi-compare-item">
+                <span class="text-muted small">Yesterday:</span>
+                <span class="fw-bold" id="dash-vpv-yesterday">&mdash;</span>
+              </div>
+              <div class="dash-kpi-compare-item text-end">
+                <span class="text-muted small">7 Day:</span>
+                <span class="fw-bold" id="dash-vpv-7d">&mdash;</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- AOV Card with Stats -->
+      <div class="col-sm-6 col-lg-3">
+        <div class="card">
+          <div class="card-body">
+            <div class="subheader">Average Order Value</div>
+            <div class="d-flex align-items-baseline">
+              <div class="h1 mb-0 me-2" id="dash-kpi-aov">&mdash;</div>
+              <div class="dash-kpi-delta ms-auto is-hidden" id="dash-kpi-aov-delta" data-dir="none">
+                <i class="fa-jelly fa-arrow-trend-up" data-icon-key="dash-kpi-delta-up" aria-hidden="true"></i>
+                <span id="dash-kpi-aov-delta-text">&mdash;</span>
+              </div>
+            </div>
+            <div class="dash-kpi-sparkline-wrap">
+              <div id="dash-aov-sparkline" class="kexo-dash-sparkline-height"></div>
+            </div>
+            <div class="dash-kpi-compare-row mt-1">
+              <div class="dash-kpi-compare-item">
+                <span class="text-muted small">Yesterday:</span>
+                <span class="fw-bold" id="dash-aov-yesterday">&mdash;</span>
+              </div>
+              <div class="dash-kpi-compare-item text-end">
+                <span class="text-muted small">7 Day:</span>
+                <span class="fw-bold" id="dash-aov-7d">&mdash;</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sessions Card with Device Breakdown -->
+      <div class="col-sm-6 col-lg-3">
+        <div class="card">
+          <div class="card-body">
+            <div class="subheader">Sessions</div>
+            <div class="d-flex align-items-baseline">
+              <div class="h1 mb-0 me-2" id="dash-kpi-sessions">&mdash;</div>
+              <div class="dash-kpi-delta ms-auto is-hidden" id="dash-kpi-sessions-delta" data-dir="none">
+                <i class="fa-jelly fa-arrow-trend-up" data-icon-key="dash-kpi-delta-up" aria-hidden="true"></i>
+                <span id="dash-kpi-sessions-delta-text">&mdash;</span>
+              </div>
+            </div>
+            <div class="dash-kpi-sparkline-wrap">
+              <div id="dash-sessions-sparkline" class="kexo-dash-sparkline-height"></div>
+            </div>
+            <div class="dash-kpi-compare-row mt-1">
+              <div class="dash-kpi-compare-item">
+                <span class="text-muted small">Yesterday:</span>
+                <span class="fw-bold" id="dash-sessions-yesterday">&mdash;</span>
+              </div>
+              <div class="dash-kpi-compare-item text-end">
+                <span class="text-muted small">7 Day:</span>
+                <span class="fw-bold" id="dash-sessions-7d">&mdash;</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bounce Rate Card -->
+      <div class="col-sm-6 col-lg-3">
+        <div class="card">
+          <div class="card-body">
+            <div class="subheader">Bounce Rate</div>
+            <div class="d-flex align-items-baseline">
+              <div class="h1 mb-0 me-2" id="dash-kpi-bounce">&mdash;</div>
+              <div class="dash-kpi-delta ms-auto is-hidden" id="dash-kpi-bounce-delta" data-dir="none">
+                <i class="fa-jelly fa-arrow-trend-up" data-icon-key="dash-kpi-delta-up" aria-hidden="true"></i>
+                <span id="dash-kpi-bounce-delta-text">&mdash;</span>
+              </div>
+            </div>
+            <div class="dash-kpi-sparkline-wrap">
+              <div id="dash-bounce-sparkline" class="kexo-dash-sparkline-height"></div>
+            </div>
+            <div class="dash-kpi-compare-row mt-1">
+              <div class="dash-kpi-compare-item">
+                <span class="text-muted small">Yesterday:</span>
+                <span class="fw-bold" id="dash-bounce-yesterday">&mdash;</span>
+              </div>
+              <div class="dash-kpi-compare-item text-end">
+                <span class="text-muted small">7 Day:</span>
+                <span class="fw-bold" id="dash-bounce-7d">&mdash;</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Returning -->
+      <div class="col-sm-6 col-lg-3">
+        <div class="card">
+          <div class="card-body">
+            <div class="subheader">Returning</div>
+            <div class="d-flex align-items-baseline">
+              <div class="h1 mb-0 me-2" id="dash-kpi-returning">&mdash;</div>
+              <div class="dash-kpi-delta ms-auto is-hidden" id="dash-kpi-returning-delta" data-dir="none">
+                <i class="fa-jelly fa-arrow-trend-up" data-icon-key="dash-kpi-delta-up" aria-hidden="true"></i>
+                <span id="dash-kpi-returning-delta-text">&mdash;</span>
+              </div>
+            </div>
+            <div class="dash-kpi-sparkline-wrap">
+              <div id="dash-returning-sparkline" class="kexo-dash-sparkline-height"></div>
+            </div>
+            <div class="dash-kpi-compare-row mt-1">
+              <div class="dash-kpi-compare-item">
+                <span class="text-muted small">Yesterday:</span>
+                <span class="fw-bold" id="dash-returning-yesterday">&mdash;</span>
+              </div>
+              <div class="dash-kpi-compare-item text-end">
+                <span class="text-muted small">7 Day:</span>
+                <span class="fw-bold" id="dash-returning-7d">&mdash;</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Ad Spend & ROAS -->
+      <div class="col-sm-6 col-lg-3">
+        <div class="card">
+          <div class="card-body">
+            <div class="subheader">ADS ROAS</div>
+            <div class="d-flex align-items-baseline">
+              <div class="h1 mb-0 me-2" id="dash-kpi-roas">&mdash;</div>
+              <div class="dash-kpi-delta ms-auto is-hidden" id="dash-kpi-roas-delta" data-dir="none">
+                <i class="fa-jelly fa-arrow-trend-up" data-icon-key="dash-kpi-delta-up" aria-hidden="true"></i>
+                <span id="dash-kpi-roas-delta-text">&mdash;</span>
+              </div>
+            </div>
+            <div class="dash-kpi-sparkline-wrap">
+              <div id="dash-roas-sparkline" class="kexo-dash-sparkline-height"></div>
+            </div>
+            <div class="dash-kpi-compare-row mt-1">
+              <div class="dash-kpi-compare-item">
+                <span class="text-muted small">Yesterday:</span>
+                <span class="fw-bold" id="dash-roas-yesterday">&mdash;</span>
+              </div>
+              <div class="dash-kpi-compare-item text-end">
+                <span class="text-muted small">7 Day:</span>
+                <span class="fw-bold" id="dash-roas-7d">&mdash;</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Kexo Score (ring + number, click for breakdown) -->
+      <div class="col-sm-6 col-lg-3">
+        <div class="card kexo-score-card" id="dash-kpi-kexo-score-card" role="button" tabindex="0" aria-label="Kexo Score, click for breakdown">
+          <div class="card-body d-flex flex-column align-items-center justify-content-center py-3">
+            <div class="subheader mb-1">Kexo Score</div>
+            <div class="kexo-score-ring-wrap position-relative">
+              <div class="kexo-score-ring" id="dash-kpi-kexo-score-ring" aria-hidden="true"></div>
+              <div class="kexo-score-ring-center position-absolute top-50 start-50 translate-middle">
+                <span class="kexo-score-num h1 mb-0" id="dash-kpi-kexo-score">&mdash;</span>
+              </div>
+            </div>
+            <div class="text-muted small mt-1">Click for breakdown</div>
+          </div>
+        </div>
+      </div>
+    </div>
+      </div>
+
+<!-- dash-kpi-grid-mid -->
+    <div class="row g-3 mb-3" id="dash-kpi-grid-mid"></div>
+
+<!-- dash-kpi-grid-lower -->
+    <div class="row g-3 mb-3" id="dash-kpi-grid-lower">
+      <div class="col-sm-6 col-lg-3">
+        <div class="card">
+          <div class="card-body">
+            <div class="subheader">COGS</div>
+            <div class="d-flex align-items-baseline">
+              <div class="h1 mb-0 me-2" id="dash-kpi-cogs">&mdash;</div>
+              <div class="dash-kpi-delta ms-auto is-hidden" id="dash-kpi-cogs-delta" data-dir="none">
+                <i class="fa-jelly fa-arrow-trend-up" data-icon-key="dash-kpi-delta-up" aria-hidden="true"></i>
+                <span id="dash-kpi-cogs-delta-text">&mdash;</span>
+              </div>
+            </div>
+            <div class="dash-kpi-sparkline-wrap">
+              <div id="dash-cogs-sparkline" class="kexo-dash-sparkline-height"></div>
+            </div>
+            <div class="dash-kpi-compare-row mt-1">
+              <div class="dash-kpi-compare-item">
+                <span class="text-muted small">Yesterday:</span>
+                <span class="fw-bold" id="dash-cogs-yesterday">&mdash;</span>
+              </div>
+              <div class="dash-kpi-compare-item text-end">
+                <span class="text-muted small">7 Day:</span>
+                <span class="fw-bold" id="dash-cogs-7d">&mdash;</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-sm-6 col-lg-3">
+        <div class="card">
+          <div class="card-body">
+            <div class="subheader">Profit</div>
+            <div class="d-flex align-items-baseline">
+              <div class="h1 mb-0 me-2" id="dash-kpi-profit">&mdash;</div>
+              <div class="dash-kpi-delta ms-auto is-hidden" id="dash-kpi-profit-delta" data-dir="none">
+                <i class="fa-jelly fa-arrow-trend-up" data-icon-key="dash-kpi-delta-up" aria-hidden="true"></i>
+                <span id="dash-kpi-profit-delta-text">&mdash;</span>
+              </div>
+            </div>
+            <div class="dash-kpi-sparkline-wrap">
+              <div id="dash-profit-sparkline" class="kexo-dash-sparkline-height"></div>
+            </div>
+            <div class="dash-kpi-compare-row mt-1">
+              <div class="dash-kpi-compare-item">
+                <span class="text-muted small">Yesterday:</span>
+                <span class="fw-bold" id="dash-profit-yesterday">&mdash;</span>
+              </div>
+              <div class="dash-kpi-compare-item text-end">
+                <span class="text-muted small">7 Day:</span>
+                <span class="fw-bold" id="dash-profit-7d">&mdash;</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-sm-6 col-lg-3">
+        <div class="card">
+          <div class="card-body">
+            <div class="subheader">Fulfilled</div>
+            <div class="d-flex align-items-baseline">
+              <div class="h1 mb-0 me-2" id="dash-kpi-fulfilled">&mdash;</div>
+              <div class="dash-kpi-delta ms-auto is-hidden" id="dash-kpi-fulfilled-delta" data-dir="none">
+                <i class="fa-jelly fa-arrow-trend-up" data-icon-key="dash-kpi-delta-up" aria-hidden="true"></i>
+                <span id="dash-kpi-fulfilled-delta-text">&mdash;</span>
+              </div>
+            </div>
+            <div class="dash-kpi-sparkline-wrap">
+              <div id="dash-fulfilled-sparkline" class="kexo-dash-sparkline-height"></div>
+            </div>
+            <div class="dash-kpi-compare-row mt-1">
+              <div class="dash-kpi-compare-item">
+                <span class="text-muted small">Yesterday:</span>
+                <span class="fw-bold" id="dash-fulfilled-yesterday">&mdash;</span>
+              </div>
+              <div class="dash-kpi-compare-item text-end">
+                <span class="text-muted small">7 Day:</span>
+                <span class="fw-bold" id="dash-fulfilled-7d">&mdash;</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-sm-6 col-lg-3">
+        <div class="card">
+          <div class="card-body">
+            <div class="subheader">Returns</div>
+            <div class="d-flex align-items-baseline">
+              <div class="h1 mb-0 me-2" id="dash-kpi-returns">&mdash;</div>
+              <div class="dash-kpi-delta ms-auto is-hidden" id="dash-kpi-returns-delta" data-dir="none">
+                <i class="fa-jelly fa-arrow-trend-up" data-icon-key="dash-kpi-delta-up" aria-hidden="true"></i>
+                <span id="dash-kpi-returns-delta-text">&mdash;</span>
+              </div>
+            </div>
+            <div class="dash-kpi-sparkline-wrap">
+              <div id="dash-returns-sparkline" class="kexo-dash-sparkline-height"></div>
+            </div>
+            <div class="dash-kpi-compare-row mt-1">
+              <div class="dash-kpi-compare-item">
+                <span class="text-muted small">Yesterday:</span>
+                <span class="fw-bold" id="dash-returns-yesterday">&mdash;</span>
+              </div>
+              <div class="dash-kpi-compare-item text-end">
+                <span class="text-muted small">7 Day:</span>
+                <span class="fw-bold" id="dash-returns-7d">&mdash;</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-sm-6 col-lg-3">
+        <div class="card">
+          <div class="card-body">
+            <div class="subheader">Items ordered</div>
+            <div class="d-flex align-items-baseline">
+              <div class="h1 mb-0 me-2" id="dash-kpi-items">&mdash;</div>
+              <div class="dash-kpi-delta ms-auto is-hidden" id="dash-kpi-items-delta" data-dir="none">
+                <i class="fa-jelly fa-arrow-trend-up" data-icon-key="dash-kpi-delta-up" aria-hidden="true"></i>
+                <span id="dash-kpi-items-delta-text">&mdash;</span>
+              </div>
+            </div>
+            <div class="dash-kpi-sparkline-wrap">
+              <div id="dash-items-sparkline" class="kexo-dash-sparkline-height"></div>
+            </div>
+            <div class="dash-kpi-compare-row mt-1">
+              <div class="dash-kpi-compare-item">
+                <span class="text-muted small">Yesterday:</span>
+                <span class="fw-bold" id="dash-items-yesterday">&mdash;</span>
+              </div>
+              <div class="dash-kpi-compare-item text-end">
+                <span class="text-muted small">7 Day:</span>
+                <span class="fw-bold" id="dash-items-7d">&mdash;</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    </div>
+  </div>
+    <!--#include partials/page-body-end.html-->
+      <!--#include partials/footer.html-->
+  <div class="config-modal" id="kpi-compare-modal" aria-hidden="true">

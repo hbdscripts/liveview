@@ -4494,6 +4494,14 @@
 
     function applyKpiUiConfigV1(cfg) {
       if (!cfg || typeof cfg !== 'object' || cfg.v !== 1) return;
+      if (cfg.headerStrip && typeof cfg.headerStrip.pages === 'object') {
+        cfg.headerStrip.pages.dashboard = true;
+      } else if (cfg.headerStrip) {
+        cfg.headerStrip.pages = cfg.headerStrip.pages || {};
+        cfg.headerStrip.pages.dashboard = true;
+      } else {
+        cfg.headerStrip = { pages: { dashboard: true } };
+      }
       kpiUiConfigV1 = cfg;
       try { window.__kexoKpiUiConfigV1 = cfg; } catch (_) {}
       try { safeWriteLocalStorageJson(KPI_UI_CFG_LS_KEY, cfg); } catch (_) {}

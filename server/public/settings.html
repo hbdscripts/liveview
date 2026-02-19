@@ -347,7 +347,7 @@
                 </div>
                 <div class="card-body">
                   <div id="settings-ga-connection-disconnected">
-                    <div class="text-muted small mb-3">
+                    <div id="settings-ga-connect-hint" class="text-muted small mb-3">
                       Connect your Google Ads account to enable campaign reporting and (optionally) conversion uploads.
                     </div>
                     <a class="btn btn-primary btn-sm d-inline-flex align-items-center gap-2 text-white kexo-ga-signin-btn" id="settings-ga-signin-btn" href="/api/ads/google/connect?redirect=%2Fsettings%3Ftab%3Dintegrations%26integrationsTab%3Dgoogleads">
@@ -852,22 +852,6 @@
                             <span class="form-check-label">Show sparklines</span>
                           </label>
                         </div>
-                        <div class="col-12 col-md-6 col-lg-4">
-                          <label class="form-label mb-1">Dashboard</label>
-                          <label class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" id="settings-kpi-opt-dashboard-delta" />
-                            <span class="form-check-label">Show % change badges</span>
-                          </label>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div class="card card-sm mb-3">
-                    <div class="card-body">
-                      <label class="form-label mb-2">Dashboard KPI placement preview</label>
-                      <div id="settings-kpis-placement-preview" class="row g-2">
-                        <div class="col-12"><div class="text-muted small">Loading preview…</div></div>
                       </div>
                     </div>
                   </div>
@@ -942,21 +926,7 @@
                     </div>
                   </div>
 
-                  <ul class="nav nav-underline mb-3" id="settings-kpis-layout-tabs" role="tablist" aria-label="KPI layout">
-                    <li class="nav-item" role="presentation">
-                      <button class="nav-link active" type="button" role="tab" id="settings-kpis-layout-tab-dashboard" data-settings-kpis-layout-tab="dashboard" aria-selected="true" aria-controls="settings-kpis-layout-panel-dashboard">Dashboard</button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                      <button class="nav-link" type="button" role="tab" id="settings-kpis-layout-tab-header" data-settings-kpis-layout-tab="header" aria-selected="false" aria-controls="settings-kpis-layout-panel-header">Header</button>
-                    </li>
-                  </ul>
-
-                  <div id="settings-kpis-layout-panel-dashboard" class="settings-kpis-layout-panel active" role="tabpanel" aria-labelledby="settings-kpis-layout-tab-dashboard">
-                    <div id="settings-kpis-dashboard-root" class="dm-root">
-                      <div class="dm-loading">Loading KPIs…</div>
-                    </div>
-                  </div>
-                  <div id="settings-kpis-layout-panel-header" class="settings-kpis-layout-panel" role="tabpanel" aria-labelledby="settings-kpis-layout-tab-header">
+                  <div id="settings-kpis-layout-panel-header" class="settings-kpis-layout-panel active" role="tabpanel" aria-labelledby="settings-kpis-layout-tab-header">
                     <div id="settings-kpis-header-root" class="dm-root">
                       <div class="dm-loading">Loading KPIs…</div>
                     </div>

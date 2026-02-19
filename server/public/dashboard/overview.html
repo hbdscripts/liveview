@@ -14,10 +14,13 @@
   <link rel="stylesheet" href="/tabler-theme.css" />
   <link rel="stylesheet" href="/custom.css" />
   <link rel="stylesheet" href="/diagnostics-modal.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jsvectormap@1.6.0/dist/css/jsvectormap.min.css" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
   <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js" defer></script>
   <title>Kexo · Overview</title>
   <script src="https://cdn.jsdelivr.net/npm/apexcharts@4.7.0/dist/apexcharts.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsvectormap@1.6.0/dist/jsvectormap.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsvectormap@1.6.0/dist/maps/world.js" defer></script>
 </head>
 <body class="" data-page="dashboard">
     <!--#include partials/header.html-->
@@ -32,332 +35,78 @@
 </div>
 <div id="tab-panel-dashboard" class="main-tab-panel active" role="tabpanel" aria-labelledby="nav-tab-dashboard">
 
-    <div class="kexo-overview-grid mb-3">
-      <div class="kexo-overview-cell kexo-overview-kpi-top">
-    <!-- Enhanced KPI Cards -->
-    <div class="row g-3" id="dash-kpi-grid">
-      <!-- Revenue Card with Trend -->
-      <div class="col-sm-6 col-lg-3">
-        <div class="card">
+    <!-- Row 1: Online Now map (50%) + Sales overview line chart (50%) -->
+    <div class="row g-3 mb-3">
+      <div class="col-12 col-lg-6">
+        <div class="card h-100" data-kexo-chart-key="live-online-chart">
+          <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <h3 class="card-title mb-0">Online Now: <span id="live-online-now-count">0</span></h3>
+            <a href="/dashboard/live" class="btn btn-sm btn-ghost-primary">Live View</a>
+          </div>
           <div class="card-body">
-            <div class="d-flex align-items-center">
-              <div class="subheader">Revenue</div>
-            </div>
-            <div class="d-flex align-items-baseline">
-              <div class="h1 mb-0 me-2" id="dash-kpi-revenue">&mdash;</div>
-              <div class="dash-kpi-delta ms-auto is-hidden" id="dash-kpi-revenue-delta" data-dir="none">
-                <i class="fa-jelly fa-arrow-trend-up" data-icon-key="dash-kpi-delta-up" aria-hidden="true"></i>
-                <span id="dash-kpi-revenue-delta-text">&mdash;</span>
-              </div>
-            </div>
-            <div class="dash-kpi-sparkline-wrap">
-              <div id="dash-revenue-sparkline" class="kexo-dash-sparkline-height"></div>
-            </div>
-            <div class="dash-kpi-compare-row mt-1">
-              <div class="dash-kpi-compare-item">
-                <span class="text-muted small">Yesterday:</span>
-                <span class="fw-bold" id="dash-revenue-yesterday">&mdash;</span>
-              </div>
-              <div class="dash-kpi-compare-item text-end">
-                <span class="text-muted small">7 Day:</span>
-                <span class="fw-bold" id="dash-revenue-7d">&mdash;</span>
-              </div>
-            </div>
+            <div class="dash-chart-wrap kexo-chart-wrap-min-220" id="live-online-chart"></div>
           </div>
         </div>
       </div>
-
-      <!-- Orders Card with Progress -->
-      <div class="col-sm-6 col-lg-3">
-        <div class="card">
-          <div class="card-body">
-            <div class="d-flex align-items-center">
-              <div class="subheader">Orders</div>
-            </div>
-            <div class="d-flex align-items-baseline">
-              <div class="h1 mb-0 me-2" id="dash-kpi-orders">&mdash;</div>
-              <div class="dash-kpi-delta ms-auto is-hidden" id="dash-kpi-orders-delta" data-dir="none">
-                <i class="fa-jelly fa-arrow-trend-up" data-icon-key="dash-kpi-delta-up" aria-hidden="true"></i>
-                <span id="dash-kpi-orders-delta-text">&mdash;</span>
+      <div class="col-12 col-lg-6">
+        <div class="card h-100 kexo-overview-main-card" data-kexo-chart-key="dash-chart-overview-30d">
+          <div class="card-body kexo-overview-main-card-body">
+            <div class="kexo-overview-card-head">
+              <div class="kexo-overview-card-head-left">
+                <div class="kexo-overview-running-totals kexo-overview-running-totals--main" id="dash-overview-running-totals" aria-label="Sales Overview totals">
+                  <span class="kexo-overview-running-total is-revenue">
+                    <span class="kexo-overview-running-total-label">Revenue</span>
+                    <span class="kexo-overview-running-total-value" id="dash-overview-total-revenue">&mdash;</span>
+                  </span>
+                  <span class="kexo-overview-running-total is-cost">
+                    <span class="kexo-overview-running-total-label">Cost <i class="fa-light fa-circle-info ms-1 text-muted kexo-overview-cost-breakdown-icon" id="dash-overview-cost-breakdown-icon" role="button" tabindex="0" aria-label="Cost breakdown"></i></span>
+                    <span class="kexo-overview-running-total-value" id="dash-overview-total-cost">&mdash;</span>
+                  </span>
+                  <span class="kexo-overview-running-total is-profit">
+                    <span class="kexo-overview-running-total-label">Profit</span>
+                    <span class="kexo-overview-running-total-value" id="dash-overview-total-profit">&mdash;</span>
+                  </span>
+                </div>
+              </div>
+              <div class="kexo-overview-card-actions">
+                <button type="button" class="btn btn-sm btn-ghost-secondary kexo-overview-cost-settings-btn" id="dash-cost-settings-btn">Cost Settings</button>
+                <button type="button" class="btn btn-icon btn-ghost-secondary kexo-overview-chart-settings-btn" data-kexo-chart-settings-key="dash-chart-overview-30d" aria-label="Chart settings" title="Chart settings">
+                  <i class="fa-light fa-gear" data-icon-key="chart-builder-icon" class="kexo-chart-cog-icon" aria-hidden="true"></i>
+                </button>
               </div>
             </div>
-            <div class="dash-kpi-sparkline-wrap">
-              <div id="dash-orders-sparkline" class="kexo-dash-sparkline-height"></div>
-            </div>
-            <div class="dash-kpi-compare-row mt-1">
-              <div class="dash-kpi-compare-item">
-                <span class="text-muted small">Yesterday:</span>
-                <span class="fw-bold" id="dash-orders-yesterday">&mdash;</span>
-              </div>
-              <div class="dash-kpi-compare-item text-end">
-                <span class="text-muted small">7 Day:</span>
-                <span class="fw-bold" id="dash-orders-7d">&mdash;</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Conversion Rate Card with Gauge -->
-      <div class="col-sm-6 col-lg-3">
-        <div class="card">
-          <div class="card-body">
-            <div class="subheader">Conversion Rate</div>
-            <div class="d-flex align-items-baseline">
-              <div class="h1 mb-0 me-2" id="dash-kpi-conv">&mdash;</div>
-              <div class="dash-kpi-delta ms-auto is-hidden" id="dash-kpi-conv-delta" data-dir="none">
-                <i class="fa-jelly fa-arrow-trend-up" data-icon-key="dash-kpi-delta-up" aria-hidden="true"></i>
-                <span id="dash-kpi-conv-delta-text">&mdash;</span>
-              </div>
-            </div>
-            <div class="dash-kpi-sparkline-wrap">
-              <div id="dash-conv-sparkline" class="kexo-dash-sparkline-height"></div>
-            </div>
-            <div class="dash-kpi-compare-row mt-1">
-              <div class="dash-kpi-compare-item">
-                <span class="text-muted small">Yesterday:</span>
-                <span class="fw-bold" id="dash-conv-yesterday">&mdash;</span>
-              </div>
-              <div class="dash-kpi-compare-item text-end">
-                <span class="text-muted small">7 Day:</span>
-                <span class="fw-bold" id="dash-conv-7d">&mdash;</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Value per Visit Card -->
-      <div class="col-sm-6 col-lg-3">
-        <div class="card">
-          <div class="card-body">
-            <div class="subheader">Value per Visit</div>
-            <div class="d-flex align-items-baseline">
-              <div class="h1 mb-0 me-2" id="dash-kpi-vpv">&mdash;</div>
-              <div class="dash-kpi-delta ms-auto is-hidden" id="dash-kpi-vpv-delta" data-dir="none">
-                <i class="fa-jelly fa-arrow-trend-up" data-icon-key="dash-kpi-delta-up" aria-hidden="true"></i>
-                <span id="dash-kpi-vpv-delta-text">&mdash;</span>
-              </div>
-            </div>
-            <div class="dash-kpi-sparkline-wrap">
-              <div id="dash-vpv-sparkline" class="kexo-dash-sparkline-height"></div>
-            </div>
-            <div class="dash-kpi-compare-row mt-1">
-              <div class="dash-kpi-compare-item">
-                <span class="text-muted small">Yesterday:</span>
-                <span class="fw-bold" id="dash-vpv-yesterday">&mdash;</span>
-              </div>
-              <div class="dash-kpi-compare-item text-end">
-                <span class="text-muted small">7 Day:</span>
-                <span class="fw-bold" id="dash-vpv-7d">&mdash;</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- AOV Card with Stats -->
-      <div class="col-sm-6 col-lg-3">
-        <div class="card">
-          <div class="card-body">
-            <div class="subheader">Average Order Value</div>
-            <div class="d-flex align-items-baseline">
-              <div class="h1 mb-0 me-2" id="dash-kpi-aov">&mdash;</div>
-              <div class="dash-kpi-delta ms-auto is-hidden" id="dash-kpi-aov-delta" data-dir="none">
-                <i class="fa-jelly fa-arrow-trend-up" data-icon-key="dash-kpi-delta-up" aria-hidden="true"></i>
-                <span id="dash-kpi-aov-delta-text">&mdash;</span>
-              </div>
-            </div>
-            <div class="dash-kpi-sparkline-wrap">
-              <div id="dash-aov-sparkline" class="kexo-dash-sparkline-height"></div>
-            </div>
-            <div class="dash-kpi-compare-row mt-1">
-              <div class="dash-kpi-compare-item">
-                <span class="text-muted small">Yesterday:</span>
-                <span class="fw-bold" id="dash-aov-yesterday">&mdash;</span>
-              </div>
-              <div class="dash-kpi-compare-item text-end">
-                <span class="text-muted small">7 Day:</span>
-                <span class="fw-bold" id="dash-aov-7d">&mdash;</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Sessions Card with Device Breakdown -->
-      <div class="col-sm-6 col-lg-3">
-        <div class="card">
-          <div class="card-body">
-            <div class="subheader">Sessions</div>
-            <div class="d-flex align-items-baseline">
-              <div class="h1 mb-0 me-2" id="dash-kpi-sessions">&mdash;</div>
-              <div class="dash-kpi-delta ms-auto is-hidden" id="dash-kpi-sessions-delta" data-dir="none">
-                <i class="fa-jelly fa-arrow-trend-up" data-icon-key="dash-kpi-delta-up" aria-hidden="true"></i>
-                <span id="dash-kpi-sessions-delta-text">&mdash;</span>
-              </div>
-            </div>
-            <div class="dash-kpi-sparkline-wrap">
-              <div id="dash-sessions-sparkline" class="kexo-dash-sparkline-height"></div>
-            </div>
-            <div class="dash-kpi-compare-row mt-1">
-              <div class="dash-kpi-compare-item">
-                <span class="text-muted small">Yesterday:</span>
-                <span class="fw-bold" id="dash-sessions-yesterday">&mdash;</span>
-              </div>
-              <div class="dash-kpi-compare-item text-end">
-                <span class="text-muted small">7 Day:</span>
-                <span class="fw-bold" id="dash-sessions-7d">&mdash;</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Bounce Rate Card -->
-      <div class="col-sm-6 col-lg-3">
-        <div class="card">
-          <div class="card-body">
-            <div class="subheader">Bounce Rate</div>
-            <div class="d-flex align-items-baseline">
-              <div class="h1 mb-0 me-2" id="dash-kpi-bounce">&mdash;</div>
-              <div class="dash-kpi-delta ms-auto is-hidden" id="dash-kpi-bounce-delta" data-dir="none">
-                <i class="fa-jelly fa-arrow-trend-up" data-icon-key="dash-kpi-delta-up" aria-hidden="true"></i>
-                <span id="dash-kpi-bounce-delta-text">&mdash;</span>
-              </div>
-            </div>
-            <div class="dash-kpi-sparkline-wrap">
-              <div id="dash-bounce-sparkline" class="kexo-dash-sparkline-height"></div>
-            </div>
-            <div class="dash-kpi-compare-row mt-1">
-              <div class="dash-kpi-compare-item">
-                <span class="text-muted small">Yesterday:</span>
-                <span class="fw-bold" id="dash-bounce-yesterday">&mdash;</span>
-              </div>
-              <div class="dash-kpi-compare-item text-end">
-                <span class="text-muted small">7 Day:</span>
-                <span class="fw-bold" id="dash-bounce-7d">&mdash;</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Returning -->
-      <div class="col-sm-6 col-lg-3">
-        <div class="card">
-          <div class="card-body">
-            <div class="subheader">Returning</div>
-            <div class="d-flex align-items-baseline">
-              <div class="h1 mb-0 me-2" id="dash-kpi-returning">&mdash;</div>
-              <div class="dash-kpi-delta ms-auto is-hidden" id="dash-kpi-returning-delta" data-dir="none">
-                <i class="fa-jelly fa-arrow-trend-up" data-icon-key="dash-kpi-delta-up" aria-hidden="true"></i>
-                <span id="dash-kpi-returning-delta-text">&mdash;</span>
-              </div>
-            </div>
-            <div class="dash-kpi-sparkline-wrap">
-              <div id="dash-returning-sparkline" class="kexo-dash-sparkline-height"></div>
-            </div>
-            <div class="dash-kpi-compare-row mt-1">
-              <div class="dash-kpi-compare-item">
-                <span class="text-muted small">Yesterday:</span>
-                <span class="fw-bold" id="dash-returning-yesterday">&mdash;</span>
-              </div>
-              <div class="dash-kpi-compare-item text-end">
-                <span class="text-muted small">7 Day:</span>
-                <span class="fw-bold" id="dash-returning-7d">&mdash;</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Ad Spend & ROAS -->
-      <div class="col-sm-6 col-lg-3">
-        <div class="card">
-          <div class="card-body">
-            <div class="subheader">ADS ROAS</div>
-            <div class="d-flex align-items-baseline">
-              <div class="h1 mb-0 me-2" id="dash-kpi-roas">&mdash;</div>
-              <div class="dash-kpi-delta ms-auto is-hidden" id="dash-kpi-roas-delta" data-dir="none">
-                <i class="fa-jelly fa-arrow-trend-up" data-icon-key="dash-kpi-delta-up" aria-hidden="true"></i>
-                <span id="dash-kpi-roas-delta-text">&mdash;</span>
-              </div>
-            </div>
-            <div class="dash-kpi-sparkline-wrap">
-              <div id="dash-roas-sparkline" class="kexo-dash-sparkline-height"></div>
-            </div>
-            <div class="dash-kpi-compare-row mt-1">
-              <div class="dash-kpi-compare-item">
-                <span class="text-muted small">Yesterday:</span>
-                <span class="fw-bold" id="dash-roas-yesterday">&mdash;</span>
-              </div>
-              <div class="dash-kpi-compare-item text-end">
-                <span class="text-muted small">7 Day:</span>
-                <span class="fw-bold" id="dash-roas-7d">&mdash;</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Kexo Score (ring + number, click for breakdown) -->
-      <div class="col-sm-6 col-lg-3">
-        <div class="card kexo-score-card" id="dash-kpi-kexo-score-card" role="button" tabindex="0" aria-label="Kexo Score, click for breakdown">
-          <div class="card-body d-flex flex-column align-items-center justify-content-center py-3">
-            <div class="subheader mb-1">Kexo Score</div>
-            <div class="kexo-score-ring-wrap position-relative">
-              <div class="kexo-score-ring" id="dash-kpi-kexo-score-ring" aria-hidden="true"></div>
-              <div class="kexo-score-ring-center position-absolute top-50 start-50 translate-middle">
-                <span class="kexo-score-num h1 mb-0" id="dash-kpi-kexo-score">&mdash;</span>
-              </div>
-            </div>
-            <div class="text-muted small mt-1">Click for breakdown</div>
+            <div id="dash-chart-overview-30d" class="kexo-overview-main-chart"></div>
           </div>
         </div>
       </div>
     </div>
-      </div>
-      <div class="kexo-overview-cell kexo-overview-chart-main">
-        <div class="row g-3">
-          <div class="col-12" data-kexo-chart-key="dash-chart-overview-30d">
-            <div class="card kexo-overview-main-card">
-              <div class="card-body kexo-overview-main-card-body">
-                <div class="kexo-overview-card-head">
-                  <div class="kexo-overview-card-head-left">
-                    <div class="kexo-overview-running-totals kexo-overview-running-totals--main" id="dash-overview-running-totals" aria-label="Sales Overview totals">
-                      <span class="kexo-overview-running-total is-revenue">
-                        <span class="kexo-overview-running-total-label">Revenue</span>
-                        <span class="kexo-overview-running-total-value" id="dash-overview-total-revenue">&mdash;</span>
-                      </span>
-                      <span class="kexo-overview-running-total is-cost">
-                        <span class="kexo-overview-running-total-label">Cost <i class="fa-light fa-circle-info ms-1 text-muted kexo-overview-cost-breakdown-icon" id="dash-overview-cost-breakdown-icon" role="button" tabindex="0" aria-label="Cost breakdown"></i></span>
-                        <span class="kexo-overview-running-total-value" id="dash-overview-total-cost">&mdash;</span>
-                      </span>
-                      <span class="kexo-overview-running-total is-profit">
-                        <span class="kexo-overview-running-total-label">Profit</span>
-                        <span class="kexo-overview-running-total-value" id="dash-overview-total-profit">&mdash;</span>
-                      </span>
-                    </div>
-                  </div>
-                  <div class="kexo-overview-card-actions">
-                    <button type="button" class="btn btn-sm btn-ghost-secondary kexo-overview-cost-settings-btn" id="dash-cost-settings-btn">Cost Settings</button>
-                    <button type="button" class="btn btn-icon btn-ghost-secondary kexo-overview-chart-settings-btn" data-kexo-chart-settings-key="dash-chart-overview-30d" aria-label="Chart settings" title="Chart settings">
-                      <i class="fa-light fa-gear" data-icon-key="chart-builder-icon" class="kexo-chart-cog-icon" aria-hidden="true"></i>
-                    </button>
-                  </div>
-                </div>
-                <div id="dash-chart-overview-30d" class="kexo-overview-main-chart"></div>
-              </div>
-            </div>
+
+    <!-- Row 2: Top Countries (50%) + Top Products (50%) -->
+    <div class="row g-3 mb-3">
+      <div class="col-12 col-lg-6">
+        <div class="card h-100" data-table-class="dashboard" data-table-zone="dashboard-top-countries" data-table-id="dash-top-countries">
+          <div class="card-header">
+            <h3 class="card-title" data-kexo-table-title="1">Top Countries</h3>
           </div>
+          <div id="dash-top-countries-mount" data-kexo-table="dash-top-countries"></div>
+          <div class="card-footer d-flex align-items-center justify-content-center is-hidden" id="dash-top-countries-pagination" aria-label="Top countries pagination"></div>
         </div>
       </div>
-      <div class="kexo-overview-cell kexo-overview-widgets">
-        <div class="kexo-dashboard-widgets-row" id="dash-widgets-row" aria-label="Dashboard widgets">
-          <div class="kexo-dashboard-widgets-grid kexo-dashboard-widgets-grid-all" id="dash-widgets-grid-all" aria-label="Dashboard widgets">
-              <!-- Widget 1: Variant radial -->
-              <div class="card kexo-widget-card" data-kexo-widget="variant">
+      <div class="col-12 col-lg-6">
+        <div class="card h-100" data-table-class="dashboard" data-table-zone="dashboard-top-products" data-table-id="dash-top-products">
+          <div class="card-header">
+            <h3 class="card-title" data-kexo-table-title="1">Top Products</h3>
+          </div>
+          <div id="dash-top-products-mount" data-kexo-table="dash-top-products"></div>
+          <div class="card-footer d-flex align-items-center justify-content-center is-hidden" id="dash-top-products-pagination" aria-label="Top products pagination"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Row 3: Variants, Devices, Browsers (1/3 each) -->
+    <div class="row g-3 mb-3" id="dash-widgets-row" aria-label="Dashboard widgets">
+      <div class="col-12 col-lg-4">
+        <div class="card h-100 kexo-widget-card" data-kexo-widget="variant">
                 <div class="card-body kexo-widget-card-body">
                   <div class="kexo-widget-head">
                     <div class="kexo-widget-title kexo-widget-title-chevron" data-kexo-widget-dropdown="variant" role="button" tabindex="0" aria-haspopup="menu" aria-expanded="false" aria-controls="dash-widget-variant-menu">
@@ -376,32 +125,55 @@
                   <div class="kexo-widget-menu is-hidden" id="dash-widget-variant-menu" role="menu" aria-hidden="true" data-kexo-widget-menu="variant"></div>
                 </div>
               </div>
-
-              <!-- Widget 2: Devices/Browsers -->
-              <div class="card kexo-widget-card" data-kexo-widget="devices">
-                <div class="card-body kexo-widget-card-body">
-                  <div class="kexo-widget-head">
-                    <div class="kexo-widget-title kexo-widget-title-chevron" data-kexo-widget-dropdown="devices" role="button" tabindex="0" aria-haspopup="menu" aria-expanded="false" aria-controls="dash-widget-devices-menu">
-                      <span data-kexo-widget-dropdown-label="devices">Devices</span>
-                      <i class="fa-light fa-chevron-down ms-1 kexo-widget-chevron" aria-hidden="true"></i>
-                    </div>
-                    <div class="kexo-widget-head-right">
-                      <button type="button" class="btn btn-icon btn-ghost-secondary kexo-widget-settings-btn" data-kexo-widget-settings aria-label="Widget sort" title="Sort cards">
-                        <i class="fa-light fa-gear" aria-hidden="true"></i>
-                      </button>
-                    </div>
-                  </div>
-                  <div class="kexo-widget-body">
-                    <div id="dash-widget-devices-mount" class="kexo-widget-mount" aria-live="polite"></div>
-                  </div>
-                  <div class="kexo-widget-menu is-hidden" id="dash-widget-devices-menu" role="menu" aria-hidden="true" data-kexo-widget-menu="devices">
-                    <button type="button" class="kexo-widget-menu-item" role="menuitem" data-kexo-widget-dimension="devices" data-kexo-widget-dimension-value="devices">Devices</button>
-                    <button type="button" class="kexo-widget-menu-item" role="menuitem" data-kexo-widget-dimension="devices" data-kexo-widget-dimension-value="browsers">Browsers</button>
-                  </div>
-                </div>
+      </div>
+      <div class="col-12 col-lg-4">
+        <div class="card h-100 kexo-widget-card" data-kexo-widget="devices">
+          <div class="card-body kexo-widget-card-body">
+            <div class="kexo-widget-head">
+              <div class="kexo-widget-title kexo-widget-title-chevron" data-kexo-widget-dropdown="devices" role="button" tabindex="0" aria-haspopup="menu" aria-expanded="false" aria-controls="dash-widget-devices-menu">
+                <span data-kexo-widget-dropdown-label="devices">Devices</span>
+                <i class="fa-light fa-chevron-down ms-1 kexo-widget-chevron" aria-hidden="true"></i>
               </div>
-              <!-- Widget 3: Attribution -->
-              <div class="card kexo-widget-card" data-kexo-widget="attribution">
+              <div class="kexo-widget-head-right">
+                <button type="button" class="btn btn-icon btn-ghost-secondary kexo-widget-settings-btn" data-kexo-widget-settings aria-label="Widget sort" title="Sort cards">
+                  <i class="fa-light fa-gear" aria-hidden="true"></i>
+                </button>
+              </div>
+            </div>
+            <div class="kexo-widget-body">
+              <div id="dash-widget-devices-mount" class="kexo-widget-mount" aria-live="polite"></div>
+            </div>
+            <div class="kexo-widget-menu is-hidden" id="dash-widget-devices-menu" role="menu" aria-hidden="true" data-kexo-widget-menu="devices"></div>
+          </div>
+        </div>
+      </div>
+      <div class="col-12 col-lg-4">
+        <div class="card h-100 kexo-widget-card" data-kexo-widget="browsers">
+          <div class="card-body kexo-widget-card-body">
+            <div class="kexo-widget-head">
+              <div class="kexo-widget-title kexo-widget-title-chevron" data-kexo-widget-dropdown="browsers" role="button" tabindex="0" aria-haspopup="menu" aria-expanded="false" aria-controls="dash-widget-browsers-menu">
+                <span data-kexo-widget-dropdown-label="browsers">Browsers</span>
+                <i class="fa-light fa-chevron-down ms-1 kexo-widget-chevron" aria-hidden="true"></i>
+              </div>
+              <div class="kexo-widget-head-right">
+                <button type="button" class="btn btn-icon btn-ghost-secondary kexo-widget-settings-btn" data-kexo-widget-settings aria-label="Widget sort" title="Sort cards">
+                  <i class="fa-light fa-gear" aria-hidden="true"></i>
+                </button>
+              </div>
+            </div>
+            <div class="kexo-widget-body">
+              <div id="dash-widget-browsers-mount" class="kexo-widget-mount" aria-live="polite"></div>
+            </div>
+            <div class="kexo-widget-menu is-hidden" id="dash-widget-browsers-menu" role="menu" aria-hidden="true" data-kexo-widget-menu="browsers"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Row 4: Attribution, Payment methods, Abandoned (1/3 each) -->
+    <div class="row g-3 mb-3">
+      <div class="col-12 col-lg-4">
+        <div class="card h-100 kexo-widget-card" data-kexo-widget="attribution">
                 <div class="card-body kexo-widget-card-body">
                   <div class="kexo-widget-head">
                     <div class="kexo-widget-title">Attribution</div>
@@ -411,56 +183,54 @@
                       </button>
                     </div>
                   </div>
-                  <div class="kexo-widget-body">
-                    <div id="dash-widget-attribution-mount" class="kexo-widget-mount" aria-live="polite"></div>
-                  </div>
-                  <div class="kexo-widget-menu is-hidden" id="dash-widget-attribution-menu" role="menu" aria-hidden="true" data-kexo-widget-menu="attribution"></div>
-                </div>
-              </div>
-
-              <!-- Widget 4: Payment methods -->
-              <div class="card kexo-widget-card" data-kexo-widget="payment-types">
-                <div class="card-body kexo-widget-card-body">
-                  <div class="kexo-widget-head">
-                    <div class="kexo-widget-title">Payment methods</div>
-                    <div class="kexo-widget-head-right">
-                      <button type="button" class="btn btn-icon btn-ghost-secondary kexo-widget-settings-btn" data-kexo-widget-settings aria-label="Widget sort" title="Sort cards">
-                        <i class="fa-light fa-gear" aria-hidden="true"></i>
-                      </button>
-                    </div>
-                  </div>
-                  <div class="kexo-widget-body">
-                    <div id="dash-widget-payment-types-mount" class="kexo-widget-mount" aria-live="polite"></div>
-                  </div>
-                  <div class="kexo-widget-menu is-hidden" id="dash-widget-payment-types-menu" role="menu" aria-hidden="true" data-kexo-widget-menu="payment-types"></div>
-                </div>
-              </div>
-
-              <!-- Widget 5: Abandoned carts -->
-              <div class="card kexo-widget-card" data-kexo-widget="abandoned">
-                <div class="card-body kexo-widget-card-body">
-                  <div class="kexo-widget-head">
-                    <div class="kexo-widget-title">Abandoned Carts</div>
-                    <div class="kexo-widget-head-right">
-                      <button type="button" class="btn btn-icon btn-ghost-secondary kexo-widget-settings-btn" data-kexo-widget-settings aria-label="Widget sort" title="Sort cards">
-                        <i class="fa-light fa-gear" aria-hidden="true"></i>
-                      </button>
-                    </div>
-                  </div>
-                  <div class="kexo-widget-body">
-                    <div id="dash-widget-abandoned-mount" class="kexo-widget-mount" aria-live="polite"></div>
-                  </div>
-                  <div class="kexo-widget-menu is-hidden" id="dash-widget-abandoned-menu" role="menu" aria-hidden="true" data-kexo-widget-menu="abandoned"></div>
-                </div>
-              </div>
+          <div class="kexo-widget-body">
+            <div id="dash-widget-attribution-mount" class="kexo-widget-mount" aria-live="polite"></div>
           </div>
-          <div class="kexo-widget-menu is-hidden kexo-widget-sort-menu" id="dash-widget-sort-menu" role="menu" aria-hidden="true" data-kexo-widget-menu="sort">
-            <button type="button" class="kexo-widget-menu-item" role="menuitem" data-kexo-widget-sort="revenue">Revenue</button>
-            <button type="button" class="kexo-widget-menu-item" role="menuitem" data-kexo-widget-sort="conversion">Conversion Rate</button>
-            <button type="button" class="kexo-widget-menu-item" role="menuitem" data-kexo-widget-sort="clicks">Clicks</button>
+          <div class="kexo-widget-menu is-hidden" id="dash-widget-attribution-menu" role="menu" aria-hidden="true" data-kexo-widget-menu="attribution"></div>
+        </div>
+      </div>
+      <div class="col-12 col-lg-4">
+        <div class="card h-100 kexo-widget-card" data-kexo-widget="payment-types">
+          <div class="card-body kexo-widget-card-body">
+            <div class="kexo-widget-head">
+              <div class="kexo-widget-title">Payment methods</div>
+              <div class="kexo-widget-head-right">
+                <button type="button" class="btn btn-icon btn-ghost-secondary kexo-widget-settings-btn" data-kexo-widget-settings aria-label="Widget sort" title="Sort cards">
+                  <i class="fa-light fa-gear" aria-hidden="true"></i>
+                </button>
+              </div>
+            </div>
+            <div class="kexo-widget-body">
+              <div id="dash-widget-payment-types-mount" class="kexo-widget-mount" aria-live="polite"></div>
+            </div>
+            <div class="kexo-widget-menu is-hidden" id="dash-widget-payment-types-menu" role="menu" aria-hidden="true" data-kexo-widget-menu="payment-types"></div>
           </div>
         </div>
       </div>
+      <div class="col-12 col-lg-4">
+        <div class="card h-100 kexo-widget-card" data-kexo-widget="abandoned">
+          <div class="card-body kexo-widget-card-body">
+            <div class="kexo-widget-head">
+              <div class="kexo-widget-title">Abandoned Carts</div>
+              <div class="kexo-widget-head-right">
+                <button type="button" class="btn btn-icon btn-ghost-secondary kexo-widget-settings-btn" data-kexo-widget-settings aria-label="Widget sort" title="Sort cards">
+                  <i class="fa-light fa-gear" aria-hidden="true"></i>
+                </button>
+              </div>
+            </div>
+            <div class="kexo-widget-body">
+              <div id="dash-widget-abandoned-mount" class="kexo-widget-mount" aria-live="polite"></div>
+            </div>
+            <div class="kexo-widget-menu is-hidden" id="dash-widget-abandoned-menu" role="menu" aria-hidden="true" data-kexo-widget-menu="abandoned"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="kexo-widget-menu is-hidden kexo-widget-sort-menu" id="dash-widget-sort-menu" role="menu" aria-hidden="true" data-kexo-widget-menu="sort">
+      <button type="button" class="kexo-widget-menu-item" role="menuitem" data-kexo-widget-sort="revenue">Revenue</button>
+      <button type="button" class="kexo-widget-menu-item" role="menuitem" data-kexo-widget-sort="conversion">Conversion Rate</button>
+      <button type="button" class="kexo-widget-menu-item" role="menuitem" data-kexo-widget-sort="clicks">Clicks</button>
     </div>
 
     <!-- Profit Rules modal (shared with Snapshot; used for Dashboard Cost Settings shortcut) -->
@@ -583,32 +353,10 @@
       </div>
     </div>
 
+    <!-- Row 5: Trending Up (50%) + Trending Down (50%) -->
     <div class="row g-3 mb-3">
       <div class="col-12 col-lg-6">
-        <div class="card" data-table-class="dashboard" data-table-zone="dashboard-top-products" data-table-id="dash-top-products">
-          <div class="card-header">
-            <h3 class="card-title" data-kexo-table-title="1">Top Products</h3>
-          </div>
-          <div id="dash-top-products-mount" data-kexo-table="dash-top-products"></div>
-          <div class="card-footer d-flex align-items-center justify-content-center is-hidden" id="dash-top-products-pagination" aria-label="Top products pagination"></div>
-        </div>
-      </div>
-      <div class="col-12 col-lg-6">
-        <div class="card" data-table-class="dashboard" data-table-zone="dashboard-top-countries" data-table-id="dash-top-countries">
-          <div class="card-header">
-            <h3 class="card-title" data-kexo-table-title="1">Top Countries</h3>
-          </div>
-          <div id="dash-top-countries-mount" data-kexo-table="dash-top-countries"></div>
-          <div class="card-footer d-flex align-items-center justify-content-center is-hidden" id="dash-top-countries-pagination" aria-label="Top countries pagination"></div>
-        </div>
-      </div>
-    </div>
-
-    <div class="row g-3 mb-3" id="dash-kpi-grid-mid"></div>
-
-    <div class="row g-3 mb-3">
-      <div class="col-lg-6">
-        <div class="card" data-table-class="dashboard" data-table-zone="dashboard-trending-up" data-table-id="dash-trending-up">
+        <div class="card h-100" data-table-class="dashboard" data-table-zone="dashboard-trending-up" data-table-id="dash-trending-up">
           <div class="card-header">
             <h3 class="card-title" data-kexo-table-title="1">Trending Up</h3>
           </div>
@@ -616,155 +364,13 @@
           <div class="card-footer d-flex align-items-center justify-content-center is-hidden" id="dash-trending-up-pagination" aria-label="Trending up pagination"></div>
         </div>
       </div>
-      <div class="col-lg-6">
-        <div class="card" data-table-class="dashboard" data-table-zone="dashboard-trending-down" data-table-id="dash-trending-down">
+      <div class="col-12 col-lg-6">
+        <div class="card h-100" data-table-class="dashboard" data-table-zone="dashboard-trending-down" data-table-id="dash-trending-down">
           <div class="card-header">
             <h3 class="card-title" data-kexo-table-title="1">Trending Down</h3>
           </div>
           <div id="dash-trending-down-mount" data-kexo-table="dash-trending-down"></div>
           <div class="card-footer d-flex align-items-center justify-content-center is-hidden" id="dash-trending-down-pagination" aria-label="Trending down pagination"></div>
-        </div>
-      </div>
-    </div>
-
-    <div class="row g-3 mb-3" id="dash-kpi-grid-lower">
-      <div class="col-sm-6 col-lg-3">
-        <div class="card">
-          <div class="card-body">
-            <div class="subheader">COGS</div>
-            <div class="d-flex align-items-baseline">
-              <div class="h1 mb-0 me-2" id="dash-kpi-cogs">&mdash;</div>
-              <div class="dash-kpi-delta ms-auto is-hidden" id="dash-kpi-cogs-delta" data-dir="none">
-                <i class="fa-jelly fa-arrow-trend-up" data-icon-key="dash-kpi-delta-up" aria-hidden="true"></i>
-                <span id="dash-kpi-cogs-delta-text">&mdash;</span>
-              </div>
-            </div>
-            <div class="dash-kpi-sparkline-wrap">
-              <div id="dash-cogs-sparkline" class="kexo-dash-sparkline-height"></div>
-            </div>
-            <div class="dash-kpi-compare-row mt-1">
-              <div class="dash-kpi-compare-item">
-                <span class="text-muted small">Yesterday:</span>
-                <span class="fw-bold" id="dash-cogs-yesterday">&mdash;</span>
-              </div>
-              <div class="dash-kpi-compare-item text-end">
-                <span class="text-muted small">7 Day:</span>
-                <span class="fw-bold" id="dash-cogs-7d">&mdash;</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="col-sm-6 col-lg-3">
-        <div class="card">
-          <div class="card-body">
-            <div class="subheader">Profit</div>
-            <div class="d-flex align-items-baseline">
-              <div class="h1 mb-0 me-2" id="dash-kpi-profit">&mdash;</div>
-              <div class="dash-kpi-delta ms-auto is-hidden" id="dash-kpi-profit-delta" data-dir="none">
-                <i class="fa-jelly fa-arrow-trend-up" data-icon-key="dash-kpi-delta-up" aria-hidden="true"></i>
-                <span id="dash-kpi-profit-delta-text">&mdash;</span>
-              </div>
-            </div>
-            <div class="dash-kpi-sparkline-wrap">
-              <div id="dash-profit-sparkline" class="kexo-dash-sparkline-height"></div>
-            </div>
-            <div class="dash-kpi-compare-row mt-1">
-              <div class="dash-kpi-compare-item">
-                <span class="text-muted small">Yesterday:</span>
-                <span class="fw-bold" id="dash-profit-yesterday">&mdash;</span>
-              </div>
-              <div class="dash-kpi-compare-item text-end">
-                <span class="text-muted small">7 Day:</span>
-                <span class="fw-bold" id="dash-profit-7d">&mdash;</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="col-sm-6 col-lg-3">
-        <div class="card">
-          <div class="card-body">
-            <div class="subheader">Fulfilled</div>
-            <div class="d-flex align-items-baseline">
-              <div class="h1 mb-0 me-2" id="dash-kpi-fulfilled">&mdash;</div>
-              <div class="dash-kpi-delta ms-auto is-hidden" id="dash-kpi-fulfilled-delta" data-dir="none">
-                <i class="fa-jelly fa-arrow-trend-up" data-icon-key="dash-kpi-delta-up" aria-hidden="true"></i>
-                <span id="dash-kpi-fulfilled-delta-text">&mdash;</span>
-              </div>
-            </div>
-            <div class="dash-kpi-sparkline-wrap">
-              <div id="dash-fulfilled-sparkline" class="kexo-dash-sparkline-height"></div>
-            </div>
-            <div class="dash-kpi-compare-row mt-1">
-              <div class="dash-kpi-compare-item">
-                <span class="text-muted small">Yesterday:</span>
-                <span class="fw-bold" id="dash-fulfilled-yesterday">&mdash;</span>
-              </div>
-              <div class="dash-kpi-compare-item text-end">
-                <span class="text-muted small">7 Day:</span>
-                <span class="fw-bold" id="dash-fulfilled-7d">&mdash;</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="col-sm-6 col-lg-3">
-        <div class="card">
-          <div class="card-body">
-            <div class="subheader">Returns</div>
-            <div class="d-flex align-items-baseline">
-              <div class="h1 mb-0 me-2" id="dash-kpi-returns">&mdash;</div>
-              <div class="dash-kpi-delta ms-auto is-hidden" id="dash-kpi-returns-delta" data-dir="none">
-                <i class="fa-jelly fa-arrow-trend-up" data-icon-key="dash-kpi-delta-up" aria-hidden="true"></i>
-                <span id="dash-kpi-returns-delta-text">&mdash;</span>
-              </div>
-            </div>
-            <div class="dash-kpi-sparkline-wrap">
-              <div id="dash-returns-sparkline" class="kexo-dash-sparkline-height"></div>
-            </div>
-            <div class="dash-kpi-compare-row mt-1">
-              <div class="dash-kpi-compare-item">
-                <span class="text-muted small">Yesterday:</span>
-                <span class="fw-bold" id="dash-returns-yesterday">&mdash;</span>
-              </div>
-              <div class="dash-kpi-compare-item text-end">
-                <span class="text-muted small">7 Day:</span>
-                <span class="fw-bold" id="dash-returns-7d">&mdash;</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="col-sm-6 col-lg-3">
-        <div class="card">
-          <div class="card-body">
-            <div class="subheader">Items ordered</div>
-            <div class="d-flex align-items-baseline">
-              <div class="h1 mb-0 me-2" id="dash-kpi-items">&mdash;</div>
-              <div class="dash-kpi-delta ms-auto is-hidden" id="dash-kpi-items-delta" data-dir="none">
-                <i class="fa-jelly fa-arrow-trend-up" data-icon-key="dash-kpi-delta-up" aria-hidden="true"></i>
-                <span id="dash-kpi-items-delta-text">&mdash;</span>
-              </div>
-            </div>
-            <div class="dash-kpi-sparkline-wrap">
-              <div id="dash-items-sparkline" class="kexo-dash-sparkline-height"></div>
-            </div>
-            <div class="dash-kpi-compare-row mt-1">
-              <div class="dash-kpi-compare-item">
-                <span class="text-muted small">Yesterday:</span>
-                <span class="fw-bold" id="dash-items-yesterday">&mdash;</span>
-              </div>
-              <div class="dash-kpi-compare-item text-end">
-                <span class="text-muted small">7 Day:</span>
-                <span class="fw-bold" id="dash-items-7d">&mdash;</span>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </div>
