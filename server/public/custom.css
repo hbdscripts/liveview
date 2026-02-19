@@ -3367,7 +3367,6 @@ html[data-bs-theme="dark"] .report-build-wrap {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.5rem;
 }
 .kexo-ovw-ring {
   position: relative;
@@ -3400,18 +3399,24 @@ html[data-bs-theme="dark"] .report-build-wrap {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: 24px;
+  font-size: 34px;
   color: var(--tblr-secondary);
 }
 .kexo-ovw-ring-icon img {
-  width: 28px;
-  height: 18px;
+  width: 34px;
+  height: 34px;
   object-fit: contain;
   display: block;
 }
+.kexo-ovw-ring-icon .flag {
+  width: 34px !important;
+  height: 24px !important;
+  flex-shrink: 0;
+  display: block;
+}
 .kexo-ovw-ring-icon svg {
-  width: 28px;
-  height: 18px;
+  width: 34px;
+  height: 34px;
   display: block;
 }
 .kexo-ovw-ring-value {
