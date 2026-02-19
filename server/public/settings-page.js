@@ -1637,27 +1637,70 @@
 
     var connBadge = document.getElementById('settings-ga-connection-status');
     if (connBadge) {
+      var hasOAuth = !!(ga && ga.hasRefreshToken);
       if (ga && ga.connected) connBadge.innerHTML = badge('Connected', 'ok');
+      else if (hasOAuth) connBadge.innerHTML = badge('Connected (needs setup)', 'warn');
       else if (ga && ga.configured) connBadge.innerHTML = badge('Not connected', 'warn');
       else connBadge.innerHTML = badge('Not configured', 'bad');
     }
 
-    var isConnected = !!(ga && ga.connected);
-    try { window.__kexoGaConnected = isConnected; } catch (_) {}
+    // "Ready" means we can successfully call Google Ads APIs.
+    // OAuth can complete even if required server config is missing (e.g. customer ID / developer token).
+    var isReady = !!(ga && ga.connected);
+    var hasOAuth = !!(ga && ga.hasRefreshToken);
+    try { window.__kexoGaConnected = isReady; } catch (_) {}
 
     setText('settings-ga-customer-id', ga && ga.customerId ? String(ga.customerId) : '\u2014');
     setText('settings-ga-login-customer-id', ga && ga.loginCustomerId ? String(ga.loginCustomerId) : '\u2014');
     setText('settings-ga-conversion-customer-id', ga && ga.conversionCustomerId ? String(ga.conversionCustomerId) : '\u2014');
 
     var postbackCb = document.getElementById('settings-ga-postback-enabled');
-    if (postbackCb) postbackCb.checked = !!(settings && settings.googleAdsPostbackEnabled);
+    if (postbackCb) {
+      postbackCb.checked = !!(settings && settings.googleAdsPostbackEnabled);
+      postbackCb.disabled = !isReady;
+    }
 
     var connDisconnectedEl = document.getElementById('settings-ga-connection-disconnected');
     var connConnectedEl = document.getElementById('settings-ga-connection-connected');
     var whenConnectedEl = document.getElementById('settings-ga-when-connected');
-    if (connDisconnectedEl) connDisconnectedEl.classList.toggle('d-none', isConnected);
-    if (connConnectedEl) connConnectedEl.classList.toggle('d-none', !isConnected);
-    if (whenConnectedEl) whenConnectedEl.classList.toggle('d-none', !isConnected);
+    // For Settings UI: treat OAuth completion as "connected" so users don't get stuck in a loop.
+    var showConnectedUi = hasOAuth;
+    if (connDisconnectedEl) connDisconnectedEl.classList.toggle('d-none', showConnectedUi);
+    if (connConnectedEl) connConnectedEl.classList.toggle('d-none', !showConnectedUi);
+    if (whenConnectedEl) whenConnectedEl.classList.toggle('d-none', !showConnectedUi);
+
+    // Connection hint: show OAuth result and/or missing setup guidance.
+    var connMsgEl = document.getElementById('settings-ga-connection-msg');
+    (function patchConnHint() {
+      if (!connMsgEl) return;
+      var oauth = '';
+      try {
+        var m = /[?&]ads_oauth=([^&]+)/.exec(window.location.search || '');
+        oauth = m && m[1] ? decodeURIComponent(m[1]) : '';
+      } catch (_) { oauth = ''; }
+      if (oauth && oauth !== 'ok') {
+        connMsgEl.textContent = 'Google connect failed: ' + String(oauth);
+        connMsgEl.className = 'form-hint text-danger';
+        return;
+      }
+      if (hasOAuth && !isReady) {
+        var missing = [];
+        if (!(ga && ga.customerId)) missing.push('Customer ID');
+        if (!(ga && ga.hasDeveloperToken)) missing.push('Developer token');
+        connMsgEl.textContent = missing.length
+          ? ('Connected to Google, but missing: ' + missing.join(', ') + '. Set server env (GOOGLE_ADS_CUSTOMER_ID / GOOGLE_ADS_DEVELOPER_TOKEN) then refresh.')
+          : 'Connected to Google, but setup is incomplete. Refresh and check configuration.';
+        connMsgEl.className = 'form-hint text-warning';
+        return;
+      }
+      if (oauth === 'ok') {
+        connMsgEl.textContent = 'Connected to Google.';
+        connMsgEl.className = 'form-hint text-success';
+        return;
+      }
+      connMsgEl.textContent = '';
+      connMsgEl.className = 'form-hint';
+    })();
 
     var sp = getShopParam();
     var connectBase = (typeof API !== 'undefined' ? API : '') + '/api/ads/google/connect?redirect=' + encodeURIComponent('/settings?tab=integrations&integrationsTab=googleads');
