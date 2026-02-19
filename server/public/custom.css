@@ -605,6 +605,20 @@ html[data-bs-theme="dark"] body.kexo-update-available #footer-settings-toggle i:
   letter-spacing: 0.06em;
   color: var(--tblr-secondary, #626976);
 }
+.side-panel-section:not(.side-panel-summary) .side-panel-section-title {
+  cursor: pointer;
+  user-select: none;
+}
+.side-panel-section.is-minimized .side-panel-section-title {
+  margin-bottom: 0;
+}
+.side-panel-section.is-minimized > :not(.side-panel-section-title) {
+  display: none !important;
+}
+.side-panel-summary-grid {
+  display: grid;
+  gap: 0.4rem;
+}
 .side-panel-icon {
   font-size: 0.95rem;
   line-height: 1;
@@ -1277,10 +1291,10 @@ body[data-page="attribution"] #attribution-mount .source-icons img {
   display: inline-block;
 }
 body[data-page="attribution"] #attribution-mount .source-icons svg {
-  width: 20px !important;
-  height: 20px !important;
   max-width: 20px !important;
   max-height: 20px !important;
+  width: auto !important;
+  height: auto !important;
   display: block;
 }
 body[data-page="attribution"] #attribution-mount .source-icons i {

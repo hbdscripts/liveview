@@ -611,6 +611,13 @@
         var raw = svgMarkup != null ? String(svgMarkup) : '';
         if (!raw) return '';
         if (!/^<svg[\s>]/i.test(raw.trim())) return raw;
+        // If the SVG has no viewBox, removing/overriding width/height can clip the artwork.
+        // In that case, leave the original sizing attributes intact and rely on CSS max-size.
+        try {
+          var m = raw.trim().match(/^<svg\b([^>]*)>/i);
+          var attrs = m && m[1] ? String(m[1]) : '';
+          if (!/\sviewBox\s*=/i.test(attrs)) return raw;
+        } catch (_) {}
         // Remove width/height attributes from the root <svg ...> tag so CSS can enforce sizing.
         raw = raw.replace(/^<svg\b([^>]*)>/i, function (_m, attrs) {
           var a = String(attrs || '');
@@ -749,11 +756,11 @@
               '<span>' + escapeHtml(chLabel) + '</span>' +
             '</button>' +
           '</div>' +
-          '<div class="grid-cell" role="cell">' + escapeHtml(chSessions || '-') + '</div>' +
-          '<div class="grid-cell" role="cell">' + escapeHtml(chOrders || '-') + '</div>' +
-          '<div class="grid-cell" role="cell">' + escapeHtml(chCr || '-') + '</div>' +
-          '<div class="grid-cell" role="cell">' + chVpv + '</div>' +
-          '<div class="grid-cell" role="cell">' + (chRev || '-') + '</div>' +
+          '<div class="grid-cell text-end" role="cell">' + escapeHtml(chSessions || '-') + '</div>' +
+          '<div class="grid-cell text-end" role="cell">' + escapeHtml(chOrders || '-') + '</div>' +
+          '<div class="grid-cell text-end" role="cell">' + escapeHtml(chCr || '-') + '</div>' +
+          '<div class="grid-cell text-end" role="cell">' + chVpv + '</div>' +
+          '<div class="grid-cell text-end" role="cell">' + (chRev || '-') + '</div>' +
         '</div>';
 
         const sources = ch && Array.isArray(ch.sources) ? ch.sources.slice() : [];
@@ -785,11 +792,11 @@
                 '<span>' + escapeHtml(sLabel) + '</span>' +
               '</button>' +
             '</div>' +
-            '<div class="grid-cell" role="cell">' + escapeHtml(sSessions || '-') + '</div>' +
-            '<div class="grid-cell" role="cell">' + escapeHtml(sOrders || '-') + '</div>' +
-            '<div class="grid-cell" role="cell">' + escapeHtml(sCr || '-') + '</div>' +
-            '<div class="grid-cell" role="cell">' + sVpv + '</div>' +
-            '<div class="grid-cell" role="cell">' + (sRev || '-') + '</div>' +
+            '<div class="grid-cell text-end" role="cell">' + escapeHtml(sSessions || '-') + '</div>' +
+            '<div class="grid-cell text-end" role="cell">' + escapeHtml(sOrders || '-') + '</div>' +
+            '<div class="grid-cell text-end" role="cell">' + escapeHtml(sCr || '-') + '</div>' +
+            '<div class="grid-cell text-end" role="cell">' + sVpv + '</div>' +
+            '<div class="grid-cell text-end" role="cell">' + (sRev || '-') + '</div>' +
           '</div>';
 
           const variants = src && Array.isArray(src.variants) ? src.variants.slice() : [];
@@ -820,11 +827,11 @@
               : '';
             html += '<div class="grid-row traffic-type-child attribution-variant-row' + (srcOpen ? '' : ' is-hidden') + '" role="row" data-parent="' + escapeHtml(parentKey) + '" data-channel="' + escapeHtml(chKey) + '" data-source="' + escapeHtml(sKey) + '">' +
               '<div class="grid-cell" role="cell"><span style="display:inline-flex;align-items:center;gap:8px;padding-left:18px">' + (vIcon || '') + '<span>' + escapeHtml(vLabel) + '</span>' + ownerBadge + '</span></div>' +
-              '<div class="grid-cell" role="cell">' + escapeHtml(vSessions || '-') + '</div>' +
-              '<div class="grid-cell" role="cell">' + escapeHtml(vOrders || '-') + '</div>' +
-              '<div class="grid-cell" role="cell">' + escapeHtml(vCr || '-') + '</div>' +
-              '<div class="grid-cell" role="cell">' + vVpv + '</div>' +
-              '<div class="grid-cell" role="cell">' + (vRev || '-') + '</div>' +
+              '<div class="grid-cell text-end" role="cell">' + escapeHtml(vSessions || '-') + '</div>' +
+              '<div class="grid-cell text-end" role="cell">' + escapeHtml(vOrders || '-') + '</div>' +
+              '<div class="grid-cell text-end" role="cell">' + escapeHtml(vCr || '-') + '</div>' +
+              '<div class="grid-cell text-end" role="cell">' + vVpv + '</div>' +
+              '<div class="grid-cell text-end" role="cell">' + (vRev || '-') + '</div>' +
             '</div>';
           });
         });
@@ -1055,11 +1062,11 @@
               '<span>' + escapeHtml(label) + '</span>' +
             '</button>' +
           '</div>' +
-          '<div class="grid-cell" role="cell">' + escapeHtml(sessions || '-') + '</div>' +
-          '<div class="grid-cell" role="cell">' + escapeHtml(orders || '-') + '</div>' +
-          '<div class="grid-cell" role="cell">' + escapeHtml(cr || '-') + '</div>' +
-          '<div class="grid-cell" role="cell">' + vpv + '</div>' +
-          '<div class="grid-cell" role="cell">' + (rev || '-') + '</div>' +
+          '<div class="grid-cell text-end" role="cell">' + escapeHtml(sessions || '-') + '</div>' +
+          '<div class="grid-cell text-end" role="cell">' + escapeHtml(orders || '-') + '</div>' +
+          '<div class="grid-cell text-end" role="cell">' + escapeHtml(cr || '-') + '</div>' +
+          '<div class="grid-cell text-end" role="cell">' + vpv + '</div>' +
+          '<div class="grid-cell text-end" role="cell">' + (rev || '-') + '</div>' +
         '</div>';
 
         const kids = g && Array.isArray(g.platforms) ? g.platforms.slice() : [];
@@ -1084,11 +1091,11 @@
           const cvpv = metric(c, 'vpv') != null ? formatRevenue(metric(c, 'vpv')) : '\u2014';
           html += '<div class="grid-row traffic-type-child devices-child' + (open ? '' : ' is-hidden') + '" role="row" data-parent="' + escapeHtml(dKey) + '">' +
             '<div class="grid-cell" role="cell"><span style="display:inline-flex;align-items:center;gap:8px">' + trafficTypePlatformIcon(platform) + '<span>' + escapeHtml(clabel) + '</span></span></div>' +
-            '<div class="grid-cell" role="cell">' + escapeHtml(csessions || '-') + '</div>' +
-            '<div class="grid-cell" role="cell">' + escapeHtml(corders || '-') + '</div>' +
-            '<div class="grid-cell" role="cell">' + escapeHtml(ccr || '-') + '</div>' +
-            '<div class="grid-cell" role="cell">' + cvpv + '</div>' +
-            '<div class="grid-cell" role="cell">' + (crev || '-') + '</div>' +
+            '<div class="grid-cell text-end" role="cell">' + escapeHtml(csessions || '-') + '</div>' +
+            '<div class="grid-cell text-end" role="cell">' + escapeHtml(corders || '-') + '</div>' +
+            '<div class="grid-cell text-end" role="cell">' + escapeHtml(ccr || '-') + '</div>' +
+            '<div class="grid-cell text-end" role="cell">' + cvpv + '</div>' +
+            '<div class="grid-cell text-end" role="cell">' + (crev || '-') + '</div>' +
           '</div>';
         });
       });
@@ -1337,13 +1344,13 @@
         const aov = (r && typeof r.aov === 'number') ? formatRevenue(r.aov) : '\u2014';
         html += '<div class="grid-row" role="row">' +
           '<div class="grid-cell" role="cell"><span style="display:inline-flex;align-items:center;gap:8px"><span class="tt-browser-icon" aria-hidden="true">' + browserIconHtml(k) + '</span><span>' + escapeHtml(label) + '</span></span></div>' +
-          '<div class="grid-cell" role="cell">' + escapeHtml(sessions) + '</div>' +
-          '<div class="grid-cell" role="cell">' + escapeHtml(carts) + '</div>' +
-          '<div class="grid-cell" role="cell">' + escapeHtml(orders) + '</div>' +
-          '<div class="grid-cell" role="cell">' + escapeHtml(cr) + '</div>' +
-          '<div class="grid-cell" role="cell">' + escapeHtml(vpv) + '</div>' +
-          '<div class="grid-cell" role="cell">' + (rev || '\u2014') + '</div>' +
-          '<div class="grid-cell" role="cell">' + escapeHtml(aov) + '</div>' +
+          '<div class="grid-cell text-end" role="cell">' + escapeHtml(sessions) + '</div>' +
+          '<div class="grid-cell text-end" role="cell">' + escapeHtml(carts) + '</div>' +
+          '<div class="grid-cell text-end" role="cell">' + escapeHtml(orders) + '</div>' +
+          '<div class="grid-cell text-end" role="cell">' + escapeHtml(cr) + '</div>' +
+          '<div class="grid-cell text-end" role="cell">' + escapeHtml(vpv) + '</div>' +
+          '<div class="grid-cell text-end" role="cell">' + (rev || '\u2014') + '</div>' +
+          '<div class="grid-cell text-end" role="cell">' + escapeHtml(aov) + '</div>' +
         '</div>';
       });
 
@@ -3209,6 +3216,57 @@
       const rowIconsEl = document.getElementById('side-row-icons');
       if (rowIconsEl) rowIconsEl.innerHTML = '';
       document.getElementById('side-cf').innerHTML = '';
+
+      function ensureSidePanelSummarySection() {
+        try {
+          var existing = document.getElementById('side-summary');
+          if (existing) return existing;
+          var header = panel.querySelector('.side-panel-header');
+          if (!header || !header.parentNode) return null;
+          var wrap = document.createElement('section');
+          wrap.className = 'side-panel-section side-panel-summary';
+          wrap.innerHTML =
+            '<h4 class="side-panel-section-title"><i class="fa-light fa-id-card side-panel-icon" aria-hidden="true"></i>Session</h4>' +
+            '<div class="side-panel-summary-grid" id="side-summary"></div>';
+          header.parentNode.insertBefore(wrap, header.nextSibling);
+          return wrap.querySelector('#side-summary');
+        } catch (_) {
+          return null;
+        }
+      }
+
+      function minimizeSidePanelSections() {
+        try {
+          panel.querySelectorAll('.side-panel-section:not(.side-panel-summary)').forEach(function (sec) {
+            sec.classList.add('is-minimized');
+            var title = sec.querySelector('.side-panel-section-title');
+            if (title) title.setAttribute('aria-expanded', 'false');
+          });
+        } catch (_) {}
+      }
+
+      function wireSidePanelSectionToggles() {
+        try {
+          if (panel.getAttribute('data-side-toggles-wired') === '1') return;
+          panel.setAttribute('data-side-toggles-wired', '1');
+          panel.addEventListener('click', function (e) {
+            var t = e && e.target ? e.target : null;
+            var title = t && t.closest ? t.closest('.side-panel-section-title') : null;
+            if (!title) return;
+            var sec = title.closest('.side-panel-section');
+            if (!sec || sec.classList.contains('side-panel-summary')) return;
+            e.preventDefault();
+            sec.classList.toggle('is-minimized');
+            title.setAttribute('aria-expanded', sec.classList.contains('is-minimized') ? 'false' : 'true');
+          });
+        } catch (_) {}
+      }
+
+      wireSidePanelSectionToggles();
+      minimizeSidePanelSections();
+
+      var summaryEl = ensureSidePanelSummarySection();
+      if (summaryEl) summaryEl.innerHTML = '<div class="side-panel-detail-row"><span class="side-panel-value muted">Loading…</span></div>';
       (function fetchLookupBundle() {
         var shop = '';
         try { shop = getShopParam() || shopForSalesFallback || ''; } catch (_) { shop = ''; }
@@ -3297,14 +3355,68 @@
                   deviceLabel = parts2.length ? parts2.join(' - ') : '';
                 } catch (_) { deviceLabel = ''; }
 
-                var tailParts = [];
-                if (channelLabel && String(channelLabel).trim()) tailParts.push(String(channelLabel).trim());
-                if (deviceLabel && String(deviceLabel).trim()) tailParts.push(String(deviceLabel).trim());
-                var tailText = tailParts.length ? tailParts.join(' - ') : '';
+                // Previously we showed "Other - iOS - iPhone - Mobile" under the header.
+                // That summary now lives in the dedicated Session block.
+                rowIconsEl.innerHTML = '';
+              }
+            } catch (_) {}
 
-                rowIconsEl.innerHTML =
-                  '<span class="side-panel-row-flag" title="Country">' + flag + '</span>' +
-                  (tailText ? ('<span class="side-panel-row-icons-text">' + escapeHtml(tailText) + '</span>') : '');
+            // Summary block (always open)
+            try {
+              var sumEl = document.getElementById('side-summary');
+              if (sumEl) {
+                var cc = (session && (session.country_code || session.cf_country)) ? String(session.country_code || session.cf_country) : 'XX';
+                var ccUp = cc ? cc.trim().toUpperCase() : 'XX';
+                var countryFlag = flagImg(ccUp, ccUp);
+                var srcText = '';
+                try { srcText = sourceDetailForPanel(session) || ''; } catch (_) { srcText = ''; }
+                var info = null;
+                try { info = deviceInfoForSession(session); } catch (_) { info = null; }
+                var firstSeen = '';
+                var lastSeen = '';
+                try { firstSeen = arrivedAgo(session && session.started_at); } catch (_) { firstSeen = ''; }
+                try { lastSeen = arrivedAgo(session && session.last_seen); } catch (_) { lastSeen = ''; }
+                var visits = 1;
+                try {
+                  var rc = session && session.returning_count != null ? Number(session.returning_count) : 0;
+                  visits = (Number.isFinite(rc) ? rc : 0) + 1;
+                } catch (_) { visits = 1; }
+                var deviceLine = '';
+                try {
+                  function tcase(v) {
+                    var s = (v || '').trim().toLowerCase();
+                    if (!s) return '';
+                    if (s === 'ios') return 'iOS';
+                    if (s === 'mac') return 'Mac';
+                    if (s === 'android') return 'Android';
+                    if (s === 'windows') return 'Windows';
+                    if (s === 'chromeos') return 'Chrome OS';
+                    if (s === 'linux') return 'Linux';
+                    if (s === 'desktop') return 'Desktop';
+                    if (s === 'mobile') return 'Mobile';
+                    if (s === 'tablet') return 'Tablet';
+                    if (s === 'iphone') return 'iPhone';
+                    if (s === 'ipad') return 'iPad';
+                    if (s === 'other') return 'Other';
+                    if (s === 'unknown') return 'Unknown';
+                    return s;
+                  }
+                  var parts = [];
+                  if (info && info.platform && info.platform !== 'unknown') parts.push(tcase(info.platform));
+                  if (info && info.model) parts.push(tcase(info.model));
+                  if (info && info.deviceType && info.deviceType !== 'unknown') parts.push(tcase(info.deviceType));
+                  deviceLine = parts.length ? parts.join(' - ') : '—';
+                } catch (_) { deviceLine = '—'; }
+
+                var srcIcon = '';
+                try { if (typeof sourceCell === 'function') srcIcon = sourceCell(session) || ''; } catch (_) { srcIcon = ''; }
+                sumEl.innerHTML =
+                  '<div class="side-panel-detail-row"><span class="side-panel-label">Country</span><span class="side-panel-value">' + countryFlag + '</span></div>' +
+                  '<div class="side-panel-detail-row"><span class="side-panel-label">Source</span><span class="side-panel-value">' + (srcIcon || '<span class="muted">—</span>') + '</span></div>' +
+                  '<div class="side-panel-detail-row"><span class="side-panel-label">Device</span><span class="side-panel-value">' + escapeHtml(deviceLine || '—') + '</span></div>' +
+                  '<div class="side-panel-detail-row"><span class="side-panel-label">First seen</span><span class="side-panel-value">' + escapeHtml(firstSeen || '—') + '</span></div>' +
+                  '<div class="side-panel-detail-row"><span class="side-panel-label">Last seen</span><span class="side-panel-value">' + escapeHtml(lastSeen || '—') + '</span></div>' +
+                  '<div class="side-panel-detail-row"><span class="side-panel-label">Total visits</span><span class="side-panel-value">' + escapeHtml(String(visits)) + '</span></div>';
               }
             } catch (_) {}
 
