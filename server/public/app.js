@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 6d43eda9785d0216
+// checksum: 0a36333fc9819e9d
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -16642,8 +16642,19 @@ const API = '';
         if (typeof ApexCharts !== 'undefined') { cb(); return; }
         if (!retries) retries = 0;
         if (retries >= 15) {
-          captureChartMessage('ApexCharts failed to load after retries', 'dashboardApexLoad', { retries: retries }, 'error');
-          console.error('[dashboard] ApexCharts failed to load after retries');
+          // This bundle is loaded on non-dashboard pages too (e.g. Settings). Only capture this
+          // when the dashboard is actually present to avoid noise.
+          var shouldCapture = false;
+          try {
+            shouldCapture = !!(
+              (typeof PAGE !== 'undefined' && PAGE === 'dashboard') ||
+              (typeof document !== 'undefined' && document && (
+                document.getElementById('tab-panel-dashboard') ||
+                document.getElementById('dash-chart-overview-30d')
+              ))
+            );
+          } catch (_) { shouldCapture = false; }
+          if (shouldCapture) captureChartMessage('ApexCharts failed to load after retries', 'dashboardApexLoad', { retries: retries }, 'error');
           return;
         }
         setTimeout(function() { waitForApexCharts(cb, retries + 1); }, 200);
@@ -16714,7 +16725,7 @@ const API = '';
         if (ann && ann.length) {
           try {
             if (dashCharts && dashCharts[chartId] !== chart) return;
-            chart.updateOptions({ annotations: { xaxis: ann } }, false, true);
+            chart.updateOptions({ annotations: { xaxis: ann, yaxis: [], points: [], texts: [], images: [] } }, false, true);
           } catch (_) {}
           return;
         }
@@ -16726,7 +16737,7 @@ const API = '';
             if (!nextAnn || !nextAnn.length) return;
             try {
               if (dashCharts && dashCharts[chartId] !== chart) return;
-              chart.updateOptions({ annotations: { xaxis: nextAnn } }, false, true);
+              chart.updateOptions({ annotations: { xaxis: nextAnn, yaxis: [], points: [], texts: [], images: [] } }, false, true);
             } catch (_) {}
           });
         } catch (_) {}
@@ -19635,6 +19646,17 @@ const API = '';
             if (isPlainObject(override) && Object.keys(override).length) {
               apexOpts = deepMergeOptions(apexOpts, override);
             }
+          } catch (_) {}
+          try {
+            // Ensure annotations arrays are always present (ApexCharts 4.x can crash otherwise),
+            // especially after advancedApexOverride merges.
+            var ann = apexOpts.annotations;
+            if (!ann || typeof ann !== 'object') ann = (apexOpts.annotations = {});
+            if (!Array.isArray(ann.xaxis)) ann.xaxis = [];
+            if (!Array.isArray(ann.yaxis)) ann.yaxis = [];
+            if (!Array.isArray(ann.points)) ann.points = [];
+            if (!Array.isArray(ann.texts)) ann.texts = [];
+            if (!Array.isArray(ann.images)) ann.images = [];
           } catch (_) {}
           var existing = dashSparkCharts[elId];
           if (existing && typeof existing.updateOptions === 'function' && typeof existing.updateSeries === 'function') {

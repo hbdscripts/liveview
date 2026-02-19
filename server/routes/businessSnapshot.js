@@ -2,6 +2,7 @@ const Sentry = require('@sentry/node');
 const store = require('../store');
 const reportCache = require('../reportCache');
 const businessSnapshotService = require('../businessSnapshotService');
+const { getDb } = require('../db');
 const { PROFIT_RULES_V1_KEY, normalizeProfitRulesConfigV1 } = require('../profitRulesConfig');
 
 const SNAPSHOT_CACHE_TTL_MS = 10 * 60 * 1000;
@@ -87,7 +88,7 @@ async function getBusinessSnapshot(req, res) {
         ttlMs: SNAPSHOT_CACHE_TTL_MS,
         force,
       },
-      async () => businessSnapshotService.getBusinessSnapshot({
+      async () => getDb().transaction(async () => businessSnapshotService.getBusinessSnapshot({
         mode: resolved.mode,
         year: resolved.selectedYear,
         month: resolved.selectedMonth,
@@ -95,7 +96,7 @@ async function getBusinessSnapshot(req, res) {
         until: resolved.currentWindow.endYmd,
         preset: resolved.preset || '',
         granularity,
-      })
+      }))
     );
     res.setHeader('Cache-Control', 'private, max-age=60');
     res.setHeader('Vary', 'Cookie');
