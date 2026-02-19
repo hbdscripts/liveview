@@ -9,7 +9,7 @@ Read this file before making changes. If you change **core paths** (routes, auth
 ## Parallel-agent workflow (do this every time)
 
 - **Before you start**: `git status --short` (must be clean or understood), then `git fetch origin`, then skim this file.
-- **Branch-by-default**: work on a topic branch; only push to `main` when the user explicitly requests **deploy**.
+- **Branch-by-default**: work on a topic branch; **deploy by default** at the end of the task (land on `main`, push) unless the user explicitly says **don’t deploy**.
 - **No clobbering**: never use `git restore .` / `git checkout -- .` / `git reset --hard` as a “cleanup” step unless you are 100% sure you’re discarding **only your own** work.
 - **If the repo changes under you** (new commits, files changing unexpectedly): stop, inspect, and prefer `git stash -u` to preserve work while you re-sync.
 
