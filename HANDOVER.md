@@ -22,10 +22,10 @@ If you start a significant change that may overlap with others, add a short entr
   - **status**: in progress / paused
   - **notes**: 1–2 lines on what’s changing
 
-- **branch**: `agent/2026-02-19-google-ads-env-hint`
+- **branch**: `agent/2026-02-19-restore-google-ads-settings-yesterday`
   - **scope**: settings (Google Ads integrations)
   - **status**: in progress
-  - **notes**: clarify server-env hint to point to diagnostics + test connection.
+  - **notes**: roll back the Google Ads settings panel to the pre-“server configuration card” UX so it matches the prior (yesterday) layout; save the newer diagnostics UI on `backup/2026-02-19-google-ads-settings-current` for later reuse.
 
 ---
 
