@@ -2373,6 +2373,19 @@
         var overviewMode = (typeof chartModeFromUiConfig === 'function') ? chartModeFromUiConfig(chartId, 'area') : 'area';
         overviewMode = validateChartType(chartId, overviewMode, 'area');
         var overviewChartType = (overviewMode === 'multi-line-labels') ? 'line' : (overviewMode === 'stacked-area' || overviewMode === 'stacked-bar' || overviewMode === 'combo') ? overviewMode : (overviewMode || 'area');
+        var profitColor = '#22c55e';
+        var profitBg = 'rgba(34,197,94,0.14)';
+        try {
+          var hasPositive = profit && profit.some(function (v) { var n = Number(v); return Number.isFinite(n) && n > 0; });
+          var hasNegative = profit && profit.some(function (v) { var n = Number(v); return Number.isFinite(n) && n < 0; });
+          var latestProfit = (profit && profit.length) ? Number(profit[profit.length - 1]) : null;
+          if (Number.isFinite(latestProfit)) {
+            if (latestProfit < 0 || (!hasPositive && hasNegative)) {
+              profitColor = '#d63939';
+              profitBg = 'rgba(214,57,57,0.14)';
+            }
+          }
+        } catch (_) {}
         makeChart(chartId, labels, [{
           label: 'Revenue',
           data: revenue,
@@ -2390,8 +2403,8 @@
         }, {
           label: 'Profit',
           data: profit,
-          borderColor: '#22c55e',
-          backgroundColor: 'rgba(34,197,94,0.14)',
+          borderColor: profitColor,
+          backgroundColor: profitBg,
           fill: true,
           borderWidth: 2
         }], {
