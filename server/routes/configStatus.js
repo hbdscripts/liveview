@@ -185,6 +185,7 @@ async function configStatus(req, res, next) {
       ads: {
         status: adsStatus,
         googleAdsApiVersion: config.googleAdsApiVersion || '',
+        googleAdsOAuthEnabled: !!config.googleAdsOAuthEnabled,
       },
       settings: {
         googleAdsPostbackEnabled,
@@ -920,6 +921,7 @@ async function configStatus(req, res, next) {
     ads: {
       status: adsStatus,
       googleAdsApiVersion: config.googleAdsApiVersion || '',
+      googleAdsOAuthEnabled: !!config.googleAdsOAuthEnabled,
     },
     trackerDefinitions,
   });

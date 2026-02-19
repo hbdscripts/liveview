@@ -1,7 +1,7 @@
 # Kexo agent rules
 
 - **Commit often. Push safely.** Commit after every logical change group on a topic branch.
-- **Default behavior: deploy automatically.** Once the task is complete, land the work on `main` and push `main` so Railway auto-deploys.
+- **Always deploy.** Once the task is complete, land the work on `main` and push `main` so Railway auto-deploys.
   - Do **not** ask for deploy confirmation unless the user has explicitly said “don’t deploy”.
   - If there are **no code changes**, do not create empty commits/pushes.
 - **Push proof:** After each push run and paste output of:
@@ -23,7 +23,7 @@
 When multiple agents (or humans) may touch the repo at the same time, follow this to avoid clobbering each other.
 
 - **Branch-by-default**: create a topic branch for each task (e.g. `agent/2026-02-18-settings-mobile-menu`).
-  - **Default behavior: deploy automatically** at the end of the task by landing on `main` and pushing `main`.
+  - **Always deploy** at the end of the task by landing on `main` and pushing `main`.
   - If `origin/main` moved while you were working, **rebase your branch** and resolve conflicts before landing.
 - **Sync before work and before commit**:
   - Run `git fetch origin` at the start of the task.

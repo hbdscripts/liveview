@@ -3,6 +3,7 @@ const express = require('express');
 const adsService = require('../ads/adsService');
 const store = require('../store');
 const salesTruth = require('../salesTruth');
+const config = require('../config');
 const { buildGoogleAdsConnectUrl, handleGoogleAdsCallback } = require('../ads/googleAdsOAuth');
 const { syncGoogleAdsSpendHourly, syncGoogleAdsGeoDaily, syncGoogleAdsDeviceDaily, backfillCampaignIdsFromGclid, testGoogleAdsConnection } = require('../ads/googleAdsSpendSync');
 const { syncAttributedOrdersToAdsDb } = require('../ads/adsOrderAttributionSync');
@@ -17,6 +18,10 @@ const router = express.Router();
 router.get('/google/connect', async (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
   try {
+    if (!config.googleAdsOAuthEnabled) {
+      res.status(400).send('OAuth disabled. Set GOOGLE_ADS_OAUTH_ENABLED=1 to use Sign in with Google.');
+      return;
+    }
     const redirect = (req.query && req.query.redirect) ? String(req.query.redirect) : '';
     const shop = (req.query && req.query.shop) ? String(req.query.shop).trim() : '';
     const customerId = (req.query && req.query.customer_id) != null ? String(req.query.customer_id) : undefined;

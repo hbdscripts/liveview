@@ -106,6 +106,10 @@ const config = {
   googleAdsLoginCustomerId: getEnv('GOOGLE_ADS_LOGIN_CUSTOMER_ID', ''),
   googleAdsCustomerId: getEnv('GOOGLE_ADS_CUSTOMER_ID', ''),
   googleAdsApiVersion: getEnv('GOOGLE_ADS_API_VERSION', ''),
+  /** When true, use OAuth "Sign in with Google" flow. When false, use GOOGLE_ADS_REFRESH_TOKEN from env. */
+  googleAdsOAuthEnabled: getBool('GOOGLE_ADS_OAUTH_ENABLED', false),
+  /** Refresh token from env (used when GOOGLE_ADS_OAUTH_ENABLED is false). */
+  googleAdsRefreshToken: (getEnv('GOOGLE_ADS_REFRESH_TOKEN', '') || '').trim(),
   /** Single allowed shop domain for "Login with Shopify" (e.g. mystore.myshopify.com) */
   allowedShopDomain: getEnv('ALLOWED_SHOP_DOMAIN', '').trim().toLowerCase(),
   /** Storefront domain for og:image thumbnails when dashboard opened without ?shop= (e.g. mystore.myshopify.com) */

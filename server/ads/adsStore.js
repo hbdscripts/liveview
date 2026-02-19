@@ -106,6 +106,15 @@ function getResolvedCustomerIds(cfg) {
 }
 
 async function getGoogleAdsConfig(shop) {
+  // When OAuth disabled, use env-based config (GOOGLE_ADS_REFRESH_TOKEN + GOOGLE_ADS_*).
+  if (!config.googleAdsOAuthEnabled && config.googleAdsRefreshToken) {
+    return {
+      refresh_token: config.googleAdsRefreshToken,
+      customer_id: config.googleAdsCustomerId || undefined,
+      login_customer_id: config.googleAdsLoginCustomerId || undefined,
+      conversion_customer_id: undefined,
+    };
+  }
   return getProviderConfig('google_ads', shop);
 }
 
