@@ -1555,6 +1555,8 @@
         if (liveOnlineMapChartInstance) { try { liveOnlineMapChartInstance.destroy(); } catch (_) {} liveOnlineMapChartInstance = null; }
         clearCountriesFlowOverlay(el);
         try { el.__kexoLiveOnlineMapSig = ''; } catch (_) {}
+        try { el.__kexoLiveOnlineMapMode = ''; } catch (_) {}
+        try { el.__kexoLiveOnlineMapAccent = ''; } catch (_) {}
         el.innerHTML = '';
         return;
       }
@@ -1616,6 +1618,26 @@
       var sig = rawMode + '|' + accent + '|' + sigParts.join('|');
       if (liveOnlineMapChartInstance && el.__kexoLiveOnlineMapSig === sig) {
         if (!isAnimated) clearCountriesFlowOverlay(el);
+        // Burst animations now run a finite number of iterations. If we're in animated mode,
+        // occasionally restart the overlay (without rebuilding the map) so it still feels "live".
+        if (isAnimated) {
+          var lastBurstAt = 0;
+          try { lastBurstAt = Number(el.__kexoLiveOnlineFlowBurstAt) || 0; } catch (_) { lastBurstAt = 0; }
+          if (!lastBurstAt || (Date.now() - lastBurstAt) > 30000) {
+            try { el.__kexoLiveOnlineFlowBurstAt = Date.now(); } catch (_) {}
+            setTimeout(function () {
+              try {
+                var pseudo = keys.map(function (iso2) { return { country_code: iso2, converted: countsByIso2[iso2] || 0 }; });
+                pseudo.sort(function (a, b) { return Number(b && b.converted) - Number(a && a.converted); });
+                var originIso = pseudo && pseudo[0] && pseudo[0].country_code ? String(pseudo[0].country_code) : 'GB';
+                var rgb2 = null;
+                try { rgb2 = String(el.__kexoLiveOnlineMapPrimaryRgb || '').trim(); } catch (_) { rgb2 = ''; }
+                if (!rgb2) rgb2 = '22,163,74';
+                renderCountriesFlowOverlay(el, pseudo, rgb2, originIso);
+              } catch (_) {}
+            }, 120);
+          }
+        }
         return;
       }
       try { el.__kexoLiveOnlineMapSig = sig; } catch (_) {}
@@ -1623,13 +1645,6 @@
       // Switching chart types: clear Apex instance.
       if (liveOnlineChart) { try { liveOnlineChart.destroy(); } catch (_) {} liveOnlineChart = null; }
       liveOnlineChartType = '';
-
-      if (liveOnlineMapChartInstance) {
-        try { liveOnlineMapChartInstance.destroy(); } catch (_) {}
-        liveOnlineMapChartInstance = null;
-      }
-      clearCountriesFlowOverlay(el);
-      el.innerHTML = '';
 
       try {
         var rootCss = getComputedStyle(document.documentElement);
@@ -1657,7 +1672,60 @@
         }
         var rgb = rgbFromColor(accent);
         var primaryRgb = rgb.rgb;
+        try { el.__kexoLiveOnlineMapPrimaryRgb = primaryRgb; } catch (_) {}
         var regionFillByIso2 = buildMapFillScaleByIso(countsByIso2, primaryRgb, 0.24, 0.92);
+
+        // If the map instance already exists and the chart mode/palette is unchanged,
+        // update fills/overlay in-place (avoid destroy/recreate churn on every refresh).
+        if (
+          liveOnlineMapChartInstance &&
+          el.__kexoLiveOnlineMapMode === rawMode &&
+          el.__kexoLiveOnlineMapAccent === accent &&
+          liveOnlineMapChartInstance.regions
+        ) {
+          try {
+            var regionsExisting = liveOnlineMapChartInstance.regions;
+            for (var codeExisting in regionFillByIso2) {
+              if (regionsExisting[codeExisting] && regionsExisting[codeExisting].element && typeof regionsExisting[codeExisting].element.setStyle === 'function') {
+                try { regionsExisting[codeExisting].element.setStyle('fill', regionFillByIso2[codeExisting]); } catch (_) {}
+              }
+            }
+          } catch (_) {}
+          try {
+            var prevCaption = el.querySelector('.kexo-live-map-empty-caption');
+            if (prevCaption && prevCaption.parentNode) prevCaption.parentNode.removeChild(prevCaption);
+          } catch (_) {}
+          if (hasNoLiveActivity) {
+            var noActivity2 = document.createElement('div');
+            noActivity2.setAttribute('class', 'kexo-live-map-empty-caption');
+            noActivity2.style.cssText = 'position:absolute;left:0;right:0;bottom:12px;text-align:center;font-size:.8125rem;color:' + (muted || 'var(--tblr-secondary)') + ';pointer-events:none;';
+            noActivity2.textContent = 'No live activity yet';
+            if (el && el.style) el.style.position = 'relative';
+            try { el.appendChild(noActivity2); } catch (_) {}
+          }
+          hideMapTooltipOnLeave(el);
+          if (isAnimated) {
+            setTimeout(function () {
+              try {
+                var pseudo2 = keys.map(function (iso2) { return { country_code: iso2, converted: countsByIso2[iso2] || 0 }; });
+                pseudo2.sort(function (a, b) { return Number(b && b.converted) - Number(a && a.converted); });
+                var originIso2 = pseudo2 && pseudo2[0] && pseudo2[0].country_code ? String(pseudo2[0].country_code) : 'GB';
+                renderCountriesFlowOverlay(el, pseudo2, primaryRgb, originIso2);
+              } catch (_) {}
+            }, 120);
+          } else {
+            clearCountriesFlowOverlay(el);
+          }
+          try { if (typeof liveOnlineMapChartInstance.updateSize === 'function') liveOnlineMapChartInstance.updateSize(); } catch (_) {}
+          return;
+        }
+
+        if (liveOnlineMapChartInstance) {
+          try { liveOnlineMapChartInstance.destroy(); } catch (_) {}
+          liveOnlineMapChartInstance = null;
+        }
+        clearCountriesFlowOverlay(el);
+        el.innerHTML = '';
 
         liveOnlineMapChartInstance = new jsVectorMap({
           selector: '#live-online-chart',
@@ -1706,6 +1774,9 @@
           }
         }
         hideMapTooltipOnLeave(el);
+        try { el.__kexoLiveOnlineMapMode = rawMode; } catch (_) {}
+        try { el.__kexoLiveOnlineMapAccent = accent; } catch (_) {}
+        try { el.__kexoLiveOnlineMapPrimaryRgb = primaryRgb; } catch (_) {}
 
         if (hasNoLiveActivity) {
           var noActivity = document.createElement('div');
@@ -2650,19 +2721,34 @@
     }
 
     function scheduleOnlineCountPoll(ms) {
+      // Don't poll while hidden; resume on visibility.
+      bindOnlineCountVisibilityGate();
       if (onlineCountPollTimer) {
         try { clearTimeout(onlineCountPollTimer); } catch (_) {}
         onlineCountPollTimer = null;
       }
       if (onlineCountAuthBlocked) return;
       var delay = (typeof ms === 'number' && isFinite(ms) && ms >= 0) ? ms : ONLINE_COUNT_POLL_MS;
+      if (!isDocVisible()) {
+        onlineCountPollPendingMs = delay;
+        return;
+      }
       onlineCountPollTimer = setTimeout(function() {
         onlineCountPollTimer = null;
+        if (!isDocVisible()) {
+          onlineCountPollPendingMs = ONLINE_COUNT_POLL_MS;
+          return;
+        }
         try { updateKpis(); } catch (_) {}
       }, delay);
     }
 
     function fetchOnlineCount() {
+      bindOnlineCountVisibilityGate();
+      if (!isDocVisible()) {
+        onlineCountPollPendingMs = 0;
+        return;
+      }
       if (onlineCountInFlight || onlineCountAuthBlocked) return;
       onlineCountInFlight = true;
       if (_fetchAbortControllers.onlineCount) { try { _fetchAbortControllers.onlineCount.abort(); } catch (_) {} }
@@ -2702,6 +2788,8 @@
     }
 
     function updateKpis() {
+      bindOnlineCountVisibilityGate();
+      if (!isDocVisible()) return;
       const el = document.getElementById('online-count');
       const spinner = document.getElementById('online-count-spinner');
       const iconEl = document.getElementById('kexo-online-icon');
@@ -2753,6 +2841,45 @@
         showSpinner();
         fetchOnlineCount();
       }
+    }
+
+    // Visibility gate for online count polling (avoids timer bursts on tab resume).
+    var onlineCountPollPendingMs = null;
+    var onlineCountVisibilityBound = false;
+    function isDocVisible() {
+      try { return !document || !document.visibilityState || document.visibilityState === 'visible'; } catch (_) { return true; }
+    }
+    function pauseOnlineCountPolling() {
+      if (onlineCountPollTimer) {
+        try { clearTimeout(onlineCountPollTimer); } catch (_) {}
+        onlineCountPollTimer = null;
+      }
+      try { if (_fetchAbortControllers && _fetchAbortControllers.onlineCount) _fetchAbortControllers.onlineCount.abort(); } catch (_) {}
+    }
+    function bindOnlineCountVisibilityGate() {
+      if (onlineCountVisibilityBound) return;
+      onlineCountVisibilityBound = true;
+      try {
+        document.addEventListener('visibilitychange', function() {
+          if (!isDocVisible()) {
+            onlineCountPollPendingMs = ONLINE_COUNT_POLL_MS;
+            pauseOnlineCountPolling();
+            return;
+          }
+          var pending = onlineCountPollPendingMs;
+          onlineCountPollPendingMs = null;
+          if (onlineCountAuthBlocked) return;
+          scheduleOnlineCountPoll(typeof pending === 'number' ? pending : 0);
+        });
+      } catch (_) {}
+      try {
+        window.addEventListener('pageshow', function(ev) {
+          if (ev && ev.persisted) {
+            if (onlineCountAuthBlocked) return;
+            scheduleOnlineCountPoll(0);
+          }
+        });
+      } catch (_) {}
     }
 
     function cfSection(title, value) {

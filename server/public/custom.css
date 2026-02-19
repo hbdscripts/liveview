@@ -341,13 +341,15 @@ a {
   stroke-linecap: round;
   stroke-dasharray: 7 7;
   opacity: 0;
-  animation: kexoMapFlowLine 2.8s ease-out infinite;
+  /* Animated map mode: run a short burst, not forever (fans/CPU). */
+  animation: kexoMapFlowLine 2.8s ease-out 2;
 }
 .kexo-map-flow-dot {
   opacity: 0;
   transform-origin: center;
   transform-box: fill-box;
-  animation: kexoMapFlowDot 2.8s ease-out infinite;
+  /* Animated map mode: run a short burst, not forever (fans/CPU). */
+  animation: kexoMapFlowDot 2.8s ease-out 2;
 }
 .kexo-map-flow-origin {
   opacity: 0.9;
@@ -364,6 +366,13 @@ a {
   35% { opacity: .75; }
   70% { transform: scale(1.18); opacity: .3; }
   100% { transform: scale(1.38); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kexo-map-flow-line,
+  .kexo-map-flow-dot {
+    animation: none !important;
+  }
 }
 
 .grid-header,
