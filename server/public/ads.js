@@ -1874,10 +1874,28 @@
       setProfitCellClass(cells[7], pr);
     }
 
-    var totals = computeCampaignTotals(campaigns);
-    var totalsFooter = document.getElementById('ads-footer');
-    var tRow = totalsFooter ? totalsFooter.querySelector('.ads-totals-row') : null;
-    if (totals && tRow) {
+    var tRow = root.querySelector('.ads-totals-row');
+    if (tRow) {
+      // Totals are the sum of the currently-rendered campaign rows.
+      var totals = { clicks: 0, impressions: 0, orders: 0, revenue: 0, spend: 0, profit: 0, roas: null };
+      for (var ti = 0; ti < rows.length; ti++) {
+        var r = rows[ti];
+        if (!r) continue;
+        var cid = r.getAttribute('data-campaign-id') || '';
+        if (!cid) continue;
+        var c3 = map.get(String(cid));
+        if (!c3) return false;
+        totals.clicks += Number(c3.clicks) || 0;
+        totals.impressions += Number(c3.impressions) || 0;
+        totals.orders += Number(c3.orders) || 0;
+        totals.revenue += Number(c3.revenue) || 0;
+        totals.spend += Number(c3.spend) || 0;
+        totals.profit += (c3.profit != null && c3.profit !== '' && Number.isFinite(Number(c3.profit)))
+          ? Number(c3.profit)
+          : ((Number(c3.revenue) || 0) - (Number(c3.spend) || 0));
+      }
+      totals.roas = totals.spend > 0 ? (totals.revenue / totals.spend) : null;
+
       var tCells = tRow.querySelectorAll('.grid-cell');
       if (!tCells || tCells.length < 8) return false;
       patchText(tCells[1], fmtNum(totals.clicks));
@@ -2042,80 +2060,6 @@
     return out;
   }
 
-  function renderTotalsCard(summary, campaigns, hidePaused) {
-    var card = document.getElementById('ads-totals-card');
-    var body = document.getElementById('ads-totals-body');
-    if (!card || !body) return;
-
-    var currency = (summary && summary.currency) ? String(summary.currency) : 'GBP';
-    var totals = computeCampaignTotals(campaigns);
-    var rangeKey = summary && summary.rangeKey ? String(summary.rangeKey) : null;
-
-    function row(label, value) {
-      return '<tr>' +
-        '<td class="text-muted" style="white-space:nowrap;">' + esc(label) + '</td>' +
-        '<td class="text-end fw-semibold">' + esc(value == null ? '—' : String(value)) + '</td>' +
-      '</tr>';
-    }
-
-    var h = '';
-    h += row('Range', rangeLabel(rangeKey));
-    h += row('Hide paused', hidePaused ? 'On' : 'Off');
-    h += row('Campaigns', fmtNum(totals.count));
-    h += row('Clicks total', fmtNum(totals.clicks));
-    h += row('Impressions total', fmtNum(totals.impressions));
-    h += row('Attributed orders', fmtNum(totals.orders));
-    h += row('Attributed revenue', fmtMoney(totals.revenue, currency));
-    h += row('Spend total', fmtMoney(totals.spend, currency));
-    h += row('ROAS', fmtRoas(totals.roas));
-    h += row('Profit total', fmtMoney(totals.profit, currency));
-
-    body.innerHTML = h || '<tr><td class="text-muted small">—</td></tr>';
-    card.classList.remove('kexo-ads-card-hidden');
-  }
-
-  function renderTotalsCardFromState() {
-    var summary = _lastSummary;
-    if (!summary) return;
-    var all = summary && Array.isArray(summary.campaigns) ? summary.campaigns : [];
-    var hidePaused = false;
-    try { hidePaused = getAdsHidePaused(); } catch (_) { hidePaused = false; }
-    var campaigns = all;
-    if (hidePaused && campaigns && campaigns.length) {
-      campaigns = campaigns.filter(function (c) {
-        if (!c) return false;
-        var st = c.campaignStatus != null ? String(c.campaignStatus) : '';
-        return (st || '').trim().toUpperCase() !== 'PAUSED';
-      });
-    }
-    renderTotalsCard(summary, campaigns, hidePaused);
-  }
-
-  var _adsScrollSyncInited = false;
-  function syncFooterScroll() {
-    var rootWrap = document.getElementById('ads-root');
-    var footerWrap = document.getElementById('ads-footer');
-    if (!rootWrap || !footerWrap) return;
-
-    if (!_adsScrollSyncInited) {
-      _adsScrollSyncInited = true;
-      var syncing = false;
-      function sync(from, to) {
-        if (syncing) return;
-        syncing = true;
-        try { to.scrollLeft = from.scrollLeft; } catch (_) {}
-        setTimeout(function () { syncing = false; }, 0);
-      }
-      try {
-        rootWrap.addEventListener('scroll', function () { sync(rootWrap, footerWrap); }, { passive: true });
-        footerWrap.addEventListener('scroll', function () { sync(footerWrap, rootWrap); }, { passive: true });
-      } catch (_) {}
-    }
-
-    // Ensure footer aligns to current table scroll offset.
-    try { footerWrap.scrollLeft = rootWrap.scrollLeft; } catch (_) {}
-  }
-
   function render(root, status, summary, refreshResult) {
     _lastStatus = status;
     _lastSummary = summary;
@@ -2135,7 +2079,6 @@
         return (st || '').trim().toUpperCase() !== 'PAUSED';
       });
     }
-    renderTotalsCard(summary, campaigns, hidePaused);
     var currency = (summary && summary.currency) || 'GBP';
     var note = (summary && summary.note) ? String(summary.note) : '';
     if (summary && summary.rangeKey) _lastRangeKey = String(summary.rangeKey);
@@ -2199,20 +2142,6 @@
 
     var bodyHtml = '';
 
-    // Totals row (render in card footer)
-    var tableTotals = computeCampaignTotals(campaigns);
-    var tProfit = tableTotals.profit != null ? Number(tableTotals.profit) : 0;
-    var totalsRowHtml = gridRow([
-      { html: '<strong>Total</strong>' },
-      { html: esc(fmtNum(tableTotals.clicks)), cls: ' text-end' },
-      { html: esc(fmtNum(tableTotals.impressions)), cls: ' text-end' },
-      { html: esc(fmtNum(tableTotals.orders)), cls: ' text-end' },
-      { html: esc(fmtMoney(tableTotals.revenue, currency)), cls: ' text-end' },
-      { html: esc(fmtMoney(tableTotals.spend, currency)), cls: ' text-end' },
-      { html: esc(fmtRoas(tableTotals.roas)), cls: ' text-end' },
-      { html: esc(fmtMoney(tProfit, currency)), cls: ' text-end ' + profitClass(tProfit) },
-    ], false, 'ads-totals-row');
-
     // Campaign rows
     for (var ci = 0; ci < pagedCampaigns.length; ci++) {
       var c = pagedCampaigns[ci];
@@ -2234,6 +2163,22 @@
         { html: esc(fmtRoas(c.roas)), cls: ' text-end' },
         { html: esc(fmtMoney(pr, currency)), cls: ' text-end ' + profitClass(pr) },
       ], false, rowClass, ' data-campaign-id="' + esc(cId) + '" data-campaign-name="' + esc(cName) + '"');
+    }
+
+    // Totals row (sum of the rows rendered above)
+    if (pagedCampaigns.length) {
+      var tableTotals = computeCampaignTotals(pagedCampaigns);
+      var tProfit = tableTotals.profit != null ? Number(tableTotals.profit) : 0;
+      bodyHtml += gridRow([
+        { html: '<strong>Total</strong>' },
+        { html: esc(fmtNum(tableTotals.clicks)), cls: ' text-end' },
+        { html: esc(fmtNum(tableTotals.impressions)), cls: ' text-end' },
+        { html: esc(fmtNum(tableTotals.orders)), cls: ' text-end' },
+        { html: esc(fmtMoney(tableTotals.revenue, currency)), cls: ' text-end' },
+        { html: esc(fmtMoney(tableTotals.spend, currency)), cls: ' text-end' },
+        { html: esc(fmtRoas(tableTotals.roas)), cls: ' text-end' },
+        { html: esc(fmtMoney(tProfit, currency)), cls: ' text-end ' + profitClass(tProfit) },
+      ], false, 'ads-totals-row');
     }
 
     if (!campaigns.length) {
@@ -2271,15 +2216,11 @@
 
     var totalsFooter = document.getElementById('ads-footer');
     if (totalsFooter) {
-      totalsFooter.style.display = '';
-      totalsFooter.innerHTML =
-        '<div class="grid-table ads-campaign-table" role="table" aria-label="Ads totals">' +
-          '<div class="grid-body" role="rowgroup">' + totalsRowHtml + '</div>' +
-        '</div>';
+      totalsFooter.style.display = 'none';
+      totalsFooter.innerHTML = '';
     }
 
     patchFooterAndNote(status, summary);
-    syncFooterScroll();
     try { if (typeof window.__kexoRunStickyColumnResize === 'function') window.__kexoRunStickyColumnResize(); } catch (_) {}
     renderAdsOverviewChart(summary);
 
