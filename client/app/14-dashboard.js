@@ -4939,8 +4939,8 @@
                 if (!force && dashWidgetLastRenderSig[mountId] && dashWidgetLastRenderSig[mountId] === sig) return;
                 dashWidgetLastRenderSig[mountId] = sig;
                 renderWidgetRadialAndVbars(mountId, topRow, barRows, {
-                  accentCss: 'background: var(--kexo-accent-4, #8b5cf6);',
-                  ringStroke: 'var(--kexo-accent-4, #8b5cf6)'
+                  accentCss: 'background: var(--kexo-accent-1, #4b94e4);',
+                  ringStroke: 'var(--kexo-accent-1, #4b94e4)'
                 });
               }
 
@@ -5017,8 +5017,8 @@
                 if (!force && dashWidgetLastRenderSig[mountId] && dashWidgetLastRenderSig[mountId] === sig) return;
                 dashWidgetLastRenderSig[mountId] = sig;
                 renderWidgetRadialAndVbars(mountId, topRow, barRows, {
-                  accentCss: 'background: var(--kexo-accent-1, #4b94e4);',
-                  ringStroke: 'var(--kexo-accent-1, #4b94e4)'
+                  accentCss: 'background: var(--kexo-accent-2, #3eb3ab);',
+                  ringStroke: 'var(--kexo-accent-2, #3eb3ab)'
                 });
               }
 
@@ -5166,8 +5166,8 @@
                 if (!force && dashWidgetLastRenderSig[mountId] && dashWidgetLastRenderSig[mountId] === sig) return;
                 dashWidgetLastRenderSig[mountId] = sig;
                 renderWidgetRadialAndVbars(mountId, topRow, barRows, {
-                  accentCss: 'background: var(--kexo-accent-2, #3eb3ab);',
-                  ringStroke: 'var(--kexo-accent-2, #3eb3ab)'
+                  accentCss: 'background: var(--kexo-accent-5, #6681e8);',
+                  ringStroke: 'var(--kexo-accent-5, #6681e8)'
                 });
               }
 
@@ -5228,8 +5228,8 @@
                 if (!force && dashWidgetLastRenderSig[mountId] && dashWidgetLastRenderSig[mountId] === sig) return;
                 dashWidgetLastRenderSig[mountId] = sig;
                 renderWidgetRadialAndVbars(mountId, topRow, barRows, {
-                  accentCss: 'background: var(--kexo-accent-5, #ef4444);',
-                  ringStroke: 'var(--kexo-accent-5, #ef4444)'
+                  accentCss: 'background: var(--kexo-accent-4, #e4644b);',
+                  ringStroke: 'var(--kexo-accent-4, #e4644b)'
                 });
               }
 

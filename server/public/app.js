@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 4571fe6c486a20e6
+// checksum: d58c8e9b32e9e884
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -21786,8 +21786,8 @@ const API = '';
                 if (!force && dashWidgetLastRenderSig[mountId] && dashWidgetLastRenderSig[mountId] === sig) return;
                 dashWidgetLastRenderSig[mountId] = sig;
                 renderWidgetRadialAndVbars(mountId, topRow, barRows, {
-                  accentCss: 'background: var(--kexo-accent-4, #8b5cf6);',
-                  ringStroke: 'var(--kexo-accent-4, #8b5cf6)'
+                  accentCss: 'background: var(--kexo-accent-1, #4b94e4);',
+                  ringStroke: 'var(--kexo-accent-1, #4b94e4)'
                 });
               }
 
@@ -21864,8 +21864,8 @@ const API = '';
                 if (!force && dashWidgetLastRenderSig[mountId] && dashWidgetLastRenderSig[mountId] === sig) return;
                 dashWidgetLastRenderSig[mountId] = sig;
                 renderWidgetRadialAndVbars(mountId, topRow, barRows, {
-                  accentCss: 'background: var(--kexo-accent-1, #4b94e4);',
-                  ringStroke: 'var(--kexo-accent-1, #4b94e4)'
+                  accentCss: 'background: var(--kexo-accent-2, #3eb3ab);',
+                  ringStroke: 'var(--kexo-accent-2, #3eb3ab)'
                 });
               }
 
@@ -22013,8 +22013,8 @@ const API = '';
                 if (!force && dashWidgetLastRenderSig[mountId] && dashWidgetLastRenderSig[mountId] === sig) return;
                 dashWidgetLastRenderSig[mountId] = sig;
                 renderWidgetRadialAndVbars(mountId, topRow, barRows, {
-                  accentCss: 'background: var(--kexo-accent-2, #3eb3ab);',
-                  ringStroke: 'var(--kexo-accent-2, #3eb3ab)'
+                  accentCss: 'background: var(--kexo-accent-5, #6681e8);',
+                  ringStroke: 'var(--kexo-accent-5, #6681e8)'
                 });
               }
 
@@ -22075,8 +22075,8 @@ const API = '';
                 if (!force && dashWidgetLastRenderSig[mountId] && dashWidgetLastRenderSig[mountId] === sig) return;
                 dashWidgetLastRenderSig[mountId] = sig;
                 renderWidgetRadialAndVbars(mountId, topRow, barRows, {
-                  accentCss: 'background: var(--kexo-accent-5, #ef4444);',
-                  ringStroke: 'var(--kexo-accent-5, #ef4444)'
+                  accentCss: 'background: var(--kexo-accent-4, #e4644b);',
+                  ringStroke: 'var(--kexo-accent-4, #e4644b)'
                 });
               }
 

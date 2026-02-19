@@ -112,7 +112,7 @@
     ICON_GLYPH_DEFAULTS[k] = withDefaultIconStyle(k, ICON_GLYPH_DEFAULTS[k]);
   });
 
-  var ACCENT_DEFAULTS = ['#4b94e4', '#3eb3ab', '#f59e34', '#8b5cf6', '#ef4444'];
+  var ACCENT_DEFAULTS = ['#4b94e4', '#3eb3ab', '#f59e34', '#e4644b', '#6681e8'];
   var DEFAULTS = {
     theme: 'light',
     'theme-accent-1': ACCENT_DEFAULTS[0],
