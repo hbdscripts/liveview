@@ -3125,7 +3125,7 @@
     var hideOnMobile = c.hideOnMobile !== false;
     var accordionId = 'settings-layout-charts-accordion';
     var html = '<div class="d-flex align-items-start justify-content-between flex-wrap gap-3 mb-3">' +
-      '<label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" id="settings-charts-hide-mobile" ' + (hideOnMobile ? 'checked' : '') + '><span class="form-check-label ms-2">Hide charts on mobile</span></label>' +
+      '<label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" id="settings-charts-hide-mobile" ' + (!hideOnMobile ? 'checked' : '') + '><span class="form-check-label ms-2">Show graphs on mobile</span></label>' +
       '<div class="text-muted small" style="max-width:560px;">Configure one chart/KPI bundle at a time with live previews.</div>' +
       '</div>' +
       '<div class="accordion settings-layout-accordion settings-charts-accordion" id="' + escapeHtml(accordionId) + '">';
@@ -3236,7 +3236,8 @@
     var root = document.getElementById('settings-charts-root');
     if (!root) return defaultChartsUiConfigV1();
     var hideEl = document.getElementById('settings-charts-hide-mobile');
-    var out = { v: 1, hideOnMobile: hideEl ? !!hideEl.checked : true, charts: [], kpiBundles: {} };
+    // UI label is "Show graphs on mobile" but config field is hideOnMobile.
+    var out = { v: 1, hideOnMobile: hideEl ? !hideEl.checked : true, charts: [], kpiBundles: {} };
     root.querySelectorAll('[data-chart-config-key]').forEach(function (card) {
       var key = (card.getAttribute('data-chart-config-key') || '').trim().toLowerCase();
       var bodyEl = card.querySelector('.settings-charts-card-body');

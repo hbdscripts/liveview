@@ -3659,11 +3659,174 @@
     var uiSettingsInFlight = null;
     var kpiUiConfigV1 = null;
     var chartsUiConfigV1 = null;
+    var overviewWidgetsUiConfigV1 = null;
+    var cssVarOverridesV1 = null;
     var _dashboardKpiResizeWired = false;
     var _dashboardKpiResizeTimer = 0;
     var KPI_UI_CFG_LS_KEY = 'kexo:kpi-ui-config:v1';
     var CHARTS_UI_CFG_LS_KEY = 'kexo:charts-ui-config:v1';
+    var OVERVIEW_WIDGETS_UI_CFG_LS_KEY = 'kexo:overview_widgets_ui_config:v1';
+    var CSS_VAR_OVERRIDES_LS_KEY = 'kexo:css_var_overrides:v1';
     var CHARTS_KPI_BUNDLE_KEYS = ['dashboardCards', 'headerStrip', 'yearlySnapshot'];
+
+    function readLocalStorageJsonMaybe(key) {
+      try {
+        if (typeof safeReadLocalStorageJson === 'function') return safeReadLocalStorageJson(key);
+      } catch (_) {}
+      try {
+        var raw = localStorage.getItem(String(key || ''));
+        if (!raw) return null;
+        return JSON.parse(raw);
+      } catch (_) {
+        return null;
+      }
+    }
+
+    var OVERVIEW_WIDGET_KEYS = ['finishes', 'devices', 'browsers', 'abandoned', 'attribution', 'payment_methods'];
+
+    function defaultOverviewWidgetsUiConfigV1() {
+      var widgets = {};
+      OVERVIEW_WIDGET_KEYS.forEach(function (key) { widgets[key] = { sortBy: 'revenue', color: '' }; });
+      widgets.finishes = Object.assign({}, widgets.finishes, { groupBy: 'finishes' });
+      return { v: 1, order: OVERVIEW_WIDGET_KEYS.slice(), widgets: widgets };
+    }
+
+    function normalizeCssVarOverrideValue(raw) {
+      var v = raw == null ? '' : String(raw).trim();
+      if (!v) return '';
+      if (v.length > 80) return '';
+      if (/[;\r\n{}]/.test(v)) return '';
+      if (/^var\(--[a-zA-Z0-9._-]+\)$/.test(v)) return v;
+      if (/^#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(v)) return v;
+      if (/^(rgb|hsl)a?\(/i.test(v)) return v;
+      if (v.toLowerCase() === 'currentcolor') return 'currentColor';
+      if (v.toLowerCase() === 'transparent') return 'transparent';
+      if (/^[a-z-]+$/i.test(v)) return v;
+      return '';
+    }
+
+    function normalizeOverviewWidgetsUiConfigV1(raw) {
+      var parsed = null;
+      try {
+        if (raw && typeof raw === 'object') parsed = raw;
+        else if (typeof raw === 'string' && raw) parsed = JSON.parse(raw);
+      } catch (_) { parsed = null; }
+      var out = defaultOverviewWidgetsUiConfigV1();
+      if (!parsed || typeof parsed !== 'object') return out;
+      if (Number(parsed.v) !== 1) return out;
+      try {
+        if (Array.isArray(parsed.order)) {
+          var seen = {};
+          var next = [];
+          parsed.order.forEach(function (k) {
+            var key = (k == null ? '' : String(k)).trim().toLowerCase();
+            if (!key) return;
+            if (OVERVIEW_WIDGET_KEYS.indexOf(key) < 0) return;
+            if (seen[key]) return;
+            seen[key] = true;
+            next.push(key);
+          });
+          if (next.length === OVERVIEW_WIDGET_KEYS.length) out.order = next;
+        }
+      } catch (_) {}
+      try {
+        var w = parsed.widgets && typeof parsed.widgets === 'object' ? parsed.widgets : null;
+        if (w) {
+          OVERVIEW_WIDGET_KEYS.forEach(function (key) {
+            var row = w[key] && typeof w[key] === 'object' ? w[key] : null;
+            if (!row) return;
+            if (row.sortBy != null) {
+              var sb = String(row.sortBy || '').trim().toLowerCase();
+              if (sb === 'revenue' || sb === 'clicks' || sb === 'ctr') out.widgets[key].sortBy = sb;
+            }
+            if (Object.prototype.hasOwnProperty.call(row, 'color')) {
+              out.widgets[key].color = normalizeCssVarOverrideValue(row.color) || '';
+            }
+            if (key === 'finishes' && row.groupBy != null) {
+              var gb = String(row.groupBy || '').trim().toLowerCase();
+              if (gb) out.widgets.finishes.groupBy = gb;
+            }
+          });
+        }
+      } catch (_) {}
+      return out;
+    }
+
+    var _overviewWidgetsUiCfgSig = '';
+    function applyOverviewWidgetsUiConfigV1(cfg, opts) {
+      opts = opts && typeof opts === 'object' ? opts : {};
+      var next = normalizeOverviewWidgetsUiConfigV1(cfg);
+      var sig = '';
+      try { sig = JSON.stringify(next || null) || ''; } catch (_) { sig = String(Date.now()); }
+      var changed = sig !== _overviewWidgetsUiCfgSig;
+      _overviewWidgetsUiCfgSig = sig;
+      overviewWidgetsUiConfigV1 = next;
+      if (changed) {
+        try { localStorage.setItem(OVERVIEW_WIDGETS_UI_CFG_LS_KEY, JSON.stringify(next)); } catch (_) {}
+      }
+      if (changed && opts.dispatch !== false) {
+        try { document.dispatchEvent(new CustomEvent('kexo:overviewWidgetsUiConfigUpdated', { detail: { cfg: next } })); } catch (_) {}
+      }
+      return next;
+    }
+
+    function defaultCssVarOverridesV1() { return { v: 1, vars: {} }; }
+
+    function normalizeCssVarOverridesV1(raw) {
+      var parsed = null;
+      try {
+        if (raw && typeof raw === 'object') parsed = raw;
+        else if (typeof raw === 'string' && raw) parsed = JSON.parse(raw);
+      } catch (_) { parsed = null; }
+      var out = defaultCssVarOverridesV1();
+      if (!parsed || typeof parsed !== 'object') return out;
+      if (Number(parsed.v) !== 1) return out;
+      var vars = parsed.vars && typeof parsed.vars === 'object' ? parsed.vars : null;
+      if (!vars) return out;
+      var next = {};
+      var keys = Object.keys(vars);
+      for (var i = 0; i < keys.length && i < 50; i++) {
+        var name = String(keys[i] || '').trim();
+        if (!/^--[a-zA-Z0-9._-]+$/.test(name)) continue;
+        var val = normalizeCssVarOverrideValue(vars[name]);
+        if (!val) continue;
+        next[name] = val;
+      }
+      out.vars = next;
+      return out;
+    }
+
+    var _cssVarsApplied = {};
+    var _cssVarOverridesSig = '';
+    function applyCssVarOverridesV1(cfg, opts) {
+      opts = opts && typeof opts === 'object' ? opts : {};
+      var next = normalizeCssVarOverridesV1(cfg);
+      var sig = '';
+      try { sig = JSON.stringify(next || null) || ''; } catch (_) { sig = String(Date.now()); }
+      var changed = sig !== _cssVarOverridesSig;
+      _cssVarOverridesSig = sig;
+      cssVarOverridesV1 = next;
+      if (changed) {
+        try { localStorage.setItem(CSS_VAR_OVERRIDES_LS_KEY, JSON.stringify(next)); } catch (_) {}
+      }
+      try {
+        var root = document.documentElement;
+        var vars = next && next.vars && typeof next.vars === 'object' ? next.vars : {};
+        Object.keys(_cssVarsApplied || {}).forEach(function (k) {
+          if (!Object.prototype.hasOwnProperty.call(vars, k)) {
+            try { root.style.removeProperty(k); } catch (_) {}
+          }
+        });
+        Object.keys(vars).forEach(function (k) {
+          try { root.style.setProperty(k, String(vars[k])); } catch (_) {}
+        });
+        _cssVarsApplied = Object.assign({}, vars);
+      } catch (_) {}
+      if (changed && opts.dispatch !== false) {
+        try { document.dispatchEvent(new CustomEvent('kexo:cssVarOverridesUpdated', { detail: { cfg: next } })); } catch (_) {}
+      }
+      return next;
+    }
 
     function defaultChartsKpiBundlePalette(bundleKey) {
       var key = String(bundleKey || '').trim().toLowerCase();
@@ -3832,6 +3995,21 @@
       if (cachedCharts && cachedCharts.v === 1 && Array.isArray(cachedCharts.charts)) {
         chartsUiConfigV1 = cachedCharts;
         try { window.__kexoChartsUiConfigV1 = cachedCharts; } catch (_) {}
+      }
+    } catch (_) {}
+
+    // Hydrate Overview widget prefs + CSS var overrides from localStorage for first paint.
+    try {
+      var cachedOvw = readLocalStorageJsonMaybe(OVERVIEW_WIDGETS_UI_CFG_LS_KEY);
+      if (cachedOvw && cachedOvw.v === 1) {
+        overviewWidgetsUiConfigV1 = normalizeOverviewWidgetsUiConfigV1(cachedOvw);
+        applyOverviewWidgetsUiConfigV1(overviewWidgetsUiConfigV1, { dispatch: false });
+      }
+    } catch (_) {}
+    try {
+      var cachedCssVars = readLocalStorageJsonMaybe(CSS_VAR_OVERRIDES_LS_KEY);
+      if (cachedCssVars && cachedCssVars.v === 1) {
+        applyCssVarOverridesV1(cachedCssVars, { dispatch: false });
       }
     } catch (_) {}
 
@@ -4554,6 +4732,12 @@
           var changedFromCache = applyChartsUiConfigV1(uiSettingsCache.chartsUiConfig);
           if (changedFromCache) scheduleChartsUiReRender();
         }
+        if (options.apply && uiSettingsCache.overviewWidgetsUiConfig) {
+          try { applyOverviewWidgetsUiConfigV1(uiSettingsCache.overviewWidgetsUiConfig); } catch (_) {}
+        }
+        if (options.apply && uiSettingsCache.cssVarOverridesV1) {
+          try { applyCssVarOverridesV1(uiSettingsCache.cssVarOverridesV1); } catch (_) {}
+        }
         if (options.apply && uiSettingsCache.tablesUiConfig) {
           try { applyTablesUiConfigV1(uiSettingsCache.tablesUiConfig); } catch (_) {}
           try { scheduleTablesUiApply(); } catch (_) {}
@@ -4581,6 +4765,12 @@
           if (options.apply && uiSettingsCache && uiSettingsCache.chartsUiConfig) {
             var changedFromFetch = applyChartsUiConfigV1(uiSettingsCache.chartsUiConfig);
             if (changedFromFetch) scheduleChartsUiReRender();
+          }
+          if (options.apply && uiSettingsCache && uiSettingsCache.overviewWidgetsUiConfig) {
+            try { applyOverviewWidgetsUiConfigV1(uiSettingsCache.overviewWidgetsUiConfig); } catch (_) {}
+          }
+          if (options.apply && uiSettingsCache && uiSettingsCache.cssVarOverridesV1) {
+            try { applyCssVarOverridesV1(uiSettingsCache.cssVarOverridesV1); } catch (_) {}
           }
           if (options.apply && uiSettingsCache && uiSettingsCache.tablesUiConfig) {
             try { applyTablesUiConfigV1(uiSettingsCache.tablesUiConfig); } catch (_) {}

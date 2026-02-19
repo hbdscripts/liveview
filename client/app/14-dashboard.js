@@ -66,15 +66,38 @@
       var DASH_PURPLE = '#8b5cf6';
       var DASH_PURPLE_LIGHT = 'rgba(139,92,246,0.10)';
 
-      var DASH_WIDGETS_LS_KEY = 'kexo:dash-widgets:v1';
+      var OVERVIEW_WIDGETS_UI_CFG_LS_KEY = 'kexo:overview_widgets_ui_config:v1';
+      var OVERVIEW_WIDGET_KEYS = ['finishes', 'devices', 'browsers', 'abandoned', 'attribution', 'payment_methods'];
+      var OVERVIEW_WIDGET_TITLES = {
+        finishes: 'Finishes',
+        devices: 'Devices',
+        browsers: 'Browsers',
+        abandoned: 'Abandoned Carts',
+        attribution: 'Attribution',
+        payment_methods: 'Payment Methods',
+      };
+      var OVERVIEW_WIDGET_SUPPORTS = {
+        finishes: { revenue: true, clicks: true, ctr: true },
+        devices: { revenue: true, clicks: true, ctr: true },
+        browsers: { revenue: true, clicks: true, ctr: true },
+        abandoned: { revenue: true, clicks: true, ctr: false },
+        attribution: { revenue: true, clicks: true, ctr: true },
+        payment_methods: { revenue: true, clicks: true, ctr: true },
+      };
+
       var dashWidgetsBound = false;
-      var dashWidgetsPrefsCache = null;
       var dashWidgetCache = {}; // cacheKey -> { fetchedAt, sig, data }
       var dashWidgetInFlight = {}; // cacheKey -> Promise
       var dashWidgetLastRenderSig = {}; // mountId -> sig
       var DASH_WIDGET_CACHE_TTL_MS = 2 * 60 * 1000;
       var dashWidgetsRefreshTimer = null;
       var dashWidgetsPendingOpts = null;
+
+      var ovwUiCfgLocal = null;
+      var ovwSaveTimer = null;
+      var ovwSaveInFlight = null;
+      var ovwModalBackdrop = null;
+      var ovwSettingsKey = '';
 
       function fmtGbp(n) {
         var v = (typeof n === 'number') ? n : Number(n);
@@ -4461,193 +4484,452 @@
       }
 
       function widgetPresent() {
-        try { return !!document.getElementById('dash-widgets-row'); } catch (_) { return false; }
+        try { return !!document.getElementById('dash-overview-widgets-grid'); } catch (_) { return false; }
       }
 
-      function readDashWidgetsPrefs() {
-        if (dashWidgetsPrefsCache) return dashWidgetsPrefsCache;
-        var fallback = { v: 1, variantTableId: '', devicesDim: 'devices', sortBy: 'revenue' };
+      function defaultOverviewWidgetsUiConfigV1() {
+        var widgets = {};
+        OVERVIEW_WIDGET_KEYS.forEach(function (key) {
+          widgets[key] = { sortBy: 'revenue', color: '' };
+        });
+        widgets.finishes = Object.assign({}, widgets.finishes, { groupBy: 'finishes' });
+        return { v: 1, order: OVERVIEW_WIDGET_KEYS.slice(), widgets: widgets };
+      }
+
+      function normalizeOverviewWidgetsUiConfigV1(raw) {
+        var parsed = null;
         try {
-          var raw = localStorage.getItem(DASH_WIDGETS_LS_KEY);
-          if (!raw) return (dashWidgetsPrefsCache = fallback);
-          var parsed = JSON.parse(raw);
-          if (!parsed || typeof parsed !== 'object') return (dashWidgetsPrefsCache = fallback);
-          var out = Object.assign({}, fallback, parsed);
-          out.v = 1;
-          out.variantTableId = out.variantTableId != null ? String(out.variantTableId) : '';
-          out.devicesDim = (String(out.devicesDim || 'devices').trim().toLowerCase() === 'browsers') ? 'browsers' : 'devices';
-          var sb = String(out.sortBy || 'revenue').trim().toLowerCase();
-          out.sortBy = (sb === 'conversion' || sb === 'clicks') ? sb : 'revenue';
-          return (dashWidgetsPrefsCache = out);
-        } catch (_) {
-          return (dashWidgetsPrefsCache = fallback);
-        }
-      }
+          if (raw && typeof raw === 'object') parsed = raw;
+          else if (typeof raw === 'string' && raw) parsed = JSON.parse(raw);
+        } catch (_) { parsed = null; }
+        var out = defaultOverviewWidgetsUiConfigV1();
+        if (!parsed || typeof parsed !== 'object') return out;
+        if (Number(parsed.v) !== 1) return out;
 
-      function writeDashWidgetsPrefs(next) {
-        var cur = readDashWidgetsPrefs();
-        var out = Object.assign({}, cur, next || {});
-        out.v = 1;
-        out.variantTableId = out.variantTableId != null ? String(out.variantTableId) : '';
-        out.devicesDim = (String(out.devicesDim || 'devices').trim().toLowerCase() === 'browsers') ? 'browsers' : 'devices';
-        var sb = String(out.sortBy || 'revenue').trim().toLowerCase();
-        out.sortBy = (sb === 'conversion' || sb === 'clicks') ? sb : 'revenue';
-        dashWidgetsPrefsCache = out;
-        try { localStorage.setItem(DASH_WIDGETS_LS_KEY, JSON.stringify(out)); } catch (_) {}
+        try {
+          if (Array.isArray(parsed.order)) {
+            var seen = {};
+            var next = [];
+            parsed.order.forEach(function (k) {
+              var key = (k == null ? '' : String(k)).trim().toLowerCase();
+              if (!key) return;
+              if (OVERVIEW_WIDGET_KEYS.indexOf(key) < 0) return;
+              if (seen[key]) return;
+              seen[key] = true;
+              next.push(key);
+            });
+            if (next.length === OVERVIEW_WIDGET_KEYS.length) out.order = next;
+          }
+        } catch (_) {}
+
+        try {
+          var w = parsed.widgets && typeof parsed.widgets === 'object' ? parsed.widgets : null;
+          if (w) {
+            OVERVIEW_WIDGET_KEYS.forEach(function (key) {
+              var row = w[key] && typeof w[key] === 'object' ? w[key] : null;
+              if (!row) return;
+              if (row.sortBy != null) {
+                var sb = String(row.sortBy || '').trim().toLowerCase();
+                if (sb === 'revenue' || sb === 'clicks' || sb === 'ctr') out.widgets[key].sortBy = sb;
+              }
+              if (Object.prototype.hasOwnProperty.call(row, 'color')) {
+                out.widgets[key].color = cssValueFromOverride(row.color) || '';
+              }
+              if (key === 'finishes' && row.groupBy != null) {
+                var gb = String(row.groupBy || '').trim().toLowerCase();
+                if (gb) out.widgets.finishes.groupBy = gb;
+              }
+            });
+          }
+        } catch (_) {}
+
         return out;
       }
 
-      var WIDGET_ORDER_FALLBACK = ['variant', 'devices', 'attribution', 'payment-types', 'abandoned'];
-      function applyDashWidgetSort() {
-        var sortBy = (readDashWidgetsPrefs().sortBy || 'revenue').trim().toLowerCase();
-        var container = document.getElementById('dash-widgets-grid-all');
-        if (!container) return;
-        var cards = Array.from(container.querySelectorAll('.kexo-widget-card[data-kexo-widget]'));
-        if (!cards.length) return;
-        var key = sortBy === 'conversion' ? 'conversion' : (sortBy === 'clicks' ? 'sessions' : 'revenue');
-        cards.sort(function (a, b) {
-          var va = parseFloat(a.getAttribute('data-kexo-widget-' + key) || 0) || 0;
-          var vb = parseFloat(b.getAttribute('data-kexo-widget-' + key) || 0) || 0;
-          if (vb !== va) return vb - va;
-          var wa = (a.getAttribute('data-kexo-widget') || '').trim().toLowerCase();
-          var wb = (b.getAttribute('data-kexo-widget') || '').trim().toLowerCase();
-          var ia = WIDGET_ORDER_FALLBACK.indexOf(wa);
-          var ib = WIDGET_ORDER_FALLBACK.indexOf(wb);
-          if (ia >= 0 && ib >= 0) return ia - ib;
-          return String(wa).localeCompare(String(wb));
-        });
-        cards.forEach(function (c) { container.appendChild(c); });
-      }
-
-      function closeAllWidgetMenus() {
+      function readOverviewWidgetsUiConfigV1() {
+        if (ovwUiCfgLocal) return ovwUiCfgLocal;
+        var fallback = defaultOverviewWidgetsUiConfigV1();
         try {
-          document.querySelectorAll('.kexo-widget-menu[data-kexo-widget-menu]').forEach(function(menu) {
-            if (!menu) return;
-            menu.classList.add('is-hidden');
-            menu.setAttribute('aria-hidden', 'true');
-          });
-        } catch (_) {}
-        try {
-          document.querySelectorAll('[data-kexo-widget-dropdown][aria-expanded="true"]').forEach(function(btn) {
-            if (!btn || !btn.setAttribute) return;
-            btn.setAttribute('aria-expanded', 'false');
-          });
-        } catch (_) {}
-      }
-
-      function openWidgetMenu(widgetKey) {
-        closeAllWidgetMenus();
-        var key = String(widgetKey || '').trim().toLowerCase();
-        if (!key) return;
-        var menu = document.querySelector('.kexo-widget-menu[data-kexo-widget-menu="' + key + '"]');
-        var btn = null;
-        try {
-          btn = document.querySelector('[data-kexo-widget-dropdown="' + key + '"]');
-        } catch (_) { btn = null; }
-        if (btn && btn.setAttribute) btn.setAttribute('aria-expanded', 'true');
-        if (menu) {
-          menu.classList.remove('is-hidden');
-          menu.setAttribute('aria-hidden', 'false');
+          var raw = localStorage.getItem(OVERVIEW_WIDGETS_UI_CFG_LS_KEY);
+          if (!raw) return (ovwUiCfgLocal = fallback);
+          return (ovwUiCfgLocal = normalizeOverviewWidgetsUiConfigV1(raw));
+        } catch (_) {
+          return (ovwUiCfgLocal = fallback);
         }
       }
 
-      function toggleWidgetMenu(widgetKey) {
+      function cssValueFromOverride(raw) {
+        var v = raw == null ? '' : String(raw).trim();
+        if (!v) return '';
+        if (v.length > 80) return '';
+        if (/[;\r\n{}]/.test(v)) return '';
+        if (/^var\(--[a-zA-Z0-9._-]+\)$/.test(v)) return v;
+        if (/^#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(v)) return v;
+        if (/^(rgb|hsl)a?\(/i.test(v)) return v;
+        if (v.toLowerCase() === 'currentcolor') return 'currentColor';
+        if (v.toLowerCase() === 'transparent') return 'transparent';
+        if (/^[a-z-]+$/i.test(v)) return v;
+        return '';
+      }
+
+      function widgetSupportsSortBy(widgetKey, sortBy) {
         var key = String(widgetKey || '').trim().toLowerCase();
-        if (!key) return;
-        var menu = document.querySelector('.kexo-widget-menu[data-kexo-widget-menu="' + key + '"]');
-        if (!menu) return;
-        var isOpen = !menu.classList.contains('is-hidden');
-        if (isOpen) closeAllWidgetMenus();
-        else openWidgetMenu(key);
+        var sb = String(sortBy || '').trim().toLowerCase();
+        var row = OVERVIEW_WIDGET_SUPPORTS && OVERVIEW_WIDGET_SUPPORTS[key] ? OVERVIEW_WIDGET_SUPPORTS[key] : null;
+        if (!row) return sb === 'revenue';
+        if (sb === 'clicks') return row.clicks === true;
+        if (sb === 'ctr') return row.ctr === true;
+        return row.revenue !== false;
+      }
+
+      function applyOverviewWidgetsLayoutAndColors(cfg) {
+        var grid = document.getElementById('dash-overview-widgets-grid');
+        if (!grid) return;
+        var normalized = normalizeOverviewWidgetsUiConfigV1(cfg || readOverviewWidgetsUiConfigV1());
+        var order = Array.isArray(normalized.order) ? normalized.order.slice() : OVERVIEW_WIDGET_KEYS.slice();
+        // Layout: reorder columns.
+        order.forEach(function (key) {
+          var col = grid.querySelector('[data-kexo-overview-widget-col="' + key + '"]');
+          if (col) grid.appendChild(col);
+        });
+        // Colours: position-based unless overridden.
+        order.forEach(function (key, idx) {
+          var col = grid.querySelector('[data-kexo-overview-widget-col="' + key + '"]');
+          if (!col) return;
+          var card = col.querySelector('[data-kexo-overview-widget="' + key + '"]');
+          if (!card || !card.style || !card.style.setProperty) return;
+          var w = normalized.widgets && normalized.widgets[key] ? normalized.widgets[key] : null;
+          var override = w && w.color ? String(w.color) : '';
+          var accentIdx = (idx % 5) + 1;
+          var css = override ? override : ('var(--kexo-accent-' + accentIdx + ')');
+          card.style.setProperty('--kexo-accent', css);
+          card.setAttribute('data-kexo-overview-widget-position', String(idx + 1));
+        });
+      }
+
+      function upsertOverviewWidgetsUiConfig(nextCfg) {
+        var merged = normalizeOverviewWidgetsUiConfigV1(nextCfg || {});
+        ovwUiCfgLocal = merged;
+        try { localStorage.setItem(OVERVIEW_WIDGETS_UI_CFG_LS_KEY, JSON.stringify(merged)); } catch (_) {}
+        try {
+          document.dispatchEvent(new CustomEvent('kexo:overviewWidgetsUiConfigUpdated', { detail: { cfg: merged } }));
+        } catch (_) {}
+        return merged;
+      }
+
+      function postOverviewWidgetsUiConfig(cfg) {
+        var base = (typeof API === 'string') ? API : '';
+        var payload = { overviewWidgetsUiConfig: normalizeOverviewWidgetsUiConfigV1(cfg || readOverviewWidgetsUiConfigV1()) };
+        return fetchWithTimeout(base + '/api/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify(payload),
+          keepalive: true,
+        }, 25000).then(function (r) {
+          if (!r) return { ok: false };
+          return r.json().catch(function () { return { ok: r.ok }; });
+        });
+      }
+
+      function scheduleSaveOverviewWidgetsUiConfig(cfg) {
+        if (ovwSaveTimer) clearTimeout(ovwSaveTimer);
+        ovwSaveTimer = setTimeout(function () {
+          ovwSaveTimer = null;
+          if (ovwSaveInFlight) return;
+          ovwSaveInFlight = postOverviewWidgetsUiConfig(cfg).finally(function () { ovwSaveInFlight = null; });
+        }, 600);
+      }
+
+      function setOvwModalMsg(text, ok) {
+        var el = document.getElementById('kexo-ovw-modal-msg');
+        if (!el) return;
+        el.textContent = text || '';
+        if (ok === true) el.className = 'form-hint text-success';
+        else if (ok === false) el.className = 'form-hint text-danger';
+        else el.className = 'form-hint text-secondary';
+      }
+
+      function closeOvwModal() {
+        var modalEl = document.getElementById('kexo-ovw-settings-modal');
+        if (!modalEl) return;
+        try {
+          if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+            bootstrap.Modal.getOrCreateInstance(modalEl).hide();
+            return;
+          }
+        } catch (_) {}
+        modalEl.classList.remove('show');
+        modalEl.style.display = 'none';
+        modalEl.setAttribute('aria-hidden', 'true');
+        try {
+          document.body.classList.remove('modal-open');
+          if (ovwModalBackdrop && ovwModalBackdrop.parentNode) ovwModalBackdrop.parentNode.removeChild(ovwModalBackdrop);
+          ovwModalBackdrop = null;
+        } catch (_) {}
+      }
+
+      function showOvwModal() {
+        var modalEl = document.getElementById('kexo-ovw-settings-modal');
+        if (!modalEl) return;
+        try {
+          if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+            bootstrap.Modal.getOrCreateInstance(modalEl).show();
+            return;
+          }
+        } catch (_) {}
+        modalEl.classList.add('show');
+        modalEl.style.display = 'block';
+        modalEl.setAttribute('aria-hidden', 'false');
+        try {
+          document.body.classList.add('modal-open');
+          if (!ovwModalBackdrop || !ovwModalBackdrop.parentNode) {
+            ovwModalBackdrop = document.createElement('div');
+            ovwModalBackdrop.className = 'modal-backdrop fade show';
+            ovwModalBackdrop.addEventListener('click', function () { closeOvwModal(); });
+            document.body.appendChild(ovwModalBackdrop);
+          }
+        } catch (_) {}
+      }
+
+      function ensureOvwModal() {
+        var existing = document.getElementById('kexo-ovw-settings-modal');
+        if (existing) return existing;
+        var wrap = document.createElement('div');
+        wrap.innerHTML =
+          '<div class="modal modal-blur" id="kexo-ovw-settings-modal" tabindex="-1" aria-hidden="true">' +
+            '<div class="modal-dialog modal-md modal-dialog-centered" role="dialog" aria-modal="true" aria-label="Widget settings">' +
+              '<div class="modal-content">' +
+                '<div class="modal-header">' +
+                  '<h5 class="modal-title" id="kexo-ovw-modal-title">Widget settings</h5>' +
+                  '<button type="button" class="btn-close" data-kexo-ovw-modal-close aria-label="Close"></button>' +
+                '</div>' +
+                '<div class="modal-body">' +
+                  '<input type="hidden" id="kexo-ovw-widget-key" />' +
+                  '<div class="row g-3">' +
+                    '<div class="col-12">' +
+                      '<label class="form-label">Sort by</label>' +
+                      '<select class="form-select" id="kexo-ovw-sort-by">' +
+                        '<option value="revenue">Revenue</option>' +
+                        '<option value="clicks">Clicks</option>' +
+                        '<option value="ctr">CTR</option>' +
+                      '</select>' +
+                      '<div class="form-hint" id="kexo-ovw-sort-hint"></div>' +
+                    '</div>' +
+                    '<div class="col-12">' +
+                      '<label class="form-label">Colour</label>' +
+                      '<select class="form-select" id="kexo-ovw-color">' +
+                        '<option value="">Default (auto)</option>' +
+                        '<option value="var(--kexo-accent-1)">Kexo accent 1</option>' +
+                        '<option value="var(--kexo-accent-2)">Kexo accent 2</option>' +
+                        '<option value="var(--kexo-accent-3)">Kexo accent 3</option>' +
+                        '<option value="var(--kexo-accent-4)">Kexo accent 4</option>' +
+                        '<option value="var(--kexo-accent-5)">Kexo accent 5</option>' +
+                        '<option value="var(--tblr-primary)">Tabler primary</option>' +
+                        '<option value="var(--tblr-success)">Tabler success</option>' +
+                        '<option value="var(--tblr-warning)">Tabler warning</option>' +
+                        '<option value="var(--tblr-danger)">Tabler danger</option>' +
+                        '<option value="custom">Custom…</option>' +
+                      '</select>' +
+                      '<input type="text" class="form-control mt-2" id="kexo-ovw-color-custom" placeholder="#RRGGBB or var(--my-var)" maxlength="80" />' +
+                    '</div>' +
+                    '<div class="col-12">' +
+                      '<label class="form-label">Order</label>' +
+                      '<select class="form-select" id="kexo-ovw-order"></select>' +
+                    '</div>' +
+                    '<div class="col-12 is-hidden" id="kexo-ovw-finishes-groupby-wrap">' +
+                      '<label class="form-label">Group by</label>' +
+                      '<select class="form-select" id="kexo-ovw-finishes-groupby">' +
+                        '<option value="finishes">Finishes</option>' +
+                      '</select>' +
+                    '</div>' +
+                  '</div>' +
+                  '<div class="d-flex align-items-center justify-content-between gap-2 mt-3">' +
+                    '<button type="button" class="btn btn-outline-secondary" id="kexo-ovw-reset">Reset to default</button>' +
+                    '<span id="kexo-ovw-modal-msg" class="form-hint text-secondary"></span>' +
+                  '</div>' +
+                '</div>' +
+              '</div>' +
+            '</div>' +
+          '</div>';
+        var modalEl = wrap.firstChild;
+        document.body.appendChild(modalEl);
+
+        function applyFromUi() {
+          var key = (document.getElementById('kexo-ovw-widget-key') || {}).value || '';
+          if (!key) return;
+          var cfg = readOverviewWidgetsUiConfigV1();
+          var next = JSON.parse(JSON.stringify(cfg || defaultOverviewWidgetsUiConfigV1()));
+
+          var sortEl = document.getElementById('kexo-ovw-sort-by');
+          var sortBy = sortEl ? String(sortEl.value || 'revenue').trim().toLowerCase() : 'revenue';
+          if (!widgetSupportsSortBy(key, sortBy)) sortBy = 'revenue';
+          next.widgets[key] = Object.assign({}, next.widgets[key] || {}, { sortBy: sortBy });
+
+          var colorEl = document.getElementById('kexo-ovw-color');
+          var customEl = document.getElementById('kexo-ovw-color-custom');
+          var colorVal = colorEl ? String(colorEl.value || '') : '';
+          var color = '';
+          if (colorVal === 'custom') color = cssValueFromOverride(customEl ? customEl.value : '') || '';
+          else color = cssValueFromOverride(colorVal) || '';
+          next.widgets[key] = Object.assign({}, next.widgets[key] || {}, { color: color });
+
+          var orderEl = document.getElementById('kexo-ovw-order');
+          var pos = orderEl ? parseInt(orderEl.value, 10) : 0;
+          if (!Number.isFinite(pos) || pos < 1) pos = 1;
+          pos = Math.min(OVERVIEW_WIDGET_KEYS.length, Math.max(1, pos));
+          var order = Array.isArray(next.order) ? next.order.slice() : OVERVIEW_WIDGET_KEYS.slice();
+          var curIdx = order.indexOf(key);
+          if (curIdx >= 0) order.splice(curIdx, 1);
+          order.splice(pos - 1, 0, key);
+          next.order = order;
+
+          if (key === 'finishes') {
+            var gbEl = document.getElementById('kexo-ovw-finishes-groupby');
+            var gb = gbEl ? String(gbEl.value || 'finishes').trim().toLowerCase() : 'finishes';
+            next.widgets.finishes = Object.assign({}, next.widgets.finishes || {}, { groupBy: gb || 'finishes' });
+          }
+
+          next = normalizeOverviewWidgetsUiConfigV1(next);
+          upsertOverviewWidgetsUiConfig(next);
+          applyOverviewWidgetsLayoutAndColors(next);
+          scheduleSaveOverviewWidgetsUiConfig(next);
+          requestDashboardWidgetsRefresh({ force: false, rangeKey: dashRangeKeyFromDateRange() });
+          setOvwModalMsg('Saved.', true);
+        }
+
+        modalEl.addEventListener('click', function (e) {
+          var t = e && e.target ? e.target : null;
+          if (!t || !t.closest) return;
+          if (t.closest('[data-kexo-ovw-modal-close]')) {
+            e.preventDefault();
+            closeOvwModal();
+            return;
+          }
+          if (t.closest('#kexo-ovw-reset')) {
+            e.preventDefault();
+            var key = (document.getElementById('kexo-ovw-widget-key') || {}).value || '';
+            if (!key) return;
+            var cfg = readOverviewWidgetsUiConfigV1();
+            var next = JSON.parse(JSON.stringify(cfg || defaultOverviewWidgetsUiConfigV1()));
+            if (next.widgets && next.widgets[key]) next.widgets[key].color = '';
+            if (next.widgets && next.widgets[key]) next.widgets[key].sortBy = 'revenue';
+            if (key === 'finishes') next.widgets.finishes.groupBy = 'finishes';
+            next = normalizeOverviewWidgetsUiConfigV1(next);
+            upsertOverviewWidgetsUiConfig(next);
+            applyOverviewWidgetsLayoutAndColors(next);
+            scheduleSaveOverviewWidgetsUiConfig(next);
+            requestDashboardWidgetsRefresh({ force: false, rangeKey: dashRangeKeyFromDateRange() });
+            openOvwSettings(key);
+            setOvwModalMsg('Reset.', true);
+          }
+        });
+        ['change', 'input'].forEach(function (evt) {
+          modalEl.addEventListener(evt, function (e) {
+            var t = e && e.target ? e.target : null;
+            if (!t) return;
+            if (t.id === 'kexo-ovw-sort-by' || t.id === 'kexo-ovw-color' || t.id === 'kexo-ovw-color-custom' || t.id === 'kexo-ovw-order' || t.id === 'kexo-ovw-finishes-groupby') {
+              applyFromUi();
+            }
+          });
+        });
+        return modalEl;
+      }
+
+      function openOvwSettings(widgetKeyOrBtn) {
+        var key = '';
+        if (typeof widgetKeyOrBtn === 'string') key = widgetKeyOrBtn;
+        else {
+          try {
+            var btn = widgetKeyOrBtn;
+            var card = btn && btn.closest ? btn.closest('[data-kexo-overview-widget]') : null;
+            key = card ? String(card.getAttribute('data-kexo-overview-widget') || '') : '';
+          } catch (_) { key = ''; }
+        }
+        key = String(key || '').trim().toLowerCase();
+        if (OVERVIEW_WIDGET_KEYS.indexOf(key) < 0) return;
+        ovwSettingsKey = key;
+        var modalEl = ensureOvwModal();
+        var cfg = readOverviewWidgetsUiConfigV1();
+        cfg = normalizeOverviewWidgetsUiConfigV1(cfg);
+        var title = document.getElementById('kexo-ovw-modal-title');
+        if (title) title.textContent = (OVERVIEW_WIDGET_TITLES[key] || 'Widget') + ' settings';
+        var keyEl = document.getElementById('kexo-ovw-widget-key');
+        if (keyEl) keyEl.value = key;
+        var sortEl = document.getElementById('kexo-ovw-sort-by');
+        var hintEl = document.getElementById('kexo-ovw-sort-hint');
+        var sortBy = cfg.widgets && cfg.widgets[key] && cfg.widgets[key].sortBy ? String(cfg.widgets[key].sortBy) : 'revenue';
+        if (sortEl) {
+          Array.prototype.forEach.call(sortEl.options || [], function (opt) {
+            if (!opt || !opt.value) return;
+            var supported = widgetSupportsSortBy(key, opt.value);
+            opt.disabled = !supported;
+          });
+          if (!widgetSupportsSortBy(key, sortBy)) sortBy = 'revenue';
+          sortEl.value = sortBy;
+          if (hintEl) hintEl.textContent = widgetSupportsSortBy(key, 'ctr') ? '' : 'CTR is not available for this widget.';
+        }
+        var wrapGb = document.getElementById('kexo-ovw-finishes-groupby-wrap');
+        if (wrapGb) wrapGb.classList.toggle('is-hidden', key !== 'finishes');
+        if (key === 'finishes') {
+          var gbEl = document.getElementById('kexo-ovw-finishes-groupby');
+          if (gbEl) gbEl.value = (cfg.widgets && cfg.widgets.finishes && cfg.widgets.finishes.groupBy) ? String(cfg.widgets.finishes.groupBy) : 'finishes';
+        }
+        var orderEl = document.getElementById('kexo-ovw-order');
+        if (orderEl) {
+          var order = Array.isArray(cfg.order) ? cfg.order : OVERVIEW_WIDGET_KEYS.slice();
+          var curPos = Math.max(1, order.indexOf(key) + 1);
+          var html = '';
+          for (var i = 1; i <= OVERVIEW_WIDGET_KEYS.length; i++) {
+            html += '<option value="' + i + '">' + i + '</option>';
+          }
+          orderEl.innerHTML = html;
+          orderEl.value = String(curPos);
+        }
+        var colorEl = document.getElementById('kexo-ovw-color');
+        var customEl = document.getElementById('kexo-ovw-color-custom');
+        var c = cfg.widgets && cfg.widgets[key] && cfg.widgets[key].color ? String(cfg.widgets[key].color) : '';
+        if (colorEl) {
+          colorEl.value = c && (Array.prototype.some.call(colorEl.options || [], function (opt) { return opt && opt.value === c; })) ? c : '';
+          if (c && colorEl.value !== c) colorEl.value = 'custom';
+        }
+        if (customEl) customEl.value = (c && (colorEl && colorEl.value === 'custom')) ? c : '';
+        setOvwModalMsg('', null);
+        void modalEl;
+        showOvwModal();
       }
 
       function bindDashWidgetsOnce() {
         if (dashWidgetsBound) return;
         dashWidgetsBound = true;
+        try { applyOverviewWidgetsLayoutAndColors(readOverviewWidgetsUiConfigV1()); } catch (_) {}
         try {
-          document.addEventListener('click', function(e) {
+          document.addEventListener('click', function (e) {
             var t = e && e.target ? e.target : null;
             if (!t || !t.closest) return;
-
-            var settingsBtn = t.closest('[data-kexo-widget-settings]');
-            if (settingsBtn) {
-              e.preventDefault();
-              e.stopPropagation();
-              toggleWidgetMenu('sort');
-              var menu = document.getElementById('dash-widget-sort-menu');
-              if (menu) {
-                var rect = settingsBtn.getBoundingClientRect();
-                menu.style.position = 'fixed';
-                menu.style.top = (rect.bottom + 4) + 'px';
-                menu.style.right = (window.innerWidth - rect.right) + 'px';
-                menu.style.left = 'auto';
-              }
-              return;
-            }
-
-            var sortBtn = t.closest('[data-kexo-widget-sort]');
-            if (sortBtn) {
-              e.preventDefault();
-              var sortBy = String(sortBtn.getAttribute('data-kexo-widget-sort') || 'revenue').trim().toLowerCase();
-              if (sortBy === 'conversion' || sortBy === 'clicks' || sortBy === 'revenue') {
-                writeDashWidgetsPrefs({ sortBy: sortBy });
-                closeAllWidgetMenus();
-                applyDashWidgetSort();
-              }
-              return;
-            }
-
-            var dd = t.closest('[data-kexo-widget-dropdown]');
-            if (dd) {
-              e.preventDefault();
-              e.stopPropagation();
-              toggleWidgetMenu(dd.getAttribute('data-kexo-widget-dropdown'));
-              return;
-            }
-
-            var dimBtn = t.closest('[data-kexo-widget-dimension][data-kexo-widget-dimension-value]');
-            if (dimBtn) {
-              e.preventDefault();
-              var widget = String(dimBtn.getAttribute('data-kexo-widget-dimension') || '').trim().toLowerCase();
-              var val = String(dimBtn.getAttribute('data-kexo-widget-dimension-value') || '').trim().toLowerCase();
-              if (widget === 'devices') {
-                writeDashWidgetsPrefs({ devicesDim: val === 'browsers' ? 'browsers' : 'devices' });
-                closeAllWidgetMenus();
-                requestDashboardWidgetsRefresh({ force: true, rangeKey: dashRangeKeyFromDateRange() });
-              }
-              return;
-            }
-
-            var tableBtn = t.closest('[data-kexo-widget-variant-table-id]');
-            if (tableBtn) {
-              e.preventDefault();
-              var id = String(tableBtn.getAttribute('data-kexo-widget-variant-table-id') || '').trim();
-              writeDashWidgetsPrefs({ variantTableId: id });
-              closeAllWidgetMenus();
-              requestDashboardWidgetsRefresh({ force: true, rangeKey: dashRangeKeyFromDateRange() });
-              return;
-            }
-
-            var actionBtn = t.closest('[data-kexo-widget-action]');
-            if (actionBtn) {
-              e.preventDefault();
-              var action = String(actionBtn.getAttribute('data-kexo-widget-action') || '').trim().toLowerCase();
-              if (action === 'refresh') {
-                closeAllWidgetMenus();
-                requestDashboardWidgetsRefresh({ force: true, rangeKey: dashRangeKeyFromDateRange() });
-              }
-              return;
-            }
-
-            // Click outside -> close any open menus.
-            closeAllWidgetMenus();
+            var btn = t.closest('[data-kexo-overview-widget-settings]');
+            if (!btn) return;
+            e.preventDefault();
+            e.stopPropagation();
+            openOvwSettings(btn);
           });
         } catch (_) {}
-
         try {
-          document.addEventListener('keydown', function(e) {
+          document.addEventListener('keydown', function (e) {
             if (!e || e.key !== 'Escape') return;
-            closeAllWidgetMenus();
+            closeOvwModal();
+          });
+        } catch (_) {}
+        try {
+          document.addEventListener('kexo:overviewWidgetsUiConfigUpdated', function () {
+            try { applyOverviewWidgetsLayoutAndColors(readOverviewWidgetsUiConfigV1()); } catch (_) {}
+            try { requestDashboardWidgetsRefresh({ force: false, rangeKey: dashRangeKeyFromDateRange() }); } catch (_) {}
+          });
+        } catch (_) {}
+        try {
+          document.addEventListener('kexo:cssVarOverridesUpdated', function () {
+            try { applyOverviewWidgetsLayoutAndColors(readOverviewWidgetsUiConfigV1()); } catch (_) {}
+            try { requestDashboardWidgetsRefresh({ force: false, rangeKey: dashRangeKeyFromDateRange() }); } catch (_) {}
           });
         } catch (_) {}
       }
@@ -5026,6 +5308,7 @@
       function requestDashboardWidgetsRefresh(opts) {
         if (!widgetPresent()) return;
         bindDashWidgetsOnce();
+        try { applyOverviewWidgetsLayoutAndColors(readOverviewWidgetsUiConfigV1()); } catch (_) {}
         var next = opts && typeof opts === 'object' ? Object.assign({}, opts) : {};
         dashWidgetsPendingOpts = dashWidgetsPendingOpts ? Object.assign(dashWidgetsPendingOpts, next) : next;
         if (dashWidgetsRefreshTimer) return;
@@ -5044,102 +5327,55 @@
         var force = !!options.force;
         var rk = options.rangeKey != null ? String(options.rangeKey) : dashRangeKeyFromDateRange();
         rk = (rk == null ? '' : String(rk)).trim().toLowerCase() || 'today';
-        var prefs = readDashWidgetsPrefs();
+        var cfg = normalizeOverviewWidgetsUiConfigV1(readOverviewWidgetsUiConfigV1());
+        try { applyOverviewWidgetsLayoutAndColors(cfg); } catch (_) {}
+
         var shop = null;
         try { shop = getShopForSales(); } catch (_) { shop = null; }
         var shopKey = shop ? String(shop) : '';
+        var base = (typeof API === 'string') ? API : '';
 
-        var vUrl = API + '/api/insights-variants?range=' + encodeURIComponent(rk) + (shopKey ? ('&shop=' + encodeURIComponent(shopKey)) : '') + (force ? ('&force=1&_=' + Date.now()) : '');
-        var devUrl = API + '/api/devices/report?range=' + encodeURIComponent(rk) + (force ? ('&force=1&_=' + Date.now()) : '');
-        var brUrl = API + '/api/browsers/table?range=' + encodeURIComponent(rk) + (force ? ('&force=1&_=' + Date.now()) : '');
-        var attrUrl = API + '/api/attribution/report?range=' + encodeURIComponent(rk) + (force ? ('&force=1&_=' + Date.now()) : '');
-        var payUrl = API + '/api/payment-methods/report?range=' + encodeURIComponent(rk) + (force ? ('&force=1&_=' + Date.now()) : '');
-        var abdUrl = API + '/api/abandoned-carts/top-countries?range=' + encodeURIComponent(rk) + (force ? ('&force=1&_=' + Date.now()) : '');
+        var urls = {
+          finishes: base + '/api/insights-variants?range=' + encodeURIComponent(rk) + (shopKey ? ('&shop=' + encodeURIComponent(shopKey)) : '') + (force ? ('&force=1&_=' + Date.now()) : ''),
+          devices: base + '/api/devices/report?range=' + encodeURIComponent(rk) + (force ? ('&force=1&_=' + Date.now()) : ''),
+          browsers: base + '/api/browsers/table?range=' + encodeURIComponent(rk) + (force ? ('&force=1&_=' + Date.now()) : ''),
+          attribution: base + '/api/attribution/report?range=' + encodeURIComponent(rk) + (force ? ('&force=1&_=' + Date.now()) : ''),
+          payment_methods: base + '/api/payment-methods/report?range=' + encodeURIComponent(rk) + (force ? ('&force=1&_=' + Date.now()) : ''),
+          abandoned: base + '/api/abandoned-carts/top-countries?range=' + encodeURIComponent(rk) + (force ? ('&force=1&_=' + Date.now()) : ''),
+        };
 
-        var WIDGET_TOP_N = 4;
-        var fallbackRangeKey = (rk === 'today' || rk === '1h') ? 'yesterday' : '';
+        var TOP_N = 5;
 
-        function dashReadKpiOrdersFromDom() {
-          var el = document.getElementById('dash-kpi-orders');
-          if (!el || !el.textContent) return null;
-          var t = String(el.textContent).trim().replace(/,/g, '');
-          if (t === '' || t === '\u2014' || t === '—') return 0;
-          var n = parseInt(t, 10);
-          return Number.isFinite(n) ? n : null;
+        function resolveRootCssVar(name, fallback) {
+          try {
+            var v = getComputedStyle(document.documentElement).getPropertyValue(String(name || '')).trim();
+            return v || (fallback || '');
+          } catch (_) {
+            return fallback || '';
+          }
         }
-        var kpiOrders = dashReadKpiOrdersFromDom();
-        var kpiSaysNoSales = (rk === 'today' || rk === '1h') && kpiOrders !== null && kpiOrders === 0;
 
-        var tasks = [];
+        function resolveCssColor(spec) {
+          var v = spec == null ? '' : String(spec).trim();
+          if (!v) return '';
+          var m = v.match(/^var\((--[a-zA-Z0-9._-]+)\)$/);
+          if (m) return resolveRootCssVar(m[1], '') || '';
+          return v;
+        }
 
-        // Variants
-        tasks.push(
-          fetchWidgetJson('variant|' + rk + '|' + shopKey, vUrl, force, 30000)
-            .then(function (data) {
-              var mountId = 'dash-widget-variant-mount';
-              if (!data) { setWidgetEmpty(mountId, 'No data'); return; }
-              var payload = (data && data.ok && data.payload) ? data.payload : (data && data.payload ? data.payload : data);
-              var tables = payload && Array.isArray(payload.tables) ? payload.tables : (Array.isArray(data.tables) ? data.tables : []);
-              var menu = document.getElementById('dash-widget-variant-menu');
-              if (menu) {
-                var refresh = '<button type="button" class="kexo-widget-menu-item" role="menuitem" data-kexo-widget-action="refresh">Refresh</button>';
-                menu.innerHTML = refresh + (tables.map(function (t) {
-                  var id = t && t.id != null ? String(t.id) : '';
-                  var name = t && t.name != null ? String(t.name) : 'Table';
-                  return '<button type="button" class="kexo-widget-menu-item" role="menuitem" data-kexo-widget-variant-table-id="' + escapeHtml(id) + '">' + escapeHtml(name) + '</button>';
-                }).join('') || '<div class="kexo-widget-empty">No tables</div>');
-              }
-              var selectedId = (prefs && prefs.variantTableId) ? String(prefs.variantTableId) : '';
-              var selected = tables.find(function (t) { return t && String(t.id || '') === selectedId; }) || tables[0] || null;
-              if (selected && selected.id != null && String(selected.id) !== selectedId) {
-                prefs = writeDashWidgetsPrefs({ variantTableId: String(selected.id) });
-              }
-              var ddLabel = document.querySelector('[data-kexo-widget-dropdown-label="variant"]');
-              if (ddLabel) ddLabel.textContent = selected && selected.name ? String(selected.name) : 'Table';
-              var rows = selected && Array.isArray(selected.rows) ? selected.rows : [];
-              rows = rows.slice().map(function (r) {
-                var label = (r && (r.variant || r.key || r.name)) ? String(r.variant || r.key || r.name) : '—';
-                var value = r && (r.revenue_gbp != null || r.revenue != null) ? Number(r.revenue_gbp != null ? r.revenue_gbp : r.revenue) : 0;
-                if (!Number.isFinite(value)) value = 0;
-                return { label: label, valueGbp: value, iconHtml: '<i class="fa-light fa-gem" aria-hidden="true"></i>' };
-              });
-              if (kpiSaysNoSales) { rows = rows.map(function (r) { return Object.assign({}, r || {}, { valueGbp: 0 }); }); }
-              var currentTop = withSharePct(rows, WIDGET_TOP_N);
-              var hasCurrent = currentTop.some(function (r) { return r && Number(r.valueGbp || 0) > 0; });
-              var needsFallback = !!fallbackRangeKey && (!hasCurrent || currentTop.length < WIDGET_TOP_N);
-
-              function renderWithFallback(yData) {
-                var placeholders = [];
-                if (yData) {
-                  var yPayload = (yData && yData.ok && yData.payload) ? yData.payload : (yData && yData.payload ? yData.payload : yData);
-                  var yTables = yPayload && Array.isArray(yPayload.tables) ? yPayload.tables : (Array.isArray(yData.tables) ? yData.tables : []);
-                  var ySelected = yTables.find(function (t) { return t && String(t.id || '') === String((selected && selected.id) || ''); }) || yTables[0] || null;
-                  var yRows = ySelected && Array.isArray(ySelected.rows) ? ySelected.rows : [];
-                  yRows = yRows.slice().map(function (r) {
-                    var label = (r && (r.variant || r.key || r.name)) ? String(r.variant || r.key || r.name) : '—';
-                    return { label: label, valueGbp: Number(r && (r.revenue_gbp != null || r.revenue != null) ? (r.revenue_gbp != null ? r.revenue_gbp : r.revenue) : 0) || 0, iconHtml: '<i class="fa-light fa-gem" aria-hidden="true"></i>' };
-                  });
-                  placeholders = makePlaceholderRowsFromYesterday(yRows, WIDGET_TOP_N);
-                }
-                var barRows = mergeCurrentWithPlaceholders(currentTop, placeholders, WIDGET_TOP_N);
-                var topRow = hasCurrent ? (currentTop[0] || null) : (placeholders[0] || barRows[0] || null);
-                if (topRow && !hasCurrent) topRow.placeholder = true;
-                var sig = widgetSig({ rk: rk, table: (selected && selected.id) ? String(selected.id) : '', current: currentTop, placeholders: placeholders });
-                if (!force && dashWidgetLastRenderSig[mountId] && dashWidgetLastRenderSig[mountId] === sig) return;
-                dashWidgetLastRenderSig[mountId] = sig;
-                renderWidgetRadialAndVbars(mountId, topRow, barRows, {
-                  accentCss: 'background: ' + WIDGET_RING_AND_BAR + ';',
-                  ringStroke: WIDGET_RING_AND_BAR
-                });
-              }
-
-              if (!needsFallback) return renderWithFallback(null);
-              var yUrl = API + '/api/insights-variants?range=' + encodeURIComponent(fallbackRangeKey) + (shopKey ? ('&shop=' + encodeURIComponent(shopKey)) : '') + (force ? ('&force=1&_=' + Date.now()) : '');
-              return fetchWidgetJson('variant|' + fallbackRangeKey + '|' + shopKey, yUrl, force, 30000).then(function (y) {
-                return renderWithFallback(y);
-              });
-            })
-        );
+        function accentForWidget(widgetKey) {
+          var key = String(widgetKey || '').trim().toLowerCase();
+          var card = null;
+          try { card = document.querySelector('[data-kexo-overview-widget="' + key + '"]'); } catch (_) { card = null; }
+          var css = '';
+          try { css = card && card.style ? String(card.style.getPropertyValue('--kexo-accent') || '').trim() : ''; } catch (_) { css = ''; }
+          if (!css) {
+            var idx = (cfg && Array.isArray(cfg.order)) ? cfg.order.indexOf(key) : -1;
+            var accentIdx = ((idx >= 0 ? idx : 0) % 5) + 1;
+            css = 'var(--kexo-accent-' + accentIdx + ')';
+          }
+          return resolveCssColor(css) || resolveRootCssVar('--kexo-accent-1', '#4b94e4') || '#4b94e4';
+        }
 
         function browserIconHtmlForKey(rawKey, label) {
           var k = (rawKey == null ? '' : String(rawKey)).trim().toLowerCase();
@@ -5153,367 +5389,245 @@
           return '<i class="fa-light fa-globe" data-icon-key="type-browser-other" aria-hidden="true"' + titleAttr + '></i>';
         }
 
-        // Devices (separate card)
-        tasks.push(
-          fetchWidgetJson('devices|' + rk, devUrl, force, 25000)
-            .then(function (data) {
-              var mountId = 'dash-widget-devices-mount';
-              if (!data) { setWidgetEmpty(mountId, 'No data'); return; }
-              var devMenu = document.getElementById('dash-widget-devices-menu');
-              if (devMenu) {
-                devMenu.innerHTML = '<button type="button" class="kexo-widget-menu-item" role="menuitem" data-kexo-widget-action="refresh">Refresh</button>';
-              }
-              var payload2 = (data && data.ok && data.payload) ? data.payload : data;
-              var list2 = payload2 && payload2.devices && Array.isArray(payload2.devices.rows) ? payload2.devices.rows : (payload2 && Array.isArray(payload2.rows) ? payload2.rows : []);
-              var platformMap = {};
-              list2.forEach(function (r) {
-                var platforms = r && Array.isArray(r.platforms) ? r.platforms : [];
-                if (platforms.length > 0) {
-                  platforms.forEach(function (p) {
-                    var plabel = p && (p.platform || p.device_type) ? String(p.platform || p.device_type) : '—';
-                    plabel = plabel.charAt(0).toUpperCase() + plabel.slice(1).toLowerCase();
-                    if (plabel === 'Unknown' || plabel === 'Other') plabel = p.platform || p.device_type || plabel;
-                    var pval = p && (p.revenue_gbp != null || p.revenue != null) ? Number(p.revenue_gbp != null ? p.revenue_gbp : p.revenue) : 0;
-                    if (!Number.isFinite(pval)) pval = 0;
-                    var psess = p && p.sessions != null ? Number(p.sessions) : 0;
-                    if (!platformMap[plabel]) platformMap[plabel] = { revenue: 0, sessions: 0 };
-                    platformMap[plabel].revenue += pval;
-                    platformMap[plabel].sessions += psess;
-                  });
-                } else {
-                  var label = r && (r.device_type || r.device || r.name) ? String(r.device_type || r.device || r.name) : '—';
-                  var value = r && (r.revenue_gbp != null || r.revenue != null) ? Number(r.revenue_gbp != null ? r.revenue_gbp : r.revenue) : 0;
-                  if (!Number.isFinite(value)) value = 0;
-                  var sess = r && r.sessions != null ? Number(r.sessions) : 0;
-                  if (!platformMap[label]) platformMap[label] = { revenue: 0, sessions: 0 };
-                  platformMap[label].revenue += value;
-                  platformMap[label].sessions += sess;
+        function metricValue(row, metric) {
+          if (!row) return 0;
+          if (metric === 'clicks') return Number(row.clicks) || 0;
+          if (metric === 'ctr') return Number(row.ctr) || 0;
+          return Number(row.revenue) || 0;
+        }
+
+        function fmtMetric(metric, row) {
+          if (!row) return '\u2014';
+          if (metric === 'clicks') {
+            var c = Number(row.clicks) || 0;
+            return fmtNum(c);
+          }
+          if (metric === 'ctr') {
+            var p = row.ctr != null ? Number(row.ctr) : null;
+            if (!Number.isFinite(p)) return '\u2014';
+            return (Math.round(p * 10) / 10).toFixed(1) + '%';
+          }
+          return fmtGbp2(Number(row.revenue) || 0);
+        }
+
+        function sortTop(rows, metric, limit) {
+          var list = Array.isArray(rows) ? rows.slice() : [];
+          list.sort(function (a, b) {
+            return metricValue(b, metric) - metricValue(a, metric);
+          });
+          return list.slice(0, Math.max(0, Number(limit) || 0));
+        }
+
+        function renderList(widgetKey, rows, sortBy) {
+          var mountId = 'dash-ovw-' + widgetKey + '-list';
+          var host = document.getElementById(mountId);
+          if (!host) return;
+          var list = Array.isArray(rows) ? rows : [];
+          if (!list.length) { host.innerHTML = '<div class="kexo-widget-empty">No data</div>'; return; }
+          var seriesMetric = (sortBy === 'clicks') ? 'clicks' : 'revenue';
+          var total = list.reduce(function (acc, r) { return acc + metricValue(r, seriesMetric); }, 0) || 0;
+          var html = '<ul class="kexo-widget-list">';
+          list.forEach(function (r) {
+            var label = r && r.label != null ? String(r.label) : '—';
+            var icon = r && r.iconHtml ? String(r.iconHtml) : '<span class="kexo-dash-top-row-icon-placeholder" aria-hidden="true"></span>';
+            var valText = fmtMetric(sortBy, r);
+            var seriesVal = metricValue(r, seriesMetric);
+            var pct = total > 0 ? (seriesVal / total) * 100 : 0;
+            if (!Number.isFinite(pct)) pct = 0;
+            pct = Math.max(0, Math.min(100, pct));
+            html += '<li class="kexo-widget-row" title="' + escapeHtml(label) + '">' +
+              '<span class="kexo-widget-row-icon" aria-hidden="true">' + icon + '</span>' +
+              '<span class="kexo-widget-row-label">' + escapeHtml(label) + '</span>' +
+              '<span class="kexo-widget-row-value">' + escapeHtml(valText) + '</span>' +
+              '<div class="kexo-widget-row-bar"><span data-kexo-bar-fill="' + escapeHtml(String(pct)) + '"></span></div>' +
+            '</li>';
+          });
+          html += '</ul>';
+          host.innerHTML = html;
+          animateWidgetFills(host);
+        }
+
+        function renderChart(widgetKey, rows, sortBy) {
+          var chartId = 'dash-ovw-' + widgetKey + '-chart';
+          var chartEl = document.getElementById(chartId);
+          if (!chartEl) return;
+          var list = Array.isArray(rows) ? rows : [];
+          if (!list.length) { chartEl.innerHTML = ''; return; }
+          var metric = (sortBy === 'clicks') ? 'clicks' : 'revenue';
+          var series = list.map(function (r) { return Math.max(0, metricValue(r, metric)); });
+          var total = series.reduce(function (a, b) { return a + (Number(b) || 0); }, 0) || 0;
+          if (total <= 0) { chartEl.innerHTML = ''; return; }
+          var labels = list.map(function (r) { return r && r.label != null ? String(r.label) : '—'; });
+          var accent = accentForWidget(widgetKey);
+          var apexOpts = {
+            chart: { type: 'donut', height: 124, sparkline: { enabled: true }, animations: { enabled: false } },
+            labels: labels,
+            series: series,
+            legend: { show: false },
+            stroke: { show: false },
+            dataLabels: { enabled: false },
+            tooltip: {
+              y: {
+                formatter: function (val) {
+                  if (metric === 'clicks') return fmtNum(Number(val) || 0);
+                  return fmtGbp2(Number(val) || 0);
                 }
-              });
-              var platformKeys = Object.keys(platformMap).sort(function (a, b) { return (platformMap[b].revenue || 0) - (platformMap[a].revenue || 0); });
-              var rows = platformKeys.map(function (plabel) {
-                var p = platformMap[plabel];
-                var value = p.revenue || 0;
-                var k = plabel.toLowerCase();
-                var icon = (k.indexOf('android') >= 0) ? 'fa-brands fa-android' : (k.indexOf('ios') >= 0 || k.indexOf('mac') >= 0) ? 'fa-brands fa-apple' : (k.indexOf('windows') >= 0) ? 'fa-brands fa-windows' : (k.indexOf('linux') >= 0) ? 'fa-brands fa-linux' : 'fa-light fa-desktop';
-                return { label: plabel, valueGbp: value, iconHtml: '<i class="fa-light ' + escapeHtml(icon) + '" data-icon-key="type-platform-' + escapeHtml(k) + '" aria-hidden="true"></i>', sessions: p.sessions };
-              });
-              if (kpiSaysNoSales) { rows = rows.map(function (r) { return Object.assign({}, r || {}, { valueGbp: 0 }); }); }
-              var currentTop = withSharePct(rows, WIDGET_TOP_N);
-              var hasCurrent = currentTop.some(function (r) { return r && Number(r.valueGbp || 0) > 0; });
-              var needsFallback = !!fallbackRangeKey && (!hasCurrent || currentTop.length < WIDGET_TOP_N);
-
-              function renderWithFallback(yRows) {
-                var placeholders = makePlaceholderRowsFromYesterday(yRows, WIDGET_TOP_N);
-                var barRows = mergeCurrentWithPlaceholders(currentTop, placeholders, WIDGET_TOP_N);
-                var topRow = hasCurrent ? (currentTop[0] || null) : (placeholders[0] || barRows[0] || null);
-                if (topRow && !hasCurrent) topRow.placeholder = true;
-                var sig = widgetSig({ rk: rk, dim: 'devices', current: currentTop, placeholders: placeholders });
-                if (!force && dashWidgetLastRenderSig[mountId] && dashWidgetLastRenderSig[mountId] === sig) return;
-                dashWidgetLastRenderSig[mountId] = sig;
-                var devSessions = rows.reduce(function (acc, r) { return acc + (Number(r && r.sessions) || 0); }, 0);
-                var devConv = !list2 || !list2.length ? 0 : (list2[0] && list2[0].conversion_pct != null ? Number(list2[0].conversion_pct) : 0);
-                renderWidgetRadialAndVbars(mountId, topRow, barRows, {
-                  accentCss: 'background: ' + WIDGET_RING_AND_BAR + ';',
-                  ringStroke: WIDGET_RING_AND_BAR,
-                  sessions: devSessions,
-                  conversionPct: devConv
-                });
               }
+            },
+            plotOptions: { pie: { donut: { size: '70%' } } },
+            theme: { monochrome: { enabled: true, color: accent, shadeTo: 'light', shadeIntensity: 0.22 } },
+          };
+          upsertDashboardApexChart(chartId, chartEl, apexOpts);
+        }
 
-              if (!needsFallback) return renderWithFallback([]);
-              var yUrl = API + '/api/devices/report?range=' + encodeURIComponent(fallbackRangeKey) + (force ? ('&force=1&_=' + Date.now()) : '');
-              return fetchWidgetJson('devices|' + fallbackRangeKey, yUrl, force, 25000).then(function (yData) {
-                if (!yData) return renderWithFallback([]);
-                var yPayload2 = (yData && yData.ok && yData.payload) ? yData.payload : yData;
-                var yList2 = yPayload2 && yPayload2.devices && Array.isArray(yPayload2.devices.rows) ? yPayload2.devices.rows : (yPayload2 && Array.isArray(yPayload2.rows) ? yPayload2.rows : []);
-                var yPlatformMap = {};
-                yList2.forEach(function (r) {
-                  var platforms = r && Array.isArray(r.platforms) ? r.platforms : [];
-                  if (platforms.length > 0) {
-                    platforms.forEach(function (p) {
-                      var plabel = p && (p.platform || p.device_type) ? String(p.platform || p.device_type) : '—';
-                      plabel = plabel.charAt(0).toUpperCase() + plabel.slice(1).toLowerCase();
-                      var pval = p && (p.revenue_gbp != null || p.revenue != null) ? Number(p.revenue_gbp != null ? p.revenue_gbp : p.revenue) : 0;
-                      if (!Number.isFinite(pval)) pval = 0;
-                      if (!yPlatformMap[plabel]) yPlatformMap[plabel] = 0;
-                      yPlatformMap[plabel] += pval;
-                    });
-                  } else {
-                    var label = r && (r.device_type || r.device || r.name) ? String(r.device_type || r.device || r.name) : '—';
-                    var value = r && (r.revenue_gbp != null || r.revenue != null) ? Number(r.revenue_gbp != null ? r.revenue_gbp : r.revenue) : 0;
-                    if (!Number.isFinite(value)) value = 0;
-                    if (!yPlatformMap[label]) yPlatformMap[label] = 0;
-                    yPlatformMap[label] += value;
-                  }
-                });
-                var yRows2 = Object.keys(yPlatformMap).sort(function (a, b) { return (yPlatformMap[b] || 0) - (yPlatformMap[a] || 0); }).map(function (plabel) {
-                  var k = plabel.toLowerCase();
-                  var icon = (k.indexOf('android') >= 0) ? 'fa-brands fa-android' : (k.indexOf('ios') >= 0 || k.indexOf('mac') >= 0) ? 'fa-brands fa-apple' : (k.indexOf('windows') >= 0) ? 'fa-brands fa-windows' : (k.indexOf('linux') >= 0) ? 'fa-brands fa-linux' : 'fa-light fa-desktop';
-                  return { label: plabel, valueGbp: yPlatformMap[plabel] || 0, iconHtml: '<i class="fa-light ' + escapeHtml(icon) + '" aria-hidden="true"></i>' };
-                });
-                return renderWithFallback(yRows2);
+        function extractRows(widgetKey, data) {
+          var key = String(widgetKey || '').trim().toLowerCase();
+          var payload = (data && data.ok && data.payload) ? data.payload : data;
+          if (!payload || typeof payload !== 'object') return [];
+          if (key === 'finishes') {
+            var tables = Array.isArray(payload.tables) ? payload.tables : [];
+            var tableId = cfg && cfg.widgets && cfg.widgets.finishes && cfg.widgets.finishes.groupBy ? String(cfg.widgets.finishes.groupBy) : '';
+            tableId = tableId.trim().toLowerCase();
+            var table = (tableId ? tables.find(function (t) { return t && String(t.id || '').trim().toLowerCase() === tableId; }) : null) || tables[0] || null;
+            var rows = table && Array.isArray(table.rows) ? table.rows : [];
+            return rows.map(function (r) {
+              var label = r && (r.variant || r.key) ? String(r.variant || r.key) : '—';
+              return {
+                label: label,
+                revenue: Number(r && (r.revenue_gbp != null ? r.revenue_gbp : r.revenue)) || 0,
+                clicks: Number(r && r.sessions) || 0,
+                ctr: (r && r.cr != null) ? Number(r.cr) : null,
+                iconHtml: '<i class="fa-light fa-gem" aria-hidden="true"></i>',
+              };
+            });
+          }
+          if (key === 'devices') {
+            var devRows = payload.devices && Array.isArray(payload.devices.rows) ? payload.devices.rows : [];
+            return devRows.map(function (r) {
+              var dt = r && r.device_type != null ? String(r.device_type) : 'unknown';
+              var label = dt ? (dt.charAt(0).toUpperCase() + dt.slice(1)) : '—';
+              var icon = dt === 'mobile' ? 'fa-light fa-mobile' : dt === 'tablet' ? 'fa-light fa-tablet' : dt === 'desktop' ? 'fa-light fa-desktop' : 'fa-light fa-device-desktop';
+              return {
+                label: label,
+                revenue: Number(r && r.revenue_gbp) || 0,
+                clicks: Number(r && r.sessions) || 0,
+                ctr: (r && r.conversion_pct != null) ? Number(r.conversion_pct) : null,
+                iconHtml: '<i class="' + escapeHtml(icon) + '" aria-hidden="true"></i>',
+              };
+            });
+          }
+          if (key === 'browsers') {
+            var brRows = Array.isArray(payload.rows) ? payload.rows : [];
+            return brRows.map(function (r) {
+              var label = r && r.ua_browser != null ? String(r.ua_browser) : '—';
+              return {
+                label: label,
+                revenue: Number(r && r.revenue) || 0,
+                clicks: Number(r && r.sessions) || 0,
+                ctr: (r && r.cr != null) ? Number(r.cr) : null,
+                iconHtml: browserIconHtmlForKey(label, label),
+              };
+            });
+          }
+          if (key === 'abandoned') {
+            var abRows = Array.isArray(payload.rows) ? payload.rows : [];
+            return abRows.map(function (r) {
+              var cc = r && r.country != null ? String(r.country) : '—';
+              cc = String(cc || '').trim().toUpperCase().slice(0, 2) || '—';
+              var iconHtml = cc && /^[A-Z]{2}$/.test(cc) ? countryCodeToFlagHtml(cc) : '<i class="fa-light fa-globe" aria-hidden="true"></i>';
+              return {
+                label: cc,
+                revenue: Number(r && r.abandoned_value_gbp) || 0,
+                clicks: Number(r && r.checkout_sessions) || 0,
+                ctr: null,
+                iconHtml: iconHtml,
+              };
+            });
+          }
+          if (key === 'attribution') {
+            var chans = payload.attribution && Array.isArray(payload.attribution.rows) ? payload.attribution.rows : [];
+            var agg = {};
+            chans.forEach(function (ch) {
+              var sources = ch && Array.isArray(ch.sources) ? ch.sources : [];
+              sources.forEach(function (s) {
+                var k = s && (s.source_key || s.label) ? String(s.source_key || s.label) : '';
+                if (!k) return;
+                var cur = agg[k] || { label: '', iconSpec: '', sessions: 0, orders: 0, revenue: 0 };
+                cur.label = cur.label || (s && s.label != null ? String(s.label) : k);
+                cur.iconSpec = cur.iconSpec || (s && s.icon_spec != null ? String(s.icon_spec) : '');
+                cur.sessions += Number(s && s.sessions) || 0;
+                cur.orders += Number(s && s.orders) || 0;
+                cur.revenue += Number(s && s.revenue_gbp) || 0;
+                agg[k] = cur;
               });
-            })
-        );
+            });
+            return Object.keys(agg).map(function (k) {
+              var a = agg[k];
+              var iconHtml = a.iconSpec ? attributionIconSpecToHtml(a.iconSpec, a.label) : '<i class="fa-light fa-share-nodes" aria-hidden="true"></i>';
+              var ctr = a.sessions > 0 ? Math.round((a.orders / a.sessions) * 1000) / 10 : null;
+              return { label: a.label || k, revenue: a.revenue || 0, clicks: a.sessions || 0, ctr: ctr, iconHtml: iconHtml };
+            });
+          }
+          if (key === 'payment_methods') {
+            var payRows = Array.isArray(payload.rows) ? payload.rows : [];
+            return payRows.map(function (r) {
+              var label = r && r.label != null ? String(r.label) : '—';
+              var key2 = r && r.key != null ? String(r.key).trim().toLowerCase() : 'other';
+              var iconSrc = r && r.iconSrc ? String(r.iconSrc) : '';
+              var iconAlt = r && r.iconAlt ? String(r.iconAlt) : label;
+              var iconHtml = iconSrc
+                ? ('<img src="' + escapeHtml(iconSrc) + '" alt="' + escapeHtml(iconAlt) + '" width="18" height="18" data-icon-key="payment-method-' + escapeHtml(key2 || 'other') + '">')
+                : '<i class="fa-light fa-credit-card" data-icon-key="payment-method-' + escapeHtml(key2 || 'other') + '" aria-hidden="true"></i>';
+              return {
+                label: label,
+                revenue: Number(r && (r.revenue != null ? r.revenue : r.revenue_gbp)) || 0,
+                clicks: Number(r && r.sessions) || 0,
+                ctr: (r && r.cr != null) ? Number(r.cr) : null,
+                iconHtml: iconHtml,
+              };
+            });
+          }
+          return [];
+        }
 
-        // Browsers (separate card)
-        tasks.push(
-          fetchWidgetJson('browsers|' + rk, brUrl, force, 25000)
-            .then(function (data) {
-              var mountId = 'dash-widget-browsers-mount';
-              if (!data) { setWidgetEmpty(mountId, 'No data'); return; }
-              var brMenu = document.getElementById('dash-widget-browsers-menu');
-              if (brMenu) {
-                brMenu.innerHTML = '<button type="button" class="kexo-widget-menu-item" role="menuitem" data-kexo-widget-action="refresh">Refresh</button>';
-              }
-              var payload = (data && data.ok && data.payload) ? data.payload : data;
-              var list = payload && Array.isArray(payload.rows) ? payload.rows : (Array.isArray(data.rows) ? data.rows : []);
-              var rows = list.map(function (r) {
-                var label = r && (r.ua_browser || r.browser || r.name) ? String(r.ua_browser || r.browser || r.name) : '—';
-                var value = r && (r.revenue_gbp != null || r.revenue != null) ? Number(r.revenue_gbp != null ? r.revenue_gbp : r.revenue) : 0;
-                if (!Number.isFinite(value)) value = 0;
-                return { label: label, valueGbp: value, iconHtml: browserIconHtmlForKey(label, label), sessions: r && r.sessions != null ? Number(r.sessions) : 0 };
-              });
-              if (kpiSaysNoSales) { rows = rows.map(function (r) { return Object.assign({}, r || {}, { valueGbp: 0 }); }); }
-              var currentTop = withSharePct(rows, WIDGET_TOP_N);
-              var hasCurrent = currentTop.some(function (r) { return r && Number(r.valueGbp || 0) > 0; });
-              var needsFallback = !!fallbackRangeKey && (!hasCurrent || currentTop.length < WIDGET_TOP_N);
+        function renderWidget(widgetKey, data) {
+          var key = String(widgetKey || '').trim().toLowerCase();
+          var sortBy = cfg && cfg.widgets && cfg.widgets[key] && cfg.widgets[key].sortBy ? String(cfg.widgets[key].sortBy) : 'revenue';
+          sortBy = String(sortBy || '').trim().toLowerCase();
+          if (!widgetSupportsSortBy(key, sortBy)) sortBy = 'revenue';
+          var rows = extractRows(key, data);
+          var top = sortTop(rows, sortBy, TOP_N);
+          var sig = widgetSig({
+            key: key,
+            rk: rk,
+            sortBy: sortBy,
+            pos: (cfg && Array.isArray(cfg.order)) ? cfg.order.indexOf(key) : -1,
+            color: (cfg && cfg.widgets && cfg.widgets[key] && cfg.widgets[key].color) ? String(cfg.widgets[key].color) : '',
+            accent: accentForWidget(key),
+            rows: top
+          });
+          var listMountId = 'dash-ovw-' + key + '-list';
+          if (!force && dashWidgetLastRenderSig[listMountId] && dashWidgetLastRenderSig[listMountId] === sig) return;
+          dashWidgetLastRenderSig[listMountId] = sig;
+          renderChart(key, top, sortBy);
+          renderList(key, top, sortBy);
+        }
 
-              function renderWithFallback(yRows) {
-                var placeholders = makePlaceholderRowsFromYesterday(yRows, WIDGET_TOP_N);
-                var barRows = mergeCurrentWithPlaceholders(currentTop, placeholders, WIDGET_TOP_N);
-                var topRow = hasCurrent ? (currentTop[0] || null) : (placeholders[0] || barRows[0] || null);
-                if (topRow && !hasCurrent) topRow.placeholder = true;
-                var sig = widgetSig({ rk: rk, dim: 'browsers', current: currentTop, placeholders: placeholders });
-                if (!force && dashWidgetLastRenderSig[mountId] && dashWidgetLastRenderSig[mountId] === sig) return;
-                dashWidgetLastRenderSig[mountId] = sig;
-                renderWidgetRadialAndVbars(mountId, topRow, barRows, {
-                  accentCss: 'background: ' + WIDGET_RING_AND_BAR + ';',
-                  ringStroke: WIDGET_RING_AND_BAR
-                });
-              }
-
-              if (!needsFallback) return renderWithFallback([]);
-              var yUrl = API + '/api/browsers/table?range=' + encodeURIComponent(fallbackRangeKey) + (force ? ('&force=1&_=' + Date.now()) : '');
-              return fetchWidgetJson('browsers|' + fallbackRangeKey, yUrl, force, 25000).then(function (yData) {
-                if (!yData) return renderWithFallback([]);
-                var yPayload = (yData && yData.ok && yData.payload) ? yData.payload : yData;
-                var yList = yPayload && Array.isArray(yPayload.rows) ? yPayload.rows : (Array.isArray(yData.rows) ? yData.rows : []);
-                var yRows = yList.map(function (r) {
-                  var label = r && (r.ua_browser || r.browser || r.name) ? String(r.ua_browser || r.browser || r.name) : '—';
-                  var value = r && (r.revenue_gbp != null || r.revenue != null) ? Number(r.revenue_gbp != null ? r.revenue_gbp : r.revenue) : 0;
-                  if (!Number.isFinite(value)) value = 0;
-                  return { label: label, valueGbp: value, iconHtml: browserIconHtmlForKey(label, label) };
-                });
-                return renderWithFallback(yRows);
-              });
-            })
-        );
-
-        // Attribution (middle tier)
-        tasks.push(
-          fetchWidgetJson('attribution|' + rk, attrUrl, force, 25000)
-            .then(function (data) {
-              var mountId = 'dash-widget-attribution-mount';
-              if (!data) { setWidgetEmpty(mountId, 'No data'); return; }
-              var payload = (data && data.ok && data.payload) ? data.payload : data;
-              var menu = document.getElementById('dash-widget-attribution-menu');
-              if (menu) {
-                menu.innerHTML = '<button type="button" class="kexo-widget-menu-item" role="menuitem" data-kexo-widget-action="refresh">Refresh</button>';
-              }
-              var rows = [];
-              try {
-                var chans = payload && payload.attribution && Array.isArray(payload.attribution.rows) ? payload.attribution.rows : [];
-                chans.forEach(function (ch) {
-                  var sources = ch && Array.isArray(ch.sources) ? ch.sources : [];
-                  sources.forEach(function (s) {
-                    var label = s && (s.label || s.source_key) ? String(s.label || s.source_key) : '—';
-                    var value = s && (s.revenue_gbp != null || s.revenue != null) ? Number(s.revenue_gbp != null ? s.revenue_gbp : s.revenue) : 0;
-                    if (!Number.isFinite(value)) value = 0;
-                    var iconSpec = s && (s.icon_spec != null || s.iconSpec != null) ? String(s.icon_spec != null ? s.icon_spec : s.iconSpec) : '';
-                    var iconHtml = iconSpec ? attributionIconSpecToHtml(iconSpec, label) : '<i class="fa-light fa-share-nodes" aria-hidden="true"></i>';
-                    rows.push({ label: label, valueGbp: value, iconHtml: iconHtml });
-                  });
-                });
-              } catch (_) { rows = []; }
-              if (kpiSaysNoSales) { rows = rows.map(function (r) { return Object.assign({}, r || {}, { valueGbp: 0 }); }); }
-              var currentTop = withSharePct(rows, WIDGET_TOP_N);
-              var hasCurrent = currentTop.some(function (r) { return r && Number(r.valueGbp || 0) > 0; });
-              var needsFallback = !!fallbackRangeKey && (!hasCurrent || currentTop.length < WIDGET_TOP_N);
-
-              function renderWithFallback(yRows) {
-                var placeholders = makePlaceholderRowsFromYesterday(yRows, WIDGET_TOP_N);
-                var barRows = mergeCurrentWithPlaceholders(currentTop, placeholders, WIDGET_TOP_N);
-                var topRow = hasCurrent ? (currentTop[0] || null) : (placeholders[0] || barRows[0] || null);
-                if (topRow && !hasCurrent) topRow.placeholder = true;
-                var sig = widgetSig({ rk: rk, current: currentTop, placeholders: placeholders });
-                if (!force && dashWidgetLastRenderSig[mountId] && dashWidgetLastRenderSig[mountId] === sig) return;
-                dashWidgetLastRenderSig[mountId] = sig;
-                renderWidgetRadialAndVbars(mountId, topRow, barRows, {
-                  accentCss: 'background: ' + WIDGET_RING_AND_BAR + ';',
-                  ringStroke: WIDGET_RING_AND_BAR
-                });
-              }
-
-              if (!needsFallback) return renderWithFallback([]);
-              var yUrl = API + '/api/attribution/report?range=' + encodeURIComponent(fallbackRangeKey) + (force ? ('&force=1&_=' + Date.now()) : '');
-              return fetchWidgetJson('attribution|' + fallbackRangeKey, yUrl, force, 25000).then(function (yData) {
-                if (!yData) return renderWithFallback([]);
-                var yPayload = (yData && yData.ok && yData.payload) ? yData.payload : yData;
-                var yRows = [];
-                try {
-                  var yChans = yPayload && yPayload.attribution && Array.isArray(yPayload.attribution.rows) ? yPayload.attribution.rows : [];
-                  yChans.forEach(function (ch) {
-                    var sources = ch && Array.isArray(ch.sources) ? ch.sources : [];
-                    sources.forEach(function (s) {
-                      var label = s && (s.label || s.source_key) ? String(s.label || s.source_key) : '—';
-                      var value = s && (s.revenue_gbp != null || s.revenue != null) ? Number(s.revenue_gbp != null ? s.revenue_gbp : s.revenue) : 0;
-                      if (!Number.isFinite(value)) value = 0;
-                      var iconSpec = s && (s.icon_spec != null || s.iconSpec != null) ? String(s.icon_spec != null ? s.icon_spec : s.iconSpec) : '';
-                      var iconHtml = iconSpec ? attributionIconSpecToHtml(iconSpec, label) : '<i class="fa-light fa-share-nodes" aria-hidden="true"></i>';
-                      yRows.push({ label: label, valueGbp: value, iconHtml: iconHtml });
-                    });
-                  });
-                } catch (_) { yRows = []; }
-                return renderWithFallback(yRows);
-              });
-            })
-        );
-
-        // Payment methods
-        tasks.push(
-          fetchWidgetJson('payment-types|' + rk, payUrl, force, 25000)
-            .then(function (data) {
-              var mountId = 'dash-widget-payment-types-mount';
-              if (!data) { setWidgetEmpty(mountId, 'No data'); return; }
-              var payload = (data && data.ok && data.payload) ? data.payload : data;
-              var menu = document.getElementById('dash-widget-payment-types-menu');
-              if (menu) {
-                menu.innerHTML = '<button type="button" class="kexo-widget-menu-item" role="menuitem" data-kexo-widget-action="refresh">Refresh</button>';
-              }
-
-              var list = payload && Array.isArray(payload.rows) ? payload.rows : (Array.isArray(data.rows) ? data.rows : []);
-              var rows = list.map(function (r) {
-                var label = r && r.label != null ? String(r.label) : '—';
-                var value = r && typeof r.revenue === 'number' ? Number(r.revenue) : (r && r.revenue_gbp != null ? Number(r.revenue_gbp) : 0);
-                if (!Number.isFinite(value)) value = 0;
-                var key = r && r.key ? String(r.key).trim().toLowerCase() : 'other';
-                var iconSrc = r && r.iconSrc ? String(r.iconSrc) : '';
-                var iconAlt = r && r.iconAlt ? String(r.iconAlt) : label;
-                var iconHtml = iconSrc
-                  ? ('<img src="' + escapeHtml(iconSrc) + '" alt="' + escapeHtml(iconAlt) + '" width="18" height="18" data-icon-key="payment-method-' + escapeHtml(key || 'other') + '">')
-                  : '<i class="fa-light fa-credit-card" data-icon-key="payment-method-' + escapeHtml(key || 'other') + '" aria-hidden="true"></i>';
-                return { label: label, valueGbp: value, iconHtml: iconHtml };
-              });
-
-              if (kpiSaysNoSales) { rows = rows.map(function (r) { return Object.assign({}, r || {}, { valueGbp: 0 }); }); }
-              var currentTop = withSharePct(rows, WIDGET_TOP_N);
-              var hasCurrent = currentTop.some(function (r) { return r && Number(r.valueGbp || 0) > 0; });
-              var needsFallback = !!fallbackRangeKey && (!hasCurrent || currentTop.length < WIDGET_TOP_N);
-
-              function renderWithFallback(yRows) {
-                var placeholders = makePlaceholderRowsFromYesterday(yRows, WIDGET_TOP_N);
-                var barRows = mergeCurrentWithPlaceholders(currentTop, placeholders, WIDGET_TOP_N);
-                var topRow = hasCurrent ? (currentTop[0] || null) : (placeholders[0] || barRows[0] || null);
-                if (topRow && !hasCurrent) topRow.placeholder = true;
-                var sig = widgetSig({ rk: rk, current: currentTop, placeholders: placeholders });
-                if (!force && dashWidgetLastRenderSig[mountId] && dashWidgetLastRenderSig[mountId] === sig) return;
-                dashWidgetLastRenderSig[mountId] = sig;
-                renderWidgetRadialAndVbars(mountId, topRow, barRows, {
-                  accentCss: 'background: ' + WIDGET_RING_AND_BAR + ';',
-                  ringStroke: WIDGET_RING_AND_BAR
-                });
-              }
-
-              if (!needsFallback) return renderWithFallback([]);
-              var yUrl = API + '/api/payment-methods/report?range=' + encodeURIComponent(fallbackRangeKey) + (force ? ('&force=1&_=' + Date.now()) : '');
-              return fetchWidgetJson('payment-types|' + fallbackRangeKey, yUrl, force, 25000).then(function (yData) {
-                if (!yData) return renderWithFallback([]);
-                var yPayload = (yData && yData.ok && yData.payload) ? yData.payload : yData;
-                var yList = yPayload && Array.isArray(yPayload.rows) ? yPayload.rows : (Array.isArray(yData.rows) ? yData.rows : []);
-                var yRows = yList.map(function (r) {
-                  var label = r && r.label != null ? String(r.label) : '—';
-                  var value = r && typeof r.revenue === 'number' ? Number(r.revenue) : (r && r.revenue_gbp != null ? Number(r.revenue_gbp) : 0);
-                  if (!Number.isFinite(value)) value = 0;
-                  var iconSrc = r && r.iconSrc ? String(r.iconSrc) : '';
-                  var iconAlt = r && r.iconAlt ? String(r.iconAlt) : label;
-                  var key = r && r.key ? String(r.key).trim().toLowerCase() : 'other';
-                  var iconHtml = iconSrc
-                    ? ('<img src="' + escapeHtml(iconSrc) + '" alt="' + escapeHtml(iconAlt) + '" width="18" height="18" data-icon-key="payment-method-' + escapeHtml(key || 'other') + '">')
-                    : '<i class="fa-light fa-credit-card" data-icon-key="payment-method-' + escapeHtml(key || 'other') + '" aria-hidden="true"></i>';
-                  return { label: label, valueGbp: value, iconHtml: iconHtml };
-                });
-                return renderWithFallback(yRows);
-              });
-            })
-        );
-
-        // Abandoned
-        tasks.push(
-          fetchWidgetJson('abandoned|' + rk, abdUrl, force, 25000)
-            .then(function (data) {
-              var mountId = 'dash-widget-abandoned-mount';
-              if (!data) { setWidgetEmpty(mountId, 'No data'); return; }
-              var payload = (data && data.ok && data.payload) ? data.payload : data;
-              var menu = document.getElementById('dash-widget-abandoned-menu');
-              if (menu) {
-                menu.innerHTML = '<button type="button" class="kexo-widget-menu-item" role="menuitem" data-kexo-widget-action="refresh">Refresh</button>';
-              }
-              var list = payload && Array.isArray(payload.rows) ? payload.rows : (Array.isArray(data.rows) ? data.rows : []);
-              var rows = list.map(function (r) {
-                var label = r && (r.country || r.country_code) ? String(r.country || r.country_code) : '—';
-                var value = r && (r.abandoned_value_gbp != null || r.value_gbp != null || r.value != null) ? Number(r.abandoned_value_gbp != null ? r.abandoned_value_gbp : (r.value_gbp != null ? r.value_gbp : r.value)) : 0;
-                if (!Number.isFinite(value)) value = 0;
-                var cc = String(label || '').trim().toUpperCase().slice(0, 2);
-                var iconHtml = cc && /^[A-Z]{2}$/.test(cc) ? countryCodeToFlagHtml(cc) : '<i class="fa-light fa-globe" aria-hidden="true"></i>';
-                return { label: cc || (label || '—'), valueGbp: value, iconHtml: iconHtml };
-              });
-              if (kpiSaysNoSales) { rows = rows.map(function (r) { return Object.assign({}, r || {}, { valueGbp: 0 }); }); }
-              var currentTop = withSharePct(rows, WIDGET_TOP_N);
-              var hasCurrent = currentTop.some(function (r) { return r && Number(r.valueGbp || 0) > 0; });
-              var needsFallback = !!fallbackRangeKey && (!hasCurrent || currentTop.length < WIDGET_TOP_N);
-
-              function renderWithFallback(yRows) {
-                var placeholders = makePlaceholderRowsFromYesterday(yRows, WIDGET_TOP_N);
-                var barRows = mergeCurrentWithPlaceholders(currentTop, placeholders, WIDGET_TOP_N);
-                var topRow = hasCurrent ? (currentTop[0] || null) : (placeholders[0] || barRows[0] || null);
-                if (topRow && !hasCurrent) topRow.placeholder = true;
-                var sig = widgetSig({ rk: rk, current: currentTop, placeholders: placeholders });
-                if (!force && dashWidgetLastRenderSig[mountId] && dashWidgetLastRenderSig[mountId] === sig) return;
-                dashWidgetLastRenderSig[mountId] = sig;
-                renderWidgetRadialAndVbars(mountId, topRow, barRows, {
-                  accentCss: 'background: #e4644b;',
-                  ringStroke: '#e4644b'
-                });
-              }
-
-              if (!needsFallback) return renderWithFallback([]);
-              var yUrl = API + '/api/abandoned-carts/top-countries?range=' + encodeURIComponent(fallbackRangeKey) + (force ? ('&force=1&_=' + Date.now()) : '');
-              return fetchWidgetJson('abandoned|' + fallbackRangeKey, yUrl, force, 25000).then(function (yData) {
-                if (!yData) return renderWithFallback([]);
-                var yPayload = (yData && yData.ok && yData.payload) ? yData.payload : yData;
-                var yList = yPayload && Array.isArray(yPayload.rows) ? yPayload.rows : (Array.isArray(yData.rows) ? yData.rows : []);
-                var yRows = yList.map(function (r) {
-                  var label = r && (r.country || r.country_code) ? String(r.country || r.country_code) : '—';
-                  var value = r && (r.abandoned_value_gbp != null || r.value_gbp != null || r.value != null) ? Number(r.abandoned_value_gbp != null ? r.abandoned_value_gbp : (r.value_gbp != null ? r.value_gbp : r.value)) : 0;
-                  if (!Number.isFinite(value)) value = 0;
-                  var cc = String(label || '').trim().toUpperCase().slice(0, 2);
-                  var iconHtml = cc && /^[A-Z]{2}$/.test(cc) ? countryCodeToFlagHtml(cc) : '<i class="fa-light fa-globe" aria-hidden="true"></i>';
-                  return { label: cc || (label || '—'), valueGbp: value, iconHtml: iconHtml };
-                });
-                return renderWithFallback(yRows);
-              });
-            })
-        );
+        var order = cfg && Array.isArray(cfg.order) ? cfg.order.slice() : OVERVIEW_WIDGET_KEYS.slice();
+        var tasks = order.map(function (key) {
+          var url = urls[key];
+          if (!url) return Promise.resolve(null);
+          var cacheKey = key + '|' + rk + ((key === 'finishes') ? ('|' + shopKey) : '');
+          var timeout = key === 'finishes' ? 30000 : 25000;
+          return fetchWidgetJson(cacheKey, url, force, timeout).then(function (data) {
+            try { renderWidget(key, data); } catch (_) {}
+          });
+        });
 
         // Older environments may not support Promise.allSettled.
         return Promise.all(tasks.map(function (p) {
           return Promise.resolve(p).then(function (v) { return { status: 'fulfilled', value: v }; }, function (err) { return { status: 'rejected', reason: err }; });
-        })).then(function () {
-          // Do not re-sort cards here: dropdown/date changes should only update content, not move cards.
-          // applyDashWidgetSort() runs only when the user explicitly chooses Sort by Revenue/Conversion/Clicks.
-        });
+        })).then(function () {});
       }
 
       window.refreshDashboard = function(opts) {

@@ -127,6 +127,27 @@
     'theme-icon-size': '1em',
     'theme-icon-color': 'currentColor',
     'theme-icon-overrides-json': '{}',
+    // Payment method icon specs (URL/path or inline SVG). Blank clears the icon.
+    'payment-icon-visa': '',
+    'payment-icon-mastercard': '',
+    'payment-icon-amex': '',
+    'payment-icon-discover': '',
+    'payment-icon-maestro': '',
+    'payment-icon-jcb': '',
+    'payment-icon-diners': '',
+    'payment-icon-unionpay': '',
+    'payment-icon-paypal': '',
+    'payment-icon-klarna': '',
+    'payment-icon-clearpay': '',
+    'payment-icon-afterpay': '',
+    'payment-icon-affirm': '',
+    'payment-icon-zip': '',
+    'payment-icon-sezzle': '',
+    'payment-icon-stripe': '',
+    'payment-icon-shop-pay': '',
+    'payment-icon-apple-pay': '',
+    'payment-icon-google-pay': '',
+    'payment-icon-other': '',
     'theme-header-top-bg': '#ffffff',
     'theme-header-top-text-color': '#1f2937',
     'theme-header-main-bg': '#ffffff',
@@ -180,6 +201,7 @@
     if (LOCKED_GLYPH_THEME_KEYS.indexOf(k) >= 0) return false;
     var name = glyphNameFromThemeKey(k);
     if (LEGACY_THEME_ICON_KEYS[name]) return false;
+    if (name.indexOf('payment-method-') === 0) return false;
     return true;
   });
   var KEYS = Object.keys(DEFAULTS).filter(function (k) {
@@ -189,6 +211,28 @@
     return true;
   });
   var ICON_VISUAL_KEYS = ['theme-icon-size', 'theme-icon-color'];
+  var PAYMENT_ICON_KEYS = [
+    'payment-icon-visa',
+    'payment-icon-mastercard',
+    'payment-icon-amex',
+    'payment-icon-discover',
+    'payment-icon-maestro',
+    'payment-icon-jcb',
+    'payment-icon-diners',
+    'payment-icon-unionpay',
+    'payment-icon-paypal',
+    'payment-icon-klarna',
+    'payment-icon-clearpay',
+    'payment-icon-afterpay',
+    'payment-icon-affirm',
+    'payment-icon-zip',
+    'payment-icon-sezzle',
+    'payment-icon-stripe',
+    'payment-icon-shop-pay',
+    'payment-icon-apple-pay',
+    'payment-icon-google-pay',
+    'payment-icon-other',
+  ];
   var ACCENT_HEX_KEYS = ['theme-accent-1', 'theme-accent-2', 'theme-accent-3', 'theme-accent-4', 'theme-accent-5'];
   var HEADER_THEME_TEXT_KEYS = [
     'theme-header-top-text-color',
@@ -1414,6 +1458,11 @@
         if (glyphInput) glyphInput.value = normalizeIconGlyph(val, DEFAULTS[key]);
         return;
       }
+      if (PAYMENT_ICON_KEYS.indexOf(key) >= 0) {
+        var payInput = form.querySelector('[name="' + key + '"]');
+        if (payInput) payInput.value = String(val == null ? '' : val);
+        return;
+      }
       if (ICON_VISUAL_KEYS.indexOf(key) >= 0) {
         var visualInput = form.querySelector('[name="' + key + '"]');
         if (!visualInput) return;
@@ -1495,6 +1544,48 @@
             '<textarea class="form-control font-monospace" id="' + inputId + '" name="' + key + '" data-theme-icon-glyph-input="' + key + '" rows="2" placeholder="' + (DEFAULTS[key] || 'fa-circle') + '"></textarea>' +
             '<button type="button" class="btn btn-link btn-sm px-0 text-nowrap" data-theme-icon-edit="' + key + '">Edit</button>' +
           '</div>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function paymentIconLabelForKey(key) {
+    var name = String(key || '').replace(/^payment-icon-/, '');
+    if (name === 'visa') return 'Visa';
+    if (name === 'mastercard') return 'Mastercard';
+    if (name === 'amex') return 'American Express';
+    if (name === 'discover') return 'Discover';
+    if (name === 'maestro') return 'Maestro';
+    if (name === 'jcb') return 'JCB';
+    if (name === 'diners') return 'Diners Club';
+    if (name === 'unionpay') return 'UnionPay';
+    if (name === 'paypal') return 'PayPal';
+    if (name === 'klarna') return 'Klarna';
+    if (name === 'clearpay') return 'Clearpay';
+    if (name === 'afterpay') return 'Afterpay';
+    if (name === 'affirm') return 'Affirm';
+    if (name === 'zip') return 'Zip';
+    if (name === 'sezzle') return 'Sezzle';
+    if (name === 'stripe') return 'Stripe';
+    if (name === 'shop-pay') return 'Shop Pay';
+    if (name === 'apple-pay') return 'Apple Pay';
+    if (name === 'google-pay') return 'Google Pay';
+    if (name === 'other') return 'Other';
+    return titleizeIconKey(name);
+  }
+
+  function paymentIconInputCard(key) {
+    var inputId = 'theme-input-' + key;
+    var label = paymentIconLabelForKey(key);
+    return '<div class="col-12 col-md-6 col-lg-4">' +
+      '<div class="card card-sm h-100">' +
+        '<div class="card-body">' +
+          '<div class="d-flex align-items-center mb-2">' +
+            '<span class="kexo-theme-icon-preview me-2 d-inline-flex align-items-center justify-content-center" style="width:1.25rem;height:1.25rem;" data-payment-icon-preview="' + key + '" aria-hidden="true"></span>' +
+            '<strong class="me-auto">' + escapeHtml(label) + '</strong>' +
+          '</div>' +
+          '<div class="text-secondary small mb-2">Paste an image URL/path or inline SVG. Blank clears the icon.</div>' +
+          '<textarea class="form-control font-monospace" id="' + inputId + '" name="' + key + '" data-payment-icon-input="' + key + '" rows="2" spellcheck="false" placeholder="https://…  OR  /assets/icon.svg  OR  <svg ...>"></textarea>' +
         '</div>' +
       '</div>' +
     '</div>';
@@ -1600,6 +1691,29 @@
     '</div>';
   }
 
+  function cssVarOverrideInputCard(varName, title, helpText) {
+    var name = String(varName || '').trim();
+    var label = String(title || name || 'CSS var').trim();
+    var help = helpText ? String(helpText) : '';
+    var titleAttr = help ? (' title="' + escapeHtml(help) + '"') : '';
+    return '<div class="col-12 col-md-6 col-lg-4">' +
+      '<div class="card card-sm h-100">' +
+        '<div class="card-body">' +
+          '<div class="mb-2">' +
+            '<div class="d-flex align-items-center gap-2">' +
+              '<strong' + titleAttr + '>' + escapeHtml(label) + (help ? TOOLTIP_ICON : '') + '</strong>' +
+            '</div>' +
+            '<div class="text-secondary small"><code>' + escapeHtml(name) + '</code></div>' +
+          '</div>' +
+          '<div class="d-flex align-items-center gap-2">' +
+            '<input type="color" class="form-control form-control-color kexo-css-var-swatch" data-kexo-css-var="' + escapeHtml(name) + '" style="width:2.5rem;height:2rem;padding:2px;cursor:pointer" title="Pick colour" />' +
+            '<input type="text" class="form-control kexo-css-var-input" data-kexo-css-var="' + escapeHtml(name) + '" placeholder="Leave blank for default" maxlength="80" />' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }
+
   function radioCard(name, value, label) {
     var id = 'theme-opt-' + name + '-' + (value || 'default');
     return '<label class="form-selectgroup-item flex-fill">' +
@@ -1631,6 +1745,27 @@
       accentHexInputCard('theme-accent-3', 'Accent 3', DEFAULTS['theme-accent-3']) +
       accentHexInputCard('theme-accent-4', 'Accent 4', DEFAULTS['theme-accent-4']) +
       accentHexInputCard('theme-accent-5', 'Accent 5', DEFAULTS['theme-accent-5']);
+    var cssVarGrid =
+      cssVarOverrideInputCard('--kexo-accent-1', 'Kexo accent 1', 'Overrides the runtime CSS variable used by Overview widgets and accents. Leave blank to use Theme accents.') +
+      cssVarOverrideInputCard('--kexo-accent-2', 'Kexo accent 2', '') +
+      cssVarOverrideInputCard('--kexo-accent-3', 'Kexo accent 3', '') +
+      cssVarOverrideInputCard('--kexo-accent-4', 'Kexo accent 4', '') +
+      cssVarOverrideInputCard('--kexo-accent-5', 'Kexo accent 5', '') +
+      cssVarOverrideInputCard('--tblr-primary', 'Tabler primary', 'Optional override for Tabler primary colour.') +
+      cssVarOverrideInputCard('--tblr-success', 'Tabler success', '') +
+      cssVarOverrideInputCard('--tblr-warning', 'Tabler warning', '') +
+      cssVarOverrideInputCard('--tblr-danger', 'Tabler danger', '');
+    var cssVarOverridesPanel =
+      '<div class="mb-4" id="kexo-css-var-overrides-panel">' +
+        '<label class="form-label">Colours (CSS variable overrides)</label>' +
+        '<div class="text-secondary small mb-3">These override <code>:root</code> variables and take precedence over Theme accents. Leave blank to use defaults.</div>' +
+        '<div class="row g-3" id="kexo-css-var-overrides-grid">' + cssVarGrid + '</div>' +
+        '<div class="d-flex align-items-center gap-2 flex-wrap mt-3">' +
+          '<button type="button" class="btn btn-primary btn-sm" id="kexo-css-var-overrides-save">Save colours</button>' +
+          '<button type="button" class="btn btn-outline-secondary btn-sm" id="kexo-css-var-overrides-reset">Reset to defaults</button>' +
+          '<span id="kexo-css-var-overrides-msg" class="form-hint"></span>' +
+        '</div>' +
+      '</div>';
     var colorRemainingGrid = [
       headerInputCardNoIcon('theme-header-top-text-color', 'Strip text color', 'Text color for strip controls.', DEFAULTS['theme-header-top-text-color']),
       headerInputCardNoIcon('theme-header-settings-text-color', 'Settings button text/icon color', 'Text and icon color for the strip Settings button.', DEFAULTS['theme-header-settings-text-color']),
@@ -1687,6 +1822,7 @@
           '<div class="text-secondary small mb-3">Accent 1 drives strip, menu, settings, and dropdown backgrounds. Accents 1–5 rotate for nav active underline.</div>' +
           '<div class="row g-3">' + accentGrid + '</div>' +
         '</div>' +
+        cssVarOverridesPanel +
         '<div class="mb-4">' +
           '<label class="form-label">Opacity filters</label>' +
           '<div class="text-secondary small mb-3">Darken strip or menu by %. 0 = no change.</div>' +
@@ -1853,6 +1989,153 @@
       var glyphVal = input && input.value ? input.value : (getStored(key) || DEFAULTS[key]);
       setPreviewIconClass(preview, glyphVal);
     });
+  }
+
+  function wireCssVarOverridesPanel(formEl) {
+    if (!formEl) return;
+    var root = formEl.parentElement || document;
+    var grid = root.querySelector('#kexo-css-var-overrides-grid');
+    if (!grid) return;
+    var saveBtn = root.querySelector('#kexo-css-var-overrides-save');
+    var resetBtn = root.querySelector('#kexo-css-var-overrides-reset');
+    var msgEl = root.querySelector('#kexo-css-var-overrides-msg');
+    if (!saveBtn || !resetBtn) return;
+    var base = '';
+    try { if (typeof API !== 'undefined') base = String(API || ''); } catch (_) {}
+
+    var applied = {};
+
+    function setMsg(text, ok) {
+      if (!msgEl) return;
+      msgEl.textContent = text || '';
+      if (ok === true) msgEl.className = 'form-hint text-success';
+      else if (ok === false) msgEl.className = 'form-hint text-danger';
+      else msgEl.className = 'form-hint text-secondary';
+    }
+
+    function normalizeCssVarOverrideValue(raw) {
+      var v = raw == null ? '' : String(raw).trim();
+      if (!v) return '';
+      if (v.length > 80) return '';
+      if (/[;\r\n{}]/.test(v)) return '';
+      if (/^var\(--[a-zA-Z0-9._-]+\)$/.test(v)) return v;
+      if (/^#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(v)) return v;
+      if (/^(rgb|hsl)a?\(/i.test(v)) return v;
+      if (v.toLowerCase() === 'currentcolor') return 'currentColor';
+      if (v.toLowerCase() === 'transparent') return 'transparent';
+      if (/^[a-z-]+$/i.test(v)) return v;
+      return '';
+    }
+
+    function readCfgFromUi() {
+      var vars = {};
+      var inputs = root.querySelectorAll('.kexo-css-var-input[data-kexo-css-var]');
+      Array.prototype.forEach.call(inputs, function (el) {
+        var name = el && el.getAttribute ? String(el.getAttribute('data-kexo-css-var') || '').trim() : '';
+        if (!name || !/^--[a-zA-Z0-9._-]+$/.test(name)) return;
+        var val = normalizeCssVarOverrideValue(el.value);
+        if (!val) return;
+        vars[name] = val;
+      });
+      return { v: 1, vars: vars };
+    }
+
+    function applyCfgToUi(cfg) {
+      var vars = cfg && cfg.vars && typeof cfg.vars === 'object' ? cfg.vars : {};
+      var inputs = root.querySelectorAll('.kexo-css-var-input[data-kexo-css-var]');
+      Array.prototype.forEach.call(inputs, function (el) {
+        var name = el && el.getAttribute ? String(el.getAttribute('data-kexo-css-var') || '').trim() : '';
+        var next = (name && Object.prototype.hasOwnProperty.call(vars, name)) ? String(vars[name] || '') : '';
+        try { el.value = next; } catch (_) {}
+      });
+      var swatches = root.querySelectorAll('.kexo-css-var-swatch[data-kexo-css-var]');
+      Array.prototype.forEach.call(swatches, function (el) {
+        var name = el && el.getAttribute ? String(el.getAttribute('data-kexo-css-var') || '').trim() : '';
+        var v = (name && Object.prototype.hasOwnProperty.call(vars, name)) ? String(vars[name] || '') : '';
+        var hex = v && /^#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(v) ? v : '';
+        try { el.value = hex ? hex : '#000000'; } catch (_) {}
+      });
+    }
+
+    function applyCfgToDom(cfg) {
+      var vars = cfg && cfg.vars && typeof cfg.vars === 'object' ? cfg.vars : {};
+      var docEl = document.documentElement;
+      Object.keys(applied).forEach(function (k) {
+        if (!Object.prototype.hasOwnProperty.call(vars, k)) {
+          try { docEl.style.removeProperty(k); } catch (_) {}
+        }
+      });
+      Object.keys(vars).forEach(function (k) {
+        try { docEl.style.setProperty(k, String(vars[k])); } catch (_) {}
+      });
+      applied = Object.assign({}, vars);
+      try { localStorage.setItem('kexo:css_var_overrides:v1', JSON.stringify({ v: 1, vars: applied })); } catch (_) {}
+      try { document.dispatchEvent(new CustomEvent('kexo:cssVarOverridesUpdated', { detail: { cfg: { v: 1, vars: applied } } })); } catch (_) {}
+    }
+
+    function fetchCurrent() {
+      setMsg('Loading…', null);
+      return fetch(base + '/api/settings', { credentials: 'same-origin', cache: 'no-store' })
+        .then(function (r) { return r && r.ok ? r.json() : null; })
+        .then(function (data) {
+          var cfg = (data && data.ok && data.cssVarOverridesV1) ? data.cssVarOverridesV1 : null;
+          cfg = cfg && typeof cfg === 'object' ? cfg : { v: 1, vars: {} };
+          applyCfgToUi(cfg);
+          applyCfgToDom(cfg);
+          setMsg('', null);
+        })
+        .catch(function () { setMsg('Failed to load colours.', false); });
+    }
+
+    function postCfg(cfg) {
+      return fetch(base + '/api/settings', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cssVarOverridesV1: cfg }),
+      }).then(function (r) { return r && r.ok ? r.json() : null; });
+    }
+
+    grid.addEventListener('input', function () {
+      applyCfgToDom(readCfgFromUi());
+    });
+    grid.addEventListener('change', function (e) {
+      var t = e && e.target ? e.target : null;
+      if (!t) return;
+      if (t.classList && t.classList.contains('kexo-css-var-swatch')) {
+        var name = String(t.getAttribute('data-kexo-css-var') || '').trim();
+        var input = root.querySelector('.kexo-css-var-input[data-kexo-css-var="' + name + '"]');
+        if (input) {
+          try { input.value = String(t.value || '').trim(); } catch (_) {}
+        }
+        applyCfgToDom(readCfgFromUi());
+      }
+    });
+
+    saveBtn.addEventListener('click', function () {
+      var cfg = readCfgFromUi();
+      setMsg('Saving…', null);
+      postCfg(cfg)
+        .then(function (r) {
+          if (!r || !r.ok) { setMsg((r && r.error) ? r.error : 'Save failed', false); return; }
+          applyCfgToDom(cfg);
+          setMsg('Saved.', true);
+        })
+        .catch(function () { setMsg('Save failed', false); });
+    });
+    resetBtn.addEventListener('click', function () {
+      setMsg('Resetting…', null);
+      postCfg({ v: 1, vars: {} })
+        .then(function (r) {
+          if (!r || !r.ok) { setMsg((r && r.error) ? r.error : 'Reset failed', false); return; }
+          applyCfgToUi({ v: 1, vars: {} });
+          applyCfgToDom({ v: 1, vars: {} });
+          setMsg('Reset.', true);
+        })
+        .catch(function () { setMsg('Reset failed', false); });
+    });
+
+    fetchCurrent();
   }
 
   function bindThemeForm(formEl) {
@@ -2068,7 +2351,7 @@
       });
     }
 
-    ICON_STYLE_KEYS.concat(ICON_GLYPH_KEYS).concat(ICON_VISUAL_KEYS).concat(HEADER_THEME_TEXT_KEYS).concat(ACCENT_OPACITY_KEYS).concat(CUSTOM_CSS_KEYS).forEach(function (key) {
+    ICON_STYLE_KEYS.concat(ICON_GLYPH_KEYS).concat(PAYMENT_ICON_KEYS).concat(ICON_VISUAL_KEYS).concat(HEADER_THEME_TEXT_KEYS).concat(ACCENT_OPACITY_KEYS).concat(CUSTOM_CSS_KEYS).forEach(function (key) {
       var input = formEl.querySelector('[name="' + key + '"]');
       if (!input) return;
       input.addEventListener('input', function () {
@@ -2143,6 +2426,7 @@
 
     wireThemeSubTabs(root);
     wireSaleNotificationPanel();
+    wireCssVarOverridesPanel(formEl);
     syncUI();
     hydrateDetectedDevicesIconGroup(root);
     hydrateAttributionIconGroup(root);
