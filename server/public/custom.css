@@ -3325,6 +3325,7 @@ html[data-bs-theme="dark"] .report-build-wrap {
 
 .kexo-widget-card {
   overflow: hidden;
+  background: rgba(var(--tblr-primary-rgb), 0.04);
 }
 .kexo-widget-card-body {
   display: flex;
@@ -5395,7 +5396,12 @@ body[data-page="dashboard"] .page-body > .container-fluid {
   padding-right: 1rem;
 }
 
-/* ── Dashboard KPI cards: equal height per row ── */
+/* ── Dashboard overview: keep row 1 and 2 from collapsing before map/chart load ── */
+#tab-panel-dashboard > .row:nth-of-type(1) > [class*="col"] > .card,
+#tab-panel-dashboard > .row:nth-of-type(2) > [class*="col"] > .card {
+  min-height: 220px;
+}
+/* ── Dashboard cards: equal height per row ── */
 #tab-panel-dashboard > .row > [class*="col"] > .card {
   height: 100%;
 }
@@ -6121,7 +6127,6 @@ body[data-bs-theme="dark"] .kexo-upgrade-locked .kexo-upgrade-lock-overlay {
   color:color-mix(in srgb, black calc(var(--kexo-menu-opacity-filter, 0) * 100%), var(--kexo-top-menu-bg, var(--kexo-header-main-bg, #fff))) !important;
 }
 .settings-nav-children { padding-left: 0; }
-.settings-nav-children .list-group-item { border-radius: var(--tblr-border-radius, .375rem); font-size: 0.9375rem; }
 .settings-nav-child{
   position:relative;
   padding: 7px 0 7px 40px;

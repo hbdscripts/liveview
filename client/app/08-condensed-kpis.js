@@ -2163,6 +2163,7 @@
       if (document.getElementById('sessions-overview-chart')) return refreshSessionsOverviewChart(options || {});
       return Promise.resolve(null);
     }
+    try { window.refreshLiveOnlineChart = refreshLiveOnlineChart; } catch (_) {}
 
     function setAbandonedCartsChartTitle(totalGbp) {
       var titleEl = document.getElementById('abandoned-carts-chart-title');

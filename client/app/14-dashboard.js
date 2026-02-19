@@ -4372,6 +4372,9 @@
         syncAllOverviewCardRangeUi();
         fetchOverviewCardData('dash-chart-overview-30d', { force: forceMini });
         requestDashboardWidgetsRefresh({ force: forceMini, rangeKey: rangeKey });
+        if (document.getElementById('live-online-chart') && typeof window.refreshLiveOnlineChart === 'function') {
+          try { window.refreshLiveOnlineChart({ force: false }); } catch (_) {}
+        }
         fetchWithTimeout(url, { credentials: 'same-origin', cache: force ? 'no-store' : 'default' }, 30000)
           .then(function(r) { return (r && r.ok) ? r.json() : null; })
           .then(function(data) {

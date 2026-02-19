@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 5c6a2685db4edf1e
+// checksum: d2210e0f2900831f
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -12384,6 +12384,7 @@ const API = '';
       if (document.getElementById('sessions-overview-chart')) return refreshSessionsOverviewChart(options || {});
       return Promise.resolve(null);
     }
+    try { window.refreshLiveOnlineChart = refreshLiveOnlineChart; } catch (_) {}
 
     function setAbandonedCartsChartTitle(totalGbp) {
       var titleEl = document.getElementById('abandoned-carts-chart-title');
@@ -21234,6 +21235,9 @@ const API = '';
         syncAllOverviewCardRangeUi();
         fetchOverviewCardData('dash-chart-overview-30d', { force: forceMini });
         requestDashboardWidgetsRefresh({ force: forceMini, rangeKey: rangeKey });
+        if (document.getElementById('live-online-chart') && typeof window.refreshLiveOnlineChart === 'function') {
+          try { window.refreshLiveOnlineChart({ force: false }); } catch (_) {}
+        }
         fetchWithTimeout(url, { credentials: 'same-origin', cache: force ? 'no-store' : 'default' }, 30000)
           .then(function(r) { return (r && r.ok) ? r.json() : null; })
           .then(function(data) {
