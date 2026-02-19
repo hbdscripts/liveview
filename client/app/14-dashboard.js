@@ -5563,9 +5563,9 @@
           var valueText = fmtMetric(metric, top);
           var subText = metric === 'ctr' ? 'CTR' : (String(Math.round(pct)) + '% share');
 
-          var size = 116;
-          var r = 44;
-          var strokeW = 10;
+          var size = 160;
+          var r = 60;
+          var strokeW = 12;
           var cx = Math.round(size / 2);
           var cy = Math.round(size / 2);
           var circ = Math.round(2 * Math.PI * r * 1000) / 1000;

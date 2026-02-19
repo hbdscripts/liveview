@@ -3353,15 +3353,15 @@ html[data-bs-theme="dark"] .report-build-wrap {
   flex: 1;
 }
 .kexo-overview-widget-chart {
-  height: 124px;
+  height: 160px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 .kexo-ovw-ring {
   position: relative;
-  width: 116px;
-  height: 116px;
+  width: 160px;
+  height: 160px;
   margin: 0 auto;
 }
 .kexo-ovw-ring-center {
@@ -3373,16 +3373,16 @@ html[data-bs-theme="dark"] .report-build-wrap {
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 0.4rem;
   text-align: center;
-  width: 92px;
+  width: 120px;
   pointer-events: none;
 }
 .kexo-ovw-ring-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: 20px;
-  margin-bottom: 2px;
+  height: 24px;
   color: var(--tblr-secondary);
 }
 .kexo-ovw-ring-icon img {
