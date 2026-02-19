@@ -3864,7 +3864,7 @@
                 productUrl: productUrl
               };
             });
-            var accentCss = isUp ? 'background: #3eb3ab;' : 'background: #ef4444;';
+            var accentCss = isUp ? 'background: #3eb3ab;' : 'background: var(--chip-abandoned);';
             renderDashTopList(tableId + '-body', listRows, { accentCss: accentCss });
             return;
           }
