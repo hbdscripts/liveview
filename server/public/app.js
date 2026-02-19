@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 1b6b8fd7efd2fb1f
+// checksum: b0471474b510e72a
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -21919,7 +21919,11 @@ const API = '';
                 var value = r && typeof r.revenue === 'number' ? Number(r.revenue) : (r && r.revenue_gbp != null ? Number(r.revenue_gbp) : 0);
                 if (!Number.isFinite(value)) value = 0;
                 var key = r && r.key ? String(r.key).trim().toLowerCase() : 'other';
-                var iconHtml = '<i class="fa-light fa-credit-card" data-icon-key="payment-method-' + escapeHtml(key || 'other') + '" aria-hidden="true"></i>';
+                var iconSrc = r && r.iconSrc ? String(r.iconSrc) : '';
+                var iconAlt = r && r.iconAlt ? String(r.iconAlt) : label;
+                var iconHtml = iconSrc
+                  ? ('<img src="' + escapeHtml(iconSrc) + '" alt="' + escapeHtml(iconAlt) + '" width="18" height="18" data-icon-key="payment-method-' + escapeHtml(key || 'other') + '">')
+                  : '<i class="fa-light fa-credit-card" data-icon-key="payment-method-' + escapeHtml(key || 'other') + '" aria-hidden="true"></i>';
                 return { label: label, valueGbp: value, iconHtml: iconHtml };
               });
 
@@ -21950,9 +21954,10 @@ const API = '';
                   if (!Number.isFinite(value)) value = 0;
                   var iconSrc = r && r.iconSrc ? String(r.iconSrc) : '';
                   var iconAlt = r && r.iconAlt ? String(r.iconAlt) : label;
+                  var key = r && r.key ? String(r.key).trim().toLowerCase() : 'other';
                   var iconHtml = iconSrc
-                    ? ('<img src="' + escapeHtml(iconSrc) + '" alt="' + escapeHtml(iconAlt) + '" width="18" height="18">')
-                    : '<i class="fa-light fa-credit-card" aria-hidden="true"></i>';
+                    ? ('<img src="' + escapeHtml(iconSrc) + '" alt="' + escapeHtml(iconAlt) + '" width="18" height="18" data-icon-key="payment-method-' + escapeHtml(key || 'other') + '">')
+                    : '<i class="fa-light fa-credit-card" data-icon-key="payment-method-' + escapeHtml(key || 'other') + '" aria-hidden="true"></i>';
                   return { label: label, valueGbp: value, iconHtml: iconHtml };
                 });
                 return renderWithFallback(yRows);
