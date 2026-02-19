@@ -39,6 +39,25 @@
           actions.appendChild(builderLink);
         }
 
+        // Acquisition → Attribution: quick link to Settings → Attribution → Mapping.
+        try {
+          var page = (document.body && document.body.getAttribute) ? String(document.body.getAttribute('data-page') || '') : '';
+          if (page.trim().toLowerCase() === 'attribution' && String(tableId || '').trim().toLowerCase() === 'attribution-table') {
+            var existingSettingsLink = actions.querySelector('.kexo-attribution-settings-link');
+            if (!existingSettingsLink) {
+              var a = document.createElement('a');
+              a.className = 'kexo-attribution-settings-link';
+              a.href = '/settings?tab=attribution&attributionTab=mapping';
+              a.title = 'Attribution settings';
+              a.setAttribute('aria-label', 'Attribution settings');
+              a.innerHTML = '<i class="fa-light fa-sliders" aria-hidden="true"></i>';
+              // Place next to the table settings cog when present.
+              if (builderLink && builderLink.parentElement === actions) actions.insertBefore(a, builderLink.nextSibling);
+              else actions.appendChild(a);
+            }
+          }
+        } catch (_) {}
+
         var control = actions.querySelector('.kexo-table-rows-control[data-table-id="' + tableId + '"]');
         if (!control) {
           control = document.createElement('label');
@@ -481,6 +500,7 @@
     let lastKpisFetchedAt = 0;
     let lastAttributionFetchedAt = 0;
     let lastDevicesFetchedAt = 0;
+    let lastBrowsersFetchedAt = 0;
     let lastProductsFetchedAt = 0;
     let kpiCache = null;
     let kpiCacheRange = '';
@@ -493,6 +513,7 @@
     let statsRefreshInFlight = null;
     let attributionRefreshInFlight = null;
     let devicesRefreshInFlight = null;
+    let browsersRefreshInFlight = null;
     let productsRefreshInFlight = null;
     let kpisRefreshInFlight = null;
     let kpisRefreshRangeKey = '';
@@ -565,6 +586,7 @@
     let bestVariantsPage = 1;
     let attributionPage = 1;
     let devicesPage = 1;
+    let browsersPage = 1;
     let dashTopProductsPage = 1;
     let dashTopCountriesPage = 1;
     let dashTrendingUpPage = 1;
@@ -578,6 +600,7 @@
       bestVariants: { by: 'rev', dir: 'desc' },
       attribution: { by: 'rev', dir: 'desc' },
       devices: { by: 'rev', dir: 'desc' },
+      browsers: { by: 'rev', dir: 'desc' },
     };
     const TABLE_SORT_DEFAULTS = {
       country: { country: 'asc', cr: 'desc', sales: 'desc', clicks: 'desc', rev: 'desc' },
@@ -586,6 +609,7 @@
       bestVariants: { variant: 'asc', sales: 'desc', clicks: 'desc', rev: 'desc', cr: 'desc' },
       attribution: { attribution: 'asc', cr: 'desc', orders: 'desc', sessions: 'desc', rev: 'desc' },
       devices: { device: 'asc', cr: 'desc', orders: 'desc', sessions: 'desc', rev: 'desc' },
+      browsers: { browser: 'asc', cr: 'desc', orders: 'desc', carts: 'desc', sessions: 'desc', aov: 'desc', vpv: 'desc', rev: 'desc' },
     };
 
     function rerenderDashboardFromCache() {
@@ -637,6 +661,11 @@
       if (id === 'devices-table') {
         devicesPage = 1;
         try { renderDevicesTables(devicesCache || {}); } catch (_) {}
+        return;
+      }
+      if (id === 'browsers-table') {
+        browsersPage = 1;
+        try { renderBrowsersTables(browsersCache || {}); } catch (_) {}
         return;
       }
       if (id === 'dash-top-products') {
@@ -1034,6 +1063,7 @@
               if (activeMainTab === 'stats' && typeof refreshStats === 'function') refreshStats({ force: false });
               if (activeMainTab === 'attribution' && typeof refreshAttribution === 'function') refreshAttribution({ force: false });
               if (activeMainTab === 'devices' && typeof refreshDevices === 'function') refreshDevices({ force: false });
+              if (activeMainTab === 'browsers' && typeof refreshBrowsers === 'function') refreshBrowsers({ force: false });
             }
           }
           storeBaseUrlLoaded = true;
@@ -1568,6 +1598,8 @@
       const visitsLabel = String(visits);
       const actionsLabel = String(sessionActionsCount(s));
       const exitLabel = String(sessionExitLabel(s) || '\u2014');
+      const showExit = String(PAGE || '').trim().toLowerCase() !== 'live';
+      const exitCell = showExit ? `<div class="grid-cell" role="cell">${escapeHtml(exitLabel)}</div>` : '';
       const cartValueNum = s.cart_value != null ? Number(s.cart_value) : NaN;
       const cartVal = s.has_purchased ? '' : ((s.cart_value != null && !Number.isNaN(cartValueNum))
         ? formatMoney(Math.floor(cartValueNum), s.cart_currency)
@@ -1603,7 +1635,7 @@
         <div class="grid-cell arrived-cell" role="cell"><span data-started="${s.started_at}">${arrivedAgo(s.started_at)}</span></div>
         <div class="grid-cell last-seen-cell" role="cell"><span data-last-seen="${s.last_seen}">${arrivedAgo(s.last_seen)}</span></div>
         <div class="grid-cell" role="cell">${escapeHtml(actionsLabel)}</div>
-        <div class="grid-cell" role="cell">${escapeHtml(exitLabel)}</div>
+        ${exitCell}
         <div class="grid-cell" role="cell">${visitsLabel}</div>
         <div class="grid-cell consent-debug consent-col is-hidden" role="cell">${escapeHtml(consentDebug)}</div>
       </div>`;

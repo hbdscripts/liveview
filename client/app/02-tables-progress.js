@@ -12,10 +12,21 @@
           var def = defs && defs[tableId];
           var nativeDef = nativeDefs && nativeDefs[tableId];
           if (def && build) {
+            // Live View: hide Exit column only on /dashboard/live.
+            var cols = Array.isArray(def.columns) ? def.columns.slice() : [];
+            try {
+              if (String(PAGE || '').trim().toLowerCase() === 'live' && String(tableId || '').trim().toLowerCase() === 'sessions-table') {
+                cols = cols.filter(function (c) {
+                  var k = c && c.key != null ? String(c.key).trim().toLowerCase() : '';
+                  return k !== 'exit';
+                });
+              }
+            } catch (_) {}
             var config = Object.assign({}, def, {
               tableId: tableId,
               wrapId: (mount.id || tableId + '-mount') + '-wrap',
-              bodyId: def.bodyId || tableId + '-body'
+              bodyId: def.bodyId || tableId + '-body',
+              columns: cols
             });
             mount.outerHTML = build(config);
           } else if (nativeDef && buildNative) {
@@ -509,6 +520,7 @@
     let statsCache = {};
     let attributionCache = null;
     let devicesCache = null;
+    let browsersCache = null;
     // Acquisition ??? Attribution (tree/table + chart state)
     let attributionExpandedChannels = null; // null = first render, default all open
     let attributionExpandedSources = null; // null = first render, default all open

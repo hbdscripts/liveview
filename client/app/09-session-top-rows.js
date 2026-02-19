@@ -36,6 +36,7 @@
       bindDelegate('best-variants', function(pg) { bestVariantsPage = pg; fetchBestVariants(); });
       bindDelegate('attribution', function(pg) { attributionPage = pg; renderAttributionTables(attributionCache || {}); });
       bindDelegate('devices', function(pg) { devicesPage = pg; renderDevicesTables(devicesCache || {}); });
+      bindDelegate('browsers', function(pg) { browsersPage = pg; renderBrowsersTables(browsersCache || {}); });
       bindDelegate('dash-top-products', function(pg) { dashTopProductsPage = pg; rerenderDashboardFromCache(); });
       bindDelegate('dash-top-countries', function(pg) { dashTopCountriesPage = pg; rerenderDashboardFromCache(); });
       bindDelegate('dash-trending-up', function(pg) { dashTrendingUpPage = pg; rerenderDashboardFromCache(); });
@@ -126,6 +127,7 @@
           try { refreshConfigStatus({ force: true, preserveView: true }); } catch (_) {}
           try { refreshAttribution({ force: true }); } catch (_) {}
           try { refreshDevices({ force: true }); } catch (_) {}
+          try { refreshBrowsers({ force: true }); } catch (_) {}
           var details = payload && payload.result ? payload.result : null;
           var fetched = details && typeof details.fetched === 'number' ? details.fetched : null;
           var inserted = details && typeof details.inserted === 'number' ? details.inserted : null;

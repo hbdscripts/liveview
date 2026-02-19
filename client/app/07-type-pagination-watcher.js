@@ -702,6 +702,10 @@
         if (info && info.columnChanged) devicesPage = 1;
         renderDevicesTables(devicesCache || {});
       });
+      setupTableSortHeaders(document.getElementById('browsers-table'), tableSortState.browsers, TABLE_SORT_DEFAULTS.browsers, function(info) {
+        if (info && info.columnChanged) browsersPage = 1;
+        renderBrowsersTables(browsersCache || {});
+      });
     }
 
     function formatSessions(n) {
@@ -2228,6 +2232,7 @@
         else if (activeMainTab === 'products') { try { tabPromise = refreshProducts({ force: false }); } catch (_) {} }
         else if (activeMainTab === 'attribution') { try { tabPromise = refreshAttribution({ force: false }); } catch (_) {} }
         else if (activeMainTab === 'devices') { try { tabPromise = refreshDevices({ force: false }); } catch (_) {} }
+        else if (activeMainTab === 'browsers') { try { tabPromise = refreshBrowsers({ force: false }); } catch (_) {} }
         else if (activeMainTab === 'variants') {
           try { tabPromise = typeof window.__refreshVariantsInsights === 'function' ? window.__refreshVariantsInsights({ force: true }) : null; } catch (_) {}
         } else if (activeMainTab === 'abandoned-carts') { try { tabPromise = refreshAbandonedCarts({ force: true }); } catch (_) {} }
@@ -2295,6 +2300,8 @@
         try { refreshAttribution({ force: false }); } catch (_) {}
       } else if (activeMainTab === 'devices') {
         try { refreshDevices({ force: false }); } catch (_) {}
+      } else if (activeMainTab === 'browsers') {
+        try { refreshBrowsers({ force: false }); } catch (_) {}
       } else if (activeMainTab === 'products') {
         refreshProducts({ force: false });
       } else if (activeMainTab === 'variants') {
@@ -4137,6 +4144,10 @@
           }
           if (activeMainTab === 'devices') {
             try { refreshDevices({ force: true }); } catch (_) {}
+            return;
+          }
+          if (activeMainTab === 'browsers') {
+            try { refreshBrowsers({ force: true }); } catch (_) {}
             return;
           }
           if (activeMainTab === 'ads') {

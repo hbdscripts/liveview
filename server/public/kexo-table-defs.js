@@ -196,14 +196,14 @@
       bodyId: 'browsers-body',
       emptyMessage: 'No browser data.',
       columns: [
-        { key: 'browser', label: 'Browser', sortable: false },
-        { key: 'sessions', label: 'Sessions', sortable: false, iconKey: 'table-icon-sessions' },
-        { key: 'carts', label: 'Carts', sortable: false },
-        { key: 'orders', label: 'Orders', sortable: false, iconKey: 'table-icon-orders' },
-        { key: 'cr', label: 'CR%', sortable: false, iconKey: 'table-icon-cr' },
-        { key: 'vpv', label: 'VPV', sortable: false, iconKey: 'table-icon-vpv' },
-        { key: 'rev', label: 'Rev', sortable: false, iconKey: 'table-icon-revenue' },
-        { key: 'aov', label: 'AOV', sortable: false }
+        { key: 'browser', label: 'Browser' },
+        { key: 'sessions', label: 'Sessions', iconKey: 'table-icon-sessions' },
+        { key: 'carts', label: 'Carts' },
+        { key: 'orders', label: 'Orders', iconKey: 'table-icon-orders' },
+        { key: 'cr', label: 'CR%', iconKey: 'table-icon-cr' },
+        { key: 'vpv', label: 'VPV', iconKey: 'table-icon-vpv' },
+        { key: 'rev', label: 'Rev', iconKey: 'table-icon-revenue' },
+        { key: 'aov', label: 'AOV' }
       ]
     },
     'payment-types-table': {

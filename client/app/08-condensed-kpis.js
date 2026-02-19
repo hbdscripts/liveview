@@ -607,12 +607,40 @@
         return s >= 1 || o >= 1;
       });
 
+      function stripSvgSizing(svgMarkup) {
+        var raw = svgMarkup != null ? String(svgMarkup) : '';
+        if (!raw) return '';
+        if (!/^<svg[\s>]/i.test(raw.trim())) return raw;
+        // Remove width/height attributes from the root <svg ...> tag so CSS can enforce sizing.
+        raw = raw.replace(/^<svg\b([^>]*)>/i, function (_m, attrs) {
+          var a = String(attrs || '');
+          a = a.replace(/\s(width|height)\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '');
+          // Best-effort: remove width/height declarations from inline style (keep other styles).
+          a = a.replace(/\sstyle\s*=\s*(["'])([\s\S]*?)\1/i, function (_m2, q, style) {
+            var s = String(style || '');
+            var cleaned = s
+              .replace(/(^|;)\s*width\s*:\s*[^;]+/gi, '$1')
+              .replace(/(^|;)\s*height\s*:\s*[^;]+/gi, '$1')
+              .replace(/;;+/g, ';')
+              .replace(/^\s*;\s*|\s*;\s*$/g, '')
+              .trim();
+            if (!cleaned) return '';
+            return ' style=' + q + cleaned + q;
+          });
+          return '<svg' + a + '>';
+        });
+        return raw;
+      }
+
       function iconSpecHtml(iconSpecRaw, labelRaw) {
         const spec = iconSpecRaw != null ? String(iconSpecRaw).trim() : '';
         const label = labelRaw != null ? String(labelRaw).trim() : '';
         const t = label ? (' title="' + escapeHtml(label) + '"') : '';
         if (!spec) return '';
-        if (/^<svg[\s>]/i.test(spec)) return '<span class="source-icons"' + t + ' aria-hidden="true">' + spec + '</span>';
+        if (/^<svg[\s>]/i.test(spec)) {
+          const svg = stripSvgSizing(spec);
+          return '<span class="source-icons"' + t + ' aria-hidden="true">' + svg + '</span>';
+        }
         if (/^(https?:\/\/|\/\/|\/)/i.test(spec)) {
           const src = hotImg(spec) || spec;
           return '<span class="source-icons"><img src="' + escapeHtml(src) + '" alt="' + escapeHtml(label) + '" class="source-icon-img" width="20" height="20"' + t + '></span>';
@@ -1189,6 +1217,263 @@
           build.finish();
         });
       return devicesRefreshInFlight;
+    }
+
+    function browserLabel(key) {
+      var k = key == null ? '' : String(key).trim().toLowerCase();
+      if (!k) return 'Unknown';
+      var names = {
+        chrome: 'Chrome',
+        safari: 'Safari',
+        edge: 'Edge',
+        firefox: 'Firefox',
+        opera: 'Opera',
+        ie: 'Internet Explorer',
+        samsung: 'Samsung Internet',
+        other: 'Other',
+        unknown: 'Unknown',
+      };
+      if (names[k]) return names[k];
+      return k.slice(0, 1).toUpperCase() + k.slice(1);
+    }
+
+    function browserIconKey(browserKeyRaw) {
+      var k = browserKeyRaw == null ? '' : String(browserKeyRaw).trim().toLowerCase();
+      if (!k) return 'type-browser-unknown';
+      if (k === 'chrome') return 'type-browser-chrome';
+      if (k === 'safari') return 'type-browser-safari';
+      if (k === 'edge') return 'type-browser-edge';
+      if (k === 'firefox') return 'type-browser-firefox';
+      if (k === 'opera') return 'type-browser-opera';
+      if (k === 'ie' || k === 'internet explorer') return 'type-browser-ie';
+      if (k === 'samsung' || k === 'samsung internet') return 'type-browser-samsung';
+      if (k === 'other') return 'type-browser-other';
+      if (k === 'unknown') return 'type-browser-unknown';
+      return 'type-browser-other';
+    }
+
+    function browserIconHtml(browserKeyRaw) {
+      var iconKey = browserIconKey(browserKeyRaw);
+      // Default glyphs come from the icon registry via data-icon-key; we provide a sensible fallback class.
+      var fallback = 'fa-light fa-globe';
+      if (iconKey === 'type-browser-chrome') fallback = 'fa-brands fa-chrome';
+      else if (iconKey === 'type-browser-safari') fallback = 'fa-brands fa-safari';
+      else if (iconKey === 'type-browser-edge') fallback = 'fa-brands fa-edge';
+      else if (iconKey === 'type-browser-firefox') fallback = 'fa-brands fa-firefox-browser';
+      else if (iconKey === 'type-browser-opera') fallback = 'fa-brands fa-opera';
+      else if (iconKey === 'type-browser-ie') fallback = 'fa-brands fa-internet-explorer';
+      else if (iconKey === 'type-browser-unknown') fallback = 'fa-light fa-circle-question';
+      return '<i class="' + fallback + '" data-icon-key="' + escapeHtml(iconKey) + '" aria-hidden="true"></i>';
+    }
+
+    function renderBrowsersTables(data) {
+      const body = document.getElementById('browsers-body');
+      if (!body) return;
+
+      const by = (tableSortState.browsers.by || 'rev').toString().trim().toLowerCase();
+      const dir = (tableSortState.browsers.dir || 'desc').toString().trim().toLowerCase() === 'asc' ? 'asc' : 'desc';
+
+      const rows = data && data.browsers && Array.isArray(data.browsers.rows) ? data.browsers.rows.slice() : [];
+      const filtered = rows.filter(function(r) {
+        const s = r && typeof r.sessions === 'number' ? r.sessions : 0;
+        const o = r && typeof r.orders === 'number' ? r.orders : 0;
+        return s >= 1 || o >= 1;
+      });
+
+      function rowBrowserKey(r) {
+        if (!r) return 'unknown';
+        const k = r.ua_browser != null ? String(r.ua_browser).trim().toLowerCase() : '';
+        return k || 'unknown';
+      }
+
+      function metric(r, key) {
+        if (!r) return null;
+        if (key === 'browser') return browserLabel(rowBrowserKey(r));
+        if (key === 'sessions') return (typeof r.sessions === 'number') ? r.sessions : null;
+        if (key === 'carts') return (typeof r.carts === 'number') ? r.carts : null;
+        if (key === 'orders') return (typeof r.orders === 'number') ? r.orders : null;
+        if (key === 'cr') return (typeof r.cr === 'number') ? r.cr : null;
+        if (key === 'vpv') return (typeof r.vpv === 'number') ? r.vpv : null;
+        if (key === 'rev') return (typeof r.revenue === 'number') ? r.revenue : null;
+        if (key === 'aov') return (typeof r.aov === 'number') ? r.aov : null;
+        return null;
+      }
+
+      filtered.sort(function(a, b) {
+        let primary = 0;
+        if (by === 'browser') primary = cmpNullableText(metric(a, 'browser'), metric(b, 'browser'), dir);
+        else primary = cmpNullableNumber(metric(a, by), metric(b, by), dir);
+        return primary ||
+          cmpNullableNumber(metric(a, 'rev'), metric(b, 'rev'), 'desc') ||
+          cmpNullableNumber(metric(a, 'orders'), metric(b, 'orders'), 'desc') ||
+          cmpNullableNumber(metric(a, 'sessions'), metric(b, 'sessions'), 'desc') ||
+          cmpNullableText(metric(a, 'browser'), metric(b, 'browser'), 'asc');
+      });
+
+      if (!filtered.length) {
+        body.innerHTML = '<div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">No browser data yet.</div></div>';
+        updateCardPagination('browsers', 1, 1);
+        updateSortHeadersInContainer(document.getElementById('browsers-table'), by, dir);
+        return;
+      }
+
+      const pageSize = getTableRowsPerPage('browsers-table', 'live');
+      const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+      browsersPage = clampPage(browsersPage, totalPages);
+      updateCardPagination('browsers', browsersPage, totalPages);
+      const pageStart = (browsersPage - 1) * pageSize;
+      const pageRows = filtered.slice(pageStart, pageStart + pageSize);
+
+      let html = '';
+      pageRows.forEach(function(r) {
+        const k = rowBrowserKey(r);
+        const label = browserLabel(k);
+        const sessions = (r && typeof r.sessions === 'number') ? formatSessions(r.sessions) : '\u2014';
+        const carts = (r && typeof r.carts === 'number') ? formatSessions(r.carts) : '\u2014';
+        const orders = (r && typeof r.orders === 'number') ? formatSessions(r.orders) : '\u2014';
+        const cr = (r && typeof r.cr === 'number') ? pct(r.cr) : '\u2014';
+        const vpv = (r && typeof r.vpv === 'number') ? formatRevenue(r.vpv) : '\u2014';
+        const rev = (r && typeof r.revenue === 'number') ? formatRevenueTableHtml(r.revenue) : '\u2014';
+        const aov = (r && typeof r.aov === 'number') ? formatRevenue(r.aov) : '\u2014';
+        html += '<div class="grid-row" role="row">' +
+          '<div class="grid-cell" role="cell"><span style="display:inline-flex;align-items:center;gap:8px"><span class="tt-browser-icon" aria-hidden="true">' + browserIconHtml(k) + '</span><span>' + escapeHtml(label) + '</span></span></div>' +
+          '<div class="grid-cell" role="cell">' + escapeHtml(sessions) + '</div>' +
+          '<div class="grid-cell" role="cell">' + escapeHtml(carts) + '</div>' +
+          '<div class="grid-cell" role="cell">' + escapeHtml(orders) + '</div>' +
+          '<div class="grid-cell" role="cell">' + escapeHtml(cr) + '</div>' +
+          '<div class="grid-cell" role="cell">' + escapeHtml(vpv) + '</div>' +
+          '<div class="grid-cell" role="cell">' + (rev || '\u2014') + '</div>' +
+          '<div class="grid-cell" role="cell">' + escapeHtml(aov) + '</div>' +
+        '</div>';
+      });
+
+      body.innerHTML = html;
+      updateSortHeadersInContainer(document.getElementById('browsers-table'), by, dir);
+      try { if (window.KexoIconTheme && typeof window.KexoIconTheme.refresh === 'function') window.KexoIconTheme.refresh(); } catch (_) {}
+    }
+
+    function renderBrowsersChart(data) {
+      const el = document.getElementById('browsers-chart');
+      if (!el) return;
+      const chartKey = 'browsers-chart';
+      if (!isChartEnabledByUiConfig(chartKey, true)) {
+        try {
+          if (el.__kexoChartInstance) {
+            try { el.__kexoChartInstance.destroy(); } catch (_) {}
+            el.__kexoChartInstance = null;
+          }
+        } catch (_) {}
+        el.innerHTML = '';
+        return;
+      }
+
+      const rows = data && data.browsers && Array.isArray(data.browsers.rows) ? data.browsers.rows.slice() : [];
+      if (!rows.length) {
+        el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:#6b7280;font-size:.875rem">No browser data</div>';
+        return;
+      }
+
+      function metricValue(r, metricKey) {
+        if (!r) return 0;
+        if (metricKey === 'orders') return Math.max(0, Number(r.orders) || 0);
+        if (metricKey === 'revenue') return Math.max(0, Number(r.revenue) || 0);
+        return Math.max(0, Number(r.sessions) || 0);
+      }
+
+      const rawMode = chartModeFromUiConfig(chartKey, 'line') || 'line';
+      const showEndLabels = rawMode === 'multi-line-labels';
+      const mode = rawMode === 'multi-line-labels' ? 'line' : rawMode;
+      const metricKey = chartPieMetricFromUiConfig(chartKey, 'sessions');
+      const palette = chartColorsFromUiConfig(chartKey, ['#4b94e4', '#f59e34', '#3eb3ab', '#8b5cf6', '#ef4444', '#22c55e']);
+      const isCurrency = metricKey === 'revenue';
+      const seriesName = metricKey === 'orders' ? 'Orders' : (metricKey === 'revenue' ? 'Revenue' : 'Sessions');
+
+      const items = rows
+        .map(function (r) {
+          const key = r && r.ua_browser != null ? String(r.ua_browser).trim().toLowerCase() : 'unknown';
+          return { label: browserLabel(key), value: metricValue(r, metricKey) };
+        })
+        .filter(function (it) { return it && it.value > 0; })
+        .sort(function (a, b) { return (b.value - a.value) || String(a.label).localeCompare(String(b.label)); })
+        .slice(0, 10);
+
+      if (!items.length) {
+        el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:#6b7280;font-size:.875rem">No browser data</div>';
+        return;
+      }
+
+      const categories = items.map(function (it) { return it.label; });
+      const values = items.map(function (it) { return it.value; });
+      const series = (String(mode).toLowerCase() === 'pie')
+        ? categories.map(function (name, idx) { return { name: name, data: [values[idx]] }; })
+        : [{ name: seriesName, data: values }];
+
+      try {
+        window.kexoRenderApexChart({
+          chartKey: chartKey,
+          containerEl: el,
+          categories: categories,
+          series: series,
+          mode: mode,
+          colors: palette,
+          height: 320,
+          currency: isCurrency,
+          showEndLabels: showEndLabels,
+          chartStyle: chartStyleFromUiConfig(chartKey),
+          advancedApexOverride: chartAdvancedOverrideFromUiConfig(chartKey, mode),
+        });
+      } catch (_) {
+        el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:#ef4444;font-size:.875rem">Chart rendering failed</div>';
+      }
+    }
+
+    function renderBrowsers(data) {
+      browsersCache = data || browsersCache || null;
+      try { renderBrowsersTables(browsersCache || {}); } catch (_) {}
+      try { renderBrowsersChart(browsersCache || {}); } catch (_) {}
+    }
+
+    function setBrowsersUpdated(label) {
+      const el = document.getElementById('browsers-updated');
+      if (!el) return;
+      el.textContent = label || 'Updated \u2014';
+    }
+
+    function fetchBrowsersData(options = {}) {
+      const force = !!options.force;
+      let url = API + '/api/browsers/table?range=' + encodeURIComponent(getStatsRange());
+      if (force) url += (url.indexOf('?') >= 0 ? '&' : '?') + '_=' + Date.now();
+      const cacheMode = force ? 'no-store' : 'default';
+      return fetchWithTimeout(url, { credentials: 'same-origin', cache: cacheMode }, 25000)
+        .then(function(r) {
+          if (!r.ok) throw new Error('Browsers HTTP ' + r.status);
+          return r.json();
+        })
+        .then(function(payload) {
+          lastBrowsersFetchedAt = Date.now();
+          try { setBrowsersUpdated('Updated ' + (new Date(lastBrowsersFetchedAt)).toLocaleString('en-GB')); } catch (_) { setBrowsersUpdated('Updated'); }
+          renderBrowsers(payload && typeof payload === 'object' ? { browsers: { rows: Array.isArray(payload.rows) ? payload.rows : [] }, meta: payload } : null);
+          return payload;
+        })
+        .catch(function(err) {
+          try { if (typeof window.kexoCaptureError === 'function') window.kexoCaptureError(err, { context: 'browsersFetch', page: PAGE }); } catch (_) {}
+          setBrowsersUpdated('Failed to load');
+          renderBrowsers(browsersCache || null);
+          return null;
+        });
+    }
+
+    function refreshBrowsers(options = {}) {
+      const force = !!options.force;
+      if (browsersRefreshInFlight) return browsersRefreshInFlight;
+      const build = startReportBuild({ key: 'browsers', title: 'Preparing browsers report' });
+      build.step('Loading browser performance');
+      browsersRefreshInFlight = fetchBrowsersData({ force })
+        .finally(function() {
+          browsersRefreshInFlight = null;
+          build.finish();
+        });
+      return browsersRefreshInFlight;
     }
 
     function sessionIdsEqual(a, b) {
@@ -2441,8 +2726,6 @@
       const blocks = [
         ['Country & Device', cfSection('Country', s.cf_country || s.country_code) + cfSection('Device', s.device) + cfSection('Browser', formatBrowserLabel(s))],
         ['Referrer / Entry', cfSection('Referrer', s.referrer) + cfSection('Entry URL', s.entry_url)],
-        ['Colo / ASN', cfSection('Colo', s.cf_colo) + cfSection('ASN', s.cf_asn)],
-        ['Bot', cfSection('Known bot', s.cf_known_bot != null ? (s.cf_known_bot === 1 ? 'Yes' : 'No') : null) + cfSection('Verified bot category', s.cf_verified_bot_category)],
         ['City', cfSection('City', s.cf_city || s.city || null)]
       ];
       return blocks.map(function (b) { return '<div class="side-panel-cf-block"><div class="side-panel-cf-subtitle">' + escapeHtml(b[0]) + '</div>' + b[1] + '</div>'; }).join('');

@@ -71,7 +71,7 @@
     if (key === 'mobile-menu' || key === 'mobile-date' || key === 'online-status-indicator') return 'fa-jelly';
     if (key.indexOf('kpi-compare-') === 0) return 'fa-light';
     if (key.indexOf('live-') === 0 || key.indexOf('breakdown-') === 0) return 'fa-light';
-    if (key.indexOf('type-device-') === 0 || key.indexOf('type-platform-') === 0) return 'fa-light';
+    if (key.indexOf('type-device-') === 0 || key.indexOf('type-platform-') === 0 || key.indexOf('type-browser-') === 0) return 'fa-light';
     if (key.indexOf('diag-') === 0 || key.indexOf('ads-') === 0) return 'fa-light';
     if (key.indexOf('pagination-') === 0 || key.indexOf('card-collapse-') === 0) return 'fa-light';
     if (key.indexOf('dash-kpi-delta-') === 0) return 'fa-jelly';
@@ -567,6 +567,7 @@
     if (key.indexOf('breakdown-') === 0) return 'Breakdown item icon. Shows in breakdown cards/tables on insights pages.';
     if (key.indexOf('type-device-') === 0) return 'Device type icon. Shows in the Device table on /acquisition/devices.';
     if (key.indexOf('type-platform-') === 0) return 'Platform icon. Shows in the Device table on /acquisition/devices.';
+    if (key.indexOf('type-browser-') === 0) return 'Browser icon. Shows in the Browser table on /acquisition/browsers.';
     if (key === 'diag-copy') return 'Diagnostics copy icon. Shows in the diagnostics panel on /settings.';
     if (key.indexOf('ads-status-') === 0 || key.indexOf('ads-actions-') === 0) return 'Ads integration status/action icon. Shows on /integrations/google-ads and /tools/ads.';
     if (key.indexOf('pagination-') === 0) return 'Pagination arrow icon. Shows in paginated cards/tables across dashboard and insights pages.';
@@ -604,7 +605,7 @@
     if (key.indexOf('table-icon-') === 0 || key.indexOf('table-short-') === 0) return 'mobile-icons';
     if (key === 'table-builder-icon' || key === 'table-sticky-resize-handle') return 'tables';
     if (key.indexOf('card-title-') === 0 || key.indexOf('card-collapse-') === 0 || key.indexOf('dash-kpi-delta-') === 0 || key.indexOf('chart-type-') === 0 || key === 'chart-builder-icon') return 'cards';
-    if (key.indexOf('side-panel-') === 0 || key.indexOf('kpi-compare-') === 0 || key.indexOf('pagination-') === 0 || key.indexOf('live-') === 0 || key.indexOf('breakdown-') === 0 || key.indexOf('type-device-') === 0 || key.indexOf('type-platform-') === 0 || key.indexOf('ads-') === 0 || key === 'diag-copy') return 'runtime';
+    if (key.indexOf('side-panel-') === 0 || key.indexOf('kpi-compare-') === 0 || key.indexOf('pagination-') === 0 || key.indexOf('live-') === 0 || key.indexOf('breakdown-') === 0 || key.indexOf('type-device-') === 0 || key.indexOf('type-platform-') === 0 || key.indexOf('type-browser-') === 0 || key.indexOf('ads-') === 0 || key === 'diag-copy') return 'runtime';
     return 'misc';
   }
 

@@ -226,6 +226,7 @@
     'ads-overview-chart': { modes: ['bar', 'combo', 'line', 'area', 'multi-line-labels'], series: ['Profit', 'Sales', 'Spend', 'ROAS'], defaultMode: 'bar', height: 240 },
     'attribution-chart': { modes: ['line', 'area', 'bar', 'pie', 'multi-line-labels'], series: ['Sessions', 'Orders', 'Revenue'], pieMetric: true, defaultMode: 'line', height: 320 },
     'devices-chart': { modes: ['line', 'area', 'bar', 'pie', 'multi-line-labels'], series: ['Sessions', 'Orders', 'Revenue'], pieMetric: true, defaultMode: 'line', height: 320 },
+    'browsers-chart': { modes: ['line', 'area', 'bar', 'pie', 'multi-line-labels'], series: ['Sessions', 'Orders', 'Revenue'], pieMetric: true, defaultMode: 'line', height: 320, capabilities: { icons: true } },
     'products-chart': { modes: ['line', 'area', 'bar', 'pie', 'multi-line-labels'], series: ['Revenue'], defaultMode: 'line', height: 280 },
     'countries-map-chart': { modes: ['map-animated', 'map-flat'], series: ['Accent'], defaultMode: 'map-flat', height: 320 },
     'abandoned-carts-chart': { modes: ['area', 'line', 'bar', 'multi-line-labels'], series: ['Abandoned'], defaultMode: 'line', height: 280 },

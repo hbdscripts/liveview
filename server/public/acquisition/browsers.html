@@ -32,30 +32,25 @@
           </div>
 
 <div id="tab-panel-browsers" class="main-tab-panel" role="tabpanel" aria-labelledby="nav-tab-browsers">
-  <div class="row g-3 mb-3">
-    <div class="col-12">
-      <div class="card" data-no-card-collapse="1">
-        <div class="card-header">
-          <h3 class="card-title">Revenue by browser</h3>
-          <div class="text-secondary small ms-auto" id="browsers-updated">Updated &mdash;</div>
-        </div>
-        <div class="card-body">
-          <div class="dash-chart-wrap kexo-chart-wrap-min-320" id="browsers-chart"></div>
-          <div class="d-flex flex-wrap gap-2 mt-3" id="browsers-legend" aria-label="Browser legend"></div>
-        </div>
+  <div class="stats-row-wrap">
+    <!-- Chart Card -->
+    <div class="card mb-3" data-kexo-chart-key="browsers-chart">
+      <div class="card-header">
+        <h3 class="card-title">Browser performance</h3>
+      </div>
+      <div class="card-body">
+        <div class="dash-chart-wrap kexo-chart-wrap-min-320" id="browsers-chart"></div>
       </div>
     </div>
-  </div>
 
-  <div class="row g-3">
-    <div class="col-12">
-      <div class="card" data-no-card-collapse="1" data-table-class="live" data-table-zone="browsers-main" data-table-id="browsers-table">
-        <div class="card-header">
-          <h3 class="card-title" data-kexo-table-title="1">Browser breakdown</h3>
-        </div>
-        <div id="browsers-table-mount" data-kexo-table="browsers-table"></div>
-        <div class="card-footer d-flex align-items-center justify-content-center is-hidden" id="browsers-pagination" aria-label="Browsers pagination"></div>
+    <!-- Browsers Table Card -->
+    <div class="stats-card card" id="browsers-card" data-table-class="live" data-table-zone="browsers-main" data-table-id="browsers-table">
+      <div class="card-header">
+        <h3 class="card-title" data-kexo-table-title="1">Browsers</h3>
+        <div class="text-secondary small ms-auto" id="browsers-updated">Updated &mdash;</div>
       </div>
+      <div id="browsers-mount" data-kexo-table="browsers-table"></div>
+      <div class="card-footer d-flex align-items-center justify-content-center is-hidden" id="browsers-pagination" aria-label="Browsers pagination"></div>
     </div>
   </div>
 </div>
@@ -112,7 +107,6 @@
   <script src="/kexo-chart-defs.js" defer></script>
   <script src="/kexo-chart-builder.js" defer></script>
   <script src="/app.js" defer></script>
-  <script src="/browsers-page.js" defer></script>
   <script src="/theme-settings.js" defer></script>
 </body>
 </html>

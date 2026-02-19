@@ -375,6 +375,9 @@
           } else if (tab === 'devices') {
             refreshDevices({ force: false });
             ensureKpis();
+          } else if (tab === 'browsers') {
+            refreshBrowsers({ force: false });
+            ensureKpis();
           } else if (tab === 'ads') {
             ensureKpis();
             ensureAdsLoaded().then(function(ok) {
@@ -439,6 +442,7 @@
             : PAGE === 'type' ? 'devices'
             : PAGE === 'attribution' ? 'attribution'
             : PAGE === 'devices' ? 'devices'
+            : PAGE === 'browsers' ? 'browsers'
             : (PAGE === 'compare-conversion-rate' || PAGE === 'shipping-cr' || PAGE === 'click-order-lookup' || PAGE === 'change-pins') ? PAGE
             : PAGE;
           setTab(pageTab);

@@ -282,7 +282,7 @@
       '<span class="am-tree-cell"><code class="small">' + escapeHtml(id || '—') + '</code></span>' +
       '<span class="am-tree-cell text-secondary small">' + escapeHtml(label || '—') + '</span>' +
       '<span class="am-tree-cell text-muted small" title="' + escapeHtml(matchStr) + '">' + escapeHtml(summary) + '</span>' +
-      '<span class="am-tree-cell text-end"><button type="button" class="btn btn-outline-secondary btn-sm" data-am-tree-action="move-rule" data-rule-id="' + escapeHtml(id) + '" data-current-variant-key="' + escapeHtml(vk) + '">Move</button></span>' +
+      '<span class="am-tree-cell text-end"><button type="button" class="btn btn-outline-secondary btn-sm" data-am-tree-action="move-rule" data-rule-id="' + escapeHtml(id) + '" data-current-variant-key="' + escapeHtml(vk) + '">Edit</button></span>' +
       '</div>';
   }
 
@@ -301,7 +301,10 @@
       '<i class="fa fa-chevron-' + (isOpen ? 'down' : 'right') + ' small" aria-hidden="true"></i></button>' +
       '<span class="am-tree-cell am-tree-label">' + iconSpecToPreviewHtml(iconSpec, label) + ' <strong>' + escapeHtml(label) + '</strong> <code class="small">' + escapeHtml(vk) + '</code></span>' +
       '<span class="am-tree-cell text-muted small">' + String(ruleCount) + ' rule(s)</span>' +
-      '<span class="am-tree-cell"><button type="button" class="btn btn-outline-secondary btn-sm am-tree-edit-icon-btn" data-am-tree-edit-toggle="variant" data-key="' + escapeHtml(vk) + '" title="Edit icon">Edit icon</button></span>' +
+      '<span class="am-tree-cell d-flex align-items-center gap-2 justify-content-end">' +
+        '<button type="button" class="btn btn-outline-secondary btn-sm" data-am-tree-action="edit-variant" data-variant-key="' + escapeHtml(vk) + '" data-current-channel-key="' + escapeHtml(channelKey || '') + '" data-current-source-key="' + escapeHtml(sourceKey || '') + '" data-label="' + escapeHtml(label) + '">Edit</button>' +
+        '<button type="button" class="btn btn-outline-secondary btn-sm am-tree-edit-icon-btn" data-am-tree-edit-toggle="variant" data-key="' + escapeHtml(vk) + '" title="Edit icon">Edit icon</button>' +
+      '</span>' +
       '</div>' +
       '<div class="am-tree-variant-icon-edit mt-1 mb-2" data-am-tree-edit="variant" data-variant-key="' + escapeHtml(vk) + '" data-am-tree-label="' + escapeHtml(label) + '" style="display:none">' +
       '<div class="row g-2 align-items-start">' +
@@ -338,7 +341,10 @@
       '<button type="button" class="am-tree-toggle btn btn-link btn-sm p-0 me-1" data-am-tree-toggle="' + escapeHtml(expandedKey) + '" aria-expanded="' + (isOpen ? 'true' : 'false') + '">' +
       '<i class="fa fa-chevron-' + (isOpen ? 'down' : 'right') + ' small" aria-hidden="true"></i></button>' +
       '<span class="am-tree-cell am-tree-label">' + iconSpecToPreviewHtml(iconSpec, label) + ' <strong>' + escapeHtml(label) + '</strong> <code class="small">' + escapeHtml(sk) + '</code></span>' +
-      '<span class="am-tree-cell"><button type="button" class="btn btn-outline-secondary btn-sm am-tree-edit-icon-btn" data-am-tree-edit-toggle="source" data-key="' + escapeHtml(sk) + '" title="Edit icon">Edit icon</button></span>' +
+      '<span class="am-tree-cell d-flex align-items-center gap-2 justify-content-end">' +
+        '<button type="button" class="btn btn-outline-secondary btn-sm" data-am-tree-action="edit-source" data-source-key="' + escapeHtml(sk) + '" data-current-channel-key="' + escapeHtml(channelKey || '') + '" data-label="' + escapeHtml(label) + '">Edit</button>' +
+        '<button type="button" class="btn btn-outline-secondary btn-sm am-tree-edit-icon-btn" data-am-tree-edit-toggle="source" data-key="' + escapeHtml(sk) + '" title="Edit icon">Edit icon</button>' +
+      '</span>' +
       '</div>' +
       '<div class="am-tree-source-icon-edit mt-1 mb-2" data-am-tree-edit="source" data-source-key="' + escapeHtml(sk) + '" data-am-tree-label="' + escapeHtml(label) + '" style="display:none">' +
       '<div class="row g-2 align-items-start">' +
@@ -405,11 +411,11 @@
     if (existing) return existing;
     var wrap = document.createElement('div');
     wrap.innerHTML = '' +
-      '<div class="modal fade" id="am-rule-move-modal" tabindex="-1" aria-hidden="true" aria-label="Move attribution rule">' +
+      '<div class="modal fade" id="am-rule-move-modal" tabindex="-1" aria-hidden="true" aria-label="Edit attribution rule">' +
         '<div class="modal-dialog modal-dialog-centered">' +
           '<div class="modal-content">' +
             '<div class="modal-header">' +
-              '<h5 class="modal-title">Move rule</h5>' +
+              '<h5 class="modal-title">Edit rule</h5>' +
               '<button type="button" class="btn-close" data-am-move-close aria-label="Close"></button>' +
             '</div>' +
             '<div class="modal-body">' +
@@ -423,7 +429,7 @@
             '</div>' +
             '<div class="modal-footer">' +
               '<button type="button" class="btn btn-outline-secondary" data-am-move-close>Cancel</button>' +
-              '<button type="button" class="btn btn-primary" id="am-move-confirm">Move</button>' +
+              '<button type="button" class="btn btn-primary" id="am-move-confirm">Save</button>' +
             '</div>' +
           '</div>' +
         '</div>' +
@@ -551,14 +557,14 @@
           setMsg('Saving\u2026', 'text-secondary');
           moveRule(rid, dest).then(function (resp) {
             if (resp && resp.ok) {
-              setMsg('Moved.', 'text-success');
+              setMsg('Saved.', 'text-success');
               setTimeout(function () {
                 closeMoveModal(modalEl);
                 _state.config = null;
                 loadAndRender();
               }, 250);
             } else {
-              setMsg((resp && resp.error) ? String(resp.error) : 'Move failed', 'text-danger');
+              setMsg((resp && resp.error) ? String(resp.error) : 'Save failed', 'text-danger');
             }
           }).finally(function () {
             try { confirmBtn.disabled = false; } catch (_) {}
@@ -585,6 +591,291 @@
     }
   }
 
+  var _assignModalBackdropEl = null;
+
+  function ensureChannelAssignModal() {
+    var existing = document.getElementById('am-channel-assign-modal');
+    if (existing) return existing;
+    var wrap = document.createElement('div');
+    wrap.innerHTML = '' +
+      '<div class="modal fade" id="am-channel-assign-modal" tabindex="-1" aria-hidden="true" aria-label="Edit attribution channel">' +
+        '<div class="modal-dialog modal-dialog-centered">' +
+          '<div class="modal-content">' +
+            '<div class="modal-header">' +
+              '<h5 class="modal-title">Edit channel</h5>' +
+              '<button type="button" class="btn-close" data-am-assign-close aria-label="Close"></button>' +
+            '</div>' +
+            '<div class="modal-body">' +
+              '<div class="text-secondary small mb-2">Assign to an existing channel, or create a new one.</div>' +
+              '<div class="mb-2">' +
+                '<div class="small text-secondary" id="am-assign-kind">Item</div>' +
+                '<div><code id="am-assign-key">—</code> <span class="text-secondary small" id="am-assign-label"></span></div>' +
+              '</div>' +
+              '<div class="mb-3">' +
+                '<label class="form-label" for="am-assign-channel-select">Channel</label>' +
+                '<select class="form-select" id="am-assign-channel-select"></select>' +
+              '</div>' +
+              '<div class="mb-3">' +
+                '<label class="form-label" for="am-assign-new-channel">Or create new channel</label>' +
+                '<input class="form-control" id="am-assign-new-channel" placeholder="e.g. Organic Social" />' +
+                '<div class="form-hint">If provided, a new channel is created and the item is assigned to it.</div>' +
+              '</div>' +
+              '<div class="form-hint" id="am-assign-msg"></div>' +
+            '</div>' +
+            '<div class="modal-footer">' +
+              '<button type="button" class="btn btn-outline-secondary" data-am-assign-close>Cancel</button>' +
+              '<button type="button" class="btn btn-primary" id="am-assign-confirm">Save</button>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    var modalEl = wrap.firstChild;
+    document.body.appendChild(modalEl);
+    return modalEl;
+  }
+
+  function closeChannelAssignModal(modalEl) {
+    var modal = getBootstrapModal(modalEl);
+    if (modal) {
+      modal.hide();
+      try {
+        if (_assignModalBackdropEl && _assignModalBackdropEl.parentNode) _assignModalBackdropEl.parentNode.removeChild(_assignModalBackdropEl);
+        _assignModalBackdropEl = null;
+      } catch (_) {}
+      return;
+    }
+    modalEl.classList.remove('show');
+    modalEl.style.display = 'none';
+    modalEl.setAttribute('aria-hidden', 'true');
+    try {
+      document.body.classList.remove('modal-open');
+      if (_assignModalBackdropEl && _assignModalBackdropEl.parentNode) _assignModalBackdropEl.parentNode.removeChild(_assignModalBackdropEl);
+      _assignModalBackdropEl = null;
+    } catch (_) {}
+  }
+
+  function normalizeChannelKeyFromLabel(label) {
+    var raw = label == null ? '' : String(label);
+    raw = raw.trim();
+    if (!raw) return '';
+    var k = raw.toLowerCase()
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '')
+      .replace(/_{2,}/g, '_');
+    if (!k) return '';
+    if (!/^[a-z0-9]/.test(k)) k = 'c_' + k;
+    if (k.length > 32) k = k.slice(0, 32).replace(/_+$/g, '');
+    if (!/^[a-z0-9][a-z0-9_-]*$/.test(k)) return '';
+    return k;
+  }
+
+  function uniqueChannelKey(baseKey, channels) {
+    var base = trimLower(baseKey, 32);
+    if (!base) return '';
+    var used = {};
+    (channels || []).forEach(function (c) {
+      var k = trimLower(c && c.channel_key, 32);
+      if (k) used[k] = true;
+    });
+    if (!used[base]) return base;
+    for (var i = 2; i < 1000; i++) {
+      var suffix = '_' + String(i);
+      var k2 = base;
+      if (k2.length + suffix.length > 32) k2 = k2.slice(0, 32 - suffix.length);
+      k2 = k2 + suffix;
+      if (!used[k2]) return k2;
+    }
+    return '';
+  }
+
+  function saveAttributionConfig(cfg) {
+    return apiPostJson(API + '/api/attribution/config', { config: cfg });
+  }
+
+  function openChannelAssignModal(opts) {
+    var kind = opts && opts.kind ? String(opts.kind).trim().toLowerCase() : '';
+    var key = opts && opts.key != null ? String(opts.key).trim() : '';
+    var label = opts && opts.label != null ? String(opts.label).trim() : '';
+    var currentChannelKey = opts && opts.currentChannelKey != null ? String(opts.currentChannelKey).trim().toLowerCase() : '';
+    if (!kind || !key) return;
+    if (kind !== 'source' && kind !== 'variant') return;
+
+    var modalEl = ensureChannelAssignModal();
+    if (!modalEl) return;
+
+    modalEl.setAttribute('data-am-assign-kind', kind);
+    modalEl.setAttribute('data-am-assign-key', key);
+    modalEl.setAttribute('data-am-assign-current-channel', currentChannelKey || '');
+
+    var kindEl = modalEl.querySelector('#am-assign-kind');
+    var keyEl = modalEl.querySelector('#am-assign-key');
+    var labelEl = modalEl.querySelector('#am-assign-label');
+    if (kindEl) kindEl.textContent = kind === 'source' ? 'Source' : 'Variant';
+    if (keyEl) keyEl.textContent = key;
+    if (labelEl) labelEl.textContent = label ? ('— ' + label) : '';
+
+    var msgEl = modalEl.querySelector('#am-assign-msg');
+    function setMsg(text, cls) {
+      if (!msgEl) return;
+      msgEl.textContent = text || '';
+      msgEl.className = 'form-hint ' + (cls || '');
+    }
+    setMsg('', '');
+
+    var cfg = _state && _state.config && _state.config.config ? _state.config.config : null;
+    var channels = cfg && Array.isArray(cfg.channels) ? cfg.channels.slice() : [];
+    channels.sort(function (a, b) {
+      var ao = a && typeof a.sort_order === 'number' ? a.sort_order : 0;
+      var bo = b && typeof b.sort_order === 'number' ? b.sort_order : 0;
+      if (ao !== bo) return ao - bo;
+      return String((a && a.label) || '').localeCompare(String((b && b.label) || ''));
+    });
+
+    var selectEl = modalEl.querySelector('#am-assign-channel-select');
+    if (selectEl) {
+      selectEl.innerHTML = channels.map(function (c) {
+        var ck = trimLower(c && c.channel_key, 32) || 'other';
+        var cl = (c && c.label) ? String(c.label) : titleFromKey(ck);
+        return '<option value="' + escapeHtml(ck) + '">' + escapeHtml(cl + ' (' + ck + ')') + '</option>';
+      }).join('');
+      try { selectEl.value = currentChannelKey || (channels[0] ? trimLower(channels[0].channel_key, 32) : 'other'); } catch (_) {}
+    }
+
+    var newChannelEl = modalEl.querySelector('#am-assign-new-channel');
+    if (newChannelEl) newChannelEl.value = '';
+
+    if (modalEl.getAttribute('data-am-assign-wired') !== '1') {
+      modalEl.setAttribute('data-am-assign-wired', '1');
+      modalEl.addEventListener('click', function (e) {
+        var t = e && e.target ? e.target : null;
+        var closeBtn = t && t.closest ? t.closest('[data-am-assign-close]') : null;
+        if (closeBtn) {
+          e.preventDefault();
+          closeChannelAssignModal(modalEl);
+        }
+      });
+
+      var confirmBtn = modalEl.querySelector('#am-assign-confirm');
+      if (confirmBtn) {
+        confirmBtn.addEventListener('click', function () {
+          var kind = String(modalEl.getAttribute('data-am-assign-kind') || '').trim().toLowerCase();
+          var key = String(modalEl.getAttribute('data-am-assign-key') || '').trim();
+          var currentCh = String(modalEl.getAttribute('data-am-assign-current-channel') || '').trim().toLowerCase();
+          var sel = modalEl.querySelector('#am-assign-channel-select');
+          var newLabel = '';
+          var newInput = modalEl.querySelector('#am-assign-new-channel');
+          if (newInput) newLabel = String(newInput.value || '').trim();
+
+          var cfg = _state && _state.config && _state.config.config ? _state.config.config : null;
+          if (!cfg) {
+            setMsg('Config not loaded yet.', 'text-danger');
+            return;
+          }
+
+          var nextCfg = {
+            channels: Array.isArray(cfg.channels) ? cfg.channels.map(function (c) { return Object.assign({}, c); }) : [],
+            sources: Array.isArray(cfg.sources) ? cfg.sources.map(function (s) { return Object.assign({}, s); }) : [],
+            variants: Array.isArray(cfg.variants) ? cfg.variants.map(function (v) { return Object.assign({}, v); }) : [],
+            rules: Array.isArray(cfg.rules) ? cfg.rules.map(function (r) { return Object.assign({}, r); }) : [],
+            allowlist: Array.isArray(cfg.allowlist) ? cfg.allowlist.map(function (a) { return Object.assign({}, a); }) : [],
+          };
+
+          var channelKey = '';
+          if (newLabel) {
+            var base = normalizeChannelKeyFromLabel(newLabel);
+            if (!base) {
+              setMsg('New channel name is invalid.', 'text-danger');
+              return;
+            }
+            channelKey = uniqueChannelKey(base, nextCfg.channels);
+            if (!channelKey) {
+              setMsg('Could not create a unique channel key.', 'text-danger');
+              return;
+            }
+            var exists = nextCfg.channels.some(function (c) { return trimLower(c && c.channel_key, 32) === channelKey; });
+            if (!exists) {
+              var maxSort = 0;
+              nextCfg.channels.forEach(function (c) {
+                var n = c && c.sort_order != null ? Number(c.sort_order) : 0;
+                if (Number.isFinite(n)) maxSort = Math.max(maxSort, n);
+              });
+              nextCfg.channels.push({ channel_key: channelKey, label: newLabel.slice(0, 80), sort_order: maxSort + 1, enabled: 1 });
+            }
+          } else {
+            channelKey = sel ? String(sel.value || '').trim().toLowerCase() : '';
+          }
+
+          if (!channelKey) {
+            setMsg('Choose a channel.', 'text-danger');
+            return;
+          }
+          if (channelKey === currentCh) {
+            closeChannelAssignModal(modalEl);
+            return;
+          }
+
+          var changed = 0;
+          if (kind === 'variant') {
+            var vk = normalizeVariantKey(key);
+            nextCfg.variants.forEach(function (v) {
+              if (normalizeVariantKey(v && v.variant_key) === vk) {
+                v.channel_key = channelKey;
+                changed++;
+              }
+            });
+          } else if (kind === 'source') {
+            var sk = trimLower(key, 32);
+            nextCfg.variants.forEach(function (v) {
+              if (trimLower(v && v.source_key, 32) === sk) {
+                v.channel_key = channelKey;
+                changed++;
+              }
+            });
+          }
+
+          if (!changed) {
+            setMsg('Nothing to update.', 'text-danger');
+            return;
+          }
+
+          setMsg('Saving…', 'text-secondary');
+          try { confirmBtn.disabled = true; } catch (_) {}
+          saveAttributionConfig(nextCfg).then(function (resp) {
+            if (resp && resp.ok) {
+              setMsg('Saved.', 'text-success');
+              setTimeout(function () {
+                closeChannelAssignModal(modalEl);
+                _state.config = null;
+                loadAndRender();
+              }, 250);
+            } else {
+              setMsg((resp && resp.error) ? String(resp.error) : 'Save failed', 'text-danger');
+            }
+          }).finally(function () {
+            try { confirmBtn.disabled = false; } catch (_) {}
+          });
+        });
+      }
+    }
+
+    var modal = getBootstrapModal(modalEl);
+    if (modal) {
+      modal.show();
+      return;
+    }
+    modalEl.style.display = 'block';
+    modalEl.classList.add('show');
+    modalEl.setAttribute('aria-hidden', 'false');
+    try { document.body.classList.add('modal-open'); } catch (_) {}
+    if (!_assignModalBackdropEl || !_assignModalBackdropEl.parentNode) {
+      _assignModalBackdropEl = document.createElement('div');
+      _assignModalBackdropEl.className = 'modal-backdrop fade show';
+      _assignModalBackdropEl.setAttribute('aria-hidden', 'true');
+      _assignModalBackdropEl.addEventListener('click', function () { closeChannelAssignModal(modalEl); });
+      document.body.appendChild(_assignModalBackdropEl);
+    }
+  }
+
   function wireTree(root) {
     if (!root || root.getAttribute('data-am-tree-wired') === '1') return;
     root.setAttribute('data-am-tree-wired', '1');
@@ -599,6 +890,20 @@
           var rid = treeAction.getAttribute('data-rule-id') || '';
           var curVk = treeAction.getAttribute('data-current-variant-key') || '';
           openMoveModal(rid, curVk);
+          return;
+        }
+        if (action === 'edit-source') {
+          var sk = treeAction.getAttribute('data-source-key') || '';
+          var curCh = treeAction.getAttribute('data-current-channel-key') || '';
+          var lbl = treeAction.getAttribute('data-label') || '';
+          openChannelAssignModal({ kind: 'source', key: sk, label: lbl, currentChannelKey: curCh });
+          return;
+        }
+        if (action === 'edit-variant') {
+          var vk = treeAction.getAttribute('data-variant-key') || '';
+          var curCh2 = treeAction.getAttribute('data-current-channel-key') || '';
+          var lbl2 = treeAction.getAttribute('data-label') || '';
+          openChannelAssignModal({ kind: 'variant', key: vk, label: lbl2, currentChannelKey: curCh2 });
           return;
         }
         if (action === 'expand-all') {
