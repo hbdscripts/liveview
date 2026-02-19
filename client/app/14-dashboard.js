@@ -34,10 +34,31 @@
         'dash-chart-attribution-30d': true,
         'dash-chart-overview-30d': true
       };
-      var _primaryRgbDash = getComputedStyle(document.documentElement).getPropertyValue('--tblr-primary-rgb').trim() || '32,107,196';
+      function cssColorToRgbTriplet(value, fallback) {
+        var raw = value == null ? '' : String(value).trim();
+        if (!raw) return fallback;
+        var hex = raw.replace(/^#/, '');
+        if (/^[0-9a-f]{6}$/i.test(hex)) {
+          var r = parseInt(hex.slice(0, 2), 16);
+          var g = parseInt(hex.slice(2, 4), 16);
+          var b = parseInt(hex.slice(4, 6), 16);
+          return r + ',' + g + ',' + b;
+        }
+        var m = raw.replace(/\s+/g, '').match(/^rgba?\((\d+),(\d+),(\d+)(?:,([0-9.]+))?\)$/i);
+        if (m) {
+          var rr = Math.max(0, Math.min(255, parseInt(m[1], 10) || 0));
+          var gg = Math.max(0, Math.min(255, parseInt(m[2], 10) || 0));
+          var bb = Math.max(0, Math.min(255, parseInt(m[3], 10) || 0));
+          return rr + ',' + gg + ',' + bb;
+        }
+        return fallback;
+      }
+      var _rootStylesDash = getComputedStyle(document.documentElement);
+      var _primaryRgbDash = _rootStylesDash.getPropertyValue('--tblr-primary-rgb').trim() || '32,107,196';
+      var _accentRgbDash = cssColorToRgbTriplet(_rootStylesDash.getPropertyValue('--kexo-accent-1').trim(), _primaryRgbDash);
       var DASH_ACCENT = 'rgb(' + _primaryRgbDash + ')';
       var DASH_ACCENT_LIGHT = 'rgba(' + _primaryRgbDash + ',0.12)';
-      var WIDGET_RING_AND_BAR = 'rgba(' + _primaryRgbDash + ',0.2)';
+      var WIDGET_RING_AND_BAR = 'rgba(' + _accentRgbDash + ',0.2)';
       var DASH_ORANGE = '#f59e0b';
       var DASH_ORANGE_LIGHT = 'rgba(245,158,11,0.10)';
       var DASH_BLUE = '#3b82f6';
