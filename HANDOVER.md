@@ -22,10 +22,10 @@ If you start a significant change that may overlap with others, add a short entr
   - **status**: in progress / paused
   - **notes**: 1–2 lines on what’s changing
 
-- **branch**: `agent/2026-02-19-google-ads-settings-diagnostics`
+- **branch**: `agent/2026-02-19-google-ads-env-hint`
   - **scope**: settings (Google Ads integrations)
   - **status**: in progress
-  - **notes**: add server-config diagnostics + test-connection UI for Google Ads.
+  - **notes**: clarify server-env hint to point to diagnostics + test connection.
 
 ---
 

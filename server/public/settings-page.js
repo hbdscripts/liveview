@@ -1755,6 +1755,7 @@
         var msg = 'Configured via server settings (GOOGLE_ADS_*).';
         if (missingEnv.length) msg += ' Missing: ' + missingEnv.join(', ') + '.';
         msg += ' Set GOOGLE_ADS_OAUTH_ENABLED=1 to enable Sign in with Google.';
+        msg += ' See Server configuration below for status, or run Test connection.';
         connMsgEl.textContent = msg;
         connMsgEl.className = 'form-hint text-muted';
         return;
