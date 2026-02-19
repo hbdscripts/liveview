@@ -117,6 +117,16 @@ function paymentMetaFromParts(row) {
   return meta || { key: 'other', label: 'Other', iconSrc: null, iconAlt: 'Other', debug: {} };
 }
 
+function applyPaymentIconOverride(meta, overrides) {
+  if (!meta || !overrides || typeof overrides !== 'object') return meta;
+  const key = meta.key ? String(meta.key).trim() : '';
+  if (!key) return meta;
+  const override = overrides['payment_' + key];
+  const url = override != null ? String(override).trim() : '';
+  if (!url) return meta;
+  return { ...meta, iconSrc: url };
+}
+
 /**
  * Payment Methods insight report.
  *
@@ -130,6 +140,15 @@ async function getPaymentMethodsReport(req, res) {
   const nowMs = Date.now();
   const { start, end } = store.getRangeBounds(range, nowMs, timeZone);
   const db = getDb();
+
+  let assetOverrides = {};
+  try {
+    const raw = await store.getSetting('asset_overrides');
+    if (raw && typeof raw === 'string') {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) assetOverrides = parsed;
+    }
+  } catch (_) {}
 
   try {
     const [ratesToGbp, totalSessionsRow, rowsCounts, rowsCarts, rowsRevenue, rowsSeries] = await Promise.all([
@@ -239,7 +258,7 @@ async function getPaymentMethodsReport(req, res) {
     const metaByKey = new Map();
     const agg = new Map(); // key -> { sessions, orders }
     for (const r of rowsCounts || []) {
-      const m = paymentMetaFromParts(r);
+      const m = applyPaymentIconOverride(paymentMetaFromParts(r), assetOverrides);
       const k = m.key || 'other';
       metaByKey.set(k, { key: k, label: m.label || 'Other', iconSrc: m.iconSrc || null, iconAlt: m.iconAlt || (m.label || 'Other') });
       const orders = r && r.orders != null ? Number(r.orders) : 0;
@@ -310,7 +329,7 @@ async function getPaymentMethodsReport(req, res) {
         normText(r && r.payment_method_name, 96) + '|' +
         normText(r && r.payment_card_brand, 32);
       if (comboCache.has(comboKey)) return comboCache.get(comboKey);
-      const meta = paymentMetaFromParts(r);
+      const meta = applyPaymentIconOverride(paymentMetaFromParts(r), assetOverrides);
       const out = { key: meta.key || 'other', label: meta.label || 'Other', iconSrc: meta.iconSrc || null, iconAlt: meta.iconAlt || (meta.label || 'Other') };
       comboCache.set(comboKey, out);
       metaByKey.set(out.key, out);

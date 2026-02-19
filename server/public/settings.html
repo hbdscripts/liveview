@@ -29,6 +29,7 @@
           <div class="settings-nav-children">
             <a href="/settings?tab=kexo&kexoTab=general" class="list-group-item list-group-item-action settings-nav-child" data-settings-tab="kexo" data-settings-kexo-tab="general" role="tab" aria-controls="settings-panel-kexo">General</a>
             <a href="/settings?tab=kexo&kexoTab=icons-assets" class="list-group-item list-group-item-action settings-nav-child" data-settings-tab="kexo" data-settings-kexo-tab="icons-assets" role="tab" aria-controls="settings-panel-kexo">Icons &amp; assets</a>
+            <a href="/settings?tab=kexo&kexoTab=payment-methods" class="list-group-item list-group-item-action settings-nav-child" data-settings-tab="kexo" data-settings-kexo-tab="payment-methods" role="tab" aria-controls="settings-panel-kexo">Payment Methods</a>
             <a href="/settings?tab=kexo&kexoTab=theme-display" class="list-group-item list-group-item-action settings-nav-child" data-settings-tab="kexo" data-settings-kexo-tab="theme-display" role="tab" aria-controls="settings-panel-kexo">Theme &amp; display</a>
           </div>
         </div>
@@ -219,6 +220,34 @@
                     <div class="mt-3">
                       <button type="submit" class="btn btn-primary">Save</button>
                       <span id="settings-assets-msg" class="form-hint ms-2"></span>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </div>
+                  </div>
+                </div>
+              </div>
+              <div class="accordion-item">
+                <h4 class="accordion-header">
+                  <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#settings-kexo-accordion-payment-methods" aria-expanded="false" aria-controls="settings-kexo-accordion-payment-methods"><span class="d-flex align-items-center w-100 gap-2"><span class="kexo-settings-accordion-chevron" aria-hidden="true"><i class="fa-regular fa-chevron-down" aria-hidden="true"></i></span><span class="me-auto">Payment Methods</span></span></button>
+                </h4>
+                <div id="settings-kexo-accordion-payment-methods" class="accordion-collapse collapse" data-bs-parent="#settings-kexo-accordion">
+                  <div class="accordion-body">
+            <div id="settings-kexo-panel-payment-methods" class="settings-kexo-panel">
+              <div class="card card-sm mb-3 kexo-brand-assets">
+                <div class="card-header">
+                  <h4 class="card-title">Payment method icons</h4>
+                </div>
+                <div class="card-body">
+                  <p class="text-secondary small mb-3">Override icons for payment methods shown in Insights and dashboards. Leave empty to use the built-in icon.</p>
+                  <form id="settings-payment-methods-form">
+                    <div class="row g-3" id="settings-payment-methods-rows">
+                      <!-- Populated by JS from PAYMENT_METHODS_WITH_ASSETS -->
+                    </div>
+                    <div class="mt-3">
+                      <button type="submit" class="btn btn-primary">Save</button>
+                      <span id="settings-payment-methods-msg" class="form-hint ms-2"></span>
                     </div>
                   </form>
                 </div>

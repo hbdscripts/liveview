@@ -73,7 +73,7 @@
       var kexoToNew = { ui: 'icons-assets', icons: 'icons-assets', header: 'theme-display', color: 'theme-display', fonts: 'theme-display', notifications: 'theme-display' };
       if (kexoToNew[rawKexo]) rawKexo = kexoToNew[rawKexo];
       if (rawKexo === 'brand-appearance') rawKexo = 'icons-assets';
-      var allowedKexo = { general: true, 'icons-assets': true, 'theme-display': true };
+      var allowedKexo = { general: true, 'icons-assets': true, 'payment-methods': true, 'theme-display': true };
       if (allowedKexo[rawKexo] && keep.get('tab') === 'kexo') {
         keep.set('kexoTab', rawKexo);
       }
@@ -198,7 +198,7 @@
           var kexoMap = { ui: 'icons-assets', icons: 'icons-assets', header: 'theme-display', color: 'theme-display', fonts: 'theme-display', notifications: 'theme-display' };
           if (kexoMap[kk]) kk = kexoMap[kk];
           if (kk === 'brand-appearance') kk = 'icons-assets';
-          if (kk === 'general' || kk === 'icons-assets' || kk === 'theme-display') {
+          if (kk === 'general' || kk === 'icons-assets' || kk === 'payment-methods' || kk === 'theme-display') {
             initialKexoSubTab = kk;
           }
         }
@@ -654,6 +654,7 @@
   function ensureKexoUiPanel() {
     ensurePanelClass('settings-kexo-panel-general', 'settings-kexo-panel');
     ensurePanelClass('settings-kexo-panel-icons-assets', 'settings-kexo-panel');
+    ensurePanelClass('settings-kexo-panel-payment-methods', 'settings-kexo-panel');
     var themeDisplay = document.getElementById('settings-kexo-panel-theme-display');
     if (themeDisplay) themeDisplay.classList.add('settings-kexo-panel');
   }
@@ -731,6 +732,7 @@
       tabs: [
         { key: 'general', label: 'General', panelId: 'settings-kexo-panel-general' },
         { key: 'icons-assets', label: 'Icons & assets', panelId: 'settings-kexo-panel-icons-assets' },
+        { key: 'payment-methods', label: 'Payment Methods', panelId: 'settings-kexo-panel-payment-methods' },
         { key: 'theme-display', label: 'Theme & display', panelId: 'settings-kexo-panel-theme-display' },
       ],
     });
@@ -1843,6 +1845,7 @@
           el.value = overrides.logo || '';
         });
         try { loadThemeDefaultsAndPopulateAssets(overrides || {}); } catch (_) {}
+        try { populatePaymentMethodOverrides(overrides || {}); } catch (_) {}
 
         try { renderKpisUiPanel(kpiUiConfigCache); } catch (_) {}
         try {
@@ -2240,6 +2243,91 @@
         .catch(function () {
           setMsg('Save failed', false);
         });
+    });
+  }
+
+  var PAYMENT_METHODS_WITH_ASSETS = [
+    { key: 'visa', label: 'Visa', defaultSrc: '/assets/img/payments/visa.svg' },
+    { key: 'mastercard', label: 'Mastercard', defaultSrc: '/assets/img/payments/mastercard.svg' },
+    { key: 'amex', label: 'American Express', defaultSrc: '/assets/img/payments/americanexpress.svg' },
+    { key: 'paypal', label: 'PayPal', defaultSrc: '/assets/img/payments/paypal.svg' },
+    { key: 'klarna', label: 'Klarna', defaultSrc: '/assets/img/payments/klarna.svg' },
+    { key: 'shop_pay', label: 'Shop Pay', defaultSrc: '/assets/img/payments/shop-pay.svg' },
+    { key: 'apple_pay', label: 'Apple Pay', defaultSrc: '/assets/img/payments/applepay.svg' },
+    { key: 'google_pay', label: 'Google Pay', defaultSrc: '/assets/img/payments/google-pay.svg' },
+  ];
+
+  function populatePaymentMethodOverrides(overrides) {
+    var rows = document.getElementById('settings-payment-methods-rows');
+    if (!rows) return;
+    PAYMENT_METHODS_WITH_ASSETS.forEach(function (pm) {
+      var input = document.getElementById('settings-payment-' + pm.key);
+      if (!input) return;
+      var val = overrides['payment_' + pm.key] || overrides['payment' + pm.key.replace(/_/g, '')] || '';
+      input.value = typeof val === 'string' ? val.trim() : '';
+    });
+  }
+
+  function wirePaymentMethods() {
+    var rows = document.getElementById('settings-payment-methods-rows');
+    var form = document.getElementById('settings-payment-methods-form');
+    if (!rows || !form) return;
+
+    function setMsg(text, ok) {
+      var msg = document.getElementById('settings-payment-methods-msg');
+      if (!msg) return;
+      msg.textContent = text || '';
+      if (ok === true) msg.className = 'form-hint ms-2 text-success';
+      else if (ok === false) msg.className = 'form-hint ms-2 text-danger';
+      else msg.className = 'form-hint ms-2 text-secondary';
+    }
+
+    function escapeHtml(v) {
+      if (v == null) return '';
+      var s = String(v);
+      return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    if (rows.children.length === 0) {
+      PAYMENT_METHODS_WITH_ASSETS.forEach(function (pm) {
+        var col = document.createElement('div');
+        col.className = 'col-12 col-lg-6';
+        col.innerHTML =
+          '<label class="form-label d-flex align-items-center gap-2" for="settings-payment-' + escapeHtml(pm.key) + '">' +
+          '<img src="' + escapeHtml(pm.defaultSrc) + '" alt="" width="24" height="16" class="rounded" style="object-fit:contain" />' +
+          '<span>' + escapeHtml(pm.label) + '</span>' +
+          '</label>' +
+          '<input type="url" class="form-control" id="settings-payment-' + escapeHtml(pm.key) + '" placeholder="https://… (leave empty for default)" data-payment-key="' + escapeHtml(pm.key) + '" />';
+        rows.appendChild(col);
+      });
+    }
+
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var patch = {};
+      var base = '';
+      try { if (typeof API !== 'undefined') base = String(API || ''); } catch (_) {}
+      function normUrl(v) {
+        var raw = (v != null ? String(v).trim() : '') || '';
+        if (!raw) return '';
+        if (raw.length > 2048) return '';
+        if (/[<>"'\r\n\t]/.test(raw)) return '';
+        if (/^https?:\/\//i.test(raw) || /^\/\//.test(raw) || raw.charAt(0) === '/') return raw;
+        return '';
+      }
+      PAYMENT_METHODS_WITH_ASSETS.forEach(function (pm) {
+        var input = document.getElementById('settings-payment-' + pm.key);
+        if (!input) return;
+        var val = normUrl(input.value);
+        patch['payment_' + pm.key] = val || '';
+      });
+      setMsg('Saving…', null);
+      saveSettings({ assetOverrides: patch })
+        .then(function (r) {
+          if (r && r.ok) setMsg('Saved.', true);
+          else setMsg(r && r.error ? r.error : 'Save failed', false);
+        })
+        .catch(function () { setMsg('Save failed', false); });
     });
   }
 
@@ -3375,6 +3463,10 @@
         if (themeCard.parentElement !== iconsPanel) iconsPanel.appendChild(themeCard);
         return;
       }
+      if (viewKey === 'payment-methods') {
+        if (themeCard.parentElement !== themePanel) themePanel.appendChild(themeCard);
+        return;
+      }
       if (themeCard.parentElement !== themePanel) themePanel.appendChild(themeCard);
     }
 
@@ -3382,7 +3474,7 @@
       tabSelector: '#settings-kexo-main-tabs [data-settings-kexo-tab]',
       tabAttr: 'data-settings-kexo-tab',
       panelIdPrefix: 'settings-kexo-panel-',
-      keys: ['general', 'icons-assets', 'theme-display'],
+      keys: ['general', 'icons-assets', 'payment-methods', 'theme-display'],
       initialKey: initialKey || activeKexoSubTab || 'general',
       onActivate: function (key) {
         activeKexoSubTab = key;
@@ -5514,6 +5606,7 @@
 
     wirePlanBasedBrandingLocks();
     wireAssets();
+    wirePaymentMethods();
     wireGeneralSettingsSave();
     // Integrations main-tabs are wired above so left-nav child clicks can activate them.
     wireGoogleAdsSettingsUi();
