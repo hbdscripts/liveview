@@ -5560,32 +5560,35 @@
           }
 
           var icon = top && top.iconHtml ? String(top.iconHtml) : '';
+          var labelText = top && top.label != null ? String(top.label) : '—';
           var valueText = fmtMetric(metric, top);
-          var subText = metric === 'ctr' ? 'CTR' : (String(Math.round(pct)) + '% share');
+          var shareText = metric === 'ctr' ? 'CTR' : (String(Math.round(pct)) + '% share');
+          var tip = labelText + '\n' + valueText + '\n' + (metric === 'ctr' ? ('CTR: ' + valueText) : ('Share: ' + (Math.round(pct * 10) / 10).toFixed(1) + '%'));
 
-          var size = 160;
-          var r = 60;
-          var strokeW = 12;
+          var size = 176;
+          var r = 66;
+          var strokeW = 13;
           var cx = Math.round(size / 2);
           var cy = Math.round(size / 2);
           var circ = Math.round(2 * Math.PI * r * 1000) / 1000;
-          var tip = (top && top.label != null ? String(top.label) : '—') + '\n' + valueText + '\n' + (metric === 'ctr' ? ('CTR: ' + valueText) : ('Share: ' + (Math.round(pct * 10) / 10).toFixed(1) + '%'));
 
           chartEl.innerHTML =
-            '<div class="kexo-ovw-ring" title="' + escapeHtml(tip) + '">' +
-              '<svg width="' + size + '" height="' + size + '" viewBox="0 0 ' + size + ' ' + size + '" aria-hidden="true">' +
-                '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="rgba(15,23,42,0.10)" stroke-width="' + strokeW + '"></circle>' +
-                '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="var(--kexo-accent, var(--kexo-accent-1, #4b94e4))" stroke-width="' + strokeW + '" stroke-linecap="round"' +
-                  ' style="transform: rotate(-90deg); transform-origin: ' + cx + 'px ' + cy + 'px; transition: stroke-dashoffset 520ms cubic-bezier(.2,.9,.2,1);"' +
-                  ' stroke-dasharray="' + escapeHtml(String(circ)) + '" stroke-dashoffset="' + escapeHtml(String(circ)) + '"' +
-                  ' data-kexo-radial-pct="' + escapeHtml(String(pct)) + '" data-kexo-radial-circ="' + escapeHtml(String(circ)) + '"' +
-                '></circle>' +
-              '</svg>' +
-              '<div class="kexo-ovw-ring-center">' +
-                (icon ? ('<div class="kexo-ovw-ring-icon" aria-hidden="true">' + icon + '</div>') : '') +
-                '<div class="kexo-ovw-ring-value">' + escapeHtml(valueText) + '</div>' +
-                '<div class="kexo-ovw-ring-sub">' + escapeHtml(subText) + '</div>' +
+            '<div class="kexo-ovw-ring-wrap" title="' + escapeHtml(tip) + '">' +
+              '<div class="kexo-ovw-ring">' +
+                '<svg width="' + size + '" height="' + size + '" viewBox="0 0 ' + size + ' ' + size + '" aria-hidden="true">' +
+                  '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="rgba(15,23,42,0.10)" stroke-width="' + strokeW + '"></circle>' +
+                  '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="var(--kexo-accent, var(--kexo-accent-1, #4b94e4))" stroke-width="' + strokeW + '" stroke-linecap="round"' +
+                    ' style="transform: rotate(-90deg); transform-origin: ' + cx + 'px ' + cy + 'px; transition: stroke-dashoffset 520ms cubic-bezier(.2,.9,.2,1);"' +
+                    ' stroke-dasharray="' + escapeHtml(String(circ)) + '" stroke-dashoffset="' + escapeHtml(String(circ)) + '"' +
+                    ' data-kexo-radial-pct="' + escapeHtml(String(pct)) + '" data-kexo-radial-circ="' + escapeHtml(String(circ)) + '"' +
+                  '></circle>' +
+                '</svg>' +
+                '<div class="kexo-ovw-ring-center">' +
+                  (icon ? ('<div class="kexo-ovw-ring-icon" aria-hidden="true">' + icon + '</div>') : '') +
+                  '<div class="kexo-ovw-ring-value">' + escapeHtml(labelText) + '</div>' +
+                '</div>' +
               '</div>' +
+              '<div class="kexo-ovw-ring-share">' + escapeHtml(shareText) + '</div>' +
             '</div>';
           animateWidgetRadials(chartEl);
         }
@@ -5613,15 +5616,32 @@
           }
           if (key === 'devices') {
             var devRows = payload.devices && Array.isArray(payload.devices.rows) ? payload.devices.rows : [];
-            return devRows.map(function (r) {
-              var dt = r && r.device_type != null ? String(r.device_type) : 'unknown';
-              var label = dt ? (dt.charAt(0).toUpperCase() + dt.slice(1)) : '—';
-              var icon = dt === 'mobile' ? 'fa-light fa-mobile' : dt === 'tablet' ? 'fa-light fa-tablet' : dt === 'desktop' ? 'fa-light fa-desktop' : 'fa-light fa-device-desktop';
+            var platformAgg = {};
+            devRows.forEach(function (r) {
+              var platforms = r && Array.isArray(r.platforms) ? r.platforms : [];
+              platforms.forEach(function (p) {
+                var plat = p && p.platform != null ? String(p.platform).trim().toLowerCase() : '';
+                if (!plat) return;
+                var cur = platformAgg[plat] || { sessions: 0, orders: 0, revenueGbp: 0 };
+                cur.sessions += Number(p && p.sessions) || 0;
+                cur.orders += Number(p && p.orders) || 0;
+                cur.revenueGbp += Number(p && (p.revenue_gbp != null ? p.revenue_gbp : p.revenue)) || 0;
+                platformAgg[plat] = cur;
+              });
+            });
+            var platKeys = Object.keys(platformAgg).sort(function (a, b) {
+              return (platformAgg[b].sessions || 0) - (platformAgg[a].sessions || 0);
+            });
+            return platKeys.map(function (plat) {
+              var agg = platformAgg[plat];
+              var label = plat ? (plat.charAt(0).toUpperCase() + plat.slice(1)) : '—';
+              var icon = plat === 'android' ? 'fa-brands fa-android' : plat === 'ios' ? 'fa-brands fa-apple' : plat === 'windows' ? 'fa-brands fa-windows' : plat === 'macos' || plat === 'mac' ? 'fa-brands fa-apple' : plat === 'linux' ? 'fa-brands fa-linux' : plat === 'other' ? 'fa-light fa-desktop' : 'fa-light fa-mobile-screen';
+              var ctr = (agg.sessions > 0 && agg.orders != null) ? ((agg.orders / agg.sessions) * 100) : null;
               return {
                 label: label,
-                revenue: Number(r && r.revenue_gbp) || 0,
-                clicks: Number(r && r.sessions) || 0,
-                ctr: (r && r.conversion_pct != null) ? Number(r.conversion_pct) : null,
+                revenue: Math.round((Number(agg.revenueGbp) || 0) * 100) / 100,
+                clicks: Number(agg.sessions) || 0,
+                ctr: Number.isFinite(ctr) ? Math.round(ctr * 10) / 10 : null,
                 iconHtml: '<i class="' + escapeHtml(icon) + '" aria-hidden="true"></i>',
               };
             });
@@ -5707,6 +5727,15 @@
           if (!widgetSupportsSortBy(key, sortBy)) sortBy = 'revenue';
           var rows = extractRows(key, data);
           var top = sortTop(rows, sortBy, TOP_N);
+          if (key === 'finishes') {
+            var payload = (data && data.ok && data.payload) ? data.payload : data;
+            var tables = Array.isArray(payload && payload.tables) ? payload.tables : [];
+            var gb = cfg && cfg.widgets && cfg.widgets.finishes && cfg.widgets.finishes.groupBy ? String(cfg.widgets.finishes.groupBy).trim().toLowerCase() : 'finishes';
+            var table = (gb ? tables.find(function (t) { return t && String(t.id || '').trim().toLowerCase() === gb; }) : null) || tables[0] || null;
+            var titleText = table && table.name ? String(table.name) : 'Finishes';
+            var titleEl = document.querySelector('[data-kexo-overview-widget="finishes"] .kexo-widget-title');
+            if (titleEl) titleEl.textContent = titleText;
+          }
           if (!top || !top.length) {
             try { document.getElementById('dash-ovw-' + key + '-chart').innerHTML = ''; } catch (_) {}
             try { document.getElementById('dash-ovw-' + key + '-list').innerHTML = '<div class="kexo-widget-empty">No data</div>'; } catch (_) {}
