@@ -4421,6 +4421,7 @@
         return out;
       }
 
+      var WIDGET_ORDER_FALLBACK = ['variant', 'devices', 'attribution', 'payment-types', 'abandoned'];
       function applyDashWidgetSort() {
         var sortBy = (readDashWidgetsPrefs().sortBy || 'revenue').trim().toLowerCase();
         var container = document.getElementById('dash-widgets-grid-all');
@@ -4431,7 +4432,13 @@
         cards.sort(function (a, b) {
           var va = parseFloat(a.getAttribute('data-kexo-widget-' + key) || 0) || 0;
           var vb = parseFloat(b.getAttribute('data-kexo-widget-' + key) || 0) || 0;
-          return vb - va;
+          if (vb !== va) return vb - va;
+          var wa = (a.getAttribute('data-kexo-widget') || '').trim().toLowerCase();
+          var wb = (b.getAttribute('data-kexo-widget') || '').trim().toLowerCase();
+          var ia = WIDGET_ORDER_FALLBACK.indexOf(wa);
+          var ib = WIDGET_ORDER_FALLBACK.indexOf(wb);
+          if (ia >= 0 && ib >= 0) return ia - ib;
+          return String(wa).localeCompare(String(wb));
         });
         cards.forEach(function (c) { container.appendChild(c); });
       }
@@ -5045,7 +5052,7 @@
                   var label = r && (r.ua_browser || r.browser || r.name) ? String(r.ua_browser || r.browser || r.name) : '—';
                   var value = r && (r.revenue_gbp != null || r.revenue != null) ? Number(r.revenue_gbp != null ? r.revenue_gbp : r.revenue) : 0;
                   if (!Number.isFinite(value)) value = 0;
-                  return { label: label, valueGbp: value, iconHtml: browserIconHtmlForKey(label, label) };
+                  return { label: label, valueGbp: value, iconHtml: browserIconHtmlForKey(label, label), sessions: r && r.sessions != null ? Number(r.sessions) : 0 };
                 });
               } else {
                 var payload2 = (data && data.ok && data.payload) ? data.payload : data;
@@ -5104,8 +5111,8 @@
                 var sig = widgetSig({ rk: rk, dim: prefs.devicesDim, current: currentTop, placeholders: placeholders });
                 if (!force && dashWidgetLastRenderSig[mountId] && dashWidgetLastRenderSig[mountId] === sig) return;
                 dashWidgetLastRenderSig[mountId] = sig;
-                var devSessions = rows.reduce(function (acc, r) { return acc + (Number(r.sessions) || 0); }, 0);
-                var devConv = list2.length && list2[0] && list2[0].conversion_pct != null ? Number(list2[0].conversion_pct) : 0;
+                var devSessions = rows.reduce(function (acc, r) { return acc + (Number(r && r.sessions) || 0); }, 0);
+                var devConv = (prefs.devicesDim === 'browsers' || !list2 || !list2.length) ? 0 : (list2[0] && list2[0].conversion_pct != null ? Number(list2[0].conversion_pct) : 0);
                 renderWidgetRadialAndVbars(mountId, topRow, barRows, {
                   accentCss: 'background: var(--kexo-accent-2, #3eb3ab);',
                   ringStroke: 'var(--kexo-accent-2, #3eb3ab)',
