@@ -49,6 +49,17 @@ function safeUrlHost(urlRaw) {
   }
 }
 
+/** True if referrer host is internal/self (store, Shopify checkout, etc.) — treat as no referrer for classification. */
+function isInternalReferrerHost(referrerHost, entryUrl) {
+  const host = typeof referrerHost === 'string' ? referrerHost.trim().toLowerCase() : '';
+  if (!host) return false;
+  const entryHost = safeUrlHost(entryUrl);
+  if (entryHost && (host === entryHost || host.endsWith('.' + entryHost))) return true;
+  if (host === 'checkout.shopify.com' || host === 'shopify.com') return true;
+  if (host === 'myshopify.com' || host.endsWith('.myshopify.com')) return true;
+  return false;
+}
+
 function safeParseUrl(urlRaw) {
   const raw = typeof urlRaw === 'string' ? urlRaw.trim() : '';
   if (!raw) return null;
@@ -386,6 +397,7 @@ async function deriveAttribution(inputs = {}) {
   const entry = parseEntryUrlParams(entryUrl);
   const clickIds = extractClickIds(entry);
   const referrerHost = safeUrlHost(referrer);
+  const effectiveReferrerHost = isInternalReferrerHost(referrerHost, entryUrl) ? '' : referrerHost;
 
   const cfg = await readAttributionConfigCached().catch(() => null);
   const variantsByKey = cfg && cfg.variantsByKey ? cfg.variantsByKey : new Map();
@@ -503,7 +515,7 @@ async function deriveAttribution(inputs = {}) {
   // 3) Heuristics
   const hasAnyUtm = !!(utmSource || utmMedium || utmCampaign || utmContent || utmTerm);
   const hasAnyClickId = !!(clickIds && (clickIds.gclid || clickIds.msclkid || clickIds.fbclid || clickIds.ttclid || clickIds.twclid || clickIds.wbraid || clickIds.gbraid || clickIds.yclid));
-  const isDirect = !hasAnyUtm && !hasAnyClickId && !referrerHost;
+  const isDirect = !hasAnyUtm && !hasAnyClickId && !effectiveReferrerHost;
   if (isDirect) {
     const meta = resolveVariantMeta('direct:house');
     return {
@@ -603,8 +615,8 @@ async function deriveAttribution(inputs = {}) {
     }
   }
 
-  // Referral (last resort when referrer is present and we have no UTMs)
-  if (referrerHost && !hasAnyUtm && !hasAnyClickId) {
+  // Referral (last resort when external referrer is present and we have no UTMs)
+  if (effectiveReferrerHost && !hasAnyUtm && !hasAnyClickId) {
     return {
       channel: 'referral',
       source: 'other',

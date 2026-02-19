@@ -140,7 +140,7 @@ test('deriveAttribution: non-allowlisted kexo_attr ignored', async () => {
   });
 });
 
-test('deriveAttribution: internal referrer (no UTM) → referral/other or direct', async () => {
+test('deriveAttribution: internal referrer checkout.shopify.com (no UTM) → direct', async () => {
   await withTempDb(async () => {
     const { deriveAttribution, invalidateAttributionConfigCache } = require('../server/attribution/deriveAttribution');
     invalidateAttributionConfigCache();
@@ -151,9 +151,28 @@ test('deriveAttribution: internal referrer (no UTM) → referral/other or direct
       utm_medium: '',
     });
     assert.ok(out);
-    assert.ok(out.variant);
-    assert.ok(out.confidence === 'heuristic' || out.confidence === 'direct');
-    assert.ok(out.source === 'other' || out.source === 'direct');
+    assert.equal(out.variant, 'direct:house');
+    assert.equal(out.confidence, 'direct');
+    assert.equal(out.source, 'direct');
+    assert.equal(out.channel, 'direct');
+  });
+});
+
+test('deriveAttribution: self-referrer (referrer host = entry host, no UTM) → direct', async () => {
+  await withTempDb(async () => {
+    const { deriveAttribution, invalidateAttributionConfigCache } = require('../server/attribution/deriveAttribution');
+    invalidateAttributionConfigCache();
+    const out = await deriveAttribution({
+      entry_url: 'https://mystore.com/',
+      referrer: 'https://mystore.com/checkout',
+      utm_source: '',
+      utm_medium: '',
+    });
+    assert.ok(out);
+    assert.equal(out.variant, 'direct:house');
+    assert.equal(out.confidence, 'direct');
+    assert.equal(out.source, 'direct');
+    assert.equal(out.channel, 'direct');
   });
 });
 

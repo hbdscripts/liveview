@@ -262,6 +262,14 @@ async function getAttributionReport(req, res) {
         const row = variantsByKey.get(key);
         return row && row.label ? String(row.label) : titleFromKey(key);
       }
+      /** Display label for variant; when no configured label and key ends with :house, drop "House" suffix. */
+      function variantDisplayLabel(k) {
+        const key = normalizeVariantKey(k) || 'other:house';
+        const row = variantsByKey.get(key);
+        if (row && row.label && String(row.label).trim()) return String(row.label).trim();
+        if (key.endsWith(':house')) return titleFromKey(key.slice(0, key.length - 5));
+        return titleFromKey(key);
+      }
       function variantIconSpec(k) {
         const key = normalizeVariantKey(k) || 'other:house';
         const row = variantsByKey.get(key);
@@ -327,10 +335,9 @@ async function getAttributionReport(req, res) {
         sessionsByKey.set(key, (sessionsByKey.get(key) || 0) + (Number.isFinite(n) ? Math.max(0, Math.trunc(n)) : 0));
       }
 
-      // Build hierarchical rows: channel → source → variant.
+      // Build hierarchical rows: channel → variant (2 levels). Second-level "sources" are variant rows.
       const channelAgg = new Map(); // channel -> agg
-      const sourceAgg = new Map(); // channel|source -> agg
-      const variantAgg = new Map(); // channel|source|variant|owner_kind -> agg
+      const variantLevelAgg = new Map(); // channel|variant|owner_kind -> agg
 
       function ensureAgg(map, key) {
         const prev = map.get(key);
@@ -341,29 +348,22 @@ async function getAttributionReport(req, res) {
       }
 
       for (const [key, sessions] of sessionsByKey.entries()) {
-        const [channel, source, variant, ownerKind] = key.split('|');
-        const vKey = [channel, source, variant, ownerKind].join('|');
-        const v = ensureAgg(variantAgg, vKey);
-        v.sessions += sessions;
-        const sKey = [channel, source].join('|');
-        const s = ensureAgg(sourceAgg, sKey);
-        s.sessions += sessions;
+        const [channel, , variant, ownerKind] = key.split('|');
         const c = ensureAgg(channelAgg, channel);
         c.sessions += sessions;
+        const vKey = [channel, variant, ownerKind].join('|');
+        const v = ensureAgg(variantLevelAgg, vKey);
+        v.sessions += sessions;
       }
       for (const [key, sales] of salesByKey.entries()) {
-        const [channel, source, variant, ownerKind] = key.split('|');
-        const vKey = [channel, source, variant, ownerKind].join('|');
-        const v = ensureAgg(variantAgg, vKey);
-        v.orders += Number(sales.orders) || 0;
-        v.revenueGbp += Number(sales.revenueGbp) || 0;
-        const sKey = [channel, source].join('|');
-        const s = ensureAgg(sourceAgg, sKey);
-        s.orders += Number(sales.orders) || 0;
-        s.revenueGbp += Number(sales.revenueGbp) || 0;
+        const [channel, , variant, ownerKind] = key.split('|');
         const c = ensureAgg(channelAgg, channel);
         c.orders += Number(sales.orders) || 0;
         c.revenueGbp += Number(sales.revenueGbp) || 0;
+        const vKey = [channel, variant, ownerKind].join('|');
+        const v = ensureAgg(variantLevelAgg, vKey);
+        v.orders += Number(sales.orders) || 0;
+        v.revenueGbp += Number(sales.revenueGbp) || 0;
       }
 
       const channelsOut = [];
@@ -372,47 +372,26 @@ async function getAttributionReport(req, res) {
       for (const channelKey of channelKeys) {
         const cAgg = channelAgg.get(channelKey) || { sessions: 0, orders: 0, revenueGbp: 0 };
         const sourcesOut = [];
-        const sourcesForChannel = Array.from(sourceAgg.keys())
+        const variantKeysForChannel = Array.from(variantLevelAgg.keys())
           .filter((k) => k.split('|')[0] === channelKey)
-          .sort((a, b) => (sourceAgg.get(b).sessions - sourceAgg.get(a).sessions) || String(a).localeCompare(String(b)));
-        for (const csKey of sourcesForChannel) {
-          const [, sourceKey] = csKey.split('|');
-          const sAgg = sourceAgg.get(csKey) || { sessions: 0, orders: 0, revenueGbp: 0 };
-          const variantsOut = [];
-          const variantsForSource = Array.from(variantAgg.keys())
-            .filter((k) => {
-              const parts = k.split('|');
-              return parts[0] === channelKey && parts[1] === sourceKey;
-            })
-            .sort((a, b) => (variantAgg.get(b).sessions - variantAgg.get(a).sessions) || String(a).localeCompare(String(b)));
-          for (const vKey of variantsForSource) {
-            const parts = vKey.split('|');
-            const variantKey = parts[2] || 'other:house';
-            const ownerKind = parts[3] || 'house';
-            if (!includeUnknownObserved && (variantKey === 'other:house' || variantKey === 'unknown:house')) continue;
-            const vAgg = variantAgg.get(vKey) || { sessions: 0, orders: 0, revenueGbp: 0 };
-            variantsOut.push({
-              variant_key: variantKey,
-              owner_kind: ownerKind,
-              label: variantLabel(variantKey),
-              icon_spec: variantIconSpec(variantKey),
-              sessions: vAgg.sessions,
-              orders: vAgg.orders,
-              revenue_gbp: Math.round((Number(vAgg.revenueGbp) || 0) * 100) / 100,
-              conversion_pct: conversionPct(vAgg.orders, vAgg.sessions),
-              aov_gbp: aovGbp(vAgg.revenueGbp, vAgg.orders),
-            });
-          }
+          .sort((a, b) => (variantLevelAgg.get(b).sessions - variantLevelAgg.get(a).sessions) || String(a).localeCompare(String(b)));
+        for (const vKey of variantKeysForChannel) {
+          const parts = vKey.split('|');
+          const variantKey = parts[1] || 'other:house';
+          const ownerKind = parts[2] || 'house';
+          if (!includeUnknownObserved && (variantKey === 'other:house' || variantKey === 'unknown:house')) continue;
+          const vAgg = variantLevelAgg.get(vKey) || { sessions: 0, orders: 0, revenueGbp: 0 };
           sourcesOut.push({
-            source_key: sourceKey,
-            label: sourceLabel(sourceKey),
-            icon_spec: sourceIconSpec(sourceKey),
-            sessions: sAgg.sessions,
-            orders: sAgg.orders,
-            revenue_gbp: Math.round((Number(sAgg.revenueGbp) || 0) * 100) / 100,
-            conversion_pct: conversionPct(sAgg.orders, sAgg.sessions),
-            aov_gbp: aovGbp(sAgg.revenueGbp, sAgg.orders),
-            variants: variantsOut,
+            source_key: variantKey,
+            label: variantDisplayLabel(variantKey),
+            icon_spec: variantIconSpec(variantKey),
+            owner_kind: ownerKind,
+            sessions: vAgg.sessions,
+            orders: vAgg.orders,
+            revenue_gbp: Math.round((Number(vAgg.revenueGbp) || 0) * 100) / 100,
+            conversion_pct: conversionPct(vAgg.orders, vAgg.sessions),
+            aov_gbp: aovGbp(vAgg.revenueGbp, vAgg.orders),
+            variants: [],
           });
         }
         channelsOut.push({
