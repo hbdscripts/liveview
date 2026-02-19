@@ -166,7 +166,7 @@
       bodyId: 'attribution-body',
       emptyMessage: 'No attribution data.',
       columns: [
-        { key: 'attribution', label: 'Attribution', iconKey: 'table-short-source' },
+        { key: 'attribution', label: 'Channels', iconKey: 'table-short-source' },
         { key: 'sessions', label: 'Sessions', iconKey: 'table-icon-sessions' },
         { key: 'orders', label: 'Orders', iconKey: 'table-icon-orders' },
         { key: 'cr', label: 'CR%', iconKey: 'table-icon-cr' },

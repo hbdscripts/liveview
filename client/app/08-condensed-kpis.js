@@ -3226,7 +3226,6 @@
           var wrap = document.createElement('section');
           wrap.className = 'side-panel-section side-panel-summary';
           wrap.innerHTML =
-            '<h4 class="side-panel-section-title"><i class="fa-light fa-id-card side-panel-icon" aria-hidden="true"></i>Session</h4>' +
             '<div class="side-panel-summary-grid" id="side-summary"></div>';
           header.parentNode.insertBefore(wrap, header.nextSibling);
           return wrap.querySelector('#side-summary');
