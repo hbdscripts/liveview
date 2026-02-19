@@ -450,6 +450,48 @@ function stripAdminMarkupFromSettings(html) {
     .replace(/<!-- KEXO_COST_EXPENSES_SCRIPT_START -->[\s\S]*?<!-- KEXO_COST_EXPENSES_SCRIPT_END -->/g, '');
 }
 
+/** Parse tab from query and return valid main tab key. Mirrors settings-page.js logic. */
+function getSettingsInitialTabFromQuery(queryOrObj) {
+  const params = queryOrObj && typeof queryOrObj === 'object' && !(queryOrObj instanceof URLSearchParams)
+    ? new URLSearchParams(queryOrObj)
+    : new URLSearchParams(typeof queryOrObj === 'string' ? queryOrObj : '');
+  let rawTab = String(params.get('tab') || '').trim().toLowerCase();
+  if (rawTab === 'sources') rawTab = 'attribution';
+  if (rawTab === 'general' || rawTab === 'assets' || rawTab === 'theme') rawTab = 'kexo';
+  if (rawTab === 'charts' || rawTab === 'kpis') rawTab = 'layout';
+  const allowed = new Set(['kexo', 'integrations', 'attribution', 'insights', 'layout', 'cost-expenses', 'admin']);
+  if (!allowed.has(rawTab)) return 'kexo';
+  return rawTab;
+}
+
+/** Apply correct settings panel and nav active state from URL so direct links show the right tab immediately (no flash). */
+function applySettingsInitialTab(html, queryOrObj, hasAdminNav, hasCostExpensesNav) {
+  const tab = getSettingsInitialTabFromQuery(queryOrObj);
+  if (tab === 'admin' && !hasAdminNav) return html;
+  if (tab === 'cost-expenses' && !hasCostExpensesNav) return html;
+  const navClass = 'list-group-item list-group-item-action d-flex align-items-center';
+  const navClassActive = navClass + ' active';
+  let out = String(html || '')
+    .replace(/\bid="settings-panel-kexo"\s+class="settings-panel active"/, 'id="settings-panel-kexo" class="settings-panel"')
+    .replace(/\bid="settings-panel-integrations"\s+class="settings-panel"/, tab === 'integrations' ? 'id="settings-panel-integrations" class="settings-panel active"' : 'id="settings-panel-integrations" class="settings-panel"')
+    .replace(/\bid="settings-panel-attribution"\s+class="settings-panel"/, tab === 'attribution' ? 'id="settings-panel-attribution" class="settings-panel active"' : 'id="settings-panel-attribution" class="settings-panel"')
+    .replace(/\bid="settings-panel-insights"\s+class="settings-panel"/, tab === 'insights' ? 'id="settings-panel-insights" class="settings-panel active"' : 'id="settings-panel-insights" class="settings-panel"')
+    .replace(/\bid="settings-panel-layout"\s+class="settings-panel"/, tab === 'layout' ? 'id="settings-panel-layout" class="settings-panel active"' : 'id="settings-panel-layout" class="settings-panel"')
+    .replace(/\bid="settings-panel-cost-expenses"\s+class="settings-panel"/, tab === 'cost-expenses' ? 'id="settings-panel-cost-expenses" class="settings-panel active"' : 'id="settings-panel-cost-expenses" class="settings-panel"')
+    .replace(/\bid="settings-panel-admin"\s+class="settings-panel[^"]*"/, tab === 'admin' ? 'id="settings-panel-admin" class="settings-panel active kexo-admin-only"' : 'id="settings-panel-admin" class="settings-panel kexo-admin-only"')
+    .replace(/\bid="settings-panel-kexo"\s+class="settings-panel"/, tab === 'kexo' ? 'id="settings-panel-kexo" class="settings-panel active"' : 'id="settings-panel-kexo" class="settings-panel"');
+  // Nav: add active to the correct parent tab link
+  const navIds = ['kexo', 'integrations', 'layout', 'attribution', 'insights', 'cost-expenses', 'admin'];
+  for (const id of navIds) {
+    if (id === 'admin' && !hasAdminNav) continue;
+    if (id === 'cost-expenses' && !hasCostExpensesNav) continue;
+    const needle = `id="settings-tab-${id}" class="${navClass}"`;
+    const replacement = `id="settings-tab-${id}" class="${tab === id ? navClassActive : navClass}"`;
+    out = out.replace(needle, replacement);
+  }
+  return out;
+}
+
 function appendOriginalQuery(targetPath, req) {
   const original = String((req && req.originalUrl) || '');
   const qIndex = original.indexOf('?');
@@ -552,6 +594,9 @@ app.get('/settings', async (req, res, next) => {
     let html = resolveIncludes(raw);
     html = applySentryTemplate(html);
     if (!isMaster) html = stripAdminMarkupFromSettings(html);
+    const hasAdminNav = html.includes('id="settings-tab-admin"');
+    const hasCostExpensesNav = html.includes('id="settings-tab-cost-expenses"');
+    html = applySettingsInitialTab(html, req.query, hasAdminNav, hasCostExpensesNav);
     res.type('html').send(applyAssetVersionToHtml(html));
   } catch (err) {
     next(err);
