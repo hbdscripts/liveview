@@ -248,18 +248,12 @@
     if (!isHm(hm)) hm = '';
     var title = safeStr(els.title && els.title.value);
     var kind = safeStr(els.kind && els.kind.value);
-    var magVal = safeStr(els.magVal && els.magVal.value);
-    var magUnit = safeStr(els.magUnit && els.magUnit.value) || '%';
-    var tags = safeStr(els.tags && els.tags.value);
     var notes = safeStr(els.notes && els.notes.value);
     return {
       event_ymd: ymd,
       event_hm: hm || undefined,
       title: title,
       kind: kind || undefined,
-      magnitude_value: magVal ? Number(magVal) : undefined,
-      magnitude_unit: magVal ? magUnit : undefined,
-      tags: tags || undefined,
       notes: notes || undefined,
     };
   }
@@ -267,9 +261,6 @@
   function clearCreateForm() {
     try { if (els.title) els.title.value = ''; } catch (_) {}
     try { if (els.kind) els.kind.value = ''; } catch (_) {}
-    try { if (els.magVal) els.magVal.value = ''; } catch (_) {}
-    try { if (els.magUnit) els.magUnit.value = '%'; } catch (_) {}
-    try { if (els.tags) els.tags.value = ''; } catch (_) {}
     try { if (els.notes) els.notes.value = ''; } catch (_) {}
     updateCreateUi();
   }
@@ -293,7 +284,6 @@
       '<th style="min-width:80px">Time</th>' +
       '<th style="min-width:320px">Title</th>' +
       '<th style="min-width:90px">Kind</th>' +
-      '<th style="min-width:140px">Tags</th>' +
       '<th style="min-width:90px">Status</th>' +
       '<th class="text-end" style="min-width:110px">View Stats</th>' +
     '</tr></thead><tbody>';
@@ -302,7 +292,6 @@
       var id = p.id;
       var ymd = p.event_ymd || '';
       var time = p.event_ts ? hmInTzFromMs(p.event_ts) : '';
-      var tags = Array.isArray(p.tags) ? p.tags.join(', ') : '';
       var status = p.archived_at ? 'Archived' : 'Active';
       var isSel = state.selected && state.selected.id === id;
       html += '<tr data-pin-id="' + esc(id) + '" tabindex="0" role="button" aria-label="View stats for pin: ' + esc(p.title || '') + '" style="cursor:pointer;' + (isSel ? 'background:rgba(15,23,42,0.03);' : '') + '">' +
@@ -310,7 +299,6 @@
         '<td data-label="Time">' + esc(time || '') + '</td>' +
         '<td data-label="Title"><strong style="font-weight:600">' + esc(p.title || '') + '</strong></td>' +
         '<td data-label="Kind">' + esc(p.kind || '') + '</td>' +
-        '<td data-label="Tags">' + esc(tags) + '</td>' +
         '<td data-label="Status">' + esc(status) + '</td>' +
         '<td class="text-end" data-label="View Stats"><button class="btn btn-sm btn-ghost-secondary" type="button" data-pin-action="view" data-pin-id="' + esc(id) + '">View Stats</button></td>' +
       '</tr>';
@@ -437,9 +425,6 @@
     try { if (els.editTime) els.editTime.value = pin.event_ts ? hmInTzFromMs(pin.event_ts) : ''; } catch (_) {}
     try { if (els.editTitle) els.editTitle.value = pin.title || ''; } catch (_) {}
     try { if (els.editKind) els.editKind.value = pin.kind || ''; } catch (_) {}
-    try { if (els.editMagVal) els.editMagVal.value = (pin.magnitude_value != null ? String(pin.magnitude_value) : ''); } catch (_) {}
-    try { if (els.editMagUnit) els.editMagUnit.value = (pin.magnitude_unit || '%'); } catch (_) {}
-    try { if (els.editTags) els.editTags.value = (Array.isArray(pin.tags) ? pin.tags.join(', ') : ''); } catch (_) {}
     try { if (els.editNotes) els.editNotes.value = pin.notes || ''; } catch (_) {}
 
     applyDetailSubview();
@@ -451,18 +436,12 @@
     if (!isHm(hm)) hm = '';
     var title = safeStr(els.editTitle && els.editTitle.value);
     var kind = safeStr(els.editKind && els.editKind.value);
-    var magVal = safeStr(els.editMagVal && els.editMagVal.value);
-    var magUnit = safeStr(els.editMagUnit && els.editMagUnit.value) || '%';
-    var tags = safeStr(els.editTags && els.editTags.value);
     var notes = safeStr(els.editNotes && els.editNotes.value);
     return {
       event_ymd: ymd,
       event_hm: hm || undefined,
       title: title,
       kind: kind || undefined,
-      magnitude_value: magVal ? Number(magVal) : null,
-      magnitude_unit: magVal ? magUnit : null,
-      tags: tags || '',
       notes: notes || '',
     };
   }
@@ -515,14 +494,14 @@
       var absTxt = stripDeltaGlyphs(absTxtRaw);
       var pctTxt = stripDeltaGlyphs(pctTxtRaw);
       var deltaClass = absN == null ? 'tools-delta-neutral' : (absN > 0 ? 'tools-delta-pos' : (absN < 0 ? 'tools-delta-neg' : 'tools-delta-neutral'));
+      var hasBefore = beforeVal != null && beforeVal !== '' && String(beforeVal).trim() !== '' && String(beforeVal).trim() !== '0.0%';
+      var hasDelta = absN != null || (deltaPct != null && Number.isFinite(Number(deltaPct)));
+      var beforeLine = (!hasBefore && !hasDelta) ? 'No data for compared time' : ('<span class="tools-ba-label">Before:</span> <span class="tools-ba-value">' + esc(f(beforeVal)) + '</span> <span class="' + deltaClass + '">' + esc(absTxt) + '</span> <span class="' + deltaClass + '">(' + esc(pctTxt) + ')</span>');
       return '' +
         '<div class="tools-metric">' +
           '<div class="k">' + esc(label) + '</div>' +
           '<div class="v">' + esc(f(afterVal)) + '</div>' +
-          '<div class="tools-note tools-note--tight">' +
-            '<span class="tools-ba-label">Before:</span> <span class="tools-ba-value">' + esc(f(beforeVal)) + '</span>' +
-            ' · <span class="tools-delta-label">Δ</span> <span class="' + deltaClass + '">' + esc(absTxt) + '</span> <span class="' + deltaClass + '">(' + esc(pctTxt) + ')</span>' +
-          '</div>' +
+          '<div class="tools-note tools-note--tight">' + beforeLine + '</div>' +
         '</div>';
     }
 

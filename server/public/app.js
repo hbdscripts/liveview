@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: d2210e0f2900831f
+// checksum: cfd5d5051c6a2e51
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -1885,6 +1885,14 @@ const API = '';
         return wrap.querySelector('.grid-row--header .grid-cell:first-child, table thead th:first-child');
       }
 
+      function getWrapIndex(wrap) {
+        if (!wrap || !document.querySelectorAll) return 0;
+        var list = [];
+        try { list = Array.prototype.slice.call(document.querySelectorAll(WRAP_SELECTOR)); } catch (_) {}
+        var i = list.indexOf(wrap);
+        return i >= 0 ? i : 0;
+      }
+
       function getStorageKey(wrap) {
         var suffix = 'default';
         try {
@@ -1892,7 +1900,7 @@ const API = '';
           if (tableId) suffix = resolveVariantsTableId(tableId, page || PAGE) || tableId;
           else if (page) suffix = String(page).trim().toLowerCase();
         } catch (_) {}
-        return LS_KEY + ':' + suffix + ':' + getViewportBucket();
+        return LS_KEY + ':' + suffix + ':' + getViewportBucket() + ':' + getWrapIndex(wrap);
       }
 
       function readSavedWidth(wrap) {
@@ -1935,23 +1943,8 @@ const API = '';
 
       function applyWidthToGroup(wrap, width) {
         if (!wrap) return;
-        var key = '';
-        try { key = getStorageKey(wrap); } catch (_) { key = ''; }
         applyWidthSingle(wrap, width);
         var applied = wrapWidth(wrap);
-        if (key) {
-          try {
-            document.querySelectorAll(WRAP_SELECTOR).forEach(function(other) {
-              if (!other || other === wrap) return;
-              try {
-                if (getStorageKey(other) !== key) return;
-              } catch (_) {
-                return;
-              }
-              applyWidthSingle(other, applied);
-            });
-          } catch (_) {}
-        }
         if (wrap.id === 'ads-root' && Number.isFinite(applied)) {
           try {
             var footer = document.getElementById('ads-footer');

@@ -70,27 +70,6 @@
                 </div>
 
                 <div class="tools-field">
-                  <label class="tools-label form-label">Magnitude (optional)</label>
-                  <div class="tools-input-row">
-                    <input class="form-control" type="number" id="pin-mag-val" placeholder="22" step="0.01" />
-                    <select class="form-select" id="pin-mag-unit">
-                      <option value="%">%</option>
-                      <option value="gbp">GBP</option>
-                      <option value="usd">USD</option>
-                      <option value="eur">EUR</option>
-                      <option value="x">x</option>
-                    </select>
-                    <div class="tools-note">Examples: <code>-20</code> <code>%</code>, <code>+5</code> <code>GBP</code>.</div>
-                  </div>
-                </div>
-
-                <div class="tools-field">
-                  <label class="tools-label form-label">Tags (optional)</label>
-                  <input class="form-control" type="text" id="pin-tags" placeholder="comma separated, e.g. google, discounts" />
-                  <div class="tools-note tools-note--tight">Used for lookup and filtering.</div>
-                </div>
-
-                <div class="tools-field">
                   <label class="tools-label form-label">Notes (optional)</label>
                   <textarea class="form-control" id="pin-notes" rows="2" placeholder="Any context (what changed, why, links, etc.)"></textarea>
                 </div>
@@ -128,7 +107,7 @@
                       <span class="input-icon-addon"><i class="fa-light fa-calendar-days" aria-hidden="true"></i></span>
                       <input class="form-control" type="text" id="filter-to" placeholder="To YYYY-MM-DD" autocomplete="off" inputmode="numeric" />
                     </div>
-                    <input class="form-control" type="text" id="filter-q" placeholder="Search title, notes, tags" />
+                    <input class="form-control" type="text" id="filter-q" placeholder="Search title, notes" />
                     <select class="form-select" id="filter-kind">
                       <option value="">All kinds</option>
                       <option value="pricing">Pricing</option>
@@ -217,23 +196,6 @@
                         <option value="other">Other</option>
                       </select>
                     </div>
-                  </div>
-                  <div class="tools-field">
-                    <label class="tools-label form-label">Magnitude</label>
-                    <div class="tools-input-row">
-                      <input class="form-control" type="number" id="edit-mag-val" step="0.01" />
-                      <select class="form-select" id="edit-mag-unit">
-                        <option value="%">%</option>
-                        <option value="gbp">GBP</option>
-                        <option value="usd">USD</option>
-                        <option value="eur">EUR</option>
-                        <option value="x">x</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div class="tools-field">
-                    <label class="tools-label form-label">Tags</label>
-                    <input class="form-control" type="text" id="edit-tags" placeholder="comma separated" />
                   </div>
                   <div class="tools-field">
                     <label class="tools-label form-label">Notes</label>

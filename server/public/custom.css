@@ -1167,6 +1167,12 @@ body:not([data-page="settings"]) .table-responsive table thead th,
 body:not([data-page="settings"]) .tools-table-wrap table thead th {
   background: var(--tblr-bg-surface-secondary, #fafafa) !important;
 }
+body:not([data-page="settings"]) .table-responsive table thead th,
+body:not([data-page="settings"]) .tools-table-wrap table thead th {
+  font-size: 12px !important;
+  line-height: 12px;
+  font-weight: 500;
+}
 
 /* Sticky cells + table footer: surface-secondary + gradient (only sticky TH gets gradient, not other header cells) */
 body:not([data-page="settings"]) .table-scroll-wrap .grid-row--header .grid-cell:first-child,
