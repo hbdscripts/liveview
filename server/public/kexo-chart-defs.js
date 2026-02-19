@@ -44,11 +44,11 @@
           {
             type: 'select',
             field: 'dataLabels',
-            label: 'Value display',
-            hint: 'Always show values draws data labels on the chart.',
+            label: 'Data-point labels',
+            hint: 'Show on hover uses tooltips only; Always show draws labels on the chart.',
             options: [
-              { value: 'off', label: 'Hover only' },
-              { value: 'on', label: 'Always show values' },
+              { value: 'off', label: 'Show on hover' },
+              { value: 'on', label: 'Always show' },
             ],
             default: 'off'
           },
@@ -73,6 +73,17 @@
             step: 1,
             modes: ['bar', 'stacked-bar'],
             default: 60
+          },
+          {
+            type: 'range',
+            field: 'gridDash',
+            label: 'Grid',
+            hint: '0 hides the grid.',
+            unit: '',
+            min: 0,
+            max: 8,
+            step: 1,
+            default: 3
           },
         ]
       }

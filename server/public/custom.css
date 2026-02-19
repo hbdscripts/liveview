@@ -3206,19 +3206,36 @@ html[data-bs-theme="dark"] .report-build-wrap {
 }
 
 /* Dashboard widgets (custom HTML/CSS/SVG charts) */
+.kexo-dashboard-widgets-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+}
+@media (min-width: 1200px) {
+  .kexo-dashboard-widgets-row {
+    grid-template-columns: 5fr 7fr;
+    align-items: stretch;
+  }
+}
+.kexo-dashboard-widgets-col {
+  min-width: 0;
+}
 .kexo-dashboard-widgets-grid {
   display: grid;
   grid-template-columns: 1fr;
   gap: 0.75rem;
 }
 @media (min-width: 768px) {
-  .kexo-dashboard-widgets-grid {
+  .kexo-dashboard-widgets-grid-left {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .kexo-dashboard-widgets-grid-right {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
-@media (min-width: 1200px) {
-  .kexo-dashboard-widgets-grid {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+@media (min-width: 992px) {
+  .kexo-dashboard-widgets-grid-right {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
@@ -3259,16 +3276,16 @@ html[data-bs-theme="dark"] .report-build-wrap {
   font-weight: 500;
 }
 .kexo-widget-body {
-  min-height: 140px;
+  min-height: 170px;
 }
 .kexo-widget-mount {
-  min-height: 140px;
+  min-height: 170px;
 }
 .kexo-widget-empty {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 140px;
+  min-height: 170px;
   padding: 0.75rem;
   color: var(--tblr-secondary);
   font-size: 0.8125rem;
@@ -3366,7 +3383,7 @@ html[data-bs-theme="dark"] .report-build-wrap {
 }
 .kexo-widget-vbars-grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0.35rem;
   align-items: end;
   min-height: 120px;
@@ -3398,9 +3415,37 @@ html[data-bs-theme="dark"] .report-build-wrap {
   font-size: 0.75rem;
   text-align: center;
   color: var(--tblr-secondary);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.kexo-widget-vbar-text {
+  width: 100%;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.kexo-widget-vbar-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  margin: 0 auto 2px;
+  color: var(--tblr-secondary);
+}
+.kexo-widget-vbar-icon img {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+  display: block;
+}
+
+.kexo-widget-vbar-fill[data-kexo-placeholder="1"],
+.kexo-widget-row-bar > span[data-kexo-placeholder="1"] {
+  background: rgba(15, 23, 42, 0.18) !important;
 }
 .card[data-kexo-chart-key],
 [data-kexo-chart-key] > .card {
@@ -3421,13 +3466,21 @@ html[data-bs-theme="dark"] .report-build-wrap {
 .apexcharts-svg {
   overflow: visible !important;
 }
-.apexcharts-grid,
-.apexcharts-gridlines-horizontal,
-.apexcharts-gridlines-vertical,
-.apexcharts-gridline,
-.apexcharts-xaxis-tick,
-.apexcharts-yaxis-tick {
+#dash-chart-overview-30d[data-kexo-grid="hide"] .apexcharts-grid,
+#dash-chart-overview-30d[data-kexo-grid="hide"] .apexcharts-gridlines-horizontal,
+#dash-chart-overview-30d[data-kexo-grid="hide"] .apexcharts-gridlines-vertical,
+#dash-chart-overview-30d[data-kexo-grid="hide"] .apexcharts-gridline,
+#dash-chart-overview-30d[data-kexo-grid="hide"] .apexcharts-xaxis-tick,
+#dash-chart-overview-30d[data-kexo-grid="hide"] .apexcharts-yaxis-tick {
   display: none !important;
+}
+#dash-chart-overview-30d[data-kexo-grid="show"] .apexcharts-grid,
+#dash-chart-overview-30d[data-kexo-grid="show"] .apexcharts-gridlines-horizontal,
+#dash-chart-overview-30d[data-kexo-grid="show"] .apexcharts-gridlines-vertical,
+#dash-chart-overview-30d[data-kexo-grid="show"] .apexcharts-gridline,
+#dash-chart-overview-30d[data-kexo-grid="show"] .apexcharts-xaxis-tick,
+#dash-chart-overview-30d[data-kexo-grid="show"] .apexcharts-yaxis-tick {
+  display: block !important;
 }
 .kexo-overview-mini-card-body,
 .kexo-overview-main-card-body {

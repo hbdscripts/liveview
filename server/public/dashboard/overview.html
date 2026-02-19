@@ -354,116 +354,127 @@
         </div>
       </div>
       <div class="kexo-overview-cell kexo-overview-widgets">
-        <div class="kexo-dashboard-widgets-grid" id="dash-widgets-grid" aria-label="Dashboard widgets">
-          <!-- Widget 1: Variant radial -->
-          <div class="card kexo-widget-card" data-kexo-widget="variant">
-            <div class="card-body kexo-widget-card-body">
-              <div class="kexo-widget-head">
-                <div class="kexo-widget-title">
-                  <i class="fa-light fa-gem me-1 text-muted" aria-hidden="true"></i>
-                  Variants
-                </div>
-                <div class="kexo-widget-head-right">
-                  <button type="button" class="btn btn-sm btn-ghost-secondary kexo-widget-dropdown-btn" data-kexo-widget-dropdown="variant" aria-haspopup="menu" aria-expanded="false" aria-controls="dash-widget-variant-menu">
-                    <span data-kexo-widget-dropdown-label="variant">Table</span>
-                    <i class="fa-light fa-chevron-down ms-1" aria-hidden="true"></i>
-                  </button>
-                  <button type="button" class="btn btn-icon btn-ghost-secondary kexo-widget-settings-btn" data-kexo-widget-settings="variant" aria-label="Widget settings" title="Widget settings">
-                    <i class="fa-light fa-gear" aria-hidden="true"></i>
-                  </button>
+        <div class="kexo-dashboard-widgets-row" id="dash-widgets-row" aria-label="Dashboard widgets">
+          <div class="kexo-dashboard-widgets-col kexo-dashboard-widgets-col-left">
+            <div class="kexo-dashboard-widgets-grid kexo-dashboard-widgets-grid-left" id="dash-widgets-grid-left" aria-label="Dashboard widgets (left)">
+              <!-- Widget 1: Variant radial -->
+              <div class="card kexo-widget-card" data-kexo-widget="variant">
+                <div class="card-body kexo-widget-card-body">
+                  <div class="kexo-widget-head">
+                    <div class="kexo-widget-title">
+                      <i class="fa-light fa-gem me-1 text-muted" aria-hidden="true"></i>
+                      Variants
+                    </div>
+                    <div class="kexo-widget-head-right">
+                      <button type="button" class="btn btn-sm btn-ghost-secondary kexo-widget-dropdown-btn" data-kexo-widget-dropdown="variant" aria-haspopup="menu" aria-expanded="false" aria-controls="dash-widget-variant-menu">
+                        <span data-kexo-widget-dropdown-label="variant">Table</span>
+                        <i class="fa-light fa-chevron-down ms-1" aria-hidden="true"></i>
+                      </button>
+                      <button type="button" class="btn btn-icon btn-ghost-secondary kexo-widget-settings-btn" data-kexo-widget-settings="variant" aria-haspopup="menu" aria-expanded="false" aria-controls="dash-widget-variant-menu" aria-label="Widget settings" title="Widget settings">
+                        <i class="fa-light fa-gear" aria-hidden="true"></i>
+                      </button>
+                    </div>
+                  </div>
+                  <div class="kexo-widget-body">
+                    <div id="dash-widget-variant-mount" class="kexo-widget-mount" aria-live="polite"></div>
+                  </div>
+                  <div class="kexo-widget-menu is-hidden" id="dash-widget-variant-menu" role="menu" aria-hidden="true" data-kexo-widget-menu="variant"></div>
                 </div>
               </div>
-              <div class="kexo-widget-body">
-                <div id="dash-widget-variant-mount" class="kexo-widget-mount" aria-live="polite"></div>
-              </div>
-              <div class="kexo-widget-menu is-hidden" id="dash-widget-variant-menu" role="menu" aria-hidden="true" data-kexo-widget-menu="variant"></div>
-            </div>
-          </div>
 
-          <!-- Widget 2: Devices/Browsers -->
-          <div class="card kexo-widget-card" data-kexo-widget="devices">
-            <div class="card-body kexo-widget-card-body">
-              <div class="kexo-widget-head">
-                <div class="kexo-widget-title">
-                  <i class="fa-light fa-mobile-screen me-1 text-muted" aria-hidden="true"></i>
-                  Devices
+              <!-- Widget 2: Devices/Browsers -->
+              <div class="card kexo-widget-card" data-kexo-widget="devices">
+                <div class="card-body kexo-widget-card-body">
+                  <div class="kexo-widget-head">
+                    <div class="kexo-widget-title">
+                      <i class="fa-light fa-mobile-screen me-1 text-muted" aria-hidden="true"></i>
+                      Devices
+                    </div>
+                    <div class="kexo-widget-head-right">
+                      <button type="button" class="btn btn-sm btn-ghost-secondary kexo-widget-dropdown-btn" data-kexo-widget-dropdown="devices" aria-haspopup="menu" aria-expanded="false" aria-controls="dash-widget-devices-menu">
+                        <span data-kexo-widget-dropdown-label="devices">Devices</span>
+                        <i class="fa-light fa-chevron-down ms-1" aria-hidden="true"></i>
+                      </button>
+                      <button type="button" class="btn btn-icon btn-ghost-secondary kexo-widget-settings-btn" data-kexo-widget-settings="devices" aria-haspopup="menu" aria-expanded="false" aria-controls="dash-widget-devices-menu" aria-label="Widget settings" title="Widget settings">
+                        <i class="fa-light fa-gear" aria-hidden="true"></i>
+                      </button>
+                    </div>
+                  </div>
+                  <div class="kexo-widget-body">
+                    <div id="dash-widget-devices-mount" class="kexo-widget-mount" aria-live="polite"></div>
+                  </div>
+                  <div class="kexo-widget-menu is-hidden" id="dash-widget-devices-menu" role="menu" aria-hidden="true" data-kexo-widget-menu="devices">
+                    <button type="button" class="kexo-widget-menu-item" role="menuitem" data-kexo-widget-dimension="devices" data-kexo-widget-dimension-value="devices">Devices</button>
+                    <button type="button" class="kexo-widget-menu-item" role="menuitem" data-kexo-widget-dimension="devices" data-kexo-widget-dimension-value="browsers">Browsers</button>
+                  </div>
                 </div>
-                <div class="kexo-widget-head-right">
-                  <button type="button" class="btn btn-sm btn-ghost-secondary kexo-widget-dropdown-btn" data-kexo-widget-dropdown="devices" aria-haspopup="menu" aria-expanded="false" aria-controls="dash-widget-devices-menu">
-                    <span data-kexo-widget-dropdown-label="devices">Devices</span>
-                    <i class="fa-light fa-chevron-down ms-1" aria-hidden="true"></i>
-                  </button>
-                  <button type="button" class="btn btn-icon btn-ghost-secondary kexo-widget-settings-btn" data-kexo-widget-settings="devices" aria-label="Widget settings" title="Widget settings">
-                    <i class="fa-light fa-gear" aria-hidden="true"></i>
-                  </button>
-                </div>
-              </div>
-              <div class="kexo-widget-body">
-                <div id="dash-widget-devices-mount" class="kexo-widget-mount" aria-live="polite"></div>
-              </div>
-              <div class="kexo-widget-menu is-hidden" id="dash-widget-devices-menu" role="menu" aria-hidden="true" data-kexo-widget-menu="devices">
-                <button type="button" class="kexo-widget-menu-item" role="menuitem" data-kexo-widget-dimension="devices" data-kexo-widget-dimension-value="devices">Devices</button>
-                <button type="button" class="kexo-widget-menu-item" role="menuitem" data-kexo-widget-dimension="devices" data-kexo-widget-dimension-value="browsers">Browsers</button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Widget 3: Attribution -->
-          <div class="card kexo-widget-card" data-kexo-widget="attribution">
-            <div class="card-body kexo-widget-card-body">
-              <div class="kexo-widget-head">
-                <div class="kexo-widget-title">
-                  <i class="fa-light fa-share-nodes me-1 text-muted" aria-hidden="true"></i>
-                  Attribution
-                </div>
-                <div class="kexo-widget-head-right">
-                  <button type="button" class="btn btn-icon btn-ghost-secondary kexo-widget-settings-btn" data-kexo-widget-settings="attribution" aria-label="Widget settings" title="Widget settings">
-                    <i class="fa-light fa-gear" aria-hidden="true"></i>
-                  </button>
-                </div>
-              </div>
-              <div class="kexo-widget-body">
-                <div id="dash-widget-attribution-mount" class="kexo-widget-mount" aria-live="polite"></div>
               </div>
             </div>
           </div>
 
-          <!-- Widget 4: Payment types -->
-          <div class="card kexo-widget-card" data-kexo-widget="payment-types">
-            <div class="card-body kexo-widget-card-body">
-              <div class="kexo-widget-head">
-                <div class="kexo-widget-title">
-                  <i class="fa-light fa-credit-card me-1 text-muted" aria-hidden="true"></i>
-                  Payment types
-                </div>
-                <div class="kexo-widget-head-right">
-                  <button type="button" class="btn btn-icon btn-ghost-secondary kexo-widget-settings-btn" data-kexo-widget-settings="payment-types" aria-label="Widget settings" title="Widget settings">
-                    <i class="fa-light fa-gear" aria-hidden="true"></i>
-                  </button>
+          <div class="kexo-dashboard-widgets-col kexo-dashboard-widgets-col-right">
+            <div class="kexo-dashboard-widgets-grid kexo-dashboard-widgets-grid-right" id="dash-widgets-grid-right" aria-label="Dashboard widgets (right)">
+              <!-- Widget 3: Attribution -->
+              <div class="card kexo-widget-card" data-kexo-widget="attribution">
+                <div class="card-body kexo-widget-card-body">
+                  <div class="kexo-widget-head">
+                    <div class="kexo-widget-title">
+                      <i class="fa-light fa-share-nodes me-1 text-muted" aria-hidden="true"></i>
+                      Attribution
+                    </div>
+                    <div class="kexo-widget-head-right">
+                      <button type="button" class="btn btn-icon btn-ghost-secondary kexo-widget-settings-btn" data-kexo-widget-settings="attribution" aria-haspopup="menu" aria-expanded="false" aria-controls="dash-widget-attribution-menu" aria-label="Widget settings" title="Widget settings">
+                        <i class="fa-light fa-gear" aria-hidden="true"></i>
+                      </button>
+                    </div>
+                  </div>
+                  <div class="kexo-widget-body">
+                    <div id="dash-widget-attribution-mount" class="kexo-widget-mount" aria-live="polite"></div>
+                  </div>
+                  <div class="kexo-widget-menu is-hidden" id="dash-widget-attribution-menu" role="menu" aria-hidden="true" data-kexo-widget-menu="attribution"></div>
                 </div>
               </div>
-              <div class="kexo-widget-body">
-                <div id="dash-widget-payment-types-mount" class="kexo-widget-mount" aria-live="polite"></div>
-              </div>
-            </div>
-          </div>
 
-          <!-- Widget 5: Abandoned carts -->
-          <div class="card kexo-widget-card" data-kexo-widget="abandoned">
-            <div class="card-body kexo-widget-card-body">
-              <div class="kexo-widget-head">
-                <div class="kexo-widget-title">
-                  <i class="fa-light fa-cart-shopping me-1 text-muted" aria-hidden="true"></i>
-                  Abandoned
-                </div>
-                <div class="kexo-widget-head-right">
-                  <button type="button" class="btn btn-icon btn-ghost-secondary kexo-widget-settings-btn" data-kexo-widget-settings="abandoned" aria-label="Widget settings" title="Widget settings">
-                    <i class="fa-light fa-gear" aria-hidden="true"></i>
-                  </button>
+              <!-- Widget 4: Payment methods -->
+              <div class="card kexo-widget-card" data-kexo-widget="payment-types">
+                <div class="card-body kexo-widget-card-body">
+                  <div class="kexo-widget-head">
+                    <div class="kexo-widget-title">
+                      <i class="fa-light fa-credit-card me-1 text-muted" aria-hidden="true"></i>
+                      Payment methods
+                    </div>
+                    <div class="kexo-widget-head-right">
+                      <button type="button" class="btn btn-icon btn-ghost-secondary kexo-widget-settings-btn" data-kexo-widget-settings="payment-types" aria-haspopup="menu" aria-expanded="false" aria-controls="dash-widget-payment-types-menu" aria-label="Widget settings" title="Widget settings">
+                        <i class="fa-light fa-gear" aria-hidden="true"></i>
+                      </button>
+                    </div>
+                  </div>
+                  <div class="kexo-widget-body">
+                    <div id="dash-widget-payment-types-mount" class="kexo-widget-mount" aria-live="polite"></div>
+                  </div>
+                  <div class="kexo-widget-menu is-hidden" id="dash-widget-payment-types-menu" role="menu" aria-hidden="true" data-kexo-widget-menu="payment-types"></div>
                 </div>
               </div>
-              <div class="kexo-widget-body">
-                <div id="dash-widget-abandoned-mount" class="kexo-widget-mount" aria-live="polite"></div>
+
+              <!-- Widget 5: Abandoned carts -->
+              <div class="card kexo-widget-card" data-kexo-widget="abandoned">
+                <div class="card-body kexo-widget-card-body">
+                  <div class="kexo-widget-head">
+                    <div class="kexo-widget-title">
+                      <i class="fa-light fa-cart-shopping me-1 text-muted" aria-hidden="true"></i>
+                      Abandoned
+                    </div>
+                    <div class="kexo-widget-head-right">
+                      <button type="button" class="btn btn-icon btn-ghost-secondary kexo-widget-settings-btn" data-kexo-widget-settings="abandoned" aria-haspopup="menu" aria-expanded="false" aria-controls="dash-widget-abandoned-menu" aria-label="Widget settings" title="Widget settings">
+                        <i class="fa-light fa-gear" aria-hidden="true"></i>
+                      </button>
+                    </div>
+                  </div>
+                  <div class="kexo-widget-body">
+                    <div id="dash-widget-abandoned-mount" class="kexo-widget-mount" aria-live="polite"></div>
+                  </div>
+                  <div class="kexo-widget-menu is-hidden" id="dash-widget-abandoned-menu" role="menu" aria-hidden="true" data-kexo-widget-menu="abandoned"></div>
+                </div>
               </div>
             </div>
           </div>

@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: e9fdc6d3e1cf9843
+// checksum: 645411e151bbb05d
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -8709,6 +8709,11 @@ const API = '';
 
       setDashValueText('dash-kpi-revenue', salesVal != null ? formatRevenue0(salesVal) : '\u2014');
       setDashValueText('dash-kpi-profit', profitVal != null ? formatRevenue0(profitVal) : '\u2014');
+      // Keep the dashboard hero header Profit in sync with the Profit KPI tile.
+      try {
+        var heroProfit = el('dash-overview-total-profit');
+        if (heroProfit) heroProfit.textContent = profitVal != null ? formatRevenue0(profitVal) : '\u2014';
+      } catch (_) {}
       setDashValueText('dash-kpi-orders', ordersVal != null ? Math.round(ordersVal).toLocaleString() : '\u2014');
       setDashValueText('dash-kpi-sessions', sessionsVal != null ? formatSessions(sessionsVal) : '\u2014');
       setDashValueText('dash-kpi-conv', convVal != null ? pct(convVal) : '\u2014');
@@ -16235,6 +16240,20 @@ const API = '';
         });
     });
 
+    var _newSaleRefreshTimer = null;
+    function scheduleNewSaleDashboardRefresh() {
+      if (_newSaleRefreshTimer) return;
+      _newSaleRefreshTimer = setTimeout(function () {
+        _newSaleRefreshTimer = null;
+        try { if (typeof refreshKpis === 'function') refreshKpis({ force: true }); } catch (_) {}
+        try {
+          if (PAGE === 'dashboard' || activeMainTab === 'dashboard') {
+            if (typeof window.refreshDashboard === 'function') window.refreshDashboard({ force: true, silent: true, reason: 'new-sale' });
+          }
+        } catch (_) {}
+      }, 280);
+    }
+
     function initEventSource() {
       if (_eventSource) { try { _eventSource.close(); } catch (_) {} }
       var es = new EventSource(API + '/api/stream');
@@ -16280,11 +16299,13 @@ const API = '';
             const ageMs = Date.now() - purchasedAt;
             if (ageMs > 2 * 60 * 1000) return; // older than 2 min: skip (stale)
             triggerSaleToast({ origin: 'sse', session: session, playSound: true });
+            scheduleNewSaleDashboardRefresh();
             return;
           }
           if (purchasedAt <= cur) { setLastSaleAt(purchasedAt); return; }
           setLastSaleAt(purchasedAt);
           triggerSaleToast({ origin: 'sse', session: session, playSound: true });
+          scheduleNewSaleDashboardRefresh();
         } catch (_) {}
       }
 
@@ -16311,6 +16332,7 @@ const API = '';
       _intervals.length = 0;
       _tickTimeIntervalId = null;
       if (liveSalesPollTimer) { try { clearTimeout(liveSalesPollTimer); } catch (_) {} liveSalesPollTimer = null; }
+      if (_newSaleRefreshTimer) { try { clearTimeout(_newSaleRefreshTimer); } catch (_) {} _newSaleRefreshTimer = null; }
       if (_eventSource) { try { _eventSource.close(); } catch (_) {} _eventSource = null; }
       if (_condensedStripResizeObserver) {
         try { _condensedStripResizeObserver.disconnect(); } catch (_) {}
@@ -16920,6 +16942,17 @@ const API = '';
           var markerSize = (opts && Number.isFinite(Number(opts.markerSize)))
             ? Math.max(0, Number(opts.markerSize))
             : (chartType === 'line' ? 3 : 0);
+          var dataLabelsMode = uiStyle && uiStyle.dataLabels != null ? String(uiStyle.dataLabels).trim().toLowerCase() : '';
+          var uiStrokeWidth = (uiStyle && Number.isFinite(Number(uiStyle.strokeWidth))) ? Number(uiStyle.strokeWidth) : null;
+          var uiBarColumnWidth = (uiStyle && Number.isFinite(Number(uiStyle.barColumnWidth))) ? Number(uiStyle.barColumnWidth) : null;
+          var uiGridDash = (uiStyle && Number.isFinite(Number(uiStyle.gridDash))) ? Number(uiStyle.gridDash) : null;
+          if (uiStrokeWidth != null) uiStrokeWidth = Math.max(0.5, Math.min(6, uiStrokeWidth));
+          if (uiBarColumnWidth != null) uiBarColumnWidth = Math.max(20, Math.min(95, uiBarColumnWidth));
+          if (uiGridDash != null) uiGridDash = Math.max(0, Math.min(8, Math.round(uiGridDash)));
+          var strokeWidth = chartType === 'bar' ? 0 : (uiStrokeWidth != null ? uiStrokeWidth : 2);
+          var barColWidth = uiBarColumnWidth != null ? (String(uiBarColumnWidth) + '%') : (stacked ? '80%' : '60%');
+          var gridDashVal = uiGridDash != null ? uiGridDash : 3;
+          var gridShow = gridDashVal > 0;
           var apexOpts = {
             chart: {
               type: chartType,
@@ -16931,9 +16964,9 @@ const API = '';
             },
             series: apexSeries,
             colors: colors,
-            stroke: { show: true, width: chartType === 'bar' ? 0 : 2, curve: 'smooth', lineCap: 'round' },
+            stroke: { show: true, width: strokeWidth, curve: 'smooth', lineCap: 'round' },
             fill: fillConfig,
-            plotOptions: chartType === 'bar' ? { bar: { columnWidth: stacked ? '80%' : '60%', borderRadius: 3, stacked: stacked } } : (chartType === 'area' && stacked ? { area: { stacked: true } } : {}),
+            plotOptions: chartType === 'bar' ? { bar: { columnWidth: barColWidth, borderRadius: 3, stacked: stacked } } : (chartType === 'area' && stacked ? { area: { stacked: true } } : {}),
             xaxis: {
               categories: labels || [],
               labels: { style: { fontSize: '10px', cssClass: 'apexcharts-xaxis-label' }, rotate: 0, hideOverlappingLabels: true },
@@ -16946,7 +16979,7 @@ const API = '';
               max: yMaxOverride,
               forceNiceScale: true
             },
-            grid: { borderColor: '#f0f0f0', strokeDashArray: 3 },
+            grid: { show: gridShow, borderColor: '#f0f0f0', strokeDashArray: gridShow ? gridDashVal : 0 },
             tooltip: tooltipConfig,
             legend: { show: apexSeries.length > 1, position: legendPos, fontSize: '11px' },
             dataLabels: (showEndLabels && chartType === 'line') ? {
@@ -16963,10 +16996,18 @@ const API = '';
               style: { fontSize: '10px' },
               background: { enabled: true, borderRadius: 4, padding: 3, opacity: 0.85 },
               offsetY: -3
+            } : (dataLabelsMode === 'on') ? {
+              enabled: true,
+              formatter: function(val) { try { return yFmt(val); } catch (_) { return String(val); } },
+              style: { fontSize: '10px' },
+              background: { enabled: true, borderRadius: 4, padding: 3, opacity: 0.78 }
             } : { enabled: false },
             markers: { size: markerSize, hover: { size: 5 } },
             noData: { text: 'No data available', style: { fontSize: '13px', color: '#626976' } }
           };
+          try {
+            if (el && el.setAttribute) el.setAttribute('data-kexo-grid', gridShow ? 'show' : 'hide');
+          } catch (_) {}
           if (stacked) {
             apexOpts.chart.stacked = true;
             apexOpts.chart.stackType = 'normal';
@@ -16991,7 +17032,6 @@ const API = '';
           });
         } catch (err) {
           captureChartError(err, 'dashboardChartRender', { chartId: chartId });
-          console.error('[dashboard] chart render error:', chartId, err);
           return null;
         }
       }
@@ -18530,6 +18570,15 @@ const API = '';
         setValue('dash-overview-total-revenue', revenueTotal);
         setValue('dash-overview-total-cost', costTotal);
         setValue('dash-overview-total-profit', profitTotal);
+        try {
+          // Profit KPI uses its own rounded totals; keep the header in sync when present.
+          var kpiProfit = document.getElementById('dash-kpi-profit');
+          var headerProfit = document.getElementById('dash-overview-total-profit');
+          if (kpiProfit && headerProfit) {
+            var txt = String(kpiProfit.textContent || '').trim();
+            if (txt && txt !== '\u2014') headerProfit.textContent = txt;
+          }
+        } catch (_) {}
       }
 
       function setOverviewCostBreakdownTooltip(snapshotPayload) {
@@ -18654,6 +18703,24 @@ const API = '';
         revenueTotal = Math.round(revenueTotal * 100) / 100;
         costTotal = Math.round(costTotal * 100) / 100;
         profitTotal = Math.round((revenueTotal - costTotal) * 100) / 100;
+
+        // Bucket mode: all buckets vs latest bucket only.
+        try {
+          var uiStyle = (typeof chartStyleFromUiConfig === 'function') ? chartStyleFromUiConfig(chartId) : null;
+          var bucketMode = uiStyle && uiStyle.bucketMode != null ? String(uiStyle.bucketMode).trim().toLowerCase() : 'all';
+          if (bucketMode === 'latest') {
+            var last = labels.length ? (labels.length - 1) : -1;
+            if (last >= 0) {
+              revenueTotal = Number.isFinite(Number(revenue[last])) ? Number(revenue[last]) : 0;
+              costTotal = Number.isFinite(Number(cost[last])) ? Number(cost[last]) : 0;
+              profitTotal = Number.isFinite(Number(profit[last])) ? Number(profit[last]) : Math.round((revenueTotal - costTotal) * 100) / 100;
+              labels = [labels[last]];
+              revenue = [revenueTotal];
+              cost = [costTotal];
+              profit = [profitTotal];
+            }
+          }
+        } catch (_) {}
         setOverviewSalesRunningTotals(revenueTotal, costTotal, profitTotal);
         setOverviewCostBreakdownTooltip(snapshotPayload);
         var chartEl = document.getElementById(chartId);
@@ -20613,7 +20680,7 @@ const API = '';
       }
 
       function widgetPresent() {
-        try { return !!document.getElementById('dash-widgets-grid'); } catch (_) { return false; }
+        try { return !!document.getElementById('dash-widgets-row'); } catch (_) { return false; }
       }
 
       function readDashWidgetsPrefs() {
@@ -20654,33 +20721,40 @@ const API = '';
           });
         } catch (_) {}
         try {
-          document.querySelectorAll('[data-kexo-widget-dropdown][aria-expanded="true"]').forEach(function(btn) {
+          document.querySelectorAll('[data-kexo-widget-dropdown][aria-expanded="true"], [data-kexo-widget-settings][aria-expanded="true"]').forEach(function(btn) {
+            if (!btn || !btn.setAttribute) return;
             btn.setAttribute('aria-expanded', 'false');
           });
         } catch (_) {}
       }
 
-      function openWidgetMenu(widgetKey) {
+      function openWidgetMenu(widgetKey, triggerType) {
         closeAllWidgetMenus();
         var key = String(widgetKey || '').trim().toLowerCase();
         if (!key) return;
         var menu = document.querySelector('.kexo-widget-menu[data-kexo-widget-menu="' + key + '"]');
-        var btn = document.querySelector('[data-kexo-widget-dropdown="' + key + '"]');
-        if (btn) btn.setAttribute('aria-expanded', 'true');
+        var t = String(triggerType || '').trim().toLowerCase();
+        var btn = null;
+        try {
+          btn = (t === 'settings')
+            ? document.querySelector('[data-kexo-widget-settings="' + key + '"]')
+            : document.querySelector('[data-kexo-widget-dropdown="' + key + '"]');
+        } catch (_) { btn = null; }
+        if (btn && btn.setAttribute) btn.setAttribute('aria-expanded', 'true');
         if (menu) {
           menu.classList.remove('is-hidden');
           menu.setAttribute('aria-hidden', 'false');
         }
       }
 
-      function toggleWidgetMenu(widgetKey) {
+      function toggleWidgetMenu(widgetKey, triggerType) {
         var key = String(widgetKey || '').trim().toLowerCase();
         if (!key) return;
         var menu = document.querySelector('.kexo-widget-menu[data-kexo-widget-menu="' + key + '"]');
         if (!menu) return;
         var isOpen = !menu.classList.contains('is-hidden');
         if (isOpen) closeAllWidgetMenus();
-        else openWidgetMenu(key);
+        else openWidgetMenu(key, triggerType);
       }
 
       function bindDashWidgetsOnce() {
@@ -20695,7 +20769,15 @@ const API = '';
             if (dd) {
               e.preventDefault();
               e.stopPropagation();
-              toggleWidgetMenu(dd.getAttribute('data-kexo-widget-dropdown'));
+              toggleWidgetMenu(dd.getAttribute('data-kexo-widget-dropdown'), 'dropdown');
+              return;
+            }
+
+            var cog = t.closest('[data-kexo-widget-settings]');
+            if (cog) {
+              e.preventDefault();
+              e.stopPropagation();
+              toggleWidgetMenu(cog.getAttribute('data-kexo-widget-settings'), 'settings');
               return;
             }
 
@@ -20719,6 +20801,17 @@ const API = '';
               writeDashWidgetsPrefs({ variantTableId: id });
               closeAllWidgetMenus();
               requestDashboardWidgetsRefresh({ force: true, rangeKey: dashRangeKeyFromDateRange() });
+              return;
+            }
+
+            var actionBtn = t.closest('[data-kexo-widget-action]');
+            if (actionBtn) {
+              e.preventDefault();
+              var action = String(actionBtn.getAttribute('data-kexo-widget-action') || '').trim().toLowerCase();
+              if (action === 'refresh') {
+                closeAllWidgetMenus();
+                requestDashboardWidgetsRefresh({ force: true, rangeKey: dashRangeKeyFromDateRange() });
+              }
               return;
             }
 
@@ -20821,13 +20914,22 @@ const API = '';
           var label = r.label != null ? String(r.label) : '';
           var value = r.valueGbp != null ? Number(r.valueGbp) : Number(r.value);
           var pct = r.pct != null ? Number(r.pct) : 0;
+          var icon = r.iconHtml != null ? String(r.iconHtml) : '';
+          var placeholder = !!(r && r.placeholder === true);
           if (!Number.isFinite(value)) value = 0;
           if (!Number.isFinite(pct)) pct = 0;
           pct = Math.max(0, Math.min(100, pct));
-          var tip = (label ? (label + '\n') : '') + 'Value: ' + fmtGbp2(value) + '\nShare: ' + (Math.round(pct * 10) / 10).toFixed(1) + '%';
+          var tip = placeholder
+            ? ((label ? (label + '\n') : '') + 'No data yet')
+            : ((label ? (label + '\n') : '') + 'Value: ' + fmtGbp2(value) + '\nShare: ' + (Math.round(pct * 10) / 10).toFixed(1) + '%');
           html += '<div class="kexo-widget-vbar" title="' + escapeHtml(tip) + '">' +
-            '<div class="kexo-widget-vbar-col"><div class="kexo-widget-vbar-fill" style="' + (accentCss ? escapeHtml(accentCss) : '') + '" data-kexo-bar-fill="' + escapeHtml(String(pct)) + '"></div></div>' +
-            '<div class="kexo-widget-vbar-label">' + escapeHtml(label || '—') + '</div>' +
+            '<div class="kexo-widget-vbar-col"><div class="kexo-widget-vbar-fill" style="' + (accentCss ? escapeHtml(accentCss) : '') + '"' +
+              (placeholder ? ' data-kexo-placeholder="1"' : '') +
+              ' data-kexo-bar-fill="' + escapeHtml(String(pct)) + '"></div></div>' +
+            '<div class="kexo-widget-vbar-label">' +
+              (icon ? ('<span class="kexo-widget-vbar-icon" aria-hidden="true">' + icon + '</span>') : '') +
+              '<span class="kexo-widget-vbar-text">' + escapeHtml(label || '—') + '</span>' +
+            '</div>' +
           '</div>';
         });
         html += '</div></div>';
@@ -20854,50 +20956,111 @@ const API = '';
         } catch (_) {}
       }
 
-      function renderWidgetVariantRadialAndList(mountId, topRow, listRows) {
+      function sortRowsByValueDesc(rows) {
+        var list = Array.isArray(rows) ? rows.slice() : [];
+        list.sort(function (a, b) {
+          var av = a && (a.valueGbp != null ? Number(a.valueGbp) : Number(a.value));
+          var bv = b && (b.valueGbp != null ? Number(b.valueGbp) : Number(b.value));
+          if (!Number.isFinite(av)) av = 0;
+          if (!Number.isFinite(bv)) bv = 0;
+          return bv - av;
+        });
+        return list;
+      }
+
+      function withSharePct(rows, limit) {
+        var list = sortRowsByValueDesc(rows);
+        var top = list.slice(0, Math.max(0, Number(limit) || 0));
+        var total = top.reduce(function (acc, r) {
+          var v = r && (r.valueGbp != null ? Number(r.valueGbp) : Number(r.value));
+          if (!Number.isFinite(v)) v = 0;
+          return acc + v;
+        }, 0) || 0;
+        return top.map(function (r) {
+          var v = r && (r.valueGbp != null ? Number(r.valueGbp) : Number(r.value));
+          if (!Number.isFinite(v)) v = 0;
+          var pct = total > 0 ? (v / total) * 100 : 0;
+          var out = Object.assign({}, r, { valueGbp: (r && r.valueGbp != null) ? v : undefined, value: (r && r.valueGbp != null) ? undefined : v, pct: pct });
+          return out;
+        });
+      }
+
+      function makePlaceholderRowsFromYesterday(yesterdayRows, limit) {
+        var yTop = sortRowsByValueDesc(yesterdayRows).slice(0, Math.max(0, Number(limit) || 0));
+        return yTop.map(function (r) {
+          return {
+            label: r && r.label != null ? String(r.label) : '—',
+            iconHtml: r && r.iconHtml != null ? String(r.iconHtml) : '',
+            valueGbp: 0,
+            pct: 0,
+            placeholder: true,
+          };
+        });
+      }
+
+      function mergeCurrentWithPlaceholders(currentRows, placeholderRows, limit) {
+        var lim = Math.max(0, Number(limit) || 0);
+        var cur = Array.isArray(currentRows) ? currentRows.slice(0, lim) : [];
+        var ph = Array.isArray(placeholderRows) ? placeholderRows : [];
+        var out = cur.slice();
+        for (var i = out.length; i < lim; i++) {
+          out.push(ph[i] || { label: '—', iconHtml: '', valueGbp: 0, pct: 0, placeholder: true });
+        }
+        return out.slice(0, lim);
+      }
+
+      function renderWidgetRadialAndVbars(mountId, topRow, barRows, opts) {
         var host = document.getElementById(mountId);
         if (!host) return;
         if (!topRow) { setWidgetEmpty(mountId, 'No data'); return; }
+        var options = (opts && typeof opts === 'object') ? opts : {};
+        var accentCss = options.accentCss ? String(options.accentCss) : '';
+        var placeholder = !!(topRow && topRow.placeholder === true);
         var pct = topRow.pct != null ? Number(topRow.pct) : 0;
         if (!Number.isFinite(pct)) pct = 0;
         pct = Math.max(0, Math.min(100, pct));
         var label = topRow.label != null ? String(topRow.label) : '';
         var value = topRow.valueGbp != null ? Number(topRow.valueGbp) : Number(topRow.value);
         if (!Number.isFinite(value)) value = 0;
-        var size = 84;
-        var r = 32;
+        var icon = topRow.iconHtml != null ? String(topRow.iconHtml) : '';
+
+        var size = 76;
+        var r = 28;
+        var cx = Math.round(size / 2);
+        var cy = Math.round(size / 2);
         var circ = Math.round(2 * Math.PI * r * 1000) / 1000;
-        var tip = (label ? (label + '\n') : '') + 'Revenue: ' + fmtGbp2(value) + '\nShare: ' + (Math.round(pct * 10) / 10).toFixed(1) + '%';
-        var html =
-          '<div class="d-flex align-items-center gap-2 mb-2">' +
-            '<div class="position-relative" style="width:84px;height:84px;flex:0 0 84px" title="' + escapeHtml(tip) + '">' +
+        var tip = placeholder
+          ? ((label ? (label + '\n') : '') + 'No data yet')
+          : ((label ? (label + '\n') : '') + 'Value: ' + fmtGbp2(value) + '\nShare: ' + (Math.round(pct * 10) / 10).toFixed(1) + '%');
+
+        var radialStroke = placeholder ? 'rgba(15,23,42,0.20)' : 'var(--kexo-accent-1, #4b94e4)';
+        var valText = placeholder ? '\u2014' : fmtGbp2(value);
+        var pctText = placeholder ? '\u2014' : (String(Math.round(pct)) + '%');
+
+        var topHtml =
+          '<div class="d-flex flex-column align-items-center text-center" style="gap:0.35rem">' +
+            '<div class="position-relative" style="width:' + size + 'px;height:' + size + 'px;flex:0 0 ' + size + 'px" title="' + escapeHtml(tip) + '">' +
               '<svg width="' + size + '" height="' + size + '" viewBox="0 0 ' + size + ' ' + size + '" aria-hidden="true">' +
-                '<circle cx="42" cy="42" r="' + r + '" fill="none" stroke="rgba(15,23,42,0.10)" stroke-width="10"></circle>' +
-                '<circle cx="42" cy="42" r="' + r + '" fill="none" stroke="var(--kexo-accent-1, #4b94e4)" stroke-width="10" stroke-linecap="round"' +
-                  ' style="transform: rotate(-90deg); transform-origin: 42px 42px; transition: stroke-dashoffset 520ms cubic-bezier(.2,.9,.2,1);"' +
+                '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="rgba(15,23,42,0.10)" stroke-width="10"></circle>' +
+                '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="' + escapeHtml(radialStroke) + '" stroke-width="10" stroke-linecap="round"' +
+                  ' style="transform: rotate(-90deg); transform-origin: ' + cx + 'px ' + cy + 'px; transition: stroke-dashoffset 520ms cubic-bezier(.2,.9,.2,1);"' +
                   ' stroke-dasharray="' + escapeHtml(String(circ)) + '" stroke-dashoffset="' + escapeHtml(String(circ)) + '"' +
-                  ' data-kexo-radial-pct="' + escapeHtml(String(pct)) + '" data-kexo-radial-circ="' + escapeHtml(String(circ)) + '"' +
+                  ' data-kexo-radial-pct="' + escapeHtml(String(placeholder ? 0 : pct)) + '" data-kexo-radial-circ="' + escapeHtml(String(circ)) + '"' +
                 '></circle>' +
               '</svg>' +
               '<div class="position-absolute top-50 start-50 translate-middle text-center" style="line-height:1.05">' +
-                '<div class="fw-bold" style="font-size:0.95rem">' + escapeHtml(Math.round(pct)) + '%</div>' +
-                '<div class="text-muted" style="font-size:0.7rem">top</div>' +
+                (icon ? ('<div style="font-size:0.95rem;margin-bottom:0.15rem" aria-hidden="true">' + icon + '</div>') : '') +
+                '<div class="fw-bold" style="font-size:0.95rem">' + escapeHtml(pctText) + '</div>' +
               '</div>' +
             '</div>' +
-            '<div class="min-w-0">' +
+            '<div class="min-w-0 w-100">' +
               '<div class="fw-semibold text-truncate" title="' + escapeHtml(label) + '">' + escapeHtml(label || '—') + '</div>' +
-              '<div class="text-muted" style="font-size:0.8125rem">' + escapeHtml(fmtGbp2(value)) + '</div>' +
+              '<div class="text-muted" style="font-size:0.8125rem">' + escapeHtml(valText) + '</div>' +
             '</div>' +
           '</div>';
-        host.innerHTML = html + '<div class="mt-1"></div>';
-        if (Array.isArray(listRows) && listRows.length) {
-          var listHost = host.querySelector('div.mt-1');
-          if (listHost) {
-            // Reuse list renderer into a temp container.
-            listHost.id = mountId + '-list';
-            renderWidgetList(listHost.id, listRows, 'background: var(--kexo-accent-1, #4b94e4);');
-          }
-        }
+
+        host.innerHTML = topHtml + '<div class="mt-2" id="' + escapeHtml(mountId + '-vbars') + '"></div>';
+        renderWidgetVbars(mountId + '-vbars', barRows, accentCss);
         animateWidgetRadials(host);
       }
 
@@ -20996,8 +21159,11 @@ const API = '';
         var devUrl = API + '/api/devices/report?range=' + encodeURIComponent(rk) + (force ? ('&force=1&_=' + Date.now()) : '');
         var brUrl = API + '/api/browsers/table?range=' + encodeURIComponent(rk) + (force ? ('&force=1&_=' + Date.now()) : '');
         var attrUrl = API + '/api/attribution/report?range=' + encodeURIComponent(rk) + (force ? ('&force=1&_=' + Date.now()) : '');
-        var payUrl = API + '/api/payment-types/table?range=' + encodeURIComponent(rk) + (force ? ('&force=1&_=' + Date.now()) : '');
+        var payUrl = API + '/api/payment-methods/report?range=' + encodeURIComponent(rk) + (force ? ('&force=1&_=' + Date.now()) : '');
         var abdUrl = API + '/api/abandoned-carts/top-countries?range=' + encodeURIComponent(rk) + (force ? ('&force=1&_=' + Date.now()) : '');
+
+        var WIDGET_TOP_N = 4;
+        var fallbackRangeKey = (rk === 'today' || rk === '1h') ? 'yesterday' : '';
 
         var tasks = [];
 
@@ -21007,18 +21173,16 @@ const API = '';
             .then(function (data) {
               var mountId = 'dash-widget-variant-mount';
               if (!data) { setWidgetEmpty(mountId, shopKey ? 'No data' : 'Select a shop'); return; }
-              var sig = widgetSig(data);
-              if (!force && dashWidgetLastRenderSig[mountId] && dashWidgetLastRenderSig[mountId] === sig) return;
-              dashWidgetLastRenderSig[mountId] = sig;
               var payload = (data && data.ok && data.payload) ? data.payload : (data && data.payload ? data.payload : data);
               var tables = payload && Array.isArray(payload.tables) ? payload.tables : (Array.isArray(data.tables) ? data.tables : []);
               var menu = document.getElementById('dash-widget-variant-menu');
               if (menu) {
-                menu.innerHTML = tables.map(function (t) {
+                var refresh = '<button type="button" class="kexo-widget-menu-item" role="menuitem" data-kexo-widget-action="refresh">Refresh</button>';
+                menu.innerHTML = refresh + (tables.map(function (t) {
                   var id = t && t.id != null ? String(t.id) : '';
                   var name = t && t.name != null ? String(t.name) : 'Table';
                   return '<button type="button" class="kexo-widget-menu-item" role="menuitem" data-kexo-widget-variant-table-id="' + escapeHtml(id) + '">' + escapeHtml(name) + '</button>';
-                }).join('') || '<div class="kexo-widget-empty">No tables</div>';
+                }).join('') || '<div class="kexo-widget-empty">No tables</div>');
               }
               var selectedId = (prefs && prefs.variantTableId) ? String(prefs.variantTableId) : '';
               var selected = tables.find(function (t) { return t && String(t.id || '') === selectedId; }) || tables[0] || null;
@@ -21032,16 +21196,40 @@ const API = '';
                 var label = (r && (r.variant || r.key || r.name)) ? String(r.variant || r.key || r.name) : '—';
                 var value = r && (r.revenue_gbp != null || r.revenue != null) ? Number(r.revenue_gbp != null ? r.revenue_gbp : r.revenue) : 0;
                 if (!Number.isFinite(value)) value = 0;
-                return { label: label, valueGbp: value };
+                return { label: label, valueGbp: value, iconHtml: '<i class="fa-light fa-gem" aria-hidden="true"></i>' };
               });
-              rows.sort(function (a, b) { return (b.valueGbp || 0) - (a.valueGbp || 0); });
-              var top = rows.slice(0, 5);
-              var total = rows.reduce(function (acc, r) { return acc + (Number(r.valueGbp) || 0); }, 0) || 0;
-              top = top.map(function (r) {
-                var pct = total > 0 ? ((r.valueGbp || 0) / total) * 100 : 0;
-                return Object.assign({}, r, { pct: pct, iconHtml: '<i class="fa-light fa-circle-small" aria-hidden="true"></i>' });
+              var currentTop = withSharePct(rows, WIDGET_TOP_N);
+              var hasCurrent = currentTop.some(function (r) { return r && Number(r.valueGbp || 0) > 0; });
+              var needsFallback = !!fallbackRangeKey && (!hasCurrent || currentTop.length < WIDGET_TOP_N);
+
+              function renderWithFallback(yData) {
+                var placeholders = [];
+                if (yData) {
+                  var yPayload = (yData && yData.ok && yData.payload) ? yData.payload : (yData && yData.payload ? yData.payload : yData);
+                  var yTables = yPayload && Array.isArray(yPayload.tables) ? yPayload.tables : (Array.isArray(yData.tables) ? yData.tables : []);
+                  var ySelected = yTables.find(function (t) { return t && String(t.id || '') === String((selected && selected.id) || ''); }) || yTables[0] || null;
+                  var yRows = ySelected && Array.isArray(ySelected.rows) ? ySelected.rows : [];
+                  yRows = yRows.slice().map(function (r) {
+                    var label = (r && (r.variant || r.key || r.name)) ? String(r.variant || r.key || r.name) : '—';
+                    return { label: label, valueGbp: Number(r && (r.revenue_gbp != null || r.revenue != null) ? (r.revenue_gbp != null ? r.revenue_gbp : r.revenue) : 0) || 0, iconHtml: '<i class="fa-light fa-gem" aria-hidden="true"></i>' };
+                  });
+                  placeholders = makePlaceholderRowsFromYesterday(yRows, WIDGET_TOP_N);
+                }
+                var barRows = mergeCurrentWithPlaceholders(currentTop, placeholders, WIDGET_TOP_N);
+                var topRow = hasCurrent ? (currentTop[0] || null) : (placeholders[0] || barRows[0] || null);
+                if (topRow && !hasCurrent) topRow.placeholder = true;
+                var sig = widgetSig({ rk: rk, table: (selected && selected.id) ? String(selected.id) : '', current: currentTop, placeholders: placeholders });
+                if (!force && dashWidgetLastRenderSig[mountId] && dashWidgetLastRenderSig[mountId] === sig) return;
+                dashWidgetLastRenderSig[mountId] = sig;
+                renderWidgetRadialAndVbars(mountId, topRow, barRows, { accentCss: 'background: var(--kexo-accent-1, #4b94e4);' });
+              }
+
+              if (!needsFallback) return renderWithFallback(null);
+              if (!vUrl || !shopKey) return renderWithFallback(null);
+              var yUrl = API + '/api/insights-variants?shop=' + encodeURIComponent(shopKey) + '&range=' + encodeURIComponent(fallbackRangeKey) + (force ? ('&force=1&_=' + Date.now()) : '');
+              return fetchWidgetJson('variant|' + fallbackRangeKey + '|' + shopKey, yUrl, force, 30000).then(function (y) {
+                return renderWithFallback(y);
               });
-              renderWidgetVariantRadialAndList(mountId, top[0] || null, top);
             })
         );
 
@@ -21051,11 +21239,28 @@ const API = '';
             .then(function (data) {
               var mountId = 'dash-widget-devices-mount';
               if (!data) { setWidgetEmpty(mountId, 'No data'); return; }
-              var sig = widgetSig({ dim: prefs.devicesDim, data: data });
-              if (!force && dashWidgetLastRenderSig[mountId] && dashWidgetLastRenderSig[mountId] === sig) return;
-              dashWidgetLastRenderSig[mountId] = sig;
               var ddLabel = document.querySelector('[data-kexo-widget-dropdown-label="devices"]');
               if (ddLabel) ddLabel.textContent = (prefs.devicesDim === 'browsers') ? 'Browsers' : 'Devices';
+              var devMenu = document.getElementById('dash-widget-devices-menu');
+              if (devMenu) {
+                devMenu.innerHTML =
+                  '<button type="button" class="kexo-widget-menu-item" role="menuitem" data-kexo-widget-action="refresh">Refresh</button>' +
+                  '<button type="button" class="kexo-widget-menu-item" role="menuitem" data-kexo-widget-dimension="devices" data-kexo-widget-dimension-value="devices">Devices</button>' +
+                  '<button type="button" class="kexo-widget-menu-item" role="menuitem" data-kexo-widget-dimension="devices" data-kexo-widget-dimension-value="browsers">Browsers</button>';
+              }
+
+              function browserIconHtmlForKey(rawKey, label) {
+                var k = (rawKey == null ? '' : String(rawKey)).trim().toLowerCase();
+                var titleAttr = label ? (' title="' + escapeHtml(label) + '"') : '';
+                if (!k) return '<i class="fa-light fa-globe" aria-hidden="true"' + titleAttr + '></i>';
+                if (k.indexOf('chrome') >= 0 && k.indexOf('chromium') < 0) return '<i class="fa-brands fa-chrome" data-icon-key="type-browser-chrome" aria-hidden="true"' + titleAttr + '></i>';
+                if (k.indexOf('safari') >= 0 && k.indexOf('chrome') < 0) return '<i class="fa-brands fa-safari" data-icon-key="type-browser-safari" aria-hidden="true"' + titleAttr + '></i>';
+                if (k.indexOf('edge') >= 0) return '<i class="fa-brands fa-edge" data-icon-key="type-browser-edge" aria-hidden="true"' + titleAttr + '></i>';
+                if (k.indexOf('firefox') >= 0) return '<i class="fa-brands fa-firefox-browser" data-icon-key="type-browser-firefox" aria-hidden="true"' + titleAttr + '></i>';
+                if (k.indexOf('opera') >= 0) return '<i class="fa-brands fa-opera" data-icon-key="type-browser-opera" aria-hidden="true"' + titleAttr + '></i>';
+                return '<i class="fa-light fa-globe" data-icon-key="type-browser-other" aria-hidden="true"' + titleAttr + '></i>';
+              }
+
               var rows = [];
               if (prefs.devicesDim === 'browsers') {
                 var payload = (data && data.ok && data.payload) ? data.payload : data;
@@ -21064,7 +21269,7 @@ const API = '';
                   var label = r && (r.ua_browser || r.browser || r.name) ? String(r.ua_browser || r.browser || r.name) : '—';
                   var value = r && (r.revenue_gbp != null || r.revenue != null) ? Number(r.revenue_gbp != null ? r.revenue_gbp : r.revenue) : 0;
                   if (!Number.isFinite(value)) value = 0;
-                  return { label: label, valueGbp: value, iconHtml: '<i class="fa-light fa-globe" aria-hidden="true"></i>' };
+                  return { label: label, valueGbp: value, iconHtml: browserIconHtmlForKey(label, label) };
                 });
               } else {
                 var payload2 = (data && data.ok && data.payload) ? data.payload : data;
@@ -21074,16 +21279,57 @@ const API = '';
                   var value = r && (r.revenue_gbp != null || r.revenue != null) ? Number(r.revenue_gbp != null ? r.revenue_gbp : r.revenue) : 0;
                   if (!Number.isFinite(value)) value = 0;
                   var k = label.toLowerCase();
-                  var icon = (k.includes('mobile') ? 'fa-mobile-screen' : (k.includes('tablet') ? 'fa-tablet-screen-button' : 'fa-desktop'));
-                  return { label: label, valueGbp: value, iconHtml: '<i class="fa-light ' + escapeHtml(icon) + '" aria-hidden="true"></i>' };
+                  var iconKey = (k.indexOf('mobile') >= 0) ? 'type-device-mobile' : (k.indexOf('tablet') >= 0 ? 'type-device-tablet' : 'type-device-desktop');
+                  var icon = (k.indexOf('mobile') >= 0) ? 'fa-mobile-screen' : (k.indexOf('tablet') >= 0 ? 'fa-tablet-screen-button' : 'fa-desktop');
+                  return { label: label, valueGbp: value, iconHtml: '<i class="fa-light ' + escapeHtml(icon) + '" data-icon-key="' + escapeHtml(iconKey) + '" aria-hidden="true"></i>' };
                 });
               }
-              rows.sort(function (a, b) { return (b.valueGbp || 0) - (a.valueGbp || 0); });
-              var total = rows.reduce(function (acc, r) { return acc + (Number(r.valueGbp) || 0); }, 0) || 0;
-              var top = rows.slice(0, 5).map(function (r) {
-                return Object.assign({}, r, { pct: total > 0 ? ((r.valueGbp || 0) / total) * 100 : 0 });
+              var currentTop = withSharePct(rows, WIDGET_TOP_N);
+              var hasCurrent = currentTop.some(function (r) { return r && Number(r.valueGbp || 0) > 0; });
+              var needsFallback = !!fallbackRangeKey && (!hasCurrent || currentTop.length < WIDGET_TOP_N);
+
+              function renderWithFallback(yRows) {
+                var placeholders = makePlaceholderRowsFromYesterday(yRows, WIDGET_TOP_N);
+                var barRows = mergeCurrentWithPlaceholders(currentTop, placeholders, WIDGET_TOP_N);
+                var topRow = hasCurrent ? (currentTop[0] || null) : (placeholders[0] || barRows[0] || null);
+                if (topRow && !hasCurrent) topRow.placeholder = true;
+                var sig = widgetSig({ rk: rk, dim: prefs.devicesDim, current: currentTop, placeholders: placeholders });
+                if (!force && dashWidgetLastRenderSig[mountId] && dashWidgetLastRenderSig[mountId] === sig) return;
+                dashWidgetLastRenderSig[mountId] = sig;
+                renderWidgetRadialAndVbars(mountId, topRow, barRows, { accentCss: 'background: var(--kexo-accent-2, #3eb3ab);' });
+              }
+
+              if (!needsFallback) return renderWithFallback([]);
+              var yUrl = (prefs.devicesDim === 'browsers')
+                ? (API + '/api/browsers/table?range=' + encodeURIComponent(fallbackRangeKey) + (force ? ('&force=1&_=' + Date.now()) : ''))
+                : (API + '/api/devices/report?range=' + encodeURIComponent(fallbackRangeKey) + (force ? ('&force=1&_=' + Date.now()) : ''));
+              var yKey = (prefs.devicesDim === 'browsers' ? 'browsers' : 'devices') + '|' + fallbackRangeKey;
+              return fetchWidgetJson(yKey, yUrl, force, 25000).then(function (yData) {
+                if (!yData) return renderWithFallback([]);
+                if (prefs.devicesDim === 'browsers') {
+                  var yPayload = (yData && yData.ok && yData.payload) ? yData.payload : yData;
+                  var yList = yPayload && Array.isArray(yPayload.rows) ? yPayload.rows : (Array.isArray(yData.rows) ? yData.rows : []);
+                  var yRows = yList.map(function (r) {
+                    var label = r && (r.ua_browser || r.browser || r.name) ? String(r.ua_browser || r.browser || r.name) : '—';
+                    var value = r && (r.revenue_gbp != null || r.revenue != null) ? Number(r.revenue_gbp != null ? r.revenue_gbp : r.revenue) : 0;
+                    if (!Number.isFinite(value)) value = 0;
+                    return { label: label, valueGbp: value, iconHtml: browserIconHtmlForKey(label, label) };
+                  });
+                  return renderWithFallback(yRows);
+                }
+                var yPayload2 = (yData && yData.ok && yData.payload) ? yData.payload : yData;
+                var yList2 = yPayload2 && yPayload2.devices && Array.isArray(yPayload2.devices.rows) ? yPayload2.devices.rows : (yPayload2 && Array.isArray(yPayload2.rows) ? yPayload2.rows : []);
+                var yRows2 = yList2.map(function (r) {
+                  var label = r && (r.device_type || r.device || r.name) ? String(r.device_type || r.device || r.name) : '—';
+                  var value = r && (r.revenue_gbp != null || r.revenue != null) ? Number(r.revenue_gbp != null ? r.revenue_gbp : r.revenue) : 0;
+                  if (!Number.isFinite(value)) value = 0;
+                  var k = label.toLowerCase();
+                  var iconKey = (k.indexOf('mobile') >= 0) ? 'type-device-mobile' : (k.indexOf('tablet') >= 0 ? 'type-device-tablet' : 'type-device-desktop');
+                  var icon = (k.indexOf('mobile') >= 0) ? 'fa-mobile-screen' : (k.indexOf('tablet') >= 0 ? 'fa-tablet-screen-button' : 'fa-desktop');
+                  return { label: label, valueGbp: value, iconHtml: '<i class="fa-light ' + escapeHtml(icon) + '" data-icon-key="' + escapeHtml(iconKey) + '" aria-hidden="true"></i>' };
+                });
+                return renderWithFallback(yRows2);
               });
-              renderWidgetList(mountId, top, 'background: var(--kexo-accent-2, #3eb3ab);');
             })
         );
 
@@ -21093,10 +21339,11 @@ const API = '';
             .then(function (data) {
               var mountId = 'dash-widget-attribution-mount';
               if (!data) { setWidgetEmpty(mountId, 'No data'); return; }
-              var sig = widgetSig(data);
-              if (!force && dashWidgetLastRenderSig[mountId] && dashWidgetLastRenderSig[mountId] === sig) return;
-              dashWidgetLastRenderSig[mountId] = sig;
               var payload = (data && data.ok && data.payload) ? data.payload : data;
+              var menu = document.getElementById('dash-widget-attribution-menu');
+              if (menu) {
+                menu.innerHTML = '<button type="button" class="kexo-widget-menu-item" role="menuitem" data-kexo-widget-action="refresh">Refresh</button>';
+              }
               var rows = [];
               try {
                 var chans = payload && payload.attribution && Array.isArray(payload.attribution.rows) ? payload.attribution.rows : [];
@@ -21106,39 +21353,111 @@ const API = '';
                     var label = s && (s.label || s.source_key) ? String(s.label || s.source_key) : '—';
                     var value = s && (s.revenue_gbp != null || s.revenue != null) ? Number(s.revenue_gbp != null ? s.revenue_gbp : s.revenue) : 0;
                     if (!Number.isFinite(value)) value = 0;
-                    rows.push({ label: label, valueGbp: value });
+                    var iconSpec = s && (s.icon_spec != null || s.iconSpec != null) ? String(s.icon_spec != null ? s.icon_spec : s.iconSpec) : '';
+                    var iconHtml = iconSpec ? attributionIconSpecToHtml(iconSpec, label) : '<i class="fa-light fa-share-nodes" aria-hidden="true"></i>';
+                    rows.push({ label: label, valueGbp: value, iconHtml: iconHtml });
                   });
                 });
               } catch (_) { rows = []; }
-              rows.sort(function (a, b) { return (b.valueGbp || 0) - (a.valueGbp || 0); });
-              var middle = rows.length > 2 ? rows.slice(2, 7) : rows.slice(0, 5);
-              var total = rows.reduce(function (acc, r) { return acc + (Number(r.valueGbp) || 0); }, 0) || 0;
-              middle = middle.map(function (r) { return Object.assign({}, r, { pct: total > 0 ? ((r.valueGbp || 0) / total) * 100 : 0 }); });
-              renderWidgetVbars(mountId, middle, 'background: var(--kexo-accent-1, #4b94e4);');
+              var currentTop = withSharePct(rows, WIDGET_TOP_N);
+              var hasCurrent = currentTop.some(function (r) { return r && Number(r.valueGbp || 0) > 0; });
+              var needsFallback = !!fallbackRangeKey && (!hasCurrent || currentTop.length < WIDGET_TOP_N);
+
+              function renderWithFallback(yRows) {
+                var placeholders = makePlaceholderRowsFromYesterday(yRows, WIDGET_TOP_N);
+                var barRows = mergeCurrentWithPlaceholders(currentTop, placeholders, WIDGET_TOP_N);
+                var topRow = hasCurrent ? (currentTop[0] || null) : (placeholders[0] || barRows[0] || null);
+                if (topRow && !hasCurrent) topRow.placeholder = true;
+                var sig = widgetSig({ rk: rk, current: currentTop, placeholders: placeholders });
+                if (!force && dashWidgetLastRenderSig[mountId] && dashWidgetLastRenderSig[mountId] === sig) return;
+                dashWidgetLastRenderSig[mountId] = sig;
+                renderWidgetRadialAndVbars(mountId, topRow, barRows, { accentCss: 'background: var(--kexo-accent-1, #4b94e4);' });
+              }
+
+              if (!needsFallback) return renderWithFallback([]);
+              var yUrl = API + '/api/attribution/report?range=' + encodeURIComponent(fallbackRangeKey) + (force ? ('&force=1&_=' + Date.now()) : '');
+              return fetchWidgetJson('attribution|' + fallbackRangeKey, yUrl, force, 25000).then(function (yData) {
+                if (!yData) return renderWithFallback([]);
+                var yPayload = (yData && yData.ok && yData.payload) ? yData.payload : yData;
+                var yRows = [];
+                try {
+                  var yChans = yPayload && yPayload.attribution && Array.isArray(yPayload.attribution.rows) ? yPayload.attribution.rows : [];
+                  yChans.forEach(function (ch) {
+                    var sources = ch && Array.isArray(ch.sources) ? ch.sources : [];
+                    sources.forEach(function (s) {
+                      var label = s && (s.label || s.source_key) ? String(s.label || s.source_key) : '—';
+                      var value = s && (s.revenue_gbp != null || s.revenue != null) ? Number(s.revenue_gbp != null ? s.revenue_gbp : s.revenue) : 0;
+                      if (!Number.isFinite(value)) value = 0;
+                      var iconSpec = s && (s.icon_spec != null || s.iconSpec != null) ? String(s.icon_spec != null ? s.icon_spec : s.iconSpec) : '';
+                      var iconHtml = iconSpec ? attributionIconSpecToHtml(iconSpec, label) : '<i class="fa-light fa-share-nodes" aria-hidden="true"></i>';
+                      yRows.push({ label: label, valueGbp: value, iconHtml: iconHtml });
+                    });
+                  });
+                } catch (_) { yRows = []; }
+                return renderWithFallback(yRows);
+              });
             })
         );
 
-        // Payment types
+        // Payment methods
         tasks.push(
           fetchWidgetJson('payment-types|' + rk, payUrl, force, 25000)
             .then(function (data) {
               var mountId = 'dash-widget-payment-types-mount';
               if (!data) { setWidgetEmpty(mountId, 'No data'); return; }
-              var sig = widgetSig(data);
-              if (!force && dashWidgetLastRenderSig[mountId] && dashWidgetLastRenderSig[mountId] === sig) return;
-              dashWidgetLastRenderSig[mountId] = sig;
               var payload = (data && data.ok && data.payload) ? data.payload : data;
+              var menu = document.getElementById('dash-widget-payment-types-menu');
+              if (menu) {
+                menu.innerHTML = '<button type="button" class="kexo-widget-menu-item" role="menuitem" data-kexo-widget-action="refresh">Refresh</button>';
+              }
+
               var list = payload && Array.isArray(payload.rows) ? payload.rows : (Array.isArray(data.rows) ? data.rows : []);
               var rows = list.map(function (r) {
-                var label = r && (r.payment_gateway || r.payment || r.name) ? String(r.payment_gateway || r.payment || r.name) : '—';
-                var value = r && (r.revenue_gbp != null || r.revenue != null) ? Number(r.revenue_gbp != null ? r.revenue_gbp : r.revenue) : 0;
+                var label = r && r.label != null ? String(r.label) : '—';
+                var value = r && typeof r.revenue === 'number' ? Number(r.revenue) : (r && r.revenue_gbp != null ? Number(r.revenue_gbp) : 0);
                 if (!Number.isFinite(value)) value = 0;
-                return { label: label, valueGbp: value };
+                var iconSrc = r && r.iconSrc ? String(r.iconSrc) : '';
+                var iconAlt = r && r.iconAlt ? String(r.iconAlt) : label;
+                var iconHtml = iconSrc
+                  ? ('<img src="' + escapeHtml(iconSrc) + '" alt="' + escapeHtml(iconAlt) + '" width="18" height="18">')
+                  : '<i class="fa-light fa-credit-card" aria-hidden="true"></i>';
+                return { label: label, valueGbp: value, iconHtml: iconHtml };
               });
-              rows.sort(function (a, b) { return (b.valueGbp || 0) - (a.valueGbp || 0); });
-              var total = rows.reduce(function (acc, r) { return acc + (Number(r.valueGbp) || 0); }, 0) || 0;
-              var top = rows.slice(0, 5).map(function (r) { return Object.assign({}, r, { pct: total > 0 ? ((r.valueGbp || 0) / total) * 100 : 0, iconHtml: '<i class="fa-light fa-credit-card" aria-hidden="true"></i>' }); });
-              renderWidgetDonutWithLegend(mountId, top);
+
+              var currentTop = withSharePct(rows, WIDGET_TOP_N);
+              var hasCurrent = currentTop.some(function (r) { return r && Number(r.valueGbp || 0) > 0; });
+              var needsFallback = !!fallbackRangeKey && (!hasCurrent || currentTop.length < WIDGET_TOP_N);
+
+              function renderWithFallback(yRows) {
+                var placeholders = makePlaceholderRowsFromYesterday(yRows, WIDGET_TOP_N);
+                var barRows = mergeCurrentWithPlaceholders(currentTop, placeholders, WIDGET_TOP_N);
+                var topRow = hasCurrent ? (currentTop[0] || null) : (placeholders[0] || barRows[0] || null);
+                if (topRow && !hasCurrent) topRow.placeholder = true;
+                var sig = widgetSig({ rk: rk, current: currentTop, placeholders: placeholders });
+                if (!force && dashWidgetLastRenderSig[mountId] && dashWidgetLastRenderSig[mountId] === sig) return;
+                dashWidgetLastRenderSig[mountId] = sig;
+                renderWidgetRadialAndVbars(mountId, topRow, barRows, { accentCss: 'background: var(--kexo-accent-4, #e4644b);' });
+              }
+
+              if (!needsFallback) return renderWithFallback([]);
+              var yUrl = API + '/api/payment-methods/report?range=' + encodeURIComponent(fallbackRangeKey) + (force ? ('&force=1&_=' + Date.now()) : '');
+              return fetchWidgetJson('payment-types|' + fallbackRangeKey, yUrl, force, 25000).then(function (yData) {
+                if (!yData) return renderWithFallback([]);
+                var yPayload = (yData && yData.ok && yData.payload) ? yData.payload : yData;
+                var yList = yPayload && Array.isArray(yPayload.rows) ? yPayload.rows : (Array.isArray(yData.rows) ? yData.rows : []);
+                var yRows = yList.map(function (r) {
+                  var label = r && r.label != null ? String(r.label) : '—';
+                  var value = r && typeof r.revenue === 'number' ? Number(r.revenue) : (r && r.revenue_gbp != null ? Number(r.revenue_gbp) : 0);
+                  if (!Number.isFinite(value)) value = 0;
+                  var iconSrc = r && r.iconSrc ? String(r.iconSrc) : '';
+                  var iconAlt = r && r.iconAlt ? String(r.iconAlt) : label;
+                  var iconHtml = iconSrc
+                    ? ('<img src="' + escapeHtml(iconSrc) + '" alt="' + escapeHtml(iconAlt) + '" width="18" height="18">')
+                    : '<i class="fa-light fa-credit-card" aria-hidden="true"></i>';
+                  return { label: label, valueGbp: value, iconHtml: iconHtml };
+                });
+                return renderWithFallback(yRows);
+              });
             })
         );
 
@@ -21148,21 +21467,51 @@ const API = '';
             .then(function (data) {
               var mountId = 'dash-widget-abandoned-mount';
               if (!data) { setWidgetEmpty(mountId, 'No data'); return; }
-              var sig = widgetSig(data);
-              if (!force && dashWidgetLastRenderSig[mountId] && dashWidgetLastRenderSig[mountId] === sig) return;
-              dashWidgetLastRenderSig[mountId] = sig;
               var payload = (data && data.ok && data.payload) ? data.payload : data;
+              var menu = document.getElementById('dash-widget-abandoned-menu');
+              if (menu) {
+                menu.innerHTML = '<button type="button" class="kexo-widget-menu-item" role="menuitem" data-kexo-widget-action="refresh">Refresh</button>';
+              }
               var list = payload && Array.isArray(payload.rows) ? payload.rows : (Array.isArray(data.rows) ? data.rows : []);
               var rows = list.map(function (r) {
                 var label = r && (r.country || r.country_code) ? String(r.country || r.country_code) : '—';
                 var value = r && (r.abandoned_value_gbp != null || r.value_gbp != null || r.value != null) ? Number(r.abandoned_value_gbp != null ? r.abandoned_value_gbp : (r.value_gbp != null ? r.value_gbp : r.value)) : 0;
                 if (!Number.isFinite(value)) value = 0;
-                return { label: label, valueGbp: value };
+                var cc = String(label || '').trim().toUpperCase().slice(0, 2);
+                var iconHtml = cc && /^[A-Z]{2}$/.test(cc) ? countryCodeToFlagHtml(cc) : '<i class="fa-light fa-globe" aria-hidden="true"></i>';
+                return { label: cc || (label || '—'), valueGbp: value, iconHtml: iconHtml };
               });
-              rows.sort(function (a, b) { return (b.valueGbp || 0) - (a.valueGbp || 0); });
-              var total = rows.reduce(function (acc, r) { return acc + (Number(r.valueGbp) || 0); }, 0) || 0;
-              var top = rows.slice(0, 5).map(function (r) { return Object.assign({}, r, { pct: total > 0 ? ((r.valueGbp || 0) / total) * 100 : 0 }); });
-              renderWidgetVbars(mountId, top, 'background: var(--kexo-accent-2, #3eb3ab);');
+              var currentTop = withSharePct(rows, WIDGET_TOP_N);
+              var hasCurrent = currentTop.some(function (r) { return r && Number(r.valueGbp || 0) > 0; });
+              var needsFallback = !!fallbackRangeKey && (!hasCurrent || currentTop.length < WIDGET_TOP_N);
+
+              function renderWithFallback(yRows) {
+                var placeholders = makePlaceholderRowsFromYesterday(yRows, WIDGET_TOP_N);
+                var barRows = mergeCurrentWithPlaceholders(currentTop, placeholders, WIDGET_TOP_N);
+                var topRow = hasCurrent ? (currentTop[0] || null) : (placeholders[0] || barRows[0] || null);
+                if (topRow && !hasCurrent) topRow.placeholder = true;
+                var sig = widgetSig({ rk: rk, current: currentTop, placeholders: placeholders });
+                if (!force && dashWidgetLastRenderSig[mountId] && dashWidgetLastRenderSig[mountId] === sig) return;
+                dashWidgetLastRenderSig[mountId] = sig;
+                renderWidgetRadialAndVbars(mountId, topRow, barRows, { accentCss: 'background: var(--kexo-accent-2, #3eb3ab);' });
+              }
+
+              if (!needsFallback) return renderWithFallback([]);
+              var yUrl = API + '/api/abandoned-carts/top-countries?range=' + encodeURIComponent(fallbackRangeKey) + (force ? ('&force=1&_=' + Date.now()) : '');
+              return fetchWidgetJson('abandoned|' + fallbackRangeKey, yUrl, force, 25000).then(function (yData) {
+                if (!yData) return renderWithFallback([]);
+                var yPayload = (yData && yData.ok && yData.payload) ? yData.payload : yData;
+                var yList = yPayload && Array.isArray(yPayload.rows) ? yPayload.rows : (Array.isArray(yData.rows) ? yData.rows : []);
+                var yRows = yList.map(function (r) {
+                  var label = r && (r.country || r.country_code) ? String(r.country || r.country_code) : '—';
+                  var value = r && (r.abandoned_value_gbp != null || r.value_gbp != null || r.value != null) ? Number(r.abandoned_value_gbp != null ? r.abandoned_value_gbp : (r.value_gbp != null ? r.value_gbp : r.value)) : 0;
+                  if (!Number.isFinite(value)) value = 0;
+                  var cc = String(label || '').trim().toUpperCase().slice(0, 2);
+                  var iconHtml = cc && /^[A-Z]{2}$/.test(cc) ? countryCodeToFlagHtml(cc) : '<i class="fa-light fa-globe" aria-hidden="true"></i>';
+                  return { label: cc || (label || '—'), valueGbp: value, iconHtml: iconHtml };
+                });
+                return renderWithFallback(yRows);
+              });
             })
         );
 
@@ -23660,6 +24009,73 @@ const API = '';
           body += '<div class="form-hint">Only applies to the Radial Bar chart type.</div>';
           body += '</div>';
         }
+        var capControls = (meta && meta.capabilities && Array.isArray(meta.capabilities.controls)) ? meta.capabilities.controls : [];
+        if (capControls && capControls.length) {
+          var styleObj = (s && s.style && typeof s.style === 'object') ? s.style : {};
+          body += '<div class="col-12"><div class="hr-text">Chart options</div></div>';
+          capControls.forEach(function (c) {
+            if (!c || typeof c !== 'object') return;
+            var type = c.type != null ? String(c.type).trim().toLowerCase() : '';
+            var field = c.field != null ? String(c.field).trim() : '';
+            if (!type || !field) return;
+            var label = c.label != null ? String(c.label) : field;
+            var hint = c.hint != null ? String(c.hint) : '';
+            var modesOnly = Array.isArray(c.modes) ? c.modes.map(function (m) { return String(m || '').trim().toLowerCase(); }).filter(Boolean) : null;
+            var modeAttr = (modesOnly && modesOnly.length) ? (' data-cs-modes="' + escapeHtml(modesOnly.join(',')) + '"') : '';
+            if (type === 'select') {
+              var options = Array.isArray(c.options) ? c.options : [];
+              var v = (styleObj && styleObj[field] != null) ? String(styleObj[field]).trim().toLowerCase() : (c.default != null ? String(c.default).trim().toLowerCase() : '');
+              if (options.length && !options.some(function (o) { return o && String(o.value).trim().toLowerCase() === v; })) {
+                v = String(options[0].value).trim().toLowerCase();
+              }
+              body += '<div class="col-12 col-md-6"' + modeAttr + '>';
+              body += '<label class="form-label">' + escapeHtml(label) + '</label>';
+              body += '<select class="form-select form-select-sm" data-cs-field="' + escapeHtml(field) + '">';
+              options.forEach(function (o) {
+                if (!o) return;
+                var ov = o.value != null ? String(o.value).trim().toLowerCase() : '';
+                var ol = o.label != null ? String(o.label) : ov;
+                if (!ov) return;
+                body += '<option value="' + escapeHtml(ov) + '"' + (ov === v ? ' selected' : '') + '>' + escapeHtml(ol) + '</option>';
+              });
+              body += '</select>';
+              if (hint) body += '<div class="form-hint">' + escapeHtml(hint) + '</div>';
+              body += '</div>';
+            } else if (type === 'range') {
+              var min = Number(c.min);
+              var max = Number(c.max);
+              var step = Number(c.step);
+              var unit = c.unit != null ? String(c.unit) : '';
+              if (!Number.isFinite(min)) min = 0;
+              if (!Number.isFinite(max)) max = 100;
+              if (!Number.isFinite(step) || step <= 0) step = 1;
+              var raw = (styleObj && styleObj[field] != null) ? Number(styleObj[field]) : Number(c.default);
+              if (!Number.isFinite(raw)) raw = min;
+              if (raw < min) raw = min;
+              if (raw > max) raw = max;
+              body += '<div class="col-12 col-md-6"' + modeAttr + '>';
+              body += '<label class="form-label d-flex align-items-center justify-content-between">';
+              body += '<span>' + escapeHtml(label) + '</span>';
+              body += '<span class="text-muted small" data-cs-range-value="' + escapeHtml(field) + '">' + escapeHtml(String(raw)) + (unit ? escapeHtml(unit) : '') + '</span>';
+              body += '</label>';
+              body += '<input type="range" class="form-range" min="' + escapeHtml(String(min)) + '" max="' + escapeHtml(String(max)) + '" step="' + escapeHtml(String(step)) + '" value="' + escapeHtml(String(raw)) + '" data-cs-field="' + escapeHtml(field) + '" data-cs-range-unit="' + escapeHtml(unit) + '">';
+              if (hint) body += '<div class="form-hint">' + escapeHtml(hint) + '</div>';
+              body += '</div>';
+            } else if (type === 'toggle') {
+              var def = (typeof c.default === 'boolean') ? c.default : false;
+              var stored = (styleObj && typeof styleObj[field] === 'boolean') ? styleObj[field] : def;
+              var invert = !!c.invert;
+              var checked = invert ? !stored : !!stored;
+              body += '<div class="col-12"' + modeAttr + '>';
+              body += '<label class="form-check form-switch m-0">';
+              body += '<input class="form-check-input" type="checkbox" data-cs-field="' + escapeHtml(field) + '"' + (checked ? ' checked' : '') + (invert ? ' data-cs-invert="1"' : '') + '>';
+              body += '<span class="form-check-label ms-2">' + escapeHtml(label) + '</span>';
+              body += '</label>';
+              if (hint) body += '<div class="form-hint">' + escapeHtml(hint) + '</div>';
+              body += '</div>';
+            }
+          });
+        }
         body += '<div class="col-12' + (fillOpacityVisible ? '' : ' d-none') + '" data-cs-mode-group="fill-opacity">';
         body += '<label class="form-label d-flex align-items-center justify-content-between">';
         body += '<span data-cs-fill-opacity-label>Area fill opacity</span>';
@@ -23806,6 +24222,29 @@ const API = '';
           sync();
         }
 
+        function bindCapabilityRangeControls() {
+          try {
+            var inputs = bodyEl.querySelectorAll('input[type="range"][data-cs-range-unit]');
+            for (var i = 0; i < inputs.length; i++) {
+              var inp = inputs[i];
+              if (!inp || inp.__kexoRangeBound) continue;
+              inp.__kexoRangeBound = 1;
+              (function (el) {
+                var field = el.getAttribute('data-cs-field') || '';
+                var unit = el.getAttribute('data-cs-range-unit') || '';
+                function sync() {
+                  var span = bodyEl.querySelector('[data-cs-range-value="' + field + '"]');
+                  if (!span) return;
+                  span.textContent = String(el.value || '') + (unit ? String(unit) : '');
+                }
+                try { el.addEventListener('input', sync); } catch (_) {}
+                try { el.addEventListener('change', sync); } catch (_) {}
+                sync();
+              })(inp);
+            }
+          } catch (_) {}
+        }
+
         function syncModeControls(modeVal) {
           var m = String(modeVal || '').trim().toLowerCase();
           var fillWrap = bodyEl.querySelector('[data-cs-mode-group="fill-opacity"]');
@@ -23825,10 +24264,23 @@ const API = '';
             if (m === 'radialbar') finishesWrap.classList.remove('d-none');
             else finishesWrap.classList.add('d-none');
           }
+          try {
+            var modeWraps = bodyEl.querySelectorAll('[data-cs-modes]');
+            for (var i = 0; i < modeWraps.length; i++) {
+              var w = modeWraps[i];
+              if (!w || !w.getAttribute) continue;
+              var raw = String(w.getAttribute('data-cs-modes') || '');
+              var allowed = raw.split(',').map(function (x) { return String(x || '').trim().toLowerCase(); }).filter(Boolean);
+              if (!allowed.length) continue;
+              if (allowed.indexOf(m) >= 0) w.classList.remove('d-none');
+              else w.classList.add('d-none');
+            }
+          } catch (_) {}
         }
 
         bindFillOpacityControls();
         bindPieLabelControls();
+        bindCapabilityRangeControls();
         syncModeControls(mode);
         try {
           var modeSelect = bodyEl.querySelector('[data-cs-field="mode"]');
@@ -23870,6 +24322,41 @@ const API = '';
             var raw = parseInt(String(fillEl.value || ''), 10);
             if (Number.isFinite(raw)) styleBase.fillOpacity = Math.max(0, Math.min(1, raw / 100));
           }
+          try {
+            (capControls || []).forEach(function (c) {
+              if (!c || typeof c !== 'object') return;
+              var type = c.type != null ? String(c.type).trim().toLowerCase() : '';
+              var field = c.field != null ? String(c.field).trim() : '';
+              if (!type || !field) return;
+              var el = bodyEl.querySelector('[data-cs-field="' + field + '"]');
+              if (!el) return;
+              if (type === 'select') {
+                var sv = el.value != null ? String(el.value).trim().toLowerCase() : '';
+                if (sv) styleBase[field] = sv;
+              } else if (type === 'range') {
+                var min = Number(c.min);
+                var max = Number(c.max);
+                var step = Number(c.step);
+                if (!Number.isFinite(min)) min = 0;
+                if (!Number.isFinite(max)) max = 100;
+                if (!Number.isFinite(step) || step <= 0) step = 1;
+                var n = Number(el.value);
+                if (!Number.isFinite(n)) n = Number(c.default);
+                if (!Number.isFinite(n)) n = min;
+                if (n < min) n = min;
+                if (n > max) n = max;
+                // Keep a stable precision for decimals (e.g. strokeWidth step=0.1).
+                var decimals = (String(step).indexOf('.') >= 0) ? String(step).split('.')[1].length : 0;
+                if (decimals > 0) n = Number(n.toFixed(Math.min(4, decimals)));
+                else n = Math.round(n);
+                styleBase[field] = n;
+              } else if (type === 'toggle') {
+                var checked = !!(el && el.checked);
+                var invert = !!(c.invert === true) || (el.getAttribute && el.getAttribute('data-cs-invert') === '1');
+                styleBase[field] = invert ? !checked : checked;
+              }
+            });
+          } catch (_) {}
           var out = {
             key: chartKey,
             mode: (modeEl && modeEl.value) ? String(modeEl.value).trim().toLowerCase() : mode,

@@ -248,6 +248,73 @@
           body += '<div class="form-hint">Only applies to the Radial Bar chart type.</div>';
           body += '</div>';
         }
+        var capControls = (meta && meta.capabilities && Array.isArray(meta.capabilities.controls)) ? meta.capabilities.controls : [];
+        if (capControls && capControls.length) {
+          var styleObj = (s && s.style && typeof s.style === 'object') ? s.style : {};
+          body += '<div class="col-12"><div class="hr-text">Chart options</div></div>';
+          capControls.forEach(function (c) {
+            if (!c || typeof c !== 'object') return;
+            var type = c.type != null ? String(c.type).trim().toLowerCase() : '';
+            var field = c.field != null ? String(c.field).trim() : '';
+            if (!type || !field) return;
+            var label = c.label != null ? String(c.label) : field;
+            var hint = c.hint != null ? String(c.hint) : '';
+            var modesOnly = Array.isArray(c.modes) ? c.modes.map(function (m) { return String(m || '').trim().toLowerCase(); }).filter(Boolean) : null;
+            var modeAttr = (modesOnly && modesOnly.length) ? (' data-cs-modes="' + escapeHtml(modesOnly.join(',')) + '"') : '';
+            if (type === 'select') {
+              var options = Array.isArray(c.options) ? c.options : [];
+              var v = (styleObj && styleObj[field] != null) ? String(styleObj[field]).trim().toLowerCase() : (c.default != null ? String(c.default).trim().toLowerCase() : '');
+              if (options.length && !options.some(function (o) { return o && String(o.value).trim().toLowerCase() === v; })) {
+                v = String(options[0].value).trim().toLowerCase();
+              }
+              body += '<div class="col-12 col-md-6"' + modeAttr + '>';
+              body += '<label class="form-label">' + escapeHtml(label) + '</label>';
+              body += '<select class="form-select form-select-sm" data-cs-field="' + escapeHtml(field) + '">';
+              options.forEach(function (o) {
+                if (!o) return;
+                var ov = o.value != null ? String(o.value).trim().toLowerCase() : '';
+                var ol = o.label != null ? String(o.label) : ov;
+                if (!ov) return;
+                body += '<option value="' + escapeHtml(ov) + '"' + (ov === v ? ' selected' : '') + '>' + escapeHtml(ol) + '</option>';
+              });
+              body += '</select>';
+              if (hint) body += '<div class="form-hint">' + escapeHtml(hint) + '</div>';
+              body += '</div>';
+            } else if (type === 'range') {
+              var min = Number(c.min);
+              var max = Number(c.max);
+              var step = Number(c.step);
+              var unit = c.unit != null ? String(c.unit) : '';
+              if (!Number.isFinite(min)) min = 0;
+              if (!Number.isFinite(max)) max = 100;
+              if (!Number.isFinite(step) || step <= 0) step = 1;
+              var raw = (styleObj && styleObj[field] != null) ? Number(styleObj[field]) : Number(c.default);
+              if (!Number.isFinite(raw)) raw = min;
+              if (raw < min) raw = min;
+              if (raw > max) raw = max;
+              body += '<div class="col-12 col-md-6"' + modeAttr + '>';
+              body += '<label class="form-label d-flex align-items-center justify-content-between">';
+              body += '<span>' + escapeHtml(label) + '</span>';
+              body += '<span class="text-muted small" data-cs-range-value="' + escapeHtml(field) + '">' + escapeHtml(String(raw)) + (unit ? escapeHtml(unit) : '') + '</span>';
+              body += '</label>';
+              body += '<input type="range" class="form-range" min="' + escapeHtml(String(min)) + '" max="' + escapeHtml(String(max)) + '" step="' + escapeHtml(String(step)) + '" value="' + escapeHtml(String(raw)) + '" data-cs-field="' + escapeHtml(field) + '" data-cs-range-unit="' + escapeHtml(unit) + '">';
+              if (hint) body += '<div class="form-hint">' + escapeHtml(hint) + '</div>';
+              body += '</div>';
+            } else if (type === 'toggle') {
+              var def = (typeof c.default === 'boolean') ? c.default : false;
+              var stored = (styleObj && typeof styleObj[field] === 'boolean') ? styleObj[field] : def;
+              var invert = !!c.invert;
+              var checked = invert ? !stored : !!stored;
+              body += '<div class="col-12"' + modeAttr + '>';
+              body += '<label class="form-check form-switch m-0">';
+              body += '<input class="form-check-input" type="checkbox" data-cs-field="' + escapeHtml(field) + '"' + (checked ? ' checked' : '') + (invert ? ' data-cs-invert="1"' : '') + '>';
+              body += '<span class="form-check-label ms-2">' + escapeHtml(label) + '</span>';
+              body += '</label>';
+              if (hint) body += '<div class="form-hint">' + escapeHtml(hint) + '</div>';
+              body += '</div>';
+            }
+          });
+        }
         body += '<div class="col-12' + (fillOpacityVisible ? '' : ' d-none') + '" data-cs-mode-group="fill-opacity">';
         body += '<label class="form-label d-flex align-items-center justify-content-between">';
         body += '<span data-cs-fill-opacity-label>Area fill opacity</span>';
@@ -394,6 +461,29 @@
           sync();
         }
 
+        function bindCapabilityRangeControls() {
+          try {
+            var inputs = bodyEl.querySelectorAll('input[type="range"][data-cs-range-unit]');
+            for (var i = 0; i < inputs.length; i++) {
+              var inp = inputs[i];
+              if (!inp || inp.__kexoRangeBound) continue;
+              inp.__kexoRangeBound = 1;
+              (function (el) {
+                var field = el.getAttribute('data-cs-field') || '';
+                var unit = el.getAttribute('data-cs-range-unit') || '';
+                function sync() {
+                  var span = bodyEl.querySelector('[data-cs-range-value="' + field + '"]');
+                  if (!span) return;
+                  span.textContent = String(el.value || '') + (unit ? String(unit) : '');
+                }
+                try { el.addEventListener('input', sync); } catch (_) {}
+                try { el.addEventListener('change', sync); } catch (_) {}
+                sync();
+              })(inp);
+            }
+          } catch (_) {}
+        }
+
         function syncModeControls(modeVal) {
           var m = String(modeVal || '').trim().toLowerCase();
           var fillWrap = bodyEl.querySelector('[data-cs-mode-group="fill-opacity"]');
@@ -413,10 +503,23 @@
             if (m === 'radialbar') finishesWrap.classList.remove('d-none');
             else finishesWrap.classList.add('d-none');
           }
+          try {
+            var modeWraps = bodyEl.querySelectorAll('[data-cs-modes]');
+            for (var i = 0; i < modeWraps.length; i++) {
+              var w = modeWraps[i];
+              if (!w || !w.getAttribute) continue;
+              var raw = String(w.getAttribute('data-cs-modes') || '');
+              var allowed = raw.split(',').map(function (x) { return String(x || '').trim().toLowerCase(); }).filter(Boolean);
+              if (!allowed.length) continue;
+              if (allowed.indexOf(m) >= 0) w.classList.remove('d-none');
+              else w.classList.add('d-none');
+            }
+          } catch (_) {}
         }
 
         bindFillOpacityControls();
         bindPieLabelControls();
+        bindCapabilityRangeControls();
         syncModeControls(mode);
         try {
           var modeSelect = bodyEl.querySelector('[data-cs-field="mode"]');
@@ -458,6 +561,41 @@
             var raw = parseInt(String(fillEl.value || ''), 10);
             if (Number.isFinite(raw)) styleBase.fillOpacity = Math.max(0, Math.min(1, raw / 100));
           }
+          try {
+            (capControls || []).forEach(function (c) {
+              if (!c || typeof c !== 'object') return;
+              var type = c.type != null ? String(c.type).trim().toLowerCase() : '';
+              var field = c.field != null ? String(c.field).trim() : '';
+              if (!type || !field) return;
+              var el = bodyEl.querySelector('[data-cs-field="' + field + '"]');
+              if (!el) return;
+              if (type === 'select') {
+                var sv = el.value != null ? String(el.value).trim().toLowerCase() : '';
+                if (sv) styleBase[field] = sv;
+              } else if (type === 'range') {
+                var min = Number(c.min);
+                var max = Number(c.max);
+                var step = Number(c.step);
+                if (!Number.isFinite(min)) min = 0;
+                if (!Number.isFinite(max)) max = 100;
+                if (!Number.isFinite(step) || step <= 0) step = 1;
+                var n = Number(el.value);
+                if (!Number.isFinite(n)) n = Number(c.default);
+                if (!Number.isFinite(n)) n = min;
+                if (n < min) n = min;
+                if (n > max) n = max;
+                // Keep a stable precision for decimals (e.g. strokeWidth step=0.1).
+                var decimals = (String(step).indexOf('.') >= 0) ? String(step).split('.')[1].length : 0;
+                if (decimals > 0) n = Number(n.toFixed(Math.min(4, decimals)));
+                else n = Math.round(n);
+                styleBase[field] = n;
+              } else if (type === 'toggle') {
+                var checked = !!(el && el.checked);
+                var invert = !!(c.invert === true) || (el.getAttribute && el.getAttribute('data-cs-invert') === '1');
+                styleBase[field] = invert ? !checked : checked;
+              }
+            });
+          } catch (_) {}
           var out = {
             key: chartKey,
             mode: (modeEl && modeEl.value) ? String(modeEl.value).trim().toLowerCase() : mode,

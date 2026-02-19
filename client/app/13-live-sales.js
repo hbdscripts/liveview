@@ -142,6 +142,20 @@
         });
     });
 
+    var _newSaleRefreshTimer = null;
+    function scheduleNewSaleDashboardRefresh() {
+      if (_newSaleRefreshTimer) return;
+      _newSaleRefreshTimer = setTimeout(function () {
+        _newSaleRefreshTimer = null;
+        try { if (typeof refreshKpis === 'function') refreshKpis({ force: true }); } catch (_) {}
+        try {
+          if (PAGE === 'dashboard' || activeMainTab === 'dashboard') {
+            if (typeof window.refreshDashboard === 'function') window.refreshDashboard({ force: true, silent: true, reason: 'new-sale' });
+          }
+        } catch (_) {}
+      }, 280);
+    }
+
     function initEventSource() {
       if (_eventSource) { try { _eventSource.close(); } catch (_) {} }
       var es = new EventSource(API + '/api/stream');
@@ -187,11 +201,13 @@
             const ageMs = Date.now() - purchasedAt;
             if (ageMs > 2 * 60 * 1000) return; // older than 2 min: skip (stale)
             triggerSaleToast({ origin: 'sse', session: session, playSound: true });
+            scheduleNewSaleDashboardRefresh();
             return;
           }
           if (purchasedAt <= cur) { setLastSaleAt(purchasedAt); return; }
           setLastSaleAt(purchasedAt);
           triggerSaleToast({ origin: 'sse', session: session, playSound: true });
+          scheduleNewSaleDashboardRefresh();
         } catch (_) {}
       }
 
@@ -218,6 +234,7 @@
       _intervals.length = 0;
       _tickTimeIntervalId = null;
       if (liveSalesPollTimer) { try { clearTimeout(liveSalesPollTimer); } catch (_) {} liveSalesPollTimer = null; }
+      if (_newSaleRefreshTimer) { try { clearTimeout(_newSaleRefreshTimer); } catch (_) {} _newSaleRefreshTimer = null; }
       if (_eventSource) { try { _eventSource.close(); } catch (_) {} _eventSource = null; }
       if (_condensedStripResizeObserver) {
         try { _condensedStripResizeObserver.disconnect(); } catch (_) {}
