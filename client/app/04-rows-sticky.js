@@ -569,6 +569,9 @@
     let liveOnlineChartFetchedAt = 0;
     let liveOnlineChartInFlight = null;
     let liveOnlineMapChartInstance = null;
+    let liveOnlineMapSessions = [];
+    let liveOnlineMapSessionsFetchedAt = 0;
+    let liveOnlineMapSessionsInFlight = null;
     let rangeOverviewChart = null;
     let rangeOverviewChartKey = '';
     let rangeOverviewChartInFlight = null;

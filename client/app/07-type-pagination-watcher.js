@@ -3665,8 +3665,13 @@
     var CHARTS_UI_CFG_LS_KEY = 'kexo:charts-ui-config:v1';
     var CHARTS_KPI_BUNDLE_KEYS = ['dashboardCards', 'headerStrip', 'yearlySnapshot'];
 
-    function defaultChartsKpiBundlePalette() {
-      return { up: '#2fb344', down: '#d63939', same: '#66bdb7', compareLine: '#cccccc' };
+    function defaultChartsKpiBundlePalette(bundleKey) {
+      var key = String(bundleKey || '').trim().toLowerCase();
+      var same = '#66bdb7';
+      if (key === 'dashboardcards') {
+        same = cssVarColor('--kexo-accent-1', '#4b94e4');
+      }
+      return { up: '#2fb344', down: '#d63939', same: same, compareLine: '#cccccc' };
     }
 
     function defaultChartsKpiSparklineConfig(bundleKey) {
@@ -3685,7 +3690,7 @@
       return {
         sparkline: defaultChartsKpiSparklineConfig(bundleKey),
         deltaStyle: defaultChartsKpiDeltaStyle(bundleKey),
-        palette: defaultChartsKpiBundlePalette(),
+        palette: defaultChartsKpiBundlePalette(bundleKey),
       };
     }
 
@@ -3753,7 +3758,7 @@
       var compareOpacity = Number(spark.compareOpacity);
       if (!Number.isFinite(compareOpacity)) compareOpacity = 50;
       compareOpacity = Math.max(0, Math.min(100, Math.round(compareOpacity)));
-      return {
+      var out = {
         sparkline: {
           mode: mode,
           curve: curve,
@@ -3778,6 +3783,13 @@
           compareLine: normalizeHexColorStrict(palette.compareLine, def.palette.compareLine),
         },
       };
+      if (bundleKey === 'dashboardCards') {
+        var same = String(out.palette.same || '').trim().toLowerCase();
+        if (same === '#66bdb7') {
+          out.palette.same = cssVarColor('--kexo-accent-1', '#4b94e4');
+        }
+      }
+      return out;
     }
 
     function getChartsKpiBundle(bundleKey) {

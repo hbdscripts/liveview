@@ -3232,13 +3232,26 @@
         }
         function hexToRgba(hex, alpha) {
           if (!hex || typeof hex !== 'string') return 'rgba(0,0,0,0.5)';
-          var h = hex.replace(/^#/, '');
+          var raw = hex.trim();
+          var a = typeof alpha === 'number' && Number.isFinite(alpha) ? Math.max(0, Math.min(1, alpha)) : null;
+          if (/^rgba?\(/i.test(raw)) {
+            var m = raw.replace(/\s+/g, '').match(/^rgba?\((\d+),(\d+),(\d+)(?:,([0-9.]+))?\)$/i);
+            if (m) {
+              var rr = Math.max(0, Math.min(255, parseInt(m[1], 10) || 0));
+              var gg = Math.max(0, Math.min(255, parseInt(m[2], 10) || 0));
+              var bb = Math.max(0, Math.min(255, parseInt(m[3], 10) || 0));
+              var baseA = m[4] != null ? Math.max(0, Math.min(1, parseFloat(m[4]) || 0)) : 1;
+              var outA = a != null ? a : baseA;
+              return 'rgba(' + rr + ',' + gg + ',' + bb + ',' + outA + ')';
+            }
+          }
+          var h = raw.replace(/^#/, '');
           if (h.length !== 6) return 'rgba(0,0,0,0.5)';
           var r = parseInt(h.slice(0, 2), 16);
           var g = parseInt(h.slice(2, 4), 16);
           var b = parseInt(h.slice(4, 6), 16);
-          var a = typeof alpha === 'number' && Number.isFinite(alpha) ? Math.max(0, Math.min(1, alpha)) : 0.5;
-          return 'rgba(' + r + ',' + g + ',' + b + ',' + a + ')';
+          var out = a != null ? a : 0.5;
+          return 'rgba(' + r + ',' + g + ',' + b + ',' + out + ')';
         }
         // sparkBaseline: 'zero' = include 0 baseline (revenue, sessions, orders, aov, cogs, etc.);
         // 'percent' = clamp [0,100] (conversion, bounce); 'symmetric' = include 0 and allow negative (returns).

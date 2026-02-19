@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: aecbd26dbf3f373d
+// checksum: 2dd6e97b4acd0ad1
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -2203,6 +2203,9 @@ const API = '';
     let liveOnlineChartFetchedAt = 0;
     let liveOnlineChartInFlight = null;
     let liveOnlineMapChartInstance = null;
+    let liveOnlineMapSessions = [];
+    let liveOnlineMapSessionsFetchedAt = 0;
+    let liveOnlineMapSessionsInFlight = null;
     let rangeOverviewChart = null;
     let rangeOverviewChartKey = '';
     let rangeOverviewChartInFlight = null;
@@ -9136,8 +9139,13 @@ const API = '';
     var CHARTS_UI_CFG_LS_KEY = 'kexo:charts-ui-config:v1';
     var CHARTS_KPI_BUNDLE_KEYS = ['dashboardCards', 'headerStrip', 'yearlySnapshot'];
 
-    function defaultChartsKpiBundlePalette() {
-      return { up: '#2fb344', down: '#d63939', same: '#66bdb7', compareLine: '#cccccc' };
+    function defaultChartsKpiBundlePalette(bundleKey) {
+      var key = String(bundleKey || '').trim().toLowerCase();
+      var same = '#66bdb7';
+      if (key === 'dashboardcards') {
+        same = cssVarColor('--kexo-accent-1', '#4b94e4');
+      }
+      return { up: '#2fb344', down: '#d63939', same: same, compareLine: '#cccccc' };
     }
 
     function defaultChartsKpiSparklineConfig(bundleKey) {
@@ -9156,7 +9164,7 @@ const API = '';
       return {
         sparkline: defaultChartsKpiSparklineConfig(bundleKey),
         deltaStyle: defaultChartsKpiDeltaStyle(bundleKey),
-        palette: defaultChartsKpiBundlePalette(),
+        palette: defaultChartsKpiBundlePalette(bundleKey),
       };
     }
 
@@ -9224,7 +9232,7 @@ const API = '';
       var compareOpacity = Number(spark.compareOpacity);
       if (!Number.isFinite(compareOpacity)) compareOpacity = 50;
       compareOpacity = Math.max(0, Math.min(100, Math.round(compareOpacity)));
-      return {
+      var out = {
         sparkline: {
           mode: mode,
           curve: curve,
@@ -9249,6 +9257,13 @@ const API = '';
           compareLine: normalizeHexColorStrict(palette.compareLine, def.palette.compareLine),
         },
       };
+      if (bundleKey === 'dashboardCards') {
+        var same = String(out.palette.same || '').trim().toLowerCase();
+        if (same === '#66bdb7') {
+          out.palette.same = cssVarColor('--kexo-accent-1', '#4b94e4');
+        }
+      }
+      return out;
     }
 
     function getChartsKpiBundle(bundleKey) {
@@ -11809,7 +11824,8 @@ const API = '';
       var countsByIso2 = {};
       for (var i = 0; i < list.length; i++) {
         var s = list[i];
-        var iso = (s && s.country_code != null) ? String(s.country_code).trim().toUpperCase().slice(0, 2) : 'XX';
+        var isoSrc = (s && (s.country_code != null || s.cf_country != null)) ? (s.country_code || s.cf_country) : null;
+        var iso = isoSrc != null ? String(isoSrc).trim().toUpperCase().slice(0, 2) : 'XX';
         if (!iso || iso === 'XX') continue;
         if (iso === 'UK') iso = 'GB';
         countsByIso2[iso] = (countsByIso2[iso] || 0) + 1;
@@ -11944,6 +11960,52 @@ const API = '';
         console.error('[live-online-map] render error:', err);
         setLiveOnlineMapState(el, 'Map rendering failed.', { error: true });
       }
+    }
+
+    function normalizeLiveOnlineSessionList(list) {
+      var next = Array.isArray(list) ? list.slice() : [];
+      if (!next.length) return [];
+      var cutoff = Date.now() - ACTIVE_WINDOW_MS;
+      var arrivedCutoff = Date.now() - ARRIVED_WINDOW_MS;
+      next = next.filter(function(s) {
+        return (s && s.last_seen != null && s.last_seen >= cutoff) &&
+          (s.started_at != null && s.started_at >= arrivedCutoff);
+      });
+      next.sort(function(a, b) { return (b.last_seen || 0) - (a.last_seen || 0); });
+      return next;
+    }
+
+    function fetchLiveOnlineMapSessions(options) {
+      options = options || {};
+      var force = !!options.force;
+      var now = Date.now();
+      var ttlMs = typeof ONLINE_COUNT_POLL_MS === 'number' ? ONLINE_COUNT_POLL_MS : 15000;
+      if (!force) {
+        if (lastSessionsMode === 'live' && Array.isArray(sessions) && sessions.length && lastSessionsFetchedAt && (now - lastSessionsFetchedAt) < ttlMs) {
+          liveOnlineMapSessions = normalizeLiveOnlineSessionList(sessions);
+          liveOnlineMapSessionsFetchedAt = lastSessionsFetchedAt || now;
+          return Promise.resolve(liveOnlineMapSessions);
+        }
+        if (Array.isArray(liveOnlineMapSessions) && liveOnlineMapSessions.length && liveOnlineMapSessionsFetchedAt && (now - liveOnlineMapSessionsFetchedAt) < ttlMs) {
+          return Promise.resolve(liveOnlineMapSessions);
+        }
+      }
+      if (liveOnlineMapSessionsInFlight) return liveOnlineMapSessionsInFlight;
+      var url = API + '/api/sessions?filter=active&_=' + Date.now();
+      liveOnlineMapSessionsInFlight = fetchWithTimeout(url, { credentials: 'same-origin', cache: 'no-store' }, 15000)
+        .then(function(r) { return (r && r.ok) ? r.json() : null; })
+        .then(function(data) {
+          var list = data && Array.isArray(data.sessions) ? data.sessions : [];
+          liveOnlineMapSessions = normalizeLiveOnlineSessionList(list);
+          liveOnlineMapSessionsFetchedAt = Date.now();
+          return liveOnlineMapSessions;
+        })
+        .catch(function(err) {
+          try { if (typeof window.kexoCaptureError === 'function') window.kexoCaptureError(err, { context: 'liveOnlineMapSessions', page: PAGE }); } catch (_) {}
+          return Array.isArray(liveOnlineMapSessions) ? liveOnlineMapSessions : [];
+        })
+        .finally(function() { liveOnlineMapSessionsInFlight = null; });
+      return liveOnlineMapSessionsInFlight;
     }
 
     function renderLiveOnlineTrendChart(payload) {
@@ -12141,8 +12203,10 @@ const API = '';
       var rawMode = chartModeFromUiConfig(chartKey, 'map-flat') || 'map-flat';
       rawMode = String(rawMode || '').trim().toLowerCase();
       if (rawMode.indexOf('map-') === 0) {
-        try { renderLiveOnlineMapChartFromSessions(Array.isArray(sessions) ? sessions : []); } catch (_) {}
-        return Promise.resolve(null);
+        return fetchLiveOnlineMapSessions(options || {}).then(function(list) {
+          try { renderLiveOnlineMapChartFromSessions(Array.isArray(list) ? list : []); } catch (_) {}
+          return list || null;
+        });
       }
 
       // Switching away from map: clean up jsVectorMap instance + overlay.
@@ -20091,13 +20155,26 @@ const API = '';
         }
         function hexToRgba(hex, alpha) {
           if (!hex || typeof hex !== 'string') return 'rgba(0,0,0,0.5)';
-          var h = hex.replace(/^#/, '');
+          var raw = hex.trim();
+          var a = typeof alpha === 'number' && Number.isFinite(alpha) ? Math.max(0, Math.min(1, alpha)) : null;
+          if (/^rgba?\(/i.test(raw)) {
+            var m = raw.replace(/\s+/g, '').match(/^rgba?\((\d+),(\d+),(\d+)(?:,([0-9.]+))?\)$/i);
+            if (m) {
+              var rr = Math.max(0, Math.min(255, parseInt(m[1], 10) || 0));
+              var gg = Math.max(0, Math.min(255, parseInt(m[2], 10) || 0));
+              var bb = Math.max(0, Math.min(255, parseInt(m[3], 10) || 0));
+              var baseA = m[4] != null ? Math.max(0, Math.min(1, parseFloat(m[4]) || 0)) : 1;
+              var outA = a != null ? a : baseA;
+              return 'rgba(' + rr + ',' + gg + ',' + bb + ',' + outA + ')';
+            }
+          }
+          var h = raw.replace(/^#/, '');
           if (h.length !== 6) return 'rgba(0,0,0,0.5)';
           var r = parseInt(h.slice(0, 2), 16);
           var g = parseInt(h.slice(2, 4), 16);
           var b = parseInt(h.slice(4, 6), 16);
-          var a = typeof alpha === 'number' && Number.isFinite(alpha) ? Math.max(0, Math.min(1, alpha)) : 0.5;
-          return 'rgba(' + r + ',' + g + ',' + b + ',' + a + ')';
+          var out = a != null ? a : 0.5;
+          return 'rgba(' + r + ',' + g + ',' + b + ',' + out + ')';
         }
         // sparkBaseline: 'zero' = include 0 baseline (revenue, sessions, orders, aov, cogs, etc.);
         // 'percent' = clamp [0,100] (conversion, bounce); 'symmetric' = include 0 and allow negative (returns).
