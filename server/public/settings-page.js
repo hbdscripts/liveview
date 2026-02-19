@@ -1163,7 +1163,16 @@
       if (!o.credentials) o.credentials = 'same-origin';
       if (!o.cache) o.cache = 'no-store';
       var tm = typeof timeoutMs === 'number' ? timeoutMs : 25000;
-      return fetchWithTimeout(url, o, tm)
+      var fetcher = typeof fetchWithTimeout === 'function' ? fetchWithTimeout : (function (u, opt, _tm) {
+        if (typeof fetch !== 'function') return Promise.reject(new Error('fetch not available'));
+        if (typeof AbortController === 'undefined' || !_tm) return fetch(u, opt || {});
+        var ctrl = new AbortController();
+        var t = setTimeout(function () { try { ctrl.abort(); } catch (_) {} }, _tm);
+        var opts = opt && typeof opt === 'object' ? { ...opt } : {};
+        opts.signal = ctrl.signal;
+        return fetch(u, opts).then(function (r) { try { clearTimeout(t); } catch (_) {} return r; }, function (e) { try { clearTimeout(t); } catch (_) {} throw e; });
+      });
+      return fetcher(url, o, tm)
         .then(function (r) {
           return r.text().then(function (t) {
             var j = null;

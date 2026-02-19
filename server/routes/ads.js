@@ -138,7 +138,11 @@ router.get('/google/conversion-actions', async (req, res) => {
        WHERE conversion_action.name LIKE 'Kexo%'`
     );
     if (!out || !out.ok) {
-      res.status(400).json({ ok: false, error: (out && out.error) ? String(out.error) : 'query failed', actions: [] });
+      const err = (out && out.error) ? String(out.error) : 'query failed';
+      if (err.includes('Missing credentials') || err.includes('not connected')) {
+        return res.json({ ok: true, actions: [] });
+      }
+      res.status(400).json({ ok: false, error: err, actions: [] });
       return;
     }
     const diag = await getCachedDiagnostics(shop);

@@ -2,7 +2,7 @@ const config = require('../config');
 const fx = require('../fx');
 const { getDb, isPostgres } = require('../db');
 const { getAdsDb } = require('./adsDb');
-const { getGoogleAdsConfig, getResolvedCustomerIds } = require('./adsStore');
+const { getGoogleAdsConfig, getResolvedCustomerIds, getMissingRefreshTokenError } = require('./adsStore');
 
 function normalizeCustomerId(raw) {
   const s = raw != null ? String(raw).trim() : '';
@@ -123,7 +123,7 @@ async function testGoogleAdsConnection(shop) {
   }
   const cfg = await getGoogleAdsConfig(shop);
   const refreshToken = cfg && cfg.refresh_token ? String(cfg.refresh_token) : '';
-  if (!refreshToken) return { ok: false, error: 'Google Ads not connected (missing refresh_token)' };
+  if (!refreshToken) return { ok: false, error: getMissingRefreshTokenError() };
   const { customerId, loginCustomerId } = getResolvedCustomerIds(cfg);
   if (!customerId) return { ok: false, error: 'Missing customer_id (set in OAuth or GOOGLE_ADS_CUSTOMER_ID)' };
   try {
@@ -302,7 +302,7 @@ async function syncGoogleAdsSpendHourly(options = {}) {
     const { customerId, loginCustomerId } = getResolvedCustomerIds(cfg);
     if (!customerId) return { ok: false, error: 'Missing GOOGLE_ADS_CUSTOMER_ID or customer_id in OAuth config' };
     const refreshToken = cfg && cfg.refresh_token ? String(cfg.refresh_token) : '';
-    if (!refreshToken) return { ok: false, error: 'Google Ads not connected (missing refresh_token). Run /api/ads/google/connect' };
+    if (!refreshToken) return { ok: false, error: getMissingRefreshTokenError() };
 
     const accessToken = await fetchAccessTokenFromRefreshToken(refreshToken);
 
@@ -473,7 +473,7 @@ async function syncGoogleAdsGeoDaily(options = {}) {
     const { customerId, loginCustomerId } = getResolvedCustomerIds(cfg);
     if (!customerId) return { ok: false, error: 'Missing GOOGLE_ADS_CUSTOMER_ID or customer_id in OAuth config' };
     const refreshToken = cfg && cfg.refresh_token ? String(cfg.refresh_token) : '';
-    if (!refreshToken) return { ok: false, error: 'Google Ads not connected (missing refresh_token). Run /api/ads/google/connect' };
+    if (!refreshToken) return { ok: false, error: getMissingRefreshTokenError() };
 
     const accessToken = await fetchAccessTokenFromRefreshToken(refreshToken);
 
@@ -680,7 +680,7 @@ async function syncGoogleAdsDeviceDaily(options = {}) {
     const { customerId, loginCustomerId } = getResolvedCustomerIds(cfg);
     if (!customerId) return { ok: false, error: 'Missing GOOGLE_ADS_CUSTOMER_ID or customer_id in OAuth config' };
     const refreshToken = cfg && cfg.refresh_token ? String(cfg.refresh_token) : '';
-    if (!refreshToken) return { ok: false, error: 'Google Ads not connected (missing refresh_token). Run /api/ads/google/connect' };
+    if (!refreshToken) return { ok: false, error: getMissingRefreshTokenError() };
 
     const accessToken = await fetchAccessTokenFromRefreshToken(refreshToken);
 
@@ -866,7 +866,7 @@ async function backfillCampaignIdsFromGclid(options = {}) {
     const { customerId, loginCustomerId } = getResolvedCustomerIds(cfg);
     if (!customerId) return { ok: false, error: 'Missing GOOGLE_ADS_CUSTOMER_ID or customer_id in OAuth config' };
     const refreshToken = cfg && cfg.refresh_token ? String(cfg.refresh_token) : '';
-    if (!refreshToken) return { ok: false, error: 'Google Ads not connected' };
+    if (!refreshToken) return { ok: false, error: getMissingRefreshTokenError() };
 
     const accessToken = await fetchAccessTokenFromRefreshToken(refreshToken);
     const apiVersion = options.apiVersion || '';
@@ -1132,4 +1132,6 @@ module.exports = {
   backfillCampaignIdsFromGclid,
   testGoogleAdsConnection,
   getApiVersionsToTry,
+  fetchAccessTokenFromRefreshToken,
+  googleAdsSearch,
 };
