@@ -4715,6 +4715,8 @@
         if (!topRow) { setWidgetEmpty(mountId, 'No data'); return; }
         var options = (opts && typeof opts === 'object') ? opts : {};
         var accentCss = options.accentCss ? String(options.accentCss) : '';
+        var ringStrokeCss = options.ringStroke ? String(options.ringStroke) : 'var(--kexo-accent-1, #4b94e4)';
+        var ringOffsetPx = Number.isFinite(Number(options.ringOffsetPx)) ? Number(options.ringOffsetPx) : -10;
         var placeholder = !!(topRow && topRow.placeholder === true);
         var pct = topRow.pct != null ? Number(topRow.pct) : 0;
         if (!Number.isFinite(pct)) pct = 0;
@@ -4733,17 +4735,17 @@
           ? ((label ? (label + '\n') : '') + 'No data yet')
           : ((label ? (label + '\n') : '') + 'Value: ' + fmtGbp2(value) + '\nShare: ' + (Math.round(pct * 10) / 10).toFixed(1) + '%');
 
-        var radialStroke = placeholder ? 'rgba(15,23,42,0.20)' : 'var(--kexo-accent-1, #4b94e4)';
+        var radialStroke = placeholder ? 'rgba(15,23,42,0.20)' : ringStrokeCss;
         var valText = placeholder ? '\u2014' : fmtGbp2(value);
         var pctText = placeholder ? '\u2014' : (String(Math.round(pct)) + '%');
 
-        var iconSize = 28;
+        var iconSize = 20;
         var topHtml =
           '<div class="d-flex align-items-center gap-3" style="gap:0.75rem">' +
-            '<div class="position-relative flex-shrink-0" style="width:' + size + 'px;height:' + size + 'px" title="' + escapeHtml(tip) + '">' +
+            '<div class="position-relative flex-shrink-0" style="width:' + size + 'px;height:' + size + 'px;margin-left:' + escapeHtml(String(ringOffsetPx)) + 'px" title="' + escapeHtml(tip) + '">' +
               '<svg width="' + size + '" height="' + size + '" viewBox="0 0 ' + size + ' ' + size + '" aria-hidden="true">' +
-                '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="rgba(15,23,42,0.10)" stroke-width="10"></circle>' +
-                '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="' + escapeHtml(radialStroke) + '" stroke-width="10" stroke-linecap="round"' +
+                '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="rgba(15,23,42,0.10)" stroke-width="4"></circle>' +
+                '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="' + escapeHtml(radialStroke) + '" stroke-width="4" stroke-linecap="round"' +
                   ' style="transform: rotate(-90deg); transform-origin: ' + cx + 'px ' + cy + 'px; transition: stroke-dashoffset 520ms cubic-bezier(.2,.9,.2,1);"' +
                   ' stroke-dasharray="' + escapeHtml(String(circ)) + '" stroke-dashoffset="' + escapeHtml(String(circ)) + '"' +
                   ' data-kexo-radial-pct="' + escapeHtml(String(placeholder ? 0 : pct)) + '" data-kexo-radial-circ="' + escapeHtml(String(circ)) + '"' +
@@ -4755,7 +4757,7 @@
             '</div>' +
             '<div class="min-w-0 flex-fill text-start">' +
               '<div class="d-flex align-items-center gap-2 fw-semibold" title="' + escapeHtml(label) + '">' +
-                (icon ? ('<span aria-hidden="true" style="display:inline-flex;align-items:center;justify-content:center;width:' + iconSize + 'px;height:' + iconSize + 'px;font-size:1.15rem;flex-shrink:0">' + icon + '</span>') : '') +
+                (icon ? ('<span class="kexo-widget-top-icon" aria-hidden="true" style="display:inline-flex;align-items:center;justify-content:center;width:' + iconSize + 'px;height:' + iconSize + 'px;font-size:1rem;flex-shrink:0">' + icon + '</span>') : '') +
                 '<span class="text-truncate" style="max-width: 100%;">' + escapeHtml(label || '—') + '</span>' +
               '</div>' +
               '<div class="text-muted" style="font-size:0.8125rem">' + escapeHtml(valText) + '</div>' +
@@ -4936,7 +4938,10 @@
                 var sig = widgetSig({ rk: rk, table: (selected && selected.id) ? String(selected.id) : '', current: currentTop, placeholders: placeholders });
                 if (!force && dashWidgetLastRenderSig[mountId] && dashWidgetLastRenderSig[mountId] === sig) return;
                 dashWidgetLastRenderSig[mountId] = sig;
-                renderWidgetRadialAndVbars(mountId, topRow, barRows, { accentCss: 'background: var(--kexo-accent-2, #3eb3ab);' });
+                renderWidgetRadialAndVbars(mountId, topRow, barRows, {
+                  accentCss: 'background: var(--kexo-accent-4, #8b5cf6);',
+                  ringStroke: 'var(--kexo-accent-4, #8b5cf6)'
+                });
               }
 
               if (!needsFallback) return renderWithFallback(null);
@@ -5011,7 +5016,10 @@
                 var sig = widgetSig({ rk: rk, dim: prefs.devicesDim, current: currentTop, placeholders: placeholders });
                 if (!force && dashWidgetLastRenderSig[mountId] && dashWidgetLastRenderSig[mountId] === sig) return;
                 dashWidgetLastRenderSig[mountId] = sig;
-                renderWidgetRadialAndVbars(mountId, topRow, barRows, { accentCss: 'background: var(--kexo-accent-2, #3eb3ab);' });
+                renderWidgetRadialAndVbars(mountId, topRow, barRows, {
+                  accentCss: 'background: var(--kexo-accent-1, #4b94e4);',
+                  ringStroke: 'var(--kexo-accent-1, #4b94e4)'
+                });
               }
 
               if (!needsFallback) return renderWithFallback([]);
@@ -5087,7 +5095,10 @@
                 var sig = widgetSig({ rk: rk, current: currentTop, placeholders: placeholders });
                 if (!force && dashWidgetLastRenderSig[mountId] && dashWidgetLastRenderSig[mountId] === sig) return;
                 dashWidgetLastRenderSig[mountId] = sig;
-                renderWidgetRadialAndVbars(mountId, topRow, barRows, { accentCss: 'background: var(--kexo-accent-2, #3eb3ab);' });
+                renderWidgetRadialAndVbars(mountId, topRow, barRows, {
+                  accentCss: 'background: var(--kexo-accent-3, #f59e34);',
+                  ringStroke: 'var(--kexo-accent-3, #f59e34)'
+                });
               }
 
               if (!needsFallback) return renderWithFallback([]);
@@ -5154,7 +5165,10 @@
                 var sig = widgetSig({ rk: rk, current: currentTop, placeholders: placeholders });
                 if (!force && dashWidgetLastRenderSig[mountId] && dashWidgetLastRenderSig[mountId] === sig) return;
                 dashWidgetLastRenderSig[mountId] = sig;
-                renderWidgetRadialAndVbars(mountId, topRow, barRows, { accentCss: 'background: var(--kexo-accent-2, #3eb3ab);' });
+                renderWidgetRadialAndVbars(mountId, topRow, barRows, {
+                  accentCss: 'background: var(--kexo-accent-2, #3eb3ab);',
+                  ringStroke: 'var(--kexo-accent-2, #3eb3ab)'
+                });
               }
 
               if (!needsFallback) return renderWithFallback([]);
@@ -5213,7 +5227,10 @@
                 var sig = widgetSig({ rk: rk, current: currentTop, placeholders: placeholders });
                 if (!force && dashWidgetLastRenderSig[mountId] && dashWidgetLastRenderSig[mountId] === sig) return;
                 dashWidgetLastRenderSig[mountId] = sig;
-                renderWidgetRadialAndVbars(mountId, topRow, barRows, { accentCss: 'background: var(--kexo-accent-4, #e4644b);' });
+                renderWidgetRadialAndVbars(mountId, topRow, barRows, {
+                  accentCss: 'background: var(--kexo-accent-5, #ef4444);',
+                  ringStroke: 'var(--kexo-accent-5, #ef4444)'
+                });
               }
 
               if (!needsFallback) return renderWithFallback([]);
