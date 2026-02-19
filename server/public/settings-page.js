@@ -1131,6 +1131,8 @@
     var issuesRefreshBtn = document.getElementById('settings-ga-issues-refresh-btn');
     var postbackDetailsEl = document.getElementById('settings-ga-postback-details');
     var postbackDependentEl = document.getElementById('settings-ga-postback-dependent');
+    var testConnBtn = document.getElementById('settings-ga-test-connection-btn');
+    var testConnMsgEl = document.getElementById('settings-ga-test-connection-msg');
 
     var profitSaveBtn = document.getElementById('settings-ga-profit-save-btn');
     var profitMsgEl = document.getElementById('settings-ga-profit-msg');
@@ -1139,7 +1141,7 @@
     var issueModalDismissBtn = document.getElementById('settings-ga-issue-modal-dismiss');
     var issueModalResolveBtn = document.getElementById('settings-ga-issue-modal-resolve');
 
-    if (!signinBtn && !disconnectBtn && !provisionBtn && !postbackCb && !issuesRefreshBtn && !profitSaveBtn && !postbackDetailsEl && !postbackDependentEl) return;
+    if (!signinBtn && !disconnectBtn && !provisionBtn && !postbackCb && !issuesRefreshBtn && !profitSaveBtn && !postbackDetailsEl && !postbackDependentEl && !testConnBtn) return;
 
     function setHint(el, text, ok) {
       if (!el) return;
@@ -1507,6 +1509,28 @@
       });
     }
 
+    if (testConnBtn) {
+      testConnBtn.addEventListener('click', function () {
+        if (testConnBtn.disabled) return;
+        testConnBtn.disabled = true;
+        setHint(testConnMsgEl, 'Testing…', true);
+        var shop = getShopParam();
+        var qs = shop ? ('?shop=' + encodeURIComponent(shop)) : '';
+        apiGet('/api/ads/google/test-connection' + qs)
+          .then(function (r) {
+            if (r && r.ok && r.json && r.json.ok) {
+              var label = r.json.customerId ? ('Connected (' + r.json.customerId + ')') : 'Connected';
+              setHint(testConnMsgEl, label, true);
+            } else {
+              var err = (r && r.json && r.json.error) ? r.json.error : (r && r.error ? r.error : (r && r.text ? r.text : 'Test failed'));
+              setHint(testConnMsgEl, 'Test failed: ' + String(err || 'Unknown error'), false);
+            }
+          })
+          .catch(function () { setHint(testConnMsgEl, 'Test failed.', false); })
+          .then(function () { testConnBtn.disabled = false; });
+      });
+    }
+
     if (provisionBtn) {
       provisionBtn.addEventListener('click', function () {
         var goals = [];
@@ -1625,6 +1649,12 @@
     var shopParam = getShopParam();
     var providers = Array.isArray(ads.providers) ? ads.providers : [];
     var ga = providers.find(function (p) { return p && String(p.key || '').toLowerCase() === 'google_ads'; }) || {};
+    var envModeEl = document.getElementById('settings-ga-env-mode');
+    var envHintEl = document.getElementById('settings-ga-env-hint');
+    var envAdsDbEl = document.getElementById('settings-ga-env-adsdb');
+    var envDevTokenEl = document.getElementById('settings-ga-env-devtoken');
+    var envRefreshEl = document.getElementById('settings-ga-env-refresh');
+    var envCustomerEl = document.getElementById('settings-ga-env-customer');
 
     var storedScopes = shopify && shopify.storedScopes ? String(shopify.storedScopes) : '';
     var requiredScopes = shopify && shopify.serverScopes ? String(shopify.serverScopes) : '';
@@ -1670,6 +1700,20 @@
     setText('settings-ga-login-customer-id', ga && ga.loginCustomerId ? String(ga.loginCustomerId) : '\u2014');
     setText('settings-ga-conversion-customer-id', ga && ga.conversionCustomerId ? String(ga.conversionCustomerId) : '\u2014');
 
+    if (envModeEl) envModeEl.textContent = oauthEnabled ? 'OAuth enabled' : 'Server env';
+    if (envHintEl) {
+      envHintEl.textContent = oauthEnabled
+        ? 'OAuth stores refresh token in settings; server still needs developer token + customer ID.'
+        : 'Uses GOOGLE_ADS_* environment variables when OAuth is disabled.';
+    }
+    if (envAdsDbEl) setHtml('settings-ga-env-adsdb', badge((ga && ga.adsDb) ? 'Configured' : 'Missing', (ga && ga.adsDb) ? 'ok' : 'bad'));
+    if (envDevTokenEl) setHtml('settings-ga-env-devtoken', badge((ga && ga.hasDeveloperToken) ? 'Set' : 'Missing', (ga && ga.hasDeveloperToken) ? 'ok' : 'bad'));
+    if (envRefreshEl) setHtml('settings-ga-env-refresh', badge((ga && ga.hasRefreshToken) ? (oauthEnabled ? 'Stored' : 'Set') : 'Missing', (ga && ga.hasRefreshToken) ? 'ok' : 'bad'));
+    if (envCustomerEl) {
+      if (ga && ga.customerId) envCustomerEl.textContent = String(ga.customerId);
+      else envCustomerEl.innerHTML = badge('Missing', 'bad');
+    }
+
     var postbackCb = document.getElementById('settings-ga-postback-enabled');
     if (postbackCb) {
       postbackCb.checked = !!(settings && settings.googleAdsPostbackEnabled);
@@ -1703,7 +1747,15 @@
     (function patchConnHint() {
       if (!connMsgEl) return;
       if (!oauthEnabled) {
-        connMsgEl.textContent = 'Configured via server settings (GOOGLE_ADS_*). Set GOOGLE_ADS_OAUTH_ENABLED=1 to enable Sign in with Google.';
+        var missingEnv = [];
+        if (!(ga && ga.adsDb)) missingEnv.push('ADS_DB_URL');
+        if (!(ga && ga.hasDeveloperToken)) missingEnv.push('GOOGLE_ADS_DEVELOPER_TOKEN');
+        if (!(ga && ga.customerId)) missingEnv.push('GOOGLE_ADS_CUSTOMER_ID');
+        if (!(ga && ga.hasRefreshToken)) missingEnv.push('GOOGLE_ADS_REFRESH_TOKEN');
+        var msg = 'Configured via server settings (GOOGLE_ADS_*).';
+        if (missingEnv.length) msg += ' Missing: ' + missingEnv.join(', ') + '.';
+        msg += ' Set GOOGLE_ADS_OAUTH_ENABLED=1 to enable Sign in with Google.';
+        connMsgEl.textContent = msg;
         connMsgEl.className = 'form-hint text-muted';
         return;
       }
@@ -2257,25 +2309,25 @@
   }
 
   var PAYMENT_METHODS_WITH_ASSETS = [
-    { key: 'visa', label: 'Visa', defaultSrc: '/assets/img/payments/visa.svg' },
-    { key: 'mastercard', label: 'Mastercard', defaultSrc: '/assets/img/payments/mastercard.svg' },
-    { key: 'amex', label: 'American Express', defaultSrc: '/assets/img/payments/americanexpress.svg' },
-    { key: 'maestro', label: 'Maestro', defaultSrc: '/assets/img/payments/maestro.svg' },
-    { key: 'discover', label: 'Discover', defaultSrc: '/assets/img/payments/discover.svg' },
-    { key: 'jcb', label: 'JCB', defaultSrc: '/assets/img/payments/jcb.svg' },
-    { key: 'diners', label: 'Diners Club', defaultSrc: '/assets/img/payments/diners.svg' },
-    { key: 'unionpay', label: 'UnionPay', defaultSrc: '/assets/img/payments/unionpay.svg' },
-    { key: 'paypal', label: 'PayPal', defaultSrc: '/assets/img/payments/paypal.svg' },
-    { key: 'klarna', label: 'Klarna', defaultSrc: '/assets/img/payments/klarna.svg' },
-    { key: 'clearpay', label: 'Clearpay', defaultSrc: '/assets/img/payments/clearpay.svg' },
-    { key: 'afterpay', label: 'Afterpay', defaultSrc: '/assets/img/payments/afterpay.svg' },
-    { key: 'affirm', label: 'Affirm', defaultSrc: '/assets/img/payments/affirm.svg' },
-    { key: 'zip', label: 'Zip', defaultSrc: '/assets/img/payments/zip.svg' },
-    { key: 'sezzle', label: 'Sezzle', defaultSrc: '/assets/img/payments/sezzle.svg' },
-    { key: 'stripe', label: 'Stripe', defaultSrc: '/assets/img/payments/stripe.svg' },
-    { key: 'shop_pay', label: 'Shop Pay', defaultSrc: '/assets/img/payments/shop-pay.svg' },
-    { key: 'apple_pay', label: 'Apple Pay', defaultSrc: '/assets/img/payments/applepay.svg' },
-    { key: 'google_pay', label: 'Google Pay', defaultSrc: '/assets/img/payments/google-pay.svg' },
+    { key: 'visa', label: 'Visa', defaultSrc: 'https://www.svgrepo.com/show/98426/visa-logo.svg' },
+    { key: 'mastercard', label: 'Mastercard', defaultSrc: 'https://www.svgrepo.com/show/266077/master-card.svg' },
+    { key: 'amex', label: 'American Express', defaultSrc: 'https://www.svgrepo.com/show/122382/american-express-logo.svg' },
+    { key: 'maestro', label: 'Maestro', defaultSrc: 'https://www.svgrepo.com/show/36188/maestro.svg' },
+    { key: 'discover', label: 'Discover', defaultSrc: 'https://www.svgrepo.com/show/7405/discover-logo-of-pay-system.svg' },
+    { key: 'jcb', label: 'JCB', defaultSrc: 'https://www.svgrepo.com/show/128802/jcb-pay-card-logo.svg' },
+    { key: 'diners', label: 'Diners Club', defaultSrc: 'https://www.svgrepo.com/show/328114/diners.svg' },
+    { key: 'unionpay', label: 'UnionPay', defaultSrc: 'https://www.svgrepo.com/show/328087/unionpay.svg' },
+    { key: 'paypal', label: 'PayPal', defaultSrc: 'https://www.svgrepo.com/show/303385/paypal-icon-logo.svg' },
+    { key: 'klarna', label: 'Klarna', defaultSrc: 'https://www.svgrepo.com/show/73243/klarna-pay-logo.svg' },
+    { key: 'clearpay', label: 'Clearpay', defaultSrc: 'https://www.svgrepo.com/show/442893/brand-afterpay.svg' },
+    { key: 'afterpay', label: 'Afterpay', defaultSrc: 'https://www.svgrepo.com/show/442893/brand-afterpay.svg' },
+    { key: 'affirm', label: 'Affirm', defaultSrc: 'https://www.svgrepo.com/show/425160/payment-pay-later.svg' },
+    { key: 'zip', label: 'Zip', defaultSrc: 'https://www.svgrepo.com/show/102490/zip.svg' },
+    { key: 'sezzle', label: 'Sezzle', defaultSrc: 'https://www.svgrepo.com/show/55731/online-payment.svg' },
+    { key: 'stripe', label: 'Stripe', defaultSrc: 'https://www.svgrepo.com/show/354401/stripe.svg' },
+    { key: 'shop_pay', label: 'Shop Pay', defaultSrc: 'https://www.svgrepo.com/show/303503/shopify-logo.svg' },
+    { key: 'apple_pay', label: 'Apple Pay', defaultSrc: 'https://www.svgrepo.com/show/508402/apple-pay.svg' },
+    { key: 'google_pay', label: 'Google Pay', defaultSrc: 'https://www.svgrepo.com/show/508690/google-pay.svg' },
   ];
 
   function populatePaymentMethodOverrides(overrides) {

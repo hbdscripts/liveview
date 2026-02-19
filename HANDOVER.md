@@ -1,6 +1,6 @@
 # KEXO Liveview — Current state (handover)
 
-**Last updated:** 2026-02-18
+**Last updated:** 2026-02-19
 
 Read this file before making changes. If you change **core paths** (routes, auth, dashboard UX, ingest, DB schema, deploy), update this file in the same commit.
 
@@ -21,6 +21,11 @@ If you start a significant change that may overlap with others, add a short entr
   - **scope**: settings / dashboard / ingest / etc
   - **status**: in progress / paused
   - **notes**: 1–2 lines on what’s changing
+
+- **branch**: `agent/2026-02-19-google-ads-settings-diagnostics`
+  - **scope**: settings (Google Ads integrations)
+  - **status**: in progress
+  - **notes**: add server-config diagnostics + test-connection UI for Google Ads.
 
 ---
 
@@ -76,4 +81,4 @@ Templates under `server/public/**`; served via `sendPage()` in `server/index.js`
 - 2026-02-18: Charts and UI standardise hardening: session “big tables” (`sessions-table`) gained **Actions** and **Exit** columns (batched event counts + last-event timestamps; no per-row calls); header label “Landing Page” → “Page”; `.th-label-long` readability tweak in `server/public/custom.css`. Kexo Score ring math fixed (0–100% fill), score formatting clamped (never `100.0`), popovers disposed on modal close, and mobile hides `.kpi-compare-modal-actions`. Chart card cog buttons now open unified chart settings modal via safe delegated capture-phase handler. Settings IA cleanup: removed duplicate `brand-appearance` tab (redirect legacy deep links to `icons-assets`), moved logo/assets UI under Assets, and fixed left-nav ↔ right-tabs sync including Cost & Expenses sub-tabs (URL is source of truth; back/forward works).
 - 2026-02-18: Cost & profit settings: Shipping country overrides now use a table layout (like Rules) with tooltip-able headers and clearer placeholders; Rules form inputs have placeholders for faster setup.
 - 2026-02-18: Tables + assets polish: `.grid-table` base font-size pinned to `12px`; header/footer logo rotation starts `hidden` to avoid showing a “default” logo before the stable random variant is applied. Chart settings builder click binding hardened to bind immediately and tolerate non-HTMLElement click targets.
-- 2026-02-19: Payment method icon overrides now live in Settings → Kexo → Icons & assets (no separate tab). Expanded mapping + inputs for Visa, Mastercard, Amex, Maestro, Discover, JCB, Diners Club, UnionPay, PayPal, Klarna, Clearpay, Afterpay, Affirm, Zip, Sezzle, Stripe, Shop Pay, Apple Pay, Google Pay. Overrides stored in `asset_overrides` as `payment_<key>` and applied in payment methods report API.
+- 2026-02-19: Payment method icon overrides now live in Settings → Kexo → Icons & assets (no separate tab). Expanded mapping + inputs for Visa, Mastercard, Amex, Maestro, Discover, JCB, Diners Club, UnionPay, PayPal, Klarna, Clearpay, Afterpay, Affirm, Zip, Sezzle, Stripe, Shop Pay, Apple Pay, Google Pay. Defaults now point to SVGrepo-hosted SVGs; overrides stored in `asset_overrides` as `payment_<key>` and applied in payment methods report API.
