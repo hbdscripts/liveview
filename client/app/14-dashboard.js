@@ -19,10 +19,6 @@
       var overviewMiniResizeTimer = null;
       var overviewHeightSyncObserver = null;
       var overviewHeightSyncTimer = null;
-      var __kexoPerfOnce = {};
-      var __kexoPerfOverviewMiniCalls = 0;
-      var __kexoPerfDashboardFetchCalls = 0;
-      var __kexoPerfLastHeightSig = '';
       var OVERVIEW_MINI_CACHE_MS = 2 * 60 * 1000;
       var OVERVIEW_MINI_FORCE_REFRESH_MS = 5 * 60 * 1000;
       var OVERVIEW_CARD_RANGE_LS_PREFIX = 'kexo:overview-card-range:v1:';
@@ -47,6 +43,16 @@
       var DASH_BLUE_LIGHT = 'rgba(59,130,246,0.10)';
       var DASH_PURPLE = '#8b5cf6';
       var DASH_PURPLE_LIGHT = 'rgba(139,92,246,0.10)';
+
+      var DASH_WIDGETS_LS_KEY = 'kexo:dash-widgets:v1';
+      var dashWidgetsBound = false;
+      var dashWidgetsPrefsCache = null;
+      var dashWidgetCache = {}; // cacheKey -> { fetchedAt, sig, data }
+      var dashWidgetInFlight = {}; // cacheKey -> Promise
+      var dashWidgetLastRenderSig = {}; // mountId -> sig
+      var DASH_WIDGET_CACHE_TTL_MS = 2 * 60 * 1000;
+      var dashWidgetsRefreshTimer = null;
+      var dashWidgetsPendingOpts = null;
 
       function fmtGbp(n) {
         var v = (typeof n === 'number') ? n : Number(n);
@@ -676,17 +682,6 @@
       var OVERVIEW_MINI_FOOTER_FALLBACK_PX = 32;
       var OVERVIEW_MINI_EXTRA_BUFFER_PX = 10;
       function resolveOverviewChartHeight(chartEl, fallback, min, max) {
-        var _dbgOn = false;
-        var _dbgId = '';
-        try {
-          _dbgOn = !!(window && typeof window.__kexoPerfDebugEnabled === 'function' && window.__kexoPerfDebugEnabled());
-          _dbgId = chartEl && chartEl.id ? String(chartEl.id) : '';
-        } catch (_) { _dbgOn = false; _dbgId = ''; }
-        var _dbgKey = _dbgId ? ('resolveOverviewChartHeight:' + _dbgId) : '';
-        var _dbgCardH = 0;
-        var _dbgAvail = 0;
-        var _dbgUsedCard = false;
-        var _dbgHeaderPx = 0;
         var fb = Number(fallback);
         if (!Number.isFinite(fb) || fb <= 0) fb = 220;
         var lo = Number(min);
@@ -754,10 +749,6 @@
                 if (Number.isFinite(cardH) && cardH > minBuffer) {
                   var avail = cardH - headerPx;
                   if (avail > lo) h = avail;
-                  _dbgUsedCard = true;
-                  _dbgCardH = Math.round(cardH);
-                  _dbgAvail = Math.round(avail);
-                  _dbgHeaderPx = Math.round(headerPx);
                 }
               }
             }
@@ -766,12 +757,6 @@
         if (!Number.isFinite(h) || h <= 0) h = fb;
         h = Math.max(lo, Math.min(hi, h));
         var out = Math.round(h);
-        // #region agent log
-        if (_dbgOn && _dbgKey && !__kexoPerfOnce[_dbgKey]) {
-          __kexoPerfOnce[_dbgKey] = 1;
-          fetch('http://127.0.0.1:7242/ingest/a370db6d-7333-4112-99f8-dd4bc899a89b',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'14-dashboard.js:resolveOverviewChartHeight',message:'resolved overview chart height',data:{chartId:_dbgId,fallback:fb,min:lo,max:hi,headerPx:_dbgHeaderPx,used_card:!!_dbgUsedCard,card_h:_dbgCardH,avail:_dbgAvail,out:out},timestamp:Date.now(),runId:(typeof window.__kexoPerfDebugRunId==='function'?window.__kexoPerfDebugRunId():'baseline'),hypothesisId:'H2'} )}).catch(()=>{});
-        }
-        // #endregion
         return out;
       }
 
@@ -869,18 +854,6 @@
             });
           } catch (_) {}
         }
-        // #region agent log
-        try {
-          var _dbgOn = !!(window && typeof window.__kexoPerfDebugEnabled === 'function' && window.__kexoPerfDebugEnabled());
-          if (_dbgOn) {
-            var sig = String(desktop ? 1 : 0) + '|' + String(topHeight) + '|' + String(midHeight) + '|' + String(mainHeight);
-            if (sig !== __kexoPerfLastHeightSig) {
-              __kexoPerfLastHeightSig = sig;
-              fetch('http://127.0.0.1:7242/ingest/a370db6d-7333-4112-99f8-dd4bc899a89b',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'14-dashboard.js:syncOverviewHeightGrid',message:'overview height sync',data:{desktop:!!desktop,topHeight:topHeight,midHeight:midHeight,mainHeight:mainHeight},timestamp:Date.now(),runId:(typeof window.__kexoPerfDebugRunId==='function'?window.__kexoPerfDebugRunId():'baseline'),hypothesisId:'H2'} )}).catch(()=>{});
-            }
-          }
-        } catch (_) {}
-        // #endregion
       }
 
       function scheduleOverviewHeightSync() {
@@ -2331,9 +2304,13 @@
         for (var i = 0; i < len; i++) {
           var ymd = labelsYmd[i] != null ? String(labelsYmd[i]) : '';
           labels.push(ymd ? formatOverviewBucketLabel(ymd, granularity) : String(i + 1));
-          var rev = Math.round(normalizeOverviewMetric(revenueGbp[i]));
-          var cst = Math.round(normalizeOverviewMetric(costGbp[i]));
-          var pft = (typeof rev === 'number' && typeof cst === 'number') ? Math.round(rev - cst) : 0;
+          var revRaw = normalizeOverviewMetric(revenueGbp[i]);
+          var cstRaw = normalizeOverviewMetric(costGbp[i]);
+          if (!Number.isFinite(revRaw)) revRaw = 0;
+          if (!Number.isFinite(cstRaw)) cstRaw = 0;
+          var rev = Math.round(revRaw * 100) / 100;
+          var cst = Math.round(cstRaw * 100) / 100;
+          var pft = Math.round((rev - cst) * 100) / 100;
           revenue.push(rev);
           cost.push(cst);
           profit.push(pft);
@@ -2341,6 +2318,9 @@
           costTotal += cst;
           profitTotal += pft;
         }
+        revenueTotal = Math.round(revenueTotal * 100) / 100;
+        costTotal = Math.round(costTotal * 100) / 100;
+        profitTotal = Math.round((revenueTotal - costTotal) * 100) / 100;
         setOverviewSalesRunningTotals(revenueTotal, costTotal, profitTotal);
         setOverviewCostBreakdownTooltip(snapshotPayload);
         var chartEl = document.getElementById(chartId);
@@ -3074,15 +3054,6 @@
       }
 
       function fetchOverviewMiniData(options) {
-        var _dbgOn = false;
-        var _dbgT0 = 0;
-        var _dbgCall = 0;
-        try {
-          _dbgOn = !!(window && typeof window.__kexoPerfDebugEnabled === 'function' && window.__kexoPerfDebugEnabled());
-          _dbgT0 = (typeof performance !== 'undefined' && performance && typeof performance.now === 'function') ? performance.now() : Date.now();
-          __kexoPerfOverviewMiniCalls += 1;
-          _dbgCall = __kexoPerfOverviewMiniCalls;
-        } catch (_) { _dbgOn = false; _dbgT0 = Date.now(); _dbgCall = 0; }
         if (typeof window.__applyDashboardKpiUiConfig === 'function') {
           try { window.__applyDashboardKpiUiConfig(); } catch (_) {}
         }
@@ -3113,14 +3084,6 @@
             return id + ':' + (entry && entry.rangeKey ? entry.rangeKey : '');
           }).join('|');
           overviewMiniSizeSignature = computeOverviewMiniSizeSignature();
-          // #region agent log
-          if (_dbgOn) {
-            var _t1 = 0;
-            try { _t1 = (typeof performance !== 'undefined' && performance && typeof performance.now === 'function') ? performance.now() : Date.now(); } catch (_) { _t1 = Date.now(); }
-            var _ms = Math.max(0, Math.round(_t1 - (_dbgT0 || 0)));
-            fetch('http://127.0.0.1:7242/ingest/a370db6d-7333-4112-99f8-dd4bc899a89b',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'14-dashboard.js:fetchOverviewMiniData',message:'overview mini cards fetched',data:{call:_dbgCall,force:!!force,renderIfFresh:!!renderIfFresh,ms_total:_ms,charts:ids.length,payload_sig_len:overviewMiniPayloadSignature?String(overviewMiniPayloadSignature).length:0},timestamp:Date.now(),runId:(typeof window.__kexoPerfDebugRunId==='function'?window.__kexoPerfDebugRunId():'baseline'),hypothesisId:'H1'} )}).catch(()=>{});
-          }
-          // #endregion
           return overviewCardCache;
         }).finally(function() {
           overviewMiniInFlight = null;
@@ -4248,15 +4211,6 @@
         if (dashLoading && !force) return;
         rangeKey = (rangeKey == null ? '' : String(rangeKey)).trim().toLowerCase();
         if (!rangeKey) rangeKey = 'today';
-        var _dbgOn = false;
-        var _dbgT0 = 0;
-        var _dbgCall = 0;
-        try {
-          _dbgOn = !!(window && typeof window.__kexoPerfDebugEnabled === 'function' && window.__kexoPerfDebugEnabled());
-          _dbgT0 = (typeof performance !== 'undefined' && performance && typeof performance.now === 'function') ? performance.now() : Date.now();
-          __kexoPerfDashboardFetchCalls += 1;
-          _dbgCall = __kexoPerfDashboardFetchCalls;
-        } catch (_) { _dbgOn = false; _dbgT0 = Date.now(); _dbgCall = 0; }
         dashLoading = true;
         var silent = !!(opts && opts.silent);
         var build = silent ? { step: function() {}, finish: function() {} } : startReportBuild({
@@ -4271,7 +4225,14 @@
           forceMini = miniAgeMs > OVERVIEW_MINI_FORCE_REFRESH_MS;
         }
         fetchKexoScore(rangeKey);
-        fetchOverviewMiniData({ force: forceMini });
+        try { if (typeof window.__applyDashboardKpiUiConfig === 'function') window.__applyDashboardKpiUiConfig(); } catch (_) {}
+        ensureOverviewHeightSyncObserver();
+        try { syncOverviewHeightGrid(); } catch (_) {}
+        scheduleOverviewHeightSync();
+        bindOverviewCardUiOnce();
+        syncAllOverviewCardRangeUi();
+        fetchOverviewCardData('dash-chart-overview-30d', { force: forceMini });
+        requestDashboardWidgetsRefresh({ force: forceMini, rangeKey: rangeKey });
         fetchWithTimeout(url, { credentials: 'same-origin', cache: force ? 'no-store' : 'default' }, 30000)
           .then(function(r) { return (r && r.ok) ? r.json() : null; })
           .then(function(data) {
@@ -4287,16 +4248,6 @@
                 renderDashboard(data);
               }
             }
-            // #region agent log
-            if (_dbgOn) {
-              var _t1 = 0;
-              try { _t1 = (typeof performance !== 'undefined' && performance && typeof performance.now === 'function') ? performance.now() : Date.now(); } catch (_) { _t1 = Date.now(); }
-              var _ms = Math.max(0, Math.round(_t1 - (_dbgT0 || 0)));
-              var _charts = 0;
-              try { _charts = dashCharts ? Object.keys(dashCharts).filter(function(k){return !!dashCharts[k];}).length : 0; } catch (_) { _charts = 0; }
-              fetch('http://127.0.0.1:7242/ingest/a370db6d-7333-4112-99f8-dd4bc899a89b',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'14-dashboard.js:fetchDashboardData',message:'dashboard series fetched',data:{call:_dbgCall,range:rangeKey,force:!!force,silent:!!silent,ms_total:_ms,ok:!!data,charts_live:_charts},timestamp:Date.now(),runId:(typeof window.__kexoPerfDebugRunId==='function'?window.__kexoPerfDebugRunId():'baseline'),hypothesisId:'H4'} )}).catch(()=>{});
-            }
-            // #endregion
           })
           .catch(function(err) {
             try { if (typeof window.kexoCaptureError === 'function') window.kexoCaptureError(err, { context: 'dashboardSeries', page: PAGE }); } catch (_) {}
@@ -4317,6 +4268,577 @@
         return rk;
       }
 
+      function fmtGbp2(n) {
+        var v = (typeof n === 'number') ? n : Number(n);
+        if (!Number.isFinite(v)) return '\u2014';
+        if (typeof formatRevenue2 === 'function') return formatRevenue2(v) || '\u2014';
+        try {
+          return new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
+        } catch (_) {
+          return '\u00A3' + (Math.round(v * 100) / 100).toFixed(2);
+        }
+      }
+
+      function widgetPresent() {
+        try { return !!document.getElementById('dash-widgets-grid'); } catch (_) { return false; }
+      }
+
+      function readDashWidgetsPrefs() {
+        if (dashWidgetsPrefsCache) return dashWidgetsPrefsCache;
+        var fallback = { v: 1, variantTableId: '', devicesDim: 'devices' };
+        try {
+          var raw = localStorage.getItem(DASH_WIDGETS_LS_KEY);
+          if (!raw) return (dashWidgetsPrefsCache = fallback);
+          var parsed = JSON.parse(raw);
+          if (!parsed || typeof parsed !== 'object') return (dashWidgetsPrefsCache = fallback);
+          var out = Object.assign({}, fallback, parsed);
+          out.v = 1;
+          out.variantTableId = out.variantTableId != null ? String(out.variantTableId) : '';
+          out.devicesDim = (String(out.devicesDim || 'devices').trim().toLowerCase() === 'browsers') ? 'browsers' : 'devices';
+          return (dashWidgetsPrefsCache = out);
+        } catch (_) {
+          return (dashWidgetsPrefsCache = fallback);
+        }
+      }
+
+      function writeDashWidgetsPrefs(next) {
+        var cur = readDashWidgetsPrefs();
+        var out = Object.assign({}, cur, next || {});
+        out.v = 1;
+        out.variantTableId = out.variantTableId != null ? String(out.variantTableId) : '';
+        out.devicesDim = (String(out.devicesDim || 'devices').trim().toLowerCase() === 'browsers') ? 'browsers' : 'devices';
+        dashWidgetsPrefsCache = out;
+        try { localStorage.setItem(DASH_WIDGETS_LS_KEY, JSON.stringify(out)); } catch (_) {}
+        return out;
+      }
+
+      function closeAllWidgetMenus() {
+        try {
+          document.querySelectorAll('.kexo-widget-menu[data-kexo-widget-menu]').forEach(function(menu) {
+            if (!menu) return;
+            menu.classList.add('is-hidden');
+            menu.setAttribute('aria-hidden', 'true');
+          });
+        } catch (_) {}
+        try {
+          document.querySelectorAll('[data-kexo-widget-dropdown][aria-expanded="true"]').forEach(function(btn) {
+            btn.setAttribute('aria-expanded', 'false');
+          });
+        } catch (_) {}
+      }
+
+      function openWidgetMenu(widgetKey) {
+        closeAllWidgetMenus();
+        var key = String(widgetKey || '').trim().toLowerCase();
+        if (!key) return;
+        var menu = document.querySelector('.kexo-widget-menu[data-kexo-widget-menu="' + key + '"]');
+        var btn = document.querySelector('[data-kexo-widget-dropdown="' + key + '"]');
+        if (btn) btn.setAttribute('aria-expanded', 'true');
+        if (menu) {
+          menu.classList.remove('is-hidden');
+          menu.setAttribute('aria-hidden', 'false');
+        }
+      }
+
+      function toggleWidgetMenu(widgetKey) {
+        var key = String(widgetKey || '').trim().toLowerCase();
+        if (!key) return;
+        var menu = document.querySelector('.kexo-widget-menu[data-kexo-widget-menu="' + key + '"]');
+        if (!menu) return;
+        var isOpen = !menu.classList.contains('is-hidden');
+        if (isOpen) closeAllWidgetMenus();
+        else openWidgetMenu(key);
+      }
+
+      function bindDashWidgetsOnce() {
+        if (dashWidgetsBound) return;
+        dashWidgetsBound = true;
+        try {
+          document.addEventListener('click', function(e) {
+            var t = e && e.target ? e.target : null;
+            if (!t || !t.closest) return;
+
+            var dd = t.closest('[data-kexo-widget-dropdown]');
+            if (dd) {
+              e.preventDefault();
+              e.stopPropagation();
+              toggleWidgetMenu(dd.getAttribute('data-kexo-widget-dropdown'));
+              return;
+            }
+
+            var dimBtn = t.closest('[data-kexo-widget-dimension][data-kexo-widget-dimension-value]');
+            if (dimBtn) {
+              e.preventDefault();
+              var widget = String(dimBtn.getAttribute('data-kexo-widget-dimension') || '').trim().toLowerCase();
+              var val = String(dimBtn.getAttribute('data-kexo-widget-dimension-value') || '').trim().toLowerCase();
+              if (widget === 'devices') {
+                writeDashWidgetsPrefs({ devicesDim: val === 'browsers' ? 'browsers' : 'devices' });
+                closeAllWidgetMenus();
+                requestDashboardWidgetsRefresh({ force: true, rangeKey: dashRangeKeyFromDateRange() });
+              }
+              return;
+            }
+
+            var tableBtn = t.closest('[data-kexo-widget-variant-table-id]');
+            if (tableBtn) {
+              e.preventDefault();
+              var id = String(tableBtn.getAttribute('data-kexo-widget-variant-table-id') || '').trim();
+              writeDashWidgetsPrefs({ variantTableId: id });
+              closeAllWidgetMenus();
+              requestDashboardWidgetsRefresh({ force: true, rangeKey: dashRangeKeyFromDateRange() });
+              return;
+            }
+
+            // Click outside -> close any open menus.
+            closeAllWidgetMenus();
+          });
+        } catch (_) {}
+
+        try {
+          document.addEventListener('keydown', function(e) {
+            if (!e || e.key !== 'Escape') return;
+            closeAllWidgetMenus();
+          });
+        } catch (_) {}
+      }
+
+      function setWidgetEmpty(mountId, msg) {
+        var el = document.getElementById(mountId);
+        if (!el) return;
+        el.innerHTML = '<div class="kexo-widget-empty">' + escapeHtml(msg || 'No data') + '</div>';
+      }
+
+      function widgetSig(data) {
+        try { return fastPayloadHash(JSON.stringify(data || null) || ''); } catch (_) { return fastPayloadHash(String(Date.now())); }
+      }
+
+      function fetchWidgetJson(cacheKey, url, force, timeoutMs) {
+        var key = String(cacheKey || '').trim();
+        if (!key || !url) return Promise.resolve(null);
+        var now = Date.now();
+        var entry = dashWidgetCache && dashWidgetCache[key] ? dashWidgetCache[key] : null;
+        var fresh = !force && entry && entry.data && entry.fetchedAt && (now - entry.fetchedAt) < DASH_WIDGET_CACHE_TTL_MS;
+        if (fresh) return Promise.resolve(entry.data);
+        if (dashWidgetInFlight[key] && !force) return dashWidgetInFlight[key];
+        dashWidgetInFlight[key] = fetchWithTimeout(url, { credentials: 'same-origin', cache: force ? 'no-store' : 'default' }, timeoutMs || 25000)
+          .then(function(r) { return (r && r.ok) ? r.json() : null; })
+          .then(function(data) {
+            if (!data) return null;
+            dashWidgetCache[key] = { fetchedAt: Date.now(), sig: widgetSig(data), data: data };
+            return data;
+          })
+          .catch(function() { return entry && entry.data ? entry.data : null; })
+          .finally(function() { dashWidgetInFlight[key] = null; });
+        return dashWidgetInFlight[key];
+      }
+
+      function animateWidgetFills(root) {
+        if (!root || !root.querySelectorAll) return;
+        try {
+          var fills = root.querySelectorAll('[data-kexo-bar-fill]');
+          if (!fills || !fills.length) return;
+          requestAnimationFrame(function () {
+            Array.prototype.forEach.call(fills, function (el) {
+              var pct = Number(el.getAttribute('data-kexo-bar-fill') || 0);
+              if (!Number.isFinite(pct)) pct = 0;
+              pct = Math.max(0, Math.min(100, pct));
+              if (el.classList.contains('kexo-widget-vbar-fill')) el.style.height = pct + '%';
+              else el.style.width = pct + '%';
+            });
+          });
+        } catch (_) {}
+      }
+
+      function renderWidgetList(mountId, rows, accentCss) {
+        var host = document.getElementById(mountId);
+        if (!host) return;
+        var list = Array.isArray(rows) ? rows : [];
+        if (!list.length) { setWidgetEmpty(mountId, 'No data'); return; }
+        var html = '<ul class="kexo-widget-list">';
+        list.forEach(function (r) {
+          if (!r) return;
+          var label = r.label != null ? String(r.label) : '';
+          var value = r.valueGbp != null ? Number(r.valueGbp) : Number(r.value);
+          var pct = r.pct != null ? Number(r.pct) : 0;
+          if (!Number.isFinite(value)) value = 0;
+          if (!Number.isFinite(pct)) pct = 0;
+          pct = Math.max(0, Math.min(100, pct));
+          var icon = r.iconHtml != null ? String(r.iconHtml) : '';
+          var tip = (label ? (label + '\n') : '') + 'Revenue: ' + fmtGbp2(value) + '\nShare: ' + (Math.round(pct * 10) / 10).toFixed(1) + '%';
+          html += '<li class="kexo-widget-row" title="' + escapeHtml(tip) + '">' +
+            '<span class="kexo-widget-row-icon" aria-hidden="true">' + icon + '</span>' +
+            '<span class="kexo-widget-row-label">' + escapeHtml(label || '—') + '</span>' +
+            '<span class="kexo-widget-row-value">' + escapeHtml(fmtGbp2(value)) + '</span>' +
+            '<div class="kexo-widget-row-bar"><span style="' + (accentCss ? escapeHtml(accentCss) : '') + '" data-kexo-bar-fill="' + escapeHtml(String(pct)) + '"></span></div>' +
+          '</li>';
+        });
+        html += '</ul>';
+        host.innerHTML = html;
+        animateWidgetFills(host);
+      }
+
+      function renderWidgetVbars(mountId, rows, accentCss) {
+        var host = document.getElementById(mountId);
+        if (!host) return;
+        var list = Array.isArray(rows) ? rows : [];
+        if (!list.length) { setWidgetEmpty(mountId, 'No data'); return; }
+        var html = '<div class="kexo-widget-vbars"><div class="kexo-widget-vbars-grid">';
+        list.forEach(function (r) {
+          if (!r) return;
+          var label = r.label != null ? String(r.label) : '';
+          var value = r.valueGbp != null ? Number(r.valueGbp) : Number(r.value);
+          var pct = r.pct != null ? Number(r.pct) : 0;
+          if (!Number.isFinite(value)) value = 0;
+          if (!Number.isFinite(pct)) pct = 0;
+          pct = Math.max(0, Math.min(100, pct));
+          var tip = (label ? (label + '\n') : '') + 'Value: ' + fmtGbp2(value) + '\nShare: ' + (Math.round(pct * 10) / 10).toFixed(1) + '%';
+          html += '<div class="kexo-widget-vbar" title="' + escapeHtml(tip) + '">' +
+            '<div class="kexo-widget-vbar-col"><div class="kexo-widget-vbar-fill" style="' + (accentCss ? escapeHtml(accentCss) : '') + '" data-kexo-bar-fill="' + escapeHtml(String(pct)) + '"></div></div>' +
+            '<div class="kexo-widget-vbar-label">' + escapeHtml(label || '—') + '</div>' +
+          '</div>';
+        });
+        html += '</div></div>';
+        host.innerHTML = html;
+        animateWidgetFills(host);
+      }
+
+      function animateWidgetRadials(root) {
+        if (!root || !root.querySelectorAll) return;
+        try {
+          var nodes = root.querySelectorAll('[data-kexo-radial-pct][data-kexo-radial-circ]');
+          if (!nodes || !nodes.length) return;
+          requestAnimationFrame(function () {
+            Array.prototype.forEach.call(nodes, function (el) {
+              var pct = Number(el.getAttribute('data-kexo-radial-pct') || 0);
+              var circ = Number(el.getAttribute('data-kexo-radial-circ') || 0);
+              if (!Number.isFinite(pct)) pct = 0;
+              if (!Number.isFinite(circ) || circ <= 0) return;
+              pct = Math.max(0, Math.min(100, pct));
+              var off = circ * (1 - (pct / 100));
+              el.style.strokeDashoffset = String(off);
+            });
+          });
+        } catch (_) {}
+      }
+
+      function renderWidgetVariantRadialAndList(mountId, topRow, listRows) {
+        var host = document.getElementById(mountId);
+        if (!host) return;
+        if (!topRow) { setWidgetEmpty(mountId, 'No data'); return; }
+        var pct = topRow.pct != null ? Number(topRow.pct) : 0;
+        if (!Number.isFinite(pct)) pct = 0;
+        pct = Math.max(0, Math.min(100, pct));
+        var label = topRow.label != null ? String(topRow.label) : '';
+        var value = topRow.valueGbp != null ? Number(topRow.valueGbp) : Number(topRow.value);
+        if (!Number.isFinite(value)) value = 0;
+        var size = 84;
+        var r = 32;
+        var circ = Math.round(2 * Math.PI * r * 1000) / 1000;
+        var tip = (label ? (label + '\n') : '') + 'Revenue: ' + fmtGbp2(value) + '\nShare: ' + (Math.round(pct * 10) / 10).toFixed(1) + '%';
+        var html =
+          '<div class="d-flex align-items-center gap-2 mb-2">' +
+            '<div class="position-relative" style="width:84px;height:84px;flex:0 0 84px" title="' + escapeHtml(tip) + '">' +
+              '<svg width="' + size + '" height="' + size + '" viewBox="0 0 ' + size + ' ' + size + '" aria-hidden="true">' +
+                '<circle cx="42" cy="42" r="' + r + '" fill="none" stroke="rgba(15,23,42,0.10)" stroke-width="10"></circle>' +
+                '<circle cx="42" cy="42" r="' + r + '" fill="none" stroke="var(--kexo-accent-1, #4b94e4)" stroke-width="10" stroke-linecap="round"' +
+                  ' style="transform: rotate(-90deg); transform-origin: 42px 42px; transition: stroke-dashoffset 520ms cubic-bezier(.2,.9,.2,1);"' +
+                  ' stroke-dasharray="' + escapeHtml(String(circ)) + '" stroke-dashoffset="' + escapeHtml(String(circ)) + '"' +
+                  ' data-kexo-radial-pct="' + escapeHtml(String(pct)) + '" data-kexo-radial-circ="' + escapeHtml(String(circ)) + '"' +
+                '></circle>' +
+              '</svg>' +
+              '<div class="position-absolute top-50 start-50 translate-middle text-center" style="line-height:1.05">' +
+                '<div class="fw-bold" style="font-size:0.95rem">' + escapeHtml(Math.round(pct)) + '%</div>' +
+                '<div class="text-muted" style="font-size:0.7rem">top</div>' +
+              '</div>' +
+            '</div>' +
+            '<div class="min-w-0">' +
+              '<div class="fw-semibold text-truncate" title="' + escapeHtml(label) + '">' + escapeHtml(label || '—') + '</div>' +
+              '<div class="text-muted" style="font-size:0.8125rem">' + escapeHtml(fmtGbp2(value)) + '</div>' +
+            '</div>' +
+          '</div>';
+        host.innerHTML = html + '<div class="mt-1"></div>';
+        if (Array.isArray(listRows) && listRows.length) {
+          var listHost = host.querySelector('div.mt-1');
+          if (listHost) {
+            // Reuse list renderer into a temp container.
+            listHost.id = mountId + '-list';
+            renderWidgetList(listHost.id, listRows, 'background: var(--kexo-accent-1, #4b94e4);');
+          }
+        }
+        animateWidgetRadials(host);
+      }
+
+      function polarToCartesian(cx, cy, r, angleDeg) {
+        var a = (angleDeg - 90) * Math.PI / 180.0;
+        return { x: cx + (r * Math.cos(a)), y: cy + (r * Math.sin(a)) };
+      }
+
+      function donutSegmentPath(cx, cy, rOuter, rInner, startAngle, endAngle) {
+        var startOuter = polarToCartesian(cx, cy, rOuter, endAngle);
+        var endOuter = polarToCartesian(cx, cy, rOuter, startAngle);
+        var startInner = polarToCartesian(cx, cy, rInner, startAngle);
+        var endInner = polarToCartesian(cx, cy, rInner, endAngle);
+        var large = (endAngle - startAngle) <= 180 ? '0' : '1';
+        return [
+          'M', startOuter.x, startOuter.y,
+          'A', rOuter, rOuter, 0, large, 0, endOuter.x, endOuter.y,
+          'L', startInner.x, startInner.y,
+          'A', rInner, rInner, 0, large, 1, endInner.x, endInner.y,
+          'Z'
+        ].join(' ');
+      }
+
+      function renderWidgetDonutWithLegend(mountId, rows) {
+        var host = document.getElementById(mountId);
+        if (!host) return;
+        var list = Array.isArray(rows) ? rows : [];
+        if (!list.length) { setWidgetEmpty(mountId, 'No data'); return; }
+        var total = list.reduce(function (acc, r) { return acc + (Number(r && r.valueGbp) || 0); }, 0) || 0;
+        var colors = ['#4b94e4', '#3eb3ab', '#f59e0b', '#8b5cf6', '#e4644b'];
+        var cx = 60, cy = 60, rOuter = 46, rInner = 30;
+        var angle = 0;
+        var svg = '<svg width="120" height="120" viewBox="0 0 120 120" aria-hidden="true">';
+        list.forEach(function (r, idx) {
+          var v = Number(r && r.valueGbp) || 0;
+          var pct = total > 0 ? (v / total) : 0;
+          var delta = pct * 360;
+          var start = angle;
+          var end = angle + delta;
+          angle = end;
+          if (delta <= 0) return;
+          var d = donutSegmentPath(cx, cy, rOuter, rInner, start, end);
+          var label = r && r.label != null ? String(r.label) : '—';
+          var tip = label + '\nRevenue: ' + fmtGbp2(v) + '\nShare: ' + (Math.round(pct * 1000) / 10).toFixed(1) + '%';
+          svg += '<path d="' + escapeHtml(d) + '" fill="' + escapeHtml(colors[idx % colors.length]) + '">' +
+            '<title>' + escapeHtml(tip) + '</title>' +
+          '</path>';
+        });
+        svg += '<circle cx="' + cx + '" cy="' + cy + '" r="' + rInner + '" fill="var(--tblr-card-bg, #ffffff)"></circle>';
+        svg += '<text x="' + cx + '" y="' + (cy - 2) + '" text-anchor="middle" font-size="12" font-weight="700" fill="#0f172a">' + escapeHtml(fmtGbp2(total)) + '</text>';
+        svg += '<text x="' + cx + '" y="' + (cy + 14) + '" text-anchor="middle" font-size="10" fill="rgba(15,23,42,0.6)">total</text>';
+        svg += '</svg>';
+
+        var legend = '<ul class="kexo-widget-list" style="margin-top:0.25rem">';
+        list.forEach(function (r, idx) {
+          var label = r && r.label != null ? String(r.label) : '—';
+          var v = Number(r && r.valueGbp) || 0;
+          legend += '<li class="kexo-widget-row">' +
+            '<span class="kexo-widget-row-icon" aria-hidden="true"><span style="display:inline-block;width:10px;height:10px;border-radius:999px;background:' + escapeHtml(colors[idx % colors.length]) + '"></span></span>' +
+            '<span class="kexo-widget-row-label">' + escapeHtml(label) + '</span>' +
+            '<span class="kexo-widget-row-value">' + escapeHtml(fmtGbp2(v)) + '</span>' +
+          '</li>';
+        });
+        legend += '</ul>';
+
+        host.innerHTML = '<div class="d-flex flex-column align-items-center">' + svg + '</div>' + legend;
+      }
+
+      function requestDashboardWidgetsRefresh(opts) {
+        if (!widgetPresent()) return;
+        bindDashWidgetsOnce();
+        var next = opts && typeof opts === 'object' ? Object.assign({}, opts) : {};
+        dashWidgetsPendingOpts = dashWidgetsPendingOpts ? Object.assign(dashWidgetsPendingOpts, next) : next;
+        if (dashWidgetsRefreshTimer) return;
+        dashWidgetsRefreshTimer = setTimeout(function () {
+          dashWidgetsRefreshTimer = null;
+          var pending = dashWidgetsPendingOpts || {};
+          dashWidgetsPendingOpts = null;
+          refreshDashboardWidgetsNow(pending);
+        }, 160);
+      }
+
+      function refreshDashboardWidgetsNow(opts) {
+        if (!widgetPresent()) return;
+        bindDashWidgetsOnce();
+        var options = opts && typeof opts === 'object' ? opts : {};
+        var force = !!options.force;
+        var rk = options.rangeKey != null ? String(options.rangeKey) : dashRangeKeyFromDateRange();
+        rk = (rk == null ? '' : String(rk)).trim().toLowerCase() || 'today';
+        var prefs = readDashWidgetsPrefs();
+        var shop = null;
+        try { shop = getShopForSales(); } catch (_) { shop = null; }
+        var shopKey = shop ? String(shop) : '';
+
+        var vUrl = shopKey ? (API + '/api/insights-variants?shop=' + encodeURIComponent(shopKey) + '&range=' + encodeURIComponent(rk) + (force ? ('&force=1&_=' + Date.now()) : '')) : null;
+        var devUrl = API + '/api/devices/report?range=' + encodeURIComponent(rk) + (force ? ('&force=1&_=' + Date.now()) : '');
+        var brUrl = API + '/api/browsers/table?range=' + encodeURIComponent(rk) + (force ? ('&force=1&_=' + Date.now()) : '');
+        var attrUrl = API + '/api/attribution/report?range=' + encodeURIComponent(rk) + (force ? ('&force=1&_=' + Date.now()) : '');
+        var payUrl = API + '/api/payment-types/table?range=' + encodeURIComponent(rk) + (force ? ('&force=1&_=' + Date.now()) : '');
+        var abdUrl = API + '/api/abandoned-carts/top-countries?range=' + encodeURIComponent(rk) + (force ? ('&force=1&_=' + Date.now()) : '');
+
+        var tasks = [];
+
+        // Variants
+        tasks.push(
+          (vUrl ? fetchWidgetJson('variant|' + rk + '|' + shopKey, vUrl, force, 30000) : Promise.resolve(null))
+            .then(function (data) {
+              var mountId = 'dash-widget-variant-mount';
+              if (!data) { setWidgetEmpty(mountId, shopKey ? 'No data' : 'Select a shop'); return; }
+              var sig = widgetSig(data);
+              if (!force && dashWidgetLastRenderSig[mountId] && dashWidgetLastRenderSig[mountId] === sig) return;
+              dashWidgetLastRenderSig[mountId] = sig;
+              var payload = (data && data.ok && data.payload) ? data.payload : (data && data.payload ? data.payload : data);
+              var tables = payload && Array.isArray(payload.tables) ? payload.tables : (Array.isArray(data.tables) ? data.tables : []);
+              var menu = document.getElementById('dash-widget-variant-menu');
+              if (menu) {
+                menu.innerHTML = tables.map(function (t) {
+                  var id = t && t.id != null ? String(t.id) : '';
+                  var name = t && t.name != null ? String(t.name) : 'Table';
+                  return '<button type="button" class="kexo-widget-menu-item" role="menuitem" data-kexo-widget-variant-table-id="' + escapeHtml(id) + '">' + escapeHtml(name) + '</button>';
+                }).join('') || '<div class="kexo-widget-empty">No tables</div>';
+              }
+              var selectedId = (prefs && prefs.variantTableId) ? String(prefs.variantTableId) : '';
+              var selected = tables.find(function (t) { return t && String(t.id || '') === selectedId; }) || tables[0] || null;
+              if (selected && selected.id != null && String(selected.id) !== selectedId) {
+                prefs = writeDashWidgetsPrefs({ variantTableId: String(selected.id) });
+              }
+              var ddLabel = document.querySelector('[data-kexo-widget-dropdown-label="variant"]');
+              if (ddLabel) ddLabel.textContent = selected && selected.name ? String(selected.name) : 'Table';
+              var rows = selected && Array.isArray(selected.rows) ? selected.rows : [];
+              rows = rows.slice().map(function (r) {
+                var label = (r && (r.variant || r.key || r.name)) ? String(r.variant || r.key || r.name) : '—';
+                var value = r && (r.revenue_gbp != null || r.revenue != null) ? Number(r.revenue_gbp != null ? r.revenue_gbp : r.revenue) : 0;
+                if (!Number.isFinite(value)) value = 0;
+                return { label: label, valueGbp: value };
+              });
+              rows.sort(function (a, b) { return (b.valueGbp || 0) - (a.valueGbp || 0); });
+              var top = rows.slice(0, 5);
+              var total = rows.reduce(function (acc, r) { return acc + (Number(r.valueGbp) || 0); }, 0) || 0;
+              top = top.map(function (r) {
+                var pct = total > 0 ? ((r.valueGbp || 0) / total) * 100 : 0;
+                return Object.assign({}, r, { pct: pct, iconHtml: '<i class="fa-light fa-circle-small" aria-hidden="true"></i>' });
+              });
+              renderWidgetVariantRadialAndList(mountId, top[0] || null, top);
+            })
+        );
+
+        // Devices / Browsers
+        tasks.push(
+          fetchWidgetJson((prefs.devicesDim === 'browsers' ? 'browsers' : 'devices') + '|' + rk, (prefs.devicesDim === 'browsers') ? brUrl : devUrl, force, 25000)
+            .then(function (data) {
+              var mountId = 'dash-widget-devices-mount';
+              if (!data) { setWidgetEmpty(mountId, 'No data'); return; }
+              var sig = widgetSig({ dim: prefs.devicesDim, data: data });
+              if (!force && dashWidgetLastRenderSig[mountId] && dashWidgetLastRenderSig[mountId] === sig) return;
+              dashWidgetLastRenderSig[mountId] = sig;
+              var ddLabel = document.querySelector('[data-kexo-widget-dropdown-label="devices"]');
+              if (ddLabel) ddLabel.textContent = (prefs.devicesDim === 'browsers') ? 'Browsers' : 'Devices';
+              var rows = [];
+              if (prefs.devicesDim === 'browsers') {
+                var payload = (data && data.ok && data.payload) ? data.payload : data;
+                var list = payload && Array.isArray(payload.rows) ? payload.rows : (Array.isArray(data.rows) ? data.rows : []);
+                rows = list.map(function (r) {
+                  var label = r && (r.ua_browser || r.browser || r.name) ? String(r.ua_browser || r.browser || r.name) : '—';
+                  var value = r && (r.revenue_gbp != null || r.revenue != null) ? Number(r.revenue_gbp != null ? r.revenue_gbp : r.revenue) : 0;
+                  if (!Number.isFinite(value)) value = 0;
+                  return { label: label, valueGbp: value, iconHtml: '<i class="fa-light fa-globe" aria-hidden="true"></i>' };
+                });
+              } else {
+                var payload2 = (data && data.ok && data.payload) ? data.payload : data;
+                var list2 = payload2 && payload2.devices && Array.isArray(payload2.devices.rows) ? payload2.devices.rows : (payload2 && Array.isArray(payload2.rows) ? payload2.rows : []);
+                rows = list2.map(function (r) {
+                  var label = r && (r.device_type || r.device || r.name) ? String(r.device_type || r.device || r.name) : '—';
+                  var value = r && (r.revenue_gbp != null || r.revenue != null) ? Number(r.revenue_gbp != null ? r.revenue_gbp : r.revenue) : 0;
+                  if (!Number.isFinite(value)) value = 0;
+                  var k = label.toLowerCase();
+                  var icon = (k.includes('mobile') ? 'fa-mobile-screen' : (k.includes('tablet') ? 'fa-tablet-screen-button' : 'fa-desktop'));
+                  return { label: label, valueGbp: value, iconHtml: '<i class="fa-light ' + escapeHtml(icon) + '" aria-hidden="true"></i>' };
+                });
+              }
+              rows.sort(function (a, b) { return (b.valueGbp || 0) - (a.valueGbp || 0); });
+              var total = rows.reduce(function (acc, r) { return acc + (Number(r.valueGbp) || 0); }, 0) || 0;
+              var top = rows.slice(0, 5).map(function (r) {
+                return Object.assign({}, r, { pct: total > 0 ? ((r.valueGbp || 0) / total) * 100 : 0 });
+              });
+              renderWidgetList(mountId, top, 'background: var(--kexo-accent-2, #3eb3ab);');
+            })
+        );
+
+        // Attribution (middle tier)
+        tasks.push(
+          fetchWidgetJson('attribution|' + rk, attrUrl, force, 25000)
+            .then(function (data) {
+              var mountId = 'dash-widget-attribution-mount';
+              if (!data) { setWidgetEmpty(mountId, 'No data'); return; }
+              var sig = widgetSig(data);
+              if (!force && dashWidgetLastRenderSig[mountId] && dashWidgetLastRenderSig[mountId] === sig) return;
+              dashWidgetLastRenderSig[mountId] = sig;
+              var payload = (data && data.ok && data.payload) ? data.payload : data;
+              var rows = [];
+              try {
+                var chans = payload && payload.attribution && Array.isArray(payload.attribution.rows) ? payload.attribution.rows : [];
+                chans.forEach(function (ch) {
+                  var sources = ch && Array.isArray(ch.sources) ? ch.sources : [];
+                  sources.forEach(function (s) {
+                    var label = s && (s.label || s.source_key) ? String(s.label || s.source_key) : '—';
+                    var value = s && (s.revenue_gbp != null || s.revenue != null) ? Number(s.revenue_gbp != null ? s.revenue_gbp : s.revenue) : 0;
+                    if (!Number.isFinite(value)) value = 0;
+                    rows.push({ label: label, valueGbp: value });
+                  });
+                });
+              } catch (_) { rows = []; }
+              rows.sort(function (a, b) { return (b.valueGbp || 0) - (a.valueGbp || 0); });
+              var middle = rows.length > 2 ? rows.slice(2, 7) : rows.slice(0, 5);
+              var total = rows.reduce(function (acc, r) { return acc + (Number(r.valueGbp) || 0); }, 0) || 0;
+              middle = middle.map(function (r) { return Object.assign({}, r, { pct: total > 0 ? ((r.valueGbp || 0) / total) * 100 : 0 }); });
+              renderWidgetVbars(mountId, middle, 'background: var(--kexo-accent-1, #4b94e4);');
+            })
+        );
+
+        // Payment types
+        tasks.push(
+          fetchWidgetJson('payment-types|' + rk, payUrl, force, 25000)
+            .then(function (data) {
+              var mountId = 'dash-widget-payment-types-mount';
+              if (!data) { setWidgetEmpty(mountId, 'No data'); return; }
+              var sig = widgetSig(data);
+              if (!force && dashWidgetLastRenderSig[mountId] && dashWidgetLastRenderSig[mountId] === sig) return;
+              dashWidgetLastRenderSig[mountId] = sig;
+              var payload = (data && data.ok && data.payload) ? data.payload : data;
+              var list = payload && Array.isArray(payload.rows) ? payload.rows : (Array.isArray(data.rows) ? data.rows : []);
+              var rows = list.map(function (r) {
+                var label = r && (r.payment_gateway || r.payment || r.name) ? String(r.payment_gateway || r.payment || r.name) : '—';
+                var value = r && (r.revenue_gbp != null || r.revenue != null) ? Number(r.revenue_gbp != null ? r.revenue_gbp : r.revenue) : 0;
+                if (!Number.isFinite(value)) value = 0;
+                return { label: label, valueGbp: value };
+              });
+              rows.sort(function (a, b) { return (b.valueGbp || 0) - (a.valueGbp || 0); });
+              var total = rows.reduce(function (acc, r) { return acc + (Number(r.valueGbp) || 0); }, 0) || 0;
+              var top = rows.slice(0, 5).map(function (r) { return Object.assign({}, r, { pct: total > 0 ? ((r.valueGbp || 0) / total) * 100 : 0, iconHtml: '<i class="fa-light fa-credit-card" aria-hidden="true"></i>' }); });
+              renderWidgetDonutWithLegend(mountId, top);
+            })
+        );
+
+        // Abandoned
+        tasks.push(
+          fetchWidgetJson('abandoned|' + rk, abdUrl, force, 25000)
+            .then(function (data) {
+              var mountId = 'dash-widget-abandoned-mount';
+              if (!data) { setWidgetEmpty(mountId, 'No data'); return; }
+              var sig = widgetSig(data);
+              if (!force && dashWidgetLastRenderSig[mountId] && dashWidgetLastRenderSig[mountId] === sig) return;
+              dashWidgetLastRenderSig[mountId] = sig;
+              var payload = (data && data.ok && data.payload) ? data.payload : data;
+              var list = payload && Array.isArray(payload.rows) ? payload.rows : (Array.isArray(data.rows) ? data.rows : []);
+              var rows = list.map(function (r) {
+                var label = r && (r.country || r.country_code) ? String(r.country || r.country_code) : '—';
+                var value = r && (r.abandoned_value_gbp != null || r.value_gbp != null || r.value != null) ? Number(r.abandoned_value_gbp != null ? r.abandoned_value_gbp : (r.value_gbp != null ? r.value_gbp : r.value)) : 0;
+                if (!Number.isFinite(value)) value = 0;
+                return { label: label, valueGbp: value };
+              });
+              rows.sort(function (a, b) { return (b.valueGbp || 0) - (a.valueGbp || 0); });
+              var total = rows.reduce(function (acc, r) { return acc + (Number(r.valueGbp) || 0); }, 0) || 0;
+              var top = rows.slice(0, 5).map(function (r) { return Object.assign({}, r, { pct: total > 0 ? ((r.valueGbp || 0) / total) * 100 : 0 }); });
+              renderWidgetVbars(mountId, top, 'background: var(--kexo-accent-2, #3eb3ab);');
+            })
+        );
+
+        // Older environments may not support Promise.allSettled.
+        return Promise.all(tasks.map(function (p) {
+          return Promise.resolve(p).then(function (v) { return { status: 'fulfilled', value: v }; }, function (err) { return { status: 'rejected', reason: err }; });
+        }));
+      }
+
       window.refreshDashboard = function(opts) {
         var force = opts && opts.force;
         var silent = !!(opts && opts.silent);
@@ -4334,7 +4856,8 @@
         } catch (_) {}
         if (!force && dashCache && dashLastRangeKey === rk) {
           if (rerender) renderDashboard(dashCache);
-          fetchOverviewMiniData({ force: false, renderIfFresh: !overviewMiniPayloadSignature });
+          fetchOverviewCardData('dash-chart-overview-30d', { force: false, renderIfFresh: true });
+          requestDashboardWidgetsRefresh({ force: false, rangeKey: rk });
           return;
         }
         fetchDashboardData(rk, force, { silent: silent, rerender: rerender });
@@ -4459,7 +4982,8 @@
       // refresh the 7d overview snapshot payload (cost/revenue series depend on profit rule fingerprint).
       try {
         window.addEventListener('kexo:profitRulesUpdated', function () {
-          try { fetchOverviewMiniData({ force: true }); } catch (_) {}
+          try { fetchOverviewCardData('dash-chart-overview-30d', { force: true, renderIfFresh: true }); } catch (_) {}
+          try { requestDashboardWidgetsRefresh({ force: true, rangeKey: dashRangeKeyFromDateRange() }); } catch (_) {}
         });
       } catch (_) {}
 

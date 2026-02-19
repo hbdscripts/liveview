@@ -353,65 +353,117 @@
           </div>
         </div>
       </div>
-      <div class="kexo-overview-cell kexo-overview-kpi-mid">
-        <div class="row g-3" id="dash-kpi-grid-mid"></div>
-      </div>
-      <div class="kexo-overview-cell kexo-overview-charts-top">
-        <div class="row g-3 kexo-overview-mini-row">
-          <div class="col-12 col-md-4" data-kexo-chart-key="dash-chart-finishes-30d">
-            <div class="card h-100 kexo-overview-mini-card">
-              <div class="card-body kexo-overview-mini-card-body">
-                <div class="kexo-overview-card-head">
-                  <div class="kexo-overview-card-head-left">
-                    <div class="subheader">Finishes</div>
-                  </div>
-                  <div class="kexo-overview-card-actions">
-                    <button type="button" class="btn btn-icon btn-ghost-secondary kexo-overview-chart-settings-btn" data-kexo-chart-settings-key="dash-chart-finishes-30d" aria-label="Chart settings" title="Chart settings">
-                      <i class="fa-light fa-gear" data-icon-key="chart-builder-icon" class="kexo-chart-cog-icon" aria-hidden="true"></i>
-                    </button>
-                  </div>
+      <div class="kexo-overview-cell kexo-overview-widgets">
+        <div class="kexo-dashboard-widgets-grid" id="dash-widgets-grid" aria-label="Dashboard widgets">
+          <!-- Widget 1: Variant radial -->
+          <div class="card kexo-widget-card" data-kexo-widget="variant">
+            <div class="card-body kexo-widget-card-body">
+              <div class="kexo-widget-head">
+                <div class="kexo-widget-title">
+                  <i class="fa-light fa-gem me-1 text-muted" aria-hidden="true"></i>
+                  Variants
                 </div>
-                <div id="dash-chart-finishes-30d" class="kexo-overview-mini-chart"></div>
-                <div class="kexo-overview-mini-legend" data-overview-legend="dash-chart-finishes-30d" aria-label="Finishes legend"></div>
+                <div class="kexo-widget-head-right">
+                  <button type="button" class="btn btn-sm btn-ghost-secondary kexo-widget-dropdown-btn" data-kexo-widget-dropdown="variant" aria-haspopup="menu" aria-expanded="false" aria-controls="dash-widget-variant-menu">
+                    <span data-kexo-widget-dropdown-label="variant">Table</span>
+                    <i class="fa-light fa-chevron-down ms-1" aria-hidden="true"></i>
+                  </button>
+                  <button type="button" class="btn btn-icon btn-ghost-secondary kexo-widget-settings-btn" data-kexo-widget-settings="variant" aria-label="Widget settings" title="Widget settings">
+                    <i class="fa-light fa-gear" aria-hidden="true"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="kexo-widget-body">
+                <div id="dash-widget-variant-mount" class="kexo-widget-mount" aria-live="polite"></div>
+              </div>
+              <div class="kexo-widget-menu is-hidden" id="dash-widget-variant-menu" role="menu" aria-hidden="true" data-kexo-widget-menu="variant"></div>
+            </div>
+          </div>
+
+          <!-- Widget 2: Devices/Browsers -->
+          <div class="card kexo-widget-card" data-kexo-widget="devices">
+            <div class="card-body kexo-widget-card-body">
+              <div class="kexo-widget-head">
+                <div class="kexo-widget-title">
+                  <i class="fa-light fa-mobile-screen me-1 text-muted" aria-hidden="true"></i>
+                  Devices
+                </div>
+                <div class="kexo-widget-head-right">
+                  <button type="button" class="btn btn-sm btn-ghost-secondary kexo-widget-dropdown-btn" data-kexo-widget-dropdown="devices" aria-haspopup="menu" aria-expanded="false" aria-controls="dash-widget-devices-menu">
+                    <span data-kexo-widget-dropdown-label="devices">Devices</span>
+                    <i class="fa-light fa-chevron-down ms-1" aria-hidden="true"></i>
+                  </button>
+                  <button type="button" class="btn btn-icon btn-ghost-secondary kexo-widget-settings-btn" data-kexo-widget-settings="devices" aria-label="Widget settings" title="Widget settings">
+                    <i class="fa-light fa-gear" aria-hidden="true"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="kexo-widget-body">
+                <div id="dash-widget-devices-mount" class="kexo-widget-mount" aria-live="polite"></div>
+              </div>
+              <div class="kexo-widget-menu is-hidden" id="dash-widget-devices-menu" role="menu" aria-hidden="true" data-kexo-widget-menu="devices">
+                <button type="button" class="kexo-widget-menu-item" role="menuitem" data-kexo-widget-dimension="devices" data-kexo-widget-dimension-value="devices">Devices</button>
+                <button type="button" class="kexo-widget-menu-item" role="menuitem" data-kexo-widget-dimension="devices" data-kexo-widget-dimension-value="browsers">Browsers</button>
               </div>
             </div>
           </div>
-          <div class="col-12 col-md-4" data-kexo-chart-key="dash-chart-devices-30d">
-            <div class="card h-100 kexo-overview-mini-card">
-              <div class="card-body kexo-overview-mini-card-body">
-                <div class="kexo-overview-card-head">
-                  <div class="kexo-overview-card-head-left">
-                    <div class="subheader">Devices</div>
-                  </div>
-                  <div class="kexo-overview-card-actions">
-                    <button type="button" class="btn btn-icon btn-ghost-secondary kexo-overview-chart-settings-btn" data-kexo-chart-settings-key="dash-chart-devices-30d" aria-label="Chart settings" title="Chart settings">
-                      <i class="fa-light fa-gear" data-icon-key="chart-builder-icon" class="kexo-chart-cog-icon" aria-hidden="true"></i>
-                    </button>
-                  </div>
+
+          <!-- Widget 3: Attribution -->
+          <div class="card kexo-widget-card" data-kexo-widget="attribution">
+            <div class="card-body kexo-widget-card-body">
+              <div class="kexo-widget-head">
+                <div class="kexo-widget-title">
+                  <i class="fa-light fa-share-nodes me-1 text-muted" aria-hidden="true"></i>
+                  Attribution
                 </div>
-                <div class="kexo-overview-mini-chart-wrap kexo-overview-mini-chart-wrap--devices">
-                  <div class="dash-devices-icon-col" data-overview-yicons="dash-chart-devices-30d" aria-hidden="true"></div>
-                  <div id="dash-chart-devices-30d" class="kexo-overview-mini-chart"></div>
+                <div class="kexo-widget-head-right">
+                  <button type="button" class="btn btn-icon btn-ghost-secondary kexo-widget-settings-btn" data-kexo-widget-settings="attribution" aria-label="Widget settings" title="Widget settings">
+                    <i class="fa-light fa-gear" aria-hidden="true"></i>
+                  </button>
                 </div>
-                <div class="kexo-overview-mini-legend" data-overview-legend="dash-chart-devices-30d" aria-label="Devices legend"></div>
+              </div>
+              <div class="kexo-widget-body">
+                <div id="dash-widget-attribution-mount" class="kexo-widget-mount" aria-live="polite"></div>
               </div>
             </div>
           </div>
-          <div class="col-12 col-md-4" data-kexo-chart-key="dash-chart-attribution-30d">
-            <div class="card h-100 kexo-overview-mini-card">
-              <div class="card-body kexo-overview-mini-card-body">
-                <div class="kexo-overview-card-head">
-                  <div class="kexo-overview-card-head-left">
-                    <div class="subheader">Attribution</div>
-                  </div>
-                  <div class="kexo-overview-card-actions">
-                    <button type="button" class="btn btn-icon btn-ghost-secondary kexo-overview-chart-settings-btn" data-kexo-chart-settings-key="dash-chart-attribution-30d" aria-label="Chart settings" title="Chart settings">
-                      <i class="fa-light fa-gear" data-icon-key="chart-builder-icon" class="kexo-chart-cog-icon" aria-hidden="true"></i>
-                    </button>
-                  </div>
+
+          <!-- Widget 4: Payment types -->
+          <div class="card kexo-widget-card" data-kexo-widget="payment-types">
+            <div class="card-body kexo-widget-card-body">
+              <div class="kexo-widget-head">
+                <div class="kexo-widget-title">
+                  <i class="fa-light fa-credit-card me-1 text-muted" aria-hidden="true"></i>
+                  Payment types
                 </div>
-                <div id="dash-chart-attribution-30d" class="kexo-overview-mini-chart"></div>
-                <div class="kexo-overview-mini-legend" data-overview-legend="dash-chart-attribution-30d" aria-label="Attribution legend"></div>
+                <div class="kexo-widget-head-right">
+                  <button type="button" class="btn btn-icon btn-ghost-secondary kexo-widget-settings-btn" data-kexo-widget-settings="payment-types" aria-label="Widget settings" title="Widget settings">
+                    <i class="fa-light fa-gear" aria-hidden="true"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="kexo-widget-body">
+                <div id="dash-widget-payment-types-mount" class="kexo-widget-mount" aria-live="polite"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Widget 5: Abandoned carts -->
+          <div class="card kexo-widget-card" data-kexo-widget="abandoned">
+            <div class="card-body kexo-widget-card-body">
+              <div class="kexo-widget-head">
+                <div class="kexo-widget-title">
+                  <i class="fa-light fa-cart-shopping me-1 text-muted" aria-hidden="true"></i>
+                  Abandoned
+                </div>
+                <div class="kexo-widget-head-right">
+                  <button type="button" class="btn btn-icon btn-ghost-secondary kexo-widget-settings-btn" data-kexo-widget-settings="abandoned" aria-label="Widget settings" title="Widget settings">
+                    <i class="fa-light fa-gear" aria-hidden="true"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="kexo-widget-body">
+                <div id="dash-widget-abandoned-mount" class="kexo-widget-mount" aria-live="polite"></div>
               </div>
             </div>
           </div>
@@ -540,7 +592,7 @@
     </div>
 
     <div class="row g-3 mb-3">
-      <div class="col-lg-6">
+      <div class="col-12">
         <div class="card" data-table-class="dashboard" data-table-zone="dashboard-top-products" data-table-id="dash-top-products">
           <div class="card-header">
             <h3 class="card-title" data-kexo-table-title="1">Top Products</h3>
@@ -549,7 +601,12 @@
           <div class="card-footer d-flex align-items-center justify-content-center is-hidden" id="dash-top-products-pagination" aria-label="Top products pagination"></div>
         </div>
       </div>
-      <div class="col-lg-6">
+    </div>
+
+    <div class="row g-3 mb-3" id="dash-kpi-grid-mid"></div>
+
+    <div class="row g-3 mb-3">
+      <div class="col-12">
         <div class="card" data-table-class="dashboard" data-table-zone="dashboard-top-countries" data-table-id="dash-top-countries">
           <div class="card-header">
             <h3 class="card-title" data-kexo-table-title="1">Top Countries</h3>

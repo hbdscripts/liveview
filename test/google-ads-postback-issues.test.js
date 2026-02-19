@@ -19,31 +19,28 @@ test('computeProfitForOrder: no config or disabled returns revenue', () => {
   const { computeProfitForOrder } = googleAdsPostback;
   assert.strictEqual(computeProfitForOrder(100, null), 100);
   assert.strictEqual(computeProfitForOrder(100, {}), 100);
-  assert.strictEqual(computeProfitForOrder(100, { enabled: false }), 100);
-  assert.strictEqual(computeProfitForOrder(100, { enabled: true, rules: [] }), 100);
+  // costs-mode is currently a fail-open path (returns revenue).
+  assert.strictEqual(computeProfitForOrder(100, { v: 1, mode: 'costs' }), 100);
+  assert.strictEqual(computeProfitForOrder(100, { v: 1, mode: 'simple', simple: { percent_of_revenue: 0, fixed_per_order_gbp: 0 } }), 100);
 });
 
-test('computeProfitForOrder: percent_revenue and fixed_per_order deductions', () => {
+test('computeProfitForOrder: simple mode percent + fixed deductions', () => {
   const { computeProfitForOrder } = googleAdsPostback;
   const config = {
-    enabled: true,
-    rules: [
-      { enabled: true, type: 'percent_revenue', value: 10 },
-      { enabled: true, type: 'fixed_per_order', value: 5 },
-    ],
+    v: 1,
+    mode: 'simple',
+    simple: { percent_of_revenue: 10, fixed_per_order_gbp: 5 },
   };
   const profit = computeProfitForOrder(100, config);
   assert.strictEqual(profit, 85); // 100 - 10 - 5
 });
 
-test('computeProfitForOrder: disabled rule skipped', () => {
+test('computeProfitForOrder: simple mode supports fixed-only deductions', () => {
   const { computeProfitForOrder } = googleAdsPostback;
   const config = {
-    enabled: true,
-    rules: [
-      { enabled: false, type: 'percent_revenue', value: 10 },
-      { enabled: true, type: 'fixed_per_order', value: 3 },
-    ],
+    v: 1,
+    mode: 'simple',
+    simple: { percent_of_revenue: 0, fixed_per_order_gbp: 3 },
   };
   assert.strictEqual(computeProfitForOrder(100, config), 97);
 });
@@ -51,8 +48,9 @@ test('computeProfitForOrder: disabled rule skipped', () => {
 test('computeProfitForOrder: profit floored at zero', () => {
   const { computeProfitForOrder } = googleAdsPostback;
   const config = {
-    enabled: true,
-    rules: [{ enabled: true, type: 'fixed_per_order', value: 150 }],
+    v: 1,
+    mode: 'simple',
+    simple: { percent_of_revenue: 0, fixed_per_order_gbp: 150 },
   };
   assert.strictEqual(computeProfitForOrder(100, config), 0);
 });
