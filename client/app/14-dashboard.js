@@ -19,6 +19,8 @@
       var overviewMiniResizeTimer = null;
       var overviewHeightSyncObserver = null;
       var overviewHeightSyncTimer = null;
+      var overviewHeightSyncObservedElements = [];
+      var overviewMiniResizeObservedElements = [];
       var OVERVIEW_MINI_CACHE_MS = 2 * 60 * 1000;
       var OVERVIEW_MINI_FORCE_REFRESH_MS = 5 * 60 * 1000;
       var OVERVIEW_CARD_RANGE_LS_PREFIX = 'kexo:overview-card-range:v1:';
@@ -978,17 +980,34 @@
       function ensureOverviewHeightSyncObserver() {
         if (overviewHeightSyncObserver || typeof ResizeObserver === 'undefined') return;
         overviewHeightSyncObserver = new ResizeObserver(function() {
+          if (document.visibilityState === 'hidden') return;
           scheduleOverviewHeightSync();
         });
         try {
           var topGrid = document.getElementById('dash-kpi-grid');
           var midGrid = document.getElementById('dash-kpi-grid-mid');
-          // Avoid observing chart containers/rows directly: chart rendering changes their size.
-          if (topGrid) overviewHeightSyncObserver.observe(topGrid);
-          if (midGrid) overviewHeightSyncObserver.observe(midGrid);
+          overviewHeightSyncObservedElements = [];
+          if (topGrid) { overviewHeightSyncObserver.observe(topGrid); overviewHeightSyncObservedElements.push(topGrid); }
+          if (midGrid) { overviewHeightSyncObserver.observe(midGrid); overviewHeightSyncObservedElements.push(midGrid); }
         } catch (_) {}
         try {
           window.addEventListener('resize', scheduleOverviewHeightSync);
+        } catch (_) {}
+      }
+      function pauseOverviewResizeObservers() {
+        try {
+          if (overviewHeightSyncObserver && typeof overviewHeightSyncObserver.disconnect === 'function') overviewHeightSyncObserver.disconnect();
+          if (overviewMiniResizeObserver && typeof overviewMiniResizeObserver.disconnect === 'function') overviewMiniResizeObserver.disconnect();
+        } catch (_) {}
+      }
+      function resumeOverviewResizeObservers() {
+        try {
+          if (overviewHeightSyncObserver && overviewHeightSyncObservedElements.length) {
+            overviewHeightSyncObservedElements.forEach(function(el) { if (el && el.isConnected) overviewHeightSyncObserver.observe(el); });
+          }
+          if (overviewMiniResizeObserver && overviewMiniResizeObservedElements.length) {
+            overviewMiniResizeObservedElements.forEach(function(el) { if (el && el.isConnected) overviewMiniResizeObserver.observe(el); });
+          }
         } catch (_) {}
       }
 
@@ -1119,18 +1138,20 @@
           if (sig && sig === overviewMiniSizeSignature) return;
           overviewMiniSizeSignature = sig;
           rerenderOverviewCardsFromCache({ reason: 'resize' });
-        }, 300);
+        }, 500);
       }
 
       function ensureOverviewMiniResizeObserver() {
         if (overviewMiniResizeObserver || typeof ResizeObserver === 'undefined') return;
         ensureOverviewHeightSyncObserver();
         overviewMiniResizeObserver = new ResizeObserver(function() {
+          if (document.visibilityState === 'hidden') return;
           scheduleOverviewMiniResizeRender();
         });
+        overviewMiniResizeObservedElements = [];
         overviewMiniChartIds().forEach(function(id) {
           var el = document.getElementById(id);
-          if (el) overviewMiniResizeObserver.observe(el);
+          if (el) { overviewMiniResizeObserver.observe(el); overviewMiniResizeObservedElements.push(el); }
         });
       }
 
@@ -4429,8 +4450,6 @@
         scheduleOverviewHeightSync();
         bindOverviewCardUiOnce();
         syncAllOverviewCardRangeUi();
-        fetchOverviewCardData('dash-chart-overview-30d', { force: forceMini });
-        requestDashboardWidgetsRefresh({ force: forceMini, rangeKey: rangeKey });
         if (document.getElementById('live-online-chart') && typeof window.refreshLiveOnlineChart === 'function') {
           try { window.refreshLiveOnlineChart({ force: false }); } catch (_) {}
         }
@@ -4449,6 +4468,12 @@
                 renderDashboard(data);
               }
             }
+            var deferSecondary = function() {
+              fetchOverviewCardData('dash-chart-overview-30d', { force: forceMini });
+              requestDashboardWidgetsRefresh({ force: forceMini, rangeKey: rangeKey });
+            };
+            if (typeof requestAnimationFrame === 'function') requestAnimationFrame(function() { requestAnimationFrame(deferSecondary); });
+            else setTimeout(deferSecondary, 0);
           })
           .catch(function(err) {
             try { if (typeof window.kexoCaptureError === 'function') window.kexoCaptureError(err, { context: 'dashboardSeries', page: PAGE }); } catch (_) {}
@@ -5848,18 +5873,29 @@
           if (!isVisible()) return;
           pollTimer = setInterval(pollTick, POLL_MS);
         }
+        var VISIBILITY_REFRESH_MIN_IDLE_MS = 30 * 1000; // Skip full refresh if tab was hidden < 30s
         function refreshOnceAndResume(reason) {
           var now = Date.now();
           if (now - lastResumeAt < 1000) return;
+          var lastHidden = (typeof window.__kexoLastHiddenAt === 'number') ? window.__kexoLastHiddenAt : 0;
+          var idleMs = lastHidden ? (now - lastHidden) : 0;
+          if (idleMs > 0 && idleMs < VISIBILITY_REFRESH_MIN_IDLE_MS) {
+            startPolling();
+            return;
+          }
           lastResumeAt = now;
           try { if (typeof window.refreshDashboard === 'function') window.refreshDashboard({ force: true, silent: true, reason: reason || 'resume' }); } catch (_) {}
+          try { if (typeof refreshKpis === 'function') refreshKpis({ force: true }); } catch (_) {}
           startPolling();
         }
         function onVisibilityChange() {
           if (!isVisible()) {
             stopPolling();
+            try { window.__kexoLastHiddenAt = Date.now(); } catch (_) {}
+            try { if (typeof pauseOverviewResizeObservers === 'function') pauseOverviewResizeObservers(); } catch (_) {}
             return;
           }
+          try { if (typeof resumeOverviewResizeObservers === 'function') resumeOverviewResizeObservers(); } catch (_) {}
           refreshOnceAndResume('visibility');
         }
         function onPageShow(ev) {

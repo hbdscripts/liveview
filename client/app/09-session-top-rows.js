@@ -1422,7 +1422,10 @@
 
     updateLastSaleAgo();
     hydrateLastSaleFooterFromApi({ forceNew: false });
-    _intervals.push(setInterval(updateLastSaleAgo, 10000));
+    _intervals.push(setInterval(function() {
+      if (document.visibilityState !== 'visible') return;
+      try { updateLastSaleAgo(); } catch (_) {}
+    }, 10000));
 
     (function initDiagnosticsActions() {
       const openBtn = document.getElementById('config-open-btn');

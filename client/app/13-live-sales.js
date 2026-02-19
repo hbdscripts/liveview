@@ -40,7 +40,10 @@
     var _tickTimeIntervalId = null;
     function ensureTickTimeInterval() {
       if (_tickTimeIntervalId) return _tickTimeIntervalId;
-      _tickTimeIntervalId = setInterval(tickTimeOnSite, 30000);
+      _tickTimeIntervalId = setInterval(function() {
+        if (document.visibilityState !== 'visible') return;
+        try { tickTimeOnSite(); } catch (_) {}
+      }, 30000);
       _intervals.push(_tickTimeIntervalId);
       return _tickTimeIntervalId;
     }
@@ -107,21 +110,33 @@
       });
     });
 
+    var VISIBILITY_REFRESH_MIN_IDLE_MS = 30 * 1000; // Skip full refresh if tab was hidden < 30s (avoids lag on brief tab switch)
     document.addEventListener('visibilitychange', function() {
       if (document.visibilityState !== 'visible') {
         _lastHiddenAt = Date.now();
+        try { window.__kexoLastHiddenAt = _lastHiddenAt; } catch (_) {}
         return;
       }
 
       var idleMs = _lastHiddenAt ? (Date.now() - _lastHiddenAt) : 0;
-      // After returning from OAuth (e.g. mobile: switch to Google app and back), dashboard may be
-      // blank if fetches ran while hidden or failed. Refresh when visible again within ~2 min.
+      // Skip refresh for brief hides (< 30s) to avoid CPU/memory spike when returning to tab.
+      if (idleMs < VISIBILITY_REFRESH_MIN_IDLE_MS) {
+        return onBecameVisible();
+      }
+      // Dashboard has its own visibility listener (dashboardController); delegate to avoid duplicate refresh.
+      // When on dashboard, dashboardController handles refresh + KPIs. When on other pages, refresh KPIs only.
       if (idleMs < 2 * 60 * 1000 && PAGE === 'dashboard') {
         kexoWithSilentOverlay(function() {
           try {
             if (window.dashboardController && typeof window.dashboardController.onVisibleResume === 'function') window.dashboardController.onVisibleResume('visibility');
-            else if (typeof window.refreshDashboard === 'function') window.refreshDashboard({ force: true, silent: true });
+            else {
+              if (typeof window.refreshDashboard === 'function') window.refreshDashboard({ force: true, silent: true });
+              try { refreshKpis({ force: true }); } catch (_) {}
+            }
           } catch (_) {}
+        });
+      } else if (idleMs < 2 * 60 * 1000 && PAGE !== 'dashboard') {
+        kexoWithSilentOverlay(function() {
           try { refreshKpis({ force: true }); } catch (_) {}
         });
       }

@@ -674,6 +674,7 @@
       updateServerTimeDisplay();
       updateNextUpdateUi();
       _intervals.push(setInterval(function() {
+        if (document.visibilityState !== 'visible') return;
         updateServerTimeDisplay();
         updateNextUpdateUi();
       }, 1000));
