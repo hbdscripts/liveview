@@ -756,11 +756,11 @@
               '<span>' + escapeHtml(chLabel) + '</span>' +
             '</button>' +
           '</div>' +
-          '<div class="grid-cell text-end" role="cell">' + escapeHtml(chSessions || '-') + '</div>' +
-          '<div class="grid-cell text-end" role="cell">' + escapeHtml(chOrders || '-') + '</div>' +
-          '<div class="grid-cell text-end" role="cell">' + escapeHtml(chCr || '-') + '</div>' +
-          '<div class="grid-cell text-end" role="cell">' + chVpv + '</div>' +
-          '<div class="grid-cell text-end" role="cell">' + (chRev || '-') + '</div>' +
+          '<div class="grid-cell" role="cell">' + escapeHtml(chSessions || '-') + '</div>' +
+          '<div class="grid-cell" role="cell">' + escapeHtml(chOrders || '-') + '</div>' +
+          '<div class="grid-cell" role="cell">' + escapeHtml(chCr || '-') + '</div>' +
+          '<div class="grid-cell" role="cell">' + chVpv + '</div>' +
+          '<div class="grid-cell" role="cell">' + (chRev || '-') + '</div>' +
         '</div>';
 
         const sources = ch && Array.isArray(ch.sources) ? ch.sources.slice() : [];
@@ -792,11 +792,11 @@
                 '<span>' + escapeHtml(sLabel) + '</span>' +
               '</button>' +
             '</div>' +
-            '<div class="grid-cell text-end" role="cell">' + escapeHtml(sSessions || '-') + '</div>' +
-            '<div class="grid-cell text-end" role="cell">' + escapeHtml(sOrders || '-') + '</div>' +
-            '<div class="grid-cell text-end" role="cell">' + escapeHtml(sCr || '-') + '</div>' +
-            '<div class="grid-cell text-end" role="cell">' + sVpv + '</div>' +
-            '<div class="grid-cell text-end" role="cell">' + (sRev || '-') + '</div>' +
+            '<div class="grid-cell" role="cell">' + escapeHtml(sSessions || '-') + '</div>' +
+            '<div class="grid-cell" role="cell">' + escapeHtml(sOrders || '-') + '</div>' +
+            '<div class="grid-cell" role="cell">' + escapeHtml(sCr || '-') + '</div>' +
+            '<div class="grid-cell" role="cell">' + sVpv + '</div>' +
+            '<div class="grid-cell" role="cell">' + (sRev || '-') + '</div>' +
           '</div>';
 
           const variants = src && Array.isArray(src.variants) ? src.variants.slice() : [];
@@ -827,11 +827,11 @@
               : '';
             html += '<div class="grid-row traffic-type-child attribution-variant-row' + (srcOpen ? '' : ' is-hidden') + '" role="row" data-parent="' + escapeHtml(parentKey) + '" data-channel="' + escapeHtml(chKey) + '" data-source="' + escapeHtml(sKey) + '">' +
               '<div class="grid-cell" role="cell"><span style="display:inline-flex;align-items:center;gap:8px;padding-left:18px">' + (vIcon || '') + '<span>' + escapeHtml(vLabel) + '</span>' + ownerBadge + '</span></div>' +
-              '<div class="grid-cell text-end" role="cell">' + escapeHtml(vSessions || '-') + '</div>' +
-              '<div class="grid-cell text-end" role="cell">' + escapeHtml(vOrders || '-') + '</div>' +
-              '<div class="grid-cell text-end" role="cell">' + escapeHtml(vCr || '-') + '</div>' +
-              '<div class="grid-cell text-end" role="cell">' + vVpv + '</div>' +
-              '<div class="grid-cell text-end" role="cell">' + (vRev || '-') + '</div>' +
+              '<div class="grid-cell" role="cell">' + escapeHtml(vSessions || '-') + '</div>' +
+              '<div class="grid-cell" role="cell">' + escapeHtml(vOrders || '-') + '</div>' +
+              '<div class="grid-cell" role="cell">' + escapeHtml(vCr || '-') + '</div>' +
+              '<div class="grid-cell" role="cell">' + vVpv + '</div>' +
+              '<div class="grid-cell" role="cell">' + (vRev || '-') + '</div>' +
             '</div>';
           });
         });
@@ -1062,11 +1062,11 @@
               '<span>' + escapeHtml(label) + '</span>' +
             '</button>' +
           '</div>' +
-          '<div class="grid-cell text-end" role="cell">' + escapeHtml(sessions || '-') + '</div>' +
-          '<div class="grid-cell text-end" role="cell">' + escapeHtml(orders || '-') + '</div>' +
-          '<div class="grid-cell text-end" role="cell">' + escapeHtml(cr || '-') + '</div>' +
-          '<div class="grid-cell text-end" role="cell">' + vpv + '</div>' +
-          '<div class="grid-cell text-end" role="cell">' + (rev || '-') + '</div>' +
+          '<div class="grid-cell" role="cell">' + escapeHtml(sessions || '-') + '</div>' +
+          '<div class="grid-cell" role="cell">' + escapeHtml(orders || '-') + '</div>' +
+          '<div class="grid-cell" role="cell">' + escapeHtml(cr || '-') + '</div>' +
+          '<div class="grid-cell" role="cell">' + vpv + '</div>' +
+          '<div class="grid-cell" role="cell">' + (rev || '-') + '</div>' +
         '</div>';
 
         const kids = g && Array.isArray(g.platforms) ? g.platforms.slice() : [];
@@ -1091,11 +1091,11 @@
           const cvpv = metric(c, 'vpv') != null ? formatRevenue(metric(c, 'vpv')) : '\u2014';
           html += '<div class="grid-row traffic-type-child devices-child' + (open ? '' : ' is-hidden') + '" role="row" data-parent="' + escapeHtml(dKey) + '">' +
             '<div class="grid-cell" role="cell"><span style="display:inline-flex;align-items:center;gap:8px">' + trafficTypePlatformIcon(platform) + '<span>' + escapeHtml(clabel) + '</span></span></div>' +
-            '<div class="grid-cell text-end" role="cell">' + escapeHtml(csessions || '-') + '</div>' +
-            '<div class="grid-cell text-end" role="cell">' + escapeHtml(corders || '-') + '</div>' +
-            '<div class="grid-cell text-end" role="cell">' + escapeHtml(ccr || '-') + '</div>' +
-            '<div class="grid-cell text-end" role="cell">' + cvpv + '</div>' +
-            '<div class="grid-cell text-end" role="cell">' + (crev || '-') + '</div>' +
+            '<div class="grid-cell" role="cell">' + escapeHtml(csessions || '-') + '</div>' +
+            '<div class="grid-cell" role="cell">' + escapeHtml(corders || '-') + '</div>' +
+            '<div class="grid-cell" role="cell">' + escapeHtml(ccr || '-') + '</div>' +
+            '<div class="grid-cell" role="cell">' + cvpv + '</div>' +
+            '<div class="grid-cell" role="cell">' + (crev || '-') + '</div>' +
           '</div>';
         });
       });
@@ -1344,13 +1344,13 @@
         const aov = (r && typeof r.aov === 'number') ? formatRevenue(r.aov) : '\u2014';
         html += '<div class="grid-row" role="row">' +
           '<div class="grid-cell" role="cell"><span style="display:inline-flex;align-items:center;gap:8px"><span class="tt-browser-icon" aria-hidden="true">' + browserIconHtml(k) + '</span><span>' + escapeHtml(label) + '</span></span></div>' +
-          '<div class="grid-cell text-end" role="cell">' + escapeHtml(sessions) + '</div>' +
-          '<div class="grid-cell text-end" role="cell">' + escapeHtml(carts) + '</div>' +
-          '<div class="grid-cell text-end" role="cell">' + escapeHtml(orders) + '</div>' +
-          '<div class="grid-cell text-end" role="cell">' + escapeHtml(cr) + '</div>' +
-          '<div class="grid-cell text-end" role="cell">' + escapeHtml(vpv) + '</div>' +
-          '<div class="grid-cell text-end" role="cell">' + (rev || '\u2014') + '</div>' +
-          '<div class="grid-cell text-end" role="cell">' + escapeHtml(aov) + '</div>' +
+          '<div class="grid-cell" role="cell">' + escapeHtml(sessions) + '</div>' +
+          '<div class="grid-cell" role="cell">' + escapeHtml(carts) + '</div>' +
+          '<div class="grid-cell" role="cell">' + escapeHtml(orders) + '</div>' +
+          '<div class="grid-cell" role="cell">' + escapeHtml(cr) + '</div>' +
+          '<div class="grid-cell" role="cell">' + escapeHtml(vpv) + '</div>' +
+          '<div class="grid-cell" role="cell">' + (rev || '\u2014') + '</div>' +
+          '<div class="grid-cell" role="cell">' + escapeHtml(aov) + '</div>' +
         '</div>';
       });
 

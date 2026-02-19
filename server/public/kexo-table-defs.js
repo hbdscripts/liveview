@@ -7,11 +7,11 @@
 
   var PRODUCT_COLS = [
     { key: 'product', label: 'Product', sortable: false, cellClass: 'bs-product-col', iconKey: 'table-short-product' },
-    { key: 'clicks', label: 'Sessions', sortable: false, cellClass: 'text-end', iconKey: 'table-icon-sessions' },
-    { key: 'orders', label: 'Orders', sortable: false, cellClass: 'text-end', iconKey: 'table-icon-orders' },
-    { key: 'cr', label: 'CR%', sortable: false, cellClass: 'text-end', iconKey: 'table-icon-cr' },
-    { key: 'vpv', label: 'VPV', sortable: false, cellClass: 'text-end', iconKey: 'table-icon-vpv' },
-    { key: 'rev', label: 'Rev', sortable: false, cellClass: 'text-end', iconKey: 'table-icon-revenue' }
+    { key: 'clicks', label: 'Sessions', sortable: false, cellClass: 'text-center', iconKey: 'table-icon-sessions' },
+    { key: 'orders', label: 'Orders', sortable: false, cellClass: 'text-center', iconKey: 'table-icon-orders' },
+    { key: 'cr', label: 'CR%', sortable: false, cellClass: 'text-center', iconKey: 'table-icon-cr' },
+    { key: 'vpv', label: 'VPV', sortable: false, cellClass: 'text-center', iconKey: 'table-icon-vpv' },
+    { key: 'rev', label: 'Rev', sortable: false, cellClass: 'text-center', iconKey: 'table-icon-revenue' }
   ];
 
   window.KEXO_TABLE_DEFS = {
@@ -140,10 +140,10 @@
       bodyId: 'abandoned-carts-countries-body',
       columns: [
         { key: 'country', label: 'Country', sortable: false, iconKey: 'table-short-geo' },
-        { key: 'abandoned', label: 'Abandoned', sortable: false, cellClass: 'text-end', iconKey: 'table-icon-sessions' },
-        { key: 'checkout', label: 'Checkout', sortable: false, cellClass: 'text-end', iconKey: 'table-icon-orders' },
-        { key: 'pct', label: '% Abandoned', sortable: false, cellClass: 'text-end', iconKey: 'table-icon-cr' },
-        { key: 'rev', label: 'Value', sortable: false, cellClass: 'text-end', iconKey: 'table-icon-revenue' }
+        { key: 'abandoned', label: 'Abandoned', sortable: false, cellClass: 'text-center', iconKey: 'table-icon-sessions' },
+        { key: 'checkout', label: 'Checkout', sortable: false, cellClass: 'text-center', iconKey: 'table-icon-orders' },
+        { key: 'pct', label: '% Abandoned', sortable: false, cellClass: 'text-center', iconKey: 'table-icon-cr' },
+        { key: 'rev', label: 'Value', sortable: false, cellClass: 'text-center', iconKey: 'table-icon-revenue' }
       ]
     },
     'abandoned-carts-country-products-table': {
@@ -153,10 +153,10 @@
       bodyId: 'abandoned-carts-country-products-body',
       columns: [
         { key: 'country', label: 'Country + Product', sortable: false, iconKey: 'table-short-country-product' },
-        { key: 'abandoned', label: 'Abandoned', sortable: false, cellClass: 'text-end', iconKey: 'table-icon-sessions' },
-        { key: 'checkout', label: 'Checkout', sortable: false, cellClass: 'text-end', iconKey: 'table-icon-orders' },
-        { key: 'pct', label: '% Abandoned', sortable: false, cellClass: 'text-end', iconKey: 'table-icon-cr' },
-        { key: 'rev', label: 'Value', sortable: false, cellClass: 'text-end', iconKey: 'table-icon-revenue' }
+        { key: 'abandoned', label: 'Abandoned', sortable: false, cellClass: 'text-center', iconKey: 'table-icon-sessions' },
+        { key: 'checkout', label: 'Checkout', sortable: false, cellClass: 'text-center', iconKey: 'table-icon-orders' },
+        { key: 'pct', label: '% Abandoned', sortable: false, cellClass: 'text-center', iconKey: 'table-icon-cr' },
+        { key: 'rev', label: 'Value', sortable: false, cellClass: 'text-center', iconKey: 'table-icon-revenue' }
       ]
     },
     'attribution-table': {
@@ -216,12 +216,12 @@
         { key: 'payment', label: 'Payment', sortable: false },
         { key: 'icon', label: '', sortable: false, cellClass: 'kexo-payments-icon-col kexo-payment-method-icon-cell' },
         { key: 'sessions', label: 'Sessions', sortable: false, iconKey: 'table-icon-sessions', cellClass: 'text-center' },
-        { key: 'carts', label: 'Carts', sortable: false, cellClass: 'text-end' },
-        { key: 'orders', label: 'Orders', sortable: false, iconKey: 'table-icon-orders', cellClass: 'text-end' },
-        { key: 'cr', label: 'CR%', sortable: false, iconKey: 'table-icon-cr', cellClass: 'text-end' },
-        { key: 'vpv', label: 'VPV', sortable: false, iconKey: 'table-icon-vpv', cellClass: 'text-end' },
-        { key: 'rev', label: 'Rev', sortable: false, iconKey: 'table-icon-revenue', cellClass: 'text-end' },
-        { key: 'aov', label: 'AOV', sortable: false, cellClass: 'text-end' }
+        { key: 'carts', label: 'Carts', sortable: false, cellClass: 'text-center' },
+        { key: 'orders', label: 'Orders', sortable: false, iconKey: 'table-icon-orders', cellClass: 'text-center' },
+        { key: 'cr', label: 'CR%', sortable: false, iconKey: 'table-icon-cr', cellClass: 'text-center' },
+        { key: 'vpv', label: 'VPV', sortable: false, iconKey: 'table-icon-vpv', cellClass: 'text-center' },
+        { key: 'rev', label: 'Rev', sortable: false, iconKey: 'table-icon-revenue', cellClass: 'text-center' },
+        { key: 'aov', label: 'AOV', sortable: false, cellClass: 'text-center' }
       ]
     },
     'variants-table': {
@@ -243,13 +243,13 @@
       bodyId: 'ads-campaigns-body',
       columns: [
         { key: 'campaign', label: 'Campaign', cellClass: '' },
-        { key: 'clicks', label: 'Clicks', cellClass: ' text-end' },
-        { key: 'impr', label: 'Impr', cellClass: ' text-end' },
-        { key: 'conv', label: 'Conv', cellClass: ' text-end' },
-        { key: 'sales', label: 'Revenue', cellClass: ' text-end' },
-        { key: 'spend', label: 'Spend', cellClass: ' text-end' },
-        { key: 'roas', label: 'ROAS', cellClass: ' text-end' },
-        { key: 'profit', label: 'Gross', cellClass: ' text-end' }
+        { key: 'clicks', label: 'Clicks', cellClass: ' text-center' },
+        { key: 'impr', label: 'Impr', cellClass: ' text-center' },
+        { key: 'conv', label: 'Conv', cellClass: ' text-center' },
+        { key: 'sales', label: 'Revenue', cellClass: ' text-center' },
+        { key: 'spend', label: 'Spend', cellClass: ' text-center' },
+        { key: 'roas', label: 'ROAS', cellClass: ' text-center' },
+        { key: 'profit', label: 'Gross', cellClass: ' text-center' }
       ]
     }
   };
@@ -259,40 +259,40 @@
       tableId: 'dash-top-products',
       columns: [
         { header: 'Product', headerClass: '' },
-        { header: 'Revenue', headerClass: 'text-end w-1' },
-        { header: 'Orders', headerClass: 'text-end w-1' },
-        { header: 'CR%', headerClass: 'text-end w-1' },
-        { header: 'VPV', headerClass: 'text-end w-1' }
+        { header: 'Revenue', headerClass: 'text-center w-1' },
+        { header: 'Orders', headerClass: 'text-center w-1' },
+        { header: 'CR%', headerClass: 'text-center w-1' },
+        { header: 'VPV', headerClass: 'text-center w-1' }
       ]
     },
     'dash-top-countries': {
       tableId: 'dash-top-countries',
       columns: [
         { header: 'Country', headerClass: '' },
-        { header: 'Revenue', headerClass: 'text-end w-1' },
-        { header: 'Orders', headerClass: 'text-end w-1' },
-        { header: 'CR%', headerClass: 'text-end w-1' },
-        { header: 'VPV', headerClass: 'text-end w-1' }
+        { header: 'Revenue', headerClass: 'text-center w-1' },
+        { header: 'Orders', headerClass: 'text-center w-1' },
+        { header: 'CR%', headerClass: 'text-center w-1' },
+        { header: 'VPV', headerClass: 'text-center w-1' }
       ]
     },
     'dash-trending-up': {
       tableId: 'dash-trending-up',
       columns: [
         { header: 'Product', headerClass: '' },
-        { header: 'Revenue', headerClass: 'text-end w-1' },
-        { header: 'Orders', headerClass: 'text-end w-1' },
-        { header: 'CR%', headerClass: 'text-end w-1' },
-        { header: 'VPV', headerClass: 'text-end w-1' }
+        { header: 'Revenue', headerClass: 'text-center w-1' },
+        { header: 'Orders', headerClass: 'text-center w-1' },
+        { header: 'CR%', headerClass: 'text-center w-1' },
+        { header: 'VPV', headerClass: 'text-center w-1' }
       ]
     },
     'dash-trending-down': {
       tableId: 'dash-trending-down',
       columns: [
         { header: 'Product', headerClass: '' },
-        { header: 'Revenue', headerClass: 'text-end w-1' },
-        { header: 'Orders', headerClass: 'text-end w-1' },
-        { header: 'CR%', headerClass: 'text-end w-1' },
-        { header: 'VPV', headerClass: 'text-end w-1' }
+        { header: 'Revenue', headerClass: 'text-center w-1' },
+        { header: 'Orders', headerClass: 'text-center w-1' },
+        { header: 'CR%', headerClass: 'text-center w-1' },
+        { header: 'VPV', headerClass: 'text-center w-1' }
       ]
     },
     'latest-sales-table': {
@@ -301,8 +301,8 @@
       columns: [
         { header: '', headerClass: 'w-1' },
         { header: 'Product', headerClass: '' },
-        { header: 'Ago', headerClass: 'text-end w-1' },
-        { header: 'Value', headerClass: 'text-end w-1' }
+        { header: 'Ago', headerClass: 'text-center w-1' },
+        { header: 'Value', headerClass: 'text-center w-1' }
       ]
     }
   };
@@ -330,7 +330,7 @@
         { header: 'Shipping label', headerClass: '' },
         { header: 'Paid shipping', headerClass: '' },
         { header: 'Set shipping', headerClass: '' },
-        { header: 'Sessions', headerClass: 'text-end' },
+        { header: 'Sessions', headerClass: 'text-center' },
         { header: 'CR%', headerClass: '' }
       ]
     }
@@ -340,48 +340,48 @@
     'variants-issues-table': {
       columns: [
         { header: 'Variant title', headerClass: '' },
-        { header: 'Sessions', headerClass: 'text-end' },
-        { header: 'Orders', headerClass: 'text-end' },
-        { header: 'Rev', headerClass: 'text-end' },
+        { header: 'Sessions', headerClass: 'text-center' },
+        { header: 'Orders', headerClass: 'text-center' },
+        { header: 'Rev', headerClass: 'text-center' },
         { header: 'Matched rules', headerClass: '' },
-        { header: 'Actions', headerClass: 'text-end' }
+        { header: 'Actions', headerClass: 'text-center' }
       ],
       columnsNoMatches: [
         { header: 'Variant title', headerClass: '' },
-        { header: 'Sessions', headerClass: 'text-end' },
-        { header: 'Orders', headerClass: 'text-end' },
-        { header: 'Rev', headerClass: 'text-end' },
-        { header: 'Actions', headerClass: 'text-end' }
+        { header: 'Sessions', headerClass: 'text-center' },
+        { header: 'Orders', headerClass: 'text-center' },
+        { header: 'Rev', headerClass: 'text-center' },
+        { header: 'Actions', headerClass: 'text-center' }
       ]
     },
     'variants-top-unmapped-table': {
       columns: [
         { header: 'Variant', headerClass: '' },
-        { header: 'Sessions', headerClass: 'text-end' },
-        { header: 'Orders', headerClass: 'text-end' },
-        { header: 'Rev', headerClass: 'text-end' }
+        { header: 'Sessions', headerClass: 'text-center' },
+        { header: 'Orders', headerClass: 'text-center' },
+        { header: 'Rev', headerClass: 'text-center' }
       ]
     },
     'variants-all-stats-totals-table': {
       columns: [
         { header: 'Table', headerClass: '' },
-        { header: 'Sessions', headerClass: 'text-end' },
-        { header: 'Orders', headerClass: 'text-end' },
-        { header: 'Rev', headerClass: 'text-end' }
+        { header: 'Sessions', headerClass: 'text-center' },
+        { header: 'Orders', headerClass: 'text-center' },
+        { header: 'Rev', headerClass: 'text-center' }
       ]
     },
     'variants-all-stats-coverage-table': {
       columns: [
         { header: 'Table', headerClass: '' },
-        { header: 'Total Sessions', headerClass: 'text-end' },
-        { header: 'In Scope Sessions', headerClass: 'text-end' },
-        { header: 'Mapped', headerClass: 'text-end' },
-        { header: 'Ignored', headerClass: 'text-end' },
-        { header: 'Out Of Scope', headerClass: 'text-end' },
-        { header: 'Unmapped', headerClass: 'text-end' },
-        { header: 'Resolved In Mapped', headerClass: 'text-end' },
-        { header: 'Mapped %', headerClass: 'text-end' },
-        { header: 'Mapped+Ignored %', headerClass: 'text-end' }
+        { header: 'Total Sessions', headerClass: 'text-center' },
+        { header: 'In Scope Sessions', headerClass: 'text-center' },
+        { header: 'Mapped', headerClass: 'text-center' },
+        { header: 'Ignored', headerClass: 'text-center' },
+        { header: 'Out Of Scope', headerClass: 'text-center' },
+        { header: 'Unmapped', headerClass: 'text-center' },
+        { header: 'Resolved In Mapped', headerClass: 'text-center' },
+        { header: 'Mapped %', headerClass: 'text-center' },
+        { header: 'Mapped+Ignored %', headerClass: 'text-center' }
       ]
     }
   };
@@ -391,14 +391,14 @@
       columns: [
         { header: 'Table', headerClass: '' },
         { header: 'Ignored variant title', headerClass: '' },
-        { header: 'Actions', headerClass: 'text-end' }
+        { header: 'Actions', headerClass: 'text-center' }
       ]
     },
     'settings-merge-rules-table': {
       columns: [
         { header: 'Output', headerClass: '' },
         { header: 'Include aliases', headerClass: '' },
-        { header: 'Actions', headerClass: 'text-end w-1' }
+        { header: 'Actions', headerClass: 'text-center w-1' }
       ]
     },
     'settings-kpis-table': {
@@ -406,7 +406,7 @@
         { header: 'On', headerClass: 'w-1' },
         { header: 'Label', headerClass: '' },
         { header: 'Key', headerClass: 'text-muted' },
-        { header: 'Order', headerClass: 'text-end w-1' }
+        { header: 'Order', headerClass: 'text-center w-1' }
       ]
     },
     'settings-date-ranges-table': {
@@ -414,7 +414,7 @@
         { header: 'On', headerClass: 'w-1' },
         { header: 'Label', headerClass: '' },
         { header: 'Key', headerClass: 'text-muted' },
-        { header: 'Order', headerClass: 'text-end w-1' }
+        { header: 'Order', headerClass: 'text-center w-1' }
       ]
     }
   };
@@ -423,7 +423,7 @@
     'diagnostics-kv-table': {
       columns: [
         { header: 'Metric', headerClass: 'text-secondary' },
-        { header: 'Value', headerClass: 'text-end' }
+        { header: 'Value', headerClass: 'text-center' }
       ]
     },
     'profit-rules-table': {
@@ -440,7 +440,7 @@
     'product-insights-metrics-table': {
       columns: [
         { header: 'Metric', headerClass: '' },
-        { header: 'Value', headerClass: 'text-end' }
+        { header: 'Value', headerClass: 'text-center' }
       ]
     },
     'ads-modal-sales-table': {
@@ -455,50 +455,50 @@
       tableClass: 'ads-modal-countries-table',
       columns: [
         { header: 'Country', headerClass: '' },
-        { header: 'Clicks', headerClass: 'text-end' },
-        { header: 'Spend', headerClass: 'text-end' },
-        { header: 'Orders', headerClass: 'text-end' },
-        { header: 'CR%', headerClass: 'text-end' },
-        { header: 'VPV', headerClass: 'text-end' },
-        { header: 'Revenue', headerClass: 'text-end' },
-        { header: 'ROAS', headerClass: 'text-end' }
+        { header: 'Clicks', headerClass: 'text-center' },
+        { header: 'Spend', headerClass: 'text-center' },
+        { header: 'Orders', headerClass: 'text-center' },
+        { header: 'CR%', headerClass: 'text-center' },
+        { header: 'VPV', headerClass: 'text-center' },
+        { header: 'Revenue', headerClass: 'text-center' },
+        { header: 'ROAS', headerClass: 'text-center' }
       ]
     },
     'ads-modal-devices-table': {
       tableClass: 'ads-modal-devices-table',
       columns: [
         { header: 'Device', headerClass: '' },
-        { header: 'Clicks', headerClass: 'text-end' },
-        { header: 'Spend', headerClass: 'text-end' },
-        { header: 'Orders', headerClass: 'text-end' },
-        { header: 'CR%', headerClass: 'text-end' },
-        { header: 'VPV', headerClass: 'text-end' },
-        { header: 'Revenue', headerClass: 'text-end' },
-        { header: 'ROAS', headerClass: 'text-end' }
+        { header: 'Clicks', headerClass: 'text-center' },
+        { header: 'Spend', headerClass: 'text-center' },
+        { header: 'Orders', headerClass: 'text-center' },
+        { header: 'CR%', headerClass: 'text-center' },
+        { header: 'VPV', headerClass: 'text-center' },
+        { header: 'Revenue', headerClass: 'text-center' },
+        { header: 'ROAS', headerClass: 'text-center' }
       ]
     },
     'ads-modal-networks-table': {
       tableClass: 'ads-modal-networks-table',
       columns: [
         { header: 'Network', headerClass: '' },
-        { header: 'Sessions', headerClass: 'text-end' },
-        { header: 'Orders', headerClass: 'text-end' },
-        { header: 'CR%', headerClass: 'text-end' },
-        { header: 'VPV', headerClass: 'text-end' },
-        { header: 'Revenue', headerClass: 'text-end' }
+        { header: 'Sessions', headerClass: 'text-center' },
+        { header: 'Orders', headerClass: 'text-center' },
+        { header: 'CR%', headerClass: 'text-center' },
+        { header: 'VPV', headerClass: 'text-center' },
+        { header: 'Revenue', headerClass: 'text-center' }
       ]
     },
     'ads-modal-dayparting-table': {
       tableClass: 'ads-modal-dayparting-table',
       columns: [
         { header: 'Hour', headerClass: '' },
-        { header: 'Clicks', headerClass: 'text-end' },
-        { header: 'Spend', headerClass: 'text-end' },
-        { header: 'Orders', headerClass: 'text-end' },
-        { header: 'CR%', headerClass: 'text-end' },
-        { header: 'VPV', headerClass: 'text-end' },
-        { header: 'Revenue', headerClass: 'text-end' },
-        { header: 'ROAS', headerClass: 'text-end' }
+        { header: 'Clicks', headerClass: 'text-center' },
+        { header: 'Spend', headerClass: 'text-center' },
+        { header: 'Orders', headerClass: 'text-center' },
+        { header: 'CR%', headerClass: 'text-center' },
+        { header: 'VPV', headerClass: 'text-center' },
+        { header: 'Revenue', headerClass: 'text-center' },
+        { header: 'ROAS', headerClass: 'text-center' }
       ]
     }
   };

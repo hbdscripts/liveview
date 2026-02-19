@@ -792,7 +792,7 @@ body.side-panel-open {
 
 #sessions-table.grid-table .grid-body .grid-row .grid-cell.compliance-cell .compliance-sale-icon {
   font-size: .85rem;
-  margin-right: .28rem;
+  margin: 0 0 0 2px;
 }
 
 #sessions-table.grid-table .grid-body .grid-row .grid-cell.compliance-cell .compliance-status-icon.is-ok {
@@ -1038,7 +1038,7 @@ body.side-panel-open {
   grid-column: 1 / -1;
 }
 
-/* Numeric/currency columns — right-align */
+/* Numeric/currency columns — center-align */
 .grid-cell.text-end,
 .grid-cell[data-sort="rev"],
 .grid-cell[data-sort="orders"],
@@ -1048,17 +1048,16 @@ body.side-panel-open {
 .grid-cell[data-sort="cr"],
 .grid-cell[data-sort="vpv"],
 .grid-cell[data-sort="aov"] {
-  text-align: right;
-}
-
-/* Sessions-style tables (live/sales/date): center-align headers + body consistently */
-.table-scroll-wrap .grid-row--header .grid-cell:not(:first-child),
-.table-scroll-wrap .grid-body .grid-row .grid-cell:not(:first-child) {
   text-align: center;
 }
 
-.table-scroll-wrap .grid-row--header .grid-cell:first-child,
-.table-scroll-wrap .grid-body .grid-row .grid-cell:first-child {
+/* All grid tables: center-align cells except sticky first column. */
+.grid-table .grid-row--header .grid-cell:not(:first-child),
+.grid-table .grid-body .grid-row .grid-cell:not(:first-child) {
+  text-align: center;
+}
+.grid-table .grid-row--header .grid-cell:first-child,
+.grid-table .grid-body .grid-row .grid-cell:first-child {
   text-align: left;
 }
 
