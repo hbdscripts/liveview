@@ -139,14 +139,14 @@ router.post('/google/provision-goals', async (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
   try {
     const shop = (req.body && req.body.shop != null ? String(req.body.shop).trim() : '') || (req.query && req.query.shop != null ? String(req.query.shop).trim() : '') || salesTruth.resolveShopForSales('');
-    const goals = Array.isArray(req.body && req.body.goals) ? req.body.goals : undefined;
-    const out = await provisionGoals(shop, goals);
+    const requestedGoals = Array.isArray(req.body && req.body.goals) ? req.body.goals : undefined;
+    const out = await provisionGoals(shop, requestedGoals);
     if (!out.ok) {
       res.status(400).json({ ok: false, error: out.error || 'provision failed' });
       return;
     }
-    const goals = await getConversionGoals(shop);
-    res.json({ ok: true, goals: out.goals, persisted: goals });
+    const persistedGoals = await getConversionGoals(shop);
+    res.json({ ok: true, goals: out.goals, persisted: persistedGoals });
   } catch (err) {
     Sentry.captureException(err, { extra: { route: 'ads.google.provision-goals' } });
     console.error('[ads.google.provision-goals]', err);
