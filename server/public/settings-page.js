@@ -1117,9 +1117,6 @@
     var postbackCb = document.getElementById('settings-ga-postback-enabled');
     var issuesRefreshBtn = document.getElementById('settings-ga-issues-refresh-btn');
 
-    var profitPercentEl = document.getElementById('settings-ga-profit-simple-percent');
-    var profitFixedEl = document.getElementById('settings-ga-profit-simple-fixed');
-    var profitPreviewEl = document.getElementById('settings-ga-profit-preview');
     var profitSaveBtn = document.getElementById('settings-ga-profit-save-btn');
     var profitMsgEl = document.getElementById('settings-ga-profit-msg');
 
@@ -1201,47 +1198,54 @@
       return (success / denom) * 100;
     }
 
-    function updateProfitPreview() {
-      if (!profitPreviewEl) return;
-      var pct = profitPercentEl ? (Number(profitPercentEl.value) || 0) : 0;
-      var fixed = profitFixedEl ? (Number(profitFixedEl.value) || 0) : 0;
-      var revenue = 100;
-      var profit = revenue - (revenue * (pct / 100)) - fixed;
-      if (!Number.isFinite(profit)) profit = 0;
-      profit = Math.max(0, Math.round(profit * 100) / 100);
-      profitPreviewEl.textContent = '£' + profit.toFixed(2);
-    }
-
-    function readProfitDraft() {
-      var mode = 'simple';
-      var mSimple = document.getElementById('settings-ga-profit-mode-simple');
-      var mCosts = document.getElementById('settings-ga-profit-mode-costs');
-      if (mCosts && mCosts.checked) mode = 'costs';
-      else if (mSimple && mSimple.checked) mode = 'simple';
-      var pct = profitPercentEl ? (Number(profitPercentEl.value) || 0) : 0;
-      var fixed = profitFixedEl ? (Number(profitFixedEl.value) || 0) : 0;
-      return {
-        v: 1,
-        mode: mode,
-        simple: {
-          percent_of_revenue: Math.max(0, Math.min(100, pct)),
-          fixed_per_order_gbp: Math.max(0, fixed),
-        },
+    function readProfitDeductionsDraft() {
+      var deductions = {
+        includeGoogleAdsSpend: !!document.getElementById('settings-ga-deduction-google-ads') && document.getElementById('settings-ga-deduction-google-ads').checked,
+        includePaymentFees: !!document.getElementById('settings-ga-deduction-payment-fees') && document.getElementById('settings-ga-deduction-payment-fees').checked,
+        includeShopifyTaxes: !!document.getElementById('settings-ga-deduction-tax') && document.getElementById('settings-ga-deduction-tax').checked,
+        includeShopifyAppBills: !!document.getElementById('settings-ga-deduction-app-bills') && document.getElementById('settings-ga-deduction-app-bills').checked,
+        includeShipping: !!document.getElementById('settings-ga-deduction-shipping') && document.getElementById('settings-ga-deduction-shipping').checked,
+        includeRules: !!document.getElementById('settings-ga-deduction-rules') && document.getElementById('settings-ga-deduction-rules').checked,
       };
+      var addToCartEl = document.getElementById('settings-ga-addtocart-value');
+      var addToCartValue = addToCartEl ? (Number(addToCartEl.value) || 0) : 1;
+      if (!Number.isFinite(addToCartValue) || addToCartValue < 0) addToCartValue = 1;
+      return { deductions: deductions, googleAdsAddToCartValue: addToCartValue };
     }
 
-    function applyProfitDraft(cfg) {
-      var c = cfg && typeof cfg === 'object' ? cfg : null;
-      var mode = c && c.mode ? String(c.mode) : 'simple';
-      var mSimple = document.getElementById('settings-ga-profit-mode-simple');
-      var mCosts = document.getElementById('settings-ga-profit-mode-costs');
-      if (mCosts) mCosts.checked = mode === 'costs';
-      if (mSimple) mSimple.checked = mode !== 'costs';
-      var pct = c && c.simple && c.simple.percent_of_revenue != null ? Number(c.simple.percent_of_revenue) : 0;
-      var fixed = c && c.simple && c.simple.fixed_per_order_gbp != null ? Number(c.simple.fixed_per_order_gbp) : 0;
-      if (profitPercentEl) profitPercentEl.value = Number.isFinite(pct) ? String(pct) : '';
-      if (profitFixedEl) profitFixedEl.value = Number.isFinite(fixed) ? String(fixed) : '';
-      updateProfitPreview();
+    function applyProfitDeductions(deductions, addToCartValue) {
+      var d = deductions && typeof deductions === 'object' ? deductions : {};
+      function setChk(id, val) {
+        var el = document.getElementById(id);
+        if (el) el.checked = !!val;
+      }
+      setChk('settings-ga-deduction-google-ads', d.includeGoogleAdsSpend);
+      setChk('settings-ga-deduction-payment-fees', d.includePaymentFees);
+      setChk('settings-ga-deduction-tax', d.includeShopifyTaxes);
+      setChk('settings-ga-deduction-app-bills', d.includeShopifyAppBills);
+      setChk('settings-ga-deduction-shipping', d.includeShipping);
+      setChk('settings-ga-deduction-rules', d.includeRules);
+      var addToCartEl = document.getElementById('settings-ga-addtocart-value');
+      if (addToCartEl) addToCartEl.value = (addToCartValue != null && Number.isFinite(Number(addToCartValue)) && Number(addToCartValue) >= 0) ? String(Number(addToCartValue)) : '1';
+    }
+
+    function applyPostbackGoals(goals) {
+      var g = goals && typeof goals === 'object' ? goals : {};
+      function setChk(id, val) {
+        var el = document.getElementById(id);
+        if (el) el.checked = !!val;
+      }
+      setChk('settings-ga-upload-revenue', g.uploadRevenue !== false);
+      setChk('settings-ga-upload-profit', g.uploadProfit === true);
+      setChk('settings-ga-upload-addtocart', g.uploadAddToCart === true);
+    }
+
+    function readPostbackGoalsDraft() {
+      return {
+        uploadRevenue: !!document.getElementById('settings-ga-upload-revenue') && document.getElementById('settings-ga-upload-revenue').checked,
+        uploadProfit: !!document.getElementById('settings-ga-upload-profit') && document.getElementById('settings-ga-upload-profit').checked,
+        uploadAddToCart: !!document.getElementById('settings-ga-upload-addtocart') && document.getElementById('settings-ga-upload-addtocart').checked,
+      };
     }
 
     function loadConversionActions() {
@@ -1486,9 +1490,17 @@
 
     if (provisionBtn) {
       provisionBtn.addEventListener('click', function () {
+        var goals = [];
+        if (document.getElementById('settings-ga-goal-revenue') && document.getElementById('settings-ga-goal-revenue').checked) goals.push('revenue');
+        if (document.getElementById('settings-ga-goal-profit') && document.getElementById('settings-ga-goal-profit').checked) goals.push('profit');
+        if (document.getElementById('settings-ga-goal-addtocart') && document.getElementById('settings-ga-goal-addtocart').checked) goals.push('add_to_cart');
+        if (!goals.length) {
+          setHint(connMsgEl, 'Select at least one goal to provision.', false);
+          return;
+        }
         setHint(connMsgEl, 'Provisioning conversion actions…', true);
         var shop = getShopParam();
-        apiPost('/api/ads/google/provision-goals', { shop: shop })
+        apiPost('/api/ads/google/provision-goals', { shop: shop, goals: goals })
           .then(function (r) {
             var ok = !!(r && r.ok && r.json && r.json.ok);
             setHint(connMsgEl, ok ? 'Provisioned.' : ((r && r.json && r.json.error) ? String(r.json.error) : 'Provision failed.'), ok);
@@ -1513,14 +1525,26 @@
       });
     }
 
-    if (profitPercentEl) profitPercentEl.addEventListener('input', updateProfitPreview);
-    if (profitFixedEl) profitFixedEl.addEventListener('input', updateProfitPreview);
+    var uploadRevenueEl = document.getElementById('settings-ga-upload-revenue');
+    var uploadProfitEl = document.getElementById('settings-ga-upload-profit');
+    var uploadAddToCartEl = document.getElementById('settings-ga-upload-addtocart');
+    function savePostbackGoals() {
+      saveSettings({ googleAdsPostbackGoals: readPostbackGoalsDraft() })
+        .then(function () { setHint(connMsgEl, 'Upload goals saved.', true); })
+        .catch(function () { setHint(connMsgEl, 'Failed to save upload goals.', false); });
+    }
+    if (uploadRevenueEl) uploadRevenueEl.addEventListener('change', savePostbackGoals);
+    if (uploadProfitEl) uploadProfitEl.addEventListener('change', savePostbackGoals);
+    if (uploadAddToCartEl) uploadAddToCartEl.addEventListener('change', savePostbackGoals);
 
     if (profitSaveBtn) {
       profitSaveBtn.addEventListener('click', function () {
-        var draft = readProfitDraft();
+        var draft = readProfitDeductionsDraft();
         setHint(profitMsgEl, 'Saving…', true);
-        saveSettings({ googleAdsProfitConfig: draft })
+        saveSettings({
+          googleAdsProfitDeductions: draft.deductions,
+          googleAdsAddToCartValue: draft.googleAdsAddToCartValue,
+        })
           .then(function (r) {
             if (r && r.ok) setHint(profitMsgEl, 'Saved.', true);
             else setHint(profitMsgEl, (r && r.error) ? String(r.error) : 'Save failed.', false);
@@ -1554,16 +1578,21 @@
 
     if (issuesRefreshBtn) issuesRefreshBtn.addEventListener('click', function () { loadIssues(); });
 
-    try { window.__kexoApplyGoogleAdsProfitConfig = applyProfitDraft; } catch (_) {}
     try {
-      if (window.__kexoSettingsPayload && window.__kexoSettingsPayload.googleAdsProfitConfig) {
-        applyProfitDraft(window.__kexoSettingsPayload.googleAdsProfitConfig);
-      } else {
-        applyProfitDraft(null);
-      }
-    } catch (_) { applyProfitDraft(null); }
+      window.__kexoApplyGoogleAdsProfitDeductions = function (d, v) { applyProfitDeductions(d, v != null ? v : 1); };
+      window.__kexoApplyPostbackGoals = function (g) { applyPostbackGoals(g); };
+    } catch (_) {}
+    try {
+      var payload = window.__kexoSettingsPayload;
+      if (payload && payload.googleAdsProfitDeductions) applyProfitDeductions(payload.googleAdsProfitDeductions, payload.googleAdsAddToCartValue);
+      else applyProfitDeductions(null, 1);
+      if (payload && payload.googleAdsPostbackGoals) applyPostbackGoals(payload.googleAdsPostbackGoals);
+      else applyPostbackGoals(null);
+    } catch (_) {
+      applyProfitDeductions(null, 1);
+      applyPostbackGoals(null);
+    }
 
-    updateProfitPreview();
     loadConversionActions();
     loadPostbackHealth();
     loadIssues();
@@ -1620,9 +1649,9 @@
     var custIdEl = document.getElementById('settings-ga-account-customer-id');
     var loginCustEl = document.getElementById('settings-ga-account-login-customer-id');
     var convCustEl = document.getElementById('settings-ga-account-conversion-customer-id');
-    if (custIdEl && (ga && ga.customerId)) custIdEl.value = String(ga.customerId);
-    if (loginCustEl && (ga && ga.loginCustomerId)) loginCustEl.value = String(ga.loginCustomerId);
-    if (convCustEl && (ga && ga.conversionCustomerId)) convCustEl.value = String(ga.conversionCustomerId);
+    if (custIdEl && (ga && ga.connected && ga.customerId)) custIdEl.value = String(ga.customerId);
+    if (loginCustEl && (ga && ga.connected && ga.loginCustomerId)) loginCustEl.value = String(ga.loginCustomerId);
+    if (convCustEl && (ga && ga.connected && ga.conversionCustomerId)) convCustEl.value = String(ga.conversionCustomerId);
 
     var postbackCb = document.getElementById('settings-ga-postback-enabled');
     if (postbackCb) postbackCb.checked = !!(settings && settings.googleAdsPostbackEnabled);
@@ -1704,8 +1733,11 @@
         if (!data || !data.ok) return;
         try { window.__kexoSettingsPayload = data; } catch (_) {}
         try {
-          if (typeof window.__kexoApplyGoogleAdsProfitConfig === 'function') {
-            window.__kexoApplyGoogleAdsProfitConfig(data.googleAdsProfitConfig || null);
+          if (typeof window.__kexoApplyGoogleAdsProfitDeductions === 'function') {
+            window.__kexoApplyGoogleAdsProfitDeductions(data.googleAdsProfitDeductions || null, data.googleAdsAddToCartValue != null ? data.googleAdsAddToCartValue : 1);
+          }
+          if (typeof window.__kexoApplyPostbackGoals === 'function') {
+            window.__kexoApplyPostbackGoals(data.googleAdsPostbackGoals || null);
           }
         } catch (_) {}
         var reporting = data.reporting || {};

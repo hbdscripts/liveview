@@ -1186,124 +1186,6 @@
     fetchAndRenderAudit({ force: true });
   }
 
-  function fetchIssuesSummary() {
-    var shop = getShopParam();
-    var path = '/api/integrations/google-ads/issues/summary' + (shop ? '?shop=' + encodeURIComponent(shop) : '');
-    fetchJson(path).then(function (data) {
-      if (!data || typeof data.open_count !== 'number') return;
-      _issuesOpenCount = data.open_count;
-      var badge = document.getElementById('ads-issues-badge');
-      var countEl = document.getElementById('ads-issues-count');
-      if (badge) badge.style.display = _issuesOpenCount > 0 ? 'inline-flex' : 'none';
-      if (countEl) countEl.textContent = _issuesOpenCount > 0 ? String(_issuesOpenCount) : '';
-      try { renderTotalsCardFromState(); } catch (_) {}
-    }).catch(function () {});
-  }
-
-  function closeIssuesModal() {
-    var modal = document.getElementById('ads-issues-modal');
-    if (!modal) return;
-    modal.style.display = 'none';
-    modal.classList.remove('show');
-    modal.setAttribute('aria-hidden', 'true');
-    document.body.classList.remove('modal-open');
-  }
-
-  function openIssuesModal() {
-    var modal = document.getElementById('ads-issues-modal');
-    var body = document.getElementById('ads-issues-modal-body');
-    var closeBtn = document.getElementById('ads-issues-modal-close');
-    if (!modal || !body) return;
-    closeBtn && (closeBtn.onclick = closeIssuesModal);
-    body.innerHTML = '<div class="text-muted small">Loading…</div>';
-    modal.style.display = 'block';
-    modal.classList.add('show');
-    modal.setAttribute('aria-hidden', 'false');
-    document.body.classList.add('modal-open');
-    var shop = getShopParam();
-    var path = '/api/integrations/google-ads/issues' + (shop ? '?shop=' + encodeURIComponent(shop) : '') + '&status=open';
-    fetch(baseApi() + path, { credentials: 'same-origin', cache: 'no-store' })
-      .then(function (r) { return r.json(); })
-      .then(function (data) {
-        var issues = (data && data.issues) ? data.issues : [];
-        var h = '';
-        if (!issues.length) {
-          h = '<div class="text-muted small">No open issues.</div>';
-        } else {
-          h = '<ul class="list-unstyled mb-0">';
-          for (var i = 0; i < issues.length; i++) {
-            var it = issues[i] || {};
-            var id = it.id;
-            var sev = (it.severity || 'error').toLowerCase();
-            var msg = esc((it.error_message || it.error_code || 'Issue') + '');
-            var goal = it.affected_goal ? esc(it.affected_goal) : '—';
-            var fix = it.suggested_fix ? '<div class="small text-muted mt-1">' + esc(it.suggested_fix) + '</div>' : '';
-            h += '<li class="border-bottom py-2" data-issue-id="' + esc(String(id || '')) + '">' +
-              '<div class="d-flex justify-content-between align-items-start gap-2">' +
-              '<div><span class="badge bg-' + (sev === 'warning' ? 'warning' : sev === 'info' ? 'info' : 'danger') + ' me-1">' + esc(it.severity || '') + '</span> ' + goal + '<div class="mt-1">' + msg + '</div>' + fix + '</div>' +
-              (id ? ('<button type="button" class="btn btn-sm btn-outline-secondary ads-issue-resolve" data-id="' + esc(String(id)) + '">Resolve</button>') : '') +
-              '</div></li>';
-          }
-          h += '</ul>';
-        }
-        body.innerHTML = h;
-        body.querySelectorAll('.ads-issue-resolve').forEach(function (btn) {
-          btn.addEventListener('click', function () {
-            var id = btn.getAttribute('data-id');
-            if (!id) return;
-            btn.disabled = true;
-            var resolvePath = '/api/integrations/google-ads/issues/' + encodeURIComponent(id) + '/resolve';
-            if (shop) resolvePath += '?shop=' + encodeURIComponent(shop);
-            fetch(baseApi() + resolvePath, {
-              method: 'POST',
-              credentials: 'same-origin',
-              cache: 'no-store',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ resolution_note: 'Resolved from Integrations page' }),
-            }).then(function () {
-              openIssuesModal();
-              fetchIssuesSummary();
-              if (_lastStatus && _lastSummary) renderActionsBar(_lastStatus, _lastSummary);
-            }).catch(function () { btn.disabled = false; });
-          });
-        });
-      })
-      .catch(function () {
-        body.innerHTML = '<div class="text-danger small">Failed to load issues.</div>';
-      });
-  }
-
-  function fetchGoalHealth() {
-    var shop = getShopParam();
-    var path = '/api/ads/google/goal-health' + (shop ? '?shop=' + encodeURIComponent(shop) : '');
-    fetchJson(path).then(function (data) {
-      if (!data || !data.ok) return;
-      _lastGoalHealth = data;
-      var el = document.getElementById('ads-goal-health-content');
-      var card = document.getElementById('ads-goal-health-card');
-      if (!el || !card) return;
-      var goals = Array.isArray(data.goals) ? data.goals : [];
-      var hasProvisionedGoal = goals.some(function (g) {
-        return !!(g && g.conversion_action_resource_name);
-      });
-      if (!hasProvisionedGoal) {
-        card.style.display = 'none';
-        try { renderTotalsCardFromState(); } catch (_) {}
-        return;
-      }
-      var c7 = data.coverage_7d || {};
-      var c30 = data.coverage_30d || {};
-      var rec = data.reconciliation || {};
-      var rev7 = (c7.revenue && (c7.revenue.success || 0) + (c7.revenue.pending || 0)) ? (c7.revenue.success + ' success, ' + (c7.revenue.pending || 0) + ' pending') : '—';
-      var prof7 = (c7.profit && (c7.profit.success || 0) + (c7.profit.pending || 0)) ? (c7.profit.success + ' success, ' + (c7.profit.pending || 0) + ' pending') : '—';
-      el.innerHTML = '<div class="mb-2"><strong>7d</strong> Revenue: ' + rev7 + ' · Profit: ' + prof7 + '</div>' +
-        '<div class="mb-2"><strong>30d</strong> Revenue: ' + (c30.revenue ? (c30.revenue.success + ' success, ' + (c30.revenue.pending || 0) + ' pending') : '—') + ' · Profit: ' + (c30.profit ? (c30.profit.success + ' success, ' + (c30.profit.pending || 0) + ' pending') : '—') + '</div>' +
-        '<div class="small">Missing click ID: ' + (rec.missing_click_id_orders != null ? rec.missing_click_id_orders : '—') + ' · Failed uploads: ' + (rec.failed_uploads != null ? rec.failed_uploads : '—') + '</div>';
-      card.style.display = '';
-      try { renderTotalsCardFromState(); } catch (_) {}
-    }).catch(function () {});
-  }
-
   function openCampaignModal(campaignId, campaignName) {
     ensureModalDom();
     var modal = document.getElementById('ads-campaign-modal');
@@ -1859,9 +1741,6 @@
   var _isForceRefreshing = false;
   var _lastErrors = [];
   var _lastErrorsPayload = null;
-  var _issuesOpenCount = 0;
-  var _lastGoalHealth = null;
-  var _issuesSummaryPollTimer = null;
 
   function renderLoading(root, title, step) {
     if (!root) return;
@@ -2053,7 +1932,6 @@
 
     var connBtnClass = isConnected ? 'btn-ghost-success' : 'btn-ghost-secondary';
 
-    var issuesOpen = typeof _issuesOpenCount === 'number' ? _issuesOpenCount : 0;
     actions.style.display = '';
     actions.innerHTML =
       '<label class="form-check form-check-inline m-0" style="user-select:none;white-space:nowrap;" aria-label="Hide paused campaigns">' +
@@ -2062,10 +1940,6 @@
       '</label>' +
       '<a class="btn btn-outline-secondary btn-sm" href="/settings?tab=integrations&integrationsTab=googleads" style="white-space:nowrap;">Manage Settings</a>' +
       '<span class="ms-auto"></span>' +
-      '<button type="button" class="btn btn-icon btn-ghost-secondary" id="ads-issues-badge" style="display:' + (issuesOpen > 0 ? 'inline-flex' : 'none') + ';" title="Unresolved issues" aria-label="Unresolved issues">' +
-        '<i class="fa-light fa-triangle-exclamation" data-icon-key="ads-issues-badge" aria-hidden="true"></i>' +
-        '<span class="ms-1" id="ads-issues-count">' + (issuesOpen > 0 ? String(issuesOpen) : '') + '</span>' +
-      '</button>' +
       '<button type="button" class="btn btn-icon btn-ghost-danger" id="ads-errors-icon" style="display:' + (_lastErrors.length ? 'inline-flex' : 'none') + ';" title="Errors detected" aria-label="Errors detected">' +
         alertTriangleSvg() +
       '</button>' +
@@ -2095,12 +1969,6 @@
     if (abtn) {
       abtn.addEventListener('click', function () {
         try { openAuditModal(); } catch (_) {}
-      });
-    }
-    var issuesBadge = document.getElementById('ads-issues-badge');
-    if (issuesBadge) {
-      issuesBadge.addEventListener('click', function () {
-        try { openIssuesModal(); } catch (_) {}
       });
     }
 
@@ -2147,42 +2015,21 @@
 
   function computeCampaignTotals(campaigns) {
     var list = Array.isArray(campaigns) ? campaigns : [];
-    var out = { spend: 0, revenue: 0, orders: 0 };
+    var out = { count: 0, clicks: 0, impressions: 0, orders: 0, revenue: 0, spend: 0, profit: 0 };
     for (var i = 0; i < list.length; i++) {
       var c = list[i] || {};
-      out.spend += Number(c.spend) || 0;
-      out.revenue += Number(c.revenue) || 0;
+      out.count += 1;
+      out.clicks += Number(c.clicks) || 0;
+      out.impressions += Number(c.impressions) || 0;
       out.orders += Number(c.orders) || 0;
+      out.revenue += Number(c.revenue) || 0;
+      out.spend += Number(c.spend) || 0;
+      out.profit += (c.profit != null && c.profit !== '' && Number.isFinite(Number(c.profit)))
+        ? Number(c.profit)
+        : ((Number(c.revenue) || 0) - (Number(c.spend) || 0));
     }
     out.roas = out.spend > 0 ? (out.revenue / out.spend) : null;
     return out;
-  }
-
-  function pickPostbackWindow(rangeKey) {
-    var k = (rangeKey == null ? '' : String(rangeKey)).trim().toLowerCase();
-    if (k === 'today' || k === 'yesterday') return '24h';
-    if (k === '7d' || k === '14d') return '7d';
-    return '30d';
-  }
-
-  function summarizePostback(goalHealth, windowKey) {
-    var gh = goalHealth && typeof goalHealth === 'object' ? goalHealth : null;
-    if (!gh) return null;
-    var cov = null;
-    if (windowKey === '24h') cov = gh.coverage_24h || null;
-    else if (windowKey === '7d') cov = gh.coverage_7d || null;
-    else cov = gh.coverage_30d || null;
-    if (!cov || typeof cov !== 'object') return null;
-    var pct = null;
-    if (windowKey === '24h') pct = gh.coverage_percent_24h;
-    else if (windowKey === '7d') pct = gh.coverage_percent_7d;
-    else pct = gh.coverage_percent_30d;
-    var rev = cov.revenue || {};
-    var prof = cov.profit || {};
-    var success = (Number(rev.success) || 0) + (Number(prof.success) || 0);
-    var pending = (Number(rev.pending) || 0) + (Number(prof.pending) || 0);
-    var failure = (Number(rev.failure) || 0) + (Number(prof.failure) || 0);
-    return { success: success, pending: pending, failure: failure, coverage_percent: (pct == null ? null : Number(pct)) };
   }
 
   function renderTotalsCard(summary, campaigns, hidePaused) {
@@ -2193,9 +2040,6 @@
     var currency = (summary && summary.currency) ? String(summary.currency) : 'GBP';
     var totals = computeCampaignTotals(campaigns);
     var rangeKey = summary && summary.rangeKey ? String(summary.rangeKey) : null;
-    var windowKey = pickPostbackWindow(rangeKey);
-    var pb = summarizePostback(_lastGoalHealth, windowKey);
-    var errs = (typeof _issuesOpenCount === 'number') ? _issuesOpenCount : null;
 
     function row(label, value) {
       return '<tr>' +
@@ -2207,20 +2051,14 @@
     var h = '';
     h += row('Range', rangeLabel(rangeKey));
     h += row('Hide paused', hidePaused ? 'On' : 'Off');
-    h += row('Spend total', fmtMoney(totals.spend, currency));
+    h += row('Campaigns', fmtNum(totals.count));
+    h += row('Clicks total', fmtNum(totals.clicks));
+    h += row('Impressions total', fmtNum(totals.impressions));
     h += row('Attributed orders', fmtNum(totals.orders));
     h += row('Attributed revenue', fmtMoney(totals.revenue, currency));
+    h += row('Spend total', fmtMoney(totals.spend, currency));
     h += row('ROAS', fmtRoas(totals.roas));
-
-    if (pb) {
-      h += row('Postback uploaded conversions', fmtNum(pb.success));
-      h += row('Postback upload coverage', (pb.coverage_percent == null || !Number.isFinite(pb.coverage_percent)) ? '—' : (Math.round(pb.coverage_percent * 10) / 10) + '%');
-    } else {
-      h += row('Postback uploaded conversions', '—');
-      h += row('Postback upload coverage', '—');
-    }
-
-    h += row('Errors', errs == null ? '—' : fmtNum(errs));
+    h += row('Profit total', fmtMoney(totals.profit, currency));
 
     body.innerHTML = h || '<tr><td class="text-muted small">—</td></tr>';
     card.classList.remove('kexo-ads-card-hidden');
@@ -2624,16 +2462,6 @@
         try { renderAdsOverviewChart(nextSummary); } catch (_) {}
       }
 
-      var gaConnected = status && status.providers && status.providers.some(function (p) {
-        return p && p.key === 'google_ads' && p.connected;
-      });
-      if (gaConnected) {
-        fetchGoalHealth();
-      } else {
-        var card = document.getElementById('ads-goal-health-card');
-        if (card) card.style.display = 'none';
-      }
-      fetchIssuesSummary();
       return { status: status, summary: summary };
     }).catch(function () {
       _lastFetchError = 'Could not load ads.';
@@ -2678,25 +2506,8 @@
     });
   } catch (_) {}
 
-  function startIssuesPolling() {
-    if (_issuesSummaryPollTimer) return;
-    fetchIssuesSummary();
-    _issuesSummaryPollTimer = setInterval(fetchIssuesSummary, 60000);
-  }
-  function stopIssuesPolling() {
-    if (_issuesSummaryPollTimer) {
-      clearInterval(_issuesSummaryPollTimer);
-      _issuesSummaryPollTimer = null;
-    }
-  }
-  document.addEventListener('visibilitychange', function () {
-    if (document.visibilityState === 'visible') startIssuesPolling();
-    else stopIssuesPolling();
-  });
-
   window.__adsRefresh = refresh;
   window.__adsInit = function () {
-    if (document.visibilityState === 'visible') startIssuesPolling();
     return refresh({ force: false });
   };
 })();

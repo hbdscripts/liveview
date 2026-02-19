@@ -838,7 +838,7 @@ async function configStatus(req, res, next) {
 
   let adsStatus = null;
   try {
-    adsStatus = await adsService.getStatus();
+    adsStatus = await adsService.getStatus(shop);
   } catch (err) {
     adsStatus = { ok: false, error: err && err.message ? String(err.message).slice(0, 220) : 'ads_status_failed' };
   }

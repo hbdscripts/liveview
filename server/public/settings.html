@@ -339,7 +339,7 @@
                         <div class="col-12 col-md-4"><input type="text" class="form-control form-control-sm" id="settings-ga-account-conversion-customer-id" placeholder="Conversion customer ID" inputmode="numeric" autocomplete="off" /></div>
                       </div>
                       <div class="d-flex align-items-center gap-2 flex-wrap mt-3">
-                        <a class="btn btn-primary btn-sm" id="settings-ga-signin-btn" href="/api/ads/google/connect?redirect=%2Fsettings%3Ftab%3Dintegrations%26integrationsTab%3Dgoogleads">Sign in with Google</a>
+                        <a class="btn btn-primary btn-sm d-inline-flex align-items-center gap-2" id="settings-ga-signin-btn" href="/api/ads/google/connect?redirect=%2Fsettings%3Ftab%3Dintegrations%26integrationsTab%3Dgoogleads"><i class="fa-brands fa-google" data-icon-key="settings-googleads-google" aria-hidden="true"></i> Sign in with Google</a>
                         <a class="btn btn-outline-primary btn-sm d-none" id="settings-ga-reconnect-btn" href="/api/ads/google/connect?redirect=%2Fsettings%3Ftab%3Dintegrations%26integrationsTab%3Dgoogleads">Reconnect</a>
                         <button type="button" class="btn btn-outline-secondary btn-sm" id="settings-ga-test-connection-btn">Test connection</button>
                         <button type="button" class="btn btn-outline-secondary btn-sm" id="settings-ga-disconnect-btn">Disconnect</button>
@@ -372,62 +372,86 @@
                   </table>
                 </div>
                 <div class="card-body pt-2">
-                  <div class="text-muted small">
-                    Kexo provisions two actions: <span class="fw-semibold">Kexo - Purchase (Revenue)</span> and <span class="fw-semibold">Kexo - Purchase (Profit)</span>.
+                  <div class="mb-2"><strong>Goals to create in Google Ads</strong></div>
+                  <div class="row g-3 mb-2">
+                    <div class="col-12 col-md-4">
+                      <label class="form-check">
+                        <input type="checkbox" class="form-check-input" id="settings-ga-goal-revenue" />
+                        <span class="form-check-label">Revenue</span>
+                      </label>
+                      <div class="text-muted small">KexoRevenue (Purchase)</div>
+                    </div>
+                    <div class="col-12 col-md-4">
+                      <label class="form-check">
+                        <input type="checkbox" class="form-check-input" id="settings-ga-goal-profit" />
+                        <span class="form-check-label">Profit</span>
+                      </label>
+                      <div class="text-muted small">KexoProfit (Purchase)</div>
+                    </div>
+                    <div class="col-12 col-md-4">
+                      <label class="form-check">
+                        <input type="checkbox" class="form-check-input" id="settings-ga-goal-addtocart" />
+                        <span class="form-check-label">Add to Cart</span>
+                      </label>
+                      <div class="text-muted small">KexoAddToCart (Engagement)</div>
+                    </div>
                   </div>
+                  <div class="text-muted small">Select which conversion actions to create, then click Provision. Existing actions are left unchanged.</div>
                 </div>
               </div>
 
               <div class="card card-sm mb-3" id="settings-ga-profit-card">
                 <div class="card-header">
-                  <h4 class="card-title mb-0">Profit calculation (for Profit uploads)</h4>
+                  <h4 class="card-title mb-0">Profit &amp; Add to Cart (for uploads)</h4>
                 </div>
                 <div class="card-body">
-                  <div class="mb-3">
-                    <div class="form-selectgroup form-selectgroup-boxes d-flex flex-column gap-2">
-                      <label class="form-selectgroup-item flex-fill">
-                        <input type="radio" name="settings-ga-profit-mode" id="settings-ga-profit-mode-simple" value="simple" class="form-selectgroup-input" checked />
-                        <span class="form-selectgroup-label d-flex align-items-start p-3">
-                          <span class="me-3"><span class="form-selectgroup-check"></span></span>
-                          <span>
-                            <span class="fw-semibold">Simple rules</span>
-                            <span class="d-block text-muted small">Profit = revenue − (percent of revenue + fixed per order).</span>
-                          </span>
-                        </span>
+                  <h5 class="mb-2">Profit upload value</h5>
+                  <div class="text-muted small mb-2">Choose which costs to subtract from revenue when uploading Profit conversions. These settings are independent of Costs &amp; profit → Cost sources.</div>
+                  <div id="settings-ga-profit-deductions" class="row g-3 mb-3">
+                    <div class="col-12 col-md-6 col-lg-4">
+                      <label class="form-check form-switch">
+                        <input type="checkbox" class="form-check-input" id="settings-ga-deduction-google-ads" />
+                        <span class="form-check-label">Google Ads spend</span>
                       </label>
-                      <label class="form-selectgroup-item flex-fill">
-                        <input type="radio" name="settings-ga-profit-mode" id="settings-ga-profit-mode-costs" value="costs" class="form-selectgroup-input" disabled />
-                        <span class="form-selectgroup-label d-flex align-items-start p-3" title="Requires Costs &amp; Expenses to be enabled and configured.">
-                          <span class="me-3"><span class="form-selectgroup-check"></span></span>
-                          <span>
-                            <span class="fw-semibold">Use Kexo Costs &amp; Expenses</span>
-                            <span class="d-block text-muted small">Profit = revenue − (COGS + fees + shipping + adjustments + ads spend).</span>
-                          </span>
-                        </span>
+                    </div>
+                    <div class="col-12 col-md-6 col-lg-4">
+                      <label class="form-check form-switch">
+                        <input type="checkbox" class="form-check-input" id="settings-ga-deduction-payment-fees" />
+                        <span class="form-check-label">Transaction Fees</span>
+                      </label>
+                    </div>
+                    <div class="col-12 col-md-6 col-lg-4">
+                      <label class="form-check form-switch">
+                        <input type="checkbox" class="form-check-input" id="settings-ga-deduction-tax" />
+                        <span class="form-check-label">Tax</span>
+                      </label>
+                    </div>
+                    <div class="col-12 col-md-6 col-lg-4">
+                      <label class="form-check form-switch">
+                        <input type="checkbox" class="form-check-input" id="settings-ga-deduction-app-bills" />
+                        <span class="form-check-label">Shopify app bills</span>
+                      </label>
+                    </div>
+                    <div class="col-12 col-md-6 col-lg-4">
+                      <label class="form-check form-switch">
+                        <input type="checkbox" class="form-check-input" id="settings-ga-deduction-shipping" />
+                        <span class="form-check-label">Include shipping in cost</span>
+                      </label>
+                    </div>
+                    <div class="col-12 col-md-6 col-lg-4">
+                      <label class="form-check form-switch">
+                        <input type="checkbox" class="form-check-input" id="settings-ga-deduction-rules" />
+                        <span class="form-check-label">Include custom rules in cost</span>
                       </label>
                     </div>
                   </div>
-
-                  <div id="settings-ga-profit-simple-fields">
-                    <div class="row g-2 mb-2">
-                      <div class="col-12 col-md-6">
-                        <label class="form-label small" for="settings-ga-profit-simple-percent">Percent of revenue</label>
-                        <div class="input-group input-group-sm">
-                          <input type="number" class="form-control" id="settings-ga-profit-simple-percent" min="0" max="100" step="0.1" placeholder="e.g. 30" />
-                          <span class="input-group-text">%</span>
-                        </div>
-                      </div>
-                      <div class="col-12 col-md-6">
-                        <label class="form-label small" for="settings-ga-profit-simple-fixed">Fixed per order</label>
-                        <div class="input-group input-group-sm">
-                          <span class="input-group-text">£</span>
-                          <input type="number" class="form-control" id="settings-ga-profit-simple-fixed" min="0" step="0.01" placeholder="e.g. 2.50" />
-                        </div>
-                      </div>
+                  <h5 class="mb-2 mt-3">Add to Cart conversion value</h5>
+                  <div class="text-muted small mb-2">Value sent for each Add to Cart conversion (usually 1).</div>
+                  <div class="row g-2 align-items-center">
+                    <div class="col-auto">
+                      <input type="number" class="form-control form-control-sm" id="settings-ga-addtocart-value" min="0" step="0.01" value="1" style="width:5rem;" />
                     </div>
-                    <div class="text-muted small">Preview (revenue £100): <span class="fw-semibold" id="settings-ga-profit-preview">—</span></div>
                   </div>
-
                   <div class="d-flex align-items-center gap-2 flex-wrap mt-3">
                     <button type="button" class="btn btn-primary btn-sm" id="settings-ga-profit-save-btn">Save</button>
                     <span id="settings-ga-profit-msg" class="form-hint"></span>
@@ -442,10 +466,31 @@
                 <div class="card-body">
                   <div class="form-check form-switch mb-2">
                     <input class="form-check-input" type="checkbox" id="settings-ga-postback-enabled" />
-                    <label class="form-check-label" for="settings-ga-postback-enabled" title="When enabled, attributed orders are uploaded to Google Ads as Revenue and Profit conversions.">Enable conversion uploads to Google Ads <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>
+                    <label class="form-check-label" for="settings-ga-postback-enabled" title="When enabled, attributed orders/events are uploaded to Google Ads as conversions.">Enable conversion uploads to Google Ads <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>
+                  </div>
+                  <div class="mb-2"><strong>Upload these goals</strong></div>
+                  <div class="row g-2 mb-3">
+                    <div class="col-12 col-md-4">
+                      <label class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="settings-ga-upload-revenue" />
+                        <span class="form-check-label">Revenue</span>
+                      </label>
+                    </div>
+                    <div class="col-12 col-md-4">
+                      <label class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="settings-ga-upload-profit" />
+                        <span class="form-check-label">Profit</span>
+                      </label>
+                    </div>
+                    <div class="col-12 col-md-4">
+                      <label class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="settings-ga-upload-addtocart" />
+                        <span class="form-check-label">Add to Cart</span>
+                      </label>
+                    </div>
                   </div>
                   <div class="text-muted small mb-3">
-                    Uploads require a click ID on the attributed order (GCLID / GBRAID / WBRAID). Orders without click IDs are skipped and shown in diagnostics.
+                    Uploads require a click ID on the attributed order/event (GCLID / GBRAID / WBRAID). Orders or events without click IDs are skipped and shown in diagnostics.
                   </div>
                   <div class="row g-2">
                     <div class="col-6 col-lg-3">

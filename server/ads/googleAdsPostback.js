@@ -4,13 +4,18 @@
  * Profit = revenue - configured non-ads costs (excludes ad spend).
  */
 const store = require('../store');
+const { getDb } = require('../db');
 const { getAdsDb } = require('./adsDb');
 const { getGoogleAdsConfig, getResolvedCustomerIds } = require('./adsStore');
 const { getConversionGoals } = require('./googleAdsGoals');
 const googleAdsClient = require('./googleAdsClient');
 const { fetchAccessTokenFromRefreshToken } = require('./googleAdsSpendSync');
 const config = require('../config');
-const { GOOGLE_ADS_PROFIT_CONFIG_V1_KEY, normalizeGoogleAdsProfitConfigV1 } = require('../googleAdsProfitConfig');
+const businessSnapshotService = require('../businessSnapshotService');
+
+const GOOGLE_ADS_ADD_TO_CART_VALUE_KEY = 'google_ads_add_to_cart_value';
+const GOOGLE_ADS_POSTBACK_GOALS_KEY = 'google_ads_postback_goals';
+const GOOGLE_ADS_PROFIT_DEDUCTIONS_V1_KEY = 'google_ads_profit_deductions_v1';
 
 const MAX_RETRIES = 5;
 const BATCH_SIZE = 1000;
@@ -29,18 +34,18 @@ function pickClickIdFromAttribution(row) {
   return { value: null, type: null };
 }
 
-/** Single-order profit conversion value (GBP). */
-function computeProfitForOrder(revenueGbp, googleAdsProfitConfig) {
-  const rev = Number(revenueGbp) || 0;
-  const cfg = normalizeGoogleAdsProfitConfigV1(googleAdsProfitConfig);
-  if (!cfg || cfg.mode === 'costs') {
-    // Costs & Expenses mode is optional; if not available, fall back to revenue (fail-open).
-    return Math.max(0, Math.round(rev * 100) / 100);
-  }
-  const pct = cfg && cfg.simple && cfg.simple.percent_of_revenue != null ? Number(cfg.simple.percent_of_revenue) : 0;
-  const fixed = cfg && cfg.simple && cfg.simple.fixed_per_order_gbp != null ? Number(cfg.simple.fixed_per_order_gbp) : 0;
-  const deductions = (rev * ((Number.isFinite(pct) ? pct : 0) / 100)) + (Number.isFinite(fixed) ? fixed : 0);
-  const profit = rev - (Number.isFinite(deductions) ? deductions : 0);
+/**
+ * Single-order profit conversion value (GBP) via allocation model: profit = revenue - (revenue / windowRevenue) * windowCost.
+ * Uses googleAdsProfitDeductions toggles; does not mutate profit_rules_v1.
+ */
+function computeProfitForOrderAllocation(orderRevenueGbp, windowRevenueGbp, windowCostGbp) {
+  const rev = Number(orderRevenueGbp) || 0;
+  const wRev = Number(windowRevenueGbp) || 0;
+  const wCost = Number(windowCostGbp) || 0;
+  if (!Number.isFinite(rev) || rev <= 0) return 0;
+  if (!Number.isFinite(wRev) || wRev <= 0) return Math.max(0, Math.round(rev * 100) / 100);
+  const allocatedCost = (rev / wRev) * wCost;
+  const profit = rev - (Number.isFinite(allocatedCost) ? allocatedCost : 0);
   return Math.max(0, Number.isFinite(profit) ? Math.round(profit * 100) / 100 : Math.round(rev * 100) / 100);
 }
 
@@ -90,6 +95,12 @@ function getTimezoneOffset(tz, date) {
 async function enqueueEligibleOrders(shop, options = {}) {
   const adsDb = getAdsDb();
   if (!adsDb) return { ok: false, error: 'ADS_DB_URL not set', enqueued: 0, issues: 0 };
+  let rawPostbackGoals = null;
+  try {
+    rawPostbackGoals = await store.getSetting(GOOGLE_ADS_POSTBACK_GOALS_KEY);
+  } catch (_) {}
+  const postbackGoals = normalizePostbackGoals(rawPostbackGoals);
+
   const goals = await getConversionGoals(shop);
   const revenueGoal = (goals || []).find((g) => g.goal_type === 'revenue' && g.conversion_action_resource_name);
   const profitGoal = (goals || []).find((g) => g.goal_type === 'profit' && g.conversion_action_resource_name);
@@ -125,10 +136,42 @@ async function enqueueEligibleOrders(shop, options = {}) {
   let enqueued = 0;
   let issuesCreated = 0;
   const now = Date.now();
-  let rawGoogleAdsProfitConfig = null;
+  let profitDeductions = null;
   try {
-    rawGoogleAdsProfitConfig = await store.getSetting(GOOGLE_ADS_PROFIT_CONFIG_V1_KEY);
+    const raw = await store.getSetting(GOOGLE_ADS_PROFIT_DEDUCTIONS_V1_KEY);
+    if (raw && typeof raw === 'object') profitDeductions = raw;
+    else if (typeof raw === 'string' && raw.trim()) {
+      const o = JSON.parse(raw);
+      if (o && typeof o === 'object') profitDeductions = o;
+    }
   } catch (_) {}
+  const deductionToggles = profitDeductions && typeof profitDeductions === 'object' ? {
+    includeGoogleAdsSpend: profitDeductions.includeGoogleAdsSpend === true,
+    includePaymentFees: profitDeductions.includePaymentFees === true,
+    includeShopifyTaxes: profitDeductions.includeShopifyTaxes === true,
+    includeShopifyAppBills: profitDeductions.includeShopifyAppBills === true,
+    includeShipping: profitDeductions.includeShipping === true,
+    includeRules: profitDeductions.includeRules === true,
+  } : {};
+
+  let windowRevenueGbp = 0;
+  let windowCostGbp = 0;
+  if (profitGoal && postbackGoals.uploadProfit && rows && rows.length > 0) {
+    const minMs = Math.min(...rows.map((r) => Number(r.created_at_ms)).filter(Number.isFinite));
+    const maxMs = Math.max(...rows.map((r) => Number(r.created_at_ms)).filter(Number.isFinite));
+    const windowStart = Number.isFinite(minMs) ? minMs : now - 90 * 24 * 60 * 60 * 1000;
+    const windowEnd = Number.isFinite(maxMs) ? maxMs : now;
+    try {
+      const win = await businessSnapshotService.getRevenueAndCostForGoogleAdsPostback(
+        String(shop).trim().toLowerCase(),
+        windowStart,
+        windowEnd,
+        deductionToggles
+      );
+      windowRevenueGbp = Number(win.revenueGbp) || 0;
+      windowCostGbp = Number(win.costGbp) || 0;
+    } catch (_) {}
+  }
 
   for (const row of rows || []) {
     const orderId = row && row.order_id ? String(row.order_id).trim() : '';
@@ -156,7 +199,7 @@ async function enqueueEligibleOrders(shop, options = {}) {
 
     const conversionDateTime = formatConversionDateTime(createdAtMs) || `${new Date(createdAtMs).toISOString().slice(0, 19).replace('T', ' ')}+00:00`;
 
-    if (revenueGoal && revenueGoal.conversion_action_resource_name) {
+    if (postbackGoals.uploadRevenue && revenueGoal && revenueGoal.conversion_action_resource_name) {
       const inserted = await insertJobIfNotExists(adsDb, {
         shop: shopNorm,
         order_id: orderId,
@@ -173,8 +216,8 @@ async function enqueueEligibleOrders(shop, options = {}) {
       if (inserted) enqueued++;
     }
 
-    if (profitGoal && profitGoal.conversion_action_resource_name) {
-      const profitValue = computeProfitForOrder(revenueGbp, rawGoogleAdsProfitConfig);
+    if (postbackGoals.uploadProfit && profitGoal && profitGoal.conversion_action_resource_name) {
+      const profitValue = computeProfitForOrderAllocation(revenueGbp, windowRevenueGbp, windowCostGbp);
       const inserted = await insertJobIfNotExists(adsDb, {
         shop: shopNorm,
         order_id: orderId,
@@ -219,6 +262,97 @@ async function insertJobIfNotExists(adsDb, job) {
   } catch (_) {
     return false;
   }
+}
+
+/** Normalize postback goals from stored JSON. */
+function normalizePostbackGoals(raw) {
+  let parsed = null;
+  if (raw && typeof raw === 'object') parsed = raw;
+  else if (typeof raw === 'string' && raw.trim()) {
+    try {
+      const o = JSON.parse(raw);
+      if (o && typeof o === 'object') parsed = o;
+    } catch (_) {}
+  }
+  return {
+    uploadRevenue: parsed && parsed.uploadRevenue !== false,
+    uploadProfit: parsed && parsed.uploadProfit === true,
+    uploadAddToCart: parsed && parsed.uploadAddToCart === true,
+  };
+}
+
+/**
+ * Enqueue add_to_cart jobs from main DB events (product_added_to_cart) joined to sessions for gclid/gbraid/wbraid.
+ * Synthetic order_id = atc:${event_id}. Value from googleAdsAddToCartValue (default 1).
+ */
+async function enqueueAddToCartEvents(shop, options = {}) {
+  const adsDb = getAdsDb();
+  if (!adsDb) return { ok: false, error: 'ADS_DB_URL not set', enqueued: 0 };
+  const goals = await getConversionGoals(shop);
+  const addToCartGoal = (goals || []).find((g) => g.goal_type === 'add_to_cart' && g.conversion_action_resource_name);
+  if (!addToCartGoal) return { ok: true, enqueued: 0, message: 'No add_to_cart goal provisioned' };
+
+  let rawGoals = null;
+  try {
+    rawGoals = await store.getSetting(GOOGLE_ADS_POSTBACK_GOALS_KEY);
+  } catch (_) {}
+  const postbackGoals = normalizePostbackGoals(rawGoals);
+  if (!postbackGoals.uploadAddToCart) return { ok: true, enqueued: 0, message: 'Add to Cart upload disabled' };
+
+  let addToCartValue = 1;
+  try {
+    const v = await store.getSetting(GOOGLE_ADS_ADD_TO_CART_VALUE_KEY);
+    if (v != null && v !== '') {
+      const n = Number(v);
+      if (Number.isFinite(n) && n >= 0) addToCartValue = n;
+    }
+  } catch (_) {}
+
+  const db = getDb();
+  if (!db) return { ok: false, error: 'Main DB not available', enqueued: 0 };
+  const limit = Math.min(Number(options.limit) || 500, 2000);
+  const shopNorm = String(shop || '').trim().toLowerCase();
+  if (!shopNorm) return { ok: true, enqueued: 0 };
+
+  const rows = await db.all(
+    `SELECT e.id AS event_id, e.ts, s.gclid, s.gbraid, s.wbraid
+     FROM events e
+     INNER JOIN sessions s ON s.session_id = e.session_id
+     WHERE e.type = 'product_added_to_cart'
+       AND ((s.gclid IS NOT NULL AND s.gclid != '')
+         OR (s.gbraid IS NOT NULL AND s.gbraid != '')
+         OR (s.wbraid IS NOT NULL AND s.wbraid != ''))
+     ORDER BY e.ts DESC
+     LIMIT ?`,
+    [limit]
+  );
+
+  const now = Date.now();
+  let enqueued = 0;
+  for (const row of rows || []) {
+    const eventId = row && row.event_id != null ? row.event_id : null;
+    const ts = row && row.ts != null ? Number(row.ts) : null;
+    if (eventId == null || !ts) continue;
+    const click = pickClickIdFromAttribution(row);
+    if (!click.value) continue;
+    const conversionDateTime = formatConversionDateTime(ts) || `${new Date(ts).toISOString().slice(0, 19).replace('T', ' ')}+00:00`;
+    const orderId = `atc:${eventId}`;
+    const inserted = await insertJobIfNotExists(adsDb, {
+      shop: shopNorm,
+      order_id: orderId,
+      goal_type: 'add_to_cart',
+      conversion_action_resource_name: addToCartGoal.conversion_action_resource_name,
+      conversion_date_time: conversionDateTime,
+      conversion_value: addToCartValue,
+      currency_code: 'GBP',
+      click_id_type: click.type,
+      click_id_value: click.value,
+      created_at: now,
+      updated_at: now,
+    });
+    if (inserted) enqueued++;
+  }
+  return { ok: true, enqueued };
 }
 
 async function recordIssue(adsDb, shop, payload) {
@@ -402,7 +536,7 @@ async function processPostbackBatch(shop, options = {}) {
 }
 
 /**
- * Run postback processor once for a shop (enqueue + process batch). Call from scheduler.
+ * Run postback processor once for a shop (enqueue orders + enqueue add-to-cart + process batch). Call from scheduler.
  */
 async function runPostbackCycle(shop, options = {}) {
   if (!shop || typeof shop !== 'string' || !shop.trim()) return { ok: false, error: 'shop required' };
@@ -410,10 +544,12 @@ async function runPostbackCycle(shop, options = {}) {
   if (!enabled) return { ok: true, skipped: true, reason: 'postback disabled' };
   const enqueueOut = await enqueueEligibleOrders(shop, { limit: options.enqueueLimit || 500 });
   if (!enqueueOut.ok) return enqueueOut;
+  const atcOut = await enqueueAddToCartEvents(shop, { limit: options.enqueueLimit || 500 });
+  const totalEnqueued = (enqueueOut.enqueued || 0) + (atcOut.enqueued || 0);
   const processOut = await processPostbackBatch(shop, { batchSize: options.batchSize || BATCH_SIZE, validateOnly: options.validateOnly });
   return {
     ok: processOut.ok,
-    enqueued: enqueueOut.enqueued,
+    enqueued: totalEnqueued,
     processed: processOut.processed || 0,
     error: processOut.error,
     issues: enqueueOut.issues || 0,
@@ -422,8 +558,9 @@ async function runPostbackCycle(shop, options = {}) {
 
 module.exports = {
   enqueueEligibleOrders,
+  enqueueAddToCartEvents,
   processPostbackBatch,
   runPostbackCycle,
   pickClickIdFromAttribution,
-  computeProfitForOrder,
+  computeProfitForOrderAllocation,
 };

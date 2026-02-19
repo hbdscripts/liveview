@@ -30,6 +30,66 @@ const {
 } = require('../googleAdsProfitConfig');
 const { getThemeIconGlyphSettingKeys } = require('../shared/icon-registry');
 
+const GOOGLE_ADS_PROFIT_DEDUCTIONS_V1_KEY = 'google_ads_profit_deductions_v1';
+const GOOGLE_ADS_ADD_TO_CART_VALUE_KEY = 'google_ads_add_to_cart_value';
+const GOOGLE_ADS_POSTBACK_GOALS_KEY = 'google_ads_postback_goals';
+
+function defaultGoogleAdsProfitDeductionsV1() {
+  return {
+    includeGoogleAdsSpend: false,
+    includePaymentFees: false,
+    includeShopifyTaxes: false,
+    includeShopifyAppBills: false,
+    includeShipping: false,
+    includeRules: false,
+  };
+}
+
+function normalizeGoogleAdsProfitDeductionsV1(raw) {
+  const parsed = (() => {
+    if (raw && typeof raw === 'object') return raw;
+    if (!raw || typeof raw !== 'string') return null;
+    try {
+      const obj = JSON.parse(raw);
+      return obj && typeof obj === 'object' ? obj : null;
+    } catch (_) {
+      return null;
+    }
+  })();
+  const out = defaultGoogleAdsProfitDeductionsV1();
+  if (!parsed) return out;
+  out.includeGoogleAdsSpend = parsed.includeGoogleAdsSpend === true;
+  out.includePaymentFees = parsed.includePaymentFees === true;
+  out.includeShopifyTaxes = parsed.includeShopifyTaxes === true;
+  out.includeShopifyAppBills = parsed.includeShopifyAppBills === true;
+  out.includeShipping = parsed.includeShipping === true;
+  out.includeRules = parsed.includeRules === true;
+  return out;
+}
+
+function defaultGoogleAdsPostbackGoals() {
+  return { uploadRevenue: true, uploadProfit: false, uploadAddToCart: false };
+}
+
+function normalizeGoogleAdsPostbackGoals(raw) {
+  const parsed = (() => {
+    if (raw && typeof raw === 'object') return raw;
+    if (!raw || typeof raw !== 'string') return null;
+    try {
+      const obj = JSON.parse(raw);
+      return obj && typeof obj === 'object' ? obj : null;
+    } catch (_) {
+      return null;
+    }
+  })();
+  const out = defaultGoogleAdsPostbackGoals();
+  if (!parsed) return out;
+  out.uploadRevenue = parsed.uploadRevenue !== false;
+  out.uploadProfit = parsed.uploadProfit === true;
+  out.uploadAddToCart = parsed.uploadAddToCart === true;
+  return out;
+}
+
 const PIXEL_SESSION_MODE_KEY = 'pixel_session_mode'; // legacy | shared_ttl
 const ASSET_OVERRIDES_KEY = 'asset_overrides'; // JSON object
 const KPI_UI_CONFIG_V1_KEY = 'kpi_ui_config_v1'; // JSON object (KPIs + date ranges + options)
@@ -1330,6 +1390,9 @@ async function readSettingsPayload() {
   let tablesUiConfig = defaultTablesUiConfigV1();
   let profitRules = defaultProfitRulesConfigV1();
   let googleAdsProfitConfig = defaultGoogleAdsProfitConfigV1();
+  let googleAdsProfitDeductions = defaultGoogleAdsProfitDeductionsV1();
+  let googleAdsAddToCartValue = 1;
+  let googleAdsPostbackGoals = defaultGoogleAdsPostbackGoals();
   let insightsVariantsConfig = defaultVariantsConfigV1();
   let settingsScopeMode = 'global';
   let pageLoaderEnabled = defaultPageLoaderEnabledV1();
@@ -1346,6 +1409,9 @@ async function readSettingsPayload() {
       TABLES_UI_CONFIG_V1_KEY,
       PROFIT_RULES_V1_KEY,
       GOOGLE_ADS_PROFIT_CONFIG_V1_KEY,
+      GOOGLE_ADS_PROFIT_DEDUCTIONS_V1_KEY,
+      GOOGLE_ADS_ADD_TO_CART_VALUE_KEY,
+      GOOGLE_ADS_POSTBACK_GOALS_KEY,
       VARIANTS_CONFIG_KEY,
       GOOGLE_ADS_POSTBACK_ENABLED_KEY,
     ]);
@@ -1391,6 +1457,21 @@ async function readSettingsPayload() {
     googleAdsProfitConfig = normalizeGoogleAdsProfitConfigV1(raw);
   } catch (_) {}
   try {
+    const raw = rawMap[GOOGLE_ADS_PROFIT_DEDUCTIONS_V1_KEY];
+    googleAdsProfitDeductions = normalizeGoogleAdsProfitDeductionsV1(raw);
+  } catch (_) {}
+  try {
+    const raw = rawMap[GOOGLE_ADS_ADD_TO_CART_VALUE_KEY];
+    if (raw != null && raw !== '') {
+      const n = Number(raw);
+      googleAdsAddToCartValue = Number.isFinite(n) && n >= 0 ? n : 1;
+    }
+  } catch (_) {}
+  try {
+    const raw = rawMap[GOOGLE_ADS_POSTBACK_GOALS_KEY];
+    googleAdsPostbackGoals = normalizeGoogleAdsPostbackGoals(raw);
+  } catch (_) {}
+  try {
     const raw = rawMap[VARIANTS_CONFIG_KEY];
     insightsVariantsConfig = normalizeVariantsConfigV1(raw);
   } catch (_) {}
@@ -1416,6 +1497,9 @@ async function readSettingsPayload() {
     tablesUiConfig,
     profitRules,
     googleAdsProfitConfig,
+    googleAdsProfitDeductions,
+    googleAdsAddToCartValue,
+    googleAdsPostbackGoals,
     insightsVariantsConfig,
     pageLoaderEnabled,
     googleAdsPostbackEnabled,
@@ -1553,6 +1637,50 @@ async function postSettings(req, res) {
       }
     } catch (err) {
       return res.status(500).json({ ok: false, error: err && err.message ? String(err.message) : 'Failed to save Google Ads profit config' });
+    }
+  }
+
+  // Google Ads profit deductions (v1) – which costs to subtract for Profit upload value
+  if (Object.prototype.hasOwnProperty.call(body, 'googleAdsProfitDeductions')) {
+    try {
+      if (body.googleAdsProfitDeductions == null) {
+        await store.setSetting(GOOGLE_ADS_PROFIT_DEDUCTIONS_V1_KEY, '');
+      } else {
+        const normalized = normalizeGoogleAdsProfitDeductionsV1(body.googleAdsProfitDeductions);
+        const json = JSON.stringify(normalized);
+        if (json.length > 2000) throw new Error('Google Ads profit deductions too large');
+        await store.setSetting(GOOGLE_ADS_PROFIT_DEDUCTIONS_V1_KEY, json);
+      }
+    } catch (err) {
+      return res.status(500).json({ ok: false, error: err && err.message ? String(err.message) : 'Failed to save Google Ads profit deductions' });
+    }
+  }
+
+  // Google Ads Add to Cart conversion value
+  if (Object.prototype.hasOwnProperty.call(body, 'googleAdsAddToCartValue')) {
+    try {
+      const v = body.googleAdsAddToCartValue;
+      const n = v != null && v !== '' ? Number(v) : 1;
+      const val = Number.isFinite(n) && n >= 0 ? Math.min(1000000, n) : 1;
+      await store.setSetting(GOOGLE_ADS_ADD_TO_CART_VALUE_KEY, String(val));
+    } catch (err) {
+      return res.status(500).json({ ok: false, error: err && err.message ? String(err.message) : 'Failed to save Add to Cart value' });
+    }
+  }
+
+  // Google Ads postback goals – which goals to upload (revenue / profit / add_to_cart)
+  if (Object.prototype.hasOwnProperty.call(body, 'googleAdsPostbackGoals')) {
+    try {
+      if (body.googleAdsPostbackGoals == null) {
+        await store.setSetting(GOOGLE_ADS_POSTBACK_GOALS_KEY, '');
+      } else {
+        const normalized = normalizeGoogleAdsPostbackGoals(body.googleAdsPostbackGoals);
+        const json = JSON.stringify(normalized);
+        if (json.length > 500) throw new Error('Google Ads postback goals too large');
+        await store.setSetting(GOOGLE_ADS_POSTBACK_GOALS_KEY, json);
+      }
+    } catch (err) {
+      return res.status(500).json({ ok: false, error: err && err.message ? String(err.message) : 'Failed to save Google Ads postback goals' });
     }
   }
 

@@ -5,8 +5,10 @@
 const { getAdsDb } = require('./adsDb');
 const googleAdsClient = require('./googleAdsClient');
 
-const GOAL_TYPES = ['revenue', 'profit'];
-const GOAL_DISPLAY_NAMES = { revenue: 'Revenue', profit: 'Profit' };
+const GOAL_TYPES = ['revenue', 'profit', 'add_to_cart'];
+const GOAL_DISPLAY_NAMES = { revenue: 'KexoRevenue', profit: 'KexoProfit', add_to_cart: 'KexoAddToCart' };
+/** Category for Google Ads: PURCHASE for revenue/profit, ADD_TO_CART for add_to_cart */
+const GOAL_CATEGORIES = { revenue: 'PURCHASE', profit: 'PURCHASE', add_to_cart: 'ADD_TO_CART' };
 
 /**
  * List existing UPLOAD_CLICKS conversion actions for the customer.
@@ -35,11 +37,12 @@ async function listUploadClickConversionActions(shop) {
 /**
  * Ensure a conversion action exists; create if missing. Returns resource name.
  * @param {string} [shop]
- * @param {string} goalType - 'revenue' | 'profit'
+ * @param {string} goalType - 'revenue' | 'profit' | 'add_to_cart'
  * @returns {Promise<{ ok: boolean, resourceName?: string, id?: number, error?: string }>}
  */
 async function ensureConversionAction(shop, goalType) {
   const name = GOAL_DISPLAY_NAMES[goalType] || goalType;
+  const category = GOAL_CATEGORIES[goalType] || 'PURCHASE';
   const list = await listUploadClickConversionActions(shop);
   if (!list.ok) return { ok: false, error: list.error };
   const existing = (list.actions || []).find(
@@ -53,7 +56,7 @@ async function ensureConversionAction(shop, goalType) {
       create: {
         name,
         type: 'UPLOAD_CLICKS',
-        category: 'PURCHASE',
+        category,
         status: 'ENABLED',
       },
     },
@@ -97,17 +100,21 @@ async function upsertConversionGoal(shop, row) {
 }
 
 /**
- * Provision Revenue and Profit conversion actions and persist to google_ads_conversion_goals.
+ * Provision selected conversion actions and persist to google_ads_conversion_goals.
  * @param {string} shop
+ * @param {string[]} [goalTypes] - e.g. ['revenue','profit','add_to_cart']. If omitted, provisions all GOAL_TYPES.
  * @returns {Promise<{ ok: boolean, goals?: object, error?: string }>}
  */
-async function provisionGoals(shop) {
+async function provisionGoals(shop, goalTypes) {
   if (!shop || typeof shop !== 'string' || !shop.trim()) {
     return { ok: false, error: 'shop required' };
   }
   const normShop = String(shop).trim().toLowerCase();
+  const toProvision = Array.isArray(goalTypes) && goalTypes.length > 0
+    ? goalTypes.filter((g) => GOAL_TYPES.includes(String(g).toLowerCase()))
+    : GOAL_TYPES;
   const goals = {};
-  for (const goalType of GOAL_TYPES) {
+  for (const goalType of toProvision) {
     const out = await ensureConversionAction(normShop, goalType);
     if (!out.ok) {
       return { ok: false, error: `provision ${goalType}: ${out.error || 'failed'}` };

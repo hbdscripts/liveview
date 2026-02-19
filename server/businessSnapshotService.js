@@ -3545,9 +3545,55 @@ async function getCostBreakdown({ rangeKey, audit } = {}) {
   };
 }
 
+/**
+ * Revenue and cost totals for a time window using Google Ads profit deduction toggles only.
+ * Used for postback profit allocation: profit = order_revenue - (order_revenue / revenueGbp) * costGbp.
+ * Does not mutate profit_rules_v1; reads profit_rules only for shipping/rules calculation (read-only).
+ * @param {string} shop
+ * @param {number} startMs
+ * @param {number} endMs
+ * @param {object} deductionToggles - { includeGoogleAdsSpend, includePaymentFees, includeShopifyTaxes, includeShopifyAppBills, includeShipping, includeRules }
+ * @returns {Promise<{ revenueGbp: number, costGbp: number }>}
+ */
+async function getRevenueAndCostForGoogleAdsPostback(shop, startMs, endMs, deductionToggles) {
+  const toggles = deductionToggles && typeof deductionToggles === 'object' ? deductionToggles : {};
+  const timeZone = store.resolveAdminTimeZone();
+  const startYmd = ymdInTimeZone(Number(startMs), timeZone) || new Date(Number(startMs)).toISOString().slice(0, 10);
+  const endYmd = ymdInTimeZone(Math.max(Number(startMs), Number(endMs) - 1), timeZone) || new Date(Math.max(Number(startMs), Number(endMs) - 1)).toISOString().slice(0, 10);
+  const token = shop ? await salesTruth.getAccessToken(shop) : '';
+
+  const needsSummary = !!(toggles.includeShipping || toggles.includeRules);
+  const [revenueGbp, ads, shopifyCosts, taxGbp, summary, profitRules] = await Promise.all([
+    shop ? salesTruth.getTruthCheckoutSalesTotalGbp(shop, startMs, endMs) : 0,
+    readGoogleAdsSpendDailyGbp(startMs, endMs, timeZone).catch(() => ({ totalGbp: 0 })),
+    (shop && token) ? readShopifyBalanceCostsGbp(shop, token, startYmd, endYmd, timeZone).catch(() => ({
+      paymentFeesTotalGbp: 0, appBillsTotalGbp: 0,
+    })) : { paymentFeesTotalGbp: 0, appBillsTotalGbp: 0 },
+    shop ? readTruthCheckoutTaxTotalGbp(shop, startMs, endMs).catch(() => 0) : 0,
+    needsSummary && shop ? readOrderCountrySummary(shop, startMs, endMs).catch(() => null) : null,
+    readProfitRulesConfig().catch(() => null),
+  ]);
+
+  const rev = round2(Number(revenueGbp) || 0) || 0;
+  let costGbp = 0;
+  if (toggles.includeGoogleAdsSpend) costGbp += round2(Number(ads && ads.totalGbp) || 0) || 0;
+  if (toggles.includePaymentFees) costGbp += round2(Number(shopifyCosts && shopifyCosts.paymentFeesTotalGbp) || 0) || 0;
+  if (toggles.includeShopifyTaxes) costGbp += round2(Number(taxGbp) || 0) || 0;
+  if (toggles.includeShopifyAppBills) costGbp += round2(Number(shopifyCosts && shopifyCosts.appBillsTotalGbp) || 0) || 0;
+  if (toggles.includeShipping && summary && profitRules && profitRules.shipping) {
+    costGbp += round2(computeShippingCostFromSummary(summary, { ...profitRules.shipping, enabled: true }) || 0) || 0;
+  }
+  if (toggles.includeRules && summary && profitRules && hasEnabledProfitRules(profitRules)) {
+    const rulesDetailed = computeProfitDeductionsDetailed(summary, profitRules);
+    costGbp += round2(Number(rulesDetailed && rulesDetailed.total) || 0) || 0;
+  }
+  return { revenueGbp: rev, costGbp: round2(costGbp) || 0 };
+}
+
 module.exports = {
   getBusinessSnapshot,
   getCostBreakdown,
+  getRevenueAndCostForGoogleAdsPostback,
   resolveSnapshotWindows,
   readShopifyBalanceCostsGbp,
   // Exposed for unit tests / audits.

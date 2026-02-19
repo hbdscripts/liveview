@@ -100,7 +100,7 @@ router.get('/google/conversion-actions', async (req, res) => {
       shop,
       `SELECT conversion_action.resource_name, conversion_action.name, conversion_action.status, conversion_action.category, conversion_action.primary_for_goal
        FROM conversion_action
-       WHERE conversion_action.name LIKE 'Kexo - Purchase%'`
+       WHERE conversion_action.name LIKE 'Kexo%'`
     );
     if (!out || !out.ok) {
       res.status(400).json({ ok: false, error: (out && out.error) ? String(out.error) : 'query failed', actions: [] });
@@ -139,7 +139,8 @@ router.post('/google/provision-goals', async (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
   try {
     const shop = (req.body && req.body.shop != null ? String(req.body.shop).trim() : '') || (req.query && req.query.shop != null ? String(req.query.shop).trim() : '') || salesTruth.resolveShopForSales('');
-    const out = await provisionGoals(shop);
+    const goals = Array.isArray(req.body && req.body.goals) ? req.body.goals : undefined;
+    const out = await provisionGoals(shop, goals);
     if (!out.ok) {
       res.status(400).json({ ok: false, error: out.error || 'provision failed' });
       return;
