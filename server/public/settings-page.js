@@ -1678,8 +1678,14 @@
     var connDisconnectedEl = document.getElementById('settings-ga-connection-disconnected');
     var connConnectedEl = document.getElementById('settings-ga-connection-connected');
     var whenConnectedEl = document.getElementById('settings-ga-when-connected');
-    // For Settings UI: treat OAuth completion as "connected" so users don't get stuck in a loop.
-    var showConnectedUi = hasOAuth;
+    var oauthParam = '';
+    try {
+      var om = /[?&]ads_oauth=([^&]+)/.exec(window.location.search || '');
+      oauthParam = om && om[1] ? decodeURIComponent(om[1]) : '';
+    } catch (_) { oauthParam = ''; }
+    // When ads_oauth=ok, server confirmed OAuth success - show connected UI immediately.
+    // Otherwise use hasOAuth from config-status (avoids stale "Sign in" after successful connect).
+    var showConnectedUi = hasOAuth || (oauthParam === 'ok');
     if (connDisconnectedEl) connDisconnectedEl.classList.toggle('d-none', showConnectedUi);
     if (connConnectedEl) connConnectedEl.classList.toggle('d-none', !showConnectedUi);
     if (whenConnectedEl) whenConnectedEl.classList.toggle('d-none', !showConnectedUi);
