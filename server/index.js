@@ -354,6 +354,7 @@ const ASSET_VERSION = (() => {
       'custom.css',
       'tabler-theme.css',
       'theme-settings.js',
+      'settings-page.js',
       'diagnostics-modal.css',
       'sentry-helpers.js',
       'partials/head-theme.html',
