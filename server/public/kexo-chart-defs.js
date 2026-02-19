@@ -32,17 +32,6 @@
         controls: [
           {
             type: 'select',
-            field: 'bucketMode',
-            label: 'Bucket mode',
-            hint: 'All buckets shows the full timeseries; Latest only shows the newest bucket.',
-            options: [
-              { value: 'all', label: 'All buckets' },
-              { value: 'latest', label: 'Latest only' },
-            ],
-            default: 'all'
-          },
-          {
-            type: 'select',
             field: 'dataLabels',
             label: 'Data-point labels',
             hint: 'Show on hover uses tooltips only; Always show draws labels on the chart.',

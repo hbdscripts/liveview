@@ -252,6 +252,11 @@
         if (capControls && capControls.length) {
           var styleObj = (s && s.style && typeof s.style === 'object') ? s.style : {};
           body += '<div class="col-12"><div class="hr-text">Chart options</div></div>';
+          function hintIconHtml(txt) {
+            var t = txt != null ? String(txt).trim() : '';
+            if (!t) return '';
+            return '<span class="text-muted small ms-1 d-inline-flex align-items-center" role="img" aria-label="' + escapeHtml(t) + '" title="' + escapeHtml(t) + '"><i class="fa-light fa-circle-info" aria-hidden="true"></i></span>';
+          }
           capControls.forEach(function (c) {
             if (!c || typeof c !== 'object') return;
             var type = c.type != null ? String(c.type).trim().toLowerCase() : '';
@@ -268,7 +273,7 @@
                 v = String(options[0].value).trim().toLowerCase();
               }
               body += '<div class="col-12 col-md-6"' + modeAttr + '>';
-              body += '<label class="form-label">' + escapeHtml(label) + '</label>';
+              body += '<label class="form-label d-flex align-items-center gap-1">' + escapeHtml(label) + hintIconHtml(hint) + '</label>';
               body += '<select class="form-select form-select-sm" data-cs-field="' + escapeHtml(field) + '">';
               options.forEach(function (o) {
                 if (!o) return;
@@ -278,7 +283,6 @@
                 body += '<option value="' + escapeHtml(ov) + '"' + (ov === v ? ' selected' : '') + '>' + escapeHtml(ol) + '</option>';
               });
               body += '</select>';
-              if (hint) body += '<div class="form-hint">' + escapeHtml(hint) + '</div>';
               body += '</div>';
             } else if (type === 'range') {
               var min = Number(c.min);
@@ -294,11 +298,10 @@
               if (raw > max) raw = max;
               body += '<div class="col-12 col-md-6"' + modeAttr + '>';
               body += '<label class="form-label d-flex align-items-center justify-content-between">';
-              body += '<span>' + escapeHtml(label) + '</span>';
+              body += '<span class="d-inline-flex align-items-center gap-1">' + escapeHtml(label) + hintIconHtml(hint) + '</span>';
               body += '<span class="text-muted small" data-cs-range-value="' + escapeHtml(field) + '">' + escapeHtml(String(raw)) + (unit ? escapeHtml(unit) : '') + '</span>';
               body += '</label>';
               body += '<input type="range" class="form-range" min="' + escapeHtml(String(min)) + '" max="' + escapeHtml(String(max)) + '" step="' + escapeHtml(String(step)) + '" value="' + escapeHtml(String(raw)) + '" data-cs-field="' + escapeHtml(field) + '" data-cs-range-unit="' + escapeHtml(unit) + '">';
-              if (hint) body += '<div class="form-hint">' + escapeHtml(hint) + '</div>';
               body += '</div>';
             } else if (type === 'toggle') {
               var def = (typeof c.default === 'boolean') ? c.default : false;
@@ -308,9 +311,8 @@
               body += '<div class="col-12"' + modeAttr + '>';
               body += '<label class="form-check form-switch m-0">';
               body += '<input class="form-check-input" type="checkbox" data-cs-field="' + escapeHtml(field) + '"' + (checked ? ' checked' : '') + (invert ? ' data-cs-invert="1"' : '') + '>';
-              body += '<span class="form-check-label ms-2">' + escapeHtml(label) + '</span>';
+              body += '<span class="form-check-label ms-2 d-inline-flex align-items-center gap-1">' + escapeHtml(label) + hintIconHtml(hint) + '</span>';
               body += '</label>';
-              if (hint) body += '<div class="form-hint">' + escapeHtml(hint) + '</div>';
               body += '</div>';
             }
           });
