@@ -241,6 +241,11 @@ async function configStatus(req, res, next) {
     attribution_rules: await tableExists('attribution_rules'),
     attribution_observed: await tableExists('attribution_observed'),
     attribution_allowlist: await tableExists('attribution_allowlist'),
+    fraud_evaluations: await tableExists('fraud_evaluations'),
+    fraud_config: await tableExists('fraud_config'),
+    affiliate_attribution_sessions: await tableExists('affiliate_attribution_sessions'),
+    orders_shopify_shipping_options: await tableExists('orders_shopify_shipping_options'),
+    change_pins: await tableExists('change_pins'),
   };
 
   let reporting = { ordersSource: 'orders_shopify', sessionsSource: 'sessions' };

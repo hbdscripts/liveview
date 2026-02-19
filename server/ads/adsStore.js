@@ -105,9 +105,17 @@ function getResolvedCustomerIds(cfg) {
   };
 }
 
+/** Error message when refresh token is missing; hints env var when OAuth is off. */
+function getMissingRefreshTokenError() {
+  if (!config.googleAdsOAuthEnabled) {
+    return 'Google Ads not connected (missing refresh_token). Set GOOGLE_ADS_REFRESH_TOKEN in Railway.';
+  }
+  return 'Google Ads not connected (missing refresh_token). Run /api/ads/google/connect';
+}
+
 async function getGoogleAdsConfig(shop) {
-  // When OAuth disabled, use env-based config (GOOGLE_ADS_REFRESH_TOKEN + GOOGLE_ADS_*).
-  if (!config.googleAdsOAuthEnabled && config.googleAdsRefreshToken) {
+  // Prefer env token whenever set (full revert from OAuth-only: env wins so spend/geo/gclid work even if GOOGLE_ADS_OAUTH_ENABLED was left true).
+  if (config.googleAdsRefreshToken) {
     return {
       refresh_token: config.googleAdsRefreshToken,
       customer_id: config.googleAdsCustomerId || undefined,
@@ -129,5 +137,6 @@ module.exports = {
   getGoogleAdsConfig,
   setGoogleAdsConfig,
   getResolvedCustomerIds,
+  getMissingRefreshTokenError,
   normalizeShop,
 };

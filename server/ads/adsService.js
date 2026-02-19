@@ -39,7 +39,11 @@ function fmtYmdInTz(tsMs, timeZone) {
 async function getStatus(shop) {
   const adsDb = getAdsDb();
   const providerCfg = await getGoogleAdsConfig(shop);
-  const refreshToken = providerCfg && providerCfg.refresh_token ? String(providerCfg.refresh_token).trim() : '';
+  let refreshToken = providerCfg && providerCfg.refresh_token ? String(providerCfg.refresh_token).trim() : '';
+  // Prefer env token when set so status matches getGoogleAdsConfig (revert from OAuth-only)
+  if (config.googleAdsRefreshToken && !refreshToken) {
+    refreshToken = config.googleAdsRefreshToken;
+  }
   const { customerId, loginCustomerId, conversionCustomerId } = getResolvedCustomerIds(providerCfg);
   const developerToken = config.googleAdsDeveloperToken != null ? String(config.googleAdsDeveloperToken).trim() : '';
 
