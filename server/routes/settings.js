@@ -97,6 +97,12 @@ const CHARTS_UI_CONFIG_V1_KEY = 'charts_ui_config_v1'; // JSON object (chart typ
 const TABLES_UI_CONFIG_V1_KEY = 'tables_ui_config_v1'; // JSON object (table rows + layout + sticky column sizing)
 const SETTINGS_SCOPE_MODE_KEY = 'settings_scope_mode'; // global (shared) | user (disabled for now)
 const PAGE_LOADER_ENABLED_V1_KEY = 'page_loader_enabled_v1'; // JSON object (per-page loader overlay enable)
+const OVERVIEW_WIDGETS_UI_CONFIG_V1_KEY = 'overview_widgets_ui_config_v1'; // JSON object (Overview 6-widget grid UI prefs)
+const CSS_VAR_OVERRIDES_V1_KEY = 'css_var_overrides_v1'; // JSON object (:root CSS var overrides)
+
+const OVERVIEW_WIDGET_KEYS = ['finishes', 'devices', 'browsers', 'abandoned', 'attribution', 'payment_methods'];
+const OVERVIEW_WIDGET_KEY_SET = new Set(OVERVIEW_WIDGET_KEYS);
+const OVERVIEW_WIDGET_SORT_BY_SET = new Set(['revenue', 'clicks', 'ctr']);
 
 const KPI_UI_KEYS = [
   'orders',
@@ -1364,6 +1370,129 @@ function normalizePageLoaderEnabledV1(raw) {
   return out;
 }
 
+function defaultOverviewWidgetsUiConfigV1() {
+  const widgets = {};
+  for (const key of OVERVIEW_WIDGET_KEYS) {
+    widgets[key] = {
+      sortBy: 'revenue',
+      color: '',
+      ...(key === 'finishes' ? { groupBy: 'finishes' } : {}),
+    };
+  }
+  return { v: 1, order: [...OVERVIEW_WIDGET_KEYS], widgets };
+}
+
+function normalizeCssVarName(raw) {
+  const name = raw == null ? '' : String(raw).trim();
+  if (!name) return null;
+  if (name.length > 64) return null;
+  if (!/^--[a-zA-Z0-9._-]+$/.test(name)) return null;
+  return name;
+}
+
+function normalizeCssVarOverrideValue(raw) {
+  const v = raw == null ? '' : String(raw).trim();
+  if (!v) return '';
+  if (v.length > 80) return '';
+  if (/[;\r\n{}]/.test(v)) return '';
+  if (/^var\(--[a-zA-Z0-9._-]+\)$/.test(v)) return v;
+  if (/^#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(v)) return v;
+  if (/^(rgb|hsl)a?\(/i.test(v)) return v;
+  if (v.toLowerCase() === 'currentcolor') return 'currentColor';
+  if (v.toLowerCase() === 'transparent') return 'transparent';
+  if (/^[a-z-]+$/i.test(v)) return v;
+  return '';
+}
+
+function defaultCssVarOverridesV1() {
+  return { v: 1, vars: {} };
+}
+
+function normalizeCssVarOverridesV1(raw) {
+  const parsed = (() => {
+    if (raw && typeof raw === 'object') return raw;
+    if (!raw || typeof raw !== 'string') return null;
+    try {
+      const obj = JSON.parse(raw);
+      return obj && typeof obj === 'object' ? obj : null;
+    } catch (_) {
+      return null;
+    }
+  })();
+  const out = defaultCssVarOverridesV1();
+  if (!parsed) return out;
+  if (Number(parsed.v) !== 1) return out;
+  const vars = parsed.vars && typeof parsed.vars === 'object' ? parsed.vars : null;
+  if (!vars) return out;
+  const next = {};
+  let count = 0;
+  for (const k of Object.keys(vars)) {
+    if (count >= 50) break;
+    const name = normalizeCssVarName(k);
+    if (!name) continue;
+    const val = normalizeCssVarOverrideValue(vars[k]);
+    if (!val) continue;
+    next[name] = val;
+    count++;
+  }
+  out.vars = next;
+  return out;
+}
+
+function normalizeOverviewWidgetsUiConfigV1(raw) {
+  const parsed = (() => {
+    if (raw && typeof raw === 'object') return raw;
+    if (!raw || typeof raw !== 'string') return null;
+    try {
+      const obj = JSON.parse(raw);
+      return obj && typeof obj === 'object' ? obj : null;
+    } catch (_) {
+      return null;
+    }
+  })();
+  const out = defaultOverviewWidgetsUiConfigV1();
+  if (!parsed) return out;
+  if (Number(parsed.v) !== 1) return out;
+
+  // Order
+  try {
+    const list = Array.isArray(parsed.order) ? parsed.order : null;
+    if (list && list.length) {
+      const seen = new Set();
+      const next = [];
+      for (const k of list) {
+        const key = k == null ? '' : String(k).trim().toLowerCase();
+        if (!OVERVIEW_WIDGET_KEY_SET.has(key)) continue;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        next.push(key);
+      }
+      if (next.length === OVERVIEW_WIDGET_KEYS.length) out.order = next;
+    }
+  } catch (_) {}
+
+  // Per-widget options
+  const widgets = parsed.widgets && typeof parsed.widgets === 'object' ? parsed.widgets : null;
+  if (widgets) {
+    for (const key of OVERVIEW_WIDGET_KEYS) {
+      const row = widgets[key] && typeof widgets[key] === 'object' ? widgets[key] : null;
+      if (!row) continue;
+      if (Object.prototype.hasOwnProperty.call(row, 'sortBy')) {
+        const sortBy = row.sortBy == null ? '' : String(row.sortBy).trim().toLowerCase();
+        if (OVERVIEW_WIDGET_SORT_BY_SET.has(sortBy)) out.widgets[key].sortBy = sortBy;
+      }
+      if (Object.prototype.hasOwnProperty.call(row, 'color')) {
+        out.widgets[key].color = normalizeCssVarOverrideValue(row.color) || '';
+      }
+      if (key === 'finishes' && Object.prototype.hasOwnProperty.call(row, 'groupBy')) {
+        const g = row.groupBy == null ? '' : String(row.groupBy).trim().toLowerCase();
+        if (g) out.widgets.finishes.groupBy = g;
+      }
+    }
+  }
+  return out;
+}
+
 async function readSettingsKeyMap(keys) {
   const list = Array.isArray(keys) ? keys.map((k) => (k == null ? '' : String(k))).filter(Boolean) : [];
   if (!list.length) return {};
@@ -1396,6 +1525,8 @@ async function readSettingsPayload() {
   let insightsVariantsConfig = defaultVariantsConfigV1();
   let settingsScopeMode = 'global';
   let pageLoaderEnabled = defaultPageLoaderEnabledV1();
+  let overviewWidgetsUiConfig = defaultOverviewWidgetsUiConfigV1();
+  let cssVarOverridesV1 = defaultCssVarOverridesV1();
   let rawMap = {};
   const GOOGLE_ADS_POSTBACK_ENABLED_KEY = 'google_ads_postback_enabled';
   try {
@@ -1407,6 +1538,8 @@ async function readSettingsPayload() {
       KPI_UI_CONFIG_V1_KEY,
       CHARTS_UI_CONFIG_V1_KEY,
       TABLES_UI_CONFIG_V1_KEY,
+      OVERVIEW_WIDGETS_UI_CONFIG_V1_KEY,
+      CSS_VAR_OVERRIDES_V1_KEY,
       PROFIT_RULES_V1_KEY,
       GOOGLE_ADS_PROFIT_CONFIG_V1_KEY,
       GOOGLE_ADS_PROFIT_DEDUCTIONS_V1_KEY,
@@ -1447,6 +1580,14 @@ async function readSettingsPayload() {
   try {
     const raw = rawMap[TABLES_UI_CONFIG_V1_KEY];
     tablesUiConfig = normalizeTablesUiConfigV1(raw);
+  } catch (_) {}
+  try {
+    const raw = rawMap[OVERVIEW_WIDGETS_UI_CONFIG_V1_KEY];
+    overviewWidgetsUiConfig = normalizeOverviewWidgetsUiConfigV1(raw);
+  } catch (_) {}
+  try {
+    const raw = rawMap[CSS_VAR_OVERRIDES_V1_KEY];
+    cssVarOverridesV1 = normalizeCssVarOverridesV1(raw);
   } catch (_) {}
   try {
     const raw = rawMap[PROFIT_RULES_V1_KEY];
@@ -1495,6 +1636,8 @@ async function readSettingsPayload() {
     kpiUiConfig,
     chartsUiConfig,
     tablesUiConfig,
+    overviewWidgetsUiConfig,
+    cssVarOverridesV1,
     profitRules,
     googleAdsProfitConfig,
     googleAdsProfitDeductions,
@@ -1713,6 +1856,38 @@ async function postSettings(req, res) {
       }
     } catch (err) {
       return res.status(500).json({ ok: false, error: err && err.message ? String(err.message) : 'Failed to save tables config' });
+    }
+  }
+
+  // Overview widgets UI config (v1)
+  if (Object.prototype.hasOwnProperty.call(body, 'overviewWidgetsUiConfig')) {
+    try {
+      if (body.overviewWidgetsUiConfig == null) {
+        await store.setSetting(OVERVIEW_WIDGETS_UI_CONFIG_V1_KEY, '');
+      } else {
+        const normalized = normalizeOverviewWidgetsUiConfigV1(body.overviewWidgetsUiConfig);
+        const json = JSON.stringify(normalized);
+        if (json.length > 30000) throw new Error('Overview widgets config too large');
+        await store.setSetting(OVERVIEW_WIDGETS_UI_CONFIG_V1_KEY, json);
+      }
+    } catch (err) {
+      return res.status(500).json({ ok: false, error: err && err.message ? String(err.message) : 'Failed to save overview widgets config' });
+    }
+  }
+
+  // CSS variable overrides (v1) – runtime :root overrides (colours, palette)
+  if (Object.prototype.hasOwnProperty.call(body, 'cssVarOverridesV1')) {
+    try {
+      if (body.cssVarOverridesV1 == null) {
+        await store.setSetting(CSS_VAR_OVERRIDES_V1_KEY, '');
+      } else {
+        const normalized = normalizeCssVarOverridesV1(body.cssVarOverridesV1);
+        const json = JSON.stringify(normalized);
+        if (json.length > 20000) throw new Error('CSS var overrides too large');
+        await store.setSetting(CSS_VAR_OVERRIDES_V1_KEY, json);
+      }
+    } catch (err) {
+      return res.status(500).json({ ok: false, error: err && err.message ? String(err.message) : 'Failed to save colours' });
     }
   }
 
@@ -2096,6 +2271,25 @@ async function getThemeVarsCss(req, res) {
     getThemeKey('theme_accent_5', '#ef4444'),
   ]);
 
+  let cssVarOverridesV1 = defaultCssVarOverridesV1();
+  try {
+    const rawOverrides = await store.getSetting(CSS_VAR_OVERRIDES_V1_KEY);
+    cssVarOverridesV1 = normalizeCssVarOverridesV1(rawOverrides);
+  } catch (_) {
+    cssVarOverridesV1 = defaultCssVarOverridesV1();
+  }
+  const overrideLines = [];
+  try {
+    const vars = cssVarOverridesV1 && cssVarOverridesV1.vars && typeof cssVarOverridesV1.vars === 'object' ? cssVarOverridesV1.vars : {};
+    for (const name of Object.keys(vars)) {
+      const safeName = normalizeCssVarName(name);
+      if (!safeName) continue;
+      const safeVal = normalizeCssVarOverrideValue(vars[name]);
+      if (!safeVal) continue;
+      overrideLines.push(`${safeName}:${safeVal};`);
+    }
+  } catch (_) {}
+
   const css = [
     '/* KEXO: server-injected theme variables (header + top menu) */',
     ':root{',
@@ -2141,6 +2335,7 @@ async function getThemeVarsCss(req, res) {
     `--kexo-header-online-radius:${normalizeCssRadius(onlineRadius, FALLBACKS.theme_header_online_radius)};`,
     `--kexo-header-online-border-width:${onlineBorder === 'hide' ? '0px' : '1px'};`,
     `--kexo-header-online-border-color:${normalizeCssColor(onlineBorderColor, FALLBACKS.theme_header_online_border_color)};`,
+    ...overrideLines,
     '}',
     '',
   ].join('\n');
