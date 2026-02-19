@@ -1,5 +1,5 @@
 const crypto = require('crypto');
-const { getDb } = require('./db');
+const { getDb, isPostgres } = require('./db');
 
 let _tableOk = null; // null unknown, true exists, false missing
 
@@ -142,10 +142,27 @@ async function getOrComputeJson(
   return { ok: true, cacheHit: false, data };
 }
 
+const DASHBOARD_SERIES_ENDPOINT = 'dashboard-series';
+
+async function invalidateDashboardSeries() {
+  if (!(await tableOk())) return;
+  try {
+    const db = getDb();
+    if (isPostgres()) {
+      await db.run(`DELETE FROM report_cache WHERE endpoint = $1`, [DASHBOARD_SERIES_ENDPOINT]);
+    } else {
+      await db.run(`DELETE FROM report_cache WHERE endpoint = ?`, [DASHBOARD_SERIES_ENDPOINT]);
+    }
+  } catch (_) {
+    // fail-open: cache invalidation is best-effort
+  }
+}
+
 module.exports = {
   stableStringify,
   hashParams,
   buildCacheKey,
   getOrComputeJson,
+  invalidateDashboardSeries,
 };
 

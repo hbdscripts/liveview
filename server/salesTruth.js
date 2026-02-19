@@ -10,6 +10,7 @@ const { getDb, isPostgres } = require('./db');
 const { deriveAttribution } = require('./attribution/deriveAttribution');
 const { writeAudit } = require('./audit');
 const backup = require('./backup');
+const reportCache = require('./reportCache');
 const fraudLinker = require('./fraud/linker');
 
 const API_VERSION = '2024-01';
@@ -1303,6 +1304,10 @@ async function reconcileRange(shop, startMs, endMs, scope = 'range') {
         returning,
       },
     });
+    // Invalidate dashboard report cache when new orders are synced so overview doesn't show stale data.
+    if ((inserted > 0 || updated > 0) && typeof reportCache.invalidateDashboardSeries === 'function') {
+      reportCache.invalidateDashboardSeries().catch(() => {});
+    }
     // Append-only reconcile snapshot (audit trail). Fail-open if table doesn't exist yet.
     try {
       const db = getDb();
