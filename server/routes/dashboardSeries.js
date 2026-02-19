@@ -904,24 +904,20 @@ async function fetchTrendingProducts(db, shop, nowBounds, prevBounds, filter) {
       else missingMetaIds.push(String(pid));
     });
   }
-  // Do not block dashboard reports on Shopify Admin API product metadata.
-  // Warm missing meta asynchronously; next request will use cache hits.
+  // Await product meta for trending rows so titles/handles show immediately (no ID→name flash).
   if (missingMetaIds.length) {
     try { token = await salesTruth.getAccessToken(shop); } catch (_) { token = null; }
     if (token) {
-      const toWarm = missingMetaIds.slice(0, 10);
-      for (const pid of toWarm) {
-        try {
-          if (typeof setImmediate === 'function') {
-            setImmediate(() => {
-              try { productMetaCache.warmProductMeta(shop, token, pid); } catch (_) {}
-            });
-          } else {
-            // Best-effort fallback; should not throw.
-            productMetaCache.warmProductMeta(shop, token, pid);
-          }
-        } catch (_) {}
-      }
+      const toFetch = missingMetaIds.slice(0, 10);
+      const metas = await Promise.all(
+        toFetch.map((pid) =>
+          productMetaCache.getProductMeta(shop, token, pid).catch(() => ({ ok: false, handle: null, title: null, thumb_url: null, product_type: null }))
+        )
+      );
+      toFetch.forEach((pid, i) => {
+        const m = metas[i];
+        if (m && m.ok) metaMap.set(String(pid), m);
+      });
     }
   }
 
