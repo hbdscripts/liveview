@@ -1966,7 +1966,6 @@
         '<input class="form-check-input" type="checkbox" id="ads-hide-paused"' + (hidePaused ? ' checked' : '') + '>' +
         '<span class="form-check-label">Hide paused</span>' +
       '</label>' +
-      '<a class="btn btn-outline-secondary btn-sm" href="/settings?tab=integrations&integrationsTab=googleads" style="white-space:nowrap;">Manage Settings</a>' +
       '<span class="ms-auto"></span>' +
       '<button type="button" class="btn btn-icon btn-ghost-danger" id="ads-errors-icon" style="display:' + (_lastErrors.length ? 'inline-flex' : 'none') + ';" title="Errors detected" aria-label="Errors detected">' +
         alertTriangleSvg() +

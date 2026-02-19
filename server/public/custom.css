@@ -6025,7 +6025,13 @@ body[data-page="settings"] .settings-mobile-children a.active { background: var(
 .kexo-ga-signin-btn.text-white,
 .kexo-ga-signin-btn.text-white:hover,
 .kexo-ga-signin-btn.text-white:focus {
-  color: #fff !important;
+  background: #fff;
+  border: 1px solid lightblue;
+  height: 50px;
+  padding: 0 15px;
+  color: #006699 !important;
+  font-weight: 500;
+  font-size: 14px;
 }
 .kexo-ga-signin-icon {
   width: 18px;
