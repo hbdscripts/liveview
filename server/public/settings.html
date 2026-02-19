@@ -29,7 +29,6 @@
           <div class="settings-nav-children">
             <a href="/settings?tab=kexo&kexoTab=general" class="list-group-item list-group-item-action settings-nav-child" data-settings-tab="kexo" data-settings-kexo-tab="general" role="tab" aria-controls="settings-panel-kexo">General</a>
             <a href="/settings?tab=kexo&kexoTab=icons-assets" class="list-group-item list-group-item-action settings-nav-child" data-settings-tab="kexo" data-settings-kexo-tab="icons-assets" role="tab" aria-controls="settings-panel-kexo">Icons &amp; assets</a>
-            <a href="/settings?tab=kexo&kexoTab=payment-methods" class="list-group-item list-group-item-action settings-nav-child" data-settings-tab="kexo" data-settings-kexo-tab="payment-methods" role="tab" aria-controls="settings-panel-kexo">Payment Methods</a>
             <a href="/settings?tab=kexo&kexoTab=theme-display" class="list-group-item list-group-item-action settings-nav-child" data-settings-tab="kexo" data-settings-kexo-tab="theme-display" role="tab" aria-controls="settings-panel-kexo">Theme &amp; display</a>
           </div>
         </div>
@@ -224,17 +223,6 @@
                   </form>
                 </div>
               </div>
-            </div>
-                  </div>
-                </div>
-              </div>
-              <div class="accordion-item">
-                <h4 class="accordion-header">
-                  <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#settings-kexo-accordion-payment-methods" aria-expanded="false" aria-controls="settings-kexo-accordion-payment-methods"><span class="d-flex align-items-center w-100 gap-2"><span class="kexo-settings-accordion-chevron" aria-hidden="true"><i class="fa-regular fa-chevron-down" aria-hidden="true"></i></span><span class="me-auto">Payment Methods</span></span></button>
-                </h4>
-                <div id="settings-kexo-accordion-payment-methods" class="accordion-collapse collapse" data-bs-parent="#settings-kexo-accordion">
-                  <div class="accordion-body">
-            <div id="settings-kexo-panel-payment-methods" class="settings-kexo-panel">
               <div class="card card-sm mb-3 kexo-brand-assets">
                 <div class="card-header">
                   <h4 class="card-title">Payment method icons</h4>
@@ -244,35 +232,79 @@
                   <form id="settings-payment-methods-form">
                     <div class="row g-3" id="settings-payment-methods-rows">
                       <div class="col-12 col-lg-6">
-                        <label class="form-label d-flex align-items-center gap-2" for="settings-payment-visa"><img src="/assets/img/payments/visa.svg" alt="" width="24" height="16" class="rounded" style="object-fit:contain" /><span>Visa</span></label>
+                        <label class="form-label d-flex align-items-center gap-2" for="settings-payment-visa"><img src="/assets/img/payments/visa.svg" alt="" class="rounded kexo-payment-method-icon" /><span>Visa</span></label>
                         <input type="url" class="form-control" id="settings-payment-visa" placeholder="https://… (leave empty for default)" data-payment-key="visa" />
                       </div>
                       <div class="col-12 col-lg-6">
-                        <label class="form-label d-flex align-items-center gap-2" for="settings-payment-mastercard"><img src="/assets/img/payments/mastercard.svg" alt="" width="24" height="16" class="rounded" style="object-fit:contain" /><span>Mastercard</span></label>
+                        <label class="form-label d-flex align-items-center gap-2" for="settings-payment-mastercard"><img src="/assets/img/payments/mastercard.svg" alt="" class="rounded kexo-payment-method-icon" /><span>Mastercard</span></label>
                         <input type="url" class="form-control" id="settings-payment-mastercard" placeholder="https://… (leave empty for default)" data-payment-key="mastercard" />
                       </div>
                       <div class="col-12 col-lg-6">
-                        <label class="form-label d-flex align-items-center gap-2" for="settings-payment-amex"><img src="/assets/img/payments/americanexpress.svg" alt="" width="24" height="16" class="rounded" style="object-fit:contain" /><span>American Express</span></label>
+                        <label class="form-label d-flex align-items-center gap-2" for="settings-payment-amex"><img src="/assets/img/payments/americanexpress.svg" alt="" class="rounded kexo-payment-method-icon" /><span>American Express</span></label>
                         <input type="url" class="form-control" id="settings-payment-amex" placeholder="https://… (leave empty for default)" data-payment-key="amex" />
                       </div>
                       <div class="col-12 col-lg-6">
-                        <label class="form-label d-flex align-items-center gap-2" for="settings-payment-paypal"><img src="/assets/img/payments/paypal.svg" alt="" width="24" height="16" class="rounded" style="object-fit:contain" /><span>PayPal</span></label>
+                        <label class="form-label d-flex align-items-center gap-2" for="settings-payment-maestro"><img src="/assets/img/payments/maestro.svg" alt="" class="rounded kexo-payment-method-icon" /><span>Maestro</span></label>
+                        <input type="url" class="form-control" id="settings-payment-maestro" placeholder="https://… (leave empty for default)" data-payment-key="maestro" />
+                      </div>
+                      <div class="col-12 col-lg-6">
+                        <label class="form-label d-flex align-items-center gap-2" for="settings-payment-discover"><img src="/assets/img/payments/discover.svg" alt="" class="rounded kexo-payment-method-icon" /><span>Discover</span></label>
+                        <input type="url" class="form-control" id="settings-payment-discover" placeholder="https://… (leave empty for default)" data-payment-key="discover" />
+                      </div>
+                      <div class="col-12 col-lg-6">
+                        <label class="form-label d-flex align-items-center gap-2" for="settings-payment-jcb"><img src="/assets/img/payments/jcb.svg" alt="" class="rounded kexo-payment-method-icon" /><span>JCB</span></label>
+                        <input type="url" class="form-control" id="settings-payment-jcb" placeholder="https://… (leave empty for default)" data-payment-key="jcb" />
+                      </div>
+                      <div class="col-12 col-lg-6">
+                        <label class="form-label d-flex align-items-center gap-2" for="settings-payment-diners"><img src="/assets/img/payments/diners.svg" alt="" class="rounded kexo-payment-method-icon" /><span>Diners Club</span></label>
+                        <input type="url" class="form-control" id="settings-payment-diners" placeholder="https://… (leave empty for default)" data-payment-key="diners" />
+                      </div>
+                      <div class="col-12 col-lg-6">
+                        <label class="form-label d-flex align-items-center gap-2" for="settings-payment-unionpay"><img src="/assets/img/payments/unionpay.svg" alt="" class="rounded kexo-payment-method-icon" /><span>UnionPay</span></label>
+                        <input type="url" class="form-control" id="settings-payment-unionpay" placeholder="https://… (leave empty for default)" data-payment-key="unionpay" />
+                      </div>
+                      <div class="col-12 col-lg-6">
+                        <label class="form-label d-flex align-items-center gap-2" for="settings-payment-paypal"><img src="/assets/img/payments/paypal.svg" alt="" class="rounded kexo-payment-method-icon" /><span>PayPal</span></label>
                         <input type="url" class="form-control" id="settings-payment-paypal" placeholder="https://… (leave empty for default)" data-payment-key="paypal" />
                       </div>
                       <div class="col-12 col-lg-6">
-                        <label class="form-label d-flex align-items-center gap-2" for="settings-payment-klarna"><img src="/assets/img/payments/klarna.svg" alt="" width="24" height="16" class="rounded" style="object-fit:contain" /><span>Klarna</span></label>
+                        <label class="form-label d-flex align-items-center gap-2" for="settings-payment-klarna"><img src="/assets/img/payments/klarna.svg" alt="" class="rounded kexo-payment-method-icon" /><span>Klarna</span></label>
                         <input type="url" class="form-control" id="settings-payment-klarna" placeholder="https://… (leave empty for default)" data-payment-key="klarna" />
                       </div>
                       <div class="col-12 col-lg-6">
-                        <label class="form-label d-flex align-items-center gap-2" for="settings-payment-shop_pay"><img src="/assets/img/payments/shop-pay.svg" alt="" width="24" height="16" class="rounded" style="object-fit:contain" /><span>Shop Pay</span></label>
+                        <label class="form-label d-flex align-items-center gap-2" for="settings-payment-clearpay"><img src="/assets/img/payments/clearpay.svg" alt="" class="rounded kexo-payment-method-icon" /><span>Clearpay</span></label>
+                        <input type="url" class="form-control" id="settings-payment-clearpay" placeholder="https://… (leave empty for default)" data-payment-key="clearpay" />
+                      </div>
+                      <div class="col-12 col-lg-6">
+                        <label class="form-label d-flex align-items-center gap-2" for="settings-payment-afterpay"><img src="/assets/img/payments/afterpay.svg" alt="" class="rounded kexo-payment-method-icon" /><span>Afterpay</span></label>
+                        <input type="url" class="form-control" id="settings-payment-afterpay" placeholder="https://… (leave empty for default)" data-payment-key="afterpay" />
+                      </div>
+                      <div class="col-12 col-lg-6">
+                        <label class="form-label d-flex align-items-center gap-2" for="settings-payment-affirm"><img src="/assets/img/payments/affirm.svg" alt="" class="rounded kexo-payment-method-icon" /><span>Affirm</span></label>
+                        <input type="url" class="form-control" id="settings-payment-affirm" placeholder="https://… (leave empty for default)" data-payment-key="affirm" />
+                      </div>
+                      <div class="col-12 col-lg-6">
+                        <label class="form-label d-flex align-items-center gap-2" for="settings-payment-zip"><img src="/assets/img/payments/zip.svg" alt="" class="rounded kexo-payment-method-icon" /><span>Zip</span></label>
+                        <input type="url" class="form-control" id="settings-payment-zip" placeholder="https://… (leave empty for default)" data-payment-key="zip" />
+                      </div>
+                      <div class="col-12 col-lg-6">
+                        <label class="form-label d-flex align-items-center gap-2" for="settings-payment-sezzle"><img src="/assets/img/payments/sezzle.svg" alt="" class="rounded kexo-payment-method-icon" /><span>Sezzle</span></label>
+                        <input type="url" class="form-control" id="settings-payment-sezzle" placeholder="https://… (leave empty for default)" data-payment-key="sezzle" />
+                      </div>
+                      <div class="col-12 col-lg-6">
+                        <label class="form-label d-flex align-items-center gap-2" for="settings-payment-stripe"><img src="/assets/img/payments/stripe.svg" alt="" class="rounded kexo-payment-method-icon" /><span>Stripe</span></label>
+                        <input type="url" class="form-control" id="settings-payment-stripe" placeholder="https://… (leave empty for default)" data-payment-key="stripe" />
+                      </div>
+                      <div class="col-12 col-lg-6">
+                        <label class="form-label d-flex align-items-center gap-2" for="settings-payment-shop_pay"><img src="/assets/img/payments/shop-pay.svg" alt="" class="rounded kexo-payment-method-icon" /><span>Shop Pay</span></label>
                         <input type="url" class="form-control" id="settings-payment-shop_pay" placeholder="https://… (leave empty for default)" data-payment-key="shop_pay" />
                       </div>
                       <div class="col-12 col-lg-6">
-                        <label class="form-label d-flex align-items-center gap-2" for="settings-payment-apple_pay"><img src="/assets/img/payments/applepay.svg" alt="" width="24" height="16" class="rounded" style="object-fit:contain" /><span>Apple Pay</span></label>
+                        <label class="form-label d-flex align-items-center gap-2" for="settings-payment-apple_pay"><img src="/assets/img/payments/applepay.svg" alt="" class="rounded kexo-payment-method-icon" /><span>Apple Pay</span></label>
                         <input type="url" class="form-control" id="settings-payment-apple_pay" placeholder="https://… (leave empty for default)" data-payment-key="apple_pay" />
                       </div>
                       <div class="col-12 col-lg-6">
-                        <label class="form-label d-flex align-items-center gap-2" for="settings-payment-google_pay"><img src="/assets/img/payments/google-pay.svg" alt="" width="24" height="16" class="rounded" style="object-fit:contain" /><span>Google Pay</span></label>
+                        <label class="form-label d-flex align-items-center gap-2" for="settings-payment-google_pay"><img src="/assets/img/payments/google-pay.svg" alt="" class="rounded kexo-payment-method-icon" /><span>Google Pay</span></label>
                         <input type="url" class="form-control" id="settings-payment-google_pay" placeholder="https://… (leave empty for default)" data-payment-key="google_pay" />
                       </div>
                     </div>

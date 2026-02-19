@@ -33,8 +33,19 @@ const ICON_SRC_BY_KEY = {
   visa: '/assets/img/payments/visa.svg',
   mastercard: '/assets/img/payments/mastercard.svg',
   amex: '/assets/img/payments/americanexpress.svg',
+  maestro: '/assets/img/payments/maestro.svg',
+  discover: '/assets/img/payments/discover.svg',
+  jcb: '/assets/img/payments/jcb.svg',
+  diners: '/assets/img/payments/diners.svg',
+  unionpay: '/assets/img/payments/unionpay.svg',
   paypal: '/assets/img/payments/paypal.svg',
   klarna: '/assets/img/payments/klarna.svg',
+  clearpay: '/assets/img/payments/clearpay.svg',
+  afterpay: '/assets/img/payments/afterpay.svg',
+  affirm: '/assets/img/payments/affirm.svg',
+  zip: '/assets/img/payments/zip.svg',
+  sezzle: '/assets/img/payments/sezzle.svg',
+  stripe: '/assets/img/payments/stripe.svg',
   shop_pay: '/assets/img/payments/shop-pay.svg',
   apple_pay: '/assets/img/payments/applepay.svg',
   google_pay: '/assets/img/payments/google-pay.svg',
@@ -54,6 +65,11 @@ function methodMeta(key) {
   if (k === 'klarna') return { key: 'klarna', label: 'Klarna' };
   // UK canonical label
   if (k === 'clearpay') return { key: 'clearpay', label: 'Clearpay' };
+  if (k === 'afterpay') return { key: 'afterpay', label: 'Afterpay' };
+  if (k === 'affirm') return { key: 'affirm', label: 'Affirm' };
+  if (k === 'zip') return { key: 'zip', label: 'Zip' };
+  if (k === 'sezzle') return { key: 'sezzle', label: 'Sezzle' };
+  if (k === 'stripe') return { key: 'stripe', label: 'Stripe' };
   if (k === 'shop_pay') return { key: 'shop_pay', label: 'Shop Pay' };
   if (k === 'apple_pay') return { key: 'apple_pay', label: 'Apple Pay' };
   if (k === 'google_pay') return { key: 'google_pay', label: 'Google Pay' };
@@ -98,8 +114,28 @@ function normalizePaymentMethod(input) {
     const m = methodMeta('klarna');
     return { ...m, iconSrc: ICON_SRC_BY_KEY[m.key] || null, iconAlt: m.label, debug: { gateway: gatewayRaw, methodType: methodTypeRaw, methodName: methodNameRaw, cardBrand: cardBrandRaw } };
   }
-  if (any(['clearpay', 'afterpay'])) {
+  if (any(['clearpay'])) {
     const m = methodMeta('clearpay');
+    return { ...m, iconSrc: ICON_SRC_BY_KEY[m.key] || null, iconAlt: m.label, debug: { gateway: gatewayRaw, methodType: methodTypeRaw, methodName: methodNameRaw, cardBrand: cardBrandRaw } };
+  }
+  if (any(['afterpay'])) {
+    const m = methodMeta('afterpay');
+    return { ...m, iconSrc: ICON_SRC_BY_KEY[m.key] || null, iconAlt: m.label, debug: { gateway: gatewayRaw, methodType: methodTypeRaw, methodName: methodNameRaw, cardBrand: cardBrandRaw } };
+  }
+  if (any(['affirm'])) {
+    const m = methodMeta('affirm');
+    return { ...m, iconSrc: ICON_SRC_BY_KEY[m.key] || null, iconAlt: m.label, debug: { gateway: gatewayRaw, methodType: methodTypeRaw, methodName: methodNameRaw, cardBrand: cardBrandRaw } };
+  }
+  if (any(['zip'])) {
+    const m = methodMeta('zip');
+    return { ...m, iconSrc: ICON_SRC_BY_KEY[m.key] || null, iconAlt: m.label, debug: { gateway: gatewayRaw, methodType: methodTypeRaw, methodName: methodNameRaw, cardBrand: cardBrandRaw } };
+  }
+  if (any(['sezzle'])) {
+    const m = methodMeta('sezzle');
+    return { ...m, iconSrc: ICON_SRC_BY_KEY[m.key] || null, iconAlt: m.label, debug: { gateway: gatewayRaw, methodType: methodTypeRaw, methodName: methodNameRaw, cardBrand: cardBrandRaw } };
+  }
+  if (any(['stripe'])) {
+    const m = methodMeta('stripe');
     return { ...m, iconSrc: ICON_SRC_BY_KEY[m.key] || null, iconAlt: m.label, debug: { gateway: gatewayRaw, methodType: methodTypeRaw, methodName: methodNameRaw, cardBrand: cardBrandRaw } };
   }
   if (any(['shoppay', 'shop-pay', 'shop_pay'])) {
