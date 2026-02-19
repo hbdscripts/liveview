@@ -32,6 +32,17 @@
         controls: [
           {
             type: 'select',
+            field: 'timeseriesScope',
+            label: 'Timeseries scope',
+            hint: 'Full range shows all buckets; Latest shows only the newest bucket.',
+            options: [
+              { value: 'full', label: 'Full range' },
+              { value: 'latest', label: 'Latest bucket' },
+            ],
+            default: 'full'
+          },
+          {
+            type: 'select',
             field: 'dataLabels',
             label: 'Data-point labels',
             hint: 'Show on hover uses tooltips only; Always show draws labels on the chart.',

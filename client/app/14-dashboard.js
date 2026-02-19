@@ -2352,8 +2352,9 @@
         // Bucket mode: all buckets vs latest bucket only.
         try {
           var uiStyle = (typeof chartStyleFromUiConfig === 'function') ? chartStyleFromUiConfig(chartId) : null;
-          var bucketMode = uiStyle && uiStyle.bucketMode != null ? String(uiStyle.bucketMode).trim().toLowerCase() : 'all';
-          if (bucketMode === 'latest') {
+        var scope = uiStyle && uiStyle.timeseriesScope != null ? String(uiStyle.timeseriesScope).trim().toLowerCase()
+          : (uiStyle && uiStyle.bucketMode != null ? String(uiStyle.bucketMode).trim().toLowerCase() : 'full'); // backward compat
+        if (scope === 'latest') {
             var last = labels.length ? (labels.length - 1) : -1;
             if (last >= 0) {
               revenueTotal = Number.isFinite(Number(revenue[last])) ? Number(revenue[last]) : 0;
@@ -4677,8 +4678,8 @@
         if (!Number.isFinite(value)) value = 0;
         var icon = topRow.iconHtml != null ? String(topRow.iconHtml) : '';
 
-        var size = 76;
-        var r = 28;
+        var size = 99; // +30% from 76
+        var r = 36;    // +30% from 28
         var cx = Math.round(size / 2);
         var cy = Math.round(size / 2);
         var circ = Math.round(2 * Math.PI * r * 1000) / 1000;
@@ -4876,7 +4877,7 @@
                 var sig = widgetSig({ rk: rk, table: (selected && selected.id) ? String(selected.id) : '', current: currentTop, placeholders: placeholders });
                 if (!force && dashWidgetLastRenderSig[mountId] && dashWidgetLastRenderSig[mountId] === sig) return;
                 dashWidgetLastRenderSig[mountId] = sig;
-                renderWidgetRadialAndVbars(mountId, topRow, barRows, { accentCss: 'background: var(--kexo-accent-1, #4b94e4);' });
+                renderWidgetRadialAndVbars(mountId, topRow, barRows, { accentCss: 'background: var(--kexo-accent-2, #3eb3ab);' });
               }
 
               if (!needsFallback) return renderWithFallback(null);
@@ -5026,7 +5027,7 @@
                 var sig = widgetSig({ rk: rk, current: currentTop, placeholders: placeholders });
                 if (!force && dashWidgetLastRenderSig[mountId] && dashWidgetLastRenderSig[mountId] === sig) return;
                 dashWidgetLastRenderSig[mountId] = sig;
-                renderWidgetRadialAndVbars(mountId, topRow, barRows, { accentCss: 'background: var(--kexo-accent-1, #4b94e4);' });
+                renderWidgetRadialAndVbars(mountId, topRow, barRows, { accentCss: 'background: var(--kexo-accent-2, #3eb3ab);' });
               }
 
               if (!needsFallback) return renderWithFallback([]);
@@ -5071,11 +5072,8 @@
                 var label = r && r.label != null ? String(r.label) : '—';
                 var value = r && typeof r.revenue === 'number' ? Number(r.revenue) : (r && r.revenue_gbp != null ? Number(r.revenue_gbp) : 0);
                 if (!Number.isFinite(value)) value = 0;
-                var iconSrc = r && r.iconSrc ? String(r.iconSrc) : '';
-                var iconAlt = r && r.iconAlt ? String(r.iconAlt) : label;
-                var iconHtml = iconSrc
-                  ? ('<img src="' + escapeHtml(iconSrc) + '" alt="' + escapeHtml(iconAlt) + '" width="18" height="18">')
-                  : '<i class="fa-light fa-credit-card" aria-hidden="true"></i>';
+                var key = r && r.key ? String(r.key).trim().toLowerCase() : 'other';
+                var iconHtml = '<i class="fa-light fa-credit-card" data-icon-key="payment-method-' + escapeHtml(key || 'other') + '" aria-hidden="true"></i>';
                 return { label: label, valueGbp: value, iconHtml: iconHtml };
               });
 
@@ -5091,7 +5089,7 @@
                 var sig = widgetSig({ rk: rk, current: currentTop, placeholders: placeholders });
                 if (!force && dashWidgetLastRenderSig[mountId] && dashWidgetLastRenderSig[mountId] === sig) return;
                 dashWidgetLastRenderSig[mountId] = sig;
-                renderWidgetRadialAndVbars(mountId, topRow, barRows, { accentCss: 'background: var(--kexo-accent-4, #e4644b);' });
+                renderWidgetRadialAndVbars(mountId, topRow, barRows, { accentCss: 'background: var(--kexo-accent-2, #3eb3ab);' });
               }
 
               if (!needsFallback) return renderWithFallback([]);
@@ -5148,7 +5146,7 @@
                 var sig = widgetSig({ rk: rk, current: currentTop, placeholders: placeholders });
                 if (!force && dashWidgetLastRenderSig[mountId] && dashWidgetLastRenderSig[mountId] === sig) return;
                 dashWidgetLastRenderSig[mountId] = sig;
-                renderWidgetRadialAndVbars(mountId, topRow, barRows, { accentCss: 'background: var(--kexo-accent-2, #3eb3ab);' });
+                renderWidgetRadialAndVbars(mountId, topRow, barRows, { accentCss: 'background: var(--kexo-accent-4, #e4644b);' });
               }
 
               if (!needsFallback) return renderWithFallback([]);
