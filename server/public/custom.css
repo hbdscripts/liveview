@@ -3242,6 +3242,11 @@ html[data-bs-theme="dark"] .report-build-wrap {
 .kexo-overview-cost-settings-btn {
   font-weight: 500;
 }
+.kexo-overview-liveview-btn:hover {
+  color: #fff !important;
+  background-color: var(--tblr-primary, #3eb3ab) !important;
+  border-color: var(--tblr-primary, #3eb3ab) !important;
+}
 .kexo-overview-card-kpi-label-row {
   display: flex;
   align-items: center;

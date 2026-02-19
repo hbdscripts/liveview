@@ -41,8 +41,11 @@
         <div class="card h-100" data-kexo-chart-key="live-online-chart">
           <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
             <h3 class="card-title mb-0">Online Now: <span id="live-online-now-count">0</span></h3>
-            <div class="kexo-overview-card-actions">
-              <a href="/dashboard/live" class="btn btn-sm btn-ghost-secondary kexo-overview-cost-settings-btn">Live View</a>
+            <div class="kexo-overview-card-actions ms-auto">
+              <a href="/dashboard/live" class="btn btn-sm btn-ghost-secondary kexo-overview-cost-settings-btn kexo-overview-liveview-btn">Live View</a>
+              <button type="button" class="btn btn-icon btn-ghost-secondary kexo-overview-chart-settings-btn" data-kexo-chart-settings-key="live-online-chart" aria-label="Chart settings" title="Chart settings">
+                <i class="fa-light fa-gear" data-icon-key="chart-builder-icon" aria-hidden="true"></i>
+              </button>
             </div>
           </div>
           <div class="card-body">
