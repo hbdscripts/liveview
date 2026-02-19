@@ -4366,24 +4366,21 @@
           });
         } catch (_) {}
         try {
-          document.querySelectorAll('[data-kexo-widget-dropdown][aria-expanded="true"], [data-kexo-widget-settings][aria-expanded="true"]').forEach(function(btn) {
+          document.querySelectorAll('[data-kexo-widget-dropdown][aria-expanded="true"]').forEach(function(btn) {
             if (!btn || !btn.setAttribute) return;
             btn.setAttribute('aria-expanded', 'false');
           });
         } catch (_) {}
       }
 
-      function openWidgetMenu(widgetKey, triggerType) {
+      function openWidgetMenu(widgetKey) {
         closeAllWidgetMenus();
         var key = String(widgetKey || '').trim().toLowerCase();
         if (!key) return;
         var menu = document.querySelector('.kexo-widget-menu[data-kexo-widget-menu="' + key + '"]');
-        var t = String(triggerType || '').trim().toLowerCase();
         var btn = null;
         try {
-          btn = (t === 'settings')
-            ? document.querySelector('[data-kexo-widget-settings="' + key + '"]')
-            : document.querySelector('[data-kexo-widget-dropdown="' + key + '"]');
+          btn = document.querySelector('[data-kexo-widget-dropdown="' + key + '"]');
         } catch (_) { btn = null; }
         if (btn && btn.setAttribute) btn.setAttribute('aria-expanded', 'true');
         if (menu) {
@@ -4392,14 +4389,14 @@
         }
       }
 
-      function toggleWidgetMenu(widgetKey, triggerType) {
+      function toggleWidgetMenu(widgetKey) {
         var key = String(widgetKey || '').trim().toLowerCase();
         if (!key) return;
         var menu = document.querySelector('.kexo-widget-menu[data-kexo-widget-menu="' + key + '"]');
         if (!menu) return;
         var isOpen = !menu.classList.contains('is-hidden');
         if (isOpen) closeAllWidgetMenus();
-        else openWidgetMenu(key, triggerType);
+        else openWidgetMenu(key);
       }
 
       function bindDashWidgetsOnce() {
@@ -4414,15 +4411,7 @@
             if (dd) {
               e.preventDefault();
               e.stopPropagation();
-              toggleWidgetMenu(dd.getAttribute('data-kexo-widget-dropdown'), 'dropdown');
-              return;
-            }
-
-            var cog = t.closest('[data-kexo-widget-settings]');
-            if (cog) {
-              e.preventDefault();
-              e.stopPropagation();
-              toggleWidgetMenu(cog.getAttribute('data-kexo-widget-settings'), 'settings');
+              toggleWidgetMenu(dd.getAttribute('data-kexo-widget-dropdown'));
               return;
             }
 
