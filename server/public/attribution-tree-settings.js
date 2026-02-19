@@ -1,7 +1,7 @@
 /**
- * Settings → Attribution → Mapped tree
+ * Settings ? Attribution ? Mapped tree
  *
- * Shows Channel → Source → Variant → Rule hierarchy with icon editing.
+ * Shows Channel ? Source ? Variant ? Rule hierarchy with icon editing.
  * - GET  /api/attribution/config
  * - POST /api/attribution/icons (patch icon_spec for sources/variants)
  *
@@ -130,10 +130,10 @@
   function iconSpecToPreviewHtml(spec, label) {
     var s = spec != null ? String(spec).trim() : '';
     var l = label != null ? String(label).trim() : '';
-    if (!s) return '<span class="text-muted small">—</span>';
+    if (!s) return '<span class="text-muted small">?</span>';
     if (/^<svg[\s>]/i.test(s)) {
       var safeSvg = sanitizeSvgMarkup(s);
-      if (!safeSvg) return '<span class="text-muted small">—</span>';
+      if (!safeSvg) return '<span class="text-muted small">?</span>';
       return '<span class="am-tree-icon-preview" title="' + escapeHtml(l) + '">' + safeSvg + '</span>';
     }
     if (/^(https?:\/\/|\/\/|\/)/i.test(s)) return '<span class="am-tree-icon-preview"><img src="' + escapeHtml(s) + '" alt="" width="20" height="20" style="vertical-align:middle"></span>';
@@ -275,14 +275,14 @@
     var label = (rule && rule.label) ? String(rule.label) : '';
     var match = (rule && rule.match_json) ? rule.match_json : (rule && rule.match ? JSON.stringify(rule.match) : '{}');
     var matchStr = typeof match === 'string' ? match : JSON.stringify(match);
-    var summary = matchStr.length > 60 ? matchStr.slice(0, 57) + '…' : matchStr;
+    var summary = matchStr.length > 60 ? matchStr.slice(0, 57) + '?' : matchStr;
     var vk = normalizeVariantKey(variantKey);
     return '<div class="am-tree-row am-tree-rule">' +
       '<span class="am-tree-pad am-tree-pad-3"></span>' +
-      '<span class="am-tree-cell"><code class="small">' + escapeHtml(id || '—') + '</code></span>' +
-      '<span class="am-tree-cell text-secondary small">' + escapeHtml(label || '—') + '</span>' +
+      '<span class="am-tree-cell"><code class="small">' + escapeHtml(id || '?') + '</code></span>' +
+      '<span class="am-tree-cell text-secondary small">' + escapeHtml(label || '?') + '</span>' +
       '<span class="am-tree-cell text-muted small" title="' + escapeHtml(matchStr) + '">' + escapeHtml(summary) + '</span>' +
-      '<span class="am-tree-cell text-end"><button type="button" class="btn btn-outline-secondary btn-sm" data-am-tree-action="move-rule" data-rule-id="' + escapeHtml(id) + '" data-current-variant-key="' + escapeHtml(vk) + '">Edit</button></span>' +
+      '<span class="am-tree-cell text-end"><button type="button" class="btn btn-outline-secondary btn-sm" data-am-tree-action="move-rule" data-rule-id="' + escapeHtml(id) + '" data-current-variant-key="' + escapeHtml(vk) + '">Edit rule</button></span>' +
       '</div>';
   }
 
@@ -291,36 +291,23 @@
     var label = variant.label || titleFromKey(vk);
     var iconSpec = variant.icon_spec != null ? String(variant.icon_spec) : '';
     var ruleCount = Array.isArray(variant.rules) ? variant.rules.length : 0;
+    var hasRules = ruleCount > 0;
     var expandedKey = 'v:' + vk;
     var isOpen = isExpanded(expandedKey);
     var ruleRows = (variant.rules || []).map(function (r) { return renderRuleRow(r, vk); }).join('');
+    var toggleHtml = hasRules
+      ? '<button type="button" class="am-tree-toggle btn btn-link btn-sm p-0 me-1" data-am-tree-toggle="' + escapeHtml(expandedKey) + '" aria-expanded="' + (isOpen ? 'true' : 'false') + '">' +
+        '<i class="fa fa-chevron-' + (isOpen ? 'down' : 'right') + ' small" aria-hidden="true"></i></button>'
+      : '<span class="am-tree-toggle-spacer"></span>';
     return '<div class="am-tree-node am-tree-variant" data-variant-key="' + escapeHtml(vk) + '">' +
       '<div class="am-tree-row am-tree-variant-head">' +
       '<span class="am-tree-pad am-tree-pad-2"></span>' +
-      '<button type="button" class="am-tree-toggle btn btn-link btn-sm p-0 me-1" data-am-tree-toggle="' + escapeHtml(expandedKey) + '" aria-expanded="' + (isOpen ? 'true' : 'false') + '">' +
-      '<i class="fa fa-chevron-' + (isOpen ? 'down' : 'right') + ' small" aria-hidden="true"></i></button>' +
+      toggleHtml +
       '<span class="am-tree-cell am-tree-label">' + iconSpecToPreviewHtml(iconSpec, label) + ' <strong>' + escapeHtml(label) + '</strong> <code class="small">' + escapeHtml(vk) + '</code></span>' +
       '<span class="am-tree-cell text-muted small">' + String(ruleCount) + ' rule(s)</span>' +
       '<span class="am-tree-cell d-flex align-items-center gap-2 justify-content-end">' +
-        '<button type="button" class="btn btn-outline-secondary btn-sm" data-am-tree-action="edit-variant" data-variant-key="' + escapeHtml(vk) + '" data-current-channel-key="' + escapeHtml(channelKey || '') + '" data-current-source-key="' + escapeHtml(sourceKey || '') + '" data-label="' + escapeHtml(label) + '">Edit</button>' +
-        '<button type="button" class="btn btn-outline-secondary btn-sm am-tree-edit-icon-btn" data-am-tree-edit-toggle="variant" data-key="' + escapeHtml(vk) + '" title="Edit icon">Edit icon</button>' +
+        '<button type="button" class="btn btn-outline-secondary btn-sm" data-am-tree-action="edit-variant" data-variant-key="' + escapeHtml(vk) + '" data-current-channel-key="' + escapeHtml(channelKey || '') + '" data-current-source-key="' + escapeHtml(sourceKey || '') + '" data-label="' + escapeHtml(label) + '" data-icon-spec="' + escapeHtml(iconSpec) + '">Edit variant</button>' +
       '</span>' +
-      '</div>' +
-      '<div class="am-tree-variant-icon-edit mt-1 mb-2" data-am-tree-edit="variant" data-variant-key="' + escapeHtml(vk) + '" data-am-tree-label="' + escapeHtml(label) + '" style="display:none">' +
-      '<div class="row g-2 align-items-start">' +
-      '<div class="col-12 col-md-7">' +
-      '<textarea class="form-control form-control-sm am-tree-icon-input font-monospace" rows="3" spellcheck="false" placeholder="fa-solid fa-bolt  OR  /assets/icon.png  OR  <svg ...>">' + escapeHtml(iconSpec) + '</textarea>' +
-      '<div class="form-hint small">Font Awesome class, image URL/path, or inline SVG. Saved icons sync with Settings → Kexo → Icons.</div>' +
-      '</div>' +
-      '<div class="col-12 col-md-5">' +
-      '<div class="am-tree-icon-live-preview" data-am-tree-live-preview="1">' + iconSpecToPreviewHtml(iconSpec, label) + '</div>' +
-      '</div>' +
-      '<div class="col-12 d-flex align-items-center gap-2">' +
-      '<button type="button" class="btn btn-outline-primary btn-sm am-tree-icon-save" data-kind="variant" data-key="' + escapeHtml(vk) + '">Save</button>' +
-      '<button type="button" class="btn btn-outline-secondary btn-sm am-tree-icon-reset" data-kind="variant" data-key="' + escapeHtml(vk) + '">Reset</button>' +
-      '<span class="am-tree-save-msg small text-secondary ms-auto" data-am-tree-save-msg="1"></span>' +
-      '</div>' +
-      '</div>' +
       '</div>' +
       '<div class="am-tree-children' + (isOpen ? '' : ' is-hidden') + '" data-am-tree-children="' + escapeHtml(expandedKey) + '">' +
       ruleRows +
@@ -332,35 +319,22 @@
     var sk = source.source_key || '';
     var label = source.label || titleFromKey(sk);
     var iconSpec = source.icon_spec != null ? String(source.icon_spec) : '';
+    var hasVariants = Array.isArray(source.variants) && source.variants.length > 0;
     var expandedKey = 's:' + channelKey + '|' + sk;
     var isOpen = isExpanded(expandedKey);
     var variantHtml = (source.variants || []).map(function (v) { return renderVariantRow(v, channelKey, sk); }).join('');
+    var toggleHtml = hasVariants
+      ? '<button type="button" class="am-tree-toggle btn btn-link btn-sm p-0 me-1" data-am-tree-toggle="' + escapeHtml(expandedKey) + '" aria-expanded="' + (isOpen ? 'true' : 'false') + '">' +
+        '<i class="fa fa-chevron-' + (isOpen ? 'down' : 'right') + ' small" aria-hidden="true"></i></button>'
+      : '<span class="am-tree-toggle-spacer"></span>';
     return '<div class="am-tree-node am-tree-source" data-source-key="' + escapeHtml(sk) + '">' +
       '<div class="am-tree-row am-tree-source-head">' +
       '<span class="am-tree-pad am-tree-pad-1"></span>' +
-      '<button type="button" class="am-tree-toggle btn btn-link btn-sm p-0 me-1" data-am-tree-toggle="' + escapeHtml(expandedKey) + '" aria-expanded="' + (isOpen ? 'true' : 'false') + '">' +
-      '<i class="fa fa-chevron-' + (isOpen ? 'down' : 'right') + ' small" aria-hidden="true"></i></button>' +
+      toggleHtml +
       '<span class="am-tree-cell am-tree-label">' + iconSpecToPreviewHtml(iconSpec, label) + ' <strong>' + escapeHtml(label) + '</strong> <code class="small">' + escapeHtml(sk) + '</code></span>' +
       '<span class="am-tree-cell d-flex align-items-center gap-2 justify-content-end">' +
-        '<button type="button" class="btn btn-outline-secondary btn-sm" data-am-tree-action="edit-source" data-source-key="' + escapeHtml(sk) + '" data-current-channel-key="' + escapeHtml(channelKey || '') + '" data-label="' + escapeHtml(label) + '">Edit</button>' +
-        '<button type="button" class="btn btn-outline-secondary btn-sm am-tree-edit-icon-btn" data-am-tree-edit-toggle="source" data-key="' + escapeHtml(sk) + '" title="Edit icon">Edit icon</button>' +
+        '<button type="button" class="btn btn-outline-secondary btn-sm" data-am-tree-action="edit-source" data-source-key="' + escapeHtml(sk) + '" data-current-channel-key="' + escapeHtml(channelKey || '') + '" data-label="' + escapeHtml(label) + '" data-icon-spec="' + escapeHtml(iconSpec) + '">Edit source</button>' +
       '</span>' +
-      '</div>' +
-      '<div class="am-tree-source-icon-edit mt-1 mb-2" data-am-tree-edit="source" data-source-key="' + escapeHtml(sk) + '" data-am-tree-label="' + escapeHtml(label) + '" style="display:none">' +
-      '<div class="row g-2 align-items-start">' +
-      '<div class="col-12 col-md-7">' +
-      '<textarea class="form-control form-control-sm am-tree-icon-input font-monospace" rows="3" spellcheck="false" placeholder="fa-brands fa-google  OR  /assets/icon.png  OR  <svg ...>">' + escapeHtml(iconSpec) + '</textarea>' +
-      '<div class="form-hint small">Font Awesome class, image URL/path, or inline SVG. Saved icons sync with Settings → Kexo → Icons.</div>' +
-      '</div>' +
-      '<div class="col-12 col-md-5">' +
-      '<div class="am-tree-icon-live-preview" data-am-tree-live-preview="1">' + iconSpecToPreviewHtml(iconSpec, label) + '</div>' +
-      '</div>' +
-      '<div class="col-12 d-flex align-items-center gap-2">' +
-      '<button type="button" class="btn btn-outline-primary btn-sm am-tree-icon-save" data-kind="source" data-key="' + escapeHtml(sk) + '">Save</button>' +
-      '<button type="button" class="btn btn-outline-secondary btn-sm am-tree-icon-reset" data-kind="source" data-key="' + escapeHtml(sk) + '">Reset</button>' +
-      '<span class="am-tree-save-msg small text-secondary ms-auto" data-am-tree-save-msg="1"></span>' +
-      '</div>' +
-      '</div>' +
       '</div>' +
       '<div class="am-tree-children' + (isOpen ? '' : ' is-hidden') + '" data-am-tree-children="' + escapeHtml(expandedKey) + '">' +
       variantHtml +
@@ -371,13 +345,17 @@
   function renderChannelRow(channel) {
     var ck = channel.channel_key || '';
     var label = channel.label || titleFromKey(ck);
+    var hasSources = Array.isArray(channel.sources) && channel.sources.length > 0;
     var expandedKey = 'c:' + ck;
     var isOpen = isExpanded(expandedKey);
     var sourceHtml = (channel.sources || []).map(function (s) { return renderSourceRow(s, ck); }).join('');
+    var toggleHtml = hasSources
+      ? '<button type="button" class="am-tree-toggle btn btn-link btn-sm p-0 me-1" data-am-tree-toggle="' + escapeHtml(expandedKey) + '" aria-expanded="' + (isOpen ? 'true' : 'false') + '">' +
+        '<i class="fa fa-chevron-' + (isOpen ? 'down' : 'right') + ' small" aria-hidden="true"></i></button>'
+      : '<span class="am-tree-toggle-spacer"></span>';
     return '<div class="am-tree-node am-tree-channel" data-channel-key="' + escapeHtml(ck) + '">' +
       '<div class="am-tree-row am-tree-channel-head">' +
-      '<button type="button" class="am-tree-toggle btn btn-link btn-sm p-0 me-1" data-am-tree-toggle="' + escapeHtml(expandedKey) + '" aria-expanded="' + (isOpen ? 'true' : 'false') + '">' +
-      '<i class="fa fa-chevron-' + (isOpen ? 'down' : 'right') + ' small" aria-hidden="true"></i></button>' +
+      toggleHtml +
       '<span class="am-tree-cell am-tree-label"><strong>' + escapeHtml(label) + '</strong> <code class="small">' + escapeHtml(ck) + '</code></span>' +
       '</div>' +
       '<div class="am-tree-children' + (isOpen ? '' : ' is-hidden') + '" data-am-tree-children="' + escapeHtml(expandedKey) + '">' +
@@ -393,7 +371,7 @@
     }
     var html = '<div class="am-tree mb-0">' +
       '<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">' +
-      '<p class="text-secondary small mb-0">Use <strong>Edit icon</strong> on a Source or Variant row. SVG paste works best in the textarea. Changes sync with Settings → Kexo → Icons.</p>' +
+      '<p class="text-secondary small mb-0">Use <strong>Edit source</strong> / <strong>Edit variant</strong> to change channel + icon. Use <strong>Edit rule</strong> to move rules between variants.</p>' +
       '<div class="btn-group btn-group-sm" role="group" aria-label="Tree display controls">' +
       '<button type="button" class="btn btn-outline-secondary" data-am-tree-action="expand-all">Expand all</button>' +
       '<button type="button" class="btn btn-outline-secondary" data-am-tree-action="collapse-all">Collapse all</button>' +
@@ -420,7 +398,7 @@
             '</div>' +
             '<div class="modal-body">' +
               '<div class="text-secondary small mb-2">This affects new sessions; historical data requires reprocess/backfill.</div>' +
-              '<div class="mb-2"><div class="small text-secondary">Rule</div><div><code id="am-move-rule-id">—</code></div></div>' +
+              '<div class="mb-2"><div class="small text-secondary">Rule</div><div><code id="am-move-rule-id">?</code></div></div>' +
               '<div class="mb-3">' +
                 '<label class="form-label" for="am-move-dest-variant">Destination</label>' +
                 '<select class="form-select" id="am-move-dest-variant"></select>' +
@@ -598,27 +576,36 @@
     if (existing) return existing;
     var wrap = document.createElement('div');
     wrap.innerHTML = '' +
-      '<div class="modal fade" id="am-channel-assign-modal" tabindex="-1" aria-hidden="true" aria-label="Edit attribution channel">' +
+      '<div class="modal fade" id="am-channel-assign-modal" tabindex="-1" aria-hidden="true" aria-label="Edit attribution item">' +
         '<div class="modal-dialog modal-dialog-centered">' +
           '<div class="modal-content">' +
             '<div class="modal-header">' +
-              '<h5 class="modal-title">Edit channel</h5>' +
+              '<h5 class="modal-title" id="am-assign-title">Edit</h5>' +
               '<button type="button" class="btn-close" data-am-assign-close aria-label="Close"></button>' +
             '</div>' +
             '<div class="modal-body">' +
-              '<div class="text-secondary small mb-2">Assign to an existing channel, or create a new one.</div>' +
+              '<div class="text-secondary small mb-2" id="am-assign-desc">Edit this item.</div>' +
               '<div class="mb-2">' +
                 '<div class="small text-secondary" id="am-assign-kind">Item</div>' +
-                '<div><code id="am-assign-key">—</code> <span class="text-secondary small" id="am-assign-label"></span></div>' +
+                '<div><code id="am-assign-key">?</code> <span class="text-secondary small" id="am-assign-label"></span></div>' +
               '</div>' +
               '<div class="mb-3">' +
-                '<label class="form-label" for="am-assign-channel-select">Channel</label>' +
+                '<label class="form-label" for="am-assign-channel-select" id="am-assign-channel-label">Channel</label>' +
                 '<select class="form-select" id="am-assign-channel-select"></select>' +
               '</div>' +
               '<div class="mb-3">' +
-                '<label class="form-label" for="am-assign-new-channel">Or create new channel</label>' +
+                '<label class="form-label" for="am-assign-new-channel" id="am-assign-new-channel-label">Or create new channel</label>' +
                 '<input class="form-control" id="am-assign-new-channel" placeholder="e.g. Organic Social" />' +
-                '<div class="form-hint">If provided, a new channel is created and the item is assigned to it.</div>' +
+                '<div class="form-hint" id="am-assign-new-channel-hint">If provided, a new channel is created and the item is assigned to it.</div>' +
+              '</div>' +
+              '<div class="mb-3" id="am-assign-icon-block">' +
+                '<label class="form-label" for="am-assign-icon-spec" id="am-assign-icon-label">Icon</label>' +
+                '<textarea class="form-control form-control-sm font-monospace" id="am-assign-icon-spec" rows="3" spellcheck="false" placeholder="fa-brands fa-google  OR  /assets/icon.png  OR  <svg ...>"></textarea>' +
+                '<div class="form-hint small">Font Awesome class, image URL/path, or inline SVG.</div>' +
+                '<div class="am-tree-icon-live-preview mt-2" id="am-assign-icon-preview"></div>' +
+                '<div class="d-flex align-items-center gap-2 mt-2">' +
+                  '<button type="button" class="btn btn-outline-secondary btn-sm" id="am-assign-icon-reset">Reset icon</button>' +
+                '</div>' +
               '</div>' +
               '<div class="form-hint" id="am-assign-msg"></div>' +
             '</div>' +
@@ -697,6 +684,7 @@
     var key = opts && opts.key != null ? String(opts.key).trim() : '';
     var label = opts && opts.label != null ? String(opts.label).trim() : '';
     var currentChannelKey = opts && opts.currentChannelKey != null ? String(opts.currentChannelKey).trim().toLowerCase() : '';
+    var currentIconSpec = opts && opts.currentIconSpec != null ? String(opts.currentIconSpec).trim() : '';
     if (!kind || !key) return;
     if (kind !== 'source' && kind !== 'variant') return;
 
@@ -706,13 +694,37 @@
     modalEl.setAttribute('data-am-assign-kind', kind);
     modalEl.setAttribute('data-am-assign-key', key);
     modalEl.setAttribute('data-am-assign-current-channel', currentChannelKey || '');
+    modalEl.setAttribute('data-am-assign-current-icon', currentIconSpec || '');
 
+    var titleEl = modalEl.querySelector('#am-assign-title');
+    var descEl = modalEl.querySelector('#am-assign-desc');
     var kindEl = modalEl.querySelector('#am-assign-kind');
     var keyEl = modalEl.querySelector('#am-assign-key');
     var labelEl = modalEl.querySelector('#am-assign-label');
+    var channelLabelEl = modalEl.querySelector('#am-assign-channel-label');
+    var newChannelLabelEl = modalEl.querySelector('#am-assign-new-channel-label');
+    var newChannelHintEl = modalEl.querySelector('#am-assign-new-channel-hint');
+    if (kind === 'source') {
+      if (titleEl) titleEl.textContent = 'Edit source';
+      if (descEl) descEl.textContent = 'Assign this source to a channel and optionally set its icon.';
+      if (channelLabelEl) channelLabelEl.textContent = 'Channel for this source';
+      if (newChannelLabelEl) newChannelLabelEl.textContent = 'Or create new channel';
+      if (newChannelHintEl) newChannelHintEl.textContent = 'If provided, a new channel is created and the source is assigned to it.';
+    } else {
+      if (titleEl) titleEl.textContent = 'Edit variant';
+      if (descEl) descEl.textContent = 'Assign this variant to a channel and optionally set its icon.';
+      if (channelLabelEl) channelLabelEl.textContent = 'Channel for this variant';
+      if (newChannelLabelEl) newChannelLabelEl.textContent = 'Or create new channel';
+      if (newChannelHintEl) newChannelHintEl.textContent = 'If provided, a new channel is created and the variant is assigned to it.';
+    }
     if (kindEl) kindEl.textContent = kind === 'source' ? 'Source' : 'Variant';
     if (keyEl) keyEl.textContent = key;
-    if (labelEl) labelEl.textContent = label ? ('— ' + label) : '';
+    if (labelEl) labelEl.textContent = label ? ('? ' + label) : '';
+
+    var iconSpecEl = modalEl.querySelector('#am-assign-icon-spec');
+    var iconPreviewEl = modalEl.querySelector('#am-assign-icon-preview');
+    if (iconSpecEl) iconSpecEl.value = currentIconSpec;
+    if (iconPreviewEl) iconPreviewEl.innerHTML = iconSpecToPreviewHtml(currentIconSpec, label);
 
     var msgEl = modalEl.querySelector('#am-assign-msg');
     function setMsg(text, cls) {
@@ -744,6 +756,24 @@
     var newChannelEl = modalEl.querySelector('#am-assign-new-channel');
     if (newChannelEl) newChannelEl.value = '';
 
+    var iconResetBtn = modalEl.querySelector('#am-assign-icon-reset');
+    if (iconResetBtn) {
+      iconResetBtn.onclick = function () {
+        var cur = modalEl.getAttribute('data-am-assign-current-icon') || '';
+        var spec = modalEl.querySelector('#am-assign-icon-spec');
+        var prev = modalEl.querySelector('#am-assign-icon-preview');
+        if (spec) spec.value = cur;
+        if (prev) prev.innerHTML = iconSpecToPreviewHtml(cur, label);
+      };
+    }
+    var iconSpecInput = modalEl.querySelector('#am-assign-icon-spec');
+    if (iconSpecInput) {
+      iconSpecInput.oninput = function () {
+        var prev = modalEl.querySelector('#am-assign-icon-preview');
+        if (prev) prev.innerHTML = iconSpecToPreviewHtml(iconSpecInput.value, label);
+      };
+    }
+
     if (modalEl.getAttribute('data-am-assign-wired') !== '1') {
       modalEl.setAttribute('data-am-assign-wired', '1');
       modalEl.addEventListener('click', function (e) {
@@ -761,10 +791,13 @@
           var kind = String(modalEl.getAttribute('data-am-assign-kind') || '').trim().toLowerCase();
           var key = String(modalEl.getAttribute('data-am-assign-key') || '').trim();
           var currentCh = String(modalEl.getAttribute('data-am-assign-current-channel') || '').trim().toLowerCase();
+          var currentIcon = String(modalEl.getAttribute('data-am-assign-current-icon') || '').trim();
           var sel = modalEl.querySelector('#am-assign-channel-select');
           var newLabel = '';
           var newInput = modalEl.querySelector('#am-assign-new-channel');
           if (newInput) newLabel = String(newInput.value || '').trim();
+          var iconSpecInput = modalEl.querySelector('#am-assign-icon-spec');
+          var newIconSpec = iconSpecInput ? String(iconSpecInput.value || '').trim() : '';
 
           var cfg = _state && _state.config && _state.config.config ? _state.config.config : null;
           if (!cfg) {
@@ -809,7 +842,9 @@
             setMsg('Choose a channel.', 'text-danger');
             return;
           }
-          if (channelKey === currentCh) {
+          var channelUnchanged = channelKey === currentCh;
+          var iconUnchanged = newIconSpec === currentIcon;
+          if (channelUnchanged && iconUnchanged) {
             closeChannelAssignModal(modalEl);
             return;
           }
@@ -819,18 +854,29 @@
             var vk = normalizeVariantKey(key);
             nextCfg.variants.forEach(function (v) {
               if (normalizeVariantKey(v && v.variant_key) === vk) {
-                v.channel_key = channelKey;
+                if (!channelUnchanged) v.channel_key = channelKey;
+                v.icon_spec = newIconSpec || null;
                 changed++;
               }
             });
           } else if (kind === 'source') {
             var sk = trimLower(key, 32);
-            nextCfg.variants.forEach(function (v) {
-              if (trimLower(v && v.source_key, 32) === sk) {
-                v.channel_key = channelKey;
-                changed++;
+            if (!channelUnchanged) {
+              nextCfg.variants.forEach(function (v) {
+                if (trimLower(v && v.source_key, 32) === sk) {
+                  v.channel_key = channelKey;
+                  changed++;
+                }
+              });
+            }
+            var srcUpdated = false;
+            nextCfg.sources.forEach(function (s) {
+              if (trimLower(s && s.source_key, 32) === sk) {
+                s.icon_spec = newIconSpec || null;
+                srcUpdated = true;
               }
             });
+            if (srcUpdated) changed++;
           }
 
           if (!changed) {
@@ -838,7 +884,7 @@
             return;
           }
 
-          setMsg('Saving…', 'text-secondary');
+          setMsg('Saving?', 'text-secondary');
           try { confirmBtn.disabled = true; } catch (_) {}
           saveAttributionConfig(nextCfg).then(function (resp) {
             if (resp && resp.ok) {
@@ -896,14 +942,16 @@
           var sk = treeAction.getAttribute('data-source-key') || '';
           var curCh = treeAction.getAttribute('data-current-channel-key') || '';
           var lbl = treeAction.getAttribute('data-label') || '';
-          openChannelAssignModal({ kind: 'source', key: sk, label: lbl, currentChannelKey: curCh });
+          var iconSpec = treeAction.getAttribute('data-icon-spec') || '';
+          openChannelAssignModal({ kind: 'source', key: sk, label: lbl, currentChannelKey: curCh, currentIconSpec: iconSpec });
           return;
         }
         if (action === 'edit-variant') {
           var vk = treeAction.getAttribute('data-variant-key') || '';
           var curCh2 = treeAction.getAttribute('data-current-channel-key') || '';
           var lbl2 = treeAction.getAttribute('data-label') || '';
-          openChannelAssignModal({ kind: 'variant', key: vk, label: lbl2, currentChannelKey: curCh2 });
+          var iconSpec2 = treeAction.getAttribute('data-icon-spec') || '';
+          openChannelAssignModal({ kind: 'variant', key: vk, label: lbl2, currentChannelKey: curCh2, currentIconSpec: iconSpec2 });
           return;
         }
         if (action === 'expand-all') {
@@ -937,110 +985,6 @@
         return;
       }
 
-      var editBtn = target && target.closest ? target.closest('[data-am-tree-edit-toggle]') : null;
-      if (editBtn) {
-        e.preventDefault();
-        var node = editBtn.closest('.am-tree-source, .am-tree-variant');
-        if (!node) return;
-        var editEl = node.querySelector('[data-am-tree-edit]');
-        if (editEl) {
-          var visible = editEl.style.display !== 'none';
-          root.querySelectorAll('[data-am-tree-edit]').forEach(function (el) { el.style.display = 'none'; });
-          editEl.style.display = visible ? 'none' : 'block';
-
-          var input = editEl.querySelector('.am-tree-icon-input');
-          var preview = editEl.querySelector('[data-am-tree-live-preview]');
-          if (input && preview) {
-            var lbl = editEl.getAttribute('data-am-tree-label') || '';
-            preview.innerHTML = iconSpecToPreviewHtml(input.value, lbl);
-          }
-          var msgEl = editEl.querySelector('[data-am-tree-save-msg]');
-          if (msgEl) {
-            msgEl.textContent = '';
-            msgEl.className = 'am-tree-save-msg small text-secondary ms-auto';
-          }
-        }
-        return;
-      }
-
-      var saveBtn = target && target.closest ? target.closest('.am-tree-icon-save') : null;
-      if (saveBtn) {
-        e.preventDefault();
-        var kind = saveBtn.getAttribute('data-kind');
-        var keyVal = saveBtn.getAttribute('data-key');
-        var editDiv = saveBtn.closest('[data-am-tree-edit]');
-        var input = editDiv ? editDiv.querySelector('.am-tree-icon-input') : null;
-        var newSpec = input ? String(input.value || '').trim() : '';
-        var msgEl = editDiv ? editDiv.querySelector('[data-am-tree-save-msg]') : null;
-        function setMsg(text, cls) {
-          if (!msgEl) return;
-          msgEl.textContent = text || '';
-          msgEl.className = 'am-tree-save-msg small ' + (cls || 'text-secondary') + ' ms-auto';
-        }
-        var payload = { sources: [], variants: [] };
-        if (kind === 'source') {
-          payload.sources = [{ source_key: keyVal, icon_spec: newSpec || null }];
-        } else if (kind === 'variant') {
-          payload.variants = [{ variant_key: keyVal, icon_spec: newSpec || null }];
-        }
-        setMsg('Saving…', 'text-secondary');
-        try { saveBtn.disabled = true; } catch (_) {}
-        saveIcons(payload).then(function (res) {
-          if (res && res.ok) {
-            setMsg('Saved', 'text-success');
-            try { window.dispatchEvent(new CustomEvent('kexo:attribution-icons-updated')); } catch (_) {}
-            setTimeout(function () {
-              _state.config = null;
-              loadAndRender();
-            }, 250);
-          } else {
-            setMsg((res && res.error) ? String(res.error) : 'Save failed', 'text-danger');
-          }
-          try { saveBtn.disabled = false; } catch (_) {}
-        });
-        return;
-      }
-
-      var resetBtn = target && target.closest ? target.closest('.am-tree-icon-reset') : null;
-      if (resetBtn) {
-        e.preventDefault();
-        var editDiv = resetBtn.closest('[data-am-tree-edit]');
-        var input = editDiv ? editDiv.querySelector('.am-tree-icon-input') : null;
-        if (input && _state.config && _state.config.config) {
-          var kind = resetBtn.getAttribute('data-kind');
-          var keyVal = resetBtn.getAttribute('data-key');
-          if (kind === 'source') {
-            var s = (_state.config.config.sources || []).find(function (r) { return trimLower(r && r.source_key, 32) === trimLower(keyVal, 32); });
-            input.value = (s && s.icon_spec != null) ? String(s.icon_spec) : '';
-          } else if (kind === 'variant') {
-            var v = (_state.config.config.variants || []).find(function (r) { return normalizeVariantKey(r && r.variant_key) === normalizeVariantKey(keyVal); });
-            input.value = (v && v.icon_spec != null) ? String(v.icon_spec) : '';
-          }
-        }
-        if (editDiv) {
-          var preview = editDiv.querySelector('[data-am-tree-live-preview]');
-          var lbl = editDiv.getAttribute('data-am-tree-label') || '';
-          if (input && preview) preview.innerHTML = iconSpecToPreviewHtml(input.value, lbl);
-          var msgEl = editDiv.querySelector('[data-am-tree-save-msg]');
-          if (msgEl) {
-            msgEl.textContent = '';
-            msgEl.className = 'am-tree-save-msg small text-secondary ms-auto';
-          }
-        }
-        return;
-      }
-    });
-
-    root.addEventListener('input', function (e) {
-      var target = e && e.target ? e.target : null;
-      var input = target && target.closest ? target.closest('.am-tree-icon-input') : null;
-      if (!input) return;
-      var editDiv = input.closest ? input.closest('[data-am-tree-edit]') : null;
-      if (!editDiv) return;
-      var preview = editDiv.querySelector('[data-am-tree-live-preview]');
-      if (!preview) return;
-      var lbl = editDiv.getAttribute('data-am-tree-label') || '';
-      preview.innerHTML = iconSpecToPreviewHtml(input.value, lbl);
     });
   }
 

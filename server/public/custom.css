@@ -1282,6 +1282,10 @@ body:not([data-page="settings"]) .table-responsive table td:first-child .country
 }
 
 /* Attribution table: cap icon specs (img/svg/i) to 20px */
+.source-icons {
+  width: 20px;
+  height: 20px;
+}
 body[data-page="attribution"] #attribution-mount .source-icons {
   display: inline-flex;
   align-items: center;
@@ -1297,6 +1301,8 @@ body[data-page="attribution"] #attribution-mount .source-icons img {
   display: inline-block;
 }
 body[data-page="attribution"] #attribution-mount .source-icons svg {
+  width: 100% !important;
+  height: 100% !important;
   max-width: 20px !important;
   max-height: 20px !important;
   width: auto !important;
