@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 3574fd7ee139e02e
+// checksum: d1d0031ba1cb828e
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).

@@ -3326,11 +3326,7 @@
 
       setDashValueText('dash-kpi-revenue', salesVal != null ? formatRevenue0(salesVal) : '\u2014');
       setDashValueText('dash-kpi-profit', profitVal != null ? formatRevenue0(profitVal) : '\u2014');
-      // Keep the dashboard hero header Profit in sync with the Profit KPI tile.
-      try {
-        var heroProfit = el('dash-overview-total-profit');
-        if (heroProfit) heroProfit.textContent = profitVal != null ? formatRevenue0(profitVal) : '\u2014';
-      } catch (_) {}
+      // Overview card Profit is set only by the chart (setOverviewSalesRunningTotals) so it stays in sync with the graph; do not overwrite from KPI.
       setDashValueText('dash-kpi-orders', ordersVal != null ? Math.round(ordersVal).toLocaleString() : '\u2014');
       setDashValueText('dash-kpi-sessions', sessionsVal != null ? formatSessions(sessionsVal) : '\u2014');
       setDashValueText('dash-kpi-conv', convVal != null ? pct(convVal) : '\u2014');
