@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: b0471474b510e72a
+// checksum: 663c5c926ec1e4be
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -21667,6 +21667,17 @@ const API = '';
         var WIDGET_TOP_N = 4;
         var fallbackRangeKey = (rk === 'today' || rk === '1h') ? 'yesterday' : '';
 
+        function dashReadKpiOrdersFromDom() {
+          var el = document.getElementById('dash-kpi-orders');
+          if (!el || !el.textContent) return null;
+          var t = String(el.textContent).trim().replace(/,/g, '');
+          if (t === '' || t === '\u2014' || t === '—') return 0;
+          var n = parseInt(t, 10);
+          return Number.isFinite(n) ? n : null;
+        }
+        var kpiOrders = dashReadKpiOrdersFromDom();
+        var kpiSaysNoSales = (rk === 'today' || rk === '1h') && kpiOrders !== null && kpiOrders === 0;
+
         var tasks = [];
 
         // Variants
@@ -21700,6 +21711,7 @@ const API = '';
                 if (!Number.isFinite(value)) value = 0;
                 return { label: label, valueGbp: value, iconHtml: '<i class="fa-light fa-gem" aria-hidden="true"></i>' };
               });
+              if (kpiSaysNoSales) { rows = rows.map(function (r) { return Object.assign({}, r || {}, { valueGbp: 0 }); }); }
               var currentTop = withSharePct(rows, WIDGET_TOP_N);
               var hasCurrent = currentTop.some(function (r) { return r && Number(r.valueGbp || 0) > 0; });
               var needsFallback = !!fallbackRangeKey && (!hasCurrent || currentTop.length < WIDGET_TOP_N);
@@ -21786,6 +21798,7 @@ const API = '';
                   return { label: label, valueGbp: value, iconHtml: '<i class="fa-light ' + escapeHtml(icon) + '" data-icon-key="' + escapeHtml(iconKey) + '" aria-hidden="true"></i>' };
                 });
               }
+              if (kpiSaysNoSales) { rows = rows.map(function (r) { return Object.assign({}, r || {}, { valueGbp: 0 }); }); }
               var currentTop = withSharePct(rows, WIDGET_TOP_N);
               var hasCurrent = currentTop.some(function (r) { return r && Number(r.valueGbp || 0) > 0; });
               var needsFallback = !!fallbackRangeKey && (!hasCurrent || currentTop.length < WIDGET_TOP_N);
@@ -21861,6 +21874,7 @@ const API = '';
                   });
                 });
               } catch (_) { rows = []; }
+              if (kpiSaysNoSales) { rows = rows.map(function (r) { return Object.assign({}, r || {}, { valueGbp: 0 }); }); }
               var currentTop = withSharePct(rows, WIDGET_TOP_N);
               var hasCurrent = currentTop.some(function (r) { return r && Number(r.valueGbp || 0) > 0; });
               var needsFallback = !!fallbackRangeKey && (!hasCurrent || currentTop.length < WIDGET_TOP_N);
@@ -21927,6 +21941,7 @@ const API = '';
                 return { label: label, valueGbp: value, iconHtml: iconHtml };
               });
 
+              if (kpiSaysNoSales) { rows = rows.map(function (r) { return Object.assign({}, r || {}, { valueGbp: 0 }); }); }
               var currentTop = withSharePct(rows, WIDGET_TOP_N);
               var hasCurrent = currentTop.some(function (r) { return r && Number(r.valueGbp || 0) > 0; });
               var needsFallback = !!fallbackRangeKey && (!hasCurrent || currentTop.length < WIDGET_TOP_N);
@@ -21985,6 +22000,7 @@ const API = '';
                 var iconHtml = cc && /^[A-Z]{2}$/.test(cc) ? countryCodeToFlagHtml(cc) : '<i class="fa-light fa-globe" aria-hidden="true"></i>';
                 return { label: cc || (label || '—'), valueGbp: value, iconHtml: iconHtml };
               });
+              if (kpiSaysNoSales) { rows = rows.map(function (r) { return Object.assign({}, r || {}, { valueGbp: 0 }); }); }
               var currentTop = withSharePct(rows, WIDGET_TOP_N);
               var hasCurrent = currentTop.some(function (r) { return r && Number(r.valueGbp || 0) > 0; });
               var needsFallback = !!fallbackRangeKey && (!hasCurrent || currentTop.length < WIDGET_TOP_N);
