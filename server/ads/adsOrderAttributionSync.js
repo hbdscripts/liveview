@@ -235,8 +235,8 @@ async function syncAttributedOrdersToAdsDb(options = {}) {
     const utmSource = trimParam(params, 'utm_source', 64);
     const gclidLike = extractGclidLike(params);
     const picked = pickClickId(gclidLike);
-    const clickId = picked && picked.id ? String(picked.id) : null;
-    const clickKind = picked && picked.kind ? String(picked.kind) : null;
+    const clickIdValue = picked && picked.id ? String(picked.id).trim() : null;
+    const clickIdType = picked && picked.kind ? String(picked.kind).trim() : null;
     const sourceHint = (bsIds && bsIds.bsSource) ? bsIds.bsSource : (utmSource ? utmSource.toLowerCase() : null);
 
     // Country code (best-effort): shipping_address, then billing_address.
@@ -249,7 +249,9 @@ async function syncAttributedOrdersToAdsDb(options = {}) {
     let campaignId = urlAttrib && urlAttrib.campaignId ? String(urlAttrib.campaignId).trim() : null;
     let adgroupId = urlAttrib && urlAttrib.adgroupId ? String(urlAttrib.adgroupId).trim() : null;
     let adId = urlAttrib && urlAttrib.adId ? String(urlAttrib.adId).trim() : null;
-    let gclid = clickId || (urlAttrib && urlAttrib.gclid ? String(urlAttrib.gclid).trim() : null);
+    const gclid = gclidLike && gclidLike.gclid ? String(gclidLike.gclid).trim() : (urlAttrib && urlAttrib.gclid ? String(urlAttrib.gclid).trim() : null);
+    const gbraid = gclidLike && gclidLike.gbraid ? String(gclidLike.gbraid).trim() : null;
+    const wbraid = gclidLike && gclidLike.wbraid ? String(gclidLike.wbraid).trim() : null;
     let attributionMethod = urlAttrib && urlAttrib.attributionMethod ? String(urlAttrib.attributionMethod) : null;
     let isGoogleAds = looksLikeGoogleAds({ bsSource: sourceHint, utmSource, gclidLike });
 
@@ -259,10 +261,10 @@ async function syncAttributedOrdersToAdsDb(options = {}) {
       if (mapping && mapping.campaignId) {
         campaignId = mapping.campaignId;
         adgroupId = mapping.adgroupId || adgroupId || '_all_';
-        attributionMethod = 'landing_site.' + (clickKind || 'click_id') + '_cache';
+        attributionMethod = 'landing_site.gclid_cache';
         isGoogleAds = true;
       } else {
-        attributionMethod = attributionMethod || ('landing_site.' + (clickKind || 'click_id') + '_unmapped');
+        attributionMethod = attributionMethod || 'landing_site.gclid_unmapped';
       }
     }
 
@@ -279,6 +281,10 @@ async function syncAttributedOrdersToAdsDb(options = {}) {
       adgroupId: adgroupId || (campaignId ? '_all_' : null),
       adId: adId || null,
       gclid: gclid || null,
+      gbraid: gbraid || null,
+      wbraid: wbraid || null,
+      clickIdType: clickIdType || null,
+      clickIdValue: clickIdValue || null,
       countryCode: cc,
       sessionId: null,
       visitorCountryCode: null,
@@ -504,13 +510,22 @@ async function syncAttributedOrdersToAdsDb(options = {}) {
       const sp = safeUrlParams(sess.entryUrl);
       const gl = extractGclidLike(sp);
       const picked = pickClickId(gl);
-      if (picked && picked.id) {
-        o.gclid = o.gclid || picked.id;
-        const mapping = await getGclidMappingCached(adsDb, gclidCache, picked.id);
+      const gclid = gl && gl.gclid ? String(gl.gclid).trim() : null;
+      const gbraid = gl && gl.gbraid ? String(gl.gbraid).trim() : null;
+      const wbraid = gl && gl.wbraid ? String(gl.wbraid).trim() : null;
+      if (gclid) o.gclid = o.gclid || gclid;
+      if (gbraid) o.gbraid = o.gbraid || gbraid;
+      if (wbraid) o.wbraid = o.wbraid || wbraid;
+      if (!o.clickIdValue && picked && picked.id) {
+        o.clickIdValue = String(picked.id).trim();
+        o.clickIdType = picked && picked.kind ? String(picked.kind).trim() : null;
+      }
+      if (gclid) {
+        const mapping = await getGclidMappingCached(adsDb, gclidCache, gclid);
         if (mapping && mapping.campaignId) {
           o.campaignId = mapping.campaignId;
           o.adgroupId = mapping.adgroupId || '_all_';
-          if (!o.attributionMethod) o.attributionMethod = 'purchase_events.session.' + (picked.kind || 'click_id') + '_cache';
+          if (!o.attributionMethod) o.attributionMethod = 'purchase_events.session.gclid_cache';
           attributed++;
           continue;
         }
@@ -547,15 +562,24 @@ async function syncAttributedOrdersToAdsDb(options = {}) {
         attributed++;
         continue;
       }
-      const picked = pickClickId(urlAttrib && urlAttrib.gclidLike ? urlAttrib.gclidLike : null);
-      const clickId = picked && picked.id ? picked.id : (urlAttrib && urlAttrib.gclid ? urlAttrib.gclid : null);
-      if (!o.campaignId && clickId) {
-        o.gclid = o.gclid || clickId;
-        const mapping = await getGclidMappingCached(adsDb, gclidCache, clickId);
+      const gl = urlAttrib && urlAttrib.gclidLike ? urlAttrib.gclidLike : null;
+      const picked = pickClickId(gl);
+      const gclid = gl && gl.gclid ? String(gl.gclid).trim() : (urlAttrib && urlAttrib.gclid ? String(urlAttrib.gclid).trim() : null);
+      const gbraid = gl && gl.gbraid ? String(gl.gbraid).trim() : null;
+      const wbraid = gl && gl.wbraid ? String(gl.wbraid).trim() : null;
+      if (gclid) o.gclid = o.gclid || gclid;
+      if (gbraid) o.gbraid = o.gbraid || gbraid;
+      if (wbraid) o.wbraid = o.wbraid || wbraid;
+      if (!o.clickIdValue && picked && picked.id) {
+        o.clickIdValue = String(picked.id).trim();
+        o.clickIdType = picked && picked.kind ? String(picked.kind).trim() : null;
+      }
+      if (!o.campaignId && gclid) {
+        const mapping = await getGclidMappingCached(adsDb, gclidCache, gclid);
         if (mapping && mapping.campaignId) {
           o.campaignId = mapping.campaignId;
           o.adgroupId = mapping.adgroupId || '_all_';
-          o.attributionMethod = 'purchase_events.page_url.' + ((picked && picked.kind) ? picked.kind : 'click_id') + '_cache';
+          o.attributionMethod = 'purchase_events.page_url.gclid_cache';
           attributed++;
           continue;
         }
@@ -573,9 +597,9 @@ async function syncAttributedOrdersToAdsDb(options = {}) {
     await adsDb.run(
       `
         INSERT INTO ads_orders_attributed
-          (shop, order_id, created_at_ms, currency, total_price, revenue_gbp, source, campaign_id, adgroup_id, ad_id, gclid, country_code, attribution_method, landing_site, session_id, visitor_country_code, visitor_device_type, visitor_network, updated_at)
+          (shop, order_id, created_at_ms, currency, total_price, revenue_gbp, source, campaign_id, adgroup_id, ad_id, gclid, gbraid, wbraid, click_id_type, click_id_value, country_code, attribution_method, landing_site, session_id, visitor_country_code, visitor_device_type, visitor_network, updated_at)
         VALUES
-          (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT (shop, order_id) DO UPDATE SET
           created_at_ms = EXCLUDED.created_at_ms,
           currency = EXCLUDED.currency,
@@ -586,6 +610,10 @@ async function syncAttributedOrdersToAdsDb(options = {}) {
           adgroup_id = COALESCE(NULLIF(EXCLUDED.adgroup_id, ''), ads_orders_attributed.adgroup_id),
           ad_id = COALESCE(NULLIF(EXCLUDED.ad_id, ''), ads_orders_attributed.ad_id),
           gclid = COALESCE(NULLIF(EXCLUDED.gclid, ''), ads_orders_attributed.gclid),
+          gbraid = COALESCE(NULLIF(EXCLUDED.gbraid, ''), ads_orders_attributed.gbraid),
+          wbraid = COALESCE(NULLIF(EXCLUDED.wbraid, ''), ads_orders_attributed.wbraid),
+          click_id_type = COALESCE(NULLIF(EXCLUDED.click_id_type, ''), ads_orders_attributed.click_id_type),
+          click_id_value = COALESCE(NULLIF(EXCLUDED.click_id_value, ''), ads_orders_attributed.click_id_value),
           country_code = COALESCE(NULLIF(EXCLUDED.country_code, ''), ads_orders_attributed.country_code),
           session_id = COALESCE(NULLIF(EXCLUDED.session_id, ''), ads_orders_attributed.session_id),
           visitor_country_code = COALESCE(NULLIF(EXCLUDED.visitor_country_code, ''), ads_orders_attributed.visitor_country_code),
@@ -607,6 +635,10 @@ async function syncAttributedOrdersToAdsDb(options = {}) {
         o.adgroupId || null,
         o.adId || null,
         o.gclid || null,
+        o.gbraid || null,
+        o.wbraid || null,
+        o.clickIdType || null,
+        o.clickIdValue || null,
         o.countryCode || null,
         o.attributionMethod || null,
         o.landingSite || null,

@@ -1196,6 +1196,7 @@
       var countEl = document.getElementById('ads-issues-count');
       if (badge) badge.style.display = _issuesOpenCount > 0 ? 'inline-flex' : 'none';
       if (countEl) countEl.textContent = _issuesOpenCount > 0 ? String(_issuesOpenCount) : '';
+      try { renderTotalsCardFromState(); } catch (_) {}
     }).catch(function () {});
   }
 
@@ -1277,6 +1278,7 @@
     var path = '/api/ads/google/goal-health' + (shop ? '?shop=' + encodeURIComponent(shop) : '');
     fetchJson(path).then(function (data) {
       if (!data || !data.ok) return;
+      _lastGoalHealth = data;
       var el = document.getElementById('ads-goal-health-content');
       var card = document.getElementById('ads-goal-health-card');
       if (!el || !card) return;
@@ -1286,6 +1288,7 @@
       });
       if (!hasProvisionedGoal) {
         card.style.display = 'none';
+        try { renderTotalsCardFromState(); } catch (_) {}
         return;
       }
       var c7 = data.coverage_7d || {};
@@ -1297,6 +1300,7 @@
         '<div class="mb-2"><strong>30d</strong> Revenue: ' + (c30.revenue ? (c30.revenue.success + ' success, ' + (c30.revenue.pending || 0) + ' pending') : '—') + ' · Profit: ' + (c30.profit ? (c30.profit.success + ' success, ' + (c30.profit.pending || 0) + ' pending') : '—') + '</div>' +
         '<div class="small">Missing click ID: ' + (rec.missing_click_id_orders != null ? rec.missing_click_id_orders : '—') + ' · Failed uploads: ' + (rec.failed_uploads != null ? rec.failed_uploads : '—') + '</div>';
       card.style.display = '';
+      try { renderTotalsCardFromState(); } catch (_) {}
     }).catch(function () {});
   }
 
@@ -1856,6 +1860,7 @@
   var _lastErrors = [];
   var _lastErrorsPayload = null;
   var _issuesOpenCount = 0;
+  var _lastGoalHealth = null;
   var _issuesSummaryPollTimer = null;
 
   function renderLoading(root, title, step) {
@@ -2051,10 +2056,12 @@
     var issuesOpen = typeof _issuesOpenCount === 'number' ? _issuesOpenCount : 0;
     actions.style.display = '';
     actions.innerHTML =
-      '<label class="form-check form-check-inline m-0 me-auto" style="user-select:none;white-space:nowrap;" aria-label="Hide paused campaigns">' +
+      '<label class="form-check form-check-inline m-0" style="user-select:none;white-space:nowrap;" aria-label="Hide paused campaigns">' +
         '<input class="form-check-input" type="checkbox" id="ads-hide-paused"' + (hidePaused ? ' checked' : '') + '>' +
         '<span class="form-check-label">Hide paused</span>' +
       '</label>' +
+      '<a class="btn btn-outline-secondary btn-sm" href="/settings?tab=integrations&integrationsTab=googleads" style="white-space:nowrap;">Manage Settings</a>' +
+      '<span class="ms-auto"></span>' +
       '<button type="button" class="btn btn-icon btn-ghost-secondary" id="ads-issues-badge" style="display:' + (issuesOpen > 0 ? 'inline-flex' : 'none') + ';" title="Unresolved issues" aria-label="Unresolved issues">' +
         '<i class="fa-light fa-triangle-exclamation" data-icon-key="ads-issues-badge" aria-hidden="true"></i>' +
         '<span class="ms-1" id="ads-issues-count">' + (issuesOpen > 0 ? String(issuesOpen) : '') + '</span>' +
@@ -2126,6 +2133,116 @@
     renderActionsBar(status, summary);
   }
 
+  function rangeLabel(rangeKey) {
+    var k = (rangeKey == null ? '' : String(rangeKey)).trim().toLowerCase();
+    if (!k) return '—';
+    if (k === 'today') return 'Today';
+    if (k === 'yesterday') return 'Yesterday';
+    if (k === '7d') return 'Last 7 days';
+    if (k === '14d') return 'Last 14 days';
+    if (k === '30d') return 'Last 30 days';
+    if (k === 'month') return 'This month';
+    return k;
+  }
+
+  function computeCampaignTotals(campaigns) {
+    var list = Array.isArray(campaigns) ? campaigns : [];
+    var out = { spend: 0, revenue: 0, orders: 0 };
+    for (var i = 0; i < list.length; i++) {
+      var c = list[i] || {};
+      out.spend += Number(c.spend) || 0;
+      out.revenue += Number(c.revenue) || 0;
+      out.orders += Number(c.orders) || 0;
+    }
+    out.roas = out.spend > 0 ? (out.revenue / out.spend) : null;
+    return out;
+  }
+
+  function pickPostbackWindow(rangeKey) {
+    var k = (rangeKey == null ? '' : String(rangeKey)).trim().toLowerCase();
+    if (k === 'today' || k === 'yesterday') return '24h';
+    if (k === '7d' || k === '14d') return '7d';
+    return '30d';
+  }
+
+  function summarizePostback(goalHealth, windowKey) {
+    var gh = goalHealth && typeof goalHealth === 'object' ? goalHealth : null;
+    if (!gh) return null;
+    var cov = null;
+    if (windowKey === '24h') cov = gh.coverage_24h || null;
+    else if (windowKey === '7d') cov = gh.coverage_7d || null;
+    else cov = gh.coverage_30d || null;
+    if (!cov || typeof cov !== 'object') return null;
+    var pct = null;
+    if (windowKey === '24h') pct = gh.coverage_percent_24h;
+    else if (windowKey === '7d') pct = gh.coverage_percent_7d;
+    else pct = gh.coverage_percent_30d;
+    var rev = cov.revenue || {};
+    var prof = cov.profit || {};
+    var success = (Number(rev.success) || 0) + (Number(prof.success) || 0);
+    var pending = (Number(rev.pending) || 0) + (Number(prof.pending) || 0);
+    var failure = (Number(rev.failure) || 0) + (Number(prof.failure) || 0);
+    return { success: success, pending: pending, failure: failure, coverage_percent: (pct == null ? null : Number(pct)) };
+  }
+
+  function renderTotalsCard(summary, campaigns, hidePaused) {
+    var card = document.getElementById('ads-totals-card');
+    var body = document.getElementById('ads-totals-body');
+    if (!card || !body) return;
+
+    var currency = (summary && summary.currency) ? String(summary.currency) : 'GBP';
+    var totals = computeCampaignTotals(campaigns);
+    var rangeKey = summary && summary.rangeKey ? String(summary.rangeKey) : null;
+    var windowKey = pickPostbackWindow(rangeKey);
+    var pb = summarizePostback(_lastGoalHealth, windowKey);
+    var errs = (typeof _issuesOpenCount === 'number') ? _issuesOpenCount : null;
+
+    function row(label, value) {
+      return '<tr>' +
+        '<td class="text-muted" style="white-space:nowrap;">' + esc(label) + '</td>' +
+        '<td class="text-end fw-semibold">' + esc(value == null ? '—' : String(value)) + '</td>' +
+      '</tr>';
+    }
+
+    var h = '';
+    h += row('Range', rangeLabel(rangeKey));
+    h += row('Hide paused', hidePaused ? 'On' : 'Off');
+    h += row('Spend total', fmtMoney(totals.spend, currency));
+    h += row('Attributed orders', fmtNum(totals.orders));
+    h += row('Attributed revenue', fmtMoney(totals.revenue, currency));
+    h += row('ROAS', fmtRoas(totals.roas));
+
+    if (pb) {
+      h += row('Postback uploaded conversions', fmtNum(pb.success));
+      h += row('Postback upload coverage', (pb.coverage_percent == null || !Number.isFinite(pb.coverage_percent)) ? '—' : (Math.round(pb.coverage_percent * 10) / 10) + '%');
+    } else {
+      h += row('Postback uploaded conversions', '—');
+      h += row('Postback upload coverage', '—');
+    }
+
+    h += row('Errors', errs == null ? '—' : fmtNum(errs));
+
+    body.innerHTML = h || '<tr><td class="text-muted small">—</td></tr>';
+    card.classList.remove('kexo-ads-card-hidden');
+  }
+
+  function renderTotalsCardFromState() {
+    var summary = _lastSummary;
+    if (!summary) return;
+    var all = summary && Array.isArray(summary.campaigns) ? summary.campaigns : [];
+    var hidePaused = false;
+    try { hidePaused = getAdsHidePaused(); } catch (_) { hidePaused = false; }
+    var campaigns = all;
+    if (hidePaused && campaigns && campaigns.length) {
+      campaigns = campaigns.filter(function (c) {
+        if (!c) return false;
+        var st = c.campaignStatus != null ? String(c.campaignStatus) : '';
+        return (st || '').trim().toUpperCase() !== 'PAUSED';
+      });
+    }
+    renderTotalsCard(summary, campaigns, hidePaused);
+  }
+
   var _adsScrollSyncInited = false;
   function syncFooterScroll() {
     var rootWrap = document.getElementById('ads-root');
@@ -2170,6 +2287,7 @@
         return (st || '').trim().toUpperCase() !== 'PAUSED';
       });
     }
+    renderTotalsCard(summary, campaigns, hidePaused);
     var currency = (summary && summary.currency) || 'GBP';
     var note = (summary && summary.note) ? String(summary.note) : '';
     if (summary && summary.rangeKey) _lastRangeKey = String(summary.rangeKey);

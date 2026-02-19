@@ -28,13 +28,14 @@ async function getCredentials(shop) {
   const developerToken = (config.googleAdsDeveloperToken || '').trim();
   if (!developerToken) return null;
   const cfg = await getGoogleAdsConfig(shop);
-  const { customerId, loginCustomerId } = getResolvedCustomerIds(cfg);
+  const { customerId, loginCustomerId, conversionCustomerId } = getResolvedCustomerIds(cfg);
   if (!customerId) return null;
+  const targetCustomerId = conversionCustomerId || customerId;
   const refreshToken = cfg && cfg.refresh_token ? String(cfg.refresh_token) : '';
   if (!refreshToken) return null;
   try {
     const accessToken = await fetchAccessTokenFromRefreshToken(refreshToken);
-    return { accessToken, customerId, loginCustomerId, developerToken };
+    return { accessToken, customerId, conversionCustomerId, targetCustomerId, loginCustomerId, developerToken };
   } catch (e) {
     throw redactError(e);
   }
@@ -53,7 +54,7 @@ async function search(shop, query, options = {}) {
   }
   try {
     const out = await googleAdsSearch({
-      customerId: creds.customerId,
+      customerId: creds.targetCustomerId || creds.customerId,
       loginCustomerId: creds.loginCustomerId,
       developerToken: creds.developerToken,
       accessToken: creds.accessToken,
@@ -86,7 +87,7 @@ async function mutateConversionActions(shop, operations) {
   }
   const versions = getApiVersionsToTry({});
   for (const ver of versions) {
-    const url = `https://googleads.googleapis.com/${encodeURIComponent(ver)}/customers/${encodeURIComponent(creds.customerId)}/conversionActions:mutate`;
+    const url = `https://googleads.googleapis.com/${encodeURIComponent(ver)}/customers/${encodeURIComponent(creds.targetCustomerId || creds.customerId)}/conversionActions:mutate`;
     const headers = {
       Authorization: `Bearer ${creds.accessToken}`,
       'developer-token': creds.developerToken,

@@ -9,6 +9,7 @@ const { syncAttributedOrdersToAdsDb } = require('../ads/adsOrderAttributionSync'
 const { setGoogleAdsConfig } = require('../ads/adsStore');
 const { provisionGoals, getConversionGoals } = require('../ads/googleAdsGoals');
 const { fetchDiagnostics, getCachedDiagnostics } = require('../ads/googleAdsDiagnostics');
+const googleAdsClient = require('../ads/googleAdsClient');
 const { getAdsDb } = require('../ads/adsDb');
 
 const router = express.Router();
@@ -91,6 +92,49 @@ router.get('/google/goals', async (req, res) => {
   }
 });
 
+router.get('/google/conversion-actions', async (req, res) => {
+  res.setHeader('Cache-Control', 'private, max-age=60');
+  try {
+    const shop = (req.query && req.query.shop) != null ? String(req.query.shop).trim() : salesTruth.resolveShopForSales('');
+    const out = await googleAdsClient.search(
+      shop,
+      `SELECT conversion_action.resource_name, conversion_action.name, conversion_action.status, conversion_action.category, conversion_action.primary_for_goal
+       FROM conversion_action
+       WHERE conversion_action.name LIKE 'Kexo - Purchase%'`
+    );
+    if (!out || !out.ok) {
+      res.status(400).json({ ok: false, error: (out && out.error) ? String(out.error) : 'query failed', actions: [] });
+      return;
+    }
+    const diag = await getCachedDiagnostics(shop);
+    const summaries = diag && Array.isArray(diag.actionSummaries) ? diag.actionSummaries : [];
+    const byName = new Map();
+    for (const s of summaries) {
+      const name = s && s.conversion_action_name ? String(s.conversion_action_name) : '';
+      if (!name) continue;
+      byName.set(name, s);
+    }
+    const actions = (out.results || []).map((r) => {
+      const a = r && r.conversionAction ? r.conversionAction : {};
+      const name = a.name != null ? String(a.name) : '';
+      const sum = byName.get(name) || null;
+      return {
+        resource_name: a.resourceName || null,
+        name: name || null,
+        status: a.status || null,
+        category: a.category || null,
+        primary_for_goal: a.primaryForGoal === true,
+        last_upload_date_time: sum && sum.last_upload_date_time ? String(sum.last_upload_date_time) : null,
+      };
+    });
+    res.json({ ok: true, actions });
+  } catch (err) {
+    Sentry.captureException(err, { extra: { route: 'ads.google.conversion-actions' } });
+    console.error('[ads.google.conversion-actions]', err);
+    res.status(500).json({ ok: false, error: 'Internal error', actions: [] });
+  }
+});
+
 router.post('/google/provision-goals', async (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
   try {
@@ -140,17 +184,39 @@ router.get('/google/goal-health', async (req, res) => {
     const normShop = String(shop || '').trim().toLowerCase();
     const db = getAdsDb();
     const goals = await getConversionGoals(shop);
+    const coverage24h = { revenue: { queued: 0, success: 0, failure: 0, pending: 0 }, profit: { queued: 0, success: 0, failure: 0, pending: 0 } };
     const coverage7d = { revenue: { queued: 0, success: 0, failure: 0, pending: 0 }, profit: { queued: 0, success: 0, failure: 0, pending: 0 } };
     const coverage30d = { revenue: { queued: 0, success: 0, failure: 0, pending: 0 }, profit: { queued: 0, success: 0, failure: 0, pending: 0 } };
     let missingClickIdCount = 0;
     let failedUploadCount = 0;
+    let rejectedUploadCount = 0;
+    let jobsQueued = 0;
+    let lastRunAt = null;
+    let eligibleOrders24h = 0;
+    let uploadedOrders24h = 0;
+    let eligibleOrders7d = 0;
+    let uploadedOrders7d = 0;
+    let eligibleOrders30d = 0;
+    let uploadedOrders30d = 0;
     if (db && normShop) {
       const now = Date.now();
+      const ms24h = 24 * 60 * 60 * 1000;
       const ms7d = 7 * 24 * 60 * 60 * 1000;
       const ms30d = 30 * 24 * 60 * 60 * 1000;
+      const cutoff24h = now - ms24h;
       const cutoff7d = now - ms7d;
       const cutoff30d = now - ms30d;
       for (const goal of ['revenue', 'profit']) {
+        const r24 = await db.all(
+          `SELECT status, COUNT(*) AS c FROM google_ads_postback_jobs WHERE shop = ? AND goal_type = ? AND created_at >= ? GROUP BY status`,
+          [normShop, goal, cutoff24h]
+        );
+        for (const r of r24 || []) {
+          const c = Number(r.c) || 0;
+          if (r.status === 'pending' || r.status === 'retry') coverage24h[goal].pending += c;
+          else if (r.status === 'success') coverage24h[goal].success += c;
+          else if (r.status === 'failed') coverage24h[goal].failure += c;
+        }
         const r7 = await db.all(
           `SELECT status, COUNT(*) AS c FROM google_ads_postback_jobs WHERE shop = ? AND goal_type = ? AND created_at >= ? GROUP BY status`,
           [normShop, goal, cutoff7d]
@@ -182,14 +248,99 @@ router.get('/google/goal-health', async (req, res) => {
         [normShop]
       );
       failedUploadCount = failedRow && failedRow.c != null ? Number(failedRow.c) : 0;
+      rejectedUploadCount = failedUploadCount;
+
+      const queuedRow = await db.get(
+        `SELECT COUNT(*) AS c FROM google_ads_postback_jobs WHERE shop = ? AND status IN ('pending', 'retry')`,
+        [normShop]
+      );
+      jobsQueued = queuedRow && queuedRow.c != null ? Number(queuedRow.c) : 0;
+
+      const lastRunRow = await db.get(
+        `SELECT MAX(a.attempted_at) AS ts
+         FROM google_ads_postback_attempts a
+         INNER JOIN google_ads_postback_jobs j ON j.id = a.job_id
+         WHERE j.shop = ?`,
+        [normShop]
+      );
+      lastRunAt = lastRunRow && lastRunRow.ts != null ? Number(lastRunRow.ts) : null;
+
+      const eligibleRow7 = await db.get(
+        `SELECT COUNT(DISTINCT order_id) AS c
+         FROM ads_orders_attributed
+         WHERE shop = ? AND created_at_ms >= ?
+           AND (
+             (gclid IS NOT NULL AND TRIM(gclid) != '')
+             OR (gbraid IS NOT NULL AND TRIM(gbraid) != '')
+             OR (wbraid IS NOT NULL AND TRIM(wbraid) != '')
+           )`,
+        [normShop, cutoff7d]
+      ).catch(() => null);
+      eligibleOrders7d = eligibleRow7 && eligibleRow7.c != null ? Number(eligibleRow7.c) : 0;
+      const uploadedRow7 = await db.get(
+        `SELECT COUNT(DISTINCT order_id) AS c
+         FROM google_ads_postback_jobs
+         WHERE shop = ? AND created_at >= ? AND status = 'success'`,
+        [normShop, cutoff7d]
+      ).catch(() => null);
+      uploadedOrders7d = uploadedRow7 && uploadedRow7.c != null ? Number(uploadedRow7.c) : 0;
+
+      const eligibleRow24 = await db.get(
+        `SELECT COUNT(DISTINCT order_id) AS c
+         FROM ads_orders_attributed
+         WHERE shop = ? AND created_at_ms >= ?
+           AND (
+             (gclid IS NOT NULL AND TRIM(gclid) != '')
+             OR (gbraid IS NOT NULL AND TRIM(gbraid) != '')
+             OR (wbraid IS NOT NULL AND TRIM(wbraid) != '')
+           )`,
+        [normShop, cutoff24h]
+      ).catch(() => null);
+      eligibleOrders24h = eligibleRow24 && eligibleRow24.c != null ? Number(eligibleRow24.c) : 0;
+      const uploadedRow24 = await db.get(
+        `SELECT COUNT(DISTINCT order_id) AS c
+         FROM google_ads_postback_jobs
+         WHERE shop = ? AND created_at >= ? AND status = 'success'`,
+        [normShop, cutoff24h]
+      ).catch(() => null);
+      uploadedOrders24h = uploadedRow24 && uploadedRow24.c != null ? Number(uploadedRow24.c) : 0;
+
+      const eligibleRow30 = await db.get(
+        `SELECT COUNT(DISTINCT order_id) AS c
+         FROM ads_orders_attributed
+         WHERE shop = ? AND created_at_ms >= ?
+           AND (
+             (gclid IS NOT NULL AND TRIM(gclid) != '')
+             OR (gbraid IS NOT NULL AND TRIM(gbraid) != '')
+             OR (wbraid IS NOT NULL AND TRIM(wbraid) != '')
+           )`,
+        [normShop, cutoff30d]
+      ).catch(() => null);
+      eligibleOrders30d = eligibleRow30 && eligibleRow30.c != null ? Number(eligibleRow30.c) : 0;
+      const uploadedRow30 = await db.get(
+        `SELECT COUNT(DISTINCT order_id) AS c
+         FROM google_ads_postback_jobs
+         WHERE shop = ? AND created_at >= ? AND status = 'success'`,
+        [normShop, cutoff30d]
+      ).catch(() => null);
+      uploadedOrders30d = uploadedRow30 && uploadedRow30.c != null ? Number(uploadedRow30.c) : 0;
     }
     const diagnostics = await getCachedDiagnostics(shop);
+    const coveragePercent24h = eligibleOrders24h > 0 ? Math.round((uploadedOrders24h / eligibleOrders24h) * 1000) / 10 : null;
+    const coveragePercent7d = eligibleOrders7d > 0 ? Math.round((uploadedOrders7d / eligibleOrders7d) * 1000) / 10 : null;
+    const coveragePercent30d = eligibleOrders30d > 0 ? Math.round((uploadedOrders30d / eligibleOrders30d) * 1000) / 10 : null;
     res.json({
       ok: true,
       goals,
+      coverage_24h: coverage24h,
       coverage_7d: coverage7d,
       coverage_30d: coverage30d,
-      reconciliation: { missing_click_id_orders: missingClickIdCount, failed_uploads: failedUploadCount },
+      reconciliation: { missing_click_id_orders: missingClickIdCount, failed_uploads: failedUploadCount, rejected_uploads: rejectedUploadCount },
+      jobs_queued: jobsQueued,
+      last_run_at: lastRunAt,
+      coverage_percent_24h: coveragePercent24h,
+      coverage_percent_7d: coveragePercent7d,
+      coverage_percent_30d: coveragePercent30d,
       diagnostics: diagnostics ? { clientSummary: diagnostics.clientSummary, actionSummaries: diagnostics.actionSummaries, fetched_at: diagnostics.fetched_at } : null,
     });
   } catch (err) {

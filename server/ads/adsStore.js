@@ -101,6 +101,7 @@ function getResolvedCustomerIds(cfg) {
   return {
     customerId: n(cfg && cfg.customer_id != null ? cfg.customer_id : config.googleAdsCustomerId),
     loginCustomerId: n(cfg && cfg.login_customer_id != null ? cfg.login_customer_id : config.googleAdsLoginCustomerId),
+    conversionCustomerId: n(cfg && cfg.conversion_customer_id != null ? cfg.conversion_customer_id : ''),
   };
 }
 

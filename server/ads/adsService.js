@@ -40,7 +40,7 @@ async function getStatus(shop) {
   const adsDb = getAdsDb();
   const providerCfg = await getGoogleAdsConfig(shop);
   const refreshToken = providerCfg && providerCfg.refresh_token ? String(providerCfg.refresh_token).trim() : '';
-  const { customerId, loginCustomerId } = getResolvedCustomerIds(providerCfg);
+  const { customerId, loginCustomerId, conversionCustomerId } = getResolvedCustomerIds(providerCfg);
   const developerToken = config.googleAdsDeveloperToken != null ? String(config.googleAdsDeveloperToken).trim() : '';
 
   const configured = !!(adsDb && developerToken && customerId);
@@ -57,6 +57,7 @@ async function getStatus(shop) {
         adsDb: !!adsDb,
         customerId: customerId || null,
         loginCustomerId: loginCustomerId || null,
+        conversionCustomerId: conversionCustomerId || null,
         hasRefreshToken: !!refreshToken,
         hasDeveloperToken: !!developerToken,
       },

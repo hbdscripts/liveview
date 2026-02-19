@@ -88,6 +88,38 @@ router.get('/', async (req, res) => {
   }
 });
 
+router.get('/:id', async (req, res) => {
+  res.setHeader('Cache-Control', 'private, max-age=15');
+  try {
+    const id = req.params && req.params.id != null ? String(req.params.id).trim() : '';
+    const shop = resolveShop(req);
+    if (!id || !/^\d+$/.test(id)) {
+      res.status(400).json({ ok: false, error: 'Invalid issue id' });
+      return;
+    }
+    const db = getAdsDb();
+    if (!db) {
+      res.status(503).json({ ok: false, error: 'Ads DB not available' });
+      return;
+    }
+    const normShop = String(shop || '').trim().toLowerCase();
+    const row = await db.get(
+      `SELECT id, shop, source, severity, status, affected_goal, error_code, error_message, suggested_fix, first_seen_at, last_seen_at, resolved_at, resolution_note, created_at, updated_at
+       FROM google_ads_issues WHERE id = ? AND shop = ? LIMIT 1`,
+      [id, normShop]
+    );
+    if (!row) {
+      res.status(404).json({ ok: false, error: 'Issue not found' });
+      return;
+    }
+    res.json({ ok: true, issue: redactIssue(row) });
+  } catch (err) {
+    Sentry.captureException(err, { extra: { route: 'google-ads.issues.get' } });
+    console.error('[google-ads.issues.get]', err);
+    res.status(500).json({ ok: false, error: 'Internal error' });
+  }
+});
+
 router.post('/:id/resolve', async (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
   try {

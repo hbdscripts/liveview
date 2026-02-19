@@ -23,6 +23,11 @@ const {
   defaultProfitRulesConfigV1,
   normalizeProfitRulesConfigV1,
 } = require('../profitRulesConfig');
+const {
+  GOOGLE_ADS_PROFIT_CONFIG_V1_KEY,
+  defaultGoogleAdsProfitConfigV1,
+  normalizeGoogleAdsProfitConfigV1,
+} = require('../googleAdsProfitConfig');
 const { getThemeIconGlyphSettingKeys } = require('../shared/icon-registry');
 
 const PIXEL_SESSION_MODE_KEY = 'pixel_session_mode'; // legacy | shared_ttl
@@ -1324,6 +1329,7 @@ async function readSettingsPayload() {
   let chartsUiConfig = defaultChartsUiConfigV1();
   let tablesUiConfig = defaultTablesUiConfigV1();
   let profitRules = defaultProfitRulesConfigV1();
+  let googleAdsProfitConfig = defaultGoogleAdsProfitConfigV1();
   let insightsVariantsConfig = defaultVariantsConfigV1();
   let settingsScopeMode = 'global';
   let pageLoaderEnabled = defaultPageLoaderEnabledV1();
@@ -1339,6 +1345,7 @@ async function readSettingsPayload() {
       CHARTS_UI_CONFIG_V1_KEY,
       TABLES_UI_CONFIG_V1_KEY,
       PROFIT_RULES_V1_KEY,
+      GOOGLE_ADS_PROFIT_CONFIG_V1_KEY,
       VARIANTS_CONFIG_KEY,
       GOOGLE_ADS_POSTBACK_ENABLED_KEY,
     ]);
@@ -1380,6 +1387,10 @@ async function readSettingsPayload() {
     profitRules = normalizeProfitRulesConfigV1(raw);
   } catch (_) {}
   try {
+    const raw = rawMap[GOOGLE_ADS_PROFIT_CONFIG_V1_KEY];
+    googleAdsProfitConfig = normalizeGoogleAdsProfitConfigV1(raw);
+  } catch (_) {}
+  try {
     const raw = rawMap[VARIANTS_CONFIG_KEY];
     insightsVariantsConfig = normalizeVariantsConfigV1(raw);
   } catch (_) {}
@@ -1404,6 +1415,7 @@ async function readSettingsPayload() {
     chartsUiConfig,
     tablesUiConfig,
     profitRules,
+    googleAdsProfitConfig,
     insightsVariantsConfig,
     pageLoaderEnabled,
     googleAdsPostbackEnabled,
@@ -1525,6 +1537,22 @@ async function postSettings(req, res) {
       await store.setSetting('google_ads_postback_enabled', v ? 'true' : 'false');
     } catch (err) {
       return res.status(500).json({ ok: false, error: err && err.message ? String(err.message) : 'Failed to save postback setting' });
+    }
+  }
+
+  // Google Ads profit config (v1) – used for Profit conversion uploads
+  if (Object.prototype.hasOwnProperty.call(body, 'googleAdsProfitConfig')) {
+    try {
+      if (body.googleAdsProfitConfig == null) {
+        await store.setSetting(GOOGLE_ADS_PROFIT_CONFIG_V1_KEY, '');
+      } else {
+        const normalized = normalizeGoogleAdsProfitConfigV1(body.googleAdsProfitConfig);
+        const json = JSON.stringify(normalized);
+        if (json.length > 5000) throw new Error('Google Ads profit config too large');
+        await store.setSetting(GOOGLE_ADS_PROFIT_CONFIG_V1_KEY, json);
+      }
+    } catch (err) {
+      return res.status(500).json({ ok: false, error: err && err.message ? String(err.message) : 'Failed to save Google Ads profit config' });
     }
   }
 

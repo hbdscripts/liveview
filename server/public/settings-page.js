@@ -1042,184 +1042,510 @@
     });
   }
 
-  function wireGoogleAdsActions() {
-    var msgEl = document.getElementById('settings-ga-msg');
-    var outEl = document.getElementById('settings-ga-output');
-    if (!msgEl || !outEl) return;
+  var gaIssueModalBackdropEl = null;
+  function ensureGaIssueModalBackdrop() {
+    if (gaIssueModalBackdropEl && gaIssueModalBackdropEl.parentNode) return;
+    var el = document.createElement('div');
+    el.className = 'modal-backdrop fade show';
+    document.body.appendChild(el);
+    gaIssueModalBackdropEl = el;
+  }
 
-    function setMsg(t, ok) {
-      msgEl.textContent = t || '';
-      msgEl.className = 'form-hint ' + (ok ? 'text-success' : 'text-danger');
+  function closeGaIssueModal() {
+    var modal = document.getElementById('settings-ga-issue-modal');
+    if (!modal) return;
+    modal.classList.remove('show');
+    modal.classList.add('kexo-modal-hidden');
+    modal.style.display = 'none';
+    modal.setAttribute('aria-hidden', 'true');
+    try { document.body.classList.remove('modal-open'); } catch (_) {}
+    if (gaIssueModalBackdropEl && gaIssueModalBackdropEl.parentNode) {
+      gaIssueModalBackdropEl.parentNode.removeChild(gaIssueModalBackdropEl);
+    }
+    gaIssueModalBackdropEl = null;
+    try { modal.removeAttribute('data-issue-id'); } catch (_) {}
+  }
+
+  function openGaIssueModal(issue) {
+    var modal = document.getElementById('settings-ga-issue-modal');
+    if (!modal) return;
+    var titleEl = document.getElementById('settings-ga-issue-modal-title');
+    var bodyEl = document.getElementById('settings-ga-issue-modal-body');
+    if (titleEl) titleEl.textContent = (issue && issue.title) ? String(issue.title) : 'Issue';
+    if (bodyEl) bodyEl.innerHTML = '<div class="text-muted small">Loading…</div>';
+    try { modal.setAttribute('data-issue-id', (issue && issue.id != null) ? String(issue.id) : ''); } catch (_) {}
+    ensureGaIssueModalBackdrop();
+    modal.style.display = 'block';
+    modal.classList.remove('kexo-modal-hidden');
+    modal.classList.add('show');
+    modal.setAttribute('aria-hidden', 'false');
+    try { document.body.classList.add('modal-open'); } catch (_) {}
+  }
+
+  function wireGoogleAdsSettingsUi() {
+    var root = document.documentElement;
+    if (root && root.getAttribute('data-kexo-ga-settings-wired') === '1') return;
+    try { root && root.setAttribute('data-kexo-ga-settings-wired', '1'); } catch (_) {}
+
+    var connMsgEl = document.getElementById('settings-ga-connection-msg');
+    var signinBtn = document.getElementById('settings-ga-signin-btn');
+    var reconnectBtn = document.getElementById('settings-ga-reconnect-btn');
+    var testConnBtn = document.getElementById('settings-ga-test-connection-btn');
+    var disconnectBtn = document.getElementById('settings-ga-disconnect-btn');
+    var provisionBtn = document.getElementById('settings-ga-provision-goals-btn');
+    var postbackCb = document.getElementById('settings-ga-postback-enabled');
+    var issuesRefreshBtn = document.getElementById('settings-ga-issues-refresh-btn');
+
+    var profitPercentEl = document.getElementById('settings-ga-profit-simple-percent');
+    var profitFixedEl = document.getElementById('settings-ga-profit-simple-fixed');
+    var profitPreviewEl = document.getElementById('settings-ga-profit-preview');
+    var profitSaveBtn = document.getElementById('settings-ga-profit-save-btn');
+    var profitMsgEl = document.getElementById('settings-ga-profit-msg');
+
+    var issueModalCloseBtn = document.getElementById('settings-ga-issue-modal-close');
+    var issueModalDismissBtn = document.getElementById('settings-ga-issue-modal-dismiss');
+    var issueModalResolveBtn = document.getElementById('settings-ga-issue-modal-resolve');
+
+    if (!signinBtn && !reconnectBtn && !testConnBtn && !disconnectBtn && !provisionBtn && !postbackCb && !issuesRefreshBtn && !profitSaveBtn) return;
+
+    function setHint(el, text, ok) {
+      if (!el) return;
+      el.textContent = text || '';
+      if (ok === true) el.className = 'form-hint text-success';
+      else if (ok === false) el.className = 'form-hint text-danger';
+      else el.className = 'form-hint';
     }
 
-    function setOut(obj) {
-      try { outEl.textContent = JSON.stringify(obj, null, 2); }
-      catch (_) { outEl.textContent = String(obj || ''); }
-    }
-
-    function fetchJson(url, opts) {
-      return fetch(url, opts || { credentials: 'same-origin', cache: 'no-store' })
+    function fetchJson(url, opts, timeoutMs) {
+      var o = opts && typeof opts === 'object' ? { ...opts } : {};
+      if (!o.credentials) o.credentials = 'same-origin';
+      if (!o.cache) o.cache = 'no-store';
+      var tm = typeof timeoutMs === 'number' ? timeoutMs : 25000;
+      return fetchWithTimeout(url, o, tm)
         .then(function (r) {
           return r.text().then(function (t) {
             var j = null;
             try { j = t ? JSON.parse(t) : null; } catch (_) {}
             return { ok: r.ok, status: r.status, json: j, text: t };
           });
+        })
+        .catch(function (e) {
+          return { ok: false, status: 0, json: null, text: '', error: e && e.message ? e.message : 'Request failed' };
         });
     }
 
-    var statusBtn = document.getElementById('settings-ga-status-btn');
-    if (statusBtn) {
-      statusBtn.addEventListener('click', function () {
-        setMsg('Fetching status…', true);
-        fetchJson((API || '') + '/api/ads/status', { credentials: 'same-origin', cache: 'no-store' })
-          .then(function (r) {
-            setOut({ endpoint: 'GET /api/ads/status', status: r.status, ok: r.ok, body: r.json || r.text });
-            setMsg(r.ok ? 'Status OK' : ('Status failed (' + r.status + ')'), r.ok);
-          })
-          .catch(function (err) {
-            setMsg('Status failed: ' + (err && err.message ? err.message : 'error'), false);
-          });
-      });
+    function apiGet(path) {
+      return fetchJson((API || '') + path, { method: 'GET' }, 25000);
+    }
+    function apiPost(path, body) {
+      return fetchJson((API || '') + path, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body || {}),
+      }, 35000);
     }
 
-    var summaryBtn = document.getElementById('settings-ga-summary-btn');
-    if (summaryBtn) {
-      summaryBtn.addEventListener('click', function () {
-        setMsg('Fetching summary…', true);
-        fetchJson((API || '') + '/api/ads/summary?range=7d', { credentials: 'same-origin', cache: 'no-store' })
-          .then(function (r) {
-            setOut({ endpoint: 'GET /api/ads/summary?range=7d', status: r.status, ok: r.ok, body: r.json || r.text });
-            setMsg(r.ok ? 'Summary OK' : ('Summary failed (' + r.status + ')'), r.ok);
-          })
-          .catch(function (err) {
-            setMsg('Summary failed: ' + (err && err.message ? err.message : 'error'), false);
-          });
-      });
+    function safeText(s) {
+      if (s == null) return '—';
+      var t = String(s);
+      return t ? t : '—';
     }
 
-    function wireRefresh(btnId, range) {
-      var btn = document.getElementById(btnId);
-      if (!btn) return;
-      btn.addEventListener('click', function () {
-        setMsg('Refreshing ' + range + '…', true);
-        fetchJson((API || '') + '/api/ads/refresh?range=' + encodeURIComponent(range), {
-          method: 'POST',
-          credentials: 'same-origin',
-          cache: 'no-store'
-        })
-          .then(function (r) {
-            setOut({ endpoint: 'POST /api/ads/refresh?range=' + range, status: r.status, ok: r.ok, body: r.json || r.text });
-            setMsg(r.ok ? ('Refresh ' + range + ' complete') : ('Refresh failed (' + r.status + ')'), r.ok);
-          })
-          .catch(function (err) {
-            setMsg('Refresh failed: ' + (err && err.message ? err.message : 'error'), false);
-          });
-      });
+    function fmtTs(ts) {
+      if (!ts) return '—';
+      try { return formatTs(ts); } catch (_) {}
+      try { return new Date(Number(ts)).toISOString(); } catch (_) { return '—'; }
     }
 
-    wireRefresh('settings-ga-refresh-7d-btn', '7d');
-    wireRefresh('settings-ga-refresh-month-btn', 'month');
-
-    var disconnectBtn = document.getElementById('settings-ga-disconnect-btn');
-    if (disconnectBtn) {
-      disconnectBtn.addEventListener('click', function () {
-        setMsg('Disconnecting…', true);
-        var shop = getShopParam();
-        fetchJson((API || '') + '/api/ads/google/disconnect', {
-          method: 'POST',
-          credentials: 'same-origin',
-          cache: 'no-store',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ shop: shop }),
-        })
-          .then(function (r) {
-            setOut(r.json || r.text);
-            setMsg(r.ok ? 'Disconnected' : ('Failed: ' + (r.status || '')), r.ok);
-            if (r.ok) loadConfigAndPopulate();
-          })
-          .catch(function (err) {
-            setMsg('Disconnect failed: ' + (err && err.message ? err.message : 'error'), false);
-          });
-      });
+    function fmtPct(n) {
+      var v = Number(n);
+      if (!Number.isFinite(v)) return '—';
+      var pct = Math.round(v * 10) / 10;
+      return String(pct) + '%';
     }
 
-    var testConnBtn = document.getElementById('settings-ga-test-connection-btn');
-    if (testConnBtn) {
-      testConnBtn.addEventListener('click', function () {
-        setMsg('Testing connection…', true);
-        var shop = getShopParam();
-        fetchJson((API || '') + '/api/ads/google/test-connection' + (shop ? '?shop=' + encodeURIComponent(shop) : ''), { credentials: 'same-origin', cache: 'no-store' })
-          .then(function (r) {
-            setOut(r.json || r.text);
-            setMsg(r.ok && r.json && r.json.ok ? 'Connection OK' : (r.json && r.json.error ? r.json.error : 'Test failed'), r.ok && r.json && r.json.ok);
-          })
-          .catch(function (err) {
-            setMsg('Test failed: ' + (err && err.message ? err.message : 'error'), false);
-          });
-      });
+    function fmtNum(n) {
+      var v = Number(n);
+      if (!Number.isFinite(v)) return '—';
+      return String(Math.round(v));
     }
 
-    function loadGoals() {
+    function computeSuccessRate(counts) {
+      var c = counts && typeof counts === 'object' ? counts : {};
+      var success = Number(c.success) || 0;
+      var failure = Number(c.failure) || 0;
+      var pending = Number(c.pending) || 0;
+      var denom = success + failure + pending;
+      if (denom <= 0) return null;
+      return (success / denom) * 100;
+    }
+
+    function updateProfitPreview() {
+      if (!profitPreviewEl) return;
+      var pct = profitPercentEl ? (Number(profitPercentEl.value) || 0) : 0;
+      var fixed = profitFixedEl ? (Number(profitFixedEl.value) || 0) : 0;
+      var revenue = 100;
+      var profit = revenue - (revenue * (pct / 100)) - fixed;
+      if (!Number.isFinite(profit)) profit = 0;
+      profit = Math.max(0, Math.round(profit * 100) / 100);
+      profitPreviewEl.textContent = '£' + profit.toFixed(2);
+    }
+
+    function readProfitDraft() {
+      var mode = 'simple';
+      var mSimple = document.getElementById('settings-ga-profit-mode-simple');
+      var mCosts = document.getElementById('settings-ga-profit-mode-costs');
+      if (mCosts && mCosts.checked) mode = 'costs';
+      else if (mSimple && mSimple.checked) mode = 'simple';
+      var pct = profitPercentEl ? (Number(profitPercentEl.value) || 0) : 0;
+      var fixed = profitFixedEl ? (Number(profitFixedEl.value) || 0) : 0;
+      return {
+        v: 1,
+        mode: mode,
+        simple: {
+          percent_of_revenue: Math.max(0, Math.min(100, pct)),
+          fixed_per_order_gbp: Math.max(0, fixed),
+        },
+      };
+    }
+
+    function applyProfitDraft(cfg) {
+      var c = cfg && typeof cfg === 'object' ? cfg : null;
+      var mode = c && c.mode ? String(c.mode) : 'simple';
+      var mSimple = document.getElementById('settings-ga-profit-mode-simple');
+      var mCosts = document.getElementById('settings-ga-profit-mode-costs');
+      if (mCosts) mCosts.checked = mode === 'costs';
+      if (mSimple) mSimple.checked = mode !== 'costs';
+      var pct = c && c.simple && c.simple.percent_of_revenue != null ? Number(c.simple.percent_of_revenue) : 0;
+      var fixed = c && c.simple && c.simple.fixed_per_order_gbp != null ? Number(c.simple.fixed_per_order_gbp) : 0;
+      if (profitPercentEl) profitPercentEl.value = Number.isFinite(pct) ? String(pct) : '';
+      if (profitFixedEl) profitFixedEl.value = Number.isFinite(fixed) ? String(fixed) : '';
+      updateProfitPreview();
+    }
+
+    function loadConversionActions() {
+      var body = document.getElementById('settings-ga-actions-body');
+      if (!body) return Promise.resolve(false);
+      body.innerHTML = '<tr><td colspan="5" class="text-muted small">Loading…</td></tr>';
       var shop = getShopParam();
-      fetchJson((API || '') + '/api/ads/google/goals' + (shop ? '?shop=' + encodeURIComponent(shop) : ''), { credentials: 'same-origin', cache: 'no-store' })
+      var qs = shop ? ('?shop=' + encodeURIComponent(shop)) : '';
+      return apiGet('/api/ads/google/conversion-actions' + qs)
         .then(function (r) {
-          var goalsEl = document.getElementById('settings-ga-goals-output');
-          if (goalsEl) {
-            try { goalsEl.textContent = (r.json && r.json.goals) ? JSON.stringify(r.json.goals, null, 2) : (r.json ? JSON.stringify(r.json, null, 2) : '—'); }
-            catch (_) { goalsEl.textContent = '—'; }
+          if (!r || !r.ok || !r.json || !r.json.ok) {
+            body.innerHTML = '<tr><td colspan="5" class="text-muted small">No data yet.</td></tr>';
+            return false;
           }
+          var actions = Array.isArray(r.json.actions) ? r.json.actions : [];
+          if (!actions.length) {
+            body.innerHTML = '<tr><td colspan="5" class="text-muted small">No conversion actions found. Click “Provision conversion actions”.</td></tr>';
+            return true;
+          }
+          body.innerHTML = actions.map(function (a) {
+            var name = a && a.name ? String(a.name) : '—';
+            var st = a && a.status ? String(a.status) : '—';
+            var cat = a && a.category ? String(a.category) : '—';
+            var primary = a && a.primary_for_goal === true;
+            var last = a && a.last_upload_date_time ? String(a.last_upload_date_time) : null;
+            return '<tr>' +
+              '<td>' + escapeHtml(name) + '</td>' +
+              '<td><span class="text-muted small">' + escapeHtml(st) + '</span></td>' +
+              '<td><span class="text-muted small">' + escapeHtml(cat || '—') + '</span></td>' +
+              '<td class="text-center"><span class="text-muted small">' + (primary ? 'On' : 'Off') + '</span></td>' +
+              '<td class="text-end"><span class="text-muted small">' + escapeHtml(last || '—') + '</span></td>' +
+              '</tr>';
+          }).join('');
+          return true;
         })
         .catch(function () {
-          var goalsEl = document.getElementById('settings-ga-goals-output');
-          if (goalsEl) goalsEl.textContent = 'Failed to load goals';
+          body.innerHTML = '<tr><td colspan="5" class="text-muted small">Failed to load conversion actions.</td></tr>';
+          return false;
         });
     }
 
-    var provisionBtn = document.getElementById('settings-ga-provision-goals-btn');
+    function loadPostbackHealth() {
+      var shop = getShopParam();
+      var qs = shop ? ('?shop=' + encodeURIComponent(shop)) : '';
+      return apiGet('/api/ads/google/goal-health' + qs)
+        .then(function (r) {
+          var lastRunEl = document.getElementById('settings-ga-pb-last-run');
+          var queuedEl = document.getElementById('settings-ga-pb-queued');
+          var sr24El = document.getElementById('settings-ga-pb-sr-24h');
+          var sr7El = document.getElementById('settings-ga-pb-sr-7d');
+          var fail7El = document.getElementById('settings-ga-pb-failures-7d');
+          var cov7El = document.getElementById('settings-ga-pb-coverage-7d');
+          var missEl = document.getElementById('settings-ga-pb-missing-clickid');
+          var rejEl = document.getElementById('settings-ga-pb-rejected');
+          var techEl = document.getElementById('settings-ga-pb-tech');
+
+          if (!r || !r.ok || !r.json || !r.json.ok) {
+            if (lastRunEl) lastRunEl.textContent = '—';
+            if (queuedEl) queuedEl.textContent = '—';
+            if (sr24El) sr24El.textContent = '—';
+            if (sr7El) sr7El.textContent = '—';
+            if (fail7El) fail7El.textContent = '—';
+            if (cov7El) cov7El.textContent = '—';
+            if (missEl) missEl.textContent = '—';
+            if (rejEl) rejEl.textContent = '—';
+            if (techEl) techEl.textContent = safeText(r && r.json ? r.json.error : null);
+            return false;
+          }
+
+          var cov7 = r.json.coverage_7d || {};
+          var rev7 = cov7.revenue || {};
+          var prof7 = cov7.profit || {};
+          var success7 = (Number(rev7.success) || 0) + (Number(prof7.success) || 0);
+          var failure7 = (Number(rev7.failure) || 0) + (Number(prof7.failure) || 0);
+          var pending7 = (Number(rev7.pending) || 0) + (Number(prof7.pending) || 0);
+          var sr7 = computeSuccessRate({ success: success7, failure: failure7, pending: pending7 });
+
+          var cov24 = r.json.coverage_24h || {};
+          var rev24 = cov24.revenue || {};
+          var prof24 = cov24.profit || {};
+          var success24 = (Number(rev24.success) || 0) + (Number(prof24.success) || 0);
+          var failure24 = (Number(rev24.failure) || 0) + (Number(prof24.failure) || 0);
+          var pending24 = (Number(rev24.pending) || 0) + (Number(prof24.pending) || 0);
+          var sr24 = computeSuccessRate({ success: success24, failure: failure24, pending: pending24 });
+
+          if (lastRunEl) lastRunEl.textContent = safeText(r.json.last_run_at ? fmtTs(r.json.last_run_at) : null);
+          if (queuedEl) queuedEl.textContent = safeText(r.json.jobs_queued != null ? fmtNum(r.json.jobs_queued) : null);
+          if (sr24El) sr24El.textContent = sr24 == null ? '—' : fmtPct(sr24);
+          if (sr7El) sr7El.textContent = sr7 == null ? '—' : fmtPct(sr7);
+          if (fail7El) fail7El.textContent = fmtNum(failure7);
+          if (cov7El) cov7El.textContent = (r.json.coverage_percent_7d == null) ? '—' : fmtPct(r.json.coverage_percent_7d);
+          if (missEl) missEl.textContent = safeText(r.json.reconciliation && r.json.reconciliation.missing_click_id_orders != null ? fmtNum(r.json.reconciliation.missing_click_id_orders) : null);
+          if (rejEl) rejEl.textContent = safeText(r.json.reconciliation && r.json.reconciliation.rejected_uploads != null ? fmtNum(r.json.reconciliation.rejected_uploads) : null);
+          if (techEl) {
+            try { techEl.textContent = JSON.stringify(r.json, null, 2); } catch (_) { techEl.textContent = '—'; }
+          }
+          return true;
+        })
+        .catch(function () { return false; });
+    }
+
+    function normalizeIssueType(t) {
+      var s = t == null ? '' : String(t);
+      if (!s) return 'Unknown';
+      return s.replace(/_/g, ' ').toLowerCase().replace(/\b[a-z]/g, function (m) { return m.toUpperCase(); });
+    }
+
+    function renderIssues(rows) {
+      var body = document.getElementById('settings-ga-issues-body');
+      if (!body) return;
+      var list = Array.isArray(rows) ? rows : [];
+      if (!list.length) {
+        body.innerHTML = '<tr><td colspan="5" class="text-muted small">No issues found.</td></tr>';
+        return;
+      }
+      body.innerHTML = list.map(function (it) {
+        var id = it && it.id != null ? String(it.id) : '';
+        var typ = normalizeIssueType(it && (it.error_code || it.type));
+        var ord = it && it.order_id ? String(it.order_id) : (it && it.order_ref ? String(it.order_ref) : '');
+        if (!ord) {
+          var msg = it && it.error_message ? String(it.error_message) : '';
+          var m = /\bOrder\s+([A-Za-z0-9_-]{3,64})\b/.exec(msg);
+          if (m && m[1]) ord = m[1];
+        }
+        if (!ord) ord = '—';
+        var ts = it && (it.last_seen_at || it.created_at) ? fmtTs(it.last_seen_at || it.created_at) : '—';
+        var st = it && it.status ? String(it.status) : '—';
+        return '<tr>' +
+          '<td><span class="text-muted small">' + escapeHtml(typ) + '</span></td>' +
+          '<td><code class="small">' + escapeHtml(ord) + '</code></td>' +
+          '<td><span class="text-muted small">' + escapeHtml(ts) + '</span></td>' +
+          '<td><span class="text-muted small">' + escapeHtml(st) + '</span></td>' +
+          '<td class="text-end"><button type="button" class="btn btn-outline-secondary btn-sm" data-settings-ga-issue-view="1" data-issue-id="' + escapeHtml(id) + '">View details</button></td>' +
+          '</tr>';
+      }).join('');
+    }
+
+    function loadIssues() {
+      var body = document.getElementById('settings-ga-issues-body');
+      if (!body) return Promise.resolve(false);
+      body.innerHTML = '<tr><td colspan="5" class="text-muted small">Loading…</td></tr>';
+      var shop = getShopParam();
+      var filterBtn = document.querySelector('[data-settings-ga-issue-filter].active');
+      var status = filterBtn && filterBtn.getAttribute('data-settings-ga-issue-filter') ? String(filterBtn.getAttribute('data-settings-ga-issue-filter')) : 'open';
+      var qs = '?status=' + encodeURIComponent(status);
+      if (shop) qs += '&shop=' + encodeURIComponent(shop);
+      return apiGet('/api/integrations/google-ads/issues' + qs)
+        .then(function (r) {
+          if (!r || !r.ok || !r.json || !r.json.ok) {
+            body.innerHTML = '<tr><td colspan="5" class="text-muted small">Failed to load issues.</td></tr>';
+            return false;
+          }
+          renderIssues(r.json.issues || []);
+          return true;
+        })
+        .catch(function () {
+          body.innerHTML = '<tr><td colspan="5" class="text-muted small">Failed to load issues.</td></tr>';
+          return false;
+        });
+    }
+
+    function openIssueModal(issueId) {
+      var id = issueId != null ? String(issueId) : '';
+      if (!id) return;
+      openGaIssueModal({ id: id, title: 'Issue #' + id });
+      var shop = getShopParam();
+      var qs = shop ? ('?shop=' + encodeURIComponent(shop)) : '';
+      apiGet('/api/integrations/google-ads/issues/' + encodeURIComponent(id) + qs)
+        .then(function (r) {
+          var bodyEl = document.getElementById('settings-ga-issue-modal-body');
+          var titleEl = document.getElementById('settings-ga-issue-modal-title');
+          if (!bodyEl) return;
+          if (!r || !r.ok || !r.json || !r.json.ok || !r.json.issue) {
+            if (titleEl) titleEl.textContent = 'Issue';
+            bodyEl.innerHTML = '<div class="text-muted small">' + escapeHtml((r && r.json && r.json.error) ? String(r.json.error) : 'Failed to load issue') + '</div>';
+            return;
+          }
+          var it = r.json.issue;
+          if (titleEl) titleEl.textContent = normalizeIssueType(it.error_code || it.type);
+          var html = '';
+          html += '<div class="mb-2"><strong>Status</strong> <span class="text-muted">' + escapeHtml(String(it.status || '—')) + '</span></div>';
+          if (it.order_id) html += '<div class="mb-2"><strong>Order</strong> <code>' + escapeHtml(String(it.order_id)) + '</code></div>';
+          html += '<div class="mb-2"><strong>First seen</strong> <span class="text-muted">' + escapeHtml(fmtTs(it.first_seen_at || it.created_at)) + '</span></div>';
+          html += '<div class="mb-2"><strong>Last seen</strong> <span class="text-muted">' + escapeHtml(fmtTs(it.last_seen_at || it.updated_at)) + '</span></div>';
+          if (it.error_message) html += '<div class="mt-3"><div class="text-muted small mb-1">Message</div><div>' + escapeHtml(String(it.error_message)) + '</div></div>';
+          if (it.suggested_fix) html += '<div class="mt-3"><div class="text-muted small mb-1">Suggested fix</div><div>' + escapeHtml(String(it.suggested_fix)) + '</div></div>';
+          bodyEl.innerHTML = html || '<div class="text-muted small">—</div>';
+        })
+        .catch(function () {});
+    }
+
+    function resolveCurrentIssue() {
+      var modal = document.getElementById('settings-ga-issue-modal');
+      if (!modal) return;
+      var id = modal.getAttribute('data-issue-id') || '';
+      if (!id) return;
+      var shop = getShopParam();
+      apiPost('/api/integrations/google-ads/issues/' + encodeURIComponent(id) + '/resolve', { shop: shop })
+        .then(function (r) {
+          if (r && r.ok && r.json && r.json.ok) {
+            closeGaIssueModal();
+            loadIssues();
+            loadPostbackHealth();
+          }
+        })
+        .catch(function () {});
+    }
+
+    if (disconnectBtn) {
+      disconnectBtn.addEventListener('click', function () {
+        setHint(connMsgEl, 'Disconnecting…', true);
+        var shop = getShopParam();
+        apiPost('/api/ads/google/disconnect', { shop: shop })
+          .then(function (r) {
+            if (r && r.ok && r.json && r.json.ok) {
+              setHint(connMsgEl, 'Disconnected.', true);
+              loadConfigAndPopulate();
+              loadConversionActions();
+              loadPostbackHealth();
+              loadIssues();
+            } else {
+              setHint(connMsgEl, (r && r.json && r.json.error) ? String(r.json.error) : 'Disconnect failed', false);
+            }
+          })
+          .catch(function () { setHint(connMsgEl, 'Disconnect failed', false); });
+      });
+    }
+
+    if (testConnBtn) {
+      testConnBtn.addEventListener('click', function () {
+        setHint(connMsgEl, 'Testing connection…', true);
+        var shop = getShopParam();
+        var qs = shop ? ('?shop=' + encodeURIComponent(shop)) : '';
+        apiGet('/api/ads/google/test-connection' + qs)
+          .then(function (r) {
+            var ok = !!(r && r.ok && r.json && r.json.ok);
+            setHint(connMsgEl, ok ? 'Connection OK.' : ((r && r.json && r.json.error) ? String(r.json.error) : 'Test failed.'), ok);
+          })
+          .catch(function () { setHint(connMsgEl, 'Test failed.', false); });
+      });
+    }
+
     if (provisionBtn) {
       provisionBtn.addEventListener('click', function () {
-        setMsg('Provisioning goals…', true);
+        setHint(connMsgEl, 'Provisioning conversion actions…', true);
         var shop = getShopParam();
-        fetchJson((API || '') + '/api/ads/google/provision-goals', {
-          method: 'POST',
-          credentials: 'same-origin',
-          cache: 'no-store',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ shop: shop }),
-        })
+        apiPost('/api/ads/google/provision-goals', { shop: shop })
           .then(function (r) {
-            setOut(r.json || r.text);
-            setMsg(r.ok && r.json && r.json.ok ? 'Goals provisioned' : (r.json && r.json.error ? r.json.error : 'Provision failed'), r.ok && r.json && r.json.ok);
-            if (r.ok) loadGoals();
+            var ok = !!(r && r.ok && r.json && r.json.ok);
+            setHint(connMsgEl, ok ? 'Provisioned.' : ((r && r.json && r.json.error) ? String(r.json.error) : 'Provision failed.'), ok);
+            if (ok) {
+              loadConversionActions();
+              loadPostbackHealth();
+            }
           })
-          .catch(function (err) {
-            setMsg('Provision failed: ' + (err && err.message ? err.message : 'error'), false);
-          });
+          .catch(function () { setHint(connMsgEl, 'Provision failed.', false); });
       });
     }
 
-    var postbackCb = document.getElementById('settings-ga-postback-enabled');
     if (postbackCb) {
       postbackCb.addEventListener('change', function () {
-        var checked = postbackCb.checked;
-        fetch((API || '') + '/api/settings', {
-          method: 'POST',
-          credentials: 'same-origin',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ googleAdsPostbackEnabled: checked }),
-        })
-          .then(function (r) { return r.json(); })
-          .then(function (data) {
-            setMsg(checked ? 'Postback enabled' : 'Postback disabled', true);
+        var checked = !!postbackCb.checked;
+        saveSettings({ googleAdsPostbackEnabled: checked })
+          .then(function () {
+            setHint(connMsgEl, checked ? 'Conversion uploads enabled.' : 'Conversion uploads disabled.', true);
+            loadPostbackHealth();
           })
-          .catch(function () {
-            setMsg('Failed to save postback setting', false);
-          });
+          .catch(function () { setHint(connMsgEl, 'Failed to save setting.', false); });
       });
     }
 
-    loadGoals();
+    if (profitPercentEl) profitPercentEl.addEventListener('input', updateProfitPreview);
+    if (profitFixedEl) profitFixedEl.addEventListener('input', updateProfitPreview);
+
+    if (profitSaveBtn) {
+      profitSaveBtn.addEventListener('click', function () {
+        var draft = readProfitDraft();
+        setHint(profitMsgEl, 'Saving…', true);
+        saveSettings({ googleAdsProfitConfig: draft })
+          .then(function (r) {
+            if (r && r.ok) setHint(profitMsgEl, 'Saved.', true);
+            else setHint(profitMsgEl, (r && r.error) ? String(r.error) : 'Save failed.', false);
+          })
+          .catch(function () { setHint(profitMsgEl, 'Save failed.', false); });
+      });
+    }
+
+    if (issueModalCloseBtn) issueModalCloseBtn.addEventListener('click', closeGaIssueModal);
+    if (issueModalDismissBtn) issueModalDismissBtn.addEventListener('click', closeGaIssueModal);
+    if (issueModalResolveBtn) issueModalResolveBtn.addEventListener('click', resolveCurrentIssue);
+
+    document.addEventListener('click', function (e) {
+      var target = e && e.target ? e.target : null;
+      if (!target) return;
+      var viewBtn = target.closest ? target.closest('[data-settings-ga-issue-view="1"]') : null;
+      if (viewBtn) {
+        var id = viewBtn.getAttribute('data-issue-id') || '';
+        openIssueModal(id);
+        return;
+      }
+      var filterBtn = target.closest ? target.closest('[data-settings-ga-issue-filter]') : null;
+      if (filterBtn) {
+        document.querySelectorAll('[data-settings-ga-issue-filter]').forEach(function (b) {
+          b.classList.remove('active');
+        });
+        filterBtn.classList.add('active');
+        loadIssues();
+      }
+    });
+
+    if (issuesRefreshBtn) issuesRefreshBtn.addEventListener('click', function () { loadIssues(); });
+
+    try { window.__kexoApplyGoogleAdsProfitConfig = applyProfitDraft; } catch (_) {}
+    try {
+      if (window.__kexoSettingsPayload && window.__kexoSettingsPayload.googleAdsProfitConfig) {
+        applyProfitDraft(window.__kexoSettingsPayload.googleAdsProfitConfig);
+      } else {
+        applyProfitDraft(null);
+      }
+    } catch (_) { applyProfitDraft(null); }
+
+    updateProfitPreview();
+    loadConversionActions();
+    loadPostbackHealth();
+    loadIssues();
   }
 
   function renderIntegrationsFromConfig(c) {
@@ -1258,43 +1584,53 @@
     setHtml('settings-int-pixel-match', match == null ? badge('Unknown', 'warn') : (match ? badge('Match', 'ok') : badge('Mismatch', 'bad')));
     setText('settings-int-session-mode', (settings && settings.pixelSessionMode === 'shared_ttl') ? 'shared_ttl (cross-tab)' : 'legacy');
 
-    setHtml('settings-int-ga-configured', ga && ga.configured ? badge('Yes', 'ok') : badge('No', 'bad'));
-    setHtml('settings-int-ga-connected', ga && ga.connected ? badge('Yes', 'ok') : badge('No', 'bad'));
-    setText('settings-int-ga-customer-id', ga && ga.customerId ? String(ga.customerId) : '\u2014');
-    setText('settings-int-ga-login-customer-id', ga && ga.loginCustomerId ? String(ga.loginCustomerId) : '\u2014');
-    setHtml('settings-int-ga-dev-token', ga && ga.hasDeveloperToken ? badge('Set', 'ok') : badge('Missing', 'bad'));
-    setHtml('settings-int-ga-refresh-token', ga && ga.hasRefreshToken ? badge('Present', 'ok') : badge('Missing', 'bad'));
+    var connBadge = document.getElementById('settings-ga-connection-status');
+    if (connBadge) {
+      if (ga && ga.connected) connBadge.innerHTML = badge('Connected', 'ok');
+      else if (ga && ga.configured) connBadge.innerHTML = badge('Not connected', 'warn');
+      else connBadge.innerHTML = badge('Not configured', 'bad');
+    }
+    setText('settings-ga-customer-id', ga && ga.customerId ? String(ga.customerId) : '\u2014');
+    setText('settings-ga-login-customer-id', ga && ga.loginCustomerId ? String(ga.loginCustomerId) : '\u2014');
+    setText('settings-ga-conversion-customer-id', ga && ga.conversionCustomerId ? String(ga.conversionCustomerId) : '\u2014');
+    setHtml('settings-ga-devtoken-badge', ga && ga.hasDeveloperToken ? badge('Developer token: present', 'ok') : badge('Developer token: missing', 'bad'));
+    setHtml('settings-ga-refreshtoken-badge', ga && ga.hasRefreshToken ? badge('Refresh token: present', 'ok') : badge('Refresh token: missing', 'bad'));
 
     var custIdEl = document.getElementById('settings-ga-account-customer-id');
     var loginCustEl = document.getElementById('settings-ga-account-login-customer-id');
+    var convCustEl = document.getElementById('settings-ga-account-conversion-customer-id');
     if (custIdEl && (ga && ga.customerId)) custIdEl.value = String(ga.customerId);
     if (loginCustEl && (ga && ga.loginCustomerId)) loginCustEl.value = String(ga.loginCustomerId);
+    if (convCustEl && (ga && ga.conversionCustomerId)) convCustEl.value = String(ga.conversionCustomerId);
 
     var postbackCb = document.getElementById('settings-ga-postback-enabled');
     if (postbackCb) postbackCb.checked = !!(settings && settings.googleAdsPostbackEnabled);
 
-    function updateConnectHref() {
-      var btn = document.getElementById('settings-ga-connect-btn');
+    function updateConnectHrefs() {
+      var signIn = document.getElementById('settings-ga-signin-btn');
+      var reconnect = document.getElementById('settings-ga-reconnect-btn');
       var cust = document.getElementById('settings-ga-account-customer-id');
       var login = document.getElementById('settings-ga-account-login-customer-id');
-      if (!btn) return;
+      var conv = document.getElementById('settings-ga-account-conversion-customer-id');
       var sp = getShopParam();
-      var base = (typeof API !== 'undefined' ? API : '') + '/api/ads/google/connect?redirect=' + encodeURIComponent('/settings?tab=integrations');
+      var base = (typeof API !== 'undefined' ? API : '') + '/api/ads/google/connect?redirect=' + encodeURIComponent('/settings?tab=integrations&integrationsTab=googleads');
       if (sp) base += '&shop=' + encodeURIComponent(sp);
       if (cust && cust.value.trim()) base += '&customer_id=' + encodeURIComponent(cust.value.trim());
       if (login && login.value.trim()) base += '&login_customer_id=' + encodeURIComponent(login.value.trim());
-      btn.setAttribute('href', base);
+      if (conv && conv.value.trim()) base += '&conversion_customer_id=' + encodeURIComponent(conv.value.trim());
+      if (signIn) signIn.setAttribute('href', base);
+      if (reconnect) reconnect.setAttribute('href', base);
     }
-    var connectBtn = document.getElementById('settings-ga-connect-btn');
-    if (connectBtn) updateConnectHref();
-    if (custIdEl) custIdEl.addEventListener('input', updateConnectHref);
-    if (loginCustEl) loginCustEl.addEventListener('input', updateConnectHref);
+    updateConnectHrefs();
+    if (custIdEl) custIdEl.addEventListener('input', updateConnectHrefs);
+    if (loginCustEl) loginCustEl.addEventListener('input', updateConnectHrefs);
+    if (convCustEl) convCustEl.addEventListener('input', updateConnectHrefs);
 
-    var outEl = document.getElementById('settings-ga-output');
-    if (outEl) {
-      try { outEl.textContent = JSON.stringify({ ads: ads }, null, 2); }
-      catch (_) { outEl.textContent = 'Could not format Ads status'; }
-    }
+    var signInBtn = document.getElementById('settings-ga-signin-btn');
+    var reconnectBtn = document.getElementById('settings-ga-reconnect-btn');
+    var isConnected = !!(ga && ga.connected);
+    if (signInBtn) signInBtn.classList.toggle('d-none', isConnected);
+    if (reconnectBtn) reconnectBtn.classList.toggle('d-none', !isConnected);
   }
 
   function getShopParam() {
@@ -1345,6 +1681,12 @@
       .then(function (r) { return r.json(); })
       .then(function (data) {
         if (!data || !data.ok) return;
+        try { window.__kexoSettingsPayload = data; } catch (_) {}
+        try {
+          if (typeof window.__kexoApplyGoogleAdsProfitConfig === 'function') {
+            window.__kexoApplyGoogleAdsProfitConfig(data.googleAdsProfitConfig || null);
+          }
+        } catch (_) {}
         var reporting = data.reporting || {};
         var sessionMode = data.pixelSessionMode || 'legacy';
         var overrides = data.assetOverrides || {};
@@ -5065,7 +5407,7 @@
     wireAssets();
     wireGeneralSettingsSave();
     // Integrations main-tabs are wired above so left-nav child clicks can activate them.
-    wireGoogleAdsActions();
+    wireGoogleAdsSettingsUi();
     wireKpisLayoutSubTabs();
     wireInsightsLayoutSubTabs();
     wireInsightsVariantsEditor();

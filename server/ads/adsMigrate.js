@@ -332,6 +332,34 @@ async function runAdsMigrations() {
         await db.exec('CREATE INDEX IF NOT EXISTS idx_aoa_wbraid ON ads_orders_attributed(wbraid)').catch(() => null);
       },
     },
+    {
+      id: '018_ads_orders_attributed_click_id_selected',
+      up: async () => {
+        await db.exec(`ALTER TABLE ads_orders_attributed ADD COLUMN IF NOT EXISTS click_id_type TEXT`);
+        await db.exec(`ALTER TABLE ads_orders_attributed ADD COLUMN IF NOT EXISTS click_id_value TEXT`);
+        await db.exec('CREATE INDEX IF NOT EXISTS idx_aoa_click_id_type_value ON ads_orders_attributed(click_id_type, click_id_value)').catch(() => null);
+
+        // Best-effort backfill (prefer gclid, then gbraid, then wbraid).
+        await db.exec(
+          `UPDATE ads_orders_attributed
+           SET click_id_type = 'gclid', click_id_value = gclid
+           WHERE (click_id_value IS NULL OR TRIM(click_id_value) = '')
+             AND gclid IS NOT NULL AND TRIM(gclid) != ''`
+        ).catch(() => null);
+        await db.exec(
+          `UPDATE ads_orders_attributed
+           SET click_id_type = 'gbraid', click_id_value = gbraid
+           WHERE (click_id_value IS NULL OR TRIM(click_id_value) = '')
+             AND gbraid IS NOT NULL AND TRIM(gbraid) != ''`
+        ).catch(() => null);
+        await db.exec(
+          `UPDATE ads_orders_attributed
+           SET click_id_type = 'wbraid', click_id_value = wbraid
+           WHERE (click_id_value IS NULL OR TRIM(click_id_value) = '')
+             AND wbraid IS NOT NULL AND TRIM(wbraid) != ''`
+        ).catch(() => null);
+      },
+    },
   ];
 
   let applied = 0;

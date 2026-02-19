@@ -10,14 +10,16 @@ const { getConversionGoals } = require('./googleAdsGoals');
 const googleAdsClient = require('./googleAdsClient');
 const { fetchAccessTokenFromRefreshToken } = require('./googleAdsSpendSync');
 const config = require('../config');
-const { PROFIT_RULES_V1_KEY } = require('../profitRulesConfig');
-const { normalizeProfitRulesConfigV1 } = require('../profitRulesConfig');
+const { GOOGLE_ADS_PROFIT_CONFIG_V1_KEY, normalizeGoogleAdsProfitConfigV1 } = require('../googleAdsProfitConfig');
 
 const MAX_RETRIES = 5;
 const BATCH_SIZE = 1000;
 const INITIAL_BACKOFF_MS = 2000;
 
 function pickClickIdFromAttribution(row) {
+  const t = row && row.click_id_type ? String(row.click_id_type).trim().toLowerCase() : null;
+  const v = row && row.click_id_value ? String(row.click_id_value).trim() : null;
+  if (v && (t === 'gclid' || t === 'gbraid' || t === 'wbraid')) return { value: v, type: t };
   const gclid = row && row.gclid ? String(row.gclid).trim() : null;
   if (gclid) return { value: gclid, type: 'gclid' };
   const gbraid = row && row.gbraid ? String(row.gbraid).trim() : null;
@@ -27,23 +29,19 @@ function pickClickIdFromAttribution(row) {
   return { value: null, type: null };
 }
 
-/** Single-order profit deductions (non-ads only): revenue - sum(percent_revenue + fixed_per_order). */
-function computeProfitForOrder(revenueGbp, profitRulesConfig) {
-  const cfg = normalizeProfitRulesConfigV1(profitRulesConfig);
-  if (!cfg || !cfg.enabled || !Array.isArray(cfg.rules)) return revenueGbp;
-  let deductions = 0;
-  for (const rule of cfg.rules) {
-    if (!rule || !rule.enabled) continue;
-    const value = Number(rule.value) || 0;
-    if (rule.type === 'percent_revenue') {
-      deductions += revenueGbp * (value / 100);
-    } else if (rule.type === 'fixed_per_order') {
-      deductions += value; // 1 order
-    }
-    // fixed_per_period: not applied per order
+/** Single-order profit conversion value (GBP). */
+function computeProfitForOrder(revenueGbp, googleAdsProfitConfig) {
+  const rev = Number(revenueGbp) || 0;
+  const cfg = normalizeGoogleAdsProfitConfigV1(googleAdsProfitConfig);
+  if (!cfg || cfg.mode === 'costs') {
+    // Costs & Expenses mode is optional; if not available, fall back to revenue (fail-open).
+    return Math.max(0, Math.round(rev * 100) / 100);
   }
-  const profit = revenueGbp - (Number.isFinite(deductions) ? deductions : 0);
-  return Math.max(0, Number.isFinite(profit) ? Math.round(profit * 100) / 100 : revenueGbp);
+  const pct = cfg && cfg.simple && cfg.simple.percent_of_revenue != null ? Number(cfg.simple.percent_of_revenue) : 0;
+  const fixed = cfg && cfg.simple && cfg.simple.fixed_per_order_gbp != null ? Number(cfg.simple.fixed_per_order_gbp) : 0;
+  const deductions = (rev * ((Number.isFinite(pct) ? pct : 0) / 100)) + (Number.isFinite(fixed) ? fixed : 0);
+  const profit = rev - (Number.isFinite(deductions) ? deductions : 0);
+  return Math.max(0, Number.isFinite(profit) ? Math.round(profit * 100) / 100 : Math.round(rev * 100) / 100);
 }
 
 /** Format conversion_date_time for Google Ads: "yyyy-mm-dd hh:mm:ss+|-hh:mm" (account TZ). */
@@ -96,12 +94,27 @@ async function enqueueEligibleOrders(shop, options = {}) {
   const revenueGoal = (goals || []).find((g) => g.goal_type === 'revenue' && g.conversion_action_resource_name);
   const profitGoal = (goals || []).find((g) => g.goal_type === 'profit' && g.conversion_action_resource_name);
   if (!revenueGoal && !profitGoal) {
+    try {
+      const normShop = String(shop || '').trim().toLowerCase();
+      if (normShop) {
+        await recordIssue(adsDb, normShop, {
+          source: 'postback',
+          severity: 'warning',
+          affected_goal: null,
+          error_code: 'MISSING_CONVERSION_ACTION',
+          error_message: 'No conversion actions are provisioned for Revenue/Profit uploads.',
+          suggested_fix: 'Go to Settings → Integrations → Google Ads and click “Provision conversion actions”.',
+          first_seen_at: Date.now(),
+          last_seen_at: Date.now(),
+        });
+      }
+    } catch (_) {}
     return { ok: true, enqueued: 0, issues: 0, message: 'No conversion goals provisioned' };
   }
 
   const limit = Math.min(Number(options.limit) || 500, 2000);
   const rows = await adsDb.all(
-    `SELECT shop, order_id, created_at_ms, currency, revenue_gbp, gclid, gbraid, wbraid
+    `SELECT shop, order_id, created_at_ms, currency, revenue_gbp, click_id_type, click_id_value, gclid, gbraid, wbraid
      FROM ads_orders_attributed
      WHERE shop = ?
      ORDER BY created_at_ms DESC
@@ -112,9 +125,9 @@ async function enqueueEligibleOrders(shop, options = {}) {
   let enqueued = 0;
   let issuesCreated = 0;
   const now = Date.now();
-  let rawProfitRules = null;
+  let rawGoogleAdsProfitConfig = null;
   try {
-    rawProfitRules = await store.getSetting(PROFIT_RULES_V1_KEY);
+    rawGoogleAdsProfitConfig = await store.getSetting(GOOGLE_ADS_PROFIT_CONFIG_V1_KEY);
   } catch (_) {}
 
   for (const row of rows || []) {
@@ -161,7 +174,7 @@ async function enqueueEligibleOrders(shop, options = {}) {
     }
 
     if (profitGoal && profitGoal.conversion_action_resource_name) {
-      const profitValue = computeProfitForOrder(revenueGbp, rawProfitRules);
+      const profitValue = computeProfitForOrder(revenueGbp, rawGoogleAdsProfitConfig);
       const inserted = await insertJobIfNotExists(adsDb, {
         shop: shopNorm,
         order_id: orderId,
@@ -241,8 +254,9 @@ async function processPostbackBatch(shop, options = {}) {
   const cfg = await getGoogleAdsConfig(shop);
   const refreshToken = cfg && cfg.refresh_token ? String(cfg.refresh_token) : '';
   if (!refreshToken) return { ok: false, error: 'Not connected', processed: 0 };
-  const { customerId, loginCustomerId } = getResolvedCustomerIds(cfg);
+  const { customerId, loginCustomerId, conversionCustomerId } = getResolvedCustomerIds(cfg);
   if (!customerId) return { ok: false, error: 'Missing customer_id', processed: 0 };
+  const targetCustomerId = conversionCustomerId || customerId;
 
   const jobs = await adsDb.all(
     `SELECT id, shop, order_id, goal_type, conversion_action_resource_name, conversion_date_time, conversion_value, currency_code, click_id_type, click_id_value, retry_count
@@ -280,7 +294,7 @@ async function processPostbackBatch(shop, options = {}) {
 
   let lastErr = null;
   for (const ver of versions) {
-    const url = `https://googleads.googleapis.com/${ver}/customers/${encodeURIComponent(customerId)}:uploadClickConversions`;
+    const url = `https://googleads.googleapis.com/${ver}/customers/${encodeURIComponent(targetCustomerId)}:uploadClickConversions`;
     const headers = {
       Authorization: `Bearer ${accessToken}`,
       'developer-token': developerToken,
