@@ -3481,6 +3481,96 @@ html[data-bs-theme="dark"] .report-build-wrap {
   transition: width 520ms cubic-bezier(.2,.9,.2,1);
 }
 
+/* Dashboard top tables card-style list (Top Products, Top Countries, Trending) */
+.kexo-dash-top-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.kexo-dash-top-row {
+  display: grid;
+  grid-template-columns: 40px 1fr auto auto;
+  align-items: center;
+  gap: 0.5rem;
+}
+.kexo-dash-top-row-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  color: var(--tblr-secondary);
+}
+.kexo-dash-top-row-icon img.kexo-dash-top-thumb,
+.kexo-dash-top-row-icon .kexo-dash-top-flag-wrap {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  display: block;
+}
+.kexo-dash-top-thumb {
+  width: 40px !important;
+  height: 40px !important;
+  max-width: 40px !important;
+  max-height: 40px !important;
+  object-fit: contain;
+}
+.kexo-dash-top-flag-wrap {
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.kexo-dash-top-flag-wrap .flag {
+  width: 40px !important;
+  height: 40px !important;
+  background-size: contain !important;
+}
+.kexo-dash-top-row-icon-placeholder {
+  display: block;
+  width: 40px;
+  height: 40px;
+  background: rgba(15, 23, 42, 0.06);
+  border-radius: 6px;
+}
+.kexo-dash-top-row-label {
+  min-width: 0;
+  font-size: 0.8125rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.kexo-dash-top-row-cr {
+  font-size: 0.8125rem;
+  color: var(--tblr-secondary);
+  white-space: nowrap;
+}
+.kexo-dash-top-row-value {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.kexo-dash-top-row-bar {
+  grid-column: 1 / -1;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.08);
+  overflow: hidden;
+}
+.kexo-dash-top-row-bar > span {
+  display: block;
+  height: 100%;
+  width: 0%;
+  border-radius: 999px;
+  background: var(--kexo-accent-1, #4b94e4);
+  transition: width 520ms cubic-bezier(.2,.9,.2,1);
+}
+
 /* Vertical bars */
 .kexo-widget-vbars {
   display: flex;

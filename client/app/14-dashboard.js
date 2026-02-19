@@ -3673,8 +3673,8 @@
           try { if (typeof renderCondensedSparklines === 'function') renderCondensedSparklines(sparklineSeries); } catch (_) {}
         });
 
-        var prodTbody = el('dash-top-products') ? el('dash-top-products').querySelector('tbody') : null;
-        if (prodTbody) {
+        var prodBody = el('dash-top-products-body');
+        if (prodBody) {
           var products = data.topProducts || [];
           var prodPageSize = getTableRowsPerPage('dash-top-products', 'dashboard');
           var prodPages = Math.max(1, Math.ceil(products.length / prodPageSize));
@@ -3682,44 +3682,27 @@
           updateCardPagination('dash-top-products', dashTopProductsPage, prodPages);
           var prodStart = (dashTopProductsPage - 1) * prodPageSize;
           var productsPageRows = products.slice(prodStart, prodStart + prodPageSize);
-          if (!products.length) {
-            prodTbody.innerHTML = '<tr><td colspan="5" class="dash-empty">No data</td></tr>';
-          } else {
-            var mainBase = getMainBaseUrl();
-            prodTbody.innerHTML = productsPageRows.map(function(p) {
-              var title = p && p.title ? String(p.title) : 'Unknown';
-              var handle = (p && p.handle) ? String(p.handle).trim().toLowerCase() : '';
-              var productId = (p && p.product_id) ? String(p.product_id).replace(/^gid:\/\/shopify\/Product\//i, '').trim() : '';
-              var productUrl = (mainBase && handle) ? (mainBase + '/products/' + encodeURIComponent(handle)) : '#';
-              var canOpen = handle || (productId && /^\d+$/.test(productId));
-              var titleHtml = canOpen
-                ? (
-                    '<a class="kexo-product-link js-product-modal-link" href="' + escapeHtml(productUrl) + '" target="_blank" rel="noopener"' +
-                      (handle ? (' data-product-handle="' + escapeHtml(handle) + '"') : '') +
-                      (productId && /^\d+$/.test(productId) ? (' data-product-id="' + escapeHtml(productId) + '"') : '') +
-                      (title ? (' data-product-title="' + escapeHtml(title) + '"') : '') +
-                    '>' + escapeHtml(title) + '</a>'
-                  )
-                : escapeHtml(title);
-              var crVal = (p && typeof p.cr === 'number' && isFinite(p.cr)) ? p.cr : null;
-              var sessions = (p && typeof p.sessions === 'number' && isFinite(p.sessions)) ? p.sessions : null;
-              var orders = (p && typeof p.orders === 'number' && isFinite(p.orders)) ? p.orders : 0;
-              var crHtml = fmtPct(crVal);
-              if (sessions === 0) {
-                var tip = 'No tracked product landing sessions in this period.';
-                crHtml = orders > 0
-                  ? ('\u2014 <i class="fa-light fa-circle-info ms-1 text-muted" aria-hidden="true" title="' + escapeHtml(tip) + '"></i>')
-                  : '\u2014';
-              }
-              var vpvVal = (p && typeof p.vpv === 'number' && isFinite(p.vpv)) ? p.vpv : null;
-              var vpvHtml = vpvVal != null ? fmtGbp(vpvVal) : '\u2014';
-              return '<tr><td><span class="product-cell">' + titleHtml + '</span></td><td class="text-end">' + fmtGbp(p.revenue) + '</td><td class="text-end">' + p.orders + '</td><td class="text-end kexo-nowrap">' + crHtml + '</td><td class="text-end kexo-nowrap">' + vpvHtml + '</td></tr>';
-            }).join('');
-          }
+          var prodTotal = productsPageRows.reduce(function (acc, p) { return acc + (Number(p && p.revenue) || 0); }, 0) || 0;
+          var prodRows = productsPageRows.map(function (p) {
+            var rev = Number(p && p.revenue) || 0;
+            var pct = prodTotal > 0 ? (rev / prodTotal) * 100 : 0;
+            var crVal = (p && typeof p.cr === 'number' && isFinite(p.cr)) ? p.cr : null;
+            var sessions = (p && typeof p.sessions === 'number' && isFinite(p.sessions)) ? p.sessions : null;
+            var orders = (p && typeof p.orders === 'number' && isFinite(p.orders)) ? p.orders : 0;
+            var label = p && p.title ? String(p.title) : 'Unknown';
+            return {
+              label: label,
+              thumbUrl: p && p.thumb_url ? String(p.thumb_url) : null,
+              valueGbp: rev,
+              cr: crVal,
+              pct: pct
+            };
+          });
+          renderDashTopList('dash-top-products-body', prodRows, { accentCss: 'background: var(--kexo-accent-1, #4b94e4);' });
         }
 
-        var countryTbody = el('dash-top-countries') ? el('dash-top-countries').querySelector('tbody') : null;
-        if (countryTbody) {
+        var countryBody = el('dash-top-countries-body');
+        if (countryBody) {
           var countries = data.topCountries || [];
           var countryPageSize = getTableRowsPerPage('dash-top-countries', 'dashboard');
           var countryPages = Math.max(1, Math.ceil(countries.length / countryPageSize));
@@ -3727,31 +3710,70 @@
           updateCardPagination('dash-top-countries', dashTopCountriesPage, countryPages);
           var countryStart = (dashTopCountriesPage - 1) * countryPageSize;
           var countriesPageRows = countries.slice(countryStart, countryStart + countryPageSize);
-          if (!countries.length) {
-            countryTbody.innerHTML = '<tr><td colspan="5" class="dash-empty">No data</td></tr>';
-          } else {
-            countryTbody.innerHTML = countriesPageRows.map(function(c) {
-              var cc = ((c && (c.country_code || c.country)) || 'XX').toUpperCase();
-              if (cc === 'UK') cc = 'GB';
-              var name = (typeof countryLabelFull === 'function') ? countryLabelFull(cc) : cc;
-              var crVal = (c && typeof c.cr === 'number' && isFinite(c.cr)) ? c.cr : null;
-              var sessions = (c && typeof c.sessions === 'number' && isFinite(c.sessions)) ? c.sessions : null;
-              var orders = (c && typeof c.orders === 'number' && isFinite(c.orders)) ? c.orders : 0;
-              var crHtml = fmtPct(crVal);
-              if (sessions === 0) {
-                var tip = 'No tracked sessions for this country in this period.';
-                crHtml = orders > 0
-                  ? ('\u2014 <i class="fa-light fa-circle-info ms-1 text-muted" aria-hidden="true" title="' + escapeHtml(tip) + '"></i>')
-                  : '\u2014';
-              }
-              var vpvVal = (c && typeof c.vpv === 'number' && isFinite(c.vpv)) ? c.vpv : null;
-              var vpvHtml = vpvVal != null ? fmtGbp(vpvVal) : '\u2014';
-              return '<tr><td><span style="display:inline-flex;align-items:center;gap:0.5rem">' + flagImg(cc, name) + ' ' + escapeHtml(name) + '</span></td><td class="text-end">' + fmtGbp(c.revenue) + '</td><td class="text-end">' + c.orders + '</td><td class="text-end kexo-nowrap">' + crHtml + '</td><td class="text-end kexo-nowrap">' + vpvHtml + '</td></tr>';
-            }).join('');
-          }
+          var countryTotal = countriesPageRows.reduce(function (acc, c) { return acc + (Number(c && c.revenue) || 0); }, 0) || 0;
+          var countryRows = countriesPageRows.map(function (c) {
+            var cc = ((c && (c.country_code || c.country)) || 'XX').toUpperCase();
+            if (cc === 'UK') cc = 'GB';
+            var name = (typeof countryLabelFull === 'function') ? countryLabelFull(cc) : cc;
+            var rev = Number(c && c.revenue) || 0;
+            var pct = countryTotal > 0 ? (rev / countryTotal) * 100 : 0;
+            var crVal = (c && typeof c.cr === 'number' && isFinite(c.cr)) ? c.cr : null;
+            var flagEl = (typeof flagImg === 'function') ? flagImg(cc, name) : '';
+            return {
+              label: name,
+              iconHtml: '<span class="kexo-dash-top-flag-wrap">' + flagEl + '</span>',
+              valueGbp: rev,
+              cr: crVal,
+              pct: pct
+            };
+          });
+          renderDashTopList('dash-top-countries-body', countryRows, { accentCss: 'background: var(--kexo-accent-2, #3eb3ab);' });
         }
 
+        function fmtSignedGbp(v) {
+          var d = normalizeZeroNumber(v, 0.005);
+          if (d == null) d = 0;
+          var abs = Math.abs(d);
+          var s = fmtGbp(abs);
+          if (d > 0) return '+' + s;
+          if (d < 0) return '-' + s;
+          return s;
+        }
         function renderTrendingTable(tableId, items, isUp) {
+          var bodyEl = el(tableId + '-body');
+          if (bodyEl) {
+            var rows = Array.isArray(items) ? items : [];
+            var pageSize = getTableRowsPerPage(tableId, 'dashboard');
+            var pages = Math.max(1, Math.ceil(rows.length / pageSize));
+            if (tableId === 'dash-trending-up') dashTrendingUpPage = clampPage(dashTrendingUpPage, pages);
+            else dashTrendingDownPage = clampPage(dashTrendingDownPage, pages);
+            var page = tableId === 'dash-trending-up' ? dashTrendingUpPage : dashTrendingDownPage;
+            updateCardPagination(tableId, page, pages);
+            var pageStart = (page - 1) * pageSize;
+            var pageRows = rows.slice(pageStart, pageStart + pageSize);
+            var totalAbs = pageRows.reduce(function (acc, p) { return acc + Math.abs(Number(p && p.deltaRevenue) || 0); }, 0) || 0;
+            var listRows = pageRows.map(function (p) {
+              var d = (p && typeof p.deltaRevenue === 'number' && isFinite(p.deltaRevenue)) ? p.deltaRevenue : 0;
+              var absD = Math.abs(d);
+              var pct = totalAbs > 0 ? (absD / totalAbs) * 100 : 0;
+              var crVal = (p && typeof p.cr === 'number' && isFinite(p.cr)) ? p.cr : null;
+              var label = p && p.title ? String(p.title) : 'Unknown';
+              var valueDisplay = (d >= 0 ? '+' : '') + fmtSignedGbp(d);
+              var valueClass = d < 0 ? 'text-red' : 'text-green';
+              return {
+                label: label,
+                thumbUrl: p && p.thumb_url ? String(p.thumb_url) : null,
+                valueDisplay: valueDisplay,
+                valueClass: valueClass,
+                valueGbp: d,
+                cr: crVal,
+                pct: pct
+              };
+            });
+            var accentCss = isUp ? 'background: var(--kexo-accent-1, #4b94e4);' : 'background: var(--kexo-accent-2, #3eb3ab);';
+            renderDashTopList(tableId + '-body', listRows, { accentCss: accentCss });
+            return;
+          }
           var t = el(tableId);
           var tbody = t ? t.querySelector('tbody') : null;
           if (!tbody) return;
@@ -3768,15 +3790,6 @@
           if (!rows.length) {
             tbody.innerHTML = '<tr><td colspan="5" class="dash-empty">No data</td></tr>';
             return;
-          }
-          function fmtSignedGbp(v) {
-            var d = normalizeZeroNumber(v, 0.005);
-            if (d == null) d = 0;
-            var abs = Math.abs(d);
-            var s = fmtGbp(abs);
-            if (d > 0) return '+' + s;
-            if (d < 0) return '-' + s;
-            return s;
           }
           function deltaText(r) {
             var d = r && typeof r.deltaRevenue === 'number' && isFinite(r.deltaRevenue) ? r.deltaRevenue : 0;
@@ -3805,7 +3818,6 @@
                   '>' + escapeHtml(title) + '</a>'
                 )
               : escapeHtml(title);
-            var ordNow = p && typeof p.ordersNow === 'number' ? p.ordersNow : 0;
             var revCell = '<div>' + deltaText(p) + '</div>';
             var ordCell = '<div>' + deltaOrdersText(p) + '</div>';
             var crCell = fmtPct(p && (typeof p.cr === 'number' ? p.cr : null));
@@ -4604,6 +4616,47 @@
           .catch(function() { return entry && entry.data ? entry.data : null; })
           .finally(function() { dashWidgetInFlight[key] = null; });
         return dashWidgetInFlight[key];
+      }
+
+      function renderDashTopList(mountId, rows, options) {
+        var host = document.getElementById(mountId);
+        if (!host) return;
+        var list = Array.isArray(rows) ? rows : [];
+        var opts = (options && typeof options === 'object') ? options : {};
+        var accentCss = opts.accentCss ? String(opts.accentCss) : '';
+        if (!list.length) {
+          host.innerHTML = '<div class="kexo-widget-empty">No data</div>';
+          return;
+        }
+        var html = '<ul class="kexo-dash-top-list">';
+        list.forEach(function (r) {
+          if (!r) return;
+          var label = r.label != null ? String(r.label) : '—';
+          var valueGbp = r.valueGbp != null ? Number(r.valueGbp) : (r.value != null ? Number(r.value) : 0);
+          var pct = r.pct != null ? Number(r.pct) : 0;
+          var cr = r.cr != null && Number.isFinite(Number(r.cr)) ? Number(r.cr) : null;
+          if (!Number.isFinite(valueGbp)) valueGbp = 0;
+          if (!Number.isFinite(pct)) pct = 0;
+          pct = Math.max(0, Math.min(100, pct));
+          var crText = cr != null ? (typeof fmtPct === 'function' ? fmtPct(cr) : (Math.round(cr * 10) / 10) + '%') + ' CR' : '—';
+          var valueText = (r.valueDisplay != null && String(r.valueDisplay) !== '') ? String(r.valueDisplay) : (typeof fmtGbp === 'function' ? fmtGbp(valueGbp) : String(valueGbp));
+          var valueClass = (r.valueClass != null && String(r.valueClass)) ? (' ' + String(r.valueClass).trim()) : '';
+          var iconHtml = r.iconHtml != null ? String(r.iconHtml) : '';
+          if (r.thumbUrl) {
+            iconHtml = '<img src="' + escapeHtml(String(r.thumbUrl)) + '" alt="" width="40" height="40" class="kexo-dash-top-thumb" loading="lazy">';
+          }
+          if (!iconHtml) iconHtml = '<span class="kexo-dash-top-row-icon-placeholder" aria-hidden="true"></span>';
+          html += '<li class="kexo-dash-top-row" title="' + escapeHtml(label) + '">' +
+            '<span class="kexo-dash-top-row-icon" aria-hidden="true">' + iconHtml + '</span>' +
+            '<span class="kexo-dash-top-row-label">' + escapeHtml(label) + '</span>' +
+            '<span class="kexo-dash-top-row-cr">' + escapeHtml(crText) + '</span>' +
+            '<span class="kexo-dash-top-row-value' + valueClass + '">' + escapeHtml(valueText) + '</span>' +
+            '<div class="kexo-dash-top-row-bar"><span style="' + (accentCss ? escapeHtml(accentCss) : '') + '" data-kexo-bar-fill="' + escapeHtml(String(pct)) + '"></span></div>' +
+          '</li>';
+        });
+        html += '</ul>';
+        host.innerHTML = html;
+        animateWidgetFills(host);
       }
 
       function animateWidgetFills(root) {

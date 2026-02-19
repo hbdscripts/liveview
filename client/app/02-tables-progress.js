@@ -30,8 +30,15 @@
             });
             mount.outerHTML = build(config);
           } else if (nativeDef && buildNative) {
-            var nativeConfig = Object.assign({}, nativeDef, { tableId: tableId });
-            mount.outerHTML = buildNative(nativeConfig);
+            var dashTopListIds = ['dash-top-products', 'dash-top-countries', 'dash-trending-up', 'dash-trending-down'];
+            if (dashTopListIds.indexOf(tableId) >= 0) {
+              var wrapId = tableId + '-wrap';
+              var bodyId = tableId + '-body';
+              mount.outerHTML = '<div id="' + wrapId + '"><div id="' + bodyId + '" class="kexo-dash-top-list" role="list" aria-label="' + (tableId.replace(/-/g, ' ') + ' list') + '"></div></div>';
+            } else {
+              var nativeConfig = Object.assign({}, nativeDef, { tableId: tableId });
+              mount.outerHTML = buildNative(nativeConfig);
+            }
           }
         });
       }
