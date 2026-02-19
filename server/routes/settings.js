@@ -305,7 +305,7 @@ function defaultChartsUiConfigV1() {
   return {
     v: 1,
     defaultsVersion: CHARTS_UI_DEFAULTS_VERSION,
-    hideOnMobile: true,
+    hideOnMobile: false,
     // Guardrail: charts + KPI bundle UI defaults are user-owned via Settings and normalized below.
     // Keep these defaults/allowed lists aligned with kexo-chart-defs.js and settings-page.js.
     charts: [

@@ -351,6 +351,9 @@
   function renderTablesWhenVisible() {
     if (tablesUiPanelRendered) return;
     renderLayoutTablesUiPanel(tablesUiConfigCache || defaultTablesUiConfigV1());
+    var chartsCfg = chartsUiConfigCache || defaultChartsUiConfigV1();
+    var hideEl = document.getElementById('settings-charts-hide-mobile');
+    if (hideEl) hideEl.checked = !(chartsCfg.hideOnMobile !== false);
     tablesUiPanelRendered = true;
   }
 
@@ -782,7 +785,6 @@
       panelClass: 'settings-layout-panel',
       tabs: [
         { key: 'tables', label: 'Tables', panelId: 'settings-layout-panel-tables' },
-        { key: 'charts', label: 'Charts', panelId: 'settings-layout-panel-charts' },
         { key: 'kpis', label: 'KPIs', panelId: 'settings-layout-panel-kpis' },
         { key: 'date-ranges', label: 'Date ranges', panelId: 'settings-layout-panel-date-ranges' },
       ],
@@ -1833,8 +1835,7 @@
         try {
           if (getActiveSettingsTab() === 'layout') {
             var sub = getActiveLayoutSubTab();
-            if (sub === 'tables') renderTablesWhenVisible();
-            if (sub === 'charts') renderChartsWhenVisible();
+            if (sub === 'tables' || sub === 'charts') renderTablesWhenVisible();
           }
         } catch (_) {}
       })
@@ -2461,7 +2462,7 @@
     return {
       v: 1,
       defaultsVersion: 2,
-      hideOnMobile: true,
+      hideOnMobile: false,
       // User-managed chart + KPI bundle config source of truth.
       // Runtime reads this payload; avoid adding hardcoded style overrides elsewhere.
       charts: baseCharts,
@@ -3254,11 +3255,14 @@
   }
 
   function buildChartsUiConfigFromDom() {
-    var root = document.getElementById('settings-charts-root');
-    if (!root) return defaultChartsUiConfigV1();
     var hideEl = document.getElementById('settings-charts-hide-mobile');
-    // UI label is "Show graphs on mobile" but config field is hideOnMobile.
-    var out = { v: 1, hideOnMobile: hideEl ? !hideEl.checked : true, charts: [], kpiBundles: {} };
+    var hideOnMobile = hideEl ? !hideEl.checked : false;
+    var root = document.getElementById('settings-charts-root');
+    if (!root) {
+      var base = chartsUiConfigCache || defaultChartsUiConfigV1();
+      return normalizeChartsUiConfigDraft({ v: 1, hideOnMobile: hideOnMobile, charts: base.charts || [], kpiBundles: base.kpiBundles || {} });
+    }
+    var out = { v: 1, hideOnMobile: hideOnMobile, charts: [], kpiBundles: {} };
     root.querySelectorAll('[data-chart-config-key]').forEach(function (card) {
       var key = (card.getAttribute('data-chart-config-key') || '').trim().toLowerCase();
       var bodyEl = card.querySelector('.settings-charts-card-body');
@@ -3335,13 +3339,12 @@
       tabSelector: '#settings-layout-main-tabs [data-settings-layout-tab]',
       tabAttr: 'data-settings-layout-tab',
       panelIdPrefix: 'settings-layout-panel-',
-      keys: ['tables', 'charts', 'kpis', 'date-ranges'],
-      initialKey: (function () { var k = initialKey || activeLayoutSubTab || 'tables'; return k; })(),
+      keys: ['tables', 'kpis', 'date-ranges'],
+      initialKey: (function () { var k = initialKey || activeLayoutSubTab || 'tables'; return k === 'charts' ? 'tables' : k; })(),
       onActivate: function (key) {
         activeLayoutSubTab = key;
         if (getActiveSettingsTab() === 'layout') {
           if (key === 'tables') try { renderTablesWhenVisible(); } catch (_) {}
-          if (key === 'charts') try { renderChartsWhenVisible(); } catch (_) {}
           updateUrl('layout');
           syncLeftNavActiveClasses('layout');
         }
@@ -3699,16 +3702,20 @@
 
     saveBtn.addEventListener('click', function () {
       var cfg = buildTablesUiConfigFromDom();
+      var chartsCfg = buildChartsUiConfigFromDom();
       setLayoutTablesMsg('Saving\u2026', true);
-      saveSettings({ tablesUiConfig: cfg })
+      saveSettings({ tablesUiConfig: cfg, chartsUiConfig: chartsCfg })
         .then(function (r) {
           if (r && r.ok) {
             tablesUiConfigCache = r.tablesUiConfig || cfg;
+            chartsUiConfigCache = r.chartsUiConfig || chartsCfg;
             try { localStorage.setItem('kexo:tables-ui-config:v1', JSON.stringify(tablesUiConfigCache)); } catch (_) {}
+            try { localStorage.setItem('kexo:charts-ui-config:v1', JSON.stringify(chartsUiConfigCache)); } catch (_) {}
             setLayoutTablesMsg('Saved.', true);
             try {
               if (window && typeof window.dispatchEvent === 'function') {
                 window.dispatchEvent(new CustomEvent('kexo:tablesUiConfigUpdated', { detail: tablesUiConfigCache }));
+                window.dispatchEvent(new CustomEvent('kexo:chartsUiConfigUpdated', { detail: chartsUiConfigCache }));
               }
             } catch (_) {}
             renderLayoutTablesUiPanel(tablesUiConfigCache);

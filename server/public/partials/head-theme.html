@@ -76,9 +76,9 @@
         var iconColor = localStorage.getItem('tabler-theme-icon-color');
         if (iconColor) root.style.setProperty('--kexo-theme-icon-color', iconColor);
 
-        // Charts: hide on mobile (Layout → Charts setting). Default is ON.
+        // Charts: hide on mobile (Layout → Charts setting). Default is OFF (show charts on mobile).
         try {
-          var hideCharts = true;
+          var hideCharts = false;
           var rawCharts = localStorage.getItem('kexo:charts-ui-config:v1');
           function cleanHex(value, fallback) {
             var raw = value == null ? '' : String(value).trim().toLowerCase();
