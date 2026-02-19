@@ -96,6 +96,7 @@
       var ovwUiCfgLocal = null;
       var ovwSaveTimer = null;
       var ovwSaveInFlight = null;
+      var ovwSaveQueuedCfg = null;
       var ovwModalBackdrop = null;
       var ovwSettingsKey = '';
 
@@ -4633,11 +4634,23 @@
       }
 
       function scheduleSaveOverviewWidgetsUiConfig(cfg) {
+        ovwSaveQueuedCfg = cfg || ovwSaveQueuedCfg;
         if (ovwSaveTimer) clearTimeout(ovwSaveTimer);
         ovwSaveTimer = setTimeout(function () {
           ovwSaveTimer = null;
           if (ovwSaveInFlight) return;
-          ovwSaveInFlight = postOverviewWidgetsUiConfig(cfg).finally(function () { ovwSaveInFlight = null; });
+          var next = ovwSaveQueuedCfg;
+          if (!next) return;
+          ovwSaveQueuedCfg = null;
+          ovwSaveInFlight = postOverviewWidgetsUiConfig(next)
+            .catch(function () {})
+            .finally(function () {
+              ovwSaveInFlight = null;
+              if (ovwSaveQueuedCfg) {
+                // Flush any changes that landed while in-flight.
+                scheduleSaveOverviewWidgetsUiConfig(ovwSaveQueuedCfg);
+              }
+            });
         }, 600);
       }
 

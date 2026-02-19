@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 8a5575dbd931aa0a
+// checksum: b28554099bbfd3bf
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -17209,6 +17209,7 @@ const API = '';
       var ovwUiCfgLocal = null;
       var ovwSaveTimer = null;
       var ovwSaveInFlight = null;
+      var ovwSaveQueuedCfg = null;
       var ovwModalBackdrop = null;
       var ovwSettingsKey = '';
 
@@ -21746,11 +21747,23 @@ const API = '';
       }
 
       function scheduleSaveOverviewWidgetsUiConfig(cfg) {
+        ovwSaveQueuedCfg = cfg || ovwSaveQueuedCfg;
         if (ovwSaveTimer) clearTimeout(ovwSaveTimer);
         ovwSaveTimer = setTimeout(function () {
           ovwSaveTimer = null;
           if (ovwSaveInFlight) return;
-          ovwSaveInFlight = postOverviewWidgetsUiConfig(cfg).finally(function () { ovwSaveInFlight = null; });
+          var next = ovwSaveQueuedCfg;
+          if (!next) return;
+          ovwSaveQueuedCfg = null;
+          ovwSaveInFlight = postOverviewWidgetsUiConfig(next)
+            .catch(function () {})
+            .finally(function () {
+              ovwSaveInFlight = null;
+              if (ovwSaveQueuedCfg) {
+                // Flush any changes that landed while in-flight.
+                scheduleSaveOverviewWidgetsUiConfig(ovwSaveQueuedCfg);
+              }
+            });
         }, 600);
       }
 
