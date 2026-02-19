@@ -2,6 +2,7 @@ const Sentry = require('@sentry/node');
 const { getDb } = require('../db');
 const store = require('../store');
 const fx = require('../fx');
+const salesTruth = require('../salesTruth');
 const { normalizeRangeKey } = require('../rangeKey');
 const { percentOrNull, ratioOrNull } = require('../metrics');
 
@@ -59,6 +60,43 @@ function normalizeBrowserKey(raw) {
   return out;
 }
 
+function browserKeyFromUserAgent(uaRaw) {
+  const ua = s(uaRaw).trim().toLowerCase();
+  if (!ua) return 'unknown';
+  // Order matters.
+  if (ua.includes('edg/')) return 'edge';
+  if (ua.includes('opr/') || ua.includes('opera')) return 'opera';
+  if (ua.includes('firefox')) return 'firefox';
+  if (ua.includes('samsungbrowser')) return 'samsung';
+  // Chrome UA strings often include "safari" too.
+  if (ua.includes('chrome') && !ua.includes('chromium') && !ua.includes('edg/') && !ua.includes('opr/')) return 'chrome';
+  if (ua.includes('safari') && !ua.includes('chrome') && !ua.includes('chromium')) return 'safari';
+  return 'other';
+}
+
+function extractOrderUserAgent(orderRow) {
+  const raw = orderRow && orderRow.raw_json != null ? String(orderRow.raw_json) : '';
+  if (!raw) return '';
+  try {
+    const o = JSON.parse(raw);
+    return (
+      (o && o.client_details && o.client_details.user_agent) ||
+      (o && o.clientDetails && o.clientDetails.userAgent) ||
+      ''
+    );
+  } catch (_) {
+    return '';
+  }
+}
+
+function revenueAmountFromOrderRow(orderRow) {
+  const sub = orderRow && orderRow.subtotal_price != null ? Number(orderRow.subtotal_price) : NaN;
+  const tot = orderRow && orderRow.total_price != null ? Number(orderRow.total_price) : NaN;
+  if (Number.isFinite(sub)) return sub;
+  if (Number.isFinite(tot)) return tot;
+  return NaN;
+}
+
 async function getBrowsersTable(req, res) {
   Sentry.addBreadcrumb({ category: 'api', message: 'browsers.table', data: { range: req?.query?.range } });
   const range = safeRangeKey(req.query && req.query.range);
@@ -68,7 +106,8 @@ async function getBrowsersTable(req, res) {
   const db = getDb();
 
   try {
-    const [ratesToGbp, rowsSessions, rowsPurchases] = await Promise.all([
+    const shop = salesTruth.resolveShopForSales('');
+    const [ratesToGbp, rowsSessions, rowsOrders, rowsPurchases] = await Promise.all([
       fx.getRatesToGbp().catch(() => null),
       db.all(
         `
@@ -83,6 +122,25 @@ async function getBrowsersTable(req, res) {
         `.trim(),
         [start, end]
       ),
+      shop
+        ? db.all(
+          `
+          SELECT
+            raw_json,
+            COALESCE(NULLIF(TRIM(currency), ''), 'GBP') AS currency,
+            subtotal_price,
+            total_price
+          FROM orders_shopify
+          WHERE shop = ?
+            AND created_at >= ? AND created_at < ?
+            AND (test IS NULL OR test = 0)
+            AND cancelled_at IS NULL
+            AND financial_status = 'paid'
+          `.trim(),
+          [shop, start, end]
+        )
+        : Promise.resolve([]),
+      // Fallback for local/unconfigured installs: purchases-derived revenue
       db.all(
         `
         SELECT
@@ -93,6 +151,8 @@ async function getBrowsersTable(req, res) {
         FROM purchases p
         LEFT JOIN sessions s ON s.session_id = p.session_id
         WHERE p.purchased_at >= ? AND p.purchased_at < ? AND p.order_total IS NOT NULL
+          ${store.purchaseFilterExcludeDuplicateH('p')}
+          ${store.purchaseFilterExcludeTokenWhenOrderExists('p')}
         GROUP BY 1, 2
         `.trim(),
         [start, end]
@@ -111,16 +171,30 @@ async function getBrowsersTable(req, res) {
 
     const ordersByBrowser = new Map();
     const revenueByBrowser = new Map();
-    for (const r of rowsPurchases || []) {
-      const k = normalizeBrowserKey(r.ua_browser);
-      const cur = s(r.order_currency).trim().toUpperCase() || 'GBP';
-      const orders = r && r.orders != null ? Number(r.orders) : 0;
-      const rev = r && r.revenue != null ? Number(r.revenue) : null;
-      if (Number.isFinite(orders) && orders > 0) ordersByBrowser.set(k, (ordersByBrowser.get(k) || 0) + orders);
-      if (!Number.isFinite(rev)) continue;
-      const gbp = fx.convertToGbp(rev, cur, ratesToGbp);
-      if (gbp == null) continue;
-      revenueByBrowser.set(k, (revenueByBrowser.get(k) || 0) + gbp);
+    if (rowsOrders && rowsOrders.length) {
+      for (const r of rowsOrders || []) {
+        const ua = extractOrderUserAgent(r);
+        const k = normalizeBrowserKey(browserKeyFromUserAgent(ua));
+        const cur = s(r.currency).trim().toUpperCase() || 'GBP';
+        const amt = revenueAmountFromOrderRow(r);
+        if (!Number.isFinite(amt)) continue;
+        ordersByBrowser.set(k, (ordersByBrowser.get(k) || 0) + 1);
+        const gbp = fx.convertToGbp(amt, cur, ratesToGbp);
+        if (gbp == null) continue;
+        revenueByBrowser.set(k, (revenueByBrowser.get(k) || 0) + gbp);
+      }
+    } else {
+      for (const r of rowsPurchases || []) {
+        const k = normalizeBrowserKey(r.ua_browser);
+        const cur = s(r.order_currency).trim().toUpperCase() || 'GBP';
+        const orders = r && r.orders != null ? Number(r.orders) : 0;
+        const rev = r && r.revenue != null ? Number(r.revenue) : null;
+        if (Number.isFinite(orders) && orders > 0) ordersByBrowser.set(k, (ordersByBrowser.get(k) || 0) + orders);
+        if (!Number.isFinite(rev)) continue;
+        const gbp = fx.convertToGbp(rev, cur, ratesToGbp);
+        if (gbp == null) continue;
+        revenueByBrowser.set(k, (revenueByBrowser.get(k) || 0) + gbp);
+      }
     }
 
     const keys = new Set([
@@ -183,8 +257,29 @@ async function getBrowsersSeries(req, res) {
   const db = getDb();
 
   try {
-    const [ratesToGbp, rows] = await Promise.all([
+    const shop = salesTruth.resolveShopForSales('');
+    const [ratesToGbp, rowsOrders, rows] = await Promise.all([
       fx.getRatesToGbp().catch(() => null),
+      shop
+        ? db.all(
+          `
+          SELECT
+            created_at,
+            raw_json,
+            COALESCE(NULLIF(TRIM(currency), ''), 'GBP') AS currency,
+            subtotal_price,
+            total_price
+          FROM orders_shopify
+          WHERE shop = ?
+            AND created_at >= ? AND created_at < ?
+            AND (test IS NULL OR test = 0)
+            AND cancelled_at IS NULL
+            AND financial_status = 'paid'
+          `.trim(),
+          [shop, start, end]
+        )
+        : Promise.resolve([]),
+      // Fallback for local/unconfigured installs
       db.all(
         `
         SELECT
@@ -195,6 +290,8 @@ async function getBrowsersSeries(req, res) {
         FROM purchases p
         LEFT JOIN sessions s ON s.session_id = p.session_id
         WHERE p.purchased_at >= ? AND p.purchased_at < ? AND p.order_total IS NOT NULL
+          ${store.purchaseFilterExcludeDuplicateH('p')}
+          ${store.purchaseFilterExcludeTokenWhenOrderExists('p')}
         `.trim(),
         [start, end]
       ),
@@ -214,21 +311,41 @@ async function getBrowsersSeries(req, res) {
       return arr;
     }
 
-    for (const r of rows || []) {
-      const key = normalizeBrowserKey(r.ua_browser);
-      const ts = r && r.purchased_at != null ? Number(r.purchased_at) : NaN;
-      if (!Number.isFinite(ts)) continue;
-      const day = dayKeyUtc(ts);
-      if (!day || !idxByDay.has(day)) continue;
-      const amt = r && r.order_total != null ? Number(r.order_total) : NaN;
-      if (!Number.isFinite(amt)) continue;
-      const cur = s(r.order_currency).trim().toUpperCase() || 'GBP';
-      const gbp = fx.convertToGbp(amt, cur, ratesToGbp);
-      if (gbp == null) continue;
-      const arr = ensureSeries(key);
-      const i = idxByDay.get(day);
-      arr[i] += gbp;
-      totals.set(key, (totals.get(key) || 0) + gbp);
+    if (rowsOrders && rowsOrders.length) {
+      for (const r of rowsOrders || []) {
+        const ua = extractOrderUserAgent(r);
+        const key = normalizeBrowserKey(browserKeyFromUserAgent(ua));
+        const ts = r && r.created_at != null ? Number(r.created_at) : NaN;
+        if (!Number.isFinite(ts)) continue;
+        const day = dayKeyUtc(ts);
+        if (!day || !idxByDay.has(day)) continue;
+        const amt = revenueAmountFromOrderRow(r);
+        if (!Number.isFinite(amt)) continue;
+        const cur = s(r.currency).trim().toUpperCase() || 'GBP';
+        const gbp = fx.convertToGbp(amt, cur, ratesToGbp);
+        if (gbp == null) continue;
+        const arr = ensureSeries(key);
+        const i = idxByDay.get(day);
+        arr[i] += gbp;
+        totals.set(key, (totals.get(key) || 0) + gbp);
+      }
+    } else {
+      for (const r of rows || []) {
+        const key = normalizeBrowserKey(r.ua_browser);
+        const ts = r && r.purchased_at != null ? Number(r.purchased_at) : NaN;
+        if (!Number.isFinite(ts)) continue;
+        const day = dayKeyUtc(ts);
+        if (!day || !idxByDay.has(day)) continue;
+        const amt = r && r.order_total != null ? Number(r.order_total) : NaN;
+        if (!Number.isFinite(amt)) continue;
+        const cur = s(r.order_currency).trim().toUpperCase() || 'GBP';
+        const gbp = fx.convertToGbp(amt, cur, ratesToGbp);
+        if (gbp == null) continue;
+        const arr = ensureSeries(key);
+        const i = idxByDay.get(day);
+        arr[i] += gbp;
+        totals.set(key, (totals.get(key) || 0) + gbp);
+      }
     }
 
     const browsers = Array.from(totals.entries())

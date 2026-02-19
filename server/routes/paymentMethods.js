@@ -146,14 +146,16 @@ async function getPaymentMethodsReport(req, res) {
       db.all(
         `
         SELECT
-          COALESCE(NULLIF(TRIM(payment_gateway), ''), NULL) AS payment_gateway,
-          COALESCE(NULLIF(TRIM(payment_method_type), ''), NULL) AS payment_method_type,
-          COALESCE(NULLIF(TRIM(payment_method_name), ''), NULL) AS payment_method_name,
-          COALESCE(NULLIF(TRIM(payment_card_brand), ''), NULL) AS payment_card_brand,
-          COUNT(DISTINCT purchase_key) AS orders,
-          COUNT(DISTINCT session_id) AS sessions
-        FROM purchases
-        WHERE purchased_at >= ? AND purchased_at < ?
+          COALESCE(NULLIF(TRIM(p.payment_gateway), ''), NULL) AS payment_gateway,
+          COALESCE(NULLIF(TRIM(p.payment_method_type), ''), NULL) AS payment_method_type,
+          COALESCE(NULLIF(TRIM(p.payment_method_name), ''), NULL) AS payment_method_name,
+          COALESCE(NULLIF(TRIM(p.payment_card_brand), ''), NULL) AS payment_card_brand,
+          COUNT(DISTINCT p.purchase_key) AS orders,
+          COUNT(DISTINCT p.session_id) AS sessions
+        FROM purchases p
+        WHERE p.purchased_at >= ? AND p.purchased_at < ?
+          ${store.purchaseFilterExcludeDuplicateH('p')}
+          ${store.purchaseFilterExcludeTokenWhenOrderExists('p')}
         GROUP BY 1, 2, 3, 4
         `.trim(),
         [start, end]
@@ -169,6 +171,8 @@ async function getPaymentMethodsReport(req, res) {
         FROM purchases p
         LEFT JOIN sessions s ON s.session_id = p.session_id
         WHERE p.purchased_at >= ? AND p.purchased_at < ?
+          ${store.purchaseFilterExcludeDuplicateH('p')}
+          ${store.purchaseFilterExcludeTokenWhenOrderExists('p')}
         GROUP BY 1, 2, 3, 4
         `.trim(),
         [start, end]
@@ -176,14 +180,16 @@ async function getPaymentMethodsReport(req, res) {
       db.all(
         `
         SELECT
-          COALESCE(NULLIF(TRIM(payment_gateway), ''), NULL) AS payment_gateway,
-          COALESCE(NULLIF(TRIM(payment_method_type), ''), NULL) AS payment_method_type,
-          COALESCE(NULLIF(TRIM(payment_method_name), ''), NULL) AS payment_method_name,
-          COALESCE(NULLIF(TRIM(payment_card_brand), ''), NULL) AS payment_card_brand,
-          COALESCE(NULLIF(TRIM(order_currency), ''), 'GBP') AS order_currency,
-          SUM(order_total) AS revenue
-        FROM purchases
-        WHERE purchased_at >= ? AND purchased_at < ? AND order_total IS NOT NULL
+          COALESCE(NULLIF(TRIM(p.payment_gateway), ''), NULL) AS payment_gateway,
+          COALESCE(NULLIF(TRIM(p.payment_method_type), ''), NULL) AS payment_method_type,
+          COALESCE(NULLIF(TRIM(p.payment_method_name), ''), NULL) AS payment_method_name,
+          COALESCE(NULLIF(TRIM(p.payment_card_brand), ''), NULL) AS payment_card_brand,
+          COALESCE(NULLIF(TRIM(p.order_currency), ''), 'GBP') AS order_currency,
+          SUM(p.order_total) AS revenue
+        FROM purchases p
+        WHERE p.purchased_at >= ? AND p.purchased_at < ? AND p.order_total IS NOT NULL
+          ${store.purchaseFilterExcludeDuplicateH('p')}
+          ${store.purchaseFilterExcludeTokenWhenOrderExists('p')}
         GROUP BY 1, 2, 3, 4, 5
         `.trim(),
         [start, end]
@@ -191,15 +197,17 @@ async function getPaymentMethodsReport(req, res) {
       db.all(
         `
         SELECT
-          purchased_at,
-          COALESCE(NULLIF(TRIM(payment_gateway), ''), NULL) AS payment_gateway,
-          COALESCE(NULLIF(TRIM(payment_method_type), ''), NULL) AS payment_method_type,
-          COALESCE(NULLIF(TRIM(payment_method_name), ''), NULL) AS payment_method_name,
-          COALESCE(NULLIF(TRIM(payment_card_brand), ''), NULL) AS payment_card_brand,
-          COALESCE(NULLIF(TRIM(order_currency), ''), 'GBP') AS order_currency,
-          order_total
-        FROM purchases
-        WHERE purchased_at >= ? AND purchased_at < ? AND order_total IS NOT NULL
+          p.purchased_at,
+          COALESCE(NULLIF(TRIM(p.payment_gateway), ''), NULL) AS payment_gateway,
+          COALESCE(NULLIF(TRIM(p.payment_method_type), ''), NULL) AS payment_method_type,
+          COALESCE(NULLIF(TRIM(p.payment_method_name), ''), NULL) AS payment_method_name,
+          COALESCE(NULLIF(TRIM(p.payment_card_brand), ''), NULL) AS payment_card_brand,
+          COALESCE(NULLIF(TRIM(p.order_currency), ''), 'GBP') AS order_currency,
+          p.order_total
+        FROM purchases p
+        WHERE p.purchased_at >= ? AND p.purchased_at < ? AND p.order_total IS NOT NULL
+          ${store.purchaseFilterExcludeDuplicateH('p')}
+          ${store.purchaseFilterExcludeTokenWhenOrderExists('p')}
         `.trim(),
         [start, end]
       ),

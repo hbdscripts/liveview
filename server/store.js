@@ -2495,6 +2495,26 @@ function purchaseFilterExcludeDuplicateH(alias) {
   )`;
 }
 
+/** SQL AND clause: exclude token-only rows when an order_id row exists for same (session, total, currency, 15min bucket). */
+function purchaseFilterExcludeTokenWhenOrderExists(alias) {
+  const p = alias || 'p';
+  const bucketCmp = config.dbUrl
+    ? `FLOOR(p2.purchased_at/900000.0) = FLOOR(${p}.purchased_at/900000.0)`
+    : `CAST(p2.purchased_at/900000 AS INTEGER) = CAST(${p}.purchased_at/900000 AS INTEGER)`;
+  const sameRow = config.dbUrl
+    ? `(p2.order_total IS NOT DISTINCT FROM ${p}.order_total) AND (p2.order_currency IS NOT DISTINCT FROM ${p}.order_currency)`
+    : `(p2.order_total IS ${p}.order_total OR (p2.order_total IS NULL AND ${p}.order_total IS NULL)) AND (p2.order_currency IS ${p}.order_currency OR (p2.order_currency IS NULL AND ${p}.order_currency IS NULL))`;
+  return ` AND (
+    NULLIF(TRIM(${p}.checkout_token), '') IS NULL
+    OR NULLIF(TRIM(${p}.order_id), '') IS NOT NULL
+    OR NOT EXISTS (
+      SELECT 1 FROM purchases p2
+      WHERE NULLIF(TRIM(p2.order_id), '') IS NOT NULL
+        AND p2.session_id = ${p}.session_id AND ${sameRow} AND ${bucketCmp}
+    )
+  )`;
+}
+
 async function getPixelSalesSummary(start, end) {
   const db = getDb();
   const rows = await db.all(
@@ -4126,6 +4146,7 @@ module.exports = {
   // Shared SQL helpers for pixel dedupe
   purchaseDedupeKeySql,
   purchaseFilterExcludeDuplicateH,
+  purchaseFilterExcludeTokenWhenOrderExists,
   validateEventType,
   ALLOWED_EVENT_TYPES,
   extractBsAdsIdsFromEntryUrl,

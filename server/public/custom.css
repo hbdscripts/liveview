@@ -3180,6 +3180,10 @@ html[data-bs-theme="dark"] .report-build-wrap {
 .kexo-overview-running-total.is-profit .kexo-overview-running-total-value {
   color: #16a34a;
 }
+.kexo-overview-running-total.is-profit.is-negative .kexo-overview-running-total-label,
+.kexo-overview-running-total.is-profit.is-negative .kexo-overview-running-total-value {
+  color: #dc2626;
+}
 .kexo-overview-running-totals--main {
   margin-top: 0;
   flex-wrap: wrap;
@@ -3215,6 +3219,11 @@ html[data-bs-theme="dark"] .report-build-wrap {
 .kexo-overview-running-totals--main .kexo-overview-running-total.is-profit .kexo-overview-running-total-label,
 .kexo-overview-running-totals--main .kexo-overview-running-total.is-profit .kexo-overview-running-total-value {
   color: #16a34a;
+  opacity: 1;
+}
+.kexo-overview-running-totals--main .kexo-overview-running-total.is-profit.is-negative .kexo-overview-running-total-label,
+.kexo-overview-running-totals--main .kexo-overview-running-total.is-profit.is-negative .kexo-overview-running-total-value {
+  color: #dc2626;
   opacity: 1;
 }
 .kexo-cost-breakdown-popover {

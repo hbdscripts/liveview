@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: b59348eab6a202d1
+// checksum: 3caf81ce1674a54c
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -2727,6 +2727,7 @@ const API = '';
               if (activeMainTab === 'attribution' && typeof refreshAttribution === 'function') refreshAttribution({ force: false });
               if (activeMainTab === 'devices' && typeof refreshDevices === 'function') refreshDevices({ force: false });
               if (activeMainTab === 'browsers' && typeof refreshBrowsers === 'function') refreshBrowsers({ force: false });
+              if (typeof requestDashboardWidgetsRefresh === 'function') requestDashboardWidgetsRefresh({ force: false });
             }
           }
           storeBaseUrlLoaded = true;
@@ -17335,7 +17336,48 @@ const API = '';
               if (!ds || typeof ds !== 'object') return ds;
               var next = Object.assign({}, ds);
               var c = uiColors[idx];
-              if (c) next.borderColor = c;
+              if (c) {
+                // Keep profit series sign-aware when the UI config doesn't include a dedicated negative colour.
+                if (!(String(chartId || '') === 'dash-chart-overview-30d' && idx === 2 && uiColors.length < 4)) {
+                  next.borderColor = c;
+                }
+              }
+              return next;
+            });
+          }
+          // Overview chart supports separate "Profit (negative)" color (uiColors[3]).
+          if (String(chartId || '') === 'dash-chart-overview-30d' && uiColors && uiColors.length >= 4 && Array.isArray(datasets) && datasets.length >= 3) {
+            var profitDs = datasets[2];
+            var profitData = profitDs && Array.isArray(profitDs.data) ? profitDs.data : [];
+            var hasPos = false;
+            var hasNeg = false;
+            var latest = null;
+            for (var i = 0; i < profitData.length; i++) {
+              var n = Number(profitData[i]);
+              if (!Number.isFinite(n)) continue;
+              latest = n;
+              if (n > 0) hasPos = true;
+              if (n < 0) hasNeg = true;
+            }
+            var useNeg = Number.isFinite(latest) ? (latest < 0 || (!hasPos && hasNeg)) : false;
+            var profitColor = useNeg ? uiColors[3] : uiColors[2];
+            function hexToRgba(hex, a) {
+              var h = (hex == null ? '' : String(hex)).trim().replace(/^#/, '');
+              if (h.length !== 6) return null;
+              var r = parseInt(h.slice(0, 2), 16);
+              var g = parseInt(h.slice(2, 4), 16);
+              var b = parseInt(h.slice(4, 6), 16);
+              var alpha = (typeof a === 'number' && isFinite(a)) ? Math.max(0, Math.min(1, a)) : 0.14;
+              if (!isFinite(r) || !isFinite(g) || !isFinite(b)) return null;
+              return 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
+            }
+            datasets = datasets.map(function(ds, idx) {
+              if (!ds || typeof ds !== 'object') return ds;
+              if (idx !== 2) return ds;
+              var next = Object.assign({}, ds);
+              if (profitColor) next.borderColor = profitColor;
+              var bg = profitColor ? hexToRgba(profitColor, 0.14) : null;
+              if (bg) next.backgroundColor = bg;
               return next;
             });
           }
@@ -19062,12 +19104,16 @@ const API = '';
         setValue('dash-overview-total-cost', costTotal);
         setValue('dash-overview-total-profit', profitTotal);
         try {
-          // Profit KPI uses its own rounded totals; keep the header in sync when present.
-          var kpiProfit = document.getElementById('dash-kpi-profit');
-          var headerProfit = document.getElementById('dash-overview-total-profit');
-          if (kpiProfit && headerProfit) {
-            var txt = String(kpiProfit.textContent || '').trim();
-            if (txt && txt !== '\u2014') headerProfit.textContent = txt;
+          var profitEl = document.getElementById('dash-overview-total-profit');
+          var profitWrap = profitEl && profitEl.closest ? profitEl.closest('.kexo-overview-running-total.is-profit') : null;
+          var p = Number(profitTotal);
+          if (profitWrap && profitWrap.classList) profitWrap.classList.toggle('is-negative', Number.isFinite(p) && p < 0);
+
+          // If snapshot totals aren't available yet, fall back to the KPI text so the header isn't misleading.
+          if (!Number.isFinite(p) && profitEl) {
+            var kpiProfit = document.getElementById('dash-kpi-profit');
+            var txt = kpiProfit ? String(kpiProfit.textContent || '').trim() : '';
+            if (txt && txt !== '\u2014') profitEl.textContent = txt;
           }
         } catch (_) {}
       }
@@ -21118,6 +21164,7 @@ const API = '';
         if (!rangeKey) rangeKey = 'today';
         dashLoading = true;
         var silent = !!(opts && opts.silent);
+        var reason = opts && opts.reason != null ? String(opts.reason) : '';
         var build = silent ? { step: function() {}, finish: function() {} } : startReportBuild({
           key: 'dashboard',
           title: 'Preparing dashboard overview',
@@ -21125,7 +21172,7 @@ const API = '';
         });
         var url = API + '/api/dashboard-series?range=' + encodeURIComponent(rangeKey) + (force ? ('&force=1&_=' + Date.now()) : '');
         var forceMini = !!force;
-        if (silent && forceMini) {
+        if (silent && forceMini && String(reason || '').trim().toLowerCase() !== 'new-sale') {
           var miniAgeMs = overviewMiniFetchedAt ? (Date.now() - overviewMiniFetchedAt) : Number.POSITIVE_INFINITY;
           forceMini = miniAgeMs > OVERVIEW_MINI_FORCE_REFRESH_MS;
         }
@@ -21658,7 +21705,7 @@ const API = '';
         try { shop = getShopForSales(); } catch (_) { shop = null; }
         var shopKey = shop ? String(shop) : '';
 
-        var vUrl = shopKey ? (API + '/api/insights-variants?shop=' + encodeURIComponent(shopKey) + '&range=' + encodeURIComponent(rk) + (force ? ('&force=1&_=' + Date.now()) : '')) : null;
+        var vUrl = API + '/api/insights-variants?range=' + encodeURIComponent(rk) + (shopKey ? ('&shop=' + encodeURIComponent(shopKey)) : '') + (force ? ('&force=1&_=' + Date.now()) : '');
         var devUrl = API + '/api/devices/report?range=' + encodeURIComponent(rk) + (force ? ('&force=1&_=' + Date.now()) : '');
         var brUrl = API + '/api/browsers/table?range=' + encodeURIComponent(rk) + (force ? ('&force=1&_=' + Date.now()) : '');
         var attrUrl = API + '/api/attribution/report?range=' + encodeURIComponent(rk) + (force ? ('&force=1&_=' + Date.now()) : '');
@@ -21683,10 +21730,10 @@ const API = '';
 
         // Variants
         tasks.push(
-          (vUrl ? fetchWidgetJson('variant|' + rk + '|' + shopKey, vUrl, force, 30000) : Promise.resolve(null))
+          fetchWidgetJson('variant|' + rk + '|' + shopKey, vUrl, force, 30000)
             .then(function (data) {
               var mountId = 'dash-widget-variant-mount';
-              if (!data) { setWidgetEmpty(mountId, shopKey ? 'No data' : 'Select a shop'); return; }
+              if (!data) { setWidgetEmpty(mountId, 'No data'); return; }
               var payload = (data && data.ok && data.payload) ? data.payload : (data && data.payload ? data.payload : data);
               var tables = payload && Array.isArray(payload.tables) ? payload.tables : (Array.isArray(data.tables) ? data.tables : []);
               var menu = document.getElementById('dash-widget-variant-menu');
@@ -21740,8 +21787,7 @@ const API = '';
               }
 
               if (!needsFallback) return renderWithFallback(null);
-              if (!vUrl || !shopKey) return renderWithFallback(null);
-              var yUrl = API + '/api/insights-variants?shop=' + encodeURIComponent(shopKey) + '&range=' + encodeURIComponent(fallbackRangeKey) + (force ? ('&force=1&_=' + Date.now()) : '');
+              var yUrl = API + '/api/insights-variants?range=' + encodeURIComponent(fallbackRangeKey) + (shopKey ? ('&shop=' + encodeURIComponent(shopKey)) : '') + (force ? ('&force=1&_=' + Date.now()) : '');
               return fetchWidgetJson('variant|' + fallbackRangeKey + '|' + shopKey, yUrl, force, 30000).then(function (y) {
                 return renderWithFallback(y);
               });
@@ -22046,6 +22092,7 @@ const API = '';
         var force = opts && opts.force;
         var silent = !!(opts && opts.silent);
         var rerender = !!(opts && opts.rerender);
+        var reason = opts && opts.reason != null ? String(opts.reason) : '';
         var rk = dashRangeKeyFromDateRange();
         try {
           var curYmd = (typeof ymdNowInTz === 'function') ? ymdNowInTz() : null;
@@ -22063,7 +22110,7 @@ const API = '';
           requestDashboardWidgetsRefresh({ force: false, rangeKey: rk });
           return;
         }
-        fetchDashboardData(rk, force, { silent: silent, rerender: rerender });
+        fetchDashboardData(rk, force, { silent: silent, rerender: rerender, reason: reason });
       };
 
       function createDashboardController() {
