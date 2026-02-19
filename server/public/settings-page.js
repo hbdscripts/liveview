@@ -78,7 +78,7 @@
         keep.set('kexoTab', rawKexo);
       }
       var rawLayout = String(params.get('layoutTab') || params.get('layout') || '').trim().toLowerCase();
-      if ((rawLayout === 'tables' || rawLayout === 'kpis' || rawLayout === 'date-ranges') && keep.get('tab') === 'layout') {
+      if ((rawLayout === 'tables' || rawLayout === 'charts' || rawLayout === 'kpis' || rawLayout === 'date-ranges') && keep.get('tab') === 'layout') {
         keep.set('layoutTab', rawLayout);
       }
       if (rawLayout === 'charts') keep.set('layoutTab', 'tables');
@@ -137,6 +137,7 @@
   var kpiUiConfigCache = null;
   var profitRulesCache = null;
   var tablesUiConfigCache = null;
+  var chartsUiConfigCache = null;
   var insightsVariantsConfigCache = null;
   var insightsVariantsDraft = null;
   var tablesUiPanelRendered = false;
@@ -207,8 +208,7 @@
         var lm = /[?&](?:layoutTab|layout)=([^&]+)/.exec(window.location.search || '');
         if (lm && lm[1]) {
           var lk = lm[1].toLowerCase().replace(/\s+/g, '-');
-          if (lk === 'tables' || lk === 'kpis' || lk === 'date-ranges') initialLayoutSubTab = lk;
-          else if (lk === 'charts') initialLayoutSubTab = 'tables';
+          if (lk === 'tables' || lk === 'charts' || lk === 'kpis' || lk === 'date-ranges') initialLayoutSubTab = lk;
         }
       }
       if (t === 'integrations') {
@@ -260,7 +260,7 @@
       return 'layout';
     }
     if (hash === 'charts') {
-      initialLayoutSubTab = 'tables';
+      initialLayoutSubTab = 'charts';
       return 'layout';
     }
     if (hash && TAB_MAP[hash]) return hash;
@@ -272,7 +272,7 @@
     params.set('tab', key);
     if (key === 'layout') {
       var layoutKey = getActiveLayoutSubTab();
-      if (layoutKey === 'tables' || layoutKey === 'kpis' || layoutKey === 'date-ranges') params.set('layoutTab', layoutKey);
+      if (layoutKey === 'tables' || layoutKey === 'charts' || layoutKey === 'kpis' || layoutKey === 'date-ranges') params.set('layoutTab', layoutKey);
     }
     if (key === 'integrations') {
       var integrationsKey = getActiveIntegrationsSubTab();
@@ -352,6 +352,14 @@
     if (tablesUiPanelRendered) return;
     renderLayoutTablesUiPanel(tablesUiConfigCache || defaultTablesUiConfigV1());
     tablesUiPanelRendered = true;
+  }
+
+  var chartsUiPanelRendered = false;
+  function renderChartsWhenVisible() {
+    if (chartsUiPanelRendered) return;
+    renderChartsUiPanel(chartsUiConfigCache || defaultChartsUiConfigV1());
+    chartsUiPanelRendered = true;
+    wireChartsSaveReset();
   }
 
   function syncLeftNavActiveClasses(key) {
@@ -774,6 +782,7 @@
       panelClass: 'settings-layout-panel',
       tabs: [
         { key: 'tables', label: 'Tables', panelId: 'settings-layout-panel-tables' },
+        { key: 'charts', label: 'Charts', panelId: 'settings-layout-panel-charts' },
         { key: 'kpis', label: 'KPIs', panelId: 'settings-layout-panel-kpis' },
         { key: 'date-ranges', label: 'Date ranges', panelId: 'settings-layout-panel-date-ranges' },
       ],
@@ -1692,11 +1701,12 @@
     if (loginCustEl) loginCustEl.addEventListener('input', updateConnectHrefs);
     if (convCustEl) convCustEl.addEventListener('input', updateConnectHrefs);
 
+    var googleAdsOAuthEnabled = !!(c && c.ads && c.ads.googleAdsOAuthEnabled);
     var signInBtn = document.getElementById('settings-ga-signin-btn');
     var reconnectBtn = document.getElementById('settings-ga-reconnect-btn');
     var isConnected = !!(ga && ga.connected);
-    if (signInBtn) signInBtn.classList.toggle('d-none', isConnected);
-    if (reconnectBtn) reconnectBtn.classList.toggle('d-none', !isConnected);
+    if (signInBtn) signInBtn.classList.toggle('d-none', !googleAdsOAuthEnabled || isConnected);
+    if (reconnectBtn) reconnectBtn.classList.toggle('d-none', !googleAdsOAuthEnabled || !isConnected);
   }
 
   function getShopParam() {
@@ -1764,6 +1774,7 @@
         kpiUiConfigCache = data.kpiUiConfig || null;
         profitRulesCache = data.profitRules || null;
         tablesUiConfigCache = data.tablesUiConfig || null;
+        chartsUiConfigCache = data.chartsUiConfig || null;
         insightsVariantsConfigCache = data.insightsVariantsConfig || null;
         var generalDateFormat = normalizeDateLabelFormat(
           kpiUiConfigCache &&
@@ -1814,6 +1825,7 @@
           if (getActiveSettingsTab() === 'layout') {
             var sub = getActiveLayoutSubTab();
             if (sub === 'tables') renderTablesWhenVisible();
+            if (sub === 'charts') renderChartsWhenVisible();
           }
         } catch (_) {}
       })
@@ -3314,12 +3326,13 @@
       tabSelector: '#settings-layout-main-tabs [data-settings-layout-tab]',
       tabAttr: 'data-settings-layout-tab',
       panelIdPrefix: 'settings-layout-panel-',
-      keys: ['tables', 'kpis', 'date-ranges'],
-      initialKey: (function () { var k = initialKey || activeLayoutSubTab || 'tables'; return k === 'charts' ? 'tables' : k; })(),
+      keys: ['tables', 'charts', 'kpis', 'date-ranges'],
+      initialKey: (function () { var k = initialKey || activeLayoutSubTab || 'tables'; return k; })(),
       onActivate: function (key) {
         activeLayoutSubTab = key;
         if (getActiveSettingsTab() === 'layout') {
           if (key === 'tables') try { renderTablesWhenVisible(); } catch (_) {}
+          if (key === 'charts') try { renderChartsWhenVisible(); } catch (_) {}
           updateUrl('layout');
           syncLeftNavActiveClasses('layout');
         }

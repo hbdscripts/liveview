@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: f526a9660a56cd48
+// checksum: 20f77c9d0c3f908d
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -14877,6 +14877,7 @@ const API = '';
             var hasDeveloperToken = g && g.hasDeveloperToken === true;
             var hasAdsDb = g && g.adsDb === true;
             var apiVer = (ads && typeof ads.googleAdsApiVersion === 'string') ? ads.googleAdsApiVersion : '';
+            var oauthEnabled = ads && ads.googleAdsOAuthEnabled === true;
             var connectUrl = '/api/ads/google/connect?redirect=' + encodeURIComponent('/settings?tab=integrations');
             googleAdsBody += '<div class="row g-3">';
             googleAdsBody +=   '<div class="col-12 col-xl-6">' + cardSm('Connection', kvTable([
@@ -14891,7 +14892,7 @@ const API = '';
             ])) + '</div>';
             googleAdsBody +=   '<div class="col-12 col-xl-6">' + cardSm('Actions', (
               '<div class="d-flex align-items-center gap-2 flex-wrap">' +
-                '<a class="btn btn-outline-primary btn-sm" href="' + escapeHtml(connectUrl) + '">' + copyIcon + ' Connect</a>' +
+                (oauthEnabled ? ('<a class="btn btn-outline-primary btn-sm" href="' + escapeHtml(connectUrl) + '">' + copyIcon + ' Connect</a>') : '') +
                 '<button type="button" id="ga-status-btn" class="btn btn-outline-secondary btn-sm">' + copyIcon + ' Status</button>' +
                 '<button type="button" id="ga-summary-btn" class="btn btn-outline-secondary btn-sm">' + copyIcon + ' Summary</button>' +
                 '<button type="button" id="ga-refresh-7d-btn" class="btn btn-outline-secondary btn-sm">' + copyIcon + ' Refresh 7d</button>' +
