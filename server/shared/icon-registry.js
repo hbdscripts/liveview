@@ -73,6 +73,7 @@ const ICON_GLYPH_DEFAULTS = Object.freeze({
   'table-icon-compliance-search': 'fa-magnifying-glass',
   'fraud-alert': 'fa-jelly-filled fa-triangle-exclamation',
   'footer-refresh': 'fa-rotate-right',
+  'footer-cache-reload': 'fa-arrows-rotate',
   'footer-sound': 'fa-volume-high',
   'footer-sound-muted': 'fa-volume-xmark',
   'footer-theme': 'fa-palette',
