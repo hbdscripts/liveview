@@ -317,39 +317,129 @@
                   <span class="ms-auto" id="settings-ga-connection-status">—</span>
                 </div>
                 <div class="card-body">
-                  <div class="row g-3">
-                    <div class="col-12 col-lg-6">
-                      <div class="mb-2"><strong>Customer ID</strong> <span id="settings-ga-customer-id" class="text-muted">—</span></div>
-                      <div class="mb-2"><strong>Login Customer ID (MCC)</strong> <span id="settings-ga-login-customer-id" class="text-muted">—</span></div>
-                      <div class="mb-2"><strong>Conversion customer ID</strong> <span id="settings-ga-conversion-customer-id" class="text-muted">—</span></div>
-                      <div class="d-flex align-items-center gap-2 flex-wrap mb-2">
-                        <strong>Tokens</strong>
-                        <span id="settings-ga-devtoken-badge">—</span>
-                        <span id="settings-ga-refreshtoken-badge">—</span>
-                      </div>
-                      <div class="text-muted small">
-                        Conversion uploads are sent to the customer that owns the conversion action (Conversion customer ID if set, otherwise Customer ID).
-                      </div>
+                  <div id="settings-ga-connection-disconnected">
+                    <div class="text-muted small mb-3">
+                      Connect your Google Ads account to enable campaign reporting and (optionally) conversion uploads.
                     </div>
-                    <div class="col-12 col-lg-6">
-                      <label class="form-label small" for="settings-ga-account-customer-id" title="Optional IDs to use when connecting. You can change these later.">Account context (optional) <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>
-                      <div class="row g-2">
-                        <div class="col-12 col-md-4"><input type="text" class="form-control form-control-sm" id="settings-ga-account-customer-id" placeholder="Customer ID" inputmode="numeric" autocomplete="off" /></div>
-                        <div class="col-12 col-md-4"><input type="text" class="form-control form-control-sm" id="settings-ga-account-login-customer-id" placeholder="Login Customer ID" inputmode="numeric" autocomplete="off" /></div>
-                        <div class="col-12 col-md-4"><input type="text" class="form-control form-control-sm" id="settings-ga-account-conversion-customer-id" placeholder="Conversion customer ID" inputmode="numeric" autocomplete="off" /></div>
-                      </div>
-                      <div class="d-flex align-items-center gap-2 flex-wrap mt-3">
-                        <a class="btn btn-primary btn-sm d-inline-flex align-items-center gap-2" id="settings-ga-signin-btn" href="/api/ads/google/connect?redirect=%2Fsettings%3Ftab%3Dintegrations%26integrationsTab%3Dgoogleads"><i class="fa-brands fa-google" data-icon-key="settings-googleads-google" aria-hidden="true"></i> Sign in with Google</a>
-                        <a class="btn btn-outline-primary btn-sm d-none" id="settings-ga-reconnect-btn" href="/api/ads/google/connect?redirect=%2Fsettings%3Ftab%3Dintegrations%26integrationsTab%3Dgoogleads">Reconnect</a>
-                        <button type="button" class="btn btn-outline-secondary btn-sm" id="settings-ga-test-connection-btn">Test connection</button>
-                        <button type="button" class="btn btn-outline-secondary btn-sm" id="settings-ga-disconnect-btn">Disconnect</button>
-                        <span id="settings-ga-connection-msg" class="form-hint"></span>
-                      </div>
+                    <a class="btn btn-primary btn-sm d-inline-flex align-items-center gap-2 text-white kexo-ga-signin-btn" id="settings-ga-signin-btn" href="/api/ads/google/connect?redirect=%2Fsettings%3Ftab%3Dintegrations%26integrationsTab%3Dgoogleads">
+                      <svg class="kexo-ga-signin-icon" viewBox="0 0 48 48" aria-hidden="true" focusable="false">
+                        <path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303C33.65 32.657 29.229 36 24 36c-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.957 3.043l5.657-5.657C34.91 6.053 29.695 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.65-.389-3.917Z"></path>
+                        <path fill="#FF3D00" d="M6.306 14.691 12.88 19.51C14.66 15.108 18.97 12 24 12c3.059 0 5.842 1.154 7.957 3.043l5.657-5.657C34.91 6.053 29.695 4 24 4c-7.682 0-14.36 4.327-17.694 10.691Z"></path>
+                        <path fill="#4CAF50" d="M24 44c5.093 0 9.924-1.957 13.51-5.146l-6.234-5.278C29.248 35.091 26.715 36 24 36c-5.209 0-9.614-3.317-11.287-7.946l-6.523 5.025C9.49 39.556 16.227 44 24 44Z"></path>
+                        <path fill="#1976D2" d="M43.611 20.083H42V20H24v8h11.303a12.06 12.06 0 0 1-4.027 5.576l.001-.001 6.234 5.278C36.93 39.455 44 34 44 24c0-1.341-.138-2.65-.389-3.917Z"></path>
+                      </svg>
+                      Sign in with Google
+                    </a>
+                  </div>
+
+                  <div id="settings-ga-connection-connected" class="d-none">
+                    <div class="mb-2"><strong>Customer ID</strong> <span id="settings-ga-customer-id" class="text-muted">—</span></div>
+                    <div class="mb-2"><strong>Login Customer ID (MCC)</strong> <span id="settings-ga-login-customer-id" class="text-muted">—</span></div>
+                    <div class="mb-2"><strong>Conversion customer ID</strong> <span id="settings-ga-conversion-customer-id" class="text-muted">—</span></div>
+                    <div class="mb-3">
+                      <strong>Campaigns Import</strong> <span class="text-muted">Enabled</span> &mdash;
+                      <a href="/integrations/google-ads" class="link-primary" id="settings-ga-campaigns-link">View Campaigns</a>
                     </div>
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                      <button type="button" class="btn btn-outline-secondary btn-sm" id="settings-ga-disconnect-btn">Disconnect</button>
+                    </div>
+                  </div>
+
+                  <div class="mt-2"><span id="settings-ga-connection-msg" class="form-hint"></span></div>
+                </div>
+              </div>
+
+              <div id="settings-ga-when-connected" class="d-none">
+              <div class="card card-sm mb-3" id="settings-ga-postbacks-master-card">
+                <div class="card-header">
+                  <h4 class="card-title mb-0">Campaign Goals &amp; Postbacks &mdash; Optional</h4>
+                </div>
+                <div class="card-body">
+                  <label class="form-check form-switch mb-0">
+                    <input class="form-check-input" type="checkbox" id="settings-ga-postback-enabled" />
+                    <span class="form-check-label">Enable conversion uploads to Google Ads</span>
+                  </label>
+                  <div class="text-muted small mt-2">
+                    When enabled, attributed orders/events are uploaded to Google Ads as conversions. Nothing is sent until you turn this on.
                   </div>
                 </div>
               </div>
 
+              <div id="settings-ga-postback-details" class="d-none">
+              <div class="card card-sm mb-3" id="settings-ga-postback-card">
+                <div class="card-header">
+                  <h4 class="card-title mb-0">Conversion uploads (postback)</h4>
+                </div>
+                <div class="card-body">
+                  <div class="mb-2"><strong>Upload these goals</strong></div>
+                  <div class="row g-2 mb-3">
+                    <div class="col-12 col-md-4">
+                      <label class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="settings-ga-upload-revenue" />
+                        <span class="form-check-label">Revenue</span>
+                      </label>
+                    </div>
+                    <div class="col-12 col-md-4">
+                      <label class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="settings-ga-upload-profit" />
+                        <span class="form-check-label">Profit</span>
+                      </label>
+                    </div>
+                    <div class="col-12 col-md-4">
+                      <label class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="settings-ga-upload-addtocart" />
+                        <span class="form-check-label">Add to Cart</span>
+                      </label>
+                    </div>
+                  </div>
+                  <div class="text-muted small mb-3">
+                    Uploads require a click ID on the attributed order/event (GCLID / GBRAID / WBRAID). Orders or events without click IDs are skipped and shown in diagnostics.
+                  </div>
+                  <div class="row g-2">
+                    <div class="col-6 col-lg-3">
+                      <div class="text-muted small">Last run</div>
+                      <div class="fw-semibold" id="settings-ga-pb-last-run">—</div>
+                    </div>
+                    <div class="col-6 col-lg-3">
+                      <div class="text-muted small">Jobs queued</div>
+                      <div class="fw-semibold" id="settings-ga-pb-queued">—</div>
+                    </div>
+                    <div class="col-6 col-lg-3">
+                      <div class="text-muted small">Success rate (24h)</div>
+                      <div class="fw-semibold" id="settings-ga-pb-sr-24h">—</div>
+                    </div>
+                    <div class="col-6 col-lg-3">
+                      <div class="text-muted small">Success rate (7d)</div>
+                      <div class="fw-semibold" id="settings-ga-pb-sr-7d">—</div>
+                    </div>
+                    <div class="col-6 col-lg-3">
+                      <div class="text-muted small">Failures (7d)</div>
+                      <div class="fw-semibold" id="settings-ga-pb-failures-7d">—</div>
+                    </div>
+                    <div class="col-6 col-lg-3">
+                      <div class="text-muted small">Coverage (7d)</div>
+                      <div class="fw-semibold" id="settings-ga-pb-coverage-7d">—</div>
+                    </div>
+                    <div class="col-6 col-lg-3">
+                      <div class="text-muted small">Missing click ID</div>
+                      <div class="fw-semibold" id="settings-ga-pb-missing-clickid">—</div>
+                    </div>
+                    <div class="col-6 col-lg-3">
+                      <div class="text-muted small">Rejected uploads</div>
+                      <div class="fw-semibold" id="settings-ga-pb-rejected">—</div>
+                    </div>
+                  </div>
+                  <div class="kexo-admin-only d-none mt-3">
+                    <details>
+                      <summary class="text-muted small" style="cursor:pointer;">Technical details</summary>
+                      <pre class="dm-json-pre small mt-2 mb-0" id="settings-ga-pb-tech">—</pre>
+                    </details>
+                  </div>
+                </div>
+              </div>
+              </div>
+
+              <div id="settings-ga-postback-dependent" class="d-none">
               <div class="card card-sm mb-3" id="settings-ga-actions-card">
                 <div class="card-header d-flex align-items-center">
                   <h4 class="card-title mb-0">Conversion actions (uploaded by Kexo)</h4>
@@ -459,82 +549,6 @@
                 </div>
               </div>
 
-              <div class="card card-sm mb-3" id="settings-ga-postback-card">
-                <div class="card-header">
-                  <h4 class="card-title mb-0">Conversion uploads (postback)</h4>
-                </div>
-                <div class="card-body">
-                  <div class="form-check form-switch mb-2">
-                    <input class="form-check-input" type="checkbox" id="settings-ga-postback-enabled" />
-                    <label class="form-check-label" for="settings-ga-postback-enabled" title="When enabled, attributed orders/events are uploaded to Google Ads as conversions.">Enable conversion uploads to Google Ads <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>
-                  </div>
-                  <div class="mb-2"><strong>Upload these goals</strong></div>
-                  <div class="row g-2 mb-3">
-                    <div class="col-12 col-md-4">
-                      <label class="form-check form-switch">
-                        <input class="form-check-input" type="checkbox" id="settings-ga-upload-revenue" />
-                        <span class="form-check-label">Revenue</span>
-                      </label>
-                    </div>
-                    <div class="col-12 col-md-4">
-                      <label class="form-check form-switch">
-                        <input class="form-check-input" type="checkbox" id="settings-ga-upload-profit" />
-                        <span class="form-check-label">Profit</span>
-                      </label>
-                    </div>
-                    <div class="col-12 col-md-4">
-                      <label class="form-check form-switch">
-                        <input class="form-check-input" type="checkbox" id="settings-ga-upload-addtocart" />
-                        <span class="form-check-label">Add to Cart</span>
-                      </label>
-                    </div>
-                  </div>
-                  <div class="text-muted small mb-3">
-                    Uploads require a click ID on the attributed order/event (GCLID / GBRAID / WBRAID). Orders or events without click IDs are skipped and shown in diagnostics.
-                  </div>
-                  <div class="row g-2">
-                    <div class="col-6 col-lg-3">
-                      <div class="text-muted small">Last run</div>
-                      <div class="fw-semibold" id="settings-ga-pb-last-run">—</div>
-                    </div>
-                    <div class="col-6 col-lg-3">
-                      <div class="text-muted small">Jobs queued</div>
-                      <div class="fw-semibold" id="settings-ga-pb-queued">—</div>
-                    </div>
-                    <div class="col-6 col-lg-3">
-                      <div class="text-muted small">Success rate (24h)</div>
-                      <div class="fw-semibold" id="settings-ga-pb-sr-24h">—</div>
-                    </div>
-                    <div class="col-6 col-lg-3">
-                      <div class="text-muted small">Success rate (7d)</div>
-                      <div class="fw-semibold" id="settings-ga-pb-sr-7d">—</div>
-                    </div>
-                    <div class="col-6 col-lg-3">
-                      <div class="text-muted small">Failures (7d)</div>
-                      <div class="fw-semibold" id="settings-ga-pb-failures-7d">—</div>
-                    </div>
-                    <div class="col-6 col-lg-3">
-                      <div class="text-muted small">Coverage (7d)</div>
-                      <div class="fw-semibold" id="settings-ga-pb-coverage-7d">—</div>
-                    </div>
-                    <div class="col-6 col-lg-3">
-                      <div class="text-muted small">Missing click ID</div>
-                      <div class="fw-semibold" id="settings-ga-pb-missing-clickid">—</div>
-                    </div>
-                    <div class="col-6 col-lg-3">
-                      <div class="text-muted small">Rejected uploads</div>
-                      <div class="fw-semibold" id="settings-ga-pb-rejected">—</div>
-                    </div>
-                  </div>
-                  <div class="kexo-admin-only d-none mt-3">
-                    <details>
-                      <summary class="text-muted small" style="cursor:pointer;">Technical details</summary>
-                      <pre class="dm-json-pre small mt-2 mb-0" id="settings-ga-pb-tech">—</pre>
-                    </details>
-                  </div>
-                </div>
-              </div>
-
               <div class="card card-sm" id="settings-ga-diagnostics-card">
                 <div class="card-header d-flex align-items-center flex-wrap gap-2">
                   <h4 class="card-title mb-0">Diagnostics</h4>
@@ -561,6 +575,8 @@
                     </tbody>
                   </table>
                 </div>
+              </div>
+              </div>
               </div>
             </div>
 

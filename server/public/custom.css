@@ -5979,6 +5979,19 @@ body[data-page="settings"] .settings-mobile-children a.active { background: var(
 .kexo-ads-card-hidden { display: none; }
 .kexo-products-hidden-note { display: none; }
 
+/* Settings → Integrations → Google Ads */
+.kexo-ga-signin-btn.text-white,
+.kexo-ga-signin-btn.text-white:hover,
+.kexo-ga-signin-btn.text-white:focus {
+  color: #fff !important;
+}
+.kexo-ga-signin-icon {
+  width: 18px;
+  height: 18px;
+  display: inline-block;
+  flex: 0 0 auto;
+}
+
 /* Variants panel (from page-local style) */
 #tab-panel-variants .stats-row-wrap { position: relative; }
 #tab-panel-variants .stats-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; align-items: stretch; }

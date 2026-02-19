@@ -1110,12 +1110,12 @@
 
     var connMsgEl = document.getElementById('settings-ga-connection-msg');
     var signinBtn = document.getElementById('settings-ga-signin-btn');
-    var reconnectBtn = document.getElementById('settings-ga-reconnect-btn');
-    var testConnBtn = document.getElementById('settings-ga-test-connection-btn');
     var disconnectBtn = document.getElementById('settings-ga-disconnect-btn');
     var provisionBtn = document.getElementById('settings-ga-provision-goals-btn');
     var postbackCb = document.getElementById('settings-ga-postback-enabled');
     var issuesRefreshBtn = document.getElementById('settings-ga-issues-refresh-btn');
+    var postbackDetailsEl = document.getElementById('settings-ga-postback-details');
+    var postbackDependentEl = document.getElementById('settings-ga-postback-dependent');
 
     var profitSaveBtn = document.getElementById('settings-ga-profit-save-btn');
     var profitMsgEl = document.getElementById('settings-ga-profit-msg');
@@ -1124,7 +1124,7 @@
     var issueModalDismissBtn = document.getElementById('settings-ga-issue-modal-dismiss');
     var issueModalResolveBtn = document.getElementById('settings-ga-issue-modal-resolve');
 
-    if (!signinBtn && !reconnectBtn && !testConnBtn && !disconnectBtn && !provisionBtn && !postbackCb && !issuesRefreshBtn && !profitSaveBtn) return;
+    if (!signinBtn && !disconnectBtn && !provisionBtn && !postbackCb && !issuesRefreshBtn && !profitSaveBtn && !postbackDetailsEl && !postbackDependentEl) return;
 
     function setHint(el, text, ok) {
       if (!el) return;
@@ -1161,6 +1161,13 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body || {}),
       }, 35000);
+    }
+
+    function isGaConnected() {
+      try { return !!window.__kexoGaConnected; } catch (_) { return false; }
+    }
+    function canLoadGaPostbackStuff() {
+      return isGaConnected() && !!(postbackCb && postbackCb.checked);
     }
 
     function safeText(s) {
@@ -1251,6 +1258,7 @@
     function loadConversionActions() {
       var body = document.getElementById('settings-ga-actions-body');
       if (!body) return Promise.resolve(false);
+      if (!canLoadGaPostbackStuff()) return Promise.resolve(false);
       body.innerHTML = '<tr><td colspan="5" class="text-muted small">Loading…</td></tr>';
       var shop = getShopParam();
       var qs = shop ? ('?shop=' + encodeURIComponent(shop)) : '';
@@ -1290,6 +1298,7 @@
     function loadPostbackHealth() {
       var shop = getShopParam();
       var qs = shop ? ('?shop=' + encodeURIComponent(shop)) : '';
+      if (!canLoadGaPostbackStuff()) return Promise.resolve(false);
       return apiGet('/api/ads/google/goal-health' + qs)
         .then(function (r) {
           var lastRunEl = document.getElementById('settings-ga-pb-last-run');
@@ -1386,6 +1395,7 @@
     function loadIssues() {
       var body = document.getElementById('settings-ga-issues-body');
       if (!body) return Promise.resolve(false);
+      if (!canLoadGaPostbackStuff()) return Promise.resolve(false);
       body.innerHTML = '<tr><td colspan="5" class="text-muted small">Loading…</td></tr>';
       var shop = getShopParam();
       var filterBtn = document.querySelector('[data-settings-ga-issue-filter].active');
@@ -1447,11 +1457,22 @@
         .then(function (r) {
           if (r && r.ok && r.json && r.json.ok) {
             closeGaIssueModal();
-            loadIssues();
-            loadPostbackHealth();
+            applyGaPostbackEnabledUi({ load: true });
           }
         })
         .catch(function () {});
+    }
+
+    function applyGaPostbackEnabledUi(opts) {
+      var connected = isGaConnected();
+      var enabled = !!(postbackCb && postbackCb.checked);
+      if (postbackDetailsEl) postbackDetailsEl.classList.toggle('d-none', !(connected && enabled));
+      if (postbackDependentEl) postbackDependentEl.classList.toggle('d-none', !(connected && enabled));
+      if (opts && opts.load === true && connected && enabled) {
+        loadConversionActions();
+        loadPostbackHealth();
+        loadIssues();
+      }
     }
 
     if (disconnectBtn) {
@@ -1463,28 +1484,11 @@
             if (r && r.ok && r.json && r.json.ok) {
               setHint(connMsgEl, 'Disconnected.', true);
               loadConfigAndPopulate();
-              loadConversionActions();
-              loadPostbackHealth();
-              loadIssues();
             } else {
               setHint(connMsgEl, (r && r.json && r.json.error) ? String(r.json.error) : 'Disconnect failed', false);
             }
           })
           .catch(function () { setHint(connMsgEl, 'Disconnect failed', false); });
-      });
-    }
-
-    if (testConnBtn) {
-      testConnBtn.addEventListener('click', function () {
-        setHint(connMsgEl, 'Testing connection…', true);
-        var shop = getShopParam();
-        var qs = shop ? ('?shop=' + encodeURIComponent(shop)) : '';
-        apiGet('/api/ads/google/test-connection' + qs)
-          .then(function (r) {
-            var ok = !!(r && r.ok && r.json && r.json.ok);
-            setHint(connMsgEl, ok ? 'Connection OK.' : ((r && r.json && r.json.error) ? String(r.json.error) : 'Test failed.'), ok);
-          })
-          .catch(function () { setHint(connMsgEl, 'Test failed.', false); });
       });
     }
 
@@ -1505,8 +1509,7 @@
             var ok = !!(r && r.ok && r.json && r.json.ok);
             setHint(connMsgEl, ok ? 'Provisioned.' : ((r && r.json && r.json.error) ? String(r.json.error) : 'Provision failed.'), ok);
             if (ok) {
-              loadConversionActions();
-              loadPostbackHealth();
+              applyGaPostbackEnabledUi({ load: true });
             }
           })
           .catch(function () { setHint(connMsgEl, 'Provision failed.', false); });
@@ -1519,7 +1522,7 @@
         saveSettings({ googleAdsPostbackEnabled: checked })
           .then(function () {
             setHint(connMsgEl, checked ? 'Conversion uploads enabled.' : 'Conversion uploads disabled.', true);
-            loadPostbackHealth();
+            applyGaPostbackEnabledUi({ load: checked });
           })
           .catch(function () { setHint(connMsgEl, 'Failed to save setting.', false); });
       });
@@ -1572,15 +1575,16 @@
           b.classList.remove('active');
         });
         filterBtn.classList.add('active');
-        loadIssues();
+        if (canLoadGaPostbackStuff()) loadIssues();
       }
     });
 
-    if (issuesRefreshBtn) issuesRefreshBtn.addEventListener('click', function () { loadIssues(); });
+    if (issuesRefreshBtn) issuesRefreshBtn.addEventListener('click', function () { if (canLoadGaPostbackStuff()) loadIssues(); });
 
     try {
       window.__kexoApplyGoogleAdsProfitDeductions = function (d, v) { applyProfitDeductions(d, v != null ? v : 1); };
       window.__kexoApplyPostbackGoals = function (g) { applyPostbackGoals(g); };
+      window.__kexoApplyGaPostbackEnabled = function (opts) { applyGaPostbackEnabledUi(opts || { load: true }); };
     } catch (_) {}
     try {
       var payload = window.__kexoSettingsPayload;
@@ -1592,10 +1596,7 @@
       applyProfitDeductions(null, 1);
       applyPostbackGoals(null);
     }
-
-    loadConversionActions();
-    loadPostbackHealth();
-    loadIssues();
+    applyGaPostbackEnabledUi({ load: false });
   }
 
   function renderIntegrationsFromConfig(c) {
@@ -1640,47 +1641,36 @@
       else if (ga && ga.configured) connBadge.innerHTML = badge('Not connected', 'warn');
       else connBadge.innerHTML = badge('Not configured', 'bad');
     }
+
+    var isConnected = !!(ga && ga.connected);
+    try { window.__kexoGaConnected = isConnected; } catch (_) {}
+
     setText('settings-ga-customer-id', ga && ga.customerId ? String(ga.customerId) : '\u2014');
     setText('settings-ga-login-customer-id', ga && ga.loginCustomerId ? String(ga.loginCustomerId) : '\u2014');
     setText('settings-ga-conversion-customer-id', ga && ga.conversionCustomerId ? String(ga.conversionCustomerId) : '\u2014');
-    setHtml('settings-ga-devtoken-badge', ga && ga.hasDeveloperToken ? badge('Developer token: present', 'ok') : badge('Developer token: missing', 'bad'));
-    setHtml('settings-ga-refreshtoken-badge', ga && ga.hasRefreshToken ? badge('Refresh token: present', 'ok') : badge('Refresh token: missing', 'bad'));
-
-    var custIdEl = document.getElementById('settings-ga-account-customer-id');
-    var loginCustEl = document.getElementById('settings-ga-account-login-customer-id');
-    var convCustEl = document.getElementById('settings-ga-account-conversion-customer-id');
-    if (custIdEl && (ga && ga.connected && ga.customerId)) custIdEl.value = String(ga.customerId);
-    if (loginCustEl && (ga && ga.connected && ga.loginCustomerId)) loginCustEl.value = String(ga.loginCustomerId);
-    if (convCustEl && (ga && ga.connected && ga.conversionCustomerId)) convCustEl.value = String(ga.conversionCustomerId);
 
     var postbackCb = document.getElementById('settings-ga-postback-enabled');
     if (postbackCb) postbackCb.checked = !!(settings && settings.googleAdsPostbackEnabled);
 
-    function updateConnectHrefs() {
-      var signIn = document.getElementById('settings-ga-signin-btn');
-      var reconnect = document.getElementById('settings-ga-reconnect-btn');
-      var cust = document.getElementById('settings-ga-account-customer-id');
-      var login = document.getElementById('settings-ga-account-login-customer-id');
-      var conv = document.getElementById('settings-ga-account-conversion-customer-id');
-      var sp = getShopParam();
-      var base = (typeof API !== 'undefined' ? API : '') + '/api/ads/google/connect?redirect=' + encodeURIComponent('/settings?tab=integrations&integrationsTab=googleads');
-      if (sp) base += '&shop=' + encodeURIComponent(sp);
-      if (cust && cust.value.trim()) base += '&customer_id=' + encodeURIComponent(cust.value.trim());
-      if (login && login.value.trim()) base += '&login_customer_id=' + encodeURIComponent(login.value.trim());
-      if (conv && conv.value.trim()) base += '&conversion_customer_id=' + encodeURIComponent(conv.value.trim());
-      if (signIn) signIn.setAttribute('href', base);
-      if (reconnect) reconnect.setAttribute('href', base);
-    }
-    updateConnectHrefs();
-    if (custIdEl) custIdEl.addEventListener('input', updateConnectHrefs);
-    if (loginCustEl) loginCustEl.addEventListener('input', updateConnectHrefs);
-    if (convCustEl) convCustEl.addEventListener('input', updateConnectHrefs);
+    var connDisconnectedEl = document.getElementById('settings-ga-connection-disconnected');
+    var connConnectedEl = document.getElementById('settings-ga-connection-connected');
+    var whenConnectedEl = document.getElementById('settings-ga-when-connected');
+    if (connDisconnectedEl) connDisconnectedEl.classList.toggle('d-none', isConnected);
+    if (connConnectedEl) connConnectedEl.classList.toggle('d-none', !isConnected);
+    if (whenConnectedEl) whenConnectedEl.classList.toggle('d-none', !isConnected);
 
-    var signInBtn = document.getElementById('settings-ga-signin-btn');
-    var reconnectBtn = document.getElementById('settings-ga-reconnect-btn');
-    var isConnected = !!(ga && ga.connected);
-    if (signInBtn) signInBtn.classList.toggle('d-none', isConnected);
-    if (reconnectBtn) reconnectBtn.classList.toggle('d-none', !isConnected);
+    var sp = getShopParam();
+    var connectBase = (typeof API !== 'undefined' ? API : '') + '/api/ads/google/connect?redirect=' + encodeURIComponent('/settings?tab=integrations&integrationsTab=googleads');
+    if (sp) connectBase += '&shop=' + encodeURIComponent(sp);
+    var signIn = document.getElementById('settings-ga-signin-btn');
+    if (signIn) signIn.setAttribute('href', connectBase);
+
+    var campaignsLink = document.getElementById('settings-ga-campaigns-link');
+    if (campaignsLink) campaignsLink.setAttribute('href', '/integrations/google-ads' + (sp ? ('?shop=' + encodeURIComponent(sp)) : ''));
+
+    try {
+      if (typeof window.__kexoApplyGaPostbackEnabled === 'function') window.__kexoApplyGaPostbackEnabled({ load: true });
+    } catch (_) {}
   }
 
   function getShopParam() {
