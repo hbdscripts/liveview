@@ -37,6 +37,7 @@
       var _primaryRgbDash = getComputedStyle(document.documentElement).getPropertyValue('--tblr-primary-rgb').trim() || '32,107,196';
       var DASH_ACCENT = 'rgb(' + _primaryRgbDash + ')';
       var DASH_ACCENT_LIGHT = 'rgba(' + _primaryRgbDash + ',0.12)';
+      var WIDGET_RING_AND_BAR = 'rgba(' + _primaryRgbDash + ',0.2)';
       var DASH_ORANGE = '#f59e0b';
       var DASH_ORANGE_LIGHT = 'rgba(245,158,11,0.10)';
       var DASH_BLUE = '#3b82f6';
@@ -5093,8 +5094,8 @@
                 if (!force && dashWidgetLastRenderSig[mountId] && dashWidgetLastRenderSig[mountId] === sig) return;
                 dashWidgetLastRenderSig[mountId] = sig;
                 renderWidgetRadialAndVbars(mountId, topRow, barRows, {
-                  accentCss: 'background: #353d4a;',
-                  ringStroke: '#353d4a'
+                  accentCss: 'background: ' + WIDGET_RING_AND_BAR + ';',
+                  ringStroke: WIDGET_RING_AND_BAR
                 });
               }
 
@@ -5179,8 +5180,8 @@
                 var devSessions = rows.reduce(function (acc, r) { return acc + (Number(r && r.sessions) || 0); }, 0);
                 var devConv = !list2 || !list2.length ? 0 : (list2[0] && list2[0].conversion_pct != null ? Number(list2[0].conversion_pct) : 0);
                 renderWidgetRadialAndVbars(mountId, topRow, barRows, {
-                  accentCss: 'background: #353d4a;',
-                  ringStroke: '#353d4a',
+                  accentCss: 'background: ' + WIDGET_RING_AND_BAR + ';',
+                  ringStroke: WIDGET_RING_AND_BAR,
                   sessions: devSessions,
                   conversionPct: devConv
                 });
@@ -5254,8 +5255,8 @@
                 if (!force && dashWidgetLastRenderSig[mountId] && dashWidgetLastRenderSig[mountId] === sig) return;
                 dashWidgetLastRenderSig[mountId] = sig;
                 renderWidgetRadialAndVbars(mountId, topRow, barRows, {
-                  accentCss: 'background: #353d4a;',
-                  ringStroke: '#353d4a'
+                  accentCss: 'background: ' + WIDGET_RING_AND_BAR + ';',
+                  ringStroke: WIDGET_RING_AND_BAR
                 });
               }
 
@@ -5316,8 +5317,8 @@
                 if (!force && dashWidgetLastRenderSig[mountId] && dashWidgetLastRenderSig[mountId] === sig) return;
                 dashWidgetLastRenderSig[mountId] = sig;
                 renderWidgetRadialAndVbars(mountId, topRow, barRows, {
-                  accentCss: 'background: #353d4a;',
-                  ringStroke: '#353d4a'
+                  accentCss: 'background: ' + WIDGET_RING_AND_BAR + ';',
+                  ringStroke: WIDGET_RING_AND_BAR
                 });
               }
 
@@ -5386,8 +5387,8 @@
                 if (!force && dashWidgetLastRenderSig[mountId] && dashWidgetLastRenderSig[mountId] === sig) return;
                 dashWidgetLastRenderSig[mountId] = sig;
                 renderWidgetRadialAndVbars(mountId, topRow, barRows, {
-                  accentCss: 'background: #353d4a;',
-                  ringStroke: '#353d4a'
+                  accentCss: 'background: ' + WIDGET_RING_AND_BAR + ';',
+                  ringStroke: WIDGET_RING_AND_BAR
                 });
               }
 

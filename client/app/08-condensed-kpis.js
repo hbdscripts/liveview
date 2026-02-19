@@ -1601,13 +1601,7 @@
         countsByIso2[iso] = (countsByIso2[iso] || 0) + 1;
       }
       var keys = Object.keys(countsByIso2);
-      if (!keys.length) {
-        if (liveOnlineMapChartInstance) { try { liveOnlineMapChartInstance.destroy(); } catch (_) {} liveOnlineMapChartInstance = null; }
-        clearCountriesFlowOverlay(el);
-        try { el.__kexoLiveOnlineMapSig = ''; } catch (_) {}
-        setLiveOnlineMapState(el, 'No live activity yet');
-        return;
-      }
+      var hasNoLiveActivity = !keys.length;
 
       var palette = chartColorsFromUiConfig(chartKey, ['#16a34a']);
       var accent = (palette && palette[0]) ? String(palette[0]).trim() : '#16a34a';
@@ -1711,6 +1705,15 @@
           }
         }
         hideMapTooltipOnLeave(el);
+
+        if (hasNoLiveActivity) {
+          var noActivity = document.createElement('div');
+          noActivity.setAttribute('class', 'kexo-live-map-empty-caption');
+          noActivity.style.cssText = 'position:absolute;left:0;right:0;bottom:12px;text-align:center;font-size:.8125rem;color:' + (muted || 'var(--tblr-secondary)') + ';pointer-events:none;';
+          noActivity.textContent = 'No live activity yet';
+          if (el && el.style) el.style.position = 'relative';
+          try { el.appendChild(noActivity); } catch (_) {}
+        }
 
         if (isAnimated) {
           setTimeout(function () {

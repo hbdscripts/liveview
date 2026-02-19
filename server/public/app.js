@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: cfd5d5051c6a2e51
+// checksum: aecbd26dbf3f373d
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -11815,13 +11815,7 @@ const API = '';
         countsByIso2[iso] = (countsByIso2[iso] || 0) + 1;
       }
       var keys = Object.keys(countsByIso2);
-      if (!keys.length) {
-        if (liveOnlineMapChartInstance) { try { liveOnlineMapChartInstance.destroy(); } catch (_) {} liveOnlineMapChartInstance = null; }
-        clearCountriesFlowOverlay(el);
-        try { el.__kexoLiveOnlineMapSig = ''; } catch (_) {}
-        setLiveOnlineMapState(el, 'No live activity yet');
-        return;
-      }
+      var hasNoLiveActivity = !keys.length;
 
       var palette = chartColorsFromUiConfig(chartKey, ['#16a34a']);
       var accent = (palette && palette[0]) ? String(palette[0]).trim() : '#16a34a';
@@ -11925,6 +11919,15 @@ const API = '';
           }
         }
         hideMapTooltipOnLeave(el);
+
+        if (hasNoLiveActivity) {
+          var noActivity = document.createElement('div');
+          noActivity.setAttribute('class', 'kexo-live-map-empty-caption');
+          noActivity.style.cssText = 'position:absolute;left:0;right:0;bottom:12px;text-align:center;font-size:.8125rem;color:' + (muted || 'var(--tblr-secondary)') + ';pointer-events:none;';
+          noActivity.textContent = 'No live activity yet';
+          if (el && el.style) el.style.position = 'relative';
+          try { el.appendChild(noActivity); } catch (_) {}
+        }
 
         if (isAnimated) {
           setTimeout(function () {
@@ -16893,6 +16896,7 @@ const API = '';
       var _primaryRgbDash = getComputedStyle(document.documentElement).getPropertyValue('--tblr-primary-rgb').trim() || '32,107,196';
       var DASH_ACCENT = 'rgb(' + _primaryRgbDash + ')';
       var DASH_ACCENT_LIGHT = 'rgba(' + _primaryRgbDash + ',0.12)';
+      var WIDGET_RING_AND_BAR = 'rgba(' + _primaryRgbDash + ',0.2)';
       var DASH_ORANGE = '#f59e0b';
       var DASH_ORANGE_LIGHT = 'rgba(245,158,11,0.10)';
       var DASH_BLUE = '#3b82f6';
@@ -21949,8 +21953,8 @@ const API = '';
                 if (!force && dashWidgetLastRenderSig[mountId] && dashWidgetLastRenderSig[mountId] === sig) return;
                 dashWidgetLastRenderSig[mountId] = sig;
                 renderWidgetRadialAndVbars(mountId, topRow, barRows, {
-                  accentCss: 'background: #353d4a;',
-                  ringStroke: '#353d4a'
+                  accentCss: 'background: ' + WIDGET_RING_AND_BAR + ';',
+                  ringStroke: WIDGET_RING_AND_BAR
                 });
               }
 
@@ -22035,8 +22039,8 @@ const API = '';
                 var devSessions = rows.reduce(function (acc, r) { return acc + (Number(r && r.sessions) || 0); }, 0);
                 var devConv = !list2 || !list2.length ? 0 : (list2[0] && list2[0].conversion_pct != null ? Number(list2[0].conversion_pct) : 0);
                 renderWidgetRadialAndVbars(mountId, topRow, barRows, {
-                  accentCss: 'background: #353d4a;',
-                  ringStroke: '#353d4a',
+                  accentCss: 'background: ' + WIDGET_RING_AND_BAR + ';',
+                  ringStroke: WIDGET_RING_AND_BAR,
                   sessions: devSessions,
                   conversionPct: devConv
                 });
@@ -22110,8 +22114,8 @@ const API = '';
                 if (!force && dashWidgetLastRenderSig[mountId] && dashWidgetLastRenderSig[mountId] === sig) return;
                 dashWidgetLastRenderSig[mountId] = sig;
                 renderWidgetRadialAndVbars(mountId, topRow, barRows, {
-                  accentCss: 'background: #353d4a;',
-                  ringStroke: '#353d4a'
+                  accentCss: 'background: ' + WIDGET_RING_AND_BAR + ';',
+                  ringStroke: WIDGET_RING_AND_BAR
                 });
               }
 
@@ -22172,8 +22176,8 @@ const API = '';
                 if (!force && dashWidgetLastRenderSig[mountId] && dashWidgetLastRenderSig[mountId] === sig) return;
                 dashWidgetLastRenderSig[mountId] = sig;
                 renderWidgetRadialAndVbars(mountId, topRow, barRows, {
-                  accentCss: 'background: #353d4a;',
-                  ringStroke: '#353d4a'
+                  accentCss: 'background: ' + WIDGET_RING_AND_BAR + ';',
+                  ringStroke: WIDGET_RING_AND_BAR
                 });
               }
 
@@ -22242,8 +22246,8 @@ const API = '';
                 if (!force && dashWidgetLastRenderSig[mountId] && dashWidgetLastRenderSig[mountId] === sig) return;
                 dashWidgetLastRenderSig[mountId] = sig;
                 renderWidgetRadialAndVbars(mountId, topRow, barRows, {
-                  accentCss: 'background: #353d4a;',
-                  ringStroke: '#353d4a'
+                  accentCss: 'background: ' + WIDGET_RING_AND_BAR + ';',
+                  ringStroke: WIDGET_RING_AND_BAR
                 });
               }
 

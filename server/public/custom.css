@@ -3331,7 +3331,6 @@ html[data-bs-theme="dark"] .report-build-wrap {
 
 .kexo-widget-card {
   overflow: hidden;
-  background: rgba(var(--tblr-primary-rgb), 0.04);
 }
 .kexo-widget-card-body {
   display: flex;
