@@ -423,6 +423,23 @@ function fillTopProductsWithSessionsFallback(topProducts, sessionsByHandleAll, {
   });
 }
 
+/** Await product meta for top products so thumbs/handles are available on first load and when switching range. */
+async function fetchProductMetaMap(shop, token, productIds) {
+  const metaMap = new Map();
+  if (!shop || !token || !Array.isArray(productIds) || productIds.length === 0) return metaMap;
+  const ids = productIds.filter(Boolean);
+  if (!ids.length) return metaMap;
+  const metaPromises = ids.map((pid) =>
+    productMetaCache.getProductMeta(shop, token, pid).catch(() => ({ ok: false }))
+  );
+  const metaResults = await Promise.all(metaPromises);
+  ids.forEach((pid, i) => {
+    const meta = metaResults[i];
+    if (meta && meta.ok) metaMap.set(String(pid), meta);
+  });
+  return metaMap;
+}
+
 function fillTopCountriesWithSessionsFallback(topCountries, sessionsByCountryAll, { limit = DASHBOARD_TOP_TABLE_MAX_ROWS } = {}) {
   const out = Array.isArray(topCountries) ? topCountries.slice() : [];
   const lim = Math.max(0, Math.trunc(Number(limit) || DASHBOARD_TOP_TABLE_MAX_ROWS));
@@ -1187,22 +1204,10 @@ async function computeDashboardSeries(days, nowMs, timeZone, trafficMode) {
              LIMIT ${DASHBOARD_TOP_TABLE_MAX_ROWS}`,
         [shop, overallStart, overallEnd]
       );
-      // Product meta: peek cache only; warm missing in background (never block on Shopify API).
       let token = null;
       try { token = await salesTruth.getAccessToken(shop); } catch (_) {}
-      const productIds = token ? productRows.map(r => r.product_id).filter(Boolean) : [];
-      const metaMap = new Map();
-      const missingMetaIds = [];
-      for (const pid of productIds) {
-        const cached = productMetaCache.peekProductMeta(shop, pid);
-        if (cached && cached.ok) metaMap.set(String(pid), cached);
-        else missingMetaIds.push(String(pid));
-      }
-      if (token && missingMetaIds.length) {
-        try {
-          missingMetaIds.forEach(function(pid) { productMetaCache.warmProductMeta(shop, token, pid); });
-        } catch (_) {}
-      }
+      const productIds = productRows.map(r => r.product_id).filter(Boolean);
+      const metaMap = await fetchProductMetaMap(shop, token, productIds);
       topProducts = productRows.map(function(r) {
         const pid = r.product_id ? String(r.product_id) : '';
         const meta = metaMap.get(pid);
@@ -1222,16 +1227,8 @@ async function computeDashboardSeries(days, nowMs, timeZone, trafficMode) {
           if (!fallbackToken) {
             try { fallbackToken = await salesTruth.getAccessToken(shop); } catch (_) {}
           }
-          const fallbackMetaMap = new Map();
-          if (fallbackToken) {
-            for (const r of rawTop) {
-              const pid = r.product_id ? String(r.product_id) : '';
-              if (!pid) continue;
-              const cached = productMetaCache.peekProductMeta(shop, pid);
-              if (cached && cached.ok) fallbackMetaMap.set(pid, cached);
-              else try { productMetaCache.warmProductMeta(shop, fallbackToken, pid); } catch (_) {}
-            }
-          }
+          const fallbackIds = rawTop.map((r) => r.product_id).filter(Boolean);
+          const fallbackMetaMap = await fetchProductMetaMap(shop, fallbackToken, fallbackIds);
           topProducts = rawTop.map(function(r) {
             const pid = r.product_id ? String(r.product_id) : '';
             const meta = fallbackMetaMap.get(pid);
@@ -1666,22 +1663,10 @@ async function computeDashboardSeriesForBounds(bounds, nowMs, timeZone, trafficM
              LIMIT ${DASHBOARD_TOP_TABLE_MAX_ROWS}`,
         [shop, overallStart, overallEnd]
       );
-      // Product meta: peek cache only; warm missing in background (never block on Shopify API).
       let token = null;
       try { token = await salesTruth.getAccessToken(shop); } catch (_) {}
-      const productIds = token ? productRows.map(r => r.product_id).filter(Boolean) : [];
-      const metaMap = new Map();
-      const missingMetaIds = [];
-      for (const pid of productIds) {
-        const cached = productMetaCache.peekProductMeta(shop, pid);
-        if (cached && cached.ok) metaMap.set(String(pid), cached);
-        else missingMetaIds.push(String(pid));
-      }
-      if (token && missingMetaIds.length) {
-        try {
-          missingMetaIds.forEach(function(pid) { productMetaCache.warmProductMeta(shop, token, pid); });
-        } catch (_) {}
-      }
+      const productIds = productRows.map(r => r.product_id).filter(Boolean);
+      const metaMap = await fetchProductMetaMap(shop, token, productIds);
       topProducts = productRows.map(function(r) {
         const pid = r.product_id ? String(r.product_id) : '';
         const meta = metaMap.get(pid);
@@ -1701,16 +1686,8 @@ async function computeDashboardSeriesForBounds(bounds, nowMs, timeZone, trafficM
           if (!fallbackToken) {
             try { fallbackToken = await salesTruth.getAccessToken(shop); } catch (_) {}
           }
-          const fallbackMetaMap = new Map();
-          if (fallbackToken) {
-            for (const r of rawTop) {
-              const pid = r.product_id ? String(r.product_id) : '';
-              if (!pid) continue;
-              const cached = productMetaCache.peekProductMeta(shop, pid);
-              if (cached && cached.ok) fallbackMetaMap.set(pid, cached);
-              else try { productMetaCache.warmProductMeta(shop, fallbackToken, pid); } catch (_) {}
-            }
-          }
+          const fallbackIds = rawTop.map((r) => r.product_id).filter(Boolean);
+          const fallbackMetaMap = await fetchProductMetaMap(shop, fallbackToken, fallbackIds);
           topProducts = rawTop.map(function(r) {
             const pid = r.product_id ? String(r.product_id) : '';
             const meta = fallbackMetaMap.get(pid);
