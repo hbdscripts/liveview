@@ -4752,9 +4752,8 @@
                     '</div>' +
                     '<div class="col-12 is-hidden" id="kexo-ovw-finishes-groupby-wrap">' +
                       '<label class="form-label">Group by</label>' +
-                      '<select class="form-select" id="kexo-ovw-finishes-groupby">' +
-                        '<option value="finishes">Finishes</option>' +
-                      '</select>' +
+                      '<select class="form-select" id="kexo-ovw-finishes-groupby"></select>' +
+                      '<div class="form-hint" id="kexo-ovw-finishes-groupby-hint"></div>' +
                     '</div>' +
                   '</div>' +
                   '<div class="d-flex align-items-center justify-content-between gap-2 mt-3">' +
@@ -4886,7 +4885,46 @@
         if (wrapGb) wrapGb.classList.toggle('is-hidden', key !== 'finishes');
         if (key === 'finishes') {
           var gbEl = document.getElementById('kexo-ovw-finishes-groupby');
-          if (gbEl) gbEl.value = (cfg.widgets && cfg.widgets.finishes && cfg.widgets.finishes.groupBy) ? String(cfg.widgets.finishes.groupBy) : 'finishes';
+          var gbHint = document.getElementById('kexo-ovw-finishes-groupby-hint');
+          var selected = (cfg.widgets && cfg.widgets.finishes && cfg.widgets.finishes.groupBy) ? String(cfg.widgets.finishes.groupBy) : 'finishes';
+          if (gbEl) {
+            gbEl.innerHTML = '<option value="finishes">Finishes</option>';
+            gbEl.value = selected || 'finishes';
+          }
+          if (gbHint) gbHint.textContent = 'Loading tables…';
+          (function () {
+            var rk = dashRangeKeyFromDateRange();
+            getOvwFinishesTablesMeta(rk, false).then(function (tables) {
+              if (!gbEl) return;
+              var list = Array.isArray(tables) ? tables : [];
+              if (!list.length) {
+                if (gbHint) gbHint.textContent = '';
+                return;
+              }
+              var html = '';
+              list.forEach(function (t) {
+                if (!t) return;
+                var id = t.id != null ? String(t.id) : '';
+                var name = t.name != null ? String(t.name) : id;
+                if (!id) return;
+                html += '<option value="' + escapeHtml(id) + '">' + escapeHtml(name || id) + '</option>';
+              });
+              if (!html) html = '<option value="finishes">Finishes</option>';
+              gbEl.innerHTML = html;
+              var next = (selected || 'finishes');
+              var found = false;
+              try {
+                Array.prototype.forEach.call(gbEl.options || [], function (opt) {
+                  if (opt && String(opt.value) === String(next)) found = true;
+                });
+              } catch (_) { found = false; }
+              if (!found) next = String(list[0] && list[0].id ? list[0].id : 'finishes');
+              gbEl.value = next;
+              if (gbHint) gbHint.textContent = '';
+            }).catch(function () {
+              if (gbHint) gbHint.textContent = '';
+            });
+          })();
         }
         var orderEl = document.getElementById('kexo-ovw-order');
         if (orderEl) {
@@ -4977,6 +5015,34 @@
         return dashWidgetInFlight[key];
       }
 
+      function getOvwFinishesTablesMeta(rangeKey, force) {
+        var rk = (rangeKey != null ? String(rangeKey) : dashRangeKeyFromDateRange());
+        rk = (rk == null ? '' : String(rk)).trim().toLowerCase() || 'today';
+        var shop = null;
+        try { shop = getShopForSales(); } catch (_) { shop = null; }
+        var shopKey = shop ? String(shop) : '';
+        var base = (typeof API === 'string') ? API : '';
+        var url = base + '/api/insights-variants?range=' + encodeURIComponent(rk) +
+          (shopKey ? ('&shop=' + encodeURIComponent(shopKey)) : '') +
+          (force ? ('&force=1&_=' + Date.now()) : '');
+        var cacheKey = 'finishes|' + rk + '|' + shopKey;
+        return fetchWidgetJson(cacheKey, url, !!force, 30000).then(function (data) {
+          var payload = (data && data.ok && data.payload) ? data.payload : data;
+          var tables = payload && Array.isArray(payload.tables) ? payload.tables : (Array.isArray(data && data.tables) ? data.tables : []);
+          var out = [];
+          (tables || []).forEach(function (t) {
+            if (!t) return;
+            var id = t.id != null ? String(t.id).trim() : '';
+            if (!id) return;
+            var name = t.name != null ? String(t.name) : id;
+            out.push({ id: id, name: name || id });
+          });
+          return out;
+        }).catch(function () {
+          return [];
+        });
+      }
+
       function renderDashTopList(mountId, rows, options) {
         var host = document.getElementById(mountId);
         if (!host) return;
@@ -4984,7 +5050,7 @@
         var opts = (options && typeof options === 'object') ? options : {};
         var accentCss = opts.accentCss ? String(opts.accentCss) : '';
         if (!list.length) {
-          host.innerHTML = '<div class="kexo-widget-empty">No data</div>';
+          host.innerHTML = '<div class="kexo-dash-top-list-wrap"><div class="kexo-widget-empty">No data</div></div>';
           return;
         }
         var html = '<ul class="kexo-dash-top-list">';
@@ -5025,7 +5091,7 @@
           '</li>';
         });
         html += '</ul>';
-        host.innerHTML = html;
+        host.innerHTML = '<div class="kexo-dash-top-list-wrap">' + html + '</div>';
         animateWidgetFills(host);
       }
 
@@ -5431,21 +5497,26 @@
           return list.slice(0, Math.max(0, Number(limit) || 0));
         }
 
-        function renderList(widgetKey, rows, sortBy) {
+        function renderList(widgetKey, rows, sortBy, shareBaseRows) {
           var mountId = 'dash-ovw-' + widgetKey + '-list';
           var host = document.getElementById(mountId);
           if (!host) return;
           var list = Array.isArray(rows) ? rows : [];
           if (!list.length) { host.innerHTML = '<div class="kexo-widget-empty">No data</div>'; return; }
-          var seriesMetric = (sortBy === 'clicks') ? 'clicks' : 'revenue';
-          var total = list.reduce(function (acc, r) { return acc + metricValue(r, seriesMetric); }, 0) || 0;
+          var metric = sortBy === 'clicks' ? 'clicks' : (sortBy === 'ctr' ? 'ctr' : 'revenue');
+          var shareBase = Array.isArray(shareBaseRows) ? shareBaseRows : list;
+          var total = metric === 'ctr'
+            ? 0
+            : (shareBase.reduce(function (acc, r) { return acc + metricValue(r, metric); }, 0) || 0);
           var html = '<ul class="kexo-widget-list">';
           list.forEach(function (r) {
             var label = r && r.label != null ? String(r.label) : '—';
             var icon = r && r.iconHtml ? String(r.iconHtml) : '<span class="kexo-dash-top-row-icon-placeholder" aria-hidden="true"></span>';
-            var valText = fmtMetric(sortBy, r);
-            var seriesVal = metricValue(r, seriesMetric);
-            var pct = total > 0 ? (seriesVal / total) * 100 : 0;
+            var valText = fmtMetric(metric, r);
+            var seriesVal = metricValue(r, metric);
+            var pct = metric === 'ctr'
+              ? (Number.isFinite(Number(seriesVal)) ? Number(seriesVal) : 0)
+              : (total > 0 ? (seriesVal / total) * 100 : 0);
             if (!Number.isFinite(pct)) pct = 0;
             pct = Math.max(0, Math.min(100, pct));
             html += '<li class="kexo-widget-row" title="' + escapeHtml(label) + '">' +
@@ -5464,33 +5535,59 @@
           var chartId = 'dash-ovw-' + widgetKey + '-chart';
           var chartEl = document.getElementById(chartId);
           if (!chartEl) return;
+          try {
+            if (dashCharts && dashCharts[chartId] && typeof dashCharts[chartId].destroy === 'function') {
+              dashCharts[chartId].destroy();
+              dashCharts[chartId] = null;
+            }
+          } catch (_) {}
           var list = Array.isArray(rows) ? rows : [];
           if (!list.length) { chartEl.innerHTML = ''; return; }
-          var metric = (sortBy === 'clicks') ? 'clicks' : 'revenue';
-          var series = list.map(function (r) { return Math.max(0, metricValue(r, metric)); });
-          var total = series.reduce(function (a, b) { return a + (Number(b) || 0); }, 0) || 0;
-          if (total <= 0) { chartEl.innerHTML = ''; return; }
-          var labels = list.map(function (r) { return r && r.label != null ? String(r.label) : '—'; });
-          var accent = accentForWidget(widgetKey);
-          var apexOpts = {
-            chart: { type: 'donut', height: 124, sparkline: { enabled: true }, animations: { enabled: false } },
-            labels: labels,
-            series: series,
-            legend: { show: false },
-            stroke: { show: false },
-            dataLabels: { enabled: false },
-            tooltip: {
-              y: {
-                formatter: function (val) {
-                  if (metric === 'clicks') return fmtNum(Number(val) || 0);
-                  return fmtGbp2(Number(val) || 0);
-                }
-              }
-            },
-            plotOptions: { pie: { donut: { size: '70%' } } },
-            theme: { monochrome: { enabled: true, color: accent, shadeTo: 'light', shadeIntensity: 0.22 } },
-          };
-          upsertDashboardApexChart(chartId, chartEl, apexOpts);
+          var metric = sortBy === 'clicks' ? 'clicks' : (sortBy === 'ctr' ? 'ctr' : 'revenue');
+          var top = list[0] || null;
+          if (!top) { chartEl.innerHTML = ''; return; }
+          var pct = 0;
+          if (metric === 'ctr') {
+            pct = Number(top.ctr);
+            if (!Number.isFinite(pct)) pct = 0;
+            pct = Math.max(0, Math.min(100, pct));
+          } else {
+            var total = list.reduce(function (acc, r) { return acc + Math.max(0, metricValue(r, metric)); }, 0) || 0;
+            var topVal = Math.max(0, metricValue(top, metric));
+            pct = total > 0 ? (topVal / total) * 100 : 0;
+            if (!Number.isFinite(pct)) pct = 0;
+            pct = Math.max(0, Math.min(100, pct));
+          }
+
+          var icon = top && top.iconHtml ? String(top.iconHtml) : '';
+          var valueText = fmtMetric(metric, top);
+          var subText = metric === 'ctr' ? 'CTR' : (String(Math.round(pct)) + '% share');
+
+          var size = 116;
+          var r = 44;
+          var strokeW = 10;
+          var cx = Math.round(size / 2);
+          var cy = Math.round(size / 2);
+          var circ = Math.round(2 * Math.PI * r * 1000) / 1000;
+          var tip = (top && top.label != null ? String(top.label) : '—') + '\n' + valueText + '\n' + (metric === 'ctr' ? ('CTR: ' + valueText) : ('Share: ' + (Math.round(pct * 10) / 10).toFixed(1) + '%'));
+
+          chartEl.innerHTML =
+            '<div class="kexo-ovw-ring" title="' + escapeHtml(tip) + '">' +
+              '<svg width="' + size + '" height="' + size + '" viewBox="0 0 ' + size + ' ' + size + '" aria-hidden="true">' +
+                '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="rgba(15,23,42,0.10)" stroke-width="' + strokeW + '"></circle>' +
+                '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="var(--kexo-accent, var(--kexo-accent-1, #4b94e4))" stroke-width="' + strokeW + '" stroke-linecap="round"' +
+                  ' style="transform: rotate(-90deg); transform-origin: ' + cx + 'px ' + cy + 'px; transition: stroke-dashoffset 520ms cubic-bezier(.2,.9,.2,1);"' +
+                  ' stroke-dasharray="' + escapeHtml(String(circ)) + '" stroke-dashoffset="' + escapeHtml(String(circ)) + '"' +
+                  ' data-kexo-radial-pct="' + escapeHtml(String(pct)) + '" data-kexo-radial-circ="' + escapeHtml(String(circ)) + '"' +
+                '></circle>' +
+              '</svg>' +
+              '<div class="kexo-ovw-ring-center">' +
+                (icon ? ('<div class="kexo-ovw-ring-icon" aria-hidden="true">' + icon + '</div>') : '') +
+                '<div class="kexo-ovw-ring-value">' + escapeHtml(valueText) + '</div>' +
+                '<div class="kexo-ovw-ring-sub">' + escapeHtml(subText) + '</div>' +
+              '</div>' +
+            '</div>';
+          animateWidgetRadials(chartEl);
         }
 
         function extractRows(widgetKey, data) {
@@ -5610,6 +5707,11 @@
           if (!widgetSupportsSortBy(key, sortBy)) sortBy = 'revenue';
           var rows = extractRows(key, data);
           var top = sortTop(rows, sortBy, TOP_N);
+          if (!top || !top.length) {
+            try { document.getElementById('dash-ovw-' + key + '-chart').innerHTML = ''; } catch (_) {}
+            try { document.getElementById('dash-ovw-' + key + '-list').innerHTML = '<div class="kexo-widget-empty">No data</div>'; } catch (_) {}
+            return;
+          }
           var sig = widgetSig({
             key: key,
             rk: rk,
@@ -5623,7 +5725,11 @@
           if (!force && dashWidgetLastRenderSig[listMountId] && dashWidgetLastRenderSig[listMountId] === sig) return;
           dashWidgetLastRenderSig[listMountId] = sig;
           renderChart(key, top, sortBy);
-          renderList(key, top, sortBy);
+          if (top.length <= 1) {
+            try { document.getElementById('dash-ovw-' + key + '-list').innerHTML = ''; } catch (_) {}
+            return;
+          }
+          renderList(key, top.slice(1), sortBy, top);
         }
 
         var order = cfg && Array.isArray(cfg.order) ? cfg.order.slice() : OVERVIEW_WIDGET_KEYS.slice();
