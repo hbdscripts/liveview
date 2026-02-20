@@ -3520,6 +3520,25 @@ body[data-page="dashboard"] #dash-trending-down .dash-trend-delta.text-red {
 .kexo-overview-main-card .kexo-overview-running-totals--main {
   justify-content: center;
 }
+
+/* Overview widgets: keep titles truly centered, unaffected by right-side actions. */
+body[data-page="dashboard"] .kexo-overview-widget-card .kexo-widget-head {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 0.5rem;
+}
+body[data-page="dashboard"] .kexo-overview-widget-card .kexo-widget-title {
+  grid-column: 2;
+  justify-self: center;
+  text-align: center;
+  min-width: 0;
+}
+body[data-page="dashboard"] .kexo-overview-widget-card .kexo-widget-head-right {
+  grid-column: 3;
+  justify-self: end;
+  margin-left: 0;
+}
 .kexo-overview-mini-card {
   overflow-x: hidden;
 }
