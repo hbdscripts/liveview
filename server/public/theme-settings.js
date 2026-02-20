@@ -356,8 +356,6 @@
       { name: '--tblr-gray-950', label: 'Gray 950', help: '' },
     ]},
     { heading: 'Feature tokens', groupId: 'feature', vars: [
-      { name: '--converted-bg', label: 'Converted row background', help: '' },
-      { name: '--converted-hover', label: 'Converted row hover', help: '' },
       { name: '--badge-new-fg', label: 'Badge new (foreground)', help: '' },
       { name: '--badge-returning', label: 'Badge returning', help: '' },
       { name: '--chip-abandoned', label: 'Chip abandoned', help: '' },
@@ -2109,8 +2107,7 @@
     return '<div class="col-12 col-md-6 col-lg-4">' +
       '<div class="card card-sm h-100">' +
         '<div class="card-body">' +
-          '<div class="mb-2 d-flex align-items-center gap-2">' +
-            '<span class="kexo-accent-preview-circle" data-accent-sync="' + key + '" style="width:12px;height:12px;border-radius:12px;flex-shrink:0;background:' + (def || '#e0e0e0') + '" aria-hidden="true"></span>' +
+          '<div class="mb-2">' +
             '<strong>' + title + '</strong>' +
           '</div>' +
           '<div class="d-flex align-items-center gap-2">' +
@@ -2148,11 +2145,7 @@
         '<div class="card-body position-relative">' +
           '<a href="#" class="kexo-css-var-revert text-secondary small position-absolute top-0 end-0 me-1 mt-1" data-kexo-css-var="' + escapeHtml(name) + '" role="button" aria-label="Revert to default">Revert</a>' +
           '<div class="mb-2">' +
-            '<div class="d-flex align-items-center gap-2">' +
-              '<span class="kexo-css-var-preview-circle" data-kexo-css-var="' + escapeHtml(name) + '" style="width:32px;height:32px;border-radius:6px;flex-shrink:0;background:#e0e0e0;border:1px solid rgba(0,0,0,.1)" aria-hidden="true"></span>' +
-              '<strong' + titleAttr + '>' + escapeHtml(label) + (help ? TOOLTIP_ICON : '') + '</strong>' +
-            '</div>' +
-            '<div class="text-secondary small"><code>' + escapeHtml(name) + '</code></div>' +
+            '<strong' + titleAttr + '>' + escapeHtml(label) + (help ? TOOLTIP_ICON : '') + '</strong>' +
           '</div>' +
           '<div class="d-flex align-items-center gap-2">' +
             '<input type="color" class="form-control form-control-color kexo-css-var-swatch" data-kexo-css-var="' + escapeHtml(name) + '" style="width:2.5rem;height:2rem;padding:2px;cursor:pointer" title="Pick colour" />' +
@@ -2197,7 +2190,7 @@
         '<label class="form-label">Colours (CSS variable overrides)</label>' +
         '<div class="text-secondary small mb-3">These override <code>:root</code> variables and take precedence over Theme accents. Leave blank to use defaults.</div>' +
         '<div class="mb-3">' +
-          '<input type="text" class="form-control" id="kexo-css-var-overrides-search" placeholder="Filter by label or variable name…" aria-label="Filter colours" />' +
+          '<input type="text" class="form-control" id="kexo-css-var-overrides-search" placeholder="Filter colours…" aria-label="Filter colours" />' +
         '</div>' +
         '<div class="row g-3" id="kexo-css-var-overrides-grid">' + cssVarGrid + '</div>' +
         '<div class="d-flex align-items-center gap-2 flex-wrap mt-3">' +
@@ -2254,7 +2247,7 @@
 
       '<div class="theme-subpanel" data-theme-subpanel="color" hidden>' +
         '<div class="mb-4">' +
-          '<label class="form-label">Theme accents (5 colors)</label>' +
+          '<label class="form-label">Theme accents (6 colours)</label>' +
           '<div class="text-secondary small mb-3">Accent 1 drives strip, menu, settings, and dropdown backgrounds. Accents 1–5 rotate for nav active underline.</div>' +
           '<div class="row g-3">' + accentGrid + '</div>' +
         '</div>' +
@@ -2522,39 +2515,28 @@
     }
 
     function updateCssVarPreviewCircles() {
-      var circles = root.querySelectorAll('.kexo-css-var-preview-circle[data-kexo-css-var]');
-      Array.prototype.forEach.call(circles, function (el) {
+      var swatches = root.querySelectorAll('.kexo-css-var-swatch[data-kexo-css-var]');
+      Array.prototype.forEach.call(swatches, function (el) {
         var name = el.getAttribute('data-kexo-css-var');
         if (!name) return;
         var input = root.querySelector('.kexo-css-var-input[data-kexo-css-var="' + CSS.escape(name) + '"]');
-        var swatch = root.querySelector('.kexo-css-var-swatch[data-kexo-css-var="' + CSS.escape(name) + '"]');
+        var swatch = el;
         var overrideVal = input && input.value ? String(input.value).trim() : '';
-        var bg = '#e0e0e0';
         var swatchHex = '';
         if (overrideVal) {
           if (/^#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(overrideVal)) {
-            bg = overrideVal;
             swatchHex = overrideVal.length === 7 || overrideVal.length === 4 ? overrideVal : overrideVal.slice(0, 7);
           } else if (/^(rgb|hsl)a?\(/i.test(overrideVal)) {
-            bg = overrideVal;
             swatchHex = cssColorToHex(overrideVal);
-          } else {
-            bg = overrideVal;
           }
         } else {
           var computed = getComputedColorForVar(name);
           var fallback = (typeof CSS_VAR_FALLBACKS !== 'undefined' && CSS_VAR_FALLBACKS[name]) ? CSS_VAR_FALLBACKS[name] : '';
           var displayVal = computed || fallback;
-          if (displayVal) {
-            bg = displayVal;
-            swatchHex = cssColorToHex(displayVal);
-          }
+          if (displayVal) swatchHex = cssColorToHex(displayVal);
         }
-        try { el.style.background = bg; } catch (_) {}
-        if (swatch) {
-          var hex = swatchHex || (CSS_VAR_FALLBACKS && CSS_VAR_FALLBACKS[name] ? cssColorToHex(CSS_VAR_FALLBACKS[name]) : '');
-          try { swatch.value = hex || '#888888'; } catch (_) {}
-        }
+        var hex = swatchHex || (CSS_VAR_FALLBACKS && CSS_VAR_FALLBACKS[name] ? cssColorToHex(CSS_VAR_FALLBACKS[name]) : '');
+        try { swatch.value = hex || '#888888'; } catch (_) {}
       });
     }
 
@@ -2635,22 +2617,22 @@
       updateCssVarPreviewCircles();
     });
 
-    grid.addEventListener('input', function () {
+    function syncSwatchToInput(t) {
+      if (!t || !t.classList || !t.classList.contains('kexo-css-var-swatch')) return;
+      var name = String(t.getAttribute('data-kexo-css-var') || '').trim();
+      if (!name) return;
+      var input = root.querySelector('.kexo-css-var-input[data-kexo-css-var="' + CSS.escape(name) + '"]');
+      if (input) try { input.value = String(t.value || '').trim(); } catch (_) {}
+    }
+    grid.addEventListener('input', function (e) {
+      syncSwatchToInput(e && e.target ? e.target : null);
       applyCfgToDom(readCfgFromUi());
       updateCssVarPreviewCircles();
     });
     grid.addEventListener('change', function (e) {
-      var t = e && e.target ? e.target : null;
-      if (!t) return;
-      if (t.classList && t.classList.contains('kexo-css-var-swatch')) {
-        var name = String(t.getAttribute('data-kexo-css-var') || '').trim();
-        var input = root.querySelector('.kexo-css-var-input[data-kexo-css-var="' + name + '"]');
-        if (input) {
-          try { input.value = String(t.value || '').trim(); } catch (_) {}
-        }
-        applyCfgToDom(readCfgFromUi());
-        updateCssVarPreviewCircles();
-      }
+      syncSwatchToInput(e && e.target ? e.target : null);
+      applyCfgToDom(readCfgFromUi());
+      updateCssVarPreviewCircles();
     });
 
     saveBtn.addEventListener('click', function () {

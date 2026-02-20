@@ -2938,7 +2938,7 @@
     return '<div class="accordion-item settings-charts-item" data-chart-config-key="' + escapeHtml(key) + '">' +
       '<h2 class="accordion-header" id="' + escapeHtml(headingId) + '">' +
         '<button class="accordion-button' + (isOpen ? '' : ' collapsed') + '" type="button" data-bs-toggle="collapse" data-bs-target="#' + escapeHtml(collapseId) + '" aria-expanded="' + (isOpen ? 'true' : 'false') + '" aria-controls="' + escapeHtml(collapseId) + '">' +
-          '<span class="d-flex align-items-center w-100 gap-2"><span class="kexo-settings-accordion-chevron" aria-hidden="true"><i class="fa-regular fa-chevron-down" aria-hidden="true"></i></span><span class="me-auto">' + escapeHtml(title) + '</span><span class="text-muted small"><code>' + escapeHtml(key) + '</code></span></span>' +
+          '<span class="d-flex align-items-center w-100 gap-2"><span class="kexo-settings-accordion-chevron" aria-hidden="true"><i class="fa-regular fa-chevron-down" aria-hidden="true"></i></span><span class="me-auto">' + escapeHtml(title) + '</span></span>' +
         '</button>' +
       '</h2>' +
       '<div id="' + escapeHtml(collapseId) + '" class="accordion-collapse collapse' + (isOpen ? ' show' : '') + '" aria-labelledby="' + escapeHtml(headingId) + '" data-bs-parent="#' + escapeHtml(accordionId) + '">' +
@@ -2958,7 +2958,7 @@
     return '<div class="accordion-item settings-charts-item" data-kpi-bundle-key="' + escapeHtml(bundleKey) + '">' +
       '<h2 class="accordion-header" id="' + escapeHtml(headingId) + '">' +
         '<button class="accordion-button' + (isOpen ? '' : ' collapsed') + '" type="button" data-bs-toggle="collapse" data-bs-target="#' + escapeHtml(collapseId) + '" aria-expanded="' + (isOpen ? 'true' : 'false') + '" aria-controls="' + escapeHtml(collapseId) + '">' +
-          '<span class="d-flex align-items-center w-100 gap-2"><span class="kexo-settings-accordion-chevron" aria-hidden="true"><i class="fa-regular fa-chevron-down" aria-hidden="true"></i></span><span class="me-auto">' + escapeHtml(meta.label) + '</span><span class="text-muted small"><code>' + escapeHtml(bundleKey) + '</code></span></span>' +
+          '<span class="d-flex align-items-center w-100 gap-2"><span class="kexo-settings-accordion-chevron" aria-hidden="true"><i class="fa-regular fa-chevron-down" aria-hidden="true"></i></span><span class="me-auto">' + escapeHtml(meta.label) + '</span></span>' +
         '</button>' +
       '</h2>' +
       '<div id="' + escapeHtml(collapseId) + '" class="accordion-collapse collapse' + (isOpen ? ' show' : '') + '" aria-labelledby="' + escapeHtml(headingId) + '" data-bs-parent="#' + escapeHtml(accordionId) + '">' +
