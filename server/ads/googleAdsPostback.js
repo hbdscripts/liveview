@@ -49,6 +49,33 @@ function computeProfitForOrderAllocation(orderRevenueGbp, windowRevenueGbp, wind
   return Math.max(0, Number.isFinite(profit) ? Math.round(profit * 100) / 100 : Math.round(rev * 100) / 100);
 }
 
+/**
+ * Legacy/simple profit value (GBP) for a single order.
+ *
+ * Fail-open by design: when config is missing/invalid/disabled/unsupported, return revenue.
+ *
+ * Supported:
+ * - mode: "simple" with percent_of_revenue and/or fixed_per_order_gbp deductions.
+ */
+function computeProfitForOrder(orderRevenueGbp, configRaw) {
+  const rev = Number(orderRevenueGbp) || 0;
+  const roundedRev = Number.isFinite(rev) ? Math.round(rev * 100) / 100 : 0;
+  if (!Number.isFinite(roundedRev) || roundedRev <= 0) return 0;
+  const cfg = configRaw && typeof configRaw === 'object' ? configRaw : null;
+  if (!cfg) return roundedRev;
+
+  const mode = (cfg.mode != null ? String(cfg.mode) : '').trim().toLowerCase();
+  if (!mode || mode === 'costs') return roundedRev;
+  if (mode !== 'simple') return roundedRev;
+
+  const simple = cfg.simple && typeof cfg.simple === 'object' ? cfg.simple : {};
+  const pct = Number(simple.percent_of_revenue) || 0;
+  const fixed = Number(simple.fixed_per_order_gbp) || 0;
+  const pctDeduction = (Number.isFinite(pct) && pct > 0) ? (roundedRev * (pct / 100)) : 0;
+  const profit = roundedRev - (Number.isFinite(pctDeduction) ? pctDeduction : 0) - (Number.isFinite(fixed) ? fixed : 0);
+  return Math.max(0, Number.isFinite(profit) ? Math.round(profit * 100) / 100 : 0);
+}
+
 /** Format conversion_date_time for Google Ads: "yyyy-mm-dd hh:mm:ss+|-hh:mm" (account TZ). */
 function formatConversionDateTime(createdAtMs, accountTimeZone = 'UTC') {
   const d = new Date(Number(createdAtMs));
@@ -562,5 +589,6 @@ module.exports = {
   processPostbackBatch,
   runPostbackCycle,
   pickClickIdFromAttribution,
+  computeProfitForOrder,
   computeProfitForOrderAllocation,
 };

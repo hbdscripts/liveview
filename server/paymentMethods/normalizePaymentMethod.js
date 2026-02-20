@@ -119,7 +119,8 @@ function normalizePaymentMethod(input) {
     return { ...m, iconSrc: ICON_SRC_BY_KEY[m.key] || null, iconAlt: m.label, debug: { gateway: gatewayRaw, methodType: methodTypeRaw, methodName: methodNameRaw, cardBrand: cardBrandRaw } };
   }
   if (any(['afterpay'])) {
-    const m = methodMeta('afterpay');
+    // Canonicalize Afterpay → Clearpay (UK label/key).
+    const m = methodMeta('clearpay');
     return { ...m, iconSrc: ICON_SRC_BY_KEY[m.key] || null, iconAlt: m.label, debug: { gateway: gatewayRaw, methodType: methodTypeRaw, methodName: methodNameRaw, cardBrand: cardBrandRaw } };
   }
   if (any(['affirm'])) {
