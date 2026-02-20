@@ -4448,12 +4448,13 @@ body[data-page="dashboard"] #dash-trending-down .dash-trend-delta.text-red {
 }
 .kexo-footer .kexo-score-btn--footer .kexo-score-ring-wrap--header {
   /* Match the SVG viewBox (40x40) for crisper strokes. */
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
+  --kexo-score-track: transparent;
 }
 .kexo-footer .kexo-score-btn--footer .kexo-score-ring-svg--header {
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   shape-rendering: geometricPrecision;
 }
 .kexo-footer .kexo-score-btn--footer .kexo-score-num--header {
@@ -4474,17 +4475,22 @@ body[data-page="dashboard"] #dash-trending-down .dash-trend-delta.text-red {
 }
 @media (min-width: 992px) {
   .kexo-footer-logo img {
-    width: 65px;
+    width: 50px;
     margin-left: 0;
   }
 }
 
 .kexo-footer-brand-sep {
-  width: 1px;
-  height: 16px;
-  background: rgba(15, 23, 42, 0.12);
-  flex: 0 0 1px;
+  width: 2px;
+  height: 25px;
+  background: #e1e1e1;
+  border-right: 1px solid #fafafa;
+  /* flex: 0 0 1px; */
+  margin: 0 2px;
+  display: block !important;
 }
+.footer-last-sale-text { font-size: 12px; font-weight: 500; }
+.footer-last-sale-text .last-sale-ago { font-weight: normal; }
 .kexo-footer-score-label {
   font-size: 0.75rem;
   font-weight: 500;

@@ -155,7 +155,7 @@ function getSignInHtml(queryError, opts) {
   const hasShopifyOAuth = !!(config.shopify && config.shopify.apiKey && config.shopify.apiSecret && config.shopify.appUrl);
   const shopDomain = (opts && opts.shopDomain) ? String(opts.shopDomain).trim().toLowerCase() : '';
   const faviconHref = (opts && opts.faviconHref) ? String(opts.faviconHref) : '';
-  const loginLogoSrc = (opts && opts.loginLogoSrc) ? String(opts.loginLogoSrc) : '/assets/logos/new/dark/1.png';
+  const loginLogoSrc = (opts && opts.loginLogoSrc) ? String(opts.loginLogoSrc) : '/assets/logos/new/kexo.webp';
   const redirectTarget = normalizeSafeRedirectPath((opts && opts.redirectTarget) || '/dashboard/overview');
   const registered = !!(opts && opts.registered);
 
@@ -235,7 +235,7 @@ function getSignInHtml(queryError, opts) {
 
 function getSignUpHtml(queryError, opts) {
   const faviconHref = (opts && opts.faviconHref) ? String(opts.faviconHref) : '';
-  const loginLogoSrc = (opts && opts.loginLogoSrc) ? String(opts.loginLogoSrc) : '/assets/logos/new/dark/1.png';
+  const loginLogoSrc = (opts && opts.loginLogoSrc) ? String(opts.loginLogoSrc) : '/assets/logos/new/kexo.webp';
   const redirectTarget = normalizeSafeRedirectPath((opts && opts.redirectTarget) || '/dashboard/overview');
   const signInHref = '/app/login?redirect=' + encodeURIComponent(redirectTarget);
 
@@ -325,7 +325,7 @@ async function handleGetLogin(req, res) {
     const darkDir = path.join(__dirname, '..', '..', 'assets', 'logos', 'new', 'dark');
     const files = listLogoFiles(darkDir);
     const chosen = pickRandomFile(files);
-    if (!chosen) return '/assets/logos/new/dark/1.png';
+    if (!chosen) return '/assets/logos/new/kexo.webp';
     return '/assets/logos/new/dark/' + encodeURIComponent(String(chosen));
   })();
 
@@ -353,7 +353,7 @@ async function handleGetRegister(req, res) {
     const darkDir = path.join(__dirname, '..', '..', 'assets', 'logos', 'new', 'dark');
     const files = listLogoFiles(darkDir);
     const chosen = pickRandomFile(files);
-    if (!chosen) return '/assets/logos/new/dark/1.png';
+    if (!chosen) return '/assets/logos/new/kexo.webp';
     return '/assets/logos/new/dark/' + encodeURIComponent(String(chosen));
   })();
 

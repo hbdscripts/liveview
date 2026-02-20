@@ -215,7 +215,7 @@ function getHeaderLogo(req, res) {
   const lightDir = path.join(__dirname, '..', '..', 'assets', 'logos', 'new', 'light');
   const files = listLogoFiles(lightDir);
   const chosen = pickRandomFile(files);
-  if (!chosen) return redirectNoStore(res, '/assets/logos/new/light/1.png');
+  if (!chosen) return redirectNoStore(res, '/assets/logos/new/kexo.webp');
   return redirectNoStore(res, '/assets/logos/new/light/' + encodeURIComponent(chosen));
 }
 
@@ -225,7 +225,7 @@ function getFooterLogo(req, res) {
   // Footer should use dark variants only (header uses light).
   const files = listLogoFiles(darkDir);
   const chosen = pickRandomFile(files);
-  if (!chosen) return redirectNoStore(res, '/assets/logos/new/dark/1.png');
+  if (!chosen) return redirectNoStore(res, '/assets/logos/new/kexo.webp');
   return redirectNoStore(res, '/assets/logos/new/dark/' + encodeURIComponent(chosen));
 }
 
