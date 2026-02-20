@@ -187,6 +187,7 @@ html, body {
 .kexo-accent-3 { --kexo-accent: var(--kexo-accent-3, #f59e34); }
 .kexo-accent-4 { --kexo-accent: var(--kexo-accent-4, #e4644b); }
 .kexo-accent-5 { --kexo-accent: var(--kexo-accent-5, #6681e8); }
+.kexo-accent-6 { --kexo-accent: var(--kexo-accent-6, #8395aa); }
 
 :root {
   --kexo-kpi-delta-up: #2fb344;
@@ -212,6 +213,13 @@ html, body {
 .kexo-5color > :nth-child(5n + 3) { --kexo-accent: var(--kexo-accent-3, #f59e34); }
 .kexo-5color > :nth-child(5n + 4) { --kexo-accent: var(--kexo-accent-4, #e4644b); }
 .kexo-5color > :nth-child(5n + 5) { --kexo-accent: var(--kexo-accent-5, #6681e8); }
+
+.kexo-6color > :nth-child(6n + 1) { --kexo-accent: var(--kexo-accent-1, #4b94e4); }
+.kexo-6color > :nth-child(6n + 2) { --kexo-accent: var(--kexo-accent-2, #3eb3ab); }
+.kexo-6color > :nth-child(6n + 3) { --kexo-accent: var(--kexo-accent-3, #f59e34); }
+.kexo-6color > :nth-child(6n + 4) { --kexo-accent: var(--kexo-accent-4, #e4644b); }
+.kexo-6color > :nth-child(6n + 5) { --kexo-accent: var(--kexo-accent-5, #6681e8); }
+.kexo-6color > :nth-child(6n + 6) { --kexo-accent: var(--kexo-accent-6, #8395aa); }
 
 /* Contain horizontal table overflow inside the card, not the viewport */
 .table-scroll-wrap {

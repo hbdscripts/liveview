@@ -8,17 +8,19 @@
   --tblr-primary-rgb: 62,179,171;
   --tblr-gray-50: #f9fafc;
 
-  /* KEXO 5-color accent rotation (brand) */
+  /* KEXO 6-color accent rotation (brand) */
   --kexo-accent-1: #4b94e4;
   --kexo-accent-2: #3eb3ab;
   --kexo-accent-3: #f59e34;
   --kexo-accent-4: #e4644b;
   --kexo-accent-5: #6681e8;
+  --kexo-accent-6: #8395aa;
   --kexo-accent-1-rgb: 75,148,228;
   --kexo-accent-2-rgb: 62,179,171;
   --kexo-accent-3-rgb: 245,158,52;
   --kexo-accent-4-rgb: 228,100,75;
   --kexo-accent-5-rgb: 102,129,232;
+  --kexo-accent-6-rgb: 131,149,170;
 
   /* Menu hover overlay (darken/lighten on hover) */
   --kexo-menu-hover-bg: rgba(0,0,0,.08);

@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: ad551267bb6b0547
+// checksum: ab2b10498256f7f7
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -7229,7 +7229,7 @@ const API = '';
     }
 
     var WORLD_MAP_ISO2 = ['AE','AF','AG','AL','AM','AO','AR','AT','AU','AZ','BA','BB','BD','BE','BF','BG','BI','BJ','BN','BO','BR','BS','BT','BW','BY','BZ','CA','CD','CF','CG','CH','CI','CL','CM','CN','CO','CR','CU','CV','CY','CZ','DE','DJ','DK','DM','DO','DZ','EC','EE','EG','ER','ES','ET','FI','FJ','FK','FR','GA','GB','GD','GE','GF','GH','GL','GM','GN','GQ','GR','GT','GW','GY','HN','HR','HT','HU','ID','IE','IL','IN','IQ','IR','IS','IT','JM','JO','JP','KE','KG','KH','KM','KN','KP','KR','KW','KZ','LA','LB','LC','LK','LR','LS','LT','LV','LY','MA','MD','MG','MK','ML','MM','MN','MR','MT','MU','MV','MW','MX','MY','MZ','NA','NC','NE','NG','NI','NL','NO','NP','NZ','OM','PA','PE','PF','PG','PH','PK','PL','PT','PY','QA','RE','RO','RS','RU','SA','SB','SC','SD','SE','SI','SK','SL','SN','SO','SR','ST','SV','SY','SZ','TD','TG','TH','TJ','TL','TM','TN','TR','TT','TW','TZ','UA','UG','US','UY','UZ','VE','VN','VU','YE','ZA','ZM','ZW'];
-    function buildMapFillScaleByIso(valuesByIso2, primaryRgb, baseAlpha, minAlpha, maxAlpha) {
+    function buildMapFillScaleByIso(valuesByIso2, primaryRgb, baseAlpha, minAlpha, maxAlpha, defaultRgb, defaultAlpha) {
       var src = valuesByIso2 && typeof valuesByIso2 === 'object' ? valuesByIso2 : {};
       var entries = [];
       var keys = Object.keys(src);
@@ -7241,7 +7241,9 @@ const API = '';
         entries.push({ iso: iso, value: n });
       }
       var base = typeof baseAlpha === 'number' && Number.isFinite(baseAlpha) ? Math.max(0, Math.min(1, baseAlpha)) : 0.18;
-      var defaultFill = 'rgba(' + (primaryRgb || '62,179,171') + ',' + base + ')';
+      var defaultRgbUsed = (defaultRgb != null && String(defaultRgb).trim()) ? String(defaultRgb).trim() : (primaryRgb || '62,179,171');
+      var defaultA = typeof defaultAlpha === 'number' && Number.isFinite(defaultAlpha) ? Math.max(0, Math.min(1, defaultAlpha)) : base;
+      var defaultFill = 'rgba(' + defaultRgbUsed + ',' + defaultA + ')';
       var out = {};
       var idx;
       for (idx = 0; idx < WORLD_MAP_ISO2.length; idx++) {
@@ -7388,35 +7390,29 @@ const API = '';
       );
       var mapFit = 'contain';
       var fillOpacity = 0.18;
+      var inactiveOpacity = 0.09;
+      var inactiveRgb = primaryRgb;
       try {
         if (typeof chartStyleFromUiConfig === 'function') {
           var st = chartStyleFromUiConfig(chartKey) || {};
           mapFit = (String(st.mapFit || '').trim().toLowerCase() === 'cover') ? 'cover' : 'contain';
           if (Number.isFinite(Number(st.fillOpacity))) fillOpacity = Math.max(0, Math.min(1, Number(st.fillOpacity)));
+          if (Number.isFinite(Number(st.mapInactiveOpacity))) inactiveOpacity = Math.max(0, Math.min(1, Number(st.mapInactiveOpacity)));
+          var inactiveHex = st.mapInactiveColor != null ? String(st.mapInactiveColor).trim() : '';
+          var hm = /^#([0-9a-f]{6})$/i.exec(inactiveHex);
+          if (hm) {
+            var hh = hm[1];
+            var hr = parseInt(hh.slice(0, 2), 16);
+            var hg = parseInt(hh.slice(2, 4), 16);
+            var hb = parseInt(hh.slice(4, 6), 16);
+            inactiveRgb = hr + ',' + hg + ',' + hb;
+          }
         }
       } catch (_) {}
       var alphaMult = fillOpacity > 0 ? (fillOpacity / 0.18) : 0;
       if (!Number.isFinite(alphaMult)) alphaMult = 1;
       alphaMult = Math.max(0, Math.min(3, alphaMult));
       function a(x) { return Math.max(0, Math.min(1, x * alphaMult)); }
-      var inactiveOpacity = 0.09;
-      var inactiveRgb = primaryRgb;
-      try {
-        if (typeof chartStyleFromUiConfig === 'function') {
-          var st2 = chartStyleFromUiConfig(chartKey) || {};
-          if (Number.isFinite(Number(st2.mapInactiveOpacity))) inactiveOpacity = Math.max(0, Math.min(1, Number(st2.mapInactiveOpacity)));
-          if (st2.mapInactiveColor && String(st2.mapInactiveColor).trim()) {
-            var hex = String(st2.mapInactiveColor).trim();
-            var hexMatch = /^#([0-9a-f]{6})$/i.exec(hex);
-            if (hexMatch) {
-              var hr = parseInt(hexMatch[1].slice(0, 2), 16);
-              var hg = parseInt(hexMatch[1].slice(2, 4), 16);
-              var hb = parseInt(hexMatch[1].slice(4, 6), 16);
-              inactiveRgb = hr + ',' + hg + ',' + hb;
-            }
-          }
-        }
-      } catch (_) {}
       var jvmOpts = {
         selector: '#' + containerId,
         map: 'world',
@@ -7429,7 +7425,7 @@ const API = '';
         zoomMin: zoomMin,
         zoomMax: zoomMax,
         regionStyle: {
-          initial: { fill: 'rgba(' + inactiveRgb + ',' + String(Math.max(0, Math.min(1, inactiveOpacity)).toFixed(3)) + ')', stroke: border, strokeWidth: 0.7 },
+          initial: { fill: 'rgba(' + inactiveRgb + ',' + String(inactiveOpacity.toFixed(3)) + ')', stroke: border, strokeWidth: 0.7 },
           hover: { fill: 'rgba(' + primaryRgb + ',' + String(a(0.46).toFixed(3)) + ')' },
           selected: { fill: 'rgba(' + primaryRgb + ',' + String(a(0.78).toFixed(3)) + ')' },
         },
@@ -7495,9 +7491,25 @@ const API = '';
       var mapHeight = Math.round(baseHeight * (pct / 100));
       if (mapHeight < 80) mapHeight = 80;
 
+      // One-time bind Live / By period toggle on Countries page.
+      if (!el.hasAttribute('data-kexo-map-toggle-bound')) {
+        el.setAttribute('data-kexo-map-toggle-bound', '1');
+        var liveBtn = document.getElementById('countries-map-source-live');
+        var periodBtn = document.getElementById('countries-map-source-period');
+        function setMapSource(source) {
+          window.countriesMapSource = source;
+          if (liveBtn) liveBtn.classList.toggle('active', source === 'live');
+          if (periodBtn) periodBtn.classList.toggle('active', source === 'period');
+          renderCountriesMapChart(statsCache);
+        }
+        if (liveBtn) liveBtn.addEventListener('click', function() { setMapSource('live'); });
+        if (periodBtn) periodBtn.addEventListener('click', function() { setMapSource('period'); });
+      }
+
       // Unify: show the same live online map used on /dashboard/live + /dashboard/overview.
       // The Countries page still has its country tables below; the map itself reflects live activity.
-      if (typeof fetchLiveOnlineMapSessions === 'function' && typeof renderLiveOnlineMapChartFromSessions === 'function') {
+      // When "By period" is selected, skip live and use historical choropleth.
+      if (window.countriesMapSource !== 'period' && typeof fetchLiveOnlineMapSessions === 'function' && typeof renderLiveOnlineMapChartFromSessions === 'function') {
         el.style.height = mapHeight + 'px';
         el.style.minHeight = mapHeight + 'px';
         if (!isChartEnabledByUiConfig(chartKey, true)) {
@@ -7611,7 +7623,16 @@ const API = '';
       if (!Number.isFinite(alphaMult2)) alphaMult2 = 1;
       alphaMult2 = Math.max(0, Math.min(3, alphaMult2));
       function a2(x) { return Math.max(0, Math.min(1, x * alphaMult2)); }
-      const regionFillByIso2 = buildMapFillScaleByIso(choroplethByIso2, primaryRgb, a2(0.18), a2(0.24), a2(0.92));
+      var inactiveOpacity2 = 0.09;
+      var inactiveRgb2 = primaryRgb;
+      try {
+        if (mapStyle && Number.isFinite(Number(mapStyle.mapInactiveOpacity))) {
+          inactiveOpacity2 = Math.max(0, Math.min(1, Number(mapStyle.mapInactiveOpacity)));
+        }
+        var inactiveColor2 = (mapStyle && mapStyle.mapInactiveColor != null) ? String(mapStyle.mapInactiveColor).trim() : '';
+        if (inactiveColor2) inactiveRgb2 = rgbFromColor(inactiveColor2).rgb;
+      } catch (_) {}
+      const regionFillByIso2 = buildMapFillScaleByIso(choroplethByIso2, primaryRgb, a2(0.18), a2(0.24), a2(0.92), inactiveRgb2, inactiveOpacity2);
       var focusOn = {};
       try {
         var focusRegions = [];
@@ -10369,8 +10390,13 @@ const API = '';
           var v = String(src.mapFit != null ? src.mapFit : def.mapFit).trim().toLowerCase();
           return (v === 'cover' || v === 'contain') ? v : def.mapFit;
         })(),
-        mapInactiveOpacity: Math.max(0, Math.min(1, Number(src.mapInactiveOpacity) || def.mapInactiveOpacity)),
-        mapInactiveColor: normalizeOptionalHexColorStrict(src.mapInactiveColor || ''),
+        mapInactiveOpacity: (function() {
+          var x = Number(src.mapInactiveOpacity);
+          if (!Number.isFinite(x)) x = Number(def.mapInactiveOpacity);
+          if (!Number.isFinite(x)) x = 0.09;
+          return Math.max(0, Math.min(1, x));
+        })(),
+        mapInactiveColor: normalizeOptionalHexColorStrict(src.mapInactiveColor),
         mapStageBrowseColor: normalizeOptionalHexColorStrict(src.mapStageBrowseColor),
         mapStageCartColor: normalizeOptionalHexColorStrict(src.mapStageCartColor),
         mapStageCheckoutColor: normalizeOptionalHexColorStrict(src.mapStageCheckoutColor),
@@ -12890,7 +12916,16 @@ const API = '';
         if (!Number.isFinite(alphaMult)) alphaMult = 1;
         alphaMult = Math.max(0, Math.min(3, alphaMult));
         function a(x) { return Math.max(0, Math.min(1, x * alphaMult)); }
-        var regionFillByIso2 = buildMapFillScaleByIso(countsByIso2, primaryRgb, a(0.18), a(0.24), a(0.92));
+        var inactiveOpacity = 0.09;
+        var inactiveRgb = primaryRgb;
+        try {
+          if (mapStyleEarly && Number.isFinite(Number(mapStyleEarly.mapInactiveOpacity))) {
+            inactiveOpacity = Math.max(0, Math.min(1, Number(mapStyleEarly.mapInactiveOpacity)));
+          }
+          var inactiveColor = (mapStyleEarly && mapStyleEarly.mapInactiveColor != null) ? String(mapStyleEarly.mapInactiveColor).trim() : '';
+          if (inactiveColor) inactiveRgb = rgbFromColor(inactiveColor).rgb;
+        } catch (_) {}
+        var regionFillByIso2 = buildMapFillScaleByIso(countsByIso2, primaryRgb, a(0.18), a(0.24), a(0.92), inactiveRgb, inactiveOpacity);
 
         // If the map instance already exists and the chart mode/palette is unchanged,
         // update fills/overlay in-place (avoid destroy/recreate churn on every refresh).
@@ -12959,6 +12994,13 @@ const API = '';
           } catch (_) {}
           return {};
         })();
+        var selectedRegionsLive = (function () {
+          try {
+            var sorted = keys.slice().sort(function(a, b) { return (countsByIso2[b] || 0) - (countsByIso2[a] || 0); });
+            return sorted.slice(0, 5).map(function(c) { return String(c || '').trim().toUpperCase().slice(0, 2); }).filter(Boolean);
+          } catch (_) {}
+          return [];
+        })();
         liveOnlineMapChartInstance = typeof renderOnlineMapInto === 'function' && renderOnlineMapInto(chartKey, chartKey, {
           setState: setState,
           mapHeight: mapHeight,
@@ -12971,6 +13013,7 @@ const API = '';
           zoomButtons: zoomButtons,
           initialZoomMax: 2.1,
           focusOn: focusOnLive,
+          selectedRegions: selectedRegionsLive.length > 0 ? selectedRegionsLive : undefined,
           retry: function() { renderLiveOnlineMapChartFromSessions(sessionList); },
           onRegionTooltipShow: function(event, tooltip, code2) {
             var iso2 = (code2 || '').toString().trim().toUpperCase();
@@ -23166,7 +23209,8 @@ const API = '';
           if (!card || !card.style || !card.style.setProperty) return;
           var w = normalized.widgets && normalized.widgets[key] ? normalized.widgets[key] : null;
           var override = w && w.color ? String(w.color) : '';
-          var accentIdx = (idx % 5) + 1;
+          /* Tables (Top Countries, Top Products, Trending) use accents 1–3; widgets continue 4–6, then repeat. */
+          var accentIdx = ((3 + idx) % 6) + 1;
           var css = override ? override : ('var(--kexo-accent-' + accentIdx + ')');
           card.style.setProperty('--kexo-accent', css);
           card.setAttribute('data-kexo-overview-widget-position', String(idx + 1));
@@ -23302,6 +23346,7 @@ const API = '';
                         '<option value="var(--kexo-accent-3)">Kexo 3</option>' +
                         '<option value="var(--kexo-accent-4)">Kexo 4</option>' +
                         '<option value="var(--kexo-accent-5)">Kexo 5</option>' +
+                        '<option value="var(--kexo-accent-6)">Kexo 6</option>' +
                         '<option value="custom">Custom</option>' +
                       '</select>' +
                       '<div class="mt-2 is-hidden" id="kexo-ovw-color-custom-wrap">' +
@@ -24106,7 +24151,7 @@ const API = '';
           try { css = card && card.style ? String(card.style.getPropertyValue('--kexo-accent') || '').trim() : ''; } catch (_) { css = ''; }
           if (!css) {
             var idx = (cfg && Array.isArray(cfg.order)) ? cfg.order.indexOf(key) : -1;
-            var accentIdx = ((idx >= 0 ? idx : 0) % 5) + 1;
+            var accentIdx = ((3 + (idx >= 0 ? idx : 0)) % 6) + 1;
             css = 'var(--kexo-accent-' + accentIdx + ')';
           }
           return resolveCssColor(css) || resolveRootCssVar('--kexo-accent-1', '#4b94e4') || '#4b94e4';
@@ -26851,7 +26896,6 @@ const API = '';
         var capControls = (meta && meta.capabilities && Array.isArray(meta.capabilities.controls)) ? meta.capabilities.controls : [];
         if (capControls && capControls.length) {
           var styleObj = (s && s.style && typeof s.style === 'object') ? s.style : {};
-          body += '<div class="col-12"><div class="hr-text">Chart options</div></div>';
           function hintIconHtml(txt) {
             var t = txt != null ? String(txt).trim() : '';
             if (!t) return '';
@@ -26938,7 +26982,6 @@ const API = '';
           var stageCheckout = (styleIn.mapStageCheckoutColor != null) ? String(styleIn.mapStageCheckoutColor).trim() : '';
           var stagePurchase = (styleIn.mapStagePurchaseColor != null) ? String(styleIn.mapStagePurchaseColor).trim() : '';
 
-          body += '<div class="col-12"><div class="hr-text">Map</div></div>';
           body += '<div class="col-12 col-md-6"><label class="form-label">Map accent (hex)</label>';
           body += '<div class="kexo-color-input"><input type="text" class="form-control form-control-sm" data-kexo-color-input data-cs-field="map-accent" value="' + escapeHtml(mapAccent) + '" placeholder="#16a34a"><span class="kexo-color-swatch" data-kexo-color-swatch aria-hidden="true"></span></div>';
           body += '<div class="form-hint">Controls map shading and highlighted regions.</div></div>';
@@ -26953,14 +26996,15 @@ const API = '';
           body += '<div class="col-12 col-md-6"><label class="form-label d-flex align-items-center justify-content-between"><span>Inactive regions opacity</span><span class="text-muted small" data-cs-inactive-opacity-value>' + inactiveOpacityPct + '%</span></label>';
           body += '<input type="range" class="form-range" min="0" max="100" step="1" value="' + inactiveOpacityPct + '" data-cs-field="mapInactiveOpacity">';
           body += '<div class="form-hint">Opacity for countries with no data (default 9%).</div></div>';
-          body += '<div class="col-12 col-md-6"><label class="form-label small">Inactive regions colour</label><div class="kexo-color-input"><input type="text" class="form-control form-control-sm" data-kexo-color-input data-cs-field="mapInactiveColor" value="' + escapeHtml(inactiveColor) + '" placeholder="(default)"><span class="kexo-color-swatch" data-kexo-color-swatch aria-hidden="true"></span></div>';
+          body += '<div class="col-12 col-md-6"><label class="form-label">Inactive regions colour</label>';
+          body += '<div class="kexo-color-input"><input type="text" class="form-control form-control-sm" data-kexo-color-input data-cs-field="mapInactiveColor" value="' + escapeHtml(inactiveColor) + '" placeholder="(default)" data-kexo-default-color="' + escapeHtml(mapAccent) + '"><span class="kexo-color-swatch" data-kexo-color-swatch aria-hidden="true"></span></div>';
           body += '<div class="form-hint">Leave blank to use map accent colour.</div></div>';
 
           body += '<div class="col-12"><label class="form-label">Stage colors (legend + pins)</label><div class="row g-2">';
-          body += '<div class="col-6 col-md-3"><label class="form-label small">Browsing</label><div class="kexo-color-input"><input type="text" class="form-control form-control-sm" data-kexo-color-input data-cs-field="mapStageBrowseColor" value="' + escapeHtml(stageBrowse) + '" placeholder="(default)"><span class="kexo-color-swatch" data-kexo-color-swatch aria-hidden="true"></span></div></div>';
-          body += '<div class="col-6 col-md-3"><label class="form-label small">In cart</label><div class="kexo-color-input"><input type="text" class="form-control form-control-sm" data-kexo-color-input data-cs-field="mapStageCartColor" value="' + escapeHtml(stageCart) + '" placeholder="(default)"><span class="kexo-color-swatch" data-kexo-color-swatch aria-hidden="true"></span></div></div>';
-          body += '<div class="col-6 col-md-3"><label class="form-label small">Checkout</label><div class="kexo-color-input"><input type="text" class="form-control form-control-sm" data-kexo-color-input data-cs-field="mapStageCheckoutColor" value="' + escapeHtml(stageCheckout) + '" placeholder="(default)"><span class="kexo-color-swatch" data-kexo-color-swatch aria-hidden="true"></span></div></div>';
-          body += '<div class="col-6 col-md-3"><label class="form-label small">Purchased</label><div class="kexo-color-input"><input type="text" class="form-control form-control-sm" data-kexo-color-input data-cs-field="mapStagePurchaseColor" value="' + escapeHtml(stagePurchase) + '" placeholder="(default)"><span class="kexo-color-swatch" data-kexo-color-swatch aria-hidden="true"></span></div></div>';
+          body += '<div class="col-6 col-md-3"><label class="form-label small">Browsing</label><div class="kexo-color-input"><input type="text" class="form-control form-control-sm" data-kexo-color-input data-cs-field="mapStageBrowseColor" value="' + escapeHtml(stageBrowse) + '" placeholder="(default)" data-kexo-default-color="#4b94e4"><span class="kexo-color-swatch" data-kexo-color-swatch aria-hidden="true"></span></div></div>';
+          body += '<div class="col-6 col-md-3"><label class="form-label small">In cart</label><div class="kexo-color-input"><input type="text" class="form-control form-control-sm" data-kexo-color-input data-cs-field="mapStageCartColor" value="' + escapeHtml(stageCart) + '" placeholder="(default)" data-kexo-default-color="#f59e34"><span class="kexo-color-swatch" data-kexo-color-swatch aria-hidden="true"></span></div></div>';
+          body += '<div class="col-6 col-md-3"><label class="form-label small">Checkout</label><div class="kexo-color-input"><input type="text" class="form-control form-control-sm" data-kexo-color-input data-cs-field="mapStageCheckoutColor" value="' + escapeHtml(stageCheckout) + '" placeholder="(default)" data-kexo-default-color="#6681e8"><span class="kexo-color-swatch" data-kexo-color-swatch aria-hidden="true"></span></div></div>';
+          body += '<div class="col-6 col-md-3"><label class="form-label small">Purchased</label><div class="kexo-color-input"><input type="text" class="form-control form-control-sm" data-kexo-color-input data-cs-field="mapStagePurchaseColor" value="' + escapeHtml(stagePurchase) + '" placeholder="(default)" data-kexo-default-color="#3eb3ab"><span class="kexo-color-swatch" data-kexo-color-swatch aria-hidden="true"></span></div></div>';
           body += '</div><div class="form-hint">Leave blank to use theme defaults.</div></div>';
         }
         body += '<div class="col-12' + (supportsPieLabels && (mode === 'pie' || mode === 'donut') ? '' : ' d-none') + '" data-cs-mode-group="pie-labels">';
@@ -26992,7 +27036,6 @@ const API = '';
           body += '<div class="col-6 col-md-3"><label class="form-label small">Profit (negative)</label><div class="kexo-color-input"><input type="text" class="form-control form-control-sm" data-kexo-color-input data-cs-field="color-profitNeg" value="' + escapeHtml(profitNeg) + '" placeholder="#d63939"><span class="kexo-color-swatch" data-kexo-color-swatch aria-hidden="true"></span></div></div>';
           body += '</div></div>';
 
-          body += '<div class="col-12"><div class="hr-text">Cost settings</div></div>';
           body += '<div class="col-12">';
           body += '<a class="btn btn-sm btn-outline-secondary" href="/settings?tab=cost-expenses&costExpensesTab=rules">Open cost settings</a>';
           body += '<div class="form-hint">Manage cost sources, shipping, and profit rules.</div>';
@@ -27016,11 +27059,20 @@ const API = '';
           var sw = null;
           try { sw = inputEl.parentNode ? inputEl.parentNode.querySelector('[data-kexo-color-swatch]') : null; } catch (_) { sw = null; }
           if (!sw) return;
-          var hexVal = normalizeHex6(inputEl.value);
+          var raw = (inputEl.value == null ? '' : String(inputEl.value)).trim();
+          var hexVal = normalizeHex6(raw);
+          var defaultHex = null;
+          if (!raw) {
+            try { defaultHex = normalizeHex6(inputEl.getAttribute('data-kexo-default-color')); } catch (_) { defaultHex = null; }
+            if (!defaultHex) {
+              try { defaultHex = normalizeHex6(inputEl.getAttribute('placeholder')); } catch (_) { defaultHex = null; }
+            }
+          }
           try {
-            if (hexVal) {
+            var preview = hexVal || defaultHex;
+            if (preview) {
               sw.classList.remove('is-empty');
-              sw.style.setProperty('--kexo-swatch-color', hexVal);
+              sw.style.setProperty('--kexo-swatch-color', preview);
             } else {
               sw.classList.add('is-empty');
               sw.style.removeProperty('--kexo-swatch-color');
@@ -27080,13 +27132,13 @@ const API = '';
           sync();
         }
 
-        function bindInactiveOpacityControl() {
+        function bindInactiveOpacityControls() {
           var input = bodyEl.querySelector('[data-cs-field="mapInactiveOpacity"]');
           var valueEl = bodyEl.querySelector('[data-cs-inactive-opacity-value]');
           if (!input) return;
           function sync() {
             var raw = parseInt(String(input.value || ''), 10);
-            if (!Number.isFinite(raw)) raw = inactiveOpacityPct;
+            if (!Number.isFinite(raw)) raw = 9;
             raw = Math.max(0, Math.min(100, raw));
             try { input.value = String(raw); } catch (_) {}
             if (valueEl) valueEl.textContent = raw + '%';
@@ -27181,7 +27233,7 @@ const API = '';
         }
 
         bindFillOpacityControls();
-        bindInactiveOpacityControl();
+        bindInactiveOpacityControls();
         bindPieLabelControls();
         bindCapabilityRangeControls();
         syncModeControls(mode);
@@ -27288,8 +27340,8 @@ const API = '';
             }
             var inactiveOpacityEl = bodyEl.querySelector('[data-cs-field="mapInactiveOpacity"]');
             if (inactiveOpacityEl) {
-              var raw = parseInt(inactiveOpacityEl.value, 10);
-              if (Number.isFinite(raw)) styleBase.mapInactiveOpacity = Math.max(0, Math.min(1, raw / 100));
+              var rawOp = parseInt(String(inactiveOpacityEl.value || ''), 10);
+              if (Number.isFinite(rawOp)) styleBase.mapInactiveOpacity = Math.max(0, Math.min(1, rawOp / 100));
             }
             var inactiveColorEl = bodyEl.querySelector('[data-cs-field="mapInactiveColor"]');
             if (inactiveColorEl) styleBase.mapInactiveColor = normalizeHexOpt(inactiveColorEl.value) || '';

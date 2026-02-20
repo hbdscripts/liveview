@@ -2126,6 +2126,7 @@ const THEME_BASE_KEYS = [
   'theme_accent_3',
   'theme_accent_4',
   'theme_accent_5',
+  'theme_accent_6',
   'theme_radius',
   'theme_font',
   'theme_base',
@@ -2345,11 +2346,12 @@ async function getThemeVarsCss(req, res) {
   const stripOpacityVal = Math.min(100, Math.max(0, parseFloat(stripOpacity) || 0)) / 100;
   const menuOpacityVal = Math.min(100, Math.max(0, parseFloat(menuOpacity) || 0)) / 100;
 
-  const [a2, a3, a4, a5] = await Promise.all([
+  const [a2, a3, a4, a5, a6] = await Promise.all([
     getThemeKey('theme_accent_2', '#3eb3ab'),
     getThemeKey('theme_accent_3', '#f59e34'),
     getThemeKey('theme_accent_4', '#8b5cf6'),
     getThemeKey('theme_accent_5', '#ef4444'),
+    getThemeKey('theme_accent_6', '#8395aa'),
   ]);
 
   let cssVarOverridesV1 = defaultCssVarOverridesV1();
@@ -2379,6 +2381,7 @@ async function getThemeVarsCss(req, res) {
     `--kexo-accent-3:${normalizeCssColor(a3, '#f59e34')};`,
     `--kexo-accent-4:${normalizeCssColor(a4, '#8b5cf6')};`,
     `--kexo-accent-5:${normalizeCssColor(a5, '#ef4444')};`,
+    `--kexo-accent-6:${normalizeCssColor(a6, '#8395aa')};`,
     `--kexo-strip-opacity-filter:${stripOpacityVal.toFixed(2)};`,
     `--kexo-menu-opacity-filter:${menuOpacityVal.toFixed(2)};`,
     `--kexo-header-strip-padding:${stripPadding && stripPadding.length < 80 ? stripPadding : '0 5px'};`,

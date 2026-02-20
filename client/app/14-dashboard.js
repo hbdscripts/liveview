@@ -5132,7 +5132,8 @@
           if (!card || !card.style || !card.style.setProperty) return;
           var w = normalized.widgets && normalized.widgets[key] ? normalized.widgets[key] : null;
           var override = w && w.color ? String(w.color) : '';
-          var accentIdx = (idx % 5) + 1;
+          /* Tables (Top Countries, Top Products, Trending) use accents 1–3; widgets continue 4–6, then repeat. */
+          var accentIdx = ((3 + idx) % 6) + 1;
           var css = override ? override : ('var(--kexo-accent-' + accentIdx + ')');
           card.style.setProperty('--kexo-accent', css);
           card.setAttribute('data-kexo-overview-widget-position', String(idx + 1));
@@ -5268,6 +5269,7 @@
                         '<option value="var(--kexo-accent-3)">Kexo 3</option>' +
                         '<option value="var(--kexo-accent-4)">Kexo 4</option>' +
                         '<option value="var(--kexo-accent-5)">Kexo 5</option>' +
+                        '<option value="var(--kexo-accent-6)">Kexo 6</option>' +
                         '<option value="custom">Custom</option>' +
                       '</select>' +
                       '<div class="mt-2 is-hidden" id="kexo-ovw-color-custom-wrap">' +
@@ -6072,7 +6074,7 @@
           try { css = card && card.style ? String(card.style.getPropertyValue('--kexo-accent') || '').trim() : ''; } catch (_) { css = ''; }
           if (!css) {
             var idx = (cfg && Array.isArray(cfg.order)) ? cfg.order.indexOf(key) : -1;
-            var accentIdx = ((idx >= 0 ? idx : 0) % 5) + 1;
+            var accentIdx = ((3 + (idx >= 0 ? idx : 0)) % 6) + 1;
             css = 'var(--kexo-accent-' + accentIdx + ')';
           }
           return resolveCssColor(css) || resolveRootCssVar('--kexo-accent-1', '#4b94e4') || '#4b94e4';

@@ -111,7 +111,7 @@
     ICON_GLYPH_DEFAULTS[k] = withDefaultIconStyle(k, ICON_GLYPH_DEFAULTS[k]);
   });
 
-  var ACCENT_DEFAULTS = ['#4b94e4', '#3eb3ab', '#f59e34', '#e4644b', '#6681e8'];
+  var ACCENT_DEFAULTS = ['#4b94e4', '#3eb3ab', '#f59e34', '#e4644b', '#6681e8', '#8395aa'];
   var DEFAULTS = {
     theme: 'light',
     'theme-accent-1': ACCENT_DEFAULTS[0],
@@ -119,6 +119,7 @@
     'theme-accent-3': ACCENT_DEFAULTS[2],
     'theme-accent-4': ACCENT_DEFAULTS[3],
     'theme-accent-5': ACCENT_DEFAULTS[4],
+    'theme-accent-6': ACCENT_DEFAULTS[5],
     'theme-radius': '1',
     'theme-font': 'sans',
     'theme-base': 'slate',
@@ -186,7 +187,7 @@
     if (LOCKED_GLYPH_THEME_KEYS.indexOf(k) >= 0) return false;
     return true;
   });
-  var ACCENT_HEX_KEYS = ['theme-accent-1', 'theme-accent-2', 'theme-accent-3', 'theme-accent-4', 'theme-accent-5'];
+  var ACCENT_HEX_KEYS = ['theme-accent-1', 'theme-accent-2', 'theme-accent-3', 'theme-accent-4', 'theme-accent-5', 'theme-accent-6'];
   var HEADER_THEME_TEXT_KEYS = [
     'theme-header-top-text-color',
     'theme-header-main-link-color',
@@ -209,6 +210,81 @@
   var ACCENT_OPACITY_KEYS = ['theme-strip-opacity-filter', 'theme-menu-opacity-filter', 'theme-menu-hover-opacity'];
   var HEADER_THEME_RADIO_KEYS = ['theme-menu-hover-color'];
   var CUSTOM_CSS_KEYS = ['theme-custom-css'];
+
+  /* Fallbacks from tabler-theme.css, custom.css, app.css, head-theme (slate) */
+  var CSS_VAR_FALLBACKS = {
+    '--kexo-header-top-bg': '#4b94e4',
+    '--kexo-header-top-text-color': '#1f2937',
+    '--kexo-header-main-bg': '#4b94e4',
+    '--kexo-top-menu-bg': '#4b94e4',
+    '--kexo-top-menu-link-color': '#1f2937',
+    '--kexo-top-menu-dropdown-bg': '#4b94e4',
+    '--kexo-top-menu-dropdown-link-color': '#1f2937',
+    '--kexo-top-menu-dropdown-icon-color': '#1f2937',
+    '--kexo-top-menu-border-color': 'transparent',
+    '--kexo-header-settings-bg': '#4b94e4',
+    '--kexo-header-settings-text-color': '#1f2937',
+    '--kexo-header-settings-border-color': '#4b94e4',
+    '--kexo-header-online-bg': '#4b94e4',
+    '--kexo-header-online-text-color': '#1f2937',
+    '--kexo-header-online-border-color': '#e6e7e9',
+    '--kexo-menu-hover-bg': 'rgba(0,0,0,.08)',
+    '--kexo-kpi-delta-up': '#2fb344',
+    '--kexo-kpi-delta-same': '#66bdb7',
+    '--kexo-kpi-delta-down': '#d63939',
+    '--kexo-kpi-compare-line': '#cccccc',
+    '--kexo-dashboard-kpi-up': '#2fb344',
+    '--kexo-dashboard-kpi-same': '#66bdb7',
+    '--kexo-dashboard-kpi-down': '#d63939',
+    '--kexo-dashboard-kpi-compare-line': '#cccccc',
+    '--kexo-header-kpi-up': '#2fb344',
+    '--kexo-header-kpi-same': '#66bdb7',
+    '--kexo-header-kpi-down': '#d63939',
+    '--kexo-header-kpi-compare-line': '#cccccc',
+    '--kexo-snapshot-kpi-up': '#2fb344',
+    '--kexo-snapshot-kpi-same': '#66bdb7',
+    '--kexo-snapshot-kpi-down': '#d63939',
+    '--kexo-snapshot-kpi-compare-line': '#cccccc',
+    '--kexo-gauge-color': '#4b94e4',
+    '--tblr-primary': '#3eb3ab',
+    '--tblr-success': '#2fb344',
+    '--tblr-warning': '#f59e0b',
+    '--tblr-danger': '#d63939',
+    '--tblr-secondary': '#626976',
+    '--tblr-secondary-color': '#626976',
+    '--tblr-body-color': '#1e293b',
+    '--tblr-body-bg': '#f5f7fb',
+    '--tblr-border-color': '#e6e7e9',
+    '--tblr-bg-surface': '#fff',
+    '--tblr-bg-surface-secondary': '#f8fafc',
+    '--tblr-link-color': '#3eb3ab',
+    '--tblr-muted': '#6c757d',
+    '--tblr-disabled-color': '#adb5bd',
+    '--tblr-border-color-translucent': 'rgba(0,0,0,.08)',
+    '--tblr-card-bg': '#ffffff',
+    '--tblr-gray-50': '#f8fafc',
+    '--tblr-gray-100': '#f1f5f9',
+    '--tblr-gray-200': '#e2e8f0',
+    '--tblr-gray-300': '#cbd5e1',
+    '--tblr-gray-400': '#94a3b8',
+    '--tblr-gray-500': '#64748b',
+    '--tblr-gray-600': '#475569',
+    '--tblr-gray-700': '#334155',
+    '--tblr-gray-800': '#1e293b',
+    '--tblr-gray-900': '#0f172a',
+    '--tblr-gray-950': '#020617',
+    '--converted-bg': '#edf7f6',
+    '--converted-hover': '#e0f2ef',
+    '--badge-new-fg': '#fff',
+    '--badge-returning': '#6366f1',
+    '--chip-abandoned': '#dc2626',
+    '--online-dot-color': '#22c55e',
+    '--link-fg': '#222',
+    '--side-panel-sale-bg': 'rgba(13,148,136,.08)',
+    '--button-hover-bg': '#f0f0f0',
+    '--select-arrow': '#333',
+    '--top-bar-divider': '#eee',
+  };
 
   var CSS_VAR_COLOR_GROUPS = [
     { heading: 'Header &amp; nav', groupId: 'header', vars: [
@@ -2113,7 +2189,8 @@
       accentHexInputCard('theme-accent-2', 'Kexo 2', DEFAULTS['theme-accent-2']) +
       accentHexInputCard('theme-accent-3', 'Kexo 3', DEFAULTS['theme-accent-3']) +
       accentHexInputCard('theme-accent-4', 'Kexo 4', DEFAULTS['theme-accent-4']) +
-      accentHexInputCard('theme-accent-5', 'Kexo 5', DEFAULTS['theme-accent-5']);
+      accentHexInputCard('theme-accent-5', 'Kexo 5', DEFAULTS['theme-accent-5']) +
+      accentHexInputCard('theme-accent-6', 'Kexo 6', DEFAULTS['theme-accent-6']);
     var cssVarGrid = buildCssVarOverridesGrid();
     var cssVarOverridesPanel =
       '<div class="mb-4" id="kexo-css-var-overrides-panel">' +
@@ -2452,26 +2529,31 @@
         var input = root.querySelector('.kexo-css-var-input[data-kexo-css-var="' + CSS.escape(name) + '"]');
         var swatch = root.querySelector('.kexo-css-var-swatch[data-kexo-css-var="' + CSS.escape(name) + '"]');
         var overrideVal = input && input.value ? String(input.value).trim() : '';
-        var v = overrideVal || (swatch && swatch.value ? String(swatch.value).trim() : '');
         var bg = '#e0e0e0';
         var swatchHex = '';
-        if (v && /^#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(v)) {
-          bg = v;
-          swatchHex = v.length === 7 || v.length === 4 ? v : v.slice(0, 7);
-        } else if (v && /^(rgb|hsl)a?\(/i.test(v)) {
-          bg = v;
-          swatchHex = cssColorToHex(v);
-        }
-        if (!overrideVal && !swatchHex) {
+        if (overrideVal) {
+          if (/^#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(overrideVal)) {
+            bg = overrideVal;
+            swatchHex = overrideVal.length === 7 || overrideVal.length === 4 ? overrideVal : overrideVal.slice(0, 7);
+          } else if (/^(rgb|hsl)a?\(/i.test(overrideVal)) {
+            bg = overrideVal;
+            swatchHex = cssColorToHex(overrideVal);
+          } else {
+            bg = overrideVal;
+          }
+        } else {
           var computed = getComputedColorForVar(name);
-          if (computed) {
-            bg = computed;
-            swatchHex = cssColorToHex(computed);
+          var fallback = (typeof CSS_VAR_FALLBACKS !== 'undefined' && CSS_VAR_FALLBACKS[name]) ? CSS_VAR_FALLBACKS[name] : '';
+          var displayVal = computed || fallback;
+          if (displayVal) {
+            bg = displayVal;
+            swatchHex = cssColorToHex(displayVal);
           }
         }
         try { el.style.background = bg; } catch (_) {}
         if (swatch) {
-          try { swatch.value = swatchHex || '#000000'; } catch (_) {}
+          var hex = swatchHex || (CSS_VAR_FALLBACKS && CSS_VAR_FALLBACKS[name] ? cssColorToHex(CSS_VAR_FALLBACKS[name]) : '');
+          try { swatch.value = hex || '#888888'; } catch (_) {}
         }
       });
     }
