@@ -12,7 +12,7 @@
     loading: false,
     requestId: 0,
     data: null,
-    preset: 'this_month',
+    preset: 'last_7_days',
     since: '',
     until: '',
     rulesDraft: null,
@@ -25,6 +25,7 @@
   const PRESETS = new Set([
     'this_month',
     'last_month',
+    'last_7_days',
     'last_30_days',
     'last_90_days',
     'last_6_months',
@@ -119,6 +120,7 @@
   function presetLabel(preset) {
     if (preset === 'this_month') return 'This month';
     if (preset === 'last_month') return 'Last month';
+    if (preset === 'last_7_days') return 'Last 7 days';
     if (preset === 'last_30_days') return 'Last 30 days';
     if (preset === 'last_90_days') return 'Last 90 days';
     if (preset === 'last_6_months') return 'Last 6 months';
@@ -135,6 +137,9 @@
     if (preset === 'last_month') {
       const prevMonthSeed = ymdAddMonths(ymdMonthStart(today), -1);
       return { since: ymdMonthStart(prevMonthSeed), until: ymdMonthEnd(prevMonthSeed) };
+    }
+    if (preset === 'last_7_days') {
+      return { since: ymdAddDays(today, -6), until: today };
     }
     if (preset === 'last_30_days') {
       return { since: ymdAddDays(today, -29), until: today };
@@ -276,8 +281,8 @@
       const clamped = clampRange(sinceRaw, untilRaw);
       return { preset: 'custom', since: clamped.since, until: clamped.until };
     }
-    const defaultRange = computePresetRange('this_month', getTodayYmd());
-    return { preset: 'this_month', since: defaultRange.since, until: defaultRange.until };
+    const defaultRange = computePresetRange('last_7_days', getTodayYmd());
+    return { preset: 'last_7_days', since: defaultRange.since, until: defaultRange.until };
   }
 
   function syncUrl() {

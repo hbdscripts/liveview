@@ -1,17 +1,17 @@
       <footer class="footer footer-transparent d-print-none kexo-footer">
         <div class="container-fluid">
           <div class="footer-inner kexo-footer-bar kexo-footer-bar-grid py-3">
-            <div class="kexo-footer-left d-flex align-items-center gap-2">
-              <span class="text-secondary kexo-footer-last-sale d-none d-lg-flex align-items-center gap-1">
-                <button type="button" id="footer-last-sale-toggle" class="kexo-footer-action btn btn-ghost-secondary" aria-pressed="false" aria-label="Toggle last sale toast"><i class="fa-jelly-filled fa-eye" data-icon-key="footer-last-sale-show"></i><i class="fa-jelly-filled fa-eye-slash kexo-footer-eye-hide" data-icon-key="footer-last-sale-hide"></i></button>
-                <span class="footer-last-sale-text">Last sale: <span class="last-sale-ago">&mdash;</span></span>
-              </span>
-              <button type="button" class="kexo-footer-action btn btn-ghost-secondary footer-cache-reload-btn d-flex d-lg-none" aria-label="Clear cache and reload" title="Reload app and bypass cache"><i class="fa-jelly-filled fa-arrows-rotate" data-icon-key="footer-cache-reload"></i></button>
-            </div>
-            <div class="kexo-footer-center d-flex align-items-center justify-content-center gap-2">
+            <div class="kexo-footer-left kexo-footer-brand-slot d-flex align-items-center justify-content-center gap-2">
               <a href="/dashboard/overview" class="kexo-footer-logo" aria-label="Kexo dashboard">
                 <img src="/assets/logos/new/dark/1.png" alt="Kexo" width="25" data-kexo-asset="footer-logo" data-kexo-logo-slot="footer" hidden>
               </a>
+              <span class="kexo-footer-brand-sep d-none d-lg-inline-block" aria-hidden="true"></span>
+              <span class="text-secondary kexo-footer-last-sale d-none d-lg-flex align-items-center gap-1">
+                <span class="footer-last-sale-text">Last sale: <span class="last-sale-ago">&mdash;</span></span>
+              </span>
+            </div>
+            <div class="kexo-footer-center kexo-footer-score-slot d-flex align-items-center justify-content-center gap-2">
+              <span class="kexo-footer-score-label d-none d-lg-inline text-secondary">Score:</span>
               <button type="button" class="kexo-header-score-btn kexo-score-btn--footer" id="header-kexo-score-wrap" aria-label="Kexo Score, click for breakdown" title="Kexo Score">
                 <div class="kexo-score-ring-wrap kexo-score-ring-wrap--header">
                   <svg class="kexo-score-ring-svg kexo-score-ring-svg--header" id="header-kexo-score-ring" viewBox="0 0 40 40" aria-hidden="true">
@@ -28,7 +28,7 @@
                 </div>
               </button>
             </div>
-            <div class="kexo-footer-right d-flex align-items-center gap-2">
+            <div class="kexo-footer-right kexo-footer-actions-slot d-flex align-items-center gap-2">
               <div class="dropdown dropup d-none d-lg-block">
                 <button type="button" class="kexo-footer-action btn btn-ghost-secondary" id="footer-settings-toggle" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" aria-haspopup="true" aria-label="Settings"><i class="fa-jelly-filled fa-gear" data-icon-key="footer-settings-toggle"></i></button>
                 <div class="dropdown-menu dropdown-menu-end kexo-footer-settings-menu" aria-labelledby="footer-settings-toggle">
@@ -40,7 +40,7 @@
                   </a>
                 </div>
               </div>
-              <button type="button" class="kexo-footer-action btn btn-ghost-secondary footer-cache-reload-btn d-none d-lg-flex" aria-label="Clear cache and reload" title="Reload app and bypass cache"><i class="fa-jelly-filled fa-arrows-rotate" data-icon-key="footer-cache-reload"></i></button>
+              <button type="button" class="kexo-footer-action btn btn-ghost-secondary footer-cache-reload-btn d-flex" aria-label="Clear cache and reload" title="Reload app and bypass cache"><i class="fa-jelly-filled fa-arrows-rotate" data-icon-key="footer-cache-reload"></i></button>
               <button type="button" class="kexo-footer-action btn btn-ghost-secondary" id="back-to-top-btn" aria-label="Back to top"><i class="fa-jelly-filled fa-arrow-up" data-icon-key="footer-back-to-top"></i></button>
             </div>
           </div>

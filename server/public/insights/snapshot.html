@@ -30,12 +30,13 @@
       <div class="col-auto kexo-page-header-date-col">
         <div class="dropdown kexo-topbar-date">
           <button type="button" class="kexo-date-btn" id="snapshot-date-display" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Choose date range" aria-controls="snapshot-date-menu">
-            <span class="kexo-date-btn-label" id="snapshot-date-btn-label">This month</span>
+            <span class="kexo-date-btn-label" id="snapshot-date-btn-label">Last 7 days</span>
             <i class="kexo-date-btn-chevron fa-light fa-chevron-down" data-icon-key="topnav-date-chevron" aria-hidden="true"></i>
           </button>
           <div class="dropdown-menu dropdown-menu-end" id="snapshot-date-menu" aria-label="Date ranges">
             <button class="dropdown-item" type="button" data-preset="this_month">This month</button>
             <button class="dropdown-item" type="button" data-preset="last_month">Last month</button>
+            <button class="dropdown-item" type="button" data-preset="last_7_days">Last 7 days</button>
             <button class="dropdown-item" type="button" data-preset="last_30_days">Last 30 days</button>
             <button class="dropdown-item" type="button" data-preset="last_90_days">Last 90 days</button>
             <button class="dropdown-item" type="button" data-preset="last_6_months">Last 6 months</button>
@@ -73,8 +74,8 @@
         <div class="card-header d-flex align-items-center flex-wrap gap-2">
           <h3 class="card-title mb-0">Revenue &amp; Cost</h3>
           <div class="dropdown ms-auto">
-            <button type="button" class="btn btn-icon btn-ghost-secondary kexo-builder-icon-link" id="snapshot-revenue-cost-settings-btn" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Revenue &amp; Cost settings" aria-haspopup="true">
-              <i class="fa-light fa-gear" data-icon-key="table-builder-icon" aria-hidden="true"></i>
+            <button type="button" class="btn btn-sm btn-ghost-secondary" id="snapshot-revenue-cost-settings-btn" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Revenue &amp; Cost settings" aria-haspopup="true">
+              Settings
             </button>
             <div class="dropdown-menu dropdown-menu-end" id="snapshot-revenue-cost-settings-menu" aria-label="Revenue &amp; Cost settings">
               <button type="button" class="dropdown-item" id="snapshot-rounding-toggle-dropdown" data-action="toggle-rounding">Rounding Numbers: On</button>

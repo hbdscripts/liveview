@@ -353,6 +353,12 @@
           body += '<div class="col-6 col-md-3"><label class="form-label small">Profit (positive)</label><div class="kexo-color-input"><input type="text" class="form-control form-control-sm" data-kexo-color-input data-cs-field="color-profitPos" value="' + escapeHtml(profitPos) + '" placeholder="#2fb344"><span class="kexo-color-swatch" data-kexo-color-swatch aria-hidden="true"></span></div></div>';
           body += '<div class="col-6 col-md-3"><label class="form-label small">Profit (negative)</label><div class="kexo-color-input"><input type="text" class="form-control form-control-sm" data-kexo-color-input data-cs-field="color-profitNeg" value="' + escapeHtml(profitNeg) + '" placeholder="#d63939"><span class="kexo-color-swatch" data-kexo-color-swatch aria-hidden="true"></span></div></div>';
           body += '</div></div>';
+
+          body += '<div class="col-12"><div class="hr-text">Cost settings</div></div>';
+          body += '<div class="col-12">';
+          body += '<a class="btn btn-sm btn-outline-secondary" href="/settings?tab=cost-expenses&costExpensesTab=rules">Open cost settings</a>';
+          body += '<div class="form-hint">Manage cost sources, shipping, and profit rules.</div>';
+          body += '</div>';
         }
         body += '</div>';
 

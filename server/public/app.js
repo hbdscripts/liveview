@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: c3b9a1c1e7f294f5
+// checksum: 44f37bc9e867a675
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -19562,6 +19562,12 @@ const API = '';
       }
 
       function setOverviewSalesRunningTotals(revenueTotal, costTotal, profitTotal) {
+        // Keep the header totals text colours in sync with the overview chart series colours (from Chart Settings).
+        try {
+          lastOverviewTotals = { revenue: revenueTotal, cost: costTotal, profit: profitTotal };
+          syncOverviewSalesTotalsColors(revenueTotal, costTotal, profitTotal);
+        } catch (_) {}
+
         function setValue(id, value) {
           var el = document.getElementById(id);
           if (!el) return;
@@ -19588,6 +19594,51 @@ const API = '';
             if (txt && txt !== '\u2014') profitEl.textContent = txt;
           }
         } catch (_) {}
+      }
+
+      var OVERVIEW_TOTALS_FALLBACK_COLORS = ['#3eb3ab', '#ef4444', '#2fb344', '#d63939'];
+      var lastOverviewTotals = { revenue: null, cost: null, profit: null };
+      var overviewTotalsColorsBound = false;
+
+      function syncOverviewSalesTotalsColors(revenueTotal, costTotal, profitTotal) {
+        function setColor(id, css) {
+          var el = document.getElementById(id);
+          if (!el || !el.style) return;
+          try {
+            if (css) el.style.color = css;
+            else el.style.color = '';
+          } catch (_) {}
+        }
+        var chartId = 'dash-chart-overview-30d';
+        var colors = OVERVIEW_TOTALS_FALLBACK_COLORS;
+        try {
+          colors = (typeof chartColorsFromUiConfig === 'function')
+            ? (chartColorsFromUiConfig(chartId, OVERVIEW_TOTALS_FALLBACK_COLORS) || OVERVIEW_TOTALS_FALLBACK_COLORS)
+            : OVERVIEW_TOTALS_FALLBACK_COLORS;
+        } catch (_) { colors = OVERVIEW_TOTALS_FALLBACK_COLORS; }
+        var revCss = (colors && colors[0]) ? colors[0] : OVERVIEW_TOTALS_FALLBACK_COLORS[0];
+        var costCss = (colors && colors[1]) ? colors[1] : OVERVIEW_TOTALS_FALLBACK_COLORS[1];
+        var profitPosCss = (colors && colors[2]) ? colors[2] : OVERVIEW_TOTALS_FALLBACK_COLORS[2];
+        var profitNegCss = (colors && colors[3]) ? colors[3] : OVERVIEW_TOTALS_FALLBACK_COLORS[3];
+        var p = Number(profitTotal);
+        var profitCss = (Number.isFinite(p) && p < 0) ? profitNegCss : profitPosCss;
+
+        // Only colour totals when the values are present (avoid colouring the em-dash placeholder).
+        var r = Number(revenueTotal);
+        var c = Number(costTotal);
+        if (Number.isFinite(r)) setColor('dash-overview-total-revenue', revCss); else setColor('dash-overview-total-revenue', '');
+        if (Number.isFinite(c)) setColor('dash-overview-total-cost', costCss); else setColor('dash-overview-total-cost', '');
+        if (Number.isFinite(p)) setColor('dash-overview-total-profit', profitCss); else setColor('dash-overview-total-profit', '');
+
+        // Ensure future colour-syncs happen immediately after saving Chart Settings.
+        if (!overviewTotalsColorsBound) {
+          overviewTotalsColorsBound = true;
+          try {
+            window.addEventListener('kexo:chartsUiConfigUpdated', function () {
+              try { syncOverviewSalesTotalsColors(lastOverviewTotals.revenue, lastOverviewTotals.cost, lastOverviewTotals.profit); } catch (_) {}
+            });
+          } catch (_) {}
+        }
       }
 
       function setOverviewCostBreakdownTooltip(snapshotPayload) {
@@ -22575,13 +22626,12 @@ const API = '';
         }
         var select = document.createElement('select');
         select.id = 'dash-trending-days';
-        select.className = 'form-select form-select-sm';
+        select.className = 'form-select form-select-sm kexo-trending-days-select';
         select.setAttribute('aria-label', 'Trending period');
-        select.style.minWidth = '4rem';
         [3, 7, 14].forEach(function (d) {
           var opt = document.createElement('option');
           opt.value = String(d);
-          opt.textContent = String(d);
+          opt.textContent = String(d) + ' days';
           select.appendChild(opt);
         });
         select.value = String(getTrendingDays());
@@ -25907,6 +25957,12 @@ const API = '';
           body += '<div class="col-6 col-md-3"><label class="form-label small">Profit (positive)</label><div class="kexo-color-input"><input type="text" class="form-control form-control-sm" data-kexo-color-input data-cs-field="color-profitPos" value="' + escapeHtml(profitPos) + '" placeholder="#2fb344"><span class="kexo-color-swatch" data-kexo-color-swatch aria-hidden="true"></span></div></div>';
           body += '<div class="col-6 col-md-3"><label class="form-label small">Profit (negative)</label><div class="kexo-color-input"><input type="text" class="form-control form-control-sm" data-kexo-color-input data-cs-field="color-profitNeg" value="' + escapeHtml(profitNeg) + '" placeholder="#d63939"><span class="kexo-color-swatch" data-kexo-color-swatch aria-hidden="true"></span></div></div>';
           body += '</div></div>';
+
+          body += '<div class="col-12"><div class="hr-text">Cost settings</div></div>';
+          body += '<div class="col-12">';
+          body += '<a class="btn btn-sm btn-outline-secondary" href="/settings?tab=cost-expenses&costExpensesTab=rules">Open cost settings</a>';
+          body += '<div class="form-hint">Manage cost sources, shipping, and profit rules.</div>';
+          body += '</div>';
         }
         body += '</div>';
 

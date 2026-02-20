@@ -18,6 +18,7 @@ const LEGACY_THEME_ICON_KEYS = Object.freeze(toBooleanMap([
   'footer-theme',
   'footer-settings',
   'footer-signout',
+  'table-builder-icon',
 ]));
 
 const REQUIRED_ACTIVE_ICON_KEYS = Object.freeze([

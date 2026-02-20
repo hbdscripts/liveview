@@ -38,7 +38,6 @@
     'table-icon-compliance-warning': { title: 'Compliance Warning Icon', help: 'Icon shown when compliance checks warn (fraud triggered).' },
     'table-icon-compliance-search': { title: 'Compliance Search Icon', help: 'Default icon in the Compliance column when no fraud evaluation exists; replaced by check or warning when evaluation is present.' },
     'table-sticky-resize-handle': { title: 'Sticky Column Resize Handle', help: 'Icon shown on the sticky column resize handle in sessions tables (Live, Sales, Table views).' },
-    'table-builder-icon': { title: 'Table Layout Icon', help: 'Icon shown at the top of table cards that links to Settings → Layout. Use full Font Awesome classes (e.g. fa-light fa-gear).' },
     'chart-builder-icon': { title: 'Chart Layout Icon', help: 'Icon shown at the top of chart cards that links to Settings → Layout. Use full Font Awesome classes (e.g. fa-light fa-gear).' },
     'dash-kpi-delta-up': { title: 'Overview KPI Delta Up', help: 'Up-trend icon in KPI cards on /dashboard/overview when metric delta is positive.' },
     'dash-kpi-delta-down': { title: 'Overview KPI Delta Down', help: 'Down-trend icon in KPI cards on /dashboard/overview when metric delta is negative.' },
