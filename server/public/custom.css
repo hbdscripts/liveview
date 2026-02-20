@@ -3847,9 +3847,6 @@ body[data-page="dashboard"] #dash-trending-down .dash-trend-delta.text-red {
 }
 
 /* Dashboard top tables card-style list (Top Products, Top Countries, Trending) */
-.kexo-dash-top-list-wrap {
-  padding: 0.75rem 1rem;
-}
 .kexo-dash-top-list {
   display: flex;
   flex-direction: column;
@@ -4272,7 +4269,7 @@ body[data-page="dashboard"] #dash-trending-down .dash-trend-delta.text-red {
 }
 .kexo-footer-bar {
   gap: 1rem;
-  padding: 10px 0 !important;
+  padding: 10px 10px !important;
 }
 /* Grid layout: equal 1fr sides so logo is truly centered (matches diagnostics below) */
 .kexo-footer-bar-grid {
@@ -4295,14 +4292,18 @@ body[data-page="dashboard"] #dash-trending-down .dash-trend-delta.text-red {
   grid-column: 1;
   justify-self: start;
   justify-content: flex-start !important;
+  white-space: nowrap;
 }
 .kexo-footer-score-slot {
   grid-column: 2;
   justify-self: center;
+  white-space: nowrap;
 }
 .kexo-footer-actions-slot {
   grid-column: 3;
   justify-self: end;
+  justify-content: flex-end !important;
+  gap: 0.25rem !important;
 }
 @media (min-width: 992px) {
   .kexo-footer-brand-slot {
@@ -4364,6 +4365,8 @@ body[data-page="dashboard"] #dash-trending-down .dash-trend-delta.text-red {
 /* Footer: kexo-footer-action for custom styling (no btn-icon hover) */
 .kexo-footer .kexo-footer-action {
   background: transparent !important;
+  padding: 0.25rem 0.35rem !important;
+  line-height: 1 !important;
 }
 .kexo-footer .kexo-footer-action:hover,
 .kexo-footer .kexo-footer-action:focus {
