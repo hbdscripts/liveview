@@ -449,8 +449,9 @@ function resolveIncludes(html, depth = 0) {
 
 function applySentryTemplate(html) {
   const dsn = (config.sentryDsn || '').trim();
-  const dsnJson = JSON.stringify(dsn);
-  return String(html || '').replace(/\{\{SENTRY_DSN\}\}/g, dsnJson);
+  // Emit valid JS only: quoted string when set, or null when empty (never empty string → "var dsn = ;")
+  const dsnExpr = dsn ? JSON.stringify(dsn) : 'null';
+  return String(html || '').replace(/\{\{SENTRY_DSN\}\}/g, dsnExpr);
 }
 
 function sendPage(res, filename) {

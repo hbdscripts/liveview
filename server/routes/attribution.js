@@ -215,6 +215,13 @@ async function getAttributionReport(req, res) {
     },
     async () => {
       const NO_TAG = '__none__';
+      let useAttributionTagColumn = true;
+      try {
+        await db.get('SELECT attribution_tag FROM sessions LIMIT 0');
+      } catch (_) {
+        useAttributionTagColumn = false;
+      }
+
       const cfg = await readAttributionConfigCached().catch(() => null);
       const channelsByKey = cfg && cfg.channelsByKey ? cfg.channelsByKey : new Map();
       const sourcesByKey = cfg && cfg.sourcesByKey ? cfg.sourcesByKey : new Map();
@@ -252,8 +259,9 @@ async function getAttributionReport(req, res) {
         };
       }
 
-      const sessionsRows = await db.all(
-        `
+      const sessionsRows = useAttributionTagColumn
+        ? await db.all(
+            `
           SELECT
             LOWER(COALESCE(NULLIF(TRIM(attribution_channel), ''), 'other')) AS channel,
             LOWER(COALESCE(NULLIF(TRIM(attribution_variant), ''), 'other')) AS variant,
@@ -267,11 +275,26 @@ async function getAttributionReport(req, res) {
             LOWER(COALESCE(NULLIF(TRIM(attribution_variant), ''), 'other')),
             COALESCE(NULLIF(LOWER(TRIM(attribution_tag)), ''), '${NO_TAG}')
         `,
-        [bounds.start, bounds.end]
-      );
+            [bounds.start, bounds.end]
+          )
+        : await db.all(
+            `
+          SELECT
+            LOWER(COALESCE(NULLIF(TRIM(attribution_channel), ''), 'other')) AS channel,
+            LOWER(COALESCE(NULLIF(TRIM(attribution_variant), ''), 'other')) AS variant,
+            ? AS tag,
+            COUNT(*) AS sessions
+          FROM sessions
+          WHERE started_at >= ? AND started_at < ?
+            AND (cf_known_bot IS NULL OR cf_known_bot = 0)
+          GROUP BY 1, 2, 3
+        `,
+            [NO_TAG, bounds.start, bounds.end]
+          );
 
-      const ordersRows = await db.all(
-        `
+      const ordersRows = useAttributionTagColumn
+        ? await db.all(
+            `
           SELECT
             LOWER(COALESCE(NULLIF(TRIM(attribution_channel), ''), 'other')) AS channel,
             LOWER(COALESCE(NULLIF(TRIM(attribution_variant), ''), 'other')) AS variant,
@@ -291,8 +314,27 @@ async function getAttributionReport(req, res) {
             COALESCE(NULLIF(LOWER(TRIM(attribution_tag)), ''), '${NO_TAG}'),
             COALESCE(NULLIF(TRIM(currency), ''), 'GBP')
         `,
-        [shop, bounds.start, bounds.end]
-      );
+            [shop, bounds.start, bounds.end]
+          )
+        : await db.all(
+            `
+          SELECT
+            LOWER(COALESCE(NULLIF(TRIM(attribution_channel), ''), 'other')) AS channel,
+            LOWER(COALESCE(NULLIF(TRIM(attribution_variant), ''), 'other')) AS variant,
+            ? AS tag,
+            COALESCE(NULLIF(TRIM(currency), ''), 'GBP') AS currency,
+            COUNT(*) AS orders,
+            SUM(COALESCE(total_price, 0)) AS revenue
+          FROM orders_shopify
+          WHERE shop = ?
+            AND created_at >= ? AND created_at < ?
+            AND (test IS NULL OR test = 0)
+            AND cancelled_at IS NULL
+            AND financial_status = 'paid'
+          GROUP BY 1, 2, 3, 4
+        `,
+            [NO_TAG, shop, bounds.start, bounds.end]
+          );
 
       const salesByKey = await aggCurrencyRowsToGbp(ordersRows, { keyFields: ['channel', 'variant', 'tag'] });
 
