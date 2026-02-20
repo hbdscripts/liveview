@@ -14,10 +14,13 @@
   gap: 12px;
 }
 
+.tools-card .card-subtitle {
+  font-size: 12px;
+}
+
 .tools-grid {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 14px;
 }
 
 .tools-row {

@@ -32,13 +32,16 @@
           </div>
 
           <div id="tool-change-pins-grid" class="row g-3 mb-3 tools-change-pins-grid">
-            <div class="col-12 col-md-6">
-          <div class="card tools-card" id="tool-change-pins-create">
+            <div class="col-12">
+          <div class="card tools-card kexo-card-collapsed" id="tool-change-pins-create" data-tools-collapsible="1">
             <div class="card-header">
               <div>
                 <h3 class="card-title">Add a New Pin</h3>
                 <div class="card-subtitle">Mark a change (pricing/ads/site/ops) so you can find it later and compare before/after.</div>
               </div>
+              <button type="button" class="kexo-card-collapse-toggle is-collapsed btn btn-link p-0 ms-auto" aria-expanded="false" aria-label="Expand section" title="Expand section" data-tools-collapse-toggle="1">
+                <i class="kexo-card-collapse-chevron fa-light fa-chevron-right" data-icon-key="card-collapse-collapsed" aria-hidden="true"></i>
+              </button>
             </div>
             <div class="card-body">
               <div class="tools-grid tools-form-block">
@@ -86,19 +89,25 @@
           </div>
             </div>
 
-            <div class="col-12 col-md-6">
-          <div class="card tools-card" id="tool-change-pins-list">
+            <div class="col-12">
+          <div class="card tools-card kexo-card-collapsed" id="tool-change-pins-list" data-tools-collapsible="1">
             <div class="card-header">
               <div>
                 <h3 class="card-title">Previously Added Pins</h3>
                 <div class="card-subtitle">Click a pin in the below table to load stats before/after pin was added</div>
               </div>
+              <button type="button" class="kexo-card-collapse-toggle is-collapsed btn btn-link p-0 ms-auto" aria-expanded="false" aria-label="Expand section" title="Expand section" data-tools-collapse-toggle="1">
+                <i class="kexo-card-collapse-chevron fa-light fa-chevron-right" data-icon-key="card-collapse-collapsed" aria-hidden="true"></i>
+              </button>
             </div>
             <div class="card-body">
               <div class="tools-grid tools-form-block">
+                <div class="d-flex justify-content-end">
+                  <button type="button" class="btn btn-link btn-sm p-0" id="pins-filters-toggle" aria-expanded="false">Show filters</button>
+                </div>
                 <div class="tools-field">
                   <label class="tools-label form-label">Filter</label>
-                  <div class="tools-input-row">
+                  <div class="tools-input-row is-hidden" id="pins-filters-row">
                     <div class="input-icon tools-input-icon">
                       <span class="input-icon-addon"><i class="fa-light fa-calendar-days" aria-hidden="true"></i></span>
                       <input class="form-control" type="text" id="filter-from" placeholder="From YYYY-MM-DD" autocomplete="off" inputmode="numeric" />
@@ -132,16 +141,24 @@
             </div>
           </div>
 
-          <div class="card tools-card is-hidden" id="tool-change-pins-detail">
+          <div class="card tools-card is-hidden" id="tool-change-pins-detail" data-tools-collapsible="1">
             <div class="card-header">
               <div>
                 <h3 class="card-title" id="pin-detail-title"></h3>
               </div>
+              <button type="button" class="kexo-card-collapse-toggle btn btn-link p-0 ms-auto" aria-expanded="true" aria-label="Collapse section" title="Collapse section" data-tools-collapse-toggle="1">
+                <i class="kexo-card-collapse-chevron fa-light fa-chevron-down" data-icon-key="card-collapse-expanded" aria-hidden="true"></i>
+              </button>
             </div>
             <div class="card-body">
               <div class="tools-grid tools-form-block" id="pin-compare-block">
                 <div class="tools-field">
-                  <label class="tools-label form-label">Compare</label>
+                  <label class="tools-label form-label d-inline-flex align-items-center gap-1">
+                    <span>Compare</span>
+                    <button type="button" class="btn btn-link btn-sm p-0 text-secondary" id="effect-compare-tip" aria-label="Compare details" data-bs-toggle="tooltip" data-bs-html="true" title="">
+                      <i class="fa-light fa-circle-info" aria-hidden="true"></i>
+                    </button>
+                  </label>
                   <div class="tools-input-row">
                     <select class="form-select" id="effect-preset" aria-label="Compare preset">
                       <option value="today">Today</option>

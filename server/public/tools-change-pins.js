@@ -164,7 +164,199 @@
     effectNote: qs('#effect-note'),
     effectResultsStats: qs('#effect-results-stats'),
     effectResultsEdit: qs('#effect-results-edit'),
+    compareTip: qs('#effect-compare-tip'),
+    filtersToggle: qs('#pins-filters-toggle'),
+    filtersRow: qs('#pins-filters-row'),
   };
+
+  function refreshIconTheme() {
+    try {
+      window.dispatchEvent(new CustomEvent('kexo:icon-theme-changed'));
+      if (window.KexoIconTheme && typeof window.KexoIconTheme.refresh === 'function') window.KexoIconTheme.refresh();
+    } catch (_) {}
+  }
+
+  function setCollapseChevron(iconEl, collapsed) {
+    if (!iconEl || !iconEl.setAttribute) return;
+    var isCollapsed = !!collapsed;
+    var glyph = isCollapsed ? 'fa-chevron-right' : 'fa-chevron-down';
+    var key = isCollapsed ? 'card-collapse-collapsed' : 'card-collapse-expanded';
+    iconEl.setAttribute('data-icon-key', key);
+    iconEl.className = 'kexo-card-collapse-chevron fa-light ' + glyph;
+    refreshIconTheme();
+  }
+
+  function setCardCollapsed(card, collapsed) {
+    if (!card || !card.classList) return;
+    var isCollapsed = !!collapsed;
+    card.classList.toggle('kexo-card-collapsed', isCollapsed);
+    var btn = null;
+    try { btn = card.querySelector('[data-tools-collapse-toggle="1"]'); } catch (_) { btn = null; }
+    if (btn) {
+      btn.classList.toggle('is-collapsed', isCollapsed);
+      btn.setAttribute('aria-expanded', isCollapsed ? 'false' : 'true');
+      btn.setAttribute('aria-label', isCollapsed ? 'Expand section' : 'Collapse section');
+      btn.title = isCollapsed ? 'Expand section' : 'Collapse section';
+      try {
+        var icon = btn.querySelector('.kexo-card-collapse-chevron');
+        setCollapseChevron(icon, isCollapsed);
+      } catch (_) {}
+    }
+  }
+
+  function bindToolsCollapsibles() {
+    try {
+      document.querySelectorAll('.tools-card[data-tools-collapsible="1"]').forEach(function (card) {
+        if (!card || card.getAttribute('data-tools-collapsible-bound') === '1') return;
+        card.setAttribute('data-tools-collapsible-bound', '1');
+        var header = null;
+        try { header = card.querySelector(':scope > .card-header'); } catch (_) { header = null; }
+        if (!header) return;
+
+        function shouldIgnoreTarget(t) {
+          if (!t || !t.closest) return false;
+          return !!t.closest('a,button,input,select,textarea,label,[role="button"],[data-no-card-collapse]');
+        }
+
+        header.addEventListener('click', function (e) {
+          var target = e && e.target ? e.target : null;
+          if (shouldIgnoreTarget(target)) return;
+          e.preventDefault();
+          setCardCollapsed(card, !card.classList.contains('kexo-card-collapsed'));
+        });
+
+        var btn = card.querySelector('[data-tools-collapse-toggle="1"]');
+        if (btn && btn.getAttribute('data-tools-collapse-bound') !== '1') {
+          btn.setAttribute('data-tools-collapse-bound', '1');
+          btn.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            setCardCollapsed(card, !card.classList.contains('kexo-card-collapsed'));
+          });
+        }
+      });
+    } catch (_) {}
+  }
+
+  function bindPinsFiltersToggle() {
+    var btn = els.filtersToggle;
+    var row = els.filtersRow;
+    if (!btn || !row) return;
+    if (btn.getAttribute('data-filters-bound') === '1') return;
+    btn.setAttribute('data-filters-bound', '1');
+    function setOpen(open) {
+      row.classList.toggle('is-hidden', !open);
+      btn.textContent = open ? 'Hide filters' : 'Show filters';
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    }
+    setOpen(false);
+    btn.addEventListener('click', function (e) {
+      e.preventDefault();
+      setOpen(row.classList.contains('is-hidden'));
+    });
+  }
+
+  function ensureTooltip(el) {
+    if (!el) return null;
+    try {
+      if (window.bootstrap && window.bootstrap.Tooltip) {
+        return window.bootstrap.Tooltip.getOrCreateInstance(el, { html: true, container: document.body, trigger: 'hover focus' });
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  function setCompareTooltipHtml(html) {
+    var el = els.compareTip;
+    if (!el) return;
+    try { el.setAttribute('title', String(html || '')); } catch (_) {}
+    var inst = null;
+    try { inst = ensureTooltip(el); } catch (_) { inst = null; }
+    // Bootstrap 5.2+: setContent exists. If not, recreate.
+    try {
+      if (inst && typeof inst.setContent === 'function') {
+        var obj = {};
+        obj['.tooltip-inner'] = String(html || '');
+        inst.setContent(obj);
+      }
+    } catch (_) {
+      try { if (inst && typeof inst.dispose === 'function') inst.dispose(); } catch (_) {}
+      try { ensureTooltip(el); } catch (_) {}
+    }
+  }
+
+  function toFiniteNumber(v) {
+    var n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  function fmtPp(deltaPctPoints) {
+    var n = toFiniteNumber(deltaPctPoints);
+    if (n == null) return '—';
+    var sign = n > 0 ? '+' : (n < 0 ? '−' : '');
+    return sign + Math.abs(n).toFixed(1) + 'pp';
+  }
+
+  function buildConclusion(payload) {
+    var before = payload && payload.before ? payload.before : {};
+    var after = payload && payload.after ? payload.after : {};
+    var d = payload && payload.delta ? payload.delta : {};
+    var bSessions = toFiniteNumber(before.sessions);
+    var aSessions = toFiniteNumber(after.sessions);
+    var bOrders = toFiniteNumber(before.orders);
+    var aOrders = toFiniteNumber(after.orders);
+    var hasSessions = bSessions != null && aSessions != null;
+    var hasOrders = bOrders != null && aOrders != null;
+    var enough = true;
+    if (!hasSessions && !hasOrders) enough = false;
+    if (hasSessions && (bSessions < 100 || aSessions < 100)) enough = false;
+    if (hasOrders && (bOrders < 5 || aOrders < 5)) enough = false;
+    if (!enough) return 'Conclusion: Not enough data';
+
+    var revAbs = toFiniteNumber(d && d.revenue && d.revenue.abs);
+    var revPct = toFiniteNumber(d && d.revenue && d.revenue.pct);
+    var ordAbs = toFiniteNumber(d && d.orders && d.orders.abs);
+    var ordPct = toFiniteNumber(d && d.orders && d.orders.pct);
+    var sesAbs = toFiniteNumber(d && d.sessions && d.sessions.abs);
+    var sesPct = toFiniteNumber(d && d.sessions && d.sessions.pct);
+    var convAbs = toFiniteNumber(d && d.conversion && d.conversion.abs);
+    var convPct = toFiniteNumber(d && d.conversion && d.conversion.pct);
+    var aovAbs = toFiniteNumber(d && d.aov && d.aov.abs);
+    var roasAbs = toFiniteNumber(d && d.roas && d.roas.abs);
+
+    function pickTone() {
+      if (revAbs != null && revAbs !== 0) return revAbs > 0 ? 'positive' : 'negative';
+      if (ordAbs != null && ordAbs !== 0) return ordAbs > 0 ? 'positive' : 'negative';
+      if (convAbs != null && convAbs !== 0) return convAbs > 0 ? 'positive' : 'negative';
+      return 'mixed';
+    }
+    var tone = pickTone();
+
+    function metricReasonParts() {
+      var parts = [];
+      if (revAbs != null && revAbs !== 0) parts.push('Revenue ' + (revAbs > 0 ? 'up' : 'down') + ' ' + stripDeltaGlyphs(fmtMoney(revAbs)) + (revPct != null ? (' (' + stripDeltaGlyphs(fmtRatioDelta(revPct)) + ')') : ''));
+      if (ordAbs != null && ordAbs !== 0) parts.push('Orders ' + (ordAbs > 0 ? 'up' : 'down') + ' ' + stripDeltaGlyphs(fmtNum(ordAbs)) + (ordPct != null ? (' (' + stripDeltaGlyphs(fmtRatioDelta(ordPct)) + ')') : ''));
+      if (convAbs != null && convAbs !== 0) parts.push('Conversion ' + (convAbs > 0 ? 'up' : 'down') + ' ' + fmtPp(convAbs));
+      if (sesAbs != null && sesAbs !== 0) parts.push('Sessions ' + (sesAbs > 0 ? 'up' : 'down') + ' ' + stripDeltaGlyphs(fmtNum(sesAbs)) + (sesPct != null ? (' (' + stripDeltaGlyphs(fmtRatioDelta(sesPct)) + ')') : ''));
+      if (aovAbs != null && aovAbs !== 0) parts.push('AOV ' + (aovAbs > 0 ? 'up' : 'down') + ' ' + stripDeltaGlyphs(fmtMoney(aovAbs)));
+      if (roasAbs != null && roasAbs !== 0) parts.push('ROAS ' + (roasAbs > 0 ? 'up' : 'down') + ' ' + stripDeltaGlyphs(String(roasAbs.toFixed(2))) + 'x');
+      return parts;
+    }
+
+    var parts = metricReasonParts();
+    // Keep the conclusion short: pick up to 3 strongest signals (revenue/orders/conversion/sessions).
+    var ordered = [];
+    ['Revenue', 'Orders', 'Conversion', 'Sessions', 'AOV', 'ROAS'].forEach(function (key) {
+      var hit = parts.find(function (p) { return p.indexOf(key + ' ') === 0; });
+      if (hit) ordered.push(hit);
+    });
+    var why = ordered.slice(0, 3).join('. ');
+    if (!why) why = 'No meaningful change detected in the selected window.';
+
+    if (tone === 'positive') return 'Conclusion: Positive. ' + why;
+    if (tone === 'negative') return 'Conclusion: Negative. ' + why;
+    return 'Conclusion: Mixed. ' + why;
+  }
 
   function clampInt(v, fallback, min, max) {
     var n = parseInt(String(v), 10);
@@ -365,6 +557,9 @@
     if (!showDetail) state.view = 'list';
     if (els.gridWrap) els.gridWrap.classList.toggle('is-hidden', showDetail);
     if (els.detailCard) els.detailCard.classList.toggle('is-hidden', !showDetail);
+    if (showDetail && els.detailCard) {
+      try { setCardCollapsed(els.detailCard, false); } catch (_) {}
+    }
     if (!showDetail) {
       if (els.effectResultsStats) els.effectResultsStats.innerHTML = '';
       if (els.effectResultsEdit) els.effectResultsEdit.innerHTML = '';
@@ -534,13 +729,15 @@
     }
     else if (preset === 'window') hint = 'Window compares a fixed number of days before vs after the pin date.';
 
-    if (hint) {
-      html += '<div class="tools-note tools-note--tight">' + esc(hint) + '</div>';
-    }
-    html += '<div class="tools-note tools-note--spaced">' +
-      '<span class="tools-ba-label">Before:</span> <span class="tools-ba-value">' + esc(payload.ranges && payload.ranges.before ? fmtRange(payload.ranges.before) : '') + '</span>' +
-      ' · <span class="tools-ba-label">After:</span> <span class="tools-ba-value">' + esc(payload.ranges && payload.ranges.after ? fmtRange(payload.ranges.after) : '') + '</span>' +
-      '</div>';
+    var beforeRange = payload.ranges && payload.ranges.before ? fmtRange(payload.ranges.before) : '';
+    var afterRange = payload.ranges && payload.ranges.after ? fmtRange(payload.ranges.after) : '';
+    var tipHtml = '' +
+      (hint ? ('<div><strong>' + esc(hint) + '</strong></div>') : '') +
+      '<div>Before: ' + esc(beforeRange) + '</div>' +
+      '<div>After: ' + esc(afterRange) + '</div>';
+    setCompareTooltipHtml(tipHtml);
+
+    html += '<div class="tools-note tools-note--tight"><strong>' + esc(buildConclusion(payload)) + '</strong></div>';
     html += '<div class="tools-summary">';
     html += metric('Revenue', before.revenue, after.revenue, d.revenue && d.revenue.abs, d.revenue && d.revenue.pct, fmtMoney);
     html += metric('Orders', before.orders, after.orders, d.orders && d.orders.abs, d.orders && d.orders.pct, fmtNum);
@@ -560,6 +757,10 @@
   }
 
   function init() {
+    try { bindToolsCollapsibles(); } catch (_) {}
+    try { bindPinsFiltersToggle(); } catch (_) {}
+    try { if (els.compareTip) ensureTooltip(els.compareTip); } catch (_) {}
+
     attachFlatpickr(els.date, function () { updateCreateUi(); });
     attachFlatpickr(els.filterFrom, function () {});
     attachFlatpickr(els.filterTo, function () {});
