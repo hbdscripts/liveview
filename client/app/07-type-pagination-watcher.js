@@ -1254,9 +1254,10 @@
       var message = String(text == null ? '' : text).trim() || 'Unavailable';
       var isError = !!(opts && opts.error);
       var color = isError ? '#ef4444' : 'var(--tblr-secondary)';
+      var h = (opts && Number.isFinite(opts.height)) ? Math.max(80, opts.height) : 320;
       if (isError) captureChartMessage(message, 'countriesMapState', { chartKey: 'countries-map-chart' }, 'error');
       el.innerHTML =
-        '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:' + color + ';text-align:center;padding:0 18px;">' +
+        '<div style="display:flex;align-items:center;justify-content:center;height:' + h + 'px;color:' + color + ';text-align:center;padding:0 18px;">' +
           escapeHtml(message) +
         '</div>';
     }
@@ -1356,30 +1357,35 @@
     function renderCountriesMapChart(data) {
       const el = document.getElementById('countries-map-chart');
       if (!el) return;
+      var chartKey = 'countries-map-chart';
+      var meta = typeof window.kexoChartMeta === 'function' ? window.kexoChartMeta(chartKey) : null;
+      var baseHeight = (meta && Number.isFinite(Number(meta.height))) ? Number(meta.height) : 320;
+      var pct = typeof chartSizePercentFromUiConfig === 'function' ? chartSizePercentFromUiConfig(chartKey, 100) : 100;
+      var mapHeight = Math.round(baseHeight * (pct / 100));
+      if (mapHeight < 80) mapHeight = 80;
       if (typeof jsVectorMap === 'undefined') {
         if (!el.__kexoJvmWaitTries) {
-          setCountriesMapState(el, 'Loading map library...');
+          setCountriesMapState(el, 'Loading map library...', { height: mapHeight });
         }
         // Avoid an unbounded retry loop if the CDN/map script is blocked (adblock/network).
         const tries = (el.__kexoJvmWaitTries || 0) + 1;
         el.__kexoJvmWaitTries = tries;
         if (tries >= 25) {
           el.__kexoJvmWaitTries = 0;
-          setCountriesMapState(el, 'Map library failed to load.', { error: true });
+          setCountriesMapState(el, 'Map library failed to load.', { error: true, height: mapHeight });
           return;
         }
         setTimeout(function() { renderCountriesMapChart(data); }, 200);
         return;
       }
       try { el.__kexoJvmWaitTries = 0; } catch (_) {}
-      var chartKey = 'countries-map-chart';
       if (!isChartEnabledByUiConfig(chartKey, true)) {
         if (countriesMapChartInstance) {
           try { countriesMapChartInstance.destroy(); } catch (_) {}
           countriesMapChartInstance = null;
         }
         clearCountriesFlowOverlay(el);
-        setCountriesMapState(el, 'Map disabled in Settings > Charts.');
+        setCountriesMapState(el, 'Map disabled in Settings > Charts.', { height: mapHeight });
         return;
       }
 
@@ -1411,7 +1417,7 @@
       const c = data && data.country ? data.country : {};
       const rows = c[getStatsRange()] || [];
       if (!rows.length) {
-        setCountriesMapState(el, 'No country data for this range.');
+        setCountriesMapState(el, 'No country data for this range.', { height: mapHeight });
         return;
       }
 
@@ -1433,6 +1439,12 @@
         }
       }
 
+      var mapStyle = chartStyleFromUiConfig(chartKey);
+      var mapMetricChoice = (mapStyle && mapStyle.mapMetric) ? String(mapStyle.mapMetric).trim().toLowerCase() : 'auto';
+      var choroplethByIso2 = mapMetricChoice === 'revenue' ? revenueByIso2 : mapMetricChoice === 'orders' ? ordersByIso2 : mapMetricByIso2;
+
+      el.style.height = mapHeight + 'px';
+      el.style.minHeight = mapHeight + 'px';
       el.innerHTML = '';
       try {
         const rootCss = getComputedStyle(document.documentElement);
@@ -1442,6 +1454,9 @@
         const isAnimated = rawMode !== 'map-flat';
         const palette = chartColorsFromUiConfig(chartKey, ['#3eb3ab']);
         const accent = (palette && palette[0]) ? String(palette[0]).trim() : '#3eb3ab';
+        const showTooltip = mapStyle.mapShowTooltip !== false;
+        const draggable = mapStyle.mapDraggable !== false;
+        const zoomButtons = !!mapStyle.mapZoomButtons;
 
         function rgbFromColor(c) {
           const s = String(c || '').trim();
@@ -1464,13 +1479,15 @@
         }
         const rgb = rgbFromColor(accent);
         const primaryRgb = rgb.rgb;
-        const regionFillByIso2 = buildMapFillScaleByIso(mapMetricByIso2, primaryRgb, 0.24, 0.92);
+        const regionFillByIso2 = buildMapFillScaleByIso(choroplethByIso2, primaryRgb, 0.24, 0.92);
 
-        countriesMapChartInstance = new jsVectorMap({
+        var jvmOpts = {
           selector: '#countries-map-chart',
           map: 'world',
           backgroundColor: 'transparent',
-          zoomButtons: false,
+          showTooltip: showTooltip,
+          draggable: draggable,
+          zoomButtons: zoomButtons,
           zoomOnScroll: false,
           zoomAnimate: false,
           regionStyle: {
@@ -1478,7 +1495,9 @@
             hover: { fill: 'rgba(' + primaryRgb + ',0.46)' },
             selected: { fill: 'rgba(' + primaryRgb + ',0.78)' },
           },
-          onRegionTooltipShow: function(event, tooltip, code) {
+        };
+        if (showTooltip) {
+          jvmOpts.onRegionTooltipShow = function(event, tooltip, code) {
             const iso = (code || '').toString().trim().toUpperCase();
             const name = (countriesMapChartInstance && typeof countriesMapChartInstance.getRegionName === 'function')
               ? (countriesMapChartInstance.getRegionName(iso) || iso)
@@ -1504,8 +1523,9 @@
               '</div>',
               name + ' | Revenue: ' + revHtml + ' | Orders: ' + ordHtml
             );
-          }
-        });
+          };
+        }
+        countriesMapChartInstance = new jsVectorMap(jvmOpts);
 
         if (countriesMapChartInstance && countriesMapChartInstance.regions) {
           var regions = countriesMapChartInstance.regions;
@@ -1525,7 +1545,7 @@
       } catch (err) {
         captureChartError(err, 'countriesMapRender', { chartKey: 'countries-map-chart' });
         console.error('[countries-map] map render error:', err);
-        setCountriesMapState(el, 'Map rendering failed.', { error: true });
+        setCountriesMapState(el, 'Map rendering failed.', { error: true, height: mapHeight });
       }
     }
 
@@ -4140,6 +4160,11 @@
         pieLabelContent: 'percent',
         pieLabelOffset: 16,
         pieCountryFlags: false,
+        mapShowTooltip: true,
+        mapDraggable: true,
+        mapZoomButtons: false,
+        mapShowEmptyCaption: true,
+        mapMetric: 'auto',
       };
     }
 
@@ -4181,6 +4206,13 @@
         pieLabelContent: pieLabelContent,
         pieLabelOffset: Math.round(n(src.pieLabelOffset, def.pieLabelOffset, -40, 40)),
         pieCountryFlags: !!src.pieCountryFlags,
+        mapShowTooltip: src.mapShowTooltip !== false,
+        mapDraggable: src.mapDraggable !== false,
+        mapZoomButtons: !!src.mapZoomButtons,
+        mapShowEmptyCaption: src.mapShowEmptyCaption !== false,
+        mapMetric: ['auto', 'revenue', 'orders'].indexOf(String(src.mapMetric != null ? src.mapMetric : def.mapMetric).trim().toLowerCase()) >= 0
+          ? String(src.mapMetric != null ? src.mapMetric : def.mapMetric).trim().toLowerCase()
+          : 'auto',
       };
     }
 

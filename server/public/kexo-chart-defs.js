@@ -220,7 +220,20 @@
         ]
       }
     },
-    'live-online-chart': { modes: ['map-animated', 'map-flat'], series: ['Online now'], defaultMode: 'map-flat', height: 220 },
+    'live-online-chart': {
+      modes: ['map-animated', 'map-flat'],
+      series: ['Online now'],
+      defaultMode: 'map-flat',
+      height: 220,
+      capabilities: {
+        controls: [
+          { type: 'toggle', field: 'mapShowTooltip', label: 'Tooltips on hover', default: true },
+          { type: 'toggle', field: 'mapDraggable', label: 'Drag/pan map', default: true },
+          { type: 'toggle', field: 'mapZoomButtons', label: 'Zoom buttons', default: false },
+          { type: 'toggle', field: 'mapShowEmptyCaption', label: "Show 'No live activity yet' caption", default: true },
+        ],
+      },
+    },
     'sales-overview-chart': { modes: ['area', 'line', 'bar', 'multi-line-labels'], series: ['Revenue'], defaultMode: 'area', height: 220 },
     'date-overview-chart': { modes: ['area', 'line', 'bar', 'multi-line-labels'], series: ['Sessions', 'Orders'], defaultMode: 'area', height: 220 },
     'ads-overview-chart': { modes: ['bar', 'combo', 'line', 'area', 'multi-line-labels'], series: ['Profit', 'Sales', 'Spend', 'ROAS'], defaultMode: 'bar', height: 240 },
@@ -228,7 +241,30 @@
     'devices-chart': { modes: ['line', 'area', 'bar', 'pie', 'multi-line-labels'], series: ['Sessions', 'Orders', 'Revenue'], pieMetric: true, defaultMode: 'line', height: 320 },
     'browsers-chart': { modes: ['line', 'area', 'bar', 'pie', 'multi-line-labels'], series: ['Sessions', 'Orders', 'Revenue'], pieMetric: true, defaultMode: 'line', height: 320, capabilities: { icons: true } },
     'products-chart': { modes: ['line', 'area', 'bar', 'pie', 'multi-line-labels'], series: ['Revenue'], defaultMode: 'line', height: 280 },
-    'countries-map-chart': { modes: ['map-animated', 'map-flat'], series: ['Accent'], defaultMode: 'map-flat', height: 320 },
+    'countries-map-chart': {
+      modes: ['map-animated', 'map-flat'],
+      series: ['Accent'],
+      defaultMode: 'map-flat',
+      height: 320,
+      capabilities: {
+        controls: [
+          { type: 'toggle', field: 'mapShowTooltip', label: 'Tooltips on hover', default: true },
+          { type: 'toggle', field: 'mapDraggable', label: 'Drag/pan map', default: true },
+          { type: 'toggle', field: 'mapZoomButtons', label: 'Zoom buttons', default: false },
+          {
+            type: 'select',
+            field: 'mapMetric',
+            label: 'Colour by',
+            options: [
+              { value: 'auto', label: 'Auto (revenue or orders)' },
+              { value: 'revenue', label: 'Revenue' },
+              { value: 'orders', label: 'Orders' },
+            ],
+            default: 'auto',
+          },
+        ],
+      },
+    },
     'abandoned-carts-chart': { modes: ['area', 'line', 'bar', 'multi-line-labels'], series: ['Abandoned'], defaultMode: 'line', height: 280 },
     'payment-methods-chart': { modes: ['line', 'area', 'bar', 'multi-line-labels'], series: ['Revenue'], defaultMode: 'line', height: 320, colorSlots: 8 },
   };

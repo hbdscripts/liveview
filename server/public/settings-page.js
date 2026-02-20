@@ -2641,6 +2641,11 @@
       pieLabelContent: 'percent',
       pieLabelOffset: 16,
       pieCountryFlags: false,
+      mapShowTooltip: true,
+      mapDraggable: true,
+      mapZoomButtons: false,
+      mapShowEmptyCaption: true,
+      mapMetric: 'auto',
     };
   }
 
@@ -2671,6 +2676,13 @@
       pieLabelContent: pieLabelContent,
       pieLabelOffset: Math.round(safeNumber(src.pieLabelOffset, def.pieLabelOffset, -40, 40)),
       pieCountryFlags: !!(src.pieCountryFlags === true || (src.pieCountryFlags == null && def.pieCountryFlags)),
+      mapShowTooltip: src.mapShowTooltip !== false,
+      mapDraggable: src.mapDraggable !== false,
+      mapZoomButtons: !!(src.mapZoomButtons === true),
+      mapShowEmptyCaption: src.mapShowEmptyCaption !== false,
+      mapMetric: ['auto', 'revenue', 'orders'].indexOf(String(src.mapMetric != null ? src.mapMetric : def.mapMetric).trim().toLowerCase()) >= 0
+        ? String(src.mapMetric != null ? src.mapMetric : def.mapMetric).trim().toLowerCase()
+        : 'auto',
     };
   }
 

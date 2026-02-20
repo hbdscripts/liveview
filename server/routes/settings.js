@@ -211,6 +211,11 @@ function defaultChartStyleConfig() {
     pieLabelContent: 'percent',
     pieLabelOffset: 16,
     pieCountryFlags: false,
+    mapShowTooltip: true,
+    mapDraggable: true,
+    mapZoomButtons: false,
+    mapShowEmptyCaption: true,
+    mapMetric: 'auto',
   };
 }
 
@@ -1109,6 +1114,13 @@ function normalizeChartStyle(raw, fallback) {
     pieLabelContent: ['percent', 'label', 'label_percent'].includes(pieLabelContentRaw) ? pieLabelContentRaw : String(def.pieLabelContent || 'percent'),
     pieLabelOffset: Math.round(parseBoundedNumber(src.pieLabelOffset, def.pieLabelOffset != null ? def.pieLabelOffset : 16, -40, 40)),
     pieCountryFlags: normalizeBool(src.pieCountryFlags, def.pieCountryFlags === true),
+    mapShowTooltip: normalizeBool(src.mapShowTooltip, def.mapShowTooltip !== false),
+    mapDraggable: normalizeBool(src.mapDraggable, def.mapDraggable !== false),
+    mapZoomButtons: normalizeBool(src.mapZoomButtons, def.mapZoomButtons === true),
+    mapShowEmptyCaption: normalizeBool(src.mapShowEmptyCaption, def.mapShowEmptyCaption !== false),
+    mapMetric: ['auto', 'revenue', 'orders'].includes(String(src.mapMetric != null ? src.mapMetric : def.mapMetric).trim().toLowerCase())
+      ? String(src.mapMetric != null ? src.mapMetric : def.mapMetric).trim().toLowerCase()
+      : 'auto',
   };
 }
 
