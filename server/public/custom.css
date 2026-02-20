@@ -4236,20 +4236,23 @@ body[data-page="dashboard"] #dash-trending-down .dash-trend-delta.text-red {
   vertical-align: 0.05em;
 }
 
-.kexo-trending-days-select {
+.kexo-trending-days-dropdown-btn {
   width: 60px;
   min-width: 60px;
   max-width: 60px;
   border: 0 !important;
   box-shadow: 0 0 0 !important;
-  padding-left: 0 !important;
-  padding-right: 1.35rem !important; /* keep Tabler chevron visible */
+  padding: 0 !important;
   font-size: 12px !important;
   text-transform: uppercase;
   font-weight: 600;
-  color: var(--tblr-secondary);
-  background-color: transparent !important;
-  background-position: right 0.25rem center;
+  color: var(--tblr-secondary) !important;
+  background: transparent !important;
+}
+.kexo-trending-days-dropdown-btn.dropdown-toggle::after {
+  margin-left: 0.15em;
+  vertical-align: 0.08em;
+  opacity: 0.8;
 }
 
 .dash-thumb-wrap {

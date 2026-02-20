@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 44f37bc9e867a675
+// checksum: 74fb5c2fc2770924
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -22621,28 +22621,66 @@ const API = '';
         if (!headRight) return;
         var existing = document.getElementById('dash-trending-days');
         if (existing) {
-          existing.value = String(getTrendingDays());
+          try {
+            existing.setAttribute('data-days', String(getTrendingDays()));
+            var label = existing.querySelector('[data-trending-days-label]');
+            if (label) label.textContent = String(getTrendingDays()) + ' days';
+            existing.querySelectorAll('[data-trending-days-item]').forEach(function (it) {
+              var v = String(it.getAttribute('data-trending-days-item') || '');
+              it.classList.toggle('active', v === String(getTrendingDays()));
+            });
+          } catch (_) {}
           return;
         }
-        var select = document.createElement('select');
-        select.id = 'dash-trending-days';
-        select.className = 'form-select form-select-sm kexo-trending-days-select';
-        select.setAttribute('aria-label', 'Trending period');
+
+        var wrap = document.createElement('div');
+        wrap.className = 'dropdown';
+
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.id = 'dash-trending-days';
+        btn.className = 'btn btn-sm btn-ghost-secondary dropdown-toggle kexo-trending-days-dropdown-btn';
+        btn.setAttribute('data-bs-toggle', 'dropdown');
+        btn.setAttribute('aria-expanded', 'false');
+        btn.setAttribute('aria-label', 'Trending period');
+        btn.setAttribute('data-days', String(getTrendingDays()));
+        btn.innerHTML = '<span data-trending-days-label>' + String(getTrendingDays()) + ' days</span>';
+
+        var menu = document.createElement('div');
+        menu.className = 'dropdown-menu dropdown-menu-end kexo-trending-days-dropdown-menu';
+        menu.setAttribute('role', 'menu');
+
         [3, 7, 14].forEach(function (d) {
-          var opt = document.createElement('option');
-          opt.value = String(d);
-          opt.textContent = String(d) + ' days';
-          select.appendChild(opt);
+          var item = document.createElement('button');
+          item.type = 'button';
+          item.className = 'dropdown-item';
+          item.textContent = String(d) + ' days';
+          item.setAttribute('data-trending-days-item', String(d));
+          if (String(d) === String(getTrendingDays())) item.classList.add('active');
+          item.addEventListener('click', function (e) {
+            e.preventDefault();
+            var n = parseInt(String(d), 10);
+            if (n === 3 || n === 7 || n === 14) {
+              setTrendingDays(n);
+              try { btn.setAttribute('data-days', String(n)); } catch (_) {}
+              try {
+                var lbl = btn.querySelector('[data-trending-days-label]');
+                if (lbl) lbl.textContent = String(n) + ' days';
+                menu.querySelectorAll('[data-trending-days-item]').forEach(function (it) {
+                  it.classList.toggle('active', String(it.getAttribute('data-trending-days-item') || '') === String(n));
+                });
+              } catch (_) {}
+              // Close dropdown (Bootstrap)
+              try { if (window.bootstrap && window.bootstrap.Dropdown) window.bootstrap.Dropdown.getOrCreateInstance(btn).hide(); } catch (_) {}
+              if (typeof fetchDashboardData === 'function') fetchDashboardData(dashRangeKeyFromDateRange(), true);
+            }
+          });
+          menu.appendChild(item);
         });
-        select.value = String(getTrendingDays());
-        select.addEventListener('change', function () {
-          var n = parseInt(select.value, 10);
-          if (n === 3 || n === 7 || n === 14) {
-            setTrendingDays(n);
-            if (typeof fetchDashboardData === 'function') fetchDashboardData(dashRangeKeyFromDateRange(), true);
-          }
-        });
-        headRight.insertBefore(select, headRight.firstChild);
+
+        wrap.appendChild(btn);
+        wrap.appendChild(menu);
+        headRight.insertBefore(wrap, headRight.firstChild);
       }
 
       function bindDashWidgetsOnce() {
