@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 95d70537eaf5e8a9
+// checksum: 0432d27ea6004690
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -21472,7 +21472,7 @@ const API = '';
           var prevPct = Math.max(0, Math.min(100, (p / scale) * 100));
           var curPct = Math.max(0, Math.min(100, (c / scale) * 100));
 
-          var barClass = 'bg-secondary';
+          var barClass = 'kexo-score-bar-palette kexo-score-bar-palette--flat';
           var barLabel = '';
           if (!isNew && cRaw != null && pRaw != null) {
             var dir = 0;
@@ -21484,7 +21484,11 @@ const API = '';
               var rel = (cRaw - pRaw) / denom;
               if (Math.abs(rel) >= spec.stable) dir = rel > 0 ? 1 : -1;
             }
-            barClass = dir > 0 ? 'bg-success' : (dir < 0 ? 'bg-danger' : 'bg-secondary');
+            barClass = dir > 0
+              ? 'kexo-score-bar-palette kexo-score-bar-palette--up'
+              : (dir < 0 ? 'kexo-score-bar-palette kexo-score-bar-palette--down' : 'kexo-score-bar-palette kexo-score-bar-palette--flat');
+          } else if (isNew) {
+            barClass = 'kexo-score-bar-palette kexo-score-bar-palette--new';
           }
           return { prevPct: prevPct, curPct: curPct, barClass: barClass, barLabel: barLabel, isNew: isNew };
         }
@@ -21749,7 +21753,7 @@ const API = '';
           var prevPct = Math.max(0, Math.min(100, (p / scale) * 100));
           var curPct = Math.max(0, Math.min(100, (c / scale) * 100));
 
-          var barClass = 'bg-secondary';
+          var barClass = 'kexo-score-bar-palette kexo-score-bar-palette--flat';
           var barLabel = '';
           if (!isNew && cRaw != null && pRaw != null) {
             var dir = 0;
@@ -21761,7 +21765,11 @@ const API = '';
               var rel = (cRaw - pRaw) / denom;
               if (Math.abs(rel) >= spec.stable) dir = rel > 0 ? 1 : -1;
             }
-            barClass = dir > 0 ? 'bg-success' : (dir < 0 ? 'bg-danger' : 'bg-secondary');
+            barClass = dir > 0
+              ? 'kexo-score-bar-palette kexo-score-bar-palette--up'
+              : (dir < 0 ? 'kexo-score-bar-palette kexo-score-bar-palette--down' : 'kexo-score-bar-palette kexo-score-bar-palette--flat');
+          } else if (isNew) {
+            barClass = 'kexo-score-bar-palette kexo-score-bar-palette--new';
           }
           return { prevPct: prevPct, curPct: curPct, barClass: barClass, barLabel: barLabel, isNew: isNew };
         }

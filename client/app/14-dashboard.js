@@ -4211,7 +4211,7 @@
           var prevPct = Math.max(0, Math.min(100, (p / scale) * 100));
           var curPct = Math.max(0, Math.min(100, (c / scale) * 100));
 
-          var barClass = 'bg-secondary';
+          var barClass = 'kexo-score-bar-palette kexo-score-bar-palette--flat';
           var barLabel = '';
           if (!isNew && cRaw != null && pRaw != null) {
             var dir = 0;
@@ -4223,7 +4223,11 @@
               var rel = (cRaw - pRaw) / denom;
               if (Math.abs(rel) >= spec.stable) dir = rel > 0 ? 1 : -1;
             }
-            barClass = dir > 0 ? 'bg-success' : (dir < 0 ? 'bg-danger' : 'bg-secondary');
+            barClass = dir > 0
+              ? 'kexo-score-bar-palette kexo-score-bar-palette--up'
+              : (dir < 0 ? 'kexo-score-bar-palette kexo-score-bar-palette--down' : 'kexo-score-bar-palette kexo-score-bar-palette--flat');
+          } else if (isNew) {
+            barClass = 'kexo-score-bar-palette kexo-score-bar-palette--new';
           }
           return { prevPct: prevPct, curPct: curPct, barClass: barClass, barLabel: barLabel, isNew: isNew };
         }
@@ -4488,7 +4492,7 @@
           var prevPct = Math.max(0, Math.min(100, (p / scale) * 100));
           var curPct = Math.max(0, Math.min(100, (c / scale) * 100));
 
-          var barClass = 'bg-secondary';
+          var barClass = 'kexo-score-bar-palette kexo-score-bar-palette--flat';
           var barLabel = '';
           if (!isNew && cRaw != null && pRaw != null) {
             var dir = 0;
@@ -4500,7 +4504,11 @@
               var rel = (cRaw - pRaw) / denom;
               if (Math.abs(rel) >= spec.stable) dir = rel > 0 ? 1 : -1;
             }
-            barClass = dir > 0 ? 'bg-success' : (dir < 0 ? 'bg-danger' : 'bg-secondary');
+            barClass = dir > 0
+              ? 'kexo-score-bar-palette kexo-score-bar-palette--up'
+              : (dir < 0 ? 'kexo-score-bar-palette kexo-score-bar-palette--down' : 'kexo-score-bar-palette kexo-score-bar-palette--flat');
+          } else if (isNew) {
+            barClass = 'kexo-score-bar-palette kexo-score-bar-palette--new';
           }
           return { prevPct: prevPct, curPct: curPct, barClass: barClass, barLabel: barLabel, isNew: isNew };
         }

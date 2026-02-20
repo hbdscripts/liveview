@@ -2783,6 +2783,33 @@ html[data-bs-theme="dark"] .report-build-wrap {
 .kexo-score-breakdown-row .progress.kexo-score-progress .kexo-score-bar-cur {
   z-index: 1;
 }
+
+/* Kexo Score progress: use the same repeating palette as the ring (not success/danger). */
+.kexo-score-breakdown-row .progress.kexo-score-progress .kexo-score-bar-cur.kexo-score-bar-palette {
+  background-color: transparent !important;
+  background-image: linear-gradient(
+    90deg,
+    var(--kexo-accent-5, #6681e8) 0% 20%,
+    var(--kexo-accent-4, #e4644b) 20% 40%,
+    var(--kexo-accent-3, #f59e34) 40% 60%,
+    var(--kexo-accent-1, #4b94e4) 60% 80%,
+    var(--kexo-accent-2, #3eb3ab) 80% 100%
+  );
+  background-size: 140px 100%;
+  background-repeat: repeat;
+}
+.kexo-score-breakdown-row .progress.kexo-score-progress .kexo-score-bar-cur.kexo-score-bar-palette--up {
+  filter: saturate(1.05) brightness(1.03);
+}
+.kexo-score-breakdown-row .progress.kexo-score-progress .kexo-score-bar-cur.kexo-score-bar-palette--down {
+  filter: saturate(0.9) brightness(0.92);
+}
+.kexo-score-breakdown-row .progress.kexo-score-progress .kexo-score-bar-cur.kexo-score-bar-palette--flat {
+  opacity: 0.92;
+}
+.kexo-score-breakdown-row .progress.kexo-score-progress .kexo-score-bar-cur.kexo-score-bar-palette--new {
+  opacity: 0.85;
+}
 .kexo-score-breakdown-row .progress-bar {
   display: flex;
   align-items: center;
