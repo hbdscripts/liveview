@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 9274e989376d6d97
+// checksum: 23f36cb60b68c4cd
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -6690,6 +6690,15 @@ const API = '';
       return null;
     }
 
+    function getJvmRegionsGroup(mapSvg) {
+      if (!mapSvg) return null;
+      return mapSvg.querySelector('.jvm-regions-group') || null;
+    }
+
+    function getJvmOverlayGroup(mapSvg) {
+      return getJvmRegionsGroup(mapSvg) || getJvmZoomGroup(mapSvg) || mapSvg;
+    }
+
     var BASE_PIN_FONT = 11;
     function applyPinsCounterScale(containerEl, scale) {
       if (!containerEl || !Number.isFinite(scale) || scale <= 0) return;
@@ -6710,10 +6719,12 @@ const API = '';
       var mapSvg = getJvmSvgInContainer(containerEl);
       if (!mapSvg) return;
       var zoomGroup = getJvmZoomGroup(mapSvg);
-      if (!zoomGroup) return;
+      var regionsGroup = getJvmRegionsGroup(mapSvg);
+      var scaleEl = regionsGroup || zoomGroup;
+      if (!scaleEl) return;
       function readScale() {
         try {
-          var ctm = zoomGroup.getCTM && zoomGroup.getCTM();
+          var ctm = scaleEl.getCTM && scaleEl.getCTM();
           if (ctm) return ctm.a;
         } catch (_) {}
         return 1;
@@ -6723,7 +6734,8 @@ const API = '';
       if (typeof MutationObserver !== 'undefined') {
         try {
           var obs = new MutationObserver(update);
-          obs.observe(zoomGroup, { attributes: true, attributeFilter: ['transform'] });
+          if (zoomGroup) obs.observe(zoomGroup, { attributes: true, attributeFilter: ['transform', 'style'] });
+          if (regionsGroup && regionsGroup !== zoomGroup) obs.observe(regionsGroup, { attributes: true, attributeFilter: ['transform', 'style'] });
           if (containerEl.__kexoPinsScaleObserver) containerEl.__kexoPinsScaleObserver.disconnect();
           containerEl.__kexoPinsScaleObserver = obs;
         } catch (_) {}
@@ -6764,8 +6776,7 @@ const API = '';
       clearMapFlowOverlay(el);
       var mapSvg = getJvmSvgInContainer(el);
       if (!mapSvg) return;
-      var zoomGroup = getJvmZoomGroup(mapSvg);
-      if (!zoomGroup) zoomGroup = mapSvg;
+      var overlayGroup = getJvmOverlayGroup(mapSvg);
 
       var originIso = String(originIso2 || 'GB').trim().toUpperCase().slice(0, 2);
       if (originIso === 'UK') originIso = 'GB';
@@ -6790,11 +6801,11 @@ const API = '';
         .slice(0, 8);
 
       if (!ranked.length) {
-        try { zoomGroup.appendChild(overlay); } catch (_) {}
+        try { overlayGroup.appendChild(overlay); } catch (_) {}
         return;
       }
 
-      var origin = mapRegionCenter(mapSvg, zoomGroup, originIso);
+      var origin = mapRegionCenter(mapSvg, overlayGroup, originIso);
       if (!origin) origin = { x: 520, y: 240 };
       var palette = [
         'rgba(' + primaryRgb + ',0.78)',
@@ -6803,7 +6814,7 @@ const API = '';
       ];
 
       ranked.forEach(function (item, idx) {
-        var target = mapRegionCenter(mapSvg, zoomGroup, item.iso);
+        var target = mapRegionCenter(mapSvg, overlayGroup, item.iso);
         if (!target) return;
         var midX = (origin.x + target.x) / 2;
         var bend = Math.max(18, Math.min(74, (Math.abs(target.x - origin.x) * 0.16) + (idx * 3)));
@@ -6835,7 +6846,7 @@ const API = '';
       originDot.setAttribute('fill', 'rgba(' + primaryRgb + ',0.86)');
       overlay.appendChild(originDot);
 
-      try { zoomGroup.appendChild(overlay); } catch (_) {}
+      try { overlayGroup.appendChild(overlay); } catch (_) {}
     }
 
     function renderLiveActivityOverlay(el, stageCountsByIso2, totalsByIso2, opts) {
@@ -6845,8 +6856,7 @@ const API = '';
 
       var mapSvg = getJvmSvgInContainer(el);
       if (!mapSvg) return;
-      var zoomGroup = getJvmZoomGroup(mapSvg);
-      if (!zoomGroup) zoomGroup = mapSvg;
+      var overlayGroup = getJvmOverlayGroup(mapSvg);
 
       var totals = totalsByIso2 && typeof totalsByIso2 === 'object' ? totalsByIso2 : {};
       var stages = stageCountsByIso2 && typeof stageCountsByIso2 === 'object' ? stageCountsByIso2 : {};
@@ -6905,7 +6915,7 @@ const API = '';
       if (originIso === 'UK') originIso = 'GB';
       if (!originIso) originIso = ranked[0].iso || 'GB';
 
-      var origin = mapRegionCenter(mapSvg, zoomGroup, originIso);
+      var origin = mapRegionCenter(mapSvg, overlayGroup, originIso);
       if (!origin) origin = { x: 520, y: 240 };
 
       var NS = 'http://www.w3.org/2000/svg';
@@ -6916,7 +6926,7 @@ const API = '';
       var maxTotal = top.reduce(function(m, r) { return Math.max(m, r.total || 0); }, 1);
 
       top.forEach(function(item, idx) {
-        var target = mapRegionCenter(mapSvg, zoomGroup, item.iso);
+        var target = mapRegionCenter(mapSvg, overlayGroup, item.iso);
         if (!target) return;
         var stage = stageKey(item.stage);
 
@@ -6939,8 +6949,9 @@ const API = '';
         marker.setAttribute('cy', String(target.y));
         marker.setAttribute('r', String(radius.toFixed(2)));
         marker.setAttribute('data-base-r', String(radius.toFixed(2)));
-        marker.setAttribute('stroke', 'rgba(255,255,255,0.85)');
-        marker.setAttribute('stroke-width', '0.8');
+        marker.setAttribute('stroke', 'rgba(255,255,255,0.98)');
+        marker.setAttribute('stroke-width', '2');
+        marker.setAttribute('vector-effect', 'non-scaling-stroke');
         overlay.appendChild(marker);
 
         var label = document.createElementNS(NS, 'text');
@@ -6964,7 +6975,7 @@ const API = '';
         overlay.appendChild(originDot);
       } catch (_) {}
 
-      try { zoomGroup.appendChild(overlay); } catch (_) {}
+      try { overlayGroup.appendChild(overlay); } catch (_) {}
       setupPinsCounterScale(el);
 
       // Legend (HTML overlay)
@@ -6998,8 +7009,7 @@ const API = '';
 
       var mapSvg = getJvmSvgInContainer(el);
       if (!mapSvg) return;
-      var zoomGroup = getJvmZoomGroup(mapSvg);
-      if (!zoomGroup) zoomGroup = mapSvg;
+      var overlayGroup = getJvmOverlayGroup(mapSvg);
 
       var items = Array.isArray(rankedItems) ? rankedItems : [];
       if (!items.length) return;
@@ -7019,7 +7029,7 @@ const API = '';
       top.forEach(function(item) {
         var iso = item && item.iso ? String(item.iso).trim().toUpperCase().slice(0, 2) : '';
         if (!iso || iso === 'XX') return;
-        var center = mapRegionCenter(mapSvg, zoomGroup, iso);
+        var center = mapRegionCenter(mapSvg, overlayGroup, iso);
         if (!center) return;
         var n = Number(item && item.value) || 0;
         var t = maxVal > 0 ? Math.max(0, Math.min(1, n / maxVal)) : 0;
@@ -7032,8 +7042,9 @@ const API = '';
         marker.setAttribute('r', String(radius.toFixed(2)));
         marker.setAttribute('data-base-r', String(radius.toFixed(2)));
         marker.setAttribute('fill', 'rgba(' + primaryRgb + ',0.94)');
-        marker.setAttribute('stroke', 'rgba(255,255,255,0.85)');
-        marker.setAttribute('stroke-width', '0.8');
+        marker.setAttribute('stroke', 'rgba(255,255,255,0.98)');
+        marker.setAttribute('stroke-width', '2');
+        marker.setAttribute('vector-effect', 'non-scaling-stroke');
         overlay.appendChild(marker);
 
         var label = document.createElementNS(NS, 'text');
@@ -7045,7 +7056,7 @@ const API = '';
         overlay.appendChild(label);
       });
 
-      try { zoomGroup.appendChild(overlay); } catch (_) {}
+      try { overlayGroup.appendChild(overlay); } catch (_) {}
       setupPinsCounterScale(el);
 
       // Legend (HTML overlay)
@@ -7230,22 +7241,17 @@ const API = '';
         zoomButtons: !!opts.zoomButtons,
         zoomOnScroll: false,
         zoomAnimate: false,
-        focusOn: {},
         regionStyle: {
           initial: { fill: 'rgba(' + primaryRgb + ',0.18)', stroke: border, strokeWidth: 0.7 },
           hover: { fill: 'rgba(' + primaryRgb + ',0.46)' },
           selected: { fill: 'rgba(' + primaryRgb + ',0.78)' },
         },
       };
-      if (opts.topRegionIso2) {
+      if (opts.focusOn && typeof opts.focusOn === 'object') {
+        jvmOpts.focusOn = opts.focusOn;
+      } else if (opts.topRegionIso2) {
         var topIso = String(opts.topRegionIso2).trim().toUpperCase().slice(0, 2);
-        if (topIso) {
-          jvmOpts.onLoaded = function(map) {
-            try {
-              if (typeof map.setFocus === 'function') map.setFocus({ region: topIso, animate: false });
-            } catch (_) {}
-          };
-        }
+        if (topIso) jvmOpts.focusOn = { region: topIso, animate: false };
       }
       if (opts.onRegionTooltipShow) jvmOpts.onRegionTooltipShow = opts.onRegionTooltipShow;
       var instance = new jsVectorMap(jvmOpts);
@@ -7370,7 +7376,8 @@ const API = '';
         });
         focusRegions.sort(function(a, b) { return (Number(b && b.value) || 0) - (Number(a && a.value) || 0); });
         var top = focusRegions.slice(0, 4).map(function(r) { return r.iso; }).filter(Boolean);
-        if (top.length) focusOn = { regions: top, animate: false };
+        // Avoid zooming hard when only a couple countries have activity.
+        if (top.length >= 3) focusOn = { regions: top, animate: false };
       } catch (_) {}
 
       var pinItems = [];
@@ -7401,7 +7408,7 @@ const API = '';
           showTooltip: mapStyle.mapShowTooltip !== false,
           draggable: mapStyle.mapDraggable !== false,
           zoomButtons: !!mapStyle.mapZoomButtons,
-          topRegionIso2: (pinItems[0] && pinItems[0].iso) || undefined,
+          focusOn: focusOn,
           retry: function() { renderCountriesMapChart(data); },
           onRegionTooltipShow: function(event, tooltip, code) {
             const iso = (code || '').toString().trim().toUpperCase();
@@ -12638,7 +12645,8 @@ const API = '';
           try {
             var focus = keys.slice().sort(function(a, b) { return (countsByIso2[b] || 0) - (countsByIso2[a] || 0); }).slice(0, 4);
             focus = focus.map(function(x) { return String(x || '').trim().toUpperCase().slice(0, 2); }).filter(Boolean);
-            if (focus.length) return { regions: focus, animate: false };
+            // Avoid aggressive zoom when activity is concentrated in 1–2 nearby countries.
+            if (focus.length >= 3) return { regions: focus, animate: false };
           } catch (_) {}
           return {};
         })();
@@ -12652,7 +12660,7 @@ const API = '';
           showTooltip: showTooltip,
           draggable: draggable,
           zoomButtons: zoomButtons,
-          topRegionIso2: (focusOnLive.regions && focusOnLive.regions[0]) || undefined,
+          focusOn: focusOnLive,
           retry: function() { renderLiveOnlineMapChartFromSessions(sessionList); },
           onRegionTooltipShow: function(event, tooltip, code2) {
             var iso2 = (code2 || '').toString().trim().toUpperCase();

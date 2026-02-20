@@ -1773,7 +1773,8 @@
           try {
             var focus = keys.slice().sort(function(a, b) { return (countsByIso2[b] || 0) - (countsByIso2[a] || 0); }).slice(0, 4);
             focus = focus.map(function(x) { return String(x || '').trim().toUpperCase().slice(0, 2); }).filter(Boolean);
-            if (focus.length) return { regions: focus, animate: false };
+            // Avoid aggressive zoom when activity is concentrated in 1–2 nearby countries.
+            if (focus.length >= 3) return { regions: focus, animate: false };
           } catch (_) {}
           return {};
         })();
@@ -1787,7 +1788,7 @@
           showTooltip: showTooltip,
           draggable: draggable,
           zoomButtons: zoomButtons,
-          topRegionIso2: (focusOnLive.regions && focusOnLive.regions[0]) || undefined,
+          focusOn: focusOnLive,
           retry: function() { renderLiveOnlineMapChartFromSessions(sessionList); },
           onRegionTooltipShow: function(event, tooltip, code2) {
             var iso2 = (code2 || '').toString().trim().toUpperCase();
