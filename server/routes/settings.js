@@ -479,7 +479,7 @@ function defaultTablesUiConfigV1() {
             zone: 'countries-main',
             order: 1,
             inGrid: true,
-            rows: { default: 20, options: [20, 30, 40, 50] },
+            rows: { default: 15, options: [15, 20, 30, 40, 50] },
             sticky: { minWidth: null, maxWidth: null },
           },
           {
@@ -489,7 +489,7 @@ function defaultTablesUiConfigV1() {
             zone: 'countries-products',
             order: 2,
             inGrid: true,
-            rows: { default: 20, options: [20, 30, 40, 50] },
+            rows: { default: 15, options: [15, 20, 30, 40, 50] },
             sticky: { minWidth: null, maxWidth: null },
           },
         ],

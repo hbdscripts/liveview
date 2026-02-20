@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: b0dc985457fbc3be
+// checksum: 34d8a17f901f01d6
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -7102,7 +7102,6 @@ const API = '';
           : escapeHtml(productTitle);
         const labelHtml =
           '<span class="country-product-stack">' +
-            '<span class="country-label">' + escapeHtml(label) + '</span>' +
             '<span class="country-product-label">' + titleLink + '</span>' +
           '</span>';
         return '<div class="grid-row" role="row">' +

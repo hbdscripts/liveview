@@ -2526,8 +2526,8 @@
           key: 'countries',
           label: 'Insights · Countries',
           tables: [
-            { id: 'country-table', name: 'Country', tableClass: 'live', zone: 'countries-main', order: 1, inGrid: true, rows: { default: 20, options: [20, 30, 40, 50] }, sticky: { minWidth: null, maxWidth: null } },
-            { id: 'best-geo-products-table', name: 'Country + Product', tableClass: 'live', zone: 'countries-products', order: 2, inGrid: true, rows: { default: 20, options: [20, 30, 40, 50] }, sticky: { minWidth: null, maxWidth: null } },
+            { id: 'country-table', name: 'Country', tableClass: 'live', zone: 'countries-main', order: 1, inGrid: true, rows: { default: 15, options: [15, 20, 30, 40, 50] }, sticky: { minWidth: null, maxWidth: null } },
+            { id: 'best-geo-products-table', name: 'Country + Product', tableClass: 'live', zone: 'countries-products', order: 2, inGrid: true, rows: { default: 15, options: [15, 20, 30, 40, 50] }, sticky: { minWidth: null, maxWidth: null } },
           ],
         },
         {

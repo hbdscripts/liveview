@@ -1622,7 +1622,6 @@
           : escapeHtml(productTitle);
         const labelHtml =
           '<span class="country-product-stack">' +
-            '<span class="country-label">' + escapeHtml(label) + '</span>' +
             '<span class="country-product-label">' + titleLink + '</span>' +
           '</span>';
         return '<div class="grid-row" role="row">' +
