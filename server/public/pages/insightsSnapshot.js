@@ -322,6 +322,17 @@
     });
   }
 
+  function updateSnapshotDateButtonLabel() {
+    const labelEl = document.getElementById('snapshot-date-btn-label');
+    if (labelEl) labelEl.textContent = presetLabel(state.preset);
+    const menu = document.getElementById('snapshot-date-menu');
+    if (!menu) return;
+    menu.querySelectorAll('.dropdown-item[data-preset]').forEach((item) => {
+      const preset = String(item.getAttribute('data-preset') || '').trim();
+      item.classList.toggle('active', preset === state.preset);
+    });
+  }
+
   function getDeltaInfo(valueRaw, previousRaw) {
     const value = toNumber(valueRaw);
     const previous = toNumber(previousRaw);
@@ -700,24 +711,23 @@
     state.preset = normalizedPreset;
     state.since = range.since;
     state.until = range.until;
-    const presetEl = document.getElementById('snapshot-preset-select');
-    if (presetEl) presetEl.value = state.preset;
     const startEl = document.getElementById('snapshot-custom-start');
     const endEl = document.getElementById('snapshot-custom-end');
     if (startEl) startEl.value = state.since;
     if (endEl) endEl.value = state.until;
     setCustomRangeVisible(state.preset === 'custom');
+    updateSnapshotDateButtonLabel();
     syncUrl();
     fetchSnapshot(false);
   }
 
-  function onPresetChange() {
-    const presetEl = document.getElementById('snapshot-preset-select');
-    const selected = presetEl ? String(presetEl.value || '').toLowerCase() : 'this_month';
+  function onSnapshotDatePresetClick(preset) {
+    const selected = String(preset || '').toLowerCase();
     if (!PRESETS.has(selected)) return;
     if (selected === 'custom') {
       state.preset = 'custom';
       setCustomRangeVisible(true);
+      updateSnapshotDateButtonLabel();
       syncUrl();
       return;
     }
@@ -1144,7 +1154,6 @@
   }
 
   function bindUi() {
-    const presetEl = document.getElementById('snapshot-preset-select');
     const applyCustomBtn = document.getElementById('snapshot-custom-apply-btn');
     const roundingToggle = document.getElementById('snapshot-rounding-toggle-dropdown');
     const retryButtons = [
@@ -1152,7 +1161,16 @@
       document.getElementById('snapshot-performance-retry'),
       document.getElementById('snapshot-customers-retry'),
     ];
-    if (presetEl) presetEl.addEventListener('change', onPresetChange);
+    const dateMenu = document.getElementById('snapshot-date-menu');
+    if (dateMenu) {
+      dateMenu.addEventListener('click', function onDateMenuClick(e) {
+        const item = e.target && e.target.closest ? e.target.closest('.dropdown-item[data-preset]') : null;
+        if (!item) return;
+        e.preventDefault();
+        const preset = String(item.getAttribute('data-preset') || '').trim();
+        onSnapshotDatePresetClick(preset);
+      });
+    }
     if (applyCustomBtn) applyCustomBtn.addEventListener('click', onApplyCustomRange);
     if (roundingToggle) {
       roundingToggle.addEventListener('click', function onRoundingToggle(event) {
@@ -1187,13 +1205,12 @@
     state.preset = initial.preset;
     state.since = initial.since;
     state.until = initial.until;
-    const presetEl = document.getElementById('snapshot-preset-select');
     const startEl = document.getElementById('snapshot-custom-start');
     const endEl = document.getElementById('snapshot-custom-end');
-    if (presetEl) presetEl.value = state.preset;
     if (startEl) startEl.value = state.since;
     if (endEl) endEl.value = state.until;
     setCustomRangeVisible(state.preset === 'custom');
+    updateSnapshotDateButtonLabel();
     syncUrl();
 
     try {

@@ -3568,6 +3568,40 @@ body[data-page="dashboard"] #dash-trending-down .dash-trend-delta.text-red {
   height: 34px;
   display: block;
 }
+
+/* Overview ring icons: allow attribution `icon_spec` wrappers to scale to ring size. */
+.kexo-ovw-ring-icon .source-icons {
+  width: auto;
+  height: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+}
+.kexo-ovw-ring-icon .source-icons img,
+.kexo-ovw-ring-icon .source-icons svg {
+  width: 1em !important;
+  height: 1em !important;
+  max-width: none !important;
+  max-height: none !important;
+  margin: 0 !important;
+  display: block;
+  object-fit: contain;
+}
+.kexo-ovw-ring-icon .source-icons i {
+  width: 1em !important;
+  height: 1em !important;
+  font-size: 1em !important;
+  line-height: 1 !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+/* Google Ads iconSpec SVG uses a negative Y viewBox (looks visually low when centered). */
+.source-icons[title="Google Ads"] svg {
+  transform: translateY(-5%);
+  transform-origin: center;
+}
 .kexo-ovw-ring-value {
   font-size: 0.85rem;
   font-weight: 700;

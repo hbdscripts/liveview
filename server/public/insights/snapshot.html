@@ -28,28 +28,33 @@
         <h2 class="page-title">Snapshot</h2>
       </div>
       <div class="col-auto kexo-page-header-date-col">
-        <div class="d-flex flex-wrap align-items-center gap-2">
-          <select id="snapshot-preset-select" class="form-select form-select-sm" style="min-width: 10rem;" aria-label="Select snapshot date range preset">
-            <option value="this_month">This month</option>
-            <option value="last_month">Last month</option>
-            <option value="last_30_days">Last 30 days</option>
-            <option value="last_90_days">Last 90 days</option>
-            <option value="last_6_months">Last 6 months</option>
-            <option value="ytd">Year to date</option>
-            <option value="custom">Custom range</option>
-          </select>
-          <div class="snapshot-custom-only is-hidden d-flex align-items-center gap-1" id="snapshot-custom-start-wrap">
-            <input id="snapshot-custom-start" type="date" class="form-control form-control-sm" style="max-width: 8rem;" aria-label="Start date" />
-            <span class="text-muted small">–</span>
+        <div class="dropdown kexo-topbar-date">
+          <button type="button" class="kexo-date-btn" id="snapshot-date-display" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Choose date range" aria-controls="snapshot-date-menu">
+            <span class="kexo-date-btn-label" id="snapshot-date-btn-label">This month</span>
+            <i class="kexo-date-btn-chevron fa-light fa-chevron-down" data-icon-key="topnav-date-chevron" aria-hidden="true"></i>
+          </button>
+          <div class="dropdown-menu dropdown-menu-end" id="snapshot-date-menu" aria-label="Date ranges">
+            <button class="dropdown-item" type="button" data-preset="this_month">This month</button>
+            <button class="dropdown-item" type="button" data-preset="last_month">Last month</button>
+            <button class="dropdown-item" type="button" data-preset="last_30_days">Last 30 days</button>
+            <button class="dropdown-item" type="button" data-preset="last_90_days">Last 90 days</button>
+            <button class="dropdown-item" type="button" data-preset="last_6_months">Last 6 months</button>
+            <button class="dropdown-item" type="button" data-preset="ytd">Year to date</button>
+            <div class="dropdown-divider"></div>
+            <button class="dropdown-item" type="button" data-preset="custom">Custom…</button>
           </div>
-          <div class="snapshot-custom-only is-hidden d-flex align-items-center gap-1" id="snapshot-custom-end-wrap">
-            <input id="snapshot-custom-end" type="date" class="form-control form-control-sm" style="max-width: 8rem;" aria-label="End date" />
-            <button type="button" id="snapshot-custom-apply-btn" class="btn btn-sm btn-primary">Apply</button>
-          </div>
+        </div>
+        <div class="snapshot-custom-only is-hidden d-flex align-items-center gap-1 mt-1" id="snapshot-custom-start-wrap">
+          <input id="snapshot-custom-start" type="date" class="form-control form-control-sm" style="max-width: 8rem;" aria-label="Start date" />
+          <span class="text-muted small">–</span>
+        </div>
+        <div class="snapshot-custom-only is-hidden d-flex align-items-center gap-1 mt-1" id="snapshot-custom-end-wrap">
+          <input id="snapshot-custom-end" type="date" class="form-control form-control-sm" style="max-width: 8rem;" aria-label="End date" />
+          <button type="button" id="snapshot-custom-apply-btn" class="btn btn-sm btn-primary">Apply</button>
         </div>
       </div>
     </div>
-    <div class="small text-muted mt-2" id="snapshot-compare-line" aria-live="polite">
+    <div class="small text-muted mt-2 text-center" id="snapshot-compare-line" aria-live="polite">
       This period compared with previous period
     </div>
   </div>
@@ -64,7 +69,7 @@
     </div>
 
     <div id="snapshot-content">
-      <div class="card mb-3 snapshot-group-card" data-snapshot-group="revenue-cost">
+      <div class="card mb-3 snapshot-group-card" data-snapshot-group="revenue-cost" data-no-card-collapse="1">
         <div class="card-header d-flex align-items-center flex-wrap gap-2">
           <h3 class="card-title mb-0">Revenue &amp; Cost</h3>
           <div class="dropdown ms-auto">
