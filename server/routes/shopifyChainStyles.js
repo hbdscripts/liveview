@@ -122,9 +122,9 @@ async function getShopifyChainStyles(req, res) {
                 COALESCE(NULLIF(TRIM(currency), ''), 'GBP') AS currency,
                 variant_title,
                 COUNT(DISTINCT order_id) AS orders,
-                COALESCE(SUM(line_revenue), 0) AS revenue
+                COALESCE(SUM(COALESCE(line_net, line_revenue)), 0) AS revenue
               FROM orders_shopify_line_items
-              WHERE shop = $1 AND order_created_at >= $2 AND order_created_at < $3
+              WHERE shop = $1 AND (COALESCE(order_processed_at, order_created_at) >= $2 AND COALESCE(order_processed_at, order_created_at) < $3)
                 AND (order_test IS NULL OR order_test = 0)
                 AND order_cancelled_at IS NULL
                 AND order_financial_status = 'paid'
@@ -139,9 +139,9 @@ async function getShopifyChainStyles(req, res) {
                 COALESCE(NULLIF(TRIM(currency), ''), 'GBP') AS currency,
                 variant_title,
                 COUNT(DISTINCT order_id) AS orders,
-                COALESCE(SUM(line_revenue), 0) AS revenue
+                COALESCE(SUM(COALESCE(line_net, line_revenue)), 0) AS revenue
               FROM orders_shopify_line_items
-              WHERE shop = ? AND order_created_at >= ? AND order_created_at < ?
+              WHERE shop = ? AND (COALESCE(order_processed_at, order_created_at) >= ? AND COALESCE(order_processed_at, order_created_at) < ?)
                 AND (order_test IS NULL OR order_test = 0)
                 AND order_cancelled_at IS NULL
                 AND order_financial_status = 'paid'

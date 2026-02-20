@@ -14,6 +14,7 @@ const reportCache = require('../reportCache');
 const fx = require('../fx');
 const { sanitizeThumbUrl } = require('../shopifyProductMetaCache');
 const { normalizeRangeKey } = require('../rangeKey');
+const revenueNetSales = require('../revenueNetSales');
 
 const MIN_LANDINGS = 3;
 const MAX_CANDIDATE_HANDLES = 200;
@@ -274,6 +275,9 @@ async function getShopifyWorstVariants(req, res) {
         );
         const salesByVariantId = new Map();
         if (variantIds.length) {
+          const rawKpi = await store.getSetting('kpi_ui_config_v1');
+          const attribution = revenueNetSales.parseReturnsRefundsAttribution(rawKpi);
+          const refundByVariant = await revenueNetSales.getRefundTotalsByVariantIdGbp(db, shop, start, end, attribution);
           const inSql = variantIds.map(() => '?').join(', ');
           const liRows = await db.all(
             `
@@ -281,9 +285,9 @@ async function getShopifyWorstVariants(req, res) {
                 TRIM(variant_id) AS variant_id,
                 COALESCE(NULLIF(TRIM(currency), ''), 'GBP') AS currency,
                 COUNT(DISTINCT order_id) AS orders,
-                COALESCE(SUM(line_revenue), 0) AS revenue
+                COALESCE(SUM(COALESCE(line_net, line_revenue)), 0) AS revenue
               FROM orders_shopify_line_items
-              WHERE shop = ? AND order_created_at >= ? AND order_created_at < ?
+              WHERE shop = ? AND (COALESCE(order_processed_at, order_created_at) >= ? AND COALESCE(order_processed_at, order_created_at) < ?)
                 AND (order_test IS NULL OR order_test = 0)
                 AND order_cancelled_at IS NULL
                 AND order_financial_status = 'paid'
@@ -300,10 +304,12 @@ async function getShopifyWorstVariants(req, res) {
             const revRaw = r && r.revenue != null ? Number(r.revenue) : 0;
             const gbp = fx.convertToGbp(Number.isFinite(revRaw) ? revRaw : 0, cur, ratesToGbp);
             const amt = (typeof gbp === 'number' && Number.isFinite(gbp)) ? gbp : 0;
+            const refundGbp = refundByVariant.get(vid) || 0;
+            const netGbp = Math.max(0, amt - refundGbp);
             const orders = r && r.orders != null ? Number(r.orders) || 0 : 0;
             const prev = salesByVariantId.get(vid) || { orders: 0, revenueGbp: 0 };
             prev.orders += orders;
-            prev.revenueGbp += amt;
+            prev.revenueGbp += netGbp;
             salesByVariantId.set(vid, prev);
           }
         }

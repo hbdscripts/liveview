@@ -33,11 +33,15 @@ function nudgeSalesTruthWarmupDetached(shop, startMs, endMs, scopeKey, logTag) {
   _truthNudgeLastAt = now;
   _truthNudgeInFlight = true;
   const tag = logTag ? String(logTag) : '[store] ensureReconciled';
+  const refundsScope = 'refunds_' + (scopeKey || 'today');
   try {
     if (typeof setImmediate === 'function') {
       setImmediate(() => {
         salesTruth
           .ensureReconciled(safeShop, start, end, scopeKey || 'today')
+          .catch(warnOnReject(tag));
+        salesTruth
+          .ensureRefundsSynced(safeShop, start, end, refundsScope)
           .catch(warnOnReject(tag))
           .finally(() => { _truthNudgeInFlight = false; });
       });
@@ -46,6 +50,9 @@ function nudgeSalesTruthWarmupDetached(shop, startMs, endMs, scopeKey, logTag) {
   } catch (_) {}
   salesTruth
     .ensureReconciled(safeShop, start, end, scopeKey || 'today')
+    .catch(warnOnReject(tag));
+  salesTruth
+    .ensureRefundsSynced(safeShop, start, end, refundsScope)
     .catch(warnOnReject(tag))
     .finally(() => { _truthNudgeInFlight = false; });
 }

@@ -3,6 +3,8 @@ const { URL } = require('url');
 const config = require('./config');
 const { getDb } = require('./db');
 const fx = require('./fx');
+const store = require('./store');
+const revenueNetSales = require('./revenueNetSales');
 const {
   classifyTitleForTable,
   normalizeIgnoredTitle,
@@ -57,11 +59,10 @@ async function getObservedVariantsForValidation({ shop, start, end, maxRows = 20
         SELECT
           variant_title,
           COUNT(DISTINCT order_id) AS orders,
-          COALESCE(SUM(line_revenue), 0) AS revenue
+          COALESCE(SUM(COALESCE(line_net, line_revenue)), 0) AS revenue
         FROM orders_shopify_line_items
         WHERE shop = $1
-          AND order_created_at >= $2
-          AND order_created_at < $3
+          AND (COALESCE(order_processed_at, order_created_at) >= $2 AND COALESCE(order_processed_at, order_created_at) < $3)
           AND (order_test IS NULL OR order_test = 0)
           AND order_cancelled_at IS NULL
           AND order_financial_status = 'paid'
@@ -80,11 +81,10 @@ async function getObservedVariantsForValidation({ shop, start, end, maxRows = 20
       SELECT
         variant_title,
         COUNT(DISTINCT order_id) AS orders,
-        COALESCE(SUM(line_revenue), 0) AS revenue
+        COALESCE(SUM(COALESCE(line_net, line_revenue)), 0) AS revenue
       FROM orders_shopify_line_items
       WHERE shop = ?
-        AND order_created_at >= ?
-        AND order_created_at < ?
+        AND (COALESCE(order_processed_at, order_created_at) >= ? AND COALESCE(order_processed_at, order_created_at) < ?)
         AND (order_test IS NULL OR order_test = 0)
         AND order_cancelled_at IS NULL
         AND order_financial_status = 'paid'
@@ -135,11 +135,10 @@ async function getVariantOrderRows({ shop, start, end } = {}) {
           MAX(variant_title) AS variant_title,
           COALESCE(NULLIF(TRIM(currency), ''), 'GBP') AS currency,
           COUNT(DISTINCT order_id) AS orders,
-          COALESCE(SUM(line_revenue), 0) AS revenue
+          COALESCE(SUM(COALESCE(line_net, line_revenue)), 0) AS revenue
         FROM orders_shopify_line_items
         WHERE shop = $1
-          AND order_created_at >= $2
-          AND order_created_at < $3
+          AND (COALESCE(order_processed_at, order_created_at) >= $2 AND COALESCE(order_processed_at, order_created_at) < $3)
           AND (order_test IS NULL OR order_test = 0)
           AND order_cancelled_at IS NULL
           AND order_financial_status = 'paid'
@@ -160,11 +159,10 @@ async function getVariantOrderRows({ shop, start, end } = {}) {
         MAX(variant_title) AS variant_title,
         COALESCE(NULLIF(TRIM(currency), ''), 'GBP') AS currency,
         COUNT(DISTINCT order_id) AS orders,
-        COALESCE(SUM(line_revenue), 0) AS revenue
+        COALESCE(SUM(COALESCE(line_net, line_revenue)), 0) AS revenue
       FROM orders_shopify_line_items
       WHERE shop = ?
-        AND order_created_at >= ?
-        AND order_created_at < ?
+        AND (COALESCE(order_processed_at, order_created_at) >= ? AND COALESCE(order_processed_at, order_created_at) < ?)
         AND (order_test IS NULL OR order_test = 0)
         AND order_cancelled_at IS NULL
         AND order_financial_status = 'paid'
@@ -301,6 +299,9 @@ async function buildVariantsInsightTables({ shop, start, end, variantsConfig, ro
   }
 
   const orderRows = await getVariantOrderRows({ shop: safeShop, start, end });
+  const rawKpi = await store.getSetting('kpi_ui_config_v1');
+  const returnsRefundsAttribution = revenueNetSales.parseReturnsRefundsAttribution(rawKpi);
+  const refundByVariant = await revenueNetSales.getRefundTotalsByVariantIdGbp(getDb(), safeShop, start, end, returnsRefundsAttribution);
   const attributionBase = await getSessionAttributionSummary({ start, end });
   const sessionsByVariant = await getVariantSessionCounts({ start, end });
   const ratesToGbp = await fx.getRatesToGbp();
@@ -327,6 +328,10 @@ async function buildVariantsInsightTables({ shop, start, end, variantsConfig, ro
     current.revenue += amount;
     if (!current.variant_title && title) current.variant_title = title;
     byVariant.set(variantId, current);
+  }
+  for (const [variantId, current] of byVariant.entries()) {
+    const refundGbp = refundByVariant.get(variantId) || 0;
+    current.revenue = Math.max(0, (current.revenue || 0) - refundGbp);
   }
 
   // Include sessions-only variants as denominator candidates.

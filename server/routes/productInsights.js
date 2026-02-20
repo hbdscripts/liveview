@@ -379,7 +379,7 @@ async function computeLifetimeProductDetails({ db, shop, productId, accessToken 
         SELECT
           COALESCE(NULLIF(TRIM(currency), ''), 'GBP') AS currency,
           COUNT(DISTINCT order_id) AS orders,
-          COALESCE(SUM(line_revenue), 0) AS revenue
+          COALESCE(SUM(COALESCE(line_net, line_revenue)), 0) AS revenue
         FROM orders_shopify_line_items
         WHERE shop = ?
           AND (order_test IS NULL OR order_test = 0)
@@ -532,11 +532,11 @@ async function getProductInsights(req, res) {
           SELECT
             COALESCE(NULLIF(TRIM(currency), ''), 'GBP') AS currency,
             COUNT(DISTINCT order_id) AS orders,
-            COALESCE(SUM(line_revenue), 0) AS revenue,
+            COALESCE(SUM(COALESCE(line_net, line_revenue)), 0) AS revenue,
             COALESCE(SUM(quantity), 0) AS units
           FROM orders_shopify_line_items
           WHERE shop = ?
-            AND order_created_at >= ? AND order_created_at < ?
+            AND (COALESCE(order_processed_at, order_created_at) >= ? AND COALESCE(order_processed_at, order_created_at) < ?)
             AND (order_test IS NULL OR order_test = 0)
             AND order_cancelled_at IS NULL
             AND order_financial_status = 'paid'
@@ -572,12 +572,12 @@ async function getProductInsights(req, res) {
             o.order_id AS order_id,
             MAX(o.raw_json) AS raw_json,
             COALESCE(NULLIF(TRIM(li.currency), ''), 'GBP') AS currency,
-            COALESCE(SUM(li.line_revenue), 0) AS revenue
+            COALESCE(SUM(COALESCE(li.line_net, li.line_revenue)), 0) AS revenue
           FROM orders_shopify_line_items li
           INNER JOIN orders_shopify o
             ON o.shop = li.shop AND o.order_id = li.order_id
           WHERE li.shop = ?
-            AND li.order_created_at >= ? AND li.order_created_at < ?
+            AND (COALESCE(li.order_processed_at, li.order_created_at) >= ? AND COALESCE(li.order_processed_at, li.order_created_at) < ?)
             AND (li.order_test IS NULL OR li.order_test = 0)
             AND li.order_cancelled_at IS NULL
             AND li.order_financial_status = 'paid'
@@ -714,11 +714,11 @@ async function getProductInsights(req, res) {
             } AS bi,
             COALESCE(NULLIF(TRIM(currency), ''), 'GBP') AS currency,
             COUNT(DISTINCT order_id) AS orders,
-            COALESCE(SUM(line_revenue), 0) AS revenue,
+            COALESCE(SUM(COALESCE(line_net, line_revenue)), 0) AS revenue,
             COALESCE(SUM(quantity), 0) AS units
           FROM orders_shopify_line_items
           WHERE shop = ?
-            AND order_created_at >= ? AND order_created_at < ?
+            AND (COALESCE(order_processed_at, order_created_at) >= ? AND COALESCE(order_processed_at, order_created_at) < ?)
             AND (order_test IS NULL OR order_test = 0)
             AND order_cancelled_at IS NULL
             AND order_financial_status = 'paid'

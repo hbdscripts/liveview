@@ -234,6 +234,7 @@ function defaultKpiUiConfigV1() {
       },
       general: {
         dateLabelFormat: 'dmy',
+        returnsRefundsAttribution: 'processing_date',
       },
     },
     headerStrip: {
@@ -743,6 +744,13 @@ function normalizeDateLabelFormat(v, fallback) {
   const fb = String(fallback || '').trim().toLowerCase() === 'mdy' ? 'mdy' : 'dmy';
   const raw = String(v || '').trim().toLowerCase();
   return raw === 'mdy' ? 'mdy' : fb;
+}
+
+const RETURNS_REFUNDS_ATTRIBUTION_VALUES = Object.freeze(['processing_date', 'original_sale_date']);
+function normalizeReturnsRefundsAttribution(v, fallback) {
+  const fb = (fallback && RETURNS_REFUNDS_ATTRIBUTION_VALUES.includes(fallback)) ? fallback : 'processing_date';
+  const raw = typeof v === 'string' ? v.trim().toLowerCase() : '';
+  return RETURNS_REFUNDS_ATTRIBUTION_VALUES.includes(raw) ? raw : fb;
 }
 
 // Legacy mode values that may have been saved before canonical naming; map to canonical mode.
@@ -1314,6 +1322,7 @@ function normalizeKpiUiConfigV1(raw) {
       },
       general: {
         dateLabelFormat: normalizeDateLabelFormat(generalOptions.dateLabelFormat, def.options.general.dateLabelFormat),
+        returnsRefundsAttribution: normalizeReturnsRefundsAttribution(generalOptions.returnsRefundsAttribution, def.options.general.returnsRefundsAttribution),
       },
     },
     headerStrip: {

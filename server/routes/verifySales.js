@@ -10,6 +10,7 @@
  */
 const store = require('../store');
 const salesTruth = require('../salesTruth');
+const revenueNetSales = require('../revenueNetSales');
 const { writeAudit } = require('../audit');
 const { getDb } = require('../db');
 
@@ -92,9 +93,19 @@ async function verifySales(req, res) {
 
       const orderCount = await salesTruth.getTruthOrderCount(shop, start, end);
       const revenueGbp = await salesTruth.getTruthSalesTotalGbp(shop, start, end);
+      const rawKpi = await store.getSetting('kpi_ui_config_v1');
+      const attribution = revenueNetSales.parseReturnsRefundsAttribution(rawKpi);
+      const { totalSalesGbp: totalSalesNetOfRefunds, refundsGbp } = await salesTruth.getTruthTotalSalesNetOfRefunds(shop, start, end, attribution);
       const returningCustomerCount = await salesTruth.getTruthReturningCustomerCount(shop, start, end);
       const returningRevenueGbp = await salesTruth.getTruthReturningRevenueGbp(shop, start, end);
-      dbTruth = { orderCount, revenueGbp, returningCustomerCount, returningRevenueGbp };
+      dbTruth = {
+        orderCount,
+        revenueGbp,
+        totalSalesNetOfRefunds: round2(totalSalesNetOfRefunds),
+        refundsGbp: round2(refundsGbp),
+        returningCustomerCount,
+        returningRevenueGbp,
+      };
 
       // Pixel-derived totals (purchases table, deduped in query).
       try {

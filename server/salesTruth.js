@@ -300,6 +300,46 @@ async function shippingOptionsTableOk() {
   }
 }
 
+let _refundsTablesOk = null;
+async function refundsTablesOk() {
+  if (_refundsTablesOk === true) return true;
+  if (_refundsTablesOk === false) return false;
+  try {
+    await getDb().get('SELECT 1 FROM orders_shopify_refunds LIMIT 1');
+    _refundsTablesOk = true;
+    return true;
+  } catch (_) {
+    _refundsTablesOk = false;
+    return false;
+  }
+}
+
+function ordersUpdatedApiUrlForRefunds(shop, updatedMinIso, updatedMaxIso) {
+  const fields = 'id,processed_at,currency,refunds,line_items';
+  const params = new URLSearchParams();
+  params.set('status', 'any');
+  params.set('limit', '250');
+  params.set('updated_at_min', updatedMinIso);
+  params.set('updated_at_max', updatedMaxIso);
+  params.set('fields', fields);
+  return `https://${shop}/admin/api/${API_VERSION}/orders.json?${params.toString()}`;
+}
+
+function sumRefundAmount(refund) {
+  if (!refund || typeof refund !== 'object') return 0;
+  const txs = Array.isArray(refund.transactions) ? refund.transactions : [];
+  let total = 0;
+  for (const tx of txs) {
+    const kind = tx && tx.kind != null ? String(tx.kind).trim().toLowerCase() : '';
+    const status = tx && tx.status != null ? String(tx.status).trim().toLowerCase() : '';
+    if (kind !== 'refund') continue;
+    if (status && status !== 'success') continue;
+    const amt = numOrNull(tx && tx.amount != null ? tx.amount : null);
+    if (amt != null) total += amt;
+  }
+  return total;
+}
+
 function normalizeCountryCode(v) {
   const c = v != null ? String(v).trim().toUpperCase().slice(0, 2) : '';
   if (!c) return 'XX';
@@ -482,6 +522,7 @@ async function upsertOrderLineItems(shop, order, orderRow) {
   const orderId = String(orderRow.order_id);
   const orderCreatedAt = orderRow.created_at != null ? Number(orderRow.created_at) : null;
   if (orderCreatedAt == null || !Number.isFinite(orderCreatedAt)) return { ok: false, inserted: 0, updated: 0, rows: 0, reason: 'missing_created_at' };
+  const orderProcessedAt = orderRow.processed_at != null ? Number(orderRow.processed_at) : (order && order.processed_at != null ? parseMs(order.processed_at) : null);
   const currency = orderRow.currency != null ? String(orderRow.currency).trim() : null;
   const orderUpdatedAt = orderRow.updated_at != null ? Number(orderRow.updated_at) : null;
   const orderFinancialStatus = orderRow.financial_status != null ? String(orderRow.financial_status).trim().toLowerCase() : null;
@@ -504,6 +545,10 @@ async function upsertOrderLineItems(shop, order, orderRow) {
     'quantity',
     'unit_price',
     'line_revenue',
+    'line_gross',
+    'line_discount',
+    'line_net',
+    'order_processed_at',
     'title',
     'variant_title',
     'synced_at',
@@ -524,7 +569,10 @@ async function upsertOrderLineItems(shop, order, orderRow) {
       const qtyRaw = intOrNull(li?.quantity);
       const qty = qtyRaw != null && Number.isFinite(qtyRaw) ? Math.max(0, Math.trunc(qtyRaw)) : 0;
       const unitPrice = parseFloatSafe(li?.price);
-      const lineRevenue = qty * unitPrice;
+      const lineGross = qty * unitPrice;
+      const lineRevenue = lineGross; // kept for backward compatibility
+      const lineDiscount = parseFloatSafe(li?.total_discount) ?? 0;
+      const lineNet = Math.max(0, lineGross - lineDiscount);
       const title = normalizeTitle(li?.title);
       const variantTitle = normalizeVariantTitle(li?.variant_title);
 
@@ -544,6 +592,10 @@ async function upsertOrderLineItems(shop, order, orderRow) {
         qty,
         unitPrice,
         lineRevenue,
+        lineGross,
+        lineDiscount,
+        lineNet,
+        orderProcessedAt != null && Number.isFinite(orderProcessedAt) ? Math.trunc(orderProcessedAt) : null,
         title,
         variantTitle,
         Math.trunc(syncedAt),
@@ -569,6 +621,10 @@ async function upsertOrderLineItems(shop, order, orderRow) {
         quantity = EXCLUDED.quantity,
         unit_price = EXCLUDED.unit_price,
         line_revenue = EXCLUDED.line_revenue,
+        line_gross = EXCLUDED.line_gross,
+        line_discount = EXCLUDED.line_discount,
+        line_net = EXCLUDED.line_net,
+        order_processed_at = EXCLUDED.order_processed_at,
         title = EXCLUDED.title,
         variant_title = EXCLUDED.variant_title,
         synced_at = EXCLUDED.synced_at
@@ -1082,6 +1138,10 @@ function reconcileMinIntervalMs(scope) {
   const baseMs = baseSeconds * 1000;
 
   const s = scope != null ? String(scope).trim().toLowerCase() : '';
+  // Refunds sync: always throttle like range to avoid hammering Orders API.
+  if (s.startsWith('refunds')) {
+    return Math.max(baseMs, 15 * 60 * 1000);
+  }
   // "today" scopes are used for near-real-time correctness.
   const isTodayScope =
     s === 'today' ||
@@ -1346,6 +1406,200 @@ async function reconcileRange(shop, startMs, endMs, scope = 'range') {
 }
 
 /**
+ * Refunds sync: fetch orders by updated_at (with refunds + line_items), persist into
+ * orders_shopify_refunds and orders_shopify_refund_line_items. Throttled via ensureRefundsSynced(scope).
+ */
+async function syncRefundsForRange(shop, startMs, endMs) {
+  const safeShop = resolveShopForSales(shop);
+  if (!safeShop) return { ok: false, error: 'No shop configured', fetched: 0, refundsUpserted: 0, lineItemsUpserted: 0 };
+  const token = await getAccessToken(safeShop);
+  if (!token) return { ok: false, error: 'No access token for shop', fetched: 0, refundsUpserted: 0, lineItemsUpserted: 0 };
+  if (!(await refundsTablesOk())) return { ok: false, error: 'Refund tables missing', fetched: 0, refundsUpserted: 0, lineItemsUpserted: 0 };
+
+  const updatedMinIso = new Date(startMs).toISOString();
+  const updatedMaxIso = new Date(endMs).toISOString();
+  const db = getDb();
+  const syncedAt = Date.now();
+  let fetched = 0;
+  let refundsUpserted = 0;
+  let lineItemsUpserted = 0;
+  let nextUrl = ordersUpdatedApiUrlForRefunds(safeShop, updatedMinIso, updatedMaxIso);
+
+  while (nextUrl) {
+    const res = await shopifyFetchWithRetry(nextUrl, token, { maxRetries: 6 });
+    const text = await res.text();
+    if (!res.ok) {
+      const err = { status: res.status, body: text ? String(text).slice(0, 500) : '' };
+      throw Object.assign(new Error(`Shopify Orders API error (HTTP ${res.status})`), { details: err });
+    }
+    let json;
+    try { json = text ? JSON.parse(text) : null; } catch (_) { json = null; }
+    const orders = json && Array.isArray(json.orders) ? json.orders : [];
+
+    for (const order of orders) {
+      fetched += 1;
+      const isTest = !!(order && (order.test === true || order.test === 1));
+      if (isTest) continue;
+      const cancelledAt = order && order.cancelled_at != null ? String(order.cancelled_at).trim() : '';
+      if (cancelledAt) continue;
+
+      const orderId = extractNumericId(order && order.id);
+      if (!orderId) continue;
+      const orderProcessedAt = order && order.processed_at != null ? parseMs(order.processed_at) : null;
+      const currency = order && order.currency != null ? String(order.currency).trim() : null;
+      const lineItems = Array.isArray(order && order.line_items) ? order.line_items : [];
+      const lineItemMeta = new Map(); // line_item_id -> { product_id, variant_id }
+      for (const li of lineItems) {
+        const lid = extractNumericId(li && li.id);
+        if (!lid) continue;
+        lineItemMeta.set(String(lid), {
+          product_id: extractNumericId(li && li.product_id) ? String(extractNumericId(li.product_id)) : null,
+          variant_id: extractNumericId(li && li.variant_id) ? String(extractNumericId(li.variant_id)) : null,
+        });
+      }
+
+      const refunds = Array.isArray(order && order.refunds) ? order.refunds : [];
+      for (const refund of refunds) {
+        const refundId = extractNumericId(refund && refund.id);
+        if (!refundId) continue;
+        const refundCreatedAt = refund && refund.created_at != null ? parseMs(refund.created_at) : null;
+        const amount = sumRefundAmount(refund);
+        const refundIdStr = String(refundId);
+        const orderIdStr = String(orderId);
+
+        try {
+          if (config.dbUrl) {
+            await db.run(
+              `INSERT INTO orders_shopify_refunds (shop, refund_id, order_id, refund_created_at, order_processed_at, currency, amount, synced_at)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+               ON CONFLICT (shop, refund_id) DO UPDATE SET
+                 order_id = EXCLUDED.order_id,
+                 refund_created_at = EXCLUDED.refund_created_at,
+                 order_processed_at = EXCLUDED.order_processed_at,
+                 currency = EXCLUDED.currency,
+                 amount = EXCLUDED.amount,
+                 synced_at = EXCLUDED.synced_at`,
+              [safeShop, refundIdStr, orderIdStr, refundCreatedAt != null ? Math.trunc(refundCreatedAt) : null, orderProcessedAt != null ? Math.trunc(orderProcessedAt) : null, currency, amount, Math.trunc(syncedAt)]
+            );
+          } else {
+            await db.run(
+              `INSERT INTO orders_shopify_refunds (shop, refund_id, order_id, refund_created_at, order_processed_at, currency, amount, synced_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+               ON CONFLICT (shop, refund_id) DO UPDATE SET
+                 order_id = excluded.order_id,
+                 refund_created_at = excluded.refund_created_at,
+                 order_processed_at = excluded.order_processed_at,
+                 currency = excluded.currency,
+                 amount = excluded.amount,
+                 synced_at = excluded.synced_at`,
+              [safeShop, refundIdStr, orderIdStr, refundCreatedAt != null ? Math.trunc(refundCreatedAt) : null, orderProcessedAt != null ? Math.trunc(orderProcessedAt) : null, currency, amount, Math.trunc(syncedAt)]
+            );
+          }
+          refundsUpserted += 1;
+        } catch (e) {
+          // fail-open for single refund
+        }
+
+        const rlis = Array.isArray(refund && refund.refund_line_items) ? refund.refund_line_items : [];
+        for (const rli of rlis) {
+          const lineItemId = extractNumericId(rli && rli.line_item_id);
+          if (!lineItemId) continue;
+          const qty = intOrNull(rli && rli.quantity);
+          const quantity = qty != null && Number.isFinite(qty) ? Math.max(0, Math.trunc(qty)) : 0;
+          const subtotal = parseFloatSafe(rli && rli.subtotal);
+          const meta = lineItemMeta.get(String(lineItemId)) || {};
+          const productId = meta.product_id || null;
+          const variantId = meta.variant_id || null;
+          const lineItemIdStr = String(lineItemId);
+          const refundCreatedAtNum = refundCreatedAt != null && Number.isFinite(refundCreatedAt) ? Math.trunc(refundCreatedAt) : null;
+          const orderProcessedAtNum = orderProcessedAt != null && Number.isFinite(orderProcessedAt) ? Math.trunc(orderProcessedAt) : null;
+
+          try {
+            if (config.dbUrl) {
+              await db.run(
+                `INSERT INTO orders_shopify_refund_line_items (shop, refund_id, order_id, line_item_id, refund_created_at, order_processed_at, product_id, variant_id, quantity, subtotal, currency, synced_at)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+                 ON CONFLICT (shop, refund_id, line_item_id) DO UPDATE SET
+                   order_id = EXCLUDED.order_id,
+                   refund_created_at = EXCLUDED.refund_created_at,
+                   order_processed_at = EXCLUDED.order_processed_at,
+                   product_id = EXCLUDED.product_id,
+                   variant_id = EXCLUDED.variant_id,
+                   quantity = EXCLUDED.quantity,
+                   subtotal = EXCLUDED.subtotal,
+                   currency = EXCLUDED.currency,
+                   synced_at = EXCLUDED.synced_at`,
+                [safeShop, refundIdStr, orderIdStr, lineItemIdStr, refundCreatedAtNum, orderProcessedAtNum, productId, variantId, quantity, subtotal, currency, Math.trunc(syncedAt)]
+              );
+            } else {
+              await db.run(
+                `INSERT INTO orders_shopify_refund_line_items (shop, refund_id, order_id, line_item_id, refund_created_at, order_processed_at, product_id, variant_id, quantity, subtotal, currency, synced_at)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 ON CONFLICT (shop, refund_id, line_item_id) DO UPDATE SET
+                   order_id = excluded.order_id,
+                   refund_created_at = excluded.refund_created_at,
+                   order_processed_at = excluded.order_processed_at,
+                   product_id = excluded.product_id,
+                   variant_id = excluded.variant_id,
+                   quantity = excluded.quantity,
+                   subtotal = excluded.subtotal,
+                   currency = excluded.currency,
+                   synced_at = excluded.synced_at`,
+                [safeShop, refundIdStr, orderIdStr, lineItemIdStr, refundCreatedAtNum, orderProcessedAtNum, productId, variantId, quantity, subtotal, currency, Math.trunc(syncedAt)]
+              );
+            }
+            lineItemsUpserted += 1;
+          } catch (e) {
+            // fail-open for single line
+          }
+        }
+      }
+    }
+
+    nextUrl = parseNextPageUrl(res.headers.get('link'));
+  }
+
+  return { ok: true, fetched, refundsUpserted, lineItemsUpserted };
+}
+
+/**
+ * Ensure refunds are synced for the given range. Throttled by reconcile_state(scope).
+ * Use scope e.g. 'refunds_today' or scopeForRangeKey(rangeKey, 'refunds').
+ */
+async function ensureRefundsSynced(shop, startMs, endMs, scope) {
+  const safeShop = resolveShopForSales(shop);
+  if (!safeShop) return { ok: false, skipped: true, reason: 'no_shop' };
+  const scopeKey = String(scope || 'refunds_today').slice(0, 64);
+  const rangeStart = Number(startMs) || 0;
+  const rangeEnd = Number(endMs) || 0;
+  const inflightKey = `refunds|${safeShop}|${scopeKey}|${rangeStart}|${rangeEnd}`;
+
+  if (_reconcileInFlight.has(inflightKey)) {
+    return _reconcileInFlight.get(inflightKey);
+  }
+
+  const run = (async () => {
+    const gate = await shouldReconcile(safeShop, scopeKey);
+    if (!gate.ok) return { ok: true, skipped: true, reason: gate.reason, state: gate.state };
+    await upsertReconcileState(safeShop, scopeKey, { last_attempt_at: Date.now(), last_error: null });
+    try {
+      const result = await syncRefundsForRange(safeShop, rangeStart, rangeEnd);
+      if (result.ok) await upsertReconcileState(safeShop, scopeKey, { last_success_at: Date.now(), last_error: null });
+      return result;
+    } catch (err) {
+      const msg = err && err.message ? String(err.message) : 'Refunds sync failed';
+      await upsertReconcileState(safeShop, scopeKey, { last_error: msg, last_attempt_at: Date.now() });
+      return { ok: false, error: msg, fetched: 0, refundsUpserted: 0, lineItemsUpserted: 0 };
+    }
+  })().finally(() => {
+    _reconcileInFlight.delete(inflightKey);
+  });
+
+  _reconcileInFlight.set(inflightKey, run);
+  return run;
+}
+
+/**
  * Verify-only: fetch Shopify Orders API totals without mutating orders_shopify.
  * Returns { ok, orderCount, revenueGbp, revenueByCurrency, fetched, error }.
  */
@@ -1579,6 +1833,43 @@ async function sumRowsToGbp(rows) {
 async function getTruthSalesTotalGbp(shop, startMs, endMs) {
   const rows = await getTruthSalesRows(shop, startMs, endMs);
   return sumRowsToGbp(rows);
+}
+
+/**
+ * Total sales (dashboard-style): orders by processed_at, sum total_price, minus refunds by attribution.
+ * Returns { totalSalesGbp, refundsGbp } for diagnostics (KEXO vs Shopify).
+ */
+async function getTruthTotalSalesNetOfRefunds(shop, startMs, endMs, attribution) {
+  const safeShop = resolveShopForSales(shop);
+  if (!safeShop) return { totalSalesGbp: 0, refundsGbp: 0 };
+  const db = getDb();
+  const orderRows = await db.all(
+    `SELECT COALESCE(NULLIF(TRIM(currency), ''), 'GBP') AS currency, COALESCE(SUM(total_price), 0) AS total
+     FROM orders_shopify
+     WHERE shop = ? AND (COALESCE(processed_at, created_at) >= ? AND COALESCE(processed_at, created_at) < ?)
+       AND (test IS NULL OR test = 0)
+       AND cancelled_at IS NULL
+       AND financial_status = 'paid'
+     GROUP BY currency`,
+    [safeShop, startMs, endMs]
+  );
+  const salesGbp = await sumRowsToGbp(orderRows || []);
+  let refundsGbp = 0;
+  try {
+    const useSaleDate = attribution === 'original_sale_date';
+    const tsCol = useSaleDate ? 'order_processed_at' : 'refund_created_at';
+    const refundRows = await db.all(
+      `SELECT COALESCE(NULLIF(TRIM(currency), ''), 'GBP') AS currency, COALESCE(SUM(amount), 0) AS total
+       FROM orders_shopify_refunds
+       WHERE shop = ? AND ${tsCol} IS NOT NULL AND ${tsCol} >= ? AND ${tsCol} < ?
+       GROUP BY currency`,
+      [safeShop, startMs, endMs]
+    );
+    refundsGbp = await sumRowsToGbp(refundRows || []);
+  } catch (_) {}
+  const totalSalesGbp = Math.round(Math.max(0, salesGbp - refundsGbp) * 100) / 100;
+  refundsGbp = Math.round(refundsGbp * 100) / 100;
+  return { totalSalesGbp, refundsGbp };
 }
 
 async function getTruthCheckoutSalesTotalGbp(shop, startMs, endMs) {
@@ -1909,6 +2200,7 @@ module.exports = {
   resolveShopForSales,
   getAccessToken,
   ensureReconciled,
+  ensureRefundsSynced,
   reconcileRange,
   scopeForRangeKey,
   fetchShopifyOrdersSummary,
@@ -1917,6 +2209,7 @@ module.exports = {
   getTruthOrderCount,
   getTruthCheckoutOrderCount,
   getTruthSalesTotalGbp,
+  getTruthTotalSalesNetOfRefunds,
   getTruthCheckoutSalesTotalGbp,
   getTruthReturningRevenueGbp,
   getTruthReturningOrderCount,

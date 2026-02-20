@@ -9,6 +9,7 @@ const productMetaCache = require('../shopifyProductMetaCache');
 const reportCache = require('../reportCache');
 const fx = require('../fx');
 const { normalizeRangeKey } = require('../rangeKey');
+const revenueNetSales = require('../revenueNetSales');
 
 function clampInt(v, fallback, min, max) {
   const n = parseInt(String(v), 10);
@@ -99,6 +100,8 @@ async function getShopifyBestVariants(req, res) {
         }
         msReconcile = Date.now() - tReconcile0;
 
+        const rawKpi = await store.getSetting('kpi_ui_config_v1');
+        const attribution = revenueNetSales.parseReturnsRefundsAttribution(rawKpi);
         const tAgg0 = Date.now();
         const rows = await db.all(
           `
@@ -109,9 +112,9 @@ async function getShopifyBestVariants(req, res) {
               MAX(title) AS title,
               MAX(variant_title) AS variant_title,
               COUNT(DISTINCT order_id) AS orders,
-              COALESCE(SUM(line_revenue), 0) AS revenue
+              COALESCE(SUM(COALESCE(line_net, line_revenue)), 0) AS revenue
             FROM orders_shopify_line_items
-            WHERE shop = ? AND order_created_at >= ? AND order_created_at < ?
+            WHERE shop = ? AND (COALESCE(order_processed_at, order_created_at) >= ? AND COALESCE(order_processed_at, order_created_at) < ?)
               AND (order_test IS NULL OR order_test = 0)
               AND order_cancelled_at IS NULL
               AND order_financial_status = 'paid'
@@ -121,6 +124,7 @@ async function getShopifyBestVariants(req, res) {
           `,
           [shop, start, end]
         );
+        const refundByVariant = await revenueNetSales.getRefundTotalsByVariantIdGbp(db, shop, start, end, attribution);
         msDbAgg = Date.now() - tAgg0;
 
         const tCount0 = Date.now();
@@ -128,7 +132,7 @@ async function getShopifyBestVariants(req, res) {
           `
             SELECT COUNT(DISTINCT TRIM(variant_id)) AS n
             FROM orders_shopify_line_items
-            WHERE shop = ? AND order_created_at >= ? AND order_created_at < ?
+            WHERE shop = ? AND (COALESCE(order_processed_at, order_created_at) >= ? AND COALESCE(order_processed_at, order_created_at) < ?)
               AND (order_test IS NULL OR order_test = 0)
               AND order_cancelled_at IS NULL
               AND order_financial_status = 'paid'
@@ -137,7 +141,6 @@ async function getShopifyBestVariants(req, res) {
           [shop, start, end]
         );
 
-        // Aggregate multi-currency rows per variant into GBP
         const ratesToGbp = await fx.getRatesToGbp();
         const byVariant = new Map();
         for (const r of rows || []) {
@@ -147,6 +150,8 @@ async function getShopifyBestVariants(req, res) {
           const revRaw = r && r.revenue != null ? Number(r.revenue) : 0;
           const gbp = fx.convertToGbp(Number.isFinite(revRaw) ? revRaw : 0, cur, ratesToGbp);
           const amt = (typeof gbp === 'number' && Number.isFinite(gbp)) ? gbp : 0;
+          const refundGbp = refundByVariant.get(vid) || 0;
+          const netGbp = Math.max(0, amt - refundGbp);
           const ordersRaw = r && r.orders != null ? Number(r.orders) : 0;
           const orders = Number.isFinite(ordersRaw) ? Math.trunc(ordersRaw) : 0;
           const prev = byVariant.get(vid) || {
@@ -157,7 +162,7 @@ async function getShopifyBestVariants(req, res) {
             revenueGbp: 0,
             orders: 0,
           };
-          prev.revenueGbp += amt;
+          prev.revenueGbp += netGbp;
           prev.orders += orders;
           byVariant.set(vid, prev);
         }

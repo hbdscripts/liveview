@@ -32,12 +32,16 @@ function nudgeTruthWarmupDetached(shop, startMs, endMs, scopeKey) {
   if (_truthNudgeInFlight) return;
   _truthNudgeLastAt = now;
   _truthNudgeInFlight = true;
+  const refundsScope = 'refunds_' + (scopeKey || 'today');
   try {
     if (typeof setImmediate === 'function') {
       setImmediate(() => {
         salesTruth
           .ensureReconciled(safeShop, start, end, scopeKey || 'today')
-          .catch(warnOnReject('[dashboardSeries] ensureReconciled'))
+          .catch(warnOnReject('[dashboardSeries] ensureReconciled'));
+        salesTruth
+          .ensureRefundsSynced(safeShop, start, end, refundsScope)
+          .catch(warnOnReject('[dashboardSeries] ensureRefundsSynced'))
           .finally(() => { _truthNudgeInFlight = false; });
       });
       return;
@@ -45,7 +49,10 @@ function nudgeTruthWarmupDetached(shop, startMs, endMs, scopeKey) {
   } catch (_) {}
   salesTruth
     .ensureReconciled(safeShop, start, end, scopeKey || 'today')
-    .catch(warnOnReject('[dashboardSeries] ensureReconciled'))
+    .catch(warnOnReject('[dashboardSeries] ensureReconciled'));
+  salesTruth
+    .ensureRefundsSynced(safeShop, start, end, refundsScope)
+    .catch(warnOnReject('[dashboardSeries] ensureRefundsSynced'))
     .finally(() => { _truthNudgeInFlight = false; });
 }
 
@@ -169,27 +176,73 @@ function isReturningOrderRow(row) {
   return Number.isFinite(createdAt) && Number.isFinite(firstPaidOrderAt) && firstPaidOrderAt < createdAt;
 }
 
+/** Returns { [dayLabel]: amountGbp } for refunds in range, bucketed by attribution (processing_date → refund_created_at, original_sale_date → order_processed_at). */
+async function fetchRefundsPerDay(db, shop, dayBounds, overallStart, overallEnd, attribution, ratesToGbp) {
+  const out = {};
+  for (const d of dayBounds) out[d.label] = 0;
+  if (!shop || !dayBounds.length) return out;
+  const useSaleDate = attribution === 'original_sale_date';
+  const tsCol = useSaleDate ? 'order_processed_at' : 'refund_created_at';
+  let rows = [];
+  try {
+    const sql = config.dbUrl
+      ? `SELECT ${tsCol} AS ts, currency, amount FROM orders_shopify_refunds WHERE shop = $1 AND ${tsCol} IS NOT NULL AND ${tsCol} >= $2 AND ${tsCol} < $3`
+      : `SELECT ${tsCol} AS ts, currency, amount FROM orders_shopify_refunds WHERE shop = ? AND ${tsCol} IS NOT NULL AND ${tsCol} >= ? AND ${tsCol} < ?`;
+    rows = await db.all(sql, [shop, overallStart, overallEnd]);
+  } catch (_) {
+    return out;
+  }
+  for (const r of rows || []) {
+    const ts = Number(r.ts);
+    if (!Number.isFinite(ts)) continue;
+    let dayLabel = null;
+    for (const db_day of dayBounds) {
+      if (ts >= db_day.start && ts < db_day.end) {
+        dayLabel = db_day.label;
+        break;
+      }
+    }
+    if (!dayLabel) continue;
+    const amount = parseFloat(r.amount);
+    const currency = (r.currency || 'GBP').toUpperCase();
+    const gbp = Number.isFinite(amount) ? fx.convertToGbp(amount, currency, ratesToGbp) : 0;
+    out[dayLabel] = (out[dayLabel] || 0) + gbp;
+  }
+  return out;
+}
+
+function parseReturnsRefundsAttributionFromKpiConfig(rawKpiConfig) {
+  if (!rawKpiConfig || typeof rawKpiConfig !== 'string') return 'processing_date';
+  try {
+    const obj = JSON.parse(rawKpiConfig);
+    const v = obj && obj.options && obj.options.general && obj.options.general.returnsRefundsAttribution;
+    if (v === 'original_sale_date' || v === 'processing_date') return v;
+  } catch (_) {}
+  return 'processing_date';
+}
+
 async function fetchPaidOrderRowsWithReturningFacts(db, shop, startMs, endMs) {
   if (!shop) return [];
+  // Bucket by processed_at (sale date); filter by processed_at when present else created_at for range.
   const withFactsSql = config.dbUrl
-    ? `SELECT o.order_id, o.total_price, o.currency, o.created_at, o.customer_orders_count, o.customer_id, f.first_paid_order_at
+    ? `SELECT o.order_id, o.total_price, o.currency, o.created_at, o.processed_at, o.customer_orders_count, o.customer_id, f.first_paid_order_at
        FROM orders_shopify o
        LEFT JOIN customer_order_facts f ON f.shop = o.shop AND f.customer_id = o.customer_id
-       WHERE o.shop = $1 AND o.created_at >= $2 AND o.created_at < $3
+       WHERE o.shop = $1 AND (COALESCE(o.processed_at, o.created_at) >= $2 AND COALESCE(o.processed_at, o.created_at) < $3)
          AND (o.test IS NULL OR o.test = 0) AND o.cancelled_at IS NULL AND o.financial_status = 'paid'`
-    : `SELECT o.order_id, o.total_price, o.currency, o.created_at, o.customer_orders_count, o.customer_id, f.first_paid_order_at
+    : `SELECT o.order_id, o.total_price, o.currency, o.created_at, o.processed_at, o.customer_orders_count, o.customer_id, f.first_paid_order_at
        FROM orders_shopify o
        LEFT JOIN customer_order_facts f ON f.shop = o.shop AND f.customer_id = o.customer_id
-       WHERE o.shop = ? AND o.created_at >= ? AND o.created_at < ?
+       WHERE o.shop = ? AND (COALESCE(o.processed_at, o.created_at) >= ? AND COALESCE(o.processed_at, o.created_at) < ?)
          AND (o.test IS NULL OR o.test = 0) AND o.cancelled_at IS NULL AND o.financial_status = 'paid'`;
   const fallbackSql = config.dbUrl
-    ? `SELECT o.order_id, o.total_price, o.currency, o.created_at, o.customer_orders_count, o.customer_id, NULL AS first_paid_order_at
+    ? `SELECT o.order_id, o.total_price, o.currency, o.created_at, o.processed_at, o.customer_orders_count, o.customer_id, NULL AS first_paid_order_at
        FROM orders_shopify o
-       WHERE o.shop = $1 AND o.created_at >= $2 AND o.created_at < $3
+       WHERE o.shop = $1 AND (COALESCE(o.processed_at, o.created_at) >= $2 AND COALESCE(o.processed_at, o.created_at) < $3)
          AND (o.test IS NULL OR o.test = 0) AND o.cancelled_at IS NULL AND o.financial_status = 'paid'`
-    : `SELECT o.order_id, o.total_price, o.currency, o.created_at, o.customer_orders_count, o.customer_id, NULL AS first_paid_order_at
+    : `SELECT o.order_id, o.total_price, o.currency, o.created_at, o.processed_at, o.customer_orders_count, o.customer_id, NULL AS first_paid_order_at
        FROM orders_shopify o
-       WHERE o.shop = ? AND o.created_at >= ? AND o.created_at < ?
+       WHERE o.shop = ? AND (COALESCE(o.processed_at, o.created_at) >= ? AND COALESCE(o.processed_at, o.created_at) < ?)
          AND (o.test IS NULL OR o.test = 0) AND o.cancelled_at IS NULL AND o.financial_status = 'paid'`;
   try {
     return await db.all(withFactsSql, [shop, startMs, endMs]);
@@ -1124,21 +1177,21 @@ async function computeDashboardSeries(days, nowMs, timeZone, trafficMode) {
   const sessionsPerDay = sb.sessionsPerDay || {};
   const bouncePerDay = sb.bouncePerDay || {};
 
-  // Fetch orders + revenue per day from Shopify truth
+  // Fetch orders + revenue per day from Shopify truth (Total sales: bucket by processed_at, subtract refunds)
   const ratesToGbp = await fx.getRatesToGbp();
   const revenuePerDay = {};
   const ordersPerDay = {};
-  // Returning customers per day (customer_orders_count>1, or facts-derived fallback when null).
   const returningCustomersSetByDay = {};
   let newCustomerOrders = 0, returningCustomerOrders = 0;
+  const rawKpi = await store.getSetting('kpi_ui_config_v1');
+  const returnsRefundsAttribution = parseReturnsRefundsAttributionFromKpiConfig(rawKpi);
   if (shop) {
     const orderRows = await fetchPaidOrderRowsWithReturningFacts(db, shop, overallStart, overallEnd);
     for (const row of orderRows) {
-      const createdAt = Number(row.created_at);
-      // Find which day this order belongs to
+      const saleAt = Number(row.processed_at != null ? row.processed_at : row.created_at);
       let dayLabel = null;
       for (const db_day of dayBounds) {
-        if (createdAt >= db_day.start && createdAt < db_day.end) {
+        if (saleAt >= db_day.start && saleAt < db_day.end) {
           dayLabel = db_day.label;
           break;
         }
@@ -1158,6 +1211,11 @@ async function computeDashboardSeries(days, nowMs, timeZone, trafficMode) {
       }
       if (isReturning) returningCustomerOrders += 1;
       else newCustomerOrders += 1;
+    }
+    const refundsPerDay = await fetchRefundsPerDay(db, shop, dayBounds, overallStart, overallEnd, returnsRefundsAttribution, ratesToGbp);
+    for (const db_day of dayBounds) {
+      const refundGbp = refundsPerDay[db_day.label] || 0;
+      revenuePerDay[db_day.label] = Math.max(0, (revenuePerDay[db_day.label] || 0) - refundGbp);
     }
   }
 
@@ -1213,17 +1271,17 @@ async function computeDashboardSeries(days, nowMs, timeZone, trafficMode) {
     try {
       const productRows = await db.all(
         config.dbUrl
-          ? `SELECT TRIM(li.product_id) AS product_id, MAX(NULLIF(TRIM(li.title), '')) AS title, COALESCE(SUM(li.line_revenue), 0) AS revenue, COUNT(DISTINCT li.order_id) AS orders
+          ? `SELECT TRIM(li.product_id) AS product_id, MAX(NULLIF(TRIM(li.title), '')) AS title, COALESCE(SUM(COALESCE(li.line_net, li.line_revenue)), 0) AS revenue, COUNT(DISTINCT li.order_id) AS orders
              FROM orders_shopify_line_items li
-             WHERE li.shop = $1 AND li.order_created_at >= $2 AND li.order_created_at < $3
+             WHERE li.shop = $1 AND (COALESCE(li.order_processed_at, li.order_created_at) >= $2 AND COALESCE(li.order_processed_at, li.order_created_at) < $3)
                AND (li.order_test IS NULL OR li.order_test = 0) AND li.order_cancelled_at IS NULL AND li.order_financial_status IN ('paid', 'partially_paid')
                AND li.product_id IS NOT NULL AND TRIM(li.product_id) != ''
              GROUP BY TRIM(li.product_id)
              ORDER BY revenue DESC
              LIMIT ${DASHBOARD_TOP_TABLE_MAX_ROWS}`
-          : `SELECT TRIM(li.product_id) AS product_id, MAX(NULLIF(TRIM(li.title), '')) AS title, COALESCE(SUM(li.line_revenue), 0) AS revenue, COUNT(DISTINCT li.order_id) AS orders
+          : `SELECT TRIM(li.product_id) AS product_id, MAX(NULLIF(TRIM(li.title), '')) AS title, COALESCE(SUM(COALESCE(li.line_net, li.line_revenue)), 0) AS revenue, COUNT(DISTINCT li.order_id) AS orders
              FROM orders_shopify_line_items li
-             WHERE li.shop = ? AND li.order_created_at >= ? AND li.order_created_at < ?
+             WHERE li.shop = ? AND (COALESCE(li.order_processed_at, li.order_created_at) >= ? AND COALESCE(li.order_processed_at, li.order_created_at) < ?)
                AND (li.order_test IS NULL OR li.order_test = 0) AND li.order_cancelled_at IS NULL AND li.order_financial_status IN ('paid', 'partially_paid')
                AND li.product_id IS NOT NULL AND TRIM(li.product_id) != ''
              GROUP BY TRIM(li.product_id)
@@ -1583,20 +1641,21 @@ async function computeDashboardSeriesForBounds(bounds, nowMs, timeZone, trafficM
   const bouncePerDay = sb.bouncePerDay || {};
   const unitsPerDay = shop ? await fetchUnitsSoldByDayBounds(db, shop, bucketBounds, overallStart, overallEnd) : {};
 
-  // Fetch orders + revenue per day from Shopify truth
+  // Fetch orders + revenue per day from Shopify truth (Total sales: bucket by processed_at, subtract refunds)
   const ratesToGbp = await fx.getRatesToGbp();
   const revenuePerDay = {};
   const ordersPerDay = {};
-  // Returning customers per bucket (customer_orders_count>1, or facts-derived fallback when null).
   const returningCustomersSetByDay = {};
   let newCustomerOrders = 0, returningCustomerOrders = 0;
+  const rawKpi = await store.getSetting('kpi_ui_config_v1');
+  const returnsRefundsAttribution = parseReturnsRefundsAttributionFromKpiConfig(rawKpi);
   if (shop) {
     const orderRows = await fetchPaidOrderRowsWithReturningFacts(db, shop, overallStart, overallEnd);
     for (const row of orderRows) {
-      const createdAt = Number(row.created_at);
+      const saleAt = Number(row.processed_at != null ? row.processed_at : row.created_at);
       let dayLabel = null;
       for (const db_day of bucketBounds) {
-        if (createdAt >= db_day.start && createdAt < db_day.end) {
+        if (saleAt >= db_day.start && saleAt < db_day.end) {
           dayLabel = db_day.label;
           break;
         }
@@ -1616,6 +1675,11 @@ async function computeDashboardSeriesForBounds(bounds, nowMs, timeZone, trafficM
       }
       if (isReturning) returningCustomerOrders += 1;
       else newCustomerOrders += 1;
+    }
+    const refundsPerDay = await fetchRefundsPerDay(db, shop, bucketBounds, overallStart, overallEnd, returnsRefundsAttribution, ratesToGbp);
+    for (const db_day of bucketBounds) {
+      const refundGbp = refundsPerDay[db_day.label] || 0;
+      revenuePerDay[db_day.label] = Math.max(0, (revenuePerDay[db_day.label] || 0) - refundGbp);
     }
   }
 
@@ -1672,17 +1736,17 @@ async function computeDashboardSeriesForBounds(bounds, nowMs, timeZone, trafficM
     try {
       const productRows = await db.all(
         config.dbUrl
-          ? `SELECT TRIM(li.product_id) AS product_id, MAX(NULLIF(TRIM(li.title), '')) AS title, COALESCE(SUM(li.line_revenue), 0) AS revenue, COUNT(DISTINCT li.order_id) AS orders
+          ? `SELECT TRIM(li.product_id) AS product_id, MAX(NULLIF(TRIM(li.title), '')) AS title, COALESCE(SUM(COALESCE(li.line_net, li.line_revenue)), 0) AS revenue, COUNT(DISTINCT li.order_id) AS orders
              FROM orders_shopify_line_items li
-             WHERE li.shop = $1 AND li.order_created_at >= $2 AND li.order_created_at < $3
+             WHERE li.shop = $1 AND (COALESCE(li.order_processed_at, li.order_created_at) >= $2 AND COALESCE(li.order_processed_at, li.order_created_at) < $3)
                AND (li.order_test IS NULL OR li.order_test = 0) AND li.order_cancelled_at IS NULL AND li.order_financial_status IN ('paid', 'partially_paid')
                AND li.product_id IS NOT NULL AND TRIM(li.product_id) != ''
              GROUP BY TRIM(li.product_id)
              ORDER BY revenue DESC
              LIMIT ${DASHBOARD_TOP_TABLE_MAX_ROWS}`
-          : `SELECT TRIM(li.product_id) AS product_id, MAX(NULLIF(TRIM(li.title), '')) AS title, COALESCE(SUM(li.line_revenue), 0) AS revenue, COUNT(DISTINCT li.order_id) AS orders
+          : `SELECT TRIM(li.product_id) AS product_id, MAX(NULLIF(TRIM(li.title), '')) AS title, COALESCE(SUM(COALESCE(li.line_net, li.line_revenue)), 0) AS revenue, COUNT(DISTINCT li.order_id) AS orders
              FROM orders_shopify_line_items li
-             WHERE li.shop = ? AND li.order_created_at >= ? AND li.order_created_at < ?
+             WHERE li.shop = ? AND (COALESCE(li.order_processed_at, li.order_created_at) >= ? AND COALESCE(li.order_processed_at, li.order_created_at) < ?)
                AND (li.order_test IS NULL OR li.order_test = 0) AND li.order_cancelled_at IS NULL AND li.order_financial_status IN ('paid', 'partially_paid')
                AND li.product_id IS NOT NULL AND TRIM(li.product_id) != ''
              GROUP BY TRIM(li.product_id)

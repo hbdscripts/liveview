@@ -17,6 +17,7 @@ const fx = require('../fx');
 const salesTruth = require('../salesTruth');
 const reportCache = require('../reportCache');
 const { normalizeRangeKey } = require('../rangeKey');
+const revenueNetSales = require('../revenueNetSales');
 
 const DEFAULT_PAGE_SIZE = 10;
 const MAX_PAGE_SIZE = 10;
@@ -369,8 +370,11 @@ async function getWorstProducts(req, res) {
       }
 
       const productIds = Array.from(new Set(Array.from(handleToProductId.values()).filter(Boolean)));
-      const salesByProductId = new Map(); // product_id -> { orders, revenueGbp }
+      const salesByProductId = new Map();
       if (productIds.length) {
+        const rawKpi = await store.getSetting('kpi_ui_config_v1');
+        const attribution = revenueNetSales.parseReturnsRefundsAttribution(rawKpi);
+        const refundByProduct = await revenueNetSales.getRefundTotalsByProductIdGbp(db, shop, start, end, attribution);
         const inSql = productIds.map(() => '?').join(', ');
         const liRows = await db.all(
           `
@@ -378,10 +382,10 @@ async function getWorstProducts(req, res) {
               TRIM(product_id) AS product_id,
               COALESCE(NULLIF(TRIM(currency), ''), 'GBP') AS currency,
               COUNT(DISTINCT order_id) AS orders,
-              COALESCE(SUM(line_revenue), 0) AS revenue
+              COALESCE(SUM(COALESCE(line_net, line_revenue)), 0) AS revenue
             FROM orders_shopify_line_items
             WHERE shop = ?
-              AND order_created_at >= ? AND order_created_at < ?
+              AND (COALESCE(order_processed_at, order_created_at) >= ? AND COALESCE(order_processed_at, order_created_at) < ?)
               AND (order_test IS NULL OR order_test = 0)
               AND order_cancelled_at IS NULL
               AND order_financial_status = 'paid'
@@ -400,9 +404,11 @@ async function getWorstProducts(req, res) {
           const cur = fx.normalizeCurrency(r && r.currency) || 'GBP';
           const gbp = fx.convertToGbp(revenue, cur, ratesToGbp);
           const gbpAmt = typeof gbp === 'number' && Number.isFinite(gbp) ? gbp : 0;
+          const refundGbp = refundByProduct.get(pid) || 0;
+          const netGbp = Math.max(0, gbpAmt - refundGbp);
           const prev = salesByProductId.get(pid) || { orders: 0, revenueGbp: 0 };
           prev.orders += orders;
-          prev.revenueGbp += gbpAmt;
+          prev.revenueGbp += netGbp;
           salesByProductId.set(pid, prev);
         }
       }

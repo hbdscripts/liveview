@@ -512,6 +512,46 @@ async function fetchExtrasFromShopifyOrdersApi(shop, accessToken, startMs, endMs
   };
 }
 
+/** Returns total and sparkline from orders_shopify_refunds when available; attribution: processing_date (refund_created_at) or original_sale_date (order_processed_at). */
+async function getReturnsFromDb(db, shop, startMs, endMs, bucketBounds, attribution) {
+  const safeShop = salesTruth.resolveShopForSales(shop || '');
+  if (!safeShop || !Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs <= startMs) return null;
+  const useSaleDate = attribution === 'original_sale_date';
+  const tsCol = useSaleDate ? 'order_processed_at' : 'refund_created_at';
+  const buckets = Array.isArray(bucketBounds) ? bucketBounds : [];
+  try {
+    const sql = config.dbUrl
+      ? `SELECT ${tsCol} AS ts, amount FROM orders_shopify_refunds WHERE shop = $1 AND ${tsCol} IS NOT NULL AND ${tsCol} >= $2 AND ${tsCol} < $3`
+      : `SELECT ${tsCol} AS ts, amount FROM orders_shopify_refunds WHERE shop = ? AND ${tsCol} IS NOT NULL AND ${tsCol} >= ? AND ${tsCol} < ?`;
+    const rows = await db.all(sql, [safeShop, startMs, endMs]);
+    let total = 0;
+    const spark = buckets.length ? new Array(buckets.length).fill(0) : null;
+    for (const r of rows || []) {
+      const amt = parseMoneyAmount(r && r.amount);
+      if (amt != null) total += amt;
+      if (spark && r && Number.isFinite(Number(r.ts))) {
+        const idx = bucketIndexForMs(Number(r.ts), bucketBounds);
+        if (idx >= 0) spark[idx] += amt || 0;
+      }
+    }
+    const totalRounded = Math.round(Math.abs(total) * 100) / 100;
+    const sparkOut = spark ? spark.map((v) => Math.round(Math.abs(Number(v) || 0) * 100) / 100) : null;
+    return { total: totalRounded, spark: sparkOut };
+  } catch (_) {
+    return null;
+  }
+}
+
+function parseReturnsRefundsAttributionFromKpiConfig(rawKpiConfig) {
+  if (!rawKpiConfig || typeof rawKpiConfig !== 'string') return 'processing_date';
+  try {
+    const obj = JSON.parse(rawKpiConfig);
+    const v = obj && obj.options && obj.options.general && obj.options.general.returnsRefundsAttribution;
+    if (v === 'original_sale_date' || v === 'processing_date') return v;
+  } catch (_) {}
+  return 'processing_date';
+}
+
 async function getItemsSoldFromDb(db, shop, startMs, endMs) {
   const safeShop = salesTruth.resolveShopForSales(shop || '');
   if (!safeShop || !Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs <= startMs) return null;
@@ -570,17 +610,25 @@ async function computeExpandedExtras(bounds, shop, accessToken, options = {}) {
   let returns = null;
   let fulfilledSpark = null;
   let returnsSpark = null;
+  const rawKpi = await store.getSetting('kpi_ui_config_v1');
+  const returnsRefundsAttribution = parseReturnsRefundsAttributionFromKpiConfig(rawKpi);
+  let returnsFromDb = null;
+  try {
+    returnsFromDb = await getReturnsFromDb(db, safeShop, start, end, bucketBounds, returnsRefundsAttribution);
+  } catch (_) {}
   try {
     const r = await fetchExtrasFromShopifyOrdersApi(safeShop, accessToken, start, end, bucketBounds);
     if (r && r.ok) {
       ordersFulfilled = typeof r.ordersFulfilled === 'number' ? r.ordersFulfilled : null;
-      returns = typeof r.returns === 'number' ? r.returns : null;
       fulfilledSpark = Array.isArray(r.fulfilledSpark) ? r.fulfilledSpark : null;
-      returnsSpark = Array.isArray(r.returnsSpark) ? r.returnsSpark : null;
+      returns = returnsFromDb != null && typeof returnsFromDb.total === 'number' ? returnsFromDb.total : (typeof r.returns === 'number' ? r.returns : null);
+      returnsSpark = returnsFromDb != null && Array.isArray(returnsFromDb.spark) ? returnsFromDb.spark : (Array.isArray(r.returnsSpark) ? r.returnsSpark : null);
     }
   } catch (err) {
     console.warn('[kpisExpandedExtra] Shopify fetch failed:', err && err.message ? String(err.message) : 'error');
   }
+  if (returns === null && returnsFromDb != null) returns = typeof returnsFromDb.total === 'number' ? returnsFromDb.total : null;
+  if (returnsSpark === null && returnsFromDb != null && Array.isArray(returnsFromDb.spark)) returnsSpark = returnsFromDb.spark;
 
   const spark = bucketBounds.length
     ? {

@@ -1795,6 +1795,12 @@
         );
         var dateFmtEl = document.getElementById('settings-general-date-format');
         if (dateFmtEl) dateFmtEl.value = generalDateFormat;
+        var attribution = (kpiUiConfigCache && kpiUiConfigCache.options && kpiUiConfigCache.options.general && kpiUiConfigCache.options.general.returnsRefundsAttribution) || 'processing_date';
+        if (attribution !== 'processing_date' && attribution !== 'original_sale_date') attribution = 'processing_date';
+        document.querySelectorAll('input[name="settings-general-returns-refunds-attribution"]').forEach(function (el) {
+          if (el && el.value === attribution) el.checked = true;
+          else if (el) el.checked = false;
+        });
         var scopeMode = (data.settingsScopeMode || 'global');
         var scopeGlobal = document.getElementById('settings-scope-global');
         var scopeUser = document.getElementById('settings-scope-user');
@@ -1893,10 +1899,13 @@
 
     saveBtn.addEventListener('click', function () {
       var nextFormat = normalizeDateLabelFormat(formatEl.value);
+      var attributionEl = document.querySelector('input[name="settings-general-returns-refunds-attribution"]:checked');
+      var nextAttribution = (attributionEl && (attributionEl.value === 'processing_date' || attributionEl.value === 'original_sale_date')) ? attributionEl.value : 'processing_date';
       var cfg = deepClone(kpiUiConfigCache || defaultKpiUiConfigV1()) || defaultKpiUiConfigV1();
       if (!cfg.options || typeof cfg.options !== 'object') cfg.options = {};
       if (!cfg.options.general || typeof cfg.options.general !== 'object') cfg.options.general = {};
       cfg.options.general.dateLabelFormat = nextFormat;
+      cfg.options.general.returnsRefundsAttribution = nextAttribution;
 
       setMsg('Saving…', true);
       saveSettings({ kpiUiConfig: cfg })
@@ -1910,6 +1919,12 @@
               kpiUiConfigCache.options.general.dateLabelFormat
             );
             formatEl.value = saved;
+            var savedAttribution = (kpiUiConfigCache && kpiUiConfigCache.options && kpiUiConfigCache.options.general && kpiUiConfigCache.options.general.returnsRefundsAttribution) || 'processing_date';
+            if (savedAttribution !== 'processing_date' && savedAttribution !== 'original_sale_date') savedAttribution = 'processing_date';
+            document.querySelectorAll('input[name="settings-general-returns-refunds-attribution"]').forEach(function (el) {
+              if (el && el.value === savedAttribution) el.checked = true;
+              else if (el) el.checked = false;
+            });
             setMsg('Saved.', true);
             try {
               if (window && typeof window.dispatchEvent === 'function') {
@@ -5316,6 +5331,11 @@
     if (optCondProg) optCondProg.checked = condensed.showProgress !== false;
     if (optCondSpark) optCondSpark.checked = condensed.showSparkline !== false;
     if (generalDateFormatEl) generalDateFormatEl.value = normalizeDateLabelFormat(general.dateLabelFormat);
+    var attribution = (general.returnsRefundsAttribution === 'original_sale_date') ? 'original_sale_date' : 'processing_date';
+    document.querySelectorAll('input[name="settings-general-returns-refunds-attribution"]').forEach(function (el) {
+      if (el && el.value === attribution) el.checked = true;
+      else if (el) el.checked = false;
+    });
 
     // Header KPI strip visibility per page.
     var defPages = (def.headerStrip && def.headerStrip.pages && typeof def.headerStrip.pages === 'object') ? def.headerStrip.pages : {};
@@ -5360,6 +5380,8 @@
     var optCondProg = document.getElementById('settings-kpi-opt-condensed-progress');
     var optCondSpark = document.getElementById('settings-kpi-opt-condensed-sparkline');
     var generalDateFormatEl = document.getElementById('settings-general-date-format');
+    var attributionEl = document.querySelector('input[name="settings-general-returns-refunds-attribution"]:checked');
+    var attribution = (attributionEl && (attributionEl.value === 'processing_date' || attributionEl.value === 'original_sale_date')) ? attributionEl.value : 'processing_date';
     return {
       v: 1,
       options: {
@@ -5370,6 +5392,7 @@
         },
         general: {
           dateLabelFormat: normalizeDateLabelFormat(generalDateFormatEl && generalDateFormatEl.value),
+          returnsRefundsAttribution: attribution,
         },
       },
       headerStrip: {

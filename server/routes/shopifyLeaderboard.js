@@ -22,6 +22,7 @@ const reportCache = require('../reportCache');
 const fx = require('../fx');
 const productMetaCache = require('../shopifyProductMetaCache');
 const { normalizeRangeKey } = require('../rangeKey');
+const revenueNetSales = require('../revenueNetSales');
 
 const MAX_META_PRODUCTS = 200;
 
@@ -154,6 +155,9 @@ async function getShopifyLeaderboard(req, res) {
 
         let token = null;
         try { token = await salesTruth.getAccessToken(shop); } catch (_) { token = null; }
+        const rawKpi = await store.getSetting('kpi_ui_config_v1');
+        const attribution = revenueNetSales.parseReturnsRefundsAttribution(rawKpi);
+        const refundByProduct = await revenueNetSales.getRefundTotalsByProductIdGbp(db, shop, start, end, attribution);
 
         const rows = config.dbUrl
           ? await db.all(
@@ -163,9 +167,9 @@ async function getShopifyLeaderboard(req, res) {
                 TRIM(product_id) AS product_id,
                 MAX(title) AS title,
                 COUNT(DISTINCT order_id) AS orders,
-                COALESCE(SUM(line_revenue), 0) AS revenue
+                COALESCE(SUM(COALESCE(line_net, line_revenue)), 0) AS revenue
               FROM orders_shopify_line_items
-              WHERE shop = $1 AND order_created_at >= $2 AND order_created_at < $3
+              WHERE shop = $1 AND (COALESCE(order_processed_at, order_created_at) >= $2 AND COALESCE(order_processed_at, order_created_at) < $3)
                 AND (order_test IS NULL OR order_test = 0)
                 AND order_cancelled_at IS NULL
                 AND order_financial_status = 'paid'
@@ -181,9 +185,9 @@ async function getShopifyLeaderboard(req, res) {
                 TRIM(product_id) AS product_id,
                 MAX(title) AS title,
                 COUNT(DISTINCT order_id) AS orders,
-                COALESCE(SUM(line_revenue), 0) AS revenue
+                COALESCE(SUM(COALESCE(line_net, line_revenue)), 0) AS revenue
               FROM orders_shopify_line_items
-              WHERE shop = ? AND order_created_at >= ? AND order_created_at < ?
+              WHERE shop = ? AND (COALESCE(order_processed_at, order_created_at) >= ? AND COALESCE(order_processed_at, order_created_at) < ?)
                 AND (order_test IS NULL OR order_test = 0)
                 AND order_cancelled_at IS NULL
                 AND order_financial_status = 'paid'
@@ -194,7 +198,7 @@ async function getShopifyLeaderboard(req, res) {
           );
 
         const ratesToGbp = await fx.getRatesToGbp();
-        const byProduct = new Map(); // product_id -> { product_id, title, revenueGbp, orders }
+        const byProduct = new Map();
 
         for (const r of rows || []) {
           const pid = r && r.product_id != null ? String(r.product_id).trim() : '';
@@ -205,11 +209,13 @@ async function getShopifyLeaderboard(req, res) {
           const rev = Number.isFinite(revRaw) ? revRaw : 0;
           const gbp = fx.convertToGbp(rev, cur, ratesToGbp);
           const amt = (typeof gbp === 'number' && Number.isFinite(gbp)) ? gbp : 0;
+          const refundGbp = refundByProduct.get(pid) || 0;
+          const netGbp = Math.max(0, amt - refundGbp);
           const ordersRaw = r && r.orders != null ? Number(r.orders) : 0;
           const orders = Number.isFinite(ordersRaw) ? Math.trunc(ordersRaw) : 0;
 
           const prev = byProduct.get(pid) || { product_id: pid, title: '', revenueGbp: 0, orders: 0 };
-          prev.revenueGbp += amt;
+          prev.revenueGbp += netGbp;
           prev.orders += orders;
           if (!prev.title && title) prev.title = title;
           byProduct.set(pid, prev);
