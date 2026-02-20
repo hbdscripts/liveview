@@ -211,13 +211,6 @@
   var CUSTOM_CSS_KEYS = ['theme-custom-css'];
 
   var CSS_VAR_COLOR_GROUPS = [
-    { heading: 'Brand accents', groupId: 'brand', vars: [
-      { name: '--kexo-accent-1', label: 'Kexo 1', help: 'Overrides the runtime CSS variable used by Overview widgets and accents. Leave blank to use Theme accents.' },
-      { name: '--kexo-accent-2', label: 'Kexo 2', help: '' },
-      { name: '--kexo-accent-3', label: 'Kexo 3', help: '' },
-      { name: '--kexo-accent-4', label: 'Kexo 4', help: '' },
-      { name: '--kexo-accent-5', label: 'Kexo 5', help: '' },
-    ]},
     { heading: 'Header &amp; nav', groupId: 'header', vars: [
       { name: '--kexo-header-top-bg', label: 'Strip background', help: '' },
       { name: '--kexo-header-top-text-color', label: 'Strip text', help: '' },
@@ -2076,10 +2069,11 @@
     var attrs = extraDataAttrs ? String(extraDataAttrs) : '';
     return '<div class="col-12 col-md-6 col-lg-4 kexo-css-var-card"' + attrs + '>' +
       '<div class="card card-sm h-100">' +
-        '<div class="card-body">' +
+        '<div class="card-body position-relative">' +
+          '<a href="#" class="kexo-css-var-revert text-secondary small position-absolute top-0 end-0 me-1 mt-1" data-kexo-css-var="' + escapeHtml(name) + '" role="button" aria-label="Revert to default">Revert</a>' +
           '<div class="mb-2">' +
             '<div class="d-flex align-items-center gap-2">' +
-              '<span class="kexo-css-var-preview-circle" data-kexo-css-var="' + escapeHtml(name) + '" style="width:12px;height:12px;border-radius:12px;flex-shrink:0;background:#e0e0e0" aria-hidden="true"></span>' +
+              '<span class="kexo-css-var-preview-circle" data-kexo-css-var="' + escapeHtml(name) + '" style="width:32px;height:32px;border-radius:6px;flex-shrink:0;background:#e0e0e0;border:1px solid rgba(0,0,0,.1)" aria-hidden="true"></span>' +
               '<strong' + titleAttr + '>' + escapeHtml(label) + (help ? TOOLTIP_ICON : '') + '</strong>' +
             '</div>' +
             '<div class="text-secondary small"><code>' + escapeHtml(name) + '</code></div>' +
@@ -2526,6 +2520,7 @@
           applyCfgToUi(cfg);
           applyCfgToDom(cfg);
           setMsg('', null);
+          setTimeout(function () { updateCssVarPreviewCircles(); }, 50);
         })
         .catch(function () { setMsg('Failed to load colours.', false); });
     }
@@ -2543,6 +2538,20 @@
       searchInput.addEventListener('input', filterCssVarGrid);
       searchInput.addEventListener('change', filterCssVarGrid);
     }
+
+    grid.addEventListener('click', function (e) {
+      var t = e && e.target ? e.target : null;
+      if (!t || !t.classList || !t.classList.contains('kexo-css-var-revert')) return;
+      e.preventDefault();
+      var name = t.getAttribute('data-kexo-css-var');
+      if (!name) return;
+      var input = root.querySelector('.kexo-css-var-input[data-kexo-css-var="' + CSS.escape(name) + '"]');
+      var swatch = root.querySelector('.kexo-css-var-swatch[data-kexo-css-var="' + CSS.escape(name) + '"]');
+      if (input) { try { input.value = ''; } catch (_) {} }
+      var cfg = readCfgFromUi();
+      applyCfgToDom(cfg);
+      updateCssVarPreviewCircles();
+    });
 
     grid.addEventListener('input', function () {
       applyCfgToDom(readCfgFromUi());

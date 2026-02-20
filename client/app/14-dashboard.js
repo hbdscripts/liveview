@@ -4043,8 +4043,8 @@
               };
             });
             var accentCss = isUp
-              ? 'background: var(--kexo-kpi-delta-up, var(--kexo-accent-2, #3eb3ab));'
-              : 'background: var(--kexo-kpi-delta-down, var(--kexo-accent-4, #e4644b));';
+              ? 'background: #3eb3ab;'
+              : 'background: #e4644b;';
             renderDashTopList(tableId + '-body', listRows, { accentCss: accentCss });
             return;
           }

@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 1d453fdf6e62d576
+// checksum: ad551267bb6b0547
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -22077,8 +22077,8 @@ const API = '';
               };
             });
             var accentCss = isUp
-              ? 'background: var(--kexo-kpi-delta-up, var(--kexo-accent-2, #3eb3ab));'
-              : 'background: var(--kexo-kpi-delta-down, var(--kexo-accent-4, #e4644b));';
+              ? 'background: #3eb3ab;'
+              : 'background: #e4644b;';
             renderDashTopList(tableId + '-body', listRows, { accentCss: accentCss });
             return;
           }
