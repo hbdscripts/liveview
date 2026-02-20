@@ -1655,11 +1655,13 @@ html[data-bs-theme="dark"] .dash-attribution-donut-icon {
 .am-tree .am-tree-pad-1 { padding-left: 1rem; }
 .am-tree .am-tree-pad-2 { padding-left: 2rem; }
 .am-tree .am-tree-pad-3 { padding-left: 3rem; }
+.am-tree .am-tree-pad-4 { padding-left: 4rem; }
 .am-tree .am-tree-cell { flex: 0 0 auto; }
 .am-tree .am-tree-label { flex: 1 1 auto; min-width: 0; }
 .am-tree .am-tree-children.is-hidden { display: none; }
 .am-tree .am-tree-icon-preview { display: inline-flex; align-items: center; margin-right: 0.35rem; }
 .am-tree .am-tree-icon-preview img { max-width: 20px; max-height: 20px; object-fit: contain; }
+.am-tree .am-tree-icon-preview svg { width: 20px; height: 20px; max-width: 20px; max-height: 20px; object-fit: contain; }
 .am-tree .am-tree-icon-preview i { font-size: 1rem; }
 .am-tree .am-tree-icon-live-preview {
   display: flex;
@@ -1673,6 +1675,40 @@ html[data-bs-theme="dark"] .dash-attribution-donut-icon {
 .am-tree .am-tree-icon-live-preview svg { width: 28px; height: 28px; }
 .am-tree .am-tree-icon-live-preview .am-tree-icon-preview img { max-width: 28px; max-height: 28px; }
 .am-tree .am-tree-icon-live-preview .am-tree-icon-preview i { font-size: 1.25rem; }
+/* Global rules so modal (outside .am-tree) caps icon preview at 50x50 */
+.am-tree-icon-live-preview {
+  display: flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--tblr-border-color, rgba(98,105,118,0.25));
+  border-radius: 6px;
+  background: var(--tblr-bg-surface-secondary, rgba(98,105,118,0.05));
+}
+.am-tree-icon-live-preview svg,
+.am-tree-icon-live-preview .am-tree-icon-preview svg {
+  width: 50px;
+  height: 50px;
+  max-width: 50px;
+  max-height: 50px;
+  object-fit: contain;
+}
+.am-tree-icon-live-preview img,
+.am-tree-icon-live-preview .am-tree-icon-preview img {
+  width: 50px;
+  height: 50px;
+  max-width: 50px;
+  max-height: 50px;
+  object-fit: contain;
+}
+.am-tree-icon-live-preview .am-tree-icon-preview i { font-size: 1.25rem; }
+.am-tree-icon-preview svg {
+  width: 20px;
+  height: 20px;
+  max-width: 20px;
+  max-height: 20px;
+  object-fit: contain;
+}
 .am-tree .am-tree-edit-icon-btn { white-space: nowrap; }
 .theme-icons-attribution-preview svg { width: 1.25rem; height: 1.25rem; }
 .theme-icons-attribution-preview img { max-width: 1.25rem; max-height: 1.25rem; object-fit: contain; }

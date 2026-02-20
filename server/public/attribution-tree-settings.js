@@ -50,6 +50,14 @@
     return k;
   }
 
+  function normalizeTagKey(v, maxLen) {
+    var s = v == null ? '' : String(v);
+    s = s.trim().toLowerCase().replace(/[^a-z0-9_-]+/g, '_').replace(/^_+|_+$/g, '');
+    if (!s) return '';
+    var lim = typeof maxLen === 'number' ? maxLen : 120;
+    return s.length > lim ? s.slice(0, lim) : s;
+  }
+
   function fetchWithTimeout(url, options, timeoutMs) {
     var ms = typeof timeoutMs === 'number' && isFinite(timeoutMs) ? timeoutMs : 20000;
     if (typeof AbortController === 'undefined') return fetch(url, options);
@@ -99,6 +107,21 @@
       .catch(function () { return { ok: false, status: 0, error: 'Request failed' }; });
   }
 
+  function apiDeleteJson(url) {
+    return fetchWithTimeout(url, {
+      method: 'DELETE',
+      credentials: 'same-origin',
+      cache: 'no-store',
+    }, 25000)
+      .then(function (r) {
+        return r.json().catch(function () { return null; }).then(function (body) {
+          if (r && r.ok) return body;
+          return { ok: false, status: r && r.status, error: (body && body.error) || (r && r.status === 403 ? 'Admin only' : 'Request failed') };
+        });
+      })
+      .catch(function () { return { ok: false, status: 0, error: 'Request failed' }; });
+  }
+
   function fetchConfig() {
     return apiGetJson(API + '/api/attribution/config');
   }
@@ -117,6 +140,19 @@
       if (tagKey.length > 120) tagKey = tagKey.slice(0, 120);
     }
     return apiPatchJson(API + '/api/attribution/rules/' + encodeURIComponent(id), { variant_key: variantKey, tag_key: tagKey || null });
+  }
+
+  function deleteAttributionRule(ruleId, onSuccess) {
+    var id = trimLower(ruleId, 80);
+    if (!id) return;
+    if (!confirm('Delete this rule? This affects new sessions only.')) return;
+    apiDeleteJson(API + '/api/attribution/rules/' + encodeURIComponent(id)).then(function (resp) {
+      if (resp && resp.ok) {
+        if (typeof onSuccess === 'function') onSuccess();
+      } else {
+        alert((resp && resp.error) ? String(resp.error) : 'Delete failed');
+      }
+    });
   }
 
   function titleFromKey(key) {
@@ -157,6 +193,7 @@
     var channels = Array.isArray(config.channels) ? config.channels : [];
     var sources = Array.isArray(config.sources) ? config.sources : [];
     var variants = Array.isArray(config.variants) ? config.variants : [];
+    var tags = Array.isArray(config.tags) ? config.tags : [];
     var rules = Array.isArray(config.rules) ? config.rules : [];
 
     var channelsByKey = {};
@@ -171,12 +208,21 @@
       if (k) sourcesByKey[k] = r;
     });
 
-    var rulesByVariant = {};
+    var tagsByKey = {};
+    tags.forEach(function (r) {
+      var k = normalizeTagKey(r && (r.tag_key != null ? r.tag_key : (r && r.key != null ? r.key : '')), 120);
+      if (k) tagsByKey[k] = r;
+    });
+
+    // Group rules by variant_key then by tag_key ('' = untagged)
+    var rulesByVariantAndTag = {};
     rules.forEach(function (r) {
       var vk = normalizeBaseVariantKey(r && (r.variant_key != null ? r.variant_key : ''));
       if (!vk) return;
-      if (!rulesByVariant[vk]) rulesByVariant[vk] = [];
-      rulesByVariant[vk].push(r);
+      if (!rulesByVariantAndTag[vk]) rulesByVariantAndTag[vk] = {};
+      var tk = normalizeTagKey(r && (r.tag_key != null ? r.tag_key : ''), 120) || '__untagged__';
+      if (!rulesByVariantAndTag[vk][tk]) rulesByVariantAndTag[vk][tk] = [];
+      rulesByVariantAndTag[vk][tk].push(r);
     });
 
     var variantsByChannel = {};
@@ -191,6 +237,24 @@
       if (channelKeys.indexOf(k) < 0) channelKeys.push(k);
     });
     channelKeys.sort();
+
+    function buildTagBuckets(vk) {
+      var byTag = rulesByVariantAndTag[vk] || {};
+      var tagKeys = Object.keys(byTag);
+      tagKeys.sort();
+      return tagKeys.map(function (tk) {
+        var displayKey = tk === '__untagged__' ? '' : tk;
+        var tagRow = tagsByKey[tk] || null;
+        var label = displayKey ? (tagRow && tagRow.label ? String(tagRow.label) : titleFromKey(displayKey)) : 'Untagged';
+        var iconSpec = tagRow && tagRow.icon_spec != null ? String(tagRow.icon_spec) : '';
+        return {
+          tag_key: displayKey,
+          label: label,
+          icon_spec: iconSpec,
+          rules: byTag[tk] || [],
+        };
+      });
+    }
 
     var channelRows = [];
     channelKeys.forEach(function (channelKey) {
@@ -214,7 +278,8 @@
         var sourceRow = sourcesByKey[srcKey] || {};
         var sourceIcon = sourceRow.icon_spec != null ? String(sourceRow.icon_spec) : '';
         var iconSpec = (explicitIcon && explicitIcon.trim()) ? explicitIcon : sourceIcon;
-        var ruleList = rulesByVariant[vk] || [];
+        var tagBuckets = buildTagBuckets(vk);
+        var ruleCount = tagBuckets.reduce(function (sum, t) { return sum + (t.rules ? t.rules.length : 0); }, 0);
         variantRows.push({
           type: 'variant',
           variant_key: vk,
@@ -222,7 +287,8 @@
           icon_spec: iconSpec,
           source_key: srcKey,
           source_icon_spec: sourceIcon,
-          rules: ruleList,
+          tags: tagBuckets,
+          ruleCount: ruleCount,
         });
       });
 
@@ -263,24 +329,62 @@
       (channel && Array.isArray(channel.variants) ? channel.variants : []).forEach(function (variant) {
         var variantKey = 'v:' + String(variant && variant.variant_key != null ? variant.variant_key : '');
         next[variantKey] = expand;
+        (variant && Array.isArray(variant.tags) ? variant.tags : []).forEach(function (tagBucket) {
+          var tk = tagBucket && tagBucket.tag_key != null ? String(tagBucket.tag_key) : '';
+          var tagExpandKey = 't:' + variantKey + ':' + (tk || '__untagged__');
+          next[tagExpandKey] = expand;
+        });
       });
     });
     _state.expanded = next;
   }
 
-  function renderRuleRow(rule, variantKey) {
+  function renderRuleRow(rule, variantKey, tagKey) {
     var id = (rule && rule.id) ? String(rule.id) : '';
     var label = (rule && rule.label) ? String(rule.label) : '';
     var match = (rule && rule.match_json) ? rule.match_json : (rule && rule.match ? JSON.stringify(rule.match) : '{}');
     var matchStr = typeof match === 'string' ? match : JSON.stringify(match);
     var summary = matchStr.length > 60 ? matchStr.slice(0, 57) + '?' : matchStr;
     var vk = normalizeBaseVariantKey(variantKey);
+    var tk = tagKey != null ? normalizeTagKey(String(tagKey), 120) : '';
+    var padClass = tk ? 'am-tree-pad-4' : 'am-tree-pad-3';
     return '<div class="am-tree-row am-tree-rule">' +
-      '<span class="am-tree-pad am-tree-pad-3"></span>' +
+      '<span class="am-tree-pad ' + padClass + '"></span>' +
       '<span class="am-tree-cell"><code class="small">' + escapeHtml(id || '?') + '</code></span>' +
       '<span class="am-tree-cell text-secondary small">' + escapeHtml(label || '?') + '</span>' +
       '<span class="am-tree-cell text-muted small" title="' + escapeHtml(matchStr) + '">' + escapeHtml(summary) + '</span>' +
-      '<span class="am-tree-cell text-end"><button type="button" class="btn btn-outline-secondary btn-sm" data-am-tree-action="move-rule" data-rule-id="' + escapeHtml(id) + '" data-current-variant-key="' + escapeHtml(vk) + '">Edit rule</button></span>' +
+      '<span class="am-tree-cell text-end">' +
+      '<button type="button" class="btn btn-outline-secondary btn-sm" data-am-tree-action="move-rule" data-rule-id="' + escapeHtml(id) + '" data-current-variant-key="' + escapeHtml(vk) + '" data-current-tag-key="' + escapeHtml(tk) + '">Edit rule</button> ' +
+      '<button type="button" class="btn btn-outline-danger btn-sm" data-am-tree-action="delete-rule" data-rule-id="' + escapeHtml(id) + '">Delete</button></span>' +
+      '</div>';
+  }
+
+  function renderTagRow(tagBucket, variantKey, channelKey) {
+    var tk = tagBucket && tagBucket.tag_key != null ? String(tagBucket.tag_key) : '';
+    var label = tagBucket && tagBucket.label ? String(tagBucket.label) : (tk ? titleFromKey(tk) : 'Untagged');
+    var iconSpec = tagBucket && tagBucket.icon_spec != null ? String(tagBucket.icon_spec) : '';
+    var rules = Array.isArray(tagBucket.rules) ? tagBucket.rules : [];
+    var ruleCount = rules.length;
+    var hasRules = ruleCount > 0;
+    var vk = normalizeBaseVariantKey(variantKey);
+    var expandKey = 't:v:' + vk + ':' + (tk || '__untagged__');
+    var isOpen = isExpanded(expandKey);
+    var ruleRows = rules.map(function (r) { return renderRuleRow(r, vk, tk); }).join('');
+    var toggleHtml = hasRules
+      ? '<button type="button" class="am-tree-toggle btn btn-link btn-sm p-0 me-1" data-am-tree-toggle="' + escapeHtml(expandKey) + '" aria-expanded="' + (isOpen ? 'true' : 'false') + '">' +
+        '<i class="fa fa-chevron-' + (isOpen ? 'down' : 'right') + ' small" aria-hidden="true"></i></button>'
+      : '<span class="am-tree-toggle-spacer"></span>';
+    return '<div class="am-tree-node am-tree-tag" data-variant-key="' + escapeHtml(vk) + '" data-tag-key="' + escapeHtml(tk) + '">' +
+      '<div class="am-tree-row am-tree-tag-head">' +
+      '<span class="am-tree-pad am-tree-pad-3"></span>' +
+      toggleHtml +
+      '<span class="am-tree-cell am-tree-label">' + iconSpecToPreviewHtml(iconSpec, label) + ' <span class="text-secondary">' + escapeHtml(label) + '</span>' + (tk ? ' <code class="small">' + escapeHtml(tk) + '</code>' : '') + '</span>' +
+      '<span class="am-tree-cell text-muted small">' + String(ruleCount) + ' rule(s)</span>' +
+      '<span class="am-tree-cell text-end"></span>' +
+      '</div>' +
+      '<div class="am-tree-children' + (isOpen ? '' : ' is-hidden') + '" data-am-tree-children="' + escapeHtml(expandKey) + '">' +
+      ruleRows +
+      '</div>' +
       '</div>';
   }
 
@@ -289,11 +393,12 @@
     var label = variant.label || titleFromKey(vk);
     var explicitIcon = variant.icon_spec != null ? String(variant.icon_spec) : '';
     var iconSpec = (explicitIcon && explicitIcon.trim()) ? explicitIcon : (variant.source_icon_spec != null ? String(variant.source_icon_spec) : '');
-    var ruleCount = Array.isArray(variant.rules) ? variant.rules.length : 0;
+    var ruleCount = typeof variant.ruleCount === 'number' ? variant.ruleCount : 0;
+    var tagBuckets = Array.isArray(variant.tags) ? variant.tags : [];
     var hasRules = ruleCount > 0;
     var expandedKey = 'v:' + vk;
     var isOpen = isExpanded(expandedKey);
-    var ruleRows = (variant.rules || []).map(function (r) { return renderRuleRow(r, vk); }).join('');
+    var tagRows = tagBuckets.map(function (t) { return renderTagRow(t, vk, channelKey); }).join('');
     var toggleHtml = hasRules
       ? '<button type="button" class="am-tree-toggle btn btn-link btn-sm p-0 me-1" data-am-tree-toggle="' + escapeHtml(expandedKey) + '" aria-expanded="' + (isOpen ? 'true' : 'false') + '">' +
         '<i class="fa fa-chevron-' + (isOpen ? 'down' : 'right') + ' small" aria-hidden="true"></i></button>'
@@ -309,7 +414,7 @@
       '</span>' +
       '</div>' +
       '<div class="am-tree-children' + (isOpen ? '' : ' is-hidden') + '" data-am-tree-children="' + escapeHtml(expandedKey) + '">' +
-      ruleRows +
+      tagRows +
       '</div>' +
       '</div>';
   }
@@ -423,20 +528,24 @@
     } catch (_) {}
   }
 
-  function openMoveModal(ruleId, currentVariantKey) {
+  function openMoveModal(ruleId, currentVariantKey, currentTagKey) {
     var rid = trimLower(ruleId, 80);
     var curVk = normalizeBaseVariantKey(currentVariantKey);
+    var curTag = currentTagKey != null ? normalizeTagKey(String(currentTagKey), 120) : '';
     if (!rid) return;
     var modalEl = ensureMoveModal();
     if (!modalEl) return;
 
     modalEl.setAttribute('data-am-move-rule-id', rid);
     modalEl.setAttribute('data-am-move-current-variant-key', curVk || '');
+    modalEl.setAttribute('data-am-move-current-tag-key', curTag || '');
 
     var idEl = modalEl.querySelector('#am-move-rule-id');
     if (idEl) idEl.textContent = rid;
     var msgEl = modalEl.querySelector('#am-move-msg');
     if (msgEl) { msgEl.textContent = ''; msgEl.className = 'form-hint'; }
+    var tagInputEl = modalEl.querySelector('#am-move-dest-tag');
+    if (tagInputEl) tagInputEl.value = curTag || '';
 
     var selectEl = modalEl.querySelector('#am-move-dest-variant');
     if (selectEl) {
@@ -487,7 +596,9 @@
           var sel = modalEl.querySelector('#am-move-dest-variant');
           var dest = normalizeBaseVariantKey(sel ? sel.value : '');
           var tagEl = modalEl.querySelector('#am-move-dest-tag');
-          var destTag = tagEl ? String(tagEl.value || '').trim() : '';
+          var destTagRaw = tagEl ? String(tagEl.value || '').trim() : '';
+          var destTag = destTagRaw ? normalizeTagKey(destTagRaw, 120) : null;
+          var curTag = normalizeTagKey(modalEl.getAttribute('data-am-move-current-tag-key') || '', 120) || null;
           var msgEl = modalEl.querySelector('#am-move-msg');
           function setMsg(text, cls) {
             if (!msgEl) return;
@@ -498,13 +609,13 @@
             setMsg('Choose a destination.', 'text-danger');
             return;
           }
-          if (dest === curVk) {
+          if (dest === curVk && (destTag || null) === (curTag || null)) {
             closeMoveModal(modalEl);
             return;
           }
           try { confirmBtn.disabled = true; } catch (_) {}
           setMsg('Saving\u2026', 'text-secondary');
-          moveRule(rid, dest, destTag).then(function (resp) {
+          moveRule(rid, dest, destTag || '').then(function (resp) {
             if (resp && resp.ok) {
               setMsg('Saved.', 'text-success');
               setTimeout(function () {
@@ -906,7 +1017,18 @@
         if (action === 'move-rule') {
           var rid = treeAction.getAttribute('data-rule-id') || '';
           var curVk = treeAction.getAttribute('data-current-variant-key') || '';
-          openMoveModal(rid, curVk);
+          var curTag = treeAction.getAttribute('data-current-tag-key') || '';
+          openMoveModal(rid, curVk, curTag);
+          return;
+        }
+        if (action === 'delete-rule') {
+          var rid = treeAction.getAttribute('data-rule-id') || '';
+          if (rid && typeof window.deleteAttributionRule === 'function') {
+            window.deleteAttributionRule(rid, function () {
+              _state.config = null;
+              loadAndRender();
+            });
+          }
           return;
         }
         if (action === 'edit-variant') {
@@ -993,4 +1115,5 @@
   }
 
   try { window.initAttributionTreeView = initAttributionTreeView; } catch (_) {}
+  try { window.deleteAttributionRule = deleteAttributionRule; } catch (_) {}
 })();

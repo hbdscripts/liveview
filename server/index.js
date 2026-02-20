@@ -167,6 +167,7 @@ app.post('/api/attribution/config', requireMaster.middleware, attributionRouter.
 app.get('/api/attribution/observed', attributionRouter.getAttributionObserved);
 app.post('/api/attribution/map', requireMaster.middleware, attributionRouter.postAttributionMap);
 app.patch('/api/attribution/rules/:id', requireMaster.middleware, attributionRouter.patchAttributionRule);
+app.delete('/api/attribution/rules/:id', requireMaster.middleware, attributionRouter.deleteAttributionRule);
 app.post('/api/attribution/icons', requireMaster.middleware, attributionRouter.postAttributionIcons);
 // Server-injected theme variables (prevents first-paint header flash).
 app.get('/theme-vars.css', settings.getThemeVarsCss);

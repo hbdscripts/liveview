@@ -1080,6 +1080,29 @@ async function patchAttributionRule(req, res) {
   res.json({ ok: true, id: ruleId, variant_key: destVariantKey, tag_key: destTagKey, now });
 }
 
+async function deleteAttributionRule(req, res) {
+  const ruleId = sanitizeRuleId(req && req.params ? req.params.id : '');
+  if (!ruleId) return res.status(400).json({ ok: false, error: 'Invalid rule id' });
+
+  const db = getDb();
+  const now = Date.now();
+  let changes = 0;
+  try {
+    const r = await db.run('DELETE FROM attribution_rules WHERE id = ?', [ruleId]);
+    changes = r && typeof r.changes === 'number' ? r.changes : 0;
+  } catch (err) {
+    Sentry.captureException(err, { extra: { route: 'attribution.rule.delete', ruleId } });
+    return res.status(500).json({ ok: false, error: 'Failed to delete rule' });
+  }
+
+  if (!changes) return res.status(404).json({ ok: false, error: 'Rule not found' });
+
+  invalidateAttributionConfigCache();
+  try { await writeAudit('admin', 'attribution_rule_delete', { ts: now, ruleId }); } catch (_) {}
+  res.setHeader('Cache-Control', 'no-store');
+  res.json({ ok: true, id: ruleId, now });
+}
+
 module.exports = {
   getAttributionReport,
   getAttributionPrefs,
@@ -1089,6 +1112,7 @@ module.exports = {
   getAttributionObserved,
   postAttributionMap,
   patchAttributionRule,
+  deleteAttributionRule,
   postAttributionIcons,
 };
 

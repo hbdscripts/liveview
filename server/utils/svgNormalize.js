@@ -34,24 +34,40 @@ function sanitizeSvgMarkup(value) {
   return svg.trim();
 }
 
+function parseSvgSize(val) {
+  if (val == null || typeof val !== 'string') return null;
+  var n = parseFloat(val.replace(/px|em|rem|%$/i, '').trim(), 10);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
 function stripSvgSizing(value) {
   var raw = trimTo(value, 1000000);
   if (!raw) return '';
   if (!/^<svg[\s>]/i.test(raw)) return raw;
   raw = raw.replace(/^<svg\b([^>]*)>/i, function (_m, attrs) {
     var a = String(attrs || '');
-    a = a.replace(/\s(width|height)\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '');
-    a = a.replace(/\sstyle\s*=\s*(["'])([\s\S]*?)\1/i, function (_m2, q, style) {
-      var st = String(style || '');
-      var cleaned = st
-        .replace(/(^|;)\s*width\s*:\s*[^;]+/gi, '$1')
-        .replace(/(^|;)\s*height\s*:\s*[^;]+/gi, '$1')
-        .replace(/;;+/g, ';')
-        .replace(/^\s*;\s*|\s*;\s*$/g, '')
-        .trim();
-      if (!cleaned) return '';
-      return ' style=' + q + cleaned + q;
-    });
+    var hasViewBox = /\sviewBox\s*=/i.test(a);
+    var widthMatch = a.match(/\swidth\s*=\s*(["'])([^"']*)\1/i);
+    var heightMatch = a.match(/\sheight\s*=\s*(["'])([^"']*)\1/i);
+    var w = widthMatch ? parseSvgSize(widthMatch[2]) : null;
+    var h = heightMatch ? parseSvgSize(heightMatch[2]) : null;
+    if (!hasViewBox && w != null && h != null && w > 0 && h > 0) {
+      a = (a.trim() ? a + ' ' : '') + 'viewBox="0 0 ' + String(w) + ' ' + String(h) + '"';
+    }
+    if (hasViewBox || (w != null && h != null)) {
+      a = a.replace(/\s(width|height)\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '');
+      a = a.replace(/\sstyle\s*=\s*(["'])([\s\S]*?)\1/i, function (_m2, q, style) {
+        var st = String(style || '');
+        var cleaned = st
+          .replace(/(^|;)\s*width\s*:\s*[^;]+/gi, '$1')
+          .replace(/(^|;)\s*height\s*:\s*[^;]+/gi, '$1')
+          .replace(/;;+/g, ';')
+          .replace(/^\s*;\s*|\s*;\s*$/g, '')
+          .trim();
+        if (!cleaned) return '';
+        return ' style=' + q + cleaned + q;
+      });
+    }
     return '<svg' + a + '>';
   });
   return raw;
