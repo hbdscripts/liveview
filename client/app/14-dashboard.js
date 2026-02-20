@@ -5641,6 +5641,16 @@
           return list.slice(0, Math.max(0, Number(limit) || 0));
         }
 
+        function stripSvgDimensions(html) {
+          if (typeof html !== 'string' || !html) return html;
+          return html.replace(/<svg(\s[^>]*?)>/gi, function (match, attrs) {
+            var a = attrs
+              .replace(/\s+width\s*=\s*["'][^"']*["']/gi, '')
+              .replace(/\s+height\s*=\s*["'][^"']*["']/gi, '');
+            return '<svg' + a + '>';
+          });
+        }
+
         var LIST_ROW_COUNT = 4;
         function renderList(widgetKey, rows, sortBy, shareBaseRows) {
           var mountId = 'dash-ovw-' + widgetKey + '-list';
@@ -5657,7 +5667,7 @@
           for (i = 0; i < list.length; i++) {
             var r = list[i];
             var label = r && r.label != null ? String(r.label) : '—';
-            var icon = r && r.iconHtml ? String(r.iconHtml) : '<span class="kexo-dash-top-row-icon-placeholder" aria-hidden="true"></span>';
+            var icon = r && r.iconHtml ? stripSvgDimensions(String(r.iconHtml)) : '<span class="kexo-dash-top-row-icon-placeholder" aria-hidden="true"></span>';
             var valText = fmtMetric(metric, r);
             var seriesVal = metricValue(r, metric);
             var pct = metric === 'ctr'
@@ -5712,7 +5722,7 @@
             if (!Number.isFinite(pct)) pct = 0;
             pct = Math.max(0, Math.min(100, pct));
           }
-          var icon = top && top.iconHtml ? String(top.iconHtml) : '';
+          var icon = top && top.iconHtml ? stripSvgDimensions(String(top.iconHtml)) : '';
           var labelText = top && top.label != null ? String(top.label) : '—';
           var valueText = fmtMetric(metric, top);
           var shareText = metric === 'ctr' ? 'CTR' : (String(Math.round(pct)) + '% share');
