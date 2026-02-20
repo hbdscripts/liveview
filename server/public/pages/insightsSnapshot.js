@@ -11,18 +11,15 @@
     authorized: null,
     loading: false,
     requestId: 0,
-    charts: Object.create(null),
     data: null,
     preset: 'this_month',
     since: '',
     until: '',
-    performanceMetric: 'sessions',
     rulesDraft: null,
     editingRuleId: '',
     profitModalOpen: false,
     profitModalBackdrop: null,
     compactNumbers: true,
-    showGraphs: { revenueCost: false, performance: false, customers: false },
   };
 
   const PRESETS = new Set([
@@ -295,15 +292,6 @@
     window.history.replaceState({}, '', next);
   }
 
-  function destroyCharts() {
-    Object.keys(state.charts).forEach((key) => {
-      const chart = state.charts[key];
-      if (!chart || typeof chart.destroy !== 'function') return;
-      try { chart.destroy(); } catch (_) {}
-      state.charts[key] = null;
-    });
-  }
-
   function setGroupUi(groupKey, mode) {
     const loading = document.getElementById(`snapshot-${groupKey}-loading`);
     const error = document.getElementById(`snapshot-${groupKey}-error`);
@@ -322,10 +310,8 @@
   function setUnauthorizedView(isUnauthorized) {
     const card = document.getElementById('snapshot-not-authorized');
     const content = document.getElementById('snapshot-content');
-    const toolbar = document.querySelector('.snapshot-toolbar-card');
     if (card) card.classList.toggle('is-hidden', !isUnauthorized);
     if (content) content.classList.toggle('is-hidden', !!isUnauthorized);
-    if (toolbar) toolbar.classList.toggle('is-hidden', !!isUnauthorized);
   }
 
   function setCustomRangeVisible(show) {
@@ -514,126 +500,6 @@
     return { current: outCurrent, previous: outPrevious, len };
   }
 
-  function renderChart(key, elId, options) {
-    const el = document.getElementById(elId);
-    if (!el || typeof window.ApexCharts === 'undefined') return;
-    if (state.charts[key] && typeof state.charts[key].destroy === 'function') {
-      try { state.charts[key].destroy(); } catch (_) {}
-      state.charts[key] = null;
-    }
-    el.innerHTML = '';
-    const doRender = function doRender() {
-      try {
-        const chart = new window.ApexCharts(el, options);
-        chart.render();
-        state.charts[key] = chart;
-      } catch (_) {}
-    };
-    if (typeof window.kexoWaitForContainerDimensions === 'function') {
-      window.kexoWaitForContainerDimensions(el, doRender);
-    } else {
-      doRender();
-    }
-  }
-
-  function renderRevenueCostChart(data) {
-    const comparison = data && data.seriesComparison ? data.seriesComparison : {};
-    const current = comparison.current || {};
-    const previous = comparison.previous || {};
-    const alignedRevenue = alignPair(current.revenueGbp, previous.revenueGbp);
-    const alignedCost = alignPair(current.costGbp, previous.costGbp);
-    const len = Math.max(alignedRevenue.len, alignedCost.len);
-    const labels = buildCategoriesFromLabels(current.labelsYmd);
-    while (labels.length < len) labels.push(`P${labels.length + 1}`);
-    renderChart('revenueCost', 'snapshot-chart-revenue-cost', {
-      chart: { type: 'line', height: 320, toolbar: { show: false }, animations: { enabled: true } },
-      stroke: { width: [3, 3, 2, 2], curve: 'smooth', dashArray: [0, 0, 6, 6] },
-      colors: ['#206bc4', '#d63939', '#6ea8fe', '#f59f9f'],
-      dataLabels: { enabled: false },
-      series: [
-        { name: 'Revenue (This)', data: alignedRevenue.current },
-        { name: 'Cost (This)', data: alignedCost.current },
-        { name: 'Revenue (Previous)', data: alignedRevenue.previous },
-        { name: 'Cost (Previous)', data: alignedCost.previous },
-      ],
-      xaxis: { categories: labels },
-      yaxis: {
-        labels: { formatter: (v) => fmtCurrency(v) },
-      },
-      tooltip: {
-        y: { formatter: (v) => fmtCurrency(v) },
-      },
-      legend: { show: true, position: 'top' },
-      grid: { strokeDashArray: 3 },
-    });
-  }
-
-  function renderPerformanceChart(data) {
-    const key = String(state.performanceMetric || 'sessions');
-    const comparison = data && data.seriesComparison ? data.seriesComparison : {};
-    const current = comparison.current || {};
-    const previous = comparison.previous || {};
-    const aligned = alignPair(current[key], previous[key]);
-    const labels = buildCategoriesFromLabels(current.labelsYmd);
-    while (labels.length < aligned.len) labels.push(`P${labels.length + 1}`);
-    const valueFormat = function valueFormat(v) {
-      if (key === 'conversionRate') return fmtPercent(v);
-      if (key === 'aov') return fmtCurrency(v);
-      if (key === 'roas') return fmtRoas(v);
-      return fmtInt(v);
-    };
-    const title = key === 'conversionRate'
-      ? 'Conversion Rate'
-      : (key === 'aov' ? 'AOV' : (key === 'roas' ? 'ROAS' : (key === 'clicks' ? 'Clicks' : (key === 'orders' ? 'Orders' : 'Sessions'))));
-    renderChart('performance', 'snapshot-chart-performance', {
-      chart: { type: 'line', height: 300, toolbar: { show: false }, animations: { enabled: true } },
-      stroke: { width: [3, 2], curve: 'smooth', dashArray: [0, 6] },
-      colors: ['#2fb344', '#9ca3af'],
-      dataLabels: { enabled: false },
-      series: [
-        { name: `${title} (This)`, data: aligned.current },
-        { name: `${title} (Previous)`, data: aligned.previous },
-      ],
-      xaxis: { categories: labels },
-      yaxis: {
-        labels: { formatter: valueFormat },
-      },
-      tooltip: {
-        y: { formatter: valueFormat },
-      },
-      legend: { show: true, position: 'top' },
-      grid: { strokeDashArray: 3 },
-    });
-  }
-
-  function renderCustomersChart(data) {
-    const comparison = data && data.seriesComparison ? data.seriesComparison : {};
-    const current = comparison.current || {};
-    const previous = comparison.previous || {};
-    const alignedNew = alignPair(current.newCustomers, previous.newCustomers);
-    const alignedReturning = alignPair(current.returningCustomers, previous.returningCustomers);
-    const len = Math.max(alignedNew.len, alignedReturning.len);
-    const labels = buildCategoriesFromLabels(current.labelsYmd);
-    while (labels.length < len) labels.push(`P${labels.length + 1}`);
-    renderChart('customers', 'snapshot-chart-customers', {
-      chart: { type: 'line', height: 300, toolbar: { show: false }, animations: { enabled: true } },
-      stroke: { width: [3, 3, 2, 2], curve: 'smooth', dashArray: [0, 0, 6, 6] },
-      colors: ['#206bc4', '#f59f00', '#6ea8fe', '#f9cb80'],
-      dataLabels: { enabled: false },
-      series: [
-        { name: 'New Customers (This)', data: alignedNew.current },
-        { name: 'Returning Customers (This)', data: alignedReturning.current },
-        { name: 'New Customers (Previous)', data: alignedNew.previous },
-        { name: 'Returning Customers (Previous)', data: alignedReturning.previous },
-      ],
-      xaxis: { categories: labels },
-      yaxis: { labels: { formatter: (v) => fmtInt(v) } },
-      tooltip: { y: { formatter: (v) => fmtInt(v) } },
-      legend: { show: true, position: 'top' },
-      grid: { strokeDashArray: 3 },
-    });
-  }
-
   function renderCompareLine(data) {
     const line = document.getElementById('snapshot-compare-line');
     if (!line) return;
@@ -752,51 +618,25 @@
     renderRevenueCostTable(data);
     renderPerformanceTable(data);
     renderCustomersTable(data);
-    if (state.showGraphs.revenueCost) renderRevenueCostChart(data);
-    if (state.showGraphs.performance) renderPerformanceChart(data);
-    if (state.showGraphs.customers) renderCustomersChart(data);
     setAllGroups('ready');
     if (debugCostEnabled()) logCostReconciliation(data);
   }
 
-  function toggleSnapshotGraph(key) {
-    const wrap = document.querySelector('[data-snapshot-graph-wrap="' + key + '"]');
-    const btn = document.querySelector('.snapshot-show-graph-btn[data-snapshot-graph="' + key + '"]');
-    if (!wrap || !btn) return;
-    state.showGraphs[key] = !state.showGraphs[key];
-    if (state.showGraphs[key]) {
-      wrap.classList.remove('is-hidden');
-      btn.textContent = 'Hide graph';
-      if (state.data && state.data.ok) {
-        if (key === 'revenueCost') renderRevenueCostChart(state.data);
-        else if (key === 'performance') renderPerformanceChart(state.data);
-        else if (key === 'customers') renderCustomersChart(state.data);
-      }
-    } else {
-      if (state.charts[key] && typeof state.charts[key].destroy === 'function') {
-        try { state.charts[key].destroy(); } catch (_) {}
-        state.charts[key] = null;
-      }
-      wrap.classList.add('is-hidden');
-      btn.textContent = 'Show graph';
-    }
-  }
-
   function updateRoundingToggleUi() {
-    const link = document.getElementById('snapshot-rounding-toggle');
-    if (!link) return;
-    link.textContent = 'Rounding Numbers. Switch?';
-    link.setAttribute(
+    const item = document.getElementById('snapshot-rounding-toggle-dropdown');
+    if (!item) return;
+    item.textContent = state.compactNumbers ? 'Rounding Numbers: On' : 'Rounding Numbers: Off';
+    item.setAttribute(
       'title',
       state.compactNumbers
         ? 'Rounded numbers are ON. Click to show full values.'
         : 'Rounded numbers are OFF. Click to show compact values.'
     );
-    link.setAttribute(
+    item.setAttribute(
       'aria-label',
       state.compactNumbers
         ? 'Rounded numbers are on. Switch to full values.'
-        : 'Rounded numbers are off. Switch to rounded values.'
+        : 'Rounding numbers are off. Click to switch to rounded values.'
     );
   }
 
@@ -1230,7 +1070,6 @@
   }
 
   function bindProfitRulesUi() {
-    const openBtn = document.getElementById('snapshot-profit-settings-btn');
     const closeBtn = document.getElementById('profit-rules-close-btn');
     const dismissBtn = document.getElementById('profit-rules-dismiss-btn');
     const saveBtn = document.getElementById('profit-rules-save-btn');
@@ -1239,15 +1078,6 @@
     const formCancelBtn = document.getElementById('profit-rule-cancel-btn');
     const tableBody = document.getElementById('profit-rules-table-body');
 
-    if (openBtn) {
-      openBtn.addEventListener('click', function onOpenProfitRules() {
-        try {
-          const url = '/settings?tab=cost-expenses&costExpensesTab=rules';
-          if (typeof window !== 'undefined' && window.location && typeof window.location.assign === 'function') window.location.assign(url);
-          else window.location.href = url;
-        } catch (_) {}
-      });
-    }
     if (closeBtn) closeBtn.addEventListener('click', closeProfitRulesModal);
     if (dismissBtn) dismissBtn.addEventListener('click', closeProfitRulesModal);
     if (saveBtn) saveBtn.addEventListener('click', saveProfitRules);
@@ -1316,8 +1146,7 @@
   function bindUi() {
     const presetEl = document.getElementById('snapshot-preset-select');
     const applyCustomBtn = document.getElementById('snapshot-custom-apply-btn');
-    const perfSelect = document.getElementById('snapshot-performance-metric-select');
-    const roundingToggle = document.getElementById('snapshot-rounding-toggle');
+    const roundingToggle = document.getElementById('snapshot-rounding-toggle-dropdown');
     const retryButtons = [
       document.getElementById('snapshot-revenue-cost-retry'),
       document.getElementById('snapshot-performance-retry'),
@@ -1325,18 +1154,6 @@
     ];
     if (presetEl) presetEl.addEventListener('change', onPresetChange);
     if (applyCustomBtn) applyCustomBtn.addEventListener('click', onApplyCustomRange);
-    if (perfSelect) {
-      perfSelect.addEventListener('change', function onPerformanceMetricChange() {
-        state.performanceMetric = String(perfSelect.value || 'sessions');
-        if (state.showGraphs.performance && state.data && state.data.ok) renderPerformanceChart(state.data);
-      });
-    }
-    document.querySelectorAll('.snapshot-show-graph-btn').forEach(function(btn) {
-      var key = btn && btn.getAttribute && btn.getAttribute('data-snapshot-graph');
-      if (!key) return;
-      btn.addEventListener('click', function() { toggleSnapshotGraph(key); });
-      if (state.showGraphs[key]) btn.textContent = 'Hide graph'; else btn.textContent = 'Show graph';
-    });
     if (roundingToggle) {
       roundingToggle.addEventListener('click', function onRoundingToggle(event) {
         if (event && typeof event.preventDefault === 'function') event.preventDefault();
@@ -1352,31 +1169,6 @@
     bindProfitRulesUi();
   }
 
-  function restoreSnapshotHeaderDateLayout() {
-    try {
-      const body = document.body;
-      if (!body || String(body.getAttribute('data-page') || '') !== 'snapshot') return;
-      const dateBtn = document.getElementById('kexo-date-display');
-      const dateWrap = dateBtn && dateBtn.closest ? dateBtn.closest('.kexo-topbar-date') : null;
-      const sourceLi = document.querySelector('.kexo-desktop-nav .kexo-nav-date-slot');
-      const headerRow = document.querySelector('.page-header .row.align-items-center') || document.querySelector('.page-header .row');
-      if (!dateWrap || !headerRow) return;
-      headerRow.classList.add('kexo-page-header-layout-triple');
-
-      let dateCol = headerRow.querySelector('.kexo-page-header-date-col');
-      if (!dateCol) {
-        dateCol = document.createElement('div');
-        dateCol.className = 'col-auto kexo-page-header-date-col';
-        headerRow.appendChild(dateCol);
-      }
-      if (dateWrap.parentElement !== dateCol) dateCol.appendChild(dateWrap);
-      if (sourceLi) {
-        sourceLi.classList.add('is-date-relocated');
-        sourceLi.classList.remove('is-date-inline-fallback');
-      }
-    } catch (_) {}
-  }
-
   function moveSnapshotMenuItemToBottom() {
     try {
       const menu = document.getElementById('navbar-insights-menu');
@@ -1389,7 +1181,6 @@
 
   async function init() {
     moveSnapshotMenuItemToBottom();
-    restoreSnapshotHeaderDateLayout();
     bindUi();
     updateRoundingToggleUi();
     const initial = parseQueryState();
@@ -1421,7 +1212,5 @@
     await fetchSnapshot(false);
   }
 
-  window.addEventListener('pagehide', destroyCharts);
-  window.addEventListener('beforeunload', destroyCharts);
   init();
 })();

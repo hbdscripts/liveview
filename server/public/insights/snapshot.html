@@ -20,57 +20,41 @@
   <!--#include partials/header.html-->
   <!--#include partials/page-body-start.html-->
   <div class="page-header mb-3">
-    <div class="row align-items-center kexo-page-header-layout-triple kexo-page-header-accent-teal">
+    <div class="row align-items-center kexo-page-header-layout-triple kexo-page-header-accent-teal" style="--kexo-page-header-accent: rgb(75, 148, 228);">
       <div class="col-auto kexo-page-header-left-col">
         <div class="page-pretitle"><i class="kexo-nav-svg kexo-page-header-category-icon kexo-accent-2 fa-jelly-fill fa-regular fa-chart-pie" data-icon-key="nav-toggle-breakdown" aria-hidden="true"></i>Insights</div>
       </div>
       <div class="col kexo-page-header-title-col">
         <h2 class="page-title">Snapshot</h2>
       </div>
+      <div class="col-auto kexo-page-header-date-col">
+        <div class="d-flex flex-wrap align-items-center gap-2">
+          <select id="snapshot-preset-select" class="form-select form-select-sm" style="min-width: 10rem;" aria-label="Select snapshot date range preset">
+            <option value="this_month">This month</option>
+            <option value="last_month">Last month</option>
+            <option value="last_30_days">Last 30 days</option>
+            <option value="last_90_days">Last 90 days</option>
+            <option value="last_6_months">Last 6 months</option>
+            <option value="ytd">Year to date</option>
+            <option value="custom">Custom range</option>
+          </select>
+          <div class="snapshot-custom-only is-hidden d-flex align-items-center gap-1" id="snapshot-custom-start-wrap">
+            <input id="snapshot-custom-start" type="date" class="form-control form-control-sm" style="max-width: 8rem;" aria-label="Start date" />
+            <span class="text-muted small">–</span>
+          </div>
+          <div class="snapshot-custom-only is-hidden d-flex align-items-center gap-1" id="snapshot-custom-end-wrap">
+            <input id="snapshot-custom-end" type="date" class="form-control form-control-sm" style="max-width: 8rem;" aria-label="End date" />
+            <button type="button" id="snapshot-custom-apply-btn" class="btn btn-sm btn-primary">Apply</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="small text-muted mt-2" id="snapshot-compare-line" aria-live="polite">
+      This period compared with previous period
     </div>
   </div>
 
   <div id="tab-panel-snapshot" class="main-tab-panel active" role="tabpanel" aria-labelledby="nav-tab-snapshot">
-    <div class="card mb-3 snapshot-toolbar-card">
-      <div class="card-body">
-        <div class="row g-3 align-items-end">
-          <div class="col-12 col-lg-4 col-xl-3">
-            <label class="form-label mb-1" for="snapshot-preset-select">Date range</label>
-            <select id="snapshot-preset-select" class="form-select" aria-label="Select snapshot date range preset">
-              <option value="this_month">This month</option>
-              <option value="last_month">Last month</option>
-              <option value="last_30_days">Last 30 days</option>
-              <option value="last_90_days">Last 90 days</option>
-              <option value="last_6_months">Last 6 months</option>
-              <option value="ytd">Year to date</option>
-              <option value="custom">Custom range</option>
-            </select>
-          </div>
-          <div class="col-6 col-lg-3 col-xl-2 snapshot-custom-only is-hidden" id="snapshot-custom-start-wrap">
-            <label class="form-label mb-1" for="snapshot-custom-start">Start</label>
-            <input id="snapshot-custom-start" type="date" class="form-control" aria-label="Snapshot custom range start date" />
-          </div>
-          <div class="col-6 col-lg-3 col-xl-2 snapshot-custom-only is-hidden" id="snapshot-custom-end-wrap">
-            <label class="form-label mb-1" for="snapshot-custom-end">End</label>
-            <input id="snapshot-custom-end" type="date" class="form-control" aria-label="Snapshot custom range end date" />
-          </div>
-          <div class="col-auto snapshot-custom-only is-hidden" id="snapshot-custom-apply-wrap">
-            <button type="button" id="snapshot-custom-apply-btn" class="btn btn-primary">Apply</button>
-          </div>
-          <div class="col-auto ms-lg-auto">
-            <button type="button" id="snapshot-profit-settings-btn" class="btn btn-outline-secondary">
-              Profit settings
-            </button>
-          </div>
-        </div>
-        <div class="small text-muted mt-3" id="snapshot-compare-line" aria-live="polite">
-          This period compared with previous period
-        </div>
-        <div class="mt-1">
-          <a href="#" id="snapshot-rounding-toggle" class="small text-primary">Rounding Numbers. Switch?</a>
-        </div>
-      </div>
-    </div>
 
     <div class="card mb-3 is-hidden" id="snapshot-not-authorized">
       <div class="card-body py-5 text-center">
@@ -83,7 +67,16 @@
       <div class="card mb-3 snapshot-group-card" data-snapshot-group="revenue-cost">
         <div class="card-header d-flex align-items-center flex-wrap gap-2">
           <h3 class="card-title mb-0">Revenue &amp; Cost</h3>
-          <button type="button" class="btn btn-sm btn-ghost-secondary snapshot-show-graph-btn ms-auto" data-snapshot-graph="revenueCost" aria-label="Show graph">Show graph</button>
+          <div class="dropdown ms-auto">
+            <button type="button" class="btn btn-icon btn-ghost-secondary kexo-builder-icon-link" id="snapshot-revenue-cost-settings-btn" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Revenue &amp; Cost settings" aria-haspopup="true">
+              <i class="fa-light fa-gear" data-icon-key="table-builder-icon" aria-hidden="true"></i>
+            </button>
+            <div class="dropdown-menu dropdown-menu-end" id="snapshot-revenue-cost-settings-menu" aria-label="Revenue &amp; Cost settings">
+              <button type="button" class="dropdown-item" id="snapshot-rounding-toggle-dropdown" data-action="toggle-rounding">Rounding Numbers: On</button>
+              <div class="dropdown-divider"></div>
+              <a class="dropdown-item" id="snapshot-profit-settings-link" href="/settings?tab=cost-expenses&amp;costExpensesTab=rules">Profit settings</a>
+            </div>
+          </div>
         </div>
         <div class="card-body">
           <div class="snapshot-group-loading" id="snapshot-revenue-cost-loading" aria-live="polite">
@@ -110,30 +103,13 @@
                 <tbody id="snapshot-revenue-cost-table-body"></tbody>
               </table>
             </div>
-            <div class="snapshot-chart-wrap snapshot-chart-wrap--hidden mt-3 is-hidden" data-snapshot-graph-wrap="revenueCost">
-              <div id="snapshot-chart-revenue-cost" class="snapshot-chart" role="img" aria-label="Revenue and cost trend chart"></div>
-            </div>
           </div>
         </div>
       </div>
 
       <div class="card mb-3 snapshot-group-card" data-snapshot-group="performance">
-        <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <div class="card-header d-flex align-items-center flex-wrap gap-2">
           <h3 class="card-title mb-0">Performance</h3>
-          <div class="d-flex align-items-center gap-2 ms-auto">
-          <button type="button" class="btn btn-sm btn-ghost-secondary snapshot-show-graph-btn" data-snapshot-graph="performance" aria-label="Show graph">Show graph</button>
-          <div class="snapshot-chart-picker">
-            <label class="form-label mb-0 small text-muted" for="snapshot-performance-metric-select">Chart</label>
-            <select id="snapshot-performance-metric-select" class="form-select form-select-sm snapshot-chart-select" aria-label="Performance chart metric">
-              <option value="sessions">Sessions</option>
-              <option value="orders">Orders</option>
-              <option value="conversionRate">Conversion Rate</option>
-              <option value="aov">AOV</option>
-              <option value="clicks">Clicks</option>
-              <option value="roas">ROAS</option>
-            </select>
-          </div>
-          </div>
         </div>
         <div class="card-body">
           <div class="snapshot-group-loading" id="snapshot-performance-loading" aria-live="polite">
@@ -160,9 +136,6 @@
                 <tbody id="snapshot-performance-table-body"></tbody>
               </table>
             </div>
-            <div class="snapshot-chart-wrap snapshot-chart-wrap--hidden mt-3 is-hidden" data-snapshot-graph-wrap="performance">
-              <div id="snapshot-chart-performance" class="snapshot-chart" role="img" aria-label="Performance trend chart"></div>
-            </div>
           </div>
         </div>
       </div>
@@ -170,7 +143,6 @@
       <div class="card mb-3 snapshot-group-card" data-snapshot-group="customers">
         <div class="card-header d-flex align-items-center flex-wrap gap-2">
           <h3 class="card-title mb-0">Customers</h3>
-          <button type="button" class="btn btn-sm btn-ghost-secondary snapshot-show-graph-btn ms-auto" data-snapshot-graph="customers" aria-label="Show graph">Show graph</button>
         </div>
         <div class="card-body">
           <div class="snapshot-group-loading" id="snapshot-customers-loading" aria-live="polite">
@@ -196,9 +168,6 @@
                 </thead>
                 <tbody id="snapshot-customers-table-body"></tbody>
               </table>
-            </div>
-            <div class="snapshot-chart-wrap snapshot-chart-wrap--hidden mt-3 is-hidden" data-snapshot-graph-wrap="customers">
-              <div id="snapshot-chart-customers" class="snapshot-chart" role="img" aria-label="New and returning customers trend chart"></div>
             </div>
           </div>
         </div>
@@ -328,8 +297,6 @@
   <!--#include partials/page-body-end.html-->
   <!--#include partials/footer.html-->
   <script src="https://cdn.jsdelivr.net/npm/@tabler/core@1.4.0/dist/js/tabler.min.js" defer></script>
-  <script src="https://cdn.jsdelivr.net/npm/apexcharts@4.7.0/dist/apexcharts.min.js" defer></script>
-  <script src="/kexo-chart-builder.js" defer></script>
   <script src="/app.js" defer></script>
   <script src="/pages/insightsSnapshot.js" defer></script>
   <script src="/theme-settings.js" defer></script>
