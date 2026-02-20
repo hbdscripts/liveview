@@ -377,18 +377,13 @@
             <div class="kpi-compare-modal-header-text">
               <div class="kpi-compare-kicker-row">
                 <div class="kpi-compare-kicker">Kexo Score</div>
-                <button
-                  type="button"
-                  class="kexo-score-info-btn kexo-score-info-btn--title"
-                  data-kexo-score-popover="1"
-                  data-bs-toggle="popover"
-                  data-bs-trigger="click"
-                  data-bs-placement="bottom"
-                  data-bs-custom-class="kexo-score-popover"
-                  data-bs-content="Kexo Score is a weighted 0-100 health signal based on Revenue, Orders, Items Ordered, Conversion Rate, and Ads ROAS when connected. A score near 50 is neutral trend, above 50 is improving, and below 50 is declining."
+                <span
+                  class="kexo-score-info-cue am-tooltip-cue text-secondary ms-1"
+                  title="Kexo Score is a weighted 0-100 health signal based on Revenue, Orders, Items Ordered, Conversion Rate, and Ads ROAS when connected. A score near 50 is neutral trend, above 50 is improving, and below 50 is declining."
+                  role="img"
                   aria-label="What Kexo Score means">
-                  <i class="fa-jelly fa-question" data-icon-key="kexo-score-help" aria-hidden="true"></i>
-                </button>
+                  <i class="fa-thin fa-circle-info" style="font-size:0.85em" aria-hidden="true"></i>
+                </span>
               </div>
               <h3 class="kpi-compare-title">Breakdown</h3>
             </div>

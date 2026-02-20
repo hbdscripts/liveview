@@ -2828,12 +2828,7 @@ html[data-bs-theme="dark"] .report-build-wrap {
   color: #0f172a;
 }
 .kexo-score-summary-card .kexo-score-summary-drivers {
-  margin: 0.5rem 0 0 0;
-  padding: 0.5rem 0.65rem 0.5rem 0.75rem;
-  background: rgba(15, 23, 42, 0.04);
-  border-left: 3px solid var(--kexo-accent-1, #4b94e4);
-  border-radius: 0 6px 6px 0;
-  color: #475569;
+  margin: 20px 0;
   list-style: none;
 }
 .kexo-score-summary-card .kexo-score-summary-drivers li {
@@ -2845,9 +2840,6 @@ html[data-bs-theme="dark"] .report-build-wrap {
 }
 .kexo-score-summary-card .kexo-score-summary-loading {
   margin: 0;
-}
-.kexo-score-summary-card .kexo-score-summary-refresh {
-  margin-top: 0.35rem;
 }
 
 .snapshot-toolbar-card .form-select,
@@ -6485,7 +6477,7 @@ body[data-page="settings"] .settings-mobile-children a {
 body[data-page="settings"] .settings-mobile-children a.active { background: var(--tblr-bg-surface-secondary, #f6f8fb); }
 @media (max-width: 768px) { .settings-charts-color-grid { grid-template-columns: 1fr; } }
 
-.am-tooltip-cue { font-size: 0.85em; }
+.am-tooltip-cue { font-size: 0.85em; cursor: help; }
 .kexo-settings-json-pre { max-height: 120px; }
 .kexo-diagnostics-range-select { width: auto; min-width: 140px; }
 

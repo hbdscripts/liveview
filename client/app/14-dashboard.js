@@ -4457,10 +4457,7 @@
               if (drivers.length) parts.push('<ul class="kexo-score-summary-drivers">' + drivers.map(function(d) { return '<li>' + escapeHtml(String(d)) + '</li>'; }).join('') + '</ul>');
               if (rec) parts.push('<p class="kexo-score-summary-recommendation">' + rec + '</p>');
               if (parts.length === 0) parts.push('<p class="kexo-score-summary-text text-muted">No summary for this range.</p>');
-              parts.push('<button type="button" class="btn btn-sm btn-ghost-secondary kexo-score-summary-refresh" aria-label="Refresh summary">Refresh</button>');
               wrap.innerHTML = parts.join('');
-              var refreshBtn = wrap.querySelector('.kexo-score-summary-refresh');
-              if (refreshBtn) refreshBtn.addEventListener('click', function() { fetchAndRenderSummary(true); });
             })
             .catch(function() {
               if (wrap) wrap.innerHTML = '<p class="kexo-score-summary-text text-muted">Summary unavailable.</p>';
