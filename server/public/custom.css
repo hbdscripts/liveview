@@ -2551,6 +2551,14 @@ html[data-bs-theme="dark"] .report-build-wrap {
   stroke-width: 4px;
   stroke-linecap: butt;
 }
+
+/* Prevent initial "stacked full circles" blur before JS sets dasharrays. */
+.kexo-score-ring-svg--header .kexo-score-ring-fill,
+.kexo-score-ring-svg--overview .kexo-score-ring-fill,
+#kexo-score-modal .kexo-score-ring-svg--modal .kexo-score-ring-fill {
+  stroke-dasharray: 0 1000;
+  stroke-dashoffset: 0;
+}
 .kexo-score-ring-wrap--header .kexo-score-ring-center {
   position: absolute;
   top: 50%;
@@ -4197,13 +4205,13 @@ body[data-page="dashboard"] #dash-trending-down .dash-trend-delta.text-red {
   justify-self: end;
 }
 .kexo-footer .kexo-score-btn--footer .kexo-score-ring-wrap--header {
-  width: 36px;
-  height: 36px;
-  transform: translateZ(0);
+  /* Match the SVG viewBox (40x40) for crisper strokes. */
+  width: 40px;
+  height: 40px;
 }
 .kexo-footer .kexo-score-btn--footer .kexo-score-ring-svg--header {
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   shape-rendering: geometricPrecision;
 }
 .kexo-footer .kexo-score-btn--footer .kexo-score-num--header {
