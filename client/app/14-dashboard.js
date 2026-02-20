@@ -3963,7 +3963,7 @@
               productUrl: productUrl
             };
           });
-          renderDashTopList('dash-top-products-body', prodRows, { accentCss: 'background: var(--kexo-kpi-delta-same, var(--kexo-accent-1, #4b94e4));' });
+          renderDashTopList('dash-top-products-body', prodRows, { accentCss: 'background: #8395aa;' });
         }
 
         var countryBody = el('dash-top-countries-body');
@@ -3992,7 +3992,7 @@
               pct: pct
             };
           });
-          renderDashTopList('dash-top-countries-body', countryRows, { accentCss: 'background: var(--kexo-kpi-delta-same, var(--kexo-accent-1, #4b94e4));' });
+          renderDashTopList('dash-top-countries-body', countryRows, { accentCss: 'background: #8395aa;' });
         }
 
         function fmtSignedGbp(v) {

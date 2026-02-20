@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 35192804347d45e3
+// checksum: 1d453fdf6e62d576
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -7388,21 +7388,35 @@ const API = '';
       );
       var mapFit = 'contain';
       var fillOpacity = 0.18;
-      var zoomOnScroll = false;
-      var zoomAnimate = false;
       try {
         if (typeof chartStyleFromUiConfig === 'function') {
           var st = chartStyleFromUiConfig(chartKey) || {};
           mapFit = (String(st.mapFit || '').trim().toLowerCase() === 'cover') ? 'cover' : 'contain';
           if (Number.isFinite(Number(st.fillOpacity))) fillOpacity = Math.max(0, Math.min(1, Number(st.fillOpacity)));
-          if (st.mapZoomOnScroll === true) zoomOnScroll = true;
-          if (st.mapZoomAnimate === true) zoomAnimate = true;
         }
       } catch (_) {}
       var alphaMult = fillOpacity > 0 ? (fillOpacity / 0.18) : 0;
       if (!Number.isFinite(alphaMult)) alphaMult = 1;
       alphaMult = Math.max(0, Math.min(3, alphaMult));
       function a(x) { return Math.max(0, Math.min(1, x * alphaMult)); }
+      var inactiveOpacity = 0.09;
+      var inactiveRgb = primaryRgb;
+      try {
+        if (typeof chartStyleFromUiConfig === 'function') {
+          var st2 = chartStyleFromUiConfig(chartKey) || {};
+          if (Number.isFinite(Number(st2.mapInactiveOpacity))) inactiveOpacity = Math.max(0, Math.min(1, Number(st2.mapInactiveOpacity)));
+          if (st2.mapInactiveColor && String(st2.mapInactiveColor).trim()) {
+            var hex = String(st2.mapInactiveColor).trim();
+            var hexMatch = /^#([0-9a-f]{6})$/i.exec(hex);
+            if (hexMatch) {
+              var hr = parseInt(hexMatch[1].slice(0, 2), 16);
+              var hg = parseInt(hexMatch[1].slice(2, 4), 16);
+              var hb = parseInt(hexMatch[1].slice(4, 6), 16);
+              inactiveRgb = hr + ',' + hg + ',' + hb;
+            }
+          }
+        }
+      } catch (_) {}
       var jvmOpts = {
         selector: '#' + containerId,
         map: 'world',
@@ -7410,29 +7424,16 @@ const API = '';
         showTooltip: opts.showTooltip !== false,
         draggable: opts.draggable !== false,
         zoomButtons: opts.zoomButtons !== false,
+        zoomOnScroll: false,
+        zoomAnimate: false,
         zoomMin: zoomMin,
         zoomMax: zoomMax,
-        zoomOnScroll: zoomOnScroll,
-        zoomAnimate: zoomAnimate,
         regionStyle: {
-          initial: { fill: 'rgba(' + primaryRgb + ',' + String(a(0.18).toFixed(3)) + ')', stroke: border, strokeWidth: 0.7 },
+          initial: { fill: 'rgba(' + inactiveRgb + ',' + String(Math.max(0, Math.min(1, inactiveOpacity)).toFixed(3)) + ')', stroke: border, strokeWidth: 0.7 },
           hover: { fill: 'rgba(' + primaryRgb + ',' + String(a(0.46).toFixed(3)) + ')' },
           selected: { fill: 'rgba(' + primaryRgb + ',' + String(a(0.78).toFixed(3)) + ')' },
         },
       };
-      if (opts.selectedRegions && Array.isArray(opts.selectedRegions) && opts.selectedRegions.length > 0) {
-        jvmOpts.selectedRegions = opts.selectedRegions;
-        jvmOpts.regionsSelectable = true;
-        jvmOpts.regionsSelectableOne = false;
-        jvmOpts.labels = {
-          regions: {
-            render: function(code) {
-              if (opts.selectedRegions.indexOf(code) < 0) return null;
-              return (typeof countryLabel === 'function' ? countryLabel(code) : code) || code;
-            },
-          },
-        };
-      }
       if (opts.onRegionTooltipShow) jvmOpts.onRegionTooltipShow = opts.onRegionTooltipShow;
       var instance = new jsVectorMap(jvmOpts);
       try {
@@ -7494,25 +7495,9 @@ const API = '';
       var mapHeight = Math.round(baseHeight * (pct / 100));
       if (mapHeight < 80) mapHeight = 80;
 
-      // One-time bind Live / By period toggle on Countries page.
-      if (!el.hasAttribute('data-kexo-map-toggle-bound')) {
-        el.setAttribute('data-kexo-map-toggle-bound', '1');
-        var liveBtn = document.getElementById('countries-map-source-live');
-        var periodBtn = document.getElementById('countries-map-source-period');
-        function setMapSource(source) {
-          window.countriesMapSource = source;
-          if (liveBtn) liveBtn.classList.toggle('active', source === 'live');
-          if (periodBtn) periodBtn.classList.toggle('active', source === 'period');
-          renderCountriesMapChart(statsCache);
-        }
-        if (liveBtn) liveBtn.addEventListener('click', function() { setMapSource('live'); });
-        if (periodBtn) periodBtn.addEventListener('click', function() { setMapSource('period'); });
-      }
-
       // Unify: show the same live online map used on /dashboard/live + /dashboard/overview.
       // The Countries page still has its country tables below; the map itself reflects live activity.
-      // When "By period" is selected, skip live and use historical choropleth.
-      if (window.countriesMapSource !== 'period' && typeof fetchLiveOnlineMapSessions === 'function' && typeof renderLiveOnlineMapChartFromSessions === 'function') {
+      if (typeof fetchLiveOnlineMapSessions === 'function' && typeof renderLiveOnlineMapChartFromSessions === 'function') {
         el.style.height = mapHeight + 'px';
         el.style.minHeight = mapHeight + 'px';
         if (!isChartEnabledByUiConfig(chartKey, true)) {
@@ -7642,18 +7627,6 @@ const API = '';
         // Avoid zooming hard when only a couple countries have activity.
         if (top.length >= 3) focusOn = { regions: top, animate: false };
       } catch (_) {}
-      var selectedRegionsHistorical = [];
-      try {
-        Object.keys(choroplethByIso2 || {}).forEach(function(k) {
-          var iso = String(k || '').trim().toUpperCase().slice(0, 2);
-          if (!iso || iso === 'XX') return;
-          var n = Number(choroplethByIso2[k]);
-          if (!Number.isFinite(n) || n <= 0) return;
-          selectedRegionsHistorical.push({ iso: iso, value: n });
-        });
-        selectedRegionsHistorical.sort(function(a, b) { return (Number(b && b.value) || 0) - (Number(a && a.value) || 0); });
-        selectedRegionsHistorical = selectedRegionsHistorical.slice(0, 5).map(function(r) { return r.iso; }).filter(Boolean);
-      } catch (_) {}
 
       var pinItems = [];
       try {
@@ -7685,7 +7658,6 @@ const API = '';
           zoomButtons: !!mapStyle.mapZoomButtons,
           initialZoomMax: 2.1,
           focusOn: focusOn,
-          selectedRegions: selectedRegionsHistorical.length > 0 ? selectedRegionsHistorical : undefined,
           retry: function() { renderCountriesMapChart(data); },
           onRegionTooltipShow: function(event, tooltip, code) {
             const iso = (code || '').toString().trim().toUpperCase();
@@ -10339,10 +10311,10 @@ const API = '';
         mapShowTooltip: true,
         mapDraggable: true,
         mapZoomButtons: true,
-        mapZoomOnScroll: false,
-        mapZoomAnimate: false,
         mapShowEmptyCaption: true,
         mapFit: 'cover',
+        mapInactiveOpacity: 0.09,
+        mapInactiveColor: '',
         mapStageBrowseColor: '',
         mapStageCartColor: '',
         mapStageCheckoutColor: '',
@@ -10392,13 +10364,13 @@ const API = '';
         mapShowTooltip: src.mapShowTooltip !== false,
         mapDraggable: src.mapDraggable !== false,
         mapZoomButtons: src.mapZoomButtons !== false,
-        mapZoomOnScroll: !!(src.mapZoomOnScroll === true),
-        mapZoomAnimate: !!(src.mapZoomAnimate === true),
         mapShowEmptyCaption: src.mapShowEmptyCaption !== false,
         mapFit: (function() {
           var v = String(src.mapFit != null ? src.mapFit : def.mapFit).trim().toLowerCase();
           return (v === 'cover' || v === 'contain') ? v : def.mapFit;
         })(),
+        mapInactiveOpacity: Math.max(0, Math.min(1, Number(src.mapInactiveOpacity) || def.mapInactiveOpacity)),
+        mapInactiveColor: normalizeOptionalHexColorStrict(src.mapInactiveColor || ''),
         mapStageBrowseColor: normalizeOptionalHexColorStrict(src.mapStageBrowseColor),
         mapStageCartColor: normalizeOptionalHexColorStrict(src.mapStageCartColor),
         mapStageCheckoutColor: normalizeOptionalHexColorStrict(src.mapStageCheckoutColor),
@@ -12987,13 +12959,6 @@ const API = '';
           } catch (_) {}
           return {};
         })();
-        var selectedRegionsLive = (function () {
-          try {
-            var sorted = keys.slice().sort(function(a, b) { return (countsByIso2[b] || 0) - (countsByIso2[a] || 0); });
-            return sorted.slice(0, 5).map(function(c) { return String(c || '').trim().toUpperCase().slice(0, 2); }).filter(Boolean);
-          } catch (_) {}
-          return [];
-        })();
         liveOnlineMapChartInstance = typeof renderOnlineMapInto === 'function' && renderOnlineMapInto(chartKey, chartKey, {
           setState: setState,
           mapHeight: mapHeight,
@@ -13006,7 +12971,6 @@ const API = '';
           zoomButtons: zoomButtons,
           initialZoomMax: 2.1,
           focusOn: focusOnLive,
-          selectedRegions: selectedRegionsLive.length > 0 ? selectedRegionsLive : undefined,
           retry: function() { renderLiveOnlineMapChartFromSessions(sessionList); },
           onRegionTooltipShow: function(event, tooltip, code2) {
             var iso2 = (code2 || '').toString().trim().toUpperCase();
@@ -22033,7 +21997,7 @@ const API = '';
               productUrl: productUrl
             };
           });
-          renderDashTopList('dash-top-products-body', prodRows, { accentCss: 'background: var(--kexo-kpi-delta-same, var(--kexo-accent-1, #4b94e4));' });
+          renderDashTopList('dash-top-products-body', prodRows, { accentCss: 'background: #8395aa;' });
         }
 
         var countryBody = el('dash-top-countries-body');
@@ -22062,7 +22026,7 @@ const API = '';
               pct: pct
             };
           });
-          renderDashTopList('dash-top-countries-body', countryRows, { accentCss: 'background: var(--kexo-kpi-delta-same, var(--kexo-accent-1, #4b94e4));' });
+          renderDashTopList('dash-top-countries-body', countryRows, { accentCss: 'background: #8395aa;' });
         }
 
         function fmtSignedGbp(v) {
@@ -26966,6 +26930,9 @@ const API = '';
           var styleIn = (s && s.style && typeof s.style === 'object') ? s.style : {};
           var mapFit = (styleIn.mapFit != null) ? String(styleIn.mapFit).trim().toLowerCase() : 'cover';
           if (mapFit !== 'cover' && mapFit !== 'contain') mapFit = 'cover';
+          var inactiveOpacity = (styleIn.mapInactiveOpacity != null && Number.isFinite(Number(styleIn.mapInactiveOpacity))) ? Math.max(0, Math.min(1, Number(styleIn.mapInactiveOpacity))) : 0.09;
+          var inactiveOpacityPct = Math.round(inactiveOpacity * 100);
+          var inactiveColor = (styleIn.mapInactiveColor != null) ? String(styleIn.mapInactiveColor).trim() : '';
           var stageBrowse = (styleIn.mapStageBrowseColor != null) ? String(styleIn.mapStageBrowseColor).trim() : '';
           var stageCart = (styleIn.mapStageCartColor != null) ? String(styleIn.mapStageCartColor).trim() : '';
           var stageCheckout = (styleIn.mapStageCheckoutColor != null) ? String(styleIn.mapStageCheckoutColor).trim() : '';
@@ -26982,6 +26949,12 @@ const API = '';
           body += '<option value="contain"' + (mapFit === 'contain' ? ' selected' : '') + '>Fit (contain)</option>';
           body += '</select>';
           body += '<div class="form-hint">Cover fills the container (crops edges). Contain shows the full world (may leave whitespace).</div></div>';
+
+          body += '<div class="col-12 col-md-6"><label class="form-label d-flex align-items-center justify-content-between"><span>Inactive regions opacity</span><span class="text-muted small" data-cs-inactive-opacity-value>' + inactiveOpacityPct + '%</span></label>';
+          body += '<input type="range" class="form-range" min="0" max="100" step="1" value="' + inactiveOpacityPct + '" data-cs-field="mapInactiveOpacity">';
+          body += '<div class="form-hint">Opacity for countries with no data (default 9%).</div></div>';
+          body += '<div class="col-12 col-md-6"><label class="form-label small">Inactive regions colour</label><div class="kexo-color-input"><input type="text" class="form-control form-control-sm" data-kexo-color-input data-cs-field="mapInactiveColor" value="' + escapeHtml(inactiveColor) + '" placeholder="(default)"><span class="kexo-color-swatch" data-kexo-color-swatch aria-hidden="true"></span></div>';
+          body += '<div class="form-hint">Leave blank to use map accent colour.</div></div>';
 
           body += '<div class="col-12"><label class="form-label">Stage colors (legend + pins)</label><div class="row g-2">';
           body += '<div class="col-6 col-md-3"><label class="form-label small">Browsing</label><div class="kexo-color-input"><input type="text" class="form-control form-control-sm" data-kexo-color-input data-cs-field="mapStageBrowseColor" value="' + escapeHtml(stageBrowse) + '" placeholder="(default)"><span class="kexo-color-swatch" data-kexo-color-swatch aria-hidden="true"></span></div></div>';
@@ -27107,6 +27080,22 @@ const API = '';
           sync();
         }
 
+        function bindInactiveOpacityControl() {
+          var input = bodyEl.querySelector('[data-cs-field="mapInactiveOpacity"]');
+          var valueEl = bodyEl.querySelector('[data-cs-inactive-opacity-value]');
+          if (!input) return;
+          function sync() {
+            var raw = parseInt(String(input.value || ''), 10);
+            if (!Number.isFinite(raw)) raw = inactiveOpacityPct;
+            raw = Math.max(0, Math.min(100, raw));
+            try { input.value = String(raw); } catch (_) {}
+            if (valueEl) valueEl.textContent = raw + '%';
+          }
+          try { input.addEventListener('input', sync); } catch (_) {}
+          try { input.addEventListener('change', sync); } catch (_) {}
+          sync();
+        }
+
         function bindPieLabelControls() {
           var posEl = bodyEl.querySelector('[data-cs-field="pieLabelPosition"]');
           var offEl = bodyEl.querySelector('[data-cs-field="pieLabelOffset"]');
@@ -27192,6 +27181,7 @@ const API = '';
         }
 
         bindFillOpacityControls();
+        bindInactiveOpacityControl();
         bindPieLabelControls();
         bindCapabilityRangeControls();
         syncModeControls(mode);
@@ -27296,6 +27286,13 @@ const API = '';
               if (mf !== 'cover' && mf !== 'contain') mf = 'cover';
               styleBase.mapFit = mf;
             }
+            var inactiveOpacityEl = bodyEl.querySelector('[data-cs-field="mapInactiveOpacity"]');
+            if (inactiveOpacityEl) {
+              var raw = parseInt(inactiveOpacityEl.value, 10);
+              if (Number.isFinite(raw)) styleBase.mapInactiveOpacity = Math.max(0, Math.min(1, raw / 100));
+            }
+            var inactiveColorEl = bodyEl.querySelector('[data-cs-field="mapInactiveColor"]');
+            if (inactiveColorEl) styleBase.mapInactiveColor = normalizeHexOpt(inactiveColorEl.value) || '';
             ['mapStageBrowseColor', 'mapStageCartColor', 'mapStageCheckoutColor', 'mapStagePurchaseColor'].forEach(function (field) {
               var el = bodyEl.querySelector('[data-cs-field="' + field + '"]');
               if (!el) return;
