@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: cb1ddd06de535a0e
+// checksum: 968552b22a5aa0a5
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -22161,37 +22161,23 @@ const API = '';
           if (k === 'roas') return 'mer';
           return k;
         }
-        function kexoScoreBaselineBars(key, cur, prev) {
-          var spec = metricUiSpec(key);
-          var cRaw = (typeof cur === 'number' && Number.isFinite(cur)) ? cur : null;
-          var pRaw = (typeof prev === 'number' && Number.isFinite(prev)) ? prev : null;
+        function kexoScoreBaselineBars(key, curScore, prevScore) {
+          var cRaw = (typeof curScore === 'number' && Number.isFinite(curScore)) ? curScore : null;
+          var pRaw = (typeof prevScore === 'number' && Number.isFinite(prevScore)) ? prevScore : null;
           if (cRaw == null && pRaw == null) {
             return { prevPct: 0, curPct: 0, barClass: 'bg-secondary', barLabel: '\u2014', isNew: false };
           }
-          var isNew = cRaw != null && cRaw !== 0 && (pRaw == null || Math.abs(pRaw) < 1e-9);
-          var c = cRaw != null ? Math.max(0, cRaw) : 0;
-          var p = pRaw != null ? Math.max(0, pRaw) : 0;
-          var floor = Number(spec.floor) || 0;
-          var padMult = Number(KEXO_SCORE_V2_UI.barPadMult);
-          if (!Number.isFinite(padMult) || padMult < 0) padMult = 0;
-          var base = Math.max(c, p, floor, 1e-9);
-          var pad = Math.max(0, floor) * padMult;
-          var scale = base + pad;
-          var prevPct = Math.max(0, Math.min(100, (p / scale) * 100));
-          var curPct = Math.max(0, Math.min(100, (c / scale) * 100));
+          var isNew = cRaw != null && pRaw == null;
+          var c = cRaw != null ? Math.max(0, Math.min(100, cRaw)) : 0;
+          var p = pRaw != null ? Math.max(0, Math.min(100, pRaw)) : 0;
+          var prevPct = p;
+          var curPct = c;
 
           var barClass = 'kexo-score-bar-palette kexo-score-bar-palette--flat';
           var barLabel = '';
           if (!isNew && cRaw != null && pRaw != null) {
-            var dir = 0;
-            if (spec.stableMode === 'pp') {
-              var dpp = cRaw - pRaw;
-              if (Math.abs(dpp) >= spec.stable) dir = dpp > 0 ? 1 : -1;
-            } else {
-              var denom = Math.max(Math.abs(pRaw), Number(spec.denomFloor) || 0, 1e-9);
-              var rel = (cRaw - pRaw) / denom;
-              if (Math.abs(rel) >= spec.stable) dir = rel > 0 ? 1 : -1;
-            }
+            var d = c - p;
+            var dir = (Math.abs(d) >= 0.5) ? (d > 0 ? 1 : -1) : 0;
             barClass = dir > 0
               ? 'kexo-score-bar-palette kexo-score-bar-palette--up'
               : (dir < 0 ? 'kexo-score-bar-palette kexo-score-bar-palette--down' : 'kexo-score-bar-palette kexo-score-bar-palette--flat');
@@ -22250,7 +22236,7 @@ const API = '';
         });
         var html = rows.map(function(c) {
           var label = (c.label && String(c.label).trim()) ? String(c.label) : (c.key || '');
-          var bars = kexoScoreBaselineBars(c.key, c.value, c.previous);
+          var bars = kexoScoreBaselineBars(c.key, c.score, c.previousScore);
           var valueStr = fmtComponentValue(c.key, c.value);
           var deltaStr = fmtComponentDeltaText(c.key, c.value, c.previous);
           if (!deltaStr) deltaStr = '\u2014';
@@ -22446,37 +22432,23 @@ const API = '';
           return k;
         }
 
-        function kexoScoreBaselineBarsModal(key, cur, prev) {
-          var spec = metricUiSpec(key);
-          var cRaw = (typeof cur === 'number' && Number.isFinite(cur)) ? cur : null;
-          var pRaw = (typeof prev === 'number' && Number.isFinite(prev)) ? prev : null;
+        function kexoScoreBaselineBarsModal(key, curScore, prevScore) {
+          var cRaw = (typeof curScore === 'number' && Number.isFinite(curScore)) ? curScore : null;
+          var pRaw = (typeof prevScore === 'number' && Number.isFinite(prevScore)) ? prevScore : null;
           if (cRaw == null && pRaw == null) {
             return { prevPct: 0, curPct: 0, barClass: 'bg-secondary', barLabel: '\u2014', isNew: false };
           }
-          var isNew = cRaw != null && cRaw !== 0 && (pRaw == null || Math.abs(pRaw) < 1e-9);
-          var c = cRaw != null ? Math.max(0, cRaw) : 0;
-          var p = pRaw != null ? Math.max(0, pRaw) : 0;
-          var floor = Number(spec.floor) || 0;
-          var padMult = Number(KEXO_SCORE_V2_UI.barPadMult);
-          if (!Number.isFinite(padMult) || padMult < 0) padMult = 0;
-          var base = Math.max(c, p, floor, 1e-9);
-          var pad = Math.max(0, floor) * padMult;
-          var scale = base + pad;
-          var prevPct = Math.max(0, Math.min(100, (p / scale) * 100));
-          var curPct = Math.max(0, Math.min(100, (c / scale) * 100));
+          var isNew = cRaw != null && pRaw == null;
+          var c = cRaw != null ? Math.max(0, Math.min(100, cRaw)) : 0;
+          var p = pRaw != null ? Math.max(0, Math.min(100, pRaw)) : 0;
+          var prevPct = p;
+          var curPct = c;
 
           var barClass = 'kexo-score-bar-palette kexo-score-bar-palette--flat';
           var barLabel = '';
           if (!isNew && cRaw != null && pRaw != null) {
-            var dir = 0;
-            if (spec.stableMode === 'pp') {
-              var dpp = cRaw - pRaw;
-              if (Math.abs(dpp) >= spec.stable) dir = dpp > 0 ? 1 : -1;
-            } else {
-              var denom = Math.max(Math.abs(pRaw), Number(spec.denomFloor) || 0, 1e-9);
-              var rel = (cRaw - pRaw) / denom;
-              if (Math.abs(rel) >= spec.stable) dir = rel > 0 ? 1 : -1;
-            }
+            var d = c - p;
+            var dir = (Math.abs(d) >= 0.5) ? (d > 0 ? 1 : -1) : 0;
             barClass = dir > 0
               ? 'kexo-score-bar-palette kexo-score-bar-palette--up'
               : (dir < 0 ? 'kexo-score-bar-palette kexo-score-bar-palette--down' : 'kexo-score-bar-palette kexo-score-bar-palette--flat');
@@ -22540,7 +22512,7 @@ const API = '';
           });
           breakdownHtml = rows.map(function(c) {
             var label = (c.label && String(c.label).trim()) ? String(c.label) : (c.key || '');
-            var bars = kexoScoreBaselineBarsModal(c.key, c.value, c.previous);
+            var bars = kexoScoreBaselineBarsModal(c.key, c.score, c.previousScore);
             var valueStr = fmtComponentValue(c.key, c.value);
             var deltaStr = fmtComponentDeltaText(c.key, c.value, c.previous);
             if (!deltaStr) deltaStr = '\u2014';

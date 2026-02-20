@@ -4264,6 +4264,23 @@ async function getKexoScore(options = {}) {
     if (chScore == null && lvlScore == null) continue;
     const wLevel = typeof def.wLevel === 'number' ? def.wLevel : 0.5;
     const wChange = typeof def.wChange === 'number' ? def.wChange : 0.5;
+
+    // Previous-window component score (for UI comparisons). Best-effort approximation that
+    // uses previous vs previous2 as the change signal (momentum term will be 0 without prev3).
+    const prevConfidenceCtx = {
+      traffic: previous && typeof previous.sessions === 'number' && Number.isFinite(previous.sessions) ? previous.sessions : null,
+      revenue: previous && typeof previous.sales === 'number' && Number.isFinite(previous.sales) ? previous.sales : null,
+    };
+    const prevChScore = changeScoreV2(def.key, valuePrev, valuePrev2, null, prevConfidenceCtx, def.invert);
+    const prevLvlScore = levelScoreV2(def.key, valuePrev, prevConfidenceCtx);
+    let prevScore = null;
+    if (prevChScore != null || prevLvlScore != null) {
+      const prevChangePart = prevChScore != null ? prevChScore * wChange : 50 * wChange;
+      const prevLevelPart = prevLvlScore != null ? prevLvlScore * wLevel : 50 * wLevel;
+      const rawPrev = Math.round((prevChangePart + prevLevelPart) * 10) / 10;
+      prevScore = Math.max(0, Math.min(100, rawPrev));
+    }
+
     const changePart = chScore != null ? chScore * wChange : 50 * wChange;
     const levelPart = lvlScore != null ? lvlScore * wLevel : 50 * wLevel;
     const score = Math.round((changePart + levelPart) * 10) / 10;
@@ -4272,6 +4289,7 @@ async function getKexoScore(options = {}) {
       key: def.key,
       label: def.label,
       score: clamped,
+      previousScore: prevScore,
       levelScore: lvlScore != null ? Math.round(lvlScore * 10) / 10 : null,
       changeScore: chScore != null ? Math.round(chScore * 10) / 10 : null,
       value: valueCur,
