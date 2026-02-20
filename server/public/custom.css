@@ -4090,6 +4090,18 @@ body[data-page="dashboard"] #dash-trending-down .dash-trend-delta.text-red {
 .kexo-footer-right {
   justify-self: end;
 }
+.kexo-score-btn--footer .kexo-score-ring-wrap--header {
+  width: 36px;
+  height: 36px;
+}
+.kexo-score-btn--footer .kexo-score-ring-svg--header {
+  width: 36px;
+  height: 36px;
+}
+.kexo-score-btn--footer .kexo-score-num--header {
+  font-size: 0.75rem;
+}
+
 .kexo-footer-logo {
   flex-shrink: 0;
   display: flex;
