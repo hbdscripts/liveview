@@ -321,7 +321,28 @@ app.get('/assets/cash-register.mp3', (req, res) => {
 });
 
 // Admin UI (embedded dashboard static assets)
-app.use(express.static(path.join(__dirname, 'public'), { redirect: false }));
+app.use(express.static(path.join(__dirname, 'public'), {
+  redirect: false,
+  setHeaders: (res, filePath) => {
+    // Some embed contexts can hold onto old JS even when HTML is versioned.
+    // Force revalidation for the main dashboard bundles so deploys take effect immediately.
+    try {
+      const base = path.basename(String(filePath || ''));
+      const noStore = new Set([
+        'app.js',
+        'kexo-chart-defs.js',
+        'kexo-chart-builder.js',
+        'kexo-table-builder.js',
+        'kexo-table-defs.js',
+        'theme-settings.js',
+        'settings-page.js',
+      ]);
+      if (noStore.has(base)) {
+        res.setHeader('Cache-Control', 'no-store');
+      }
+    } catch (_) {}
+  }
+}));
 app.use('/assets', express.static(path.join(__dirname, '..', 'assets')));
 
 function getCookie(req, name) {
