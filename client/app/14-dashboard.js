@@ -3963,7 +3963,7 @@
               productUrl: productUrl
             };
           });
-          renderDashTopList('dash-top-products-body', prodRows, { accentCss: 'background: var(--kexo-accent);' });
+          renderDashTopList('dash-top-products-body', prodRows, { accentCss: 'background: var(--kexo-accent-2);' });
         }
 
         var countryBody = el('dash-top-countries-body');
@@ -3992,7 +3992,7 @@
               pct: pct
             };
           });
-          renderDashTopList('dash-top-countries-body', countryRows, { accentCss: 'background: var(--kexo-accent);' });
+          renderDashTopList('dash-top-countries-body', countryRows, { accentCss: 'background: var(--kexo-accent-1);' });
         }
 
         function fmtSignedGbp(v) {
@@ -4042,7 +4042,7 @@
                 productUrl: productUrl
               };
             });
-            renderDashTopList(tableId + '-body', listRows, { accentCss: 'background: var(--kexo-accent);' });
+            renderDashTopList(tableId + '-body', listRows, { accentCss: 'background: var(--kexo-accent-3);' });
             return;
           }
           var t = el(tableId);
@@ -4118,7 +4118,7 @@
         if (titleEl) titleEl.textContent = dashTrendingMode === 'up' ? 'Up' : 'Down';
         if (toggleEl) toggleEl.setAttribute('aria-label', dashTrendingMode === 'up' ? 'Switch to Trending Down' : 'Switch to Trending Up');
         if (iconEl) {
-          iconEl.className = (dashTrendingMode === 'up' ? 'fa-light fa-chevron-down' : 'fa-light fa-chevron-up') + ' kexo-trending-chevron';
+          iconEl.className = (dashTrendingMode === 'up' ? 'fa-solid fa-angle-down' : 'fa-solid fa-angle-up') + ' kexo-trending-chevron';
         }
       }
 
