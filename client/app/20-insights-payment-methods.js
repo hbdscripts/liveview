@@ -88,31 +88,25 @@
     el.innerHTML = '<div class="' + (isError ? 'text-danger' : 'text-secondary') + '">' + escapeHtml(message || '—') + '</div>';
   }
 
-  function renderPaymentCell(iconSrc, iconAlt, label) {
+  function renderPaymentIconOnly(iconSpec, iconSrc, iconAlt, label) {
     const safeLabel = label != null ? String(label) : 'Other';
     const safeAlt = iconAlt != null ? String(iconAlt) : safeLabel;
-    const img = iconSrc
-      ? '<img class="kexo-payment-method-icon kexo-payment-method-icon--fill" src="' + escapeHtml(iconSrc) + '" alt="' + escapeHtml(safeAlt) + '" loading="lazy" />'
+    const spec = iconSpec != null ? String(iconSpec).trim() : '';
+    const url = iconSrc != null ? String(iconSrc).trim() : '';
+    if (spec) {
+      if (/^<svg[\s>]/i.test(spec)) return '<span class="kexo-payment-method-icon kexo-payment-method-icon--fill" aria-hidden="true">' + spec + '</span>';
+      if (/^(https?:\/\/|\/\/|\/)/i.test(spec)) return '<img class="kexo-payment-method-icon kexo-payment-method-icon--fill" src="' + escapeHtml(spec) + '" alt="' + escapeHtml(safeAlt) + '" loading="lazy" />';
+      return '<i class="' + escapeHtml(spec) + ' kexo-payment-method-fallback-icon" aria-hidden="true"></i>';
+    }
+    return url
+      ? '<img class="kexo-payment-method-icon kexo-payment-method-icon--fill" src="' + escapeHtml(url) + '" alt="' + escapeHtml(safeAlt) + '" loading="lazy" />'
       : '<i class="fa-light fa-circle-question text-secondary kexo-payment-method-fallback-icon" aria-hidden="true"></i>';
-    return '<span class="d-inline-flex align-items-center gap-2">' + img + '<span>' + escapeHtml(safeLabel) + '</span></span>';
   }
 
-  function tablerPaymentProviderForKey(key) {
-    const k = (key == null ? '' : String(key)).trim().toLowerCase();
-    if (!k) return '';
-    if (k === 'visa') return 'visa';
-    if (k === 'mastercard') return 'mastercard';
-    if (k === 'amex') return 'americanexpress';
-    if (k === 'paypal') return 'paypal';
-    if (k === 'klarna') return 'klarna';
-    if (k === 'shop_pay') return 'shop-pay';
-    if (k === 'apple_pay') return 'applepay';
-    if (k === 'google_pay') return 'google-pay';
-    if (k === 'discover') return 'discover';
-    if (k === 'maestro') return 'maestro';
-    if (k === 'diners') return 'dinersclub';
-    if (k === 'unionpay') return 'unionpay';
-    return '';
+  function renderPaymentCell(iconSpec, iconSrc, iconAlt, label) {
+    const safeLabel = label != null ? String(label) : 'Other';
+    const iconInner = renderPaymentIconOnly(iconSpec, iconSrc, iconAlt, safeLabel);
+    return '<span class="d-inline-flex align-items-center gap-2">' + iconInner + '<span>' + escapeHtml(safeLabel) + '</span></span>';
   }
 
   const CHART_KEY = 'payment-methods-chart';
@@ -199,16 +193,11 @@
     body.innerHTML = rows.map(function (r) {
       const key = r && r.key != null ? String(r.key) : '';
       const label = r && r.label != null ? String(r.label) : 'Other';
+      const iconSpec = r && r.iconSpec != null ? String(r.iconSpec) : '';
       const iconSrc = r && r.iconSrc ? String(r.iconSrc) : '';
       const iconAlt = r && r.iconAlt ? String(r.iconAlt) : label;
-      const payCell = '<span class="d-inline-flex align-items-center">' + escapeHtml(label) + '</span>';
-      const provider = tablerPaymentProviderForKey(key);
-      const iconInner = provider
-        ? '<span class="payment payment-lg payment-provider-' + escapeHtml(provider) + '" aria-hidden="true"></span>'
-        : (iconSrc
-          ? '<img class="kexo-payment-method-icon kexo-payment-method-icon--fill" src="' + escapeHtml(iconSrc) + '" alt="' + escapeHtml(iconAlt) + '" loading="lazy" />'
-          : '<i class="fa-light fa-circle-question text-secondary kexo-payment-method-fallback-icon" aria-hidden="true"></i>');
-      const iconCell = '<span class="d-flex align-items-center justify-content-center w-100 h-100">' + iconInner + '</span>';
+      const payCell = renderPaymentCell(iconSpec, iconSrc, iconAlt, label);
+      const iconCell = '<span class="d-flex align-items-center justify-content-center w-100 h-100">' + renderPaymentIconOnly(iconSpec, iconSrc, iconAlt, label) + '</span>';
       return '' +
         '<div class="grid-row" role="row">' +
           '<div class="grid-cell" role="cell">' + payCell + '</div>' +

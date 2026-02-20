@@ -290,7 +290,7 @@ function sortRowsByRevenue(rows) {
   });
 }
 
-async function buildVariantsInsightTables({ shop, start, end, variantsConfig } = {}) {
+async function buildVariantsInsightTables({ shop, start, end, variantsConfig, rowIconOverrides } = {}) {
   const safeShop = typeof shop === 'string' ? shop.trim().toLowerCase() : '';
   const configObj = variantsConfig && typeof variantsConfig === 'object'
     ? variantsConfig
@@ -411,13 +411,19 @@ async function buildVariantsInsightTables({ shop, start, end, variantsConfig } =
         const rule = classified.rule;
         const key = rule.id;
         const label = rule.label;
+        const overrideKey = `variant_rule_${String(table && table.id ? table.id : '').toLowerCase()}__${String(rule && rule.id ? rule.id : '').toLowerCase()}`;
+        const overrideIconSpec = rowIconOverrides && Object.prototype.hasOwnProperty.call(rowIconOverrides, overrideKey)
+          ? String(rowIconOverrides[overrideKey] == null ? '' : rowIconOverrides[overrideKey]).trim()
+          : '';
         const current = rowMap.get(key) || {
           key,
           variant: label,
+          icon_spec: overrideIconSpec,
           sessions: 0,
           orders: 0,
           revenue: 0,
         };
+        if (!current.icon_spec && overrideIconSpec) current.icon_spec = overrideIconSpec;
         current.sessions += variant && variant.sessions != null ? Number(variant.sessions) || 0 : 0;
         current.orders += variant && variant.orders != null ? Number(variant.orders) || 0 : 0;
         current.revenue += variant && variant.revenue != null ? Number(variant.revenue) || 0 : 0;
@@ -476,6 +482,7 @@ async function buildVariantsInsightTables({ shop, start, end, variantsConfig } =
       rows.push({
         key: row.key,
         variant: row.variant,
+        icon_spec: row.icon_spec || '',
         sessions,
         orders,
         cr: sessions > 0 ? Math.round((orders / sessions) * 1000) / 10 : null,

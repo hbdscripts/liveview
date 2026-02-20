@@ -6132,12 +6132,16 @@
             var rows = table && Array.isArray(table.rows) ? table.rows : [];
             return rows.map(function (r) {
               var label = r && (r.variant || r.key) ? String(r.variant || r.key) : '—';
+              var iconSpec = r && r.icon_spec != null ? String(r.icon_spec).trim() : '';
+              var iconHtml = iconSpec
+                ? attributionIconSpecToHtml(iconSpec, label)
+                : '<i class="fa-light fa-gem" data-icon-key="overview-widget-finishes" aria-hidden="true"></i>';
               return {
                 label: label,
                 revenue: Number(r && (r.revenue_gbp != null ? r.revenue_gbp : r.revenue)) || 0,
                 clicks: Number(r && r.sessions) || 0,
                 ctr: (r && r.cr != null) ? Number(r.cr) : null,
-                iconHtml: '<i class="fa-light fa-gem" aria-hidden="true"></i>',
+                iconHtml: iconHtml,
               };
             });
           }
@@ -6163,13 +6167,19 @@
               var agg = platformAgg[plat];
               var label = plat ? (plat.charAt(0).toUpperCase() + plat.slice(1)) : '—';
               var icon = plat === 'android' ? 'fa-brands fa-android' : plat === 'ios' ? 'fa-brands fa-apple' : plat === 'windows' ? 'fa-brands fa-windows' : plat === 'macos' || plat === 'mac' ? 'fa-brands fa-apple' : plat === 'linux' ? 'fa-brands fa-linux' : plat === 'other' ? 'fa-light fa-desktop' : 'fa-light fa-mobile-screen';
+              var iconKey = plat === 'android' ? 'type-platform-android'
+                : plat === 'ios' ? 'type-platform-ios'
+                : plat === 'windows' ? 'type-platform-windows'
+                : (plat === 'macos' || plat === 'mac') ? 'type-platform-mac'
+                : plat === 'linux' ? 'type-platform-linux'
+                : 'type-platform-unknown';
               var ctr = (agg.sessions > 0 && agg.orders != null) ? ((agg.orders / agg.sessions) * 100) : null;
               return {
                 label: label,
                 revenue: Math.round((Number(agg.revenueGbp) || 0) * 100) / 100,
                 clicks: Number(agg.sessions) || 0,
                 ctr: Number.isFinite(ctr) ? Math.round(ctr * 10) / 10 : null,
-                iconHtml: '<i class="' + escapeHtml(icon) + '" aria-hidden="true"></i>',
+                iconHtml: '<i class="' + escapeHtml(icon) + '" data-icon-key="' + escapeHtml(iconKey) + '" aria-hidden="true"></i>',
               };
             });
           }
@@ -6191,7 +6201,9 @@
             return abRows.map(function (r) {
               var cc = r && r.country != null ? String(r.country) : '—';
               cc = String(cc || '').trim().toUpperCase().slice(0, 2) || '—';
-              var iconHtml = cc && /^[A-Z]{2}$/.test(cc) ? countryCodeToFlagHtml(cc) : '<i class="fa-light fa-globe" aria-hidden="true"></i>';
+              var iconHtml = cc && /^[A-Z]{2}$/.test(cc)
+                ? countryCodeToFlagHtml(cc)
+                : '<i class="fa-light fa-globe" data-icon-key="overview-widget-abandoned" aria-hidden="true"></i>';
               return {
                 label: cc,
                 revenue: Number(r && r.abandoned_value_gbp) || 0,
@@ -6220,7 +6232,9 @@
             });
             return Object.keys(agg).map(function (k) {
               var a = agg[k];
-              var iconHtml = a.iconSpec ? attributionIconSpecToHtml(a.iconSpec, a.label) : '<i class="fa-light fa-share-nodes" aria-hidden="true"></i>';
+              var iconHtml = a.iconSpec
+                ? attributionIconSpecToHtml(a.iconSpec, a.label)
+                : '<i class="fa-light fa-share-nodes" data-icon-key="overview-widget-attribution" aria-hidden="true"></i>';
               var ctr = a.sessions > 0 ? Math.round((a.orders / a.sessions) * 1000) / 10 : null;
               return { label: a.label || k, revenue: a.revenue || 0, clicks: a.sessions || 0, ctr: ctr, iconHtml: iconHtml };
             });
@@ -6230,11 +6244,14 @@
             return payRows.map(function (r) {
               var label = r && r.label != null ? String(r.label) : '—';
               var key2 = r && r.key != null ? String(r.key).trim().toLowerCase() : 'other';
+              var iconSpec = r && r.iconSpec != null ? String(r.iconSpec).trim() : '';
               var iconSrc = r && r.iconSrc ? String(r.iconSrc) : '';
               var iconAlt = r && r.iconAlt ? String(r.iconAlt) : label;
-              var iconHtml = iconSrc
+              var iconHtml = iconSpec
+                ? attributionIconSpecToHtml(iconSpec, iconAlt)
+                : (iconSrc
                 ? ('<img src="' + escapeHtml(iconSrc) + '" alt="' + escapeHtml(iconAlt) + '" width="18" height="18" data-icon-key="payment-method-' + escapeHtml(key2 || 'other') + '">')
-                : '<i class="fa-light fa-credit-card" data-icon-key="payment-method-' + escapeHtml(key2 || 'other') + '" aria-hidden="true"></i>';
+                : '<i class="fa-light fa-credit-card" data-icon-key="payment-method-' + escapeHtml(key2 || 'other') + '" aria-hidden="true"></i>');
               return {
                 label: label,
                 revenue: Number(r && (r.revenue != null ? r.revenue : r.revenue_gbp)) || 0,

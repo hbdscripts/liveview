@@ -5,6 +5,7 @@ const fx = require('../fx');
 const { normalizeRangeKey } = require('../rangeKey');
 const { percentOrNull, ratioOrNull } = require('../metrics');
 const { normalizePaymentMethod } = require('../paymentMethods/normalizePaymentMethod');
+const { canonicalPaymentKey, paymentLabelForKey, commonPaymentMethods, ORDERED_KEYS } = require('../paymentMethods/catalog');
 
 function s(v) { try { return v == null ? '' : String(v); } catch (_) { return ''; } }
 
@@ -118,13 +119,28 @@ function paymentMetaFromParts(row) {
 }
 
 function applyPaymentIconOverride(meta, overrides) {
-  if (!meta || !overrides || typeof overrides !== 'object') return meta;
+  if (!meta) return meta;
+  const base = { ...meta, iconSrc: null, iconSpec: '' };
+  if (!overrides || typeof overrides !== 'object') return base;
   const key = meta.key ? String(meta.key).trim() : '';
-  if (!key) return meta;
+  if (!key) return base;
   const override = overrides['payment_' + key];
-  const url = override != null ? String(override).trim() : '';
-  if (!url) return meta;
-  return { ...meta, iconSrc: url };
+  const spec = override != null ? String(override).trim() : '';
+  if (!spec) return base;
+  if (/^(https?:\/\/|\/\/|\/)/i.test(spec)) return { ...base, iconSrc: spec, iconSpec: spec };
+  return { ...base, iconSpec: spec };
+}
+
+async function readAssetOverrides() {
+  let assetOverrides = {};
+  try {
+    const raw = await store.getSetting('asset_overrides');
+    if (raw && typeof raw === 'string') {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) assetOverrides = parsed;
+    }
+  } catch (_) {}
+  return assetOverrides;
 }
 
 /**
@@ -141,14 +157,7 @@ async function getPaymentMethodsReport(req, res) {
   const { start, end } = store.getRangeBounds(range, nowMs, timeZone);
   const db = getDb();
 
-  let assetOverrides = {};
-  try {
-    const raw = await store.getSetting('asset_overrides');
-    if (raw && typeof raw === 'string') {
-      const parsed = JSON.parse(raw);
-      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) assetOverrides = parsed;
-    }
-  } catch (_) {}
+  const assetOverrides = await readAssetOverrides();
 
   try {
     const [ratesToGbp, totalSessionsRow, rowsCounts, rowsCarts, rowsRevenue, rowsSeries] = await Promise.all([
@@ -260,7 +269,13 @@ async function getPaymentMethodsReport(req, res) {
     for (const r of rowsCounts || []) {
       const m = applyPaymentIconOverride(paymentMetaFromParts(r), assetOverrides);
       const k = m.key || 'other';
-      metaByKey.set(k, { key: k, label: m.label || 'Other', iconSrc: m.iconSrc || null, iconAlt: m.iconAlt || (m.label || 'Other') });
+      metaByKey.set(k, {
+        key: k,
+        label: m.label || 'Other',
+        iconSrc: m.iconSrc || null,
+        iconSpec: m.iconSpec || '',
+        iconAlt: m.iconAlt || (m.label || 'Other'),
+      });
       const orders = r && r.orders != null ? Number(r.orders) : 0;
       const sessions = r && r.sessions != null ? Number(r.sessions) : 0;
       const prev = agg.get(k) || { sessions: 0, orders: 0 };
@@ -280,11 +295,12 @@ async function getPaymentMethodsReport(req, res) {
       const cr = percentOrNull(orders, denomSessions, { decimals: 2 });
       const vpv = ratioOrNull(revenue, denomSessions, { decimals: 2 });
       const aov = ratioOrNull(revenue, orders, { decimals: 2 });
-      const meta = metaByKey.get(k) || { key: k, label: k, iconSrc: null, iconAlt: k };
+      const meta = metaByKey.get(k) || { key: k, label: k, iconSrc: null, iconSpec: '', iconAlt: k };
       outRows.push({
         key: meta.key,
         label: meta.label,
         iconSrc: meta.iconSrc,
+        iconSpec: meta.iconSpec || '',
         iconAlt: meta.iconAlt,
         sessions,
         carts,
@@ -330,7 +346,13 @@ async function getPaymentMethodsReport(req, res) {
         normText(r && r.payment_card_brand, 32);
       if (comboCache.has(comboKey)) return comboCache.get(comboKey);
       const meta = applyPaymentIconOverride(paymentMetaFromParts(r), assetOverrides);
-      const out = { key: meta.key || 'other', label: meta.label || 'Other', iconSrc: meta.iconSrc || null, iconAlt: meta.iconAlt || (meta.label || 'Other') };
+      const out = {
+        key: meta.key || 'other',
+        label: meta.label || 'Other',
+        iconSrc: meta.iconSrc || null,
+        iconSpec: meta.iconSpec || '',
+        iconAlt: meta.iconAlt || (meta.label || 'Other'),
+      };
       comboCache.set(comboKey, out);
       metaByKey.set(out.key, out);
       return out;
@@ -367,12 +389,19 @@ async function getPaymentMethodsReport(req, res) {
       .map(([k]) => k);
 
     const series = topKeys.map((k) => {
-      const meta = metaByKey.get(k) || { key: k, label: k, iconSrc: null, iconAlt: k };
+      const meta = metaByKey.get(k) || { key: k, label: k, iconSrc: null, iconSpec: '', iconAlt: k };
       const data = ensureSeries(k).map((v) => {
         const n = typeof v === 'number' ? v : Number(v);
         return Number.isFinite(n) ? Math.round(n * 100) / 100 : 0;
       });
-      return { key: meta.key, label: meta.label, iconSrc: meta.iconSrc, iconAlt: meta.iconAlt, data };
+      return {
+        key: meta.key,
+        label: meta.label,
+        iconSrc: meta.iconSrc,
+        iconSpec: meta.iconSpec || '',
+        iconAlt: meta.iconAlt,
+        data,
+      };
     });
 
     res.setHeader('Cache-Control', 'private, max-age=60');
@@ -395,5 +424,96 @@ async function getPaymentMethodsReport(req, res) {
   }
 }
 
-module.exports = { getPaymentMethodsReport };
+async function getPaymentMethodsCatalog(req, res) {
+  const db = getDb();
+  try {
+    const rows = await db.all(
+      `
+      SELECT
+        COALESCE(NULLIF(TRIM(payment_method_key), ''), NULL) AS payment_method_key,
+        COALESCE(NULLIF(TRIM(payment_method_label), ''), NULL) AS payment_method_label,
+        COALESCE(NULLIF(TRIM(payment_gateway), ''), NULL) AS payment_gateway,
+        COALESCE(NULLIF(TRIM(payment_method_type), ''), NULL) AS payment_method_type,
+        COALESCE(NULLIF(TRIM(payment_method_name), ''), NULL) AS payment_method_name,
+        COALESCE(NULLIF(TRIM(payment_card_brand), ''), NULL) AS payment_card_brand,
+        COUNT(*) AS rows
+      FROM purchases
+      GROUP BY 1, 2, 3, 4, 5, 6
+      `.trim()
+    ).catch(() => []);
+
+    const byKey = new Map();
+    const seenInDb = new Set();
+    for (const r of rows || []) {
+      const rawKey = r && r.payment_method_key != null ? String(r.payment_method_key).trim() : '';
+      const rawLabel = r && r.payment_method_label != null ? String(r.payment_method_label).trim() : '';
+      const key = rawKey
+        ? canonicalPaymentKey(rawKey)
+        : (function () {
+          const meta = normalizePaymentMethod({
+            gateway: r && r.payment_gateway,
+            methodType: r && r.payment_method_type,
+            methodName: r && r.payment_method_name,
+            cardBrand: r && r.payment_card_brand,
+          });
+          return canonicalPaymentKey(meta && meta.key ? meta.key : 'other');
+        })();
+      const label = rawLabel || paymentLabelForKey(key);
+      seenInDb.add(key);
+      if (!byKey.has(key)) byKey.set(key, { key, label, seenInDb: true });
+    }
+
+    for (const m of commonPaymentMethods()) {
+      if (!byKey.has(m.key)) byKey.set(m.key, { key: m.key, label: m.label, seenInDb: false });
+    }
+
+    const ordered = [];
+    const pushed = new Set();
+    for (const k of ORDERED_KEYS) {
+      if (!byKey.has(k)) continue;
+      ordered.push(byKey.get(k));
+      pushed.add(k);
+    }
+    const extras = Array.from(byKey.values())
+      .filter((r) => !pushed.has(r.key))
+      .sort((a, b) => String(a.label || a.key).localeCompare(String(b.label || b.key)));
+    const methods = ordered.concat(extras);
+
+    const assetOverrides = await readAssetOverrides();
+    let seeded = 0;
+    const merged = { ...assetOverrides };
+    methods.forEach((m) => {
+      const overrideKey = 'payment_' + String(m.key);
+      if (!Object.prototype.hasOwnProperty.call(merged, overrideKey)) {
+        merged[overrideKey] = '';
+        seeded += 1;
+      }
+    });
+    if (seeded > 0) {
+      try { await store.setSetting('asset_overrides', JSON.stringify(merged)); } catch (_) {}
+    }
+
+    const finalOverrides = seeded > 0 ? merged : assetOverrides;
+    const out = methods.map((m) => {
+      const k = 'payment_' + String(m.key);
+      const iconSpec = finalOverrides && Object.prototype.hasOwnProperty.call(finalOverrides, k)
+        ? String(finalOverrides[k] == null ? '' : finalOverrides[k])
+        : '';
+      return {
+        key: m.key,
+        label: m.label,
+        seenInDb: !!m.seenInDb,
+        iconSpec,
+      };
+    });
+
+    res.setHeader('Cache-Control', 'no-store');
+    return res.json({ ok: true, methods: out, seeded });
+  } catch (err) {
+    Sentry.captureException(err, { extra: { route: 'payment-methods.catalog' } });
+    return res.status(500).json({ ok: false, error: 'Failed to load payment methods catalog' });
+  }
+}
+
+module.exports = { getPaymentMethodsReport, getPaymentMethodsCatalog };
 

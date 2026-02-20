@@ -29,6 +29,7 @@ const {
   normalizeGoogleAdsProfitConfigV1,
 } = require('../googleAdsProfitConfig');
 const { getThemeIconGlyphSettingKeys } = require('../shared/icon-registry');
+const { normalizeIconSpec } = require('../utils/svgNormalize');
 
 const GOOGLE_ADS_PROFIT_DEDUCTIONS_V1_KEY = 'google_ads_profit_deductions_v1';
 const GOOGLE_ADS_ADD_TO_CART_VALUE_KEY = 'google_ads_add_to_cart_value';
@@ -1738,6 +1739,35 @@ async function postSettings(req, res) {
     } catch (_) {}
   }
 
+  function isIconLikeAssetOverrideKey(rawKey) {
+    const key = rawKey == null ? '' : String(rawKey).trim().toLowerCase();
+    if (!key) return false;
+    if (/^payment_[a-z0-9_]+$/.test(key)) return true;
+    if (/^variant_rule_[a-z0-9_-]+__[a-z0-9_-]+$/.test(key)) return true;
+    if (/^variant_icon_[a-z0-9_-]+$/.test(key)) return true;
+    if (/^overview_widget_[a-z0-9_-]+$/.test(key)) return true;
+    return false;
+  }
+
+  async function normalizeAssetOverridesPatch(rawPatch) {
+    const patch = rawPatch && typeof rawPatch === 'object' ? rawPatch : {};
+    const out = {};
+    for (const key of Object.keys(patch || {})) {
+      const rawValue = patch[key];
+      if (!isIconLikeAssetOverrideKey(key)) {
+        out[key] = rawValue;
+        continue;
+      }
+      if (rawValue == null || String(rawValue).trim() === '') {
+        out[key] = '';
+        continue;
+      }
+      const iconSpec = await normalizeIconSpec(rawValue, { fetchRemoteSvg: true, timeoutMs: 5000 });
+      out[key] = iconSpec || '';
+    }
+    return out;
+  }
+
   // Asset overrides (merge with existing)
   if (body.assetOverrides && typeof body.assetOverrides === 'object') {
     try {
@@ -1746,7 +1776,8 @@ async function postSettings(req, res) {
       if (raw && typeof raw === 'string') {
         try { existing = JSON.parse(raw) || {}; } catch (_) {}
       }
-      const merged = { ...existing, ...body.assetOverrides };
+      const normalizedPatch = await normalizeAssetOverridesPatch(body.assetOverrides);
+      const merged = { ...existing, ...normalizedPatch };
       await store.setSetting(ASSET_OVERRIDES_KEY, JSON.stringify(merged));
     } catch (err) {
       return res.status(500).json({ ok: false, error: err && err.message ? String(err.message) : 'Failed to save asset overrides' });
@@ -2134,7 +2165,11 @@ async function postThemeDefaults(req, res) {
     // and avoids wiping other keys when partial payloads are sent).
     for (const key of Object.keys(body)) {
       if (!THEME_KEYS.includes(key)) continue;
-      const val = body[key] != null ? String(body[key]).trim() : '';
+      let val = body[key] != null ? String(body[key]).trim() : '';
+      if (key.indexOf('icon_glyph_') === 0) {
+        const normalizedIconSpec = await normalizeIconSpec(body[key], { fetchRemoteSvg: true, timeoutMs: 5000 });
+        val = normalizedIconSpec || '';
+      }
       await store.setSetting('theme_' + key, val);
     }
   } catch (err) {

@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: a990266a9e69965b
+// checksum: 1ba8bed41578f209
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -73,23 +73,40 @@
     var k = normalizePaymentProviderKey(key);
     if (!k) return null;
     var map = {
-      visa: { label: 'Visa', tablerKey: 'visa' },
-      mastercard: { label: 'Mastercard', tablerKey: 'mastercard' },
-      americanexpress: { label: 'American Express', tablerKey: 'americanexpress' },
-      paypal: { label: 'PayPal', tablerKey: 'paypal' },
-      applepay: { label: 'Apple Pay', tablerKey: 'applepay' },
-      'google-pay': { label: 'Google Pay', tablerKey: 'google-pay' },
-      klarna: { label: 'Klarna', tablerKey: 'klarna' },
-      'shop-pay': { label: 'Shop Pay', tablerKey: 'shop-pay' },
-      'shopify-payments': { label: 'Shopify Payments', tablerKey: 'shop-pay' },
+      visa: { label: 'Visa', iconKey: 'payment-method-visa', iconClass: 'fa-brands fa-cc-visa' },
+      mastercard: { label: 'Mastercard', iconKey: 'payment-method-mastercard', iconClass: 'fa-brands fa-cc-mastercard' },
+      americanexpress: { label: 'American Express', iconKey: 'payment-method-amex', iconClass: 'fa-brands fa-cc-amex' },
+      paypal: { label: 'PayPal', iconKey: 'payment-method-paypal', iconClass: 'fa-brands fa-paypal' },
+      applepay: { label: 'Apple Pay', iconKey: 'payment-method-apple_pay', iconClass: 'fa-brands fa-apple-pay' },
+      'google-pay': { label: 'Google Pay', iconKey: 'payment-method-google_pay', iconClass: 'fa-brands fa-google-pay' },
+      klarna: { label: 'Klarna', iconKey: 'payment-method-klarna', iconClass: 'fa-light fa-credit-card' },
+      'shop-pay': { label: 'Shop Pay', iconKey: 'payment-method-shop_pay', iconClass: 'fa-light fa-bag-shopping' },
+      'shopify-payments': { label: 'Shopify Payments', iconKey: 'payment-method-shop_pay', iconClass: 'fa-light fa-bag-shopping' },
     };
-    return map[k] || { label: k, tablerKey: null };
+    return map[k] || { label: k, iconKey: 'payment-method-other', iconClass: 'fa-light fa-credit-card' };
   }
 
   function tablerPaymentClassName(providerKey) {
+    return '';
+  }
+
+  function paymentProviderIconHtml(providerKey, opts) {
+    function esc(value) {
+      return String(value == null ? '' : value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
     var meta = paymentProviderMeta(providerKey);
-    if (!meta || !meta.tablerKey) return '';
-    return 'payment payment-provider-' + meta.tablerKey;
+    if (!meta) return '';
+    var extraClass = opts && opts.extraClass ? String(opts.extraClass).trim() : '';
+    var label = meta.label ? String(meta.label) : '';
+    var iconClass = meta.iconClass ? String(meta.iconClass) : 'fa-light fa-credit-card';
+    var iconKey = meta.iconKey ? String(meta.iconKey) : 'payment-method-other';
+    var cls = [iconClass, extraClass].join(' ').trim();
+    return '<i class="' + esc(cls) + '" data-icon-key="' + esc(iconKey) + '" aria-label="' + esc(label) + '" title="' + esc(label) + '" aria-hidden="true"></i>';
   }
 const API = '';
     const PAGE = (document.body && document.body.getAttribute('data-page')) || '';
@@ -3243,7 +3260,7 @@ const API = '';
             var k = normalizePaymentProviderKey(raw);
             if (k) {
               var meta = (typeof paymentProviderMeta === 'function') ? paymentProviderMeta(k) : null;
-              if (meta && meta.tablerKey) return k;
+              if (meta && meta.iconKey) return k;
             }
           }
         }
@@ -3255,11 +3272,12 @@ const API = '';
       try {
         var k = inferPaymentProviderKeyFromSession(s);
         if (!k) return '';
+        if (typeof paymentProviderIconHtml === 'function') {
+          return paymentProviderIconHtml(k, { extraClass: 'payment-xxs' });
+        }
         var meta = (typeof paymentProviderMeta === 'function') ? paymentProviderMeta(k) : null;
-        if (!meta || !meta.tablerKey) return '';
-        var cls = (typeof tablerPaymentClassName === 'function') ? tablerPaymentClassName(k) : '';
-        if (!cls) return '';
-        return '<span class="' + escapeHtml(cls + ' payment-xxs') + '" aria-label="' + escapeHtml(meta.label || '') + '" title="' + escapeHtml(meta.label || '') + '"></span>';
+        if (!meta) return '';
+        return '<i class="' + escapeHtml(String(meta.iconClass || 'fa-light fa-credit-card') + ' payment-xxs') + '" data-icon-key="' + escapeHtml(String(meta.iconKey || 'payment-method-other')) + '" aria-label="' + escapeHtml(meta.label || '') + '" title="' + escapeHtml(meta.label || '') + '" aria-hidden="true"></i>';
       } catch (_) {
         return '';
       }
@@ -23641,12 +23659,16 @@ const API = '';
             var rows = table && Array.isArray(table.rows) ? table.rows : [];
             return rows.map(function (r) {
               var label = r && (r.variant || r.key) ? String(r.variant || r.key) : '—';
+              var iconSpec = r && r.icon_spec != null ? String(r.icon_spec).trim() : '';
+              var iconHtml = iconSpec
+                ? attributionIconSpecToHtml(iconSpec, label)
+                : '<i class="fa-light fa-gem" data-icon-key="overview-widget-finishes" aria-hidden="true"></i>';
               return {
                 label: label,
                 revenue: Number(r && (r.revenue_gbp != null ? r.revenue_gbp : r.revenue)) || 0,
                 clicks: Number(r && r.sessions) || 0,
                 ctr: (r && r.cr != null) ? Number(r.cr) : null,
-                iconHtml: '<i class="fa-light fa-gem" aria-hidden="true"></i>',
+                iconHtml: iconHtml,
               };
             });
           }
@@ -23672,13 +23694,19 @@ const API = '';
               var agg = platformAgg[plat];
               var label = plat ? (plat.charAt(0).toUpperCase() + plat.slice(1)) : '—';
               var icon = plat === 'android' ? 'fa-brands fa-android' : plat === 'ios' ? 'fa-brands fa-apple' : plat === 'windows' ? 'fa-brands fa-windows' : plat === 'macos' || plat === 'mac' ? 'fa-brands fa-apple' : plat === 'linux' ? 'fa-brands fa-linux' : plat === 'other' ? 'fa-light fa-desktop' : 'fa-light fa-mobile-screen';
+              var iconKey = plat === 'android' ? 'type-platform-android'
+                : plat === 'ios' ? 'type-platform-ios'
+                : plat === 'windows' ? 'type-platform-windows'
+                : (plat === 'macos' || plat === 'mac') ? 'type-platform-mac'
+                : plat === 'linux' ? 'type-platform-linux'
+                : 'type-platform-unknown';
               var ctr = (agg.sessions > 0 && agg.orders != null) ? ((agg.orders / agg.sessions) * 100) : null;
               return {
                 label: label,
                 revenue: Math.round((Number(agg.revenueGbp) || 0) * 100) / 100,
                 clicks: Number(agg.sessions) || 0,
                 ctr: Number.isFinite(ctr) ? Math.round(ctr * 10) / 10 : null,
-                iconHtml: '<i class="' + escapeHtml(icon) + '" aria-hidden="true"></i>',
+                iconHtml: '<i class="' + escapeHtml(icon) + '" data-icon-key="' + escapeHtml(iconKey) + '" aria-hidden="true"></i>',
               };
             });
           }
@@ -23700,7 +23728,9 @@ const API = '';
             return abRows.map(function (r) {
               var cc = r && r.country != null ? String(r.country) : '—';
               cc = String(cc || '').trim().toUpperCase().slice(0, 2) || '—';
-              var iconHtml = cc && /^[A-Z]{2}$/.test(cc) ? countryCodeToFlagHtml(cc) : '<i class="fa-light fa-globe" aria-hidden="true"></i>';
+              var iconHtml = cc && /^[A-Z]{2}$/.test(cc)
+                ? countryCodeToFlagHtml(cc)
+                : '<i class="fa-light fa-globe" data-icon-key="overview-widget-abandoned" aria-hidden="true"></i>';
               return {
                 label: cc,
                 revenue: Number(r && r.abandoned_value_gbp) || 0,
@@ -23729,7 +23759,9 @@ const API = '';
             });
             return Object.keys(agg).map(function (k) {
               var a = agg[k];
-              var iconHtml = a.iconSpec ? attributionIconSpecToHtml(a.iconSpec, a.label) : '<i class="fa-light fa-share-nodes" aria-hidden="true"></i>';
+              var iconHtml = a.iconSpec
+                ? attributionIconSpecToHtml(a.iconSpec, a.label)
+                : '<i class="fa-light fa-share-nodes" data-icon-key="overview-widget-attribution" aria-hidden="true"></i>';
               var ctr = a.sessions > 0 ? Math.round((a.orders / a.sessions) * 1000) / 10 : null;
               return { label: a.label || k, revenue: a.revenue || 0, clicks: a.sessions || 0, ctr: ctr, iconHtml: iconHtml };
             });
@@ -23739,11 +23771,14 @@ const API = '';
             return payRows.map(function (r) {
               var label = r && r.label != null ? String(r.label) : '—';
               var key2 = r && r.key != null ? String(r.key).trim().toLowerCase() : 'other';
+              var iconSpec = r && r.iconSpec != null ? String(r.iconSpec).trim() : '';
               var iconSrc = r && r.iconSrc ? String(r.iconSrc) : '';
               var iconAlt = r && r.iconAlt ? String(r.iconAlt) : label;
-              var iconHtml = iconSrc
+              var iconHtml = iconSpec
+                ? attributionIconSpecToHtml(iconSpec, iconAlt)
+                : (iconSrc
                 ? ('<img src="' + escapeHtml(iconSrc) + '" alt="' + escapeHtml(iconAlt) + '" width="18" height="18" data-icon-key="payment-method-' + escapeHtml(key2 || 'other') + '">')
-                : '<i class="fa-light fa-credit-card" data-icon-key="payment-method-' + escapeHtml(key2 || 'other') + '" aria-hidden="true"></i>';
+                : '<i class="fa-light fa-credit-card" data-icon-key="payment-method-' + escapeHtml(key2 || 'other') + '" aria-hidden="true"></i>');
               return {
                 label: label,
                 revenue: Number(r && (r.revenue != null ? r.revenue : r.revenue_gbp)) || 0,
@@ -26806,31 +26841,25 @@ const API = '';
     el.innerHTML = '<div class="' + (isError ? 'text-danger' : 'text-secondary') + '">' + escapeHtml(message || '—') + '</div>';
   }
 
-  function renderPaymentCell(iconSrc, iconAlt, label) {
+  function renderPaymentIconOnly(iconSpec, iconSrc, iconAlt, label) {
     const safeLabel = label != null ? String(label) : 'Other';
     const safeAlt = iconAlt != null ? String(iconAlt) : safeLabel;
-    const img = iconSrc
-      ? '<img class="kexo-payment-method-icon kexo-payment-method-icon--fill" src="' + escapeHtml(iconSrc) + '" alt="' + escapeHtml(safeAlt) + '" loading="lazy" />'
+    const spec = iconSpec != null ? String(iconSpec).trim() : '';
+    const url = iconSrc != null ? String(iconSrc).trim() : '';
+    if (spec) {
+      if (/^<svg[\s>]/i.test(spec)) return '<span class="kexo-payment-method-icon kexo-payment-method-icon--fill" aria-hidden="true">' + spec + '</span>';
+      if (/^(https?:\/\/|\/\/|\/)/i.test(spec)) return '<img class="kexo-payment-method-icon kexo-payment-method-icon--fill" src="' + escapeHtml(spec) + '" alt="' + escapeHtml(safeAlt) + '" loading="lazy" />';
+      return '<i class="' + escapeHtml(spec) + ' kexo-payment-method-fallback-icon" aria-hidden="true"></i>';
+    }
+    return url
+      ? '<img class="kexo-payment-method-icon kexo-payment-method-icon--fill" src="' + escapeHtml(url) + '" alt="' + escapeHtml(safeAlt) + '" loading="lazy" />'
       : '<i class="fa-light fa-circle-question text-secondary kexo-payment-method-fallback-icon" aria-hidden="true"></i>';
-    return '<span class="d-inline-flex align-items-center gap-2">' + img + '<span>' + escapeHtml(safeLabel) + '</span></span>';
   }
 
-  function tablerPaymentProviderForKey(key) {
-    const k = (key == null ? '' : String(key)).trim().toLowerCase();
-    if (!k) return '';
-    if (k === 'visa') return 'visa';
-    if (k === 'mastercard') return 'mastercard';
-    if (k === 'amex') return 'americanexpress';
-    if (k === 'paypal') return 'paypal';
-    if (k === 'klarna') return 'klarna';
-    if (k === 'shop_pay') return 'shop-pay';
-    if (k === 'apple_pay') return 'applepay';
-    if (k === 'google_pay') return 'google-pay';
-    if (k === 'discover') return 'discover';
-    if (k === 'maestro') return 'maestro';
-    if (k === 'diners') return 'dinersclub';
-    if (k === 'unionpay') return 'unionpay';
-    return '';
+  function renderPaymentCell(iconSpec, iconSrc, iconAlt, label) {
+    const safeLabel = label != null ? String(label) : 'Other';
+    const iconInner = renderPaymentIconOnly(iconSpec, iconSrc, iconAlt, safeLabel);
+    return '<span class="d-inline-flex align-items-center gap-2">' + iconInner + '<span>' + escapeHtml(safeLabel) + '</span></span>';
   }
 
   const CHART_KEY = 'payment-methods-chart';
@@ -26917,16 +26946,11 @@ const API = '';
     body.innerHTML = rows.map(function (r) {
       const key = r && r.key != null ? String(r.key) : '';
       const label = r && r.label != null ? String(r.label) : 'Other';
+      const iconSpec = r && r.iconSpec != null ? String(r.iconSpec) : '';
       const iconSrc = r && r.iconSrc ? String(r.iconSrc) : '';
       const iconAlt = r && r.iconAlt ? String(r.iconAlt) : label;
-      const payCell = '<span class="d-inline-flex align-items-center">' + escapeHtml(label) + '</span>';
-      const provider = tablerPaymentProviderForKey(key);
-      const iconInner = provider
-        ? '<span class="payment payment-lg payment-provider-' + escapeHtml(provider) + '" aria-hidden="true"></span>'
-        : (iconSrc
-          ? '<img class="kexo-payment-method-icon kexo-payment-method-icon--fill" src="' + escapeHtml(iconSrc) + '" alt="' + escapeHtml(iconAlt) + '" loading="lazy" />'
-          : '<i class="fa-light fa-circle-question text-secondary kexo-payment-method-fallback-icon" aria-hidden="true"></i>');
-      const iconCell = '<span class="d-flex align-items-center justify-content-center w-100 h-100">' + iconInner + '</span>';
+      const payCell = renderPaymentCell(iconSpec, iconSrc, iconAlt, label);
+      const iconCell = '<span class="d-flex align-items-center justify-content-center w-100 h-100">' + renderPaymentIconOnly(iconSpec, iconSrc, iconAlt, label) + '</span>';
       return '' +
         '<div class="grid-row" role="row">' +
           '<div class="grid-cell" role="cell">' + payCell + '</div>' +

@@ -210,6 +210,7 @@ app.get('/api/insights-variants', insightsVariants.getInsightsVariants);
 app.get('/api/payment-types/series', require('./routes/paymentTypes').getPaymentTypesSeries);
 app.get('/api/payment-types/table', require('./routes/paymentTypes').getPaymentTypesTable);
 app.get('/api/payment-methods/report', require('./routes/paymentMethods').getPaymentMethodsReport);
+app.get('/api/payment-methods/catalog', require('./routes/paymentMethods').getPaymentMethodsCatalog);
 app.get('/api/insights-variants-suggestions', insightsVariantsSuggestions.getInsightsVariantsSuggestions);
 app.post('/api/insights-variants-suggestions/apply', insightsVariantsSuggestions.postApplyInsightsVariantsSuggestions);
 app.get('/api/worst-products', worstProducts.getWorstProducts);

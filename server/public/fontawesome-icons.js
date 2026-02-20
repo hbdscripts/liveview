@@ -353,6 +353,7 @@
     var safeFallback = (fallbackStyle || 'fa-light') + ' ' + (fallbackGlyph || 'fa-circle');
     if (!rawInput) return { mode: 'full', value: safeFallback, full: safeFallback };
     if (svgMarkup) return { mode: 'svg', value: svgMarkup, full: safeFallback };
+    if (/^(https?:\/\/|\/\/|\/)/i.test(rawInput)) return { mode: 'img', value: rawInput, full: safeFallback };
     var raw = sanitizeIconClassString(rawInput).toLowerCase();
     var tokens = raw.split(/\s+/).filter(Boolean);
     var faTokens = tokens.filter(function (t) {
@@ -528,6 +529,42 @@
     } catch (_) {}
   }
 
+  function applyImageOverrideMarkup(el, imageUrl, override) {
+    if (!el || !el.classList) return;
+    var keep = [];
+    var hadFaFw = el.classList.contains('fa-fw');
+    Array.prototype.forEach.call(el.classList, function (cls) {
+      if (cls.indexOf('fa-') === 0) return;
+      if (cls === 'fa' || cls === 'fas' || cls === 'far' || cls === 'fal' || cls === 'fab' || cls === 'fat' || cls === 'fad') return;
+      if (cls === 'kexo-svg-icon-host' || cls === 'kexo-img-icon-host') return;
+      keep.push(cls);
+    });
+    el.className = keep.concat(['fa', 'kexo-img-icon-host']).join(' ').trim();
+    if (hadFaFw) el.classList.add('fa-fw');
+    el.setAttribute('data-kexo-icon-mode', 'img');
+    var safeUrl = String(imageUrl || '').trim()
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+    el.innerHTML = safeUrl ? '<img src="' + safeUrl + '" alt="">' : '';
+    applyElementOverrideStyles(el, override);
+    var imgEl = el.querySelector('img');
+    if (!imgEl) return;
+    var size = (override && override.size) ? normalizeIconOverrideSize(override.size) : '1em';
+    if (!size) size = '1em';
+    try {
+      imgEl.setAttribute('width', size);
+      imgEl.setAttribute('height', size);
+      imgEl.style.width = size;
+      imgEl.style.height = size;
+      imgEl.style.display = 'inline-block';
+      imgEl.style.verticalAlign = '-0.125em';
+      imgEl.style.objectFit = 'contain';
+    } catch (_) {}
+  }
+
   function applyIconStyle(el, glyphSettings, overrideSettings) {
     if (!el) return;
     if (el.hasAttribute && el.hasAttribute('data-theme-icon-preview')) return;
@@ -541,10 +578,15 @@
       applySvgOverrideMarkup(el, parsed.value, override);
       return;
     }
-    if (el.getAttribute && el.getAttribute('data-kexo-icon-mode') === 'svg') {
+    if (parsed && parsed.mode === 'img') {
+      applyImageOverrideMarkup(el, parsed.value, override);
+      return;
+    }
+    if (el.getAttribute && (el.getAttribute('data-kexo-icon-mode') === 'svg' || el.getAttribute('data-kexo-icon-mode') === 'img')) {
       el.removeAttribute('data-kexo-icon-mode');
       try { el.innerHTML = ''; } catch (_) {}
       try { el.classList.remove('kexo-svg-icon-host'); } catch (_) {}
+      try { el.classList.remove('kexo-img-icon-host'); } catch (_) {}
     }
     applyFullOverrideClasses(el, parsed && parsed.value ? parsed.value : fallbackSpec, fallbackSpec);
     applyElementOverrideStyles(el, override);

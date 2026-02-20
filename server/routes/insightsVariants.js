@@ -36,7 +36,23 @@ async function getInsightsVariants(req, res) {
   try {
     const rawConfig = await store.getSetting(VARIANTS_CONFIG_KEY).catch(() => null);
     const variantsConfig = normalizeVariantsConfigV1(rawConfig);
+    let rowIconOverrides = {};
+    try {
+      const rawOverrides = await store.getSetting('asset_overrides');
+      if (rawOverrides && typeof rawOverrides === 'string') {
+        const parsed = JSON.parse(rawOverrides);
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+          rowIconOverrides = Object.keys(parsed).reduce((acc, key) => {
+            const k = String(key || '').trim().toLowerCase();
+            if (!/^variant_rule_[a-z0-9_-]+__[a-z0-9_-]+$/.test(k)) return acc;
+            acc[k] = parsed[key];
+            return acc;
+          }, {});
+        }
+      }
+    } catch (_) {}
     const cfgHash = configHash(variantsConfig);
+    const iconHash = configHash({ rowIconOverrides });
     const cached = await reportCache.getOrComputeJson(
       {
         shop,
@@ -44,7 +60,7 @@ async function getInsightsVariants(req, res) {
         rangeKey: range,
         rangeStartTs: start,
         rangeEndTs: end,
-        params: { cfgHash },
+        params: { cfgHash, iconHash },
         ttlMs: 5 * 60 * 1000,
         force,
       },
@@ -61,6 +77,7 @@ async function getInsightsVariants(req, res) {
           start,
           end,
           variantsConfig,
+          rowIconOverrides,
         });
         return {
           ok: true,

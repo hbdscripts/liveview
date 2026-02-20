@@ -28,6 +28,7 @@ const {
   invalidateAttributionConfigCache,
 } = require('../attribution/deriveAttribution');
 const { writeAudit } = require('../audit');
+const { normalizeIconSpec } = require('../utils/svgNormalize');
 
 const PREFS_KEY_V1 = 'attribution_prefs_v1';
 const PREFS_KEY = 'attribution_prefs_v2';
@@ -92,51 +93,8 @@ function sanitizeTagKey(v, { maxLen = 120 } = {}) {
   return s;
 }
 
-function looksLikeUrl(s) {
-  const raw = typeof s === 'string' ? s.trim() : '';
-  if (!raw) return false;
-  if (raw.startsWith('/assets/') || raw.startsWith('/uploads/') || raw.startsWith('/')) return true;
-  return raw.startsWith('https://') || raw.startsWith('http://');
-}
-
-function extractFirstSvgMarkup(value) {
-  const raw = typeof value === 'string' ? value : '';
-  if (!raw) return '';
-  const m = raw.match(/<svg[\s\S]*?<\/svg>/i);
-  return m ? String(m[0]) : '';
-}
-
-function sanitizeSvgMarkup(value) {
-  let svg = extractFirstSvgMarkup(value);
-  if (!svg) return '';
-  svg = svg.replace(/<\?xml[\s\S]*?\?>/gi, '');
-  svg = svg.replace(/<!--[\s\S]*?-->/g, '');
-  svg = svg.replace(/<script[\s\S]*?<\/script>/gi, '');
-  svg = svg.replace(/\son[a-z]+\s*=\s*(".*?"|'.*?'|[^\s>]+)/gi, '');
-  svg = svg.replace(/\s(?:href|xlink:href)\s*=\s*("javascript:[^"]*"|'javascript:[^']*'|javascript:[^\s>]+)/gi, '');
-  return svg.trim();
-}
-
-function sanitizeIconClassString(value) {
-  const raw = typeof value === 'string' ? value.trim() : '';
-  if (!raw) return '';
-  const cleaned = raw.replace(/[^a-z0-9 \t\r\n_-]+/gi, ' ').trim().replace(/\s+/g, ' ');
-  const tokens = cleaned
-    .split(' ')
-    .map((t) => t.trim())
-    .filter(Boolean)
-    .filter((t) => /^fa[a-z0-9-]*$/i.test(t));
-  return tokens.join(' ').slice(0, 256);
-}
-
-function normalizeIconSpec(value) {
-  const raw = typeof value === 'string' ? value.trim() : '';
-  if (!raw) return null;
-  const svg = sanitizeSvgMarkup(raw);
-  if (svg) return svg;
-  if (looksLikeUrl(raw)) return raw.slice(0, 2048);
-  const cls = sanitizeIconClassString(raw);
-  return cls || null;
+async function normalizeIconSpecInput(value) {
+  return normalizeIconSpec(value, { fetchRemoteSvg: true, timeoutMs: 5000 });
 }
 
 function titleFromKey(key) {
@@ -561,43 +519,37 @@ async function postAttributionConfig(req, res) {
     }))
     .filter((r) => r.channel_key && r.label);
 
-  const sources = nextSources
-    .map((r) => ({
-      source_key: sanitizeKey(r && r.source_key != null ? r.source_key : r && r.key != null ? r.key : '', { maxLen: 32 }),
-      label: (r && r.label != null ? String(r.label) : '').trim().slice(0, 80) || null,
-      icon_spec: normalizeIconSpec(r && r.icon_spec != null ? r.icon_spec : r && r.iconSpec != null ? r.iconSpec : null),
+  const sources = (await Promise.all(nextSources.map(async (r) => ({
+    source_key: sanitizeKey(r && r.source_key != null ? r.source_key : r && r.key != null ? r.key : '', { maxLen: 32 }),
+    label: (r && r.label != null ? String(r.label) : '').trim().slice(0, 80) || null,
+    icon_spec: await normalizeIconSpecInput(r && r.icon_spec != null ? r.icon_spec : r && r.iconSpec != null ? r.iconSpec : null),
+    sort_order: clampInt(r && r.sort_order != null ? r.sort_order : r && r.sortOrder != null ? r.sortOrder : 0, { min: -1000000, max: 1000000, fallback: 0 }),
+    enabled: (r && r.enabled === false) ? 0 : 1,
+    updated_at: now,
+  })))).filter((r) => r.source_key && r.label);
+
+  const tags = (await Promise.all(nextTags.map(async (r) => ({
+    tag_key: sanitizeTagKey(r && r.tag_key != null ? r.tag_key : r && r.key != null ? r.key : '', { maxLen: 120 }),
+    label: (r && r.label != null ? String(r.label) : '').trim().slice(0, 80) || null,
+    icon_spec: await normalizeIconSpecInput(r && r.icon_spec != null ? r.icon_spec : r && r.iconSpec != null ? r.iconSpec : null),
+    sort_order: clampInt(r && r.sort_order != null ? r.sort_order : r && r.sortOrder != null ? r.sortOrder : 0, { min: -1000000, max: 1000000, fallback: 0 }),
+    enabled: (r && r.enabled === false) ? 0 : 1,
+    updated_at: now,
+  })))).filter((r) => r.tag_key && r.label);
+
+  const variants = (await Promise.all(nextVariants.map(async (r) => {
+    const variantKey = normalizeBaseVariantKey(r && (r.variant_key != null ? r.variant_key : (r.key != null ? r.key : '')));
+    return {
+      variant_key: variantKey,
+      label: (r && r.label != null ? String(r.label) : '').trim().slice(0, 120) || null,
+      channel_key: sanitizeKey(r && r.channel_key != null ? r.channel_key : r && r.channelKey != null ? r.channelKey : '', { maxLen: 32 }) || 'other',
+      source_key: sanitizeKey(r && r.source_key != null ? r.source_key : r && r.sourceKey != null ? r.sourceKey : '', { maxLen: 32 }) || 'other',
+      icon_spec: await normalizeIconSpecInput(r && r.icon_spec != null ? r.icon_spec : r && r.iconSpec != null ? r.iconSpec : null),
       sort_order: clampInt(r && r.sort_order != null ? r.sort_order : r && r.sortOrder != null ? r.sortOrder : 0, { min: -1000000, max: 1000000, fallback: 0 }),
       enabled: (r && r.enabled === false) ? 0 : 1,
       updated_at: now,
-    }))
-    .filter((r) => r.source_key && r.label);
-
-  const tags = nextTags
-    .map((r) => ({
-      tag_key: sanitizeTagKey(r && r.tag_key != null ? r.tag_key : r && r.key != null ? r.key : '', { maxLen: 120 }),
-      label: (r && r.label != null ? String(r.label) : '').trim().slice(0, 80) || null,
-      icon_spec: normalizeIconSpec(r && r.icon_spec != null ? r.icon_spec : r && r.iconSpec != null ? r.iconSpec : null),
-      sort_order: clampInt(r && r.sort_order != null ? r.sort_order : r && r.sortOrder != null ? r.sortOrder : 0, { min: -1000000, max: 1000000, fallback: 0 }),
-      enabled: (r && r.enabled === false) ? 0 : 1,
-      updated_at: now,
-    }))
-    .filter((r) => r.tag_key && r.label);
-
-  const variants = nextVariants
-    .map((r) => {
-      const variantKey = normalizeBaseVariantKey(r && (r.variant_key != null ? r.variant_key : (r.key != null ? r.key : '')));
-      return {
-        variant_key: variantKey,
-        label: (r && r.label != null ? String(r.label) : '').trim().slice(0, 120) || null,
-        channel_key: sanitizeKey(r && r.channel_key != null ? r.channel_key : r && r.channelKey != null ? r.channelKey : '', { maxLen: 32 }) || 'other',
-        source_key: sanitizeKey(r && r.source_key != null ? r.source_key : r && r.sourceKey != null ? r.sourceKey : '', { maxLen: 32 }) || 'other',
-        icon_spec: normalizeIconSpec(r && r.icon_spec != null ? r.icon_spec : r && r.iconSpec != null ? r.iconSpec : null),
-        sort_order: clampInt(r && r.sort_order != null ? r.sort_order : r && r.sortOrder != null ? r.sortOrder : 0, { min: -1000000, max: 1000000, fallback: 0 }),
-        enabled: (r && r.enabled === false) ? 0 : 1,
-        updated_at: now,
-      };
-    })
-    .filter((r) => r.variant_key && r.label);
+    };
+  }))).filter((r) => r.variant_key && r.label);
 
   const rules = nextRules
     .map((r) => {
@@ -850,8 +802,8 @@ async function postAttributionMap(req, res) {
     const label = (body.variant_label != null ? String(body.variant_label) : (body.label != null ? String(body.label) : '')).trim().slice(0, 120) || titleFromKey(variantKey);
     const channelKey = sanitizeKey(body.channel_key != null ? body.channel_key : body.channelKey, { maxLen: 32 }) || 'other';
     const sourceKey = sanitizeKey(body.source_key != null ? body.source_key : body.sourceKey, { maxLen: 32 }) || 'other';
-    const sourceIconSpec = normalizeIconSpec(body.source_icon_spec != null ? body.source_icon_spec : body.sourceIconSpec);
-    const variantIconSpec = normalizeIconSpec(
+    const sourceIconSpec = await normalizeIconSpecInput(body.source_icon_spec != null ? body.source_icon_spec : body.sourceIconSpec);
+    const variantIconSpec = await normalizeIconSpecInput(
       body.variant_icon_spec != null ? body.variant_icon_spec
         : (body.variantIconSpec != null ? body.variantIconSpec
           : (body.icon_spec != null ? body.icon_spec : body.iconSpec))
@@ -993,7 +945,7 @@ async function postAttributionIcons(req, res) {
         ? ('icon_spec' in r ? r.icon_spec : ('iconSpec' in r ? r.iconSpec : undefined))
         : undefined;
     if (iconSpecInput === undefined) continue;
-    const iconSpec = normalizeIconSpec(iconSpecInput);
+    const iconSpec = await normalizeIconSpecInput(iconSpecInput);
     try {
       await db.run(
         `
@@ -1016,7 +968,7 @@ async function postAttributionIcons(req, res) {
         ? ('icon_spec' in r ? r.icon_spec : ('iconSpec' in r ? r.iconSpec : undefined))
         : undefined;
     if (iconSpecInput === undefined) continue;
-    const iconSpec = normalizeIconSpec(iconSpecInput);
+    const iconSpec = await normalizeIconSpecInput(iconSpecInput);
     try {
       await db.run(
         `

@@ -69,21 +69,38 @@
     var k = normalizePaymentProviderKey(key);
     if (!k) return null;
     var map = {
-      visa: { label: 'Visa', tablerKey: 'visa' },
-      mastercard: { label: 'Mastercard', tablerKey: 'mastercard' },
-      americanexpress: { label: 'American Express', tablerKey: 'americanexpress' },
-      paypal: { label: 'PayPal', tablerKey: 'paypal' },
-      applepay: { label: 'Apple Pay', tablerKey: 'applepay' },
-      'google-pay': { label: 'Google Pay', tablerKey: 'google-pay' },
-      klarna: { label: 'Klarna', tablerKey: 'klarna' },
-      'shop-pay': { label: 'Shop Pay', tablerKey: 'shop-pay' },
-      'shopify-payments': { label: 'Shopify Payments', tablerKey: 'shop-pay' },
+      visa: { label: 'Visa', iconKey: 'payment-method-visa', iconClass: 'fa-brands fa-cc-visa' },
+      mastercard: { label: 'Mastercard', iconKey: 'payment-method-mastercard', iconClass: 'fa-brands fa-cc-mastercard' },
+      americanexpress: { label: 'American Express', iconKey: 'payment-method-amex', iconClass: 'fa-brands fa-cc-amex' },
+      paypal: { label: 'PayPal', iconKey: 'payment-method-paypal', iconClass: 'fa-brands fa-paypal' },
+      applepay: { label: 'Apple Pay', iconKey: 'payment-method-apple_pay', iconClass: 'fa-brands fa-apple-pay' },
+      'google-pay': { label: 'Google Pay', iconKey: 'payment-method-google_pay', iconClass: 'fa-brands fa-google-pay' },
+      klarna: { label: 'Klarna', iconKey: 'payment-method-klarna', iconClass: 'fa-light fa-credit-card' },
+      'shop-pay': { label: 'Shop Pay', iconKey: 'payment-method-shop_pay', iconClass: 'fa-light fa-bag-shopping' },
+      'shopify-payments': { label: 'Shopify Payments', iconKey: 'payment-method-shop_pay', iconClass: 'fa-light fa-bag-shopping' },
     };
-    return map[k] || { label: k, tablerKey: null };
+    return map[k] || { label: k, iconKey: 'payment-method-other', iconClass: 'fa-light fa-credit-card' };
   }
 
   function tablerPaymentClassName(providerKey) {
+    return '';
+  }
+
+  function paymentProviderIconHtml(providerKey, opts) {
+    function esc(value) {
+      return String(value == null ? '' : value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
     var meta = paymentProviderMeta(providerKey);
-    if (!meta || !meta.tablerKey) return '';
-    return 'payment payment-provider-' + meta.tablerKey;
+    if (!meta) return '';
+    var extraClass = opts && opts.extraClass ? String(opts.extraClass).trim() : '';
+    var label = meta.label ? String(meta.label) : '';
+    var iconClass = meta.iconClass ? String(meta.iconClass) : 'fa-light fa-credit-card';
+    var iconKey = meta.iconKey ? String(meta.iconKey) : 'payment-method-other';
+    var cls = [iconClass, extraClass].join(' ').trim();
+    return '<i class="' + esc(cls) + '" data-icon-key="' + esc(iconKey) + '" aria-label="' + esc(label) + '" title="' + esc(label) + '" aria-hidden="true"></i>';
   }

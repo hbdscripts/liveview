@@ -1597,7 +1597,7 @@
             var k = normalizePaymentProviderKey(raw);
             if (k) {
               var meta = (typeof paymentProviderMeta === 'function') ? paymentProviderMeta(k) : null;
-              if (meta && meta.tablerKey) return k;
+              if (meta && meta.iconKey) return k;
             }
           }
         }
@@ -1609,11 +1609,12 @@
       try {
         var k = inferPaymentProviderKeyFromSession(s);
         if (!k) return '';
+        if (typeof paymentProviderIconHtml === 'function') {
+          return paymentProviderIconHtml(k, { extraClass: 'payment-xxs' });
+        }
         var meta = (typeof paymentProviderMeta === 'function') ? paymentProviderMeta(k) : null;
-        if (!meta || !meta.tablerKey) return '';
-        var cls = (typeof tablerPaymentClassName === 'function') ? tablerPaymentClassName(k) : '';
-        if (!cls) return '';
-        return '<span class="' + escapeHtml(cls + ' payment-xxs') + '" aria-label="' + escapeHtml(meta.label || '') + '" title="' + escapeHtml(meta.label || '') + '"></span>';
+        if (!meta) return '';
+        return '<i class="' + escapeHtml(String(meta.iconClass || 'fa-light fa-credit-card') + ' payment-xxs') + '" data-icon-key="' + escapeHtml(String(meta.iconKey || 'payment-method-other')) + '" aria-label="' + escapeHtml(meta.label || '') + '" title="' + escapeHtml(meta.label || '') + '" aria-hidden="true"></i>';
       } catch (_) {
         return '';
       }
