@@ -177,49 +177,18 @@
 
             pretitle.insertBefore(icon, pretitle.firstChild || null);
 
-            // Inject the current page icon into the page title (desktop only via CSS).
-            // Use data-icon-key so fontawesome-icons.js applies theme (same as menu icons).
+            // Mobile-only: inject a small arrow icon before the page title text.
+            // (Shown/hidden purely by CSS media queries so it applies to every page consistently.)
             try {
-              var dropdownMenu = activeCat.querySelector('.dropdown-menu');
-              var activeLink = dropdownMenu ? dropdownMenu.querySelector('a.dropdown-item[aria-current="page"]') : null;
-              var navKey = activeLink ? (activeLink.getAttribute('data-nav') || '').trim().toLowerCase() : '';
-              var iconKey = navKey ? (NAV_TO_ICON_KEY[navKey] || null) : null;
               var title = document.querySelector('.page-header .kexo-page-header-title-col .page-title');
-              if (title && iconKey) {
+              if (title) {
                 title.querySelectorAll('.kexo-page-header-title-icon').forEach(function(el) { try { el.remove(); } catch (_) {} });
                 title.querySelectorAll('.kexo-page-title-mobile-sep').forEach(function(el) { try { el.remove(); } catch (_) {} });
-                var pageIcon = document.createElement('i');
-                pageIcon.className = 'fa-jelly fa-circle kexo-page-header-title-icon';
-                pageIcon.setAttribute('aria-hidden', 'true');
-                pageIcon.setAttribute('data-icon-key', iconKey);
-                if (idx >= 1 && idx <= 5) pageIcon.classList.add('kexo-accent-' + String(idx));
-                if (computedColor) pageIcon.style.color = computedColor;
-                title.insertBefore(pageIcon, title.firstChild || null);
-
-                // Mobile-only: Attribution title gets a subtle separator arrow.
-                try {
-                  var isAttribution = (document && document.body && document.body.getAttribute)
-                    ? (String(document.body.getAttribute('data-page') || '').trim().toLowerCase() === 'attribution')
-                    : false;
-                  if (isAttribution) {
-                    var sep = document.createElement('i');
-                    sep.className = 'fa-solid fa-arrow-turn-down-right kexo-page-title-mobile-sep';
-                    sep.setAttribute('aria-hidden', 'true');
-                    sep.setAttribute('data-icon-key', 'page-title-separator');
-                    title.insertBefore(sep, pageIcon.nextSibling || null);
-                  }
-                } catch (_) {}
-                try {
-                  if (typeof window.KexoIconTheme === 'object' && typeof window.KexoIconTheme.applyElement === 'function') {
-                    window.KexoIconTheme.applyElement(pageIcon);
-                  }
-                } catch (_) {}
-                try {
-                  if (typeof window.KexoIconTheme === 'object' && typeof window.KexoIconTheme.applyElement === 'function') {
-                    var justSep = title.querySelector('.kexo-page-title-mobile-sep');
-                    if (justSep) window.KexoIconTheme.applyElement(justSep);
-                  }
-                } catch (_) {}
+                title.querySelectorAll('.kexo-page-title-mobile-arrow').forEach(function(el) { try { el.remove(); } catch (_) {} });
+                var arrow = document.createElement('i');
+                arrow.className = 'fa-thin fa-arrow-turn-down-right kexo-page-title-mobile-arrow';
+                arrow.setAttribute('aria-hidden', 'true');
+                title.insertBefore(arrow, title.firstChild || null);
               }
             } catch (_) {}
 
