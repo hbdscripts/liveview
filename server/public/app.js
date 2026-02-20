@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 3f87b70d17a57739
+// checksum: bf4061951da6b552
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -17394,10 +17394,11 @@ const API = '';
         return String(hash >>> 0);
       }
 
-      function dashboardPayloadSignature(data, rangeKey) {
+      function dashboardPayloadSignature(data, rangeKey, trendingDays) {
         var safeData = data && typeof data === 'object' ? data : {};
         var sigPayload = {
           range: String(rangeKey || ''),
+          trendingDays: trendingDays != null ? trendingDays : 0,
           labels: Array.isArray(safeData.labels) ? safeData.labels : [],
           revenue: Array.isArray(safeData.revenue) ? safeData.revenue : [],
           sessions: Array.isArray(safeData.sessions) ? safeData.sessions : [],
@@ -22024,7 +22025,7 @@ const API = '';
             try { build.finish(); } catch (_) {}
           }, 35000);
         }
-        var url = API + '/api/dashboard-series?range=' + encodeURIComponent(rangeKey) + (force ? ('&force=1&_=' + Date.now()) : '');
+        var url = API + '/api/dashboard-series?range=' + encodeURIComponent(rangeKey) + '&trendingDays=' + String(getTrendingDays()) + (force ? ('&force=1&_=' + Date.now()) : '');
         var forceMini = !!force;
         if (silent && forceMini && String(reason || '').trim().toLowerCase() !== 'new-sale') {
           var miniAgeMs = overviewMiniFetchedAt ? (Date.now() - overviewMiniFetchedAt) : Number.POSITIVE_INFINITY;
@@ -22045,7 +22046,7 @@ const API = '';
           .then(function(data) {
             dashLoading = false;
             if (data) {
-              var nextSig = dashboardPayloadSignature(data, rangeKey);
+              var nextSig = dashboardPayloadSignature(data, rangeKey, getTrendingDays());
               var shouldRender = !!force || !(dashPayloadSignature && nextSig && nextSig === dashPayloadSignature);
               dashCache = data;
               dashLastRangeKey = rangeKey;
@@ -22053,6 +22054,7 @@ const API = '';
               if (shouldRender || (opts && opts.rerender)) {
                 build.step('Rendering dashboard panels');
                 renderDashboard(data);
+                try { ensureTrendingDaysDropdown(); } catch (_) {}
               }
             }
             var deferSecondary = function() {
@@ -22083,6 +22085,20 @@ const API = '';
         rk = (rk == null ? '' : String(rk)).trim().toLowerCase();
         if (!rk) rk = 'today';
         return rk;
+      }
+
+      var OVERVIEW_TRENDING_DAYS_LS = 'kexo:overview-trending-days:v1';
+      function getTrendingDays() {
+        try {
+          var raw = localStorage.getItem(OVERVIEW_TRENDING_DAYS_LS);
+          var n = parseInt(raw, 10);
+          if (n === 3 || n === 7 || n === 14) return n;
+        } catch (_) {}
+        return 3;
+      }
+      function setTrendingDays(n) {
+        if (n !== 3 && n !== 7 && n !== 14) return;
+        try { localStorage.setItem(OVERVIEW_TRENDING_DAYS_LS, String(n)); } catch (_) {}
       }
 
       function fmtGbp2(n) {
@@ -22579,9 +22595,41 @@ const API = '';
         showOvwModal();
       }
 
+      function ensureTrendingDaysDropdown() {
+        var card = document.querySelector('[data-table-id="dash-trending"]');
+        var headRight = card ? card.querySelector('.kexo-widget-head-right') : null;
+        if (!headRight) return;
+        var existing = document.getElementById('dash-trending-days');
+        if (existing) {
+          existing.value = String(getTrendingDays());
+          return;
+        }
+        var select = document.createElement('select');
+        select.id = 'dash-trending-days';
+        select.className = 'form-select form-select-sm';
+        select.setAttribute('aria-label', 'Trending period');
+        select.style.minWidth = '4rem';
+        [3, 7, 14].forEach(function (d) {
+          var opt = document.createElement('option');
+          opt.value = String(d);
+          opt.textContent = String(d);
+          select.appendChild(opt);
+        });
+        select.value = String(getTrendingDays());
+        select.addEventListener('change', function () {
+          var n = parseInt(select.value, 10);
+          if (n === 3 || n === 7 || n === 14) {
+            setTrendingDays(n);
+            if (typeof fetchDashboardData === 'function') fetchDashboardData(dashRangeKeyFromDateRange(), true);
+          }
+        });
+        headRight.insertBefore(select, headRight.firstChild);
+      }
+
       function bindDashWidgetsOnce() {
         if (dashWidgetsBound) return;
         dashWidgetsBound = true;
+        try { ensureTrendingDaysDropdown(); } catch (_) {}
         try { applyOverviewWidgetsLayoutAndColors(readOverviewWidgetsUiConfigV1()); } catch (_) {}
         try {
           document.addEventListener('click', function (e) {

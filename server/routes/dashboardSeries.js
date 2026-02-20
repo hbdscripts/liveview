@@ -661,6 +661,8 @@ async function getDashboardSeries(req, res) {
   const days = Number.isFinite(daysRaw) && daysRaw > 0 && daysRaw <= 90 ? daysRaw : 7;
   const force = !!(req.query.force === '1' || req.query.force === 'true' || req.query._);
   const trafficMode = 'human_only';
+  const trendingDaysRaw = parseInt(req.query.trendingDays, 10);
+  const trendingDays = [3, 7, 14].indexOf(trendingDaysRaw) >= 0 ? trendingDaysRaw : null;
 
   res.setHeader('Cache-Control', 'private, max-age=300');
   res.setHeader('Vary', 'Cookie');
@@ -703,12 +705,14 @@ async function getDashboardSeries(req, res) {
         rangeKey: rangeKey ? ('range_' + rangeKey + '_' + bucketHint) : ('days_' + days),
         rangeStartTs: rangeKey ? bounds.start : todayBounds.start,
         rangeEndTs: rangeEnd,
-        params: rangeKey ? { trafficMode, rangeKey, bucket: bucketHint, rangeEndTs: rangeEndForCache } : { trafficMode, days, bucket: 'day' },
+        params: rangeKey
+          ? { trafficMode, rangeKey, bucket: bucketHint, rangeEndTs: rangeEndForCache, trendingDays: trendingDays != null ? trendingDays : undefined }
+          : { trafficMode, days, bucket: 'day' },
         ttlMs: 5 * 60 * 1000,
         force,
       },
       () => rangeKey
-        ? computeDashboardSeriesForBounds(bounds, now, timeZone, trafficMode, bucketHint, rangeKey)
+        ? computeDashboardSeriesForBounds(bounds, now, timeZone, trafficMode, bucketHint, rangeKey, trendingDays)
         : computeDashboardSeries(days, now, timeZone, trafficMode)
     );
     if (_dbgOn) {
@@ -1467,7 +1471,7 @@ function hourMinuteLabelFromParts(parts, hour, minute) {
   return `${ymd} ${hh}:${mm}`;
 }
 
-async function computeDashboardSeriesForBounds(bounds, nowMs, timeZone, trafficMode, bucketHint, rangeKey) {
+async function computeDashboardSeriesForBounds(bounds, nowMs, timeZone, trafficMode, bucketHint, rangeKey, trendingDaysOverride) {
   const db = getDb();
   const shop = await resolveDashboardShop(db);
   const filter = sessionFilterForTraffic(trafficMode);
@@ -1781,12 +1785,24 @@ async function computeDashboardSeriesForBounds(bounds, nowMs, timeZone, trafficM
   try { sessionsByCountryAll = await fetchSessionCountsByCountryCodeAll(db, overallStart, overallEnd, filter); } catch (_) {}
   topCountries = fillTopCountriesWithSessionsFallback(topCountries, sessionsByCountryAll, { limit: DASHBOARD_TOP_TABLE_MAX_ROWS });
 
-  // Trending up/down vs previous equivalent period
+  // Trending up/down vs previous equivalent period (optionally use N-day window: 3, 7, or 14)
   let trendingUp = [];
   let trendingDown = [];
   if (shop) {
-    const nowBounds = { start: overallStart, end: overallEnd };
-    const prevBounds = getCompareWindow(rangeKey, { start: overallStart, end: overallEnd }, nowMs, timeZone);
+    let nowBounds = { start: overallStart, end: overallEnd };
+    let prevBounds = getCompareWindow(rangeKey, { start: overallStart, end: overallEnd }, nowMs, timeZone);
+    if (trendingDaysOverride != null && [3, 7, 14].indexOf(trendingDaysOverride) >= 0) {
+      const dayMs = 24 * 60 * 60 * 1000;
+      const trendEnd = overallEnd;
+      const trendStart = trendEnd - trendingDaysOverride * dayMs;
+      const platformStart = getPlatformStartMs(nowMs, timeZone);
+      const prevEnd = trendStart;
+      const prevStart = Math.max(platformStart || 0, prevEnd - trendingDaysOverride * dayMs);
+      if (prevEnd > prevStart && trendEnd > trendStart) {
+        nowBounds = { start: trendStart, end: trendEnd };
+        prevBounds = { start: prevStart, end: prevEnd };
+      }
+    }
     if (prevBounds) {
       try {
         const t = await fetchTrendingProducts(db, shop, nowBounds, prevBounds, filter);
