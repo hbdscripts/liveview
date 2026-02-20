@@ -4149,6 +4149,9 @@
       function renderKexoScoreOverviewBreakdown(scoreData) {
         var container = document.getElementById('dash-kpi-kexo-score-breakdown');
         if (!container) return;
+        var rangeKeyForAnim = (scoreData && scoreData.rangeKey != null) ? String(scoreData.rangeKey) : '';
+        var lastAnimatedRange = container.getAttribute('data-kexo-score-animated-range') || '';
+        var shouldAnimateOnce = lastAnimatedRange !== rangeKeyForAnim;
         var KEXO_SCORE_V2_UI = {
           floors: {
             money: 100,
@@ -4307,6 +4310,7 @@
           var deltaStr = fmtComponentDeltaText(c.key, c.value, c.previous);
           if (!deltaStr) deltaStr = '\u2014';
           var detail = String(valueStr) + ' | ' + String(deltaStr) + ' vs prev';
+          var curWidth = shouldAnimateOnce ? '0%' : (bars.curPct.toFixed(1) + '%');
           return '<div class="kexo-score-breakdown-row mb-2">' +
             '<div class="kexo-score-breakdown-head mb-1">' +
               '<span class="kexo-score-breakdown-label">' + escapeHtml(label) + '</span>' +
@@ -4314,12 +4318,15 @@
             '</div>' +
             '<div class="progress kexo-score-progress">' +
               '<div class="progress-bar bg-secondary kexo-score-bar-prev" role="progressbar" style="width:' + bars.prevPct.toFixed(1) + '%" aria-hidden="true"></div>' +
-              '<div class="progress-bar ' + bars.barClass + ' kexo-score-bar-cur" role="progressbar" style="width:0%" data-target-pct="' + bars.curPct.toFixed(1) + '" aria-valuenow="' + bars.curPct.toFixed(1) + '" aria-valuemin="0" aria-valuemax="100">' + escapeHtml(bars.barLabel) + '</div>' +
+              '<div class="progress-bar ' + bars.barClass + ' kexo-score-bar-cur" role="progressbar" style="width:' + curWidth + '" data-target-pct="' + bars.curPct.toFixed(1) + '" aria-valuenow="' + bars.curPct.toFixed(1) + '" aria-valuemin="0" aria-valuemax="100">' + escapeHtml(bars.barLabel) + '</div>' +
             '</div>' +
           '</div>';
         }).join('');
         container.innerHTML = html;
-        requestAnimationFrame(function() { animateKexoScoreOverviewBars(container); });
+        if (shouldAnimateOnce) {
+          container.setAttribute('data-kexo-score-animated-range', rangeKeyForAnim);
+          requestAnimationFrame(function() { animateKexoScoreOverviewBars(container); });
+        }
       }
 
       function applyKexoScoreModalSummary(scoreData) {
