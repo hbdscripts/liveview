@@ -30,7 +30,9 @@ When multiple agents (or humans) may touch the repo at the same time, follow thi
   - If `origin/main` moved since you started, rebase your branch on top (and re-run required builds like `npm run build:app`).
 - **Never discard unknown edits**:
   - Do not run `git restore .`, `git checkout -- .`, `git reset --hard`, or similar “wipe” commands unless you are **certain** you are discarding only your own local changes.
-  - If the working tree changes unexpectedly: stop, inspect `git status` + `git diff`, and prefer `git stash -u` to preserve work while investigating.
+- **Never stash in this workspace**:
+  - Do not use `git stash` (it hides other agents’ edits in shared sessions).
+  - If the working tree changes unexpectedly: stop, inspect `git status` + `git diff`, then **stage/commit only the files you changed** (explicit `git add <paths>`). Leave other agents’ edits visible and unstaged.
 - **Handover discipline**:
   - If you touched core paths (routes/auth/dashboard UX/ingest/schema/deploy), update `HANDOVER.md` in the same commit.
   - When pausing, leave a short note in `HANDOVER.md` describing the branch, what changed, and next steps.

@@ -15,7 +15,9 @@ See **AGENT_RULES.md** at repo root for full rules.
   - **Do not ask for deploy confirmation** unless the user has explicitly said “don’t deploy” for this task/session.
 - **Never discard unknown changes**: do not use `git restore .`, `git checkout -- .`, or `git reset --hard` unless you are 100% sure you’re discarding only your own work.
 - **Sync early**: `git fetch origin` before starting and before committing if other commits may have landed.
-- **If anything changes unexpectedly**: stop, inspect (`git status`, `git diff`), and prefer `git stash -u` while investigating.
+- **Never stash in this workspace**: do not use `git stash` (it hides other agents’ work in shared sessions).
+  - If anything changes unexpectedly: stop, inspect (`git status`, `git diff`), and **only stage/commit the files you touched** (explicit `git add <paths>`).
+  - Leave other agents’ edits **visible and unstaged**; don’t try to “clean” the tree.
 
 **Push proof (after every push):** run and paste:
 
