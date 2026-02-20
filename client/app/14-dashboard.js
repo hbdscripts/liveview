@@ -2633,10 +2633,58 @@
       function fetchOverviewJson(url, force, timeoutMs) {
         return fetchWithTimeout(url, { credentials: 'same-origin', cache: force ? 'no-store' : 'default' }, timeoutMs || 25000)
           .then(function(r) {
-            if (!r) throw new Error('No response');
-            if (!r.ok) throw new Error('Request failed (' + String(r.status || '') + ')');
-            return r.json();
+            if (!r) {
+              var e0 = new Error('No response');
+              e0.url = url;
+              throw e0;
+            }
+            if (!r.ok) {
+              var e1 = new Error('Request failed (' + String(r.status || '') + ')');
+              e1.url = url;
+              e1.status = r.status;
+              try { e1.contentType = r.headers ? (r.headers.get('content-type') || '') : ''; } catch (_) {}
+              throw e1;
+            }
+            return r.json().catch(function (jsonErr) {
+              var e2 = new Error('Invalid JSON');
+              e2.url = url;
+              e2.status = r.status;
+              e2.cause = jsonErr;
+              throw e2;
+            });
           });
+      }
+
+      function overviewCardLocalStorageKey(chartId) {
+        var id = (chartId == null ? '' : String(chartId)).trim();
+        return id ? ('kexo:overview-card-cache:' + id) : '';
+      }
+
+      function writeOverviewCardLocalCache(chartId, rangeKey, payload) {
+        try {
+          var key = overviewCardLocalStorageKey(chartId);
+          if (!key) return;
+          localStorage.setItem(key, JSON.stringify({ fetchedAt: Date.now(), rangeKey: String(rangeKey || ''), payload: payload || null }));
+        } catch (_) {}
+      }
+
+      function readOverviewCardLocalCache(chartId, maxAgeMs) {
+        try {
+          var key = overviewCardLocalStorageKey(chartId);
+          if (!key) return null;
+          var raw = localStorage.getItem(key);
+          if (!raw) return null;
+          var obj = JSON.parse(raw);
+          if (!obj || typeof obj !== 'object') return null;
+          var ts = Number(obj.fetchedAt);
+          if (!Number.isFinite(ts) || ts <= 0) return null;
+          var age = Date.now() - ts;
+          var ttl = Number.isFinite(Number(maxAgeMs)) ? Number(maxAgeMs) : (6 * 60 * 60 * 1000);
+          if (age < 0 || age > ttl) return null;
+          return obj;
+        } catch (_) {
+          return null;
+        }
       }
 
       function renderOverviewMiniLegend(chartId, labels, colors) {
@@ -3230,6 +3278,11 @@
             overviewCardCache[id] = { rangeKey: rk, fetchedAt: Date.now(), payload: data, shopKey: shopKey };
             try { renderOverviewCardById(id, data, { reason: force ? 'force-fetch' : 'fetch', rangeKey: rk, forceRender: true }); } catch (_) {}
             overviewMiniFetchedAt = Date.now();
+            // Mobile reliability: persist the Overview revenue+cost snapshot so transient API failures
+            // don't blank out the card.
+            if (id === 'dash-chart-overview-30d') {
+              writeOverviewCardLocalCache(id, rk, data);
+            }
             return data;
           })
           .catch(function(err) {
@@ -3239,7 +3292,25 @@
               try { renderOverviewCardById(id, cached.payload, { reason: 'error-cache', rangeKey: rk, forceRender: true }); } catch (_) {}
               return cached.payload;
             }
-            try { renderOverviewChartEmpty(id, 'Failed to load'); } catch (_) {}
+            // Fallback: try localStorage cache (helps on mobile flakiness).
+            var ls = (id === 'dash-chart-overview-30d') ? readOverviewCardLocalCache(id, 12 * 60 * 60 * 1000) : null;
+            if (ls && ls.payload) {
+              try { renderOverviewCardById(id, ls.payload, { reason: 'error-local-cache', rangeKey: rk, forceRender: true }); } catch (_) {}
+              return ls.payload;
+            }
+            var status = err && err.status != null ? Number(err.status) : NaN;
+            if (!Number.isFinite(status)) {
+              try {
+                var m = err && err.message ? String(err.message) : '';
+                var mm = m.match(/\((\d{3})\)/);
+                if (mm && mm[1]) status = Number(mm[1]);
+              } catch (_) {}
+            }
+            var msg = 'Failed to load';
+            if (status === 401 || status === 403) msg = 'Session expired';
+            else if (status >= 500 && status <= 599) msg = 'Server error';
+            else if (err && err.name === 'AbortError') msg = 'Timed out';
+            try { renderOverviewChartEmpty(id, msg); } catch (_) {}
             return null;
           })
           .finally(function() {

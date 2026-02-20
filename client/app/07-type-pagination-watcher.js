@@ -1443,6 +1443,23 @@
       if (!el) return;
       clearLiveActivityOverlay(el);
       opts = opts || {};
+      try {
+        var sc = opts.stageColors && typeof opts.stageColors === 'object' ? opts.stageColors : null;
+        if (sc && el && el.style) {
+          var pairs = [
+            ['--kexo-map-stage-browse', sc.browse],
+            ['--kexo-map-stage-cart', sc.cart],
+            ['--kexo-map-stage-checkout', sc.checkout],
+            ['--kexo-map-stage-purchase', sc.purchase],
+          ];
+          pairs.forEach(function(p) {
+            var key = p[0];
+            var val = p[1] != null ? String(p[1]) : '';
+            if (val) el.style.setProperty(key, val);
+            else el.style.removeProperty(key);
+          });
+        }
+      } catch (_) {}
 
       var mapSvg = getJvmSvgInContainer(el);
       if (!mapSvg) return;
@@ -1675,7 +1692,7 @@
     }
 
     var WORLD_MAP_ISO2 = ['AE','AF','AG','AL','AM','AO','AR','AT','AU','AZ','BA','BB','BD','BE','BF','BG','BI','BJ','BN','BO','BR','BS','BT','BW','BY','BZ','CA','CD','CF','CG','CH','CI','CL','CM','CN','CO','CR','CU','CV','CY','CZ','DE','DJ','DK','DM','DO','DZ','EC','EE','EG','ER','ES','ET','FI','FJ','FK','FR','GA','GB','GD','GE','GF','GH','GL','GM','GN','GQ','GR','GT','GW','GY','HN','HR','HT','HU','ID','IE','IL','IN','IQ','IR','IS','IT','JM','JO','JP','KE','KG','KH','KM','KN','KP','KR','KW','KZ','LA','LB','LC','LK','LR','LS','LT','LV','LY','MA','MD','MG','MK','ML','MM','MN','MR','MT','MU','MV','MW','MX','MY','MZ','NA','NC','NE','NG','NI','NL','NO','NP','NZ','OM','PA','PE','PF','PG','PH','PK','PL','PT','PY','QA','RE','RO','RS','RU','SA','SB','SC','SD','SE','SI','SK','SL','SN','SO','SR','ST','SV','SY','SZ','TD','TG','TH','TJ','TL','TM','TN','TR','TT','TW','TZ','UA','UG','US','UY','UZ','VE','VN','VU','YE','ZA','ZM','ZW'];
-    function buildMapFillScaleByIso(valuesByIso2, primaryRgb, minAlpha, maxAlpha) {
+    function buildMapFillScaleByIso(valuesByIso2, primaryRgb, baseAlpha, minAlpha, maxAlpha) {
       var src = valuesByIso2 && typeof valuesByIso2 === 'object' ? valuesByIso2 : {};
       var entries = [];
       var keys = Object.keys(src);
@@ -1686,7 +1703,8 @@
         if (!Number.isFinite(n) || n <= 0) continue;
         entries.push({ iso: iso, value: n });
       }
-      var defaultFill = 'rgba(' + (primaryRgb || '62,179,171') + ',0.18)';
+      var base = typeof baseAlpha === 'number' && Number.isFinite(baseAlpha) ? Math.max(0, Math.min(1, baseAlpha)) : 0.18;
+      var defaultFill = 'rgba(' + (primaryRgb || '62,179,171') + ',' + base + ')';
       var out = {};
       var idx;
       for (idx = 0; idx < WORLD_MAP_ISO2.length; idx++) {
@@ -1700,8 +1718,11 @@
           if (v < min) min = v;
           if (v > max) max = v;
         }
-        var lo = typeof minAlpha === 'number' ? minAlpha : 0.24;
-        var hi = typeof maxAlpha === 'number' ? maxAlpha : 0.92;
+        var lo = typeof minAlpha === 'number' && Number.isFinite(minAlpha) ? minAlpha : 0.24;
+        var hi = typeof maxAlpha === 'number' && Number.isFinite(maxAlpha) ? maxAlpha : 0.92;
+        lo = Math.max(0, Math.min(1, lo));
+        hi = Math.max(0, Math.min(1, hi));
+        if (hi < lo) { var tmp = hi; hi = lo; lo = tmp; }
         for (var k = 0; k < entries.length; k++) {
           var row = entries[k];
           var alpha = hi;
@@ -1825,7 +1846,22 @@
       var zoomMin = Number.isFinite(Number(opts.zoomMin)) ? Number(opts.zoomMin) : 1;
       var zoomMax = Number.isFinite(Number(opts.zoomMax)) ? Number(opts.zoomMax) : 12;
       // Clamp initial focus zoom so small countries don't over-zoom/crop the view.
-      var initialZoomMax = Number.isFinite(Number(opts.initialZoomMax)) ? Number(opts.initialZoomMax) : 2.8;
+      var initialZoomMax = Number.isFinite(Number(opts.initialZoomMax)) ? Number(opts.initialZoomMax) : (
+        rect && rect.width && rect.width < 420 ? 1.9 : 2.8
+      );
+      var mapFit = 'contain';
+      var fillOpacity = 0.18;
+      try {
+        if (typeof chartStyleFromUiConfig === 'function') {
+          var st = chartStyleFromUiConfig(chartKey) || {};
+          mapFit = (String(st.mapFit || '').trim().toLowerCase() === 'cover') ? 'cover' : 'contain';
+          if (Number.isFinite(Number(st.fillOpacity))) fillOpacity = Math.max(0, Math.min(1, Number(st.fillOpacity)));
+        }
+      } catch (_) {}
+      var alphaMult = fillOpacity > 0 ? (fillOpacity / 0.18) : 0;
+      if (!Number.isFinite(alphaMult)) alphaMult = 1;
+      alphaMult = Math.max(0, Math.min(3, alphaMult));
+      function a(x) { return Math.max(0, Math.min(1, x * alphaMult)); }
       var jvmOpts = {
         selector: '#' + containerId,
         map: 'world',
@@ -1836,26 +1872,49 @@
         zoomOnScroll: false,
         zoomAnimate: false,
         zoomMin: zoomMin,
-        zoomMax: initialZoomMax,
+        zoomMax: zoomMax,
         regionStyle: {
-          initial: { fill: 'rgba(' + primaryRgb + ',0.18)', stroke: border, strokeWidth: 0.7 },
-          hover: { fill: 'rgba(' + primaryRgb + ',0.46)' },
-          selected: { fill: 'rgba(' + primaryRgb + ',0.78)' },
+          initial: { fill: 'rgba(' + primaryRgb + ',' + String(a(0.18).toFixed(3)) + ')', stroke: border, strokeWidth: 0.7 },
+          hover: { fill: 'rgba(' + primaryRgb + ',' + String(a(0.46).toFixed(3)) + ')' },
+          selected: { fill: 'rgba(' + primaryRgb + ',' + String(a(0.78).toFixed(3)) + ')' },
         },
       };
-      if (opts.focusOn && typeof opts.focusOn === 'object') {
-        jvmOpts.focusOn = opts.focusOn;
-      } else if (opts.topRegionIso2) {
-        var topIso = String(opts.topRegionIso2).trim().toUpperCase().slice(0, 2);
-        if (topIso) jvmOpts.focusOn = { region: topIso, animate: false };
-      }
       if (opts.onRegionTooltipShow) jvmOpts.onRegionTooltipShow = opts.onRegionTooltipShow;
       var instance = new jsVectorMap(jvmOpts);
-      // Restore full zoom range after initial focus is applied.
       try {
         if (instance && instance.params) {
           instance.params.zoomMin = zoomMin;
-          instance.params.zoomMax = zoomMax;
+        }
+      } catch (_) {}
+      // Fit mode: cover should fill both dimensions (crop edges), even in tall containers.
+      if (instance && mapFit === 'cover') {
+        try {
+          var w = Number(instance._width);
+          var h = Number(instance._height);
+          var dw = Number(instance._defaultWidth);
+          var dh = Number(instance._defaultHeight);
+          if (Number.isFinite(w) && Number.isFinite(h) && Number.isFinite(dw) && Number.isFinite(dh) && w > 0 && h > 0 && dw > 0 && dh > 0) {
+            var coverScale = Math.max(w / dw, h / dh);
+            instance._baseScale = coverScale;
+            instance._baseTransX = Math.abs(w - dw * coverScale) / (2 * coverScale);
+            instance._baseTransY = Math.abs(h - dh * coverScale) / (2 * coverScale);
+            if (typeof instance.reset === 'function') instance.reset();
+          }
+        } catch (_) {}
+      }
+      // Apply initial focus after fit, with a temporary zoom clamp.
+      try {
+        var focusCfg = null;
+        if (opts.focusOn && typeof opts.focusOn === 'object') focusCfg = opts.focusOn;
+        else if (opts.topRegionIso2) {
+          var topIso = String(opts.topRegionIso2).trim().toUpperCase().slice(0, 2);
+          if (topIso) focusCfg = { region: topIso, animate: false };
+        }
+        if (focusCfg && typeof instance.setFocus === 'function' && instance.params) {
+          var prevMax = instance.params.zoomMax;
+          instance.params.zoomMax = initialZoomMax;
+          instance.setFocus(focusCfg);
+          instance.params.zoomMax = prevMax;
         }
       } catch (_) {}
       if (instance && instance.regions && opts.regionFillByIso2) {
@@ -1992,7 +2051,12 @@
         return { r: 62, g: 179, b: 171, rgb: '62,179,171' };
       }
       const primaryRgb = rgbFromColor(accent).rgb;
-      const regionFillByIso2 = buildMapFillScaleByIso(choroplethByIso2, primaryRgb, 0.24, 0.92);
+      var fillOpacity2 = mapStyle && Number.isFinite(Number(mapStyle.fillOpacity)) ? Math.max(0, Math.min(1, Number(mapStyle.fillOpacity))) : 0.18;
+      var alphaMult2 = fillOpacity2 > 0 ? (fillOpacity2 / 0.18) : 0;
+      if (!Number.isFinite(alphaMult2)) alphaMult2 = 1;
+      alphaMult2 = Math.max(0, Math.min(3, alphaMult2));
+      function a2(x) { return Math.max(0, Math.min(1, x * alphaMult2)); }
+      const regionFillByIso2 = buildMapFillScaleByIso(choroplethByIso2, primaryRgb, a2(0.18), a2(0.24), a2(0.92));
       var focusOn = {};
       try {
         var focusRegions = [];
@@ -4692,6 +4756,11 @@
         mapDraggable: true,
         mapZoomButtons: true,
         mapShowEmptyCaption: true,
+        mapFit: 'cover',
+        mapStageBrowseColor: '',
+        mapStageCartColor: '',
+        mapStageCheckoutColor: '',
+        mapStagePurchaseColor: '',
         mapMetric: 'auto',
       };
     }
@@ -4738,6 +4807,14 @@
         mapDraggable: src.mapDraggable !== false,
         mapZoomButtons: src.mapZoomButtons !== false,
         mapShowEmptyCaption: src.mapShowEmptyCaption !== false,
+        mapFit: (function() {
+          var v = String(src.mapFit != null ? src.mapFit : def.mapFit).trim().toLowerCase();
+          return (v === 'cover' || v === 'contain') ? v : def.mapFit;
+        })(),
+        mapStageBrowseColor: normalizeOptionalHexColorStrict(src.mapStageBrowseColor),
+        mapStageCartColor: normalizeOptionalHexColorStrict(src.mapStageCartColor),
+        mapStageCheckoutColor: normalizeOptionalHexColorStrict(src.mapStageCheckoutColor),
+        mapStagePurchaseColor: normalizeOptionalHexColorStrict(src.mapStagePurchaseColor),
         mapMetric: ['auto', 'revenue', 'orders'].indexOf(String(src.mapMetric != null ? src.mapMetric : def.mapMetric).trim().toLowerCase()) >= 0
           ? String(src.mapMetric != null ? src.mapMetric : def.mapMetric).trim().toLowerCase()
           : 'auto',

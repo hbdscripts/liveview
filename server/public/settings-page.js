@@ -2660,6 +2660,11 @@
       mapDraggable: true,
       mapZoomButtons: true,
       mapShowEmptyCaption: true,
+      mapFit: 'cover',
+      mapStageBrowseColor: '',
+      mapStageCartColor: '',
+      mapStageCheckoutColor: '',
+      mapStagePurchaseColor: '',
       mapMetric: 'auto',
     };
   }
@@ -2675,6 +2680,8 @@
     if (['auto', 'inside', 'outside'].indexOf(pieLabelPosition) < 0) pieLabelPosition = def.pieLabelPosition || 'auto';
     var pieLabelContent = String(src.pieLabelContent != null ? src.pieLabelContent : def.pieLabelContent).trim().toLowerCase();
     if (['percent', 'label', 'label_percent'].indexOf(pieLabelContent) < 0) pieLabelContent = def.pieLabelContent || 'percent';
+    var mapFit = String(src.mapFit != null ? src.mapFit : def.mapFit).trim().toLowerCase();
+    if (mapFit !== 'cover' && mapFit !== 'contain') mapFit = String(def.mapFit || 'cover');
     return {
       curve: curve,
       strokeWidth: safeNumber(src.strokeWidth, def.strokeWidth, 0, 8),
@@ -2695,6 +2702,11 @@
       mapDraggable: src.mapDraggable !== false,
       mapZoomButtons: src.mapZoomButtons !== false,
       mapShowEmptyCaption: src.mapShowEmptyCaption !== false,
+      mapFit: mapFit,
+      mapStageBrowseColor: normalizeOptionalHexColor(src.mapStageBrowseColor || ''),
+      mapStageCartColor: normalizeOptionalHexColor(src.mapStageCartColor || ''),
+      mapStageCheckoutColor: normalizeOptionalHexColor(src.mapStageCheckoutColor || ''),
+      mapStagePurchaseColor: normalizeOptionalHexColor(src.mapStagePurchaseColor || ''),
       mapMetric: ['auto', 'revenue', 'orders'].indexOf(String(src.mapMetric != null ? src.mapMetric : def.mapMetric).trim().toLowerCase()) >= 0
         ? String(src.mapMetric != null ? src.mapMetric : def.mapMetric).trim().toLowerCase()
         : 'auto',

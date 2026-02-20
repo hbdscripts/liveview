@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 968552b22a5aa0a5
+// checksum: f1a9b28eacfd110f
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -6941,6 +6941,23 @@ const API = '';
       if (!el) return;
       clearLiveActivityOverlay(el);
       opts = opts || {};
+      try {
+        var sc = opts.stageColors && typeof opts.stageColors === 'object' ? opts.stageColors : null;
+        if (sc && el && el.style) {
+          var pairs = [
+            ['--kexo-map-stage-browse', sc.browse],
+            ['--kexo-map-stage-cart', sc.cart],
+            ['--kexo-map-stage-checkout', sc.checkout],
+            ['--kexo-map-stage-purchase', sc.purchase],
+          ];
+          pairs.forEach(function(p) {
+            var key = p[0];
+            var val = p[1] != null ? String(p[1]) : '';
+            if (val) el.style.setProperty(key, val);
+            else el.style.removeProperty(key);
+          });
+        }
+      } catch (_) {}
 
       var mapSvg = getJvmSvgInContainer(el);
       if (!mapSvg) return;
@@ -7173,7 +7190,7 @@ const API = '';
     }
 
     var WORLD_MAP_ISO2 = ['AE','AF','AG','AL','AM','AO','AR','AT','AU','AZ','BA','BB','BD','BE','BF','BG','BI','BJ','BN','BO','BR','BS','BT','BW','BY','BZ','CA','CD','CF','CG','CH','CI','CL','CM','CN','CO','CR','CU','CV','CY','CZ','DE','DJ','DK','DM','DO','DZ','EC','EE','EG','ER','ES','ET','FI','FJ','FK','FR','GA','GB','GD','GE','GF','GH','GL','GM','GN','GQ','GR','GT','GW','GY','HN','HR','HT','HU','ID','IE','IL','IN','IQ','IR','IS','IT','JM','JO','JP','KE','KG','KH','KM','KN','KP','KR','KW','KZ','LA','LB','LC','LK','LR','LS','LT','LV','LY','MA','MD','MG','MK','ML','MM','MN','MR','MT','MU','MV','MW','MX','MY','MZ','NA','NC','NE','NG','NI','NL','NO','NP','NZ','OM','PA','PE','PF','PG','PH','PK','PL','PT','PY','QA','RE','RO','RS','RU','SA','SB','SC','SD','SE','SI','SK','SL','SN','SO','SR','ST','SV','SY','SZ','TD','TG','TH','TJ','TL','TM','TN','TR','TT','TW','TZ','UA','UG','US','UY','UZ','VE','VN','VU','YE','ZA','ZM','ZW'];
-    function buildMapFillScaleByIso(valuesByIso2, primaryRgb, minAlpha, maxAlpha) {
+    function buildMapFillScaleByIso(valuesByIso2, primaryRgb, baseAlpha, minAlpha, maxAlpha) {
       var src = valuesByIso2 && typeof valuesByIso2 === 'object' ? valuesByIso2 : {};
       var entries = [];
       var keys = Object.keys(src);
@@ -7184,7 +7201,8 @@ const API = '';
         if (!Number.isFinite(n) || n <= 0) continue;
         entries.push({ iso: iso, value: n });
       }
-      var defaultFill = 'rgba(' + (primaryRgb || '62,179,171') + ',0.18)';
+      var base = typeof baseAlpha === 'number' && Number.isFinite(baseAlpha) ? Math.max(0, Math.min(1, baseAlpha)) : 0.18;
+      var defaultFill = 'rgba(' + (primaryRgb || '62,179,171') + ',' + base + ')';
       var out = {};
       var idx;
       for (idx = 0; idx < WORLD_MAP_ISO2.length; idx++) {
@@ -7198,8 +7216,11 @@ const API = '';
           if (v < min) min = v;
           if (v > max) max = v;
         }
-        var lo = typeof minAlpha === 'number' ? minAlpha : 0.24;
-        var hi = typeof maxAlpha === 'number' ? maxAlpha : 0.92;
+        var lo = typeof minAlpha === 'number' && Number.isFinite(minAlpha) ? minAlpha : 0.24;
+        var hi = typeof maxAlpha === 'number' && Number.isFinite(maxAlpha) ? maxAlpha : 0.92;
+        lo = Math.max(0, Math.min(1, lo));
+        hi = Math.max(0, Math.min(1, hi));
+        if (hi < lo) { var tmp = hi; hi = lo; lo = tmp; }
         for (var k = 0; k < entries.length; k++) {
           var row = entries[k];
           var alpha = hi;
@@ -7323,7 +7344,22 @@ const API = '';
       var zoomMin = Number.isFinite(Number(opts.zoomMin)) ? Number(opts.zoomMin) : 1;
       var zoomMax = Number.isFinite(Number(opts.zoomMax)) ? Number(opts.zoomMax) : 12;
       // Clamp initial focus zoom so small countries don't over-zoom/crop the view.
-      var initialZoomMax = Number.isFinite(Number(opts.initialZoomMax)) ? Number(opts.initialZoomMax) : 2.8;
+      var initialZoomMax = Number.isFinite(Number(opts.initialZoomMax)) ? Number(opts.initialZoomMax) : (
+        rect && rect.width && rect.width < 420 ? 1.9 : 2.8
+      );
+      var mapFit = 'contain';
+      var fillOpacity = 0.18;
+      try {
+        if (typeof chartStyleFromUiConfig === 'function') {
+          var st = chartStyleFromUiConfig(chartKey) || {};
+          mapFit = (String(st.mapFit || '').trim().toLowerCase() === 'cover') ? 'cover' : 'contain';
+          if (Number.isFinite(Number(st.fillOpacity))) fillOpacity = Math.max(0, Math.min(1, Number(st.fillOpacity)));
+        }
+      } catch (_) {}
+      var alphaMult = fillOpacity > 0 ? (fillOpacity / 0.18) : 0;
+      if (!Number.isFinite(alphaMult)) alphaMult = 1;
+      alphaMult = Math.max(0, Math.min(3, alphaMult));
+      function a(x) { return Math.max(0, Math.min(1, x * alphaMult)); }
       var jvmOpts = {
         selector: '#' + containerId,
         map: 'world',
@@ -7334,26 +7370,49 @@ const API = '';
         zoomOnScroll: false,
         zoomAnimate: false,
         zoomMin: zoomMin,
-        zoomMax: initialZoomMax,
+        zoomMax: zoomMax,
         regionStyle: {
-          initial: { fill: 'rgba(' + primaryRgb + ',0.18)', stroke: border, strokeWidth: 0.7 },
-          hover: { fill: 'rgba(' + primaryRgb + ',0.46)' },
-          selected: { fill: 'rgba(' + primaryRgb + ',0.78)' },
+          initial: { fill: 'rgba(' + primaryRgb + ',' + String(a(0.18).toFixed(3)) + ')', stroke: border, strokeWidth: 0.7 },
+          hover: { fill: 'rgba(' + primaryRgb + ',' + String(a(0.46).toFixed(3)) + ')' },
+          selected: { fill: 'rgba(' + primaryRgb + ',' + String(a(0.78).toFixed(3)) + ')' },
         },
       };
-      if (opts.focusOn && typeof opts.focusOn === 'object') {
-        jvmOpts.focusOn = opts.focusOn;
-      } else if (opts.topRegionIso2) {
-        var topIso = String(opts.topRegionIso2).trim().toUpperCase().slice(0, 2);
-        if (topIso) jvmOpts.focusOn = { region: topIso, animate: false };
-      }
       if (opts.onRegionTooltipShow) jvmOpts.onRegionTooltipShow = opts.onRegionTooltipShow;
       var instance = new jsVectorMap(jvmOpts);
-      // Restore full zoom range after initial focus is applied.
       try {
         if (instance && instance.params) {
           instance.params.zoomMin = zoomMin;
-          instance.params.zoomMax = zoomMax;
+        }
+      } catch (_) {}
+      // Fit mode: cover should fill both dimensions (crop edges), even in tall containers.
+      if (instance && mapFit === 'cover') {
+        try {
+          var w = Number(instance._width);
+          var h = Number(instance._height);
+          var dw = Number(instance._defaultWidth);
+          var dh = Number(instance._defaultHeight);
+          if (Number.isFinite(w) && Number.isFinite(h) && Number.isFinite(dw) && Number.isFinite(dh) && w > 0 && h > 0 && dw > 0 && dh > 0) {
+            var coverScale = Math.max(w / dw, h / dh);
+            instance._baseScale = coverScale;
+            instance._baseTransX = Math.abs(w - dw * coverScale) / (2 * coverScale);
+            instance._baseTransY = Math.abs(h - dh * coverScale) / (2 * coverScale);
+            if (typeof instance.reset === 'function') instance.reset();
+          }
+        } catch (_) {}
+      }
+      // Apply initial focus after fit, with a temporary zoom clamp.
+      try {
+        var focusCfg = null;
+        if (opts.focusOn && typeof opts.focusOn === 'object') focusCfg = opts.focusOn;
+        else if (opts.topRegionIso2) {
+          var topIso = String(opts.topRegionIso2).trim().toUpperCase().slice(0, 2);
+          if (topIso) focusCfg = { region: topIso, animate: false };
+        }
+        if (focusCfg && typeof instance.setFocus === 'function' && instance.params) {
+          var prevMax = instance.params.zoomMax;
+          instance.params.zoomMax = initialZoomMax;
+          instance.setFocus(focusCfg);
+          instance.params.zoomMax = prevMax;
         }
       } catch (_) {}
       if (instance && instance.regions && opts.regionFillByIso2) {
@@ -7490,7 +7549,12 @@ const API = '';
         return { r: 62, g: 179, b: 171, rgb: '62,179,171' };
       }
       const primaryRgb = rgbFromColor(accent).rgb;
-      const regionFillByIso2 = buildMapFillScaleByIso(choroplethByIso2, primaryRgb, 0.24, 0.92);
+      var fillOpacity2 = mapStyle && Number.isFinite(Number(mapStyle.fillOpacity)) ? Math.max(0, Math.min(1, Number(mapStyle.fillOpacity))) : 0.18;
+      var alphaMult2 = fillOpacity2 > 0 ? (fillOpacity2 / 0.18) : 0;
+      if (!Number.isFinite(alphaMult2)) alphaMult2 = 1;
+      alphaMult2 = Math.max(0, Math.min(3, alphaMult2));
+      function a2(x) { return Math.max(0, Math.min(1, x * alphaMult2)); }
+      const regionFillByIso2 = buildMapFillScaleByIso(choroplethByIso2, primaryRgb, a2(0.18), a2(0.24), a2(0.92));
       var focusOn = {};
       try {
         var focusRegions = [];
@@ -10190,6 +10254,11 @@ const API = '';
         mapDraggable: true,
         mapZoomButtons: true,
         mapShowEmptyCaption: true,
+        mapFit: 'cover',
+        mapStageBrowseColor: '',
+        mapStageCartColor: '',
+        mapStageCheckoutColor: '',
+        mapStagePurchaseColor: '',
         mapMetric: 'auto',
       };
     }
@@ -10236,6 +10305,14 @@ const API = '';
         mapDraggable: src.mapDraggable !== false,
         mapZoomButtons: src.mapZoomButtons !== false,
         mapShowEmptyCaption: src.mapShowEmptyCaption !== false,
+        mapFit: (function() {
+          var v = String(src.mapFit != null ? src.mapFit : def.mapFit).trim().toLowerCase();
+          return (v === 'cover' || v === 'contain') ? v : def.mapFit;
+        })(),
+        mapStageBrowseColor: normalizeOptionalHexColorStrict(src.mapStageBrowseColor),
+        mapStageCartColor: normalizeOptionalHexColorStrict(src.mapStageCartColor),
+        mapStageCheckoutColor: normalizeOptionalHexColorStrict(src.mapStageCheckoutColor),
+        mapStagePurchaseColor: normalizeOptionalHexColorStrict(src.mapStagePurchaseColor),
         mapMetric: ['auto', 'revenue', 'orders'].indexOf(String(src.mapMetric != null ? src.mapMetric : def.mapMetric).trim().toLowerCase()) >= 0
           ? String(src.mapMetric != null ? src.mapMetric : def.mapMetric).trim().toLowerCase()
           : 'auto',
@@ -12651,6 +12728,29 @@ const API = '';
       var accent = (palette && palette[0]) ? String(palette[0]).trim() : '#16a34a';
       var mapStyleEarly = chartStyleFromUiConfig(chartKey);
       var showEmptyCaption = mapStyleEarly.mapShowEmptyCaption !== false;
+      var stageColors = {
+        browse: mapStyleEarly.mapStageBrowseColor || '',
+        cart: mapStyleEarly.mapStageCartColor || '',
+        checkout: mapStyleEarly.mapStageCheckoutColor || '',
+        purchase: mapStyleEarly.mapStagePurchaseColor || '',
+      };
+      try {
+        var root = document && document.documentElement ? document.documentElement : null;
+        if (root && root.style) {
+          var pairs = [
+            ['--kexo-map-stage-browse', stageColors.browse],
+            ['--kexo-map-stage-cart', stageColors.cart],
+            ['--kexo-map-stage-checkout', stageColors.checkout],
+            ['--kexo-map-stage-purchase', stageColors.purchase],
+          ];
+          pairs.forEach(function (p) {
+            var key = p[0];
+            var val = p[1];
+            if (val) root.style.setProperty(key, val);
+            else root.style.removeProperty(key);
+          });
+        }
+      } catch (_) {}
 
       var sigParts = [];
       for (var k = 0; k < keys.length; k++) {
@@ -12680,7 +12780,7 @@ const API = '';
                 try { rgb2 = String(el.__kexoLiveOnlineMapPrimaryRgb || '').trim(); } catch (_) { rgb2 = ''; }
                 if (!rgb2) rgb2 = '22,163,74';
                 if (typeof renderLiveActivityOverlay === 'function') {
-                  renderLiveActivityOverlay(el, stageCountsByIso2, countsByIso2, { animated: true, primaryRgb: rgb2, originIso2: originIso, topN: 9 });
+                  renderLiveActivityOverlay(el, stageCountsByIso2, countsByIso2, { animated: true, primaryRgb: rgb2, originIso2: originIso, topN: 9, stageColors: stageColors });
                 } else {
                   renderCountriesFlowOverlay(el, pseudo, rgb2, originIso);
                 }
@@ -12723,7 +12823,12 @@ const API = '';
         var rgb = rgbFromColor(accent);
         var primaryRgb = rgb.rgb;
         try { el.__kexoLiveOnlineMapPrimaryRgb = primaryRgb; } catch (_) {}
-        var regionFillByIso2 = buildMapFillScaleByIso(countsByIso2, primaryRgb, 0.24, 0.92);
+        var fo = (mapStyleEarly && Number.isFinite(Number(mapStyleEarly.fillOpacity))) ? Math.max(0, Math.min(1, Number(mapStyleEarly.fillOpacity))) : 0.18;
+        var alphaMult = fo > 0 ? (fo / 0.18) : 0;
+        if (!Number.isFinite(alphaMult)) alphaMult = 1;
+        alphaMult = Math.max(0, Math.min(3, alphaMult));
+        function a(x) { return Math.max(0, Math.min(1, x * alphaMult)); }
+        var regionFillByIso2 = buildMapFillScaleByIso(countsByIso2, primaryRgb, a(0.18), a(0.24), a(0.92));
 
         // If the map instance already exists and the chart mode/palette is unchanged,
         // update fills/overlay in-place (avoid destroy/recreate churn on every refresh).
@@ -12760,7 +12865,7 @@ const API = '';
               pseudo2.sort(function (a, b) { return Number(b && b.converted) - Number(a && a.converted); });
               var originIso2 = pseudo2 && pseudo2[0] && pseudo2[0].country_code ? String(pseudo2[0].country_code) : 'GB';
               if (typeof renderLiveActivityOverlay === 'function') {
-                renderLiveActivityOverlay(el, stageCountsByIso2, countsByIso2, { animated: isAnimated, primaryRgb: primaryRgb, originIso2: originIso2, topN: 9 });
+                renderLiveActivityOverlay(el, stageCountsByIso2, countsByIso2, { animated: isAnimated, primaryRgb: primaryRgb, originIso2: originIso2, topN: 9, stageColors: stageColors });
               } else {
                 renderCountriesFlowOverlay(el, pseudo2, primaryRgb, originIso2);
               }
@@ -12832,10 +12937,10 @@ const API = '';
                   var co = Number(sc.checkout || 0) || 0;
                   var p = Number(sc.purchase || 0) || 0;
                   return '<div style="margin-top:6px;display:grid;grid-template-columns:10px 1fr auto;gap:4px 8px;align-items:center;font-size:.8125rem">' +
-                    '<span style="display:inline-block;width:10px;height:10px;border-radius:999px;background:var(--kexo-accent-1,#4b94e4)"></span><span style="color:' + escapeHtml(muted) + '">Browsing</span><span>' + escapeHtml(String(b)) + '</span>' +
-                    '<span style="display:inline-block;width:10px;height:10px;border-radius:999px;background:var(--kexo-accent-3,#f59e34)"></span><span style="color:' + escapeHtml(muted) + '">In cart</span><span>' + escapeHtml(String(c)) + '</span>' +
-                    '<span style="display:inline-block;width:10px;height:10px;border-radius:999px;background:var(--kexo-accent-5,#6681e8)"></span><span style="color:' + escapeHtml(muted) + '">Checkout</span><span>' + escapeHtml(String(co)) + '</span>' +
-                    '<span style="display:inline-block;width:10px;height:10px;border-radius:999px;background:var(--kexo-accent-2,#3eb3ab)"></span><span style="color:' + escapeHtml(muted) + '">Purchased</span><span>' + escapeHtml(String(p)) + '</span>' +
+                    '<span style="display:inline-block;width:10px;height:10px;border-radius:999px;background:var(--kexo-map-stage-browse,var(--kexo-accent-1,#4b94e4))"></span><span style="color:' + escapeHtml(muted) + '">Browsing</span><span>' + escapeHtml(String(b)) + '</span>' +
+                    '<span style="display:inline-block;width:10px;height:10px;border-radius:999px;background:var(--kexo-map-stage-cart,var(--kexo-accent-3,#f59e34))"></span><span style="color:' + escapeHtml(muted) + '">In cart</span><span>' + escapeHtml(String(c)) + '</span>' +
+                    '<span style="display:inline-block;width:10px;height:10px;border-radius:999px;background:var(--kexo-map-stage-checkout,var(--kexo-accent-5,#6681e8))"></span><span style="color:' + escapeHtml(muted) + '">Checkout</span><span>' + escapeHtml(String(co)) + '</span>' +
+                    '<span style="display:inline-block;width:10px;height:10px;border-radius:999px;background:var(--kexo-map-stage-purchase,var(--kexo-accent-2,#3eb3ab))"></span><span style="color:' + escapeHtml(muted) + '">Purchased</span><span>' + escapeHtml(String(p)) + '</span>' +
                   '</div>';
                 })() +
               '</div>',
@@ -12860,7 +12965,7 @@ const API = '';
                 pseudo.sort(function (a, b) { return Number(b && b.converted) - Number(a && a.converted); });
                 var originIso = pseudo && pseudo[0] && pseudo[0].country_code ? String(pseudo[0].country_code) : 'GB';
                 if (typeof renderLiveActivityOverlay === 'function') {
-                  renderLiveActivityOverlay(containerEl, stageCountsByIso2, countsByIso2, { animated: isAnimated, primaryRgb: primaryRgb, originIso2: originIso, topN: 9 });
+                  renderLiveActivityOverlay(containerEl, stageCountsByIso2, countsByIso2, { animated: isAnimated, primaryRgb: primaryRgb, originIso2: originIso, topN: 9, stageColors: stageColors });
                 } else if (typeof renderCountriesFlowOverlay === 'function') {
                   renderCountriesFlowOverlay(containerEl, pseudo, primaryRgb, originIso);
                 }
@@ -20500,10 +20605,58 @@ const API = '';
       function fetchOverviewJson(url, force, timeoutMs) {
         return fetchWithTimeout(url, { credentials: 'same-origin', cache: force ? 'no-store' : 'default' }, timeoutMs || 25000)
           .then(function(r) {
-            if (!r) throw new Error('No response');
-            if (!r.ok) throw new Error('Request failed (' + String(r.status || '') + ')');
-            return r.json();
+            if (!r) {
+              var e0 = new Error('No response');
+              e0.url = url;
+              throw e0;
+            }
+            if (!r.ok) {
+              var e1 = new Error('Request failed (' + String(r.status || '') + ')');
+              e1.url = url;
+              e1.status = r.status;
+              try { e1.contentType = r.headers ? (r.headers.get('content-type') || '') : ''; } catch (_) {}
+              throw e1;
+            }
+            return r.json().catch(function (jsonErr) {
+              var e2 = new Error('Invalid JSON');
+              e2.url = url;
+              e2.status = r.status;
+              e2.cause = jsonErr;
+              throw e2;
+            });
           });
+      }
+
+      function overviewCardLocalStorageKey(chartId) {
+        var id = (chartId == null ? '' : String(chartId)).trim();
+        return id ? ('kexo:overview-card-cache:' + id) : '';
+      }
+
+      function writeOverviewCardLocalCache(chartId, rangeKey, payload) {
+        try {
+          var key = overviewCardLocalStorageKey(chartId);
+          if (!key) return;
+          localStorage.setItem(key, JSON.stringify({ fetchedAt: Date.now(), rangeKey: String(rangeKey || ''), payload: payload || null }));
+        } catch (_) {}
+      }
+
+      function readOverviewCardLocalCache(chartId, maxAgeMs) {
+        try {
+          var key = overviewCardLocalStorageKey(chartId);
+          if (!key) return null;
+          var raw = localStorage.getItem(key);
+          if (!raw) return null;
+          var obj = JSON.parse(raw);
+          if (!obj || typeof obj !== 'object') return null;
+          var ts = Number(obj.fetchedAt);
+          if (!Number.isFinite(ts) || ts <= 0) return null;
+          var age = Date.now() - ts;
+          var ttl = Number.isFinite(Number(maxAgeMs)) ? Number(maxAgeMs) : (6 * 60 * 60 * 1000);
+          if (age < 0 || age > ttl) return null;
+          return obj;
+        } catch (_) {
+          return null;
+        }
       }
 
       function renderOverviewMiniLegend(chartId, labels, colors) {
@@ -21097,6 +21250,11 @@ const API = '';
             overviewCardCache[id] = { rangeKey: rk, fetchedAt: Date.now(), payload: data, shopKey: shopKey };
             try { renderOverviewCardById(id, data, { reason: force ? 'force-fetch' : 'fetch', rangeKey: rk, forceRender: true }); } catch (_) {}
             overviewMiniFetchedAt = Date.now();
+            // Mobile reliability: persist the Overview revenue+cost snapshot so transient API failures
+            // don't blank out the card.
+            if (id === 'dash-chart-overview-30d') {
+              writeOverviewCardLocalCache(id, rk, data);
+            }
             return data;
           })
           .catch(function(err) {
@@ -21106,7 +21264,25 @@ const API = '';
               try { renderOverviewCardById(id, cached.payload, { reason: 'error-cache', rangeKey: rk, forceRender: true }); } catch (_) {}
               return cached.payload;
             }
-            try { renderOverviewChartEmpty(id, 'Failed to load'); } catch (_) {}
+            // Fallback: try localStorage cache (helps on mobile flakiness).
+            var ls = (id === 'dash-chart-overview-30d') ? readOverviewCardLocalCache(id, 12 * 60 * 60 * 1000) : null;
+            if (ls && ls.payload) {
+              try { renderOverviewCardById(id, ls.payload, { reason: 'error-local-cache', rangeKey: rk, forceRender: true }); } catch (_) {}
+              return ls.payload;
+            }
+            var status = err && err.status != null ? Number(err.status) : NaN;
+            if (!Number.isFinite(status)) {
+              try {
+                var m = err && err.message ? String(err.message) : '';
+                var mm = m.match(/\((\d{3})\)/);
+                if (mm && mm[1]) status = Number(mm[1]);
+              } catch (_) {}
+            }
+            var msg = 'Failed to load';
+            if (status === 401 || status === 403) msg = 'Session expired';
+            else if (status >= 500 && status <= 599) msg = 'Server error';
+            else if (err && err.name === 'AbortError') msg = 'Timed out';
+            try { renderOverviewChartEmpty(id, msg); } catch (_) {}
             return null;
           })
           .finally(function() {
@@ -26643,6 +26819,35 @@ const API = '';
         body += '<input type="range" class="form-range" min="0" max="100" step="1" value="' + fillOpacityPct + '" data-cs-field="fillOpacity">';
         body += '<div class="form-hint">Lower values make chart fills more transparent.</div>';
         body += '</div>';
+        if (isMapChart) {
+          var mapAccent = (colors && colors[0]) ? String(colors[0]).trim() : '#16a34a';
+          var styleIn = (s && s.style && typeof s.style === 'object') ? s.style : {};
+          var mapFit = (styleIn.mapFit != null) ? String(styleIn.mapFit).trim().toLowerCase() : 'cover';
+          if (mapFit !== 'cover' && mapFit !== 'contain') mapFit = 'cover';
+          var stageBrowse = (styleIn.mapStageBrowseColor != null) ? String(styleIn.mapStageBrowseColor).trim() : '';
+          var stageCart = (styleIn.mapStageCartColor != null) ? String(styleIn.mapStageCartColor).trim() : '';
+          var stageCheckout = (styleIn.mapStageCheckoutColor != null) ? String(styleIn.mapStageCheckoutColor).trim() : '';
+          var stagePurchase = (styleIn.mapStagePurchaseColor != null) ? String(styleIn.mapStagePurchaseColor).trim() : '';
+
+          body += '<div class="col-12"><div class="hr-text">Map</div></div>';
+          body += '<div class="col-12 col-md-6"><label class="form-label">Map accent (hex)</label>';
+          body += '<div class="kexo-color-input"><input type="text" class="form-control form-control-sm" data-kexo-color-input data-cs-field="map-accent" value="' + escapeHtml(mapAccent) + '" placeholder="#16a34a"><span class="kexo-color-swatch" data-kexo-color-swatch aria-hidden="true"></span></div>';
+          body += '<div class="form-hint">Controls map shading and highlighted regions.</div></div>';
+
+          body += '<div class="col-12 col-md-6"><label class="form-label">Fit</label>';
+          body += '<select class="form-select form-select-sm" data-cs-field="mapFit">';
+          body += '<option value="cover"' + (mapFit === 'cover' ? ' selected' : '') + '>Fill (cover)</option>';
+          body += '<option value="contain"' + (mapFit === 'contain' ? ' selected' : '') + '>Fit (contain)</option>';
+          body += '</select>';
+          body += '<div class="form-hint">Cover fills the container (crops edges). Contain shows the full world (may leave whitespace).</div></div>';
+
+          body += '<div class="col-12"><label class="form-label">Stage colors (legend + pins)</label><div class="row g-2">';
+          body += '<div class="col-6 col-md-3"><label class="form-label small">Browsing</label><div class="kexo-color-input"><input type="text" class="form-control form-control-sm" data-kexo-color-input data-cs-field="mapStageBrowseColor" value="' + escapeHtml(stageBrowse) + '" placeholder="(default)"><span class="kexo-color-swatch" data-kexo-color-swatch aria-hidden="true"></span></div></div>';
+          body += '<div class="col-6 col-md-3"><label class="form-label small">In cart</label><div class="kexo-color-input"><input type="text" class="form-control form-control-sm" data-kexo-color-input data-cs-field="mapStageCartColor" value="' + escapeHtml(stageCart) + '" placeholder="(default)"><span class="kexo-color-swatch" data-kexo-color-swatch aria-hidden="true"></span></div></div>';
+          body += '<div class="col-6 col-md-3"><label class="form-label small">Checkout</label><div class="kexo-color-input"><input type="text" class="form-control form-control-sm" data-kexo-color-input data-cs-field="mapStageCheckoutColor" value="' + escapeHtml(stageCheckout) + '" placeholder="(default)"><span class="kexo-color-swatch" data-kexo-color-swatch aria-hidden="true"></span></div></div>';
+          body += '<div class="col-6 col-md-3"><label class="form-label small">Purchased</label><div class="kexo-color-input"><input type="text" class="form-control form-control-sm" data-kexo-color-input data-cs-field="mapStagePurchaseColor" value="' + escapeHtml(stagePurchase) + '" placeholder="(default)"><span class="kexo-color-swatch" data-kexo-color-swatch aria-hidden="true"></span></div></div>';
+          body += '</div><div class="form-hint">Leave blank to use theme defaults.</div></div>';
+        }
         body += '<div class="col-12' + (supportsPieLabels && (mode === 'pie' || mode === 'donut') ? '' : ' d-none') + '" data-cs-mode-group="pie-labels">';
         body += '<div class="row g-2">';
         body += '<div class="col-12 col-md-6">';
@@ -26733,6 +26938,7 @@ const API = '';
 
         function fillOpacityLabelForMode(modeVal) {
           var m = String(modeVal || '').trim().toLowerCase();
+          if (m.indexOf('map') === 0) return 'Map region opacity';
           if (m === 'stacked-area') return 'Stacked area opacity';
           if (m === 'area') return 'Area fill opacity';
           if (m === 'stacked-bar') return 'Stacked bar opacity';
@@ -26864,7 +27070,7 @@ const API = '';
           try {
             if (s && s.style && typeof s.style === 'object') styleBase = Object.assign({}, s.style);
           } catch (_) { styleBase = {}; }
-          styleBase.animations = !!(animEl && animEl.checked);
+          if (animEl) styleBase.animations = !!animEl.checked;
           if (supportsIcons) styleBase.icons = !!(iconsEl && iconsEl.checked);
           if (isFinishes) styleBase.radialCenterLabel = !!(centerEl && centerEl.checked);
           if (piePosEl) {
@@ -26929,6 +27135,32 @@ const API = '';
             style: styleBase,
             colors: (s.colors && Array.isArray(s.colors)) ? s.colors.slice() : (meta.series && meta.series.length ? ['#3eb3ab', '#ef4444', '#2fb344', '#d63939'].slice(0, meta.series.length) : ['#3eb3ab']),
           };
+          if (isMapChart) {
+            var mapAccentEl = bodyEl.querySelector('[data-cs-field="map-accent"]');
+            var mapFitEl = bodyEl.querySelector('[data-cs-field="mapFit"]');
+            function normalizeHexOpt(v) {
+              var r = (v == null ? '' : String(v)).trim().toLowerCase();
+              if (!r) return '';
+              if (/^#[0-9a-f]{6}$/.test(r)) return r;
+              if (r.length === 6 && /^[0-9a-f]{6}$/i.test(r)) return '#' + r;
+              return '';
+            }
+            if (mapAccentEl) {
+              var acc = normalizeHexOpt(mapAccentEl.value);
+              if (acc) out.colors[0] = acc;
+            }
+            if (mapFitEl) {
+              var mf = String(mapFitEl.value || '').trim().toLowerCase();
+              if (mf !== 'cover' && mf !== 'contain') mf = 'cover';
+              styleBase.mapFit = mf;
+            }
+            ['mapStageBrowseColor', 'mapStageCartColor', 'mapStageCheckoutColor', 'mapStagePurchaseColor'].forEach(function (field) {
+              var el = bodyEl.querySelector('[data-cs-field="' + field + '"]');
+              if (!el) return;
+              var v = normalizeHexOpt(el.value);
+              styleBase[field] = v || '';
+            });
+          }
           if (isOverview) {
             var revEl = bodyEl.querySelector('[data-cs-field="color-revenue"]');
             var costEl = bodyEl.querySelector('[data-cs-field="color-cost"]');

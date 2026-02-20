@@ -1652,6 +1652,29 @@
       var accent = (palette && palette[0]) ? String(palette[0]).trim() : '#16a34a';
       var mapStyleEarly = chartStyleFromUiConfig(chartKey);
       var showEmptyCaption = mapStyleEarly.mapShowEmptyCaption !== false;
+      var stageColors = {
+        browse: mapStyleEarly.mapStageBrowseColor || '',
+        cart: mapStyleEarly.mapStageCartColor || '',
+        checkout: mapStyleEarly.mapStageCheckoutColor || '',
+        purchase: mapStyleEarly.mapStagePurchaseColor || '',
+      };
+      try {
+        var root = document && document.documentElement ? document.documentElement : null;
+        if (root && root.style) {
+          var pairs = [
+            ['--kexo-map-stage-browse', stageColors.browse],
+            ['--kexo-map-stage-cart', stageColors.cart],
+            ['--kexo-map-stage-checkout', stageColors.checkout],
+            ['--kexo-map-stage-purchase', stageColors.purchase],
+          ];
+          pairs.forEach(function (p) {
+            var key = p[0];
+            var val = p[1];
+            if (val) root.style.setProperty(key, val);
+            else root.style.removeProperty(key);
+          });
+        }
+      } catch (_) {}
 
       var sigParts = [];
       for (var k = 0; k < keys.length; k++) {
@@ -1681,7 +1704,7 @@
                 try { rgb2 = String(el.__kexoLiveOnlineMapPrimaryRgb || '').trim(); } catch (_) { rgb2 = ''; }
                 if (!rgb2) rgb2 = '22,163,74';
                 if (typeof renderLiveActivityOverlay === 'function') {
-                  renderLiveActivityOverlay(el, stageCountsByIso2, countsByIso2, { animated: true, primaryRgb: rgb2, originIso2: originIso, topN: 9 });
+                  renderLiveActivityOverlay(el, stageCountsByIso2, countsByIso2, { animated: true, primaryRgb: rgb2, originIso2: originIso, topN: 9, stageColors: stageColors });
                 } else {
                   renderCountriesFlowOverlay(el, pseudo, rgb2, originIso);
                 }
@@ -1724,7 +1747,12 @@
         var rgb = rgbFromColor(accent);
         var primaryRgb = rgb.rgb;
         try { el.__kexoLiveOnlineMapPrimaryRgb = primaryRgb; } catch (_) {}
-        var regionFillByIso2 = buildMapFillScaleByIso(countsByIso2, primaryRgb, 0.24, 0.92);
+        var fo = (mapStyleEarly && Number.isFinite(Number(mapStyleEarly.fillOpacity))) ? Math.max(0, Math.min(1, Number(mapStyleEarly.fillOpacity))) : 0.18;
+        var alphaMult = fo > 0 ? (fo / 0.18) : 0;
+        if (!Number.isFinite(alphaMult)) alphaMult = 1;
+        alphaMult = Math.max(0, Math.min(3, alphaMult));
+        function a(x) { return Math.max(0, Math.min(1, x * alphaMult)); }
+        var regionFillByIso2 = buildMapFillScaleByIso(countsByIso2, primaryRgb, a(0.18), a(0.24), a(0.92));
 
         // If the map instance already exists and the chart mode/palette is unchanged,
         // update fills/overlay in-place (avoid destroy/recreate churn on every refresh).
@@ -1761,7 +1789,7 @@
               pseudo2.sort(function (a, b) { return Number(b && b.converted) - Number(a && a.converted); });
               var originIso2 = pseudo2 && pseudo2[0] && pseudo2[0].country_code ? String(pseudo2[0].country_code) : 'GB';
               if (typeof renderLiveActivityOverlay === 'function') {
-                renderLiveActivityOverlay(el, stageCountsByIso2, countsByIso2, { animated: isAnimated, primaryRgb: primaryRgb, originIso2: originIso2, topN: 9 });
+                renderLiveActivityOverlay(el, stageCountsByIso2, countsByIso2, { animated: isAnimated, primaryRgb: primaryRgb, originIso2: originIso2, topN: 9, stageColors: stageColors });
               } else {
                 renderCountriesFlowOverlay(el, pseudo2, primaryRgb, originIso2);
               }
@@ -1833,10 +1861,10 @@
                   var co = Number(sc.checkout || 0) || 0;
                   var p = Number(sc.purchase || 0) || 0;
                   return '<div style="margin-top:6px;display:grid;grid-template-columns:10px 1fr auto;gap:4px 8px;align-items:center;font-size:.8125rem">' +
-                    '<span style="display:inline-block;width:10px;height:10px;border-radius:999px;background:var(--kexo-accent-1,#4b94e4)"></span><span style="color:' + escapeHtml(muted) + '">Browsing</span><span>' + escapeHtml(String(b)) + '</span>' +
-                    '<span style="display:inline-block;width:10px;height:10px;border-radius:999px;background:var(--kexo-accent-3,#f59e34)"></span><span style="color:' + escapeHtml(muted) + '">In cart</span><span>' + escapeHtml(String(c)) + '</span>' +
-                    '<span style="display:inline-block;width:10px;height:10px;border-radius:999px;background:var(--kexo-accent-5,#6681e8)"></span><span style="color:' + escapeHtml(muted) + '">Checkout</span><span>' + escapeHtml(String(co)) + '</span>' +
-                    '<span style="display:inline-block;width:10px;height:10px;border-radius:999px;background:var(--kexo-accent-2,#3eb3ab)"></span><span style="color:' + escapeHtml(muted) + '">Purchased</span><span>' + escapeHtml(String(p)) + '</span>' +
+                    '<span style="display:inline-block;width:10px;height:10px;border-radius:999px;background:var(--kexo-map-stage-browse,var(--kexo-accent-1,#4b94e4))"></span><span style="color:' + escapeHtml(muted) + '">Browsing</span><span>' + escapeHtml(String(b)) + '</span>' +
+                    '<span style="display:inline-block;width:10px;height:10px;border-radius:999px;background:var(--kexo-map-stage-cart,var(--kexo-accent-3,#f59e34))"></span><span style="color:' + escapeHtml(muted) + '">In cart</span><span>' + escapeHtml(String(c)) + '</span>' +
+                    '<span style="display:inline-block;width:10px;height:10px;border-radius:999px;background:var(--kexo-map-stage-checkout,var(--kexo-accent-5,#6681e8))"></span><span style="color:' + escapeHtml(muted) + '">Checkout</span><span>' + escapeHtml(String(co)) + '</span>' +
+                    '<span style="display:inline-block;width:10px;height:10px;border-radius:999px;background:var(--kexo-map-stage-purchase,var(--kexo-accent-2,#3eb3ab))"></span><span style="color:' + escapeHtml(muted) + '">Purchased</span><span>' + escapeHtml(String(p)) + '</span>' +
                   '</div>';
                 })() +
               '</div>',
@@ -1861,7 +1889,7 @@
                 pseudo.sort(function (a, b) { return Number(b && b.converted) - Number(a && a.converted); });
                 var originIso = pseudo && pseudo[0] && pseudo[0].country_code ? String(pseudo[0].country_code) : 'GB';
                 if (typeof renderLiveActivityOverlay === 'function') {
-                  renderLiveActivityOverlay(containerEl, stageCountsByIso2, countsByIso2, { animated: isAnimated, primaryRgb: primaryRgb, originIso2: originIso, topN: 9 });
+                  renderLiveActivityOverlay(containerEl, stageCountsByIso2, countsByIso2, { animated: isAnimated, primaryRgb: primaryRgb, originIso2: originIso, topN: 9, stageColors: stageColors });
                 } else if (typeof renderCountriesFlowOverlay === 'function') {
                   renderCountriesFlowOverlay(containerEl, pseudo, primaryRgb, originIso);
                 }

@@ -334,6 +334,35 @@
         body += '<input type="range" class="form-range" min="0" max="100" step="1" value="' + fillOpacityPct + '" data-cs-field="fillOpacity">';
         body += '<div class="form-hint">Lower values make chart fills more transparent.</div>';
         body += '</div>';
+        if (isMapChart) {
+          var mapAccent = (colors && colors[0]) ? String(colors[0]).trim() : '#16a34a';
+          var styleIn = (s && s.style && typeof s.style === 'object') ? s.style : {};
+          var mapFit = (styleIn.mapFit != null) ? String(styleIn.mapFit).trim().toLowerCase() : 'cover';
+          if (mapFit !== 'cover' && mapFit !== 'contain') mapFit = 'cover';
+          var stageBrowse = (styleIn.mapStageBrowseColor != null) ? String(styleIn.mapStageBrowseColor).trim() : '';
+          var stageCart = (styleIn.mapStageCartColor != null) ? String(styleIn.mapStageCartColor).trim() : '';
+          var stageCheckout = (styleIn.mapStageCheckoutColor != null) ? String(styleIn.mapStageCheckoutColor).trim() : '';
+          var stagePurchase = (styleIn.mapStagePurchaseColor != null) ? String(styleIn.mapStagePurchaseColor).trim() : '';
+
+          body += '<div class="col-12"><div class="hr-text">Map</div></div>';
+          body += '<div class="col-12 col-md-6"><label class="form-label">Map accent (hex)</label>';
+          body += '<div class="kexo-color-input"><input type="text" class="form-control form-control-sm" data-kexo-color-input data-cs-field="map-accent" value="' + escapeHtml(mapAccent) + '" placeholder="#16a34a"><span class="kexo-color-swatch" data-kexo-color-swatch aria-hidden="true"></span></div>';
+          body += '<div class="form-hint">Controls map shading and highlighted regions.</div></div>';
+
+          body += '<div class="col-12 col-md-6"><label class="form-label">Fit</label>';
+          body += '<select class="form-select form-select-sm" data-cs-field="mapFit">';
+          body += '<option value="cover"' + (mapFit === 'cover' ? ' selected' : '') + '>Fill (cover)</option>';
+          body += '<option value="contain"' + (mapFit === 'contain' ? ' selected' : '') + '>Fit (contain)</option>';
+          body += '</select>';
+          body += '<div class="form-hint">Cover fills the container (crops edges). Contain shows the full world (may leave whitespace).</div></div>';
+
+          body += '<div class="col-12"><label class="form-label">Stage colors (legend + pins)</label><div class="row g-2">';
+          body += '<div class="col-6 col-md-3"><label class="form-label small">Browsing</label><div class="kexo-color-input"><input type="text" class="form-control form-control-sm" data-kexo-color-input data-cs-field="mapStageBrowseColor" value="' + escapeHtml(stageBrowse) + '" placeholder="(default)"><span class="kexo-color-swatch" data-kexo-color-swatch aria-hidden="true"></span></div></div>';
+          body += '<div class="col-6 col-md-3"><label class="form-label small">In cart</label><div class="kexo-color-input"><input type="text" class="form-control form-control-sm" data-kexo-color-input data-cs-field="mapStageCartColor" value="' + escapeHtml(stageCart) + '" placeholder="(default)"><span class="kexo-color-swatch" data-kexo-color-swatch aria-hidden="true"></span></div></div>';
+          body += '<div class="col-6 col-md-3"><label class="form-label small">Checkout</label><div class="kexo-color-input"><input type="text" class="form-control form-control-sm" data-kexo-color-input data-cs-field="mapStageCheckoutColor" value="' + escapeHtml(stageCheckout) + '" placeholder="(default)"><span class="kexo-color-swatch" data-kexo-color-swatch aria-hidden="true"></span></div></div>';
+          body += '<div class="col-6 col-md-3"><label class="form-label small">Purchased</label><div class="kexo-color-input"><input type="text" class="form-control form-control-sm" data-kexo-color-input data-cs-field="mapStagePurchaseColor" value="' + escapeHtml(stagePurchase) + '" placeholder="(default)"><span class="kexo-color-swatch" data-kexo-color-swatch aria-hidden="true"></span></div></div>';
+          body += '</div><div class="form-hint">Leave blank to use theme defaults.</div></div>';
+        }
         body += '<div class="col-12' + (supportsPieLabels && (mode === 'pie' || mode === 'donut') ? '' : ' d-none') + '" data-cs-mode-group="pie-labels">';
         body += '<div class="row g-2">';
         body += '<div class="col-12 col-md-6">';
@@ -424,6 +453,7 @@
 
         function fillOpacityLabelForMode(modeVal) {
           var m = String(modeVal || '').trim().toLowerCase();
+          if (m.indexOf('map') === 0) return 'Map region opacity';
           if (m === 'stacked-area') return 'Stacked area opacity';
           if (m === 'area') return 'Area fill opacity';
           if (m === 'stacked-bar') return 'Stacked bar opacity';
@@ -555,7 +585,7 @@
           try {
             if (s && s.style && typeof s.style === 'object') styleBase = Object.assign({}, s.style);
           } catch (_) { styleBase = {}; }
-          styleBase.animations = !!(animEl && animEl.checked);
+          if (animEl) styleBase.animations = !!animEl.checked;
           if (supportsIcons) styleBase.icons = !!(iconsEl && iconsEl.checked);
           if (isFinishes) styleBase.radialCenterLabel = !!(centerEl && centerEl.checked);
           if (piePosEl) {
@@ -620,6 +650,32 @@
             style: styleBase,
             colors: (s.colors && Array.isArray(s.colors)) ? s.colors.slice() : (meta.series && meta.series.length ? ['#3eb3ab', '#ef4444', '#2fb344', '#d63939'].slice(0, meta.series.length) : ['#3eb3ab']),
           };
+          if (isMapChart) {
+            var mapAccentEl = bodyEl.querySelector('[data-cs-field="map-accent"]');
+            var mapFitEl = bodyEl.querySelector('[data-cs-field="mapFit"]');
+            function normalizeHexOpt(v) {
+              var r = (v == null ? '' : String(v)).trim().toLowerCase();
+              if (!r) return '';
+              if (/^#[0-9a-f]{6}$/.test(r)) return r;
+              if (r.length === 6 && /^[0-9a-f]{6}$/i.test(r)) return '#' + r;
+              return '';
+            }
+            if (mapAccentEl) {
+              var acc = normalizeHexOpt(mapAccentEl.value);
+              if (acc) out.colors[0] = acc;
+            }
+            if (mapFitEl) {
+              var mf = String(mapFitEl.value || '').trim().toLowerCase();
+              if (mf !== 'cover' && mf !== 'contain') mf = 'cover';
+              styleBase.mapFit = mf;
+            }
+            ['mapStageBrowseColor', 'mapStageCartColor', 'mapStageCheckoutColor', 'mapStagePurchaseColor'].forEach(function (field) {
+              var el = bodyEl.querySelector('[data-cs-field="' + field + '"]');
+              if (!el) return;
+              var v = normalizeHexOpt(el.value);
+              styleBase[field] = v || '';
+            });
+          }
           if (isOverview) {
             var revEl = bodyEl.querySelector('[data-cs-field="color-revenue"]');
             var costEl = bodyEl.querySelector('[data-cs-field="color-cost"]');
