@@ -14,6 +14,19 @@ const RANGE_KEYS = ['today', 'yesterday', '3d', '7d', '14d', '30d', 'month'];
 const BOT_FILTER_SQL = ' AND (s.cf_known_bot IS NULL OR s.cf_known_bot = 0)';
 const DIAGNOSTIC_EXAMPLE_LIMIT = 120;
 
+function shouldFallbackToLegacyOrderLineSchema(err) {
+  const msg = err && err.message ? String(err.message) : '';
+  if (!msg) return false;
+  // SQLite: "no such column: line_net"
+  // Postgres: 'column "line_net" does not exist'
+  const missingCol =
+    msg.toLowerCase().includes('no such column') ||
+    msg.toLowerCase().includes('does not exist') ||
+    msg.toLowerCase().includes('unknown column');
+  if (!missingCol) return false;
+  return /line_net|order_processed_at/i.test(msg);
+}
+
 function clampInt(v, fallback, min, max) {
   const n = parseInt(String(v), 10);
   if (!Number.isFinite(n)) return fallback;
@@ -54,37 +67,14 @@ async function getObservedVariantsForValidation({ shop, start, end, maxRows = 20
   const db = getDb();
 
   if (config.dbUrl) {
-    return db.all(
-      `
-        SELECT
-          variant_title,
-          COUNT(DISTINCT order_id) AS orders,
-          COALESCE(SUM(COALESCE(line_net, line_revenue)), 0) AS revenue
-        FROM orders_shopify_line_items
-        WHERE shop = $1
-          AND (COALESCE(order_processed_at, order_created_at) >= $2 AND COALESCE(order_processed_at, order_created_at) < $3)
-          AND (order_test IS NULL OR order_test = 0)
-          AND order_cancelled_at IS NULL
-          AND order_financial_status = 'paid'
-          AND variant_title IS NOT NULL
-          AND TRIM(variant_title) != ''
-        GROUP BY variant_title
-        ORDER BY orders DESC, revenue DESC, variant_title ASC
-        LIMIT ${rowLimit}
-      `,
-      [safeShop, start, end]
-    );
-  }
-
-  return db.all(
-    `
+    const sqlNet = `
       SELECT
         variant_title,
         COUNT(DISTINCT order_id) AS orders,
         COALESCE(SUM(COALESCE(line_net, line_revenue)), 0) AS revenue
       FROM orders_shopify_line_items
-      WHERE shop = ?
-        AND (COALESCE(order_processed_at, order_created_at) >= ? AND COALESCE(order_processed_at, order_created_at) < ?)
+      WHERE shop = $1
+        AND (COALESCE(order_processed_at, order_created_at) >= $2 AND COALESCE(order_processed_at, order_created_at) < $3)
         AND (order_test IS NULL OR order_test = 0)
         AND order_cancelled_at IS NULL
         AND order_financial_status = 'paid'
@@ -93,9 +83,72 @@ async function getObservedVariantsForValidation({ shop, start, end, maxRows = 20
       GROUP BY variant_title
       ORDER BY orders DESC, revenue DESC, variant_title ASC
       LIMIT ${rowLimit}
-    `,
-    [safeShop, start, end]
-  );
+    `;
+    const sqlLegacy = `
+      SELECT
+        variant_title,
+        COUNT(DISTINCT order_id) AS orders,
+        COALESCE(SUM(line_revenue), 0) AS revenue
+      FROM orders_shopify_line_items
+      WHERE shop = $1
+        AND (order_created_at >= $2 AND order_created_at < $3)
+        AND (order_test IS NULL OR order_test = 0)
+        AND order_cancelled_at IS NULL
+        AND order_financial_status = 'paid'
+        AND variant_title IS NOT NULL
+        AND TRIM(variant_title) != ''
+      GROUP BY variant_title
+      ORDER BY orders DESC, revenue DESC, variant_title ASC
+      LIMIT ${rowLimit}
+    `;
+    try {
+      return await db.all(sqlNet, [safeShop, start, end]);
+    } catch (err) {
+      if (!shouldFallbackToLegacyOrderLineSchema(err)) throw err;
+      return db.all(sqlLegacy, [safeShop, start, end]);
+    }
+  }
+
+  const sqlNet = `
+    SELECT
+      variant_title,
+      COUNT(DISTINCT order_id) AS orders,
+      COALESCE(SUM(COALESCE(line_net, line_revenue)), 0) AS revenue
+    FROM orders_shopify_line_items
+    WHERE shop = ?
+      AND (COALESCE(order_processed_at, order_created_at) >= ? AND COALESCE(order_processed_at, order_created_at) < ?)
+      AND (order_test IS NULL OR order_test = 0)
+      AND order_cancelled_at IS NULL
+      AND order_financial_status = 'paid'
+      AND variant_title IS NOT NULL
+      AND TRIM(variant_title) != ''
+    GROUP BY variant_title
+    ORDER BY orders DESC, revenue DESC, variant_title ASC
+    LIMIT ${rowLimit}
+  `;
+  const sqlLegacy = `
+    SELECT
+      variant_title,
+      COUNT(DISTINCT order_id) AS orders,
+      COALESCE(SUM(line_revenue), 0) AS revenue
+    FROM orders_shopify_line_items
+    WHERE shop = ?
+      AND (order_created_at >= ? AND order_created_at < ?)
+      AND (order_test IS NULL OR order_test = 0)
+      AND order_cancelled_at IS NULL
+      AND order_financial_status = 'paid'
+      AND variant_title IS NOT NULL
+      AND TRIM(variant_title) != ''
+    GROUP BY variant_title
+    ORDER BY orders DESC, revenue DESC, variant_title ASC
+    LIMIT ${rowLimit}
+  `;
+  try {
+    return await db.all(sqlNet, [safeShop, start, end]);
+  } catch (err) {
+    if (!shouldFallbackToLegacyOrderLineSchema(err)) throw err;
+    return db.all(sqlLegacy, [safeShop, start, end]);
+  }
 }
 
 async function getSessionAttributionSummary({ start, end } = {}) {
@@ -128,32 +181,7 @@ async function getVariantOrderRows({ shop, start, end } = {}) {
   const db = getDb();
 
   if (config.dbUrl) {
-    return db.all(
-      `
-        SELECT
-          TRIM(variant_id) AS variant_id,
-          MAX(variant_title) AS variant_title,
-          COALESCE(NULLIF(TRIM(currency), ''), 'GBP') AS currency,
-          COUNT(DISTINCT order_id) AS orders,
-          COALESCE(SUM(COALESCE(line_net, line_revenue)), 0) AS revenue
-        FROM orders_shopify_line_items
-        WHERE shop = $1
-          AND (COALESCE(order_processed_at, order_created_at) >= $2 AND COALESCE(order_processed_at, order_created_at) < $3)
-          AND (order_test IS NULL OR order_test = 0)
-          AND order_cancelled_at IS NULL
-          AND order_financial_status = 'paid'
-          AND variant_id IS NOT NULL
-          AND TRIM(variant_id) != ''
-          AND variant_title IS NOT NULL
-          AND TRIM(variant_title) != ''
-        GROUP BY TRIM(variant_id), COALESCE(NULLIF(TRIM(currency), ''), 'GBP')
-      `,
-      [safeShop, start, end]
-    );
-  }
-
-  return db.all(
-    `
+    const sqlNet = `
       SELECT
         TRIM(variant_id) AS variant_id,
         MAX(variant_title) AS variant_title,
@@ -161,8 +189,8 @@ async function getVariantOrderRows({ shop, start, end } = {}) {
         COUNT(DISTINCT order_id) AS orders,
         COALESCE(SUM(COALESCE(line_net, line_revenue)), 0) AS revenue
       FROM orders_shopify_line_items
-      WHERE shop = ?
-        AND (COALESCE(order_processed_at, order_created_at) >= ? AND COALESCE(order_processed_at, order_created_at) < ?)
+      WHERE shop = $1
+        AND (COALESCE(order_processed_at, order_created_at) >= $2 AND COALESCE(order_processed_at, order_created_at) < $3)
         AND (order_test IS NULL OR order_test = 0)
         AND order_cancelled_at IS NULL
         AND order_financial_status = 'paid'
@@ -171,9 +199,78 @@ async function getVariantOrderRows({ shop, start, end } = {}) {
         AND variant_title IS NOT NULL
         AND TRIM(variant_title) != ''
       GROUP BY TRIM(variant_id), COALESCE(NULLIF(TRIM(currency), ''), 'GBP')
-    `,
-    [safeShop, start, end]
-  );
+    `;
+    const sqlLegacy = `
+      SELECT
+        TRIM(variant_id) AS variant_id,
+        MAX(variant_title) AS variant_title,
+        COALESCE(NULLIF(TRIM(currency), ''), 'GBP') AS currency,
+        COUNT(DISTINCT order_id) AS orders,
+        COALESCE(SUM(line_revenue), 0) AS revenue
+      FROM orders_shopify_line_items
+      WHERE shop = $1
+        AND (order_created_at >= $2 AND order_created_at < $3)
+        AND (order_test IS NULL OR order_test = 0)
+        AND order_cancelled_at IS NULL
+        AND order_financial_status = 'paid'
+        AND variant_id IS NOT NULL
+        AND TRIM(variant_id) != ''
+        AND variant_title IS NOT NULL
+        AND TRIM(variant_title) != ''
+      GROUP BY TRIM(variant_id), COALESCE(NULLIF(TRIM(currency), ''), 'GBP')
+    `;
+    try {
+      return await db.all(sqlNet, [safeShop, start, end]);
+    } catch (err) {
+      if (!shouldFallbackToLegacyOrderLineSchema(err)) throw err;
+      return db.all(sqlLegacy, [safeShop, start, end]);
+    }
+  }
+
+  const sqlNet = `
+    SELECT
+      TRIM(variant_id) AS variant_id,
+      MAX(variant_title) AS variant_title,
+      COALESCE(NULLIF(TRIM(currency), ''), 'GBP') AS currency,
+      COUNT(DISTINCT order_id) AS orders,
+      COALESCE(SUM(COALESCE(line_net, line_revenue)), 0) AS revenue
+    FROM orders_shopify_line_items
+    WHERE shop = ?
+      AND (COALESCE(order_processed_at, order_created_at) >= ? AND COALESCE(order_processed_at, order_created_at) < ?)
+      AND (order_test IS NULL OR order_test = 0)
+      AND order_cancelled_at IS NULL
+      AND order_financial_status = 'paid'
+      AND variant_id IS NOT NULL
+      AND TRIM(variant_id) != ''
+      AND variant_title IS NOT NULL
+      AND TRIM(variant_title) != ''
+    GROUP BY TRIM(variant_id), COALESCE(NULLIF(TRIM(currency), ''), 'GBP')
+  `;
+  const sqlLegacy = `
+    SELECT
+      TRIM(variant_id) AS variant_id,
+      MAX(variant_title) AS variant_title,
+      COALESCE(NULLIF(TRIM(currency), ''), 'GBP') AS currency,
+      COUNT(DISTINCT order_id) AS orders,
+      COALESCE(SUM(line_revenue), 0) AS revenue
+    FROM orders_shopify_line_items
+    WHERE shop = ?
+      AND (order_created_at >= ? AND order_created_at < ?)
+      AND (order_test IS NULL OR order_test = 0)
+      AND order_cancelled_at IS NULL
+      AND order_financial_status = 'paid'
+      AND variant_id IS NOT NULL
+      AND TRIM(variant_id) != ''
+      AND variant_title IS NOT NULL
+      AND TRIM(variant_title) != ''
+    GROUP BY TRIM(variant_id), COALESCE(NULLIF(TRIM(currency), ''), 'GBP')
+  `;
+  try {
+    return await db.all(sqlNet, [safeShop, start, end]);
+  } catch (err) {
+    if (!shouldFallbackToLegacyOrderLineSchema(err)) throw err;
+    return db.all(sqlLegacy, [safeShop, start, end]);
+  }
 }
 
 async function getVariantSessionCounts({ start, end } = {}) {
