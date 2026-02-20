@@ -210,6 +210,112 @@
   var HEADER_THEME_RADIO_KEYS = ['theme-menu-hover-color'];
   var CUSTOM_CSS_KEYS = ['theme-custom-css'];
 
+  var CSS_VAR_COLOR_GROUPS = [
+    { heading: 'Brand accents', groupId: 'brand', vars: [
+      { name: '--kexo-accent-1', label: 'Kexo 1', help: 'Overrides the runtime CSS variable used by Overview widgets and accents. Leave blank to use Theme accents.' },
+      { name: '--kexo-accent-2', label: 'Kexo 2', help: '' },
+      { name: '--kexo-accent-3', label: 'Kexo 3', help: '' },
+      { name: '--kexo-accent-4', label: 'Kexo 4', help: '' },
+      { name: '--kexo-accent-5', label: 'Kexo 5', help: '' },
+    ]},
+    { heading: 'Header &amp; nav', groupId: 'header', vars: [
+      { name: '--kexo-header-top-bg', label: 'Strip background', help: '' },
+      { name: '--kexo-header-top-text-color', label: 'Strip text', help: '' },
+      { name: '--kexo-header-main-bg', label: 'Menu background', help: '' },
+      { name: '--kexo-top-menu-bg', label: 'Top menu background', help: '' },
+      { name: '--kexo-top-menu-link-color', label: 'Menu link', help: '' },
+      { name: '--kexo-top-menu-dropdown-bg', label: 'Dropdown background', help: '' },
+      { name: '--kexo-top-menu-dropdown-link-color', label: 'Dropdown link', help: '' },
+      { name: '--kexo-top-menu-dropdown-icon-color', label: 'Dropdown icon', help: '' },
+      { name: '--kexo-top-menu-border-color', label: 'Menu border', help: '' },
+      { name: '--kexo-header-settings-bg', label: 'Settings button background', help: '' },
+      { name: '--kexo-header-settings-text-color', label: 'Settings button text', help: '' },
+      { name: '--kexo-header-settings-border-color', label: 'Settings button border', help: '' },
+      { name: '--kexo-header-online-bg', label: 'Online badge background', help: '' },
+      { name: '--kexo-header-online-text-color', label: 'Online badge text', help: '' },
+      { name: '--kexo-header-online-border-color', label: 'Online badge border', help: '' },
+      { name: '--kexo-menu-hover-bg', label: 'Menu hover overlay', help: '' },
+    ]},
+    { heading: 'KPI colours', groupId: 'kpi', vars: [
+      { name: '--kexo-kpi-delta-up', label: 'KPI delta up', help: '' },
+      { name: '--kexo-kpi-delta-same', label: 'KPI delta same', help: '' },
+      { name: '--kexo-kpi-delta-down', label: 'KPI delta down', help: '' },
+      { name: '--kexo-kpi-compare-line', label: 'KPI compare line', help: '' },
+      { name: '--kexo-dashboard-kpi-up', label: 'Dashboard KPI up', help: '' },
+      { name: '--kexo-dashboard-kpi-same', label: 'Dashboard KPI same', help: '' },
+      { name: '--kexo-dashboard-kpi-down', label: 'Dashboard KPI down', help: '' },
+      { name: '--kexo-dashboard-kpi-compare-line', label: 'Dashboard KPI compare line', help: '' },
+      { name: '--kexo-header-kpi-up', label: 'Header KPI up', help: '' },
+      { name: '--kexo-header-kpi-same', label: 'Header KPI same', help: '' },
+      { name: '--kexo-header-kpi-down', label: 'Header KPI down', help: '' },
+      { name: '--kexo-header-kpi-compare-line', label: 'Header KPI compare line', help: '' },
+      { name: '--kexo-snapshot-kpi-up', label: 'Snapshot KPI up', help: '' },
+      { name: '--kexo-snapshot-kpi-same', label: 'Snapshot KPI same', help: '' },
+      { name: '--kexo-snapshot-kpi-down', label: 'Snapshot KPI down', help: '' },
+      { name: '--kexo-snapshot-kpi-compare-line', label: 'Snapshot KPI compare line', help: '' },
+      { name: '--kexo-gauge-color', label: 'Gauge colour', help: '' },
+    ]},
+    { heading: 'Tabler semantic', groupId: 'tabler', vars: [
+      { name: '--tblr-primary', label: 'Primary', help: '' },
+      { name: '--tblr-success', label: 'Success', help: '' },
+      { name: '--tblr-warning', label: 'Warning', help: '' },
+      { name: '--tblr-danger', label: 'Danger', help: '' },
+      { name: '--tblr-secondary', label: 'Secondary', help: '' },
+      { name: '--tblr-secondary-color', label: 'Secondary colour', help: '' },
+      { name: '--tblr-body-color', label: 'Body text', help: '' },
+      { name: '--tblr-body-bg', label: 'Page background', help: '' },
+      { name: '--tblr-border-color', label: 'Border', help: '' },
+      { name: '--tblr-bg-surface', label: 'Surface', help: '' },
+      { name: '--tblr-bg-surface-secondary', label: 'Surface secondary', help: '' },
+      { name: '--tblr-link-color', label: 'Link', help: '' },
+      { name: '--tblr-muted', label: 'Muted text', help: '' },
+      { name: '--tblr-disabled-color', label: 'Disabled', help: '' },
+      { name: '--tblr-border-color-translucent', label: 'Border (translucent)', help: '' },
+      { name: '--tblr-card-bg', label: 'Card background', help: '' },
+    ]},
+    { heading: 'Tabler grays (advanced)', groupId: 'tabler-grays', vars: [
+      { name: '--tblr-gray-50', label: 'Gray 50', help: '' },
+      { name: '--tblr-gray-100', label: 'Gray 100', help: '' },
+      { name: '--tblr-gray-200', label: 'Gray 200', help: '' },
+      { name: '--tblr-gray-300', label: 'Gray 300', help: '' },
+      { name: '--tblr-gray-400', label: 'Gray 400', help: '' },
+      { name: '--tblr-gray-500', label: 'Gray 500', help: '' },
+      { name: '--tblr-gray-600', label: 'Gray 600', help: '' },
+      { name: '--tblr-gray-700', label: 'Gray 700', help: '' },
+      { name: '--tblr-gray-800', label: 'Gray 800', help: '' },
+      { name: '--tblr-gray-900', label: 'Gray 900', help: '' },
+      { name: '--tblr-gray-950', label: 'Gray 950', help: '' },
+    ]},
+    { heading: 'Feature tokens', groupId: 'feature', vars: [
+      { name: '--converted-bg', label: 'Converted row background', help: '' },
+      { name: '--converted-hover', label: 'Converted row hover', help: '' },
+      { name: '--badge-new-fg', label: 'Badge new (foreground)', help: '' },
+      { name: '--badge-returning', label: 'Badge returning', help: '' },
+      { name: '--chip-abandoned', label: 'Chip abandoned', help: '' },
+      { name: '--online-dot-color', label: 'Online dot', help: '' },
+      { name: '--link-fg', label: 'Link (foreground)', help: '' },
+      { name: '--side-panel-sale-bg', label: 'Side panel sale background', help: '' },
+      { name: '--button-hover-bg', label: 'Button hover background', help: '' },
+      { name: '--select-arrow', label: 'Select arrow', help: '' },
+      { name: '--top-bar-divider', label: 'Top bar divider', help: '' },
+    ]},
+  ];
+
+  function buildCssVarOverridesGrid() {
+    var parts = [];
+    for (var g = 0; g < CSS_VAR_COLOR_GROUPS.length; g++) {
+      var group = CSS_VAR_COLOR_GROUPS[g];
+      parts.push('<div class="col-12 kexo-css-var-group-heading" data-kexo-css-var-group="' + escapeHtml(group.groupId) + '"><h5 class="text-secondary small text-uppercase fw-semibold mb-2 mt-3">' + group.heading + '</h5></div>');
+      for (var v = 0; v < group.vars.length; v++) {
+        var entry = group.vars[v];
+        var searchText = (entry.label + ' ' + entry.name).toLowerCase();
+        var extraAttrs = ' data-kexo-css-var="' + escapeHtml(entry.name) + '" data-kexo-css-var-group="' + escapeHtml(group.groupId) + '" data-kexo-css-var-search="' + escapeHtml(searchText) + '"';
+        parts.push(cssVarOverrideInputCard(entry.name, entry.label, entry.help || '', extraAttrs));
+      }
+    }
+    return parts.join('');
+  }
+
   function hexToRgb(hex) {
     var m = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(String(hex || '').trim());
     if (!m) return null;
@@ -220,6 +326,30 @@
     var b = parseInt(h.slice(4, 6), 16);
     if (!Number.isFinite(r + g + b)) return null;
     return r + ',' + g + ',' + b;
+  }
+
+  function cssColorToHex(cssColor) {
+    if (!cssColor || typeof cssColor !== 'string') return '';
+    var s = cssColor.trim();
+    if (/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(s)) {
+      var h = s.slice(1);
+      if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+      return '#' + h.toLowerCase();
+    }
+    var rgb = /^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(?:,\s*[\d.]+\s*)?\)$/.exec(s);
+    if (rgb) {
+      var r = parseInt(rgb[1], 10);
+      var g = parseInt(rgb[2], 10);
+      var b = parseInt(rgb[3], 10);
+      if (r > 255) r = 255;
+      if (g > 255) g = 255;
+      if (b > 255) b = 255;
+      return '#' + [r, g, b].map(function (x) {
+        var h = x.toString(16);
+        return h.length === 1 ? '0' + h : h;
+      }).join('');
+    }
+    return '';
   }
 
   function normalizeAccentHex(value, fallback) {
@@ -1938,12 +2068,13 @@
     '</div>';
   }
 
-  function cssVarOverrideInputCard(varName, title, helpText) {
+  function cssVarOverrideInputCard(varName, title, helpText, extraDataAttrs) {
     var name = String(varName || '').trim();
     var label = String(title || name || 'CSS var').trim();
     var help = helpText ? String(helpText) : '';
     var titleAttr = help ? (' title="' + escapeHtml(help) + '"') : '';
-    return '<div class="col-12 col-md-6 col-lg-4">' +
+    var attrs = extraDataAttrs ? String(extraDataAttrs) : '';
+    return '<div class="col-12 col-md-6 col-lg-4 kexo-css-var-card"' + attrs + '>' +
       '<div class="card card-sm h-100">' +
         '<div class="card-body">' +
           '<div class="mb-2">' +
@@ -1955,7 +2086,7 @@
           '</div>' +
           '<div class="d-flex align-items-center gap-2">' +
             '<input type="color" class="form-control form-control-color kexo-css-var-swatch" data-kexo-css-var="' + escapeHtml(name) + '" style="width:2.5rem;height:2rem;padding:2px;cursor:pointer" title="Pick colour" />' +
-            '<input type="text" class="form-control kexo-css-var-input" data-kexo-css-var="' + escapeHtml(name) + '" placeholder="Leave blank for default" maxlength="80" />' +
+            '<input type="text" class="form-control kexo-css-var-input" data-kexo-css-var="' + escapeHtml(name) + '" placeholder="Leave blank for default" maxlength="150" />' +
           '</div>' +
         '</div>' +
       '</div>' +
@@ -1989,36 +2120,14 @@
       accentHexInputCard('theme-accent-3', 'Kexo 3', DEFAULTS['theme-accent-3']) +
       accentHexInputCard('theme-accent-4', 'Kexo 4', DEFAULTS['theme-accent-4']) +
       accentHexInputCard('theme-accent-5', 'Kexo 5', DEFAULTS['theme-accent-5']);
-    var cssVarGrid =
-      cssVarOverrideInputCard('--kexo-accent-1', 'Kexo 1', 'Overrides the runtime CSS variable used by Overview widgets and accents. Leave blank to use Theme accents.') +
-      cssVarOverrideInputCard('--kexo-accent-2', 'Kexo 2', '') +
-      cssVarOverrideInputCard('--kexo-accent-3', 'Kexo 3', '') +
-      cssVarOverrideInputCard('--kexo-accent-4', 'Kexo 4', '') +
-      cssVarOverrideInputCard('--kexo-accent-5', 'Kexo 5', '') +
-      cssVarOverrideInputCard('--kexo-kpi-delta-up', 'KPI delta up', '') +
-      cssVarOverrideInputCard('--kexo-kpi-delta-same', 'KPI delta same', '') +
-      cssVarOverrideInputCard('--kexo-kpi-delta-down', 'KPI delta down', '') +
-      cssVarOverrideInputCard('--kexo-kpi-compare-line', 'KPI compare line', '') +
-      cssVarOverrideInputCard('--kexo-gauge-color', 'Gauge colour', '') +
-      cssVarOverrideInputCard('--tblr-primary', 'Primary', '') +
-      cssVarOverrideInputCard('--tblr-success', 'Success', '') +
-      cssVarOverrideInputCard('--tblr-warning', 'Warning', '') +
-      cssVarOverrideInputCard('--tblr-danger', 'Danger', '') +
-      cssVarOverrideInputCard('--tblr-secondary', 'Secondary', '') +
-      cssVarOverrideInputCard('--tblr-secondary-color', 'Secondary colour', '') +
-      cssVarOverrideInputCard('--tblr-body-color', 'Body text', '') +
-      cssVarOverrideInputCard('--tblr-body-bg', 'Page background', '') +
-      cssVarOverrideInputCard('--tblr-border-color', 'Border', '') +
-      cssVarOverrideInputCard('--tblr-bg-surface', 'Surface', '') +
-      cssVarOverrideInputCard('--tblr-bg-surface-secondary', 'Surface secondary', '') +
-      cssVarOverrideInputCard('--tblr-link-color', 'Link', '') +
-      cssVarOverrideInputCard('--tblr-muted', 'Muted text', '') +
-      cssVarOverrideInputCard('--tblr-disabled-color', 'Disabled', '') +
-      cssVarOverrideInputCard('--tblr-border-color-translucent', 'Border (translucent)', '');
+    var cssVarGrid = buildCssVarOverridesGrid();
     var cssVarOverridesPanel =
       '<div class="mb-4" id="kexo-css-var-overrides-panel">' +
         '<label class="form-label">Colours (CSS variable overrides)</label>' +
         '<div class="text-secondary small mb-3">These override <code>:root</code> variables and take precedence over Theme accents. Leave blank to use defaults.</div>' +
+        '<div class="mb-3">' +
+          '<input type="text" class="form-control" id="kexo-css-var-overrides-search" placeholder="Filter by label or variable name…" aria-label="Filter colours" />' +
+        '</div>' +
         '<div class="row g-3" id="kexo-css-var-overrides-grid">' + cssVarGrid + '</div>' +
         '<div class="d-flex align-items-center gap-2 flex-wrap mt-3">' +
           '<button type="button" class="btn btn-primary btn-sm" id="kexo-css-var-overrides-save">Save colours</button>' +
@@ -2263,6 +2372,7 @@
     var root = formEl.parentElement || document;
     var grid = root.querySelector('#kexo-css-var-overrides-grid');
     if (!grid) return;
+    var searchInput = root.querySelector('#kexo-css-var-overrides-search');
     var saveBtn = root.querySelector('#kexo-css-var-overrides-save');
     var resetBtn = root.querySelector('#kexo-css-var-overrides-reset');
     var msgEl = root.querySelector('#kexo-css-var-overrides-msg');
@@ -2271,6 +2381,31 @@
     try { if (typeof API !== 'undefined') base = String(API || ''); } catch (_) {}
 
     var applied = {};
+
+    function filterCssVarGrid() {
+      var q = (searchInput && searchInput.value) ? String(searchInput.value).trim().toLowerCase() : '';
+      var cards = root.querySelectorAll('.kexo-css-var-card');
+      var headings = root.querySelectorAll('.kexo-css-var-group-heading');
+      if (!q) {
+        cards.forEach(function (el) { el.hidden = false; });
+        headings.forEach(function (el) { el.hidden = false; });
+        return;
+      }
+      var visibleByGroup = {};
+      cards.forEach(function (el) {
+        var searchAttr = el.getAttribute('data-kexo-css-var-search') || '';
+        var show = searchAttr.indexOf(q) !== -1;
+        el.hidden = !show;
+        if (show) {
+          var g = el.getAttribute('data-kexo-css-var-group') || '';
+          visibleByGroup[g] = true;
+        }
+      });
+      headings.forEach(function (el) {
+        var g = el.getAttribute('data-kexo-css-var-group') || '';
+        el.hidden = !visibleByGroup[g];
+      });
+    }
 
     function setMsg(text, ok) {
       if (!msgEl) return;
@@ -2283,11 +2418,12 @@
     function normalizeCssVarOverrideValue(raw) {
       var v = raw == null ? '' : String(raw).trim();
       if (!v) return '';
-      if (v.length > 80) return '';
+      if (v.length > 150) return '';
       if (/[;\r\n{}]/.test(v)) return '';
       if (/^var\(--[a-zA-Z0-9._-]+\)$/.test(v)) return v;
       if (/^#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(v)) return v;
       if (/^(rgb|hsl)a?\(/i.test(v)) return v;
+      if (/^color-mix\(/.test(v)) return v;
       if (v.toLowerCase() === 'currentcolor') return 'currentColor';
       if (v.toLowerCase() === 'transparent') return 'transparent';
       if (/^[a-z-]+$/i.test(v)) return v;
@@ -2307,18 +2443,42 @@
       return { v: 1, vars: vars };
     }
 
+    function getComputedColorForVar(varName) {
+      try {
+        var computed = getComputedStyle(document.documentElement).getPropertyValue(varName.trim()).trim();
+        return computed || '';
+      } catch (_) { return ''; }
+    }
+
     function updateCssVarPreviewCircles() {
       var circles = root.querySelectorAll('.kexo-css-var-preview-circle[data-kexo-css-var]');
       Array.prototype.forEach.call(circles, function (el) {
         var name = el.getAttribute('data-kexo-css-var');
         if (!name) return;
-        var input = root.querySelector('.kexo-css-var-input[data-kexo-css-var="' + name + '"]');
-        var swatch = root.querySelector('.kexo-css-var-swatch[data-kexo-css-var="' + name + '"]');
-        var v = (swatch && swatch.value) ? String(swatch.value).trim() : (input && input.value ? String(input.value).trim() : '');
+        var input = root.querySelector('.kexo-css-var-input[data-kexo-css-var="' + CSS.escape(name) + '"]');
+        var swatch = root.querySelector('.kexo-css-var-swatch[data-kexo-css-var="' + CSS.escape(name) + '"]');
+        var overrideVal = input && input.value ? String(input.value).trim() : '';
+        var v = overrideVal || (swatch && swatch.value ? String(swatch.value).trim() : '');
         var bg = '#e0e0e0';
-        if (v && /^#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(v)) bg = v;
-        else if (v && /^(rgb|hsl)a?\(/i.test(v)) bg = v;
+        var swatchHex = '';
+        if (v && /^#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(v)) {
+          bg = v;
+          swatchHex = v.length === 7 || v.length === 4 ? v : v.slice(0, 7);
+        } else if (v && /^(rgb|hsl)a?\(/i.test(v)) {
+          bg = v;
+          swatchHex = cssColorToHex(v);
+        }
+        if (!overrideVal && !swatchHex) {
+          var computed = getComputedColorForVar(name);
+          if (computed) {
+            bg = computed;
+            swatchHex = cssColorToHex(computed);
+          }
+        }
         try { el.style.background = bg; } catch (_) {}
+        if (swatch) {
+          try { swatch.value = swatchHex || '#000000'; } catch (_) {}
+        }
       });
     }
 
@@ -2377,6 +2537,11 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ cssVarOverridesV1: cfg }),
       }).then(function (r) { return r && r.ok ? r.json() : null; });
+    }
+
+    if (searchInput) {
+      searchInput.addEventListener('input', filterCssVarGrid);
+      searchInput.addEventListener('change', filterCssVarGrid);
     }
 
     grid.addEventListener('input', function () {

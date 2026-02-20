@@ -3427,7 +3427,7 @@
         placeThemeCard(key);
         var requestedThemeSubtab = null;
         if (key === 'icons-assets') requestedThemeSubtab = 'icons';
-        else if (key === 'theme-display') requestedThemeSubtab = 'header';
+        else if (key === 'theme-display') requestedThemeSubtab = 'color';
         if (requestedThemeSubtab) {
           try {
             try { window.__kexoThemeRequestedSubtab = requestedThemeSubtab; } catch (_) {}

@@ -1433,11 +1433,12 @@ function normalizeCssVarName(raw) {
 function normalizeCssVarOverrideValue(raw) {
   const v = raw == null ? '' : String(raw).trim();
   if (!v) return '';
-  if (v.length > 80) return '';
+  if (v.length > 150) return '';
   if (/[;\r\n{}]/.test(v)) return '';
   if (/^var\(--[a-zA-Z0-9._-]+\)$/.test(v)) return v;
   if (/^#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(v)) return v;
   if (/^(rgb|hsl)a?\(/i.test(v)) return v;
+  if (/^color-mix\(/.test(v)) return v;
   if (v.toLowerCase() === 'currentcolor') return 'currentColor';
   if (v.toLowerCase() === 'transparent') return 'transparent';
   if (/^[a-z-]+$/i.test(v)) return v;
@@ -1467,7 +1468,7 @@ function normalizeCssVarOverridesV1(raw) {
   const next = {};
   let count = 0;
   for (const k of Object.keys(vars)) {
-    if (count >= 50) break;
+    if (count >= 120) break;
     const name = normalizeCssVarName(k);
     if (!name) continue;
     const val = normalizeCssVarOverrideValue(vars[k]);
