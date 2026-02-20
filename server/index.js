@@ -337,6 +337,7 @@ app.use(express.static(path.join(__dirname, 'public'), {
         'kexo-table-defs.js',
         'theme-settings.js',
         'settings-page.js',
+        'custom.css',
       ]);
       if (noStore.has(base)) {
         res.setHeader('Cache-Control', 'no-store');

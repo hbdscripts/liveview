@@ -1597,10 +1597,10 @@
         el.__kexoJvmSizeWaitTries = 0;
       } catch (_) {}
 
-      var rawMode = chartModeFromUiConfig(chartKey, 'map-flat') || 'map-flat';
+      var rawMode = chartModeFromUiConfig(chartKey, 'map-animated') || 'map-animated';
       rawMode = String(rawMode || '').trim().toLowerCase();
-      if (rawMode !== 'map-flat' && rawMode !== 'map-animated') rawMode = 'map-flat';
-      var isAnimated = rawMode !== 'map-flat';
+      if (rawMode !== 'map-animated') rawMode = 'map-animated';
+      var isAnimated = true;
 
       var list = Array.isArray(sessionList) ? sessionList : (Array.isArray(sessions) ? sessions : []);
       var countsByIso2 = {};
@@ -1778,6 +1778,14 @@
           zoomButtons: zoomButtons,
           zoomOnScroll: false,
           zoomAnimate: false,
+          focusOn: (function () {
+            try {
+              var focus = keys.slice().sort(function(a, b) { return (countsByIso2[b] || 0) - (countsByIso2[a] || 0); }).slice(0, 4);
+              focus = focus.map(function(x) { return String(x || '').trim().toUpperCase().slice(0, 2); }).filter(Boolean);
+              if (focus.length) return { regions: focus, animate: false };
+            } catch (_) {}
+            return {};
+          })(),
           regionStyle: {
             initial: { fill: 'rgba(' + primaryRgb + ',0.18)', stroke: border, strokeWidth: 0.7 },
             hover: { fill: 'rgba(' + primaryRgb + ',0.46)' },
@@ -1812,10 +1820,10 @@
                   var co = Number(sc.checkout || 0) || 0;
                   var p = Number(sc.purchase || 0) || 0;
                   return '<div style="margin-top:6px;display:grid;grid-template-columns:10px 1fr auto;gap:4px 8px;align-items:center;font-size:.8125rem">' +
-                    '<span style="display:inline-block;width:10px;height:10px;border-radius:999px;background:#2563eb"></span><span style="color:' + escapeHtml(muted) + '">Browsing</span><span>' + escapeHtml(String(b)) + '</span>' +
-                    '<span style="display:inline-block;width:10px;height:10px;border-radius:999px;background:#f97316"></span><span style="color:' + escapeHtml(muted) + '">In cart</span><span>' + escapeHtml(String(c)) + '</span>' +
-                    '<span style="display:inline-block;width:10px;height:10px;border-radius:999px;background:#db2777"></span><span style="color:' + escapeHtml(muted) + '">Checkout</span><span>' + escapeHtml(String(co)) + '</span>' +
-                    '<span style="display:inline-block;width:10px;height:10px;border-radius:999px;background:#16a34a"></span><span style="color:' + escapeHtml(muted) + '">Purchased</span><span>' + escapeHtml(String(p)) + '</span>' +
+                    '<span style="display:inline-block;width:10px;height:10px;border-radius:999px;background:var(--kexo-accent-1,#4b94e4)"></span><span style="color:' + escapeHtml(muted) + '">Browsing</span><span>' + escapeHtml(String(b)) + '</span>' +
+                    '<span style="display:inline-block;width:10px;height:10px;border-radius:999px;background:var(--kexo-accent-3,#f59e34)"></span><span style="color:' + escapeHtml(muted) + '">In cart</span><span>' + escapeHtml(String(c)) + '</span>' +
+                    '<span style="display:inline-block;width:10px;height:10px;border-radius:999px;background:var(--kexo-accent-5,#6681e8)"></span><span style="color:' + escapeHtml(muted) + '">Checkout</span><span>' + escapeHtml(String(co)) + '</span>' +
+                    '<span style="display:inline-block;width:10px;height:10px;border-radius:999px;background:var(--kexo-accent-2,#3eb3ab)"></span><span style="color:' + escapeHtml(muted) + '">Purchased</span><span>' + escapeHtml(String(p)) + '</span>' +
                   '</div>';
                 })() +
               '</div>',
@@ -2103,7 +2111,7 @@
     }
 
     function refreshLiveOnlineChart(options) {
-      // Live online container always uses jsVectorMap (map-flat / map-animated). No Apex trend chart in this container.
+      // Live online container always uses jsVectorMap (map-animated). No Apex trend chart in this container.
       return fetchLiveOnlineMapSessions(options || {}).then(function(list) {
         try { renderLiveOnlineMapChartFromSessions(Array.isArray(list) ? list : []); } catch (_) {}
         return list || null;

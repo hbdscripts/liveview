@@ -1149,46 +1149,93 @@
     function clearCountriesFlowOverlay(el) {
       if (!el) return;
       try {
-        el.querySelectorAll('.kexo-map-flow-overlay, .kexo-live-activity-overlay, .kexo-live-activity-legend')
+        el.querySelectorAll('.kexo-map-flow-overlay, .kexo-live-activity-overlay, .kexo-live-activity-legend, .kexo-countries-pins-overlay, .kexo-countries-map-legend')
           .forEach(function(node) {
             try { if (node && node.parentNode) node.parentNode.removeChild(node); } catch (_) {}
           });
       } catch (_) {}
     }
 
-    function mapRegionCenter(mapSvg, mapRect, iso2) {
-      if (!mapSvg || !mapRect) return null;
+    function clearOverlayBySelector(el, selector) {
+      if (!el || !selector) return;
+      try {
+        el.querySelectorAll(selector).forEach(function(node) {
+          try { if (node && node.parentNode) node.parentNode.removeChild(node); } catch (_) {}
+        });
+      } catch (_) {}
+    }
+
+    function clearMapFlowOverlay(el) {
+      clearOverlayBySelector(el, '.kexo-map-flow-overlay');
+    }
+
+    function clearLiveActivityOverlay(el) {
+      clearOverlayBySelector(el, '.kexo-live-activity-overlay, .kexo-live-activity-legend');
+    }
+
+    function clearCountriesPinsOverlay(el) {
+      clearOverlayBySelector(el, '.kexo-countries-pins-overlay, .kexo-countries-map-legend');
+    }
+
+    function getJvmSvgInContainer(container) {
+      if (!container) return null;
+      return container.querySelector('.jvm-container svg') || container.querySelector('svg');
+    }
+
+    function getJvmZoomGroup(mapSvg) {
+      if (!mapSvg) return null;
+      var zoom = mapSvg.querySelector('.jvm-zoom-group');
+      if (zoom) return zoom;
+      // Fallback: regions group is typically inside the zoom group.
+      var regions = mapSvg.querySelector('.jvm-regions-group');
+      if (regions && regions.parentNode && regions.parentNode.nodeType === 1) return regions.parentNode;
+      return null;
+    }
+
+    function mapRegionCenter(mapSvg, zoomGroup, iso2) {
+      if (!mapSvg) return null;
       var iso = String(iso2 || '').trim().toUpperCase();
       if (!iso) return null;
       var lowerIso = iso.toLowerCase();
       var node = mapSvg.querySelector('[data-code="' + iso + '"], [data-code="' + lowerIso + '"], .jvm-region-' + lowerIso + ', .jvm-region-' + iso);
       if (!node) return null;
-      var rect = node.getBoundingClientRect();
-      if (!rect || !(rect.width > 0) || !(rect.height > 0)) return null;
-      return {
-        x: (rect.left - mapRect.left) + (rect.width / 2),
-        y: (rect.top - mapRect.top) + (rect.height / 2),
-      };
+      try {
+        var rect = node.getBoundingClientRect();
+        if (!rect || !(rect.width > 0) || !(rect.height > 0)) return null;
+        var sx = rect.left + (rect.width / 2);
+        var sy = rect.top + (rect.height / 2);
+        var pt = (mapSvg && typeof mapSvg.createSVGPoint === 'function') ? mapSvg.createSVGPoint() : null;
+        if (!pt) return null;
+        pt.x = sx;
+        pt.y = sy;
+        var sctm = mapSvg.getScreenCTM && mapSvg.getScreenCTM();
+        if (!sctm || typeof sctm.inverse !== 'function') return null;
+        var svgPt = pt.matrixTransform(sctm.inverse());
+        if (!zoomGroup || !zoomGroup.getCTM) return { x: svgPt.x, y: svgPt.y };
+        var zctm = zoomGroup.getCTM();
+        if (!zctm || typeof zctm.inverse !== 'function') return { x: svgPt.x, y: svgPt.y };
+        var localPt = svgPt.matrixTransform(zctm.inverse());
+        return { x: localPt.x, y: localPt.y };
+      } catch (_) {
+        return null;
+      }
     }
 
     function renderCountriesFlowOverlay(el, rows, primaryRgb, originIso2) {
       if (!el) return;
-      clearCountriesFlowOverlay(el);
-      var mapSvg = el.querySelector('svg');
+      clearMapFlowOverlay(el);
+      var mapSvg = getJvmSvgInContainer(el);
       if (!mapSvg) return;
-      var mapRect = mapSvg.getBoundingClientRect();
-      if (!mapRect || !(mapRect.width > 20) || !(mapRect.height > 20)) return;
+      var zoomGroup = getJvmZoomGroup(mapSvg);
+      if (!zoomGroup) zoomGroup = mapSvg;
 
       var originIso = String(originIso2 || 'GB').trim().toUpperCase().slice(0, 2);
       if (originIso === 'UK') originIso = 'GB';
       if (!originIso) originIso = 'GB';
 
       var NS = 'http://www.w3.org/2000/svg';
-      var overlay = document.createElementNS(NS, 'svg');
+      var overlay = document.createElementNS(NS, 'g');
       overlay.setAttribute('class', 'kexo-map-flow-overlay');
-      overlay.setAttribute('viewBox', '0 0 ' + mapRect.width + ' ' + mapRect.height);
-      overlay.setAttribute('width', String(mapRect.width));
-      overlay.setAttribute('height', String(mapRect.height));
 
       var ranked = (Array.isArray(rows) ? rows : [])
         .map(function (r) {
@@ -1205,12 +1252,12 @@
         .slice(0, 8);
 
       if (!ranked.length) {
-        el.appendChild(overlay);
+        try { zoomGroup.appendChild(overlay); } catch (_) {}
         return;
       }
 
-      var origin = mapRegionCenter(mapSvg, mapRect, originIso) ||
-        { x: mapRect.width * 0.52, y: mapRect.height * 0.42 };
+      var origin = mapRegionCenter(mapSvg, zoomGroup, originIso);
+      if (!origin) origin = { x: 520, y: 240 };
       var palette = [
         'rgba(' + primaryRgb + ',0.78)',
         'rgba(' + primaryRgb + ',0.6)',
@@ -1218,7 +1265,7 @@
       ];
 
       ranked.forEach(function (item, idx) {
-        var target = mapRegionCenter(mapSvg, mapRect, item.iso);
+        var target = mapRegionCenter(mapSvg, zoomGroup, item.iso);
         if (!target) return;
         var midX = (origin.x + target.x) / 2;
         var bend = Math.max(18, Math.min(74, (Math.abs(target.x - origin.x) * 0.16) + (idx * 3)));
@@ -1250,18 +1297,18 @@
       originDot.setAttribute('fill', 'rgba(' + primaryRgb + ',0.86)');
       overlay.appendChild(originDot);
 
-      el.appendChild(overlay);
+      try { zoomGroup.appendChild(overlay); } catch (_) {}
     }
 
     function renderLiveActivityOverlay(el, stageCountsByIso2, totalsByIso2, opts) {
       if (!el) return;
-      clearCountriesFlowOverlay(el);
+      clearLiveActivityOverlay(el);
       opts = opts || {};
 
-      var mapSvg = el.querySelector('svg');
+      var mapSvg = getJvmSvgInContainer(el);
       if (!mapSvg) return;
-      var mapRect = mapSvg.getBoundingClientRect();
-      if (!mapRect || !(mapRect.width > 20) || !(mapRect.height > 20)) return;
+      var zoomGroup = getJvmZoomGroup(mapSvg);
+      if (!zoomGroup) zoomGroup = mapSvg;
 
       var totals = totalsByIso2 && typeof totalsByIso2 === 'object' ? totalsByIso2 : {};
       var stages = stageCountsByIso2 && typeof stageCountsByIso2 === 'object' ? stageCountsByIso2 : {};
@@ -1291,18 +1338,18 @@
         return 'browse';
       }
 
-      function stageColor(stage) {
+      function stageKey(stage) {
         switch (String(stage || '').toLowerCase()) {
           case 'purchase':
           case 'purchased':
-            return '#16a34a';
+            return 'purchase';
           case 'checkout':
-            return '#db2777';
+            return 'checkout';
           case 'cart':
-            return '#f97316';
+            return 'cart';
           case 'browse':
           default:
-            return '#2563eb';
+            return 'browse';
         }
       }
 
@@ -1320,49 +1367,20 @@
       if (originIso === 'UK') originIso = 'GB';
       if (!originIso) originIso = ranked[0].iso || 'GB';
 
-      var origin = mapRegionCenter(mapSvg, mapRect, originIso) || { x: mapRect.width * 0.52, y: mapRect.height * 0.42 };
+      var origin = mapRegionCenter(mapSvg, zoomGroup, originIso);
+      if (!origin) origin = { x: 520, y: 240 };
 
       var NS = 'http://www.w3.org/2000/svg';
-      var overlay = document.createElementNS(NS, 'svg');
+      var overlay = document.createElementNS(NS, 'g');
       overlay.setAttribute('class', 'kexo-live-activity-overlay');
-      overlay.setAttribute('viewBox', '0 0 ' + mapRect.width + ' ' + mapRect.height);
-      overlay.setAttribute('width', String(mapRect.width));
-      overlay.setAttribute('height', String(mapRect.height));
-
-      // Subtle dot-grid background like the preview.
-      try {
-        var defs = document.createElementNS(NS, 'defs');
-        var pid = 'kexoDotGrid_' + String(Date.now()) + '_' + String(Math.floor(Math.random() * 100000));
-        var pattern = document.createElementNS(NS, 'pattern');
-        pattern.setAttribute('id', pid);
-        pattern.setAttribute('patternUnits', 'userSpaceOnUse');
-        pattern.setAttribute('width', '12');
-        pattern.setAttribute('height', '12');
-        var dot = document.createElementNS(NS, 'circle');
-        dot.setAttribute('cx', '1.5');
-        dot.setAttribute('cy', '1.5');
-        dot.setAttribute('r', '1');
-        dot.setAttribute('fill', 'rgba(' + primaryRgb + ',0.10)');
-        pattern.appendChild(dot);
-        defs.appendChild(pattern);
-        overlay.appendChild(defs);
-        var bg = document.createElementNS(NS, 'rect');
-        bg.setAttribute('x', '0');
-        bg.setAttribute('y', '0');
-        bg.setAttribute('width', String(mapRect.width));
-        bg.setAttribute('height', String(mapRect.height));
-        bg.setAttribute('fill', 'url(#' + pid + ')');
-        bg.setAttribute('opacity', '0.9');
-        overlay.appendChild(bg);
-      } catch (_) {}
 
       var top = ranked.slice(0, topN);
       var maxTotal = top.reduce(function(m, r) { return Math.max(m, r.total || 0); }, 1);
 
       top.forEach(function(item, idx) {
-        var target = mapRegionCenter(mapSvg, mapRect, item.iso);
+        var target = mapRegionCenter(mapSvg, zoomGroup, item.iso);
         if (!target) return;
-        var color = stageColor(item.stage);
+        var stage = stageKey(item.stage);
 
         if (animated) {
           var midX = (origin.x + target.x) / 2;
@@ -1378,11 +1396,10 @@
 
         var radius = 3.2 + (Math.min(1, (item.total || 0) / maxTotal) * 3.8);
         var marker = document.createElementNS(NS, 'circle');
-        marker.setAttribute('class', 'kexo-live-activity-marker');
+        marker.setAttribute('class', 'kexo-live-activity-marker kexo-stage-' + stage);
         marker.setAttribute('cx', String(target.x));
         marker.setAttribute('cy', String(target.y));
         marker.setAttribute('r', String(radius.toFixed(2)));
-        marker.setAttribute('fill', color);
         marker.setAttribute('stroke', 'rgba(255,255,255,0.9)');
         marker.setAttribute('stroke-width', '1');
         overlay.appendChild(marker);
@@ -1406,8 +1423,7 @@
         overlay.appendChild(originDot);
       } catch (_) {}
 
-      try { if (el && el.style) el.style.position = 'relative'; } catch (_) {}
-      try { el.appendChild(overlay); } catch (_) {}
+      try { zoomGroup.appendChild(overlay); } catch (_) {}
 
       // Legend (HTML overlay)
       try {
@@ -1429,6 +1445,72 @@
           '<div class="kexo-live-activity-legend-row"><span class="kexo-live-activity-swatch swatch-checkout"></span><span>Checkout</span><span class="kexo-live-activity-count">' + String(stageTotals.checkout || 0) + '</span></div>' +
           '<div class="kexo-live-activity-legend-row"><span class="kexo-live-activity-swatch swatch-purchase"></span><span>Purchased</span><span class="kexo-live-activity-count">' + String(stageTotals.purchase || 0) + '</span></div>' +
           '<div class="kexo-live-activity-legend-foot">Total: ' + String(totalAll || 0) + '</div>';
+        try { el.appendChild(legend); } catch (_) {}
+      } catch (_) {}
+    }
+
+    function renderCountriesPinsOverlay(el, rankedItems, opts) {
+      if (!el) return;
+      clearCountriesPinsOverlay(el);
+      opts = opts || {};
+
+      var mapSvg = getJvmSvgInContainer(el);
+      if (!mapSvg) return;
+      var zoomGroup = getJvmZoomGroup(mapSvg);
+      if (!zoomGroup) zoomGroup = mapSvg;
+
+      var items = Array.isArray(rankedItems) ? rankedItems : [];
+      if (!items.length) return;
+
+      var NS = 'http://www.w3.org/2000/svg';
+      var overlay = document.createElementNS(NS, 'g');
+      overlay.setAttribute('class', 'kexo-countries-pins-overlay');
+
+      var topN = Math.max(3, Math.min(12, Number(opts.topN || 9) || 9));
+      var primaryRgb = String(opts.primaryRgb || '62,179,171').trim() || '62,179,171';
+      var title = opts.title != null ? String(opts.title) : 'Top countries';
+      var subtitle = opts.subtitle != null ? String(opts.subtitle) : '';
+
+      var top = items.slice(0, topN);
+      var maxVal = top.reduce(function(m, r) { return Math.max(m, Number(r && r.value) || 0); }, 1);
+
+      top.forEach(function(item) {
+        var iso = item && item.iso ? String(item.iso).trim().toUpperCase().slice(0, 2) : '';
+        if (!iso || iso === 'XX') return;
+        var center = mapRegionCenter(mapSvg, zoomGroup, iso);
+        if (!center) return;
+        var n = Number(item && item.value) || 0;
+        var t = maxVal > 0 ? Math.max(0, Math.min(1, n / maxVal)) : 0;
+        var radius = 3.0 + (t * 4.2);
+
+        var marker = document.createElementNS(NS, 'circle');
+        marker.setAttribute('class', 'kexo-countries-pin');
+        marker.setAttribute('cx', String(center.x));
+        marker.setAttribute('cy', String(center.y));
+        marker.setAttribute('r', String(radius.toFixed(2)));
+        marker.setAttribute('fill', 'rgba(' + primaryRgb + ',0.92)');
+        marker.setAttribute('stroke', 'rgba(255,255,255,0.92)');
+        marker.setAttribute('stroke-width', '1');
+        overlay.appendChild(marker);
+
+        var label = document.createElementNS(NS, 'text');
+        label.setAttribute('class', 'kexo-live-activity-label');
+        label.setAttribute('x', String(center.x + 7));
+        label.setAttribute('y', String(center.y - 6));
+        label.textContent = (typeof countryLabel === 'function' ? countryLabel(iso) : iso) || iso;
+        overlay.appendChild(label);
+      });
+
+      try { zoomGroup.appendChild(overlay); } catch (_) {}
+
+      // Legend (HTML overlay)
+      try {
+        var legend = document.createElement('div');
+        legend.setAttribute('class', 'kexo-countries-map-legend');
+        legend.innerHTML =
+          '<div class="kexo-live-activity-legend-title">' + escapeHtml(title) + '</div>' +
+          (subtitle ? ('<div class="text-muted small" style="margin-top:-2px;margin-bottom:4px">' + escapeHtml(subtitle) + '</div>') : '') +
+          '<div class="text-muted small">Pinned: ' + escapeHtml(String(top.length)) + '</div>';
         try { el.appendChild(legend); } catch (_) {}
       } catch (_) {}
     }
@@ -1647,10 +1729,10 @@
         const rootCss = getComputedStyle(document.documentElement);
         const border = (rootCss.getPropertyValue('--tblr-border-color') || '#d4dee5').trim();
         const muted = (rootCss.getPropertyValue('--tblr-secondary') || '#626976').trim();
-        var rawMode = chartModeFromUiConfig(chartKey, 'map-flat') || 'map-flat';
+        var rawMode = chartModeFromUiConfig(chartKey, 'map-animated') || 'map-animated';
         rawMode = String(rawMode || '').trim().toLowerCase();
-        if (rawMode !== 'map-flat' && rawMode !== 'map-animated') rawMode = 'map-flat';
-        const isAnimated = rawMode !== 'map-flat';
+        if (rawMode !== 'map-animated') rawMode = 'map-animated';
+        const isAnimated = true;
         const palette = chartColorsFromUiConfig(chartKey, ['#3eb3ab']);
         const accent = (palette && palette[0]) ? String(palette[0]).trim() : '#3eb3ab';
         const showTooltip = mapStyle.mapShowTooltip !== false;
@@ -1679,6 +1761,21 @@
         const rgb = rgbFromColor(accent);
         const primaryRgb = rgb.rgb;
         const regionFillByIso2 = buildMapFillScaleByIso(choroplethByIso2, primaryRgb, 0.24, 0.92);
+        var focusOn = {};
+        try {
+          var focusRegions = [];
+          var srcFocus = choroplethByIso2 && typeof choroplethByIso2 === 'object' ? choroplethByIso2 : {};
+          Object.keys(srcFocus).forEach(function(k) {
+            var iso = String(k || '').trim().toUpperCase().slice(0, 2);
+            if (!iso || iso === 'XX') return;
+            var n = Number(srcFocus[k]);
+            if (!Number.isFinite(n) || n <= 0) return;
+            focusRegions.push({ iso: iso, value: n });
+          });
+          focusRegions.sort(function(a, b) { return (Number(b && b.value) || 0) - (Number(a && a.value) || 0); });
+          var top = focusRegions.slice(0, 4).map(function(r) { return r.iso; }).filter(Boolean);
+          if (top.length) focusOn = { regions: top, animate: false };
+        } catch (_) { focusOn = {}; }
 
         var jvmOpts = {
           selector: '#countries-map-chart',
@@ -1689,6 +1786,7 @@
           zoomButtons: zoomButtons,
           zoomOnScroll: false,
           zoomAnimate: false,
+          focusOn: focusOn,
           regionStyle: {
             initial: { fill: 'rgba(' + primaryRgb + ',0.18)', stroke: border, strokeWidth: 0.7 },
             hover: { fill: 'rgba(' + primaryRgb + ',0.46)' },
@@ -1736,11 +1834,24 @@
         }
         hideMapTooltipOnLeave(el);
 
-        if (isAnimated) {
-          setTimeout(function () {
-            try { renderCountriesFlowOverlay(el, rows, primaryRgb); } catch (_) {}
-          }, 140);
-        }
+        var pinItems = [];
+        try {
+          var srcPins = choroplethByIso2 && typeof choroplethByIso2 === 'object' ? choroplethByIso2 : {};
+          Object.keys(srcPins).forEach(function(k) {
+            var iso = String(k || '').trim().toUpperCase().slice(0, 2);
+            if (!iso || iso === 'XX') return;
+            var n = Number(srcPins[k]);
+            if (!Number.isFinite(n) || n <= 0) return;
+            pinItems.push({ iso: iso, value: n });
+          });
+          pinItems.sort(function(a, b) { return (Number(b && b.value) || 0) - (Number(a && a.value) || 0); });
+        } catch (_) {}
+        var metricLabel = mapMetricChoice === 'revenue' ? 'Revenue' : mapMetricChoice === 'orders' ? 'Orders' : 'Metric';
+
+        setTimeout(function () {
+          try { renderCountriesFlowOverlay(el, rows, primaryRgb); } catch (_) {}
+          try { renderCountriesPinsOverlay(el, pinItems, { topN: 9, primaryRgb: primaryRgb, title: 'Top countries', subtitle: metricLabel }); } catch (_) {}
+        }, 140);
       } catch (err) {
         captureChartError(err, 'countriesMapRender', { chartKey: 'countries-map-chart' });
         console.error('[countries-map] map render error:', err);
@@ -4303,12 +4414,10 @@
       var it = getChartsUiItem(k);
       var m = it && it.mode != null ? String(it.mode).trim().toLowerCase() : '';
       if (k === 'live-online-chart') {
-        if (m === 'map-animated' || m === 'map-flat') return m;
-        return 'map-flat';
+        return 'map-animated';
       }
       if (k === 'countries-map-chart') {
-        if (m === 'map-animated' || m === 'map-flat') return m;
-        return 'map-flat';
+        return 'map-animated';
       }
       return validateChartType(k, m || fallbackMode, fallbackMode);
     }
@@ -4422,7 +4531,7 @@
 
     function chartStyleOverrideFromUiConfig(key, modeHint) {
       var mode = normalizeChartType(String(modeHint || '').trim().toLowerCase() || 'line', 'line');
-      if (mode === 'map-animated' || mode === 'map-flat') return null;
+      if (mode === 'map-animated') return null;
       var style = chartStyleFromUiConfig(key);
       var out = {
         chart: {

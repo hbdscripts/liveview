@@ -7,7 +7,6 @@
 
   var CHART_MODE_LABEL = {
     'map-animated': 'Map (animated)',
-    'map-flat': 'Map (flat)',
     area: 'Area',
     line: 'Line',
     bar: 'Vertical Bar',
@@ -221,9 +220,9 @@
       }
     },
     'live-online-chart': {
-      modes: ['map-animated', 'map-flat'],
+      modes: ['map-animated'],
       series: ['Online now'],
-      defaultMode: 'map-flat',
+      defaultMode: 'map-animated',
       height: 220,
       capabilities: {
         controls: [
@@ -242,9 +241,9 @@
     'browsers-chart': { modes: ['line', 'area', 'bar', 'pie', 'multi-line-labels'], series: ['Sessions', 'Orders', 'Revenue'], pieMetric: true, defaultMode: 'line', height: 320, capabilities: { icons: true } },
     'products-chart': { modes: ['line', 'area', 'bar', 'pie', 'multi-line-labels'], series: ['Revenue'], defaultMode: 'line', height: 280 },
     'countries-map-chart': {
-      modes: ['map-animated', 'map-flat'],
+      modes: ['map-animated'],
       series: ['Accent'],
-      defaultMode: 'map-flat',
+      defaultMode: 'map-animated',
       height: 320,
       capabilities: {
         controls: [

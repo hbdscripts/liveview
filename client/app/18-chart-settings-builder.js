@@ -232,7 +232,15 @@
 
         var body = '';
         body += '<div class="row g-3">';
-        body += '<div class="col-12 col-md-6"><label class="form-label">Chart type</label><select class="form-select form-select-sm" data-cs-field="mode">' + modeOptionsHtml(modes, mode) + '</select></div>';
+        var lockMode = Array.isArray(modes) && modes.length === 1;
+        if (lockMode) {
+          var lockVal = String(modes[0] || mode || 'line').trim().toLowerCase();
+          var labels = (window.KEXO_CHART_MODE_LABEL && typeof window.KEXO_CHART_MODE_LABEL === 'object') ? window.KEXO_CHART_MODE_LABEL : {};
+          var lockLabel = labels[lockVal] || lockVal;
+          body += '<div class="col-12 col-md-6"><label class="form-label">Chart type</label><div class="form-control form-control-sm" aria-disabled="true">' + escapeHtml(String(lockLabel)) + '</div><input type="hidden" data-cs-field="mode" value="' + escapeHtml(String(lockVal)) + '"></div>';
+        } else {
+          body += '<div class="col-12 col-md-6"><label class="form-label">Chart type</label><select class="form-select form-select-sm" data-cs-field="mode">' + modeOptionsHtml(modes, mode) + '</select></div>';
+        }
         body += '<div class="col-12 col-md-6"><label class="form-label">Size (% of container)</label><select class="form-select form-select-sm" data-cs-field="sizePercent">';
         for (var p = 25; p <= 100; p += 5) {
           body += '<option value="' + p + '"' + (p === size ? ' selected' : '') + '>' + p + '%</option>';

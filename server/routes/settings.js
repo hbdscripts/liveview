@@ -172,7 +172,7 @@ const CHART_ALLOWED_MODES = Object.freeze({
   'dash-chart-devices-30d': ['bar-horizontal', 'radialbar'],
   'dash-chart-countries-30d': ['bar-horizontal', 'bar', 'bar-distributed', 'radialbar', 'pie', 'donut', 'line', 'area', 'multi-line-labels'],
   'dash-chart-attribution-30d': ['radialbar', 'pie', 'donut'],
-  'live-online-chart': ['map-animated', 'map-flat'],
+  'live-online-chart': ['map-animated'],
   'sales-overview-chart': ['area', 'line', 'bar', 'multi-line-labels'],
   'date-overview-chart': ['area', 'line', 'bar', 'multi-line-labels'],
   'ads-overview-chart': ['bar', 'combo', 'line', 'area', 'multi-line-labels'],
@@ -180,7 +180,7 @@ const CHART_ALLOWED_MODES = Object.freeze({
   'devices-chart': ['line', 'area', 'bar', 'pie', 'multi-line-labels'],
   'products-chart': ['line', 'area', 'bar', 'pie', 'multi-line-labels'],
   'abandoned-carts-chart': ['line', 'area', 'bar', 'multi-line-labels'],
-  'countries-map-chart': ['map-animated', 'map-flat'],
+  'countries-map-chart': ['map-animated'],
   'payment-methods-chart': ['line', 'area', 'bar', 'multi-line-labels'],
 });
 
@@ -331,7 +331,7 @@ function defaultChartsUiConfigV1() {
         { key: 'dash-chart-attribution-30d', label: 'Dashboard · Attribution (7 Days)', enabled: true, mode: 'donut', sizePercent: 70, colors: ['#4b94e4', '#3eb3ab', '#f59e34', '#8b5cf6', '#ef4444'], advancedApexOverride: {} },
         { animations: false, icons: true, bottomLabels: true, pieDonut: true, pieDonutSize: 64, pieLabelPosition: 'outside', pieLabelContent: 'label', pieLabelOffset: 18 }
       ),
-      withStyle({ key: 'live-online-chart', label: 'Dashboard · Live Online', enabled: true, mode: 'map-flat', colors: ['#16a34a'], advancedApexOverride: {} }),
+      withStyle({ key: 'live-online-chart', label: 'Dashboard · Live Online', enabled: true, mode: 'map-animated', colors: ['#16a34a'], advancedApexOverride: {} }),
       withStyle({ key: 'sales-overview-chart', label: 'Dashboard · Sales Trend', enabled: true, mode: 'area', colors: ['#0d9488'], advancedApexOverride: {} }),
       withStyle({ key: 'date-overview-chart', label: 'Dashboard · Sessions & Orders Trend', enabled: true, mode: 'area', colors: ['#4b94e4', '#f59e34'], advancedApexOverride: {} }),
       withStyle({ key: 'ads-overview-chart', label: 'Integrations · Google Ads Overview', enabled: true, mode: 'bar', colors: ['#3eb3ab', '#ef4444', '#4b94e4'], advancedApexOverride: {} }),
@@ -339,7 +339,7 @@ function defaultChartsUiConfigV1() {
       withStyle({ key: 'devices-chart', label: 'Acquisition · Devices', enabled: true, mode: 'line', colors: ['#4b94e4', '#f59e34', '#3eb3ab', '#8b5cf6', '#ef4444', '#22c55e'], pieMetric: 'sessions', advancedApexOverride: {} }),
       withStyle({ key: 'products-chart', label: 'Insights · Products', enabled: true, mode: 'line', colors: ['#3eb3ab', '#4b94e4', '#f59e34', '#8b5cf6', '#ef4444', '#22c55e'], advancedApexOverride: {} }),
       withStyle({ key: 'abandoned-carts-chart', label: 'Insights · Abandoned Carts', enabled: true, mode: 'line', colors: ['#ef4444'], advancedApexOverride: {} }),
-      withStyle({ key: 'countries-map-chart', label: 'Insights · Countries Map', enabled: true, mode: 'map-flat', colors: ['#3eb3ab'], advancedApexOverride: {} }),
+      withStyle({ key: 'countries-map-chart', label: 'Insights · Countries Map', enabled: true, mode: 'map-animated', colors: ['#3eb3ab'], advancedApexOverride: {} }),
     ],
     kpiBundles: {
       dashboardCards: {

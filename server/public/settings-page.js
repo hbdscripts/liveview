@@ -2444,7 +2444,7 @@
       { key: 'dash-chart-finishes-30d', label: 'Dashboard · Finishes (7 Days)', enabled: true, mode: 'radialbar', colors: ['#f59e34', '#94a3b8', '#8b5cf6', '#4b94e4', '#3eb3ab'], advancedApexOverride: {}, styleOverride: { animations: false } },
       { key: 'dash-chart-devices-30d', label: 'Dashboard · Devices (7 Days)', enabled: true, mode: 'bar-horizontal', colors: ['#4b94e4', '#3eb3ab', '#f59e34', '#8b5cf6', '#ef4444'], advancedApexOverride: {}, styleOverride: { animations: false } },
       { key: 'dash-chart-attribution-30d', label: 'Dashboard · Attribution (7 Days)', enabled: true, mode: 'donut', colors: ['#4b94e4', '#3eb3ab', '#f59e34', '#8b5cf6', '#ef4444'], advancedApexOverride: {}, styleOverride: { animations: false, pieDonut: true, pieDonutSize: 64, pieLabelPosition: 'outside', pieLabelContent: 'label', pieLabelOffset: 18 } },
-      { key: 'live-online-chart', label: 'Dashboard · Live Online', enabled: true, mode: 'map-flat', colors: ['#16a34a'], advancedApexOverride: {} },
+      { key: 'live-online-chart', label: 'Dashboard · Live Online', enabled: true, mode: 'map-animated', colors: ['#16a34a'], advancedApexOverride: {} },
       { key: 'sales-overview-chart', label: 'Dashboard · Sales Trend', enabled: true, mode: 'area', colors: ['#0d9488'], advancedApexOverride: {} },
       { key: 'date-overview-chart', label: 'Dashboard · Sessions & Orders Trend', enabled: true, mode: 'area', colors: ['#4b94e4', '#f59e34'], advancedApexOverride: {} },
       { key: 'ads-overview-chart', label: 'Integrations · Google Ads Overview', enabled: true, mode: 'bar', colors: ['#22c55e', '#ef4444', '#4b94e4'], advancedApexOverride: {} },
@@ -2452,7 +2452,7 @@
       { key: 'devices-chart', label: 'Acquisition · Devices', enabled: true, mode: 'line', colors: ['#4b94e4', '#f59e34', '#3eb3ab', '#8b5cf6', '#ef4444', '#22c55e'], pieMetric: 'sessions', advancedApexOverride: {} },
       { key: 'products-chart', label: 'Insights · Products', enabled: true, mode: 'line', colors: ['#3eb3ab', '#4b94e4', '#f59e34', '#8b5cf6', '#ef4444', '#22c55e'], advancedApexOverride: {} },
       { key: 'abandoned-carts-chart', label: 'Insights · Abandoned Carts', enabled: true, mode: 'line', colors: ['#ef4444'], advancedApexOverride: {} },
-      { key: 'countries-map-chart', label: 'Insights · Countries Map', enabled: true, mode: 'map-flat', colors: ['#3eb3ab'], advancedApexOverride: {} },
+      { key: 'countries-map-chart', label: 'Insights · Countries Map', enabled: true, mode: 'map-animated', colors: ['#3eb3ab'], advancedApexOverride: {} },
     ].map(function (it) {
       var row = Object.assign({}, it);
       row.style = Object.assign(defaultChartStyleConfig(), it.styleOverride && typeof it.styleOverride === 'object' ? it.styleOverride : {});
@@ -2867,10 +2867,16 @@
       var previewHtml = '<div class="col-12"><div class="settings-charts-preview-wrap"><div class="text-muted small mb-2">Preview</div><div class="settings-charts-preview-canvas" data-chart-preview-canvas></div></div></div>';
       cardBodyContent = sharedRow.slice(0, sharedRow.length - 6) + previewHtml + '</div>';
     } else {
+      var lockMode = (Array.isArray(modes) && modes.length === 1 && String(modes[0] || '').toLowerCase() === 'map-animated') ||
+        key === 'live-online-chart' || key === 'countries-map-chart';
+      var modeFieldHtml = lockMode
+        ? ('<div class="col-12 col-md-6 col-xl-4"><label class="form-label mb-1">Chart type</label><div class="form-control form-control-sm" aria-disabled="true">Map (animated)</div><input type="hidden" data-chart-field="mode" value="map-animated"></div>')
+        : ('<div class="col-12 col-md-6 col-xl-4"><label class="form-label mb-1">Chart type</label><select class="form-select form-select-sm" data-chart-field="mode">' + selectOptionsHtml(modes, mode) + '</select></div>');
+
       cardBodyContent = '<div class="row g-3">' +
         '<div class="col-12 col-lg-4"><label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-chart-field="enabled"' + (enabled ? ' checked' : '') + '><span class="form-check-label ms-2">Enabled</span></label></div>' +
         '<div class="col-12 col-lg-8"><label class="form-label mb-1">Display name</label><input type="text" class="form-control form-control-sm" data-chart-field="label" value="' + escapeHtml(title) + '"></div>' +
-        '<div class="col-12 col-md-6 col-xl-4"><label class="form-label mb-1">Chart type</label><select class="form-select form-select-sm" data-chart-field="mode">' + selectOptionsHtml(modes, mode) + '</select></div>' +
+        modeFieldHtml +
         '<div class="col-12 col-md-6 col-xl-4"><label class="form-label mb-1">Pie metric</label><select class="form-select form-select-sm" data-chart-field="pieMetric"' + (canPie ? '' : ' disabled') + '><option value="sessions"' + (pieMetric === 'sessions' ? ' selected' : '') + '>Sessions</option><option value="orders"' + (pieMetric === 'orders' ? ' selected' : '') + '>Orders</option><option value="revenue"' + (pieMetric === 'revenue' ? ' selected' : '') + '>Revenue</option></select></div>' +
         '<div class="col-12"><label class="form-label mb-1">Chart style (quick controls)</label><div class="row g-2">' +
           '<div class="col-6 col-lg-4 col-xl-3"><label class="form-label mb-1">Curve</label><select class="form-select form-select-sm" data-chart-field="style.curve"><option value="smooth"' + (style.curve === 'smooth' ? ' selected' : '') + '>Smooth</option><option value="straight"' + (style.curve === 'straight' ? ' selected' : '') + '>Straight</option><option value="stepline"' + (style.curve === 'stepline' ? ' selected' : '') + '>Stepline</option></select></div>' +

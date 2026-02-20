@@ -30,7 +30,7 @@ const CHART_UI_KEYS = [
 const CANONICAL_MODES = new Set([
   'area', 'bar', 'line', 'multi-line-labels', 'combo', 'stacked-area', 'stacked-bar',
   'radialbar', 'pie', 'donut', 'bar-horizontal', 'bar-distributed',
-  'map-animated', 'map-flat',
+  'map-animated',
 ]);
 
 test('settings.js: CHART_ALLOWED_MODES has an entry for every CHART_UI_KEYS chart', () => {
