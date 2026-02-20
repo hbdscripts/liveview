@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: eb613986a0fba465
+// checksum: eb02b4f2a72797eb
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -21403,6 +21403,9 @@ const API = '';
             profitRatio: 0.07,
             merRatio: 0.09,
           },
+          // UI-only: add headroom so bars don't saturate at 100% when current is max.
+          barHeadroom: 1.25,
+          anim: { durationMs: 480, gapMs: 90 },
         };
         function metricUiSpec(rawKey) {
           var k = String(rawKey || '').trim().toLowerCase();
@@ -21429,14 +21432,15 @@ const API = '';
           var spec = metricUiSpec(key);
           var cur = Number(rawCur);
           var prev = Number(rawPrev);
-          if (!Number.isFinite(cur) || !Number.isFinite(prev)) return '';
+          if (!Number.isFinite(cur) && !Number.isFinite(prev)) return '\u2014';
+          if (!Number.isFinite(cur) || !Number.isFinite(prev)) return '\u2014';
           if (spec.key === 'conversion') {
             var dpp = cur - prev;
             if (!Number.isFinite(dpp) || Math.abs(dpp) < spec.stable) return '0.0pp';
             var roundedPp = Math.round(dpp * 10) / 10;
             return (roundedPp > 0 ? '+' : '') + roundedPp.toFixed(1) + 'pp';
           }
-          if (Math.abs(prev) < 1e-9) return '';
+          if (Math.abs(prev) < 1e-9) return (Math.abs(cur) < 1e-9) ? '0.0%' : 'new';
           var denom = Math.max(Math.abs(prev), Number(spec.denomFloor) || 0, 1e-9);
           var deltaPct = ((cur - prev) / denom) * 100;
           var rounded = Math.round(deltaPct * 10) / 10;
@@ -21459,7 +21463,9 @@ const API = '';
           var isNew = cRaw != null && cRaw !== 0 && (pRaw == null || Math.abs(pRaw) < 1e-9);
           var c = cRaw != null ? Math.max(0, cRaw) : 0;
           var p = pRaw != null ? Math.max(0, pRaw) : 0;
-          var scale = Math.max(c, p, Number(spec.floor) || 0, 1e-9);
+          var headroom = Number(KEXO_SCORE_V2_UI.barHeadroom);
+          if (!Number.isFinite(headroom) || headroom < 1) headroom = 1;
+          var scale = Math.max(c, p, Number(spec.floor) || 0, 1e-9) * headroom;
           var prevPct = Math.max(0, Math.min(100, (p / scale) * 100));
           var curPct = Math.max(0, Math.min(100, (c / scale) * 100));
 
@@ -21478,6 +21484,38 @@ const API = '';
             barClass = dir > 0 ? 'bg-success' : (dir < 0 ? 'bg-danger' : 'bg-secondary');
           }
           return { prevPct: prevPct, curPct: curPct, barClass: barClass, barLabel: barLabel, isNew: isNew };
+        }
+
+        function animateKexoScoreOverviewBars(scope) {
+          if (!scope || !scope.querySelectorAll) return;
+          var bars = Array.from(scope.querySelectorAll('.kexo-score-breakdown-row .progress-bar.kexo-score-bar-cur[data-target-pct]'));
+          if (!bars.length) return;
+          var reduceMotion = false;
+          try { reduceMotion = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (_) {}
+          var durationMs = Number(KEXO_SCORE_V2_UI.anim && KEXO_SCORE_V2_UI.anim.durationMs);
+          var gapMs = Number(KEXO_SCORE_V2_UI.anim && KEXO_SCORE_V2_UI.anim.gapMs);
+          if (!Number.isFinite(durationMs) || durationMs <= 0) durationMs = 480;
+          if (!Number.isFinite(gapMs) || gapMs < 0) gapMs = 90;
+          bars.forEach(function(bar, idx) {
+            var target = Number(bar.getAttribute('data-target-pct') || '0');
+            if (!Number.isFinite(target)) target = 0;
+            target = Math.max(0, Math.min(100, target));
+            if (reduceMotion) {
+              bar.style.transition = 'none';
+              bar.style.width = target + '%';
+              return;
+            }
+            bar.style.transition = 'none';
+            bar.style.width = '0%';
+            bar.offsetWidth;
+            requestAnimationFrame(function() {
+              requestAnimationFrame(function() {
+                bar.style.transition = 'width ' + durationMs + 'ms cubic-bezier(.22,.61,.36,1)';
+                bar.style.transitionDelay = String(idx * (durationMs + gapMs)) + 'ms';
+                bar.style.width = target + '%';
+              });
+            });
+          });
         }
         if (!scoreData || !Array.isArray(scoreData.components) || scoreData.components.length === 0) {
           container.innerHTML = '<div class="kexo-score-breakdown-empty text-muted small">No score data</div>';
@@ -21500,7 +21538,8 @@ const API = '';
           var bars = kexoScoreBaselineBars(c.key, c.value, c.previous);
           var valueStr = fmtComponentValue(c.key, c.value);
           var deltaStr = fmtComponentDeltaText(c.key, c.value, c.previous);
-          var detail = deltaStr ? (String(valueStr) + ' | ' + String(deltaStr) + ' vs prev') : String(valueStr);
+          if (!deltaStr) deltaStr = '\u2014';
+          var detail = String(valueStr) + ' | ' + String(deltaStr) + ' vs prev';
           return '<div class="kexo-score-breakdown-row mb-2">' +
             '<div class="kexo-score-breakdown-head mb-1">' +
               '<span class="kexo-score-breakdown-label">' + escapeHtml(label) + '</span>' +
@@ -21508,11 +21547,12 @@ const API = '';
             '</div>' +
             '<div class="progress kexo-score-progress">' +
               '<div class="progress-bar bg-secondary kexo-score-bar-prev" role="progressbar" style="width:' + bars.prevPct.toFixed(1) + '%" aria-hidden="true"></div>' +
-              '<div class="progress-bar ' + bars.barClass + ' kexo-score-bar-cur" role="progressbar" style="width:' + bars.curPct.toFixed(1) + '%" aria-valuenow="' + bars.curPct.toFixed(1) + '" aria-valuemin="0" aria-valuemax="100">' + escapeHtml(bars.barLabel) + '</div>' +
+              '<div class="progress-bar ' + bars.barClass + ' kexo-score-bar-cur" role="progressbar" style="width:0%" data-target-pct="' + bars.curPct.toFixed(1) + '" aria-valuenow="' + bars.curPct.toFixed(1) + '" aria-valuemin="0" aria-valuemax="100">' + escapeHtml(bars.barLabel) + '</div>' +
             '</div>' +
           '</div>';
         }).join('');
         container.innerHTML = html;
+        requestAnimationFrame(function() { animateKexoScoreOverviewBars(container); });
       }
 
       function applyKexoScoreModalSummary(scoreData) {
@@ -21634,6 +21674,8 @@ const API = '';
             profitRatio: 0.07,
             merRatio: 0.09,
           },
+          barHeadroom: 1.25,
+          anim: { durationMs: 520, gapMs: 110 },
         };
         function metricUiSpec(rawKey) {
           var k = String(rawKey || '').trim().toLowerCase();
@@ -21662,14 +21704,15 @@ const API = '';
           var spec = metricUiSpec(key);
           var cur = Number(rawCur);
           var prev = Number(rawPrev);
-          if (!Number.isFinite(cur) || !Number.isFinite(prev)) return '';
+          if (!Number.isFinite(cur) && !Number.isFinite(prev)) return '\u2014';
+          if (!Number.isFinite(cur) || !Number.isFinite(prev)) return '\u2014';
           if (spec.key === 'conversion') {
             var dpp = cur - prev;
             if (!Number.isFinite(dpp) || Math.abs(dpp) < spec.stable) return '0.0pp';
             var roundedPp = Math.round(dpp * 10) / 10;
             return (roundedPp > 0 ? '+' : '') + roundedPp.toFixed(1) + 'pp';
           }
-          if (Math.abs(prev) < 1e-9) return '';
+          if (Math.abs(prev) < 1e-9) return (Math.abs(cur) < 1e-9) ? '0.0%' : 'new';
           var denom = Math.max(Math.abs(prev), Number(spec.denomFloor) || 0, 1e-9);
           var deltaPct = ((cur - prev) / denom) * 100;
           var rounded = Math.round(deltaPct * 10) / 10;
@@ -21694,7 +21737,9 @@ const API = '';
           var isNew = cRaw != null && cRaw !== 0 && (pRaw == null || Math.abs(pRaw) < 1e-9);
           var c = cRaw != null ? Math.max(0, cRaw) : 0;
           var p = pRaw != null ? Math.max(0, pRaw) : 0;
-          var scale = Math.max(c, p, Number(spec.floor) || 0, 1e-9);
+          var headroom = Number(KEXO_SCORE_V2_UI.barHeadroom);
+          if (!Number.isFinite(headroom) || headroom < 1) headroom = 1;
+          var scale = Math.max(c, p, Number(spec.floor) || 0, 1e-9) * headroom;
           var prevPct = Math.max(0, Math.min(100, (p / scale) * 100));
           var curPct = Math.max(0, Math.min(100, (c / scale) * 100));
 
@@ -21721,6 +21766,10 @@ const API = '';
           if (!bars.length) return;
           var reduceMotion = false;
           try { reduceMotion = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (_) {}
+          var durationMs = Number(KEXO_SCORE_V2_UI.anim && KEXO_SCORE_V2_UI.anim.durationMs);
+          var gapMs = Number(KEXO_SCORE_V2_UI.anim && KEXO_SCORE_V2_UI.anim.gapMs);
+          if (!Number.isFinite(durationMs) || durationMs <= 0) durationMs = 520;
+          if (!Number.isFinite(gapMs) || gapMs < 0) gapMs = 110;
           bars.forEach(function(bar, idx) {
             var target = Number(bar.getAttribute('data-target-pct') || '0');
             if (!Number.isFinite(target)) target = 0;
@@ -21735,8 +21784,8 @@ const API = '';
             bar.offsetWidth;
             requestAnimationFrame(function() {
               requestAnimationFrame(function() {
-                bar.style.transition = 'width 720ms cubic-bezier(.22,.61,.36,1)';
-                bar.style.transitionDelay = String(Math.min(idx * 45, 270)) + 'ms';
+                bar.style.transition = 'width ' + durationMs + 'ms cubic-bezier(.22,.61,.36,1)';
+                bar.style.transitionDelay = String(idx * (durationMs + gapMs)) + 'ms';
                 bar.style.width = target + '%';
               });
             });
@@ -21768,7 +21817,8 @@ const API = '';
             var bars = kexoScoreBaselineBarsModal(c.key, c.value, c.previous);
             var valueStr = fmtComponentValue(c.key, c.value);
             var deltaStr = fmtComponentDeltaText(c.key, c.value, c.previous);
-            var detail = deltaStr ? (String(valueStr) + ' | ' + String(deltaStr) + ' vs previous') : String(valueStr);
+            if (!deltaStr) deltaStr = '\u2014';
+            var detail = String(valueStr) + ' | ' + String(deltaStr) + ' vs prev';
             return '<div class="kexo-score-breakdown-row mb-3">' +
               '<div class="kexo-score-breakdown-head mb-1">' +
                 '<span class="kexo-score-breakdown-label">' + escapeHtml(label) + '</span>' +
@@ -22250,19 +22300,16 @@ const API = '';
                     '<div class="col-12">' +
                       '<label class="form-label">Colour</label>' +
                       '<select class="form-select" id="kexo-ovw-color">' +
-                        '<option value="">Default (auto)</option>' +
-                        '<option value="var(--kexo-accent-1)">Kexo accent 1</option>' +
-                        '<option value="var(--kexo-accent-2)">Kexo accent 2</option>' +
-                        '<option value="var(--kexo-accent-3)">Kexo accent 3</option>' +
-                        '<option value="var(--kexo-accent-4)">Kexo accent 4</option>' +
-                        '<option value="var(--kexo-accent-5)">Kexo accent 5</option>' +
-                        '<option value="var(--tblr-primary)">Tabler primary</option>' +
-                        '<option value="var(--tblr-success)">Tabler success</option>' +
-                        '<option value="var(--tblr-warning)">Tabler warning</option>' +
-                        '<option value="var(--tblr-danger)">Tabler danger</option>' +
-                        '<option value="custom">Custom…</option>' +
+                        '<option value="var(--kexo-accent-1)">Kexo 1</option>' +
+                        '<option value="var(--kexo-accent-2)">Kexo 2</option>' +
+                        '<option value="var(--kexo-accent-3)">Kexo 3</option>' +
+                        '<option value="var(--kexo-accent-4)">Kexo 4</option>' +
+                        '<option value="var(--kexo-accent-5)">Kexo 5</option>' +
+                        '<option value="custom">Custom</option>' +
                       '</select>' +
-                      '<input type="text" class="form-control mt-2" id="kexo-ovw-color-custom" placeholder="#RRGGBB or var(--my-var)" maxlength="80" />' +
+                      '<div class="mt-2 is-hidden" id="kexo-ovw-color-custom-wrap">' +
+                        '<input type="text" class="form-control" id="kexo-ovw-color-custom" placeholder="#4b94e4" maxlength="80" />' +
+                      '</div>' +
                     '</div>' +
                     '<div class="col-12">' +
                       '<label class="form-label">Order</label>' +
@@ -22284,6 +22331,18 @@ const API = '';
           '</div>';
         var modalEl = wrap.firstChild;
         document.body.appendChild(modalEl);
+
+        function syncOvwColorCustomVisibility() {
+          var colorEl = document.getElementById('kexo-ovw-color');
+          var wrap = document.getElementById('kexo-ovw-color-custom-wrap');
+          if (!wrap) return;
+          if (colorEl && String(colorEl.value || '') === 'custom') wrap.classList.remove('is-hidden');
+          else wrap.classList.add('is-hidden');
+        }
+        try {
+          var colorSelect = document.getElementById('kexo-ovw-color');
+          if (colorSelect) colorSelect.addEventListener('change', syncOvwColorCustomVisibility);
+        } catch (_) {}
 
         function applyFromUi() {
           var key = (document.getElementById('kexo-ovw-widget-key') || {}).value || '';
@@ -22457,12 +22516,20 @@ const API = '';
         }
         var colorEl = document.getElementById('kexo-ovw-color');
         var customEl = document.getElementById('kexo-ovw-color-custom');
-        var c = cfg.widgets && cfg.widgets[key] && cfg.widgets[key].color ? String(cfg.widgets[key].color) : '';
+        var c = cfg.widgets && cfg.widgets[key] && cfg.widgets[key].color ? String(cfg.widgets[key].color).trim() : '';
         if (colorEl) {
-          colorEl.value = c && (Array.prototype.some.call(colorEl.options || [], function (opt) { return opt && opt.value === c; })) ? c : '';
-          if (c && colorEl.value !== c) colorEl.value = 'custom';
+          var match = c && Array.prototype.some.call(colorEl.options || [], function (opt) { return opt && opt.value === c; });
+          if (match) colorEl.value = c;
+          else if (c) {
+            colorEl.value = 'custom';
+            if (customEl) customEl.value = c;
+          } else {
+            colorEl.value = 'var(--kexo-accent-1)';
+          }
         }
-        if (customEl) customEl.value = (c && (colorEl && colorEl.value === 'custom')) ? c : '';
+        if (customEl && colorEl && colorEl.value !== 'custom') customEl.value = '';
+        var customWrap = document.getElementById('kexo-ovw-color-custom-wrap');
+        if (customWrap) customWrap.classList.toggle('is-hidden', !(colorEl && String(colorEl.value || '') === 'custom'));
         setOvwModalMsg('', null);
         void modalEl;
         showOvwModal();
