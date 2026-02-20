@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 0e9c3c009e8dbd38
+// checksum: efc3935e82131fd3
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -21134,7 +21134,9 @@ const API = '';
           function deltaText(r) {
             var d = r && typeof r.deltaRevenue === 'number' && isFinite(r.deltaRevenue) ? r.deltaRevenue : 0;
             var cls = d >= 0 ? 'text-green' : 'text-red';
-            return '<span class="dash-trend-delta ' + cls + '">' + fmtSignedGbp(d) + '</span>';
+            var pctGrowth = (r && typeof r.pctGrowth === 'number' && isFinite(r.pctGrowth)) ? r.pctGrowth : null;
+            var pctStr = pctGrowth != null ? (pctGrowth >= 999 ? ' new' : ' (' + (pctGrowth >= 0 ? '+' : '') + pctGrowth + '%)') : '';
+            return '<span class="dash-trend-delta ' + cls + '">' + escapeHtml(fmtSignedGbp(d) + pctStr) + '</span>';
           }
           function deltaOrdersText(r) {
             var d = r && typeof r.deltaOrders === 'number' && isFinite(r.deltaOrders) ? r.deltaOrders : 0;

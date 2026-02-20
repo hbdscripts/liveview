@@ -881,10 +881,24 @@ async function fetchTrendingProducts(db, shop, nowBounds, prevBounds, filter) {
   nowMap.forEach(function(_, k) { allPids.add(k); });
   prevMap.forEach(function(_, k) { allPids.add(k); });
 
+  const TRENDING_PCT_MIN_PREV = 0.01; // minimum revenuePrev to compute % growth; below that treat as "new"
   const base = [];
   allPids.forEach(function(pid) {
     const n = nowMap.get(pid) || { product_id: pid, title: 'Unknown', revenue: 0, orders: 0 };
     const p = prevMap.get(pid) || { product_id: pid, title: n.title || 'Unknown', revenue: 0, orders: 0 };
+    const prevRev = Number(p.revenue) || 0;
+    const deltaRev = (Number(n.revenue) || 0) - prevRev;
+    const deltaRevenue = Math.round(deltaRev * 100) / 100;
+    let pctGrowth = null;
+    if (prevRev >= TRENDING_PCT_MIN_PREV) {
+      pctGrowth = Math.round((deltaRev / prevRev) * 1000) / 10;
+    } else if (deltaRev > 0.005) {
+      pctGrowth = 999; // "new" or near-zero prev: treat as high % growth for sort
+    } else if (deltaRev < -0.005) {
+      pctGrowth = -999;
+    } else {
+      pctGrowth = 0;
+    }
     base.push({
       product_id: n.product_id || p.product_id || null,
       title: n.title || p.title || 'Unknown',
@@ -892,19 +906,28 @@ async function fetchTrendingProducts(db, shop, nowBounds, prevBounds, filter) {
       revenuePrev: p.revenue,
       ordersNow: n.orders,
       ordersPrev: p.orders,
-      deltaRevenue: Math.round(((n.revenue - p.revenue) || 0) * 100) / 100,
+      deltaRevenue,
       deltaOrders: (n.orders - p.orders) || 0,
+      pctGrowth,
     });
   });
 
-  // Top candidates first (max rows we will return); fetch meta only for these.
+  // Trending by % growth (so list differs from "top by revenue" — surfaces fast growers).
   const up = base
     .filter(function(r) { return r.deltaRevenue > 0.005; })
-    .sort(function(a, b) { return b.deltaRevenue - a.deltaRevenue; })
+    .sort(function(a, b) {
+      const byPct = (b.pctGrowth != null ? b.pctGrowth : -Infinity) - (a.pctGrowth != null ? a.pctGrowth : -Infinity);
+      if (byPct !== 0) return byPct;
+      return (b.deltaRevenue || 0) - (a.deltaRevenue || 0);
+    })
     .slice(0, DASHBOARD_TRENDING_MAX_ROWS);
   const down = base
     .filter(function(r) { return r.deltaRevenue < -0.005; })
-    .sort(function(a, b) { return a.deltaRevenue - b.deltaRevenue; })
+    .sort(function(a, b) {
+      const byPct = (a.pctGrowth != null ? a.pctGrowth : Infinity) - (b.pctGrowth != null ? b.pctGrowth : Infinity);
+      if (byPct !== 0) return byPct;
+      return (a.deltaRevenue || 0) - (b.deltaRevenue || 0);
+    })
     .slice(0, DASHBOARD_TRENDING_MAX_ROWS);
   const candidateIds = new Set();
   up.forEach(function(r) { if (r.product_id) candidateIds.add(String(r.product_id).trim()); });

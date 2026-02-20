@@ -3886,7 +3886,9 @@
           function deltaText(r) {
             var d = r && typeof r.deltaRevenue === 'number' && isFinite(r.deltaRevenue) ? r.deltaRevenue : 0;
             var cls = d >= 0 ? 'text-green' : 'text-red';
-            return '<span class="dash-trend-delta ' + cls + '">' + fmtSignedGbp(d) + '</span>';
+            var pctGrowth = (r && typeof r.pctGrowth === 'number' && isFinite(r.pctGrowth)) ? r.pctGrowth : null;
+            var pctStr = pctGrowth != null ? (pctGrowth >= 999 ? ' new' : ' (' + (pctGrowth >= 0 ? '+' : '') + pctGrowth + '%)') : '';
+            return '<span class="dash-trend-delta ' + cls + '">' + escapeHtml(fmtSignedGbp(d) + pctStr) + '</span>';
           }
           function deltaOrdersText(r) {
             var d = r && typeof r.deltaOrders === 'number' && isFinite(r.deltaOrders) ? r.deltaOrders : 0;
