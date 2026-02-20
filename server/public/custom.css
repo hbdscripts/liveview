@@ -3500,6 +3500,9 @@ body[data-page="dashboard"] #dash-trending-down .dash-trend-delta.text-red {
   margin-top: 0;
   flex-wrap: wrap;
   gap: .5rem 1rem;
+  --kexo-overview-series-revenue: #3eb3ab;
+  --kexo-overview-series-cost: #ef4444;
+  --kexo-overview-series-profit: #2fb344;
 }
 .kexo-overview-running-totals--main .kexo-overview-running-total {
   background: transparent;
@@ -3512,31 +3515,41 @@ body[data-page="dashboard"] #dash-trending-down .dash-trend-delta.text-red {
   min-width: 60px;
 }
 .kexo-overview-running-totals--main .kexo-overview-running-total-label {
-  color: #333;
-  opacity: 0.75;
+  color: #333333;
+  opacity: 1;
   font-weight: 400;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .35rem;
+  line-height: 1.1;
+}
+.kexo-overview-running-totals--main .kexo-overview-running-total-label::before {
+  content: '';
+  width: 10px;
+  height: 10px;
+  border-radius: 100px;
+  background: var(--kexo-overview-series-dot, #94a3b8);
+  flex: none;
+  display: inline-block;
+}
+.kexo-overview-running-totals--main .kexo-overview-running-total.is-revenue {
+  --kexo-overview-series-dot: var(--kexo-overview-series-revenue, #3eb3ab);
+}
+.kexo-overview-running-totals--main .kexo-overview-running-total.is-cost {
+  --kexo-overview-series-dot: var(--kexo-overview-series-cost, #ef4444);
+}
+.kexo-overview-running-totals--main .kexo-overview-running-total.is-profit {
+  --kexo-overview-series-dot: var(--kexo-overview-series-profit, #2fb344);
 }
 .kexo-overview-running-totals--main .kexo-overview-running-total-value {
   font-size: 1.05rem;
   font-weight: 600;
-  color: #333;
+  color: #333333;
 }
 .kexo-overview-running-totals--main .kexo-overview-running-total.is-revenue .kexo-overview-running-total-value,
 .kexo-overview-running-totals--main .kexo-overview-running-total.is-cost .kexo-overview-running-total-value {
-  color: #333;
-}
-.kexo-overview-running-totals--main .kexo-overview-running-total.is-cost .kexo-overview-running-total-label,
-.kexo-overview-running-totals--main .kexo-overview-running-total.is-cost .kexo-overview-running-total-value {
-  color: #777;
-  opacity: 1;
-}
-.kexo-overview-running-totals--main .kexo-overview-running-total.is-profit .kexo-overview-running-total-value {
-  color: #16a34a;
-  opacity: 1;
-}
-.kexo-overview-running-totals--main .kexo-overview-running-total.is-profit.is-negative .kexo-overview-running-total-value {
-  color: #dc2626;
-  opacity: 1;
+  color: #333333;
 }
 .kexo-cost-breakdown-popover {
   max-width: 340px;
@@ -3745,12 +3758,16 @@ body[data-page="dashboard"] .kexo-overview-widget-card .kexo-widget-head-right {
   max-width: 80px;
 }
 .kexo-ovw-ring-right-name {
-  font-size: 0.875rem;
-  font-weight: 700;
-  line-height: 1.2;
+  /* font-size: 0.875rem; */
+  font-weight: bold;
+  line-height: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  text-transform: uppercase;
+  font-size: 16px;
+  margin: 0 0 4px;
+  letter-spacing: 0.5px;
 }
 .kexo-ovw-ring-right-value {
   font-size: 0.8125rem;

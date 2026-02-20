@@ -1821,6 +1821,13 @@
           } catch (_) {}
           return {};
         })();
+        var selectedRegionsLive = (function () {
+          try {
+            var sorted = keys.slice().sort(function(a, b) { return (countsByIso2[b] || 0) - (countsByIso2[a] || 0); });
+            return sorted.slice(0, 5).map(function(c) { return String(c || '').trim().toUpperCase().slice(0, 2); }).filter(Boolean);
+          } catch (_) {}
+          return [];
+        })();
         liveOnlineMapChartInstance = typeof renderOnlineMapInto === 'function' && renderOnlineMapInto(chartKey, chartKey, {
           setState: setState,
           mapHeight: mapHeight,
@@ -1833,6 +1840,7 @@
           zoomButtons: zoomButtons,
           initialZoomMax: 2.1,
           focusOn: focusOnLive,
+          selectedRegions: selectedRegionsLive.length > 0 ? selectedRegionsLive : undefined,
           retry: function() { renderLiveOnlineMapChartFromSessions(sessionList); },
           onRegionTooltipShow: function(event, tooltip, code2) {
             var iso2 = (code2 || '').toString().trim().toUpperCase();

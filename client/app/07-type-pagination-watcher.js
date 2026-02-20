@@ -1851,11 +1851,15 @@
       );
       var mapFit = 'contain';
       var fillOpacity = 0.18;
+      var zoomOnScroll = false;
+      var zoomAnimate = false;
       try {
         if (typeof chartStyleFromUiConfig === 'function') {
           var st = chartStyleFromUiConfig(chartKey) || {};
           mapFit = (String(st.mapFit || '').trim().toLowerCase() === 'cover') ? 'cover' : 'contain';
           if (Number.isFinite(Number(st.fillOpacity))) fillOpacity = Math.max(0, Math.min(1, Number(st.fillOpacity)));
+          if (st.mapZoomOnScroll === true) zoomOnScroll = true;
+          if (st.mapZoomAnimate === true) zoomAnimate = true;
         }
       } catch (_) {}
       var alphaMult = fillOpacity > 0 ? (fillOpacity / 0.18) : 0;
@@ -1869,16 +1873,29 @@
         showTooltip: opts.showTooltip !== false,
         draggable: opts.draggable !== false,
         zoomButtons: opts.zoomButtons !== false,
-        zoomOnScroll: false,
-        zoomAnimate: false,
         zoomMin: zoomMin,
         zoomMax: zoomMax,
+        zoomOnScroll: zoomOnScroll,
+        zoomAnimate: zoomAnimate,
         regionStyle: {
           initial: { fill: 'rgba(' + primaryRgb + ',' + String(a(0.18).toFixed(3)) + ')', stroke: border, strokeWidth: 0.7 },
           hover: { fill: 'rgba(' + primaryRgb + ',' + String(a(0.46).toFixed(3)) + ')' },
           selected: { fill: 'rgba(' + primaryRgb + ',' + String(a(0.78).toFixed(3)) + ')' },
         },
       };
+      if (opts.selectedRegions && Array.isArray(opts.selectedRegions) && opts.selectedRegions.length > 0) {
+        jvmOpts.selectedRegions = opts.selectedRegions;
+        jvmOpts.regionsSelectable = true;
+        jvmOpts.regionsSelectableOne = false;
+        jvmOpts.labels = {
+          regions: {
+            render: function(code) {
+              if (opts.selectedRegions.indexOf(code) < 0) return null;
+              return (typeof countryLabel === 'function' ? countryLabel(code) : code) || code;
+            },
+          },
+        };
+      }
       if (opts.onRegionTooltipShow) jvmOpts.onRegionTooltipShow = opts.onRegionTooltipShow;
       var instance = new jsVectorMap(jvmOpts);
       try {
@@ -1940,9 +1957,25 @@
       var mapHeight = Math.round(baseHeight * (pct / 100));
       if (mapHeight < 80) mapHeight = 80;
 
+      // One-time bind Live / By period toggle on Countries page.
+      if (!el.hasAttribute('data-kexo-map-toggle-bound')) {
+        el.setAttribute('data-kexo-map-toggle-bound', '1');
+        var liveBtn = document.getElementById('countries-map-source-live');
+        var periodBtn = document.getElementById('countries-map-source-period');
+        function setMapSource(source) {
+          window.countriesMapSource = source;
+          if (liveBtn) liveBtn.classList.toggle('active', source === 'live');
+          if (periodBtn) periodBtn.classList.toggle('active', source === 'period');
+          renderCountriesMapChart(statsCache);
+        }
+        if (liveBtn) liveBtn.addEventListener('click', function() { setMapSource('live'); });
+        if (periodBtn) periodBtn.addEventListener('click', function() { setMapSource('period'); });
+      }
+
       // Unify: show the same live online map used on /dashboard/live + /dashboard/overview.
       // The Countries page still has its country tables below; the map itself reflects live activity.
-      if (typeof fetchLiveOnlineMapSessions === 'function' && typeof renderLiveOnlineMapChartFromSessions === 'function') {
+      // When "By period" is selected, skip live and use historical choropleth.
+      if (window.countriesMapSource !== 'period' && typeof fetchLiveOnlineMapSessions === 'function' && typeof renderLiveOnlineMapChartFromSessions === 'function') {
         el.style.height = mapHeight + 'px';
         el.style.minHeight = mapHeight + 'px';
         if (!isChartEnabledByUiConfig(chartKey, true)) {
@@ -2072,6 +2105,18 @@
         // Avoid zooming hard when only a couple countries have activity.
         if (top.length >= 3) focusOn = { regions: top, animate: false };
       } catch (_) {}
+      var selectedRegionsHistorical = [];
+      try {
+        Object.keys(choroplethByIso2 || {}).forEach(function(k) {
+          var iso = String(k || '').trim().toUpperCase().slice(0, 2);
+          if (!iso || iso === 'XX') return;
+          var n = Number(choroplethByIso2[k]);
+          if (!Number.isFinite(n) || n <= 0) return;
+          selectedRegionsHistorical.push({ iso: iso, value: n });
+        });
+        selectedRegionsHistorical.sort(function(a, b) { return (Number(b && b.value) || 0) - (Number(a && a.value) || 0); });
+        selectedRegionsHistorical = selectedRegionsHistorical.slice(0, 5).map(function(r) { return r.iso; }).filter(Boolean);
+      } catch (_) {}
 
       var pinItems = [];
       try {
@@ -2103,6 +2148,7 @@
           zoomButtons: !!mapStyle.mapZoomButtons,
           initialZoomMax: 2.1,
           focusOn: focusOn,
+          selectedRegions: selectedRegionsHistorical.length > 0 ? selectedRegionsHistorical : undefined,
           retry: function() { renderCountriesMapChart(data); },
           onRegionTooltipShow: function(event, tooltip, code) {
             const iso = (code || '').toString().trim().toUpperCase();
@@ -4756,6 +4802,8 @@
         mapShowTooltip: true,
         mapDraggable: true,
         mapZoomButtons: true,
+        mapZoomOnScroll: false,
+        mapZoomAnimate: false,
         mapShowEmptyCaption: true,
         mapFit: 'cover',
         mapStageBrowseColor: '',
@@ -4807,6 +4855,8 @@
         mapShowTooltip: src.mapShowTooltip !== false,
         mapDraggable: src.mapDraggable !== false,
         mapZoomButtons: src.mapZoomButtons !== false,
+        mapZoomOnScroll: !!(src.mapZoomOnScroll === true),
+        mapZoomAnimate: !!(src.mapZoomAnimate === true),
         mapShowEmptyCaption: src.mapShowEmptyCaption !== false,
         mapFit: (function() {
           var v = String(src.mapFit != null ? src.mapFit : def.mapFit).trim().toLowerCase();

@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: f2b05dfd0a6c21fb
+// checksum: 35192804347d45e3
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -7388,11 +7388,15 @@ const API = '';
       );
       var mapFit = 'contain';
       var fillOpacity = 0.18;
+      var zoomOnScroll = false;
+      var zoomAnimate = false;
       try {
         if (typeof chartStyleFromUiConfig === 'function') {
           var st = chartStyleFromUiConfig(chartKey) || {};
           mapFit = (String(st.mapFit || '').trim().toLowerCase() === 'cover') ? 'cover' : 'contain';
           if (Number.isFinite(Number(st.fillOpacity))) fillOpacity = Math.max(0, Math.min(1, Number(st.fillOpacity)));
+          if (st.mapZoomOnScroll === true) zoomOnScroll = true;
+          if (st.mapZoomAnimate === true) zoomAnimate = true;
         }
       } catch (_) {}
       var alphaMult = fillOpacity > 0 ? (fillOpacity / 0.18) : 0;
@@ -7406,16 +7410,29 @@ const API = '';
         showTooltip: opts.showTooltip !== false,
         draggable: opts.draggable !== false,
         zoomButtons: opts.zoomButtons !== false,
-        zoomOnScroll: false,
-        zoomAnimate: false,
         zoomMin: zoomMin,
         zoomMax: zoomMax,
+        zoomOnScroll: zoomOnScroll,
+        zoomAnimate: zoomAnimate,
         regionStyle: {
           initial: { fill: 'rgba(' + primaryRgb + ',' + String(a(0.18).toFixed(3)) + ')', stroke: border, strokeWidth: 0.7 },
           hover: { fill: 'rgba(' + primaryRgb + ',' + String(a(0.46).toFixed(3)) + ')' },
           selected: { fill: 'rgba(' + primaryRgb + ',' + String(a(0.78).toFixed(3)) + ')' },
         },
       };
+      if (opts.selectedRegions && Array.isArray(opts.selectedRegions) && opts.selectedRegions.length > 0) {
+        jvmOpts.selectedRegions = opts.selectedRegions;
+        jvmOpts.regionsSelectable = true;
+        jvmOpts.regionsSelectableOne = false;
+        jvmOpts.labels = {
+          regions: {
+            render: function(code) {
+              if (opts.selectedRegions.indexOf(code) < 0) return null;
+              return (typeof countryLabel === 'function' ? countryLabel(code) : code) || code;
+            },
+          },
+        };
+      }
       if (opts.onRegionTooltipShow) jvmOpts.onRegionTooltipShow = opts.onRegionTooltipShow;
       var instance = new jsVectorMap(jvmOpts);
       try {
@@ -7477,9 +7494,25 @@ const API = '';
       var mapHeight = Math.round(baseHeight * (pct / 100));
       if (mapHeight < 80) mapHeight = 80;
 
+      // One-time bind Live / By period toggle on Countries page.
+      if (!el.hasAttribute('data-kexo-map-toggle-bound')) {
+        el.setAttribute('data-kexo-map-toggle-bound', '1');
+        var liveBtn = document.getElementById('countries-map-source-live');
+        var periodBtn = document.getElementById('countries-map-source-period');
+        function setMapSource(source) {
+          window.countriesMapSource = source;
+          if (liveBtn) liveBtn.classList.toggle('active', source === 'live');
+          if (periodBtn) periodBtn.classList.toggle('active', source === 'period');
+          renderCountriesMapChart(statsCache);
+        }
+        if (liveBtn) liveBtn.addEventListener('click', function() { setMapSource('live'); });
+        if (periodBtn) periodBtn.addEventListener('click', function() { setMapSource('period'); });
+      }
+
       // Unify: show the same live online map used on /dashboard/live + /dashboard/overview.
       // The Countries page still has its country tables below; the map itself reflects live activity.
-      if (typeof fetchLiveOnlineMapSessions === 'function' && typeof renderLiveOnlineMapChartFromSessions === 'function') {
+      // When "By period" is selected, skip live and use historical choropleth.
+      if (window.countriesMapSource !== 'period' && typeof fetchLiveOnlineMapSessions === 'function' && typeof renderLiveOnlineMapChartFromSessions === 'function') {
         el.style.height = mapHeight + 'px';
         el.style.minHeight = mapHeight + 'px';
         if (!isChartEnabledByUiConfig(chartKey, true)) {
@@ -7609,6 +7642,18 @@ const API = '';
         // Avoid zooming hard when only a couple countries have activity.
         if (top.length >= 3) focusOn = { regions: top, animate: false };
       } catch (_) {}
+      var selectedRegionsHistorical = [];
+      try {
+        Object.keys(choroplethByIso2 || {}).forEach(function(k) {
+          var iso = String(k || '').trim().toUpperCase().slice(0, 2);
+          if (!iso || iso === 'XX') return;
+          var n = Number(choroplethByIso2[k]);
+          if (!Number.isFinite(n) || n <= 0) return;
+          selectedRegionsHistorical.push({ iso: iso, value: n });
+        });
+        selectedRegionsHistorical.sort(function(a, b) { return (Number(b && b.value) || 0) - (Number(a && a.value) || 0); });
+        selectedRegionsHistorical = selectedRegionsHistorical.slice(0, 5).map(function(r) { return r.iso; }).filter(Boolean);
+      } catch (_) {}
 
       var pinItems = [];
       try {
@@ -7640,6 +7685,7 @@ const API = '';
           zoomButtons: !!mapStyle.mapZoomButtons,
           initialZoomMax: 2.1,
           focusOn: focusOn,
+          selectedRegions: selectedRegionsHistorical.length > 0 ? selectedRegionsHistorical : undefined,
           retry: function() { renderCountriesMapChart(data); },
           onRegionTooltipShow: function(event, tooltip, code) {
             const iso = (code || '').toString().trim().toUpperCase();
@@ -10293,6 +10339,8 @@ const API = '';
         mapShowTooltip: true,
         mapDraggable: true,
         mapZoomButtons: true,
+        mapZoomOnScroll: false,
+        mapZoomAnimate: false,
         mapShowEmptyCaption: true,
         mapFit: 'cover',
         mapStageBrowseColor: '',
@@ -10344,6 +10392,8 @@ const API = '';
         mapShowTooltip: src.mapShowTooltip !== false,
         mapDraggable: src.mapDraggable !== false,
         mapZoomButtons: src.mapZoomButtons !== false,
+        mapZoomOnScroll: !!(src.mapZoomOnScroll === true),
+        mapZoomAnimate: !!(src.mapZoomAnimate === true),
         mapShowEmptyCaption: src.mapShowEmptyCaption !== false,
         mapFit: (function() {
           var v = String(src.mapFit != null ? src.mapFit : def.mapFit).trim().toLowerCase();
@@ -12937,6 +12987,13 @@ const API = '';
           } catch (_) {}
           return {};
         })();
+        var selectedRegionsLive = (function () {
+          try {
+            var sorted = keys.slice().sort(function(a, b) { return (countsByIso2[b] || 0) - (countsByIso2[a] || 0); });
+            return sorted.slice(0, 5).map(function(c) { return String(c || '').trim().toUpperCase().slice(0, 2); }).filter(Boolean);
+          } catch (_) {}
+          return [];
+        })();
         liveOnlineMapChartInstance = typeof renderOnlineMapInto === 'function' && renderOnlineMapInto(chartKey, chartKey, {
           setState: setState,
           mapHeight: mapHeight,
@@ -12949,6 +13006,7 @@ const API = '';
           zoomButtons: zoomButtons,
           initialZoomMax: 2.1,
           focusOn: focusOnLive,
+          selectedRegions: selectedRegionsLive.length > 0 ? selectedRegionsLive : undefined,
           retry: function() { renderLiveOnlineMapChartFromSessions(sessionList); },
           onRegionTooltipShow: function(event, tooltip, code2) {
             var iso2 = (code2 || '').toString().trim().toUpperCase();
@@ -18688,6 +18746,7 @@ const API = '';
             : function(v) { return v != null ? Number(v).toLocaleString() : '\u2014'; };
           var legendPos = (opts && opts.legendPosition != null) ? String(opts.legendPosition).trim().toLowerCase() : 'top';
           if (legendPos !== 'top' && legendPos !== 'bottom' && legendPos !== 'left' && legendPos !== 'right') legendPos = 'top';
+          var showLegend = (opts && typeof opts.showLegend === 'boolean') ? !!opts.showLegend : (apexSeries.length > 1);
           var customTooltip = (opts && typeof opts.tooltipCustom === 'function') ? opts.tooltipCustom : null;
           var tooltipShared = (opts && typeof opts.tooltipShared === 'boolean') ? !!opts.tooltipShared : (apexSeries.length > 1);
           var tooltipIntersect = (opts && typeof opts.tooltipIntersect === 'boolean') ? !!opts.tooltipIntersect : false;
@@ -18752,7 +18811,7 @@ const API = '';
             },
             grid: { show: gridShow, borderColor: '#f0f0f0', strokeDashArray: gridShow ? gridDashVal : 0 },
             tooltip: tooltipConfig,
-            legend: { show: apexSeries.length > 1, position: legendPos, fontSize: '11px' },
+            legend: { show: !!showLegend && apexSeries.length > 1, position: legendPos, fontSize: '11px' },
             dataLabels: (showEndLabels && chartType === 'line') ? {
               enabled: true,
               formatter: function(val, ctx) {
@@ -20407,12 +20466,20 @@ const API = '';
       var overviewTotalsColorsBound = false;
 
       function syncOverviewSalesTotalsColors(revenueTotal, costTotal, profitTotal) {
-        function setColor(id, css) {
+        function totalsHost() {
+          try { return document.getElementById('dash-overview-running-totals'); } catch (_) { return null; }
+        }
+        function clearInlineColor(id) {
           var el = document.getElementById(id);
           if (!el || !el.style) return;
+          try { el.style.color = ''; } catch (_) {}
+        }
+        function setCssVar(name, value) {
+          var host = totalsHost();
+          if (!host || !host.style) return;
           try {
-            if (css) el.style.color = css;
-            else el.style.color = '';
+            if (value) host.style.setProperty(name, String(value));
+            else host.style.removeProperty(name);
           } catch (_) {}
         }
         var chartId = 'dash-chart-overview-30d';
@@ -20429,12 +20496,13 @@ const API = '';
         var p = Number(profitTotal);
         var profitCss = (Number.isFinite(p) && p < 0) ? profitNegCss : profitPosCss;
 
-        // Only colour totals when the values are present (avoid colouring the em-dash placeholder).
-        var r = Number(revenueTotal);
-        var c = Number(costTotal);
-        if (Number.isFinite(r)) setColor('dash-overview-total-revenue', revCss); else setColor('dash-overview-total-revenue', '');
-        if (Number.isFinite(c)) setColor('dash-overview-total-cost', costCss); else setColor('dash-overview-total-cost', '');
-        if (Number.isFinite(p)) setColor('dash-overview-total-profit', profitCss); else setColor('dash-overview-total-profit', '');
+        // Header: keep text neutral, show series colours via dots (CSS vars).
+        clearInlineColor('dash-overview-total-revenue');
+        clearInlineColor('dash-overview-total-cost');
+        clearInlineColor('dash-overview-total-profit');
+        setCssVar('--kexo-overview-series-revenue', revCss);
+        setCssVar('--kexo-overview-series-cost', costCss);
+        setCssVar('--kexo-overview-series-profit', profitCss);
 
         // Ensure future colour-syncs happen immediately after saving Chart Settings.
         if (!overviewTotalsColorsBound) {
@@ -20634,6 +20702,7 @@ const API = '';
           chartType: overviewChartType,
           height: chartHeight,
           legendPosition: 'bottom',
+          showLegend: false,
           forceTooltip: true,
           tooltipShared: true,
           tooltipIntersect: false,
@@ -21964,7 +22033,7 @@ const API = '';
               productUrl: productUrl
             };
           });
-          renderDashTopList('dash-top-products-body', prodRows, { accentCss: 'background: #3eb3ab;' });
+          renderDashTopList('dash-top-products-body', prodRows, { accentCss: 'background: var(--kexo-kpi-delta-same, var(--kexo-accent-1, #4b94e4));' });
         }
 
         var countryBody = el('dash-top-countries-body');
@@ -21993,7 +22062,7 @@ const API = '';
               pct: pct
             };
           });
-          renderDashTopList('dash-top-countries-body', countryRows, { accentCss: 'background: #3eb3ab;' });
+          renderDashTopList('dash-top-countries-body', countryRows, { accentCss: 'background: var(--kexo-kpi-delta-same, var(--kexo-accent-1, #4b94e4));' });
         }
 
         function fmtSignedGbp(v) {
@@ -22043,7 +22112,9 @@ const API = '';
                 productUrl: productUrl
               };
             });
-            var accentCss = isUp ? 'background: #3eb3ab;' : 'background: var(--chip-abandoned);';
+            var accentCss = isUp
+              ? 'background: var(--kexo-kpi-delta-up, var(--kexo-accent-2, #3eb3ab));'
+              : 'background: var(--kexo-kpi-delta-down, var(--kexo-accent-4, #e4644b));';
             renderDashTopList(tableId + '-body', listRows, { accentCss: accentCss });
             return;
           }

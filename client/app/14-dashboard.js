@@ -676,6 +676,7 @@
             : function(v) { return v != null ? Number(v).toLocaleString() : '\u2014'; };
           var legendPos = (opts && opts.legendPosition != null) ? String(opts.legendPosition).trim().toLowerCase() : 'top';
           if (legendPos !== 'top' && legendPos !== 'bottom' && legendPos !== 'left' && legendPos !== 'right') legendPos = 'top';
+          var showLegend = (opts && typeof opts.showLegend === 'boolean') ? !!opts.showLegend : (apexSeries.length > 1);
           var customTooltip = (opts && typeof opts.tooltipCustom === 'function') ? opts.tooltipCustom : null;
           var tooltipShared = (opts && typeof opts.tooltipShared === 'boolean') ? !!opts.tooltipShared : (apexSeries.length > 1);
           var tooltipIntersect = (opts && typeof opts.tooltipIntersect === 'boolean') ? !!opts.tooltipIntersect : false;
@@ -740,7 +741,7 @@
             },
             grid: { show: gridShow, borderColor: '#f0f0f0', strokeDashArray: gridShow ? gridDashVal : 0 },
             tooltip: tooltipConfig,
-            legend: { show: apexSeries.length > 1, position: legendPos, fontSize: '11px' },
+            legend: { show: !!showLegend && apexSeries.length > 1, position: legendPos, fontSize: '11px' },
             dataLabels: (showEndLabels && chartType === 'line') ? {
               enabled: true,
               formatter: function(val, ctx) {
@@ -2395,12 +2396,20 @@
       var overviewTotalsColorsBound = false;
 
       function syncOverviewSalesTotalsColors(revenueTotal, costTotal, profitTotal) {
-        function setColor(id, css) {
+        function totalsHost() {
+          try { return document.getElementById('dash-overview-running-totals'); } catch (_) { return null; }
+        }
+        function clearInlineColor(id) {
           var el = document.getElementById(id);
           if (!el || !el.style) return;
+          try { el.style.color = ''; } catch (_) {}
+        }
+        function setCssVar(name, value) {
+          var host = totalsHost();
+          if (!host || !host.style) return;
           try {
-            if (css) el.style.color = css;
-            else el.style.color = '';
+            if (value) host.style.setProperty(name, String(value));
+            else host.style.removeProperty(name);
           } catch (_) {}
         }
         var chartId = 'dash-chart-overview-30d';
@@ -2417,12 +2426,13 @@
         var p = Number(profitTotal);
         var profitCss = (Number.isFinite(p) && p < 0) ? profitNegCss : profitPosCss;
 
-        // Only colour totals when the values are present (avoid colouring the em-dash placeholder).
-        var r = Number(revenueTotal);
-        var c = Number(costTotal);
-        if (Number.isFinite(r)) setColor('dash-overview-total-revenue', revCss); else setColor('dash-overview-total-revenue', '');
-        if (Number.isFinite(c)) setColor('dash-overview-total-cost', costCss); else setColor('dash-overview-total-cost', '');
-        if (Number.isFinite(p)) setColor('dash-overview-total-profit', profitCss); else setColor('dash-overview-total-profit', '');
+        // Header: keep text neutral, show series colours via dots (CSS vars).
+        clearInlineColor('dash-overview-total-revenue');
+        clearInlineColor('dash-overview-total-cost');
+        clearInlineColor('dash-overview-total-profit');
+        setCssVar('--kexo-overview-series-revenue', revCss);
+        setCssVar('--kexo-overview-series-cost', costCss);
+        setCssVar('--kexo-overview-series-profit', profitCss);
 
         // Ensure future colour-syncs happen immediately after saving Chart Settings.
         if (!overviewTotalsColorsBound) {
@@ -2622,6 +2632,7 @@
           chartType: overviewChartType,
           height: chartHeight,
           legendPosition: 'bottom',
+          showLegend: false,
           forceTooltip: true,
           tooltipShared: true,
           tooltipIntersect: false,
@@ -3952,7 +3963,7 @@
               productUrl: productUrl
             };
           });
-          renderDashTopList('dash-top-products-body', prodRows, { accentCss: 'background: #3eb3ab;' });
+          renderDashTopList('dash-top-products-body', prodRows, { accentCss: 'background: var(--kexo-kpi-delta-same, var(--kexo-accent-1, #4b94e4));' });
         }
 
         var countryBody = el('dash-top-countries-body');
@@ -3981,7 +3992,7 @@
               pct: pct
             };
           });
-          renderDashTopList('dash-top-countries-body', countryRows, { accentCss: 'background: #3eb3ab;' });
+          renderDashTopList('dash-top-countries-body', countryRows, { accentCss: 'background: var(--kexo-kpi-delta-same, var(--kexo-accent-1, #4b94e4));' });
         }
 
         function fmtSignedGbp(v) {
@@ -4031,7 +4042,9 @@
                 productUrl: productUrl
               };
             });
-            var accentCss = isUp ? 'background: #3eb3ab;' : 'background: var(--chip-abandoned);';
+            var accentCss = isUp
+              ? 'background: var(--kexo-kpi-delta-up, var(--kexo-accent-2, #3eb3ab));'
+              : 'background: var(--kexo-kpi-delta-down, var(--kexo-accent-4, #e4644b));';
             renderDashTopList(tableId + '-body', listRows, { accentCss: accentCss });
             return;
           }
