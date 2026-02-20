@@ -3388,7 +3388,6 @@ body[data-page="dashboard"] #dash-trending-down .dash-trend-delta.text-red {
   flex: 1;
 }
 .kexo-overview-widget-chart {
-  height: 200px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3406,12 +3405,12 @@ body[data-page="dashboard"] #dash-trending-down .dash-trend-delta.text-red {
   flex-shrink: 0;
 }
 .kexo-ovw-ring-wrap--small .kexo-ovw-ring {
-  width: 123px;
-  height: 123px;
+  width: 111px;
+  height: 111px;
 }
 .kexo-ovw-ring-wrap--small .kexo-ovw-ring svg {
-  width: 123px;
-  height: 123px;
+  width: 111px;
+  height: 111px;
 }
 .kexo-ovw-ring-right {
   flex: 1;
@@ -3711,6 +3710,36 @@ body[data-page="dashboard"] #dash-trending-down .dash-trend-delta.text-red {
   border-radius: 999px;
   background: var(--kexo-accent, var(--kexo-accent-1, #4b94e4));
   transition: width 520ms cubic-bezier(.2,.9,.2,1);
+}
+.kexo-widget-row--skeleton .kexo-widget-row-icon .kexo-dash-top-row-icon-placeholder {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-width: 20px;
+  min-height: 20px;
+  background: rgba(15, 23, 42, 0.08);
+  border-radius: 4px;
+}
+.kexo-widget-row--skeleton .kexo-widget-row-skeleton-text {
+  display: inline-block;
+  height: 0.875em;
+  min-width: 40px;
+  max-width: 70%;
+  background: rgba(15, 23, 42, 0.08);
+  border-radius: 4px;
+  vertical-align: middle;
+}
+.kexo-widget-row-bar--skeleton {
+  background: rgba(15, 23, 42, 0.06);
+}
+.kexo-widget-row-bar--skeleton > span {
+  width: 100% !important;
+  background: rgba(15, 23, 42, 0.12) !important;
+  animation: kexo-skeleton-pulse 1.2s ease-in-out infinite;
+}
+@keyframes kexo-skeleton-pulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
 }
 
 /* Dashboard top tables card-style list (Top Products, Top Countries, Trending) */

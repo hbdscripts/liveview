@@ -5623,19 +5623,21 @@
           return list.slice(0, Math.max(0, Number(limit) || 0));
         }
 
+        var LIST_ROW_COUNT = 4;
         function renderList(widgetKey, rows, sortBy, shareBaseRows) {
           var mountId = 'dash-ovw-' + widgetKey + '-list';
           var host = document.getElementById(mountId);
           if (!host) return;
           var list = Array.isArray(rows) ? rows : [];
-          if (!list.length) { host.innerHTML = '<div class="kexo-widget-empty">No data</div>'; return; }
           var metric = sortBy === 'clicks' ? 'clicks' : (sortBy === 'ctr' ? 'ctr' : 'revenue');
           var shareBase = Array.isArray(shareBaseRows) ? shareBaseRows : list;
           var total = metric === 'ctr'
             ? 0
             : (shareBase.reduce(function (acc, r) { return acc + metricValue(r, metric); }, 0) || 0);
           var html = '<ul class="kexo-widget-list">';
-          list.forEach(function (r) {
+          var i;
+          for (i = 0; i < list.length; i++) {
+            var r = list[i];
             var label = r && r.label != null ? String(r.label) : '—';
             var icon = r && r.iconHtml ? String(r.iconHtml) : '<span class="kexo-dash-top-row-icon-placeholder" aria-hidden="true"></span>';
             var valText = fmtMetric(metric, r);
@@ -5651,7 +5653,15 @@
               '<span class="kexo-widget-row-value">' + escapeHtml(valText) + '</span>' +
               '<div class="kexo-widget-row-bar"><span data-kexo-bar-fill="' + escapeHtml(String(pct)) + '"></span></div>' +
             '</li>';
-          });
+          }
+          for (i = list.length; i < LIST_ROW_COUNT; i++) {
+            html += '<li class="kexo-widget-row kexo-widget-row--skeleton" aria-hidden="true">' +
+              '<span class="kexo-widget-row-icon"><span class="kexo-dash-top-row-icon-placeholder"></span></span>' +
+              '<span class="kexo-widget-row-label kexo-widget-row-skeleton-text"></span>' +
+              '<span class="kexo-widget-row-value kexo-widget-row-skeleton-text"></span>' +
+              '<div class="kexo-widget-row-bar kexo-widget-row-bar--skeleton"><span></span></div>' +
+            '</li>';
+          }
           html += '</ul>';
           host.innerHTML = html;
           animateWidgetFills(host);
@@ -5689,9 +5699,9 @@
           var valueText = fmtMetric(metric, top);
           var shareText = metric === 'ctr' ? 'CTR' : (String(Math.round(pct)) + '% share');
           var tip = labelText + '\n' + valueText + '\n' + (metric === 'ctr' ? ('CTR: ' + valueText) : ('Share: ' + (Math.round(pct * 10) / 10).toFixed(1) + '%'));
-          var size = 123;
-          var r = 46;
-          var strokeW = 9;
+          var size = 111;
+          var r = 41;
+          var strokeW = 8;
           var cx = size / 2;
           var cy = size / 2;
           var circ = Math.round(2 * Math.PI * r * 1000) / 1000;
