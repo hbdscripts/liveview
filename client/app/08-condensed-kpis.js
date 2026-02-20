@@ -1599,6 +1599,7 @@
 
       var rawMode = chartModeFromUiConfig(chartKey, 'map-flat') || 'map-flat';
       rawMode = String(rawMode || '').trim().toLowerCase();
+      if (rawMode !== 'map-flat' && rawMode !== 'map-animated') rawMode = 'map-flat';
       var isAnimated = rawMode !== 'map-flat';
 
       var list = Array.isArray(sessionList) ? sessionList : (Array.isArray(sessions) ? sessions : []);
@@ -2063,24 +2064,11 @@
     }
 
     function refreshLiveOnlineChart(options) {
-      var chartKey = 'live-online-chart';
-      var rawMode = chartModeFromUiConfig(chartKey, 'map-flat') || 'map-flat';
-      rawMode = String(rawMode || '').trim().toLowerCase();
-      if (rawMode.indexOf('map-') === 0) {
-        return fetchLiveOnlineMapSessions(options || {}).then(function(list) {
-          try { renderLiveOnlineMapChartFromSessions(Array.isArray(list) ? list : []); } catch (_) {}
-          return list || null;
-        });
-      }
-
-      // Switching away from map: clean up jsVectorMap instance + overlay.
-      var el = document.getElementById('live-online-chart');
-      if (liveOnlineMapChartInstance) { try { liveOnlineMapChartInstance.destroy(); } catch (_) {} liveOnlineMapChartInstance = null; }
-      if (el) {
-        clearCountriesFlowOverlay(el);
-        try { el.__kexoLiveOnlineMapSig = ''; } catch (_) {}
-      }
-      return refreshLiveOnlineTrendChart(options || {});
+      // Live online container always uses jsVectorMap (map-flat / map-animated). No Apex trend chart in this container.
+      return fetchLiveOnlineMapSessions(options || {}).then(function(list) {
+        try { renderLiveOnlineMapChartFromSessions(Array.isArray(list) ? list : []); } catch (_) {}
+        return list || null;
+      });
     }
 
     function refreshLiveOnlineTrendChart(options) {

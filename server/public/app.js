@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 31cc6355addff72a
+// checksum: b0dc985457fbc3be
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -6930,7 +6930,9 @@ const API = '';
         const rootCss = getComputedStyle(document.documentElement);
         const border = (rootCss.getPropertyValue('--tblr-border-color') || '#d4dee5').trim();
         const muted = (rootCss.getPropertyValue('--tblr-secondary') || '#626976').trim();
-        const rawMode = chartModeFromUiConfig(chartKey, 'map-flat') || 'map-flat';
+        var rawMode = chartModeFromUiConfig(chartKey, 'map-flat') || 'map-flat';
+        rawMode = String(rawMode || '').trim().toLowerCase();
+        if (rawMode !== 'map-flat' && rawMode !== 'map-animated') rawMode = 'map-flat';
         const isAnimated = rawMode !== 'map-flat';
         const palette = chartColorsFromUiConfig(chartKey, ['#3eb3ab']);
         const accent = (palette && palette[0]) ? String(palette[0]).trim() : '#3eb3ab';
@@ -12052,6 +12054,7 @@ const API = '';
 
       var rawMode = chartModeFromUiConfig(chartKey, 'map-flat') || 'map-flat';
       rawMode = String(rawMode || '').trim().toLowerCase();
+      if (rawMode !== 'map-flat' && rawMode !== 'map-animated') rawMode = 'map-flat';
       var isAnimated = rawMode !== 'map-flat';
 
       var list = Array.isArray(sessionList) ? sessionList : (Array.isArray(sessions) ? sessions : []);
@@ -12516,24 +12519,11 @@ const API = '';
     }
 
     function refreshLiveOnlineChart(options) {
-      var chartKey = 'live-online-chart';
-      var rawMode = chartModeFromUiConfig(chartKey, 'map-flat') || 'map-flat';
-      rawMode = String(rawMode || '').trim().toLowerCase();
-      if (rawMode.indexOf('map-') === 0) {
-        return fetchLiveOnlineMapSessions(options || {}).then(function(list) {
-          try { renderLiveOnlineMapChartFromSessions(Array.isArray(list) ? list : []); } catch (_) {}
-          return list || null;
-        });
-      }
-
-      // Switching away from map: clean up jsVectorMap instance + overlay.
-      var el = document.getElementById('live-online-chart');
-      if (liveOnlineMapChartInstance) { try { liveOnlineMapChartInstance.destroy(); } catch (_) {} liveOnlineMapChartInstance = null; }
-      if (el) {
-        clearCountriesFlowOverlay(el);
-        try { el.__kexoLiveOnlineMapSig = ''; } catch (_) {}
-      }
-      return refreshLiveOnlineTrendChart(options || {});
+      // Live online container always uses jsVectorMap (map-flat / map-animated). No Apex trend chart in this container.
+      return fetchLiveOnlineMapSessions(options || {}).then(function(list) {
+        try { renderLiveOnlineMapChartFromSessions(Array.isArray(list) ? list : []); } catch (_) {}
+        return list || null;
+      });
     }
 
     function refreshLiveOnlineTrendChart(options) {

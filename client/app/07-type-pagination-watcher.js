@@ -1450,7 +1450,9 @@
         const rootCss = getComputedStyle(document.documentElement);
         const border = (rootCss.getPropertyValue('--tblr-border-color') || '#d4dee5').trim();
         const muted = (rootCss.getPropertyValue('--tblr-secondary') || '#626976').trim();
-        const rawMode = chartModeFromUiConfig(chartKey, 'map-flat') || 'map-flat';
+        var rawMode = chartModeFromUiConfig(chartKey, 'map-flat') || 'map-flat';
+        rawMode = String(rawMode || '').trim().toLowerCase();
+        if (rawMode !== 'map-flat' && rawMode !== 'map-animated') rawMode = 'map-flat';
         const isAnimated = rawMode !== 'map-flat';
         const palette = chartColorsFromUiConfig(chartKey, ['#3eb3ab']);
         const accent = (palette && palette[0]) ? String(palette[0]).trim() : '#3eb3ab';
