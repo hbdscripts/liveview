@@ -2675,8 +2675,23 @@ html[data-bs-theme="dark"] .report-build-wrap {
   line-height: 1;
 }
 
-.kexo-score-popover .popover-header {
+.popover.kexo-score-popover .popover-header {
   position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 2.5rem;
+  padding: 0.5rem 2.25rem 0.5rem 0.75rem;
+}
+.popover.kexo-score-popover .kexo-score-popover-close {
+  position: absolute;
+  top: 0;
+  right: 0;
+  margin: 0.35rem;
+  padding: 0.25rem;
+  opacity: 0.7;
+}
+.popover.kexo-score-popover .kexo-score-popover-close:hover {
+  opacity: 1;
 }
 #kexo-score-modal .kpi-compare-modal-body {
   padding: 1rem 1.25rem 1.2rem;
@@ -3717,15 +3732,15 @@ body[data-page="dashboard"] #dash-trending-down .dash-trend-delta.text-red {
   height: 100%;
   min-width: 20px;
   min-height: 20px;
-  background: rgba(15, 23, 42, 0.08);
-  border-radius: 4px;
+  background: rgba(15, 23, 42, 0.06);
+  border-radius: 100px;
 }
 .kexo-widget-row--skeleton .kexo-widget-row-skeleton-text {
   display: inline-block;
   height: 0.875em;
   min-width: 40px;
   max-width: 70%;
-  background: rgba(15, 23, 42, 0.08);
+  background: rgba(15, 23, 42, 0.06);
   border-radius: 4px;
   vertical-align: middle;
 }
@@ -3734,11 +3749,11 @@ body[data-page="dashboard"] #dash-trending-down .dash-trend-delta.text-red {
 }
 .kexo-widget-row-bar--skeleton > span {
   width: 100% !important;
-  background: rgba(15, 23, 42, 0.12) !important;
+  background: rgba(15, 23, 42, 0.06) !important;
   animation: kexo-skeleton-pulse 1.2s ease-in-out infinite;
 }
 @keyframes kexo-skeleton-pulse {
-  0%, 100% { opacity: 0.6; }
+  0%, 100% { opacity: 0.5; }
   50% { opacity: 1; }
 }
 
@@ -4173,16 +4188,19 @@ body[data-page="dashboard"] #dash-trending-down .dash-trend-delta.text-red {
 .kexo-footer-right {
   justify-self: end;
 }
-.kexo-score-btn--footer .kexo-score-ring-wrap--header {
+.kexo-footer .kexo-score-btn--footer .kexo-score-ring-wrap--header {
   width: 36px;
   height: 36px;
+  transform: translateZ(0);
 }
-.kexo-score-btn--footer .kexo-score-ring-svg--header {
+.kexo-footer .kexo-score-btn--footer .kexo-score-ring-svg--header {
   width: 36px;
   height: 36px;
+  shape-rendering: geometricPrecision;
 }
-.kexo-score-btn--footer .kexo-score-num--header {
-  font-size: 0.75rem;
+.kexo-footer .kexo-score-btn--footer .kexo-score-num--header {
+  font-size: 0.65rem;
+  color: var(--tblr-body-color, #1e293b);
 }
 
 .kexo-footer-logo {
