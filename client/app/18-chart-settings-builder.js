@@ -260,7 +260,6 @@
         var capControls = (meta && meta.capabilities && Array.isArray(meta.capabilities.controls)) ? meta.capabilities.controls : [];
         if (capControls && capControls.length) {
           var styleObj = (s && s.style && typeof s.style === 'object') ? s.style : {};
-          body += '<div class="col-12"><div class="hr-text">Chart options</div></div>';
           function hintIconHtml(txt) {
             var t = txt != null ? String(txt).trim() : '';
             if (!t) return '';
@@ -339,12 +338,14 @@
           var styleIn = (s && s.style && typeof s.style === 'object') ? s.style : {};
           var mapFit = (styleIn.mapFit != null) ? String(styleIn.mapFit).trim().toLowerCase() : 'cover';
           if (mapFit !== 'cover' && mapFit !== 'contain') mapFit = 'cover';
+          var inactiveOpacity = (styleIn.mapInactiveOpacity != null && Number.isFinite(Number(styleIn.mapInactiveOpacity))) ? Math.max(0, Math.min(1, Number(styleIn.mapInactiveOpacity))) : 0.09;
+          var inactiveOpacityPct = Math.round(inactiveOpacity * 100);
+          var inactiveColor = (styleIn.mapInactiveColor != null) ? String(styleIn.mapInactiveColor).trim() : '';
           var stageBrowse = (styleIn.mapStageBrowseColor != null) ? String(styleIn.mapStageBrowseColor).trim() : '';
           var stageCart = (styleIn.mapStageCartColor != null) ? String(styleIn.mapStageCartColor).trim() : '';
           var stageCheckout = (styleIn.mapStageCheckoutColor != null) ? String(styleIn.mapStageCheckoutColor).trim() : '';
           var stagePurchase = (styleIn.mapStagePurchaseColor != null) ? String(styleIn.mapStagePurchaseColor).trim() : '';
 
-          body += '<div class="col-12"><div class="hr-text">Map</div></div>';
           body += '<div class="col-12 col-md-6"><label class="form-label">Map accent (hex)</label>';
           body += '<div class="kexo-color-input"><input type="text" class="form-control form-control-sm" data-kexo-color-input data-cs-field="map-accent" value="' + escapeHtml(mapAccent) + '" placeholder="#16a34a"><span class="kexo-color-swatch" data-kexo-color-swatch aria-hidden="true"></span></div>';
           body += '<div class="form-hint">Controls map shading and highlighted regions.</div></div>';
@@ -356,11 +357,18 @@
           body += '</select>';
           body += '<div class="form-hint">Cover fills the container (crops edges). Contain shows the full world (may leave whitespace).</div></div>';
 
+          body += '<div class="col-12 col-md-6"><label class="form-label d-flex align-items-center justify-content-between"><span>Inactive regions opacity</span><span class="text-muted small" data-cs-inactive-opacity-value>' + inactiveOpacityPct + '%</span></label>';
+          body += '<input type="range" class="form-range" min="0" max="100" step="1" value="' + inactiveOpacityPct + '" data-cs-field="mapInactiveOpacity">';
+          body += '<div class="form-hint">Opacity for countries with no data (default 9%).</div></div>';
+          body += '<div class="col-12 col-md-6"><label class="form-label">Inactive regions colour</label>';
+          body += '<div class="kexo-color-input"><input type="text" class="form-control form-control-sm" data-kexo-color-input data-cs-field="mapInactiveColor" value="' + escapeHtml(inactiveColor) + '" placeholder="(default)" data-kexo-default-color="' + escapeHtml(mapAccent) + '"><span class="kexo-color-swatch" data-kexo-color-swatch aria-hidden="true"></span></div>';
+          body += '<div class="form-hint">Leave blank to use map accent colour.</div></div>';
+
           body += '<div class="col-12"><label class="form-label">Stage colors (legend + pins)</label><div class="row g-2">';
-          body += '<div class="col-6 col-md-3"><label class="form-label small">Browsing</label><div class="kexo-color-input"><input type="text" class="form-control form-control-sm" data-kexo-color-input data-cs-field="mapStageBrowseColor" value="' + escapeHtml(stageBrowse) + '" placeholder="(default)"><span class="kexo-color-swatch" data-kexo-color-swatch aria-hidden="true"></span></div></div>';
-          body += '<div class="col-6 col-md-3"><label class="form-label small">In cart</label><div class="kexo-color-input"><input type="text" class="form-control form-control-sm" data-kexo-color-input data-cs-field="mapStageCartColor" value="' + escapeHtml(stageCart) + '" placeholder="(default)"><span class="kexo-color-swatch" data-kexo-color-swatch aria-hidden="true"></span></div></div>';
-          body += '<div class="col-6 col-md-3"><label class="form-label small">Checkout</label><div class="kexo-color-input"><input type="text" class="form-control form-control-sm" data-kexo-color-input data-cs-field="mapStageCheckoutColor" value="' + escapeHtml(stageCheckout) + '" placeholder="(default)"><span class="kexo-color-swatch" data-kexo-color-swatch aria-hidden="true"></span></div></div>';
-          body += '<div class="col-6 col-md-3"><label class="form-label small">Purchased</label><div class="kexo-color-input"><input type="text" class="form-control form-control-sm" data-kexo-color-input data-cs-field="mapStagePurchaseColor" value="' + escapeHtml(stagePurchase) + '" placeholder="(default)"><span class="kexo-color-swatch" data-kexo-color-swatch aria-hidden="true"></span></div></div>';
+          body += '<div class="col-6 col-md-3"><label class="form-label small">Browsing</label><div class="kexo-color-input"><input type="text" class="form-control form-control-sm" data-kexo-color-input data-cs-field="mapStageBrowseColor" value="' + escapeHtml(stageBrowse) + '" placeholder="(default)" data-kexo-default-color="#4b94e4"><span class="kexo-color-swatch" data-kexo-color-swatch aria-hidden="true"></span></div></div>';
+          body += '<div class="col-6 col-md-3"><label class="form-label small">In cart</label><div class="kexo-color-input"><input type="text" class="form-control form-control-sm" data-kexo-color-input data-cs-field="mapStageCartColor" value="' + escapeHtml(stageCart) + '" placeholder="(default)" data-kexo-default-color="#f59e34"><span class="kexo-color-swatch" data-kexo-color-swatch aria-hidden="true"></span></div></div>';
+          body += '<div class="col-6 col-md-3"><label class="form-label small">Checkout</label><div class="kexo-color-input"><input type="text" class="form-control form-control-sm" data-kexo-color-input data-cs-field="mapStageCheckoutColor" value="' + escapeHtml(stageCheckout) + '" placeholder="(default)" data-kexo-default-color="#6681e8"><span class="kexo-color-swatch" data-kexo-color-swatch aria-hidden="true"></span></div></div>';
+          body += '<div class="col-6 col-md-3"><label class="form-label small">Purchased</label><div class="kexo-color-input"><input type="text" class="form-control form-control-sm" data-kexo-color-input data-cs-field="mapStagePurchaseColor" value="' + escapeHtml(stagePurchase) + '" placeholder="(default)" data-kexo-default-color="#3eb3ab"><span class="kexo-color-swatch" data-kexo-color-swatch aria-hidden="true"></span></div></div>';
           body += '</div><div class="form-hint">Leave blank to use theme defaults.</div></div>';
         }
         body += '<div class="col-12' + (supportsPieLabels && (mode === 'pie' || mode === 'donut') ? '' : ' d-none') + '" data-cs-mode-group="pie-labels">';
@@ -392,7 +400,6 @@
           body += '<div class="col-6 col-md-3"><label class="form-label small">Profit (negative)</label><div class="kexo-color-input"><input type="text" class="form-control form-control-sm" data-kexo-color-input data-cs-field="color-profitNeg" value="' + escapeHtml(profitNeg) + '" placeholder="#d63939"><span class="kexo-color-swatch" data-kexo-color-swatch aria-hidden="true"></span></div></div>';
           body += '</div></div>';
 
-          body += '<div class="col-12"><div class="hr-text">Cost settings</div></div>';
           body += '<div class="col-12">';
           body += '<a class="btn btn-sm btn-outline-secondary" href="/settings?tab=cost-expenses&costExpensesTab=rules">Open cost settings</a>';
           body += '<div class="form-hint">Manage cost sources, shipping, and profit rules.</div>';
@@ -416,11 +423,20 @@
           var sw = null;
           try { sw = inputEl.parentNode ? inputEl.parentNode.querySelector('[data-kexo-color-swatch]') : null; } catch (_) { sw = null; }
           if (!sw) return;
-          var hexVal = normalizeHex6(inputEl.value);
+          var raw = (inputEl.value == null ? '' : String(inputEl.value)).trim();
+          var hexVal = normalizeHex6(raw);
+          var defaultHex = null;
+          if (!raw) {
+            try { defaultHex = normalizeHex6(inputEl.getAttribute('data-kexo-default-color')); } catch (_) { defaultHex = null; }
+            if (!defaultHex) {
+              try { defaultHex = normalizeHex6(inputEl.getAttribute('placeholder')); } catch (_) { defaultHex = null; }
+            }
+          }
           try {
-            if (hexVal) {
+            var preview = hexVal || defaultHex;
+            if (preview) {
               sw.classList.remove('is-empty');
-              sw.style.setProperty('--kexo-swatch-color', hexVal);
+              sw.style.setProperty('--kexo-swatch-color', preview);
             } else {
               sw.classList.add('is-empty');
               sw.style.removeProperty('--kexo-swatch-color');
@@ -471,6 +487,22 @@
           function sync() {
             var raw = parseInt(String(input.value || ''), 10);
             if (!Number.isFinite(raw)) raw = fillOpacityPct;
+            raw = Math.max(0, Math.min(100, raw));
+            try { input.value = String(raw); } catch (_) {}
+            if (valueEl) valueEl.textContent = raw + '%';
+          }
+          try { input.addEventListener('input', sync); } catch (_) {}
+          try { input.addEventListener('change', sync); } catch (_) {}
+          sync();
+        }
+
+        function bindInactiveOpacityControls() {
+          var input = bodyEl.querySelector('[data-cs-field="mapInactiveOpacity"]');
+          var valueEl = bodyEl.querySelector('[data-cs-inactive-opacity-value]');
+          if (!input) return;
+          function sync() {
+            var raw = parseInt(String(input.value || ''), 10);
+            if (!Number.isFinite(raw)) raw = 9;
             raw = Math.max(0, Math.min(100, raw));
             try { input.value = String(raw); } catch (_) {}
             if (valueEl) valueEl.textContent = raw + '%';
@@ -565,6 +597,7 @@
         }
 
         bindFillOpacityControls();
+        bindInactiveOpacityControls();
         bindPieLabelControls();
         bindCapabilityRangeControls();
         syncModeControls(mode);
@@ -669,6 +702,13 @@
               if (mf !== 'cover' && mf !== 'contain') mf = 'cover';
               styleBase.mapFit = mf;
             }
+            var inactiveOpacityEl = bodyEl.querySelector('[data-cs-field="mapInactiveOpacity"]');
+            if (inactiveOpacityEl) {
+              var rawOp = parseInt(String(inactiveOpacityEl.value || ''), 10);
+              if (Number.isFinite(rawOp)) styleBase.mapInactiveOpacity = Math.max(0, Math.min(1, rawOp / 100));
+            }
+            var inactiveColorEl = bodyEl.querySelector('[data-cs-field="mapInactiveColor"]');
+            if (inactiveColorEl) styleBase.mapInactiveColor = normalizeHexOpt(inactiveColorEl.value) || '';
             ['mapStageBrowseColor', 'mapStageCartColor', 'mapStageCheckoutColor', 'mapStagePurchaseColor'].forEach(function (field) {
               var el = bodyEl.querySelector('[data-cs-field="' + field + '"]');
               if (!el) return;

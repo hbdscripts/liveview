@@ -1752,7 +1752,16 @@
         if (!Number.isFinite(alphaMult)) alphaMult = 1;
         alphaMult = Math.max(0, Math.min(3, alphaMult));
         function a(x) { return Math.max(0, Math.min(1, x * alphaMult)); }
-        var regionFillByIso2 = buildMapFillScaleByIso(countsByIso2, primaryRgb, a(0.18), a(0.24), a(0.92));
+        var inactiveOpacity = 0.09;
+        var inactiveRgb = primaryRgb;
+        try {
+          if (mapStyleEarly && Number.isFinite(Number(mapStyleEarly.mapInactiveOpacity))) {
+            inactiveOpacity = Math.max(0, Math.min(1, Number(mapStyleEarly.mapInactiveOpacity)));
+          }
+          var inactiveColor = (mapStyleEarly && mapStyleEarly.mapInactiveColor != null) ? String(mapStyleEarly.mapInactiveColor).trim() : '';
+          if (inactiveColor) inactiveRgb = rgbFromColor(inactiveColor).rgb;
+        } catch (_) {}
+        var regionFillByIso2 = buildMapFillScaleByIso(countsByIso2, primaryRgb, a(0.18), a(0.24), a(0.92), inactiveRgb, inactiveOpacity);
 
         // If the map instance already exists and the chart mode/palette is unchanged,
         // update fills/overlay in-place (avoid destroy/recreate churn on every refresh).
@@ -1821,13 +1830,6 @@
           } catch (_) {}
           return {};
         })();
-        var selectedRegionsLive = (function () {
-          try {
-            var sorted = keys.slice().sort(function(a, b) { return (countsByIso2[b] || 0) - (countsByIso2[a] || 0); });
-            return sorted.slice(0, 5).map(function(c) { return String(c || '').trim().toUpperCase().slice(0, 2); }).filter(Boolean);
-          } catch (_) {}
-          return [];
-        })();
         liveOnlineMapChartInstance = typeof renderOnlineMapInto === 'function' && renderOnlineMapInto(chartKey, chartKey, {
           setState: setState,
           mapHeight: mapHeight,
@@ -1840,7 +1842,6 @@
           zoomButtons: zoomButtons,
           initialZoomMax: 2.1,
           focusOn: focusOnLive,
-          selectedRegions: selectedRegionsLive.length > 0 ? selectedRegionsLive : undefined,
           retry: function() { renderLiveOnlineMapChartFromSessions(sessionList); },
           onRegionTooltipShow: function(event, tooltip, code2) {
             var iso2 = (code2 || '').toString().trim().toUpperCase();

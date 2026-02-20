@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: ab2b10498256f7f7
+// checksum: 731c537f0ac0d54b
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -7491,25 +7491,9 @@ const API = '';
       var mapHeight = Math.round(baseHeight * (pct / 100));
       if (mapHeight < 80) mapHeight = 80;
 
-      // One-time bind Live / By period toggle on Countries page.
-      if (!el.hasAttribute('data-kexo-map-toggle-bound')) {
-        el.setAttribute('data-kexo-map-toggle-bound', '1');
-        var liveBtn = document.getElementById('countries-map-source-live');
-        var periodBtn = document.getElementById('countries-map-source-period');
-        function setMapSource(source) {
-          window.countriesMapSource = source;
-          if (liveBtn) liveBtn.classList.toggle('active', source === 'live');
-          if (periodBtn) periodBtn.classList.toggle('active', source === 'period');
-          renderCountriesMapChart(statsCache);
-        }
-        if (liveBtn) liveBtn.addEventListener('click', function() { setMapSource('live'); });
-        if (periodBtn) periodBtn.addEventListener('click', function() { setMapSource('period'); });
-      }
-
       // Unify: show the same live online map used on /dashboard/live + /dashboard/overview.
       // The Countries page still has its country tables below; the map itself reflects live activity.
-      // When "By period" is selected, skip live and use historical choropleth.
-      if (window.countriesMapSource !== 'period' && typeof fetchLiveOnlineMapSessions === 'function' && typeof renderLiveOnlineMapChartFromSessions === 'function') {
+      if (typeof fetchLiveOnlineMapSessions === 'function' && typeof renderLiveOnlineMapChartFromSessions === 'function') {
         el.style.height = mapHeight + 'px';
         el.style.minHeight = mapHeight + 'px';
         if (!isChartEnabledByUiConfig(chartKey, true)) {
@@ -12994,13 +12978,6 @@ const API = '';
           } catch (_) {}
           return {};
         })();
-        var selectedRegionsLive = (function () {
-          try {
-            var sorted = keys.slice().sort(function(a, b) { return (countsByIso2[b] || 0) - (countsByIso2[a] || 0); });
-            return sorted.slice(0, 5).map(function(c) { return String(c || '').trim().toUpperCase().slice(0, 2); }).filter(Boolean);
-          } catch (_) {}
-          return [];
-        })();
         liveOnlineMapChartInstance = typeof renderOnlineMapInto === 'function' && renderOnlineMapInto(chartKey, chartKey, {
           setState: setState,
           mapHeight: mapHeight,
@@ -13013,7 +12990,6 @@ const API = '';
           zoomButtons: zoomButtons,
           initialZoomMax: 2.1,
           focusOn: focusOnLive,
-          selectedRegions: selectedRegionsLive.length > 0 ? selectedRegionsLive : undefined,
           retry: function() { renderLiveOnlineMapChartFromSessions(sessionList); },
           onRegionTooltipShow: function(event, tooltip, code2) {
             var iso2 = (code2 || '').toString().trim().toUpperCase();

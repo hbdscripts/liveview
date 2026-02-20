@@ -1692,7 +1692,7 @@
     }
 
     var WORLD_MAP_ISO2 = ['AE','AF','AG','AL','AM','AO','AR','AT','AU','AZ','BA','BB','BD','BE','BF','BG','BI','BJ','BN','BO','BR','BS','BT','BW','BY','BZ','CA','CD','CF','CG','CH','CI','CL','CM','CN','CO','CR','CU','CV','CY','CZ','DE','DJ','DK','DM','DO','DZ','EC','EE','EG','ER','ES','ET','FI','FJ','FK','FR','GA','GB','GD','GE','GF','GH','GL','GM','GN','GQ','GR','GT','GW','GY','HN','HR','HT','HU','ID','IE','IL','IN','IQ','IR','IS','IT','JM','JO','JP','KE','KG','KH','KM','KN','KP','KR','KW','KZ','LA','LB','LC','LK','LR','LS','LT','LV','LY','MA','MD','MG','MK','ML','MM','MN','MR','MT','MU','MV','MW','MX','MY','MZ','NA','NC','NE','NG','NI','NL','NO','NP','NZ','OM','PA','PE','PF','PG','PH','PK','PL','PT','PY','QA','RE','RO','RS','RU','SA','SB','SC','SD','SE','SI','SK','SL','SN','SO','SR','ST','SV','SY','SZ','TD','TG','TH','TJ','TL','TM','TN','TR','TT','TW','TZ','UA','UG','US','UY','UZ','VE','VN','VU','YE','ZA','ZM','ZW'];
-    function buildMapFillScaleByIso(valuesByIso2, primaryRgb, baseAlpha, minAlpha, maxAlpha) {
+    function buildMapFillScaleByIso(valuesByIso2, primaryRgb, baseAlpha, minAlpha, maxAlpha, defaultRgb, defaultAlpha) {
       var src = valuesByIso2 && typeof valuesByIso2 === 'object' ? valuesByIso2 : {};
       var entries = [];
       var keys = Object.keys(src);
@@ -1704,7 +1704,9 @@
         entries.push({ iso: iso, value: n });
       }
       var base = typeof baseAlpha === 'number' && Number.isFinite(baseAlpha) ? Math.max(0, Math.min(1, baseAlpha)) : 0.18;
-      var defaultFill = 'rgba(' + (primaryRgb || '62,179,171') + ',' + base + ')';
+      var defaultRgbUsed = (defaultRgb != null && String(defaultRgb).trim()) ? String(defaultRgb).trim() : (primaryRgb || '62,179,171');
+      var defaultA = typeof defaultAlpha === 'number' && Number.isFinite(defaultAlpha) ? Math.max(0, Math.min(1, defaultAlpha)) : base;
+      var defaultFill = 'rgba(' + defaultRgbUsed + ',' + defaultA + ')';
       var out = {};
       var idx;
       for (idx = 0; idx < WORLD_MAP_ISO2.length; idx++) {
@@ -1851,15 +1853,23 @@
       );
       var mapFit = 'contain';
       var fillOpacity = 0.18;
-      var zoomOnScroll = false;
-      var zoomAnimate = false;
+      var inactiveOpacity = 0.09;
+      var inactiveRgb = primaryRgb;
       try {
         if (typeof chartStyleFromUiConfig === 'function') {
           var st = chartStyleFromUiConfig(chartKey) || {};
           mapFit = (String(st.mapFit || '').trim().toLowerCase() === 'cover') ? 'cover' : 'contain';
           if (Number.isFinite(Number(st.fillOpacity))) fillOpacity = Math.max(0, Math.min(1, Number(st.fillOpacity)));
-          if (st.mapZoomOnScroll === true) zoomOnScroll = true;
-          if (st.mapZoomAnimate === true) zoomAnimate = true;
+          if (Number.isFinite(Number(st.mapInactiveOpacity))) inactiveOpacity = Math.max(0, Math.min(1, Number(st.mapInactiveOpacity)));
+          var inactiveHex = st.mapInactiveColor != null ? String(st.mapInactiveColor).trim() : '';
+          var hm = /^#([0-9a-f]{6})$/i.exec(inactiveHex);
+          if (hm) {
+            var hh = hm[1];
+            var hr = parseInt(hh.slice(0, 2), 16);
+            var hg = parseInt(hh.slice(2, 4), 16);
+            var hb = parseInt(hh.slice(4, 6), 16);
+            inactiveRgb = hr + ',' + hg + ',' + hb;
+          }
         }
       } catch (_) {}
       var alphaMult = fillOpacity > 0 ? (fillOpacity / 0.18) : 0;
@@ -1873,29 +1883,16 @@
         showTooltip: opts.showTooltip !== false,
         draggable: opts.draggable !== false,
         zoomButtons: opts.zoomButtons !== false,
+        zoomOnScroll: false,
+        zoomAnimate: false,
         zoomMin: zoomMin,
         zoomMax: zoomMax,
-        zoomOnScroll: zoomOnScroll,
-        zoomAnimate: zoomAnimate,
         regionStyle: {
-          initial: { fill: 'rgba(' + primaryRgb + ',' + String(a(0.18).toFixed(3)) + ')', stroke: border, strokeWidth: 0.7 },
+          initial: { fill: 'rgba(' + inactiveRgb + ',' + String(inactiveOpacity.toFixed(3)) + ')', stroke: border, strokeWidth: 0.7 },
           hover: { fill: 'rgba(' + primaryRgb + ',' + String(a(0.46).toFixed(3)) + ')' },
           selected: { fill: 'rgba(' + primaryRgb + ',' + String(a(0.78).toFixed(3)) + ')' },
         },
       };
-      if (opts.selectedRegions && Array.isArray(opts.selectedRegions) && opts.selectedRegions.length > 0) {
-        jvmOpts.selectedRegions = opts.selectedRegions;
-        jvmOpts.regionsSelectable = true;
-        jvmOpts.regionsSelectableOne = false;
-        jvmOpts.labels = {
-          regions: {
-            render: function(code) {
-              if (opts.selectedRegions.indexOf(code) < 0) return null;
-              return (typeof countryLabel === 'function' ? countryLabel(code) : code) || code;
-            },
-          },
-        };
-      }
       if (opts.onRegionTooltipShow) jvmOpts.onRegionTooltipShow = opts.onRegionTooltipShow;
       var instance = new jsVectorMap(jvmOpts);
       try {
@@ -1957,25 +1954,9 @@
       var mapHeight = Math.round(baseHeight * (pct / 100));
       if (mapHeight < 80) mapHeight = 80;
 
-      // One-time bind Live / By period toggle on Countries page.
-      if (!el.hasAttribute('data-kexo-map-toggle-bound')) {
-        el.setAttribute('data-kexo-map-toggle-bound', '1');
-        var liveBtn = document.getElementById('countries-map-source-live');
-        var periodBtn = document.getElementById('countries-map-source-period');
-        function setMapSource(source) {
-          window.countriesMapSource = source;
-          if (liveBtn) liveBtn.classList.toggle('active', source === 'live');
-          if (periodBtn) periodBtn.classList.toggle('active', source === 'period');
-          renderCountriesMapChart(statsCache);
-        }
-        if (liveBtn) liveBtn.addEventListener('click', function() { setMapSource('live'); });
-        if (periodBtn) periodBtn.addEventListener('click', function() { setMapSource('period'); });
-      }
-
       // Unify: show the same live online map used on /dashboard/live + /dashboard/overview.
       // The Countries page still has its country tables below; the map itself reflects live activity.
-      // When "By period" is selected, skip live and use historical choropleth.
-      if (window.countriesMapSource !== 'period' && typeof fetchLiveOnlineMapSessions === 'function' && typeof renderLiveOnlineMapChartFromSessions === 'function') {
+      if (typeof fetchLiveOnlineMapSessions === 'function' && typeof renderLiveOnlineMapChartFromSessions === 'function') {
         el.style.height = mapHeight + 'px';
         el.style.minHeight = mapHeight + 'px';
         if (!isChartEnabledByUiConfig(chartKey, true)) {
@@ -2089,7 +2070,16 @@
       if (!Number.isFinite(alphaMult2)) alphaMult2 = 1;
       alphaMult2 = Math.max(0, Math.min(3, alphaMult2));
       function a2(x) { return Math.max(0, Math.min(1, x * alphaMult2)); }
-      const regionFillByIso2 = buildMapFillScaleByIso(choroplethByIso2, primaryRgb, a2(0.18), a2(0.24), a2(0.92));
+      var inactiveOpacity2 = 0.09;
+      var inactiveRgb2 = primaryRgb;
+      try {
+        if (mapStyle && Number.isFinite(Number(mapStyle.mapInactiveOpacity))) {
+          inactiveOpacity2 = Math.max(0, Math.min(1, Number(mapStyle.mapInactiveOpacity)));
+        }
+        var inactiveColor2 = (mapStyle && mapStyle.mapInactiveColor != null) ? String(mapStyle.mapInactiveColor).trim() : '';
+        if (inactiveColor2) inactiveRgb2 = rgbFromColor(inactiveColor2).rgb;
+      } catch (_) {}
+      const regionFillByIso2 = buildMapFillScaleByIso(choroplethByIso2, primaryRgb, a2(0.18), a2(0.24), a2(0.92), inactiveRgb2, inactiveOpacity2);
       var focusOn = {};
       try {
         var focusRegions = [];
@@ -2104,18 +2094,6 @@
         var top = focusRegions.slice(0, 4).map(function(r) { return r.iso; }).filter(Boolean);
         // Avoid zooming hard when only a couple countries have activity.
         if (top.length >= 3) focusOn = { regions: top, animate: false };
-      } catch (_) {}
-      var selectedRegionsHistorical = [];
-      try {
-        Object.keys(choroplethByIso2 || {}).forEach(function(k) {
-          var iso = String(k || '').trim().toUpperCase().slice(0, 2);
-          if (!iso || iso === 'XX') return;
-          var n = Number(choroplethByIso2[k]);
-          if (!Number.isFinite(n) || n <= 0) return;
-          selectedRegionsHistorical.push({ iso: iso, value: n });
-        });
-        selectedRegionsHistorical.sort(function(a, b) { return (Number(b && b.value) || 0) - (Number(a && a.value) || 0); });
-        selectedRegionsHistorical = selectedRegionsHistorical.slice(0, 5).map(function(r) { return r.iso; }).filter(Boolean);
       } catch (_) {}
 
       var pinItems = [];
@@ -2148,7 +2126,6 @@
           zoomButtons: !!mapStyle.mapZoomButtons,
           initialZoomMax: 2.1,
           focusOn: focusOn,
-          selectedRegions: selectedRegionsHistorical.length > 0 ? selectedRegionsHistorical : undefined,
           retry: function() { renderCountriesMapChart(data); },
           onRegionTooltipShow: function(event, tooltip, code) {
             const iso = (code || '').toString().trim().toUpperCase();
@@ -4802,10 +4779,10 @@
         mapShowTooltip: true,
         mapDraggable: true,
         mapZoomButtons: true,
-        mapZoomOnScroll: false,
-        mapZoomAnimate: false,
         mapShowEmptyCaption: true,
         mapFit: 'cover',
+        mapInactiveOpacity: 0.09,
+        mapInactiveColor: '',
         mapStageBrowseColor: '',
         mapStageCartColor: '',
         mapStageCheckoutColor: '',
@@ -4855,13 +4832,18 @@
         mapShowTooltip: src.mapShowTooltip !== false,
         mapDraggable: src.mapDraggable !== false,
         mapZoomButtons: src.mapZoomButtons !== false,
-        mapZoomOnScroll: !!(src.mapZoomOnScroll === true),
-        mapZoomAnimate: !!(src.mapZoomAnimate === true),
         mapShowEmptyCaption: src.mapShowEmptyCaption !== false,
         mapFit: (function() {
           var v = String(src.mapFit != null ? src.mapFit : def.mapFit).trim().toLowerCase();
           return (v === 'cover' || v === 'contain') ? v : def.mapFit;
         })(),
+        mapInactiveOpacity: (function() {
+          var x = Number(src.mapInactiveOpacity);
+          if (!Number.isFinite(x)) x = Number(def.mapInactiveOpacity);
+          if (!Number.isFinite(x)) x = 0.09;
+          return Math.max(0, Math.min(1, x));
+        })(),
+        mapInactiveColor: normalizeOptionalHexColorStrict(src.mapInactiveColor),
         mapStageBrowseColor: normalizeOptionalHexColorStrict(src.mapStageBrowseColor),
         mapStageCartColor: normalizeOptionalHexColorStrict(src.mapStageCartColor),
         mapStageCheckoutColor: normalizeOptionalHexColorStrict(src.mapStageCheckoutColor),
