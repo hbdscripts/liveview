@@ -337,8 +337,8 @@ a {
   position: relative;
 }
 .jvm-container { background: transparent !important; }
-#countries-map-chart .jvm-container,
-#live-online-chart .jvm-container {
+#countries-map-chart.jvm-container,
+#live-online-chart.jvm-container {
   overflow: hidden;
   border-radius: .6rem;
   /* Subtle dotted background similar to the preview. */
@@ -348,18 +348,20 @@ a {
 }
 #countries-map-chart .jvm-zoom-btn,
 #live-online-chart .jvm-zoom-btn {
-  left: 10px;
-  top: auto;
-  bottom: 10px;
+  top: 12px;
+  left: 12px;
+  bottom: auto;
   z-index: 6;
 }
 #countries-map-chart .jvm-zoom-btn.jvm-zoomin,
 #live-online-chart .jvm-zoom-btn.jvm-zoomin {
-  bottom: 30px;
+  top: 12px;
+  left: 12px;
 }
 #countries-map-chart .jvm-zoom-btn.jvm-zoomout,
 #live-online-chart .jvm-zoom-btn.jvm-zoomout {
-  bottom: 10px;
+  top: 34px;
+  left: 12px;
 }
 .kexo-map-flow-overlay {
   pointer-events: none;

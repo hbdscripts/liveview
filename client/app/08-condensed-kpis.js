@@ -1769,31 +1769,27 @@
         var draggable = mapStyle.mapDraggable !== false;
         var zoomButtons = !!mapStyle.mapZoomButtons;
         var showEmptyCaption = mapStyle.mapShowEmptyCaption !== false;
-        var jvmOpts = {
-          selector: '#live-online-chart',
-          map: 'world',
-          backgroundColor: 'transparent',
+        var focusOnLive = (function () {
+          try {
+            var focus = keys.slice().sort(function(a, b) { return (countsByIso2[b] || 0) - (countsByIso2[a] || 0); }).slice(0, 4);
+            focus = focus.map(function(x) { return String(x || '').trim().toUpperCase().slice(0, 2); }).filter(Boolean);
+            if (focus.length) return { regions: focus, animate: false };
+          } catch (_) {}
+          return {};
+        })();
+        liveOnlineMapChartInstance = typeof renderOnlineMapInto === 'function' && renderOnlineMapInto('live-online-chart', chartKey, {
+          setState: setLiveOnlineMapState,
+          mapHeight: mapHeight,
+          regionFillByIso2: regionFillByIso2,
+          primaryRgb: primaryRgb,
+          border: border,
+          muted: muted,
           showTooltip: showTooltip,
           draggable: draggable,
           zoomButtons: zoomButtons,
-          zoomOnScroll: false,
-          zoomAnimate: false,
-          focusOn: (function () {
-            try {
-              var focus = keys.slice().sort(function(a, b) { return (countsByIso2[b] || 0) - (countsByIso2[a] || 0); }).slice(0, 4);
-              focus = focus.map(function(x) { return String(x || '').trim().toUpperCase().slice(0, 2); }).filter(Boolean);
-              if (focus.length) return { regions: focus, animate: false };
-            } catch (_) {}
-            return {};
-          })(),
-          regionStyle: {
-            initial: { fill: 'rgba(' + primaryRgb + ',0.18)', stroke: border, strokeWidth: 0.7 },
-            hover: { fill: 'rgba(' + primaryRgb + ',0.46)' },
-            selected: { fill: 'rgba(' + primaryRgb + ',0.78)' },
-          },
-        };
-        if (showTooltip) {
-          jvmOpts.onRegionTooltipShow = function(event, tooltip, code2) {
+          topRegionIso2: (focusOnLive.regions && focusOnLive.regions[0]) || undefined,
+          retry: function() { renderLiveOnlineMapChartFromSessions(sessionList); },
+          onRegionTooltipShow: function(event, tooltip, code2) {
             var iso2 = (code2 || '').toString().trim().toUpperCase();
             var name = (liveOnlineMapChartInstance && typeof liveOnlineMapChartInstance.getRegionName === 'function')
               ? (liveOnlineMapChartInstance.getRegionName(iso2) || iso2)
@@ -1830,43 +1826,33 @@
               name + ' | Sessions (last 5m): ' + sessionsText
             );
           };
-        }
-        liveOnlineMapChartInstance = new jsVectorMap(jvmOpts);
-
-        if (liveOnlineMapChartInstance && liveOnlineMapChartInstance.regions) {
-          var regions = liveOnlineMapChartInstance.regions;
-          for (var code in regionFillByIso2) {
-            if (regions[code] && regions[code].element && typeof regions[code].element.setStyle === 'function') {
-              try { regions[code].element.setStyle('fill', regionFillByIso2[code]); } catch (_) {}
+        },
+          afterMapCreated: function(instance, containerEl) {
+            try { containerEl.__kexoLiveOnlineMapMode = rawMode; } catch (_) {}
+            try { containerEl.__kexoLiveOnlineMapAccent = accent; } catch (_) {}
+            try { containerEl.__kexoLiveOnlineMapPrimaryRgb = primaryRgb; } catch (_) {}
+            if (hasNoLiveActivity && showEmptyCaption) {
+              var noActivity = document.createElement('div');
+              noActivity.setAttribute('class', 'kexo-live-map-empty-caption');
+              noActivity.style.cssText = 'position:absolute;left:0;right:0;bottom:12px;text-align:center;font-size:.8125rem;color:' + (muted || 'var(--tblr-secondary)') + ';pointer-events:none;';
+              noActivity.textContent = 'No live activity yet';
+              if (containerEl && containerEl.style) containerEl.style.position = 'relative';
+              try { containerEl.appendChild(noActivity); } catch (_) {}
             }
-          }
-        }
-        hideMapTooltipOnLeave(el);
-        try { el.__kexoLiveOnlineMapMode = rawMode; } catch (_) {}
-        try { el.__kexoLiveOnlineMapAccent = accent; } catch (_) {}
-        try { el.__kexoLiveOnlineMapPrimaryRgb = primaryRgb; } catch (_) {}
-
-        if (hasNoLiveActivity && showEmptyCaption) {
-          var noActivity = document.createElement('div');
-          noActivity.setAttribute('class', 'kexo-live-map-empty-caption');
-          noActivity.style.cssText = 'position:absolute;left:0;right:0;bottom:12px;text-align:center;font-size:.8125rem;color:' + (muted || 'var(--tblr-secondary)') + ';pointer-events:none;';
-          noActivity.textContent = 'No live activity yet';
-          if (el && el.style) el.style.position = 'relative';
-          try { el.appendChild(noActivity); } catch (_) {}
-        }
-
-        setTimeout(function () {
-          try {
-            var pseudo = keys.map(function (iso2) { return { country_code: iso2, converted: countsByIso2[iso2] || 0 }; });
-            pseudo.sort(function (a, b) { return Number(b && b.converted) - Number(a && a.converted); });
-            var originIso = pseudo && pseudo[0] && pseudo[0].country_code ? String(pseudo[0].country_code) : 'GB';
-            if (typeof renderLiveActivityOverlay === 'function') {
-              renderLiveActivityOverlay(el, stageCountsByIso2, countsByIso2, { animated: isAnimated, primaryRgb: primaryRgb, originIso2: originIso, topN: 9 });
-            } else {
-              renderCountriesFlowOverlay(el, pseudo, primaryRgb, originIso);
-            }
-          } catch (_) {}
-        }, 120);
+            setTimeout(function () {
+              try {
+                var pseudo = keys.map(function (iso2) { return { country_code: iso2, converted: countsByIso2[iso2] || 0 }; });
+                pseudo.sort(function (a, b) { return Number(b && b.converted) - Number(a && a.converted); });
+                var originIso = pseudo && pseudo[0] && pseudo[0].country_code ? String(pseudo[0].country_code) : 'GB';
+                if (typeof renderLiveActivityOverlay === 'function') {
+                  renderLiveActivityOverlay(containerEl, stageCountsByIso2, countsByIso2, { animated: isAnimated, primaryRgb: primaryRgb, originIso2: originIso, topN: 9 });
+                } else if (typeof renderCountriesFlowOverlay === 'function') {
+                  renderCountriesFlowOverlay(containerEl, pseudo, primaryRgb, originIso);
+                }
+              } catch (_) {}
+            }, 120);
+          },
+        });
       } catch (err) {
         captureChartError(err, 'liveOnlineMapRender', { chartKey: 'live-online-chart' });
         console.error('[live-online-map] render error:', err);

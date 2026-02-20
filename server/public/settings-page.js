@@ -2870,8 +2870,9 @@
       var lockMode = (Array.isArray(modes) && modes.length === 1 && String(modes[0] || '').toLowerCase() === 'map-animated') ||
         key === 'live-online-chart' || key === 'countries-map-chart';
       var modeFieldHtml = lockMode
-        ? ('<div class="col-12 col-md-6 col-xl-4"><label class="form-label mb-1">Chart type</label><div class="form-control form-control-sm" aria-disabled="true">Map (animated)</div><input type="hidden" data-chart-field="mode" value="map-animated"></div>')
+        ? ('<input type="hidden" data-chart-field="mode" value="map-animated">')
         : ('<div class="col-12 col-md-6 col-xl-4"><label class="form-label mb-1">Chart type</label><select class="form-select form-select-sm" data-chart-field="mode">' + selectOptionsHtml(modes, mode) + '</select></div>');
+      var showAnimationsForMap = key !== 'live-online-chart' && key !== 'countries-map-chart';
 
       cardBodyContent = '<div class="row g-3">' +
         '<div class="col-12 col-lg-4"><label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-chart-field="enabled"' + (enabled ? ' checked' : '') + '><span class="form-check-label ms-2">Enabled</span></label></div>' +
@@ -2887,7 +2888,7 @@
           '<div class="col-6 col-lg-4 col-xl-2"><label class="form-label mb-1">Grid dash</label><input type="number" class="form-control form-control-sm" min="0" max="16" step="1" data-chart-field="style.gridDash" value="' + escapeHtml(String(style.gridDash)) + '"></div>' +
           '<div class="col-6 col-lg-4 col-xl-2"><label class="form-label mb-1">Labels</label><select class="form-select form-select-sm" data-chart-field="style.dataLabels"><option value="auto"' + (style.dataLabels === 'auto' ? ' selected' : '') + '>Auto</option><option value="on"' + (style.dataLabels === 'on' ? ' selected' : '') + '>On</option><option value="off"' + (style.dataLabels === 'off' ? ' selected' : '') + '>Off</option></select></div>' +
           '<div class="col-6 col-lg-4 col-xl-2 d-flex align-items-end"><label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-chart-field="style.toolbar"' + (style.toolbar ? ' checked' : '') + '><span class="form-check-label ms-2">Toolbar</span></label></div>' +
-          '<div class="col-6 col-lg-4 col-xl-2 d-flex align-items-end"><label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-chart-field="style.animations"' + (style.animations ? ' checked' : '') + '><span class="form-check-label ms-2">Animations</span></label></div>' +
+          (showAnimationsForMap ? '<div class="col-6 col-lg-4 col-xl-2 d-flex align-items-end"><label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-chart-field="style.animations"' + (style.animations ? ' checked' : '') + '><span class="form-check-label ms-2">Animations</span></label></div>' : '') +
         '</div></div>' +
         '<div class="col-12"><label class="form-label mb-1">Pie / donut controls</label><div class="row g-2">' +
           '<div class="col-6 col-lg-4 col-xl-2 d-flex align-items-end"><label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-chart-field="style.pieDonut"' + (style.pieDonut ? ' checked' : '') + (supportsPie ? '' : ' disabled') + '><span class="form-check-label ms-2">Hollow donut</span></label></div>' +

@@ -235,9 +235,7 @@
         var lockMode = Array.isArray(modes) && modes.length === 1;
         if (lockMode) {
           var lockVal = String(modes[0] || mode || 'line').trim().toLowerCase();
-          var labels = (window.KEXO_CHART_MODE_LABEL && typeof window.KEXO_CHART_MODE_LABEL === 'object') ? window.KEXO_CHART_MODE_LABEL : {};
-          var lockLabel = labels[lockVal] || lockVal;
-          body += '<div class="col-12 col-md-6"><label class="form-label">Chart type</label><div class="form-control form-control-sm" aria-disabled="true">' + escapeHtml(String(lockLabel)) + '</div><input type="hidden" data-cs-field="mode" value="' + escapeHtml(String(lockVal)) + '"></div>';
+          body += '<input type="hidden" data-cs-field="mode" value="' + escapeHtml(String(lockVal)) + '">';
         } else {
           body += '<div class="col-12 col-md-6"><label class="form-label">Chart type</label><select class="form-select form-select-sm" data-cs-field="mode">' + modeOptionsHtml(modes, mode) + '</select></div>';
         }
@@ -246,7 +244,10 @@
           body += '<option value="' + p + '"' + (p === size ? ' selected' : '') + '>' + p + '%</option>';
         }
         body += '</select></div>';
-        body += '<div class="col-12"><label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-cs-field="animations"' + (animations ? ' checked' : '') + '><span class="form-check-label ms-2">Animations</span></label></div>';
+        var isMapChart = chartKey === 'live-online-chart' || chartKey === 'countries-map-chart';
+        if (!isMapChart) {
+          body += '<div class="col-12"><label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-cs-field="animations"' + (animations ? ' checked' : '') + '><span class="form-check-label ms-2">Animations</span></label></div>';
+        }
         if (supportsIcons) {
           body += '<div class="col-12"><label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-cs-field="icons"' + (iconsEnabled ? ' checked' : '') + '><span class="form-check-label ms-2">Icons</span></label><div class="form-hint">Show source icons in the chart legend.</div></div>';
         }

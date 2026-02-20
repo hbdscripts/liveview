@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: d25a37e3364f1489
+// checksum: 56f84aeb72440367
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -6690,6 +6690,46 @@ const API = '';
       return null;
     }
 
+    var BASE_PIN_FONT = 11;
+    function applyPinsCounterScale(containerEl, scale) {
+      if (!containerEl || !Number.isFinite(scale) || scale <= 0) return;
+      var s = scale;
+      try {
+        containerEl.querySelectorAll('[data-base-r]').forEach(function(node) {
+          var base = parseFloat(node.getAttribute('data-base-r'), 10);
+          if (Number.isFinite(base)) node.setAttribute('r', String(base / s));
+        });
+        containerEl.querySelectorAll('[data-base-font]').forEach(function(node) {
+          var base = parseFloat(node.getAttribute('data-base-font'), 10);
+          if (Number.isFinite(base)) node.style.fontSize = String(base / s) + 'px';
+        });
+      } catch (_) {}
+    }
+    function setupPinsCounterScale(containerEl) {
+      if (!containerEl) return;
+      var mapSvg = getJvmSvgInContainer(containerEl);
+      if (!mapSvg) return;
+      var zoomGroup = getJvmZoomGroup(mapSvg);
+      if (!zoomGroup) return;
+      function readScale() {
+        try {
+          var ctm = zoomGroup.getCTM && zoomGroup.getCTM();
+          if (ctm) return ctm.a;
+        } catch (_) {}
+        return 1;
+      }
+      function update() { applyPinsCounterScale(containerEl, readScale()); }
+      update();
+      if (typeof MutationObserver !== 'undefined') {
+        try {
+          var obs = new MutationObserver(update);
+          obs.observe(zoomGroup, { attributes: true, attributeFilter: ['transform'] });
+          if (containerEl.__kexoPinsScaleObserver) containerEl.__kexoPinsScaleObserver.disconnect();
+          containerEl.__kexoPinsScaleObserver = obs;
+        } catch (_) {}
+      }
+    }
+
     function mapRegionCenter(mapSvg, zoomGroup, iso2) {
       if (!mapSvg) return null;
       var iso = String(iso2 || '').trim().toUpperCase();
@@ -6892,36 +6932,40 @@ const API = '';
           overlay.appendChild(path);
         }
 
-        var radius = 3.2 + (Math.min(1, (item.total || 0) / maxTotal) * 3.8);
+        var radius = 2.5 + (Math.min(1, (item.total || 0) / maxTotal) * 1.2);
         var marker = document.createElementNS(NS, 'circle');
         marker.setAttribute('class', 'kexo-live-activity-marker kexo-stage-' + stage);
         marker.setAttribute('cx', String(target.x));
         marker.setAttribute('cy', String(target.y));
         marker.setAttribute('r', String(radius.toFixed(2)));
-        marker.setAttribute('stroke', 'rgba(255,255,255,0.9)');
-        marker.setAttribute('stroke-width', '1');
+        marker.setAttribute('data-base-r', String(radius.toFixed(2)));
+        marker.setAttribute('stroke', 'rgba(255,255,255,0.85)');
+        marker.setAttribute('stroke-width', '0.8');
         overlay.appendChild(marker);
 
         var label = document.createElementNS(NS, 'text');
         label.setAttribute('class', 'kexo-live-activity-label');
         label.setAttribute('x', String(target.x + 7));
         label.setAttribute('y', String(target.y - 6));
+        label.setAttribute('data-base-font', String(BASE_PIN_FONT));
         label.textContent = (typeof countryLabel === 'function' ? countryLabel(item.iso) : item.iso) || item.iso;
         overlay.appendChild(label);
       });
 
-      // Origin marker
+      // Origin marker (smaller, solid)
       try {
         var originDot = document.createElementNS(NS, 'circle');
         originDot.setAttribute('class', 'kexo-map-flow-origin');
         originDot.setAttribute('cx', String(origin.x));
         originDot.setAttribute('cy', String(origin.y));
-        originDot.setAttribute('r', '4.2');
-        originDot.setAttribute('fill', 'rgba(' + primaryRgb + ',0.86)');
+        originDot.setAttribute('r', '3');
+        originDot.setAttribute('data-base-r', '3');
+        originDot.setAttribute('fill', 'rgba(' + primaryRgb + ',0.9)');
         overlay.appendChild(originDot);
       } catch (_) {}
 
       try { zoomGroup.appendChild(overlay); } catch (_) {}
+      setupPinsCounterScale(el);
 
       // Legend (HTML overlay)
       try {
@@ -6979,27 +7023,30 @@ const API = '';
         if (!center) return;
         var n = Number(item && item.value) || 0;
         var t = maxVal > 0 ? Math.max(0, Math.min(1, n / maxVal)) : 0;
-        var radius = 3.0 + (t * 4.2);
+        var radius = 2.5 + (t * 1.5);
 
         var marker = document.createElementNS(NS, 'circle');
         marker.setAttribute('class', 'kexo-countries-pin');
         marker.setAttribute('cx', String(center.x));
         marker.setAttribute('cy', String(center.y));
         marker.setAttribute('r', String(radius.toFixed(2)));
-        marker.setAttribute('fill', 'rgba(' + primaryRgb + ',0.92)');
-        marker.setAttribute('stroke', 'rgba(255,255,255,0.92)');
-        marker.setAttribute('stroke-width', '1');
+        marker.setAttribute('data-base-r', String(radius.toFixed(2)));
+        marker.setAttribute('fill', 'rgba(' + primaryRgb + ',0.94)');
+        marker.setAttribute('stroke', 'rgba(255,255,255,0.85)');
+        marker.setAttribute('stroke-width', '0.8');
         overlay.appendChild(marker);
 
         var label = document.createElementNS(NS, 'text');
         label.setAttribute('class', 'kexo-live-activity-label');
         label.setAttribute('x', String(center.x + 7));
         label.setAttribute('y', String(center.y - 6));
+        label.setAttribute('data-base-font', String(BASE_PIN_FONT));
         label.textContent = (typeof countryLabel === 'function' ? countryLabel(iso) : iso) || iso;
         overlay.appendChild(label);
       });
 
       try { zoomGroup.appendChild(overlay); } catch (_) {}
+      setupPinsCounterScale(el);
 
       // Legend (HTML overlay)
       try {
@@ -7131,6 +7178,90 @@ const API = '';
       } catch (_) {}
     }
 
+    /**
+     * Shared Online map renderer used by #live-online-chart (live/overview) and #countries-map-chart (countries).
+     * Renders the same world map into the given container; callers supply tooltip and overlay via opts.
+     * @param {string} containerId - Element id (e.g. 'live-online-chart', 'countries-map-chart')
+     * @param {string} chartKey - Chart key for UI config (same as containerId for these maps)
+     * @param {object} opts - setState(el,text,{height?,error?}), mapHeight, regionFillByIso2, primaryRgb, border, muted, showTooltip, draggable, zoomButtons, focusOn?, onRegionTooltipShow?, afterMapCreated(instance, el)?
+     * @returns {object|null} jsVectorMap instance or null
+     */
+    function renderOnlineMapInto(containerId, chartKey, opts) {
+      opts = opts || {};
+      var el = document.getElementById(containerId);
+      if (!el) return null;
+      var setState = typeof opts.setState === 'function' ? opts.setState : setCountriesMapState;
+      var mapHeight = Math.max(80, Number(opts.mapHeight) || 220);
+      if (typeof jsVectorMap === 'undefined') {
+        if (!el.__kexoJvmWaitTries) setState(el, 'Loading map library...', { height: mapHeight });
+        var tries = (el.__kexoJvmWaitTries || 0) + 1;
+        el.__kexoJvmWaitTries = tries;
+        if (tries >= 25) {
+          el.__kexoJvmWaitTries = 0;
+          setState(el, 'Map library failed to load.', { error: true, height: mapHeight });
+          return null;
+        }
+        setTimeout(function() {
+          if (typeof opts.retry === 'function') opts.retry();
+        }, 200);
+        return null;
+      }
+      try { el.__kexoJvmWaitTries = 0; } catch (_) {}
+      var rect = (el && el.getBoundingClientRect) ? el.getBoundingClientRect() : null;
+      if (!rect || !(rect.width > 20) || !(rect.height > 20)) {
+        var sizeTries = (el.__kexoJvmSizeWaitTries || 0) + 1;
+        el.__kexoJvmSizeWaitTries = sizeTries;
+        if (sizeTries <= 60) {
+          setTimeout(function() { if (typeof opts.retry === 'function') opts.retry(); }, 220);
+        } else {
+          el.__kexoJvmSizeWaitTries = 0;
+        }
+        return null;
+      }
+      try { el.__kexoJvmSizeWaitTries = 0; } catch (_) {}
+      var primaryRgb = opts.primaryRgb || '62,179,171';
+      var border = opts.border || '#d4dee5';
+      var jvmOpts = {
+        selector: '#' + containerId,
+        map: 'world',
+        backgroundColor: 'transparent',
+        showTooltip: opts.showTooltip !== false,
+        draggable: opts.draggable !== false,
+        zoomButtons: !!opts.zoomButtons,
+        zoomOnScroll: false,
+        zoomAnimate: false,
+        focusOn: {},
+        regionStyle: {
+          initial: { fill: 'rgba(' + primaryRgb + ',0.18)', stroke: border, strokeWidth: 0.7 },
+          hover: { fill: 'rgba(' + primaryRgb + ',0.46)' },
+          selected: { fill: 'rgba(' + primaryRgb + ',0.78)' },
+        },
+      };
+      if (opts.topRegionIso2) {
+        var topIso = String(opts.topRegionIso2).trim().toUpperCase().slice(0, 2);
+        if (topIso) {
+          jvmOpts.onLoaded = function(map) {
+            try {
+              if (typeof map.setFocus === 'function') map.setFocus({ region: topIso, animate: false });
+            } catch (_) {}
+          };
+        }
+      }
+      if (opts.onRegionTooltipShow) jvmOpts.onRegionTooltipShow = opts.onRegionTooltipShow;
+      var instance = new jsVectorMap(jvmOpts);
+      if (instance && instance.regions && opts.regionFillByIso2) {
+        var regions = instance.regions;
+        for (var code in opts.regionFillByIso2) {
+          if (regions[code] && regions[code].element && typeof regions[code].element.setStyle === 'function') {
+            try { regions[code].element.setStyle('fill', opts.regionFillByIso2[code]); } catch (_) {}
+          }
+        }
+      }
+      hideMapTooltipOnLeave(el);
+      if (typeof opts.afterMapCreated === 'function') opts.afterMapCreated(instance, el);
+      return instance;
+    }
+
     function renderCountriesMapChart(data) {
       const el = document.getElementById('countries-map-chart');
       if (!el) return;
@@ -7165,25 +7296,6 @@ const API = '';
         setCountriesMapState(el, 'Map disabled in Settings > Charts.', { height: mapHeight });
         return;
       }
-
-      // jsVectorMap snapshots container size at init. If we render while hidden (page loader / collapsed),
-      // it can end up with a 0x0 SVG (scale(0)) and never recover. Wait until the container is measurable.
-      try {
-        var rect = (el && el.getBoundingClientRect) ? el.getBoundingClientRect() : null;
-        var w = rect && Number.isFinite(rect.width) ? rect.width : Number(el && el.offsetWidth);
-        var h = rect && Number.isFinite(rect.height) ? rect.height : Number(el && el.offsetHeight);
-        if (!(w > 20) || !(h > 20)) {
-          var tries = (el.__kexoJvmSizeWaitTries || 0) + 1;
-          el.__kexoJvmSizeWaitTries = tries;
-          if (tries <= 60) {
-            setTimeout(function() { renderCountriesMapChart(data); }, 220);
-          } else {
-            el.__kexoJvmSizeWaitTries = 0;
-          }
-          return;
-        }
-        el.__kexoJvmSizeWaitTries = 0;
-      } catch (_) {}
 
       if (countriesMapChartInstance) {
         try { countriesMapChartInstance.destroy(); } catch (_) {}
@@ -7220,79 +7332,78 @@ const API = '';
       var mapMetricChoice = (mapStyle && mapStyle.mapMetric) ? String(mapStyle.mapMetric).trim().toLowerCase() : 'auto';
       var choroplethByIso2 = mapMetricChoice === 'revenue' ? revenueByIso2 : mapMetricChoice === 'orders' ? ordersByIso2 : mapMetricByIso2;
 
+      const rootCss = getComputedStyle(document.documentElement);
+      const border = (rootCss.getPropertyValue('--tblr-border-color') || '#d4dee5').trim();
+      const muted = (rootCss.getPropertyValue('--tblr-secondary') || '#626976').trim();
+      const palette = chartColorsFromUiConfig(chartKey, ['#3eb3ab']);
+      const accent = (palette && palette[0]) ? String(palette[0]).trim() : '#3eb3ab';
+      function rgbFromColor(c) {
+        const s = String(c || '').trim();
+        let m = /^#([0-9a-f]{6})$/i.exec(s);
+        if (m) {
+          const hex = m[1];
+          const r = parseInt(hex.slice(0, 2), 16);
+          const g = parseInt(hex.slice(2, 4), 16);
+          const b = parseInt(hex.slice(4, 6), 16);
+          return { r, g, b, rgb: r + ',' + g + ',' + b };
+        }
+        m = /^rgba?\(\s*([0-9]{1,3})\s*,\s*([0-9]{1,3})\s*,\s*([0-9]{1,3})/i.exec(s);
+        if (m) {
+          const r = Math.max(0, Math.min(255, parseInt(m[1], 10) || 0));
+          const g = Math.max(0, Math.min(255, parseInt(m[2], 10) || 0));
+          const b = Math.max(0, Math.min(255, parseInt(m[3], 10) || 0));
+          return { r, g, b, rgb: r + ',' + g + ',' + b };
+        }
+        return { r: 62, g: 179, b: 171, rgb: '62,179,171' };
+      }
+      const primaryRgb = rgbFromColor(accent).rgb;
+      const regionFillByIso2 = buildMapFillScaleByIso(choroplethByIso2, primaryRgb, 0.24, 0.92);
+      var focusOn = {};
+      try {
+        var focusRegions = [];
+        Object.keys(choroplethByIso2 || {}).forEach(function(k) {
+          var iso = String(k || '').trim().toUpperCase().slice(0, 2);
+          if (!iso || iso === 'XX') return;
+          var n = Number(choroplethByIso2[k]);
+          if (!Number.isFinite(n) || n <= 0) return;
+          focusRegions.push({ iso: iso, value: n });
+        });
+        focusRegions.sort(function(a, b) { return (Number(b && b.value) || 0) - (Number(a && a.value) || 0); });
+        var top = focusRegions.slice(0, 4).map(function(r) { return r.iso; }).filter(Boolean);
+        if (top.length) focusOn = { regions: top, animate: false };
+      } catch (_) {}
+
+      var pinItems = [];
+      try {
+        Object.keys(choroplethByIso2 || {}).forEach(function(k) {
+          var iso = String(k || '').trim().toUpperCase().slice(0, 2);
+          if (!iso || iso === 'XX') return;
+          var n = Number(choroplethByIso2[k]);
+          if (!Number.isFinite(n) || n <= 0) return;
+          pinItems.push({ iso: iso, value: n });
+        });
+        pinItems.sort(function(a, b) { return (Number(b && b.value) || 0) - (Number(a && a.value) || 0); });
+      } catch (_) {}
+      var metricLabel = mapMetricChoice === 'revenue' ? 'Revenue' : mapMetricChoice === 'orders' ? 'Orders' : 'Metric';
+
       el.style.height = mapHeight + 'px';
       el.style.minHeight = mapHeight + 'px';
       el.innerHTML = '';
+
       try {
-        const rootCss = getComputedStyle(document.documentElement);
-        const border = (rootCss.getPropertyValue('--tblr-border-color') || '#d4dee5').trim();
-        const muted = (rootCss.getPropertyValue('--tblr-secondary') || '#626976').trim();
-        var rawMode = chartModeFromUiConfig(chartKey, 'map-animated') || 'map-animated';
-        rawMode = String(rawMode || '').trim().toLowerCase();
-        if (rawMode !== 'map-animated') rawMode = 'map-animated';
-        const isAnimated = true;
-        const palette = chartColorsFromUiConfig(chartKey, ['#3eb3ab']);
-        const accent = (palette && palette[0]) ? String(palette[0]).trim() : '#3eb3ab';
-        const showTooltip = mapStyle.mapShowTooltip !== false;
-        const draggable = mapStyle.mapDraggable !== false;
-        const zoomButtons = !!mapStyle.mapZoomButtons;
-
-        function rgbFromColor(c) {
-          const s = String(c || '').trim();
-          let m = /^#([0-9a-f]{6})$/i.exec(s);
-          if (m) {
-            const hex = m[1];
-            const r = parseInt(hex.slice(0, 2), 16);
-            const g = parseInt(hex.slice(2, 4), 16);
-            const b = parseInt(hex.slice(4, 6), 16);
-            return { r, g, b, rgb: r + ',' + g + ',' + b };
-          }
-          m = /^rgba?\(\s*([0-9]{1,3})\s*,\s*([0-9]{1,3})\s*,\s*([0-9]{1,3})/i.exec(s);
-          if (m) {
-            const r = Math.max(0, Math.min(255, parseInt(m[1], 10) || 0));
-            const g = Math.max(0, Math.min(255, parseInt(m[2], 10) || 0));
-            const b = Math.max(0, Math.min(255, parseInt(m[3], 10) || 0));
-            return { r, g, b, rgb: r + ',' + g + ',' + b };
-          }
-          return { r: 62, g: 179, b: 171, rgb: '62,179,171' };
-        }
-        const rgb = rgbFromColor(accent);
-        const primaryRgb = rgb.rgb;
-        const regionFillByIso2 = buildMapFillScaleByIso(choroplethByIso2, primaryRgb, 0.24, 0.92);
-        var focusOn = {};
-        try {
-          var focusRegions = [];
-          var srcFocus = choroplethByIso2 && typeof choroplethByIso2 === 'object' ? choroplethByIso2 : {};
-          Object.keys(srcFocus).forEach(function(k) {
-            var iso = String(k || '').trim().toUpperCase().slice(0, 2);
-            if (!iso || iso === 'XX') return;
-            var n = Number(srcFocus[k]);
-            if (!Number.isFinite(n) || n <= 0) return;
-            focusRegions.push({ iso: iso, value: n });
-          });
-          focusRegions.sort(function(a, b) { return (Number(b && b.value) || 0) - (Number(a && a.value) || 0); });
-          var top = focusRegions.slice(0, 4).map(function(r) { return r.iso; }).filter(Boolean);
-          if (top.length) focusOn = { regions: top, animate: false };
-        } catch (_) { focusOn = {}; }
-
-        var jvmOpts = {
-          selector: '#countries-map-chart',
-          map: 'world',
-          backgroundColor: 'transparent',
-          showTooltip: showTooltip,
-          draggable: draggable,
-          zoomButtons: zoomButtons,
-          zoomOnScroll: false,
-          zoomAnimate: false,
-          focusOn: focusOn,
-          regionStyle: {
-            initial: { fill: 'rgba(' + primaryRgb + ',0.18)', stroke: border, strokeWidth: 0.7 },
-            hover: { fill: 'rgba(' + primaryRgb + ',0.46)' },
-            selected: { fill: 'rgba(' + primaryRgb + ',0.78)' },
-          },
-        };
-        if (showTooltip) {
-          jvmOpts.onRegionTooltipShow = function(event, tooltip, code) {
+        countriesMapChartInstance = renderOnlineMapInto('countries-map-chart', chartKey, {
+          setState: setCountriesMapState,
+          mapHeight: mapHeight,
+          regionFillByIso2: regionFillByIso2,
+          primaryRgb: primaryRgb,
+          border: border,
+          muted: muted,
+          showTooltip: mapStyle.mapShowTooltip !== false,
+          draggable: mapStyle.mapDraggable !== false,
+          zoomButtons: !!mapStyle.mapZoomButtons,
+          topRegionIso2: (pinItems[0] && pinItems[0].iso) || undefined,
+          retry: function() { renderCountriesMapChart(data); },
+          onRegionTooltipShow: function(event, tooltip, code) {
             const iso = (code || '').toString().trim().toUpperCase();
             const name = (countriesMapChartInstance && typeof countriesMapChartInstance.getRegionName === 'function')
               ? (countriesMapChartInstance.getRegionName(iso) || iso)
@@ -7318,38 +7429,14 @@ const API = '';
               '</div>',
               name + ' | Revenue: ' + revHtml + ' | Orders: ' + ordHtml
             );
-          };
-        }
-        countriesMapChartInstance = new jsVectorMap(jvmOpts);
-
-        if (countriesMapChartInstance && countriesMapChartInstance.regions) {
-          var regions = countriesMapChartInstance.regions;
-          for (var code in regionFillByIso2) {
-            if (regions[code] && regions[code].element && typeof regions[code].element.setStyle === 'function') {
-              try { regions[code].element.setStyle('fill', regionFillByIso2[code]); } catch (_) {}
-            }
-          }
-        }
-        hideMapTooltipOnLeave(el);
-
-        var pinItems = [];
-        try {
-          var srcPins = choroplethByIso2 && typeof choroplethByIso2 === 'object' ? choroplethByIso2 : {};
-          Object.keys(srcPins).forEach(function(k) {
-            var iso = String(k || '').trim().toUpperCase().slice(0, 2);
-            if (!iso || iso === 'XX') return;
-            var n = Number(srcPins[k]);
-            if (!Number.isFinite(n) || n <= 0) return;
-            pinItems.push({ iso: iso, value: n });
-          });
-          pinItems.sort(function(a, b) { return (Number(b && b.value) || 0) - (Number(a && a.value) || 0); });
-        } catch (_) {}
-        var metricLabel = mapMetricChoice === 'revenue' ? 'Revenue' : mapMetricChoice === 'orders' ? 'Orders' : 'Metric';
-
-        setTimeout(function () {
-          try { renderCountriesFlowOverlay(el, rows, primaryRgb); } catch (_) {}
-          try { renderCountriesPinsOverlay(el, pinItems, { topN: 9, primaryRgb: primaryRgb, title: 'Top countries', subtitle: metricLabel }); } catch (_) {}
-        }, 140);
+          },
+          afterMapCreated: function(instance, containerEl) {
+            setTimeout(function() {
+              try { renderCountriesFlowOverlay(containerEl, rows, primaryRgb); } catch (_) {}
+              try { renderCountriesPinsOverlay(containerEl, pinItems, { topN: 9, primaryRgb: primaryRgb, title: 'Top countries', subtitle: metricLabel }); } catch (_) {}
+            }, 140);
+          },
+        });
       } catch (err) {
         captureChartError(err, 'countriesMapRender', { chartKey: 'countries-map-chart' });
         console.error('[countries-map] map render error:', err);
@@ -12547,31 +12634,27 @@ const API = '';
         var draggable = mapStyle.mapDraggable !== false;
         var zoomButtons = !!mapStyle.mapZoomButtons;
         var showEmptyCaption = mapStyle.mapShowEmptyCaption !== false;
-        var jvmOpts = {
-          selector: '#live-online-chart',
-          map: 'world',
-          backgroundColor: 'transparent',
+        var focusOnLive = (function () {
+          try {
+            var focus = keys.slice().sort(function(a, b) { return (countsByIso2[b] || 0) - (countsByIso2[a] || 0); }).slice(0, 4);
+            focus = focus.map(function(x) { return String(x || '').trim().toUpperCase().slice(0, 2); }).filter(Boolean);
+            if (focus.length) return { regions: focus, animate: false };
+          } catch (_) {}
+          return {};
+        })();
+        liveOnlineMapChartInstance = typeof renderOnlineMapInto === 'function' && renderOnlineMapInto('live-online-chart', chartKey, {
+          setState: setLiveOnlineMapState,
+          mapHeight: mapHeight,
+          regionFillByIso2: regionFillByIso2,
+          primaryRgb: primaryRgb,
+          border: border,
+          muted: muted,
           showTooltip: showTooltip,
           draggable: draggable,
           zoomButtons: zoomButtons,
-          zoomOnScroll: false,
-          zoomAnimate: false,
-          focusOn: (function () {
-            try {
-              var focus = keys.slice().sort(function(a, b) { return (countsByIso2[b] || 0) - (countsByIso2[a] || 0); }).slice(0, 4);
-              focus = focus.map(function(x) { return String(x || '').trim().toUpperCase().slice(0, 2); }).filter(Boolean);
-              if (focus.length) return { regions: focus, animate: false };
-            } catch (_) {}
-            return {};
-          })(),
-          regionStyle: {
-            initial: { fill: 'rgba(' + primaryRgb + ',0.18)', stroke: border, strokeWidth: 0.7 },
-            hover: { fill: 'rgba(' + primaryRgb + ',0.46)' },
-            selected: { fill: 'rgba(' + primaryRgb + ',0.78)' },
-          },
-        };
-        if (showTooltip) {
-          jvmOpts.onRegionTooltipShow = function(event, tooltip, code2) {
+          topRegionIso2: (focusOnLive.regions && focusOnLive.regions[0]) || undefined,
+          retry: function() { renderLiveOnlineMapChartFromSessions(sessionList); },
+          onRegionTooltipShow: function(event, tooltip, code2) {
             var iso2 = (code2 || '').toString().trim().toUpperCase();
             var name = (liveOnlineMapChartInstance && typeof liveOnlineMapChartInstance.getRegionName === 'function')
               ? (liveOnlineMapChartInstance.getRegionName(iso2) || iso2)
@@ -12608,43 +12691,33 @@ const API = '';
               name + ' | Sessions (last 5m): ' + sessionsText
             );
           };
-        }
-        liveOnlineMapChartInstance = new jsVectorMap(jvmOpts);
-
-        if (liveOnlineMapChartInstance && liveOnlineMapChartInstance.regions) {
-          var regions = liveOnlineMapChartInstance.regions;
-          for (var code in regionFillByIso2) {
-            if (regions[code] && regions[code].element && typeof regions[code].element.setStyle === 'function') {
-              try { regions[code].element.setStyle('fill', regionFillByIso2[code]); } catch (_) {}
+        },
+          afterMapCreated: function(instance, containerEl) {
+            try { containerEl.__kexoLiveOnlineMapMode = rawMode; } catch (_) {}
+            try { containerEl.__kexoLiveOnlineMapAccent = accent; } catch (_) {}
+            try { containerEl.__kexoLiveOnlineMapPrimaryRgb = primaryRgb; } catch (_) {}
+            if (hasNoLiveActivity && showEmptyCaption) {
+              var noActivity = document.createElement('div');
+              noActivity.setAttribute('class', 'kexo-live-map-empty-caption');
+              noActivity.style.cssText = 'position:absolute;left:0;right:0;bottom:12px;text-align:center;font-size:.8125rem;color:' + (muted || 'var(--tblr-secondary)') + ';pointer-events:none;';
+              noActivity.textContent = 'No live activity yet';
+              if (containerEl && containerEl.style) containerEl.style.position = 'relative';
+              try { containerEl.appendChild(noActivity); } catch (_) {}
             }
-          }
-        }
-        hideMapTooltipOnLeave(el);
-        try { el.__kexoLiveOnlineMapMode = rawMode; } catch (_) {}
-        try { el.__kexoLiveOnlineMapAccent = accent; } catch (_) {}
-        try { el.__kexoLiveOnlineMapPrimaryRgb = primaryRgb; } catch (_) {}
-
-        if (hasNoLiveActivity && showEmptyCaption) {
-          var noActivity = document.createElement('div');
-          noActivity.setAttribute('class', 'kexo-live-map-empty-caption');
-          noActivity.style.cssText = 'position:absolute;left:0;right:0;bottom:12px;text-align:center;font-size:.8125rem;color:' + (muted || 'var(--tblr-secondary)') + ';pointer-events:none;';
-          noActivity.textContent = 'No live activity yet';
-          if (el && el.style) el.style.position = 'relative';
-          try { el.appendChild(noActivity); } catch (_) {}
-        }
-
-        setTimeout(function () {
-          try {
-            var pseudo = keys.map(function (iso2) { return { country_code: iso2, converted: countsByIso2[iso2] || 0 }; });
-            pseudo.sort(function (a, b) { return Number(b && b.converted) - Number(a && a.converted); });
-            var originIso = pseudo && pseudo[0] && pseudo[0].country_code ? String(pseudo[0].country_code) : 'GB';
-            if (typeof renderLiveActivityOverlay === 'function') {
-              renderLiveActivityOverlay(el, stageCountsByIso2, countsByIso2, { animated: isAnimated, primaryRgb: primaryRgb, originIso2: originIso, topN: 9 });
-            } else {
-              renderCountriesFlowOverlay(el, pseudo, primaryRgb, originIso);
-            }
-          } catch (_) {}
-        }, 120);
+            setTimeout(function () {
+              try {
+                var pseudo = keys.map(function (iso2) { return { country_code: iso2, converted: countsByIso2[iso2] || 0 }; });
+                pseudo.sort(function (a, b) { return Number(b && b.converted) - Number(a && a.converted); });
+                var originIso = pseudo && pseudo[0] && pseudo[0].country_code ? String(pseudo[0].country_code) : 'GB';
+                if (typeof renderLiveActivityOverlay === 'function') {
+                  renderLiveActivityOverlay(containerEl, stageCountsByIso2, countsByIso2, { animated: isAnimated, primaryRgb: primaryRgb, originIso2: originIso, topN: 9 });
+                } else if (typeof renderCountriesFlowOverlay === 'function') {
+                  renderCountriesFlowOverlay(containerEl, pseudo, primaryRgb, originIso);
+                }
+              } catch (_) {}
+            }, 120);
+          },
+        });
       } catch (err) {
         captureChartError(err, 'liveOnlineMapRender', { chartKey: 'live-online-chart' });
         console.error('[live-online-map] render error:', err);
@@ -26332,9 +26405,7 @@ const API = '';
         var lockMode = Array.isArray(modes) && modes.length === 1;
         if (lockMode) {
           var lockVal = String(modes[0] || mode || 'line').trim().toLowerCase();
-          var labels = (window.KEXO_CHART_MODE_LABEL && typeof window.KEXO_CHART_MODE_LABEL === 'object') ? window.KEXO_CHART_MODE_LABEL : {};
-          var lockLabel = labels[lockVal] || lockVal;
-          body += '<div class="col-12 col-md-6"><label class="form-label">Chart type</label><div class="form-control form-control-sm" aria-disabled="true">' + escapeHtml(String(lockLabel)) + '</div><input type="hidden" data-cs-field="mode" value="' + escapeHtml(String(lockVal)) + '"></div>';
+          body += '<input type="hidden" data-cs-field="mode" value="' + escapeHtml(String(lockVal)) + '">';
         } else {
           body += '<div class="col-12 col-md-6"><label class="form-label">Chart type</label><select class="form-select form-select-sm" data-cs-field="mode">' + modeOptionsHtml(modes, mode) + '</select></div>';
         }
@@ -26343,7 +26414,10 @@ const API = '';
           body += '<option value="' + p + '"' + (p === size ? ' selected' : '') + '>' + p + '%</option>';
         }
         body += '</select></div>';
-        body += '<div class="col-12"><label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-cs-field="animations"' + (animations ? ' checked' : '') + '><span class="form-check-label ms-2">Animations</span></label></div>';
+        var isMapChart = chartKey === 'live-online-chart' || chartKey === 'countries-map-chart';
+        if (!isMapChart) {
+          body += '<div class="col-12"><label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-cs-field="animations"' + (animations ? ' checked' : '') + '><span class="form-check-label ms-2">Animations</span></label></div>';
+        }
         if (supportsIcons) {
           body += '<div class="col-12"><label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-cs-field="icons"' + (iconsEnabled ? ' checked' : '') + '><span class="form-check-label ms-2">Icons</span></label><div class="form-hint">Show source icons in the chart legend.</div></div>';
         }
