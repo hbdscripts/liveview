@@ -3491,7 +3491,7 @@ body[data-page="dashboard"] #dash-trending-down .dash-trend-delta.text-red {
   color: #dc2626;
 }
 .kexo-overview-running-total.is-profit .kexo-overview-running-total-value {
-  color: #16a34a;
+  /* color: #16a34a; */
 }
 .kexo-overview-running-total.is-profit.is-negative .kexo-overview-running-total-value {
   color: #dc2626;
@@ -3543,9 +3543,10 @@ body[data-page="dashboard"] #dash-trending-down .dash-trend-delta.text-red {
   --kexo-overview-series-dot: var(--kexo-overview-series-profit, #2fb344);
 }
 .kexo-overview-running-totals--main .kexo-overview-running-total-value {
-  font-size: 1.05rem;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 500;
   color: #333333;
+  padding-top: 2px;
 }
 .kexo-overview-running-totals--main .kexo-overview-running-total.is-revenue .kexo-overview-running-total-value,
 .kexo-overview-running-totals--main .kexo-overview-running-total.is-cost .kexo-overview-running-total-value {
