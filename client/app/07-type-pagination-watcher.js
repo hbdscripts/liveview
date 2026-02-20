@@ -1148,8 +1148,12 @@
 
     function clearCountriesFlowOverlay(el) {
       if (!el) return;
-      var existing = el.querySelector('.kexo-map-flow-overlay');
-      if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
+      try {
+        el.querySelectorAll('.kexo-map-flow-overlay, .kexo-live-activity-overlay, .kexo-live-activity-legend')
+          .forEach(function(node) {
+            try { if (node && node.parentNode) node.parentNode.removeChild(node); } catch (_) {}
+          });
+      } catch (_) {}
     }
 
     function mapRegionCenter(mapSvg, mapRect, iso2) {
@@ -1249,6 +1253,186 @@
       el.appendChild(overlay);
     }
 
+    function renderLiveActivityOverlay(el, stageCountsByIso2, totalsByIso2, opts) {
+      if (!el) return;
+      clearCountriesFlowOverlay(el);
+      opts = opts || {};
+
+      var mapSvg = el.querySelector('svg');
+      if (!mapSvg) return;
+      var mapRect = mapSvg.getBoundingClientRect();
+      if (!mapRect || !(mapRect.width > 20) || !(mapRect.height > 20)) return;
+
+      var totals = totalsByIso2 && typeof totalsByIso2 === 'object' ? totalsByIso2 : {};
+      var stages = stageCountsByIso2 && typeof stageCountsByIso2 === 'object' ? stageCountsByIso2 : {};
+
+      var keys = Object.keys(totals).map(function(k) { return String(k || '').trim().toUpperCase().slice(0, 2); }).filter(Boolean);
+      if (!keys.length) return;
+
+      var animated = !!opts.animated;
+      var topN = Math.max(3, Math.min(12, Number(opts.topN || 9) || 9));
+      var primaryRgb = String(opts.primaryRgb || '22,163,74').trim() || '22,163,74';
+
+      function safeStageCounts(iso) {
+        var x = stages[iso];
+        return {
+          browse: x && Number.isFinite(Number(x.browse)) ? Number(x.browse) : 0,
+          cart: x && Number.isFinite(Number(x.cart)) ? Number(x.cart) : 0,
+          checkout: x && Number.isFinite(Number(x.checkout)) ? Number(x.checkout) : 0,
+          purchase: x && Number.isFinite(Number(x.purchase)) ? Number(x.purchase) : 0,
+        };
+      }
+
+      function dominantStageForIso(iso) {
+        var x = safeStageCounts(iso);
+        if (x.purchase > 0) return 'purchase';
+        if (x.checkout > 0) return 'checkout';
+        if (x.cart > 0) return 'cart';
+        return 'browse';
+      }
+
+      function stageColor(stage) {
+        switch (String(stage || '').toLowerCase()) {
+          case 'purchase':
+          case 'purchased':
+            return '#16a34a';
+          case 'checkout':
+            return '#db2777';
+          case 'cart':
+            return '#f97316';
+          case 'browse':
+          default:
+            return '#2563eb';
+        }
+      }
+
+      var ranked = keys
+        .map(function(iso) {
+          var n = Number(totals[iso] || 0);
+          return { iso: iso, total: Number.isFinite(n) ? n : 0, stage: dominantStageForIso(iso) };
+        })
+        .filter(function(r) { return r.iso && r.iso !== 'XX' && r.total > 0; })
+        .sort(function(a, b) { return b.total - a.total; });
+
+      if (!ranked.length) return;
+
+      var originIso = String(opts.originIso2 || '').trim().toUpperCase().slice(0, 2);
+      if (originIso === 'UK') originIso = 'GB';
+      if (!originIso) originIso = ranked[0].iso || 'GB';
+
+      var origin = mapRegionCenter(mapSvg, mapRect, originIso) || { x: mapRect.width * 0.52, y: mapRect.height * 0.42 };
+
+      var NS = 'http://www.w3.org/2000/svg';
+      var overlay = document.createElementNS(NS, 'svg');
+      overlay.setAttribute('class', 'kexo-live-activity-overlay');
+      overlay.setAttribute('viewBox', '0 0 ' + mapRect.width + ' ' + mapRect.height);
+      overlay.setAttribute('width', String(mapRect.width));
+      overlay.setAttribute('height', String(mapRect.height));
+
+      // Subtle dot-grid background like the preview.
+      try {
+        var defs = document.createElementNS(NS, 'defs');
+        var pid = 'kexoDotGrid_' + String(Date.now()) + '_' + String(Math.floor(Math.random() * 100000));
+        var pattern = document.createElementNS(NS, 'pattern');
+        pattern.setAttribute('id', pid);
+        pattern.setAttribute('patternUnits', 'userSpaceOnUse');
+        pattern.setAttribute('width', '12');
+        pattern.setAttribute('height', '12');
+        var dot = document.createElementNS(NS, 'circle');
+        dot.setAttribute('cx', '1.5');
+        dot.setAttribute('cy', '1.5');
+        dot.setAttribute('r', '1');
+        dot.setAttribute('fill', 'rgba(' + primaryRgb + ',0.10)');
+        pattern.appendChild(dot);
+        defs.appendChild(pattern);
+        overlay.appendChild(defs);
+        var bg = document.createElementNS(NS, 'rect');
+        bg.setAttribute('x', '0');
+        bg.setAttribute('y', '0');
+        bg.setAttribute('width', String(mapRect.width));
+        bg.setAttribute('height', String(mapRect.height));
+        bg.setAttribute('fill', 'url(#' + pid + ')');
+        bg.setAttribute('opacity', '0.9');
+        overlay.appendChild(bg);
+      } catch (_) {}
+
+      var top = ranked.slice(0, topN);
+      var maxTotal = top.reduce(function(m, r) { return Math.max(m, r.total || 0); }, 1);
+
+      top.forEach(function(item, idx) {
+        var target = mapRegionCenter(mapSvg, mapRect, item.iso);
+        if (!target) return;
+        var color = stageColor(item.stage);
+
+        if (animated) {
+          var midX = (origin.x + target.x) / 2;
+          var bend = Math.max(18, Math.min(78, (Math.abs(target.x - origin.x) * 0.16) + (idx * 3)));
+          var midY = (origin.y + target.y) / 2 - bend;
+          var path = document.createElementNS(NS, 'path');
+          path.setAttribute('class', 'kexo-map-flow-line');
+          path.setAttribute('d', 'M ' + origin.x + ' ' + origin.y + ' Q ' + midX + ' ' + midY + ' ' + target.x + ' ' + target.y);
+          path.setAttribute('stroke', 'rgba(' + primaryRgb + ',0.58)');
+          path.style.animationDelay = String(idx * 0.18) + 's';
+          overlay.appendChild(path);
+        }
+
+        var radius = 3.2 + (Math.min(1, (item.total || 0) / maxTotal) * 3.8);
+        var marker = document.createElementNS(NS, 'circle');
+        marker.setAttribute('class', 'kexo-live-activity-marker');
+        marker.setAttribute('cx', String(target.x));
+        marker.setAttribute('cy', String(target.y));
+        marker.setAttribute('r', String(radius.toFixed(2)));
+        marker.setAttribute('fill', color);
+        marker.setAttribute('stroke', 'rgba(255,255,255,0.9)');
+        marker.setAttribute('stroke-width', '1');
+        overlay.appendChild(marker);
+
+        var label = document.createElementNS(NS, 'text');
+        label.setAttribute('class', 'kexo-live-activity-label');
+        label.setAttribute('x', String(target.x + 7));
+        label.setAttribute('y', String(target.y - 6));
+        label.textContent = (typeof countryLabel === 'function' ? countryLabel(item.iso) : item.iso) || item.iso;
+        overlay.appendChild(label);
+      });
+
+      // Origin marker
+      try {
+        var originDot = document.createElementNS(NS, 'circle');
+        originDot.setAttribute('class', 'kexo-map-flow-origin');
+        originDot.setAttribute('cx', String(origin.x));
+        originDot.setAttribute('cy', String(origin.y));
+        originDot.setAttribute('r', '4.2');
+        originDot.setAttribute('fill', 'rgba(' + primaryRgb + ',0.86)');
+        overlay.appendChild(originDot);
+      } catch (_) {}
+
+      try { if (el && el.style) el.style.position = 'relative'; } catch (_) {}
+      try { el.appendChild(overlay); } catch (_) {}
+
+      // Legend (HTML overlay)
+      try {
+        var stageTotals = { browse: 0, cart: 0, checkout: 0, purchase: 0 };
+        keys.forEach(function(iso) {
+          var x = safeStageCounts(iso);
+          stageTotals.browse += x.browse;
+          stageTotals.cart += x.cart;
+          stageTotals.checkout += x.checkout;
+          stageTotals.purchase += x.purchase;
+        });
+        var totalAll = stageTotals.browse + stageTotals.cart + stageTotals.checkout + stageTotals.purchase;
+        var legend = document.createElement('div');
+        legend.setAttribute('class', 'kexo-live-activity-legend');
+        legend.innerHTML =
+          '<div class="kexo-live-activity-legend-title">Live activity (last 5m)</div>' +
+          '<div class="kexo-live-activity-legend-row"><span class="kexo-live-activity-swatch swatch-browse"></span><span>Browsing</span><span class="kexo-live-activity-count">' + String(stageTotals.browse || 0) + '</span></div>' +
+          '<div class="kexo-live-activity-legend-row"><span class="kexo-live-activity-swatch swatch-cart"></span><span>In cart</span><span class="kexo-live-activity-count">' + String(stageTotals.cart || 0) + '</span></div>' +
+          '<div class="kexo-live-activity-legend-row"><span class="kexo-live-activity-swatch swatch-checkout"></span><span>Checkout</span><span class="kexo-live-activity-count">' + String(stageTotals.checkout || 0) + '</span></div>' +
+          '<div class="kexo-live-activity-legend-row"><span class="kexo-live-activity-swatch swatch-purchase"></span><span>Purchased</span><span class="kexo-live-activity-count">' + String(stageTotals.purchase || 0) + '</span></div>' +
+          '<div class="kexo-live-activity-legend-foot">Total: ' + String(totalAll || 0) + '</div>';
+        try { el.appendChild(legend); } catch (_) {}
+      } catch (_) {}
+    }
+
     function setCountriesMapState(el, text, opts) {
       if (!el) return;
       var message = String(text == null ? '' : text).trim() || 'Unavailable';
@@ -1313,43 +1497,56 @@
         document.querySelectorAll('.jvm-tooltip').forEach(function(t) { t.style.display = 'none'; });
       }
       container.addEventListener('mouseleave', hideTooltips, { passive: true });
-      if (!mapTooltipScrollBound) {
-        mapTooltipScrollBound = true;
-        window.addEventListener('scroll', hideTooltips, { passive: true });
-      }
+      // Don't hide on scroll: in embedded contexts, scroll events can fire unexpectedly and
+      // make tooltips appear "broken" (hidden while still hovering).
     }
 
     function setVectorMapTooltipContent(tooltip, html, text) {
       if (!tooltip) return;
       var htmlContent = html == null ? '' : String(html);
       var textContent = text == null ? '' : String(text);
+      function unhide(t) {
+        try {
+          var node = (t && t.element && t.element.nodeType === 1) ? t.element : (t && t.nodeType === 1 ? t : null);
+          if (node && node.style) {
+            node.style.display = '';
+            node.style.visibility = 'visible';
+            node.style.opacity = '1';
+          }
+        } catch (_) {}
+      }
       try {
         if (typeof tooltip.text === 'function') {
           tooltip.text(htmlContent, true);
+          unhide(tooltip);
           return;
         }
       } catch (_) {}
       try {
         if (typeof tooltip.html === 'function') {
           tooltip.html(htmlContent);
+          unhide(tooltip);
           return;
         }
       } catch (_) {}
       try {
         if (tooltip.element && tooltip.element.nodeType === 1) {
           tooltip.element.innerHTML = htmlContent;
+          unhide(tooltip);
           return;
         }
       } catch (_) {}
       try {
         if (tooltip.nodeType === 1) {
           tooltip.innerHTML = htmlContent;
+          unhide(tooltip);
           return;
         }
       } catch (_) {}
       try {
         if (typeof tooltip.setContent === 'function') {
           tooltip.setContent(htmlContent || textContent);
+          unhide(tooltip);
         }
       } catch (_) {}
     }

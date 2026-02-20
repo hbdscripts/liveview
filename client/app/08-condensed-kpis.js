@@ -1604,6 +1604,16 @@
 
       var list = Array.isArray(sessionList) ? sessionList : (Array.isArray(sessions) ? sessions : []);
       var countsByIso2 = {};
+      var stageCountsByIso2 = {};
+      function liveStageFromSession(s) {
+        try {
+          if (s && (s.has_purchased === 1 || s.has_purchased === true || (s.purchased_at != null && Number(s.purchased_at) > 0))) return 'purchase';
+          if (s && (s.is_checking_out === 1 || s.is_checking_out === true || (s.checkout_started_at != null && Number(s.checkout_started_at) > 0))) return 'checkout';
+          var cartQty = s && s.cart_qty != null ? Number(s.cart_qty) : 0;
+          if (Number.isFinite(cartQty) && cartQty > 0) return 'cart';
+        } catch (_) {}
+        return 'browse';
+      }
       for (var i = 0; i < list.length; i++) {
         var s = list[i];
         var isoSrc = (s && (s.country_code != null || s.cf_country != null)) ? (s.country_code || s.cf_country) : null;
@@ -1611,6 +1621,13 @@
         if (!iso || iso === 'XX') continue;
         if (iso === 'UK') iso = 'GB';
         countsByIso2[iso] = (countsByIso2[iso] || 0) + 1;
+        var st = liveStageFromSession(s);
+        var bucket = stageCountsByIso2[iso];
+        if (!bucket) bucket = stageCountsByIso2[iso] = { browse: 0, cart: 0, checkout: 0, purchase: 0 };
+        if (st === 'purchase') bucket.purchase++;
+        else if (st === 'checkout') bucket.checkout++;
+        else if (st === 'cart') bucket.cart++;
+        else bucket.browse++;
       }
       var keys = Object.keys(countsByIso2);
       var hasNoLiveActivity = !keys.length;
@@ -1623,12 +1640,15 @@
       var sigParts = [];
       for (var k = 0; k < keys.length; k++) {
         var code = keys[k];
-        sigParts.push(code + ':' + String(countsByIso2[code] || 0));
+        var sc = stageCountsByIso2[code] || {};
+        sigParts.push(
+          code + ':' + String(countsByIso2[code] || 0) +
+          ':' + String(sc.browse || 0) + ',' + String(sc.cart || 0) + ',' + String(sc.checkout || 0) + ',' + String(sc.purchase || 0)
+        );
       }
       sigParts.sort();
       var sig = rawMode + '|' + accent + '|' + sigParts.join('|');
       if (liveOnlineMapChartInstance && el.__kexoLiveOnlineMapSig === sig) {
-        if (!isAnimated) clearCountriesFlowOverlay(el);
         // Burst animations now run a finite number of iterations. If we're in animated mode,
         // occasionally restart the overlay (without rebuilding the map) so it still feels "live".
         if (isAnimated) {
@@ -1644,7 +1664,11 @@
                 var rgb2 = null;
                 try { rgb2 = String(el.__kexoLiveOnlineMapPrimaryRgb || '').trim(); } catch (_) { rgb2 = ''; }
                 if (!rgb2) rgb2 = '22,163,74';
-                renderCountriesFlowOverlay(el, pseudo, rgb2, originIso);
+                if (typeof renderLiveActivityOverlay === 'function') {
+                  renderLiveActivityOverlay(el, stageCountsByIso2, countsByIso2, { animated: true, primaryRgb: rgb2, originIso2: originIso, topN: 9 });
+                } else {
+                  renderCountriesFlowOverlay(el, pseudo, rgb2, originIso);
+                }
               } catch (_) {}
             }, 120);
           }
@@ -1715,18 +1739,18 @@
             try { el.appendChild(noActivity2); } catch (_) {}
           }
           hideMapTooltipOnLeave(el);
-          if (isAnimated) {
-            setTimeout(function () {
-              try {
-                var pseudo2 = keys.map(function (iso2) { return { country_code: iso2, converted: countsByIso2[iso2] || 0 }; });
-                pseudo2.sort(function (a, b) { return Number(b && b.converted) - Number(a && a.converted); });
-                var originIso2 = pseudo2 && pseudo2[0] && pseudo2[0].country_code ? String(pseudo2[0].country_code) : 'GB';
+          setTimeout(function () {
+            try {
+              var pseudo2 = keys.map(function (iso2) { return { country_code: iso2, converted: countsByIso2[iso2] || 0 }; });
+              pseudo2.sort(function (a, b) { return Number(b && b.converted) - Number(a && a.converted); });
+              var originIso2 = pseudo2 && pseudo2[0] && pseudo2[0].country_code ? String(pseudo2[0].country_code) : 'GB';
+              if (typeof renderLiveActivityOverlay === 'function') {
+                renderLiveActivityOverlay(el, stageCountsByIso2, countsByIso2, { animated: isAnimated, primaryRgb: primaryRgb, originIso2: originIso2, topN: 9 });
+              } else {
                 renderCountriesFlowOverlay(el, pseudo2, primaryRgb, originIso2);
-              } catch (_) {}
-            }, 120);
-          } else {
-            clearCountriesFlowOverlay(el);
-          }
+              }
+            } catch (_) {}
+          }, 90);
           try { if (typeof liveOnlineMapChartInstance.updateSize === 'function') liveOnlineMapChartInstance.updateSize(); } catch (_) {}
           return;
         }
@@ -1781,6 +1805,19 @@
               '<div style="min-width:180px">' +
                 '<div style="font-weight:600;margin-bottom:2px">' + escapeHtml(name) + '</div>' +
                 '<div style="color:' + escapeHtml(muted) + ';font-size:.8125rem">Sessions (last 5m): <span style="color:inherit">' + escapeHtml(sessionsText) + '</span></div>' +
+                (function() {
+                  var sc = stageCountsByIso2[iso2] || {};
+                  var b = Number(sc.browse || 0) || 0;
+                  var c = Number(sc.cart || 0) || 0;
+                  var co = Number(sc.checkout || 0) || 0;
+                  var p = Number(sc.purchase || 0) || 0;
+                  return '<div style="margin-top:6px;display:grid;grid-template-columns:10px 1fr auto;gap:4px 8px;align-items:center;font-size:.8125rem">' +
+                    '<span style="display:inline-block;width:10px;height:10px;border-radius:999px;background:#2563eb"></span><span style="color:' + escapeHtml(muted) + '">Browsing</span><span>' + escapeHtml(String(b)) + '</span>' +
+                    '<span style="display:inline-block;width:10px;height:10px;border-radius:999px;background:#f97316"></span><span style="color:' + escapeHtml(muted) + '">In cart</span><span>' + escapeHtml(String(c)) + '</span>' +
+                    '<span style="display:inline-block;width:10px;height:10px;border-radius:999px;background:#db2777"></span><span style="color:' + escapeHtml(muted) + '">Checkout</span><span>' + escapeHtml(String(co)) + '</span>' +
+                    '<span style="display:inline-block;width:10px;height:10px;border-radius:999px;background:#16a34a"></span><span style="color:' + escapeHtml(muted) + '">Purchased</span><span>' + escapeHtml(String(p)) + '</span>' +
+                  '</div>';
+                })() +
               '</div>',
               name + ' | Sessions (last 5m): ' + sessionsText
             );
@@ -1810,16 +1847,18 @@
           try { el.appendChild(noActivity); } catch (_) {}
         }
 
-        if (isAnimated) {
-          setTimeout(function () {
-            try {
-              var pseudo = keys.map(function (iso2) { return { country_code: iso2, converted: countsByIso2[iso2] || 0 }; });
-              pseudo.sort(function (a, b) { return Number(b && b.converted) - Number(a && a.converted); });
-              var originIso = pseudo && pseudo[0] && pseudo[0].country_code ? String(pseudo[0].country_code) : 'GB';
+        setTimeout(function () {
+          try {
+            var pseudo = keys.map(function (iso2) { return { country_code: iso2, converted: countsByIso2[iso2] || 0 }; });
+            pseudo.sort(function (a, b) { return Number(b && b.converted) - Number(a && a.converted); });
+            var originIso = pseudo && pseudo[0] && pseudo[0].country_code ? String(pseudo[0].country_code) : 'GB';
+            if (typeof renderLiveActivityOverlay === 'function') {
+              renderLiveActivityOverlay(el, stageCountsByIso2, countsByIso2, { animated: isAnimated, primaryRgb: primaryRgb, originIso2: originIso, topN: 9 });
+            } else {
               renderCountriesFlowOverlay(el, pseudo, primaryRgb, originIso);
-            } catch (_) {}
-          }, 120);
-        }
+            }
+          } catch (_) {}
+        }, 120);
       } catch (err) {
         captureChartError(err, 'liveOnlineMapRender', { chartKey: 'live-online-chart' });
         console.error('[live-online-map] render error:', err);
