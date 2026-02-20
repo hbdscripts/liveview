@@ -4058,9 +4058,8 @@
         if (!isKexoScoreEnabledByConfig()) return false;
         var headerBtn = document.getElementById('header-kexo-score-wrap');
         var dashCard = document.getElementById('dash-kpi-kexo-score-card');
-        var pageHeaderBtn = document.getElementById('dash-page-header-kexo-score-open');
-        if (!headerBtn && !dashCard && !pageHeaderBtn) return false;
-        if (!isElementVisiblyRendered(headerBtn) && !isElementVisiblyRendered(dashCard) && !isElementVisiblyRendered(pageHeaderBtn)) return false;
+        if (!headerBtn && !dashCard) return false;
+        if (!isElementVisiblyRendered(headerBtn) && !isElementVisiblyRendered(dashCard)) return false;
         return true;
       }
 
@@ -4191,8 +4190,6 @@
       function renderKexoScore(scoreData) {
         var dashNum = document.getElementById('dash-kpi-kexo-score');
         var dashRing = document.getElementById('dash-kpi-kexo-score-ring');
-        var pageHeaderNum = document.getElementById('dash-page-header-kexo-score-num');
-        var pageHeaderRing = document.getElementById('dash-page-header-kexo-score-ring');
         var headerNum = document.getElementById('header-kexo-score');
         var headerRing = document.getElementById('header-kexo-score-ring');
         var score = null;
@@ -4212,17 +4209,6 @@
           dashRing.setAttribute('data-score', pct);
           if (dashRing.tagName === 'svg') {
             applyKexoScoreRingSvg(dashRing, score);
-          }
-        }
-        if (pageHeaderNum) {
-          if (empty) pageHeaderNum.innerHTML = '<span class="kpi-mini-spinner" aria-hidden="true"></span>';
-          else pageHeaderNum.textContent = dashText;
-        }
-        if (pageHeaderRing) {
-          pageHeaderRing.style.setProperty('--kexo-score-pct', pct);
-          pageHeaderRing.setAttribute('data-score', pct);
-          if (pageHeaderRing.tagName === 'svg') {
-            applyKexoScoreRingSvg(pageHeaderRing, score);
           }
         }
         if (headerNum) { headerNum.textContent = headerText; }
@@ -4782,7 +4768,6 @@
 
       (function initKexoScoreModalInDashboard() {
         var headerBtn = document.getElementById('header-kexo-score-wrap');
-        var pageHeaderBtn = document.getElementById('dash-page-header-kexo-score-open');
         var closeBtn = document.getElementById('kexo-score-modal-close-btn');
         var modalEl = document.getElementById('kexo-score-modal');
         function openOnClick(e) {
@@ -4792,12 +4777,6 @@
         if (headerBtn) {
           headerBtn.addEventListener('click', openOnClick);
           headerBtn.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openKexoScoreModal(); }
-          });
-        }
-        if (pageHeaderBtn) {
-          pageHeaderBtn.addEventListener('click', openOnClick);
-          pageHeaderBtn.addEventListener('keydown', function(e) {
             if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openKexoScoreModal(); }
           });
         }
