@@ -424,6 +424,17 @@
     return '';
   }
 
+  function isAllowedIconOverrideKey(name) {
+    var s = String(name || '').trim();
+    if (!s || s.length > 120) return false;
+    if (Object.prototype.hasOwnProperty.call(ICON_GLYPH_DEFAULTS, s)) return true;
+    if (/^payment-method-[a-z0-9_-]+$/i.test(s)) return true;
+    if (/^variant_rule_[a-z0-9_-]+__[a-z0-9_-]+$/i.test(s)) return true;
+    if (/^attribution-source-[a-z0-9_-]+$/i.test(s)) return true;
+    if (/^attribution-variant-[a-z0-9_-]+$/i.test(s)) return true;
+    return false;
+  }
+
   function readIconOverridesMap() {
     var raw = getStored(ICON_OVERRIDES_JSON_KEY);
     if (!raw) return {};
@@ -432,7 +443,7 @@
     if (!parsed || typeof parsed !== 'object') return {};
     var out = {};
     Object.keys(parsed).forEach(function (name) {
-      if (!Object.prototype.hasOwnProperty.call(ICON_GLYPH_DEFAULTS, name)) return;
+      if (!isAllowedIconOverrideKey(name)) return;
       var row = parsed[name];
       if (!row || typeof row !== 'object') return;
       var size = normalizeIconOverrideSize(row.size);
@@ -447,7 +458,7 @@
     var src = map && typeof map === 'object' ? map : {};
     var out = {};
     Object.keys(src).forEach(function (name) {
-      if (!Object.prototype.hasOwnProperty.call(ICON_GLYPH_DEFAULTS, name)) return;
+      if (!isAllowedIconOverrideKey(name)) return;
       var row = src[name];
       if (!row || typeof row !== 'object') return;
       var size = normalizeIconOverrideSize(row.size);
@@ -993,7 +1004,7 @@
                 '<textarea class="form-control form-control-sm payment-icon-input font-monospace" rows="2" spellcheck="false" placeholder="fa-brands fa-cc-visa  OR  https://...svg  OR  <svg ...>"></textarea>' +
                 '<div class="form-hint small mt-1">Starts blank intentionally. Paste Font Awesome, image URL/path, or SVG markup.</div>' +
                 '<div class="d-flex align-items-center gap-2 mt-2">' +
-                  '<button type="button" class="btn btn-outline-secondary btn-sm payment-icon-edit">Edit</button>' +
+                  '<button type="button" class="btn btn-outline-secondary btn-sm payment-icon-edit" data-theme-icon-edit="payment-method-' + escapeHtml(key) + '">Edit</button>' +
                   '<button type="button" class="btn btn-outline-primary btn-sm payment-icon-save">Save</button>' +
                   '<span class="small text-secondary ms-auto" data-payment-icon-msg="1"></span>' +
                 '</div>' +
@@ -1030,17 +1041,6 @@
         });
         body.addEventListener('click', function (e) {
           var target = e && e.target ? e.target : null;
-          var editBtn = target && target.closest ? target.closest('.payment-icon-edit') : null;
-          if (editBtn) {
-            e.preventDefault();
-            var editCard = editBtn.closest('[data-payment-method-icon-card]');
-            var editInput = editCard ? editCard.querySelector('.payment-icon-input') : null;
-            if (editInput) {
-              try { editInput.focus(); } catch (_) {}
-              try { editInput.select(); } catch (_) {}
-            }
-            return;
-          }
           var btn = target && target.closest ? target.closest('.payment-icon-save') : null;
           if (!btn) return;
           e.preventDefault();
@@ -1141,7 +1141,7 @@
                 '<textarea class="form-control form-control-sm variant-rule-icon-input font-monospace" rows="2" spellcheck="false" placeholder="fa-light fa-gem  OR  https://...svg  OR  <svg ...>">' + escapeHtml(row.iconSpec || '') + '</textarea>' +
                 '<div class="form-hint small mt-1">Save a unique icon per variant rule row.</div>' +
                 '<div class="d-flex align-items-center gap-2 mt-2">' +
-                  '<button type="button" class="btn btn-outline-secondary btn-sm variant-rule-icon-edit">Edit</button>' +
+                  '<button type="button" class="btn btn-outline-secondary btn-sm variant-rule-icon-edit" data-theme-icon-edit="' + escapeHtml(row.overrideKey) + '">Edit</button>' +
                   '<button type="button" class="btn btn-outline-primary btn-sm variant-rule-icon-save">Save</button>' +
                   '<span class="small text-secondary ms-auto" data-variant-rule-icon-msg="1"></span>' +
                 '</div>' +
@@ -1177,17 +1177,6 @@
         });
         body.addEventListener('click', function (e) {
           var target = e && e.target ? e.target : null;
-          var editBtn = target && target.closest ? target.closest('.variant-rule-icon-edit') : null;
-          if (editBtn) {
-            e.preventDefault();
-            var editCard = editBtn.closest('[data-variant-rule-icon-card]');
-            var editInput = editCard ? editCard.querySelector('.variant-rule-icon-input') : null;
-            if (editInput) {
-              try { editInput.focus(); } catch (_) {}
-              try { editInput.select(); } catch (_) {}
-            }
-            return;
-          }
           var btn = target && target.closest ? target.closest('.variant-rule-icon-save') : null;
           if (!btn) return;
           e.preventDefault();
@@ -1341,7 +1330,7 @@
                 '<textarea class="form-control form-control-sm attribution-icon-input font-monospace" data-kind="source" data-key="' + escapeHtml(key) + '" rows="2" spellcheck="false" placeholder="fa-brands fa-google  OR  /assets/icon.png  OR  <svg ...>">' + escapeHtml(icon) + '</textarea>' +
                 '<div class="form-hint small mt-1">Font Awesome class, image URL/path, or inline SVG. Blank clears the icon.</div>' +
                 '<div class="d-flex align-items-center gap-2 mt-2">' +
-                  '<button type="button" class="btn btn-outline-secondary btn-sm attribution-icon-edit" data-kind="source" data-key="' + escapeHtml(key) + '">Edit</button>' +
+                  '<button type="button" class="btn btn-outline-secondary btn-sm attribution-icon-edit" data-kind="source" data-key="' + escapeHtml(key) + '" data-theme-icon-edit="attribution-source-' + escapeHtml(key) + '">Edit</button>' +
                   '<button type="button" class="btn btn-outline-primary btn-sm attribution-icon-save" data-kind="source" data-key="' + escapeHtml(key) + '">Save</button>' +
                   '<span class="small text-secondary ms-auto" data-attribution-icon-msg="1"></span>' +
                 '</div>' +
@@ -1375,7 +1364,7 @@
                 '<textarea class="form-control form-control-sm attribution-icon-input font-monospace" data-kind="variant" data-key="' + escapeHtml(key) + '" rows="2" spellcheck="false" placeholder="fa-solid fa-bolt  OR  /assets/icon.png  OR  <svg ...>">' + escapeHtml(icon) + '</textarea>' +
                 '<div class="form-hint small mt-1">Font Awesome class, image URL/path, or inline SVG. Blank clears the icon.</div>' +
                 '<div class="d-flex align-items-center gap-2 mt-2">' +
-                  '<button type="button" class="btn btn-outline-secondary btn-sm attribution-icon-edit" data-kind="variant" data-key="' + escapeHtml(key) + '">Edit</button>' +
+                  '<button type="button" class="btn btn-outline-secondary btn-sm attribution-icon-edit" data-kind="variant" data-key="' + escapeHtml(key) + '" data-theme-icon-edit="attribution-variant-' + escapeHtml(key) + '">Edit</button>' +
                   '<button type="button" class="btn btn-outline-primary btn-sm attribution-icon-save" data-kind="variant" data-key="' + escapeHtml(key) + '">Save</button>' +
                   '<span class="small text-secondary ms-auto" data-attribution-icon-msg="1"></span>' +
                 '</div>' +
@@ -1416,17 +1405,6 @@
 
         body.addEventListener('click', function (e) {
           var target = e && e.target ? e.target : null;
-          var editBtn = target && target.closest ? target.closest('.attribution-icon-edit') : null;
-          if (editBtn) {
-            e.preventDefault();
-            var editCardEl = editBtn.closest('[data-attribution-icon]');
-            var editInput = editCardEl ? editCardEl.querySelector('.attribution-icon-input') : null;
-            if (editInput) {
-              try { editInput.focus(); } catch (_) {}
-              try { editInput.select(); } catch (_) {}
-            }
-            return;
-          }
           var btn = target && target.closest ? target.closest('.attribution-icon-save') : null;
           if (!btn) return;
           e.preventDefault();
@@ -1509,7 +1487,8 @@
               '</div>' +
               '<input type="hidden" id="theme-icon-edit-key" value="">' +
             '</div>' +
-            '<div class="modal-footer">' +
+            '<div class="modal-footer d-flex align-items-center flex-wrap gap-2">' +
+              '<span class="small text-secondary me-auto" id="theme-icon-edit-msg" aria-live="polite"></span>' +
               '<button type="button" class="btn btn-outline-secondary" id="theme-icon-edit-clear">Clear</button>' +
               '<button type="button" class="btn btn-primary" id="theme-icon-edit-save">Save</button>' +
             '</div>' +
@@ -1848,7 +1827,7 @@
     var name = glyphNameFromThemeKey(key);
     var meta = glyphMetaFor(name);
     var inputId = 'theme-input-' + key;
-    return '<div class="col-12 col-md-6 col-lg-4">' +
+    return '<div class="col-12 col-md-6 col-lg-4" data-theme-icon-glyph-card="' + key + '">' +
       '<div class="card card-sm h-100">' +
         '<div class="card-body">' +
           '<div class="d-flex align-items-center mb-2">' +
@@ -1856,9 +1835,11 @@
             '<strong class="me-auto">' + meta.title + '</strong>' +
           '</div>' +
           '<div class="text-secondary small mb-2">' + meta.help + '</div>' +
-          '<div class="d-flex align-items-start gap-2">' +
-            '<textarea class="form-control font-monospace" id="' + inputId + '" name="' + key + '" data-theme-icon-glyph-input="' + key + '" rows="2" placeholder="' + (DEFAULTS[key] || 'fa-circle') + '"></textarea>' +
-            '<button type="button" class="btn btn-link btn-sm px-0 text-nowrap" data-theme-icon-edit="' + key + '">Edit</button>' +
+          '<textarea class="form-control font-monospace" id="' + inputId + '" name="' + key + '" data-theme-icon-glyph-input="' + key + '" rows="2" placeholder="' + (DEFAULTS[key] || 'fa-circle') + '"></textarea>' +
+          '<div class="d-flex align-items-center gap-2 mt-2">' +
+            '<button type="button" class="btn btn-outline-secondary btn-sm" data-theme-icon-edit="' + key + '">Edit</button>' +
+            '<button type="button" class="btn btn-outline-primary btn-sm" data-theme-icon-save-glyph="' + key + '">Save</button>' +
+            '<span class="small text-secondary ms-auto" data-theme-icon-glyph-msg="' + key + '"></span>' +
           '</div>' +
         '</div>' +
       '</div>' +
@@ -2554,6 +2535,7 @@
         var themeKey = keyInput.value || '';
         var iconName = glyphNameFromThemeKey(themeKey);
         if (!iconName) return;
+        if (!isAllowedIconOverrideKey(iconName)) return;
         var map = readIconOverridesMap();
         var size = clearValues ? '' : normalizeIconOverrideSize(sizeInput.value);
         var color = clearValues ? '' : normalizeIconOverrideColor(colorInput.value);
@@ -2564,7 +2546,18 @@
         queueGlobalSaveKey(ICON_OVERRIDES_JSON_KEY);
         refreshIconPreviews(formEl);
         triggerIconThemeRefresh();
-        closeModal();
+        var msgEl = modalEl.querySelector('#theme-icon-edit-msg');
+        var isLocalOnly = getPreferenceMode() !== 'global';
+        if (msgEl) {
+          msgEl.textContent = isLocalOnly
+            ? 'Saved locally. Switch to Global theme to apply everywhere.'
+            : 'Saved';
+          msgEl.className = isLocalOnly ? 'small text-warning me-auto' : 'small text-success me-auto';
+        }
+        setTimeout(function () {
+          if (msgEl) { msgEl.textContent = ''; msgEl.className = 'small text-secondary me-auto'; }
+          closeModal();
+        }, isLocalOnly ? 2200 : 600);
       }
 
       root.addEventListener('click', function (e) {
@@ -2572,6 +2565,41 @@
         if (!btn) return;
         e.preventDefault();
         openModal(btn.getAttribute('data-theme-icon-edit') || '');
+      });
+
+      root.addEventListener('click', function (e) {
+        var btn = e && e.target && e.target.closest ? e.target.closest('[data-theme-icon-save-glyph]') : null;
+        if (!btn) return;
+        e.preventDefault();
+        var key = btn.getAttribute('data-theme-icon-save-glyph') || '';
+        if (!key || ICON_GLYPH_KEYS.indexOf(key) < 0) return;
+        var input = formEl.querySelector('[name="' + key + '"]');
+        var msgEl = formEl.querySelector('[data-theme-icon-glyph-msg="' + key + '"]');
+        if (!input) return;
+        var rawVal = String(input.value != null ? input.value : '').trim();
+        var val = normalizeIconGlyph(rawVal, DEFAULTS[key]);
+        setStored(key, val);
+        applyTheme(key, val);
+        refreshIconPreviews(formEl);
+        queueGlobalSaveKey(key);
+        triggerIconThemeRefresh();
+        if (msgEl) {
+          var isLocalOnly = getPreferenceMode() !== 'global';
+          msgEl.textContent = isLocalOnly ? 'Saved locally. Switch to Global to apply everywhere.' : 'Saved';
+          msgEl.className = isLocalOnly ? 'small text-warning ms-auto' : 'small text-success ms-auto';
+          setTimeout(function () { msgEl.textContent = ''; msgEl.className = 'small text-secondary ms-auto'; }, isLocalOnly ? 3500 : 2000);
+        }
+        var originalText = btn.textContent || 'Save';
+        btn.disabled = true;
+        btn.textContent = 'Saved!';
+        btn.classList.remove('btn-outline-primary');
+        btn.classList.add('btn-success');
+        setTimeout(function () {
+          btn.textContent = originalText;
+          btn.classList.remove('btn-success');
+          btn.classList.add('btn-outline-primary');
+          btn.disabled = false;
+        }, 1200);
       });
 
       saveBtn.addEventListener('click', function () {

@@ -403,6 +403,17 @@
     return out;
   }
 
+  function isAllowedIconOverrideKey(name) {
+    var s = String(name || '').trim();
+    if (!s || s.length > 120) return false;
+    if (Object.prototype.hasOwnProperty.call(ICON_GLYPH_DEFAULTS, s)) return true;
+    if (/^payment-method-[a-z0-9_-]+$/i.test(s)) return true;
+    if (/^variant_rule_[a-z0-9_-]+__[a-z0-9_-]+$/i.test(s)) return true;
+    if (/^attribution-source-[a-z0-9_-]+$/i.test(s)) return true;
+    if (/^attribution-variant-[a-z0-9_-]+$/i.test(s)) return true;
+    return false;
+  }
+
   function readIconOverridesTheme() {
     var raw = null;
     try { raw = localStorage.getItem('tabler-' + ICON_OVERRIDES_JSON_KEY); } catch (_) { raw = null; }
@@ -412,7 +423,7 @@
     if (!parsed || typeof parsed !== 'object') return {};
     var out = {};
     Object.keys(parsed).forEach(function (key) {
-      if (!Object.prototype.hasOwnProperty.call(ICON_GLYPH_DEFAULTS, key)) return;
+      if (!isAllowedIconOverrideKey(key)) return;
       var row = parsed[key];
       if (!row || typeof row !== 'object') return;
       var size = normalizeIconOverrideSize(row.size);
