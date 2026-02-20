@@ -139,7 +139,7 @@
     selected: null, // { token_type, token_value }
     mappedTokenKeys: {}, // "token_type|token_value" -> true
     sourceMetaByKey: {}, // source_key -> { label, icon_spec }
-    variantMetaByKey: {}, // variant_key -> { label, icon_spec }
+    variantMetaByKey: {}, // variant_key -> { label, icon_spec, channel_key, source_key }
   };
 
   function setHint(id, text, ok) {
@@ -156,6 +156,75 @@
       var label = row && row.label != null ? String(row.label) : '';
       return { key: key, label: label };
     }).filter(function (it) { return it && it.key; });
+  }
+
+  function channelsFromConfig(cfg) {
+    var channels = cfg && cfg.channels && Array.isArray(cfg.channels) ? cfg.channels : [];
+    var variants = cfg && cfg.variants && Array.isArray(cfg.variants) ? cfg.variants : [];
+    var order = [];
+    var labels = {};
+
+    function add(key, label) {
+      var k = normalizeKeyLike(key, 32);
+      if (!k) return;
+      if (!labels[k]) labels[k] = label != null ? String(label) : '';
+      if (order.indexOf(k) === -1) order.push(k);
+    }
+
+    channels.forEach(function (row) {
+      add(row && (row.channel_key != null ? row.channel_key : row.key), row && row.label);
+    });
+    variants.forEach(function (row) {
+      add(row && (row.channel_key != null ? row.channel_key : row.channelKey), '');
+    });
+
+    return order.map(function (k) { return { key: k, label: labels[k] || '' }; });
+  }
+
+  function sourcesFromConfig(cfg) {
+    var sources = cfg && cfg.sources && Array.isArray(cfg.sources) ? cfg.sources : [];
+    var variants = cfg && cfg.variants && Array.isArray(cfg.variants) ? cfg.variants : [];
+    var order = [];
+    var labels = {};
+
+    function add(key, label) {
+      var k = normalizeKeyLike(key, 32);
+      if (!k) return;
+      if (!labels[k]) labels[k] = label != null ? String(label) : '';
+      if (order.indexOf(k) === -1) order.push(k);
+    }
+
+    sources.forEach(function (row) {
+      add(row && (row.source_key != null ? row.source_key : row.key), row && row.label);
+    });
+    variants.forEach(function (row) {
+      add(row && (row.source_key != null ? row.source_key : row.sourceKey), '');
+    });
+
+    return order.map(function (k) { return { key: k, label: labels[k] || '' }; });
+  }
+
+  function tagsFromConfig(cfg) {
+    var tags = cfg && cfg.tags && Array.isArray(cfg.tags) ? cfg.tags : [];
+    var rules = cfg && cfg.rules && Array.isArray(cfg.rules) ? cfg.rules : [];
+    var order = [];
+    var labels = {};
+
+    function add(key, label) {
+      var k = normalizeKeyLike(key, 120);
+      if (!k) return;
+      if (!labels[k]) labels[k] = label != null ? String(label) : '';
+      if (order.indexOf(k) === -1) order.push(k);
+    }
+
+    tags.forEach(function (row) {
+      add(row && (row.tag_key != null ? row.tag_key : row.key), row && row.label);
+    });
+    rules.forEach(function (row) {
+      add(row && (row.tag_key != null ? row.tag_key : row.tagKey), '');
+    });
+
+    return order.map(function (k) { return { key: k, label: labels[k] || '' }; });
   }
 
   function sanitizeSvgMarkup(markup) {
@@ -204,6 +273,8 @@
       vMap[key] = {
         label: (r && r.label != null) ? String(r.label) : key,
         icon_spec: (r && r.icon_spec != null) ? String(r.icon_spec) : '',
+        channel_key: normalizeKeyLike(r && (r.channel_key != null ? r.channel_key : r.channelKey), 32),
+        source_key: normalizeKeyLike(r && (r.source_key != null ? r.source_key : r.sourceKey), 32),
       };
     });
     _state.sourceMetaByKey = sMap;
@@ -310,7 +381,8 @@
 
             '<div class="col-12 col-md-4">' +
               '<label class="form-label" for="am-tag-key" title="Optional Tag (third tier) for nested reporting. Only shows as a sub-row when explicitly set.">Tag (optional) <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></label>' +
-              '<input class="form-control font-monospace" id="am-tag-key" type="text" placeholder="e.g. affiliate_1" />' +
+              '<input class="form-control font-monospace" id="am-tag-key" type="text" list="am-tags-list" placeholder="e.g. affiliate_1" />' +
+              '<datalist id="am-tags-list"></datalist>' +
             '</div>' +
             '<div class="col-12 col-md-4">' +
               '<label class="form-label" for="am-variant-label" title="Human-readable label for the variant (e.g. Google Ads). Shown in Acquisition reports.">Variant label (optional) <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></label>' +
@@ -318,11 +390,13 @@
             '</div>' +
             '<div class="col-6 col-md-2">' +
               '<label class="form-label" for="am-channel-key" title="High-level channel: paid_search, organic_search, email, affiliate, direct, other.">Channel <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></label>' +
-              '<input class="form-control font-monospace" id="am-channel-key" type="text" placeholder="paid_search" />' +
+              '<input class="form-control font-monospace" id="am-channel-key" type="text" list="am-channels-list" placeholder="paid_search" />' +
+              '<datalist id="am-channels-list"></datalist>' +
             '</div>' +
             '<div class="col-6 col-md-2">' +
               '<label class="form-label" for="am-source-key" title="Traffic source: google, bing, meta, omnisend, direct, other.">Source <span id="am-source-icon-preview" class="ms-1" aria-hidden="true"></span> <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></label>' +
-              '<input class="form-control font-monospace" id="am-source-key" type="text" placeholder="google" />' +
+              '<input class="form-control font-monospace" id="am-source-key" type="text" list="am-sources-list" placeholder="google" />' +
+              '<datalist id="am-sources-list"></datalist>' +
             '</div>' +
 
             '<div class="col-12 col-md-6">' +
@@ -375,13 +449,49 @@
     }).join('');
   }
 
+  function renderChannelsDatalist(list) {
+    var dl = document.getElementById('am-channels-list');
+    if (!dl) return;
+    var items = Array.isArray(list) ? list : [];
+    dl.innerHTML = items.map(function (it) {
+      var key = it && it.key ? String(it.key) : '';
+      if (!key) return '';
+      var label = it && it.label ? String(it.label) : '';
+      return '<option value="' + escapeHtml(key) + '">' + escapeHtml(label || key) + '</option>';
+    }).join('');
+  }
+
+  function renderSourcesDatalist(list) {
+    var dl = document.getElementById('am-sources-list');
+    if (!dl) return;
+    var items = Array.isArray(list) ? list : [];
+    dl.innerHTML = items.map(function (it) {
+      var key = it && it.key ? String(it.key) : '';
+      if (!key) return '';
+      var label = it && it.label ? String(it.label) : '';
+      return '<option value="' + escapeHtml(key) + '">' + escapeHtml(label || key) + '</option>';
+    }).join('');
+  }
+
+  function renderTagsDatalist(list) {
+    var dl = document.getElementById('am-tags-list');
+    if (!dl) return;
+    var items = Array.isArray(list) ? list : [];
+    dl.innerHTML = items.map(function (it) {
+      var key = it && it.key ? String(it.key) : '';
+      if (!key) return '';
+      var label = it && it.label ? String(it.label) : '';
+      return '<option value="' + escapeHtml(key) + '">' + escapeHtml(label || key) + '</option>';
+    }).join('');
+  }
+
   function renderConfigText(cfg) {
     var ta = document.getElementById('am-config-json');
     if (!ta) return;
     var configObj = cfg && cfg.config ? cfg.config : (cfg && cfg.ok && cfg.config ? cfg.config : (cfg && cfg.config ? cfg.config : cfg));
     if (cfg && cfg.ok === true && cfg.config) configObj = cfg.config;
     if (cfg && cfg.ok === true && cfg.config == null && cfg.config !== false && cfg.config !== 0) configObj = cfg.config;
-    if (!configObj || typeof configObj !== 'object') configObj = { channels: [], sources: [], variants: [], rules: [], allowlist: [] };
+    if (!configObj || typeof configObj !== 'object') configObj = { channels: [], sources: [], variants: [], tags: [], rules: [], allowlist: [] };
     try {
       ta.value = JSON.stringify(configObj, null, 2);
     } catch (_) {
@@ -509,10 +619,13 @@
     return fetchConfig().then(function (payload) {
       if (!payload || payload.ok !== true) {
         _state.config = null;
-        rebuildMappedTokenLookup({ channels: [], sources: [], variants: [], rules: [], allowlist: [] });
-        buildIconMetaMaps({ channels: [], sources: [], variants: [], rules: [], allowlist: [] });
+        rebuildMappedTokenLookup({ channels: [], sources: [], variants: [], tags: [], rules: [], allowlist: [] });
+        buildIconMetaMaps({ channels: [], sources: [], variants: [], tags: [], rules: [], allowlist: [] });
         renderVariantsDatalist([]);
-        renderConfigText({ config: { channels: [], sources: [], variants: [], rules: [], allowlist: [] } });
+        renderChannelsDatalist([]);
+        renderSourcesDatalist([]);
+        renderTagsDatalist([]);
+        renderConfigText({ config: { channels: [], sources: [], variants: [], tags: [], rules: [], allowlist: [] } });
         if (_state.observed && _state.observed.length) renderObservedTable(_state.observed);
         updateSourceIconPreview();
         setHint('am-config-msg', 'Could not load config (will fail open).', false);
@@ -522,6 +635,9 @@
       rebuildMappedTokenLookup(payload.config || {});
       buildIconMetaMaps(payload.config || {});
       renderVariantsDatalist(variantsFromConfig(payload.config || {}));
+      renderChannelsDatalist(channelsFromConfig(payload.config || {}));
+      renderSourcesDatalist(sourcesFromConfig(payload.config || {}));
+      renderTagsDatalist(tagsFromConfig(payload.config || {}));
       renderConfigText(payload);
       if (_state.observed && _state.observed.length) renderObservedTable(_state.observed);
       updateSourceIconPreview();
@@ -579,6 +695,52 @@
       srcKeyEl.setAttribute('data-am-autofill', 'utm_source');
     } catch (_) {}
     try { updateSourceIconPreview(); } catch (_) {}
+  }
+
+  function maybeAutofillFromVariantKey() {
+    var variantKeyEl = document.getElementById('am-variant-key');
+    if (!variantKeyEl) return;
+    var vKey = normalizeBaseVariantKey(variantKeyEl.value);
+    if (!vKey) return;
+    var meta = _state.variantMetaByKey && _state.variantMetaByKey[vKey] ? _state.variantMetaByKey[vKey] : null;
+    if (!meta) return;
+
+    var vLabelEl = document.getElementById('am-variant-label');
+    var chEl = document.getElementById('am-channel-key');
+    var srcEl = document.getElementById('am-source-key');
+
+    var variantLabel = meta && meta.label != null ? String(meta.label).trim().slice(0, 120) : '';
+    var channelKey = meta && meta.channel_key ? normalizeKeyLike(meta.channel_key, 32) : '';
+    var sourceKey = meta && meta.source_key ? normalizeKeyLike(meta.source_key, 32) : '';
+
+    function maybeFill(el, value, tag) {
+      if (!el || !value) return;
+      var current = '';
+      try { current = String(el.value || '').trim(); } catch (_) { current = ''; }
+      var prevAuto = '';
+      try { prevAuto = String(el.getAttribute('data-am-autofill') || '').trim().toLowerCase(); } catch (_) { prevAuto = ''; }
+      if (current && prevAuto !== String(tag).toLowerCase()) return;
+      try {
+        el.value = value;
+        el.setAttribute('data-am-autofill', String(tag));
+      } catch (_) {}
+    }
+
+    // Only overwrite if empty OR it was previously auto-filled by a prior variant match.
+    maybeFill(vLabelEl, variantLabel, 'variant');
+    maybeFill(chEl, channelKey, 'variant');
+
+    // For Source, do not override a prior utm_source autofill or user edits.
+    if (srcEl) {
+      var srcCurrent = '';
+      try { srcCurrent = String(srcEl.value || '').trim(); } catch (_) { srcCurrent = ''; }
+      var srcPrevAuto = '';
+      try { srcPrevAuto = String(srcEl.getAttribute('data-am-autofill') || '').trim().toLowerCase(); } catch (_) { srcPrevAuto = ''; }
+      if (!srcCurrent || srcPrevAuto === 'variant') {
+        maybeFill(srcEl, sourceKey, 'variant');
+        try { updateSourceIconPreview(); } catch (_) {}
+      }
+    }
   }
 
   function initAttributionMappingSettings(opts) {
@@ -715,10 +877,18 @@
     root.addEventListener('input', function (e) {
       var t = e && e.target ? e.target : null;
       if (!t) return;
+      if (t.id === 'am-variant-key') {
+        maybeAutofillFromVariantKey();
+        return;
+      }
       if (t.id === 'am-source-key') {
         // If the user edits this field, stop treating it as auto-filled.
         try { t.removeAttribute('data-am-autofill'); } catch (_) {}
         updateSourceIconPreview();
+        return;
+      }
+      if (t.id === 'am-channel-key' || t.id === 'am-variant-label') {
+        try { t.removeAttribute('data-am-autofill'); } catch (_) {}
         return;
       }
       if (t.id === 'am-source-icon-spec') {
