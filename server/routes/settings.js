@@ -964,6 +964,7 @@ function normalizeTablesUiConfigV1(raw) {
 function normalizeChartsList(rawList, defaults, options) {
   const opts = options && typeof options === 'object' ? options : {};
   const migrateDashboardOverview = !!opts.migrateDashboardOverview;
+  const migrateMapZoomButtons = !!opts.migrateMapZoomButtons;
   const byKey = {};
   for (const d of defaults) byKey[d.key] = d;
   const out = [];
@@ -996,7 +997,7 @@ function normalizeChartsList(rawList, defaults, options) {
         style: normalizeChartStyle(item.style, def.style || defaultChartStyleConfig()),
         advancedApexOverride: normalizeApexOverrideObject(item.advancedApexOverride, def.advancedApexOverride || {}),
       };
-      if (migrateDashboardOverview && (key === 'live-online-chart' || key === 'countries-map-chart')) {
+      if (migrateMapZoomButtons && (key === 'live-online-chart' || key === 'countries-map-chart')) {
         // Migration: zoom buttons should be visible by default for maps.
         normalized.style = { ...(normalized.style || {}), mapZoomButtons: true };
       }
@@ -1197,12 +1198,13 @@ function normalizeChartsUiConfigV1(raw) {
   if (!obj || obj.v !== 1) return def;
   const rawDefaultsVersion = Number.parseInt(String(obj.defaultsVersion != null ? obj.defaultsVersion : ''), 10);
   const defaultsVersion = Number.isFinite(rawDefaultsVersion) && rawDefaultsVersion >= 0 ? rawDefaultsVersion : 0;
-  const shouldMigrateDashboardOverview = defaultsVersion < CHARTS_UI_DEFAULTS_VERSION;
+  const shouldMigrateDashboardOverview = defaultsVersion < 2;
+  const shouldMigrateMapZoomButtons = defaultsVersion < 3;
   return {
     v: 1,
     defaultsVersion: Math.max(defaultsVersion, CHARTS_UI_DEFAULTS_VERSION),
     hideOnMobile: normalizeBool(obj.hideOnMobile, def.hideOnMobile),
-    charts: normalizeChartsList(obj.charts, def.charts, { migrateDashboardOverview: shouldMigrateDashboardOverview }),
+    charts: normalizeChartsList(obj.charts, def.charts, { migrateDashboardOverview: shouldMigrateDashboardOverview, migrateMapZoomButtons: shouldMigrateMapZoomButtons }),
     kpiBundles: normalizeChartsKpiBundles(obj.kpiBundles, def.kpiBundles),
   };
 }
