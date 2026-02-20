@@ -48,7 +48,6 @@
           });
         });
       }
-      proxyClick('.footer-refresh-btn', 'refresh-btn');
       proxyClick('.footer-audio-btn', 'audio-mute-btn');
       proxyClick('.footer-settings-refresh', 'refresh-btn');
       proxyClick('.footer-settings-audio', 'audio-mute-btn');

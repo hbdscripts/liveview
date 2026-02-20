@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 3f4b30856d55a478
+// checksum: 693c7cd0a3b2e92e
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -23296,7 +23296,6 @@ const API = '';
           });
         });
       }
-      proxyClick('.footer-refresh-btn', 'refresh-btn');
       proxyClick('.footer-audio-btn', 'audio-mute-btn');
       proxyClick('.footer-settings-refresh', 'refresh-btn');
       proxyClick('.footer-settings-audio', 'audio-mute-btn');
