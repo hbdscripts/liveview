@@ -1805,6 +1805,12 @@ async function postSettings(req, res) {
       }
       const normalizedPatch = await normalizeAssetOverridesPatch(body.assetOverrides);
       const merged = { ...existing, ...normalizedPatch };
+      // Purge removed icon sections (Overview Widgets + Variant value icons)
+      for (const k of Object.keys(merged)) {
+        if (k.startsWith('overview_widget_') || k.startsWith('variant_icon_')) {
+          delete merged[k];
+        }
+      }
       await store.setSetting(ASSET_OVERRIDES_KEY, JSON.stringify(merged));
     } catch (err) {
       return res.status(500).json({ ok: false, error: err && err.message ? String(err.message) : 'Failed to save asset overrides' });
