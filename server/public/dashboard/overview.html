@@ -31,6 +31,27 @@
       <div class="page-pretitle">Dashboard</div>
       <h2 class="page-title">Overview</h2>
     </div>
+    <div class="col-auto kexo-page-header-score-col" id="dash-page-header-kexo-score">
+      <button type="button" class="kexo-page-header-score-btn" id="dash-page-header-kexo-score-open" aria-label="Kexo Score, view breakdown" title="Kexo Score">
+        <div class="kexo-score-ring-wrap kexo-score-ring-wrap--overview kexo-score-ring-wrap--page-header position-relative">
+          <svg class="kexo-score-ring-svg kexo-score-ring-svg--overview" id="dash-page-header-kexo-score-ring" viewBox="0 0 40 40" aria-hidden="true">
+            <circle class="kexo-score-ring-track" cx="20" cy="20" r="16" fill="none"/>
+            <circle class="kexo-score-ring-fill kexo-score-ring-fill--1" cx="20" cy="20" r="16" fill="none"/>
+            <circle class="kexo-score-ring-fill kexo-score-ring-fill--2" cx="20" cy="20" r="16" fill="none"/>
+            <circle class="kexo-score-ring-fill kexo-score-ring-fill--3" cx="20" cy="20" r="16" fill="none"/>
+            <circle class="kexo-score-ring-fill kexo-score-ring-fill--4" cx="20" cy="20" r="16" fill="none"/>
+            <circle class="kexo-score-ring-fill kexo-score-ring-fill--5" cx="20" cy="20" r="16" fill="none"/>
+          </svg>
+          <div class="kexo-score-ring-center position-absolute top-50 start-50 translate-middle">
+            <span class="kexo-score-num kexo-score-num--overview" id="dash-page-header-kexo-score-num">&mdash;</span>
+          </div>
+        </div>
+        <div class="kexo-page-header-score-meta" aria-hidden="true">
+          <div class="kexo-page-header-score-kicker">KEXO SCORE</div>
+          <div class="kexo-page-header-score-link">View Breakdown</div>
+        </div>
+      </button>
+    </div>
   </div>
 </div>
 <div id="tab-panel-dashboard" class="main-tab-panel active" role="tabpanel" aria-labelledby="nav-tab-dashboard">
