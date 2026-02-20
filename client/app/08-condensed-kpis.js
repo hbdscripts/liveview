@@ -1825,8 +1825,7 @@
               '</div>',
               name + ' | Sessions (last 5m): ' + sessionsText
             );
-          };
-        },
+          },
           afterMapCreated: function(instance, containerEl) {
             try { containerEl.__kexoLiveOnlineMapMode = rawMode; } catch (_) {}
             try { containerEl.__kexoLiveOnlineMapAccent = accent; } catch (_) {}

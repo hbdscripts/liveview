@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 56f84aeb72440367
+// checksum: 9274e989376d6d97
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -12690,8 +12690,7 @@ const API = '';
               '</div>',
               name + ' | Sessions (last 5m): ' + sessionsText
             );
-          };
-        },
+          },
           afterMapCreated: function(instance, containerEl) {
             try { containerEl.__kexoLiveOnlineMapMode = rawMode; } catch (_) {}
             try { containerEl.__kexoLiveOnlineMapAccent = accent; } catch (_) {}
