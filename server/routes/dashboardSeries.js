@@ -714,6 +714,8 @@ async function getDashboardSeries(req, res) {
   const days = Number.isFinite(daysRaw) && daysRaw > 0 && daysRaw <= 90 ? daysRaw : 7;
   const force = !!(req.query.force === '1' || req.query.force === 'true' || req.query._);
   const trafficMode = 'human_only';
+  const trendingPresetRaw = (typeof req.query.trendingPreset === 'string' ? req.query.trendingPreset : '').trim().toLowerCase();
+  const trendingPreset = ['today', 'yesterday', '3d', '7d', '14d'].indexOf(trendingPresetRaw) >= 0 ? trendingPresetRaw : null;
   const trendingDaysRaw = parseInt(req.query.trendingDays, 10);
   const trendingDays = [3, 7, 14].indexOf(trendingDaysRaw) >= 0 ? trendingDaysRaw : null;
 
@@ -759,13 +761,13 @@ async function getDashboardSeries(req, res) {
         rangeStartTs: rangeKey ? bounds.start : todayBounds.start,
         rangeEndTs: rangeEnd,
         params: rangeKey
-          ? { trafficMode, rangeKey, bucket: bucketHint, rangeEndTs: rangeEndForCache, trendingDays: trendingDays != null ? trendingDays : undefined }
+          ? { trafficMode, rangeKey, bucket: bucketHint, rangeEndTs: rangeEndForCache, trendingPreset: trendingPreset || undefined, trendingDays: trendingDays != null ? trendingDays : undefined }
           : { trafficMode, days, bucket: 'day' },
         ttlMs: 5 * 60 * 1000,
         force,
       },
       () => rangeKey
-        ? computeDashboardSeriesForBounds(bounds, now, timeZone, trafficMode, bucketHint, rangeKey, trendingDays)
+        ? computeDashboardSeriesForBounds(bounds, now, timeZone, trafficMode, bucketHint, rangeKey, trendingPreset || trendingDays)
         : computeDashboardSeries(days, now, timeZone, trafficMode)
     );
     if (_dbgOn) {
@@ -1529,7 +1531,7 @@ function hourMinuteLabelFromParts(parts, hour, minute) {
   return `${ymd} ${hh}:${mm}`;
 }
 
-async function computeDashboardSeriesForBounds(bounds, nowMs, timeZone, trafficMode, bucketHint, rangeKey, trendingDaysOverride) {
+async function computeDashboardSeriesForBounds(bounds, nowMs, timeZone, trafficMode, bucketHint, rangeKey, trendingPresetOrDays) {
   const db = getDb();
   const shop = await resolveDashboardShop(db);
   const filter = sessionFilterForTraffic(trafficMode);
@@ -1849,19 +1851,35 @@ async function computeDashboardSeriesForBounds(bounds, nowMs, timeZone, trafficM
   try { sessionsByCountryAll = await fetchSessionCountsByCountryCodeAll(db, overallStart, overallEnd, filter); } catch (_) {}
   topCountries = fillTopCountriesWithSessionsFallback(topCountries, sessionsByCountryAll, { limit: DASHBOARD_TOP_TABLE_MAX_ROWS });
 
-  // Trending up/down vs previous equivalent period (optionally use N-day window: 3, 7, or 14)
+  // Trending up/down vs previous equivalent period (preset: today, yesterday, 3d, 7d, 14d or legacy 3,7,14)
   let trendingUp = [];
   let trendingDown = [];
   if (shop) {
     let nowBounds = { start: overallStart, end: overallEnd };
     let prevBounds = getCompareWindow(rangeKey, { start: overallStart, end: overallEnd }, nowMs, timeZone);
-    if (trendingDaysOverride != null && [3, 7, 14].indexOf(trendingDaysOverride) >= 0) {
+    const preset = typeof trendingPresetOrDays === 'string' ? trendingPresetOrDays.trim().toLowerCase() : '';
+    const numericDays = typeof trendingPresetOrDays === 'number' && [3, 7, 14].indexOf(trendingPresetOrDays) >= 0
+      ? trendingPresetOrDays
+      : (preset === '3d' ? 3 : preset === '7d' ? 7 : preset === '14d' ? 14 : null);
+    if (preset === 'today') {
+      const todayBounds = store.getRangeBounds('today', nowMs, timeZone);
+      if (todayBounds && Number.isFinite(todayBounds.start) && Number.isFinite(todayBounds.end)) {
+        nowBounds = { start: todayBounds.start, end: Math.min(todayBounds.end, nowMs) };
+        prevBounds = getCompareWindow('today', nowBounds, nowMs, timeZone);
+      }
+    } else if (preset === 'yesterday') {
+      const yesterdayBounds = store.getRangeBounds('yesterday', nowMs, timeZone);
+      if (yesterdayBounds && Number.isFinite(yesterdayBounds.start) && Number.isFinite(yesterdayBounds.end)) {
+        nowBounds = { start: yesterdayBounds.start, end: yesterdayBounds.end };
+        prevBounds = getCompareWindow('yesterday', nowBounds, nowMs, timeZone);
+      }
+    } else if (numericDays != null) {
       const dayMs = 24 * 60 * 60 * 1000;
       const trendEnd = overallEnd;
-      const trendStart = trendEnd - trendingDaysOverride * dayMs;
+      const trendStart = trendEnd - numericDays * dayMs;
       const platformStart = getPlatformStartMs(nowMs, timeZone);
       const prevEnd = trendStart;
-      const prevStart = Math.max(platformStart || 0, prevEnd - trendingDaysOverride * dayMs);
+      const prevStart = Math.max(platformStart || 0, prevEnd - numericDays * dayMs);
       if (prevEnd > prevStart && trendEnd > trendStart) {
         nowBounds = { start: trendStart, end: trendEnd };
         prevBounds = { start: prevStart, end: prevEnd };

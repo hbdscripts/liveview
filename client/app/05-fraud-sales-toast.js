@@ -793,6 +793,20 @@
       return '';
     }
 
+    var SALE_SOUND_CLAIM_PREFIX = 'kexo:saleSound:claim:v1:';
+    var saleSoundTabId = (function () {
+      try {
+        var k = 'kexo:saleSound:tabId';
+        var v = sessionStorage.getItem(k);
+        if (v && v.length) return v;
+        v = 'tab_' + Date.now() + '_' + Math.random().toString(36).slice(2, 12);
+        sessionStorage.setItem(k, v);
+        return v;
+      } catch (_) {
+        return 'tab_' + Date.now();
+      }
+    })();
+
     function shouldPlaySaleSoundForToast(opts) {
       const inOpts = opts && typeof opts === 'object' ? opts : {};
       const origin = inOpts.origin != null ? String(inOpts.origin).trim().toLowerCase() : '';
@@ -820,6 +834,19 @@
       saleSoundLastOrigin = origin || 'unknown';
       saleSoundLastAt = now;
       return true;
+    }
+
+    function tryClaimAndPlaySaleSound(dedupeKey) {
+      try {
+        var key = SALE_SOUND_CLAIM_PREFIX + (dedupeKey && dedupeKey.length ? String(dedupeKey).slice(0, 120) : 'default');
+        var raw = localStorage.getItem(key);
+        var claim = null;
+        try { claim = raw ? JSON.parse(raw) : null; } catch (_) {}
+        if (!claim || claim.tabId !== saleSoundTabId) return;
+        if (saleMuted || !saleAudio) return;
+        try { primeSaleAudio(); } catch (_) {}
+        playSaleSound({ deferOnClick: true });
+      } catch (_) {}
     }
 
     function triggerSaleToast(opts) {
@@ -887,8 +914,20 @@
       }
 
       if (playSound && shouldPlaySaleSoundForToast(opts)) {
-        try { primeSaleAudio(); } catch (_) {}
-        playSaleSound({ deferOnClick: true });
+        const origin = opts.origin != null ? String(opts.origin).trim().toLowerCase() : '';
+        const dedupeKey = buildSaleSoundDedupeKey(opts);
+        if (origin === 'manual') {
+          try { primeSaleAudio(); } catch (_) {}
+          playSaleSound({ deferOnClick: true });
+        } else {
+          try {
+            var claimKey = SALE_SOUND_CLAIM_PREFIX + (dedupeKey && dedupeKey.length ? String(dedupeKey).slice(0, 120) : 'default');
+            localStorage.setItem(claimKey, JSON.stringify({ tabId: saleSoundTabId, at: Date.now() }));
+          } catch (_) {}
+          setTimeout(function () {
+            try { tryClaimAndPlaySaleSound(dedupeKey); } catch (_) {}
+          }, 65);
+        }
       }
 
       if (saleToastHideTimer) clearTimeout(saleToastHideTimer);

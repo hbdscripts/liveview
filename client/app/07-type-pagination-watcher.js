@@ -2101,6 +2101,7 @@
           showTooltip: mapStyle.mapShowTooltip !== false,
           draggable: mapStyle.mapDraggable !== false,
           zoomButtons: !!mapStyle.mapZoomButtons,
+          initialZoomMax: 2.1,
           focusOn: focusOn,
           retry: function() { renderCountriesMapChart(data); },
           onRegionTooltipShow: function(event, tooltip, code) {

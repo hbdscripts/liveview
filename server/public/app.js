@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: f1a9b28eacfd110f
+// checksum: f2b05dfd0a6c21fb
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -4741,6 +4741,20 @@ const API = '';
       return '';
     }
 
+    var SALE_SOUND_CLAIM_PREFIX = 'kexo:saleSound:claim:v1:';
+    var saleSoundTabId = (function () {
+      try {
+        var k = 'kexo:saleSound:tabId';
+        var v = sessionStorage.getItem(k);
+        if (v && v.length) return v;
+        v = 'tab_' + Date.now() + '_' + Math.random().toString(36).slice(2, 12);
+        sessionStorage.setItem(k, v);
+        return v;
+      } catch (_) {
+        return 'tab_' + Date.now();
+      }
+    })();
+
     function shouldPlaySaleSoundForToast(opts) {
       const inOpts = opts && typeof opts === 'object' ? opts : {};
       const origin = inOpts.origin != null ? String(inOpts.origin).trim().toLowerCase() : '';
@@ -4768,6 +4782,19 @@ const API = '';
       saleSoundLastOrigin = origin || 'unknown';
       saleSoundLastAt = now;
       return true;
+    }
+
+    function tryClaimAndPlaySaleSound(dedupeKey) {
+      try {
+        var key = SALE_SOUND_CLAIM_PREFIX + (dedupeKey && dedupeKey.length ? String(dedupeKey).slice(0, 120) : 'default');
+        var raw = localStorage.getItem(key);
+        var claim = null;
+        try { claim = raw ? JSON.parse(raw) : null; } catch (_) {}
+        if (!claim || claim.tabId !== saleSoundTabId) return;
+        if (saleMuted || !saleAudio) return;
+        try { primeSaleAudio(); } catch (_) {}
+        playSaleSound({ deferOnClick: true });
+      } catch (_) {}
     }
 
     function triggerSaleToast(opts) {
@@ -4835,8 +4862,20 @@ const API = '';
       }
 
       if (playSound && shouldPlaySaleSoundForToast(opts)) {
-        try { primeSaleAudio(); } catch (_) {}
-        playSaleSound({ deferOnClick: true });
+        const origin = opts.origin != null ? String(opts.origin).trim().toLowerCase() : '';
+        const dedupeKey = buildSaleSoundDedupeKey(opts);
+        if (origin === 'manual') {
+          try { primeSaleAudio(); } catch (_) {}
+          playSaleSound({ deferOnClick: true });
+        } else {
+          try {
+            var claimKey = SALE_SOUND_CLAIM_PREFIX + (dedupeKey && dedupeKey.length ? String(dedupeKey).slice(0, 120) : 'default');
+            localStorage.setItem(claimKey, JSON.stringify({ tabId: saleSoundTabId, at: Date.now() }));
+          } catch (_) {}
+          setTimeout(function () {
+            try { tryClaimAndPlaySaleSound(dedupeKey); } catch (_) {}
+          }, 65);
+        }
       }
 
       if (saleToastHideTimer) clearTimeout(saleToastHideTimer);
@@ -7599,6 +7638,7 @@ const API = '';
           showTooltip: mapStyle.mapShowTooltip !== false,
           draggable: mapStyle.mapDraggable !== false,
           zoomButtons: !!mapStyle.mapZoomButtons,
+          initialZoomMax: 2.1,
           focusOn: focusOn,
           retry: function() { renderCountriesMapChart(data); },
           onRegionTooltipShow: function(event, tooltip, code) {
@@ -12907,7 +12947,7 @@ const API = '';
           showTooltip: showTooltip,
           draggable: draggable,
           zoomButtons: zoomButtons,
-          initialZoomMax: 2.4,
+          initialZoomMax: 2.1,
           focusOn: focusOnLive,
           retry: function() { renderLiveOnlineMapChartFromSessions(sessionList); },
           onRegionTooltipShow: function(event, tooltip, code2) {
@@ -18105,11 +18145,11 @@ const API = '';
         return String(hash >>> 0);
       }
 
-      function dashboardPayloadSignature(data, rangeKey, trendingDays) {
+      function dashboardPayloadSignature(data, rangeKey, trendingPresetOrDays) {
         var safeData = data && typeof data === 'object' ? data : {};
         var sigPayload = {
           range: String(rangeKey || ''),
-          trendingDays: trendingDays != null ? trendingDays : 0,
+          trendingPreset: trendingPresetOrDays != null ? String(trendingPresetOrDays) : '',
           labels: Array.isArray(safeData.labels) ? safeData.labels : [],
           revenue: Array.isArray(safeData.revenue) ? safeData.revenue : [],
           sessions: Array.isArray(safeData.sessions) ? safeData.sessions : [],
@@ -22854,7 +22894,7 @@ const API = '';
             try { build.finish(); } catch (_) {}
           }, 35000);
         }
-        var url = API + '/api/dashboard-series?range=' + encodeURIComponent(rangeKey) + '&trendingDays=' + String(getTrendingDays()) + (force ? ('&force=1&_=' + Date.now()) : '');
+        var url = API + '/api/dashboard-series?range=' + encodeURIComponent(rangeKey) + '&trendingPreset=' + encodeURIComponent(getTrendingPreset()) + (force ? ('&force=1&_=' + Date.now()) : '');
         var forceMini = !!force;
         if (silent && forceMini && String(reason || '').trim().toLowerCase() !== 'new-sale') {
           var miniAgeMs = overviewMiniFetchedAt ? (Date.now() - overviewMiniFetchedAt) : Number.POSITIVE_INFINITY;
@@ -22875,7 +22915,7 @@ const API = '';
           .then(function(data) {
             dashLoading = false;
             if (data) {
-              var nextSig = dashboardPayloadSignature(data, rangeKey, getTrendingDays());
+              var nextSig = dashboardPayloadSignature(data, rangeKey, getTrendingPreset());
               var shouldRender = !!force || !(dashPayloadSignature && nextSig && nextSig === dashPayloadSignature);
               dashCache = data;
               dashLastRangeKey = rangeKey;
@@ -22917,17 +22957,50 @@ const API = '';
       }
 
       var OVERVIEW_TRENDING_DAYS_LS = 'kexo:overview-trending-days:v1';
-      function getTrendingDays() {
+      var OVERVIEW_TRENDING_PRESET_LS = 'kexo:overview-trending-preset:v1';
+      var TRENDING_PRESETS = [
+        { value: 'today', label: 'Today' },
+        { value: 'yesterday', label: 'Yesterday' },
+        { value: '3d', label: '3 days' },
+        { value: '7d', label: '7 days' },
+        { value: '14d', label: '14 days' },
+      ];
+      function getTrendingPreset() {
         try {
-          var raw = localStorage.getItem(OVERVIEW_TRENDING_DAYS_LS);
-          var n = parseInt(raw, 10);
-          if (n === 3 || n === 7 || n === 14) return n;
+          var raw = localStorage.getItem(OVERVIEW_TRENDING_PRESET_LS);
+          var s = (raw == null ? '' : String(raw)).trim().toLowerCase();
+          if (s === 'today' || s === 'yesterday' || s === '3d' || s === '7d' || s === '14d') return s;
+          var legacy = localStorage.getItem(OVERVIEW_TRENDING_DAYS_LS);
+          var n = parseInt(legacy, 10);
+          if (n === 3) return '3d';
+          if (n === 7) return '7d';
+          if (n === 14) return '14d';
         } catch (_) {}
+        return '3d';
+      }
+      function setTrendingPreset(value) {
+        var s = (value == null ? '' : String(value)).trim().toLowerCase();
+        if (s !== 'today' && s !== 'yesterday' && s !== '3d' && s !== '7d' && s !== '14d') return;
+        try { localStorage.setItem(OVERVIEW_TRENDING_PRESET_LS, s); } catch (_) {}
+      }
+      function getTrendingPresetLabel(value) {
+        var v = (value == null ? '' : String(value)).trim().toLowerCase();
+        for (var i = 0; i < TRENDING_PRESETS.length; i++) {
+          if (TRENDING_PRESETS[i].value === v) return TRENDING_PRESETS[i].label;
+        }
+        return '3 days';
+      }
+      function getTrendingDays() {
+        var p = getTrendingPreset();
+        if (p === '3d') return 3;
+        if (p === '7d') return 7;
+        if (p === '14d') return 14;
         return 3;
       }
       function setTrendingDays(n) {
-        if (n !== 3 && n !== 7 && n !== 14) return;
-        try { localStorage.setItem(OVERVIEW_TRENDING_DAYS_LS, String(n)); } catch (_) {}
+        if (n === 3) setTrendingPreset('3d');
+        else if (n === 7) setTrendingPreset('7d');
+        else if (n === 14) setTrendingPreset('14d');
       }
 
       function fmtGbp2(n) {
@@ -23429,14 +23502,15 @@ const API = '';
         var headRight = card ? card.querySelector('.kexo-widget-head-right') : null;
         if (!headRight) return;
         var existing = document.getElementById('dash-trending-days');
+        var preset = getTrendingPreset();
         if (existing) {
           try {
-            existing.setAttribute('data-days', String(getTrendingDays()));
+            existing.setAttribute('data-trending-preset', preset);
             var label = existing.querySelector('[data-trending-days-label]');
-            if (label) label.textContent = String(getTrendingDays()) + ' days';
-            existing.querySelectorAll('[data-trending-days-item]').forEach(function (it) {
-              var v = String(it.getAttribute('data-trending-days-item') || '');
-              it.classList.toggle('active', v === String(getTrendingDays()));
+            if (label) label.textContent = getTrendingPresetLabel(preset);
+            existing.querySelectorAll('[data-trending-preset-item]').forEach(function (it) {
+              var v = String(it.getAttribute('data-trending-preset-item') || '');
+              it.classList.toggle('active', v === preset);
             });
           } catch (_) {}
           return;
@@ -23452,37 +23526,34 @@ const API = '';
         btn.setAttribute('data-bs-toggle', 'dropdown');
         btn.setAttribute('aria-expanded', 'false');
         btn.setAttribute('aria-label', 'Trending period');
-        btn.setAttribute('data-days', String(getTrendingDays()));
-        btn.innerHTML = '<span data-trending-days-label>' + String(getTrendingDays()) + ' days</span>';
+        btn.setAttribute('data-trending-preset', preset);
+        btn.innerHTML = '<span data-trending-days-label>' + escapeHtml(getTrendingPresetLabel(preset)) + '</span>';
 
         var menu = document.createElement('div');
         menu.className = 'dropdown-menu dropdown-menu-end kexo-trending-days-dropdown-menu';
         menu.setAttribute('role', 'menu');
 
-        [3, 7, 14].forEach(function (d) {
+        TRENDING_PRESETS.forEach(function (presetOpt) {
           var item = document.createElement('button');
           item.type = 'button';
           item.className = 'dropdown-item';
-          item.textContent = String(d) + ' days';
-          item.setAttribute('data-trending-days-item', String(d));
-          if (String(d) === String(getTrendingDays())) item.classList.add('active');
+          item.textContent = presetOpt.label;
+          item.setAttribute('data-trending-preset-item', presetOpt.value);
+          if (presetOpt.value === preset) item.classList.add('active');
           item.addEventListener('click', function (e) {
             e.preventDefault();
-            var n = parseInt(String(d), 10);
-            if (n === 3 || n === 7 || n === 14) {
-              setTrendingDays(n);
-              try { btn.setAttribute('data-days', String(n)); } catch (_) {}
-              try {
-                var lbl = btn.querySelector('[data-trending-days-label]');
-                if (lbl) lbl.textContent = String(n) + ' days';
-                menu.querySelectorAll('[data-trending-days-item]').forEach(function (it) {
-                  it.classList.toggle('active', String(it.getAttribute('data-trending-days-item') || '') === String(n));
-                });
-              } catch (_) {}
-              // Close dropdown (Bootstrap)
-              try { if (window.bootstrap && window.bootstrap.Dropdown) window.bootstrap.Dropdown.getOrCreateInstance(btn).hide(); } catch (_) {}
-              if (typeof fetchDashboardData === 'function') fetchDashboardData(dashRangeKeyFromDateRange(), true);
-            }
+            var val = presetOpt.value;
+            setTrendingPreset(val);
+            try { btn.setAttribute('data-trending-preset', val); } catch (_) {}
+            try {
+              var lbl = btn.querySelector('[data-trending-days-label]');
+              if (lbl) lbl.textContent = presetOpt.label;
+              menu.querySelectorAll('[data-trending-preset-item]').forEach(function (it) {
+                it.classList.toggle('active', String(it.getAttribute('data-trending-preset-item') || '') === val);
+              });
+            } catch (_) {}
+            try { if (window.bootstrap && window.bootstrap.Dropdown) window.bootstrap.Dropdown.getOrCreateInstance(btn).hide(); } catch (_) {}
+            if (typeof fetchDashboardData === 'function') fetchDashboardData(dashRangeKeyFromDateRange(), true);
           });
           menu.appendChild(item);
         });

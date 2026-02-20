@@ -344,7 +344,8 @@ body[data-page="dashboard"] .kexo-widget-card[data-kexo-chart-key="live-online-c
   padding: 0 !important; /* Full-bleed map in Overview widget card */
 }
 body[data-page="dashboard"] .kexo-widget-card[data-kexo-chart-key="live-online-chart"] .kexo-widget-head {
-  padding: 20px 20px 0 20px;
+  padding: 10px 20px 0 20px !important;
+  height: auto;
 }
 body[data-page="dashboard"] .kexo-widget-card[data-kexo-chart-key="live-online-chart"] .kexo-widget-body {
   flex: 1;
@@ -3688,7 +3689,7 @@ body[data-page="dashboard"] .kexo-overview-widget-card .kexo-widget-head-right {
   height: 100%;
   min-height: 320px;
   position: relative;
-  padding: 20px 20px 10px 20px;
+  padding: 20px;
 }
 .kexo-overview-widget-card {
   --kexo-accent: var(--kexo-accent-1, #4b94e4);
@@ -3709,6 +3710,12 @@ body[data-page="dashboard"] .kexo-overview-widget-card .kexo-widget-head-right {
   align-items: center;
   gap: 0.75rem;
   width: 100%;
+}
+#dash-overview-widgets-grid .kexo-ovw-ring-row {
+  justify-content: center;
+}
+#dash-overview-widgets-grid .kexo-widget-card-body {
+  padding-top: 10px;
 }
 .kexo-ovw-ring-wrap {
   display: flex;
@@ -3731,6 +3738,11 @@ body[data-page="dashboard"] .kexo-overview-widget-card .kexo-widget-head-right {
   display: flex;
   flex-direction: column;
   gap: 0.2rem;
+}
+#dash-overview-widgets-grid .kexo-ovw-ring-right {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 80px;
 }
 .kexo-ovw-ring-right-name {
   font-size: 0.875rem;
@@ -3879,6 +3891,9 @@ body[data-page="dashboard"] .kexo-overview-widget-card .kexo-widget-head-right {
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
+  padding-top: 0 !important;
+  margin-top: 0 !important;
+  height: 20px;
 }
 .kexo-widget-title {
   font-size: 0.75rem;
@@ -4472,9 +4487,8 @@ body[data-page="dashboard"] .kexo-overview-widget-card .kexo-widget-head-right {
 }
 
 .kexo-trending-days-dropdown-btn {
-  width: 60px;
-  min-width: 60px;
-  max-width: 60px;
+  min-width: 70px;
+  margin-right: 0.35rem;
   border: 0 !important;
   box-shadow: 0 0 0 !important;
   padding: 0 !important;
@@ -4485,9 +4499,11 @@ body[data-page="dashboard"] .kexo-overview-widget-card .kexo-widget-head-right {
   background: transparent !important;
 }
 .kexo-trending-days-dropdown-btn.dropdown-toggle::after {
-  margin-left: 0.15em;
-  vertical-align: 0.08em;
+  margin-left: 0.25em;
+  margin-right: 0.1em;
+  vertical-align: 0.1em;
   opacity: 0.8;
+  border-width: 5px 4px 0;
 }
 
 .dash-thumb-wrap {
@@ -4570,7 +4586,7 @@ body[data-page="dashboard"] .kexo-overview-widget-card .kexo-widget-head-right {
   /* Match the SVG viewBox (40x40) for crisper strokes. */
   width: 36px;
   height: 36px;
-  --kexo-score-track: transparent;
+  --kexo-score-track: #cccccc;
 }
 .kexo-footer .kexo-score-btn--footer .kexo-score-ring-svg--header {
   width: 36px;
@@ -5697,6 +5713,17 @@ img[data-kexo-logo-slot="footer"][data-kexo-logo-ready="1"] {
 }
 #kexo-online-icon.kexo-online-icon--offline {
   color: rgba(148, 163, 184, .95) !important;
+}
+.kexo-online-count {
+  background: #fff;
+  color: #16a34a;
+  height: 20px;
+  width: 20px;
+  display: inline-block;
+  line-height: 17px;
+  vertical-align: middle;
+  border-radius: 100px;
+  font-size: 18px;
 }
 #online-count-spinner {
   display: inline-flex;
