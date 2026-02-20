@@ -4237,15 +4237,19 @@ body[data-page="dashboard"] #dash-trending-down .dash-trend-delta.text-red {
 }
 
 .kexo-trending-days-select {
-  width: 80px;
+  width: 60px;
+  min-width: 60px;
+  max-width: 60px;
   border: 0 !important;
   box-shadow: 0 0 0 !important;
-  padding: 0 !important;
+  padding-left: 0 !important;
+  padding-right: 1.35rem !important; /* keep Tabler chevron visible */
   font-size: 12px !important;
   text-transform: uppercase;
   font-weight: 600;
   color: var(--tblr-secondary);
-  background: transparent !important;
+  background-color: transparent !important;
+  background-position: right 0.25rem center;
 }
 
 .dash-thumb-wrap {
