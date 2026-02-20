@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 731c537f0ac0d54b
+// checksum: 57b394decf792f5d
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -22016,7 +22016,7 @@ const API = '';
               productUrl: productUrl
             };
           });
-          renderDashTopList('dash-top-products-body', prodRows, { accentCss: 'background: #8395aa;' });
+          renderDashTopList('dash-top-products-body', prodRows, { accentCss: 'background: var(--kexo-accent);' });
         }
 
         var countryBody = el('dash-top-countries-body');
@@ -22045,7 +22045,7 @@ const API = '';
               pct: pct
             };
           });
-          renderDashTopList('dash-top-countries-body', countryRows, { accentCss: 'background: #8395aa;' });
+          renderDashTopList('dash-top-countries-body', countryRows, { accentCss: 'background: var(--kexo-accent);' });
         }
 
         function fmtSignedGbp(v) {
@@ -22095,10 +22095,7 @@ const API = '';
                 productUrl: productUrl
               };
             });
-            var accentCss = isUp
-              ? 'background: #3eb3ab;'
-              : 'background: #e4644b;';
-            renderDashTopList(tableId + '-body', listRows, { accentCss: accentCss });
+            renderDashTopList(tableId + '-body', listRows, { accentCss: 'background: var(--kexo-accent);' });
             return;
           }
           var t = el(tableId);
