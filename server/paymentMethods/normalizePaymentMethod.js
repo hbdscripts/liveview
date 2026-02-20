@@ -65,7 +65,8 @@ function methodMeta(key) {
   if (k === 'klarna') return { key: 'klarna', label: 'Klarna' };
   // UK canonical label
   if (k === 'clearpay') return { key: 'clearpay', label: 'Clearpay' };
-  if (k === 'afterpay') return { key: 'afterpay', label: 'Afterpay' };
+  // Canonicalize Afterpay → Clearpay (UK label)
+  if (k === 'afterpay') return { key: 'clearpay', label: 'Clearpay' };
   if (k === 'affirm') return { key: 'affirm', label: 'Affirm' };
   if (k === 'zip') return { key: 'zip', label: 'Zip' };
   if (k === 'sezzle') return { key: 'sezzle', label: 'Sezzle' };
@@ -119,7 +120,7 @@ function normalizePaymentMethod(input) {
     return { ...m, iconSrc: ICON_SRC_BY_KEY[m.key] || null, iconAlt: m.label, debug: { gateway: gatewayRaw, methodType: methodTypeRaw, methodName: methodNameRaw, cardBrand: cardBrandRaw } };
   }
   if (any(['afterpay'])) {
-    const m = methodMeta('afterpay');
+    const m = methodMeta('clearpay');
     return { ...m, iconSrc: ICON_SRC_BY_KEY[m.key] || null, iconAlt: m.label, debug: { gateway: gatewayRaw, methodType: methodTypeRaw, methodName: methodNameRaw, cardBrand: cardBrandRaw } };
   }
   if (any(['affirm'])) {

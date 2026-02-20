@@ -49,6 +49,29 @@ function computeProfitForOrderAllocation(orderRevenueGbp, windowRevenueGbp, wind
   return Math.max(0, Number.isFinite(profit) ? Math.round(profit * 100) / 100 : Math.round(rev * 100) / 100);
 }
 
+/**
+ * Legacy/simple profit computation used by tests and some callers:
+ * - If config missing/disabled/unknown → revenue (fail-open).
+ * - mode=simple: profit = revenue - (percent_of_revenue%) - fixed_per_order_gbp (floored at 0).
+ */
+function computeProfitForOrder(orderRevenueGbp, profitRulesV1) {
+  const revenue = Number(orderRevenueGbp);
+  if (!Number.isFinite(revenue) || revenue <= 0) return 0;
+  const cfg = profitRulesV1 && typeof profitRulesV1 === 'object' ? profitRulesV1 : null;
+  if (!cfg) return Math.round(revenue * 100) / 100;
+
+  const mode = cfg && cfg.mode != null ? String(cfg.mode).trim().toLowerCase() : '';
+  if (mode !== 'simple') return Math.round(revenue * 100) / 100;
+
+  const simple = cfg && cfg.simple && typeof cfg.simple === 'object' ? cfg.simple : {};
+  const pct = Number(simple.percent_of_revenue);
+  const fixed = Number(simple.fixed_per_order_gbp);
+  const pctDeduction = Number.isFinite(pct) && pct > 0 ? (revenue * pct) / 100 : 0;
+  const fixedDeduction = Number.isFinite(fixed) && fixed > 0 ? fixed : 0;
+  const profit = revenue - pctDeduction - fixedDeduction;
+  return Math.max(0, Math.round((Number.isFinite(profit) ? profit : revenue) * 100) / 100);
+}
+
 /** Format conversion_date_time for Google Ads: "yyyy-mm-dd hh:mm:ss+|-hh:mm" (account TZ). */
 function formatConversionDateTime(createdAtMs, accountTimeZone = 'UTC') {
   const d = new Date(Number(createdAtMs));
@@ -562,5 +585,6 @@ module.exports = {
   processPostbackBatch,
   runPostbackCycle,
   pickClickIdFromAttribution,
+  computeProfitForOrder,
   computeProfitForOrderAllocation,
 };

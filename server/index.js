@@ -709,6 +709,7 @@ const { up: up054 } = require('./migrations/054_sessions_city_browser');
 const { up: up055 } = require('./migrations/055_purchases_payment_method');
 const { up: up056 } = require('./migrations/056_edge_block_events');
 const { up: up057 } = require('./migrations/057_purchases_payment_method_key');
+const { up: up058 } = require('./migrations/058_attribution_tags');
 const backup = require('./backup');
 const { writeAudit } = require('./audit');
 const { runAdsMigrations } = require('./ads/adsMigrate');
@@ -771,6 +772,7 @@ const APP_MIGRATIONS = [
   ['055_purchases_payment_method', up055],
   ['056_edge_block_events', up056],
   ['057_purchases_payment_method_key', up057],
+  ['058_attribution_tags', up058],
 ];
 
 async function ensureAppMigrationsTable(db) {
