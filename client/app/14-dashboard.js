@@ -384,29 +384,27 @@
 
       var dashChartConfigs = {};
 
-      function truncatePinTitle(s) {
-        var v = s == null ? '' : String(s).trim();
-        if (!v) return '';
-        return v.length > 26 ? (v.slice(0, 25) + '…') : v;
+      function slugForPinAnnotation(label) {
+        var s = String(label == null ? '' : label).trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+        return s || 'p';
       }
 
       function buildPinAnnotationsForCategories(categoryLabels, pins) {
         var labels = Array.isArray(categoryLabels) ? categoryLabels : [];
         var list = Array.isArray(pins) ? pins : [];
-        if (!labels.length || !list.length) return [];
+        if (!labels.length || !list.length) return { annotations: [], tooltips: [] };
         var idx = new Map();
         for (var i = 0; i < labels.length; i++) {
           var key = labels[i] != null ? String(labels[i]) : '';
           if (!key) continue;
           if (!idx.has(key)) idx.set(key, i);
         }
-        var out = [];
+        var byLabel = new Map();
         for (var j = 0; j < list.length; j++) {
           var p = list[j] || {};
           var ymd = p.event_ymd ? String(p.event_ymd) : '';
           if (!ymd) continue;
-          var cands = [];
-          cands.push(ymd);
+          var cands = [ymd];
           try { cands.push(shortDate(ymd)); } catch (_) {}
           var matchedLabel = null;
           for (var k = 0; k < cands.length; k++) {
@@ -415,25 +413,45 @@
             if (idx.has(c)) { matchedLabel = c; break; }
           }
           if (!matchedLabel) continue;
-          var text = truncatePinTitle(p.title || '') || 'Pin';
+          if (!byLabel.has(matchedLabel)) byLabel.set(matchedLabel, []);
+          byLabel.get(matchedLabel).push(p);
+        }
+        var out = [];
+        var tooltips = [];
+        byLabel.forEach(function (pinsInBucket, matchedLabel) {
+          var titles = pinsInBucket.map(function (p) { return (p.title && String(p.title).trim()) || 'Pin'; });
+          var tooltipText = titles.map(function (t) { return 'Pin added: ' + t; }).join('\n');
+          var slug = slugForPinAnnotation(matchedLabel);
           out.push({
             x: matchedLabel,
-            borderColor: 'rgba(15,23,42,0.35)',
+            borderColor: 'transparent',
             strokeDashArray: 0,
             label: {
-              text: text,
-              borderColor: 'rgba(15,23,42,0.55)',
+              text: '\uD83D\uDCCC',
+              borderColor: 'transparent',
               style: {
-                background: 'rgba(15,23,42,0.75)',
-                color: '#ffffff',
-                fontSize: '10px',
-                fontWeight: 500,
+                background: 'transparent',
+                color: 'var(--tblr-body-color, #0f172a)',
+                fontSize: '12px',
+                fontWeight: 400,
+                cssClass: 'kexo-pin-annotation kexo-pin-annotation--' + slug,
               },
-              offsetY: -6,
+              offsetY: -4,
             },
           });
-        }
-        return out;
+          tooltips.push(tooltipText);
+        });
+        return { annotations: out, tooltips: tooltips };
+      }
+
+      function setPinAnnotationTooltips(chart, tooltips) {
+        if (!chart || !chart.el || !Array.isArray(tooltips) || !tooltips.length) return;
+        try {
+          var nodes = chart.el.querySelectorAll ? chart.el.querySelectorAll('.kexo-pin-annotation') : [];
+          for (var i = 0; i < nodes.length && i < tooltips.length; i++) {
+            if (nodes[i] && tooltips[i]) nodes[i].setAttribute('title', tooltips[i]);
+          }
+        } catch (_) {}
       }
 
       function applyChangePinsOverlayToChart(chartId, chart, categoryLabels) {
@@ -443,11 +461,14 @@
         try {
           cached = (typeof window.__kexoReadChangePinsRecentCache === 'function') ? window.__kexoReadChangePinsRecentCache() : null;
         } catch (_) {}
-        var ann = buildPinAnnotationsForCategories(categoryLabels, cached);
+        var result = buildPinAnnotationsForCategories(categoryLabels, cached);
+        var ann = result && result.annotations;
+        var tooltips = result && result.tooltips ? result.tooltips : [];
         if (ann && ann.length) {
           try {
             if (dashCharts && dashCharts[chartId] !== chart) return;
             chart.updateOptions({ annotations: { xaxis: ann, yaxis: [], points: [], texts: [], images: [] } }, false, true);
+            setTimeout(function () { setPinAnnotationTooltips(chart, tooltips); }, 80);
           } catch (_) {}
           return;
         }
@@ -455,11 +476,14 @@
           if (typeof window.__kexoGetChangePinsRecent !== 'function') return;
           window.__kexoGetChangePinsRecent(120, false).then(function (pins) {
             if (!pins) return;
-            var nextAnn = buildPinAnnotationsForCategories(categoryLabels, pins);
+            var nextResult = buildPinAnnotationsForCategories(categoryLabels, pins);
+            var nextAnn = nextResult && nextResult.annotations;
+            var nextTooltips = nextResult && nextResult.tooltips ? nextResult.tooltips : [];
             if (!nextAnn || !nextAnn.length) return;
             try {
               if (dashCharts && dashCharts[chartId] !== chart) return;
               chart.updateOptions({ annotations: { xaxis: nextAnn, yaxis: [], points: [], texts: [], images: [] } }, false, true);
+              setTimeout(function () { setPinAnnotationTooltips(chart, nextTooltips); }, 80);
             } catch (_) {}
           });
         } catch (_) {}

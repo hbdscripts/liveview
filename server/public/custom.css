@@ -53,6 +53,7 @@ html, body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  text-decoration: none;
 }
 
 /* Rows-per-page selector hidden; page size still applied from config. */
@@ -85,6 +86,12 @@ html, body {
 
 .kexo-card-collapse-toggle.is-collapsed .kexo-card-collapse-chevron {
   transform: rotate(0deg);
+}
+
+/* Pin markers on dashboard overview chart (change-pins overlay) */
+.kexo-pin-annotation {
+  cursor: help;
+  opacity: 0.85;
 }
 
 .card.kexo-card-collapsed > :not(.card-header) {
