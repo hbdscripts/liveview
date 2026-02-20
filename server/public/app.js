@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 6879fcd94ad701d1
+// checksum: 63b78ac42fc7c424
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -21322,6 +21322,8 @@ const API = '';
             else fillCircle.style.stroke = KEXO_RING_COLOR_ORDER[i];
           }
         }
+        // Mark initialized so CSS pre-init hiding doesn't override JS dasharrays.
+        try { svg.setAttribute('data-kexo-ring-init', '1'); } catch (_) {}
       }
 
       function buildHeaderKexoScoreRingBg(rawScore) {

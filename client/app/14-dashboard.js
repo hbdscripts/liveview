@@ -4061,6 +4061,8 @@
             else fillCircle.style.stroke = KEXO_RING_COLOR_ORDER[i];
           }
         }
+        // Mark initialized so CSS pre-init hiding doesn't override JS dasharrays.
+        try { svg.setAttribute('data-kexo-ring-init', '1'); } catch (_) {}
       }
 
       function buildHeaderKexoScoreRingBg(rawScore) {
