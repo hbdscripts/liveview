@@ -4152,13 +4152,21 @@
           if (k === 'itemsordered' || k === 'items_ordered') return 'itemsOrdered';
           return k;
         }
-        function kexoScoreBarClass(scorePct) {
-          var p = Number(scorePct);
-          if (!Number.isFinite(p)) return 'bg-secondary';
-          p = Math.max(0, Math.min(100, p));
-          if (p <= 49) return 'bg-danger';
-          if (p <= 75) return 'bg-secondary';
-          return 'bg-success';
+        var KEXO_SCORE_STABLE_RATIO = 0.05;
+        function kexoScoreDeltaBar(cur, prev) {
+          var c = typeof cur === 'number' && Number.isFinite(cur) ? cur : null;
+          var p = typeof prev === 'number' && Number.isFinite(prev) ? prev : null;
+          if (c == null && p == null) return { widthPct: 0, barClass: 'bg-secondary', barLabel: '\u2014' };
+          var isNew = c != null && (p == null || Math.abs(p) < 1e-9) && c !== 0;
+          var denom = p != null && Math.abs(p) >= 1e-9 ? Math.abs(p) : 1e-9;
+          var rawDelta = (c != null && p != null) ? (c - p) / denom : 0;
+          var isUp = isNew || rawDelta > KEXO_SCORE_STABLE_RATIO;
+          var isDown = !isNew && rawDelta < -KEXO_SCORE_STABLE_RATIO;
+          var isFlat = !isUp && !isDown;
+          var widthPct = isNew ? 100 : Math.max(6, Math.min(100, Math.round(Math.abs(rawDelta) * 100)));
+          var barClass = isUp ? 'bg-success' : (isDown ? 'bg-danger' : 'bg-secondary');
+          var barLabel = isNew ? 'new' : (isFlat ? '0%' : (rawDelta > 0 ? '+' : '') + (Math.round(rawDelta * 1000) / 10) + '%');
+          return { widthPct: widthPct, barClass: barClass, barLabel: barLabel };
         }
         if (!scoreData || !Array.isArray(scoreData.components) || scoreData.components.length === 0) {
           container.innerHTML = '<div class="kexo-score-breakdown-empty text-muted small">No score data</div>';
@@ -4176,8 +4184,7 @@
         });
         var html = rows.map(function(c) {
           var label = (c.label && String(c.label).trim()) ? String(c.label) : (c.key || '');
-          var score = typeof c.score === 'number' && Number.isFinite(c.score) ? Math.max(0, Math.min(100, c.score)) : 0;
-          var barClass = kexoScoreBarClass(score);
+          var deltaBar = kexoScoreDeltaBar(c.value, c.previous);
           var valueStr = fmtComponentValue(c.key, c.value);
           var deltaStr = fmtComponentDeltaPct(c.value, c.previous);
           var detail = deltaStr ? (String(valueStr) + ' | ' + String(deltaStr) + ' vs prev') : String(valueStr);
@@ -4187,7 +4194,7 @@
               '<span class="kexo-score-breakdown-value">' + escapeHtml(detail) + '</span>' +
             '</div>' +
             '<div class="progress">' +
-              '<div class="progress-bar ' + barClass + '" role="progressbar" style="width:' + score + '%" aria-valuenow="' + score + '" aria-valuemin="0" aria-valuemax="100">' + score.toFixed(0) + '</div>' +
+              '<div class="progress-bar ' + deltaBar.barClass + '" role="progressbar" style="width:' + deltaBar.widthPct + '%" aria-valuenow="' + deltaBar.widthPct + '" aria-valuemin="0" aria-valuemax="100">' + deltaBar.barLabel + '</div>' +
             '</div>' +
           '</div>';
         }).join('');
@@ -4264,7 +4271,8 @@
                 var tip = popover && typeof popover.getTipElement === 'function'
                   ? popover.getTipElement()
                   : (node.getAttribute('aria-describedby') ? document.getElementById(node.getAttribute('aria-describedby')) : scope.querySelector('.popover.show'));
-                if (!tip || !tip.querySelector || tip.querySelector('.kexo-score-popover-close')) return;
+                if (!tip || !tip.querySelector) return;
+                if (tip.querySelector('.kexo-score-popover-close')) return;
                 var header = tip.querySelector('.popover-header');
                 if (!header) return;
                 var closeBtn = document.createElement('button');
@@ -4278,15 +4286,18 @@
         });
         if (scope.getAttribute('data-kexo-score-popover-scope-bound') !== '1') {
           scope.setAttribute('data-kexo-score-popover-scope-bound', '1');
-          scope.addEventListener('click', function kexoScorePopoverCloseHandler(e) {
+          var closeHandler = function(e) {
             if (!e.target || !e.target.closest || !e.target.closest('.kexo-score-popover-close')) return;
-            nodes.forEach(function(n) {
+            var allTriggers = document.querySelectorAll('[data-kexo-score-popover="1"]');
+            allTriggers.forEach(function(n) {
               try {
                 var inst = Popover.getInstance(n);
                 if (inst) inst.hide();
               } catch (_) {}
             });
-          });
+          };
+          scope.addEventListener('click', closeHandler);
+          document.addEventListener('click', closeHandler);
         }
       }
 
@@ -4324,13 +4335,21 @@
           return k;
         }
 
-        function kexoScoreBarClass(scorePct) {
-          var p = Number(scorePct);
-          if (!Number.isFinite(p)) return 'bg-secondary';
-          p = Math.max(0, Math.min(100, p));
-          if (p <= 49) return 'bg-danger';
-          if (p <= 75) return 'bg-secondary';
-          return 'bg-success';
+        var KEXO_SCORE_STABLE_RATIO_MODAL = 0.05;
+        function kexoScoreDeltaBarModal(cur, prev) {
+          var c = typeof cur === 'number' && Number.isFinite(cur) ? cur : null;
+          var p = typeof prev === 'number' && Number.isFinite(prev) ? prev : null;
+          if (c == null && p == null) return { widthPct: 0, barClass: 'bg-secondary', barLabel: '\u2014' };
+          var isNew = c != null && (p == null || Math.abs(p) < 1e-9) && c !== 0;
+          var denom = p != null && Math.abs(p) >= 1e-9 ? Math.abs(p) : 1e-9;
+          var rawDelta = (c != null && p != null) ? (c - p) / denom : 0;
+          var isUp = isNew || rawDelta > KEXO_SCORE_STABLE_RATIO_MODAL;
+          var isDown = !isNew && rawDelta < -KEXO_SCORE_STABLE_RATIO_MODAL;
+          var isFlat = !isUp && !isDown;
+          var widthPct = isNew ? 100 : Math.max(6, Math.min(100, Math.round(Math.abs(rawDelta) * 100)));
+          var barClass = isUp ? 'bg-success' : (isDown ? 'bg-danger' : 'bg-secondary');
+          var barLabel = isNew ? 'new' : (isFlat ? '0%' : (rawDelta > 0 ? '+' : '') + (Math.round(rawDelta * 1000) / 10) + '%');
+          return { widthPct: widthPct, barClass: barClass, barLabel: barLabel };
         }
 
         function animateKexoScoreBreakdownBars(scope) {
@@ -4381,8 +4400,7 @@
           });
           breakdownHtml = rows.map(function(c) {
             var label = (c.label && String(c.label).trim()) ? String(c.label) : (c.key || '');
-            var score = typeof c.score === 'number' && Number.isFinite(c.score) ? Math.max(0, Math.min(100, c.score)) : 0;
-            var barClass = kexoScoreBarClass(score);
+            var deltaBar = kexoScoreDeltaBarModal(c.value, c.previous);
             var valueStr = fmtComponentValue(c.key, c.value);
             var deltaStr = fmtComponentDeltaPct(c.value, c.previous);
             var detail = deltaStr ? (String(valueStr) + ' | ' + String(deltaStr) + ' vs previous') : String(valueStr);
@@ -4392,7 +4410,7 @@
                 '<span class="kexo-score-breakdown-value">' + escapeHtml(detail) + '</span>' +
               '</div>' +
               '<div class="progress">' +
-                '<div class="progress-bar ' + barClass + '" role="progressbar" style="width:0%" data-target-pct="' + score.toFixed(1) + '" aria-valuenow="' + score + '" aria-valuemin="0" aria-valuemax="100">' + score.toFixed(0) + '</div>' +
+                '<div class="progress-bar ' + deltaBar.barClass + '" role="progressbar" style="width:0%" data-target-pct="' + deltaBar.widthPct.toFixed(1) + '" aria-valuenow="' + deltaBar.widthPct + '" aria-valuemin="0" aria-valuemax="100">' + deltaBar.barLabel + '</div>' +
               '</div>' +
             '</div>';
           }).join('');
