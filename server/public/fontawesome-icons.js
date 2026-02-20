@@ -411,6 +411,8 @@
     if (/^variant_rule_[a-z0-9_-]+__[a-z0-9_-]+$/i.test(s)) return true;
     if (/^attribution-source-[a-z0-9_-]+$/i.test(s)) return true;
     if (/^attribution-variant-[a-z0-9_-]+$/i.test(s)) return true;
+    if (/^overview-widget-[a-z0-9_-]+$/i.test(s)) return true;
+    if (/^variant_icon_[a-z0-9_-]+$/i.test(s)) return true;
     return false;
   }
 

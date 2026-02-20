@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const { execSync } = require('node:child_process');
 
 const iconRegistry = require('../server/shared/icon-registry');
 const settingsRoute = require('../server/routes/settings');
@@ -35,4 +36,13 @@ test('frontend icon scripts consume shared registry payload', () => {
   assert.match(fontawesomeIconsJs, /window\.KexoIconRegistry/, 'fontawesome-icons.js must read from window.KexoIconRegistry');
   assert.doesNotMatch(themeSettingsJs, /var\s+ICON_GLYPH_DEFAULTS\s*=\s*\{/, 'theme-settings.js should not define a local icon glyph defaults object literal');
   assert.doesNotMatch(fontawesomeIconsJs, /var\s+ICON_GLYPH_DEFAULTS\s*=\s*\{/, 'fontawesome-icons.js should not define a local icon glyph defaults object literal');
+});
+
+test('icon key audit: UI data-icon-key usages are in registry or dynamic', () => {
+  const repoRoot = path.join(__dirname, '..');
+  try {
+    execSync('node scripts/audit-icon-keys.js', { cwd: repoRoot, encoding: 'utf8', timeout: 10000 });
+  } catch (e) {
+    assert.fail('audit should pass (no unmapped static icon keys). ' + (e.stderr || e.message || ''));
+  }
 });

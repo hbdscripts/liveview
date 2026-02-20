@@ -37,22 +37,22 @@ async function getInsightsVariants(req, res) {
     const rawConfig = await store.getSetting(VARIANTS_CONFIG_KEY).catch(() => null);
     const variantsConfig = normalizeVariantsConfigV1(rawConfig);
     let rowIconOverrides = {};
+    let variantIconOverrides = {};
     try {
       const rawOverrides = await store.getSetting('asset_overrides');
       if (rawOverrides && typeof rawOverrides === 'string') {
         const parsed = JSON.parse(rawOverrides);
         if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-          rowIconOverrides = Object.keys(parsed).reduce((acc, key) => {
+          Object.keys(parsed).forEach((key) => {
             const k = String(key || '').trim().toLowerCase();
-            if (!/^variant_rule_[a-z0-9_-]+__[a-z0-9_-]+$/.test(k)) return acc;
-            acc[k] = parsed[key];
-            return acc;
-          }, {});
+            if (/^variant_rule_[a-z0-9_-]+__[a-z0-9_-]+$/.test(k)) rowIconOverrides[k] = parsed[key];
+            else if (/^variant_icon_[a-z0-9_-]+$/.test(k)) variantIconOverrides[k.replace(/^variant_icon_/, '')] = parsed[key];
+          });
         }
       }
     } catch (_) {}
     const cfgHash = configHash(variantsConfig);
-    const iconHash = configHash({ rowIconOverrides });
+    const iconHash = configHash({ rowIconOverrides, variantIconOverrides });
     const cached = await reportCache.getOrComputeJson(
       {
         shop,
@@ -78,6 +78,7 @@ async function getInsightsVariants(req, res) {
           end,
           variantsConfig,
           rowIconOverrides,
+          variantIconOverrides,
         });
         return {
           ok: true,

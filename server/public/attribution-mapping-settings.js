@@ -865,8 +865,11 @@
           }
           setHint('am-map-msg', 'Mapped.', true);
           _state.selected = null;
+          var srcIconEl = document.getElementById('am-source-icon-spec');
+          var varIconEl = document.getElementById('am-variant-icon-spec');
+          if (srcIconEl) { srcIconEl.value = ''; updateIconInputPreview('am-source-icon-spec', 'am-source-icon-input-preview', 'Source icon'); }
+          if (varIconEl) { varIconEl.value = ''; updateIconInputPreview('am-variant-icon-spec', 'am-variant-icon-input-preview', 'Variant icon'); }
           renderSelected();
-          // Refresh both lists (best-effort).
           loadConfigAndRender();
           loadObservedAndRender();
         });

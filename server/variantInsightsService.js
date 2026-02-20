@@ -290,7 +290,7 @@ function sortRowsByRevenue(rows) {
   });
 }
 
-async function buildVariantsInsightTables({ shop, start, end, variantsConfig, rowIconOverrides } = {}) {
+async function buildVariantsInsightTables({ shop, start, end, variantsConfig, rowIconOverrides, variantIconOverrides } = {}) {
   const safeShop = typeof shop === 'string' ? shop.trim().toLowerCase() : '';
   const configObj = variantsConfig && typeof variantsConfig === 'object'
     ? variantsConfig
@@ -412,9 +412,14 @@ async function buildVariantsInsightTables({ shop, start, end, variantsConfig, ro
         const key = rule.id;
         const label = rule.label;
         const overrideKey = `variant_rule_${String(table && table.id ? table.id : '').toLowerCase()}__${String(rule && rule.id ? rule.id : '').toLowerCase()}`;
-        const overrideIconSpec = rowIconOverrides && Object.prototype.hasOwnProperty.call(rowIconOverrides, overrideKey)
+        const ruleIconSpec = rowIconOverrides && Object.prototype.hasOwnProperty.call(rowIconOverrides, overrideKey)
           ? String(rowIconOverrides[overrideKey] == null ? '' : rowIconOverrides[overrideKey]).trim()
           : '';
+        const variantKey = (label || '').trim().toLowerCase().replace(/[^a-z0-9_-]+/g, '_').replace(/^_+|_+$/g, '') || key;
+        const variantIconSpec = (variantIconOverrides && variantIconOverrides[variantKey] != null)
+          ? String(variantIconOverrides[variantKey] == null ? '' : variantIconOverrides[variantKey]).trim()
+          : '';
+        const overrideIconSpec = ruleIconSpec || variantIconSpec;
         const current = rowMap.get(key) || {
           key,
           variant: label,

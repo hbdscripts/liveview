@@ -432,6 +432,8 @@
     if (/^variant_rule_[a-z0-9_-]+__[a-z0-9_-]+$/i.test(s)) return true;
     if (/^attribution-source-[a-z0-9_-]+$/i.test(s)) return true;
     if (/^attribution-variant-[a-z0-9_-]+$/i.test(s)) return true;
+    if (/^overview-widget-[a-z0-9_-]+$/i.test(s)) return true;
+    if (/^variant_icon_[a-z0-9_-]+$/i.test(s)) return true;
     return false;
   }
 
@@ -959,6 +961,133 @@
     return rows;
   }
 
+  var OVERVIEW_WIDGET_ICON_KEYS = [
+    { key: 'finishes', label: 'Finishes' },
+    { key: 'devices', label: 'Devices' },
+    { key: 'browsers', label: 'Browsers' },
+    { key: 'abandoned', label: 'Abandoned' },
+    { key: 'attribution', label: 'Attribution' },
+    { key: 'payment_methods', label: 'Payment methods' },
+  ];
+
+  function hydrateOverviewWidgetsIconGroup(root) {
+    if (!root) return;
+    var accordion = root.querySelector('#theme-icons-accordion');
+    if (!accordion) return;
+    var item = ensureAttributionAccordionItem(accordion, {
+      groupId: 'overview-widgets',
+      label: 'Overview Widgets',
+      insertBeforeId: 'theme-icons-accordion-collapse-payment-methods',
+    });
+    if (!item) return;
+    var body = item.querySelector('[data-theme-icon-group-body="overview-widgets"]');
+    if (!body) return;
+    body.innerHTML = '<div class="col-12"><div class="spinner-border spinner-border-sm text-primary" role="status"></div> Loading…</div>';
+    fetchSettingsPayloadForIconGroups().then(function (payload) {
+      var overrides = payload && payload.assetOverrides && typeof payload.assetOverrides === 'object' ? payload.assetOverrides : {};
+      var cards = [];
+      cards.push(
+        '<div class="col-12" data-theme-icon-count-exclude="1">' +
+          '<div class="d-flex align-items-center justify-content-between flex-wrap gap-2">' +
+            '<h4 class="mb-0">Overview Widgets</h4>' +
+            '<span class="text-secondary small">Icons for the 6 cards on Dashboard → Overview</span>' +
+          '</div>' +
+        '</div>'
+      );
+      OVERVIEW_WIDGET_ICON_KEYS.forEach(function (w) {
+        var key = w.key;
+        var label = w.label;
+        var assetKey = 'overview_widget_' + key;
+        var spec = overrides[assetKey] != null ? String(overrides[assetKey]) : '';
+        var hasSaved = !!(spec && spec.trim());
+        cards.push(
+          '<div class="col-12 col-md-6 col-lg-4" data-overview-widget-icon-card="1" data-overview-widget-key="' + escapeHtml(key) + '" data-overview-widget-label="' + escapeHtml(label) + '">' +
+            '<div class="card card-sm h-100">' +
+              '<div class="card-body">' +
+                '<div class="d-flex align-items-center mb-2">' +
+                  '<span class="theme-icons-attribution-preview me-2 d-inline-flex align-items-center justify-content-center" style="width:1.5rem;height:1.5rem;" data-overview-widget-icon-preview="1" aria-hidden="true"></span>' +
+                  '<strong class="me-auto">' + escapeHtml(label) + '</strong>' +
+                  (hasSaved ? '<span class="badge bg-azure-lt text-azure">Saved</span>' : '') +
+                '</div>' +
+                '<div class="text-secondary small mb-2"><code>' + escapeHtml(assetKey) + '</code></div>' +
+                '<textarea class="form-control form-control-sm overview-widget-icon-input font-monospace" rows="2" spellcheck="false" placeholder="fa-light fa-gem  OR  https://...svg  OR  <svg ...>">' + escapeHtml(spec) + '</textarea>' +
+                '<div class="d-flex align-items-center gap-2 mt-2">' +
+                  '<button type="button" class="btn btn-outline-secondary btn-sm overview-widget-icon-edit" data-theme-icon-edit="overview-widget-' + escapeHtml(key) + '">Edit</button>' +
+                  '<button type="button" class="btn btn-outline-primary btn-sm overview-widget-icon-save">Save</button>' +
+                  '<span class="small text-secondary ms-auto" data-overview-widget-icon-msg="1"></span>' +
+                '</div>' +
+              '</div>' +
+            '</div>' +
+          '</div>'
+        );
+      });
+      body.innerHTML = cards.join('');
+      function updatePreview(cardEl) {
+        if (!cardEl) return;
+        var input = cardEl.querySelector('.overview-widget-icon-input');
+        var preview = cardEl.querySelector('[data-overview-widget-icon-preview]');
+        if (!input || !preview) return;
+        var label = cardEl.getAttribute('data-overview-widget-label') || '';
+        preview.innerHTML = attributionIconSpecToPreviewHtml(input.value, label);
+      }
+      body.querySelectorAll('[data-overview-widget-icon-card]').forEach(function (cardEl) { updatePreview(cardEl); });
+      if (body.getAttribute('data-overview-widget-icon-wired') !== '1') {
+        body.setAttribute('data-overview-widget-icon-wired', '1');
+        body.addEventListener('input', function (e) {
+          var target = e && e.target ? e.target : null;
+          var input = target && target.closest ? target.closest('.overview-widget-icon-input') : null;
+          if (!input) return;
+          var cardEl = input.closest ? input.closest('[data-overview-widget-icon-card]') : null;
+          if (!cardEl) return;
+          updatePreview(cardEl);
+          var msgEl = cardEl.querySelector('[data-overview-widget-icon-msg]');
+          if (msgEl) { msgEl.textContent = ''; msgEl.className = 'small text-secondary ms-auto'; }
+        });
+        body.addEventListener('click', function (e) {
+          var target = e && e.target ? e.target : null;
+          var btn = target && target.closest ? target.closest('.overview-widget-icon-save') : null;
+          if (!btn) return;
+          e.preventDefault();
+          if (btn.disabled) return;
+          var cardEl = btn.closest('[data-overview-widget-icon-card]');
+          if (!cardEl) return;
+          var key = cardEl.getAttribute('data-overview-widget-key') || '';
+          if (!key) return;
+          var input = cardEl.querySelector('.overview-widget-icon-input');
+          var msgEl = cardEl.querySelector('[data-overview-widget-icon-msg]');
+          var spec = input ? String(input.value || '').trim() : '';
+          var patch = {};
+          patch['overview_widget_' + key] = spec || '';
+          var originalText = btn.textContent || 'Save';
+          btn.disabled = true;
+          btn.textContent = 'Saving…';
+          if (msgEl) { msgEl.textContent = ''; msgEl.className = 'small text-secondary ms-auto'; }
+          saveAssetOverridesPatch(patch).then(function (saveRes) {
+            if (saveRes && saveRes.ok) {
+              btn.textContent = 'Saved!';
+              btn.classList.remove('btn-outline-primary');
+              btn.classList.add('btn-success');
+              if (msgEl) { msgEl.textContent = 'Saved'; msgEl.className = 'small text-success ms-auto'; }
+              hydrateOverviewWidgetsIconGroup(root);
+            } else {
+              btn.textContent = 'Save failed';
+              btn.classList.remove('btn-outline-primary');
+              btn.classList.add('btn-danger');
+              if (msgEl) { msgEl.textContent = (saveRes && saveRes.error) ? String(saveRes.error) : 'Save failed'; msgEl.className = 'small text-danger ms-auto'; }
+              setTimeout(function () {
+                btn.textContent = originalText;
+                btn.classList.remove('btn-danger');
+                btn.classList.add('btn-outline-primary');
+                btn.disabled = false;
+              }, 1800);
+            }
+          });
+        });
+      }
+      updateThemeIconsAccordionCounts(accordion);
+    });
+  }
+
   function hydratePaymentMethodsIconGroup(root) {
     if (!root) return;
     var accordion = root.querySelector('#theme-icons-accordion');
@@ -1001,7 +1130,7 @@
                   (hasSaved ? '<span class="badge bg-azure-lt text-azure">Saved</span>' : '') +
                 '</div>' +
                 '<div class="text-secondary small mb-2"><code>payment_' + escapeHtml(key) + '</code></div>' +
-                '<textarea class="form-control form-control-sm payment-icon-input font-monospace" rows="2" spellcheck="false" placeholder="fa-brands fa-cc-visa  OR  https://...svg  OR  <svg ...>"></textarea>' +
+                '<textarea class="form-control form-control-sm payment-icon-input font-monospace" rows="2" spellcheck="false" placeholder="fa-brands fa-cc-visa  OR  https://...svg  OR  <svg ...>">' + escapeHtml(m && m.iconSpec != null ? String(m.iconSpec) : '') + '</textarea>' +
                 '<div class="form-hint small mt-1">Starts blank intentionally. Paste Font Awesome, image URL/path, or SVG markup.</div>' +
                 '<div class="d-flex align-items-center gap-2 mt-2">' +
                   '<button type="button" class="btn btn-outline-secondary btn-sm payment-icon-edit" data-theme-icon-edit="payment-method-' + escapeHtml(key) + '">Edit</button>' +
@@ -1093,6 +1222,134 @@
               btn.classList.add('btn-outline-primary');
               btn.disabled = false;
             }, 1200);
+          });
+        });
+      }
+      updateThemeIconsAccordionCounts(accordion);
+    });
+  }
+
+  var VARIANT_VALUE_ICON_KEYS = [
+    'gold', 'silver', 'rose_gold', 'black', 'white', 'other',
+  ];
+
+  function hydrateVariantValueIconsGroup(root) {
+    if (!root) return;
+    var accordion = root.querySelector('#theme-icons-accordion');
+    if (!accordion) return;
+    var item = ensureAttributionAccordionItem(accordion, {
+      groupId: 'variant-values',
+      label: 'Variant value icons',
+      insertBeforeId: 'theme-icons-accordion-collapse-variants',
+    });
+    if (!item) return;
+    var body = item.querySelector('[data-theme-icon-group-body="variant-values"]');
+    if (!body) return;
+    body.innerHTML = '<div class="col-12"><div class="spinner-border spinner-border-sm text-primary" role="status"></div> Loading…</div>';
+    fetchSettingsPayloadForIconGroups().then(function (payload) {
+      var overrides = payload && payload.assetOverrides && typeof payload.assetOverrides === 'object' ? payload.assetOverrides : {};
+      var keysSet = {};
+      VARIANT_VALUE_ICON_KEYS.forEach(function (k) { keysSet[k] = true; });
+      Object.keys(overrides).forEach(function (k) {
+        if (k.indexOf('variant_icon_') === 0) {
+          var v = k.replace(/^variant_icon_/, '');
+          if (v) keysSet[v] = true;
+        }
+      });
+      var keys = Object.keys(keysSet).sort();
+      var cards = [];
+      cards.push(
+        '<div class="col-12" data-theme-icon-count-exclude="1">' +
+          '<div class="d-flex align-items-center justify-content-between flex-wrap gap-2">' +
+            '<h4 class="mb-0">Variant value icons</h4>' +
+            '<span class="text-secondary small">Icons by variant value (e.g. Gold, Silver) on Insights → Variants</span>' +
+          '</div>' +
+        '</div>'
+      );
+      keys.forEach(function (key) {
+        var assetKey = 'variant_icon_' + key;
+        var spec = overrides[assetKey] != null ? String(overrides[assetKey]) : '';
+        var label = titleFromKey(key);
+        var hasSaved = !!(spec && spec.trim());
+        cards.push(
+          '<div class="col-12 col-md-6 col-lg-4" data-variant-value-icon-card="1" data-variant-value-key="' + escapeHtml(key) + '">' +
+            '<div class="card card-sm h-100">' +
+              '<div class="card-body">' +
+                '<div class="d-flex align-items-center mb-2">' +
+                  '<span class="theme-icons-attribution-preview me-2 d-inline-flex align-items-center justify-content-center" style="width:1.5rem;height:1.5rem;" data-variant-value-icon-preview="1" aria-hidden="true"></span>' +
+                  '<strong class="me-auto">' + escapeHtml(label) + '</strong>' +
+                  (hasSaved ? '<span class="badge bg-azure-lt text-azure">Saved</span>' : '') +
+                '</div>' +
+                '<div class="text-secondary small mb-2"><code>' + escapeHtml(assetKey) + '</code></div>' +
+                '<textarea class="form-control form-control-sm variant-value-icon-input font-monospace" rows="2" spellcheck="false" placeholder="fa-light fa-gem  OR  https://...svg  OR  <svg ...">' + escapeHtml(spec) + '</textarea>' +
+                '<div class="d-flex align-items-center gap-2 mt-2">' +
+                  '<button type="button" class="btn btn-outline-secondary btn-sm" data-theme-icon-edit="variant_icon_' + escapeHtml(key) + '">Edit</button>' +
+                  '<button type="button" class="btn btn-outline-primary btn-sm variant-value-icon-save">Save</button>' +
+                  '<span class="small text-secondary ms-auto" data-variant-value-icon-msg="1"></span>' +
+                '</div>' +
+              '</div>' +
+            '</div>' +
+          '</div>'
+        );
+      });
+      body.innerHTML = cards.join('');
+      function updatePreview(cardEl) {
+        if (!cardEl) return;
+        var input = cardEl.querySelector('.variant-value-icon-input');
+        var preview = cardEl.querySelector('[data-variant-value-icon-preview]');
+        if (!input || !preview) return;
+        var label = cardEl.querySelector('.me-auto') ? cardEl.querySelector('.me-auto').textContent : '';
+        preview.innerHTML = attributionIconSpecToPreviewHtml(input.value, label);
+      }
+      body.querySelectorAll('[data-variant-value-icon-card]').forEach(function (cardEl) { updatePreview(cardEl); });
+      if (body.getAttribute('data-variant-value-icon-wired') !== '1') {
+        body.setAttribute('data-variant-value-icon-wired', '1');
+        body.addEventListener('input', function (e) {
+          var target = e && e.target ? e.target : null;
+          var input = target && target.closest ? target.closest('.variant-value-icon-input') : null;
+          if (!input) return;
+          var cardEl = input.closest ? input.closest('[data-variant-value-icon-card]') : null;
+          if (!cardEl) return;
+          updatePreview(cardEl);
+        });
+        body.addEventListener('click', function (e) {
+          var target = e && e.target ? e.target : null;
+          var btn = target && target.closest ? target.closest('.variant-value-icon-save') : null;
+          if (!btn) return;
+          e.preventDefault();
+          if (btn.disabled) return;
+          var cardEl = btn.closest('[data-variant-value-icon-card]');
+          if (!cardEl) return;
+          var key = cardEl.getAttribute('data-variant-value-key') || '';
+          if (!key) return;
+          var input = cardEl.querySelector('.variant-value-icon-input');
+          var msgEl = cardEl.querySelector('[data-variant-value-icon-msg]');
+          var spec = input ? String(input.value || '').trim() : '';
+          var patch = {};
+          patch['variant_icon_' + key] = spec || '';
+          var originalText = btn.textContent || 'Save';
+          btn.disabled = true;
+          btn.textContent = 'Saving…';
+          if (msgEl) { msgEl.textContent = ''; msgEl.className = 'small text-secondary ms-auto'; }
+          saveAssetOverridesPatch(patch).then(function (saveRes) {
+            if (saveRes && saveRes.ok) {
+              btn.textContent = 'Saved!';
+              btn.classList.remove('btn-outline-primary');
+              btn.classList.add('btn-success');
+              if (msgEl) { msgEl.textContent = 'Saved'; msgEl.className = 'small text-success ms-auto'; }
+              hydrateVariantValueIconsGroup(root);
+            } else {
+              btn.textContent = 'Save failed';
+              btn.classList.remove('btn-outline-primary');
+              btn.classList.add('btn-danger');
+              if (msgEl) { msgEl.textContent = (saveRes && saveRes.error) ? String(saveRes.error) : 'Save failed'; msgEl.className = 'small text-danger ms-auto'; }
+              setTimeout(function () {
+                btn.textContent = originalText;
+                btn.classList.remove('btn-danger');
+                btn.classList.add('btn-outline-primary');
+                btn.disabled = false;
+              }, 1800);
+            }
           });
         });
       }
@@ -2250,7 +2507,8 @@
     ICON_GLYPH_KEYS.forEach(function (key) {
       var input = formEl.querySelector('[name="' + key + '"]');
       var preview = formEl.querySelector('[data-theme-icon-preview-glyph="' + key + '"]');
-      var glyphVal = input && input.value ? input.value : (getStored(key) || DEFAULTS[key]);
+      var glyphVal = (getStored(key) != null && getStored(key) !== '') ? getStored(key) : (input && input.value ? input.value : DEFAULTS[key]);
+      if (input && input.value !== glyphVal) input.value = glyphVal;
       setPreviewIconClass(preview, glyphVal);
     });
   }
@@ -2579,6 +2837,7 @@
         var rawVal = String(input.value != null ? input.value : '').trim();
         var val = normalizeIconGlyph(rawVal, DEFAULTS[key]);
         setStored(key, val);
+        if (input) input.value = val;
         applyTheme(key, val);
         refreshIconPreviews(formEl);
         queueGlobalSaveKey(key);
@@ -2761,7 +3020,9 @@
     wireCssVarOverridesPanel(formEl);
     syncUI();
     hydrateDetectedDevicesIconGroup(root);
+    hydrateOverviewWidgetsIconGroup(root);
     hydratePaymentMethodsIconGroup(root);
+    hydrateVariantValueIconsGroup(root);
     hydrateVariantsIconGroup(root);
     hydrateAttributionIconGroup(root);
     try {

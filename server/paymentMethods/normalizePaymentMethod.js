@@ -29,28 +29,7 @@ function includesAnyFlat(flat, needles) {
   return false;
 }
 
-const ICON_SRC_BY_KEY = {
-  visa: 'https://www.svgrepo.com/show/98426/visa-logo.svg',
-  mastercard: 'https://www.svgrepo.com/show/266077/master-card.svg',
-  amex: 'https://www.svgrepo.com/show/122382/american-express-logo.svg',
-  maestro: 'https://www.svgrepo.com/show/36188/maestro.svg',
-  discover: 'https://www.svgrepo.com/show/7405/discover-logo-of-pay-system.svg',
-  jcb: 'https://www.svgrepo.com/show/128802/jcb-pay-card-logo.svg',
-  diners: 'https://www.svgrepo.com/show/328114/diners.svg',
-  unionpay: 'https://www.svgrepo.com/show/328087/unionpay.svg',
-  paypal: 'https://www.svgrepo.com/show/303385/paypal-icon-logo.svg',
-  klarna: 'https://www.svgrepo.com/show/73243/klarna-pay-logo.svg',
-  clearpay: 'https://www.svgrepo.com/show/442893/brand-afterpay.svg',
-  afterpay: 'https://www.svgrepo.com/show/442893/brand-afterpay.svg',
-  affirm: 'https://www.svgrepo.com/show/425160/payment-pay-later.svg',
-  zip: 'https://www.svgrepo.com/show/102490/zip.svg',
-  sezzle: 'https://www.svgrepo.com/show/55731/online-payment.svg',
-  stripe: 'https://www.svgrepo.com/show/354401/stripe.svg',
-  shop_pay: 'https://www.svgrepo.com/show/303503/shopify-logo.svg',
-  apple_pay: 'https://www.svgrepo.com/show/508402/apple-pay.svg',
-  google_pay: 'https://www.svgrepo.com/show/508690/google-pay.svg',
-};
-
+// Payment icons are no longer baked-in; they come from Settings → Icons (asset_overrides) or icon registry fallback.
 function methodMeta(key) {
   const k = s(key).trim().toLowerCase();
   if (k === 'visa') return { key: 'visa', label: 'Visa' };
@@ -109,84 +88,84 @@ function normalizePaymentMethod(input) {
   // Wallets / BNPL first (avoid classifying Apple Pay as "card").
   if (any(['paypal'])) {
     const m = methodMeta('paypal');
-    return { ...m, iconSrc: ICON_SRC_BY_KEY[m.key] || null, iconAlt: m.label, debug: { gateway: gatewayRaw, methodType: methodTypeRaw, methodName: methodNameRaw, cardBrand: cardBrandRaw } };
+    return { ...m, iconSrc: null, iconAlt: m.label, debug: { gateway: gatewayRaw, methodType: methodTypeRaw, methodName: methodNameRaw, cardBrand: cardBrandRaw } };
   }
   if (any(['klarna'])) {
     const m = methodMeta('klarna');
-    return { ...m, iconSrc: ICON_SRC_BY_KEY[m.key] || null, iconAlt: m.label, debug: { gateway: gatewayRaw, methodType: methodTypeRaw, methodName: methodNameRaw, cardBrand: cardBrandRaw } };
+    return { ...m, iconSrc: null, iconAlt: m.label, debug: { gateway: gatewayRaw, methodType: methodTypeRaw, methodName: methodNameRaw, cardBrand: cardBrandRaw } };
   }
   if (any(['clearpay'])) {
     const m = methodMeta('clearpay');
-    return { ...m, iconSrc: ICON_SRC_BY_KEY[m.key] || null, iconAlt: m.label, debug: { gateway: gatewayRaw, methodType: methodTypeRaw, methodName: methodNameRaw, cardBrand: cardBrandRaw } };
+    return { ...m, iconSrc: null, iconAlt: m.label, debug: { gateway: gatewayRaw, methodType: methodTypeRaw, methodName: methodNameRaw, cardBrand: cardBrandRaw } };
   }
   if (any(['afterpay'])) {
     const m = methodMeta('clearpay');
-    return { ...m, iconSrc: ICON_SRC_BY_KEY[m.key] || null, iconAlt: m.label, debug: { gateway: gatewayRaw, methodType: methodTypeRaw, methodName: methodNameRaw, cardBrand: cardBrandRaw } };
+    return { ...m, iconSrc: null, iconAlt: m.label, debug: { gateway: gatewayRaw, methodType: methodTypeRaw, methodName: methodNameRaw, cardBrand: cardBrandRaw } };
   }
   if (any(['affirm'])) {
     const m = methodMeta('affirm');
-    return { ...m, iconSrc: ICON_SRC_BY_KEY[m.key] || null, iconAlt: m.label, debug: { gateway: gatewayRaw, methodType: methodTypeRaw, methodName: methodNameRaw, cardBrand: cardBrandRaw } };
+    return { ...m, iconSrc: null, iconAlt: m.label, debug: { gateway: gatewayRaw, methodType: methodTypeRaw, methodName: methodNameRaw, cardBrand: cardBrandRaw } };
   }
   if (any(['zip'])) {
     const m = methodMeta('zip');
-    return { ...m, iconSrc: ICON_SRC_BY_KEY[m.key] || null, iconAlt: m.label, debug: { gateway: gatewayRaw, methodType: methodTypeRaw, methodName: methodNameRaw, cardBrand: cardBrandRaw } };
+    return { ...m, iconSrc: null, iconAlt: m.label, debug: { gateway: gatewayRaw, methodType: methodTypeRaw, methodName: methodNameRaw, cardBrand: cardBrandRaw } };
   }
   if (any(['sezzle'])) {
     const m = methodMeta('sezzle');
-    return { ...m, iconSrc: ICON_SRC_BY_KEY[m.key] || null, iconAlt: m.label, debug: { gateway: gatewayRaw, methodType: methodTypeRaw, methodName: methodNameRaw, cardBrand: cardBrandRaw } };
+    return { ...m, iconSrc: null, iconAlt: m.label, debug: { gateway: gatewayRaw, methodType: methodTypeRaw, methodName: methodNameRaw, cardBrand: cardBrandRaw } };
   }
   if (any(['stripe'])) {
     const m = methodMeta('stripe');
-    return { ...m, iconSrc: ICON_SRC_BY_KEY[m.key] || null, iconAlt: m.label, debug: { gateway: gatewayRaw, methodType: methodTypeRaw, methodName: methodNameRaw, cardBrand: cardBrandRaw } };
+    return { ...m, iconSrc: null, iconAlt: m.label, debug: { gateway: gatewayRaw, methodType: methodTypeRaw, methodName: methodNameRaw, cardBrand: cardBrandRaw } };
   }
   if (any(['shoppay', 'shop-pay', 'shop_pay'])) {
     const m = methodMeta('shop_pay');
-    return { ...m, iconSrc: ICON_SRC_BY_KEY[m.key] || null, iconAlt: m.label, debug: { gateway: gatewayRaw, methodType: methodTypeRaw, methodName: methodNameRaw, cardBrand: cardBrandRaw } };
+    return { ...m, iconSrc: null, iconAlt: m.label, debug: { gateway: gatewayRaw, methodType: methodTypeRaw, methodName: methodNameRaw, cardBrand: cardBrandRaw } };
   }
   if (any(['applepay', 'apple-pay', 'apple_pay'])) {
     const m = methodMeta('apple_pay');
-    return { ...m, iconSrc: ICON_SRC_BY_KEY[m.key] || null, iconAlt: m.label, debug: { gateway: gatewayRaw, methodType: methodTypeRaw, methodName: methodNameRaw, cardBrand: cardBrandRaw } };
+    return { ...m, iconSrc: null, iconAlt: m.label, debug: { gateway: gatewayRaw, methodType: methodTypeRaw, methodName: methodNameRaw, cardBrand: cardBrandRaw } };
   }
   if (any(['googlepay', 'google-pay', 'google_pay', 'gpay'])) {
     const m = methodMeta('google_pay');
-    return { ...m, iconSrc: ICON_SRC_BY_KEY[m.key] || null, iconAlt: m.label, debug: { gateway: gatewayRaw, methodType: methodTypeRaw, methodName: methodNameRaw, cardBrand: cardBrandRaw } };
+    return { ...m, iconSrc: null, iconAlt: m.label, debug: { gateway: gatewayRaw, methodType: methodTypeRaw, methodName: methodNameRaw, cardBrand: cardBrandRaw } };
   }
 
   // Card brands.
   if (any(['visa'])) {
     const m = methodMeta('visa');
-    return { ...m, iconSrc: ICON_SRC_BY_KEY[m.key] || null, iconAlt: m.label, debug: { gateway: gatewayRaw, methodType: methodTypeRaw, methodName: methodNameRaw, cardBrand: cardBrandRaw } };
+    return { ...m, iconSrc: null, iconAlt: m.label, debug: { gateway: gatewayRaw, methodType: methodTypeRaw, methodName: methodNameRaw, cardBrand: cardBrandRaw } };
   }
   if (any(['mastercard', 'mastercarddebit', 'mastercardcredit', 'mastercardprepaid', 'mastercardworld', 'mastercardworldelite', 'master'])) {
     // Guard: treat generic "master" only when the gateway is Shopify Payments or a card context.
     if (any(['mastercard']) || isShopifyPayments || any(['creditcard', 'debitcard', 'card'])) {
       const m = methodMeta('mastercard');
-      return { ...m, iconSrc: ICON_SRC_BY_KEY[m.key] || null, iconAlt: m.label, debug: { gateway: gatewayRaw, methodType: methodTypeRaw, methodName: methodNameRaw, cardBrand: cardBrandRaw } };
+      return { ...m, iconSrc: null, iconAlt: m.label, debug: { gateway: gatewayRaw, methodType: methodTypeRaw, methodName: methodNameRaw, cardBrand: cardBrandRaw } };
     }
   }
   if (any(['americanexpress', 'amex'])) {
     const m = methodMeta('amex');
-    return { ...m, iconSrc: ICON_SRC_BY_KEY[m.key] || null, iconAlt: m.label, debug: { gateway: gatewayRaw, methodType: methodTypeRaw, methodName: methodNameRaw, cardBrand: cardBrandRaw } };
+    return { ...m, iconSrc: null, iconAlt: m.label, debug: { gateway: gatewayRaw, methodType: methodTypeRaw, methodName: methodNameRaw, cardBrand: cardBrandRaw } };
   }
   if (any(['maestro'])) {
     const m = methodMeta('maestro');
-    return { ...m, iconSrc: ICON_SRC_BY_KEY[m.key] || null, iconAlt: m.label, debug: { gateway: gatewayRaw, methodType: methodTypeRaw, methodName: methodNameRaw, cardBrand: cardBrandRaw } };
+    return { ...m, iconSrc: null, iconAlt: m.label, debug: { gateway: gatewayRaw, methodType: methodTypeRaw, methodName: methodNameRaw, cardBrand: cardBrandRaw } };
   }
   if (any(['discover'])) {
     const m = methodMeta('discover');
-    return { ...m, iconSrc: ICON_SRC_BY_KEY[m.key] || null, iconAlt: m.label, debug: { gateway: gatewayRaw, methodType: methodTypeRaw, methodName: methodNameRaw, cardBrand: cardBrandRaw } };
+    return { ...m, iconSrc: null, iconAlt: m.label, debug: { gateway: gatewayRaw, methodType: methodTypeRaw, methodName: methodNameRaw, cardBrand: cardBrandRaw } };
   }
   if (any(['diners', 'dinersclub'])) {
     const m = methodMeta('diners');
-    return { ...m, iconSrc: ICON_SRC_BY_KEY[m.key] || null, iconAlt: m.label, debug: { gateway: gatewayRaw, methodType: methodTypeRaw, methodName: methodNameRaw, cardBrand: cardBrandRaw } };
+    return { ...m, iconSrc: null, iconAlt: m.label, debug: { gateway: gatewayRaw, methodType: methodTypeRaw, methodName: methodNameRaw, cardBrand: cardBrandRaw } };
   }
   if (any(['jcb'])) {
     const m = methodMeta('jcb');
-    return { ...m, iconSrc: ICON_SRC_BY_KEY[m.key] || null, iconAlt: m.label, debug: { gateway: gatewayRaw, methodType: methodTypeRaw, methodName: methodNameRaw, cardBrand: cardBrandRaw } };
+    return { ...m, iconSrc: null, iconAlt: m.label, debug: { gateway: gatewayRaw, methodType: methodTypeRaw, methodName: methodNameRaw, cardBrand: cardBrandRaw } };
   }
   if (any(['unionpay'])) {
     const m = methodMeta('unionpay');
-    return { ...m, iconSrc: ICON_SRC_BY_KEY[m.key] || null, iconAlt: m.label, debug: { gateway: gatewayRaw, methodType: methodTypeRaw, methodName: methodNameRaw, cardBrand: cardBrandRaw } };
+    return { ...m, iconSrc: null, iconAlt: m.label, debug: { gateway: gatewayRaw, methodType: methodTypeRaw, methodName: methodNameRaw, cardBrand: cardBrandRaw } };
   }
 
   // Shopify Payments is a gateway; never emit it as a method.
@@ -207,7 +186,6 @@ function normalizePaymentMethod(input) {
 
 module.exports = {
   normalizePaymentMethod,
-  // exported for tests
-  __private: { flatToken, methodMeta, ICON_SRC_BY_KEY },
+  __private: { flatToken, methodMeta },
 };
 

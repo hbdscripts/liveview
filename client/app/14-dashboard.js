@@ -5962,6 +5962,13 @@
         try { shop = getShopForSales(); } catch (_) { shop = null; }
         var shopKey = shop ? String(shop) : '';
         var base = (typeof API === 'string') ? API : '';
+        var ovwAssetOverrides = {};
+        var ovwOverridePromise = fetch(base + '/api/asset-overrides', { credentials: 'same-origin', cache: 'no-store' })
+          .then(function (r) { return r && r.ok ? r.json() : null; })
+          .then(function (body) {
+            if (body && body.ok && body.assetOverrides && typeof body.assetOverrides === 'object') ovwAssetOverrides = body.assetOverrides;
+          })
+          .catch(function () {});
 
         var urls = {
           finishes: base + '/api/insights-variants?range=' + encodeURIComponent(rk) + (shopKey ? ('&shop=' + encodeURIComponent(shopKey)) : '') + (force ? ('&force=1&_=' + Date.now()) : ''),
@@ -6178,9 +6185,10 @@
             return rows.map(function (r) {
               var label = r && (r.variant || r.key) ? String(r.variant || r.key) : '—';
               var iconSpec = r && r.icon_spec != null ? String(r.icon_spec).trim() : '';
+              var fallbackSpec = (ovwAssetOverrides && ovwAssetOverrides.overview_widget_finishes) ? String(ovwAssetOverrides.overview_widget_finishes).trim() : '';
               var iconHtml = iconSpec
                 ? attributionIconSpecToHtml(iconSpec, label)
-                : '<i class="fa-light fa-gem" data-icon-key="overview-widget-finishes" aria-hidden="true"></i>';
+                : (fallbackSpec ? attributionIconSpecToHtml(fallbackSpec, label) : '<i class="fa-light fa-gem" data-icon-key="overview-widget-finishes" aria-hidden="true"></i>');
               return {
                 label: label,
                 revenue: Number(r && (r.revenue_gbp != null ? r.revenue_gbp : r.revenue)) || 0,
@@ -6219,36 +6227,41 @@
                 : plat === 'linux' ? 'type-platform-linux'
                 : 'type-platform-unknown';
               var ctr = (agg.sessions > 0 && agg.orders != null) ? ((agg.orders / agg.sessions) * 100) : null;
+              var devFallback = (ovwAssetOverrides && ovwAssetOverrides.overview_widget_devices) ? String(ovwAssetOverrides.overview_widget_devices).trim() : '';
+              var rowIcon = devFallback ? attributionIconSpecToHtml(devFallback, label) : ('<i class="' + escapeHtml(icon) + '" data-icon-key="' + escapeHtml(iconKey) + '" aria-hidden="true"></i>');
               return {
                 label: label,
                 revenue: Math.round((Number(agg.revenueGbp) || 0) * 100) / 100,
                 clicks: Number(agg.sessions) || 0,
                 ctr: Number.isFinite(ctr) ? Math.round(ctr * 10) / 10 : null,
-                iconHtml: '<i class="' + escapeHtml(icon) + '" data-icon-key="' + escapeHtml(iconKey) + '" aria-hidden="true"></i>',
+                iconHtml: rowIcon,
               };
             });
           }
           if (key === 'browsers') {
             var brRows = Array.isArray(payload.rows) ? payload.rows : [];
+            var brFallback = (ovwAssetOverrides && ovwAssetOverrides.overview_widget_browsers) ? String(ovwAssetOverrides.overview_widget_browsers).trim() : '';
             return brRows.map(function (r) {
               var label = r && r.ua_browser != null ? String(r.ua_browser) : '—';
+              var iconHtml = brFallback ? attributionIconSpecToHtml(brFallback, label) : browserIconHtmlForKey(label, label);
               return {
                 label: label,
                 revenue: Number(r && r.revenue) || 0,
                 clicks: Number(r && r.sessions) || 0,
                 ctr: (r && r.cr != null) ? Number(r.cr) : null,
-                iconHtml: browserIconHtmlForKey(label, label),
+                iconHtml: iconHtml,
               };
             });
           }
           if (key === 'abandoned') {
             var abRows = Array.isArray(payload.rows) ? payload.rows : [];
+            var abFallback = (ovwAssetOverrides && ovwAssetOverrides.overview_widget_abandoned) ? String(ovwAssetOverrides.overview_widget_abandoned).trim() : '';
             return abRows.map(function (r) {
               var cc = r && r.country != null ? String(r.country) : '—';
               cc = String(cc || '').trim().toUpperCase().slice(0, 2) || '—';
               var iconHtml = cc && /^[A-Z]{2}$/.test(cc)
                 ? countryCodeToFlagHtml(cc)
-                : '<i class="fa-light fa-globe" data-icon-key="overview-widget-abandoned" aria-hidden="true"></i>';
+                : (abFallback ? attributionIconSpecToHtml(abFallback, cc) : '<i class="fa-light fa-globe" data-icon-key="overview-widget-abandoned" aria-hidden="true"></i>');
               return {
                 label: cc,
                 revenue: Number(r && r.abandoned_value_gbp) || 0,
@@ -6275,17 +6288,19 @@
                 agg[k] = cur;
               });
             });
+            var attrFallback = (ovwAssetOverrides && ovwAssetOverrides.overview_widget_attribution) ? String(ovwAssetOverrides.overview_widget_attribution).trim() : '';
             return Object.keys(agg).map(function (k) {
               var a = agg[k];
               var iconHtml = a.iconSpec
                 ? attributionIconSpecToHtml(a.iconSpec, a.label)
-                : '<i class="fa-light fa-share-nodes" data-icon-key="overview-widget-attribution" aria-hidden="true"></i>';
+                : (attrFallback ? attributionIconSpecToHtml(attrFallback, a.label) : '<i class="fa-light fa-share-nodes" data-icon-key="overview-widget-attribution" aria-hidden="true"></i>');
               var ctr = a.sessions > 0 ? Math.round((a.orders / a.sessions) * 1000) / 10 : null;
               return { label: a.label || k, revenue: a.revenue || 0, clicks: a.sessions || 0, ctr: ctr, iconHtml: iconHtml };
             });
           }
           if (key === 'payment_methods') {
             var payRows = Array.isArray(payload.rows) ? payload.rows : [];
+            var payFallback = (ovwAssetOverrides && ovwAssetOverrides.overview_widget_payment_methods) ? String(ovwAssetOverrides.overview_widget_payment_methods).trim() : '';
             return payRows.map(function (r) {
               var label = r && r.label != null ? String(r.label) : '—';
               var key2 = r && r.key != null ? String(r.key).trim().toLowerCase() : 'other';
@@ -6294,9 +6309,9 @@
               var iconAlt = r && r.iconAlt ? String(r.iconAlt) : label;
               var iconHtml = iconSpec
                 ? attributionIconSpecToHtml(iconSpec, iconAlt)
-                : (iconSrc
+                : (payFallback ? attributionIconSpecToHtml(payFallback, iconAlt) : (iconSrc
                 ? ('<img src="' + escapeHtml(iconSrc) + '" alt="' + escapeHtml(iconAlt) + '" width="18" height="18" data-icon-key="payment-method-' + escapeHtml(key2 || 'other') + '">')
-                : '<i class="fa-light fa-credit-card" data-icon-key="payment-method-' + escapeHtml(key2 || 'other') + '" aria-hidden="true"></i>');
+                : '<i class="fa-light fa-credit-card" data-icon-key="payment-method-' + escapeHtml(key2 || 'other') + '" aria-hidden="true"></i>'));
               return {
                 label: label,
                 revenue: Number(r && (r.revenue != null ? r.revenue : r.revenue_gbp)) || 0,
@@ -6361,10 +6376,12 @@
           });
         });
 
-        // Older environments may not support Promise.allSettled.
-        return Promise.all(tasks.map(function (p) {
-          return Promise.resolve(p).then(function (v) { return { status: 'fulfilled', value: v }; }, function (err) { return { status: 'rejected', reason: err }; });
-        })).then(function () {});
+        // Wait for asset overrides so overview_widget_* icons are available in extractRows.
+        return ovwOverridePromise.then(function () {
+          return Promise.all(tasks.map(function (p) {
+            return Promise.resolve(p).then(function (v) { return { status: 'fulfilled', value: v }; }, function (err) { return { status: 'rejected', reason: err }; });
+          }));
+        }).then(function () {});
       }
 
       window.refreshDashboard = function(opts) {
