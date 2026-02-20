@@ -621,8 +621,7 @@
     let browsersPage = 1;
     let dashTopProductsPage = 1;
     let dashTopCountriesPage = 1;
-    let dashTrendingUpPage = 1;
-    let dashTrendingDownPage = 1;
+    let dashTrendingPage = 1;
     let bestSellersSortBy = 'rev';
     let bestSellersSortDir = 'desc';
     const tableSortState = {
@@ -710,13 +709,8 @@
         rerenderDashboardFromCache();
         return;
       }
-      if (id === 'dash-trending-up') {
-        dashTrendingUpPage = 1;
-        rerenderDashboardFromCache();
-        return;
-      }
-      if (id === 'dash-trending-down') {
-        dashTrendingDownPage = 1;
+      if (id === 'dash-trending') {
+        dashTrendingPage = 1;
         rerenderDashboardFromCache();
         return;
       }

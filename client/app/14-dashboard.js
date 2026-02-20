@@ -3831,9 +3831,8 @@
             var rows = Array.isArray(items) ? items : [];
             var pageSize = getTableRowsPerPage(tableId, 'dashboard');
             var pages = Math.max(1, Math.ceil(rows.length / pageSize));
-            if (tableId === 'dash-trending-up') dashTrendingUpPage = clampPage(dashTrendingUpPage, pages);
-            else dashTrendingDownPage = clampPage(dashTrendingDownPage, pages);
-            var page = tableId === 'dash-trending-up' ? dashTrendingUpPage : dashTrendingDownPage;
+            if (tableId === 'dash-trending') dashTrendingPage = clampPage(dashTrendingPage, pages);
+            var page = (tableId === 'dash-trending') ? dashTrendingPage : 1;
             updateCardPagination(tableId, page, pages);
             var pageStart = (page - 1) * pageSize;
             var pageRows = rows.slice(pageStart, pageStart + pageSize);
@@ -3875,9 +3874,8 @@
           var pagePrefix = tableId;
           var pageSize = getTableRowsPerPage(tableId, 'dashboard');
           var pages = Math.max(1, Math.ceil(rows.length / pageSize));
-          if (tableId === 'dash-trending-up') dashTrendingUpPage = clampPage(dashTrendingUpPage, pages);
-          else dashTrendingDownPage = clampPage(dashTrendingDownPage, pages);
-          var page = tableId === 'dash-trending-up' ? dashTrendingUpPage : dashTrendingDownPage;
+          if (tableId === 'dash-trending') dashTrendingPage = clampPage(dashTrendingPage, pages);
+          var page = (tableId === 'dash-trending') ? dashTrendingPage : 1;
           updateCardPagination(pagePrefix, page, pages);
           var pageStart = (page - 1) * pageSize;
           var pageRows = rows.slice(pageStart, pageStart + pageSize);
@@ -3921,8 +3919,9 @@
           }).join('');
         }
 
-        renderTrendingTable('dash-trending-up', data.trendingUp || [], true);
-        renderTrendingTable('dash-trending-down', data.trendingDown || [], false);
+        var trendingItems = (dashTrendingMode === 'up') ? (data.trendingUp || []) : (data.trendingDown || []);
+        renderTrendingTable('dash-trending', trendingItems, dashTrendingMode === 'up');
+        syncTrendingCardTitleAndChevron();
         try {
           if (typeof window.__kexoRunStickyColumnResize === 'function') window.__kexoRunStickyColumnResize();
         } catch (_) {}
@@ -3930,6 +3929,18 @@
 
       var _kexoScoreCache = null;
       var _kexoScoreRangeKey = '';
+      var dashTrendingMode = 'up';
+
+      function syncTrendingCardTitleAndChevron() {
+        var titleEl = document.getElementById('dash-trending-title');
+        var chevronBtn = document.getElementById('dash-trending-chevron');
+        var iconEl = document.getElementById('dash-trending-chevron-icon');
+        if (titleEl) titleEl.textContent = dashTrendingMode === 'up' ? 'Trending Up' : 'Trending Down';
+        if (chevronBtn) chevronBtn.setAttribute('aria-label', dashTrendingMode === 'up' ? 'Switch to Trending Down' : 'Switch to Trending Up');
+        if (iconEl) {
+          iconEl.className = dashTrendingMode === 'up' ? 'fa-light fa-chevron-down' : 'fa-light fa-chevron-up';
+        }
+      }
 
       function isElementVisiblyRendered(el) {
         if (!el) return false;
@@ -4095,6 +4106,9 @@
         if (dashRing) {
           dashRing.style.setProperty('--kexo-score-pct', pct);
           dashRing.setAttribute('data-score', pct);
+          if (dashRing.tagName === 'svg') {
+            applyKexoScoreRingSvg(dashRing, score);
+          }
         }
         if (headerNum) { headerNum.textContent = headerText; }
         if (headerRing) {
@@ -4414,6 +4428,21 @@
           if (!modalEl || modalEl.classList.contains('is-hidden')) return;
           if (modalEl.getAttribute('aria-hidden') === 'true') return;
           closeKexoScoreModal();
+        });
+      })();
+
+      (function initTrendingChevron() {
+        var chevronBtn = document.getElementById('dash-trending-chevron');
+        if (!chevronBtn) return;
+        if (typeof syncTrendingCardTitleAndChevron === 'function') syncTrendingCardTitleAndChevron();
+        chevronBtn.addEventListener('click', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          dashTrendingMode = dashTrendingMode === 'up' ? 'down' : 'up';
+          syncTrendingCardTitleAndChevron();
+          if (dashCache && typeof rerenderDashboardFromCache === 'function') {
+            rerenderDashboardFromCache();
+          }
         });
       })();
 

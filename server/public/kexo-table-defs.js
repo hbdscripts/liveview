@@ -275,18 +275,8 @@
         { header: 'VPV', headerClass: 'text-center w-1' }
       ]
     },
-    'dash-trending-up': {
-      tableId: 'dash-trending-up',
-      columns: [
-        { header: 'Product', headerClass: '' },
-        { header: 'Revenue', headerClass: 'text-center w-1' },
-        { header: 'Orders', headerClass: 'text-center w-1' },
-        { header: 'CR%', headerClass: 'text-center w-1' },
-        { header: 'VPV', headerClass: 'text-center w-1' }
-      ]
-    },
-    'dash-trending-down': {
-      tableId: 'dash-trending-down',
+    'dash-trending': {
+      tableId: 'dash-trending',
       columns: [
         { header: 'Product', headerClass: '' },
         { header: 'Revenue', headerClass: 'text-center w-1' },

@@ -39,8 +39,7 @@
       bindDelegate('browsers', function(pg) { browsersPage = pg; renderBrowsersTables(browsersCache || {}); });
       bindDelegate('dash-top-products', function(pg) { dashTopProductsPage = pg; rerenderDashboardFromCache(); });
       bindDelegate('dash-top-countries', function(pg) { dashTopCountriesPage = pg; rerenderDashboardFromCache(); });
-      bindDelegate('dash-trending-up', function(pg) { dashTrendingUpPage = pg; rerenderDashboardFromCache(); });
-      bindDelegate('dash-trending-down', function(pg) { dashTrendingDownPage = pg; rerenderDashboardFromCache(); });
+      bindDelegate('dash-trending', function(pg) { dashTrendingPage = pg; rerenderDashboardFromCache(); });
       bindDelegate('breakdown-aov', function(pg) { breakdownAovPage = pg; renderAov(statsCache); });
       bindDelegate('breakdown-title', function(pg) { breakdownTitlePage = pg; renderBreakdownTitles(leaderboardCache); });
       bindDelegate('breakdown-finish', function(pg) { breakdownFinishPage = pg; renderBreakdownFinishes(finishesCache); });

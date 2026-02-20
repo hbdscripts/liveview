@@ -30,7 +30,7 @@
             });
             mount.outerHTML = build(config);
           } else if (nativeDef && buildNative) {
-            var dashTopListIds = ['dash-top-products', 'dash-top-countries', 'dash-trending-up', 'dash-trending-down'];
+            var dashTopListIds = ['dash-top-products', 'dash-top-countries', 'dash-trending'];
             if (dashTopListIds.indexOf(tableId) >= 0) {
               var wrapId = tableId + '-wrap';
               var bodyId = tableId + '-body';

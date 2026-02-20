@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 693c7cd0a3b2e92e
+// checksum: 4ff19d4bda282632
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -421,8 +421,7 @@ const API = '';
       'sessions-table': 'live',
       'dash-top-products': 'dashboard',
       'dash-top-countries': 'dashboard',
-      'dash-trending-up': 'dashboard',
-      'dash-trending-down': 'dashboard',
+      'dash-trending': 'dashboard',
       'best-sellers-table': 'product',
       'best-variants-table': 'product',
       'type-necklaces-table': 'product',
@@ -482,7 +481,7 @@ const API = '';
             });
             mount.outerHTML = build(config);
           } else if (nativeDef && buildNative) {
-            var dashTopListIds = ['dash-top-products', 'dash-top-countries', 'dash-trending-up', 'dash-trending-down'];
+            var dashTopListIds = ['dash-top-products', 'dash-top-countries', 'dash-trending'];
             if (dashTopListIds.indexOf(tableId) >= 0) {
               var wrapId = tableId + '-wrap';
               var bodyId = tableId + '-body';
@@ -2255,8 +2254,7 @@ const API = '';
     let browsersPage = 1;
     let dashTopProductsPage = 1;
     let dashTopCountriesPage = 1;
-    let dashTrendingUpPage = 1;
-    let dashTrendingDownPage = 1;
+    let dashTrendingPage = 1;
     let bestSellersSortBy = 'rev';
     let bestSellersSortDir = 'desc';
     const tableSortState = {
@@ -2344,13 +2342,8 @@ const API = '';
         rerenderDashboardFromCache();
         return;
       }
-      if (id === 'dash-trending-up') {
-        dashTrendingUpPage = 1;
-        rerenderDashboardFromCache();
-        return;
-      }
-      if (id === 'dash-trending-down') {
-        dashTrendingDownPage = 1;
+      if (id === 'dash-trending') {
+        dashTrendingPage = 1;
         rerenderDashboardFromCache();
         return;
       }
@@ -14118,8 +14111,7 @@ const API = '';
       bindDelegate('browsers', function(pg) { browsersPage = pg; renderBrowsersTables(browsersCache || {}); });
       bindDelegate('dash-top-products', function(pg) { dashTopProductsPage = pg; rerenderDashboardFromCache(); });
       bindDelegate('dash-top-countries', function(pg) { dashTopCountriesPage = pg; rerenderDashboardFromCache(); });
-      bindDelegate('dash-trending-up', function(pg) { dashTrendingUpPage = pg; rerenderDashboardFromCache(); });
-      bindDelegate('dash-trending-down', function(pg) { dashTrendingDownPage = pg; rerenderDashboardFromCache(); });
+      bindDelegate('dash-trending', function(pg) { dashTrendingPage = pg; rerenderDashboardFromCache(); });
       bindDelegate('breakdown-aov', function(pg) { breakdownAovPage = pg; renderAov(statsCache); });
       bindDelegate('breakdown-title', function(pg) { breakdownTitlePage = pg; renderBreakdownTitles(leaderboardCache); });
       bindDelegate('breakdown-finish', function(pg) { breakdownFinishPage = pg; renderBreakdownFinishes(finishesCache); });
@@ -21087,9 +21079,8 @@ const API = '';
             var rows = Array.isArray(items) ? items : [];
             var pageSize = getTableRowsPerPage(tableId, 'dashboard');
             var pages = Math.max(1, Math.ceil(rows.length / pageSize));
-            if (tableId === 'dash-trending-up') dashTrendingUpPage = clampPage(dashTrendingUpPage, pages);
-            else dashTrendingDownPage = clampPage(dashTrendingDownPage, pages);
-            var page = tableId === 'dash-trending-up' ? dashTrendingUpPage : dashTrendingDownPage;
+            if (tableId === 'dash-trending') dashTrendingPage = clampPage(dashTrendingPage, pages);
+            var page = (tableId === 'dash-trending') ? dashTrendingPage : 1;
             updateCardPagination(tableId, page, pages);
             var pageStart = (page - 1) * pageSize;
             var pageRows = rows.slice(pageStart, pageStart + pageSize);
@@ -21131,9 +21122,8 @@ const API = '';
           var pagePrefix = tableId;
           var pageSize = getTableRowsPerPage(tableId, 'dashboard');
           var pages = Math.max(1, Math.ceil(rows.length / pageSize));
-          if (tableId === 'dash-trending-up') dashTrendingUpPage = clampPage(dashTrendingUpPage, pages);
-          else dashTrendingDownPage = clampPage(dashTrendingDownPage, pages);
-          var page = tableId === 'dash-trending-up' ? dashTrendingUpPage : dashTrendingDownPage;
+          if (tableId === 'dash-trending') dashTrendingPage = clampPage(dashTrendingPage, pages);
+          var page = (tableId === 'dash-trending') ? dashTrendingPage : 1;
           updateCardPagination(pagePrefix, page, pages);
           var pageStart = (page - 1) * pageSize;
           var pageRows = rows.slice(pageStart, pageStart + pageSize);
@@ -21177,8 +21167,9 @@ const API = '';
           }).join('');
         }
 
-        renderTrendingTable('dash-trending-up', data.trendingUp || [], true);
-        renderTrendingTable('dash-trending-down', data.trendingDown || [], false);
+        var trendingItems = (dashTrendingMode === 'up') ? (data.trendingUp || []) : (data.trendingDown || []);
+        renderTrendingTable('dash-trending', trendingItems, dashTrendingMode === 'up');
+        syncTrendingCardTitleAndChevron();
         try {
           if (typeof window.__kexoRunStickyColumnResize === 'function') window.__kexoRunStickyColumnResize();
         } catch (_) {}
@@ -21186,6 +21177,18 @@ const API = '';
 
       var _kexoScoreCache = null;
       var _kexoScoreRangeKey = '';
+      var dashTrendingMode = 'up';
+
+      function syncTrendingCardTitleAndChevron() {
+        var titleEl = document.getElementById('dash-trending-title');
+        var chevronBtn = document.getElementById('dash-trending-chevron');
+        var iconEl = document.getElementById('dash-trending-chevron-icon');
+        if (titleEl) titleEl.textContent = dashTrendingMode === 'up' ? 'Trending Up' : 'Trending Down';
+        if (chevronBtn) chevronBtn.setAttribute('aria-label', dashTrendingMode === 'up' ? 'Switch to Trending Down' : 'Switch to Trending Up');
+        if (iconEl) {
+          iconEl.className = dashTrendingMode === 'up' ? 'fa-light fa-chevron-down' : 'fa-light fa-chevron-up';
+        }
+      }
 
       function isElementVisiblyRendered(el) {
         if (!el) return false;
@@ -21351,6 +21354,9 @@ const API = '';
         if (dashRing) {
           dashRing.style.setProperty('--kexo-score-pct', pct);
           dashRing.setAttribute('data-score', pct);
+          if (dashRing.tagName === 'svg') {
+            applyKexoScoreRingSvg(dashRing, score);
+          }
         }
         if (headerNum) { headerNum.textContent = headerText; }
         if (headerRing) {
@@ -21670,6 +21676,21 @@ const API = '';
           if (!modalEl || modalEl.classList.contains('is-hidden')) return;
           if (modalEl.getAttribute('aria-hidden') === 'true') return;
           closeKexoScoreModal();
+        });
+      })();
+
+      (function initTrendingChevron() {
+        var chevronBtn = document.getElementById('dash-trending-chevron');
+        if (!chevronBtn) return;
+        if (typeof syncTrendingCardTitleAndChevron === 'function') syncTrendingCardTitleAndChevron();
+        chevronBtn.addEventListener('click', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          dashTrendingMode = dashTrendingMode === 'up' ? 'down' : 'up';
+          syncTrendingCardTitleAndChevron();
+          if (dashCache && typeof rerenderDashboardFromCache === 'function') {
+            rerenderDashboardFromCache();
+          }
         });
       })();
 
