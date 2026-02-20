@@ -2757,6 +2757,24 @@ html[data-bs-theme="dark"] .report-build-wrap {
   border-radius: 999px;
   background: rgba(15, 23, 42, 0.12);
 }
+.kexo-score-breakdown-row .progress.kexo-score-progress {
+  position: relative;
+  overflow: hidden;
+  display: block;
+}
+.kexo-score-breakdown-row .progress.kexo-score-progress .progress-bar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+}
+.kexo-score-breakdown-row .progress.kexo-score-progress .kexo-score-bar-prev {
+  opacity: 0.25;
+  z-index: 0;
+}
+.kexo-score-breakdown-row .progress.kexo-score-progress .kexo-score-bar-cur {
+  z-index: 1;
+}
 .kexo-score-breakdown-row .progress-bar {
   display: flex;
   align-items: center;
@@ -3423,6 +3441,7 @@ body[data-page="dashboard"] #dash-trending-down .dash-trend-delta.text-red {
 .kexo-ovw-ring-wrap--small .kexo-ovw-ring svg {
   width: 111px;
   height: 111px;
+  display: block;
 }
 .kexo-ovw-ring-right {
   flex: 1;
@@ -3566,9 +3585,6 @@ body[data-page="dashboard"] #dash-trending-down .dash-trend-delta.text-red {
   font-weight: 500;
 }
 .kexo-widget-body {
-  min-height: 170px;
-}
-.kexo-widget-mount {
   min-height: 170px;
 }
 .kexo-widget-empty {

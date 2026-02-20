@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: d01f58bde15c1ece
+// checksum: eb613986a0fba465
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -21389,53 +21389,103 @@ const API = '';
       function renderKexoScoreOverviewBreakdown(scoreData) {
         var container = document.getElementById('dash-kpi-kexo-score-breakdown');
         if (!container) return;
+        var KEXO_SCORE_V2_UI = {
+          floors: {
+            money: 100,
+            vpv: 0.5,
+            mer: 0.25,
+            conversion: 1, // % (not fraction)
+          },
+          stable: {
+            conversionPp: 0.2, // percentage points
+            vpvRatio: 0.05,
+            revenueRatio: 0.07,
+            profitRatio: 0.07,
+            merRatio: 0.09,
+          },
+        };
+        function metricUiSpec(rawKey) {
+          var k = String(rawKey || '').trim().toLowerCase();
+          if (k === 'roas') k = 'mer';
+          if (k === 'conversion') return { key: 'conversion', floor: KEXO_SCORE_V2_UI.floors.conversion, stableMode: 'pp', stable: KEXO_SCORE_V2_UI.stable.conversionPp, denomFloor: 0.001 };
+          if (k === 'vpv') return { key: 'vpv', floor: KEXO_SCORE_V2_UI.floors.vpv, stableMode: 'ratio', stable: KEXO_SCORE_V2_UI.stable.vpvRatio, denomFloor: KEXO_SCORE_V2_UI.floors.vpv };
+          if (k === 'profit') return { key: 'profit', floor: KEXO_SCORE_V2_UI.floors.money, stableMode: 'ratio', stable: KEXO_SCORE_V2_UI.stable.profitRatio, denomFloor: KEXO_SCORE_V2_UI.floors.money };
+          if (k === 'mer') return { key: 'mer', floor: KEXO_SCORE_V2_UI.floors.mer, stableMode: 'ratio', stable: KEXO_SCORE_V2_UI.stable.merRatio, denomFloor: KEXO_SCORE_V2_UI.floors.mer };
+          if (k === 'revenue') return { key: 'revenue', floor: KEXO_SCORE_V2_UI.floors.money, stableMode: 'ratio', stable: KEXO_SCORE_V2_UI.stable.revenueRatio, denomFloor: KEXO_SCORE_V2_UI.floors.money };
+          return { key: k, floor: 1, stableMode: 'ratio', stable: 0.07, denomFloor: 1 };
+        }
         function fmtComponentValue(key, raw) {
           if (raw == null) return '\u2014';
           var n = Number(raw);
           if (!Number.isFinite(n)) return '\u2014';
           var k = String(key || '').trim().toLowerCase();
-          if (k === 'revenue') return (typeof formatRevenue0 === 'function') ? formatRevenue0(n) : ('\u00a3' + n.toFixed(0));
-          if (k === 'orders' || k === 'itemsordered' || k === 'items_ordered') return Math.round(n).toLocaleString();
+          if (k === 'revenue' || k === 'profit') return (typeof formatRevenue0 === 'function') ? formatRevenue0(n) : ('\u00a3' + n.toFixed(0));
+          if (k === 'vpv') return (typeof fmtGbp2 === 'function') ? fmtGbp2(n) : ('\u00a3' + n.toFixed(2));
           if (k === 'conversion') return (typeof pct === 'function') ? pct(n) : (n.toFixed(1) + '%');
-          if (k === 'roas') return n.toFixed(2) + 'x';
+          if (k === 'mer' || k === 'roas') return n.toFixed(2) + 'x';
           return Math.round(n * 10) / 10;
         }
-        function fmtComponentDeltaPct(rawCur, rawPrev) {
+        function fmtComponentDeltaText(key, rawCur, rawPrev) {
+          var spec = metricUiSpec(key);
           var cur = Number(rawCur);
           var prev = Number(rawPrev);
           if (!Number.isFinite(cur) || !Number.isFinite(prev)) return '';
+          if (spec.key === 'conversion') {
+            var dpp = cur - prev;
+            if (!Number.isFinite(dpp) || Math.abs(dpp) < spec.stable) return '0.0pp';
+            var roundedPp = Math.round(dpp * 10) / 10;
+            return (roundedPp > 0 ? '+' : '') + roundedPp.toFixed(1) + 'pp';
+          }
           if (Math.abs(prev) < 1e-9) return '';
-          var delta = ((cur - prev) / Math.abs(prev)) * 100;
-          var rounded = Math.round(delta * 10) / 10;
+          var denom = Math.max(Math.abs(prev), Number(spec.denomFloor) || 0, 1e-9);
+          var deltaPct = ((cur - prev) / denom) * 100;
+          var rounded = Math.round(deltaPct * 10) / 10;
+          if (!Number.isFinite(rounded)) return '';
           var sign = rounded > 0 ? '+' : '';
           return sign + rounded.toFixed(1) + '%';
         }
         function normalizeScoreMetricKey(rawKey) {
           var k = String(rawKey || '').trim().toLowerCase();
-          if (k === 'itemsordered' || k === 'items_ordered') return 'itemsOrdered';
+          if (k === 'roas') return 'mer';
           return k;
         }
-        var KEXO_SCORE_STABLE_RATIO = 0.05;
-        function kexoScoreDeltaBar(cur, prev) {
-          var c = typeof cur === 'number' && Number.isFinite(cur) ? cur : null;
-          var p = typeof prev === 'number' && Number.isFinite(prev) ? prev : null;
-          if (c == null && p == null) return { widthPct: 0, barClass: 'bg-secondary', barLabel: '\u2014' };
-          var isNew = c != null && (p == null || Math.abs(p) < 1e-9) && c !== 0;
-          var denom = p != null && Math.abs(p) >= 1e-9 ? Math.abs(p) : 1e-9;
-          var rawDelta = (c != null && p != null) ? (c - p) / denom : 0;
-          var isUp = isNew || rawDelta > KEXO_SCORE_STABLE_RATIO;
-          var isDown = !isNew && rawDelta < -KEXO_SCORE_STABLE_RATIO;
-          var isFlat = !isUp && !isDown;
-          var widthPct = isNew ? 100 : Math.max(6, Math.min(100, Math.round(Math.abs(rawDelta) * 100)));
-          var barClass = isUp ? 'bg-success' : (isDown ? 'bg-danger' : 'bg-secondary');
-          var barLabel = isNew ? 'new' : (isFlat ? '0%' : (rawDelta > 0 ? '+' : '') + (Math.round(rawDelta * 1000) / 10) + '%');
-          return { widthPct: widthPct, barClass: barClass, barLabel: barLabel };
+        function kexoScoreBaselineBars(key, cur, prev) {
+          var spec = metricUiSpec(key);
+          var cRaw = (typeof cur === 'number' && Number.isFinite(cur)) ? cur : null;
+          var pRaw = (typeof prev === 'number' && Number.isFinite(prev)) ? prev : null;
+          if (cRaw == null && pRaw == null) {
+            return { prevPct: 0, curPct: 0, barClass: 'bg-secondary', barLabel: '\u2014', isNew: false };
+          }
+          var isNew = cRaw != null && cRaw !== 0 && (pRaw == null || Math.abs(pRaw) < 1e-9);
+          var c = cRaw != null ? Math.max(0, cRaw) : 0;
+          var p = pRaw != null ? Math.max(0, pRaw) : 0;
+          var scale = Math.max(c, p, Number(spec.floor) || 0, 1e-9);
+          var prevPct = Math.max(0, Math.min(100, (p / scale) * 100));
+          var curPct = Math.max(0, Math.min(100, (c / scale) * 100));
+
+          var barClass = 'bg-secondary';
+          var barLabel = isNew ? 'new' : '';
+          if (!isNew && cRaw != null && pRaw != null) {
+            var dir = 0;
+            if (spec.stableMode === 'pp') {
+              var dpp = cRaw - pRaw;
+              if (Math.abs(dpp) >= spec.stable) dir = dpp > 0 ? 1 : -1;
+            } else {
+              var denom = Math.max(Math.abs(pRaw), Number(spec.denomFloor) || 0, 1e-9);
+              var rel = (cRaw - pRaw) / denom;
+              if (Math.abs(rel) >= spec.stable) dir = rel > 0 ? 1 : -1;
+            }
+            barClass = dir > 0 ? 'bg-success' : (dir < 0 ? 'bg-danger' : 'bg-secondary');
+          }
+          return { prevPct: prevPct, curPct: curPct, barClass: barClass, barLabel: barLabel, isNew: isNew };
         }
         if (!scoreData || !Array.isArray(scoreData.components) || scoreData.components.length === 0) {
           container.innerHTML = '<div class="kexo-score-breakdown-empty text-muted small">No score data</div>';
           return;
         }
-        var metricOrder = ['revenue', 'orders', 'itemsOrdered', 'conversion', 'roas'];
+        var metricOrder = (scoreData && scoreData.adsIntegrated)
+          ? ['profit', 'vpv', 'conversion', 'revenue', 'mer']
+          : ['profit', 'vpv', 'conversion', 'revenue'];
         var rankByKey = {};
         metricOrder.forEach(function(key, idx) { rankByKey[key] = idx; });
         var rows = scoreData.components.filter(function(c) {
@@ -21447,17 +21497,18 @@ const API = '';
         });
         var html = rows.map(function(c) {
           var label = (c.label && String(c.label).trim()) ? String(c.label) : (c.key || '');
-          var deltaBar = kexoScoreDeltaBar(c.value, c.previous);
+          var bars = kexoScoreBaselineBars(c.key, c.value, c.previous);
           var valueStr = fmtComponentValue(c.key, c.value);
-          var deltaStr = fmtComponentDeltaPct(c.value, c.previous);
+          var deltaStr = fmtComponentDeltaText(c.key, c.value, c.previous);
           var detail = deltaStr ? (String(valueStr) + ' | ' + String(deltaStr) + ' vs prev') : String(valueStr);
           return '<div class="kexo-score-breakdown-row mb-2">' +
             '<div class="kexo-score-breakdown-head mb-1">' +
               '<span class="kexo-score-breakdown-label">' + escapeHtml(label) + '</span>' +
               '<span class="kexo-score-breakdown-value">' + escapeHtml(detail) + '</span>' +
             '</div>' +
-            '<div class="progress">' +
-              '<div class="progress-bar ' + deltaBar.barClass + '" role="progressbar" style="width:' + deltaBar.widthPct + '%" aria-valuenow="' + deltaBar.widthPct + '" aria-valuemin="0" aria-valuemax="100">' + deltaBar.barLabel + '</div>' +
+            '<div class="progress kexo-score-progress">' +
+              '<div class="progress-bar bg-secondary kexo-score-bar-prev" role="progressbar" style="width:' + bars.prevPct.toFixed(1) + '%" aria-hidden="true"></div>' +
+              '<div class="progress-bar ' + bars.barClass + ' kexo-score-bar-cur" role="progressbar" style="width:' + bars.curPct.toFixed(1) + '%" aria-valuenow="' + bars.curPct.toFixed(1) + '" aria-valuemin="0" aria-valuemax="100">' + escapeHtml(bars.barLabel) + '</div>' +
             '</div>' +
           '</div>';
         }).join('');
@@ -21569,55 +21620,104 @@ const API = '';
         var body = document.getElementById('kexo-score-modal-body');
         if (!modal || !body) return;
 
+        var KEXO_SCORE_V2_UI = {
+          floors: {
+            money: 100,
+            vpv: 0.5,
+            mer: 0.25,
+            conversion: 1, // % (not fraction)
+          },
+          stable: {
+            conversionPp: 0.2, // percentage points
+            vpvRatio: 0.05,
+            revenueRatio: 0.07,
+            profitRatio: 0.07,
+            merRatio: 0.09,
+          },
+        };
+        function metricUiSpec(rawKey) {
+          var k = String(rawKey || '').trim().toLowerCase();
+          if (k === 'roas') k = 'mer';
+          if (k === 'conversion') return { key: 'conversion', floor: KEXO_SCORE_V2_UI.floors.conversion, stableMode: 'pp', stable: KEXO_SCORE_V2_UI.stable.conversionPp, denomFloor: 0.001 };
+          if (k === 'vpv') return { key: 'vpv', floor: KEXO_SCORE_V2_UI.floors.vpv, stableMode: 'ratio', stable: KEXO_SCORE_V2_UI.stable.vpvRatio, denomFloor: KEXO_SCORE_V2_UI.floors.vpv };
+          if (k === 'profit') return { key: 'profit', floor: KEXO_SCORE_V2_UI.floors.money, stableMode: 'ratio', stable: KEXO_SCORE_V2_UI.stable.profitRatio, denomFloor: KEXO_SCORE_V2_UI.floors.money };
+          if (k === 'mer') return { key: 'mer', floor: KEXO_SCORE_V2_UI.floors.mer, stableMode: 'ratio', stable: KEXO_SCORE_V2_UI.stable.merRatio, denomFloor: KEXO_SCORE_V2_UI.floors.mer };
+          if (k === 'revenue') return { key: 'revenue', floor: KEXO_SCORE_V2_UI.floors.money, stableMode: 'ratio', stable: KEXO_SCORE_V2_UI.stable.revenueRatio, denomFloor: KEXO_SCORE_V2_UI.floors.money };
+          return { key: k, floor: 1, stableMode: 'ratio', stable: 0.07, denomFloor: 1 };
+        }
+
         function fmtComponentValue(key, raw) {
           if (raw == null) return '\u2014';
           var n = Number(raw);
           if (!Number.isFinite(n)) return '\u2014';
           var k = String(key || '').trim().toLowerCase();
-          if (k === 'revenue') return (typeof formatRevenue0 === 'function') ? formatRevenue0(n) : ('\u00a3' + n.toFixed(0));
-          if (k === 'orders' || k === 'itemsordered' || k === 'items_ordered') return Math.round(n).toLocaleString();
+          if (k === 'revenue' || k === 'profit') return (typeof formatRevenue0 === 'function') ? formatRevenue0(n) : ('\u00a3' + n.toFixed(0));
+          if (k === 'vpv') return (typeof fmtGbp2 === 'function') ? fmtGbp2(n) : ('\u00a3' + n.toFixed(2));
           if (k === 'conversion') return (typeof pct === 'function') ? pct(n) : (n.toFixed(1) + '%');
-          if (k === 'roas') return n.toFixed(2) + 'x';
+          if (k === 'mer' || k === 'roas') return n.toFixed(2) + 'x';
           return Math.round(n * 10) / 10;
         }
 
-        function fmtComponentDeltaPct(rawCur, rawPrev) {
+        function fmtComponentDeltaText(key, rawCur, rawPrev) {
+          var spec = metricUiSpec(key);
           var cur = Number(rawCur);
           var prev = Number(rawPrev);
           if (!Number.isFinite(cur) || !Number.isFinite(prev)) return '';
+          if (spec.key === 'conversion') {
+            var dpp = cur - prev;
+            if (!Number.isFinite(dpp) || Math.abs(dpp) < spec.stable) return '0.0pp';
+            var roundedPp = Math.round(dpp * 10) / 10;
+            return (roundedPp > 0 ? '+' : '') + roundedPp.toFixed(1) + 'pp';
+          }
           if (Math.abs(prev) < 1e-9) return '';
-          var delta = ((cur - prev) / Math.abs(prev)) * 100;
-          var rounded = Math.round(delta * 10) / 10;
+          var denom = Math.max(Math.abs(prev), Number(spec.denomFloor) || 0, 1e-9);
+          var deltaPct = ((cur - prev) / denom) * 100;
+          var rounded = Math.round(deltaPct * 10) / 10;
+          if (!Number.isFinite(rounded)) return '';
           var sign = rounded > 0 ? '+' : '';
           return sign + rounded.toFixed(1) + '%';
         }
 
         function normalizeScoreMetricKey(rawKey) {
           var k = String(rawKey || '').trim().toLowerCase();
-          if (k === 'itemsordered' || k === 'items_ordered') return 'itemsOrdered';
+          if (k === 'roas') return 'mer';
           return k;
         }
 
-        var KEXO_SCORE_STABLE_RATIO_MODAL = 0.05;
-        function kexoScoreDeltaBarModal(cur, prev) {
-          var c = typeof cur === 'number' && Number.isFinite(cur) ? cur : null;
-          var p = typeof prev === 'number' && Number.isFinite(prev) ? prev : null;
-          if (c == null && p == null) return { widthPct: 0, barClass: 'bg-secondary', barLabel: '\u2014' };
-          var isNew = c != null && (p == null || Math.abs(p) < 1e-9) && c !== 0;
-          var denom = p != null && Math.abs(p) >= 1e-9 ? Math.abs(p) : 1e-9;
-          var rawDelta = (c != null && p != null) ? (c - p) / denom : 0;
-          var isUp = isNew || rawDelta > KEXO_SCORE_STABLE_RATIO_MODAL;
-          var isDown = !isNew && rawDelta < -KEXO_SCORE_STABLE_RATIO_MODAL;
-          var isFlat = !isUp && !isDown;
-          var widthPct = isNew ? 100 : Math.max(6, Math.min(100, Math.round(Math.abs(rawDelta) * 100)));
-          var barClass = isUp ? 'bg-success' : (isDown ? 'bg-danger' : 'bg-secondary');
-          var barLabel = isNew ? 'new' : (isFlat ? '0%' : (rawDelta > 0 ? '+' : '') + (Math.round(rawDelta * 1000) / 10) + '%');
-          return { widthPct: widthPct, barClass: barClass, barLabel: barLabel };
+        function kexoScoreBaselineBarsModal(key, cur, prev) {
+          var spec = metricUiSpec(key);
+          var cRaw = (typeof cur === 'number' && Number.isFinite(cur)) ? cur : null;
+          var pRaw = (typeof prev === 'number' && Number.isFinite(prev)) ? prev : null;
+          if (cRaw == null && pRaw == null) {
+            return { prevPct: 0, curPct: 0, barClass: 'bg-secondary', barLabel: '\u2014', isNew: false };
+          }
+          var isNew = cRaw != null && cRaw !== 0 && (pRaw == null || Math.abs(pRaw) < 1e-9);
+          var c = cRaw != null ? Math.max(0, cRaw) : 0;
+          var p = pRaw != null ? Math.max(0, pRaw) : 0;
+          var scale = Math.max(c, p, Number(spec.floor) || 0, 1e-9);
+          var prevPct = Math.max(0, Math.min(100, (p / scale) * 100));
+          var curPct = Math.max(0, Math.min(100, (c / scale) * 100));
+
+          var barClass = 'bg-secondary';
+          var barLabel = isNew ? 'new' : '';
+          if (!isNew && cRaw != null && pRaw != null) {
+            var dir = 0;
+            if (spec.stableMode === 'pp') {
+              var dpp = cRaw - pRaw;
+              if (Math.abs(dpp) >= spec.stable) dir = dpp > 0 ? 1 : -1;
+            } else {
+              var denom = Math.max(Math.abs(pRaw), Number(spec.denomFloor) || 0, 1e-9);
+              var rel = (cRaw - pRaw) / denom;
+              if (Math.abs(rel) >= spec.stable) dir = rel > 0 ? 1 : -1;
+            }
+            barClass = dir > 0 ? 'bg-success' : (dir < 0 ? 'bg-danger' : 'bg-secondary');
+          }
+          return { prevPct: prevPct, curPct: curPct, barClass: barClass, barLabel: barLabel, isNew: isNew };
         }
 
         function animateKexoScoreBreakdownBars(scope) {
           if (!scope || !scope.querySelectorAll) return;
-          var bars = Array.from(scope.querySelectorAll('.kexo-score-breakdown-row .progress-bar[data-target-pct]'));
+          var bars = Array.from(scope.querySelectorAll('.kexo-score-breakdown-row .progress-bar.kexo-score-bar-cur[data-target-pct]'));
           if (!bars.length) return;
           var reduceMotion = false;
           try { reduceMotion = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (_) {}
@@ -21651,7 +21751,9 @@ const API = '';
         if (!data || !Array.isArray(data.components) || data.components.length === 0) {
           breakdownHtml = '<div class="kexo-score-breakdown-empty text-muted">No score data. Select a date range and refresh.</div>';
         } else {
-          var metricOrder = ['revenue', 'orders', 'itemsOrdered', 'conversion', 'roas'];
+          var metricOrder = (data && data.adsIntegrated)
+            ? ['profit', 'vpv', 'conversion', 'revenue', 'mer']
+            : ['profit', 'vpv', 'conversion', 'revenue'];
           var rankByKey = {};
           metricOrder.forEach(function(key, idx) { rankByKey[key] = idx; });
           var rows = data.components.filter(function(c) {
@@ -21663,17 +21765,18 @@ const API = '';
           });
           breakdownHtml = rows.map(function(c) {
             var label = (c.label && String(c.label).trim()) ? String(c.label) : (c.key || '');
-            var deltaBar = kexoScoreDeltaBarModal(c.value, c.previous);
+            var bars = kexoScoreBaselineBarsModal(c.key, c.value, c.previous);
             var valueStr = fmtComponentValue(c.key, c.value);
-            var deltaStr = fmtComponentDeltaPct(c.value, c.previous);
+            var deltaStr = fmtComponentDeltaText(c.key, c.value, c.previous);
             var detail = deltaStr ? (String(valueStr) + ' | ' + String(deltaStr) + ' vs previous') : String(valueStr);
             return '<div class="kexo-score-breakdown-row mb-3">' +
               '<div class="kexo-score-breakdown-head mb-1">' +
                 '<span class="kexo-score-breakdown-label">' + escapeHtml(label) + '</span>' +
                 '<span class="kexo-score-breakdown-value">' + escapeHtml(detail) + '</span>' +
               '</div>' +
-              '<div class="progress">' +
-                '<div class="progress-bar ' + deltaBar.barClass + '" role="progressbar" style="width:0%" data-target-pct="' + deltaBar.widthPct.toFixed(1) + '" aria-valuenow="' + deltaBar.widthPct + '" aria-valuemin="0" aria-valuemax="100">' + deltaBar.barLabel + '</div>' +
+              '<div class="progress kexo-score-progress">' +
+                '<div class="progress-bar bg-secondary kexo-score-bar-prev" role="progressbar" style="width:' + bars.prevPct.toFixed(1) + '%" aria-hidden="true"></div>' +
+                '<div class="progress-bar ' + bars.barClass + ' kexo-score-bar-cur" role="progressbar" style="width:0%" data-target-pct="' + bars.curPct.toFixed(1) + '" aria-valuenow="' + bars.curPct.toFixed(1) + '" aria-valuemin="0" aria-valuemax="100">' + escapeHtml(bars.barLabel) + '</div>' +
               '</div>' +
             '</div>';
           }).join('');

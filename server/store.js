@@ -3970,23 +3970,103 @@ async function getKexoScore(options = {}) {
     }
   }
 
+  // Profit (v2): best-effort estimated profit using Profit Rules toggles when configured.
+  // Must fail-open and never block scoring (short timeout).
+  let profitShop = '';
+  let profitToggles = null;
+  try {
+    profitShop = salesTruth.resolveShopForSales('') || '';
+    const { PROFIT_RULES_V1_KEY, normalizeProfitRulesConfigV1, hasEnabledProfitRules } = require('./profitRulesConfig');
+    const raw = await getSetting(PROFIT_RULES_V1_KEY);
+    const cfg = normalizeProfitRulesConfigV1(raw);
+    if (cfg && cfg.enabled === true) {
+      const integ = cfg.integrations && typeof cfg.integrations === 'object' ? cfg.integrations : {};
+      const hasRules = hasEnabledProfitRules(cfg);
+      const shippingEnabled = !!(cfg.shipping && cfg.shipping.enabled === true);
+      profitToggles = {
+        includeGoogleAdsSpend: integ.includeGoogleAdsSpend === true,
+        includePaymentFees: integ.includePaymentFees === true,
+        includeShopifyTaxes: integ.includeShopifyTaxes === true,
+        includeShopifyAppBills: integ.includeShopifyAppBills === true,
+        includeShipping: shippingEnabled,
+        includeRules: hasRules,
+      };
+    }
+  } catch (_) {
+    profitShop = '';
+    profitToggles = null;
+  }
+
+  function promiseWithTimeout(promise, ms) {
+    const timeoutMs = Number(ms);
+    if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) return promise;
+    return new Promise((resolve) => {
+      let done = false;
+      const t = setTimeout(() => {
+        done = true;
+        resolve(null);
+      }, timeoutMs);
+      Promise.resolve(promise).then(
+        (v) => {
+          if (done) return;
+          try { clearTimeout(t); } catch (_) {}
+          resolve(v);
+        },
+        () => {
+          if (done) return;
+          try { clearTimeout(t); } catch (_) {}
+          resolve(null);
+        }
+      );
+    });
+  }
+
+  async function getEstimatedProfitGbpBestEffort(startMs, endMs) {
+    if (!profitShop || !profitToggles) return null;
+    const start = Number(startMs);
+    const end = Number(endMs);
+    if (!Number.isFinite(start) || !Number.isFinite(end) || !(end > start)) return null;
+    try {
+      const svc = require('./businessSnapshotService');
+      if (!svc || typeof svc.getRevenueAndCostForGoogleAdsPostback !== 'function') return null;
+      const out = await svc.getRevenueAndCostForGoogleAdsPostback(profitShop, start, end, profitToggles);
+      const rev = out && typeof out.revenueGbp === 'number' && Number.isFinite(out.revenueGbp) ? out.revenueGbp : null;
+      const cost = out && typeof out.costGbp === 'number' && Number.isFinite(out.costGbp) ? out.costGbp : null;
+      if (rev == null || cost == null) return null;
+      return Math.round((rev - cost) * 100) / 100;
+    } catch (_) {
+      return null;
+    }
+  }
+
   async function metricsForWindow(startMs, endMs, windowRangeKey) {
     const windowOpts = { ...opts, rangeKey: windowRangeKey };
-    const [sales, convertedCount, itemsOrderedCount, trafficBreakdown, adSpend, adsClicksImpr] = await Promise.all([
+    const [sales, convertedCount, itemsOrderedCount, trafficBreakdown, adSpend, adsClicksImpr, estimatedProfit] = await Promise.all([
       getSalesTotal(startMs, endMs, windowOpts),
       getConvertedCount(startMs, endMs, windowOpts),
       getItemsOrderedCount(startMs, endMs),
       getSessionCounts(startMs, endMs, windowOpts),
       getAdSpendGbp(startMs, endMs),
       getAdsClicksImpressions(startMs, endMs),
+      promiseWithTimeout(getEstimatedProfitGbpBestEffort(startMs, endMs), 1500),
     ]);
     const sessions = trafficBreakdown && typeof trafficBreakdown.human_sessions === 'number' ? trafficBreakdown.human_sessions : null;
     const conversion = (sessions != null && sessions > 0 && convertedCount != null && Number.isFinite(convertedCount))
       ? Math.round((convertedCount / sessions) * 1000) / 10
       : null;
-    const roas = (typeof sales === 'number' && Number.isFinite(sales) && typeof adSpend === 'number' && Number.isFinite(adSpend) && adSpend > 0)
+    const mer = (typeof sales === 'number' && Number.isFinite(sales) && typeof adSpend === 'number' && Number.isFinite(adSpend) && adSpend > 0)
       ? Math.round((sales / adSpend) * 100) / 100
       : null;
+    // VPV v2: "Value per view" if views exist; fallback to sessions in this pipeline.
+    const vpv = (typeof sales === 'number' && Number.isFinite(sales) && typeof sessions === 'number' && Number.isFinite(sessions) && sessions > 0)
+      ? Math.round((sales / sessions) * 100) / 100
+      : null;
+    // Profit v2: prefer configured estimated profit; fall back to ads-only proxy when available.
+    const profit = (typeof estimatedProfit === 'number' && Number.isFinite(estimatedProfit))
+      ? estimatedProfit
+      : ((typeof sales === 'number' && Number.isFinite(sales) && typeof adSpend === 'number' && Number.isFinite(adSpend) && adSpend > 0)
+        ? Math.round((sales - adSpend) * 100) / 100
+        : null);
     return {
       sales: typeof sales === 'number' && Number.isFinite(sales) ? sales : null,
       orders: typeof convertedCount === 'number' && Number.isFinite(convertedCount) ? Math.max(0, Math.round(convertedCount)) : null,
@@ -3994,7 +4074,9 @@ async function getKexoScore(options = {}) {
       sessions,
       conversion,
       adSpend: typeof adSpend === 'number' && Number.isFinite(adSpend) ? adSpend : null,
-      roas,
+      mer,
+      vpv,
+      profit,
       clicks: adsClicksImpr && Number.isFinite(adsClicksImpr.clicks) ? adsClicksImpr.clicks : null,
       impressions: adsClicksImpr && Number.isFinite(adsClicksImpr.impressions) ? adsClicksImpr.impressions : null,
     };
@@ -4006,61 +4088,176 @@ async function getKexoScore(options = {}) {
     previous2Bounds ? metricsForWindow(previous2Bounds.start, previous2Bounds.end, rangeKey === 'today' ? 'yesterday_prev2' : rangeKey + '_prev2') : Promise.resolve(null),
   ]);
 
-  /** Change-based score 0–100 from signal (cur vs prev) + momentum (prev vs prev2). */
-  function changeScore(valueCur, valuePrev, valuePrev2, invert = false) {
-    const cur = typeof valueCur === 'number' && Number.isFinite(valueCur) ? valueCur : null;
-    const prev = typeof valuePrev === 'number' && Number.isFinite(valuePrev) ? valuePrev : null;
-    const prev2 = typeof valuePrev2 === 'number' && Number.isFinite(valuePrev2) ? valuePrev2 : null;
-    if (cur == null && prev == null) return null;
-    const denomPrev = Math.max(Math.abs(prev ?? 0), 1e-9);
-    const denomPrev2 = Math.max(Math.abs(prev2 ?? 0), 1e-9);
-    const signal = prev != null && cur != null ? (cur - prev) / denomPrev : 0;
-    const momentum = prev != null && prev2 != null ? (prev - prev2) / denomPrev2 : 0;
-    // Trend-heavy by design: a ~10% drop should land clearly below neutral.
-    const combined = 0.85 * signal + 0.15 * momentum;
-    const raw = invert ? -combined : combined;
-    const clamped = Math.max(-1, Math.min(1, raw));
-    return Math.round((50 + 100 * clamped) * 10) / 10;
+  // Kexo Score v2: stable deltas (floors + ln ratios), per-metric stability thresholds,
+  // and confidence dampening for low traffic.
+  const KEXO_SCORE_V2 = Object.freeze({
+    floors: {
+      money: 100,
+      vpv: 0.5,
+      mer: 0.25,
+    },
+    stable: {
+      conversionPp: 0.2, // 0.2 percentage points
+      vpvRatio: 0.05,
+      revenueRatio: 0.07,
+      profitRatio: 0.07,
+      merRatio: 0.09,
+    },
+    clamp: {
+      ln: Math.log(2), // +/-100% (ln 2) maps to 0/100
+      conversionPp: 1.0, // +/-1.0pp maps to 0/100
+    },
+    confidence: {
+      minTraffic: 80, // sessions threshold for stabilising VPV + conversion
+    },
+  });
+
+  function clampNumber(n, min, max) {
+    const v = Number(n);
+    if (!Number.isFinite(v)) return min;
+    if (v < min) return min;
+    if (v > max) return max;
+    return v;
   }
 
-  /** Absolute health 0–100 from current value (rate metrics only); count/revenue metrics return 50 (neutral). */
-  function levelScore(value, key) {
-    const v = typeof value === 'number' && Number.isFinite(value) ? value : null;
+  function stableLnDelta(curRaw, prevRaw, floor, stableRatio, confidence01) {
+    const cur = (typeof curRaw === 'number' && Number.isFinite(curRaw)) ? curRaw : null;
+    const prev = (typeof prevRaw === 'number' && Number.isFinite(prevRaw)) ? prevRaw : null;
+    if (cur == null || prev == null) return null;
+    const denom = Math.max(Math.abs(prev), Number(floor) || 0, 1e-9);
+    const rel = (cur - prev) / denom;
+    if (typeof stableRatio === 'number' && Number.isFinite(stableRatio) && Math.abs(rel) < stableRatio) return 0;
+    const f = Math.max(0, Number(floor) || 0);
+    const eps = 1e-9;
+    const curAdj = Math.max(cur, -f + eps);
+    const prevAdj = Math.max(prev, -f + eps);
+    const ratio = (curAdj + f) / (prevAdj + f);
+    if (!Number.isFinite(ratio) || ratio <= 0) return null;
+    let delta = Math.log(ratio);
+    if (typeof confidence01 === 'number' && Number.isFinite(confidence01)) {
+      delta *= clampNumber(confidence01, 0, 1);
+    }
+    return delta;
+  }
+
+  function stablePpDelta(curRaw, prevRaw, stableAbsPp, confidence01) {
+    const cur = (typeof curRaw === 'number' && Number.isFinite(curRaw)) ? curRaw : null;
+    const prev = (typeof prevRaw === 'number' && Number.isFinite(prevRaw)) ? prevRaw : null;
+    if (cur == null || prev == null) return null;
+    const delta = cur - prev;
+    if (typeof stableAbsPp === 'number' && Number.isFinite(stableAbsPp) && Math.abs(delta) < stableAbsPp) return 0;
+    const c = (typeof confidence01 === 'number' && Number.isFinite(confidence01)) ? clampNumber(confidence01, 0, 1) : 1;
+    return delta * c;
+  }
+
+  function deltaToScore(delta, clampAbs) {
+    if (typeof delta !== 'number' || !Number.isFinite(delta)) return null;
+    const cap = (typeof clampAbs === 'number' && Number.isFinite(clampAbs) && clampAbs > 1e-9) ? clampAbs : 1;
+    const d = clampNumber(delta, -cap, cap);
+    return Math.round((50 + (d / cap) * 50) * 10) / 10;
+  }
+
+  /** Change-based score 0–100 from signal (cur vs prev) + momentum (prev vs prev2). */
+  function changeScoreV2(metricKey, valueCur, valuePrev, valuePrev2, confidenceCtx, invert = false) {
+    const k = String(metricKey || '').trim().toLowerCase();
+    const confidenceTraffic = (confidenceCtx && typeof confidenceCtx.traffic === 'number' && Number.isFinite(confidenceCtx.traffic))
+      ? Math.max(0, Number(confidenceCtx.traffic))
+      : null;
+    const confidence01 = confidenceTraffic != null
+      ? clampNumber(confidenceTraffic / (KEXO_SCORE_V2.confidence.minTraffic || 1), 0, 1)
+      : 1;
+
+    let signalDelta = null;
+    let momentumDelta = null;
+    let clampAbs = KEXO_SCORE_V2.clamp.ln;
+
+    if (k === 'conversion') {
+      clampAbs = KEXO_SCORE_V2.clamp.conversionPp;
+      signalDelta = stablePpDelta(valueCur, valuePrev, KEXO_SCORE_V2.stable.conversionPp, confidence01);
+      momentumDelta = stablePpDelta(valuePrev, valuePrev2, KEXO_SCORE_V2.stable.conversionPp, confidence01);
+    } else if (k === 'vpv') {
+      signalDelta = stableLnDelta(valueCur, valuePrev, KEXO_SCORE_V2.floors.vpv, KEXO_SCORE_V2.stable.vpvRatio, confidence01);
+      momentumDelta = stableLnDelta(valuePrev, valuePrev2, KEXO_SCORE_V2.floors.vpv, KEXO_SCORE_V2.stable.vpvRatio, confidence01);
+    } else if (k === 'mer') {
+      signalDelta = stableLnDelta(valueCur, valuePrev, KEXO_SCORE_V2.floors.mer, KEXO_SCORE_V2.stable.merRatio, 1);
+      momentumDelta = stableLnDelta(valuePrev, valuePrev2, KEXO_SCORE_V2.floors.mer, KEXO_SCORE_V2.stable.merRatio, 1);
+    } else if (k === 'profit') {
+      signalDelta = stableLnDelta(valueCur, valuePrev, KEXO_SCORE_V2.floors.money, KEXO_SCORE_V2.stable.profitRatio, 1);
+      momentumDelta = stableLnDelta(valuePrev, valuePrev2, KEXO_SCORE_V2.floors.money, KEXO_SCORE_V2.stable.profitRatio, 1);
+    } else {
+      // revenue (and any other money-like scale metric)
+      signalDelta = stableLnDelta(valueCur, valuePrev, KEXO_SCORE_V2.floors.money, KEXO_SCORE_V2.stable.revenueRatio, 1);
+      momentumDelta = stableLnDelta(valuePrev, valuePrev2, KEXO_SCORE_V2.floors.money, KEXO_SCORE_V2.stable.revenueRatio, 1);
+    }
+
+    if (signalDelta == null && momentumDelta == null) return null;
+    const combined = 0.85 * (signalDelta || 0) + 0.15 * (momentumDelta || 0);
+    const raw = invert ? -combined : combined;
+    return deltaToScore(raw, clampAbs);
+  }
+
+  /** Absolute health 0–100 from current value (ratio metrics); scale metrics return 50 (neutral). */
+  function levelScoreV2(componentKey, valueCur, ctx) {
+    const v = typeof valueCur === 'number' && Number.isFinite(valueCur) ? valueCur : null;
     if (v == null) return null;
-    const k = String(key || '').trim().toLowerCase();
+    const k = String(componentKey || '').trim().toLowerCase();
     if (k === 'conversion') {
       if (v <= 0) return 0;
       if (v >= 5) return 100;
       return Math.round((v / 5) * 100 * 10) / 10;
     }
-    if (k === 'roas') {
+    if (k === 'mer') {
       if (v <= 0) return 0;
-      if (v >= 5) return 100;
-      return Math.round((v / 5) * 100 * 10) / 10;
+      if (v >= 4) return 100;
+      return Math.round((v / 4) * 100 * 10) / 10;
+    }
+    if (k === 'profit') {
+      const revenue = ctx && typeof ctx.revenue === 'number' && Number.isFinite(ctx.revenue) ? ctx.revenue : null;
+      if (revenue == null || revenue <= 0) return (v <= 0 ? 0 : 50);
+      const margin = v / revenue; // 0.30 = 30% margin
+      if (!Number.isFinite(margin)) return null;
+      if (margin <= 0) return 0;
+      if (margin >= 0.3) return 100;
+      return Math.round((margin / 0.3) * 100 * 10) / 10;
     }
     return 50;
   }
 
-  const KEXO_SCORE_COMPONENTS = [
-    { key: 'revenue', label: 'Revenue', weight: 30, getCur: (m) => m.sales, getPrev: (m) => m && m.sales, getPrev2: (m) => m && m.sales, invert: false, wLevel: 0, wChange: 1 },
-    { key: 'orders', label: 'Orders', weight: 25, getCur: (m) => m.orders, getPrev: (m) => m && m.orders, getPrev2: (m) => m && m.orders, invert: false, wLevel: 0, wChange: 1 },
-    { key: 'itemsOrdered', label: 'Items Ordered', weight: 20, getCur: (m) => m.itemsOrdered, getPrev: (m) => m && m.itemsOrdered, getPrev2: (m) => m && m.itemsOrdered, invert: false, wLevel: 0, wChange: 1 },
-    { key: 'conversion', label: 'Conversion Rate', weight: 15, getCur: (m) => m.conversion, getPrev: (m) => m && m.conversion, getPrev2: (m) => m && m.conversion, invert: false, wLevel: 0.25, wChange: 0.75 },
-    { key: 'roas', label: 'ADS ROAS', weight: 10, getCur: (m) => m.roas, getPrev: (m) => m && m.roas, getPrev2: (m) => m && m.roas, invert: false, adsOnly: true, wLevel: 0.25, wChange: 0.75 },
-  ];
+  const adsIntegrated = !!(current && (
+    (typeof current.adSpend === 'number' && Number.isFinite(current.adSpend) && current.adSpend > 0) ||
+    current.mer != null ||
+    (current.clicks != null && current.impressions != null && current.impressions > 0)
+  ));
 
-  const adsIntegrated = (current && (current.roas != null || (current.clicks != null && current.impressions != null && current.impressions > 0)));
+  // Kexo Score v2 component mix + weights.
+  const KEXO_SCORE_COMPONENTS = adsIntegrated
+    ? [
+      { key: 'profit', label: 'Estimated Profit', weight: 30, getCur: (m) => m.profit, getPrev: (m) => m && m.profit, getPrev2: (m) => m && m.profit, invert: false, wLevel: 0.35, wChange: 0.65 },
+      { key: 'vpv', label: 'VPV (per session)', weight: 20, getCur: (m) => m.vpv, getPrev: (m) => m && m.vpv, getPrev2: (m) => m && m.vpv, invert: false, wLevel: 0.0, wChange: 1.0 },
+      { key: 'conversion', label: 'Conversion Rate', weight: 20, getCur: (m) => m.conversion, getPrev: (m) => m && m.conversion, getPrev2: (m) => m && m.conversion, invert: false, wLevel: 0.25, wChange: 0.75 },
+      { key: 'revenue', label: 'Revenue', weight: 15, getCur: (m) => m.sales, getPrev: (m) => m && m.sales, getPrev2: (m) => m && m.sales, invert: false, wLevel: 0.0, wChange: 1.0 },
+      { key: 'mer', label: 'MER', weight: 15, getCur: (m) => m.mer, getPrev: (m) => m && m.mer, getPrev2: (m) => m && m.mer, invert: false, wLevel: 0.3, wChange: 0.7 },
+    ]
+    : [
+      { key: 'profit', label: 'Estimated Profit', weight: 35, getCur: (m) => m.profit, getPrev: (m) => m && m.profit, getPrev2: (m) => m && m.profit, invert: false, wLevel: 0.35, wChange: 0.65 },
+      { key: 'vpv', label: 'VPV (per session)', weight: 25, getCur: (m) => m.vpv, getPrev: (m) => m && m.vpv, getPrev2: (m) => m && m.vpv, invert: false, wLevel: 0.0, wChange: 1.0 },
+      { key: 'conversion', label: 'Conversion Rate', weight: 25, getCur: (m) => m.conversion, getPrev: (m) => m && m.conversion, getPrev2: (m) => m && m.conversion, invert: false, wLevel: 0.25, wChange: 0.75 },
+      { key: 'revenue', label: 'Revenue', weight: 15, getCur: (m) => m.sales, getPrev: (m) => m && m.sales, getPrev2: (m) => m && m.sales, invert: false, wLevel: 0.0, wChange: 1.0 },
+    ];
   const components = [];
   let totalWeight = 0;
   let weightedSum = 0;
 
   for (const def of KEXO_SCORE_COMPONENTS) {
-    if (def.adsOnly && !adsIntegrated) continue;
     const valueCur = def.getCur(current);
     const valuePrev = def.getPrev(previous) ?? null;
     const valuePrev2 = def.getPrev2(previous2) ?? null;
-    const chScore = changeScore(valueCur, valuePrev, valuePrev2, def.invert);
-    const lvlScore = levelScore(valueCur, def.key);
+    const confidenceCtx = {
+      traffic: current && typeof current.sessions === 'number' && Number.isFinite(current.sessions) ? current.sessions : null,
+      revenue: current && typeof current.sales === 'number' && Number.isFinite(current.sales) ? current.sales : null,
+    };
+    const chScore = changeScoreV2(def.key, valueCur, valuePrev, valuePrev2, confidenceCtx, def.invert);
+    const lvlScore = levelScoreV2(def.key, valueCur, confidenceCtx);
     if (chScore == null && lvlScore == null) continue;
     const wLevel = typeof def.wLevel === 'number' ? def.wLevel : 0.5;
     const wChange = typeof def.wChange === 'number' ? def.wChange : 0.5;
