@@ -5564,7 +5564,7 @@
           abandoned: base + '/api/abandoned-carts/top-countries?range=' + encodeURIComponent(rk) + (force ? ('&force=1&_=' + Date.now()) : ''),
         };
 
-        var TOP_N = 5;
+        var TOP_N = 4;
 
         function resolveRootCssVar(name, fallback) {
           try {
@@ -5648,7 +5648,7 @@
           });
         }
 
-        var LIST_ROW_COUNT = 4;
+        var LIST_ROW_COUNT = 3;
         function renderList(widgetKey, rows, sortBy, shareBaseRows) {
           var mountId = 'dash-ovw-' + widgetKey + '-list';
           var host = document.getElementById(mountId);

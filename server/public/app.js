@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 3b508a8c455a3b38
+// checksum: 4355d17b8de6de2b
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -22812,7 +22812,7 @@ const API = '';
           abandoned: base + '/api/abandoned-carts/top-countries?range=' + encodeURIComponent(rk) + (force ? ('&force=1&_=' + Date.now()) : ''),
         };
 
-        var TOP_N = 5;
+        var TOP_N = 4;
 
         function resolveRootCssVar(name, fallback) {
           try {
@@ -22896,7 +22896,7 @@ const API = '';
           });
         }
 
-        var LIST_ROW_COUNT = 4;
+        var LIST_ROW_COUNT = 3;
         function renderList(widgetKey, rows, sortBy, shareBaseRows) {
           var mountId = 'dash-ovw-' + widgetKey + '-list';
           var host = document.getElementById(mountId);

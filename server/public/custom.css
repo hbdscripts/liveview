@@ -3742,11 +3742,6 @@ body[data-page="dashboard"] #dash-trending-down .dash-trend-delta.text-red {
 .kexo-widget-row-bar--skeleton > span {
   width: 100% !important;
   background: rgba(15, 23, 42, 0.06) !important;
-  animation: kexo-skeleton-pulse 1.2s ease-in-out infinite;
-}
-@keyframes kexo-skeleton-pulse {
-  0%, 100% { opacity: 0.5; }
-  50% { opacity: 1; }
 }
 
 /* Dashboard top tables card-style list (Top Products, Top Countries, Trending) */
