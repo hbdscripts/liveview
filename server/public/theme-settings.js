@@ -124,8 +124,6 @@
     'theme-font': 'sans',
     'theme-base': 'slate',
     'theme-preference-mode': 'global',
-    'theme-icon-size': '1em',
-    'theme-icon-color': 'currentColor',
     'theme-icon-overrides-json': '{}',
     // Payment method icon specs (URL/path or inline SVG). Blank clears the icon.
     'payment-icon-visa': '',
@@ -210,7 +208,6 @@
     if (LOCKED_GLYPH_THEME_KEYS.indexOf(k) >= 0) return false;
     return true;
   });
-  var ICON_VISUAL_KEYS = ['theme-icon-size', 'theme-icon-color'];
   var PAYMENT_ICON_KEYS = [
     'payment-icon-visa',
     'payment-icon-mastercard',
@@ -440,14 +437,6 @@
 
   function normalizeIconGlyph(value, fallback) {
     return parseIconGlyphInput(value, fallback).value;
-  }
-
-  function normalizeIconSize(value, fallback) {
-    var raw = sanitizeIconClassString(value);
-    if (!raw) return fallback || '1em';
-    if (/^\d+(\.\d+)?(px|rem|em|%)$/.test(raw)) return raw;
-    if (/^\d+(\.\d+)?$/.test(raw)) return raw + 'em';
-    return fallback || '1em';
   }
 
   function normalizeIconColor(value, fallback) {
@@ -1277,10 +1266,6 @@
           root.style.setProperty('--tblr-gray-' + k, palette[k]);
         });
       }
-    } else if (key === 'theme-icon-size') {
-      root.style.setProperty('--kexo-theme-icon-size', normalizeIconSize(value, DEFAULTS[key]));
-    } else if (key === 'theme-icon-color') {
-      root.style.setProperty('--kexo-theme-icon-color', normalizeIconColor(value, DEFAULTS[key]));
     } else if (key === 'theme-header-top-text-color') {
       root.style.setProperty('--kexo-header-top-text-color', normalizeHeaderColor(value, DEFAULTS[key]));
     } else if (key === 'theme-header-link-color') {
@@ -1463,13 +1448,6 @@
         if (payInput) payInput.value = String(val == null ? '' : val);
         return;
       }
-      if (ICON_VISUAL_KEYS.indexOf(key) >= 0) {
-        var visualInput = form.querySelector('[name="' + key + '"]');
-        if (!visualInput) return;
-        if (key === 'theme-icon-size') visualInput.value = normalizeIconSize(val, DEFAULTS[key]);
-        else visualInput.value = normalizeIconColor(val, DEFAULTS[key]);
-        return;
-      }
       if (ACCENT_HEX_KEYS.indexOf(key) >= 0) {
         var hex = normalizeAccentHex(val, ACCENT_DEFAULTS[ACCENT_HEX_KEYS.indexOf(key)]);
         var accentInput = form.querySelector('.theme-accent-hex[name="' + key + '"]');
@@ -1592,19 +1570,6 @@
   }
 
   var TOOLTIP_ICON = ' <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i>';
-  function iconVisualInputCard(key, title, help, placeholder) {
-    var inputId = 'theme-input-' + key;
-    var titleAttr = help ? (' title="' + String(help).replace(/"/g, '&quot;') + '"') : '';
-    return '<div class="col-12 col-md-6 col-lg-4">' +
-      '<div class="card card-sm h-100">' +
-        '<div class="card-body">' +
-          '<label class="form-label d-flex align-items-center mb-2" for="' + inputId + '"' + titleAttr + '><i class="fa-jelly fa-sliders me-2" aria-hidden="true"></i><strong>' + title + '</strong>' + TOOLTIP_ICON + '</label>' +
-          '<input type="text" class="form-control" id="' + inputId + '" name="' + key + '" placeholder="' + placeholder + '" />' +
-        '</div>' +
-      '</div>' +
-    '</div>';
-  }
-
   function headerInputCard(key, title, help, placeholder) {
     var inputId = 'theme-input-' + key;
     var titleAttr = help ? (' title="' + String(help).replace(/"/g, '&quot;') + '"') : '';
@@ -1726,10 +1691,6 @@
 
   function getThemeFormHtml() {
     var glyphAccordion = buildGlyphAccordionHtml();
-    var visualGrid = [
-      iconVisualInputCard('theme-icon-size', 'Global icon size', 'CSS size value used by all Font Awesome icons (for example 1em, 14px, 0.95rem).', DEFAULTS['theme-icon-size']),
-      iconVisualInputCard('theme-icon-color', 'Global icon color', 'CSS color for all icons (for example currentColor, #ffffff, rgb(255,255,255)).', DEFAULTS['theme-icon-color'])
-    ].join('');
     var headerShapeGrid = [
       headerInputCardNoIcon('theme-header-settings-radius', 'Settings button radius', 'Border radius for the strip Settings button (for example .375rem or 6px).', DEFAULTS['theme-header-settings-radius']),
       headerInputCardNoIcon('theme-header-online-radius', 'Online badge radius', 'Border radius for the visitors badge (for example .375rem or 6px).', DEFAULTS['theme-header-online-radius'])
@@ -1798,10 +1759,7 @@
       '</ul>' +
 
       '<div class="theme-subpanel" data-theme-subpanel="icons">' +
-        '<h4 class="mb-2" title="Each icon field accepts Font Awesome classes (e.g. fa-light fa-bars) or a pasted SVG. Use Edit on any icon for per-icon size/color overrides. Settings sidebar and diagnostics icons are locked to fa-thin and excluded from this list.">Global icon visuals <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></h4>' +
-        '<div class="row g-3">' + visualGrid + '</div>' +
-        '<hr class="my-3" />' +
-        '<h4 class="mb-2">Icon overrides</h4>' +
+        '<h4 class="mb-2" title="Each icon field accepts Font Awesome classes (e.g. fa-light fa-bars) or a pasted SVG. Use Edit on any icon for per-icon size/color overrides. Settings sidebar and diagnostics icons are locked to fa-thin and excluded from this list.">Icon overrides</h4>' +
         glyphAccordion +
         '<div class="d-flex align-items-center gap-2 mt-3">' +
           '<button type="button" class="btn btn-outline-secondary btn-sm" id="theme-icons-refresh" title="Debounced preview updates after typing stops.">Refresh previews</button>' +
@@ -2303,8 +2261,6 @@
       if (!name) return;
       if (ICON_STYLE_KEYS.indexOf(name) >= 0) val = normalizeIconStyle(val, DEFAULTS[name]);
       if (ICON_GLYPH_KEYS.indexOf(name) >= 0) val = normalizeIconGlyph(val, DEFAULTS[name]);
-      if (name === 'theme-icon-size') val = normalizeIconSize(val, DEFAULTS[name]);
-      if (name === 'theme-icon-color') val = normalizeIconColor(val, DEFAULTS[name]);
       if (ACCENT_OPACITY_KEYS.indexOf(name) >= 0) val = normalizeOpacityFilter(val, DEFAULTS[name]);
       if (name === 'theme-header-strip-padding') val = normalizeStripPadding(val, DEFAULTS[name]);
       if (HEADER_THEME_TEXT_KEYS.indexOf(name) >= 0) {
@@ -2351,7 +2307,7 @@
       });
     }
 
-    ICON_STYLE_KEYS.concat(ICON_GLYPH_KEYS).concat(PAYMENT_ICON_KEYS).concat(ICON_VISUAL_KEYS).concat(HEADER_THEME_TEXT_KEYS).concat(ACCENT_OPACITY_KEYS).concat(CUSTOM_CSS_KEYS).forEach(function (key) {
+    ICON_STYLE_KEYS.concat(ICON_GLYPH_KEYS).concat(PAYMENT_ICON_KEYS).concat(HEADER_THEME_TEXT_KEYS).concat(ACCENT_OPACITY_KEYS).concat(CUSTOM_CSS_KEYS).forEach(function (key) {
       var input = formEl.querySelector('[name="' + key + '"]');
       if (!input) return;
       input.addEventListener('input', function () {
@@ -2359,8 +2315,6 @@
         var val = key === 'theme-custom-css' ? rawVal : rawVal.trim();
         if (ICON_STYLE_KEYS.indexOf(key) >= 0) val = normalizeIconStyle(val, DEFAULTS[key]);
         if (ICON_GLYPH_KEYS.indexOf(key) >= 0) val = normalizeIconGlyph(val, DEFAULTS[key]);
-        if (key === 'theme-icon-size') val = normalizeIconSize(val, DEFAULTS[key]);
-        if (key === 'theme-icon-color') val = normalizeIconColor(val, DEFAULTS[key]);
         if (ACCENT_OPACITY_KEYS.indexOf(key) >= 0) val = normalizeOpacityFilter(val, DEFAULTS[key]);
         if (key === 'theme-header-strip-padding') val = normalizeStripPadding(val, DEFAULTS[key]);
         if (HEADER_THEME_TEXT_KEYS.indexOf(key) >= 0) {

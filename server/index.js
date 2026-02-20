@@ -70,7 +70,6 @@ const { isMasterRequest } = require('./authz');
 const adminUsersApi = require('./routes/adminUsers');
 const adminControlsApi = require('./routes/adminControls');
 const adminFraudApi = require('./routes/adminFraud');
-const adminNotesApi = require('./routes/adminNotes');
 const { getBrowserRegistryPayload } = require('./shared/icon-registry');
 
 const app = express();
@@ -231,7 +230,6 @@ app.use('/api/tools', toolsRouter);
 app.use('/api/admin', requireMaster.middleware, adminUsersApi);
 app.use('/api/admin', requireMaster.middleware, adminControlsApi);
 app.use('/api/admin', requireMaster.middleware, adminFraudApi);
-app.use('/api/admin', requireMaster.middleware, adminNotesApi);
 const pkg = require(path.join(__dirname, '..', 'package.json'));
 app.get('/api/me', me);
 app.get('/api/store-base-url', (req, res) => {
