@@ -4120,6 +4120,78 @@
           }
         }
         applyKexoScoreModalSummary(scoreData);
+        renderKexoScoreOverviewBreakdown(scoreData);
+      }
+
+      function renderKexoScoreOverviewBreakdown(scoreData) {
+        var container = document.getElementById('dash-kpi-kexo-score-breakdown');
+        if (!container) return;
+        function fmtComponentValue(key, raw) {
+          if (raw == null) return '\u2014';
+          var n = Number(raw);
+          if (!Number.isFinite(n)) return '\u2014';
+          var k = String(key || '').trim().toLowerCase();
+          if (k === 'revenue') return (typeof formatRevenue0 === 'function') ? formatRevenue0(n) : ('\u00a3' + n.toFixed(0));
+          if (k === 'orders' || k === 'itemsordered' || k === 'items_ordered') return Math.round(n).toLocaleString();
+          if (k === 'conversion') return (typeof pct === 'function') ? pct(n) : (n.toFixed(1) + '%');
+          if (k === 'roas') return n.toFixed(2) + 'x';
+          return Math.round(n * 10) / 10;
+        }
+        function fmtComponentDeltaPct(rawCur, rawPrev) {
+          var cur = Number(rawCur);
+          var prev = Number(rawPrev);
+          if (!Number.isFinite(cur) || !Number.isFinite(prev)) return '';
+          if (Math.abs(prev) < 1e-9) return '';
+          var delta = ((cur - prev) / Math.abs(prev)) * 100;
+          var rounded = Math.round(delta * 10) / 10;
+          var sign = rounded > 0 ? '+' : '';
+          return sign + rounded.toFixed(1) + '%';
+        }
+        function normalizeScoreMetricKey(rawKey) {
+          var k = String(rawKey || '').trim().toLowerCase();
+          if (k === 'itemsordered' || k === 'items_ordered') return 'itemsOrdered';
+          return k;
+        }
+        function kexoScoreBarClass(scorePct) {
+          var p = Number(scorePct);
+          if (!Number.isFinite(p)) return 'bg-secondary';
+          p = Math.max(0, Math.min(100, p));
+          if (p <= 49) return 'bg-danger';
+          if (p <= 75) return 'bg-secondary';
+          return 'bg-success';
+        }
+        if (!scoreData || !Array.isArray(scoreData.components) || scoreData.components.length === 0) {
+          container.innerHTML = '<div class="kexo-score-breakdown-empty text-muted small">No score data</div>';
+          return;
+        }
+        var metricOrder = ['revenue', 'orders', 'itemsOrdered', 'conversion', 'roas'];
+        var rankByKey = {};
+        metricOrder.forEach(function(key, idx) { rankByKey[key] = idx; });
+        var rows = scoreData.components.filter(function(c) {
+          return Object.prototype.hasOwnProperty.call(rankByKey, normalizeScoreMetricKey(c && c.key));
+        }).sort(function(a, b) {
+          var aRank = rankByKey[normalizeScoreMetricKey(a && a.key)];
+          var bRank = rankByKey[normalizeScoreMetricKey(b && b.key)];
+          return aRank - bRank;
+        });
+        var html = rows.map(function(c) {
+          var label = (c.label && String(c.label).trim()) ? String(c.label) : (c.key || '');
+          var score = typeof c.score === 'number' && Number.isFinite(c.score) ? Math.max(0, Math.min(100, c.score)) : 0;
+          var barClass = kexoScoreBarClass(score);
+          var valueStr = fmtComponentValue(c.key, c.value);
+          var deltaStr = fmtComponentDeltaPct(c.value, c.previous);
+          var detail = deltaStr ? (String(valueStr) + ' | ' + String(deltaStr) + ' vs prev') : String(valueStr);
+          return '<div class="kexo-score-breakdown-row mb-2">' +
+            '<div class="kexo-score-breakdown-head mb-1">' +
+              '<span class="kexo-score-breakdown-label">' + escapeHtml(label) + '</span>' +
+              '<span class="kexo-score-breakdown-value">' + escapeHtml(detail) + '</span>' +
+            '</div>' +
+            '<div class="progress">' +
+              '<div class="progress-bar ' + barClass + '" role="progressbar" style="width:' + score + '%" aria-valuenow="' + score + '" aria-valuemin="0" aria-valuemax="100">' + score.toFixed(0) + '</div>' +
+            '</div>' +
+          '</div>';
+        }).join('');
+        container.innerHTML = html;
       }
 
       function applyKexoScoreModalSummary(scoreData) {
@@ -4394,19 +4466,12 @@
       }
 
       (function initKexoScoreModalInDashboard() {
-        var card = document.getElementById('dash-kpi-kexo-score-card');
         var headerBtn = document.getElementById('header-kexo-score-wrap');
         var closeBtn = document.getElementById('kexo-score-modal-close-btn');
         var modalEl = document.getElementById('kexo-score-modal');
         function openOnClick(e) {
           e.preventDefault();
           openKexoScoreModal();
-        }
-        if (card) {
-          card.addEventListener('click', openOnClick);
-          card.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openKexoScoreModal(); }
-          });
         }
         if (headerBtn) {
           headerBtn.addEventListener('click', openOnClick);

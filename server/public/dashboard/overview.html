@@ -69,25 +69,28 @@
         </div>
       </div>
       <div class="col-12 col-lg-4">
-        <div class="card h-100 kexo-widget-card kexo-overview-widget-card" id="dash-kpi-kexo-score-card" role="button" tabindex="0" aria-label="Kexo Score, click for breakdown">
+        <div class="card h-100 kexo-widget-card kexo-overview-widget-card" id="dash-kpi-kexo-score-card">
           <div class="card-body kexo-widget-card-body">
             <div class="kexo-widget-head">
               <div class="kexo-widget-title">Kexo Score</div>
             </div>
-            <div class="kexo-widget-body d-flex align-items-center justify-content-center">
-              <div class="kexo-score-ring-wrap kexo-score-ring-wrap--overview position-relative">
-                <svg class="kexo-score-ring-svg kexo-score-ring-svg--overview" id="dash-kpi-kexo-score-ring" viewBox="0 0 40 40" aria-hidden="true">
-                  <circle class="kexo-score-ring-track" cx="20" cy="20" r="16" fill="none"/>
-                  <circle class="kexo-score-ring-fill kexo-score-ring-fill--1" cx="20" cy="20" r="16" fill="none"/>
-                  <circle class="kexo-score-ring-fill kexo-score-ring-fill--2" cx="20" cy="20" r="16" fill="none"/>
-                  <circle class="kexo-score-ring-fill kexo-score-ring-fill--3" cx="20" cy="20" r="16" fill="none"/>
-                  <circle class="kexo-score-ring-fill kexo-score-ring-fill--4" cx="20" cy="20" r="16" fill="none"/>
-                  <circle class="kexo-score-ring-fill kexo-score-ring-fill--5" cx="20" cy="20" r="16" fill="none"/>
-                </svg>
-                <div class="kexo-score-ring-center position-absolute top-50 start-50 translate-middle">
-                  <span class="kexo-score-num kexo-score-num--overview" id="dash-kpi-kexo-score">&mdash;</span>
+            <div class="kexo-widget-body">
+              <div class="kexo-score-overview-ring-wrap d-flex justify-content-center mb-2">
+                <div class="kexo-score-ring-wrap kexo-score-ring-wrap--overview position-relative">
+                  <svg class="kexo-score-ring-svg kexo-score-ring-svg--overview" id="dash-kpi-kexo-score-ring" viewBox="0 0 40 40" aria-hidden="true">
+                    <circle class="kexo-score-ring-track" cx="20" cy="20" r="16" fill="none"/>
+                    <circle class="kexo-score-ring-fill kexo-score-ring-fill--1" cx="20" cy="20" r="16" fill="none"/>
+                    <circle class="kexo-score-ring-fill kexo-score-ring-fill--2" cx="20" cy="20" r="16" fill="none"/>
+                    <circle class="kexo-score-ring-fill kexo-score-ring-fill--3" cx="20" cy="20" r="16" fill="none"/>
+                    <circle class="kexo-score-ring-fill kexo-score-ring-fill--4" cx="20" cy="20" r="16" fill="none"/>
+                    <circle class="kexo-score-ring-fill kexo-score-ring-fill--5" cx="20" cy="20" r="16" fill="none"/>
+                  </svg>
+                  <div class="kexo-score-ring-center position-absolute top-50 start-50 translate-middle">
+                    <span class="kexo-score-num kexo-score-num--overview" id="dash-kpi-kexo-score">&mdash;</span>
+                  </div>
                 </div>
               </div>
+              <div id="dash-kpi-kexo-score-breakdown" class="kexo-score-breakdown--overview" aria-live="polite"></div>
             </div>
           </div>
         </div>

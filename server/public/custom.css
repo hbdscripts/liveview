@@ -2777,6 +2777,29 @@ html[data-bs-theme="dark"] .report-build-wrap {
   padding: 1rem 0;
 }
 
+.kexo-score-breakdown--overview .kexo-score-breakdown-row {
+  margin-bottom: 0.4rem;
+}
+.kexo-score-breakdown--overview .kexo-score-breakdown-row .progress {
+  height: 6px;
+  border-radius: 999px;
+}
+.kexo-score-breakdown--overview .kexo-score-breakdown-row .progress-bar {
+  font-size: 0;
+  padding-right: 0;
+}
+.kexo-score-breakdown--overview .kexo-score-breakdown-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+.kexo-score-breakdown--overview .kexo-score-breakdown-value {
+  font-size: 0.7rem;
+}
+.kexo-score-breakdown--overview .kexo-score-breakdown-empty {
+  padding: 0.5rem 0;
+  font-size: 0.8rem;
+}
+
 .kexo-score-summary-card {
   padding: 0.75rem 1rem;
   background: #fff;
@@ -6236,6 +6259,8 @@ body[data-bs-theme="dark"] .kexo-upgrade-locked .kexo-upgrade-lock-overlay {
 .settings-layout-table-card .card-header { background: var(--tblr-bg-surface-secondary, #f6f8fb); }
 .settings-layout-table-card .card-title { font-size: .95rem; }
 .settings-layout-color-preview { width: 100%; min-height: 34px; border-radius: var(--tblr-border-radius, .375rem); border: 1px solid var(--tblr-border-color, #e6e7e9); }
+.kexo-css-var-preview-circle,
+.kexo-accent-preview-circle { width: 12px; height: 12px; border-radius: 12px; flex-shrink: 0; }
 .admin-panel { display: none; }
 .admin-panel.active { display: block; }
 .admin-users-table td { vertical-align: middle; }
