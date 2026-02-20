@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: d82d8a47b2cb03ef
+// checksum: 8962dde9a664c3ef
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -21181,12 +21181,12 @@ const API = '';
 
       function syncTrendingCardTitleAndChevron() {
         var titleEl = document.getElementById('dash-trending-title');
-        var chevronBtn = document.getElementById('dash-trending-chevron');
+        var toggleEl = document.getElementById('dash-trending-toggle');
         var iconEl = document.getElementById('dash-trending-chevron-icon');
-        if (titleEl) titleEl.textContent = dashTrendingMode === 'up' ? 'Trending Up' : 'Trending Down';
-        if (chevronBtn) chevronBtn.setAttribute('aria-label', dashTrendingMode === 'up' ? 'Switch to Trending Down' : 'Switch to Trending Up');
+        if (titleEl) titleEl.textContent = dashTrendingMode === 'up' ? 'Up' : 'Down';
+        if (toggleEl) toggleEl.setAttribute('aria-label', dashTrendingMode === 'up' ? 'Switch to Trending Down' : 'Switch to Trending Up');
         if (iconEl) {
-          iconEl.className = dashTrendingMode === 'up' ? 'fa-light fa-chevron-down' : 'fa-light fa-chevron-up';
+          iconEl.className = (dashTrendingMode === 'up' ? 'fa-light fa-chevron-down' : 'fa-light fa-chevron-up') + ' kexo-trending-chevron';
         }
       }
 
@@ -21680,16 +21680,23 @@ const API = '';
       })();
 
       (function initTrendingChevron() {
-        var chevronBtn = document.getElementById('dash-trending-chevron');
-        if (!chevronBtn) return;
+        var toggleEl = document.getElementById('dash-trending-toggle');
+        if (!toggleEl) return;
         if (typeof syncTrendingCardTitleAndChevron === 'function') syncTrendingCardTitleAndChevron();
-        chevronBtn.addEventListener('click', function(e) {
+        function doToggle(e) {
           e.preventDefault();
           e.stopPropagation();
           dashTrendingMode = dashTrendingMode === 'up' ? 'down' : 'up';
           syncTrendingCardTitleAndChevron();
           if (dashCache && typeof rerenderDashboardFromCache === 'function') {
             rerenderDashboardFromCache();
+          }
+        }
+        toggleEl.addEventListener('click', doToggle);
+        toggleEl.addEventListener('keydown', function(e) {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            doToggle(e);
           }
         });
       })();

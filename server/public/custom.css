@@ -4016,6 +4016,19 @@ body[data-page="dashboard"] #dash-trending-down .dash-trend-delta.text-red {
   display: inline-block;
 }
 
+.kexo-trending-toggle {
+  cursor: pointer;
+  user-select: none;
+}
+.kexo-trending-toggle:hover {
+  opacity: 0.85;
+}
+.kexo-trending-chevron {
+  margin-left: 0.15em;
+  font-size: 0.9em;
+  vertical-align: 0.05em;
+}
+
 .dash-thumb-wrap {
   position: relative;
 }
