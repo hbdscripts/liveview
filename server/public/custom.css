@@ -2828,15 +2828,20 @@ html[data-bs-theme="dark"] .report-build-wrap {
   color: #0f172a;
 }
 .kexo-score-summary-card .kexo-score-summary-drivers {
-  margin: 20px 0;
+  margin: 10px 0;
   list-style: none;
+  padding: 0;
 }
 .kexo-score-summary-card .kexo-score-summary-drivers li {
-  margin-bottom: 0.2rem;
+  margin-bottom: 10px;
+}
+.kexo-score-summary-card .kexo-score-driver-label {
+  display: block;
+  font-weight: 600;
 }
 .kexo-score-summary-card .kexo-score-summary-recommendation {
   margin: 0;
-  color: #475569;
+  /* color: #475569; */
 }
 .kexo-score-summary-card .kexo-score-summary-loading {
   margin: 0;

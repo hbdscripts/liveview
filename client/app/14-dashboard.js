@@ -4454,7 +4454,18 @@
               var rec = (payload.recommendation && String(payload.recommendation).trim()) ? escapeHtml(payload.recommendation) : '';
               var parts = [];
               if (summary) parts.push('<p class="kexo-score-summary-text">' + summary + '</p>');
-              if (drivers.length) parts.push('<ul class="kexo-score-summary-drivers">' + drivers.map(function(d) { return '<li>' + escapeHtml(String(d)) + '</li>'; }).join('') + '</ul>');
+              if (drivers.length) {
+                parts.push('<ul class="kexo-score-summary-drivers">' + drivers.map(function(d) {
+                  var s = String(d).trim();
+                  var idx = s.indexOf(': ');
+                  if (idx > 0) {
+                    var label = s.slice(0, idx + 1);
+                    var rest = s.slice(idx + 2);
+                    return '<li><span class="kexo-score-driver-label">' + escapeHtml(label) + '</span> ' + escapeHtml(rest) + '</li>';
+                  }
+                  return '<li>' + escapeHtml(s) + '</li>';
+                }).join('') + '</ul>');
+              }
               if (rec) parts.push('<p class="kexo-score-summary-recommendation">' + rec + '</p>');
               if (parts.length === 0) parts.push('<p class="kexo-score-summary-text text-muted">No summary for this range.</p>');
               wrap.innerHTML = parts.join('');
