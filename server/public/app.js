@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: efc3935e82131fd3
+// checksum: d01f58bde15c1ece
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -1391,7 +1391,10 @@ const API = '';
         var header = null;
         try { header = card.querySelector(':scope > .card-header'); } catch (_) { header = null; }
         if (header) return header;
-        return card.querySelector(HEADER_SELECTOR);
+        header = card.querySelector(HEADER_SELECTOR);
+        if (header) return header;
+        header = card.querySelector(':scope .kexo-widget-head');
+        return header || null;
       }
 
       function hasTableContent(card) {
@@ -1422,7 +1425,7 @@ const API = '';
         var id = '';
         if (card.id) id = String(card.id).trim();
         if (!id) {
-          var titleEl = card.querySelector('.card-header .card-title');
+          var titleEl = card.querySelector('.card-header .card-title') || card.querySelector('.kexo-widget-title');
           var title = titleEl ? String(titleEl.textContent || '').trim() : '';
           if (title) id = slugify(title) + '-' + String(index || 0);
         }
@@ -1493,7 +1496,7 @@ const API = '';
           if (header.querySelector('.kexo-builder-icon-link')) return;
           var tableId = String(card.dataset.tableId || '').trim();
           var pageKey = getPageScope();
-          var titleEl = card.querySelector('.card-header .card-title');
+          var titleEl = card.querySelector('.card-header .card-title') || card.querySelector('.kexo-widget-title');
           var cardTitle = (titleEl && titleEl.textContent) ? String(titleEl.textContent).trim() : tableId;
           var link = document.createElement('button');
           link.type = 'button';
@@ -1512,13 +1515,18 @@ const API = '';
               window.KexoLayoutShortcuts.openTableModal({ pageKey: pageKey, tableId: tableId, cardTitle: cardTitle });
             }
           });
-          var actions = header.querySelector(':scope > .card-actions');
-          if (!actions) {
-            actions = document.createElement('div');
-            actions.className = 'card-actions d-flex align-items-center gap-2 ms-auto';
-            header.appendChild(actions);
+          var headRight = header.querySelector(':scope > .kexo-widget-head-right');
+          if (headRight) {
+            headRight.appendChild(link);
+          } else {
+            var actions = header.querySelector(':scope > .card-actions');
+            if (!actions) {
+              actions = document.createElement('div');
+              actions.className = 'card-actions d-flex align-items-center gap-2 ms-auto';
+              header.appendChild(actions);
+            }
+            actions.appendChild(link);
           }
-          actions.appendChild(link);
           return;
         }
 
@@ -1530,7 +1538,7 @@ const API = '';
           var chartWrap = card.closest ? card.closest('[data-kexo-chart-key]') : null;
           var chartKey = (card.dataset && card.dataset.kexoChartKey) ? String(card.dataset.kexoChartKey).trim().toLowerCase() : (chartWrap && chartWrap.getAttribute('data-kexo-chart-key')) ? String(chartWrap.getAttribute('data-kexo-chart-key')).trim().toLowerCase() : '';
           if (!chartKey) return;
-          var chartTitleEl = card.querySelector('.card-header .card-title');
+          var chartTitleEl = card.querySelector('.card-header .card-title') || card.querySelector('.kexo-widget-title');
           var chartCardTitle = (chartTitleEl && chartTitleEl.textContent) ? String(chartTitleEl.textContent).trim() : chartKey;
           var chartLink = document.createElement('button');
           chartLink.type = 'button';
@@ -1551,13 +1559,18 @@ const API = '';
               window.KexoLayoutShortcuts.openChartModal({ chartKey: chartKey, cardTitle: chartCardTitle });
             }
           });
-          var chartActions = header.querySelector(':scope > .card-actions');
-          if (!chartActions) {
-            chartActions = document.createElement('div');
-            chartActions.className = 'card-actions d-flex align-items-center gap-2 ms-auto';
-            header.appendChild(chartActions);
+          var chartHeadRight = header.querySelector(':scope > .kexo-widget-head-right');
+          if (chartHeadRight) {
+            chartHeadRight.appendChild(chartLink);
+          } else {
+            var chartActions = header.querySelector(':scope > .card-actions');
+            if (!chartActions) {
+              chartActions = document.createElement('div');
+              chartActions.className = 'card-actions d-flex align-items-center gap-2 ms-auto';
+              header.appendChild(chartActions);
+            }
+            chartActions.appendChild(chartLink);
           }
-          chartActions.appendChild(chartLink);
           return;
         }
 
