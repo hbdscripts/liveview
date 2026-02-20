@@ -20,7 +20,7 @@ test('POST /api/attribution/prefs without admin returns 403', async () => {
   const port = server.address().port;
 
   const res = await new Promise((resolve, reject) => {
-    const body = JSON.stringify({ enabledOwnerKinds: ['house'] });
+    const body = JSON.stringify({ includeUnknownObserved: true });
     const req = http.request(
       {
         host: 'localhost',

@@ -22,10 +22,12 @@ async function withTempDb(fn) {
     const { up: up009 } = require('../server/migrations/009_cf_traffic');
     const { up: up017 } = require('../server/migrations/017_sales_truth_and_evidence');
     const { up: up050 } = require('../server/migrations/050_acquisition_attribution');
+    const { up: up058 } = require('../server/migrations/058_attribution_tags');
     await up001();
     await up009();
     await up017();
     await up050();
+    await up058();
     return await fn(getDb());
   } finally {
     process.env.SQLITE_DB_PATH = prev;
@@ -46,7 +48,8 @@ test('deriveAttribution: gclid-only → google_ads / paid_search', async () => {
     assert.ok(out);
     assert.equal(out.source, 'google');
     assert.equal(out.channel, 'paid_search');
-    assert.ok(out.variant === 'google_ads:house' || out.variant?.includes('google'));
+    assert.equal(out.variant, 'google_ads');
+    assert.equal(out.tag, null);
     assert.ok(out.confidence === 'heuristic' || out.confidence === 'rules');
   });
 });
@@ -65,6 +68,7 @@ test('deriveAttribution: UTM-only (source/medium) → heuristic channel/source',
     assert.ok(out);
     assert.equal(out.channel, 'email');
     assert.ok(out.source);
+    assert.equal(out.tag, null);
     assert.ok(out.confidence === 'heuristic' || out.confidence === 'rules');
   });
 });
@@ -81,6 +85,7 @@ test('deriveAttribution: referrer-only (external host) → other', async () => {
     });
     assert.ok(out);
     assert.equal(out.source, 'other');
+    assert.equal(out.tag, null);
     assert.ok(out.confidence === 'heuristic' || out.confidence === 'direct');
   });
 });
@@ -96,9 +101,10 @@ test('deriveAttribution: no signals → direct', async () => {
       utm_medium: '',
     });
     assert.ok(out);
-    assert.equal(out.variant, 'direct:house');
+    assert.equal(out.variant, 'direct');
     assert.equal(out.confidence, 'direct');
     assert.equal(out.source, 'direct');
+    assert.equal(out.tag, null);
   });
 });
 
@@ -107,7 +113,7 @@ test('deriveAttribution: allowlisted kexo_attr wins', async () => {
     const now = Date.now();
     await db.run(
       `INSERT OR REPLACE INTO attribution_allowlist (variant_key, enabled, updated_at) VALUES (?, 1, ?)`,
-      ['my_campaign:affiliate', now]
+      ['my_campaign', now]
     );
     const { deriveAttribution, invalidateAttributionConfigCache } = require('../server/attribution/deriveAttribution');
     invalidateAttributionConfigCache();
@@ -119,7 +125,8 @@ test('deriveAttribution: allowlisted kexo_attr wins', async () => {
     });
     assert.ok(out);
     assert.equal(out.confidence, 'explicit_param');
-    assert.ok(out.variant === 'my_campaign:affiliate' || out.variant?.includes('my_campaign'));
+    assert.equal(out.variant, 'my_campaign');
+    assert.equal(out.tag, null);
   });
 });
 
@@ -135,8 +142,9 @@ test('deriveAttribution: non-allowlisted kexo_attr ignored', async () => {
     });
     assert.ok(out);
     assert.notEqual(out.confidence, 'explicit_param');
-    assert.equal(out.variant, 'direct:house');
+    assert.equal(out.variant, 'direct');
     assert.equal(out.confidence, 'direct');
+    assert.equal(out.tag, null);
   });
 });
 
@@ -151,10 +159,11 @@ test('deriveAttribution: internal referrer checkout.shopify.com (no UTM) → dir
       utm_medium: '',
     });
     assert.ok(out);
-    assert.equal(out.variant, 'direct:house');
+    assert.equal(out.variant, 'direct');
     assert.equal(out.confidence, 'direct');
     assert.equal(out.source, 'direct');
     assert.equal(out.channel, 'direct');
+    assert.equal(out.tag, null);
   });
 });
 
@@ -169,10 +178,11 @@ test('deriveAttribution: self-referrer (referrer host = entry host, no UTM) → 
       utm_medium: '',
     });
     assert.ok(out);
-    assert.equal(out.variant, 'direct:house');
+    assert.equal(out.variant, 'direct');
     assert.equal(out.confidence, 'direct');
     assert.equal(out.source, 'direct');
     assert.equal(out.channel, 'direct');
+    assert.equal(out.tag, null);
   });
 });
 
@@ -187,8 +197,9 @@ test('deriveAttribution: edge case – malformed entry_url', async () => {
       utm_medium: '',
     });
     assert.ok(out);
-    assert.equal(out.variant, 'direct:house');
+    assert.equal(out.variant, 'direct');
     assert.equal(out.confidence, 'direct');
+    assert.equal(out.tag, null);
   });
 });
 
@@ -214,7 +225,8 @@ test('deriveAttribution: edge case – empty string vs missing inputs', async ()
     invalidateAttributionConfigCache();
     const out = await deriveAttribution({});
     assert.ok(out);
-    assert.equal(out.variant, 'direct:house');
+    assert.equal(out.variant, 'direct');
     assert.equal(out.confidence, 'direct');
+    assert.equal(out.tag, null);
   });
 });

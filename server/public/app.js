@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 74fb5c2fc2770924
+// checksum: aa6db9a24089b1c1
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -11144,7 +11144,7 @@ const API = '';
       }
       function variantKey(r) {
         const k = r && r.variant_key != null ? String(r.variant_key).trim().toLowerCase() : '';
-        return k || 'other:house';
+        return k || 'other';
       }
 
       function isChannelOpen(key) {
@@ -11171,12 +11171,16 @@ const API = '';
         const chSessions = (ch && typeof ch.sessions === 'number') ? formatSessions(ch.sessions) : '-';
         const chRev = (ch && typeof ch.revenue_gbp === 'number') ? formatRevenueTableHtml(ch.revenue_gbp) : '-';
         const chVpv = metric(ch, 'vpv') != null ? formatRevenue(metric(ch, 'vpv')) : '\u2014';
-        html += '<div class="grid-row traffic-type-parent attribution-channel-parent" role="row" data-channel="' + escapeHtml(chKey) + '">' +
-          '<div class="grid-cell" role="cell">' +
-            '<button type="button" class="traffic-type-toggle attribution-channel-toggle" data-channel="' + escapeHtml(chKey) + '" aria-expanded="' + (chOpen ? 'true' : 'false') + '">' +
+        const sources = ch && Array.isArray(ch.sources) ? ch.sources.slice() : [];
+        const hasSources = sources.length > 0;
+        const channelHead = hasSources
+          ? ('<button type="button" class="traffic-type-toggle attribution-channel-toggle" data-channel="' + escapeHtml(chKey) + '" aria-expanded="' + (chOpen ? 'true' : 'false') + '">' +
               '<span>' + escapeHtml(chLabel) + '</span>' +
-            '</button>' +
-          '</div>' +
+            '</button>')
+          : ('<span class="traffic-type-toggle attribution-channel-toggle is-static"><span>' + escapeHtml(chLabel) + '</span></span>');
+
+        html += '<div class="grid-row traffic-type-parent attribution-channel-parent" role="row" data-channel="' + escapeHtml(chKey) + '">' +
+          '<div class="grid-cell" role="cell">' + channelHead + '</div>' +
           '<div class="grid-cell" role="cell">' + escapeHtml(chSessions || '-') + '</div>' +
           '<div class="grid-cell" role="cell">' + escapeHtml(chOrders || '-') + '</div>' +
           '<div class="grid-cell" role="cell">' + escapeHtml(chCr || '-') + '</div>' +
@@ -11184,7 +11188,6 @@ const API = '';
           '<div class="grid-cell" role="cell">' + (chRev || '-') + '</div>' +
         '</div>';
 
-        const sources = ch && Array.isArray(ch.sources) ? ch.sources.slice() : [];
         sources.sort(function(a, b) {
           let primary = 0;
           if (by === 'attribution') primary = cmpNullableText(sourceLabel(a), sourceLabel(b), dir);
@@ -11198,7 +11201,9 @@ const API = '';
 
         sources.forEach(function(src) {
           const sKey = sourceKey(src);
-          const srcOpen = chOpen && isSourceOpen(chKey, sKey);
+          const variants = src && Array.isArray(src.variants) ? src.variants.slice() : [];
+          const hasVariants = variants.length > 0;
+          const srcOpen = hasVariants ? (chOpen && isSourceOpen(chKey, sKey)) : false;
           const sLabel = sourceLabel(src);
           const sIcon = iconSpecHtml(src && src.icon_spec != null ? src.icon_spec : null, sLabel);
           const sCr = (src && typeof src.conversion_pct === 'number') ? pct(src.conversion_pct) : '-';
@@ -11206,13 +11211,15 @@ const API = '';
           const sSessions = (src && typeof src.sessions === 'number') ? formatSessions(src.sessions) : '-';
           const sRev = (src && typeof src.revenue_gbp === 'number') ? formatRevenueTableHtml(src.revenue_gbp) : '-';
           const sVpv = metric(src, 'vpv') != null ? formatRevenue(metric(src, 'vpv')) : '\u2014';
-          html += '<div class="grid-row traffic-type-child attribution-source-row' + (chOpen ? '' : ' is-hidden') + '" role="row" data-parent="' + escapeHtml(chKey) + '" data-channel="' + escapeHtml(chKey) + '" data-source="' + escapeHtml(sKey) + '">' +
-            '<div class="grid-cell" role="cell">' +
-              '<button type="button" class="traffic-type-toggle attribution-source-toggle" data-channel="' + escapeHtml(chKey) + '" data-source="' + escapeHtml(sKey) + '" aria-expanded="' + (srcOpen ? 'true' : 'false') + '">' +
+          const sourceHead = hasVariants
+            ? ('<button type="button" class="traffic-type-toggle attribution-source-toggle" data-channel="' + escapeHtml(chKey) + '" data-source="' + escapeHtml(sKey) + '" aria-expanded="' + (srcOpen ? 'true' : 'false') + '">' +
                 (sIcon || '') +
                 '<span>' + escapeHtml(sLabel) + '</span>' +
-              '</button>' +
-            '</div>' +
+              '</button>')
+            : ('<span class="traffic-type-toggle attribution-source-toggle is-static">' + (sIcon || '') + '<span>' + escapeHtml(sLabel) + '</span></span>');
+
+          html += '<div class="grid-row traffic-type-child attribution-source-row' + (chOpen ? '' : ' is-hidden') + '" role="row" data-parent="' + escapeHtml(chKey) + '" data-channel="' + escapeHtml(chKey) + '" data-source="' + escapeHtml(sKey) + '">' +
+            '<div class="grid-cell" role="cell">' + sourceHead + '</div>' +
             '<div class="grid-cell" role="cell">' + escapeHtml(sSessions || '-') + '</div>' +
             '<div class="grid-cell" role="cell">' + escapeHtml(sOrders || '-') + '</div>' +
             '<div class="grid-cell" role="cell">' + escapeHtml(sCr || '-') + '</div>' +
@@ -11220,7 +11227,6 @@ const API = '';
             '<div class="grid-cell" role="cell">' + (sRev || '-') + '</div>' +
           '</div>';
 
-          const variants = src && Array.isArray(src.variants) ? src.variants.slice() : [];
           variants.sort(function(a, b) {
             let primary = 0;
             if (by === 'attribution') primary = cmpNullableText(variantLabel(a), variantLabel(b), dir);
@@ -11242,12 +11248,8 @@ const API = '';
             const vSessions = (v && typeof v.sessions === 'number') ? formatSessions(v.sessions) : '-';
             const vRev = (v && typeof v.revenue_gbp === 'number') ? formatRevenueTableHtml(v.revenue_gbp) : '-';
             const vVpv = metric(v, 'vpv') != null ? formatRevenue(metric(v, 'vpv')) : '\u2014';
-            const ownerKind = v && v.owner_kind != null ? String(v.owner_kind).trim().toLowerCase() : '';
-            const ownerBadge = ownerKind && ownerKind !== 'house'
-              ? (' <span class="text-muted small">(' + escapeHtml(ownerKind) + ')</span>')
-              : '';
             html += '<div class="grid-row traffic-type-child attribution-variant-row' + (srcOpen ? '' : ' is-hidden') + '" role="row" data-parent="' + escapeHtml(parentKey) + '" data-channel="' + escapeHtml(chKey) + '" data-source="' + escapeHtml(sKey) + '">' +
-              '<div class="grid-cell" role="cell"><span style="display:inline-flex;align-items:center;gap:8px;padding-left:18px">' + (vIcon || '') + '<span>' + escapeHtml(vLabel) + '</span>' + ownerBadge + '</span></div>' +
+              '<div class="grid-cell" role="cell"><span style="display:inline-flex;align-items:center;gap:8px;padding-left:18px">' + (vIcon || '') + '<span>' + escapeHtml(vLabel) + '</span></span></div>' +
               '<div class="grid-cell" role="cell">' + escapeHtml(vSessions || '-') + '</div>' +
               '<div class="grid-cell" role="cell">' + escapeHtml(vOrders || '-') + '</div>' +
               '<div class="grid-cell" role="cell">' + escapeHtml(vCr || '-') + '</div>' +
