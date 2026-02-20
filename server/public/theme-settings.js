@@ -1759,7 +1759,6 @@
       '</ul>' +
 
       '<div class="theme-subpanel" data-theme-subpanel="icons">' +
-        '<h4 class="mb-2" title="Each icon field accepts Font Awesome classes (e.g. fa-light fa-bars) or a pasted SVG. Use Edit on any icon for per-icon size/color overrides. Settings sidebar and diagnostics icons are locked to fa-thin and excluded from this list.">Icon overrides</h4>' +
         glyphAccordion +
         '<div class="d-flex align-items-center gap-2 mt-3">' +
           '<button type="button" class="btn btn-outline-secondary btn-sm" id="theme-icons-refresh" title="Debounced preview updates after typing stops.">Refresh previews</button>' +

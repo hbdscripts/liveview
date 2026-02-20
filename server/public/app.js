@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 4ff19d4bda282632
+// checksum: d82d8a47b2cb03ef
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -23317,9 +23317,6 @@ const API = '';
           });
         });
       }
-      proxyClick('.footer-audio-btn', 'audio-mute-btn');
-      proxyClick('.footer-settings-refresh', 'refresh-btn');
-      proxyClick('.footer-settings-audio', 'audio-mute-btn');
       function doCacheReload() {
         var url = window.location.pathname + (window.location.search || '');
         url += (url.indexOf('?') >= 0 ? '&' : '?') + '_=' + Date.now();
