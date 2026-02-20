@@ -3495,6 +3495,31 @@ body[data-page="dashboard"] #dash-trending-down .dash-trend-delta.text-red {
   overflow-x: hidden;
   overflow-y: visible;
 }
+
+/* Sales Overview (main line graph): keep totals truly centered,
+   unaffected by the settings cog width. */
+.kexo-overview-main-card .kexo-overview-card-head {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+.kexo-overview-main-card .kexo-overview-card-head-left {
+  grid-column: 2;
+  justify-self: center;
+  align-items: center;
+  text-align: center;
+  min-width: 0;
+}
+.kexo-overview-main-card .kexo-overview-card-actions {
+  grid-column: 3;
+  justify-self: end;
+  margin-left: 0;
+}
+.kexo-overview-main-card .kexo-overview-running-totals--main {
+  justify-content: center;
+}
 .kexo-overview-mini-card {
   overflow-x: hidden;
 }
