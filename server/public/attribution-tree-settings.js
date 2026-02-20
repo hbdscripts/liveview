@@ -42,6 +42,14 @@
     return s.length > 120 ? s.slice(0, 120) : s;
   }
 
+  function normalizeBaseVariantKey(v) {
+    var k = normalizeVariantKey(v);
+    if (!k) return '';
+    var m = k.match(/^(.*?):(house|affiliate|partner)(?::.*)?$/);
+    if (m && m[1]) return normalizeVariantKey(m[1]) || k;
+    return k;
+  }
+
   function fetchWithTimeout(url, options, timeoutMs) {
     var ms = typeof timeoutMs === 'number' && isFinite(timeoutMs) ? timeoutMs : 20000;
     if (typeof AbortController === 'undefined') return fetch(url, options);
@@ -99,11 +107,16 @@
     return apiPostJson(API + '/api/attribution/icons', payload);
   }
 
-  function moveRule(ruleId, destVariantKey) {
+  function moveRule(ruleId, destVariantKey, destTagKey) {
     var id = trimLower(ruleId, 80);
-    var variantKey = normalizeVariantKey(destVariantKey);
+    var variantKey = normalizeBaseVariantKey(destVariantKey);
     if (!id || !variantKey) return Promise.resolve({ ok: false, status: 0, error: 'Missing rule id or destination' });
-    return apiPatchJson(API + '/api/attribution/rules/' + encodeURIComponent(id), { variant_key: variantKey });
+    var tagKey = destTagKey == null ? null : String(destTagKey).trim();
+    if (tagKey) {
+      tagKey = tagKey.toLowerCase().replace(/[^a-z0-9_-]+/g, '_').replace(/^_+|_+$/g, '');
+      if (tagKey.length > 120) tagKey = tagKey.slice(0, 120);
+    }
+    return apiPatchJson(API + '/api/attribution/rules/' + encodeURIComponent(id), { variant_key: variantKey, tag_key: tagKey || null });
   }
 
   function titleFromKey(key) {
@@ -146,6 +159,12 @@
     var variants = Array.isArray(config.variants) ? config.variants : [];
     var rules = Array.isArray(config.rules) ? config.rules : [];
 
+    var channelsByKey = {};
+    channels.forEach(function (r) {
+      var k = trimLower(r && r.channel_key != null ? r.channel_key : (r && r.key != null ? r.key : ''), 32);
+      if (k) channelsByKey[k] = r;
+    });
+
     var sourcesByKey = {};
     sources.forEach(function (r) {
       var k = trimLower(r && r.source_key != null ? r.source_key : (r && r.key != null ? r.key : ''), 32);
@@ -154,81 +173,64 @@
 
     var rulesByVariant = {};
     rules.forEach(function (r) {
-      var vk = normalizeVariantKey(r && (r.variant_key != null ? r.variant_key : ''));
+      var vk = normalizeBaseVariantKey(r && (r.variant_key != null ? r.variant_key : ''));
       if (!vk) return;
       if (!rulesByVariant[vk]) rulesByVariant[vk] = [];
       rulesByVariant[vk].push(r);
     });
 
-    var channelList = [];
-    var seenChannel = {};
-    var variantsByChannelSource = {};
-
+    var variantsByChannel = {};
     variants.forEach(function (v) {
       var ch = trimLower(v && v.channel_key != null ? v.channel_key : '', 32) || 'other';
-      var src = trimLower(v && v.source_key != null ? v.source_key : '', 32) || 'other';
-      if (!seenChannel[ch]) {
-        seenChannel[ch] = true;
-        channelList.push(ch);
-      }
-      var key = ch + '|' + src;
-      if (!variantsByChannelSource[key]) variantsByChannelSource[key] = [];
-      variantsByChannelSource[key].push(v);
+      if (!variantsByChannel[ch]) variantsByChannel[ch] = [];
+      variantsByChannel[ch].push(v);
     });
 
-    channelList.sort();
+    var channelKeys = Object.keys(channelsByKey);
+    Object.keys(variantsByChannel).forEach(function (k) {
+      if (channelKeys.indexOf(k) < 0) channelKeys.push(k);
+    });
+    channelKeys.sort();
+
     var channelRows = [];
-    channelList.forEach(function (channelKey) {
-      var channelLabel = (channels.find(function (c) { return trimLower(c && c.channel_key, 32) === channelKey; }) || {}).label;
-      if (!channelLabel) channelLabel = titleFromKey(channelKey);
-      var sourceKeys = [];
-      var srcSeen = {};
-      Object.keys(variantsByChannelSource).forEach(function (k) {
-        var parts = k.split('|');
-        if (parts[0] === channelKey && parts[1] && !srcSeen[parts[1]]) {
-          srcSeen[parts[1]] = true;
-          sourceKeys.push(parts[1]);
-        }
+    channelKeys.forEach(function (channelKey) {
+      var channelRow = channelsByKey[channelKey] || {};
+      var channelLabel = channelRow.label || titleFromKey(channelKey);
+
+      var variantList = variantsByChannel[channelKey] || [];
+      variantList.sort(function (a, b) {
+        var la = (a && a.label) ? String(a.label) : (a && a.variant_key) ? String(a.variant_key) : '';
+        var lb = (b && b.label) ? String(b.label) : (b && b.variant_key) ? String(b.variant_key) : '';
+        return la.localeCompare(lb);
       });
-      sourceKeys.sort();
-      var sourceRows = [];
-      sourceKeys.forEach(function (sourceKey) {
-        var sourceRow = sourcesByKey[sourceKey] || {};
-        var sourceLabel = sourceRow.label || titleFromKey(sourceKey);
+
+      var variantRows = [];
+      variantList.forEach(function (variant) {
+        var vk = normalizeBaseVariantKey(variant && (variant.variant_key != null ? variant.variant_key : ''));
+        if (!vk) return;
+        var vLabel = (variant && variant.label) ? String(variant.label) : titleFromKey(vk);
+        var explicitIcon = (variant && variant.icon_spec != null) ? String(variant.icon_spec) : '';
+        var srcKey = trimLower(variant && variant.source_key != null ? variant.source_key : '', 32) || 'other';
+        var sourceRow = sourcesByKey[srcKey] || {};
         var sourceIcon = sourceRow.icon_spec != null ? String(sourceRow.icon_spec) : '';
-        var variantList = variantsByChannelSource[channelKey + '|' + sourceKey] || [];
-        variantList.sort(function (a, b) {
-          var la = (a && a.label) ? String(a.label) : (a && a.variant_key) ? String(a.variant_key) : '';
-          var lb = (b && b.label) ? String(b.label) : (b && b.variant_key) ? String(b.variant_key) : '';
-          return la.localeCompare(lb);
-        });
-        var variantRows = [];
-        variantList.forEach(function (variant) {
-          var vk = normalizeVariantKey(variant && (variant.variant_key != null ? variant.variant_key : ''));
-          var vLabel = (variant && variant.label) ? String(variant.label) : titleFromKey(vk);
-          var vIcon = (variant && variant.icon_spec != null && String(variant.icon_spec).trim()) ? String(variant.icon_spec) : sourceIcon;
-          var ruleList = rulesByVariant[vk] || [];
-          variantRows.push({
-            type: 'variant',
-            variant_key: vk,
-            label: vLabel,
-            icon_spec: vIcon,
-            rules: ruleList,
-          });
-        });
-        sourceRows.push({
-          type: 'source',
-          source_key: sourceKey,
-          label: sourceLabel,
-          icon_spec: sourceIcon,
-          variants: variantRows,
+        var iconSpec = (explicitIcon && explicitIcon.trim()) ? explicitIcon : sourceIcon;
+        var ruleList = rulesByVariant[vk] || [];
+        variantRows.push({
+          type: 'variant',
+          variant_key: vk,
+          label: vLabel,
+          icon_spec: iconSpec,
+          source_key: srcKey,
+          source_icon_spec: sourceIcon,
+          rules: ruleList,
         });
       });
+
       channelRows.push({
         type: 'channel',
         channel_key: channelKey,
         label: channelLabel,
-        sources: sourceRows,
+        variants: variantRows,
       });
     });
     return channelRows;
@@ -239,7 +241,7 @@
     rootEl: null,
     config: null,
     treeModel: null,
-    expanded: {}, // 'channel:key' -> true, 'source:ch|src' -> true
+    expanded: {}, // 'c:key' -> true, 'v:key' -> true
   };
 
   function toggleExpanded(k) {
@@ -258,13 +260,9 @@
     model.forEach(function (channel) {
       var channelKey = 'c:' + String(channel && channel.channel_key != null ? channel.channel_key : '');
       next[channelKey] = expand;
-      (channel && Array.isArray(channel.sources) ? channel.sources : []).forEach(function (source) {
-        var sourceKey = 's:' + String(channel && channel.channel_key != null ? channel.channel_key : '') + '|' + String(source && source.source_key != null ? source.source_key : '');
-        next[sourceKey] = expand;
-        (source && Array.isArray(source.variants) ? source.variants : []).forEach(function (variant) {
-          var variantKey = 'v:' + String(variant && variant.variant_key != null ? variant.variant_key : '');
-          next[variantKey] = expand;
-        });
+      (channel && Array.isArray(channel.variants) ? channel.variants : []).forEach(function (variant) {
+        var variantKey = 'v:' + String(variant && variant.variant_key != null ? variant.variant_key : '');
+        next[variantKey] = expand;
       });
     });
     _state.expanded = next;
@@ -276,7 +274,7 @@
     var match = (rule && rule.match_json) ? rule.match_json : (rule && rule.match ? JSON.stringify(rule.match) : '{}');
     var matchStr = typeof match === 'string' ? match : JSON.stringify(match);
     var summary = matchStr.length > 60 ? matchStr.slice(0, 57) + '?' : matchStr;
-    var vk = normalizeVariantKey(variantKey);
+    var vk = normalizeBaseVariantKey(variantKey);
     return '<div class="am-tree-row am-tree-rule">' +
       '<span class="am-tree-pad am-tree-pad-3"></span>' +
       '<span class="am-tree-cell"><code class="small">' + escapeHtml(id || '?') + '</code></span>' +
@@ -286,11 +284,11 @@
       '</div>';
   }
 
-  function renderVariantRow(variant, channelKey, sourceKey, sourceIconSpec) {
+  function renderVariantRow(variant, channelKey) {
     var vk = variant.variant_key || '';
     var label = variant.label || titleFromKey(vk);
     var explicitIcon = variant.icon_spec != null ? String(variant.icon_spec) : '';
-    var iconSpec = (explicitIcon && explicitIcon.trim()) ? explicitIcon : (sourceIconSpec || '');
+    var iconSpec = (explicitIcon && explicitIcon.trim()) ? explicitIcon : (variant.source_icon_spec != null ? String(variant.source_icon_spec) : '');
     var ruleCount = Array.isArray(variant.rules) ? variant.rules.length : 0;
     var hasRules = ruleCount > 0;
     var expandedKey = 'v:' + vk;
@@ -307,7 +305,7 @@
       '<span class="am-tree-cell am-tree-label">' + iconSpecToPreviewHtml(iconSpec, label) + ' <strong>' + escapeHtml(label) + '</strong> <code class="small">' + escapeHtml(vk) + '</code></span>' +
       '<span class="am-tree-cell text-muted small">' + String(ruleCount) + ' rule(s)</span>' +
       '<span class="am-tree-cell d-flex align-items-center gap-2 justify-content-end">' +
-        '<button type="button" class="btn btn-outline-secondary btn-sm" data-am-tree-action="edit-variant" data-variant-key="' + escapeHtml(vk) + '" data-current-channel-key="' + escapeHtml(channelKey || '') + '" data-current-source-key="' + escapeHtml(sourceKey || '') + '" data-label="' + escapeHtml(label) + '" data-icon-spec="' + escapeHtml(explicitIcon) + '">Edit variant</button>' +
+        '<button type="button" class="btn btn-outline-secondary btn-sm" data-am-tree-action="edit-variant" data-variant-key="' + escapeHtml(vk) + '" data-current-channel-key="' + escapeHtml(channelKey || '') + '" data-label="' + escapeHtml(label) + '" data-icon-spec="' + escapeHtml(explicitIcon) + '">Edit variant</button>' +
       '</span>' +
       '</div>' +
       '<div class="am-tree-children' + (isOpen ? '' : ' is-hidden') + '" data-am-tree-children="' + escapeHtml(expandedKey) + '">' +
@@ -316,41 +314,14 @@
       '</div>';
   }
 
-  function renderSourceRow(source, channelKey) {
-    var sk = source.source_key || '';
-    var label = source.label || titleFromKey(sk);
-    var iconSpec = source.icon_spec != null ? String(source.icon_spec) : '';
-    var hasVariants = Array.isArray(source.variants) && source.variants.length > 0;
-    var expandedKey = 's:' + channelKey + '|' + sk;
-    var isOpen = isExpanded(expandedKey);
-    var variantHtml = (source.variants || []).map(function (v) { return renderVariantRow(v, channelKey, sk, iconSpec); }).join('');
-    var toggleHtml = hasVariants
-      ? '<button type="button" class="am-tree-toggle btn btn-link btn-sm p-0 me-1" data-am-tree-toggle="' + escapeHtml(expandedKey) + '" aria-expanded="' + (isOpen ? 'true' : 'false') + '">' +
-        '<i class="fa fa-chevron-' + (isOpen ? 'down' : 'right') + ' small" aria-hidden="true"></i></button>'
-      : '<span class="am-tree-toggle-spacer"></span>';
-    return '<div class="am-tree-node am-tree-source" data-source-key="' + escapeHtml(sk) + '">' +
-      '<div class="am-tree-row am-tree-source-head">' +
-      '<span class="am-tree-pad am-tree-pad-1"></span>' +
-      toggleHtml +
-      '<span class="am-tree-cell am-tree-label">' + iconSpecToPreviewHtml(iconSpec, label) + ' <strong>' + escapeHtml(label) + '</strong> <code class="small">' + escapeHtml(sk) + '</code></span>' +
-      '<span class="am-tree-cell d-flex align-items-center gap-2 justify-content-end">' +
-        '<button type="button" class="btn btn-outline-secondary btn-sm" data-am-tree-action="edit-source" data-source-key="' + escapeHtml(sk) + '" data-current-channel-key="' + escapeHtml(channelKey || '') + '" data-label="' + escapeHtml(label) + '" data-icon-spec="' + escapeHtml(iconSpec) + '">Edit source</button>' +
-      '</span>' +
-      '</div>' +
-      '<div class="am-tree-children' + (isOpen ? '' : ' is-hidden') + '" data-am-tree-children="' + escapeHtml(expandedKey) + '">' +
-      variantHtml +
-      '</div>' +
-      '</div>';
-  }
-
   function renderChannelRow(channel) {
     var ck = channel.channel_key || '';
     var label = channel.label || titleFromKey(ck);
-    var hasSources = Array.isArray(channel.sources) && channel.sources.length > 0;
+    var hasVariants = Array.isArray(channel.variants) && channel.variants.length > 0;
     var expandedKey = 'c:' + ck;
     var isOpen = isExpanded(expandedKey);
-    var sourceHtml = (channel.sources || []).map(function (s) { return renderSourceRow(s, ck); }).join('');
-    var toggleHtml = hasSources
+    var variantHtml = (channel.variants || []).map(function (v) { return renderVariantRow(v, ck); }).join('');
+    var toggleHtml = hasVariants
       ? '<button type="button" class="am-tree-toggle btn btn-link btn-sm p-0 me-1" data-am-tree-toggle="' + escapeHtml(expandedKey) + '" aria-expanded="' + (isOpen ? 'true' : 'false') + '">' +
         '<i class="fa fa-chevron-' + (isOpen ? 'down' : 'right') + ' small" aria-hidden="true"></i></button>'
       : '<span class="am-tree-toggle-spacer"></span>';
@@ -360,7 +331,7 @@
       '<span class="am-tree-cell am-tree-label"><strong>' + escapeHtml(label) + '</strong> <code class="small">' + escapeHtml(ck) + '</code></span>' +
       '</div>' +
       '<div class="am-tree-children' + (isOpen ? '' : ' is-hidden') + '" data-am-tree-children="' + escapeHtml(expandedKey) + '">' +
-      sourceHtml +
+      variantHtml +
       '</div>' +
       '</div>';
   }
@@ -372,7 +343,7 @@
     }
     var html = '<div class="am-tree mb-0">' +
       '<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">' +
-      '<p class="text-secondary small mb-0">Use <strong>Edit source</strong> / <strong>Edit variant</strong> to change channel + icon. Use <strong>Edit rule</strong> to move rules between variants.</p>' +
+      '<p class="text-secondary small mb-0">Use <strong>Edit variant</strong> to change channel + icon. Use <strong>Edit rule</strong> to move rules between variants.</p>' +
       '<div class="btn-group btn-group-sm" role="group" aria-label="Tree display controls">' +
       '<button type="button" class="btn btn-outline-secondary" data-am-tree-action="expand-all">Expand all</button>' +
       '<button type="button" class="btn btn-outline-secondary" data-am-tree-action="collapse-all">Collapse all</button>' +
@@ -403,6 +374,11 @@
               '<div class="mb-3">' +
                 '<label class="form-label" for="am-move-dest-variant">Destination</label>' +
                 '<select class="form-select" id="am-move-dest-variant"></select>' +
+              '</div>' +
+              '<div class="mb-3">' +
+                '<label class="form-label" for="am-move-dest-tag">Tag (optional)</label>' +
+                '<input class="form-control font-monospace" id="am-move-dest-tag" type="text" placeholder="e.g. affiliate_1" />' +
+                '<div class="form-hint small text-secondary">Adds a third-tier sub-row under the destination variant when set.</div>' +
               '</div>' +
               '<div class="form-hint" id="am-move-msg"></div>' +
             '</div>' +
@@ -449,7 +425,7 @@
 
   function openMoveModal(ruleId, currentVariantKey) {
     var rid = trimLower(ruleId, 80);
-    var curVk = normalizeVariantKey(currentVariantKey);
+    var curVk = normalizeBaseVariantKey(currentVariantKey);
     if (!rid) return;
     var modalEl = ensureMoveModal();
     if (!modalEl) return;
@@ -466,7 +442,6 @@
     if (selectEl) {
       var cfg = _state && _state.config && _state.config.config ? _state.config.config : null;
       var channels = cfg && Array.isArray(cfg.channels) ? cfg.channels : [];
-      var sources = cfg && Array.isArray(cfg.sources) ? cfg.sources : [];
       var variants = cfg && Array.isArray(cfg.variants) ? cfg.variants : [];
 
       var channelLabelByKey = {};
@@ -474,22 +449,15 @@
         var k = trimLower(c && c.channel_key, 32);
         if (k) channelLabelByKey[k] = (c && c.label) ? String(c.label) : titleFromKey(k);
       });
-      var sourceLabelByKey = {};
-      sources.forEach(function (s) {
-        var k = trimLower(s && s.source_key, 32);
-        if (k) sourceLabelByKey[k] = (s && s.label) ? String(s.label) : titleFromKey(k);
-      });
 
       var items = variants
         .map(function (v) {
-          var vk = normalizeVariantKey(v && (v.variant_key != null ? v.variant_key : v.key));
+          var vk = normalizeBaseVariantKey(v && (v.variant_key != null ? v.variant_key : v.key));
           if (!vk) return null;
           var ch = trimLower(v && v.channel_key, 32) || 'other';
-          var src = trimLower(v && v.source_key, 32) || 'other';
           var vLabel = (v && v.label) ? String(v.label) : titleFromKey(vk);
           var chLabel = channelLabelByKey[ch] || titleFromKey(ch);
-          var srcLabel = sourceLabelByKey[src] || titleFromKey(src);
-          return { key: vk, label: chLabel + ' \u2192 ' + srcLabel + ' \u2192 ' + vLabel + ' (' + vk + ')' };
+          return { key: vk, label: chLabel + ' \u2192 ' + vLabel + ' (' + vk + ')' };
         })
         .filter(Boolean)
         .sort(function (a, b) { return String(a.label).localeCompare(String(b.label)); });
@@ -515,9 +483,11 @@
       if (confirmBtn) {
         confirmBtn.addEventListener('click', function () {
           var rid = trimLower(modalEl.getAttribute('data-am-move-rule-id') || '', 80);
-          var curVk = normalizeVariantKey(modalEl.getAttribute('data-am-move-current-variant-key') || '');
+          var curVk = normalizeBaseVariantKey(modalEl.getAttribute('data-am-move-current-variant-key') || '');
           var sel = modalEl.querySelector('#am-move-dest-variant');
-          var dest = normalizeVariantKey(sel ? sel.value : '');
+          var dest = normalizeBaseVariantKey(sel ? sel.value : '');
+          var tagEl = modalEl.querySelector('#am-move-dest-tag');
+          var destTag = tagEl ? String(tagEl.value || '').trim() : '';
           var msgEl = modalEl.querySelector('#am-move-msg');
           function setMsg(text, cls) {
             if (!msgEl) return;
@@ -534,7 +504,7 @@
           }
           try { confirmBtn.disabled = true; } catch (_) {}
           setMsg('Saving\u2026', 'text-secondary');
-          moveRule(rid, dest).then(function (resp) {
+          moveRule(rid, dest, destTag).then(function (resp) {
             if (resp && resp.ok) {
               setMsg('Saved.', 'text-success');
               setTimeout(function () {
@@ -852,9 +822,9 @@
 
           var changed = 0;
           if (kind === 'variant') {
-            var vk = normalizeVariantKey(key);
+            var vk = normalizeBaseVariantKey(key);
             nextCfg.variants.forEach(function (v) {
-              if (normalizeVariantKey(v && v.variant_key) === vk) {
+              if (normalizeBaseVariantKey(v && v.variant_key) === vk) {
                 if (!channelUnchanged) v.channel_key = channelKey;
                 v.icon_spec = newIconSpec || null;
                 changed++;
@@ -937,14 +907,6 @@
           var rid = treeAction.getAttribute('data-rule-id') || '';
           var curVk = treeAction.getAttribute('data-current-variant-key') || '';
           openMoveModal(rid, curVk);
-          return;
-        }
-        if (action === 'edit-source') {
-          var sk = treeAction.getAttribute('data-source-key') || '';
-          var curCh = treeAction.getAttribute('data-current-channel-key') || '';
-          var lbl = treeAction.getAttribute('data-label') || '';
-          var iconSpec = treeAction.getAttribute('data-icon-spec') || '';
-          openChannelAssignModal({ kind: 'source', key: sk, label: lbl, currentChannelKey: curCh, currentIconSpec: iconSpec });
           return;
         }
         if (action === 'edit-variant') {

@@ -62,6 +62,14 @@
     return s.length > 120 ? s.slice(0, 120) : s;
   }
 
+  function normalizeBaseVariantKey(v) {
+    var k = normalizeVariantKey(v);
+    if (!k) return '';
+    var m = k.match(/^(.*?):(house|affiliate|partner)(?::.*)?$/);
+    if (m && m[1]) return normalizeVariantKey(m[1]) || k;
+    return k;
+  }
+
   function safeJsonParse(raw) {
     if (!raw || typeof raw !== 'string') return null;
     try { return JSON.parse(raw); } catch (_) { return null; }
@@ -144,7 +152,7 @@
   function variantsFromConfig(cfg) {
     var v = cfg && cfg.variants && Array.isArray(cfg.variants) ? cfg.variants : [];
     return v.map(function (row) {
-      var key = normalizeVariantKey(row && (row.variant_key != null ? row.variant_key : row.key));
+      var key = normalizeBaseVariantKey(row && (row.variant_key != null ? row.variant_key : row.key));
       var label = row && row.label != null ? String(row.label) : '';
       return { key: key, label: label };
     }).filter(function (it) { return it && it.key; });
@@ -191,7 +199,7 @@
       };
     });
     variants.forEach(function (r) {
-      var key = normalizeVariantKey(r && (r.variant_key != null ? r.variant_key : r.key));
+      var key = normalizeBaseVariantKey(r && (r.variant_key != null ? r.variant_key : r.key));
       if (!key) return;
       vMap[key] = {
         label: (r && r.label != null) ? String(r.label) : key,
@@ -283,7 +291,7 @@
       '</div>' +
 
       '<div class="card card-sm mb-3" id="am-create-mapping-card">' +
-        '<div class="card-header"><h4 class="card-title mb-0" title="Map a selected token to an attribution variant. Sessions with that token will be attributed to the variant (Channel + Source + Ownership).">Create mapping <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></h4></div>' +
+        '<div class="card-header"><h4 class="card-title mb-0" title="Map a selected token to an attribution variant. Sessions with that token will be attributed to the variant (Channel + Variant), with an optional Tag for nested reporting.">Create mapping <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></h4></div>' +
         '<div class="card-body">' +
           '<div class="row g-2">' +
             '<div class="col-12 col-md-4">' +
@@ -291,8 +299,8 @@
               '<input class="form-control" id="am-selected-token" type="text" value="Select a token above" readonly />' +
             '</div>' +
             '<div class="col-12 col-md-4">' +
-              '<label class="form-label" for="am-variant-key" title="Format: source:ownership (e.g. google_ads:house, my_affiliate:affiliate). Use built-ins like google_ads:house or create custom keys.">Variant key <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></label>' +
-              '<input class="form-control font-monospace" id="am-variant-key" list="am-variants-list" placeholder="e.g. google_ads:house" />' +
+              '<label class="form-label" for="am-variant-key" title="Variant key (e.g. google_ads). This is the second tier under Channel.">Variant key <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></label>' +
+              '<input class="form-control font-monospace" id="am-variant-key" list="am-variants-list" placeholder="e.g. google_ads" />' +
               '<datalist id="am-variants-list"></datalist>' +
             '</div>' +
             '<div class="col-12 col-md-4">' +
@@ -300,6 +308,10 @@
               '<input class="form-control" id="am-priority" type="number" value="1000" min="-1000000" max="1000000" />' +
             '</div>' +
 
+            '<div class="col-12 col-md-4">' +
+              '<label class="form-label" for="am-tag-key" title="Optional Tag (third tier) for nested reporting. Only shows as a sub-row when explicitly set.">Tag (optional) <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></label>' +
+              '<input class="form-control font-monospace" id="am-tag-key" type="text" placeholder="e.g. affiliate_1" />' +
+            '</div>' +
             '<div class="col-12 col-md-4">' +
               '<label class="form-label" for="am-variant-label" title="Human-readable label for the variant (e.g. Google Ads). Shown in Acquisition reports.">Variant label (optional) <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></label>' +
               '<input class="form-control" id="am-variant-label" type="text" placeholder="e.g. Google Ads" />' +
@@ -311,14 +323,6 @@
             '<div class="col-6 col-md-2">' +
               '<label class="form-label" for="am-source-key" title="Traffic source: google, bing, meta, omnisend, direct, other.">Source <span id="am-source-icon-preview" class="ms-1" aria-hidden="true"></span> <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></label>' +
               '<input class="form-control font-monospace" id="am-source-key" type="text" placeholder="google" />' +
-            '</div>' +
-            '<div class="col-12 col-md-4">' +
-              '<label class="form-label" for="am-owner-kind" title="house (owned), partner (co-marketing), or affiliate (third-party). Affects reporting and fraud signals.">Ownership <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></label>' +
-              '<select class="form-select" id="am-owner-kind">' +
-                '<option value="house" selected>house</option>' +
-                '<option value="partner">partner</option>' +
-                '<option value="affiliate">affiliate</option>' +
-              '</select>' +
             '</div>' +
 
             '<div class="col-12 col-md-6">' +
@@ -348,7 +352,7 @@
       '<details class="mb-0">' +
         '<summary class="text-secondary" title="Edit the raw config (channels, sources, variants, rules, allowlist). Use Reload to discard edits, Save config to apply.">Advanced: edit full config (JSON) <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></summary>' +
         '<div class="mt-2">' +
-          '<textarea class="form-control font-monospace" id="am-config-json" rows="14" spellcheck="false" placeholder="{\\n  &quot;channels&quot;: [],\\n  &quot;sources&quot;: [],\\n  &quot;variants&quot;: [],\\n  &quot;rules&quot;: [],\\n  &quot;allowlist&quot;: []\\n}"></textarea>' +
+          '<textarea class="form-control font-monospace" id="am-config-json" rows="14" spellcheck="false" placeholder="{\\n  &quot;channels&quot;: [],\\n  &quot;sources&quot;: [],\\n  &quot;variants&quot;: [],\\n  &quot;tags&quot;: [],\\n  &quot;rules&quot;: [],\\n  &quot;allowlist&quot;: []\\n}"></textarea>' +
           '<div class="d-flex align-items-center gap-2 flex-wrap mt-2">' +
             '<button type="button" class="btn btn-outline-primary" data-am-action="reload-config" title="Discard JSON edits and reload from database.">Reload</button>' +
             '<button type="button" class="btn btn-success" data-am-action="save-config" title="Replace the entire config with the JSON. Use with caution.">Save config</button>' +
@@ -656,12 +660,12 @@
         }
         var variantKeyEl = document.getElementById('am-variant-key');
         var prioEl = document.getElementById('am-priority');
+        var tagEl = document.getElementById('am-tag-key');
         var vLabelEl = document.getElementById('am-variant-label');
         var chEl = document.getElementById('am-channel-key');
         var srcEl = document.getElementById('am-source-key');
-        var ownerEl = document.getElementById('am-owner-kind');
 
-        var variantKey = normalizeVariantKey(variantKeyEl ? variantKeyEl.value : '');
+        var variantKey = normalizeBaseVariantKey(variantKeyEl ? variantKeyEl.value : '');
         if (!variantKey) {
           setHint('am-map-msg', 'Variant key is required.', false);
           return;
@@ -673,14 +677,15 @@
           priority: clampInt(prioEl ? prioEl.value : null, 1000, -1000000, 1000000),
         };
 
+        var tagKey = normalizeKeyLike(tagEl ? tagEl.value : '', 120);
+        if (tagKey) payload.tag_key = tagKey;
+
         var variantLabel = vLabelEl ? String(vLabelEl.value || '').trim().slice(0, 120) : '';
         if (variantLabel) payload.variant_label = variantLabel;
         var channelKey = normalizeKeyLike(chEl ? chEl.value : '', 32);
         if (channelKey) payload.channel_key = channelKey;
         var sourceKey = normalizeKeyLike(srcEl ? srcEl.value : '', 32);
         if (sourceKey) payload.source_key = sourceKey;
-        var ownerKind = trimLower(ownerEl ? ownerEl.value : '', 32);
-        if (ownerKind) payload.owner_kind = ownerKind;
 
         var srcIconEl = document.getElementById('am-source-icon-spec');
         var varIconEl = document.getElementById('am-variant-icon-spec');
