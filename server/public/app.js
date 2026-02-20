@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: eb02b4f2a72797eb
+// checksum: 95d70537eaf5e8a9
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -21403,9 +21403,9 @@ const API = '';
             profitRatio: 0.07,
             merRatio: 0.09,
           },
-          // UI-only: add headroom so bars don't saturate at 100% when current is max.
-          barHeadroom: 1.25,
-          anim: { durationMs: 480, gapMs: 90 },
+          // UI-only: additive pad so "max" doesn't saturate at 100% and widths vary by magnitude.
+          barPadMult: 1.0,
+          anim: { durationMs: 220, gapMs: 60 },
         };
         function metricUiSpec(rawKey) {
           var k = String(rawKey || '').trim().toLowerCase();
@@ -21463,14 +21463,17 @@ const API = '';
           var isNew = cRaw != null && cRaw !== 0 && (pRaw == null || Math.abs(pRaw) < 1e-9);
           var c = cRaw != null ? Math.max(0, cRaw) : 0;
           var p = pRaw != null ? Math.max(0, pRaw) : 0;
-          var headroom = Number(KEXO_SCORE_V2_UI.barHeadroom);
-          if (!Number.isFinite(headroom) || headroom < 1) headroom = 1;
-          var scale = Math.max(c, p, Number(spec.floor) || 0, 1e-9) * headroom;
+          var floor = Number(spec.floor) || 0;
+          var padMult = Number(KEXO_SCORE_V2_UI.barPadMult);
+          if (!Number.isFinite(padMult) || padMult < 0) padMult = 0;
+          var base = Math.max(c, p, floor, 1e-9);
+          var pad = Math.max(0, floor) * padMult;
+          var scale = base + pad;
           var prevPct = Math.max(0, Math.min(100, (p / scale) * 100));
           var curPct = Math.max(0, Math.min(100, (c / scale) * 100));
 
           var barClass = 'bg-secondary';
-          var barLabel = isNew ? 'new' : '';
+          var barLabel = '';
           if (!isNew && cRaw != null && pRaw != null) {
             var dir = 0;
             if (spec.stableMode === 'pp') {
@@ -21674,8 +21677,8 @@ const API = '';
             profitRatio: 0.07,
             merRatio: 0.09,
           },
-          barHeadroom: 1.25,
-          anim: { durationMs: 520, gapMs: 110 },
+          barPadMult: 1.0,
+          anim: { durationMs: 260, gapMs: 70 },
         };
         function metricUiSpec(rawKey) {
           var k = String(rawKey || '').trim().toLowerCase();
@@ -21737,14 +21740,17 @@ const API = '';
           var isNew = cRaw != null && cRaw !== 0 && (pRaw == null || Math.abs(pRaw) < 1e-9);
           var c = cRaw != null ? Math.max(0, cRaw) : 0;
           var p = pRaw != null ? Math.max(0, pRaw) : 0;
-          var headroom = Number(KEXO_SCORE_V2_UI.barHeadroom);
-          if (!Number.isFinite(headroom) || headroom < 1) headroom = 1;
-          var scale = Math.max(c, p, Number(spec.floor) || 0, 1e-9) * headroom;
+          var floor = Number(spec.floor) || 0;
+          var padMult = Number(KEXO_SCORE_V2_UI.barPadMult);
+          if (!Number.isFinite(padMult) || padMult < 0) padMult = 0;
+          var base = Math.max(c, p, floor, 1e-9);
+          var pad = Math.max(0, floor) * padMult;
+          var scale = base + pad;
           var prevPct = Math.max(0, Math.min(100, (p / scale) * 100));
           var curPct = Math.max(0, Math.min(100, (c / scale) * 100));
 
           var barClass = 'bg-secondary';
-          var barLabel = isNew ? 'new' : '';
+          var barLabel = '';
           if (!isNew && cRaw != null && pRaw != null) {
             var dir = 0;
             if (spec.stableMode === 'pp') {
