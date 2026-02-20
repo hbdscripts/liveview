@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 0432d27ea6004690
+// checksum: a699a389dec625fd
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -18287,7 +18287,14 @@ const API = '';
 
         var c = (typeof cur === 'number') ? cur : Number(cur);
         var p = (typeof prev === 'number') ? prev : Number(prev);
-        if (!Number.isFinite(c) || !Number.isFinite(p) || Math.abs(p) < 1e-9) {
+        if (!Number.isFinite(c) && !Number.isFinite(p)) {
+          wrap.classList.add('is-hidden');
+          wrap.classList.remove('is-up', 'is-down', 'is-flat');
+          wrap.setAttribute('data-dir', 'none');
+          textEl.textContent = '\u2014';
+          return;
+        }
+        if (!Number.isFinite(c) || !Number.isFinite(p)) {
           wrap.classList.add('is-hidden');
           wrap.classList.remove('is-up', 'is-down', 'is-flat');
           wrap.setAttribute('data-dir', 'none');
@@ -18295,15 +18302,29 @@ const API = '';
           return;
         }
 
-        var ratio = (c - p) / Math.abs(p);
-        if (invert) ratio = -ratio;
-        var rounded = Math.round(ratio * 1000) / 10; // 1dp
-        var sign = rounded > 0 ? '+' : '';
-        var text = sign + rounded.toFixed(1) + '%';
-
         var dir = 'flat';
-        if (rounded > 0.05) dir = 'up';
-        else if (rounded < -0.05) dir = 'down';
+        var text = '\u2014';
+
+        if (Math.abs(p) < 1e-9) {
+          if (Math.abs(c) < 1e-9) {
+            text = '0.0%';
+            dir = 'flat';
+          } else {
+            // When previous is effectively 0, show +100% rather than "new" for consistency.
+            text = (c >= 0 ? '+100%' : '-100%');
+            var deltaSign = c >= 0 ? 1 : -1;
+            if (invert) deltaSign = -deltaSign;
+            dir = deltaSign > 0 ? 'up' : 'down';
+          }
+        } else {
+          var ratio = (c - p) / Math.abs(p);
+          if (invert) ratio = -ratio;
+          var rounded = Math.round(ratio * 1000) / 10; // 1dp
+          var sign = rounded > 0 ? '+' : '';
+          text = sign + rounded.toFixed(1) + '%';
+          if (rounded > 0.05) dir = 'up';
+          else if (rounded < -0.05) dir = 'down';
+        }
 
         wrap.classList.remove('is-hidden');
         wrap.classList.remove('is-up', 'is-down', 'is-flat');
@@ -21440,7 +21461,7 @@ const API = '';
             var roundedPp = Math.round(dpp * 10) / 10;
             return (roundedPp > 0 ? '+' : '') + roundedPp.toFixed(1) + 'pp';
           }
-          if (Math.abs(prev) < 1e-9) return (Math.abs(cur) < 1e-9) ? '0.0%' : 'new';
+          if (Math.abs(prev) < 1e-9) return (Math.abs(cur) < 1e-9) ? '0.0%' : '+100%';
           var denom = Math.max(Math.abs(prev), Number(spec.denomFloor) || 0, 1e-9);
           var deltaPct = ((cur - prev) / denom) * 100;
           var rounded = Math.round(deltaPct * 10) / 10;
@@ -21719,7 +21740,7 @@ const API = '';
             var roundedPp = Math.round(dpp * 10) / 10;
             return (roundedPp > 0 ? '+' : '') + roundedPp.toFixed(1) + 'pp';
           }
-          if (Math.abs(prev) < 1e-9) return (Math.abs(cur) < 1e-9) ? '0.0%' : 'new';
+          if (Math.abs(prev) < 1e-9) return (Math.abs(cur) < 1e-9) ? '0.0%' : '+100%';
           var denom = Math.max(Math.abs(prev), Number(spec.denomFloor) || 0, 1e-9);
           var deltaPct = ((cur - prev) / denom) * 100;
           var rounded = Math.round(deltaPct * 10) / 10;
