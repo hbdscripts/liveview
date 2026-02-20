@@ -1563,6 +1563,14 @@
       var pct = typeof chartSizePercentFromUiConfig === 'function' ? chartSizePercentFromUiConfig(chartKey, 100) : 100;
       var mapHeight = Math.round(baseHeight * (pct / 100));
       if (mapHeight < 80) mapHeight = 80;
+      // On /dashboard/overview the widget cards stretch to match row height; size the map to fill the
+      // available space to avoid unused whitespace below the SVG.
+      try {
+        var parent = el && el.parentElement ? el.parentElement : null;
+        var pr = parent && parent.getBoundingClientRect ? parent.getBoundingClientRect() : null;
+        var ph = pr && Number.isFinite(Number(pr.height)) ? Number(pr.height) : 0;
+        if (ph > mapHeight + 20) mapHeight = Math.max(mapHeight, Math.round(ph));
+      } catch (_) {}
       if (!isChartEnabledByUiConfig(chartKey, true)) {
         if (liveOnlineChart) { try { liveOnlineChart.destroy(); } catch (_) {} liveOnlineChart = null; }
         liveOnlineChartType = '';
@@ -1638,7 +1646,9 @@
       var keys = Object.keys(countsByIso2);
       var hasNoLiveActivity = !keys.length;
 
-      var palette = chartColorsFromUiConfig(chartKey, ['#16a34a']);
+      // Unify: countries page should use the same map color palette as the live map.
+      var paletteKey = (chartKey === 'countries-map-chart') ? 'live-online-chart' : chartKey;
+      var palette = chartColorsFromUiConfig(paletteKey, ['#16a34a']);
       var accent = (palette && palette[0]) ? String(palette[0]).trim() : '#16a34a';
       var mapStyleEarly = chartStyleFromUiConfig(chartKey);
       var showEmptyCaption = mapStyleEarly.mapShowEmptyCaption !== false;
