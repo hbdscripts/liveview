@@ -2643,7 +2643,7 @@
       pieCountryFlags: false,
       mapShowTooltip: true,
       mapDraggable: true,
-      mapZoomButtons: false,
+      mapZoomButtons: true,
       mapShowEmptyCaption: true,
       mapMetric: 'auto',
     };
@@ -2678,7 +2678,7 @@
       pieCountryFlags: !!(src.pieCountryFlags === true || (src.pieCountryFlags == null && def.pieCountryFlags)),
       mapShowTooltip: src.mapShowTooltip !== false,
       mapDraggable: src.mapDraggable !== false,
-      mapZoomButtons: !!(src.mapZoomButtons === true),
+      mapZoomButtons: src.mapZoomButtons !== false,
       mapShowEmptyCaption: src.mapShowEmptyCaption !== false,
       mapMetric: ['auto', 'revenue', 'orders'].indexOf(String(src.mapMetric != null ? src.mapMetric : def.mapMetric).trim().toLowerCase()) >= 0
         ? String(src.mapMetric != null ? src.mapMetric : def.mapMetric).trim().toLowerCase()

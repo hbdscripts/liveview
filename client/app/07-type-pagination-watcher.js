@@ -1734,15 +1734,21 @@
       try { el.__kexoJvmSizeWaitTries = 0; } catch (_) {}
       var primaryRgb = opts.primaryRgb || '62,179,171';
       var border = opts.border || '#d4dee5';
+      var zoomMin = Number.isFinite(Number(opts.zoomMin)) ? Number(opts.zoomMin) : 1;
+      var zoomMax = Number.isFinite(Number(opts.zoomMax)) ? Number(opts.zoomMax) : 12;
+      // Clamp initial focus zoom so small countries don't over-zoom/crop the view.
+      var initialZoomMax = Number.isFinite(Number(opts.initialZoomMax)) ? Number(opts.initialZoomMax) : 2.8;
       var jvmOpts = {
         selector: '#' + containerId,
         map: 'world',
         backgroundColor: 'transparent',
         showTooltip: opts.showTooltip !== false,
         draggable: opts.draggable !== false,
-        zoomButtons: !!opts.zoomButtons,
+        zoomButtons: opts.zoomButtons !== false,
         zoomOnScroll: false,
         zoomAnimate: false,
+        zoomMin: zoomMin,
+        zoomMax: initialZoomMax,
         regionStyle: {
           initial: { fill: 'rgba(' + primaryRgb + ',0.18)', stroke: border, strokeWidth: 0.7 },
           hover: { fill: 'rgba(' + primaryRgb + ',0.46)' },
@@ -1757,6 +1763,13 @@
       }
       if (opts.onRegionTooltipShow) jvmOpts.onRegionTooltipShow = opts.onRegionTooltipShow;
       var instance = new jsVectorMap(jvmOpts);
+      // Restore full zoom range after initial focus is applied.
+      try {
+        if (instance && instance.params) {
+          instance.params.zoomMin = zoomMin;
+          instance.params.zoomMax = zoomMax;
+        }
+      } catch (_) {}
       if (instance && instance.regions && opts.regionFillByIso2) {
         var regions = instance.regions;
         for (var code in opts.regionFillByIso2) {
@@ -1779,6 +1792,32 @@
       var pct = typeof chartSizePercentFromUiConfig === 'function' ? chartSizePercentFromUiConfig(chartKey, 100) : 100;
       var mapHeight = Math.round(baseHeight * (pct / 100));
       if (mapHeight < 80) mapHeight = 80;
+
+      // Unify: show the same live online map used on /dashboard/live + /dashboard/overview.
+      // The Countries page still has its country tables below; the map itself reflects live activity.
+      if (typeof fetchLiveOnlineMapSessions === 'function' && typeof renderLiveOnlineMapChartFromSessions === 'function') {
+        el.style.height = mapHeight + 'px';
+        el.style.minHeight = mapHeight + 'px';
+        if (!isChartEnabledByUiConfig(chartKey, true)) {
+          try { if (countriesMapChartInstance) countriesMapChartInstance.destroy(); } catch (_) {}
+          countriesMapChartInstance = null;
+          clearCountriesFlowOverlay(el);
+          setCountriesMapState(el, 'Map disabled in Settings > Charts.', { height: mapHeight });
+          return;
+        }
+        try { if (countriesMapChartInstance) countriesMapChartInstance.destroy(); } catch (_) {}
+        countriesMapChartInstance = null;
+        clearCountriesFlowOverlay(el);
+        el.innerHTML = '';
+        fetchLiveOnlineMapSessions({ force: false })
+          .then(function(list) {
+            try { renderLiveOnlineMapChartFromSessions(Array.isArray(list) ? list : []); } catch (_) {}
+          })
+          .catch(function() {
+            setCountriesMapState(el, 'Could not load live sessions.', { error: true, height: mapHeight });
+          });
+        return;
+      }
       if (typeof jsVectorMap === 'undefined') {
         if (!el.__kexoJvmWaitTries) {
           setCountriesMapState(el, 'Loading map library...', { height: mapHeight });
@@ -4563,7 +4602,7 @@
         pieCountryFlags: false,
         mapShowTooltip: true,
         mapDraggable: true,
-        mapZoomButtons: false,
+        mapZoomButtons: true,
         mapShowEmptyCaption: true,
         mapMetric: 'auto',
       };
@@ -4609,7 +4648,7 @@
         pieCountryFlags: !!src.pieCountryFlags,
         mapShowTooltip: src.mapShowTooltip !== false,
         mapDraggable: src.mapDraggable !== false,
-        mapZoomButtons: !!src.mapZoomButtons,
+        mapZoomButtons: src.mapZoomButtons !== false,
         mapShowEmptyCaption: src.mapShowEmptyCaption !== false,
         mapMetric: ['auto', 'revenue', 'orders'].indexOf(String(src.mapMetric != null ? src.mapMetric : def.mapMetric).trim().toLowerCase()) >= 0
           ? String(src.mapMetric != null ? src.mapMetric : def.mapMetric).trim().toLowerCase()

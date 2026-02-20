@@ -185,7 +185,7 @@ const CHART_ALLOWED_MODES = Object.freeze({
 });
 
 // One-time migrations for chart defaults that should never override user choices after the first run.
-const CHARTS_UI_DEFAULTS_VERSION = 2;
+const CHARTS_UI_DEFAULTS_VERSION = 3;
 
 function defaultChartStyleConfig() {
   return {
@@ -214,7 +214,7 @@ function defaultChartStyleConfig() {
     pieCountryFlags: false,
     mapShowTooltip: true,
     mapDraggable: true,
-    mapZoomButtons: false,
+    mapZoomButtons: true,
     mapShowEmptyCaption: true,
     mapMetric: 'auto',
   };
@@ -996,6 +996,10 @@ function normalizeChartsList(rawList, defaults, options) {
         style: normalizeChartStyle(item.style, def.style || defaultChartStyleConfig()),
         advancedApexOverride: normalizeApexOverrideObject(item.advancedApexOverride, def.advancedApexOverride || {}),
       };
+      if (migrateDashboardOverview && (key === 'live-online-chart' || key === 'countries-map-chart')) {
+        // Migration: zoom buttons should be visible by default for maps.
+        normalized.style = { ...(normalized.style || {}), mapZoomButtons: true };
+      }
       if (key === 'dash-chart-devices-30d') {
         normalized.dimension = normalizeDashboardBreakdownDimension(item.dimension, def.dimension || 'device');
       }

@@ -228,7 +228,7 @@
         controls: [
           { type: 'toggle', field: 'mapShowTooltip', label: 'Tooltips on hover', default: true },
           { type: 'toggle', field: 'mapDraggable', label: 'Drag/pan map', default: true },
-          { type: 'toggle', field: 'mapZoomButtons', label: 'Zoom buttons', default: false },
+          { type: 'toggle', field: 'mapZoomButtons', label: 'Zoom buttons', default: true },
           { type: 'toggle', field: 'mapShowEmptyCaption', label: "Show 'No live activity yet' caption", default: true },
         ],
       },
@@ -242,25 +242,15 @@
     'products-chart': { modes: ['line', 'area', 'bar', 'pie', 'multi-line-labels'], series: ['Revenue'], defaultMode: 'line', height: 280 },
     'countries-map-chart': {
       modes: ['map-animated'],
-      series: ['Accent'],
+      series: ['Online now'],
       defaultMode: 'map-animated',
       height: 320,
       capabilities: {
         controls: [
           { type: 'toggle', field: 'mapShowTooltip', label: 'Tooltips on hover', default: true },
           { type: 'toggle', field: 'mapDraggable', label: 'Drag/pan map', default: true },
-          { type: 'toggle', field: 'mapZoomButtons', label: 'Zoom buttons', default: false },
-          {
-            type: 'select',
-            field: 'mapMetric',
-            label: 'Colour by',
-            options: [
-              { value: 'auto', label: 'Auto (revenue or orders)' },
-              { value: 'revenue', label: 'Revenue' },
-              { value: 'orders', label: 'Orders' },
-            ],
-            default: 'auto',
-          },
+          { type: 'toggle', field: 'mapZoomButtons', label: 'Zoom buttons', default: true },
+          { type: 'toggle', field: 'mapShowEmptyCaption', label: "Show 'No live activity yet' caption", default: true },
         ],
       },
     },

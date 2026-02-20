@@ -1541,7 +1541,8 @@
       var isError = !!(opts && opts.error);
       var color = isError ? '#ef4444' : 'var(--tblr-secondary)';
       var h = (opts && Number.isFinite(opts.height)) ? Math.max(80, opts.height) : 220;
-      if (isError) captureChartMessage(message, 'liveOnlineMapState', { chartKey: 'live-online-chart' }, 'error');
+      var chartKey = (opts && opts.chartKey != null) ? String(opts.chartKey).trim() : 'live-online-chart';
+      if (isError) captureChartMessage(message, 'liveOnlineMapState', { chartKey: chartKey }, 'error');
       el.innerHTML =
         '<div style="display:flex;align-items:center;justify-content:center;height:' + h + 'px;color:' + color + ';text-align:center;padding:0 18px;font-size:.875rem">' +
           escapeHtml(message) +
@@ -1550,8 +1551,13 @@
 
     function renderLiveOnlineMapChartFromSessions(sessionList) {
       var el = document.getElementById('live-online-chart');
-      if (!el) return;
       var chartKey = 'live-online-chart';
+      if (!el) {
+        el = document.getElementById('countries-map-chart');
+        chartKey = 'countries-map-chart';
+      }
+      if (!el) return;
+      var setState = (chartKey === 'countries-map-chart' && typeof setCountriesMapState === 'function') ? setCountriesMapState : setLiveOnlineMapState;
       var meta = typeof window.kexoChartMeta === 'function' ? window.kexoChartMeta(chartKey) : null;
       var baseHeight = (meta && Number.isFinite(Number(meta.height))) ? Number(meta.height) : 220;
       var pct = typeof chartSizePercentFromUiConfig === 'function' ? chartSizePercentFromUiConfig(chartKey, 100) : 100;
@@ -1570,13 +1576,13 @@
       }
 
       if (typeof jsVectorMap === 'undefined') {
-        if (!el.__kexoJvmWaitTries) setLiveOnlineMapState(el, 'Loading map library...', { height: mapHeight });
+        if (!el.__kexoJvmWaitTries) setState(el, 'Loading map library...', { height: mapHeight, chartKey: chartKey });
         // Avoid an unbounded retry loop if the CDN/map script is blocked (adblock/network).
         var tries = (el.__kexoJvmWaitTries || 0) + 1;
         el.__kexoJvmWaitTries = tries;
         if (tries >= 25) {
           el.__kexoJvmWaitTries = 0;
-          setLiveOnlineMapState(el, 'Map library failed to load.', { error: true, height: mapHeight });
+          setState(el, 'Map library failed to load.', { error: true, height: mapHeight, chartKey: chartKey });
           return;
         }
         setTimeout(function() { renderLiveOnlineMapChartFromSessions(sessionList); }, 200);
@@ -1767,19 +1773,18 @@
         var mapStyle = chartStyleFromUiConfig(chartKey);
         var showTooltip = mapStyle.mapShowTooltip !== false;
         var draggable = mapStyle.mapDraggable !== false;
-        var zoomButtons = !!mapStyle.mapZoomButtons;
+        var zoomButtons = mapStyle.mapZoomButtons !== false;
         var showEmptyCaption = mapStyle.mapShowEmptyCaption !== false;
         var focusOnLive = (function () {
           try {
-            var focus = keys.slice().sort(function(a, b) { return (countsByIso2[b] || 0) - (countsByIso2[a] || 0); }).slice(0, 4);
-            focus = focus.map(function(x) { return String(x || '').trim().toUpperCase().slice(0, 2); }).filter(Boolean);
-            // Avoid aggressive zoom when activity is concentrated in 1–2 nearby countries.
-            if (focus.length >= 3) return { regions: focus, animate: false };
+            var sorted = keys.slice().sort(function(a, b) { return (countsByIso2[b] || 0) - (countsByIso2[a] || 0); });
+            var top = sorted && sorted[0] ? String(sorted[0] || '').trim().toUpperCase().slice(0, 2) : '';
+            if (top) return { region: top, animate: false };
           } catch (_) {}
           return {};
         })();
-        liveOnlineMapChartInstance = typeof renderOnlineMapInto === 'function' && renderOnlineMapInto('live-online-chart', chartKey, {
-          setState: setLiveOnlineMapState,
+        liveOnlineMapChartInstance = typeof renderOnlineMapInto === 'function' && renderOnlineMapInto(chartKey, chartKey, {
+          setState: setState,
           mapHeight: mapHeight,
           regionFillByIso2: regionFillByIso2,
           primaryRgb: primaryRgb,
@@ -1788,6 +1793,7 @@
           showTooltip: showTooltip,
           draggable: draggable,
           zoomButtons: zoomButtons,
+          initialZoomMax: 2.4,
           focusOn: focusOnLive,
           retry: function() { renderLiveOnlineMapChartFromSessions(sessionList); },
           onRegionTooltipShow: function(event, tooltip, code2) {
@@ -1854,9 +1860,9 @@
           },
         });
       } catch (err) {
-        captureChartError(err, 'liveOnlineMapRender', { chartKey: 'live-online-chart' });
+        captureChartError(err, 'liveOnlineMapRender', { chartKey: chartKey });
         console.error('[live-online-map] render error:', err);
-        setLiveOnlineMapState(el, 'Map rendering failed.', { error: true, height: mapHeight });
+        setState(el, 'Map rendering failed.', { error: true, height: mapHeight, chartKey: chartKey });
       }
     }
 

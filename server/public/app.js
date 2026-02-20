@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: cdda99ae2b9971f0
+// checksum: ac62f6d1a4902c83
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -7232,15 +7232,21 @@ const API = '';
       try { el.__kexoJvmSizeWaitTries = 0; } catch (_) {}
       var primaryRgb = opts.primaryRgb || '62,179,171';
       var border = opts.border || '#d4dee5';
+      var zoomMin = Number.isFinite(Number(opts.zoomMin)) ? Number(opts.zoomMin) : 1;
+      var zoomMax = Number.isFinite(Number(opts.zoomMax)) ? Number(opts.zoomMax) : 12;
+      // Clamp initial focus zoom so small countries don't over-zoom/crop the view.
+      var initialZoomMax = Number.isFinite(Number(opts.initialZoomMax)) ? Number(opts.initialZoomMax) : 2.8;
       var jvmOpts = {
         selector: '#' + containerId,
         map: 'world',
         backgroundColor: 'transparent',
         showTooltip: opts.showTooltip !== false,
         draggable: opts.draggable !== false,
-        zoomButtons: !!opts.zoomButtons,
+        zoomButtons: opts.zoomButtons !== false,
         zoomOnScroll: false,
         zoomAnimate: false,
+        zoomMin: zoomMin,
+        zoomMax: initialZoomMax,
         regionStyle: {
           initial: { fill: 'rgba(' + primaryRgb + ',0.18)', stroke: border, strokeWidth: 0.7 },
           hover: { fill: 'rgba(' + primaryRgb + ',0.46)' },
@@ -7255,6 +7261,13 @@ const API = '';
       }
       if (opts.onRegionTooltipShow) jvmOpts.onRegionTooltipShow = opts.onRegionTooltipShow;
       var instance = new jsVectorMap(jvmOpts);
+      // Restore full zoom range after initial focus is applied.
+      try {
+        if (instance && instance.params) {
+          instance.params.zoomMin = zoomMin;
+          instance.params.zoomMax = zoomMax;
+        }
+      } catch (_) {}
       if (instance && instance.regions && opts.regionFillByIso2) {
         var regions = instance.regions;
         for (var code in opts.regionFillByIso2) {
@@ -7277,6 +7290,32 @@ const API = '';
       var pct = typeof chartSizePercentFromUiConfig === 'function' ? chartSizePercentFromUiConfig(chartKey, 100) : 100;
       var mapHeight = Math.round(baseHeight * (pct / 100));
       if (mapHeight < 80) mapHeight = 80;
+
+      // Unify: show the same live online map used on /dashboard/live + /dashboard/overview.
+      // The Countries page still has its country tables below; the map itself reflects live activity.
+      if (typeof fetchLiveOnlineMapSessions === 'function' && typeof renderLiveOnlineMapChartFromSessions === 'function') {
+        el.style.height = mapHeight + 'px';
+        el.style.minHeight = mapHeight + 'px';
+        if (!isChartEnabledByUiConfig(chartKey, true)) {
+          try { if (countriesMapChartInstance) countriesMapChartInstance.destroy(); } catch (_) {}
+          countriesMapChartInstance = null;
+          clearCountriesFlowOverlay(el);
+          setCountriesMapState(el, 'Map disabled in Settings > Charts.', { height: mapHeight });
+          return;
+        }
+        try { if (countriesMapChartInstance) countriesMapChartInstance.destroy(); } catch (_) {}
+        countriesMapChartInstance = null;
+        clearCountriesFlowOverlay(el);
+        el.innerHTML = '';
+        fetchLiveOnlineMapSessions({ force: false })
+          .then(function(list) {
+            try { renderLiveOnlineMapChartFromSessions(Array.isArray(list) ? list : []); } catch (_) {}
+          })
+          .catch(function() {
+            setCountriesMapState(el, 'Could not load live sessions.', { error: true, height: mapHeight });
+          });
+        return;
+      }
       if (typeof jsVectorMap === 'undefined') {
         if (!el.__kexoJvmWaitTries) {
           setCountriesMapState(el, 'Loading map library...', { height: mapHeight });
@@ -10061,7 +10100,7 @@ const API = '';
         pieCountryFlags: false,
         mapShowTooltip: true,
         mapDraggable: true,
-        mapZoomButtons: false,
+        mapZoomButtons: true,
         mapShowEmptyCaption: true,
         mapMetric: 'auto',
       };
@@ -10107,7 +10146,7 @@ const API = '';
         pieCountryFlags: !!src.pieCountryFlags,
         mapShowTooltip: src.mapShowTooltip !== false,
         mapDraggable: src.mapDraggable !== false,
-        mapZoomButtons: !!src.mapZoomButtons,
+        mapZoomButtons: src.mapZoomButtons !== false,
         mapShowEmptyCaption: src.mapShowEmptyCaption !== false,
         mapMetric: ['auto', 'revenue', 'orders'].indexOf(String(src.mapMetric != null ? src.mapMetric : def.mapMetric).trim().toLowerCase()) >= 0
           ? String(src.mapMetric != null ? src.mapMetric : def.mapMetric).trim().toLowerCase()
@@ -12413,7 +12452,8 @@ const API = '';
       var isError = !!(opts && opts.error);
       var color = isError ? '#ef4444' : 'var(--tblr-secondary)';
       var h = (opts && Number.isFinite(opts.height)) ? Math.max(80, opts.height) : 220;
-      if (isError) captureChartMessage(message, 'liveOnlineMapState', { chartKey: 'live-online-chart' }, 'error');
+      var chartKey = (opts && opts.chartKey != null) ? String(opts.chartKey).trim() : 'live-online-chart';
+      if (isError) captureChartMessage(message, 'liveOnlineMapState', { chartKey: chartKey }, 'error');
       el.innerHTML =
         '<div style="display:flex;align-items:center;justify-content:center;height:' + h + 'px;color:' + color + ';text-align:center;padding:0 18px;font-size:.875rem">' +
           escapeHtml(message) +
@@ -12422,8 +12462,13 @@ const API = '';
 
     function renderLiveOnlineMapChartFromSessions(sessionList) {
       var el = document.getElementById('live-online-chart');
-      if (!el) return;
       var chartKey = 'live-online-chart';
+      if (!el) {
+        el = document.getElementById('countries-map-chart');
+        chartKey = 'countries-map-chart';
+      }
+      if (!el) return;
+      var setState = (chartKey === 'countries-map-chart' && typeof setCountriesMapState === 'function') ? setCountriesMapState : setLiveOnlineMapState;
       var meta = typeof window.kexoChartMeta === 'function' ? window.kexoChartMeta(chartKey) : null;
       var baseHeight = (meta && Number.isFinite(Number(meta.height))) ? Number(meta.height) : 220;
       var pct = typeof chartSizePercentFromUiConfig === 'function' ? chartSizePercentFromUiConfig(chartKey, 100) : 100;
@@ -12442,13 +12487,13 @@ const API = '';
       }
 
       if (typeof jsVectorMap === 'undefined') {
-        if (!el.__kexoJvmWaitTries) setLiveOnlineMapState(el, 'Loading map library...', { height: mapHeight });
+        if (!el.__kexoJvmWaitTries) setState(el, 'Loading map library...', { height: mapHeight, chartKey: chartKey });
         // Avoid an unbounded retry loop if the CDN/map script is blocked (adblock/network).
         var tries = (el.__kexoJvmWaitTries || 0) + 1;
         el.__kexoJvmWaitTries = tries;
         if (tries >= 25) {
           el.__kexoJvmWaitTries = 0;
-          setLiveOnlineMapState(el, 'Map library failed to load.', { error: true, height: mapHeight });
+          setState(el, 'Map library failed to load.', { error: true, height: mapHeight, chartKey: chartKey });
           return;
         }
         setTimeout(function() { renderLiveOnlineMapChartFromSessions(sessionList); }, 200);
@@ -12639,19 +12684,18 @@ const API = '';
         var mapStyle = chartStyleFromUiConfig(chartKey);
         var showTooltip = mapStyle.mapShowTooltip !== false;
         var draggable = mapStyle.mapDraggable !== false;
-        var zoomButtons = !!mapStyle.mapZoomButtons;
+        var zoomButtons = mapStyle.mapZoomButtons !== false;
         var showEmptyCaption = mapStyle.mapShowEmptyCaption !== false;
         var focusOnLive = (function () {
           try {
-            var focus = keys.slice().sort(function(a, b) { return (countsByIso2[b] || 0) - (countsByIso2[a] || 0); }).slice(0, 4);
-            focus = focus.map(function(x) { return String(x || '').trim().toUpperCase().slice(0, 2); }).filter(Boolean);
-            // Avoid aggressive zoom when activity is concentrated in 1–2 nearby countries.
-            if (focus.length >= 3) return { regions: focus, animate: false };
+            var sorted = keys.slice().sort(function(a, b) { return (countsByIso2[b] || 0) - (countsByIso2[a] || 0); });
+            var top = sorted && sorted[0] ? String(sorted[0] || '').trim().toUpperCase().slice(0, 2) : '';
+            if (top) return { region: top, animate: false };
           } catch (_) {}
           return {};
         })();
-        liveOnlineMapChartInstance = typeof renderOnlineMapInto === 'function' && renderOnlineMapInto('live-online-chart', chartKey, {
-          setState: setLiveOnlineMapState,
+        liveOnlineMapChartInstance = typeof renderOnlineMapInto === 'function' && renderOnlineMapInto(chartKey, chartKey, {
+          setState: setState,
           mapHeight: mapHeight,
           regionFillByIso2: regionFillByIso2,
           primaryRgb: primaryRgb,
@@ -12660,6 +12704,7 @@ const API = '';
           showTooltip: showTooltip,
           draggable: draggable,
           zoomButtons: zoomButtons,
+          initialZoomMax: 2.4,
           focusOn: focusOnLive,
           retry: function() { renderLiveOnlineMapChartFromSessions(sessionList); },
           onRegionTooltipShow: function(event, tooltip, code2) {
@@ -12726,9 +12771,9 @@ const API = '';
           },
         });
       } catch (err) {
-        captureChartError(err, 'liveOnlineMapRender', { chartKey: 'live-online-chart' });
+        captureChartError(err, 'liveOnlineMapRender', { chartKey: chartKey });
         console.error('[live-online-map] render error:', err);
-        setLiveOnlineMapState(el, 'Map rendering failed.', { error: true, height: mapHeight });
+        setState(el, 'Map rendering failed.', { error: true, height: mapHeight, chartKey: chartKey });
       }
     }
 
