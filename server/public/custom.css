@@ -2778,7 +2778,8 @@ html[data-bs-theme="dark"] .report-build-wrap {
   bottom: 0;
 }
 .kexo-score-breakdown-row .progress.kexo-score-progress .kexo-score-bar-prev {
-  opacity: 0.25;
+  background: rgba(148, 163, 184, 0.55);
+  opacity: 1;
   z-index: 0;
 }
 .kexo-score-breakdown-row .progress.kexo-score-progress .kexo-score-bar-cur {
@@ -2855,6 +2856,17 @@ html[data-bs-theme="dark"] .report-build-wrap {
 .kexo-score-breakdown--overview .kexo-score-breakdown-row .progress-bar {
   font-size: 0;
   padding-right: 0;
+}
+
+/* Modal breakdown: thinner bars + squared edges (matches overview style). */
+#kexo-score-modal .kexo-score-breakdown-row .progress {
+  height: 6px;
+  border-radius: 0;
+}
+#kexo-score-modal .kexo-score-breakdown-row .progress-bar {
+  font-size: 0;
+  padding-right: 0;
+  border-radius: 0;
 }
 .kexo-score-breakdown--overview .kexo-score-breakdown-label {
   font-size: 0.75rem;

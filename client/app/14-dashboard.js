@@ -4169,7 +4169,7 @@
             merRatio: 0.09,
           },
           // UI-only: additive pad so "max" doesn't saturate at 100% and widths vary by magnitude.
-          barPadMult: 1.0,
+          barPadMult: 0.35,
           anim: { durationMs: 220, gapMs: 60 },
         };
         function metricUiSpec(rawKey) {
@@ -4319,7 +4319,7 @@
               '<span class="kexo-score-breakdown-value">' + escapeHtml(detail) + '</span>' +
             '</div>' +
             '<div class="progress kexo-score-progress">' +
-              '<div class="progress-bar bg-secondary kexo-score-bar-prev" role="progressbar" style="width:' + bars.prevPct.toFixed(1) + '%" aria-hidden="true"></div>' +
+              '<div class="progress-bar kexo-score-bar-prev" role="progressbar" style="width:' + bars.prevPct.toFixed(1) + '%" aria-hidden="true"></div>' +
               '<div class="progress-bar ' + bars.barClass + ' kexo-score-bar-cur" role="progressbar" style="width:' + curWidth + '" data-target-pct="' + bars.curPct.toFixed(1) + '" aria-valuenow="' + bars.curPct.toFixed(1) + '" aria-valuemin="0" aria-valuemax="100">' + escapeHtml(bars.barLabel) + '</div>' +
             '</div>' +
           '</div>';
@@ -4450,7 +4450,7 @@
             profitRatio: 0.07,
             merRatio: 0.09,
           },
-          barPadMult: 1.0,
+          barPadMult: 0.35,
           anim: { durationMs: 260, gapMs: 70 },
         };
         function metricUiSpec(rawKey) {
@@ -4608,7 +4608,7 @@
                 '<span class="kexo-score-breakdown-value">' + escapeHtml(detail) + '</span>' +
               '</div>' +
               '<div class="progress kexo-score-progress">' +
-                '<div class="progress-bar bg-secondary kexo-score-bar-prev" role="progressbar" style="width:' + bars.prevPct.toFixed(1) + '%" aria-hidden="true"></div>' +
+                '<div class="progress-bar kexo-score-bar-prev" role="progressbar" style="width:' + bars.prevPct.toFixed(1) + '%" aria-hidden="true"></div>' +
                 '<div class="progress-bar ' + bars.barClass + ' kexo-score-bar-cur" role="progressbar" style="width:0%" data-target-pct="' + bars.curPct.toFixed(1) + '" aria-valuenow="' + bars.curPct.toFixed(1) + '" aria-valuemin="0" aria-valuemax="100">' + escapeHtml(bars.barLabel) + '</div>' +
               '</div>' +
             '</div>';
