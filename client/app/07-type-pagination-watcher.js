@@ -1184,17 +1184,14 @@
 
     function getJvmZoomGroup(mapSvg) {
       if (!mapSvg) return null;
-      var zoom = mapSvg.querySelector('.jvm-zoom-group');
+      var zoom = mapSvg.querySelector('#jvm-zoom-group, .jvm-zoom-group');
       if (zoom) return zoom;
-      // Fallback: regions group is typically inside the zoom group.
-      var regions = mapSvg.querySelector('.jvm-regions-group');
-      if (regions && regions.parentNode && regions.parentNode.nodeType === 1) return regions.parentNode;
       return null;
     }
 
     function getJvmRegionsGroup(mapSvg) {
       if (!mapSvg) return null;
-      return mapSvg.querySelector('.jvm-regions-group') || null;
+      return mapSvg.querySelector('#jvm-regions-group, .jvm-regions-group') || null;
     }
 
     function getJvmOverlayGroup(mapSvg) {
@@ -1249,27 +1246,118 @@
       var iso = String(iso2 || '').trim().toUpperCase();
       if (!iso) return null;
       var lowerIso = iso.toLowerCase();
-      var node = mapSvg.querySelector('[data-code="' + iso + '"], [data-code="' + lowerIso + '"], .jvm-region-' + lowerIso + ', .jvm-region-' + iso);
+
+      // Prefer searching in the regions group so we don't accidentally target region labels.
+      var regionsGroup = getJvmRegionsGroup(mapSvg);
+      var searchRoot = regionsGroup || mapSvg;
+      var selector = '[data-code="' + iso + '"], [data-code="' + lowerIso + '"], .jvm-region-' + lowerIso + ', .jvm-region-' + iso;
+      var node = null;
+      try { node = searchRoot.querySelector(selector); } catch (_) { node = null; }
+      if (!node && searchRoot !== mapSvg) {
+        try { node = mapSvg.querySelector(selector); } catch (_) { node = null; }
+      }
       if (!node) return null;
+
+      function safeBBox(el) {
+        try {
+          if (el && typeof el.getBBox === 'function') {
+            var b = el.getBBox();
+            if (b && Number.isFinite(Number(b.width)) && Number.isFinite(Number(b.height)) && b.width > 0 && b.height > 0) return b;
+          }
+        } catch (_) {}
+        return null;
+      }
+
+      function robustPathCenter(pathEl) {
+        try {
+          if (!pathEl || typeof pathEl.getTotalLength !== 'function' || typeof pathEl.getPointAtLength !== 'function') return null;
+          var len = pathEl.getTotalLength();
+          if (!Number.isFinite(len) || len <= 0) return null;
+          var samples = 64;
+          var xs = [];
+          var ys = [];
+          for (var i = 0; i < samples; i++) {
+            var t = samples <= 1 ? 0 : (i / (samples - 1));
+            var p = pathEl.getPointAtLength(len * t);
+            if (!p) continue;
+            var x = Number(p.x);
+            var y = Number(p.y);
+            if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
+            xs.push(x);
+            ys.push(y);
+          }
+          if (xs.length < 8) return null;
+          xs.sort(function(a, b) { return a - b; });
+          ys.sort(function(a, b) { return a - b; });
+          var trim = Math.floor(xs.length * 0.18);
+          var start = trim;
+          var end = xs.length - trim;
+          if (end - start < 6) { start = 0; end = xs.length; }
+          var sumX = 0;
+          var sumY = 0;
+          var count = 0;
+          for (var j = start; j < end; j++) {
+            sumX += xs[j];
+            sumY += ys[j];
+            count++;
+          }
+          if (!count) return null;
+          return { x: sumX / count, y: sumY / count };
+        } catch (_) {
+          return null;
+        }
+      }
+
+      // Use bbox center for most regions, but fall back to a robust path-sampled center when the
+      // region spans (nearly) the entire map width (e.g., US/RU due to dateline wrap/islands).
+      var nodeBox = safeBBox(node);
+      var mapBox = regionsGroup ? safeBBox(regionsGroup) : null;
+      var mapWidth = mapBox && Number.isFinite(Number(mapBox.width)) ? Number(mapBox.width) : 0;
+      var useRobust = !!(nodeBox && mapWidth > 0 && nodeBox.width > mapWidth * 0.75);
+
+      var local = null;
+      if (useRobust) local = robustPathCenter(node);
+      if (!local && nodeBox) local = { x: nodeBox.x + nodeBox.width / 2, y: nodeBox.y + nodeBox.height / 2 };
+
+      if (!local) {
+        // Fallback: screen-space bbox center.
+        try {
+          var rect = node.getBoundingClientRect();
+          if (!rect || !(rect.width > 0) || !(rect.height > 0)) return null;
+          var sx = rect.left + (rect.width / 2);
+          var sy = rect.top + (rect.height / 2);
+          var pt0 = (mapSvg && typeof mapSvg.createSVGPoint === 'function') ? mapSvg.createSVGPoint() : null;
+          if (!pt0) return null;
+          pt0.x = sx;
+          pt0.y = sy;
+          var sctm0 = mapSvg.getScreenCTM && mapSvg.getScreenCTM();
+          if (!sctm0 || typeof sctm0.inverse !== 'function') return null;
+          var svgPt0 = pt0.matrixTransform(sctm0.inverse());
+          if (!zoomGroup || !zoomGroup.getCTM) return { x: svgPt0.x, y: svgPt0.y };
+          var zctm0 = zoomGroup.getCTM();
+          if (!zctm0 || typeof zctm0.inverse !== 'function') return { x: svgPt0.x, y: svgPt0.y };
+          var localPt0 = svgPt0.matrixTransform(zctm0.inverse());
+          return { x: localPt0.x, y: localPt0.y };
+        } catch (_) {
+          return null;
+        }
+      }
+
+      // Convert the local point into the overlay group's local coordinate system.
       try {
-        var rect = node.getBoundingClientRect();
-        if (!rect || !(rect.width > 0) || !(rect.height > 0)) return null;
-        var sx = rect.left + (rect.width / 2);
-        var sy = rect.top + (rect.height / 2);
         var pt = (mapSvg && typeof mapSvg.createSVGPoint === 'function') ? mapSvg.createSVGPoint() : null;
-        if (!pt) return null;
-        pt.x = sx;
-        pt.y = sy;
-        var sctm = mapSvg.getScreenCTM && mapSvg.getScreenCTM();
-        if (!sctm || typeof sctm.inverse !== 'function') return null;
-        var svgPt = pt.matrixTransform(sctm.inverse());
+        if (!pt) return local;
+        pt.x = local.x;
+        pt.y = local.y;
+        var nctm = node.getCTM && node.getCTM();
+        var svgPt = nctm ? pt.matrixTransform(nctm) : pt;
         if (!zoomGroup || !zoomGroup.getCTM) return { x: svgPt.x, y: svgPt.y };
         var zctm = zoomGroup.getCTM();
         if (!zctm || typeof zctm.inverse !== 'function') return { x: svgPt.x, y: svgPt.y };
         var localPt = svgPt.matrixTransform(zctm.inverse());
         return { x: localPt.x, y: localPt.y };
       } catch (_) {
-        return null;
+        return local;
       }
     }
 
