@@ -3393,15 +3393,52 @@ body[data-page="dashboard"] #dash-trending-down .dash-trend-delta.text-red {
   align-items: center;
   justify-content: center;
 }
-.kexo-overview-widget-chart:empty {
-  height: 0;
-  min-height: 0;
-  overflow: hidden;
+.kexo-ovw-ring-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
 }
 .kexo-ovw-ring-wrap {
   display: flex;
   flex-direction: column;
   align-items: center;
+  flex-shrink: 0;
+}
+.kexo-ovw-ring-wrap--small .kexo-ovw-ring {
+  width: 123px;
+  height: 123px;
+}
+.kexo-ovw-ring-wrap--small .kexo-ovw-ring svg {
+  width: 123px;
+  height: 123px;
+}
+.kexo-ovw-ring-right {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+.kexo-ovw-ring-right-name {
+  font-size: 0.875rem;
+  font-weight: 700;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.kexo-ovw-ring-right-value {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--tblr-body-color);
+}
+.kexo-ovw-ring-right-pct {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--tblr-secondary);
+  line-height: 1.2;
 }
 .kexo-ovw-ring {
   position: relative;
@@ -3429,6 +3466,18 @@ body[data-page="dashboard"] #dash-trending-down .dash-trend-delta.text-red {
   width: 130px;
   max-width: 90%;
   pointer-events: none;
+}
+.kexo-ovw-ring-center--icon-only {
+  width: auto;
+  max-width: 70%;
+}
+.kexo-ovw-ring-center--icon-only .kexo-ovw-ring-icon {
+  font-size: 28px;
+}
+.kexo-ovw-ring-center--icon-only .kexo-ovw-ring-icon img,
+.kexo-ovw-ring-center--icon-only .kexo-ovw-ring-icon svg {
+  width: 28px;
+  height: 28px;
 }
 .kexo-ovw-ring-icon {
   display: inline-flex;
@@ -3662,67 +3711,6 @@ body[data-page="dashboard"] #dash-trending-down .dash-trend-delta.text-red {
   border-radius: 999px;
   background: var(--kexo-accent, var(--kexo-accent-1, #4b94e4));
   transition: width 520ms cubic-bezier(.2,.9,.2,1);
-}
-
-/* Overview widget list with small ring + name/revenue/% inline */
-.kexo-widget-list--ring-rows .kexo-widget-row--ring {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  grid-template-columns: unset;
-}
-.kexo-widget-row-ring {
-  position: relative;
-  flex-shrink: 0;
-  width: 28px;
-  height: 28px;
-}
-.kexo-widget-row-ring svg {
-  display: block;
-  width: 28px;
-  height: 28px;
-}
-.kexo-widget-row-ring-center {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  pointer-events: none;
-}
-.kexo-widget-row-ring-center img,
-.kexo-widget-row-ring-center svg,
-.kexo-widget-row-ring-center i {
-  width: 14px !important;
-  height: 14px !important;
-  max-width: 14px !important;
-  max-height: 14px !important;
-  font-size: 14px;
-  color: var(--tblr-body-color);
-}
-.kexo-widget-row-content {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  align-items: baseline;
-  gap: 0.35rem;
-  flex-wrap: wrap;
-}
-.kexo-widget-list--ring-rows .kexo-widget-row-label {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-.kexo-widget-list--ring-rows .kexo-widget-row-value {
-  flex-shrink: 0;
-  font-weight: 600;
-}
-.kexo-widget-row-pct {
-  font-size: 0.75rem;
-  color: var(--tblr-secondary);
-  flex-shrink: 0;
-}
-.kexo-widget-list--ring-rows .kexo-widget-row-bar {
-  display: none;
 }
 
 /* Dashboard top tables card-style list (Top Products, Top Countries, Trending) */

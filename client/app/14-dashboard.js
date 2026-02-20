@@ -5634,43 +5634,27 @@
           var total = metric === 'ctr'
             ? 0
             : (shareBase.reduce(function (acc, r) { return acc + metricValue(r, metric); }, 0) || 0);
-          var accent = accentForWidget(widgetKey);
-          var size = 28;
-          var r = 10;
-          var strokeW = 3;
-          var cx = size / 2;
-          var cy = size / 2;
-          var circ = Math.round(2 * Math.PI * r * 1000) / 1000;
-          var html = '<ul class="kexo-widget-list kexo-widget-list--ring-rows">';
-          list.forEach(function (row) {
-            var label = row && row.label != null ? String(row.label) : '—';
-            var icon = row && row.iconHtml ? String(row.iconHtml) : '<span class="kexo-dash-top-row-icon-placeholder" aria-hidden="true"></span>';
-            var valText = fmtMetric(metric, row);
-            var seriesVal = metricValue(row, metric);
+          var html = '<ul class="kexo-widget-list">';
+          list.forEach(function (r) {
+            var label = r && r.label != null ? String(r.label) : '—';
+            var icon = r && r.iconHtml ? String(r.iconHtml) : '<span class="kexo-dash-top-row-icon-placeholder" aria-hidden="true"></span>';
+            var valText = fmtMetric(metric, r);
+            var seriesVal = metricValue(r, metric);
             var pct = metric === 'ctr'
               ? (Number.isFinite(Number(seriesVal)) ? Number(seriesVal) : 0)
               : (total > 0 ? (seriesVal / total) * 100 : 0);
             if (!Number.isFinite(pct)) pct = 0;
             pct = Math.max(0, Math.min(100, pct));
-            var dashOffset = Math.round((circ - (pct / 100) * circ) * 1000) / 1000;
-            var pctText = metric === 'ctr' ? valText : (Math.round(pct * 10) / 10).toFixed(1) + '%';
-            html += '<li class="kexo-widget-row kexo-widget-row--ring" title="' + escapeHtml(label) + '">' +
-              '<div class="kexo-widget-row-ring" aria-hidden="true">' +
-                '<svg width="' + size + '" height="' + size + '" viewBox="0 0 ' + size + ' ' + size + '">' +
-                  '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="rgba(15,23,42,0.12)" stroke-width="' + strokeW + '"/>' +
-                  '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="' + escapeHtml(accent) + '" stroke-width="' + strokeW + '" stroke-linecap="round" stroke-dasharray="' + circ + '" stroke-dashoffset="' + dashOffset + '" style="transform:rotate(-90deg);transform-origin:' + cx + 'px ' + cy + 'px"/>' +
-                '</svg>' +
-                '<div class="kexo-widget-row-ring-center">' + icon + '</div>' +
-              '</div>' +
-              '<div class="kexo-widget-row-content">' +
-                '<span class="kexo-widget-row-label">' + escapeHtml(label) + '</span>' +
-                '<span class="kexo-widget-row-value">' + escapeHtml(valText) + '</span>' +
-                '<span class="kexo-widget-row-pct">' + escapeHtml(pctText) + '</span>' +
-              '</div>' +
+            html += '<li class="kexo-widget-row" title="' + escapeHtml(label) + '">' +
+              '<span class="kexo-widget-row-icon" aria-hidden="true">' + icon + '</span>' +
+              '<span class="kexo-widget-row-label">' + escapeHtml(label) + '</span>' +
+              '<span class="kexo-widget-row-value">' + escapeHtml(valText) + '</span>' +
+              '<div class="kexo-widget-row-bar"><span data-kexo-bar-fill="' + escapeHtml(String(pct)) + '"></span></div>' +
             '</li>';
           });
           html += '</ul>';
           host.innerHTML = html;
+          animateWidgetFills(host);
         }
 
         function renderChart(widgetKey, rows, sortBy) {
@@ -5683,7 +5667,59 @@
               dashCharts[chartId] = null;
             }
           } catch (_) {}
-          chartEl.innerHTML = '';
+          var list = Array.isArray(rows) ? rows : [];
+          if (!list.length) { chartEl.innerHTML = ''; return; }
+          var metric = sortBy === 'clicks' ? 'clicks' : (sortBy === 'ctr' ? 'ctr' : 'revenue');
+          var top = list[0] || null;
+          if (!top) { chartEl.innerHTML = ''; return; }
+          var pct = 0;
+          if (metric === 'ctr') {
+            pct = Number(top.ctr);
+            if (!Number.isFinite(pct)) pct = 0;
+            pct = Math.max(0, Math.min(100, pct));
+          } else {
+            var total = list.reduce(function (acc, r) { return acc + Math.max(0, metricValue(r, metric)); }, 0) || 0;
+            var topVal = Math.max(0, metricValue(top, metric));
+            pct = total > 0 ? (topVal / total) * 100 : 0;
+            if (!Number.isFinite(pct)) pct = 0;
+            pct = Math.max(0, Math.min(100, pct));
+          }
+          var icon = top && top.iconHtml ? String(top.iconHtml) : '';
+          var labelText = top && top.label != null ? String(top.label) : '—';
+          var valueText = fmtMetric(metric, top);
+          var shareText = metric === 'ctr' ? 'CTR' : (String(Math.round(pct)) + '% share');
+          var tip = labelText + '\n' + valueText + '\n' + (metric === 'ctr' ? ('CTR: ' + valueText) : ('Share: ' + (Math.round(pct * 10) / 10).toFixed(1) + '%'));
+          var size = 123;
+          var r = 46;
+          var strokeW = 9;
+          var cx = size / 2;
+          var cy = size / 2;
+          var circ = Math.round(2 * Math.PI * r * 1000) / 1000;
+          var dashOffset = Math.round((circ - (pct / 100) * circ) * 1000) / 1000;
+          chartEl.innerHTML =
+            '<div class="kexo-ovw-ring-row" title="' + escapeHtml(tip) + '">' +
+              '<div class="kexo-ovw-ring-wrap kexo-ovw-ring-wrap--small">' +
+                '<div class="kexo-ovw-ring">' +
+                  '<svg width="' + size + '" height="' + size + '" viewBox="0 0 ' + size + ' ' + size + '" aria-hidden="true">' +
+                    '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="rgba(15,23,42,0.10)" stroke-width="' + strokeW + '"></circle>' +
+                    '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="var(--kexo-accent, var(--kexo-accent-1, #4b94e4))" stroke-width="' + strokeW + '" stroke-linecap="round"' +
+                      ' style="transform: rotate(-90deg); transform-origin: ' + cx + 'px ' + cy + 'px; transition: stroke-dashoffset 520ms cubic-bezier(.2,.9,.2,1);"' +
+                      ' stroke-dasharray="' + escapeHtml(String(circ)) + '" stroke-dashoffset="' + escapeHtml(String(dashOffset)) + '"' +
+                      ' data-kexo-radial-pct="' + escapeHtml(String(pct)) + '" data-kexo-radial-circ="' + escapeHtml(String(circ)) + '"' +
+                    '></circle>' +
+                  '</svg>' +
+                  '<div class="kexo-ovw-ring-center kexo-ovw-ring-center--icon-only">' +
+                    (icon ? ('<div class="kexo-ovw-ring-icon" aria-hidden="true">' + icon + '</div>') : '') +
+                  '</div>' +
+                '</div>' +
+              '</div>' +
+              '<div class="kexo-ovw-ring-right">' +
+                '<div class="kexo-ovw-ring-right-name">' + escapeHtml(labelText) + '</div>' +
+                '<div class="kexo-ovw-ring-right-value">' + escapeHtml(valueText) + '</div>' +
+                '<div class="kexo-ovw-ring-right-pct">' + escapeHtml(shareText) + '</div>' +
+              '</div>' +
+            '</div>';
+          animateWidgetRadials(chartEl);
         }
 
         function extractRows(widgetKey, data) {
@@ -5847,7 +5883,11 @@
           if (!force && dashWidgetLastRenderSig[listMountId] && dashWidgetLastRenderSig[listMountId] === sig) return;
           dashWidgetLastRenderSig[listMountId] = sig;
           renderChart(key, top, sortBy);
-          renderList(key, top, sortBy, top);
+          if (top.length <= 1) {
+            try { document.getElementById('dash-ovw-' + key + '-list').innerHTML = ''; } catch (_) {}
+            return;
+          }
+          renderList(key, top.slice(1), sortBy, top);
         }
 
         var order = cfg && Array.isArray(cfg.order) ? cfg.order.slice() : OVERVIEW_WIDGET_KEYS.slice();
