@@ -1452,8 +1452,10 @@
         var hex = normalizeAccentHex(val, ACCENT_DEFAULTS[ACCENT_HEX_KEYS.indexOf(key)]);
         var accentInput = form.querySelector('.theme-accent-hex[name="' + key + '"]');
         var swatch = form.querySelector('.theme-accent-swatch[data-accent-sync="' + key + '"]');
+        var circle = form.querySelector('.kexo-accent-preview-circle[data-accent-sync="' + key + '"]');
         if (accentInput) accentInput.value = hex;
         if (swatch) swatch.value = hex;
+        if (circle) try { circle.style.background = (hex && /^#[0-9a-fA-F]{3,8}$/.test(hex)) ? hex : '#e0e0e0'; } catch (_) {}
         return;
       }
       if (ACCENT_OPACITY_KEYS.indexOf(key) >= 0) {
@@ -1631,7 +1633,10 @@
     return '<div class="col-12 col-md-6 col-lg-4">' +
       '<div class="card card-sm h-100">' +
         '<div class="card-body">' +
-          '<div class="mb-2"><strong>' + title + '</strong></div>' +
+          '<div class="mb-2 d-flex align-items-center gap-2">' +
+            '<span class="kexo-accent-preview-circle" data-accent-sync="' + key + '" style="width:12px;height:12px;border-radius:12px;flex-shrink:0;background:' + (def || '#e0e0e0') + '" aria-hidden="true"></span>' +
+            '<strong>' + title + '</strong>' +
+          '</div>' +
           '<div class="d-flex align-items-center gap-2">' +
             '<input type="color" class="form-control form-control-color theme-accent-swatch" data-accent-sync="' + key + '" style="width:2.5rem;height:2rem;padding:2px;cursor:pointer" title="Pick color" />' +
             '<input type="text" class="form-control theme-accent-hex" id="' + inputId + '" name="' + key + '" placeholder="' + placeholder + '" maxlength="7" />' +
@@ -1666,6 +1671,7 @@
         '<div class="card-body">' +
           '<div class="mb-2">' +
             '<div class="d-flex align-items-center gap-2">' +
+              '<span class="kexo-css-var-preview-circle" data-kexo-css-var="' + escapeHtml(name) + '" style="width:12px;height:12px;border-radius:12px;flex-shrink:0;background:#e0e0e0" aria-hidden="true"></span>' +
               '<strong' + titleAttr + '>' + escapeHtml(label) + (help ? TOOLTIP_ICON : '') + '</strong>' +
             '</div>' +
             '<div class="text-secondary small"><code>' + escapeHtml(name) + '</code></div>' +
@@ -1701,21 +1707,37 @@
       headerToggleCardNoIcon('theme-header-settings-border', 'Settings button border', 'Show or hide the border around the Settings button.'),
       headerToggleCardNoIcon('theme-header-online-border', 'Online badge border', 'Show or hide the border around the visitors badge.')
     ].join('');
-    var accentGrid = accentHexInputCard('theme-accent-1', 'Accent 1', DEFAULTS['theme-accent-1']) +
-      accentHexInputCard('theme-accent-2', 'Accent 2', DEFAULTS['theme-accent-2']) +
-      accentHexInputCard('theme-accent-3', 'Accent 3', DEFAULTS['theme-accent-3']) +
-      accentHexInputCard('theme-accent-4', 'Accent 4', DEFAULTS['theme-accent-4']) +
-      accentHexInputCard('theme-accent-5', 'Accent 5', DEFAULTS['theme-accent-5']);
+    var accentGrid = accentHexInputCard('theme-accent-1', 'Kexo 1', DEFAULTS['theme-accent-1']) +
+      accentHexInputCard('theme-accent-2', 'Kexo 2', DEFAULTS['theme-accent-2']) +
+      accentHexInputCard('theme-accent-3', 'Kexo 3', DEFAULTS['theme-accent-3']) +
+      accentHexInputCard('theme-accent-4', 'Kexo 4', DEFAULTS['theme-accent-4']) +
+      accentHexInputCard('theme-accent-5', 'Kexo 5', DEFAULTS['theme-accent-5']);
     var cssVarGrid =
-      cssVarOverrideInputCard('--kexo-accent-1', 'Kexo accent 1', 'Overrides the runtime CSS variable used by Overview widgets and accents. Leave blank to use Theme accents.') +
-      cssVarOverrideInputCard('--kexo-accent-2', 'Kexo accent 2', '') +
-      cssVarOverrideInputCard('--kexo-accent-3', 'Kexo accent 3', '') +
-      cssVarOverrideInputCard('--kexo-accent-4', 'Kexo accent 4', '') +
-      cssVarOverrideInputCard('--kexo-accent-5', 'Kexo accent 5', '') +
-      cssVarOverrideInputCard('--tblr-primary', 'Tabler primary', 'Optional override for Tabler primary colour.') +
-      cssVarOverrideInputCard('--tblr-success', 'Tabler success', '') +
-      cssVarOverrideInputCard('--tblr-warning', 'Tabler warning', '') +
-      cssVarOverrideInputCard('--tblr-danger', 'Tabler danger', '');
+      cssVarOverrideInputCard('--kexo-accent-1', 'Kexo 1', 'Overrides the runtime CSS variable used by Overview widgets and accents. Leave blank to use Theme accents.') +
+      cssVarOverrideInputCard('--kexo-accent-2', 'Kexo 2', '') +
+      cssVarOverrideInputCard('--kexo-accent-3', 'Kexo 3', '') +
+      cssVarOverrideInputCard('--kexo-accent-4', 'Kexo 4', '') +
+      cssVarOverrideInputCard('--kexo-accent-5', 'Kexo 5', '') +
+      cssVarOverrideInputCard('--kexo-kpi-delta-up', 'KPI delta up', '') +
+      cssVarOverrideInputCard('--kexo-kpi-delta-same', 'KPI delta same', '') +
+      cssVarOverrideInputCard('--kexo-kpi-delta-down', 'KPI delta down', '') +
+      cssVarOverrideInputCard('--kexo-kpi-compare-line', 'KPI compare line', '') +
+      cssVarOverrideInputCard('--kexo-gauge-color', 'Gauge colour', '') +
+      cssVarOverrideInputCard('--tblr-primary', 'Primary', '') +
+      cssVarOverrideInputCard('--tblr-success', 'Success', '') +
+      cssVarOverrideInputCard('--tblr-warning', 'Warning', '') +
+      cssVarOverrideInputCard('--tblr-danger', 'Danger', '') +
+      cssVarOverrideInputCard('--tblr-secondary', 'Secondary', '') +
+      cssVarOverrideInputCard('--tblr-secondary-color', 'Secondary colour', '') +
+      cssVarOverrideInputCard('--tblr-body-color', 'Body text', '') +
+      cssVarOverrideInputCard('--tblr-body-bg', 'Page background', '') +
+      cssVarOverrideInputCard('--tblr-border-color', 'Border', '') +
+      cssVarOverrideInputCard('--tblr-bg-surface', 'Surface', '') +
+      cssVarOverrideInputCard('--tblr-bg-surface-secondary', 'Surface secondary', '') +
+      cssVarOverrideInputCard('--tblr-link-color', 'Link', '') +
+      cssVarOverrideInputCard('--tblr-muted', 'Muted text', '') +
+      cssVarOverrideInputCard('--tblr-disabled-color', 'Disabled', '') +
+      cssVarOverrideInputCard('--tblr-border-color-translucent', 'Border (translucent)', '');
     var cssVarOverridesPanel =
       '<div class="mb-4" id="kexo-css-var-overrides-panel">' +
         '<label class="form-label">Colours (CSS variable overrides)</label>' +
@@ -1997,6 +2019,21 @@
       return { v: 1, vars: vars };
     }
 
+    function updateCssVarPreviewCircles() {
+      var circles = root.querySelectorAll('.kexo-css-var-preview-circle[data-kexo-css-var]');
+      Array.prototype.forEach.call(circles, function (el) {
+        var name = el.getAttribute('data-kexo-css-var');
+        if (!name) return;
+        var input = root.querySelector('.kexo-css-var-input[data-kexo-css-var="' + name + '"]');
+        var swatch = root.querySelector('.kexo-css-var-swatch[data-kexo-css-var="' + name + '"]');
+        var v = (swatch && swatch.value) ? String(swatch.value).trim() : (input && input.value ? String(input.value).trim() : '');
+        var bg = '#e0e0e0';
+        if (v && /^#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(v)) bg = v;
+        else if (v && /^(rgb|hsl)a?\(/i.test(v)) bg = v;
+        try { el.style.background = bg; } catch (_) {}
+      });
+    }
+
     function applyCfgToUi(cfg) {
       var vars = cfg && cfg.vars && typeof cfg.vars === 'object' ? cfg.vars : {};
       var inputs = root.querySelectorAll('.kexo-css-var-input[data-kexo-css-var]');
@@ -2012,6 +2049,7 @@
         var hex = v && /^#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(v) ? v : '';
         try { el.value = hex ? hex : '#000000'; } catch (_) {}
       });
+      updateCssVarPreviewCircles();
     }
 
     function applyCfgToDom(cfg) {
@@ -2055,6 +2093,7 @@
 
     grid.addEventListener('input', function () {
       applyCfgToDom(readCfgFromUi());
+      updateCssVarPreviewCircles();
     });
     grid.addEventListener('change', function (e) {
       var t = e && e.target ? e.target : null;
@@ -2066,6 +2105,7 @@
           try { input.value = String(t.value || '').trim(); } catch (_) {}
         }
         applyCfgToDom(readCfgFromUi());
+        updateCssVarPreviewCircles();
       }
     });
 
@@ -2281,13 +2321,19 @@
       ACCENT_HEX_KEYS.forEach(function (key) {
         var hexInput = formEl.querySelector('.theme-accent-hex[name="' + key + '"]');
         var swatch = formEl.querySelector('.theme-accent-swatch[data-accent-sync="' + key + '"]');
+        var circle = formEl.querySelector('.kexo-accent-preview-circle[data-accent-sync="' + key + '"]');
         if (!hexInput) return;
+        function updateAccentCircle(v) {
+          var bg = (v && /^#[0-9a-fA-F]{3,8}$/.test(v)) ? v : '#e0e0e0';
+          if (circle) try { circle.style.background = bg; } catch (_) {}
+        }
         function syncFromHex() {
           var val = normalizeAccentHex(hexInput.value, ACCENT_DEFAULTS[ACCENT_HEX_KEYS.indexOf(key)]);
           setStored(key, val);
           debouncedApply(key, val);
           queueGlobalSaveKey(key);
           if (swatch) swatch.value = val;
+          updateAccentCircle(val);
         }
         function syncFromSwatch() {
           if (swatch && swatch.value) {
@@ -2295,6 +2341,7 @@
             setStored(key, swatch.value);
             debouncedApply(key, swatch.value);
             queueGlobalSaveKey(key);
+            updateAccentCircle(swatch.value);
           }
         }
         hexInput.addEventListener('input', syncFromHex);

@@ -742,7 +742,7 @@
       tabs: [
         { key: 'general', label: 'General', panelId: 'settings-kexo-panel-general' },
         { key: 'icons-assets', label: 'Icons & assets', panelId: 'settings-kexo-panel-icons-assets' },
-        { key: 'theme-display', label: 'Theme & display', panelId: 'settings-kexo-panel-theme-display' },
+        { key: 'theme-display', label: 'Color Scheme', panelId: 'settings-kexo-panel-theme-display' },
       ],
     });
 
