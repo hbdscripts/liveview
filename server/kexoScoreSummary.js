@@ -120,20 +120,20 @@ async function getAttributionMovers(range, compare) {
   if (!Number.isFinite(startPrev) || !Number.isFinite(endPrev) || endPrev <= startPrev) return { current: [], previous: [], movers: [] };
 
   const sql = isPg
-    ? `SELECT LOWER(COALESCE(NULLIF(TRIM(attribution_variant), ''), 'other:house')) AS variant,
+    ? `SELECT LOWER(COALESCE(NULLIF(TRIM(attribution_variant), ''), 'other')) AS variant,
          COALESCE(NULLIF(TRIM(currency), ''), 'GBP') AS currency,
          COUNT(*) AS orders, SUM(COALESCE(total_price, 0)) AS revenue
          FROM orders_shopify
          WHERE shop = $1 AND created_at >= $2 AND created_at < $3
          AND (test IS NULL OR test = 0) AND cancelled_at IS NULL AND financial_status = 'paid'
-         GROUP BY LOWER(COALESCE(NULLIF(TRIM(attribution_variant), ''), 'other:house')), COALESCE(NULLIF(TRIM(currency), ''), 'GBP')`
-    : `SELECT LOWER(COALESCE(NULLIF(TRIM(attribution_variant), ''), 'other:house')) AS variant,
+         GROUP BY LOWER(COALESCE(NULLIF(TRIM(attribution_variant), ''), 'other')), COALESCE(NULLIF(TRIM(currency), ''), 'GBP')`
+    : `SELECT LOWER(COALESCE(NULLIF(TRIM(attribution_variant), ''), 'other')) AS variant,
          COALESCE(NULLIF(TRIM(currency), ''), 'GBP') AS currency,
          COUNT(*) AS orders, SUM(COALESCE(total_price, 0)) AS revenue
          FROM orders_shopify
          WHERE shop = ? AND created_at >= ? AND created_at < ?
          AND (test IS NULL OR test = 0) AND cancelled_at IS NULL AND financial_status = 'paid'
-         GROUP BY LOWER(COALESCE(NULLIF(TRIM(attribution_variant), ''), 'other:house')), COALESCE(NULLIF(TRIM(currency), ''), 'GBP')`;
+         GROUP BY LOWER(COALESCE(NULLIF(TRIM(attribution_variant), ''), 'other')), COALESCE(NULLIF(TRIM(currency), ''), 'GBP')`;
 
   let rowsCur = [];
   let rowsPrev = [];
@@ -150,7 +150,7 @@ async function getAttributionMovers(range, compare) {
   function toGbpByVariant(rows) {
     const map = new Map();
     for (const r of rows || []) {
-      const v = r && r.variant != null ? String(r.variant).trim().toLowerCase() : 'other:house';
+      const v = r && r.variant != null ? String(r.variant).trim().toLowerCase() : 'other';
       const cur = fx.normalizeCurrency(r && r.currency) || 'GBP';
       const rev = r && r.revenue != null ? Number(r.revenue) : 0;
       const gbp = fx.convertToGbp(Number.isFinite(rev) ? rev : 0, cur, ratesToGbp) || 0;

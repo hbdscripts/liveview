@@ -247,9 +247,7 @@ async function ensureOrderAcquisitionFields(row) {
   const channel = derived && derived.channel ? String(derived.channel) : null;
   const source = derived && derived.source ? String(derived.source) : null;
   const variant = derived && derived.variant ? String(derived.variant) : null;
-  const ownerKind = derived && derived.owner_kind ? String(derived.owner_kind) : null;
-  const partnerId = derived && derived.partner_id ? String(derived.partner_id) : null;
-  const network = derived && derived.network ? String(derived.network) : null;
+  const tag = derived && derived.tag ? String(derived.tag) : null;
   const confidence = derived && derived.confidence ? String(derived.confidence) : null;
   let evidenceJson = null;
   try {
@@ -266,14 +264,12 @@ async function ensureOrderAcquisitionFields(row) {
           attribution_channel = COALESCE(attribution_channel, ?),
           attribution_source = COALESCE(attribution_source, ?),
           attribution_variant = COALESCE(attribution_variant, ?),
-          attribution_owner_kind = COALESCE(attribution_owner_kind, ?),
-          attribution_partner_id = COALESCE(attribution_partner_id, ?),
-          attribution_network = COALESCE(attribution_network, ?),
+          attribution_tag = COALESCE(attribution_tag, ?),
           attribution_confidence = COALESCE(attribution_confidence, ?),
           attribution_evidence_json = COALESCE(attribution_evidence_json, ?)
         WHERE shop = ? AND order_id = ?
       `,
-      [deviceKey, channel, source, variant, ownerKind, partnerId, network, confidence, evidenceJson, r.shop, r.order_id]
+      [deviceKey, channel, source, variant, tag, confidence, evidenceJson, r.shop, r.order_id]
     );
   } catch (_) {}
 }

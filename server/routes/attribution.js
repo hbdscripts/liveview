@@ -29,7 +29,8 @@ const {
 } = require('../attribution/deriveAttribution');
 const { writeAudit } = require('../audit');
 
-const PREFS_KEY = 'attribution_prefs_v1';
+const PREFS_KEY_V1 = 'attribution_prefs_v1';
+const PREFS_KEY = 'attribution_prefs_v2';
 
 function clampInt(v, { min, max, fallback }) {
   const n = typeof v === 'number' ? v : Number(v);
@@ -66,6 +67,28 @@ function sanitizeRuleId(v) {
   const s = trimLower(v, 80);
   if (!s) return '';
   if (!/^[a-z0-9][a-z0-9:_-]*$/.test(s)) return '';
+  return s;
+}
+
+function normalizeBaseVariantKey(raw) {
+  const k = normalizeVariantKey(raw);
+  if (!k) return '';
+  const m = k.match(/^(.*?):(house|affiliate|partner)(?::.*)?$/);
+  if (m && m[1]) return normalizeVariantKey(m[1]) || k;
+  return k;
+}
+
+function normalizeTagKey(raw) {
+  const s = raw == null ? '' : String(raw);
+  const out = s.trim().toLowerCase().replace(/[^a-z0-9_-]+/g, '_').replace(/^_+|_+$/g, '');
+  if (!out) return '';
+  return out.length > 120 ? out.slice(0, 120) : out;
+}
+
+function sanitizeTagKey(v, { maxLen = 120 } = {}) {
+  const s = trimLower(v, maxLen);
+  if (!s) return '';
+  if (!/^[a-z0-9][a-z0-9_-]*$/.test(s)) return '';
   return s;
 }
 
@@ -129,19 +152,13 @@ function titleFromKey(key) {
 }
 
 async function getAttributionPrefsRaw() {
-  const raw = await store.getSetting(PREFS_KEY).catch(() => null);
+  const raw =
+    (await store.getSetting(PREFS_KEY).catch(() => null)) ??
+    (await store.getSetting(PREFS_KEY_V1).catch(() => null));
   const parsed = safeJsonParse(raw);
   const prefs = parsed && typeof parsed === 'object' ? parsed : {};
-  const enabledOwnerKindsRaw = Array.isArray(prefs.enabledOwnerKinds) ? prefs.enabledOwnerKinds : ['house', 'partner', 'affiliate'];
-  const enabledOwnerKinds = enabledOwnerKindsRaw
-    .map((k) => trimLower(k, 32))
-    .filter((k) => k === 'house' || k === 'partner' || k === 'affiliate');
-  const unique = Array.from(new Set(enabledOwnerKinds));
   const includeUnknownObserved = !!prefs.includeUnknownObserved;
-  return {
-    enabledOwnerKinds: unique.length ? unique : ['house', 'partner', 'affiliate'],
-    includeUnknownObserved,
-  };
+  return { includeUnknownObserved };
 }
 
 async function getAttributionConfigVersion() {
@@ -153,6 +170,7 @@ async function getAttributionConfigVersion() {
           COALESCE((SELECT MAX(updated_at) FROM attribution_channels), 0) AS channels_max,
           COALESCE((SELECT MAX(updated_at) FROM attribution_sources), 0) AS sources_max,
           COALESCE((SELECT MAX(updated_at) FROM attribution_variants), 0) AS variants_max,
+          COALESCE((SELECT MAX(updated_at) FROM attribution_tags), 0) AS tags_max,
           COALESCE((SELECT MAX(updated_at) FROM attribution_rules), 0) AS rules_max,
           COALESCE((SELECT MAX(updated_at) FROM attribution_allowlist), 0) AS allowlist_max
       `
@@ -160,9 +178,10 @@ async function getAttributionConfigVersion() {
     const a = r && r.channels_max != null ? Number(r.channels_max) : 0;
     const b = r && r.sources_max != null ? Number(r.sources_max) : 0;
     const c = r && r.variants_max != null ? Number(r.variants_max) : 0;
-    const d = r && r.rules_max != null ? Number(r.rules_max) : 0;
-    const e = r && r.allowlist_max != null ? Number(r.allowlist_max) : 0;
-    const updatedAtMax = Math.max(0, a || 0, b || 0, c || 0, d || 0, e || 0);
+    const d = r && r.tags_max != null ? Number(r.tags_max) : 0;
+    const e = r && r.rules_max != null ? Number(r.rules_max) : 0;
+    const f = r && r.allowlist_max != null ? Number(r.allowlist_max) : 0;
+    const updatedAtMax = Math.max(0, a || 0, b || 0, c || 0, d || 0, e || 0, f || 0);
     return { updatedAtMax };
   } catch (_) {
     return { updatedAtMax: 0 };
@@ -237,61 +256,58 @@ async function getAttributionReport(req, res) {
       force,
     },
     async () => {
+      const NO_TAG = '__none__';
       const cfg = await readAttributionConfigCached().catch(() => null);
       const channelsByKey = cfg && cfg.channelsByKey ? cfg.channelsByKey : new Map();
       const sourcesByKey = cfg && cfg.sourcesByKey ? cfg.sourcesByKey : new Map();
       const variantsByKey = cfg && cfg.variantsByKey ? cfg.variantsByKey : new Map();
+      const tagsByKey = cfg && cfg.tagsByKey ? cfg.tagsByKey : new Map();
 
       function channelLabel(k) {
         const key = trimLower(k, 32) || 'other';
         const row = channelsByKey.get(key);
         return row && row.label ? String(row.label) : titleFromKey(key);
       }
-      function sourceLabel(k) {
-        const key = trimLower(k, 32) || 'other';
-        const row = sourcesByKey.get(key);
-        return row && row.label ? String(row.label) : titleFromKey(key);
-      }
-      function sourceIconSpec(k) {
-        const key = trimLower(k, 32) || 'other';
-        const row = sourcesByKey.get(key);
-        return row && row.icon_spec != null ? String(row.icon_spec) : null;
-      }
-      function variantLabel(k) {
-        const key = normalizeVariantKey(k) || 'other:house';
+
+      function variantMeta(variantKeyRaw) {
+        const key = normalizeBaseVariantKey(variantKeyRaw) || 'other';
         const row = variantsByKey.get(key);
-        return row && row.label ? String(row.label) : titleFromKey(key);
+        const label = row && row.label ? String(row.label) : titleFromKey(key);
+        const icon =
+          (row && row.icon_spec != null ? String(row.icon_spec) : null) ||
+          (() => {
+            const srcKey = row && row.source_key ? trimLower(String(row.source_key), 32) : '';
+            const src = srcKey ? sourcesByKey.get(srcKey) : null;
+            return src && src.icon_spec != null ? String(src.icon_spec) : null;
+          })();
+        return { key, label, icon_spec: icon || null };
       }
-      /** Display label for variant; when no configured label and key ends with :house, drop "House" suffix. */
-      function variantDisplayLabel(k) {
-        const key = normalizeVariantKey(k) || 'other:house';
-        const row = variantsByKey.get(key);
-        if (row && row.label && String(row.label).trim()) return String(row.label).trim();
-        if (key.endsWith(':house')) return titleFromKey(key.slice(0, key.length - 5));
-        return titleFromKey(key);
-      }
-      function variantIconSpec(k) {
-        const key = normalizeVariantKey(k) || 'other:house';
-        const row = variantsByKey.get(key);
-        return row && row.icon_spec != null ? String(row.icon_spec) : null;
+
+      function tagMeta(tagKeyRaw) {
+        const key = normalizeTagKey(tagKeyRaw);
+        if (!key) return { key: '', label: '', icon_spec: null };
+        const row = tagsByKey.get(key);
+        return {
+          key,
+          label: row && row.label ? String(row.label) : titleFromKey(key),
+          icon_spec: row && row.icon_spec != null ? String(row.icon_spec) : null,
+        };
       }
 
       const sessionsRows = await db.all(
         `
           SELECT
             LOWER(COALESCE(NULLIF(TRIM(attribution_channel), ''), 'other')) AS channel,
-            LOWER(COALESCE(NULLIF(TRIM(attribution_source), ''), 'other')) AS source,
-            LOWER(COALESCE(NULLIF(TRIM(attribution_variant), ''), 'other:house')) AS variant,
-            LOWER(COALESCE(NULLIF(TRIM(attribution_owner_kind), ''), 'house')) AS owner_kind,
+            LOWER(COALESCE(NULLIF(TRIM(attribution_variant), ''), 'other')) AS variant,
+            COALESCE(NULLIF(LOWER(TRIM(attribution_tag)), ''), '${NO_TAG}') AS tag,
             COUNT(*) AS sessions
           FROM sessions
           WHERE started_at >= ? AND started_at < ?
             AND (cf_known_bot IS NULL OR cf_known_bot = 0)
           GROUP BY
             LOWER(COALESCE(NULLIF(TRIM(attribution_channel), ''), 'other')),
-            LOWER(COALESCE(NULLIF(TRIM(attribution_source), ''), 'other')),
-            LOWER(COALESCE(NULLIF(TRIM(attribution_variant), ''), 'other:house')),
-            LOWER(COALESCE(NULLIF(TRIM(attribution_owner_kind), ''), 'house'))
+            LOWER(COALESCE(NULLIF(TRIM(attribution_variant), ''), 'other')),
+            COALESCE(NULLIF(LOWER(TRIM(attribution_tag)), ''), '${NO_TAG}')
         `,
         [bounds.start, bounds.end]
       );
@@ -300,9 +316,8 @@ async function getAttributionReport(req, res) {
         `
           SELECT
             LOWER(COALESCE(NULLIF(TRIM(attribution_channel), ''), 'other')) AS channel,
-            LOWER(COALESCE(NULLIF(TRIM(attribution_source), ''), 'other')) AS source,
-            LOWER(COALESCE(NULLIF(TRIM(attribution_variant), ''), 'other:house')) AS variant,
-            LOWER(COALESCE(NULLIF(TRIM(attribution_owner_kind), ''), 'house')) AS owner_kind,
+            LOWER(COALESCE(NULLIF(TRIM(attribution_variant), ''), 'other')) AS variant,
+            COALESCE(NULLIF(LOWER(TRIM(attribution_tag)), ''), '${NO_TAG}') AS tag,
             COALESCE(NULLIF(TRIM(currency), ''), 'GBP') AS currency,
             COUNT(*) AS orders,
             SUM(COALESCE(total_price, 0)) AS revenue
@@ -314,30 +329,29 @@ async function getAttributionReport(req, res) {
             AND financial_status = 'paid'
           GROUP BY
             LOWER(COALESCE(NULLIF(TRIM(attribution_channel), ''), 'other')),
-            LOWER(COALESCE(NULLIF(TRIM(attribution_source), ''), 'other')),
-            LOWER(COALESCE(NULLIF(TRIM(attribution_variant), ''), 'other:house')),
-            LOWER(COALESCE(NULLIF(TRIM(attribution_owner_kind), ''), 'house')),
+            LOWER(COALESCE(NULLIF(TRIM(attribution_variant), ''), 'other')),
+            COALESCE(NULLIF(LOWER(TRIM(attribution_tag)), ''), '${NO_TAG}'),
             COALESCE(NULLIF(TRIM(currency), ''), 'GBP')
         `,
         [shop, bounds.start, bounds.end]
       );
 
-      const salesByKey = await aggCurrencyRowsToGbp(ordersRows, { keyFields: ['channel', 'source', 'variant', 'owner_kind'] });
+      const salesByKey = await aggCurrencyRowsToGbp(ordersRows, { keyFields: ['channel', 'variant', 'tag'] });
 
       const sessionsByKey = new Map();
       for (const r of Array.isArray(sessionsRows) ? sessionsRows : []) {
         const channel = trimLower(r && r.channel != null ? String(r.channel) : '', 32) || 'other';
-        const source = trimLower(r && r.source != null ? String(r.source) : '', 32) || 'other';
-        const variant = normalizeVariantKey(r && r.variant != null ? String(r.variant) : '') || 'other:house';
-        const ownerKind = trimLower(r && r.owner_kind != null ? String(r.owner_kind) : '', 32) || 'house';
-        const key = [channel, source, variant, ownerKind].join('|');
+        const variant = normalizeBaseVariantKey(r && r.variant != null ? String(r.variant) : '') || 'other';
+        const tag = normalizeTagKey(r && r.tag != null ? String(r.tag) : '') || NO_TAG;
+        const key = [channel, variant, tag].join('|');
         const n = r && r.sessions != null ? Number(r.sessions) : 0;
         sessionsByKey.set(key, (sessionsByKey.get(key) || 0) + (Number.isFinite(n) ? Math.max(0, Math.trunc(n)) : 0));
       }
 
-      // Build hierarchical rows: channel → variant (2 levels). Second-level "sources" are variant rows.
+      // Build hierarchical rows: channel → variant → tag (3 levels).
       const channelAgg = new Map(); // channel -> agg
-      const variantLevelAgg = new Map(); // channel|variant|owner_kind -> agg
+      const variantAgg = new Map(); // channel|variant -> agg
+      const tagAgg = new Map(); // channel|variant|tag -> agg
 
       function ensureAgg(map, key) {
         const prev = map.get(key);
@@ -348,22 +362,33 @@ async function getAttributionReport(req, res) {
       }
 
       for (const [key, sessions] of sessionsByKey.entries()) {
-        const [channel, , variant, ownerKind] = key.split('|');
+        const [channel, variant, tag] = key.split('|');
         const c = ensureAgg(channelAgg, channel);
         c.sessions += sessions;
-        const vKey = [channel, variant, ownerKind].join('|');
-        const v = ensureAgg(variantLevelAgg, vKey);
+        const vKey = [channel, variant].join('|');
+        const v = ensureAgg(variantAgg, vKey);
         v.sessions += sessions;
+        if (tag && tag !== NO_TAG) {
+          const tKey = [channel, variant, tag].join('|');
+          const t = ensureAgg(tagAgg, tKey);
+          t.sessions += sessions;
+        }
       }
       for (const [key, sales] of salesByKey.entries()) {
-        const [channel, , variant, ownerKind] = key.split('|');
+        const [channel, variant, tag] = key.split('|');
         const c = ensureAgg(channelAgg, channel);
         c.orders += Number(sales.orders) || 0;
         c.revenueGbp += Number(sales.revenueGbp) || 0;
-        const vKey = [channel, variant, ownerKind].join('|');
-        const v = ensureAgg(variantLevelAgg, vKey);
+        const vKey = [channel, variant].join('|');
+        const v = ensureAgg(variantAgg, vKey);
         v.orders += Number(sales.orders) || 0;
         v.revenueGbp += Number(sales.revenueGbp) || 0;
+        if (tag && tag !== NO_TAG) {
+          const tKey = [channel, variant, tag].join('|');
+          const t = ensureAgg(tagAgg, tKey);
+          t.orders += Number(sales.orders) || 0;
+          t.revenueGbp += Number(sales.revenueGbp) || 0;
+        }
       }
 
       const channelsOut = [];
@@ -372,27 +397,54 @@ async function getAttributionReport(req, res) {
       for (const channelKey of channelKeys) {
         const cAgg = channelAgg.get(channelKey) || { sessions: 0, orders: 0, revenueGbp: 0 };
         const sourcesOut = [];
-        const variantKeysForChannel = Array.from(variantLevelAgg.keys())
+        if (channelKey !== 'direct') {
+          const variantKeysForChannel = Array.from(variantAgg.keys())
           .filter((k) => k.split('|')[0] === channelKey)
-          .sort((a, b) => (variantLevelAgg.get(b).sessions - variantLevelAgg.get(a).sessions) || String(a).localeCompare(String(b)));
-        for (const vKey of variantKeysForChannel) {
-          const parts = vKey.split('|');
-          const variantKey = parts[1] || 'other:house';
-          const ownerKind = parts[2] || 'house';
-          if (!includeUnknownObserved && (variantKey === 'other:house' || variantKey === 'unknown:house')) continue;
-          const vAgg = variantLevelAgg.get(vKey) || { sessions: 0, orders: 0, revenueGbp: 0 };
-          sourcesOut.push({
-            source_key: variantKey,
-            label: variantDisplayLabel(variantKey),
-            icon_spec: variantIconSpec(variantKey),
-            owner_kind: ownerKind,
-            sessions: vAgg.sessions,
-            orders: vAgg.orders,
-            revenue_gbp: Math.round((Number(vAgg.revenueGbp) || 0) * 100) / 100,
-            conversion_pct: conversionPct(vAgg.orders, vAgg.sessions),
-            aov_gbp: aovGbp(vAgg.revenueGbp, vAgg.orders),
-            variants: [],
-          });
+          .sort((a, b) => (variantAgg.get(b).sessions - variantAgg.get(a).sessions) || String(a).localeCompare(String(b)));
+          for (const vKey of variantKeysForChannel) {
+            const parts = vKey.split('|');
+            const variantKey = parts[1] || 'other';
+            if (!includeUnknownObserved && (variantKey === 'other' || variantKey === 'unknown')) continue;
+            const vAgg = variantAgg.get(vKey) || { sessions: 0, orders: 0, revenueGbp: 0 };
+            const vm = variantMeta(variantKey);
+
+            const tagsOut = [];
+            const tagKeysForVariant = Array.from(tagAgg.keys())
+              .filter((k) => {
+                const p = k.split('|');
+                return p[0] === channelKey && p[1] === vm.key;
+              })
+              .sort((a, b) => (tagAgg.get(b).sessions - tagAgg.get(a).sessions) || String(a).localeCompare(String(b)));
+            for (const tKey of tagKeysForVariant) {
+              const p = tKey.split('|');
+              const tagKey = p[2] || '';
+              if (!tagKey) continue;
+              const tAgg = tagAgg.get(tKey) || { sessions: 0, orders: 0, revenueGbp: 0 };
+              const tm = tagMeta(tagKey);
+              tagsOut.push({
+                variant_key: tm.key,
+                label: tm.label,
+                icon_spec: tm.icon_spec,
+                sessions: tAgg.sessions,
+                orders: tAgg.orders,
+                revenue_gbp: Math.round((Number(tAgg.revenueGbp) || 0) * 100) / 100,
+                conversion_pct: conversionPct(tAgg.orders, tAgg.sessions),
+                aov_gbp: aovGbp(tAgg.revenueGbp, tAgg.orders),
+              });
+            }
+
+            sourcesOut.push({
+              source_key: vm.key,
+              label: vm.label,
+              icon_spec: vm.icon_spec,
+              sessions: vAgg.sessions,
+              orders: vAgg.orders,
+              revenue_gbp: Math.round((Number(vAgg.revenueGbp) || 0) * 100) / 100,
+              conversion_pct: conversionPct(vAgg.orders, vAgg.sessions),
+              aov_gbp: aovGbp(vAgg.revenueGbp, vAgg.orders),
+              variants: tagsOut,
+            });
+          }
         }
         channelsOut.push({
           channel_key: channelKey,
@@ -441,7 +493,6 @@ async function getAttributionPrefs(req, res) {
 async function postAttributionPrefs(req, res) {
   const body = req && req.body && typeof req.body === 'object' ? req.body : {};
   const next = {};
-  if (body.enabledOwnerKinds != null) next.enabledOwnerKinds = body.enabledOwnerKinds;
   if (body.includeUnknownObserved != null) next.includeUnknownObserved = body.includeUnknownObserved;
   try {
     await store.setSetting(PREFS_KEY, JSON.stringify(next));
@@ -459,12 +510,18 @@ async function getAttributionConfig(req, res) {
   let channels = [];
   let sources = [];
   let variants = [];
+  let tags = [];
   let rules = [];
   let allowlist = [];
   try { channels = await db.all('SELECT channel_key, label, sort_order, enabled, updated_at FROM attribution_channels ORDER BY sort_order ASC, label ASC'); } catch (_) { channels = []; }
   try { sources = await db.all('SELECT source_key, label, icon_spec, sort_order, enabled, updated_at FROM attribution_sources ORDER BY sort_order ASC, label ASC'); } catch (_) { sources = []; }
-  try { variants = await db.all('SELECT variant_key, label, channel_key, source_key, owner_kind, partner_id, network, icon_spec, sort_order, enabled, updated_at FROM attribution_variants ORDER BY sort_order ASC, label ASC'); } catch (_) { variants = []; }
-  try { rules = await db.all('SELECT id, label, priority, enabled, variant_key, match_json, created_at, updated_at FROM attribution_rules ORDER BY priority ASC, created_at ASC'); } catch (_) { rules = []; }
+  try { variants = await db.all('SELECT variant_key, label, channel_key, source_key, icon_spec, sort_order, enabled, updated_at FROM attribution_variants ORDER BY sort_order ASC, label ASC'); } catch (_) {
+    try { variants = await db.all('SELECT variant_key, label, channel_key, source_key, owner_kind, partner_id, network, icon_spec, sort_order, enabled, updated_at FROM attribution_variants ORDER BY sort_order ASC, label ASC'); } catch (_) { variants = []; }
+  }
+  try { tags = await db.all('SELECT tag_key, label, icon_spec, sort_order, enabled, updated_at FROM attribution_tags ORDER BY sort_order ASC, label ASC'); } catch (_) { tags = []; }
+  try { rules = await db.all('SELECT id, label, priority, enabled, variant_key, tag_key, match_json, created_at, updated_at FROM attribution_rules ORDER BY priority ASC, created_at ASC'); } catch (_) {
+    try { rules = await db.all('SELECT id, label, priority, enabled, variant_key, match_json, created_at, updated_at FROM attribution_rules ORDER BY priority ASC, created_at ASC'); } catch (_) { rules = []; }
+  }
   try { allowlist = await db.all('SELECT variant_key, enabled, updated_at FROM attribution_allowlist ORDER BY variant_key ASC'); } catch (_) { allowlist = []; }
 
   res.setHeader('Cache-Control', 'no-store');
@@ -475,6 +532,7 @@ async function getAttributionConfig(req, res) {
       channels,
       sources,
       variants,
+      tags,
       rules,
       allowlist,
     },
@@ -489,6 +547,7 @@ async function postAttributionConfig(req, res) {
   const nextChannels = Array.isArray(cfg.channels) ? cfg.channels : [];
   const nextSources = Array.isArray(cfg.sources) ? cfg.sources : [];
   const nextVariants = Array.isArray(cfg.variants) ? cfg.variants : [];
+  const nextTags = Array.isArray(cfg.tags) ? cfg.tags : [];
   const nextRules = Array.isArray(cfg.rules) ? cfg.rules : [];
   const nextAllowlist = Array.isArray(cfg.allowlist) ? cfg.allowlist : [];
 
@@ -513,17 +572,25 @@ async function postAttributionConfig(req, res) {
     }))
     .filter((r) => r.source_key && r.label);
 
+  const tags = nextTags
+    .map((r) => ({
+      tag_key: sanitizeTagKey(r && r.tag_key != null ? r.tag_key : r && r.key != null ? r.key : '', { maxLen: 120 }),
+      label: (r && r.label != null ? String(r.label) : '').trim().slice(0, 80) || null,
+      icon_spec: normalizeIconSpec(r && r.icon_spec != null ? r.icon_spec : r && r.iconSpec != null ? r.iconSpec : null),
+      sort_order: clampInt(r && r.sort_order != null ? r.sort_order : r && r.sortOrder != null ? r.sortOrder : 0, { min: -1000000, max: 1000000, fallback: 0 }),
+      enabled: (r && r.enabled === false) ? 0 : 1,
+      updated_at: now,
+    }))
+    .filter((r) => r.tag_key && r.label);
+
   const variants = nextVariants
     .map((r) => {
-      const variantKey = normalizeVariantKey(r && (r.variant_key != null ? r.variant_key : (r.key != null ? r.key : '')));
+      const variantKey = normalizeBaseVariantKey(r && (r.variant_key != null ? r.variant_key : (r.key != null ? r.key : '')));
       return {
         variant_key: variantKey,
         label: (r && r.label != null ? String(r.label) : '').trim().slice(0, 120) || null,
         channel_key: sanitizeKey(r && r.channel_key != null ? r.channel_key : r && r.channelKey != null ? r.channelKey : '', { maxLen: 32 }) || 'other',
         source_key: sanitizeKey(r && r.source_key != null ? r.source_key : r && r.sourceKey != null ? r.sourceKey : '', { maxLen: 32 }) || 'other',
-        owner_kind: trimLower(r && r.owner_kind != null ? r.owner_kind : r && r.ownerKind != null ? r.ownerKind : '', 32) || 'house',
-        partner_id: r && r.partner_id != null && String(r.partner_id).trim() ? String(r.partner_id).trim().slice(0, 128) : null,
-        network: r && r.network != null && String(r.network).trim() ? String(r.network).trim().slice(0, 32) : null,
         icon_spec: normalizeIconSpec(r && r.icon_spec != null ? r.icon_spec : r && r.iconSpec != null ? r.iconSpec : null),
         sort_order: clampInt(r && r.sort_order != null ? r.sort_order : r && r.sortOrder != null ? r.sortOrder : 0, { min: -1000000, max: 1000000, fallback: 0 }),
         enabled: (r && r.enabled === false) ? 0 : 1,
@@ -535,7 +602,8 @@ async function postAttributionConfig(req, res) {
   const rules = nextRules
     .map((r) => {
       const id = sanitizeRuleId(r && (r.id != null ? r.id : (r.rule_id != null ? r.rule_id : '')));
-      const variantKey = normalizeVariantKey(r && (r.variant_key != null ? r.variant_key : (r.variantKey != null ? r.variantKey : '')));
+      const variantKey = normalizeBaseVariantKey(r && (r.variant_key != null ? r.variant_key : (r.variantKey != null ? r.variantKey : '')));
+      const tagKey = sanitizeTagKey(r && (r.tag_key != null ? r.tag_key : (r.tagKey != null ? r.tagKey : '')), { maxLen: 120 });
       const label = (r && r.label != null ? String(r.label) : '').trim().slice(0, 120) || null;
       const match = r && r.match_json != null ? r.match_json : (r && r.match != null ? r.match : null);
       const matchObj = typeof match === 'string' ? safeJsonParse(match) : (match && typeof match === 'object' ? match : {});
@@ -547,6 +615,7 @@ async function postAttributionConfig(req, res) {
         priority: clampInt(r && r.priority != null ? r.priority : 1000, { min: -1000000, max: 1000000, fallback: 1000 }),
         enabled: (r && r.enabled === false) ? 0 : 1,
         variant_key: variantKey,
+        tag_key: tagKey || null,
         match_json: matchJson,
         created_at: now,
         updated_at: now,
@@ -556,7 +625,7 @@ async function postAttributionConfig(req, res) {
 
   const allowlist = nextAllowlist
     .map((r) => ({
-      variant_key: normalizeVariantKey(r && (r.variant_key != null ? r.variant_key : (r.key != null ? r.key : ''))),
+      variant_key: normalizeBaseVariantKey(r && (r.variant_key != null ? r.variant_key : (r.key != null ? r.key : ''))),
       enabled: (r && r.enabled === false) ? 0 : 1,
       updated_at: now,
     }))
@@ -605,40 +674,53 @@ async function postAttributionConfig(req, res) {
         [r.source_key, r.label, r.icon_spec, r.sort_order, r.enabled, r.updated_at]
       );
     }
-    for (const r of variants) {
+    for (const r of tags) {
       await db.run(
         `
-          INSERT INTO attribution_variants (variant_key, label, channel_key, source_key, owner_kind, partner_id, network, icon_spec, sort_order, enabled, updated_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-          ON CONFLICT (variant_key) DO UPDATE SET
+          INSERT INTO attribution_tags (tag_key, label, icon_spec, sort_order, enabled, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?)
+          ON CONFLICT (tag_key) DO UPDATE SET
             label = EXCLUDED.label,
-            channel_key = EXCLUDED.channel_key,
-            source_key = EXCLUDED.source_key,
-            owner_kind = EXCLUDED.owner_kind,
-            partner_id = EXCLUDED.partner_id,
-            network = EXCLUDED.network,
             icon_spec = EXCLUDED.icon_spec,
             sort_order = EXCLUDED.sort_order,
             enabled = EXCLUDED.enabled,
             updated_at = EXCLUDED.updated_at
         `,
-        [r.variant_key, r.label, r.channel_key, r.source_key, r.owner_kind, r.partner_id, r.network, r.icon_spec, r.sort_order, r.enabled, r.updated_at]
+        [r.tag_key, r.label, r.icon_spec, r.sort_order, r.enabled, r.updated_at]
+      );
+    }
+    for (const r of variants) {
+      await db.run(
+        `
+          INSERT INTO attribution_variants (variant_key, label, channel_key, source_key, icon_spec, sort_order, enabled, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          ON CONFLICT (variant_key) DO UPDATE SET
+            label = EXCLUDED.label,
+            channel_key = EXCLUDED.channel_key,
+            source_key = EXCLUDED.source_key,
+            icon_spec = EXCLUDED.icon_spec,
+            sort_order = EXCLUDED.sort_order,
+            enabled = EXCLUDED.enabled,
+            updated_at = EXCLUDED.updated_at
+        `,
+        [r.variant_key, r.label, r.channel_key, r.source_key, r.icon_spec, r.sort_order, r.enabled, r.updated_at]
       );
     }
     for (const r of rules) {
       await db.run(
         `
-          INSERT INTO attribution_rules (id, label, priority, enabled, variant_key, match_json, created_at, updated_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          INSERT INTO attribution_rules (id, label, priority, enabled, variant_key, tag_key, match_json, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
           ON CONFLICT (id) DO UPDATE SET
             label = EXCLUDED.label,
             priority = EXCLUDED.priority,
             enabled = EXCLUDED.enabled,
             variant_key = EXCLUDED.variant_key,
+            tag_key = EXCLUDED.tag_key,
             match_json = EXCLUDED.match_json,
             updated_at = EXCLUDED.updated_at
         `,
-        [r.id, r.label, r.priority, r.enabled, r.variant_key, r.match_json, r.created_at, r.updated_at]
+        [r.id, r.label, r.priority, r.enabled, r.variant_key, r.tag_key, r.match_json, r.created_at, r.updated_at]
       );
     }
     for (const r of allowlist) {
@@ -658,6 +740,7 @@ async function postAttributionConfig(req, res) {
     await deleteRowsNotIn('attribution_allowlist', 'variant_key', allowlist.map((r) => r.variant_key));
     await deleteRowsNotIn('attribution_rules', 'id', rules.map((r) => r.id));
     await deleteRowsNotIn('attribution_variants', 'variant_key', variants.map((r) => r.variant_key));
+    await deleteRowsNotIn('attribution_tags', 'tag_key', tags.map((r) => r.tag_key));
     await deleteRowsNotIn('attribution_sources', 'source_key', sources.map((r) => r.source_key));
     await deleteRowsNotIn('attribution_channels', 'channel_key', channels.map((r) => r.channel_key));
   } catch (err) {
@@ -671,12 +754,13 @@ async function postAttributionConfig(req, res) {
     try {
       const channelsOut = await db.all('SELECT channel_key, label, sort_order, enabled, updated_at FROM attribution_channels ORDER BY sort_order ASC, label ASC');
       const sourcesOut = await db.all('SELECT source_key, label, icon_spec, sort_order, enabled, updated_at FROM attribution_sources ORDER BY sort_order ASC, label ASC');
-      const variantsOut = await db.all('SELECT variant_key, label, channel_key, source_key, owner_kind, partner_id, network, icon_spec, sort_order, enabled, updated_at FROM attribution_variants ORDER BY sort_order ASC, label ASC');
-      const rulesOut = await db.all('SELECT id, label, priority, enabled, variant_key, match_json, created_at, updated_at FROM attribution_rules ORDER BY priority ASC, created_at ASC');
+      const tagsOut = await db.all('SELECT tag_key, label, icon_spec, sort_order, enabled, updated_at FROM attribution_tags ORDER BY sort_order ASC, label ASC');
+      const variantsOut = await db.all('SELECT variant_key, label, channel_key, source_key, icon_spec, sort_order, enabled, updated_at FROM attribution_variants ORDER BY sort_order ASC, label ASC');
+      const rulesOut = await db.all('SELECT id, label, priority, enabled, variant_key, tag_key, match_json, created_at, updated_at FROM attribution_rules ORDER BY priority ASC, created_at ASC');
       const allowOut = await db.all('SELECT variant_key, enabled, updated_at FROM attribution_allowlist ORDER BY variant_key ASC');
-      return { channels: channelsOut, sources: sourcesOut, variants: variantsOut, rules: rulesOut, allowlist: allowOut };
+      return { channels: channelsOut, sources: sourcesOut, variants: variantsOut, tags: tagsOut, rules: rulesOut, allowlist: allowOut };
     } catch (_) {
-      return { channels: [], sources: [], variants: [], rules: [], allowlist: [] };
+      return { channels: [], sources: [], variants: [], tags: [], rules: [], allowlist: [] };
     }
   })();
 
@@ -735,7 +819,8 @@ async function postAttributionMap(req, res) {
   const body = req && req.body && typeof req.body === 'object' ? req.body : {};
   const tokenType = trimLower(body.token_type != null ? body.token_type : body.tokenType, 48);
   const tokenValue = trimLower(body.token_value != null ? body.token_value : body.tokenValue, 256);
-  const variantKey = normalizeVariantKey(body.variant_key != null ? body.variant_key : body.variantKey);
+  const variantKey = normalizeBaseVariantKey(body.variant_key != null ? body.variant_key : body.variantKey);
+  const tagKey = sanitizeTagKey(body.tag_key != null ? body.tag_key : body.tagKey, { maxLen: 120 });
   const priority = clampInt(body.priority, { min: -1000000, max: 1000000, fallback: 1000 });
 
   if (!tokenType || !tokenValue || !variantKey) {
@@ -765,9 +850,6 @@ async function postAttributionMap(req, res) {
     const label = (body.variant_label != null ? String(body.variant_label) : (body.label != null ? String(body.label) : '')).trim().slice(0, 120) || titleFromKey(variantKey);
     const channelKey = sanitizeKey(body.channel_key != null ? body.channel_key : body.channelKey, { maxLen: 32 }) || 'other';
     const sourceKey = sanitizeKey(body.source_key != null ? body.source_key : body.sourceKey, { maxLen: 32 }) || 'other';
-    const ownerKind = trimLower(body.owner_kind != null ? body.owner_kind : body.ownerKind, 32) || 'house';
-    const partnerId = body.partner_id != null && String(body.partner_id).trim() ? String(body.partner_id).trim().slice(0, 128) : null;
-    const network = body.network != null && String(body.network).trim() ? String(body.network).trim().slice(0, 32) : null;
     const sourceIconSpec = normalizeIconSpec(body.source_icon_spec != null ? body.source_icon_spec : body.sourceIconSpec);
     const variantIconSpec = normalizeIconSpec(
       body.variant_icon_spec != null ? body.variant_icon_spec
@@ -801,15 +883,12 @@ async function postAttributionMap(req, res) {
     }
     await db.run(
       `
-        INSERT INTO attribution_variants (variant_key, label, channel_key, source_key, owner_kind, partner_id, network, icon_spec, sort_order, enabled, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO attribution_variants (variant_key, label, channel_key, source_key, icon_spec, sort_order, enabled, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT (variant_key) DO UPDATE SET
           label = EXCLUDED.label,
           channel_key = EXCLUDED.channel_key,
           source_key = EXCLUDED.source_key,
-          owner_kind = EXCLUDED.owner_kind,
-          partner_id = EXCLUDED.partner_id,
-          network = EXCLUDED.network,
           icon_spec = CASE
             WHEN (attribution_variants.icon_spec IS NULL OR TRIM(attribution_variants.icon_spec) = '')
               AND EXCLUDED.icon_spec IS NOT NULL AND TRIM(EXCLUDED.icon_spec) <> ''
@@ -820,9 +899,26 @@ async function postAttributionMap(req, res) {
           enabled = EXCLUDED.enabled,
           updated_at = EXCLUDED.updated_at
       `,
-      [variantKey, label, channelKey, sourceKey, ownerKind, partnerId, network, variantIconSpec, sortOrder, 1, now]
+      [variantKey, label, channelKey, sourceKey, variantIconSpec, sortOrder, 1, now]
     );
   } catch (_) {}
+
+  // Optional: seed Tag when explicitly provided.
+  if (tagKey) {
+    try {
+      const tagLabel = (body.tag_label != null ? String(body.tag_label) : (body.tagLabel != null ? String(body.tagLabel) : '')).trim().slice(0, 80) || titleFromKey(tagKey);
+      await db.run(
+        `
+          INSERT INTO attribution_tags (tag_key, label, icon_spec, sort_order, enabled, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?)
+          ON CONFLICT (tag_key) DO UPDATE SET
+            label = EXCLUDED.label,
+            updated_at = EXCLUDED.updated_at
+        `,
+        [tagKey, tagLabel, null, 1000, 1, now]
+      );
+    } catch (_) {}
+  }
 
   try {
     if (tokenType === 'kexo_attr') {
@@ -848,22 +944,23 @@ async function postAttributionMap(req, res) {
       else if (tokenType === 'param_pair') match.param_pairs = { any: [tokenValue] };
 
       const idPrefix = `map_${tokenType}`;
-      const id = stableRuleId(idPrefix, { tokenType, tokenValue, variantKey, match });
+      const id = stableRuleId(idPrefix, { tokenType, tokenValue, variantKey, tagKey: tagKey || null, match });
       const label = (body.rule_label != null ? String(body.rule_label) : '').trim().slice(0, 120) || `Map ${tokenType}=${tokenValue}`;
       const matchJson = JSON.stringify(match);
       await db.run(
         `
-          INSERT INTO attribution_rules (id, label, priority, enabled, variant_key, match_json, created_at, updated_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          INSERT INTO attribution_rules (id, label, priority, enabled, variant_key, tag_key, match_json, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
           ON CONFLICT (id) DO UPDATE SET
             label = EXCLUDED.label,
             priority = EXCLUDED.priority,
             enabled = EXCLUDED.enabled,
             variant_key = EXCLUDED.variant_key,
+            tag_key = EXCLUDED.tag_key,
             match_json = EXCLUDED.match_json,
             updated_at = EXCLUDED.updated_at
         `,
-        [id, label, priority, 1, variantKey, matchJson, now, now]
+        [id, label, priority, 1, variantKey, tagKey || null, matchJson, now, now]
       );
     }
   } catch (err) {
@@ -872,7 +969,7 @@ async function postAttributionMap(req, res) {
   }
 
   invalidateAttributionConfigCache();
-  try { await writeAudit('admin', 'attribution_map', { ts: Date.now(), tokenType, variantKey }); } catch (_) {}
+  try { await writeAudit('admin', 'attribution_map', { ts: Date.now(), tokenType, variantKey, tagKey: tagKey || null }); } catch (_) {}
   res.setHeader('Cache-Control', 'no-store');
   res.json({ ok: true });
 }
@@ -912,7 +1009,7 @@ async function postAttributionIcons(req, res) {
     } catch (_) {}
   }
   for (const r of variants) {
-    const variantKey = normalizeVariantKey(r && (r.variant_key != null ? r.variant_key : (r && r.key != null ? r.key : '')));
+    const variantKey = normalizeBaseVariantKey(r && (r.variant_key != null ? r.variant_key : (r && r.key != null ? r.key : '')));
     if (!variantKey) continue;
     const iconSpecInput =
       r && typeof r === 'object'
@@ -920,27 +1017,11 @@ async function postAttributionIcons(req, res) {
         : undefined;
     if (iconSpecInput === undefined) continue;
     const iconSpec = normalizeIconSpec(iconSpecInput);
-
-    const colonIdx = variantKey.indexOf(':');
-    const derivedSourceKey = sanitizeKey(colonIdx > 0 ? variantKey.slice(0, colonIdx) : variantKey, { maxLen: 32 }) || 'other';
-    const derivedOwnerKind = sanitizeKey(colonIdx > 0 ? variantKey.slice(colonIdx + 1) : 'house', { maxLen: 16 }) || 'house';
     try {
       await db.run(
         `
-          INSERT INTO attribution_variants (
-            variant_key,
-            label,
-            channel_key,
-            source_key,
-            owner_kind,
-            partner_id,
-            network,
-            icon_spec,
-            sort_order,
-            enabled,
-            updated_at
-          )
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          INSERT INTO attribution_variants (variant_key, label, channel_key, source_key, icon_spec, sort_order, enabled, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
           ON CONFLICT (variant_key) DO UPDATE SET
             icon_spec = EXCLUDED.icon_spec,
             updated_at = EXCLUDED.updated_at
@@ -949,10 +1030,7 @@ async function postAttributionIcons(req, res) {
           variantKey,
           titleFromKey(variantKey),
           'other',
-          derivedSourceKey,
-          derivedOwnerKind,
-          null,
-          null,
+          'other',
           iconSpec,
           1000,
           1,
@@ -973,8 +1051,10 @@ async function patchAttributionRule(req, res) {
   const ruleId = sanitizeRuleId(req && req.params ? req.params.id : '');
   if (!ruleId) return res.status(400).json({ ok: false, error: 'Invalid rule id' });
   const body = req && req.body && typeof req.body === 'object' ? req.body : {};
-  const destVariantKey = normalizeVariantKey(body.variant_key != null ? body.variant_key : (body.variantKey != null ? body.variantKey : ''));
+  const destVariantKey = normalizeBaseVariantKey(body.variant_key != null ? body.variant_key : (body.variantKey != null ? body.variantKey : ''));
   if (!destVariantKey) return res.status(400).json({ ok: false, error: 'Invalid destination variant_key' });
+  const tagKeyRaw = body.tag_key != null ? body.tag_key : (body.tagKey != null ? body.tagKey : null);
+  const destTagKey = tagKeyRaw == null ? null : (sanitizeTagKey(tagKeyRaw, { maxLen: 120 }) || null);
 
   const db = getDb();
   const now = Date.now();
@@ -989,8 +1069,8 @@ async function patchAttributionRule(req, res) {
   let changes = 0;
   try {
     const r = await db.run(
-      'UPDATE attribution_rules SET variant_key = ?, updated_at = ? WHERE id = ?',
-      [destVariantKey, now, ruleId]
+      'UPDATE attribution_rules SET variant_key = ?, tag_key = ?, updated_at = ? WHERE id = ?',
+      [destVariantKey, destTagKey, now, ruleId]
     );
     changes = r && typeof r.changes === 'number' ? r.changes : 0;
   } catch (err) {
@@ -1001,9 +1081,9 @@ async function patchAttributionRule(req, res) {
   if (!changes) return res.status(404).json({ ok: false, error: 'Rule not found' });
 
   invalidateAttributionConfigCache();
-  try { await writeAudit('admin', 'attribution_rule_move', { ts: now, ruleId, variantKey: destVariantKey }); } catch (_) {}
+  try { await writeAudit('admin', 'attribution_rule_move', { ts: now, ruleId, variantKey: destVariantKey, tagKey: destTagKey }); } catch (_) {}
   res.setHeader('Cache-Control', 'no-store');
-  res.json({ ok: true, id: ruleId, variant_key: destVariantKey, now });
+  res.json({ ok: true, id: ruleId, variant_key: destVariantKey, tag_key: destTagKey, now });
 }
 
 module.exports = {

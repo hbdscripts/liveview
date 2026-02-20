@@ -29,10 +29,18 @@ function normalizeVariantKey(raw) {
   return out.length > 120 ? out.slice(0, 120) : out;
 }
 
-function normalizeOwnerKind(raw) {
-  const s = trimLower(raw, 32);
-  if (s === 'affiliate' || s === 'partner' || s === 'house') return s;
-  return 'house';
+function normalizeTagKey(raw) {
+  const s = raw == null ? '' : String(raw);
+  const out = s.trim().toLowerCase().replace(/[^a-z0-9_-]+/g, '_').replace(/^_+|_+$/g, '');
+  return out.length > 120 ? out.slice(0, 120) : out;
+}
+
+function normalizeBaseVariantKey(raw) {
+  const k = normalizeVariantKey(raw);
+  if (!k) return '';
+  const m = k.match(/^(.*?):(house|affiliate|partner)(?::.*)?$/);
+  if (m && m[1]) return normalizeVariantKey(m[1]) || k;
+  return k;
 }
 
 function safeUrlHost(urlRaw) {
@@ -151,31 +159,21 @@ function sourceKeyFromUtmSource(utmSource) {
 }
 
 function inferMetaFromVariantKey(variantKey) {
-  const key = normalizeVariantKey(variantKey);
-  if (!key) return { channel_key: 'other', source_key: 'other', owner_kind: 'house', partner_id: null, network: null };
-  const parts = key.split(':').filter(Boolean);
-  const head = parts[0] || '';
-  const kind = parts[1] || '';
-  const id = parts[2] || '';
+  const key = normalizeBaseVariantKey(variantKey);
+  if (!key) return { channel_key: 'other', source_key: 'other' };
 
-  function owner() {
-    if (kind === 'affiliate') return 'affiliate';
-    if (kind === 'partner') return 'partner';
-    return 'house';
-  }
-
-  if (head === 'google_ads') return { channel_key: 'paid_search', source_key: 'google', owner_kind: owner(), partner_id: id || null, network: null };
-  if (head === 'google_organic') return { channel_key: 'organic_search', source_key: 'google', owner_kind: 'house', partner_id: null, network: null };
-  if (head === 'bing_ads') return { channel_key: 'paid_search', source_key: 'bing', owner_kind: owner(), partner_id: id || null, network: null };
-  if (head === 'bing_organic') return { channel_key: 'organic_search', source_key: 'bing', owner_kind: 'house', partner_id: null, network: null };
-  if (head === 'meta_ads') return { channel_key: 'paid_social', source_key: 'meta', owner_kind: owner(), partner_id: id || null, network: null };
-  if (head === 'meta_organic') return { channel_key: 'organic_social', source_key: 'meta', owner_kind: 'house', partner_id: null, network: null };
-  if (head === 'omnisend') return { channel_key: 'email', source_key: 'omnisend', owner_kind: 'house', partner_id: null, network: null };
-  if (head === 'klaviyo') return { channel_key: 'email', source_key: 'klaviyo', owner_kind: 'house', partner_id: null, network: null };
-  if (head === 'affiliate') return { channel_key: 'affiliate', source_key: 'other', owner_kind: 'affiliate', partner_id: kind || null, network: null };
-  if (head === 'direct') return { channel_key: 'direct', source_key: 'direct', owner_kind: 'house', partner_id: null, network: null };
-  if (head === 'other') return { channel_key: 'other', source_key: 'other', owner_kind: 'house', partner_id: null, network: null };
-  return { channel_key: 'other', source_key: 'other', owner_kind: 'house', partner_id: null, network: null };
+  if (key === 'direct') return { channel_key: 'direct', source_key: 'direct' };
+  if (key === 'google_ads') return { channel_key: 'paid_search', source_key: 'google' };
+  if (key === 'google_organic') return { channel_key: 'organic_search', source_key: 'google' };
+  if (key === 'bing_ads') return { channel_key: 'paid_search', source_key: 'bing' };
+  if (key === 'bing_organic') return { channel_key: 'organic_search', source_key: 'bing' };
+  if (key === 'meta_ads') return { channel_key: 'paid_social', source_key: 'meta' };
+  if (key === 'meta_organic') return { channel_key: 'organic_social', source_key: 'meta' };
+  if (key === 'omnisend') return { channel_key: 'email', source_key: 'omnisend' };
+  if (key === 'klaviyo') return { channel_key: 'email', source_key: 'klaviyo' };
+  if (key === 'affiliate') return { channel_key: 'affiliate', source_key: 'other' };
+  if (key === 'other') return { channel_key: 'other', source_key: 'other' };
+  return { channel_key: 'other', source_key: 'other' };
 }
 
 function matchListAny(valueOrList, anyList) {
@@ -225,21 +223,23 @@ async function readAttributionConfigFromDb() {
   let channels = [];
   let sources = [];
   let variants = [];
+  let tags = [];
   let rules = [];
   let allowlist = [];
+  try { channels = await db.all('SELECT channel_key, label, sort_order, enabled, updated_at FROM attribution_channels ORDER BY sort_order ASC, label ASC'); } catch (_) { channels = []; }
+  try { sources = await db.all('SELECT source_key, label, icon_spec, sort_order, enabled, updated_at FROM attribution_sources ORDER BY sort_order ASC, label ASC'); } catch (_) { sources = []; }
+  try { variants = await db.all('SELECT variant_key, label, channel_key, source_key, icon_spec, sort_order, enabled, updated_at FROM attribution_variants ORDER BY sort_order ASC, label ASC'); } catch (_) { variants = []; }
+  try { tags = await db.all('SELECT tag_key, label, icon_spec, sort_order, enabled, updated_at FROM attribution_tags ORDER BY sort_order ASC, label ASC'); } catch (_) { tags = []; }
   try {
-    channels = await db.all('SELECT channel_key, label, sort_order, enabled, updated_at FROM attribution_channels ORDER BY sort_order ASC, label ASC');
-    sources = await db.all('SELECT source_key, label, icon_spec, sort_order, enabled, updated_at FROM attribution_sources ORDER BY sort_order ASC, label ASC');
-    variants = await db.all('SELECT variant_key, label, channel_key, source_key, owner_kind, partner_id, network, icon_spec, sort_order, enabled, updated_at FROM attribution_variants ORDER BY sort_order ASC, label ASC');
-    rules = await db.all('SELECT id, label, priority, enabled, variant_key, match_json, created_at, updated_at FROM attribution_rules ORDER BY priority ASC, created_at ASC');
-    allowlist = await db.all('SELECT variant_key, enabled, updated_at FROM attribution_allowlist ORDER BY variant_key ASC');
+    rules = await db.all('SELECT id, label, priority, enabled, variant_key, tag_key, match_json, created_at, updated_at FROM attribution_rules ORDER BY priority ASC, created_at ASC');
   } catch (_) {
-    channels = [];
-    sources = [];
-    variants = [];
-    rules = [];
-    allowlist = [];
+    try {
+      rules = await db.all('SELECT id, label, priority, enabled, variant_key, match_json, created_at, updated_at FROM attribution_rules ORDER BY priority ASC, created_at ASC');
+    } catch (_) {
+      rules = [];
+    }
   }
+  try { allowlist = await db.all('SELECT variant_key, enabled, updated_at FROM attribution_allowlist ORDER BY variant_key ASC'); } catch (_) { allowlist = []; }
 
   const channelsByKey = new Map();
   (channels || []).forEach((r) => {
@@ -270,16 +270,27 @@ async function readAttributionConfigFromDb() {
 
   const variantsByKey = new Map();
   (variants || []).forEach((r) => {
-    const k = normalizeVariantKey(r && r.variant_key != null ? String(r.variant_key) : '');
+    const k = normalizeBaseVariantKey(r && r.variant_key != null ? String(r.variant_key) : '');
     if (!k) return;
     variantsByKey.set(k, {
       key: k,
       label: r && r.label != null ? String(r.label) : k,
       channel_key: trimLower(r && r.channel_key != null ? String(r.channel_key) : '', 32) || 'other',
       source_key: trimLower(r && r.source_key != null ? String(r.source_key) : '', 32) || 'other',
-      owner_kind: normalizeOwnerKind(r && r.owner_kind != null ? String(r.owner_kind) : ''),
-      partner_id: r && r.partner_id != null && String(r.partner_id).trim() ? String(r.partner_id).trim().slice(0, 128) : null,
-      network: r && r.network != null && String(r.network).trim() ? String(r.network).trim().slice(0, 32) : null,
+      icon_spec: r && r.icon_spec != null ? String(r.icon_spec) : null,
+      sort_order: r && r.sort_order != null ? Number(r.sort_order) : 0,
+      enabled: !!Number(r && r.enabled),
+      updated_at: r && r.updated_at != null ? Number(r.updated_at) : now,
+    });
+  });
+
+  const tagsByKey = new Map();
+  (tags || []).forEach((r) => {
+    const k = normalizeTagKey(r && r.tag_key != null ? String(r.tag_key) : '');
+    if (!k) return;
+    tagsByKey.set(k, {
+      key: k,
+      label: r && r.label != null ? String(r.label) : k,
       icon_spec: r && r.icon_spec != null ? String(r.icon_spec) : null,
       sort_order: r && r.sort_order != null ? Number(r.sort_order) : 0,
       enabled: !!Number(r && r.enabled),
@@ -290,8 +301,9 @@ async function readAttributionConfigFromDb() {
   const parsedRules = [];
   (rules || []).forEach((r) => {
     const id = trimLower(r && r.id != null ? String(r.id) : '', 80);
-    const variantKey = normalizeVariantKey(r && r.variant_key != null ? String(r.variant_key) : '');
+    const variantKey = normalizeBaseVariantKey(r && r.variant_key != null ? String(r.variant_key) : '');
     if (!id || !variantKey) return;
+    const tagKey = normalizeTagKey(r && r.tag_key != null ? String(r.tag_key) : '');
     let match = {};
     try {
       match = r && r.match_json ? JSON.parse(String(r.match_json)) : {};
@@ -305,6 +317,7 @@ async function readAttributionConfigFromDb() {
       priority: r && r.priority != null ? Number(r.priority) : 0,
       enabled: !!Number(r && r.enabled),
       variant_key: variantKey,
+      tag_key: tagKey || null,
       match,
       created_at: r && r.created_at != null ? Number(r.created_at) : now,
       updated_at: r && r.updated_at != null ? Number(r.updated_at) : now,
@@ -314,7 +327,7 @@ async function readAttributionConfigFromDb() {
 
   const allowlisted = new Map();
   (allowlist || []).forEach((r) => {
-    const k = normalizeVariantKey(r && r.variant_key != null ? String(r.variant_key) : '');
+    const k = normalizeBaseVariantKey(r && r.variant_key != null ? String(r.variant_key) : '');
     if (!k) return;
     allowlisted.set(k, !!Number(r && r.enabled));
   });
@@ -323,6 +336,7 @@ async function readAttributionConfigFromDb() {
     channelsByKey,
     sourcesByKey,
     variantsByKey,
+    tagsByKey,
     rules: parsedRules,
     allowlistedVariants: allowlisted,
   };
@@ -351,6 +365,7 @@ async function readAttributionConfigCached(opts = {}) {
         channelsByKey: new Map(),
         sourcesByKey: new Map(),
         variantsByKey: new Map(),
+        tagsByKey: new Map(),
         rules: [],
         allowlistedVariants: new Map(),
       };
@@ -433,26 +448,20 @@ async function deriveAttribution(inputs = {}) {
   });
 
   function resolveVariantMeta(variantKey) {
-    const k = normalizeVariantKey(variantKey);
+    const k = normalizeBaseVariantKey(variantKey);
     const row = variantsByKey.get(k);
     if (row && row.enabled !== false) {
       return {
         variant: k,
         channel_key: row.channel_key || 'other',
         source_key: row.source_key || 'other',
-        owner_kind: normalizeOwnerKind(row.owner_kind),
-        partner_id: row.partner_id || null,
-        network: row.network || null,
       };
     }
     const inferred = inferMetaFromVariantKey(k);
     return {
-      variant: k || 'other:house',
+      variant: k || 'other',
       channel_key: inferred.channel_key || 'other',
       source_key: inferred.source_key || 'other',
-      owner_kind: normalizeOwnerKind(inferred.owner_kind),
-      partner_id: inferred.partner_id || null,
-      network: inferred.network || null,
     };
   }
 
@@ -462,7 +471,7 @@ async function deriveAttribution(inputs = {}) {
     const v = entry && entry.params && entry.params.kexo_attr ? entry.params.kexo_attr : null;
     explicitRaw = Array.isArray(v) && v.length ? String(v[0] || '') : '';
   } catch (_) { explicitRaw = ''; }
-  const explicitVariantKey = normalizeVariantKey(explicitRaw);
+  const explicitVariantKey = normalizeBaseVariantKey(explicitRaw);
   if (explicitVariantKey) {
     upsertObservedToken(db, 'kexo_attr', explicitVariantKey, nowMs, entryUrl);
     const allow = allowlistedVariants && allowlistedVariants.get(explicitVariantKey) === true;
@@ -472,9 +481,7 @@ async function deriveAttribution(inputs = {}) {
         channel: meta.channel_key,
         source: meta.source_key,
         variant: meta.variant,
-        owner_kind: meta.owner_kind,
-        partner_id: meta.partner_id,
-        network: meta.network,
+        tag: null,
         confidence: 'explicit_param',
         evidence_json: {
           winner: 'explicit_param',
@@ -497,13 +504,11 @@ async function deriveAttribution(inputs = {}) {
       channel: meta.channel_key,
       source: meta.source_key,
       variant: meta.variant,
-      owner_kind: meta.owner_kind,
-      partner_id: meta.partner_id,
-      network: meta.network,
+      tag: rule && rule.tag_key ? normalizeTagKey(rule.tag_key) || null : null,
       confidence: 'rules',
       evidence_json: {
         winner: 'rules',
-        rule: { id: rule.id, variant_key: rule.variant_key, priority: rule.priority },
+        rule: { id: rule.id, variant_key: rule.variant_key, tag_key: rule.tag_key || null, priority: rule.priority },
         explicit: explicitVariantKey ? { variant_key: explicitVariantKey, allowlisted: allowlistedVariants.get(explicitVariantKey) === true } : null,
         inputs: { entry_url: entryUrl || null, referrer: referrer || null, utm_source: utmSource || null, utm_medium: utmMedium || null, utm_campaign: utmCampaign || null, utm_content: utmContent || null, utm_term: utmTerm || null },
         referrer_host: referrerHost || null,
@@ -517,14 +522,12 @@ async function deriveAttribution(inputs = {}) {
   const hasAnyClickId = !!(clickIds && (clickIds.gclid || clickIds.msclkid || clickIds.fbclid || clickIds.ttclid || clickIds.twclid || clickIds.wbraid || clickIds.gbraid || clickIds.yclid));
   const isDirect = !hasAnyUtm && !hasAnyClickId && !effectiveReferrerHost;
   if (isDirect) {
-    const meta = resolveVariantMeta('direct:house');
+    const meta = resolveVariantMeta('direct');
     return {
       channel: meta.channel_key,
       source: meta.source_key,
       variant: meta.variant,
-      owner_kind: meta.owner_kind,
-      partner_id: meta.partner_id,
-      network: meta.network,
+      tag: null,
       confidence: 'direct',
       evidence_json: {
         winner: 'direct',
@@ -536,14 +539,12 @@ async function deriveAttribution(inputs = {}) {
   // Email/SMS are explicit.
   if (looksEmailMedium(utmMedium)) {
     const src = sourceKeyFromUtmSource(utmSource) || 'other';
-    const meta = resolveVariantMeta((src === 'omnisend' || src === 'klaviyo') ? (src + ':house') : 'other:house');
+    const meta = resolveVariantMeta((src === 'omnisend' || src === 'klaviyo') ? src : 'other');
     return {
       channel: 'email',
       source: src,
       variant: meta.variant,
-      owner_kind: meta.owner_kind,
-      partner_id: meta.partner_id,
-      network: meta.network,
+      tag: null,
       confidence: 'heuristic',
       evidence_json: { winner: 'heuristic', kind: 'email', inputs: { utm_source: utmSource || null, utm_medium: utmMedium || null }, click_ids: clickIds },
     };
@@ -552,10 +553,8 @@ async function deriveAttribution(inputs = {}) {
     return {
       channel: 'sms',
       source: 'other',
-      variant: 'other:house',
-      owner_kind: 'house',
-      partner_id: null,
-      network: null,
+      variant: 'other',
+      tag: null,
       confidence: 'heuristic',
       evidence_json: { winner: 'heuristic', kind: 'sms', inputs: { utm_source: utmSource || null, utm_medium: utmMedium || null }, click_ids: clickIds },
     };
@@ -564,40 +563,34 @@ async function deriveAttribution(inputs = {}) {
   // Paid search/social by click IDs and/or utm_medium.
   const srcHint = sourceKeyFromUtmSource(utmSource);
   if (clickIds && (clickIds.gclid || clickIds.wbraid || clickIds.gbraid || (srcHint === 'google' && looksPaidMedium(utmMedium)))) {
-    const meta = resolveVariantMeta('google_ads:house');
+    const meta = resolveVariantMeta('google_ads');
     return {
       channel: 'paid_search',
       source: 'google',
       variant: meta.variant,
-      owner_kind: meta.owner_kind,
-      partner_id: meta.partner_id,
-      network: meta.network,
+      tag: null,
       confidence: 'heuristic',
       evidence_json: { winner: 'heuristic', kind: 'google_ads', inputs: { utm_source: utmSource || null, utm_medium: utmMedium || null }, click_ids: clickIds },
     };
   }
   if (clickIds && (clickIds.msclkid || (srcHint === 'bing' && looksPaidMedium(utmMedium)))) {
-    const meta = resolveVariantMeta('bing_ads:house');
+    const meta = resolveVariantMeta('bing_ads');
     return {
       channel: 'paid_search',
       source: 'bing',
       variant: meta.variant,
-      owner_kind: meta.owner_kind,
-      partner_id: meta.partner_id,
-      network: meta.network,
+      tag: null,
       confidence: 'heuristic',
       evidence_json: { winner: 'heuristic', kind: 'bing_ads', inputs: { utm_source: utmSource || null, utm_medium: utmMedium || null }, click_ids: clickIds },
     };
   }
   if (clickIds && (clickIds.fbclid || (srcHint === 'meta' && looksPaidMedium(utmMedium)))) {
-    const meta = resolveVariantMeta('meta_ads:house');
+    const meta = resolveVariantMeta('meta_ads');
     return {
       channel: 'paid_social',
       source: 'meta',
       variant: meta.variant,
-      owner_kind: meta.owner_kind,
-      partner_id: meta.partner_id,
-      network: meta.network,
+      tag: null,
       confidence: 'heuristic',
       evidence_json: { winner: 'heuristic', kind: 'meta_ads', inputs: { utm_source: utmSource || null, utm_medium: utmMedium || null }, click_ids: clickIds },
     };
@@ -606,12 +599,12 @@ async function deriveAttribution(inputs = {}) {
   // Organic search
   if (utmMedium === 'organic' || utmMedium.indexOf('organic') >= 0) {
     if (srcHint === 'google') {
-      const meta = resolveVariantMeta('google_organic:house');
-      return { channel: 'organic_search', source: 'google', variant: meta.variant, owner_kind: meta.owner_kind, partner_id: meta.partner_id, network: meta.network, confidence: 'heuristic', evidence_json: { winner: 'heuristic', kind: 'google_organic', inputs: { utm_source: utmSource || null, utm_medium: utmMedium || null } } };
+      const meta = resolveVariantMeta('google_organic');
+      return { channel: 'organic_search', source: 'google', variant: meta.variant, tag: null, confidence: 'heuristic', evidence_json: { winner: 'heuristic', kind: 'google_organic', inputs: { utm_source: utmSource || null, utm_medium: utmMedium || null } } };
     }
     if (srcHint === 'bing') {
-      const meta = resolveVariantMeta('bing_organic:house');
-      return { channel: 'organic_search', source: 'bing', variant: meta.variant, owner_kind: meta.owner_kind, partner_id: meta.partner_id, network: meta.network, confidence: 'heuristic', evidence_json: { winner: 'heuristic', kind: 'bing_organic', inputs: { utm_source: utmSource || null, utm_medium: utmMedium || null } } };
+      const meta = resolveVariantMeta('bing_organic');
+      return { channel: 'organic_search', source: 'bing', variant: meta.variant, tag: null, confidence: 'heuristic', evidence_json: { winner: 'heuristic', kind: 'bing_organic', inputs: { utm_source: utmSource || null, utm_medium: utmMedium || null } } };
     }
   }
 
@@ -620,10 +613,8 @@ async function deriveAttribution(inputs = {}) {
     return {
       channel: 'referral',
       source: 'other',
-      variant: 'other:house',
-      owner_kind: 'house',
-      partner_id: null,
-      network: null,
+      variant: 'other',
+      tag: null,
       confidence: 'heuristic',
       evidence_json: { winner: 'heuristic', kind: 'referral', referrer_host: referrerHost },
     };
@@ -633,10 +624,8 @@ async function deriveAttribution(inputs = {}) {
   return {
     channel: 'other',
     source: 'other',
-    variant: 'other:house',
-    owner_kind: 'house',
-    partner_id: null,
-    network: null,
+    variant: 'other',
+    tag: null,
     confidence: 'unknown',
     evidence_json: {
       winner: 'unknown',
