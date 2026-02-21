@@ -6884,6 +6884,12 @@ body[data-bs-theme="dark"] .kexo-upgrade-locked .kexo-upgrade-lock-overlay {
 }
 .settings-nav-child.active::before { opacity: 1; }
 
+/* Settings read-only fields (env-backed). Keep copyable, but look non-editable. */
+body[data-page="settings"] .kexo-readonly-field[readonly] {
+  background: color-mix(in srgb, var(--tblr-bg-surface, #fff) 88%, var(--tblr-border-color, #e6e7e9));
+  cursor: default;
+}
+
 /* Settings mobile menu (hamburger drawer). Sidebar hidden on mobile. */
 body[data-page="settings"] .settings-mobile-topbar { user-select: none; }
 html.settings-mobile-menu-open,

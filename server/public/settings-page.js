@@ -16,6 +16,7 @@
 
   // Persist the shop parameter even if the Settings UI rewrites the URL.
   var _settingsShopParamCache = '';
+  var _settingsUrlNormalizeNotice = '';
 
   function fetchWithTimeout(url, options, timeoutMs) {
     var ms = typeof timeoutMs === 'number' ? timeoutMs : 25000;
@@ -44,8 +45,27 @@
       var rawSearch = String(window.location.search || '');
       if (!rawSearch) return;
       var params = new URLSearchParams(rawSearch);
-      var keep = new URLSearchParams();
-      var rawTab = String(params.get('tab') || '').trim().toLowerCase();
+      var changed = false;
+
+      function setParam(k, v) {
+        var key = String(k || '');
+        var val = v == null ? '' : String(v);
+        if (!key) return;
+        if (params.get(key) === val) return;
+        params.set(key, val);
+        changed = true;
+      }
+
+      function delParam(k) {
+        var key = String(k || '');
+        if (!key) return;
+        if (!params.has(key)) return;
+        params.delete(key);
+        changed = true;
+      }
+
+      var legacyTab = String(params.get('tab') || '').trim().toLowerCase();
+      var rawTab = legacyTab;
       if (rawTab === 'sources') rawTab = 'attribution';
       if (rawTab === 'general' || rawTab === 'assets' || rawTab === 'theme') rawTab = 'kexo';
       if (rawTab === 'charts' || rawTab === 'kpis') rawTab = 'layout';
@@ -55,18 +75,28 @@
         'cost-expenses': true,
         admin: true,
       };
-      if (allowedTabs[rawTab]) {
-        if (rawTab === 'admin' && !document.getElementById('settings-tab-admin')) keep.set('tab', 'kexo');
-        else if (rawTab === 'cost-expenses' && !document.getElementById('settings-tab-cost-expenses')) keep.set('tab', 'kexo');
-        else keep.set('tab', rawTab);
+      if (rawTab && allowedTabs[rawTab]) {
+        if (rawTab === 'admin' && !document.getElementById('settings-tab-admin')) rawTab = 'kexo';
+        if (rawTab === 'cost-expenses' && !document.getElementById('settings-tab-cost-expenses')) rawTab = 'kexo';
+        setParam('tab', rawTab);
+      } else if (params.has('tab')) {
+        delParam('tab');
       }
+
+      var tab = String(params.get('tab') || '').trim().toLowerCase();
+
+      // cost-expenses
       var rawCostExpenses = String(params.get('costExpensesTab') || '').trim().toLowerCase();
-      if ((rawCostExpenses === 'cost-sources' || rawCostExpenses === 'shipping' || rawCostExpenses === 'rules' || rawCostExpenses === 'breakdown') && keep.get('tab') === 'cost-expenses') {
-        keep.set('costExpensesTab', rawCostExpenses);
+      if (tab === 'cost-expenses') {
+        if (rawCostExpenses === 'cost-sources' || rawCostExpenses === 'shipping' || rawCostExpenses === 'rules' || rawCostExpenses === 'breakdown') setParam('costExpensesTab', rawCostExpenses);
+        else delParam('costExpensesTab');
+      } else {
+        delParam('costExpensesTab');
       }
+
+      // kexo
       var rawKexo = String(params.get('kexoTab') || params.get('kexo') || '').trim().toLowerCase();
       if (!rawKexo) {
-        var legacyTab = String(params.get('tab') || '').trim().toLowerCase();
         if (legacyTab === 'theme') rawKexo = 'theme-display';
         else if (legacyTab === 'general' || legacyTab === 'assets') rawKexo = 'general';
       }
@@ -74,31 +104,62 @@
       if (kexoToNew[rawKexo]) rawKexo = kexoToNew[rawKexo];
       if (rawKexo === 'brand-appearance') rawKexo = 'icons-assets';
       var allowedKexo = { general: true, 'icons-assets': true, 'theme-display': true };
-      if (allowedKexo[rawKexo] && keep.get('tab') === 'kexo') {
-        keep.set('kexoTab', rawKexo);
+      if (tab === 'kexo') {
+        if (allowedKexo[rawKexo]) setParam('kexoTab', rawKexo);
+        else delParam('kexoTab');
+      } else {
+        delParam('kexoTab');
       }
+      delParam('kexo');
+
+      // layout
       var rawLayout = String(params.get('layoutTab') || params.get('layout') || '').trim().toLowerCase();
-      if ((rawLayout === 'tables' || rawLayout === 'charts' || rawLayout === 'kpis' || rawLayout === 'date-ranges') && keep.get('tab') === 'layout') {
-        keep.set('layoutTab', rawLayout);
+      if (!rawLayout) {
+        if (legacyTab === 'kpis') rawLayout = 'kpis';
+        else if (legacyTab === 'charts') rawLayout = 'tables';
       }
-      if (rawLayout === 'charts') keep.set('layoutTab', 'tables');
+      if (rawLayout === 'charts') rawLayout = 'tables';
+      if (tab === 'layout') {
+        if (rawLayout === 'tables' || rawLayout === 'kpis' || rawLayout === 'date-ranges') setParam('layoutTab', rawLayout);
+        else delParam('layoutTab');
+      } else {
+        delParam('layoutTab');
+      }
+      delParam('layout');
+
+      // integrations
       var rawIntegrations = String(params.get('integrationsTab') || '').trim().toLowerCase();
-      if ((rawIntegrations === 'shopify' || rawIntegrations === 'googleads') && keep.get('tab') === 'integrations') {
-        keep.set('integrationsTab', rawIntegrations);
+      if (tab === 'integrations') {
+        if (rawIntegrations === 'shopify' || rawIntegrations === 'googleads') setParam('integrationsTab', rawIntegrations);
+        else delParam('integrationsTab');
+      } else {
+        delParam('integrationsTab');
       }
+
+      // attribution
+      var rawAttribution = String(params.get('attributionTab') || '').trim().toLowerCase();
+      if (tab === 'attribution') {
+        if (rawAttribution === 'mapping' || rawAttribution === 'tree') setParam('attributionTab', rawAttribution);
+        else delParam('attributionTab');
+      } else {
+        delParam('attributionTab');
+      }
+
+      // admin
       var rawAdminTab = String(params.get('adminTab') || '').trim().toLowerCase();
-      if ((rawAdminTab === 'controls' || rawAdminTab === 'diagnostics' || rawAdminTab === 'users') && keep.get('tab') === 'admin') {
-        keep.set('adminTab', rawAdminTab);
+      if (tab === 'admin') {
+        if (rawAdminTab === 'controls' || rawAdminTab === 'diagnostics' || rawAdminTab === 'users') setParam('adminTab', rawAdminTab);
+        else delParam('adminTab');
+      } else {
+        delParam('adminTab');
       }
-      var rawShop = String(params.get('shop') || '').trim();
-      if (rawShop) keep.set('shop', rawShop);
-      // Preserve Google Ads OAuth marker so the UI can show a useful hint after redirect.
-      var rawAdsOauth = String(params.get('ads_oauth') || '').trim();
-      if (rawAdsOauth) keep.set('ads_oauth', rawAdsOauth);
-      var nextSearch = keep.toString();
-      var nextUrl = window.location.pathname + (nextSearch ? ('?' + nextSearch) : '') + (window.location.hash || '');
-      var curUrl = window.location.pathname + rawSearch + (window.location.hash || '');
-      if (nextUrl !== curUrl) window.history.replaceState(null, '', nextUrl);
+
+      if (changed) {
+        _settingsUrlNormalizeNotice = 'Updated a legacy Settings link to the current tab format.';
+        var nextSearch = params.toString();
+        var nextUrl = window.location.pathname + (nextSearch ? ('?' + nextSearch) : '') + (window.location.hash || '');
+        window.history.replaceState(null, '', nextUrl);
+      }
     } catch (_) {}
   }
   normalizeSettingsUrlQueryEarly();
@@ -132,6 +193,154 @@
     try { st.overlay.classList.add('is-hidden'); } catch (_) {}
     try { st.pageBody.classList.remove('report-building'); } catch (_) {}
     try { st.pageBody.style.minHeight = ''; } catch (_) {}
+  }
+
+  var _settingsGlobalLoadErrors = [];
+  var _settingsGlobalBannerKind = 'hidden';
+
+  function getSettingsGlobalBannerEls() {
+    var wrap = document.getElementById('settings-global-banner');
+    if (!wrap) return null;
+    var spinnerEl = document.getElementById('settings-global-banner-spinner');
+    var textEl = document.getElementById('settings-global-banner-text');
+    var retryBtn = document.getElementById('settings-global-banner-retry');
+    return { wrap: wrap, spinnerEl: spinnerEl, textEl: textEl, retryBtn: retryBtn };
+  }
+
+  function showSettingsGlobalBanner(kind, message) {
+    var k = String(kind || '').trim().toLowerCase();
+    if (k !== 'error' && k !== 'loading' && k !== 'info') k = 'info';
+    _settingsGlobalBannerKind = k;
+    var els = getSettingsGlobalBannerEls();
+    if (!els) return;
+    var isLoading = k === 'loading';
+    var isError = k === 'error';
+    try { els.wrap.classList.remove('d-none'); } catch (_) {}
+    try {
+      els.wrap.classList.remove('alert-info', 'alert-danger', 'alert-warning', 'alert-success');
+      els.wrap.classList.add(isError ? 'alert-danger' : 'alert-info');
+    } catch (_) {}
+    if (els.textEl) els.textEl.textContent = message != null ? String(message) : '';
+    if (els.spinnerEl) els.spinnerEl.classList.toggle('d-none', !isLoading);
+    if (els.retryBtn) els.retryBtn.classList.toggle('d-none', !isError);
+  }
+
+  function hideSettingsGlobalBanner() {
+    var els = getSettingsGlobalBannerEls();
+    if (!els) return;
+    _settingsGlobalBannerKind = 'hidden';
+    try { els.wrap.classList.add('d-none'); } catch (_) {}
+  }
+
+  function reportSettingsGlobalLoadError(message) {
+    var msg = message != null ? String(message).trim() : '';
+    if (!msg) msg = 'Some settings failed to load.';
+    if (_settingsGlobalLoadErrors.indexOf(msg) === -1) _settingsGlobalLoadErrors.push(msg);
+    showSettingsGlobalBanner('error', _settingsGlobalLoadErrors.join(' '));
+  }
+
+  function wireSettingsGlobalBannerRetry() {
+    var els = getSettingsGlobalBannerEls();
+    if (!els || !els.retryBtn) return;
+    if (els.retryBtn.getAttribute('data-wired') === '1') return;
+    els.retryBtn.setAttribute('data-wired', '1');
+    els.retryBtn.addEventListener('click', function () {
+      try { window.location.reload(); } catch (_) {}
+    });
+  }
+
+  function copyLabelTitlesToControls(root) {
+    var scope = root && root.querySelectorAll ? root : document;
+    try {
+      scope.querySelectorAll('label[for][title]').forEach(function (label) {
+        var id = label.getAttribute('for');
+        if (!id) return;
+        var target = document.getElementById(id);
+        if (!target || !target.setAttribute || !target.getAttribute) return;
+        if (target.getAttribute('title')) return;
+        var title = label.getAttribute('title');
+        if (title) target.setAttribute('title', title);
+      });
+    } catch (_) {}
+  }
+
+  function isEffectiveAdminViewer(viewer) {
+    try { return !!(viewer && (viewer.isAdmin === true || viewer.isMaster === true)); } catch (_) { return false; }
+  }
+
+  function applyAdminOnlyVisibility(viewer) {
+    var isAdmin = isEffectiveAdminViewer(viewer);
+    try { if (window.__kexoIsMasterUser === true) isAdmin = true; } catch (_) {}
+    try {
+      document.querySelectorAll('.kexo-admin-only').forEach(function (el) {
+        if (!el || !el.classList) return;
+        el.classList.toggle('d-none', !isAdmin);
+      });
+    } catch (_) {}
+
+    // If a non-admin deep-links to Admin, bounce to Kexo so the page doesn't look broken.
+    if (!isAdmin) {
+      try {
+        if (getActiveSettingsTab() === 'admin') {
+          activateTab('kexo');
+          syncLeftNavActiveClasses('kexo');
+          updateUrl('kexo');
+          showSettingsGlobalBanner('error', 'Admin settings require an admin account.');
+        }
+      } catch (_) {}
+    }
+  }
+
+  function wireAdminOnlyVisibility() {
+    if (document.documentElement.getAttribute('data-kexo-admin-only-wired') === '1') return;
+    document.documentElement.setAttribute('data-kexo-admin-only-wired', '1');
+    try {
+      if (typeof window.__kexoGetEffectiveViewer === 'function') applyAdminOnlyVisibility(window.__kexoGetEffectiveViewer());
+      else if (window.__kexoIsMasterUser === true) applyAdminOnlyVisibility({ isAdmin: true, isMaster: true });
+      else applyAdminOnlyVisibility(null);
+    } catch (_) { applyAdminOnlyVisibility(null); }
+    try {
+      window.addEventListener('kexo:viewer-changed', function (ev) {
+        try { applyAdminOnlyVisibility(ev && ev.detail ? ev.detail : null); } catch (_) {}
+      });
+    } catch (_) {}
+  }
+
+  function ensureThemePanelReadyOrShowError() {
+    var panel = document.getElementById('settings-theme-panel');
+    if (!panel) return;
+    try { if (panel.querySelector('#theme-settings-form')) return; } catch (_) {}
+    var txt = '';
+    try { txt = String(panel.textContent || '').toLowerCase(); } catch (_) { txt = ''; }
+    var looksLoading = false;
+    try { looksLoading = txt.indexOf('loading theme') >= 0 || !!panel.querySelector('.dm-loading'); } catch (_) { looksLoading = false; }
+    if (!looksLoading) return;
+    panel.innerHTML = '' +
+      '<div class="alert alert-danger mb-0">' +
+        '<div class="fw-semibold mb-1">Theme settings failed to load.</div>' +
+        '<div class="text-secondary small mb-2">Try reloading the page. If this keeps happening, check that <code>/theme-settings.js</code> is loading without errors.</div>' +
+        '<button type="button" class="btn btn-sm btn-outline-danger" id="settings-theme-reload-btn">Reload</button>' +
+      '</div>';
+    try {
+      var btn = panel.querySelector('#settings-theme-reload-btn');
+      if (btn) btn.addEventListener('click', function () { try { window.location.reload(); } catch (_) {} });
+    } catch (_) {}
+  }
+
+  function renderAttributionInitError(rootId, which) {
+    var root = document.getElementById(String(rootId || ''));
+    if (!root) return;
+    var label = which != null ? String(which) : 'Attribution';
+    root.innerHTML = '' +
+      '<div class="alert alert-danger mb-0">' +
+        '<div class="fw-semibold mb-1">' + escapeHtml(label) + ' failed to load.</div>' +
+        '<div class="text-secondary small mb-2">Try reloading the page. If this keeps happening, check that the attribution settings scripts are loading without errors.</div>' +
+        '<button type="button" class="btn btn-sm btn-outline-danger" data-kexo-attribution-retry="1">Retry</button>' +
+      '</div>';
+    try {
+      var btn = root.querySelector('[data-kexo-attribution-retry="1"]');
+      if (btn) btn.addEventListener('click', function () { try { window.location.reload(); } catch (_) {} });
+    } catch (_) {}
   }
 
   var kpiUiConfigCache = null;
@@ -521,12 +730,16 @@
     var tablist = document.getElementById('settings-category-tablist');
     if (!btn || !drawer || !backdrop || !menuRoot || !tablist) return;
 
+    var lastFocusEl = null;
+
     function closeMenu() {
       try { btn.setAttribute('aria-expanded', 'false'); } catch (_) {}
       try { document.documentElement.classList.remove('settings-mobile-menu-open'); } catch (_) {}
       try { backdrop.hidden = true; } catch (_) {}
       try { drawer.hidden = true; } catch (_) {}
-      try { btn.focus(); } catch (_) {}
+      var restore = lastFocusEl && lastFocusEl.focus ? lastFocusEl : btn;
+      lastFocusEl = null;
+      try { restore.focus(); } catch (_) {}
     }
 
     function collapseAllMobileCategories() {
@@ -627,17 +840,41 @@
     }
 
     function openMenu() {
+      try { lastFocusEl = document.activeElement; } catch (_) { lastFocusEl = null; }
       try { btn.setAttribute('aria-expanded', 'true'); } catch (_) {}
       try { backdrop.hidden = false; } catch (_) {}
       try { drawer.hidden = false; } catch (_) {}
       try { document.documentElement.classList.add('settings-mobile-menu-open'); } catch (_) {}
       try { syncSettingsMobileMenuTitle(); } catch (_) {}
       try { buildMenu(); } catch (_) {}
-      setTimeout(function () { try { drawer.focus(); } catch (_) {} }, 0);
+      setTimeout(function () {
+        try {
+          var first = drawer.querySelector('.settings-mobile-cat-btn') || drawer.querySelector('a[href]') || null;
+          if (first && typeof first.focus === 'function') first.focus();
+          else drawer.focus();
+        } catch (_) {}
+      }, 0);
     }
 
     function isOpen() {
       try { return document.documentElement.classList.contains('settings-mobile-menu-open'); } catch (_) { return false; }
+    }
+
+    function getFocusableInDrawer() {
+      var out = [];
+      try {
+        var nodes = drawer.querySelectorAll('button, a[href], input, select, textarea, [tabindex]');
+        Array.prototype.forEach.call(nodes, function (el) {
+          if (!el || el === drawer) return;
+          if (el.hidden) return;
+          if (el.disabled) return;
+          var tabIndex = el.getAttribute && el.getAttribute('tabindex');
+          if (tabIndex === '-1') return;
+          try { if (el.getClientRects && el.getClientRects().length === 0) return; } catch (_) {}
+          out.push(el);
+        });
+      } catch (_) {}
+      return out;
     }
 
     // Build once for initial label; we rebuild on open in case tabs are toggled by viewer plan.
@@ -649,7 +886,33 @@
     window.addEventListener('keydown', function (e) {
       if (!isOpen()) return;
       var k = e && e.key != null ? String(e.key) : '';
-      if (k === 'Escape') closeMenu();
+      if (k === 'Escape') {
+        try { e.preventDefault(); } catch (_) {}
+        closeMenu();
+        return;
+      }
+      if (k !== 'Tab') return;
+      var focusable = getFocusableInDrawer();
+      if (!focusable.length) {
+        try { e.preventDefault(); } catch (_) {}
+        try { drawer.focus(); } catch (_) {}
+        return;
+      }
+      var first = focusable[0];
+      var last = focusable[focusable.length - 1];
+      var active = null;
+      try { active = document.activeElement; } catch (_) { active = null; }
+      if (e && e.shiftKey) {
+        if (active === first || active === drawer || !drawer.contains(active)) {
+          try { e.preventDefault(); } catch (_) {}
+          try { last.focus(); } catch (_) {}
+        }
+      } else {
+        if (active === last) {
+          try { e.preventDefault(); } catch (_) {}
+          try { first.focus(); } catch (_) {}
+        }
+      }
     });
     window.addEventListener('resize', function () {
       if (!isSettingsMobileViewport() && isOpen()) closeMenu();
@@ -1160,6 +1423,21 @@
       else if (ok === false) el.className = 'form-hint text-danger';
       else el.className = 'form-hint';
     }
+
+    (function showOauthRedirectHint() {
+      try {
+        var params = new URLSearchParams(window.location.search || '');
+        var ao = String(params.get('ads_oauth') || '').trim();
+        if (!ao) return;
+        if (ao === 'ok') setHint(connMsgEl, 'Google Ads connected.', true);
+        else setHint(connMsgEl, 'Google Ads connect failed: ' + ao, false);
+        try {
+          params.delete('ads_oauth');
+          var next = window.location.pathname + (params.toString() ? ('?' + params.toString()) : '') + (window.location.hash || '');
+          history.replaceState(null, '', next);
+        } catch (_) {}
+      } catch (_) {}
+    })();
 
     function fetchJson(url, opts, timeoutMs) {
       var o = opts && typeof opts === 'object' ? { ...opts } : {};
@@ -1719,6 +1997,10 @@
     var isConnected = !!(ga && ga.connected);
     if (signInBtn) signInBtn.classList.toggle('d-none', !googleAdsOAuthEnabled || isConnected);
     if (reconnectBtn) reconnectBtn.classList.toggle('d-none', !googleAdsOAuthEnabled || !isConnected);
+    if (googleAdsOAuthEnabled) {
+      var anyVisible = (signInBtn && !signInBtn.classList.contains('d-none')) || (reconnectBtn && !reconnectBtn.classList.contains('d-none'));
+      if (!anyVisible && signInBtn) signInBtn.classList.remove('d-none');
+    }
   }
 
   function getShopParam() {
@@ -1738,6 +2020,10 @@
     return fetch(url, { credentials: 'same-origin', cache: 'no-store' })
       .then(function (r) { return r.json(); })
       .then(function (c) {
+        if (!c || typeof c !== 'object' || !c.configDisplay) {
+          reportSettingsGlobalLoadError('Failed to load config status.');
+          return false;
+        }
         var cd = c && c.configDisplay ? c.configDisplay : {};
         document.querySelectorAll('#settings-general-app-url').forEach(function (el) {
           el.value = cd.shopifyAppUrl || '\u2014';
@@ -1763,15 +2049,33 @@
         });
 
         renderIntegrationsFromConfig(c || {});
+        return true;
       })
-      .catch(function () { return null; });
+      .catch(function () {
+        reportSettingsGlobalLoadError('Failed to load config status.');
+        return false;
+      });
   }
 
   function loadSettingsAndPopulate() {
     return fetch(API + '/api/settings', { credentials: 'same-origin', cache: 'no-store' })
       .then(function (r) { return r.json(); })
       .then(function (data) {
-        if (!data || !data.ok) return;
+        if (!data || !data.ok) {
+          reportSettingsGlobalLoadError('Failed to load settings.');
+          try {
+            var saveBtn = document.getElementById('settings-general-save-btn');
+            if (saveBtn) saveBtn.disabled = true;
+          } catch (_) {}
+          try {
+            var msgEl = document.getElementById('settings-general-msg');
+            if (msgEl) {
+              msgEl.textContent = 'Failed to load settings.';
+              msgEl.className = 'form-hint text-danger';
+            }
+          } catch (_) {}
+          return false;
+        }
         try { window.__kexoSettingsPayload = data; } catch (_) {}
         try {
           if (data.adminTimezone) {
@@ -1811,8 +2115,8 @@
           else if (el) el.checked = false;
         });
         var scopeMode = (data.settingsScopeMode || 'global');
-        var scopeGlobal = document.getElementById('settings-scope-global');
-        var scopeUser = document.getElementById('settings-scope-user');
+        var scopeGlobal = document.getElementById('admin-settings-scope-global') || document.getElementById('settings-scope-global');
+        var scopeUser = document.getElementById('admin-settings-scope-user') || document.getElementById('settings-scope-user');
         if (scopeGlobal) scopeGlobal.checked = String(scopeMode).toLowerCase() !== 'user';
         if (scopeUser) scopeUser.checked = String(scopeMode).toLowerCase() === 'user';
 
@@ -1844,8 +2148,34 @@
             if (sub === 'tables' || sub === 'charts') renderTablesWhenVisible();
           }
         } catch (_) {}
+        try {
+          var saveBtn = document.getElementById('settings-general-save-btn');
+          if (saveBtn) saveBtn.disabled = false;
+          var fmt = document.getElementById('settings-general-date-format');
+          if (fmt) fmt.disabled = false;
+          document.querySelectorAll('input[name="settings-general-returns-refunds-attribution"]').forEach(function (el) {
+            try { el.disabled = false; } catch (_) {}
+          });
+          var msgEl = document.getElementById('settings-general-msg');
+          if (msgEl) { msgEl.textContent = ''; msgEl.className = 'form-hint'; }
+        } catch (_) {}
+        return true;
       })
-      .catch(function () { return null; });
+      .catch(function () {
+        reportSettingsGlobalLoadError('Failed to load settings.');
+        try {
+          var saveBtn = document.getElementById('settings-general-save-btn');
+          if (saveBtn) saveBtn.disabled = true;
+        } catch (_) {}
+        try {
+          var msgEl = document.getElementById('settings-general-msg');
+          if (msgEl) {
+            msgEl.textContent = 'Failed to load settings.';
+            msgEl.className = 'form-hint text-danger';
+          }
+        } catch (_) {}
+        return false;
+      });
   }
 
   function loadThemeDefaultsAndPopulateAssets(fallbackOverrides) {
@@ -1947,8 +2277,18 @@
       msgEl.textContent = text || '';
       if (ok === true) msgEl.className = 'form-hint text-success';
       else if (ok === false) msgEl.className = 'form-hint text-danger';
-      else msgEl.className = 'form-hint';
+      else msgEl.className = 'form-hint text-secondary';
     }
+
+    // Prevent saving before settings hydrate, so defaults don't overwrite existing config.
+    try { saveBtn.disabled = true; } catch (_) {}
+    try { formatEl.disabled = true; } catch (_) {}
+    try {
+      document.querySelectorAll('input[name="settings-general-returns-refunds-attribution"]').forEach(function (el) {
+        try { el.disabled = true; } catch (_) {}
+      });
+    } catch (_) {}
+    setMsg('Loading\u2026');
 
     try {
       applyTimezoneEditability();
@@ -3535,10 +3875,18 @@
       onActivate: function (key) {
         activeAttributionSubTab = key;
         if (getActiveSettingsTab() === 'attribution') {
-          if (key === 'mapping' && typeof window.initAttributionMappingSettings === 'function') {
-            try { window.initAttributionMappingSettings({ rootId: 'settings-attribution-mapping-root' }); } catch (_) {}
-          } else if (key === 'tree' && typeof window.initAttributionTreeView === 'function') {
-            try { window.initAttributionTreeView({ rootId: 'settings-attribution-tree-root' }); } catch (_) {}
+          if (key === 'mapping') {
+            if (typeof window.initAttributionMappingSettings === 'function') {
+              try { window.initAttributionMappingSettings({ rootId: 'settings-attribution-mapping-root' }); } catch (_) {}
+            } else {
+              renderAttributionInitError('settings-attribution-mapping-root', 'Attribution mapping');
+            }
+          } else if (key === 'tree') {
+            if (typeof window.initAttributionTreeView === 'function') {
+              try { window.initAttributionTreeView({ rootId: 'settings-attribution-tree-root' }); } catch (_) {}
+            } else {
+              renderAttributionInitError('settings-attribution-tree-root', 'Channel tree');
+            }
           }
           updateUrl('attribution');
           syncLeftNavActiveClasses('attribution');
@@ -3892,12 +4240,31 @@
     msgEl.className = 'form-hint ' + (ok ? 'text-success' : 'text-danger');
   }
 
+  function canResetInsightsVariantsNow() {
+    try {
+      if (typeof window.__kexoGetEffectiveViewer === 'function') {
+        var v = window.__kexoGetEffectiveViewer();
+        if (v && (v.isAdmin === true || v.isMaster === true)) return true;
+      }
+    } catch (_) {}
+    try { if (window.__kexoIsMasterUser === true) return true; } catch (_) {}
+    return false;
+  }
+
   function setInsightsVariantsResetVariantsVisibility(cfg) {
     var btn = document.getElementById('settings-insights-variants-reset-variants-btn');
     if (!btn) return;
-    var tables = cfg && Array.isArray(cfg.tables) ? cfg.tables : [];
-    var show = tables.length > 0;
-    btn.classList.toggle('is-hidden', !show);
+    try { btn.classList.remove('is-hidden'); } catch (_) {}
+    var normalized = normalizeInsightsVariantsConfig(cfg || insightsVariantsConfigCache || defaultInsightsVariantsConfigV1());
+    var tables = normalized && Array.isArray(normalized.tables) ? normalized.tables : [];
+    var hasTables = tables.length > 0;
+    var canReset = canResetInsightsVariantsNow();
+    btn.textContent = 'Reset variants';
+    btn.classList.toggle('btn-outline-danger', hasTables && canReset);
+    btn.classList.toggle('btn-outline-secondary', !(hasTables && canReset));
+    if (!canReset) btn.setAttribute('title', 'Admins only. Resets variant mapping tables, rules, and ignored titles (does not delete database data).');
+    else if (!hasTables) btn.setAttribute('title', 'Nothing to reset yet.');
+    else btn.setAttribute('title', 'Reset ALL variant mapping tables, rules, and ignored titles (does not delete database data).');
   }
 
   function countCoverageWarningTables(details) {
@@ -3921,7 +4288,7 @@
     }
     if (!btn) return;
     if (!insightsVariantsWarningsCache) {
-      btn.disabled = true;
+      btn.disabled = false;
       btn.textContent = 'Warnings';
       btn.classList.remove('btn-danger');
       btn.classList.add('btn-outline-danger');
@@ -3936,7 +4303,7 @@
 
   function buildInsightsVariantsCoverageWarningsHtml(details) {
     var d = details && typeof details === 'object' ? details : null;
-    if (!d || d.stage !== 'coverage') return '<div class="text-secondary">No warnings loaded yet.</div>';
+    if (!d || d.stage !== 'coverage') return '<div class="text-secondary">No warnings to show yet. Save your mappings to generate coverage warnings.</div>';
     var tables = Array.isArray(d.tables) ? d.tables : [];
     var html = '';
     html += '<div class="alert alert-warning mb-3">';
@@ -4971,9 +5338,27 @@
     if (resetVariantsBtn && resetVariantsBtn.getAttribute('data-variants-reset-wired') !== '1') {
       resetVariantsBtn.setAttribute('data-variants-reset-wired', '1');
       resetVariantsBtn.addEventListener('click', function () {
-        if (resetVariantsBtn.classList.contains('is-hidden')) return;
+        if (!canResetInsightsVariantsNow()) {
+          setInsightsVariantsMsg('Admins only.', false);
+          return;
+        }
+        var cfg = normalizeInsightsVariantsConfig(insightsVariantsDraft || insightsVariantsConfigCache || defaultInsightsVariantsConfigV1());
+        var tables = cfg && Array.isArray(cfg.tables) ? cfg.tables : [];
+        if (!tables.length) {
+          setInsightsVariantsMsg('Nothing to reset yet.', true);
+          return;
+        }
         applyInsightsVariantsResetNow();
       });
+    }
+
+    if (resetVariantsBtn && resetVariantsBtn.getAttribute('data-variants-reset-viewer-wired') !== '1') {
+      resetVariantsBtn.setAttribute('data-variants-reset-viewer-wired', '1');
+      try {
+        window.addEventListener('kexo:viewer-changed', function () {
+          try { setInsightsVariantsResetVariantsVisibility(insightsVariantsDraft || insightsVariantsConfigCache || defaultInsightsVariantsConfigV1()); } catch (_) {}
+        });
+      } catch (_) {}
     }
   }
 
@@ -5546,6 +5931,7 @@
     try {
       var tooltipRoot = document.querySelector('.page-body') || document.body;
       if (typeof window.initKexoTooltips === 'function') window.initKexoTooltips(tooltipRoot);
+      copyLabelTitlesToControls(tooltipRoot);
     } catch (_) {}
 
     function syncFromUrl() {
@@ -5581,6 +5967,7 @@
     // Some tabsets fire `onActivate` immediately during initialization; if the DOM default
     // panel is still active (Kexo → General), that can overwrite deep-links via updateUrl().
     syncFromUrl();
+    wireAdminOnlyVisibility();
     // Layout is now a multi-tab section (Tables / Charts / KPIs). If the URL used legacy
     // `tab=charts` or `tab=kpis`, preselect the right Layout subtab BEFORE activating the panel.
     wireLayoutSubTabs(initialLayoutSubTab);
@@ -5589,6 +5976,7 @@
     wireAttributionSubTabs(initialAttributionSubTab);
     wireAdminSubTabs(initialAdminSubTab);
     initSettingsMobileMenu();
+    setTimeout(function () { try { ensureThemePanelReadyOrShowError(); } catch (_) {} }, 3000);
 
     var tablist = document.getElementById('settings-category-tablist');
     if (tablist) {
@@ -5626,11 +6014,27 @@
       try { dismissGlobalPageLoader(); } catch (_) {}
     }
 
+    wireSettingsGlobalBannerRetry();
+    showSettingsGlobalBanner('loading', 'Loading settings\u2026');
+
     var pConfig = loadConfigAndPopulate();
     var pSettings = loadSettingsAndPopulate();
-    Promise.all([pConfig, pSettings]).finally(function () {
-      try { dismissGlobalPageLoader(); } catch (_) {}
-    });
+    Promise.all([pConfig, pSettings])
+      .then(function (results) {
+        var ok = Array.isArray(results) && results.length === 2 && results[0] === true && results[1] === true;
+        if (ok && _settingsGlobalBannerKind === 'loading') hideSettingsGlobalBanner();
+        else if (_settingsGlobalLoadErrors.length) showSettingsGlobalBanner('error', _settingsGlobalLoadErrors.join(' '));
+        if (ok && _settingsUrlNormalizeNotice && _settingsGlobalBannerKind !== 'error') {
+          showSettingsGlobalBanner('info', _settingsUrlNormalizeNotice);
+          _settingsUrlNormalizeNotice = '';
+          setTimeout(function () {
+            try { if (_settingsGlobalBannerKind === 'info') hideSettingsGlobalBanner(); } catch (_) {}
+          }, 4500);
+        }
+      })
+      .finally(function () {
+        try { dismissGlobalPageLoader(); } catch (_) {}
+      });
 
     wirePlanBasedBrandingLocks();
     wireAssets();

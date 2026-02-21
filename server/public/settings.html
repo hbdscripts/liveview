@@ -42,7 +42,7 @@
         <div class="settings-nav-category">
           <a href="/settings?tab=layout&layoutTab=tables" class="list-group-item list-group-item-action d-flex align-items-center" id="settings-tab-layout" role="tab" data-settings-tab="layout" aria-controls="settings-panel-layout">Dashboards &amp; layout</a>
           <div class="settings-nav-children">
-            <a href="/settings?tab=layout&layoutTab=tables" class="list-group-item list-group-item-action settings-nav-child" data-settings-tab="layout" data-settings-layout-tab="tables" role="tab" aria-controls="settings-panel-layout">Tables</a>
+            <a href="/settings?tab=layout&layoutTab=tables" class="list-group-item list-group-item-action settings-nav-child" data-settings-tab="layout" data-settings-layout-tab="tables" role="tab" aria-controls="settings-panel-layout">Tables &amp; charts</a>
             <a href="/settings?tab=layout&layoutTab=kpis" class="list-group-item list-group-item-action settings-nav-child" data-settings-tab="layout" data-settings-layout-tab="kpis" role="tab" aria-controls="settings-panel-layout">KPIs</a>
             <a href="/settings?tab=layout&layoutTab=date-ranges" class="list-group-item list-group-item-action settings-nav-child" data-settings-tab="layout" data-settings-layout-tab="date-ranges" role="tab" aria-controls="settings-panel-layout">Date ranges</a>
           </div>
@@ -97,6 +97,16 @@
         </div>
       </div>
 
+      <div id="settings-global-banner" class="alert alert-info d-none" role="status" aria-live="polite">
+        <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap">
+          <div class="d-flex align-items-center gap-2">
+            <div class="spinner-border spinner-border-sm text-primary" id="settings-global-banner-spinner" role="status" aria-hidden="true"></div>
+            <div id="settings-global-banner-text">Loading settings…</div>
+          </div>
+          <button type="button" class="btn btn-sm btn-outline-primary d-none" id="settings-global-banner-retry">Retry</button>
+        </div>
+      </div>
+
       <div id="settings-panel-kexo" class="settings-panel active" role="tabpanel" aria-labelledby="settings-tab-kexo">
         <div class="card">
           <div class="card-body">
@@ -111,8 +121,8 @@
               <div class="card card-sm mb-3">
                 <div class="card-body">
                   <div class="mb-3">
-                    <label class="form-label" for="settings-general-app-url" title="Read-only app base URL from environment.">App URL <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>
-                    <input type="text" class="form-control" id="settings-general-app-url" value="—" readonly />
+                    <label class="form-label" for="settings-general-app-url" title="Read-only app base URL from environment.">App URL <span class="badge bg-secondary-lt ms-1">Read-only</span> <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>
+                    <input type="text" class="form-control kexo-readonly-field" id="settings-general-app-url" value="—" readonly aria-readonly="true" />
                   </div>
                   <div class="mb-3">
                     <label class="form-label" for="settings-general-timezone" title="Timezone used for date boundaries (Today/Yesterday/7d) and time formatting in the dashboard. Use an IANA name like Europe/London.">Admin timezone <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>
@@ -124,25 +134,26 @@
                     <div class="text-muted small mt-1">Admins can change this. Everyone will see dates/times in this timezone.</div>
                   </div>
                   <div class="mb-3">
-                    <label class="form-label" for="settings-general-shop-domain" title="Read-only store domain from environment.">Store domain <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>
-                    <input type="text" class="form-control" id="settings-general-shop-domain" value="—" readonly />
+                    <label class="form-label" for="settings-general-shop-domain" title="Read-only store domain from environment.">Store domain <span class="badge bg-secondary-lt ms-1">Read-only</span> <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>
+                    <input type="text" class="form-control kexo-readonly-field" id="settings-general-shop-domain" value="—" readonly aria-readonly="true" />
                   </div>
                   <div class="mb-3">
-                    <label class="form-label" for="settings-general-display-domain" title="Read-only display domain from environment.">Display domain <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>
-                    <input type="text" class="form-control" id="settings-general-display-domain" value="—" readonly />
+                    <label class="form-label" for="settings-general-display-domain" title="Read-only display domain from environment.">Display domain <span class="badge bg-secondary-lt ms-1">Read-only</span> <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>
+                    <input type="text" class="form-control kexo-readonly-field" id="settings-general-display-domain" value="—" readonly aria-readonly="true" />
                   </div>
                   <div class="mb-3">
-                    <label class="form-label" for="settings-general-store-main" title="Read-only store main URL from environment.">Store main URL <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>
-                    <input type="text" class="form-control" id="settings-general-store-main" value="—" readonly />
+                    <label class="form-label" for="settings-general-store-main" title="Read-only store main URL from environment.">Store main URL <span class="badge bg-secondary-lt ms-1">Read-only</span> <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>
+                    <input type="text" class="form-control kexo-readonly-field" id="settings-general-store-main" value="—" readonly aria-readonly="true" />
                   </div>
                   <div class="mb-3">
-                    <label class="form-label" for="settings-general-ingest-url" title="Read-only ingest endpoint URL from environment.">Ingest URL <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>
-                    <input type="text" class="form-control" id="settings-general-ingest-url" value="—" readonly />
+                    <label class="form-label" for="settings-general-ingest-url" title="Read-only ingest endpoint URL from environment.">Ingest URL <span class="badge bg-secondary-lt ms-1">Read-only</span> <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>
+                    <input type="text" class="form-control kexo-readonly-field" id="settings-general-ingest-url" value="—" readonly aria-readonly="true" />
                   </div>
                   <div class="mb-3">
-                    <label class="form-label" for="settings-general-traffic-mode" title="Read-only acquisition mode and DB from environment.">Acquisition mode / DB <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>
-                    <input type="text" class="form-control" id="settings-general-traffic-mode" value="—" readonly />
+                    <label class="form-label" for="settings-general-traffic-mode" title="Read-only acquisition mode and DB from environment.">Acquisition mode / DB <span class="badge bg-secondary-lt ms-1">Read-only</span> <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>
+                    <input type="text" class="form-control kexo-readonly-field" id="settings-general-traffic-mode" value="—" readonly aria-readonly="true" />
                   </div>
+                  <div class="form-hint mb-3" id="settings-general-env-readonly-hint">These values are read-only and come from environment variables.</div>
                   <div class="mb-3">
                     <label class="form-label" for="settings-general-date-format" title="Controls compact KPI compare labels like 16/2 – 16/3.">KPI date label format <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>
                     <select class="form-select" id="settings-general-date-format">
@@ -343,11 +354,12 @@
                       </div>
                       <div class="d-flex align-items-center gap-2 flex-wrap mt-3">
                         <a class="btn btn-primary btn-sm d-inline-flex align-items-center gap-2" id="settings-ga-signin-btn" href="/api/ads/google/connect?redirect=%2Fsettings%3Ftab%3Dintegrations%26integrationsTab%3Dgoogleads"><i class="fa-brands fa-google" data-icon-key="settings-googleads-google" aria-hidden="true"></i> Sign in with Google</a>
-                        <a class="btn btn-outline-primary btn-sm d-none" id="settings-ga-reconnect-btn" href="/api/ads/google/connect?redirect=%2Fsettings%3Ftab%3Dintegrations%26integrationsTab%3Dgoogleads">Reconnect</a>
+                        <a class="btn btn-outline-primary btn-sm d-none" id="settings-ga-reconnect-btn" href="/api/ads/google/connect?redirect=%2Fsettings%3Ftab%3Dintegrations%26integrationsTab%3Dgoogleads">Reconnect (re-authorize)</a>
                         <button type="button" class="btn btn-outline-secondary btn-sm" id="settings-ga-test-connection-btn">Test connection</button>
                         <button type="button" class="btn btn-outline-secondary btn-sm" id="settings-ga-disconnect-btn">Disconnect</button>
                         <span id="settings-ga-connection-msg" class="form-hint"></span>
                       </div>
+                      <div class="text-muted small mt-2">Use “Sign in with Google” to connect. Use “Reconnect” if you need to re-authorize the same account.</div>
                     </div>
                   </div>
                 </div>
@@ -646,9 +658,9 @@
               <div class="mt-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
                 <div class="d-flex align-items-center gap-2 flex-wrap">
                   <button type="button" class="btn btn-outline-primary" id="settings-insights-variants-suggest-btn">Suggest mappings</button>
-                  <button type="button" class="btn btn-outline-danger" id="settings-insights-variants-warnings-btn" disabled>Warnings</button>
+                  <button type="button" class="btn btn-outline-danger" id="settings-insights-variants-warnings-btn">Warnings</button>
                   <button type="button" class="btn btn-outline-primary" id="settings-insights-variants-ignore-btn">Ignored List</button>
-                  <button type="button" class="btn btn-outline-primary is-hidden" id="settings-insights-variants-reset-variants-btn">Reset Variants</button>
+                  <button type="button" class="btn btn-outline-secondary" id="settings-insights-variants-reset-variants-btn" title="Admins only. Resets variant mapping tables, rules, and ignored titles (does not delete database data).">Reset variants</button>
                 </div>
                 <div class="d-flex align-items-center gap-2 flex-wrap">
                   <button type="button" class="btn btn-success" id="settings-insights-variants-save-btn">Save</button>
@@ -755,7 +767,7 @@
             <div class="accordion settings-layout-accordion" id="settings-layout-accordion">
               <div class="accordion-item">
                 <h4 class="accordion-header">
-                  <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#settings-layout-accordion-tables" aria-expanded="false" aria-controls="settings-layout-accordion-tables"><span class="d-flex align-items-center w-100 gap-2"><span class="kexo-settings-accordion-chevron" aria-hidden="true"><i class="fa-regular fa-chevron-down" aria-hidden="true"></i></span><span class="me-auto">Tables</span></span></button>
+                  <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#settings-layout-accordion-tables" aria-expanded="false" aria-controls="settings-layout-accordion-tables"><span class="d-flex align-items-center w-100 gap-2"><span class="kexo-settings-accordion-chevron" aria-hidden="true"><i class="fa-regular fa-chevron-down" aria-hidden="true"></i></span><span class="me-auto">Tables &amp; charts</span></span></button>
                 </h4>
                 <div id="settings-layout-accordion-tables" class="accordion-collapse collapse" data-bs-parent="#settings-layout-accordion">
                   <div class="accordion-body">
@@ -771,6 +783,7 @@
                 <button type="button" class="btn btn-outline-secondary" id="settings-layout-tables-reset-btn">Reset to defaults</button>
                 <span id="settings-layout-tables-msg" class="form-hint"></span>
               </div>
+              <div class="text-muted small mt-2">Save applies to both table layout and the “Show charts on mobile” toggle. Reset to defaults only resets table layout.</div>
             </div>
                   </div>
                 </div>
@@ -934,7 +947,7 @@
                 <button class="nav-link" type="button" role="tab" id="settings-cost-expenses-tab-rules" data-settings-cost-expenses-tab="rules" aria-selected="false" aria-controls="settings-cost-expenses-panel-rules">Rules &amp; adjustments</button>
               </li>
               <li class="nav-item" role="presentation">
-                <button class="nav-link" type="button" role="tab" id="settings-cost-expenses-tab-breakdown" data-settings-cost-expenses-tab="breakdown" aria-selected="false" aria-controls="settings-cost-expenses-panel-breakdown">Cost Breakdown</button>
+                <button class="nav-link" type="button" role="tab" id="settings-cost-expenses-tab-breakdown" data-settings-cost-expenses-tab="breakdown" aria-selected="false" aria-controls="settings-cost-expenses-panel-breakdown">Cost breakdown</button>
               </li>
             </ul>
             <div id="settings-cost-expenses-panel-cost-sources" class="settings-cost-expenses-panel active" role="tabpanel" aria-labelledby="settings-cost-expenses-tab-cost-sources">
@@ -1075,7 +1088,7 @@
             </div>
             <div id="settings-cost-expenses-panel-breakdown" class="settings-cost-expenses-panel" role="tabpanel" aria-labelledby="settings-cost-expenses-tab-breakdown">
               <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
-                <h4 class="m-0">Cost Breakdown</h4>
+                <h4 class="m-0">Cost breakdown</h4>
                 <div class="btn-group" role="group" aria-label="Cost breakdown date range" id="cost-breakdown-range-group">
                   <button type="button" class="btn btn-sm btn-outline-primary" data-cost-breakdown-range="today">Today</button>
                   <button type="button" class="btn btn-sm btn-outline-primary" data-cost-breakdown-range="yesterday">Yesterday</button>
@@ -1119,6 +1132,7 @@
               <button type="button" class="btn btn-primary" id="cost-expenses-save-btn">Save</button>
               <span id="cost-expenses-msg" class="form-hint"></span>
             </div>
+            <div class="text-muted small mt-2">Save applies to all tabs in Costs &amp; profit.</div>
           </div>
         </div>
       </div>
@@ -1223,12 +1237,12 @@
                           <input class="form-check-input" type="checkbox" id="admin-loader-shipping-cr" data-admin-loader-page="shipping-cr" />
                           <label class="form-check-label" for="admin-loader-shipping-cr">Enable loader on Shipping CR</label>
                         </div>
-                        <div class="form-check form-switch">
-                          <input class="form-check-input" type="checkbox" id="admin-loader-settings" data-admin-loader-page="settings" disabled />
-                          <label class="form-check-label" for="admin-loader-settings">Settings loader locked off</label>
+                        <div class="d-flex align-items-center gap-2 text-secondary small">
+                          <i class="fa-thin fa-lock" aria-hidden="true"></i>
+                          <span>Settings loader is always off</span>
                         </div>
                       </div>
-                      <div class="form-hint mt-2">Admin loader is always disabled.</div>
+                      <div class="form-hint mt-2">Admin and Settings loaders are always disabled.</div>
                       <div class="form-hint mt-1" id="admin-loader-msg"></div>
                     </div>
                   </div>
@@ -1271,22 +1285,11 @@
                   </h4>
                   <div id="settings-admin-accordion-scope" class="accordion-collapse collapse" data-bs-parent="#settings-admin-controls-accordion">
                     <div class="accordion-body">
-                      <div class="text-secondary small mb-3">All settings currently apply globally (shared). Per-user settings are coming later.</div>
-                      <div class="form-selectgroup" role="group" aria-label="Settings scope">
-                        <label class="form-selectgroup-item flex-fill">
-                          <input type="radio" name="admin-settings-scope-mode" value="global" class="form-selectgroup-input" id="admin-settings-scope-global" checked disabled>
-                          <div class="form-selectgroup-label d-flex align-items-center justify-content-center p-2">
-                            <span class="form-selectgroup-label-content">Global (shared)</span>
-                          </div>
-                        </label>
-                        <label class="form-selectgroup-item flex-fill">
-                          <input type="radio" name="admin-settings-scope-mode" value="user" class="form-selectgroup-input" id="admin-settings-scope-user" disabled>
-                          <div class="form-selectgroup-label d-flex align-items-center justify-content-center p-2">
-                            <span class="form-selectgroup-label-content">User-selected</span>
-                          </div>
-                        </label>
+                      <div class="text-secondary small mb-3">All settings currently apply globally (shared).</div>
+                      <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <span class="badge bg-primary-lt">Global (shared)</span>
+                        <span class="text-secondary small">Per-user settings are coming later.</span>
                       </div>
-                      <div class="text-secondary small mt-2">User-selected scope is disabled for now.</div>
                     </div>
                   </div>
                 </div>
