@@ -284,30 +284,43 @@ function parseReturnsRefundsAttributionFromKpiConfig(rawKpiConfig) {
 async function fetchPaidOrderRowsWithReturningFacts(db, shop, startMs, endMs) {
   if (!shop) return [];
   // Bucket by processed_at (sale date); filter by processed_at when present else created_at for range.
+  // Avoid COALESCE(...) in the WHERE clause so existing (shop, processed_at)/(shop, created_at) indexes can be used.
   const withFactsSql = config.dbUrl
     ? `SELECT o.order_id, o.total_price, o.currency, o.created_at, o.processed_at, o.customer_orders_count, o.customer_id, f.first_paid_order_at
        FROM orders_shopify o
        LEFT JOIN customer_order_facts f ON f.shop = o.shop AND f.customer_id = o.customer_id
-       WHERE o.shop = $1 AND (COALESCE(o.processed_at, o.created_at) >= $2 AND COALESCE(o.processed_at, o.created_at) < $3)
+       WHERE o.shop = $1 AND (
+         (o.processed_at IS NOT NULL AND o.processed_at >= $2 AND o.processed_at < $3)
+         OR (o.processed_at IS NULL AND o.created_at >= $4 AND o.created_at < $5)
+       )
          AND (o.test IS NULL OR o.test = 0) AND o.cancelled_at IS NULL AND o.financial_status = 'paid'`
     : `SELECT o.order_id, o.total_price, o.currency, o.created_at, o.processed_at, o.customer_orders_count, o.customer_id, f.first_paid_order_at
        FROM orders_shopify o
        LEFT JOIN customer_order_facts f ON f.shop = o.shop AND f.customer_id = o.customer_id
-       WHERE o.shop = ? AND (COALESCE(o.processed_at, o.created_at) >= ? AND COALESCE(o.processed_at, o.created_at) < ?)
+       WHERE o.shop = ? AND (
+         (o.processed_at IS NOT NULL AND o.processed_at >= ? AND o.processed_at < ?)
+         OR (o.processed_at IS NULL AND o.created_at >= ? AND o.created_at < ?)
+       )
          AND (o.test IS NULL OR o.test = 0) AND o.cancelled_at IS NULL AND o.financial_status = 'paid'`;
   const fallbackSql = config.dbUrl
     ? `SELECT o.order_id, o.total_price, o.currency, o.created_at, o.processed_at, o.customer_orders_count, o.customer_id, NULL AS first_paid_order_at
        FROM orders_shopify o
-       WHERE o.shop = $1 AND (COALESCE(o.processed_at, o.created_at) >= $2 AND COALESCE(o.processed_at, o.created_at) < $3)
+       WHERE o.shop = $1 AND (
+         (o.processed_at IS NOT NULL AND o.processed_at >= $2 AND o.processed_at < $3)
+         OR (o.processed_at IS NULL AND o.created_at >= $4 AND o.created_at < $5)
+       )
          AND (o.test IS NULL OR o.test = 0) AND o.cancelled_at IS NULL AND o.financial_status = 'paid'`
     : `SELECT o.order_id, o.total_price, o.currency, o.created_at, o.processed_at, o.customer_orders_count, o.customer_id, NULL AS first_paid_order_at
        FROM orders_shopify o
-       WHERE o.shop = ? AND (COALESCE(o.processed_at, o.created_at) >= ? AND COALESCE(o.processed_at, o.created_at) < ?)
+       WHERE o.shop = ? AND (
+         (o.processed_at IS NOT NULL AND o.processed_at >= ? AND o.processed_at < ?)
+         OR (o.processed_at IS NULL AND o.created_at >= ? AND o.created_at < ?)
+       )
          AND (o.test IS NULL OR o.test = 0) AND o.cancelled_at IS NULL AND o.financial_status = 'paid'`;
   try {
-    return await db.all(withFactsSql, [shop, startMs, endMs]);
+    return await db.all(withFactsSql, [shop, startMs, endMs, startMs, endMs]);
   } catch (_) {
-    return await db.all(fallbackSql, [shop, startMs, endMs]);
+    return await db.all(fallbackSql, [shop, startMs, endMs, startMs, endMs]);
   }
 }
 
@@ -810,9 +823,20 @@ async function getDashboardSeries(req, res) {
     const _dbgOn = config.kexoDebugPerf;
     const _t0 = _dbgOn ? Date.now() : 0;
     const rangeEnd = rangeKey ? bounds.end : now;
-    const rangeEndForCache = (rangeKey === 'today' || rangeKey === 'yesterday' || endMs != null) && Number.isFinite(rangeEnd)
-      ? Math.floor(rangeEnd / (60 * 1000)) * (60 * 1000)
-      : rangeEnd;
+    let rangeEndForCache = rangeEnd;
+    if (Number.isFinite(rangeEndForCache)) {
+      // Cache stability: if the range ends at "now", the params hash would churn and defeat caching.
+      // - Single-day (hour bucket) and explicit endMs need tighter rounding.
+      // - Multi-day ranges can be rounded more coarsely without impacting UX.
+      const roundMs =
+        (rangeKey === 'today' || rangeKey === 'yesterday' || endMs != null || bucketHint === 'hour')
+          ? (60 * 1000)
+          : (5 * 60 * 1000);
+      rangeEndForCache = Math.floor(rangeEndForCache / roundMs) * roundMs;
+    }
+    const ttlMs = (rangeKey && rangeKey !== 'today' && rangeKey !== 'yesterday')
+      ? (15 * 60 * 1000)
+      : (5 * 60 * 1000);
     const cached = await reportCache.getOrComputeJson(
       {
         shop: '',
@@ -823,7 +847,7 @@ async function getDashboardSeries(req, res) {
         params: rangeKey
           ? { trafficMode, rangeKey, bucket: bucketHint, rangeEndTs: rangeEndForCache, trendingPreset: trendingPreset || undefined, trendingDays: trendingDays != null ? trendingDays : undefined }
           : { trafficMode, days, bucket: 'day' },
-        ttlMs: 5 * 60 * 1000,
+        ttlMs,
         force,
       },
       () => rangeKey
@@ -1703,6 +1727,9 @@ async function computeDashboardSeriesForBounds(bounds, nowMs, timeZone, trafficM
   // Full-range reconciliation can be slow; reports should remain responsive.
   if (shop) {
     try {
+      // Best-effort: also warm the requested range so 7d/30d/etc don't rely on stale orders_shopify.
+      const scope = salesTruth.scopeForRangeKey(rangeKey, 'range');
+      nudgeTruthWarmupDetached(shop, overallStart, overallEnd, scope);
       const today = store.getRangeBounds('today', Date.now(), timeZone);
       nudgeTruthWarmupDetached(shop, today.start, today.end, 'today');
     } catch (_) {}

@@ -218,8 +218,8 @@
         { key: 'sessions', label: 'Sessions', sortable: false, iconKey: 'table-icon-sessions', cellClass: 'text-center' },
         { key: 'carts', label: 'Carts', sortable: false, cellClass: 'text-center' },
         { key: 'orders', label: 'Orders', sortable: false, iconKey: 'table-icon-orders', cellClass: 'text-center' },
-        { key: 'cr', label: 'CR%', sortable: false, iconKey: 'table-icon-cr', cellClass: 'text-center' },
-        { key: 'vpv', label: 'VPV', sortable: false, iconKey: 'table-icon-vpv', cellClass: 'text-center' },
+        { key: 'cr', label: 'Order share%', sortable: false, iconKey: 'table-icon-cr', cellClass: 'text-center' },
+        { key: 'vpv', label: 'Rev/Session', sortable: false, iconKey: 'table-icon-vpv', cellClass: 'text-center' },
         { key: 'rev', label: 'Rev', sortable: false, iconKey: 'table-icon-revenue', cellClass: 'text-center' },
         { key: 'aov', label: 'AOV', sortable: false, cellClass: 'text-center' }
       ]

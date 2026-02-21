@@ -6,6 +6,7 @@ const { normalizeRangeKey } = require('../rangeKey');
 const { percentOrNull, ratioOrNull } = require('../metrics');
 const { normalizePaymentMethod } = require('../paymentMethods/normalizePaymentMethod');
 const { canonicalPaymentKey, paymentLabelForKey, commonPaymentMethods, ORDERED_KEYS } = require('../paymentMethods/catalog');
+const reportCache = require('../reportCache');
 
 function s(v) { try { return v == null ? '' : String(v); } catch (_) { return ''; } }
 
@@ -156,267 +157,299 @@ async function getPaymentMethodsReport(req, res) {
   const nowMs = Date.now();
   const { start, end } = store.getRangeBounds(range, nowMs, timeZone);
   const db = getDb();
+  const force = !!(req?.query && (req.query.force === '1' || req.query.force === 'true' || req.query._));
 
   const assetOverrides = await readAssetOverrides();
 
   try {
-    const [ratesToGbp, totalSessionsRow, rowsCounts, rowsCarts, rowsRevenue, rowsSeries] = await Promise.all([
-      fx.getRatesToGbp().catch(() => null),
-      db.get(
-        `
-        SELECT COUNT(*) AS sessions
-        FROM sessions
-        WHERE started_at >= ? AND started_at < ?
-          AND (cf_known_bot IS NULL OR cf_known_bot = 0)
-        `.trim(),
-        [start, end]
-      ).catch(() => null),
-      db.all(
-        `
-        SELECT
-          COALESCE(NULLIF(TRIM(p.payment_gateway), ''), NULL) AS payment_gateway,
-          COALESCE(NULLIF(TRIM(p.payment_method_type), ''), NULL) AS payment_method_type,
-          COALESCE(NULLIF(TRIM(p.payment_method_name), ''), NULL) AS payment_method_name,
-          COALESCE(NULLIF(TRIM(p.payment_card_brand), ''), NULL) AS payment_card_brand,
-          COUNT(DISTINCT p.purchase_key) AS orders,
-          COUNT(DISTINCT p.session_id) AS sessions
-        FROM purchases p
-        WHERE p.purchased_at >= ? AND p.purchased_at < ?
-          ${store.purchaseFilterExcludeDuplicateH('p')}
-          ${store.purchaseFilterExcludeTokenWhenOrderExists('p')}
-        GROUP BY 1, 2, 3, 4
-        `.trim(),
-        [start, end]
-      ),
-      db.all(
-        `
-        SELECT
-          COALESCE(NULLIF(TRIM(p.payment_gateway), ''), NULL) AS payment_gateway,
-          COALESCE(NULLIF(TRIM(p.payment_method_type), ''), NULL) AS payment_method_type,
-          COALESCE(NULLIF(TRIM(p.payment_method_name), ''), NULL) AS payment_method_name,
-          COALESCE(NULLIF(TRIM(p.payment_card_brand), ''), NULL) AS payment_card_brand,
-          COUNT(DISTINCT CASE WHEN (COALESCE(s.cart_qty, 0) > 0 OR COALESCE(s.cart_value, 0) > 0) THEN p.session_id ELSE NULL END) AS carts
-        FROM purchases p
-        LEFT JOIN sessions s ON s.session_id = p.session_id
-        WHERE p.purchased_at >= ? AND p.purchased_at < ?
-          ${store.purchaseFilterExcludeDuplicateH('p')}
-          ${store.purchaseFilterExcludeTokenWhenOrderExists('p')}
-        GROUP BY 1, 2, 3, 4
-        `.trim(),
-        [start, end]
-      ),
-      db.all(
-        `
-        SELECT
-          COALESCE(NULLIF(TRIM(p.payment_gateway), ''), NULL) AS payment_gateway,
-          COALESCE(NULLIF(TRIM(p.payment_method_type), ''), NULL) AS payment_method_type,
-          COALESCE(NULLIF(TRIM(p.payment_method_name), ''), NULL) AS payment_method_name,
-          COALESCE(NULLIF(TRIM(p.payment_card_brand), ''), NULL) AS payment_card_brand,
-          COALESCE(NULLIF(TRIM(p.order_currency), ''), 'GBP') AS order_currency,
-          SUM(p.order_total) AS revenue
-        FROM purchases p
-        WHERE p.purchased_at >= ? AND p.purchased_at < ? AND p.order_total IS NOT NULL
-          ${store.purchaseFilterExcludeDuplicateH('p')}
-          ${store.purchaseFilterExcludeTokenWhenOrderExists('p')}
-        GROUP BY 1, 2, 3, 4, 5
-        `.trim(),
-        [start, end]
-      ),
-      db.all(
-        `
-        SELECT
-          p.purchased_at,
-          COALESCE(NULLIF(TRIM(p.payment_gateway), ''), NULL) AS payment_gateway,
-          COALESCE(NULLIF(TRIM(p.payment_method_type), ''), NULL) AS payment_method_type,
-          COALESCE(NULLIF(TRIM(p.payment_method_name), ''), NULL) AS payment_method_name,
-          COALESCE(NULLIF(TRIM(p.payment_card_brand), ''), NULL) AS payment_card_brand,
-          COALESCE(NULLIF(TRIM(p.order_currency), ''), 'GBP') AS order_currency,
-          p.order_total
-        FROM purchases p
-        WHERE p.purchased_at >= ? AND p.purchased_at < ? AND p.order_total IS NOT NULL
-          ${store.purchaseFilterExcludeDuplicateH('p')}
-          ${store.purchaseFilterExcludeTokenWhenOrderExists('p')}
-        `.trim(),
-        [start, end]
-      ),
-    ]);
+    const ttlMs = (range === 'today' || range === 'yesterday') ? (2 * 60 * 1000) : (15 * 60 * 1000);
+    const cached = await reportCache.getOrComputeJson(
+      {
+        shop: '',
+        endpoint: 'payment-methods.report',
+        rangeKey: 'range_' + range,
+        rangeStartTs: start,
+        rangeEndTs: end,
+        params: { range, timeZone },
+        ttlMs,
+        force,
+      },
+      async () => {
+        const [ratesToGbp, totalSessionsRow, rowsCounts, rowsCarts, rowsRevenue, rowsSeries] = await Promise.all([
+          fx.getRatesToGbp().catch(() => null),
+          db.get(
+            `
+            SELECT COUNT(*) AS sessions
+            FROM sessions
+            WHERE started_at >= ? AND started_at < ?
+              AND (cf_known_bot IS NULL OR cf_known_bot = 0)
+            `.trim(),
+            [start, end]
+          ).catch(() => null),
+          db.all(
+            `
+            SELECT
+              COALESCE(NULLIF(TRIM(p.payment_gateway), ''), NULL) AS payment_gateway,
+              COALESCE(NULLIF(TRIM(p.payment_method_type), ''), NULL) AS payment_method_type,
+              COALESCE(NULLIF(TRIM(p.payment_method_name), ''), NULL) AS payment_method_name,
+              COALESCE(NULLIF(TRIM(p.payment_card_brand), ''), NULL) AS payment_card_brand,
+              COUNT(DISTINCT p.purchase_key) AS orders,
+              COUNT(DISTINCT p.session_id) AS sessions
+            FROM purchases p
+            WHERE p.purchased_at >= ? AND p.purchased_at < ?
+              ${store.purchaseFilterExcludeDuplicateH('p')}
+              ${store.purchaseFilterExcludeTokenWhenOrderExists('p')}
+            GROUP BY 1, 2, 3, 4
+            `.trim(),
+            [start, end]
+          ),
+          db.all(
+            `
+            SELECT
+              COALESCE(NULLIF(TRIM(p.payment_gateway), ''), NULL) AS payment_gateway,
+              COALESCE(NULLIF(TRIM(p.payment_method_type), ''), NULL) AS payment_method_type,
+              COALESCE(NULLIF(TRIM(p.payment_method_name), ''), NULL) AS payment_method_name,
+              COALESCE(NULLIF(TRIM(p.payment_card_brand), ''), NULL) AS payment_card_brand,
+              COUNT(DISTINCT CASE WHEN (COALESCE(s.cart_qty, 0) > 0 OR COALESCE(s.cart_value, 0) > 0) THEN p.session_id ELSE NULL END) AS carts
+            FROM purchases p
+            LEFT JOIN sessions s ON s.session_id = p.session_id
+            WHERE p.purchased_at >= ? AND p.purchased_at < ?
+              ${store.purchaseFilterExcludeDuplicateH('p')}
+              ${store.purchaseFilterExcludeTokenWhenOrderExists('p')}
+            GROUP BY 1, 2, 3, 4
+            `.trim(),
+            [start, end]
+          ),
+          db.all(
+            `
+            SELECT
+              COALESCE(NULLIF(TRIM(p.payment_gateway), ''), NULL) AS payment_gateway,
+              COALESCE(NULLIF(TRIM(p.payment_method_type), ''), NULL) AS payment_method_type,
+              COALESCE(NULLIF(TRIM(p.payment_method_name), ''), NULL) AS payment_method_name,
+              COALESCE(NULLIF(TRIM(p.payment_card_brand), ''), NULL) AS payment_card_brand,
+              COALESCE(NULLIF(TRIM(p.order_currency), ''), 'GBP') AS order_currency,
+              SUM(p.order_total) AS revenue
+            FROM purchases p
+            WHERE p.purchased_at >= ? AND p.purchased_at < ? AND p.order_total IS NOT NULL
+              ${store.purchaseFilterExcludeDuplicateH('p')}
+              ${store.purchaseFilterExcludeTokenWhenOrderExists('p')}
+            GROUP BY 1, 2, 3, 4, 5
+            `.trim(),
+            [start, end]
+          ),
+          db.all(
+            `
+            SELECT
+              p.purchased_at,
+              COALESCE(NULLIF(TRIM(p.payment_gateway), ''), NULL) AS payment_gateway,
+              COALESCE(NULLIF(TRIM(p.payment_method_type), ''), NULL) AS payment_method_type,
+              COALESCE(NULLIF(TRIM(p.payment_method_name), ''), NULL) AS payment_method_name,
+              COALESCE(NULLIF(TRIM(p.payment_card_brand), ''), NULL) AS payment_card_brand,
+              COALESCE(NULLIF(TRIM(p.order_currency), ''), 'GBP') AS order_currency,
+              p.order_total
+            FROM purchases p
+            WHERE p.purchased_at >= ? AND p.purchased_at < ? AND p.order_total IS NOT NULL
+              ${store.purchaseFilterExcludeDuplicateH('p')}
+              ${store.purchaseFilterExcludeTokenWhenOrderExists('p')}
+            `.trim(),
+            [start, end]
+          ),
+        ]);
 
-    const totalSessions = totalSessionsRow && totalSessionsRow.sessions != null ? Number(totalSessionsRow.sessions) : 0;
-    const denomSessions = Number.isFinite(totalSessions) && totalSessions > 0 ? totalSessions : 0;
+        const totalSessions = totalSessionsRow && totalSessionsRow.sessions != null ? Number(totalSessionsRow.sessions) : 0;
+        const totalTrafficSessions = Number.isFinite(totalSessions) && totalSessions > 0 ? totalSessions : 0;
 
-    // carts + revenue maps by canonical key
-    const cartsByKey = new Map();
-    for (const r of rowsCarts || []) {
-      const k = paymentKeyFromParts(r);
-      const n = r && r.carts != null ? Number(r.carts) : 0;
-      cartsByKey.set(k, (cartsByKey.get(k) || 0) + (Number.isFinite(n) ? n : 0));
-    }
+        // carts + revenue maps by canonical key
+        const cartsByKey = new Map();
+        for (const r of rowsCarts || []) {
+          const k = paymentKeyFromParts(r);
+          const n = r && r.carts != null ? Number(r.carts) : 0;
+          cartsByKey.set(k, (cartsByKey.get(k) || 0) + (Number.isFinite(n) ? n : 0));
+        }
 
-    const revenueByKey = new Map();
-    for (const r of rowsRevenue || []) {
-      const k = paymentKeyFromParts(r);
-      const cur = s(r.order_currency).trim().toUpperCase() || 'GBP';
-      const amt = r && r.revenue != null ? Number(r.revenue) : null;
-      if (!Number.isFinite(amt)) continue;
-      const gbp = fx.convertToGbp(amt, cur, ratesToGbp);
-      if (gbp == null) continue;
-      revenueByKey.set(k, (revenueByKey.get(k) || 0) + gbp);
-    }
+        const revenueByKey = new Map();
+        for (const r of rowsRevenue || []) {
+          const k = paymentKeyFromParts(r);
+          const cur = s(r.order_currency).trim().toUpperCase() || 'GBP';
+          const amt = r && r.revenue != null ? Number(r.revenue) : null;
+          if (!Number.isFinite(amt)) continue;
+          const gbp = fx.convertToGbp(amt, cur, ratesToGbp);
+          if (gbp == null) continue;
+          revenueByKey.set(k, (revenueByKey.get(k) || 0) + gbp);
+        }
 
-    // rows: aggregate counts into canonical keys, then compute derived metrics
-    const metaByKey = new Map();
-    const agg = new Map(); // key -> { sessions, orders }
-    for (const r of rowsCounts || []) {
-      const m = applyPaymentIconOverride(paymentMetaFromParts(r), assetOverrides);
-      const k = m.key || 'other';
-      metaByKey.set(k, {
-        key: k,
-        label: m.label || 'Other',
-        iconSrc: m.iconSrc || null,
-        iconSpec: m.iconSpec || '',
-        iconAlt: m.iconAlt || (m.label || 'Other'),
-      });
-      const orders = r && r.orders != null ? Number(r.orders) : 0;
-      const sessions = r && r.sessions != null ? Number(r.sessions) : 0;
-      const prev = agg.get(k) || { sessions: 0, orders: 0 };
-      prev.sessions += Number.isFinite(sessions) ? sessions : 0;
-      prev.orders += Number.isFinite(orders) ? orders : 0;
-      agg.set(k, prev);
-    }
+        // rows: aggregate counts into canonical keys, then compute derived metrics
+        const metaByKey = new Map();
+        const agg = new Map(); // key -> { sessions, orders }
+        for (const r of rowsCounts || []) {
+          const m = applyPaymentIconOverride(paymentMetaFromParts(r), assetOverrides);
+          const k = m.key || 'other';
+          metaByKey.set(k, {
+            key: k,
+            label: m.label || 'Other',
+            iconSrc: m.iconSrc || null,
+            iconSpec: m.iconSpec || '',
+            iconAlt: m.iconAlt || (m.label || 'Other'),
+          });
+          const orders = r && r.orders != null ? Number(r.orders) : 0;
+          const sessions = r && r.sessions != null ? Number(r.sessions) : 0;
+          const prev = agg.get(k) || { sessions: 0, orders: 0 };
+          prev.sessions += Number.isFinite(sessions) ? sessions : 0;
+          prev.orders += Number.isFinite(orders) ? orders : 0;
+          agg.set(k, prev);
+        }
 
-    const outRows = [];
-    for (const [k, base] of agg.entries()) {
-      const sessions = base.sessions || 0;
-      const orders = base.orders || 0;
-      const carts = cartsByKey.get(k) || 0;
-      const revenue = revenueByKey.get(k) || 0;
-      // Important: use ALL sessions in the range as the denominator (not just purchaser sessions),
-      // otherwise CR is ~100% for every payment method.
-      const cr = percentOrNull(orders, denomSessions, { decimals: 2 });
-      const vpv = ratioOrNull(revenue, denomSessions, { decimals: 2 });
-      const aov = ratioOrNull(revenue, orders, { decimals: 2 });
-      const meta = metaByKey.get(k) || { key: k, label: k, iconSrc: null, iconSpec: '', iconAlt: k };
-      outRows.push({
-        key: meta.key,
-        label: meta.label,
-        iconSrc: meta.iconSrc,
-        iconSpec: meta.iconSpec || '',
-        iconAlt: meta.iconAlt,
-        sessions,
-        carts,
-        orders,
-        cr,
-        vpv,
-        revenue: Number.isFinite(revenue) ? revenue : 0,
-        aov,
-      });
-    }
+        const outRows = [];
+        let totalPurchaserSessions = 0;
+        let totalOrders = 0;
+        let totalRevenue = 0;
+        for (const [k, base] of agg.entries()) {
+          totalPurchaserSessions += (base.sessions || 0);
+          totalOrders += (base.orders || 0);
+          totalRevenue += (revenueByKey.get(k) || 0);
+        }
 
-    outRows.sort((a, b) => {
-      const ar = typeof a.revenue === 'number' ? a.revenue : 0;
-      const br = typeof b.revenue === 'number' ? b.revenue : 0;
-      if (br !== ar) return br - ar;
-      const bo = (b.orders || 0) - (a.orders || 0);
-      if (bo) return bo;
-      return (b.sessions || 0) - (a.sessions || 0);
-    });
+        for (const [k, base] of agg.entries()) {
+          const sessions = base.sessions || 0;
+          const orders = base.orders || 0;
+          const carts = cartsByKey.get(k) || 0;
+          const revenue = revenueByKey.get(k) || 0;
 
-    // series: revenue for top methods (by total revenue)
-    const hourly = isHourlyRange(range, start, end);
-    const categories = hourly ? buildHourCategories(start, end, timeZone) : buildDayCategories(start, end);
-    const idxByDay = hourly ? null : new Map();
-    if (idxByDay) categories.forEach((d, i) => idxByDay.set(d, i));
+          // For each payment method, use purchase-derived denominators (not all traffic sessions),
+          // so methods aren't penalized by sessions that never saw that option (e.g. country availability).
+          const orderShare = percentOrNull(orders, totalOrders, { decimals: 1, clampMax: 100 });
+          const revPerPurchaserSession = ratioOrNull(revenue, sessions, { decimals: 2 });
+          const aov = ratioOrNull(revenue, orders, { decimals: 2 });
+          const meta = metaByKey.get(k) || { key: k, label: k, iconSrc: null, iconSpec: '', iconAlt: k };
 
-    const totals = new Map(); // key -> total revenue gbp
-    const seriesMap = new Map(); // key -> data[]
-    function ensureSeries(key) {
-      if (seriesMap.has(key)) return seriesMap.get(key);
-      const arr = new Array(categories.length).fill(0);
-      seriesMap.set(key, arr);
-      return arr;
-    }
+          outRows.push({
+            key: meta.key,
+            label: meta.label,
+            iconSrc: meta.iconSrc,
+            iconSpec: meta.iconSpec || '',
+            iconAlt: meta.iconAlt,
+            sessions,
+            carts,
+            orders,
+            cr: orderShare, // back-compat field: shown in UI as % column
+            vpv: revPerPurchaserSession, // back-compat field: shown as £ value column
+            revenue: Number.isFinite(revenue) ? revenue : 0,
+            aov,
+          });
+        }
 
-    // Reuse a raw-combo cache to avoid repeatedly normalising identical strings.
-    const comboCache = new Map(); // comboKey -> { key, label, iconSrc, iconAlt }
-    function comboMeta(r) {
-      const comboKey =
-        normText(r && r.payment_gateway, 64) + '|' +
-        normText(r && r.payment_method_type, 32) + '|' +
-        normText(r && r.payment_method_name, 96) + '|' +
-        normText(r && r.payment_card_brand, 32);
-      if (comboCache.has(comboKey)) return comboCache.get(comboKey);
-      const meta = applyPaymentIconOverride(paymentMetaFromParts(r), assetOverrides);
-      const out = {
-        key: meta.key || 'other',
-        label: meta.label || 'Other',
-        iconSrc: meta.iconSrc || null,
-        iconSpec: meta.iconSpec || '',
-        iconAlt: meta.iconAlt || (meta.label || 'Other'),
-      };
-      comboCache.set(comboKey, out);
-      metaByKey.set(out.key, out);
-      return out;
-    }
+        outRows.sort((a, b) => {
+          const ar = typeof a.revenue === 'number' ? a.revenue : 0;
+          const br = typeof b.revenue === 'number' ? b.revenue : 0;
+          if (br !== ar) return br - ar;
+          const bo = (b.orders || 0) - (a.orders || 0);
+          if (bo) return bo;
+          return (b.sessions || 0) - (a.sessions || 0);
+        });
 
-    for (const r of rowsSeries || []) {
-      const ts = r && r.purchased_at != null ? Number(r.purchased_at) : NaN;
-      if (!Number.isFinite(ts)) continue;
-      let i = -1;
-      if (hourly) {
-        i = Math.floor((ts - start) / (60 * 60 * 1000));
-        if (!Number.isFinite(i)) continue;
-        if (i < 0) continue;
-        if (i >= categories.length) i = categories.length - 1;
-      } else {
-        const day = dayKeyUtc(ts);
-        if (!day || !idxByDay || !idxByDay.has(day)) continue;
-        i = idxByDay.get(day);
+        // series: revenue for top methods (by total revenue)
+        const hourly = isHourlyRange(range, start, end);
+        const categories = hourly ? buildHourCategories(start, end, timeZone) : buildDayCategories(start, end);
+        const idxByDay = hourly ? null : new Map();
+        if (idxByDay) categories.forEach((d, i) => idxByDay.set(d, i));
+
+        const totals = new Map(); // key -> total revenue gbp
+        const seriesMap = new Map(); // key -> data[]
+        function ensureSeries(key) {
+          if (seriesMap.has(key)) return seriesMap.get(key);
+          const arr = new Array(categories.length).fill(0);
+          seriesMap.set(key, arr);
+          return arr;
+        }
+
+        // Reuse a raw-combo cache to avoid repeatedly normalising identical strings.
+        const comboCache = new Map(); // comboKey -> { key, label, iconSrc, iconAlt }
+        function comboMeta(r) {
+          const comboKey =
+            normText(r && r.payment_gateway, 64) + '|' +
+            normText(r && r.payment_method_type, 32) + '|' +
+            normText(r && r.payment_method_name, 96) + '|' +
+            normText(r && r.payment_card_brand, 32);
+          if (comboCache.has(comboKey)) return comboCache.get(comboKey);
+          const meta = applyPaymentIconOverride(paymentMetaFromParts(r), assetOverrides);
+          const out = {
+            key: meta.key || 'other',
+            label: meta.label || 'Other',
+            iconSrc: meta.iconSrc || null,
+            iconSpec: meta.iconSpec || '',
+            iconAlt: meta.iconAlt || (meta.label || 'Other'),
+          };
+          comboCache.set(comboKey, out);
+          metaByKey.set(out.key, out);
+          return out;
+        }
+
+        for (const r of rowsSeries || []) {
+          const ts = r && r.purchased_at != null ? Number(r.purchased_at) : NaN;
+          if (!Number.isFinite(ts)) continue;
+          let i = -1;
+          if (hourly) {
+            i = Math.floor((ts - start) / (60 * 60 * 1000));
+            if (!Number.isFinite(i)) continue;
+            if (i < 0) continue;
+            if (i >= categories.length) i = categories.length - 1;
+          } else {
+            const day = dayKeyUtc(ts);
+            if (!day || !idxByDay || !idxByDay.has(day)) continue;
+            i = idxByDay.get(day);
+          }
+          const amt = r && r.order_total != null ? Number(r.order_total) : NaN;
+          if (!Number.isFinite(amt)) continue;
+          const cur = s(r.order_currency).trim().toUpperCase() || 'GBP';
+          const gbp = fx.convertToGbp(amt, cur, ratesToGbp);
+          if (gbp == null) continue;
+          const meta = comboMeta(r);
+          const arr = ensureSeries(meta.key);
+          arr[i] += gbp;
+          totals.set(meta.key, (totals.get(meta.key) || 0) + gbp);
+        }
+
+        const topKeys = Array.from(totals.entries())
+          .sort((a, b) => (b[1] || 0) - (a[1] || 0))
+          .slice(0, 8)
+          .map(([k]) => k);
+
+        const series = topKeys.map((k) => {
+          const meta = metaByKey.get(k) || { key: k, label: k, iconSrc: null, iconSpec: '', iconAlt: k };
+          const data = ensureSeries(k).map((v) => {
+            const n = typeof v === 'number' ? v : Number(v);
+            return Number.isFinite(n) ? Math.round(n * 100) / 100 : 0;
+          });
+          return {
+            key: meta.key,
+            label: meta.label,
+            iconSrc: meta.iconSrc,
+            iconSpec: meta.iconSpec || '',
+            iconAlt: meta.iconAlt,
+            data,
+          };
+        });
+
+        return {
+          ok: true,
+          range,
+          start,
+          end,
+          currency: 'GBP',
+          totalTrafficSessions,
+          totalPurchaserSessions,
+          totalOrders,
+          totalRevenue: Math.round((Number(totalRevenue) || 0) * 100) / 100,
+          categories,
+          series,
+          rows: outRows.slice(0, 40),
+        };
       }
-      const amt = r && r.order_total != null ? Number(r.order_total) : NaN;
-      if (!Number.isFinite(amt)) continue;
-      const cur = s(r.order_currency).trim().toUpperCase() || 'GBP';
-      const gbp = fx.convertToGbp(amt, cur, ratesToGbp);
-      if (gbp == null) continue;
-      const meta = comboMeta(r);
-      const arr = ensureSeries(meta.key);
-      arr[i] += gbp;
-      totals.set(meta.key, (totals.get(meta.key) || 0) + gbp);
-    }
-
-    const topKeys = Array.from(totals.entries())
-      .sort((a, b) => (b[1] || 0) - (a[1] || 0))
-      .slice(0, 8)
-      .map(([k]) => k);
-
-    const series = topKeys.map((k) => {
-      const meta = metaByKey.get(k) || { key: k, label: k, iconSrc: null, iconSpec: '', iconAlt: k };
-      const data = ensureSeries(k).map((v) => {
-        const n = typeof v === 'number' ? v : Number(v);
-        return Number.isFinite(n) ? Math.round(n * 100) / 100 : 0;
-      });
-      return {
-        key: meta.key,
-        label: meta.label,
-        iconSrc: meta.iconSrc,
-        iconSpec: meta.iconSpec || '',
-        iconAlt: meta.iconAlt,
-        data,
-      };
-    });
+    );
 
     res.setHeader('Cache-Control', 'private, max-age=60');
     res.setHeader('Vary', 'Cookie');
-    return res.json({
-      ok: true,
-      range,
-      start,
-      end,
-      currency: 'GBP',
-      totalSessions: denomSessions,
-      categories,
-      series,
-      rows: outRows.slice(0, 40),
-    });
+    return res.json(cached && cached.ok ? cached.data : { ok: false, error: 'Failed to load payment methods report' });
   } catch (err) {
     Sentry.captureException(err, { extra: { route: 'payment-methods.report', range } });
     console.error('[payment-methods.report]', err);

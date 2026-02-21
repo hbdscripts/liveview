@@ -36,7 +36,10 @@ async function getSalesDiagnostics(req, res) {
 
   const truthOrderCount = shop ? await salesTruth.getTruthOrderCount(shop, bounds.start, bounds.end) : 0;
   const truthRevenueGbp = shop ? await salesTruth.getTruthSalesTotalGbp(shop, bounds.start, bounds.end) : 0;
-  const health = await salesTruth.getTruthHealth(shop || '', rangeKey === 'today' ? 'today' : 'today');
+  const healthScope = rangeKey === 'today'
+    ? 'today'
+    : salesTruth.scopeForRangeKey(rangeKey, 'range');
+  const health = await salesTruth.getTruthHealth(shop || '', healthScope);
 
   // Pixel-derived totals (purchases, deduped in query).
   let pixelOrderCount = null;

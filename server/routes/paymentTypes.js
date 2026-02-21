@@ -4,6 +4,7 @@ const store = require('../store');
 const fx = require('../fx');
 const { normalizeRangeKey } = require('../rangeKey');
 const { percentOrNull, ratioOrNull } = require('../metrics');
+const reportCache = require('../reportCache');
 
 // NOTE (audit): These legacy endpoints group by `purchases.payment_gateway`.
 // That field is a processor/gateway identifier, so the UI can show values like
@@ -70,47 +71,67 @@ async function getPaymentTypesTable(req, res) {
   const nowMs = Date.now();
   const { start, end } = store.getRangeBounds(range, nowMs, timeZone);
   const db = getDb();
+  const force = !!(req?.query && (req.query.force === '1' || req.query.force === 'true' || req.query._));
 
   try {
-    const [ratesToGbp, rowsCounts, rowsCarts, rowsRevenue] = await Promise.all([
-      fx.getRatesToGbp().catch(() => null),
-      db.all(
-        `
-        SELECT
-          COALESCE(NULLIF(TRIM(payment_gateway), ''), 'unknown') AS payment_gateway,
-          COUNT(DISTINCT purchase_key) AS orders,
-          COUNT(DISTINCT session_id) AS sessions
-        FROM purchases
-        WHERE purchased_at >= ? AND purchased_at < ?
-        GROUP BY 1
-        `.trim(),
-        [start, end]
-      ),
-      db.all(
-        `
-        SELECT
-          COALESCE(NULLIF(TRIM(p.payment_gateway), ''), 'unknown') AS payment_gateway,
-          COUNT(DISTINCT CASE WHEN (COALESCE(s.cart_qty, 0) > 0 OR COALESCE(s.cart_value, 0) > 0) THEN p.session_id ELSE NULL END) AS carts
-        FROM purchases p
-        LEFT JOIN sessions s ON s.session_id = p.session_id
-        WHERE p.purchased_at >= ? AND p.purchased_at < ?
-        GROUP BY 1
-        `.trim(),
-        [start, end]
-      ),
-      db.all(
-        `
-        SELECT
-          COALESCE(NULLIF(TRIM(payment_gateway), ''), 'unknown') AS payment_gateway,
-          COALESCE(NULLIF(TRIM(order_currency), ''), 'GBP') AS order_currency,
-          SUM(order_total) AS revenue
-        FROM purchases
-        WHERE purchased_at >= ? AND purchased_at < ? AND order_total IS NOT NULL
-        GROUP BY 1, 2
-        `.trim(),
-        [start, end]
-      ),
-    ]);
+    const ttlMs = (range === 'today' || range === 'yesterday') ? (2 * 60 * 1000) : (15 * 60 * 1000);
+    const cached = await reportCache.getOrComputeJson(
+      {
+        shop: '',
+        endpoint: 'payment-types.table',
+        rangeKey: 'range_' + range,
+        rangeStartTs: start,
+        rangeEndTs: end,
+        params: { range, timeZone },
+        ttlMs,
+        force,
+      },
+      async () => {
+        const [ratesToGbp, rowsCounts, rowsCarts, rowsRevenue] = await Promise.all([
+          fx.getRatesToGbp().catch(() => null),
+          db.all(
+            `
+            SELECT
+              COALESCE(NULLIF(TRIM(p.payment_gateway), ''), 'unknown') AS payment_gateway,
+              COUNT(DISTINCT p.purchase_key) AS orders,
+              COUNT(DISTINCT p.session_id) AS sessions
+            FROM purchases p
+            WHERE p.purchased_at >= ? AND p.purchased_at < ?
+              ${store.purchaseFilterExcludeDuplicateH('p')}
+              ${store.purchaseFilterExcludeTokenWhenOrderExists('p')}
+            GROUP BY 1
+            `.trim(),
+            [start, end]
+          ),
+          db.all(
+            `
+            SELECT
+              COALESCE(NULLIF(TRIM(p.payment_gateway), ''), 'unknown') AS payment_gateway,
+              COUNT(DISTINCT CASE WHEN (COALESCE(s.cart_qty, 0) > 0 OR COALESCE(s.cart_value, 0) > 0) THEN p.session_id ELSE NULL END) AS carts
+            FROM purchases p
+            LEFT JOIN sessions s ON s.session_id = p.session_id
+            WHERE p.purchased_at >= ? AND p.purchased_at < ?
+              ${store.purchaseFilterExcludeDuplicateH('p')}
+              ${store.purchaseFilterExcludeTokenWhenOrderExists('p')}
+            GROUP BY 1
+            `.trim(),
+            [start, end]
+          ),
+          db.all(
+            `
+            SELECT
+              COALESCE(NULLIF(TRIM(p.payment_gateway), ''), 'unknown') AS payment_gateway,
+              COALESCE(NULLIF(TRIM(p.order_currency), ''), 'GBP') AS order_currency,
+              SUM(p.order_total) AS revenue
+            FROM purchases p
+            WHERE p.purchased_at >= ? AND p.purchased_at < ? AND p.order_total IS NOT NULL
+              ${store.purchaseFilterExcludeDuplicateH('p')}
+              ${store.purchaseFilterExcludeTokenWhenOrderExists('p')}
+            GROUP BY 1, 2
+            `.trim(),
+            [start, end]
+          ),
+        ]);
 
     const cartsByGateway = new Map();
     for (const r of rowsCarts || []) {
@@ -161,16 +182,20 @@ async function getPaymentTypesTable(req, res) {
       return (b.sessions || 0) - (a.sessions || 0);
     });
 
+        return {
+          ok: true,
+          range,
+          start,
+          end,
+          currency: 'GBP',
+          rows: out.slice(0, 40),
+        };
+      }
+    );
+
     res.setHeader('Cache-Control', 'private, max-age=60');
     res.setHeader('Vary', 'Cookie');
-    return res.json({
-      ok: true,
-      range,
-      start,
-      end,
-      currency: 'GBP',
-      rows: out.slice(0, 40),
-    });
+    return res.json(cached && cached.ok ? cached.data : { ok: false, error: 'Failed to load payment types table' });
   } catch (err) {
     Sentry.captureException(err, { extra: { route: 'payment-types.table', range } });
     console.error('[payment-types.table]', err);
@@ -185,23 +210,39 @@ async function getPaymentTypesSeries(req, res) {
   const nowMs = Date.now();
   const { start, end } = store.getRangeBounds(range, nowMs, timeZone);
   const db = getDb();
+  const force = !!(req?.query && (req.query.force === '1' || req.query.force === 'true' || req.query._));
 
   try {
-    const [ratesToGbp, rows] = await Promise.all([
-      fx.getRatesToGbp().catch(() => null),
-      db.all(
-        `
-        SELECT
-          purchased_at,
-          COALESCE(NULLIF(TRIM(payment_gateway), ''), 'unknown') AS payment_gateway,
-          COALESCE(NULLIF(TRIM(order_currency), ''), 'GBP') AS order_currency,
-          order_total
-        FROM purchases
-        WHERE purchased_at >= ? AND purchased_at < ? AND order_total IS NOT NULL
-        `.trim(),
-        [start, end]
-      ),
-    ]);
+    const ttlMs = (range === 'today' || range === 'yesterday') ? (2 * 60 * 1000) : (15 * 60 * 1000);
+    const cached = await reportCache.getOrComputeJson(
+      {
+        shop: '',
+        endpoint: 'payment-types.series',
+        rangeKey: 'range_' + range,
+        rangeStartTs: start,
+        rangeEndTs: end,
+        params: { range, timeZone },
+        ttlMs,
+        force,
+      },
+      async () => {
+        const [ratesToGbp, rows] = await Promise.all([
+          fx.getRatesToGbp().catch(() => null),
+          db.all(
+            `
+            SELECT
+              p.purchased_at,
+              COALESCE(NULLIF(TRIM(p.payment_gateway), ''), 'unknown') AS payment_gateway,
+              COALESCE(NULLIF(TRIM(p.order_currency), ''), 'GBP') AS order_currency,
+              p.order_total
+            FROM purchases p
+            WHERE p.purchased_at >= ? AND p.purchased_at < ? AND p.order_total IS NOT NULL
+              ${store.purchaseFilterExcludeDuplicateH('p')}
+              ${store.purchaseFilterExcludeTokenWhenOrderExists('p')}
+            `.trim(),
+            [start, end]
+          ),
+        ]);
 
     const categories = buildDayCategories(start, end);
     const idxByDay = new Map();
@@ -248,17 +289,21 @@ async function getPaymentTypesSeries(req, res) {
       }),
     }));
 
+        return {
+          ok: true,
+          range,
+          start,
+          end,
+          currency: 'GBP',
+          categories,
+          series,
+        };
+      }
+    );
+
     res.setHeader('Cache-Control', 'private, max-age=60');
     res.setHeader('Vary', 'Cookie');
-    return res.json({
-      ok: true,
-      range,
-      start,
-      end,
-      currency: 'GBP',
-      categories,
-      series,
-    });
+    return res.json(cached && cached.ok ? cached.data : { ok: false, error: 'Failed to load payment types series' });
   } catch (err) {
     Sentry.captureException(err, { extra: { route: 'payment-types.series', range } });
     console.error('[payment-types.series]', err);

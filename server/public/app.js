@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: d41568662e93e275
+// checksum: 0254ce851899cf31
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -24270,8 +24270,9 @@ const API = '';
           var icon = top && top.iconHtml ? stripSvgDimensions(String(top.iconHtml)) : '';
           var labelText = top && top.label != null ? String(top.label) : '—';
           var valueText = fmtMetric(metric, top);
-          var shareText = metric === 'ctr' ? 'CTR' : (String(Math.round(pct)) + '% share');
-          var tip = labelText + '\n' + valueText + '\n' + (metric === 'ctr' ? ('CTR: ' + valueText) : ('Share: ' + (Math.round(pct * 10) / 10).toFixed(1) + '%'));
+          var ctrLabel = (widgetKey === 'payment_methods') ? 'Share' : 'CTR';
+          var shareText = metric === 'ctr' ? ctrLabel : (String(Math.round(pct)) + '% share');
+          var tip = labelText + '\n' + valueText + '\n' + (metric === 'ctr' ? (ctrLabel + ': ' + valueText) : ('Share: ' + (Math.round(pct * 10) / 10).toFixed(1) + '%'));
           var size = 111;
           var r = 41;
           var strokeW = 8;
