@@ -4739,6 +4739,8 @@
     }
 
     function chartSizePercentFromUiConfig(key, fallbackPercent) {
+      var k = String(key || '').trim().toLowerCase();
+      if (k === 'live-online-chart' || k === 'countries-map-chart') return 100;
       var it = getChartsUiItem(key);
       var n = it && it.sizePercent != null ? Number(it.sizePercent) : Number(fallbackPercent);
       if (!Number.isFinite(n)) n = 100;

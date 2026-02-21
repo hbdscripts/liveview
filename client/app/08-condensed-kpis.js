@@ -1686,7 +1686,12 @@
         );
       }
       sigParts.sort();
-      var sig = rawMode + '|' + accent + '|' + sigParts.join('|');
+      var sig = rawMode + '|' + accent +
+        '|fo:' + String(mapStyleEarly && mapStyleEarly.fillOpacity != null ? mapStyleEarly.fillOpacity : '') +
+        '|inact:' + String(mapStyleEarly && mapStyleEarly.mapInactiveOpacity != null ? mapStyleEarly.mapInactiveOpacity : '') +
+        '|inactc:' + String(mapStyleEarly && mapStyleEarly.mapInactiveColor != null ? mapStyleEarly.mapInactiveColor : '') +
+        '|fit:' + String(mapStyleEarly && mapStyleEarly.mapFit != null ? mapStyleEarly.mapFit : '') +
+        '|' + sigParts.join('|');
       if (liveOnlineMapChartInstance && el.__kexoLiveOnlineMapSig === sig) {
         // Burst animations now run a finite number of iterations. If we're in animated mode,
         // occasionally restart the overlay (without rebuilding the map) so it still feels "live".

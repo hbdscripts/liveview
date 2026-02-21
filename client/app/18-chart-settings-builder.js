@@ -239,12 +239,14 @@
         } else {
           body += '<div class="col-12 col-md-6"><label class="form-label">Chart type</label><select class="form-select form-select-sm" data-cs-field="mode">' + modeOptionsHtml(modes, mode) + '</select></div>';
         }
-        body += '<div class="col-12 col-md-6"><label class="form-label">Size (% of container)</label><select class="form-select form-select-sm" data-cs-field="sizePercent">';
-        for (var p = 25; p <= 100; p += 5) {
-          body += '<option value="' + p + '"' + (p === size ? ' selected' : '') + '>' + p + '%</option>';
-        }
-        body += '</select></div>';
         var isMapChart = chartKey === 'live-online-chart' || chartKey === 'countries-map-chart';
+        if (!isMapChart) {
+          body += '<div class="col-12 col-md-6"><label class="form-label">Size (% of container)</label><select class="form-select form-select-sm" data-cs-field="sizePercent">';
+          for (var p = 25; p <= 100; p += 5) {
+            body += '<option value="' + p + '"' + (p === size ? ' selected' : '') + '>' + p + '%</option>';
+          }
+          body += '</select></div>';
+        }
         if (!isMapChart) {
           body += '<div class="col-12"><label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-cs-field="animations"' + (animations ? ' checked' : '') + '><span class="form-check-label ms-2">Animations</span></label></div>';
         }

@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 47c41cac37cb092f
+// checksum: 7427391bc7d52913
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -10276,6 +10276,8 @@ const API = '';
     }
 
     function chartSizePercentFromUiConfig(key, fallbackPercent) {
+      var k = String(key || '').trim().toLowerCase();
+      if (k === 'live-online-chart' || k === 'countries-map-chart') return 100;
       var it = getChartsUiItem(key);
       var n = it && it.sizePercent != null ? Number(it.sizePercent) : Number(fallbackPercent);
       if (!Number.isFinite(n)) n = 100;
@@ -12834,7 +12836,12 @@ const API = '';
         );
       }
       sigParts.sort();
-      var sig = rawMode + '|' + accent + '|' + sigParts.join('|');
+      var sig = rawMode + '|' + accent +
+        '|fo:' + String(mapStyleEarly && mapStyleEarly.fillOpacity != null ? mapStyleEarly.fillOpacity : '') +
+        '|inact:' + String(mapStyleEarly && mapStyleEarly.mapInactiveOpacity != null ? mapStyleEarly.mapInactiveOpacity : '') +
+        '|inactc:' + String(mapStyleEarly && mapStyleEarly.mapInactiveColor != null ? mapStyleEarly.mapInactiveColor : '') +
+        '|fit:' + String(mapStyleEarly && mapStyleEarly.mapFit != null ? mapStyleEarly.mapFit : '') +
+        '|' + sigParts.join('|');
       if (liveOnlineMapChartInstance && el.__kexoLiveOnlineMapSig === sig) {
         // Burst animations now run a finite number of iterations. If we're in animated mode,
         // occasionally restart the overlay (without rebuilding the map) so it still feels "live".
@@ -26848,12 +26855,14 @@ const API = '';
         } else {
           body += '<div class="col-12 col-md-6"><label class="form-label">Chart type</label><select class="form-select form-select-sm" data-cs-field="mode">' + modeOptionsHtml(modes, mode) + '</select></div>';
         }
-        body += '<div class="col-12 col-md-6"><label class="form-label">Size (% of container)</label><select class="form-select form-select-sm" data-cs-field="sizePercent">';
-        for (var p = 25; p <= 100; p += 5) {
-          body += '<option value="' + p + '"' + (p === size ? ' selected' : '') + '>' + p + '%</option>';
-        }
-        body += '</select></div>';
         var isMapChart = chartKey === 'live-online-chart' || chartKey === 'countries-map-chart';
+        if (!isMapChart) {
+          body += '<div class="col-12 col-md-6"><label class="form-label">Size (% of container)</label><select class="form-select form-select-sm" data-cs-field="sizePercent">';
+          for (var p = 25; p <= 100; p += 5) {
+            body += '<option value="' + p + '"' + (p === size ? ' selected' : '') + '>' + p + '%</option>';
+          }
+          body += '</select></div>';
+        }
         if (!isMapChart) {
           body += '<div class="col-12"><label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-cs-field="animations"' + (animations ? ' checked' : '') + '><span class="form-check-label ms-2">Animations</span></label></div>';
         }
