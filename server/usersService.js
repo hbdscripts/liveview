@@ -34,11 +34,14 @@ function normalizeUserRole(raw) {
 }
 
 function normalizeUserTier(raw) {
-  // Future tiers are coming; keep this permissive but bounded.
   const s = raw != null ? String(raw).trim().toLowerCase() : '';
-  if (!s) return 'free';
-  if (s.length > 32) return 'free';
-  if (!/^[a-z0-9_-]+$/.test(s)) return 'free';
+  if (!s) return 'starter';
+  if (s.length > 32) return 'starter';
+  if (!/^[a-z0-9_-]+$/.test(s)) return 'starter';
+  // RBAC tiers: starter, growth, pro, scale (and legacy free -> starter)
+  const rbacTiers = ['starter', 'growth', 'pro', 'scale'];
+  if (rbacTiers.includes(s)) return s;
+  if (s === 'free') return 'starter';
   return s;
 }
 
@@ -151,19 +154,37 @@ async function listUsers({ status } = {}) {
   }
 }
 
-async function approveUser(id, actorEmail, { now = Date.now() } = {}) {
+async function approveUser(id, actorEmail, { tier: requestedTier, now = Date.now() } = {}) {
   const actor = normalizeEmail(actorEmail);
   const db = getDb();
   const u = await getUserById(id);
   if (!u) return { ok: false, error: 'not_found' };
   try {
     const nextRole = normalizeUserRole(u.role) || 'user';
-    const nextTier = normalizeUserTier(u.tier);
+    const nextTier = requestedTier != null && String(requestedTier).trim()
+      ? normalizeUserTier(requestedTier)
+      : normalizeUserTier(u.tier);
     await db.run(
       'UPDATE users SET status = ?, role = ?, tier = ?, approved_at = ?, denied_at = NULL WHERE id = ?',
       ['active', nextRole, nextTier, now, u.id]
     );
-    // Actor is kept for future audit trails (not stored yet).
+    void actor;
+    return { ok: true };
+  } catch (_) {
+    return { ok: false, error: 'db_error' };
+  }
+}
+
+async function updateUserTier(id, tier, actorEmail, { now = Date.now() } = {}) {
+  const actor = normalizeEmail(actorEmail);
+  const db = getDb();
+  const u = await getUserById(id);
+  if (!u) return { ok: false, error: 'not_found' };
+  const status = (u.status || '').toString().trim().toLowerCase();
+  if (status !== 'active') return { ok: false, error: 'user_not_active' };
+  const nextTier = normalizeUserTier(tier);
+  try {
+    await db.run('UPDATE users SET tier = ? WHERE id = ?', [nextTier, u.id]);
     void actor;
     return { ok: true };
   } catch (_) {
@@ -255,6 +276,7 @@ module.exports = {
   denyUser,
   promoteToAdmin,
   promoteToMaster,
+  updateUserTier,
   updateLoginMeta,
 };
 

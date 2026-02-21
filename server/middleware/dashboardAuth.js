@@ -292,33 +292,26 @@ function isShopifySignedAppUrlReferer(req) {
 }
 
 function allow(req) {
-  const now = Date.now();
-  // From Shopify admin: always allow (embed / open from Admin)
-  if (isShopifyAdminReferer(req) || isShopifyAdminOrigin(req)) return true;
-  // Embedded app load: allow signed Shopify App URL requests even if Referer/Origin are stripped.
-  if (isShopifySignedAppUrlRequest(req)) return true;
-  // Embedded app API/XHR/SSE: allow when Referer is a signed Shopify App URL.
-  if (isShopifySignedAppUrlReferer(req)) return true;
+  const pathname = (req && req.path) ? String(req.path) : '';
+  const method = (req && req.method) ? String(req.method) : '';
+  const needAuth = requiresAuth(pathname, method);
 
-  // Direct visit: require an oauth_session cookie (Google / local / Shopify-login flow).
+  // For protected paths: require email-based session (RBAC applies; no Shopify referer/signed-URL-only access).
+  if (needAuth) {
+    const oauthCookie = getCookie(req, OAUTH_COOKIE_NAME);
+    const session = oauthCookie ? readOauthSession(oauthCookie) : null;
+    if (!session || !session.email) return false;
+    if (users.isBootstrapMasterEmail(session.email)) return true;
+    return true; // allowWithUserGate will enforce status (pending/denied)
+  }
+
+  // Non-protected paths: keep existing behaviour.
+  if (isShopifyAdminReferer(req) || isShopifyAdminOrigin(req)) return true;
+  if (isShopifySignedAppUrlRequest(req)) return true;
+  if (isShopifySignedAppUrlReferer(req)) return true;
   const oauthCookie = getCookie(req, OAUTH_COOKIE_NAME);
   const session = oauthCookie ? readOauthSession(oauthCookie) : null;
-  if (session) {
-    // Email-based sessions participate in approvals/roles.
-    if (session.email) {
-      // Seed master: always active+master.
-      if (users.isBootstrapMasterEmail(session.email)) return true;
-      // If user exists, enforce status gates. If missing, fail closed (pending).
-      // NOTE: we intentionally do not treat a missing user as active; it must be approved.
-      // eslint-disable-next-line no-undef
-      // (async not allowed here; middleware handles pending lookup separately)
-      return true;
-    }
-    // Shop-only sessions (Shopify login) remain allowed, but do not imply master.
-    return true;
-  }
-  // No Google configured: allow only in non-production (e.g. local dev).
-  // In production, fail-closed for direct visits (still allows Shopify Admin embeds above).
+  if (session) return true;
   if (config.nodeEnv === 'production') return false;
   return true;
 }

@@ -2,11 +2,13 @@
  * GET /api/me
  *
  * Returns the viewer identity for UI gating.
- * - email-based sessions: { email, status, role, tier, isMaster }
- * - shop-only sessions (Shopify login): { email: null, isMaster: false, ... }
+ * - email-based sessions: { email, status, role, tier, isMaster, permissions }
+ * - shop-only sessions (Shopify login): { email: null, isMaster: false, permissions: {} }
  */
 const dashboardAuth = require('../middleware/dashboardAuth');
 const users = require('../usersService');
+const rolePermissions = require('../rolePermissionsService');
+const rbac = require('../rbac');
 
 const OAUTH_COOKIE_NAME = 'oauth_session';
 
@@ -34,7 +36,7 @@ function parseOauthCookie(cookieValue) {
 async function me(req, res) {
   const cookieValue = getCookie(req, OAUTH_COOKIE_NAME);
   if (!cookieValue || !dashboardAuth.verifyOauthSession(cookieValue)) {
-    res.json({ email: null, initial: 'K', status: null, role: null, tier: null, isMaster: false, isAdmin: false });
+    res.json({ email: null, initial: 'K', status: null, role: null, tier: null, isMaster: false, isAdmin: false, permissions: {} });
     return;
   }
 
@@ -57,6 +59,20 @@ async function me(req, res) {
   const isAdmin = (role === 'admin' || role === 'master') || users.isBootstrapMasterEmail(email);
   const isMaster = isAdmin; // legacy name; treat as admin
 
+  let permissions = {};
+  if (isAdmin) {
+    rbac.ALL_PERMISSION_KEYS.forEach((k) => { permissions[k] = true; });
+  } else if (tier) {
+    const normalizedTier = rbac.normalizeUserTierForRbac(tier);
+    try {
+      permissions = await rolePermissions.getRolePermissions(normalizedTier);
+    } catch (_) {
+      permissions = rbac.getDefaultPermissionsForTier();
+    }
+  } else {
+    permissions = rbac.getDefaultPermissionsForTier();
+  }
+
   res.json({
     email: email || null,
     initial: email ? email[0].toUpperCase() : 'K',
@@ -65,6 +81,7 @@ async function me(req, res) {
     tier,
     isMaster,
     isAdmin,
+    permissions,
   });
 }
 

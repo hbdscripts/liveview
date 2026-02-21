@@ -25,45 +25,45 @@
     <!-- Left nav: category tablist with children -->
     <div class="col-lg-3 mb-4 mb-lg-0 d-none d-lg-block" role="presentation">
       <div class="list-group list-group-transparent" id="settings-category-tablist" role="tablist" aria-label="Settings categories">
-        <div class="settings-nav-category">
-          <a href="/settings?tab=kexo&kexoTab=general" class="list-group-item list-group-item-action d-flex align-items-center" id="settings-tab-kexo" role="tab" data-settings-tab="kexo" aria-controls="settings-panel-kexo">Kexo</a>
+        <div class="settings-nav-category" data-kexo-perm="settings.kexo">
+          <a href="/settings?tab=kexo&kexoTab=general" class="list-group-item list-group-item-action d-flex align-items-center" id="settings-tab-kexo" role="tab" data-settings-tab="kexo" data-kexo-perm="settings.kexo" aria-controls="settings-panel-kexo">Kexo</a>
           <div class="settings-nav-children">
             <a href="/settings?tab=kexo&kexoTab=general" class="list-group-item list-group-item-action settings-nav-child" data-settings-tab="kexo" data-settings-kexo-tab="general" role="tab" aria-controls="settings-panel-kexo">General</a>
             <a href="/settings?tab=kexo&kexoTab=icons-assets" class="list-group-item list-group-item-action settings-nav-child" data-settings-tab="kexo" data-settings-kexo-tab="icons-assets" role="tab" aria-controls="settings-panel-kexo">Icons &amp; assets</a>
             <a href="/settings?tab=kexo&kexoTab=theme-display" class="list-group-item list-group-item-action settings-nav-child" data-settings-tab="kexo" data-settings-kexo-tab="theme-display" role="tab" aria-controls="settings-panel-kexo">Color Scheme</a>
           </div>
         </div>
-        <div class="settings-nav-category">
-          <a href="/settings?tab=integrations&integrationsTab=shopify" class="list-group-item list-group-item-action d-flex align-items-center" id="settings-tab-integrations" role="tab" data-settings-tab="integrations" aria-controls="settings-panel-integrations">Integrations</a>
+        <div class="settings-nav-category" data-kexo-perm="settings.integrations">
+          <a href="/settings?tab=integrations&integrationsTab=shopify" class="list-group-item list-group-item-action d-flex align-items-center" id="settings-tab-integrations" role="tab" data-settings-tab="integrations" data-kexo-perm="settings.integrations" aria-controls="settings-panel-integrations">Integrations</a>
           <div class="settings-nav-children">
             <a href="/settings?tab=integrations&integrationsTab=shopify" class="list-group-item list-group-item-action settings-nav-child" data-settings-tab="integrations" data-settings-integrations-tab="shopify" role="tab" aria-controls="settings-panel-integrations">Shopify</a>
             <a href="/settings?tab=integrations&integrationsTab=googleads" class="list-group-item list-group-item-action settings-nav-child" data-settings-tab="integrations" data-settings-integrations-tab="googleads" role="tab" aria-controls="settings-panel-integrations">Google Ads</a>
           </div>
         </div>
-        <div class="settings-nav-category">
-          <a href="/settings?tab=layout&layoutTab=tables" class="list-group-item list-group-item-action d-flex align-items-center" id="settings-tab-layout" role="tab" data-settings-tab="layout" aria-controls="settings-panel-layout">Dashboards &amp; layout</a>
+        <div class="settings-nav-category" data-kexo-perm="settings.layout">
+          <a href="/settings?tab=layout&layoutTab=tables" class="list-group-item list-group-item-action d-flex align-items-center" id="settings-tab-layout" role="tab" data-settings-tab="layout" data-kexo-perm="settings.layout" aria-controls="settings-panel-layout">Dashboards &amp; layout</a>
           <div class="settings-nav-children">
             <a href="/settings?tab=layout&layoutTab=tables" class="list-group-item list-group-item-action settings-nav-child" data-settings-tab="layout" data-settings-layout-tab="tables" role="tab" aria-controls="settings-panel-layout">Tables &amp; charts</a>
             <a href="/settings?tab=layout&layoutTab=kpis" class="list-group-item list-group-item-action settings-nav-child" data-settings-tab="layout" data-settings-layout-tab="kpis" role="tab" aria-controls="settings-panel-layout">KPIs</a>
             <a href="/settings?tab=layout&layoutTab=date-ranges" class="list-group-item list-group-item-action settings-nav-child" data-settings-tab="layout" data-settings-layout-tab="date-ranges" role="tab" aria-controls="settings-panel-layout">Date ranges</a>
           </div>
         </div>
-        <div class="settings-nav-category">
-          <a href="/settings?tab=attribution&attributionTab=mapping" class="list-group-item list-group-item-action d-flex align-items-center" id="settings-tab-attribution" role="tab" data-settings-tab="attribution" aria-controls="settings-panel-attribution">Attribution</a>
+        <div class="settings-nav-category" data-kexo-perm="settings.attribution">
+          <a href="/settings?tab=attribution&attributionTab=mapping" class="list-group-item list-group-item-action d-flex align-items-center" id="settings-tab-attribution" role="tab" data-settings-tab="attribution" data-kexo-perm="settings.attribution" aria-controls="settings-panel-attribution">Attribution</a>
           <div class="settings-nav-children">
             <a href="/settings?tab=attribution&attributionTab=mapping" class="list-group-item list-group-item-action settings-nav-child" data-settings-tab="attribution" data-settings-attribution-tab="mapping" role="tab" aria-controls="settings-panel-attribution">Mapping rules</a>
             <a href="/settings?tab=attribution&attributionTab=tree" class="list-group-item list-group-item-action settings-nav-child" data-settings-tab="attribution" data-settings-attribution-tab="tree" role="tab" aria-controls="settings-panel-attribution">Channel tree</a>
           </div>
         </div>
-        <div class="settings-nav-category">
-          <a href="/settings?tab=insights" class="list-group-item list-group-item-action d-flex align-items-center" id="settings-tab-insights" role="tab" data-settings-tab="insights" aria-controls="settings-panel-insights">Insights configuration</a>
+        <div class="settings-nav-category" data-kexo-perm="settings.insights">
+          <a href="/settings?tab=insights" class="list-group-item list-group-item-action d-flex align-items-center" id="settings-tab-insights" role="tab" data-settings-tab="insights" data-kexo-perm="settings.insights" aria-controls="settings-panel-insights">Insights configuration</a>
           <div class="settings-nav-children">
             <a href="/settings?tab=insights" class="list-group-item list-group-item-action settings-nav-child" data-settings-tab="insights" role="tab" aria-controls="settings-panel-insights">Variants</a>
           </div>
         </div>
         <!-- KEXO_COST_EXPENSES_NAV_START -->
-        <div class="settings-nav-category">
-          <a href="/settings?tab=cost-expenses&costExpensesTab=cost-sources" class="list-group-item list-group-item-action d-flex align-items-center" id="settings-tab-cost-expenses" role="tab" data-settings-tab="cost-expenses" aria-controls="settings-panel-cost-expenses">Costs &amp; profit</a>
+        <div class="settings-nav-category" data-kexo-perm="settings.cost_expenses">
+          <a href="/settings?tab=cost-expenses&costExpensesTab=cost-sources" class="list-group-item list-group-item-action d-flex align-items-center" id="settings-tab-cost-expenses" role="tab" data-settings-tab="cost-expenses" data-kexo-perm="settings.cost_expenses" aria-controls="settings-panel-cost-expenses">Costs &amp; profit</a>
           <div class="settings-nav-children">
             <a href="/settings?tab=cost-expenses&costExpensesTab=cost-sources" class="list-group-item list-group-item-action settings-nav-child" data-settings-tab="cost-expenses" data-settings-cost-expenses-tab="cost-sources" role="tab" aria-controls="settings-panel-cost-expenses">Cost sources</a>
             <a href="/settings?tab=cost-expenses&costExpensesTab=shipping" class="list-group-item list-group-item-action settings-nav-child" data-settings-tab="cost-expenses" data-settings-cost-expenses-tab="shipping" role="tab" aria-controls="settings-panel-cost-expenses">Shipping costs</a>
@@ -1373,6 +1373,7 @@
                         <thead>
                           <tr>
                             <th>Email</th>
+                            <th>Role</th>
                             <th>Country</th>
                             <th>City</th>
                             <th>Device</th>
@@ -1381,7 +1382,7 @@
                           </tr>
                         </thead>
                         <tbody id="admin-users-active-body">
-                          <tr><td colspan="6" class="text-secondary">Loading…</td></tr>
+                          <tr><td colspan="7" class="text-secondary">Loading…</td></tr>
                         </tbody>
                       </table>
                     </div>
@@ -1392,6 +1393,7 @@
                         <thead>
                           <tr>
                             <th>Email</th>
+                            <th>Assign role</th>
                             <th>Country</th>
                             <th>City</th>
                             <th>Device</th>
@@ -1400,14 +1402,65 @@
                           </tr>
                         </thead>
                         <tbody id="admin-users-pending-body">
-                          <tr><td colspan="6" class="text-secondary">Loading…</td></tr>
+                          <tr><td colspan="7" class="text-secondary">Loading…</td></tr>
                         </tbody>
                       </table>
+                    </div>
+                  </div>
+                  <div class="modal modal-blur fade" id="admin-user-edit-modal" tabindex="-1" role="dialog" aria-labelledby="admin-user-edit-modal-title" aria-hidden="true">
+                    <div class="modal-dialog modal-sm modal-dialog-centered" role="document">
+                      <div class="modal-content">
+                        <div class="modal-header">
+                          <h5 class="modal-title" id="admin-user-edit-modal-title">Edit user role</h5>
+                          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                          <input type="hidden" id="admin-user-edit-id" value="">
+                          <div class="mb-3">
+                            <label class="form-label" for="admin-user-edit-tier">Role</label>
+                            <select class="form-select" id="admin-user-edit-tier" aria-label="Role">
+                              <option value="starter">Starter</option>
+                              <option value="growth">Growth</option>
+                              <option value="pro">Pro</option>
+                              <option value="scale">Scale</option>
+                            </select>
+                          </div>
+                        </div>
+                        <div class="modal-footer">
+                          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                          <button type="button" class="btn btn-primary" id="admin-user-edit-save">Save</button>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
+                  </div>
+                </div>
+              </div>
+              <div class="accordion-item">
+                <h4 class="accordion-header">
+                  <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#settings-admin-accordion-role-permissions" aria-expanded="false" aria-controls="settings-admin-accordion-role-permissions"><span class="d-flex align-items-center w-100 gap-2"><span class="kexo-settings-accordion-chevron" aria-hidden="true"></span><span class="me-auto">Role permissions</span></span></button>
+                </h4>
+                <div id="settings-admin-accordion-role-permissions" class="accordion-collapse collapse" data-bs-parent="#settings-admin-accordion">
+                  <div class="accordion-body">
+                    <div id="admin-panel-role-permissions">
+                      <div class="card">
+                        <div class="card-header">
+                          <h3 class="card-title mb-0"><i class="fa-thin fa-shield-halved me-2" aria-hidden="true"></i>Role permissions</h3>
+                        </div>
+                        <div class="card-body">
+                          <p class="text-secondary small mb-3">Control which pages and settings each role (Starter, Growth, Pro, Scale) can access. Admin always has full access.</p>
+                          <div id="admin-role-permissions-content">
+                            <div class="d-flex align-items-center gap-2 text-secondary">
+                              <div class="spinner-border spinner-border-sm text-primary" role="status" aria-hidden="true"></div>
+                              <span>Loading…</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>

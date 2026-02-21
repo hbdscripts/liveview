@@ -1,10 +1,12 @@
 /**
- * Admin API: Users approvals + role promotion.
+ * Admin API: Users approvals + role promotion + role permissions.
  *
  * Protected by requireMaster middleware at mount time.
  */
 const express = require('express');
 const users = require('../usersService');
+const rolePermissionsService = require('../rolePermissionsService');
+const rbac = require('../rbac');
 const { getDb } = require('../db');
 
 const router = express.Router();
@@ -26,20 +28,23 @@ async function listShopifyAuthRows(limit = 20) {
   try {
     const rows = await db.all(
       `
-        SELECT shop, updated_at
+        SELECT shop, updated_at, last_oauth_email, last_oauth_at
         FROM shop_sessions
         WHERE shop IS NOT NULL AND TRIM(shop) <> ''
-        ORDER BY updated_at DESC
+        ORDER BY COALESCE(last_oauth_at, updated_at) DESC
         LIMIT ?
       `,
       [Math.max(1, Math.min(100, Number(limit) || 20))]
     );
     return (rows || []).map((row) => {
       const shop = row && row.shop ? String(row.shop).trim().toLowerCase() : '';
-      const at = coerceEpochMs(row && row.updated_at);
+      const at = coerceEpochMs(row && (row.last_oauth_at != null ? row.last_oauth_at : row.updated_at));
+      const oauthEmail = row && row.last_oauth_email ? String(row.last_oauth_email).trim() : '';
+      const emailLabel = shop ? `Shopify (${shop})` : 'Shopify';
+      const email = oauthEmail ? emailLabel + ' — ' + oauthEmail : emailLabel;
       return {
         id: `shop:${shop || 'unknown'}`,
-        email: shop ? `Shopify (${shop})` : 'Shopify',
+        email,
         status: 'active',
         role: 'shopify',
         tier: 'n/a',
@@ -82,8 +87,18 @@ router.get('/users', async (req, res) => {
 
 router.post('/users/:id/approve', async (req, res) => {
   const id = req.params && req.params.id;
-  const r = await users.approveUser(id, null, { now: Date.now() });
+  const tier = req.body && req.body.tier != null ? req.body.tier : undefined;
+  const r = await users.approveUser(id, null, { tier, now: Date.now() });
   if (!r || r.ok !== true) return res.status(400).json({ ok: false, error: (r && r.error) || 'approve_failed' });
+  res.json({ ok: true });
+});
+
+router.patch('/users/:id', async (req, res) => {
+  const id = req.params && req.params.id;
+  const tier = req.body && req.body.tier != null ? req.body.tier : undefined;
+  if (tier == null || String(tier).trim() === '') return res.status(400).json({ ok: false, error: 'tier_required' });
+  const r = await users.updateUserTier(id, tier, null, { now: Date.now() });
+  if (!r || r.ok !== true) return res.status(400).json({ ok: false, error: (r && r.error) || 'update_failed' });
   res.json({ ok: true });
 });
 
@@ -104,6 +119,25 @@ async function promoteAdmin(req, res) {
 router.post('/users/:id/promote-admin', promoteAdmin);
 // Backwards-compatible alias
 router.post('/users/:id/promote-master', promoteAdmin);
+
+router.get('/role-permissions', async (req, res) => {
+  try {
+    const all = await rolePermissionsService.getAllRolePermissions();
+    res.json({ ok: true, permissions: all });
+  } catch (_) {
+    res.status(500).json({ ok: false, error: 'load_failed' });
+  }
+});
+
+router.put('/role-permissions/:tier', async (req, res) => {
+  const tier = (req.params && req.params.tier) ? String(req.params.tier).trim().toLowerCase() : '';
+  if (!rbac.validateTier(tier)) return res.status(400).json({ ok: false, error: 'invalid_tier' });
+  const permissions = req.body && req.body.permissions && typeof req.body.permissions === 'object' ? req.body.permissions : null;
+  if (!permissions) return res.status(400).json({ ok: false, error: 'permissions_required' });
+  const r = await rolePermissionsService.putRolePermissions(tier, permissions);
+  if (!r || r.ok !== true) return res.status(400).json({ ok: false, error: (r && r.error) || 'save_failed' });
+  res.json({ ok: true, permissions: r.permissions });
+});
 
 module.exports = router;
 

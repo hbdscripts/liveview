@@ -69,20 +69,20 @@
         var m = /[?&]adminTab=([^&]+)/.exec(search);
         var raw = m && m[1] ? String(m[1]) : '';
         var t = raw.trim().toLowerCase();
-        if (t === 'users' || t === 'diagnostics' || t === 'controls') return t;
+        if (t === 'users' || t === 'diagnostics' || t === 'controls' || t === 'role-permissions') return t;
         return 'controls';
       }
       var m = /[?&]tab=([^&]+)/.exec(search);
       var raw = m && m[1] ? String(m[1]) : '';
       var t = raw.trim().toLowerCase();
-      if (t === 'users' || t === 'diagnostics' || t === 'controls') return t;
+      if (t === 'users' || t === 'diagnostics' || t === 'controls' || t === 'role-permissions') return t;
     } catch (_) {}
     return '';
   }
 
   function setActiveTab(next, opts) {
     var t = (next || '').trim().toLowerCase();
-    if (t !== 'users' && t !== 'diagnostics' && t !== 'controls') t = 'controls';
+    if (t !== 'users' && t !== 'diagnostics' && t !== 'controls' && t !== 'role-permissions') t = 'controls';
     activeTab = t;
 
     if (!isSettingsPage()) {
@@ -131,6 +131,8 @@
         if (msg) { msg.textContent = 'Loading diagnostics…'; msg.className = 'form-hint text-secondary'; }
       } catch (_) {}
       try { if (typeof window.refreshConfigStatus === 'function') window.refreshConfigStatus({ force: true, preserveView: false }); } catch (_) {}
+    } else if (t === 'role-permissions') {
+      loadRolePermissionsPanel();
     }
   }
 
@@ -154,6 +156,7 @@
     var controlsEl = document.getElementById('settings-admin-accordion-controls');
     var diagnosticsEl = document.getElementById('settings-admin-accordion-diagnostics');
     var usersEl = document.getElementById('settings-admin-accordion-users');
+    var rolePermsEl = document.getElementById('settings-admin-accordion-role-permissions');
     function updateUrlFromTab(t) {
       try {
         var params = new URLSearchParams(window.location.search);
@@ -183,6 +186,89 @@
         runLazyLoadForAdminTab('users');
       });
     }
+    if (rolePermsEl) {
+      rolePermsEl.addEventListener('shown.bs.collapse', function () {
+        activeTab = 'role-permissions';
+        updateUrlFromTab('role-permissions');
+        loadRolePermissionsPanel();
+      });
+    }
+  }
+
+  var _rolePermsSaveTimer = null;
+  function loadRolePermissionsPanel() {
+    var container = document.getElementById('admin-role-permissions-content');
+    if (!container) return;
+    container.innerHTML = '<div class="d-flex align-items-center gap-2 text-secondary"><div class="spinner-border spinner-border-sm text-primary" role="status"></div><span>Loading…</span></div>';
+    kfetch('/api/admin/role-permissions', { method: 'GET' })
+      .then(function (r) { return r.json ? r.json() : null; })
+      .then(function (d) {
+        if (!d || !d.ok || !d.permissions) {
+          container.innerHTML = '<p class="text-secondary">Failed to load.</p>';
+          return;
+        }
+        var tiers = ['starter', 'growth', 'pro', 'scale'];
+        var tierLabels = { starter: 'Starter', growth: 'Growth', pro: 'Pro', scale: 'Scale' };
+        var perms = d.permissions;
+        var keys = perms.starter ? Object.keys(perms.starter) : [];
+        if (!keys.length) {
+          container.innerHTML = '<p class="text-secondary">No permissions defined.</p>';
+          return;
+        }
+        keys.sort();
+        var pageKeys = keys.filter(function (k) { return k.indexOf('page.') === 0; });
+        var settingsKeys = keys.filter(function (k) { return k.indexOf('settings.') === 0 || k === 'page.settings'; });
+        function labelForKey(k) {
+          var s = k.replace(/^page\./, '').replace(/^settings\./, '').replace(/\./g, ' ');
+          return s.charAt(0).toUpperCase() + s.slice(1);
+        }
+        var html = '';
+        tiers.forEach(function (tier) {
+          var tierPerms = perms[tier] || {};
+          html += '<div class="card mb-3"><div class="card-header"><strong>' + escapeHtml(tierLabels[tier] || tier) + '</strong></div><div class="card-body">';
+          if (pageKeys.length) {
+            html += '<div class="mb-2"><span class="text-secondary small">Pages</span></div><div class="d-flex flex-wrap gap-3 mb-3">';
+            pageKeys.forEach(function (key) {
+              var checked = tierPerms[key] === true ? ' checked' : '';
+              html += '<div class="form-check"><input class="form-check-input admin-role-perm-cb" type="checkbox" data-tier="' + escapeHtml(tier) + '" data-perm="' + escapeHtml(key) + '" id="rp-' + escapeHtml(tier) + '-' + escapeHtml(key.replace(/\./g, '-')) + '"' + checked + '><label class="form-check-label" for="rp-' + escapeHtml(tier) + '-' + escapeHtml(key.replace(/\./g, '-')) + '">' + escapeHtml(labelForKey(key)) + '</label></div>';
+            });
+            html += '</div>';
+          }
+          if (settingsKeys.length) {
+            html += '<div class="mb-2"><span class="text-secondary small">Settings</span></div><div class="d-flex flex-wrap gap-3">';
+            settingsKeys.forEach(function (key) {
+              var checked = tierPerms[key] === true ? ' checked' : '';
+              html += '<div class="form-check"><input class="form-check-input admin-role-perm-cb" type="checkbox" data-tier="' + escapeHtml(tier) + '" data-perm="' + escapeHtml(key) + '" id="rp-' + escapeHtml(tier) + '-' + escapeHtml(key.replace(/\./g, '-')) + '"' + checked + '><label class="form-check-label" for="rp-' + escapeHtml(tier) + '-' + escapeHtml(key.replace(/\./g, '-')) + '">' + escapeHtml(labelForKey(key)) + '</label></div>';
+            });
+            html += '</div>';
+          }
+          html += '</div></div>';
+        });
+        container.innerHTML = html;
+        container.querySelectorAll('.admin-role-perm-cb').forEach(function (cb) {
+          cb.addEventListener('change', function () {
+            var tier = cb.getAttribute('data-tier');
+            if (!tier) return;
+            if (_rolePermsSaveTimer) clearTimeout(_rolePermsSaveTimer);
+            _rolePermsSaveTimer = setTimeout(function () {
+              _rolePermsSaveTimer = null;
+              var permsForTier = {};
+              container.querySelectorAll('.admin-role-perm-cb[data-tier="' + tier + '"]').forEach(function (c) {
+                var key = c.getAttribute('data-perm');
+                if (key) permsForTier[key] = c.checked;
+              });
+              kfetch('/api/admin/role-permissions/' + encodeURIComponent(tier), {
+                method: 'PUT',
+                headers: { 'content-type': 'application/json' },
+                body: JSON.stringify({ permissions: permsForTier })
+              }).then(function (r) { return r && r.ok ? r.json() : null; }).catch(function () { return null; });
+            }, 400);
+          });
+        });
+      })
+      .catch(function () {
+        if (container) container.innerHTML = '<p class="text-secondary">Failed to load.</p>';
+      });
   }
 
   function expandAdminAccordionFromUrl() {
@@ -226,17 +312,24 @@
     });
   }
 
+  var TIER_LABELS = { starter: 'Starter', growth: 'Growth', pro: 'Pro', scale: 'Scale', admin: 'Admin' };
+  function tierLabel(tier) {
+    var t = (tier || '').toString().trim().toLowerCase();
+    return TIER_LABELS[t] || (t || '—');
+  }
+
   function renderActive(rows) {
     var body = document.getElementById('admin-users-active-body');
     if (!body) return;
     if (!rows || !rows.length) {
-      body.innerHTML = '<tr><td colspan="6" class="text-secondary">No active users.</td></tr>';
+      body.innerHTML = '<tr><td colspan="7" class="text-secondary">No active users.</td></tr>';
       return;
     }
     var h = '';
     rows.forEach(function (row) {
       var email = row && row.email ? String(row.email) : '';
       var role = row && row.role ? String(row.role).trim().toLowerCase() : '';
+      var tier = row && row.tier ? String(row.tier).trim().toLowerCase() : '';
       var provider = row && row.auth_provider ? String(row.auth_provider).trim().toLowerCase() : '';
       var status = row && row.status ? String(row.status).trim().toLowerCase() : '';
       var country = row && row.last_country ? String(row.last_country).trim() : '';
@@ -244,6 +337,7 @@
       var lastLogin = row && row.last_login_at != null ? Number(row.last_login_at) : 0;
       var isShopifySession = (provider === 'shopify' || role === 'shopify');
 
+      var roleCell = isShopifySession ? '—' : (role === 'admin' || role === 'master' ? makeBadge('Admin', 'primary') : escapeHtml(tierLabel(tier)));
       var actions = '';
       if (isShopifySession) {
         actions = makeBadge('Shopify session', 'secondary');
@@ -251,9 +345,8 @@
         actions = makeBadge('Admin', 'primary');
       } else {
         actions =
-          '<button type="button" class="btn btn-sm btn-outline-primary" data-admin-action="promote" data-user-id="' +
-          escapeHtml(row.id) +
-          '">Promote to admin</button>';
+          '<button type="button" class="btn btn-sm btn-outline-secondary me-1" data-admin-action="edit" data-user-id="' + escapeHtml(row.id) + '" data-user-tier="' + escapeHtml(tier) + '">Edit</button>' +
+          '<button type="button" class="btn btn-sm btn-outline-primary" data-admin-action="promote" data-user-id="' + escapeHtml(row.id) + '">Promote to admin</button>';
       }
 
       if (status && status !== 'active') {
@@ -269,6 +362,7 @@
       h +=
         '<tr>' +
           '<td><div class="admin-users-email">' + escapeHtml(emailCell) + '</div></td>' +
+          '<td>' + roleCell + '</td>' +
           '<td>' + countryCell + '</td>' +
           '<td>' + escapeHtml(cityCell) + '</td>' +
           '<td>' + escapeHtml(deviceLabel(row)) + '</td>' +
@@ -283,30 +377,28 @@
     var body = document.getElementById('admin-users-pending-body');
     if (!body) return;
     if (!rows || !rows.length) {
-      body.innerHTML = '<tr><td colspan="6" class="text-secondary">No pending users.</td></tr>';
+      body.innerHTML = '<tr><td colspan="7" class="text-secondary">No pending users.</td></tr>';
       return;
     }
+    var tierOpts = '<option value="starter">Starter</option><option value="growth">Growth</option><option value="pro">Pro</option><option value="scale">Scale</option>';
     var h = '';
     rows.forEach(function (row) {
       var email = row && row.email ? String(row.email) : '';
       var country = row && row.last_country ? String(row.last_country).trim() : '';
       var city = row && row.last_city ? String(row.last_city).trim() : '';
       var created = row && row.created_at != null ? Number(row.created_at) : 0;
+      var rowId = row && row.id != null ? String(row.id) : '';
 
+      var roleSelect = '<select class="form-select form-select-sm admin-pending-tier-select" data-user-id="' + escapeHtml(rowId) + '" aria-label="Assign role">' + tierOpts + '</select>';
       var actions =
-        '<button type="button" class="btn btn-sm btn-outline-success" data-admin-action="approve" data-user-id="' +
-        escapeHtml(row.id) +
-        '">Approve</button>' +
-        '<button type="button" class="btn btn-sm btn-outline-danger" data-admin-action="deny" data-user-id="' +
-        escapeHtml(row.id) +
-        '">Deny</button>' +
-        '<button type="button" class="btn btn-sm btn-outline-primary" data-admin-action="promote" data-user-id="' +
-        escapeHtml(row.id) +
-        '">Promote to admin</button>';
+        '<button type="button" class="btn btn-sm btn-outline-success" data-admin-action="approve" data-user-id="' + escapeHtml(rowId) + '">Approve</button>' +
+        '<button type="button" class="btn btn-sm btn-outline-danger" data-admin-action="deny" data-user-id="' + escapeHtml(rowId) + '">Deny</button>' +
+        '<button type="button" class="btn btn-sm btn-outline-primary" data-admin-action="promote" data-user-id="' + escapeHtml(rowId) + '">Promote to admin</button>';
 
       h +=
         '<tr>' +
           '<td><div class="admin-users-email">' + escapeHtml(email || '—') + '</div></td>' +
+          '<td>' + roleSelect + '</td>' +
           '<td>' + flagSpan(country, country || '—') + ' <span class="ms-1 text-secondary small">' + escapeHtml(country || '—') + '</span></td>' +
           '<td>' + escapeHtml(city || '—') + '</td>' +
           '<td>' + escapeHtml(deviceLabel(row)) + '</td>' +
@@ -321,7 +413,7 @@
     var id = which === 'pending' ? 'admin-users-pending-body' : 'admin-users-active-body';
     var body = document.getElementById(id);
     if (!body) return;
-    body.innerHTML = '<tr><td colspan="6" class="text-secondary">' + escapeHtml(text || 'Loading…') + '</td></tr>';
+    body.innerHTML = '<tr><td colspan="7" class="text-secondary">' + escapeHtml(text || 'Loading…') + '</td></tr>';
   }
 
   function loadUsers(status) {
@@ -331,16 +423,46 @@
       .catch(function () { return []; });
   }
 
-  function postAction(action, id) {
+  function postAction(action, id, bodyObj) {
     var url = '';
     if (action === 'approve') url = '/api/admin/users/' + encodeURIComponent(id) + '/approve';
     else if (action === 'deny') url = '/api/admin/users/' + encodeURIComponent(id) + '/deny';
     else if (action === 'promote') url = '/api/admin/users/' + encodeURIComponent(id) + '/promote-admin';
     else return Promise.resolve(null);
-
-    return kfetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' })
+    var body = (bodyObj && typeof bodyObj === 'object') ? JSON.stringify(bodyObj) : '{}';
+    return kfetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: body })
       .then(function (r) { return r && r.ok ? r.json().catch(function () { return { ok: true }; }) : null; })
       .catch(function () { return null; });
+  }
+
+  function patchUserTier(id, tier) {
+    var url = '/api/admin/users/' + encodeURIComponent(id);
+    return kfetch(url, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ tier: tier }) })
+      .then(function (r) { return r && r.ok ? r.json().catch(function () { return { ok: true }; }) : null; })
+      .catch(function () { return null; });
+  }
+
+  function bindEditModal() {
+    var modal = document.getElementById('admin-user-edit-modal');
+    var idEl = document.getElementById('admin-user-edit-id');
+    var tierEl = document.getElementById('admin-user-edit-tier');
+    var saveBtn = document.getElementById('admin-user-edit-save');
+    if (!modal || !idEl || !tierEl || !saveBtn) return;
+    saveBtn.addEventListener('click', function () {
+      var id = (idEl && idEl.value) ? String(idEl.value).trim() : '';
+      var tier = (tierEl && tierEl.value) ? String(tierEl.value).trim() : '';
+      if (!id || !tier) return;
+      saveBtn.disabled = true;
+      patchUserTier(id, tier)
+        .then(function () {
+          if (typeof window.bootstrap !== 'undefined' && window.bootstrap.Modal && modal) {
+            var m = window.bootstrap.Modal.getInstance(modal);
+            if (m) m.hide();
+          }
+          return refreshAll();
+        })
+        .finally(function () { try { saveBtn.disabled = false; } catch (_) {} });
+    });
   }
 
   function bindActions() {
@@ -352,12 +474,32 @@
       var action = String(btn.getAttribute('data-admin-action') || '').trim();
       var id = String(btn.getAttribute('data-user-id') || '').trim();
       if (!action || !id) return;
+      if (action === 'edit') {
+        var modal = document.getElementById('admin-user-edit-modal');
+        var idEl = document.getElementById('admin-user-edit-id');
+        var tierEl = document.getElementById('admin-user-edit-tier');
+        var tier = String(btn.getAttribute('data-user-tier') || 'starter').trim().toLowerCase();
+        if (idEl) idEl.value = id;
+        if (tierEl) tierEl.value = tier;
+        if (typeof window.bootstrap !== 'undefined' && window.bootstrap.Modal && modal) {
+          var m = new window.bootstrap.Modal(modal);
+          m.show();
+        }
+        return;
+      }
+      var bodyObj = {};
+      if (action === 'approve') {
+        var row = btn.closest ? btn.closest('tr') : null;
+        var sel = row ? row.querySelector('.admin-pending-tier-select') : null;
+        if (sel && sel.value) bodyObj.tier = sel.value;
+      }
       btn.disabled = true;
-      postAction(action, id)
+      postAction(action, id, Object.keys(bodyObj).length ? bodyObj : undefined)
         .then(function () { return refreshAll(); })
         .finally(function () { try { btn.disabled = false; } catch (_) {} });
     }
     document.addEventListener('click', handler);
+    bindEditModal();
   }
 
   function refreshAll() {

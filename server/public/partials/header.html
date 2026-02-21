@@ -9,7 +9,7 @@
         <div class="container-xl kexo-desktop-top-strip-container">
           <div class="kexo-desktop-top-strip-row">
           <div class="kexo-desktop-top-strip-left kexo-top-strip-online-wrap">
-            <a href="/dashboard/live" class="kexo-top-strip-online" id="kexo-top-strip-online-btn" aria-label="Live View">
+            <a href="/dashboard/live" class="kexo-top-strip-online" id="kexo-top-strip-online-btn" aria-label="Live View" data-kexo-perm="page.dashboard.live">
               <span class="kexo-top-strip-online-status" aria-live="polite" role="status" aria-label="Users online">
                 <i id="kexo-online-icon" class="fa-jelly fa-circle kexo-online-icon--offline kexo-top-strip-online-icon" data-icon-key="online-status-indicator" aria-hidden="true"></i>
                 <span id="online-count-spinner" class="mini-spinner is-hidden" aria-hidden="true"></span>
@@ -29,7 +29,7 @@
                 <i class="fa-jelly-filled fa-gear kexo-settings-icon" data-icon-key="nav-toggle-settings" aria-hidden="true"></i>
               </button>
               <div class="dropdown-menu kexo-top-strip-settings-menu kexo-strip-dropdown-align" id="navbar-settings-menu">
-                <a href="/settings" class="dropdown-item kexo-top-strip-settings-item" id="config-open-btn" data-nav="settings" aria-label="Settings">
+                <a href="/settings" class="dropdown-item kexo-top-strip-settings-item" id="config-open-btn" data-nav="settings" data-kexo-perm="page.settings" aria-label="Settings">
                   <i class="fa-jelly fa-gear kexo-top-strip-settings-item-icon" data-icon-key="nav-item-settings" aria-hidden="true"></i>Settings
                 </a>
                 <a href="/app/logout" class="dropdown-item kexo-top-strip-settings-item" aria-label="Sign out">
@@ -64,44 +64,44 @@
               <li class="nav-item dropdown">
                 <a class="nav-link dropdown-toggle" href="#navbar-dashboard-menu" data-bs-toggle="dropdown" data-bs-auto-close="outside" role="button" aria-expanded="false" aria-haspopup="true" aria-controls="navbar-dashboard-menu"><i class="fa-jelly-filled fa-table-cells-large kexo-nav-svg me-1" data-icon-key="nav-toggle-dashboard" aria-hidden="true"></i><span class="kexo-nav-label">Dashboard</span></a>
                 <div class="dropdown-menu" id="navbar-dashboard-menu" data-bs-popper="static">
-                  <a class="dropdown-item" id="nav-tab-dashboard" data-nav="dashboard" href="/dashboard/overview"><i class="fa-solid fa-angle-right kexo-nav-dropdown-item-icon me-2" data-icon-key="nav-dropdown-arrow" aria-hidden="true"></i>Overview</a>
-                  <a class="dropdown-item" id="nav-tab-spy" data-nav="live" href="/dashboard/live"><i class="fa-solid fa-angle-right kexo-nav-dropdown-item-icon me-2" data-icon-key="nav-dropdown-arrow" aria-hidden="true"></i>Live View</a>
-                  <a class="dropdown-item" id="nav-tab-sales" data-nav="sales" href="/dashboard/sales"><i class="fa-solid fa-angle-right kexo-nav-dropdown-item-icon me-2" data-icon-key="nav-dropdown-arrow" aria-hidden="true"></i>Recent Sales</a>
-                  <a class="dropdown-item" id="nav-tab-date" data-nav="date" href="/dashboard/table"><i class="fa-solid fa-angle-right kexo-nav-dropdown-item-icon me-2" data-icon-key="nav-dropdown-arrow" aria-hidden="true"></i>Table View</a>
+                  <a class="dropdown-item" id="nav-tab-dashboard" data-nav="dashboard" href="/dashboard/overview" data-kexo-perm="page.dashboard.overview"><i class="fa-solid fa-angle-right kexo-nav-dropdown-item-icon me-2" data-icon-key="nav-dropdown-arrow" aria-hidden="true"></i>Overview</a>
+                  <a class="dropdown-item" id="nav-tab-spy" data-nav="live" href="/dashboard/live" data-kexo-perm="page.dashboard.live"><i class="fa-solid fa-angle-right kexo-nav-dropdown-item-icon me-2" data-icon-key="nav-dropdown-arrow" aria-hidden="true"></i>Live View</a>
+                  <a class="dropdown-item" id="nav-tab-sales" data-nav="sales" href="/dashboard/sales" data-kexo-perm="page.dashboard.sales"><i class="fa-solid fa-angle-right kexo-nav-dropdown-item-icon me-2" data-icon-key="nav-dropdown-arrow" aria-hidden="true"></i>Recent Sales</a>
+                  <a class="dropdown-item" id="nav-tab-date" data-nav="date" href="/dashboard/table" data-kexo-perm="page.dashboard.table"><i class="fa-solid fa-angle-right kexo-nav-dropdown-item-icon me-2" data-icon-key="nav-dropdown-arrow" aria-hidden="true"></i>Table View</a>
                 </div>
               </li>
               <li class="nav-item dropdown">
                 <a class="nav-link dropdown-toggle" href="#navbar-insights-menu" data-bs-toggle="dropdown" data-bs-auto-close="outside" role="button" aria-expanded="false" aria-haspopup="true" aria-controls="navbar-insights-menu"><i class="fa-jelly-filled fa-chart-pie kexo-nav-svg me-1" data-icon-key="nav-toggle-breakdown" aria-hidden="true"></i><span class="kexo-nav-label">Insights</span></a>
                 <div class="dropdown-menu" id="navbar-insights-menu" data-bs-popper="static">
-                  <a class="dropdown-item" id="nav-tab-stats" data-nav="countries" href="/insights/countries"><i class="fa-solid fa-angle-right kexo-nav-dropdown-item-icon me-2" data-icon-key="nav-dropdown-arrow" aria-hidden="true"></i>Countries</a>
-                  <a class="dropdown-item" id="nav-tab-products" data-nav="products" href="/insights/products"><i class="fa-solid fa-angle-right kexo-nav-dropdown-item-icon me-2" data-icon-key="nav-dropdown-arrow" aria-hidden="true"></i>Products</a>
-                  <a class="dropdown-item" id="nav-tab-variants" data-nav="variants" href="/insights/variants"><i class="fa-solid fa-angle-right kexo-nav-dropdown-item-icon me-2" data-icon-key="nav-dropdown-arrow" aria-hidden="true"></i>Variants</a>
-                  <a class="dropdown-item" id="nav-tab-payment-types" data-nav="payment-types" href="/insights/payment-methods"><i class="fa-solid fa-angle-right kexo-nav-dropdown-item-icon me-2" data-icon-key="nav-dropdown-arrow" aria-hidden="true"></i>Payment Methods</a>
-                  <a class="dropdown-item" id="nav-tab-abandoned-carts" data-nav="abandoned-carts" href="/insights/abandoned-carts"><i class="fa-solid fa-angle-right kexo-nav-dropdown-item-icon me-2" data-icon-key="nav-dropdown-arrow" aria-hidden="true"></i>Abandoned Carts</a>
-                  <a class="dropdown-item kexo-admin-only d-none" id="nav-tab-snapshot" data-nav="snapshot" href="/insights/snapshot"><i class="fa-solid fa-angle-right kexo-nav-dropdown-item-icon me-2" data-icon-key="nav-dropdown-arrow" aria-hidden="true"></i>Snapshot</a>
+                  <a class="dropdown-item" id="nav-tab-stats" data-nav="countries" href="/insights/countries" data-kexo-perm="page.insights.countries"><i class="fa-solid fa-angle-right kexo-nav-dropdown-item-icon me-2" data-icon-key="nav-dropdown-arrow" aria-hidden="true"></i>Countries</a>
+                  <a class="dropdown-item" id="nav-tab-products" data-nav="products" href="/insights/products" data-kexo-perm="page.insights.products"><i class="fa-solid fa-angle-right kexo-nav-dropdown-item-icon me-2" data-icon-key="nav-dropdown-arrow" aria-hidden="true"></i>Products</a>
+                  <a class="dropdown-item" id="nav-tab-variants" data-nav="variants" href="/insights/variants" data-kexo-perm="page.insights.variants"><i class="fa-solid fa-angle-right kexo-nav-dropdown-item-icon me-2" data-icon-key="nav-dropdown-arrow" aria-hidden="true"></i>Variants</a>
+                  <a class="dropdown-item" id="nav-tab-payment-types" data-nav="payment-types" href="/insights/payment-methods" data-kexo-perm="page.insights.payment_methods"><i class="fa-solid fa-angle-right kexo-nav-dropdown-item-icon me-2" data-icon-key="nav-dropdown-arrow" aria-hidden="true"></i>Payment Methods</a>
+                  <a class="dropdown-item" id="nav-tab-abandoned-carts" data-nav="abandoned-carts" href="/insights/abandoned-carts" data-kexo-perm="page.insights.abandoned_carts"><i class="fa-solid fa-angle-right kexo-nav-dropdown-item-icon me-2" data-icon-key="nav-dropdown-arrow" aria-hidden="true"></i>Abandoned Carts</a>
+                  <a class="dropdown-item kexo-admin-only d-none" id="nav-tab-snapshot" data-nav="snapshot" href="/insights/snapshot" data-kexo-perm="page.insights.snapshot"><i class="fa-solid fa-angle-right kexo-nav-dropdown-item-icon me-2" data-icon-key="nav-dropdown-arrow" aria-hidden="true"></i>Snapshot</a>
                 </div>
               </li>
               <li class="nav-item dropdown">
                 <a class="nav-link dropdown-toggle" href="#navbar-acquisition-menu" data-bs-toggle="dropdown" data-bs-auto-close="outside" role="button" aria-expanded="false" aria-haspopup="true" aria-controls="navbar-acquisition-menu"><i class="fa-jelly-filled fa-route kexo-nav-svg me-1" data-icon-key="nav-toggle-traffic" aria-hidden="true"></i><span class="kexo-nav-label">Acquisition</span></a>
                 <div class="dropdown-menu" id="navbar-acquisition-menu" data-bs-popper="static">
-                  <a class="dropdown-item" id="nav-tab-attribution" data-nav="attribution" href="/acquisition/attribution"><i class="fa-solid fa-angle-right kexo-nav-dropdown-item-icon me-2" data-icon-key="nav-dropdown-arrow" aria-hidden="true"></i>Attribution</a>
-                  <a class="dropdown-item" id="nav-tab-browsers" data-nav="browsers" href="/acquisition/browsers"><i class="fa-solid fa-angle-right kexo-nav-dropdown-item-icon me-2" data-icon-key="nav-dropdown-arrow" aria-hidden="true"></i>Browsers</a>
-                  <a class="dropdown-item" id="nav-tab-devices" data-nav="devices" href="/acquisition/devices"><i class="fa-solid fa-angle-right kexo-nav-dropdown-item-icon me-2" data-icon-key="nav-dropdown-arrow" aria-hidden="true"></i>Devices</a>
+                  <a class="dropdown-item" id="nav-tab-attribution" data-nav="attribution" href="/acquisition/attribution" data-kexo-perm="page.acquisition.attribution"><i class="fa-solid fa-angle-right kexo-nav-dropdown-item-icon me-2" data-icon-key="nav-dropdown-arrow" aria-hidden="true"></i>Attribution</a>
+                  <a class="dropdown-item" id="nav-tab-browsers" data-nav="browsers" href="/acquisition/browsers" data-kexo-perm="page.acquisition.browsers"><i class="fa-solid fa-angle-right kexo-nav-dropdown-item-icon me-2" data-icon-key="nav-dropdown-arrow" aria-hidden="true"></i>Browsers</a>
+                  <a class="dropdown-item" id="nav-tab-devices" data-nav="devices" href="/acquisition/devices" data-kexo-perm="page.acquisition.devices"><i class="fa-solid fa-angle-right kexo-nav-dropdown-item-icon me-2" data-icon-key="nav-dropdown-arrow" aria-hidden="true"></i>Devices</a>
                 </div>
               </li>
               <li class="nav-item dropdown">
                 <a class="nav-link dropdown-toggle" href="#navbar-integrations-menu" data-bs-toggle="dropdown" data-bs-auto-close="outside" role="button" aria-expanded="false" aria-haspopup="true" aria-controls="navbar-integrations-menu"><i class="fa-jelly-filled fa-puzzle-piece kexo-nav-svg me-1" data-icon-key="nav-toggle-integrations" aria-hidden="true"></i><span class="kexo-nav-label">Integrations</span></a>
                 <div class="dropdown-menu" id="navbar-integrations-menu" data-bs-popper="static">
-                  <a class="dropdown-item" id="nav-tab-ads" data-nav="ads" href="/integrations/google-ads"><i class="fa-solid fa-angle-right kexo-nav-dropdown-item-icon me-2" data-icon-key="nav-dropdown-arrow" aria-hidden="true"></i>Google Ads</a>
+                  <a class="dropdown-item" id="nav-tab-ads" data-nav="ads" href="/integrations/google-ads" data-kexo-perm="page.integrations.google_ads"><i class="fa-solid fa-angle-right kexo-nav-dropdown-item-icon me-2" data-icon-key="nav-dropdown-arrow" aria-hidden="true"></i>Google Ads</a>
                 </div>
               </li>
               <li class="nav-item dropdown">
                 <a class="nav-link dropdown-toggle" href="#navbar-tools-menu" data-bs-toggle="dropdown" data-bs-auto-close="outside" role="button" aria-expanded="false" aria-haspopup="true" aria-controls="navbar-tools-menu"><i class="fa-jelly-filled fa-screwdriver-wrench kexo-nav-svg me-1" data-icon-key="nav-toggle-tools" aria-hidden="true"></i><span class="kexo-nav-label">Tools</span></a>
                 <div class="dropdown-menu" id="navbar-tools-menu" data-bs-popper="static">
-                  <a class="dropdown-item" id="nav-tab-tools-click-order-lookup" data-nav="click-order-lookup" href="/tools/click-order-lookup"><i class="fa-solid fa-angle-right kexo-nav-dropdown-item-icon me-2" data-icon-key="nav-dropdown-arrow" aria-hidden="true"></i>Click &amp; Order Lookup</a>
-                  <a class="dropdown-item" id="nav-tab-tools-change-pins" data-nav="change-pins" href="/tools/change-pins"><i class="fa-solid fa-angle-right kexo-nav-dropdown-item-icon me-2" data-icon-key="nav-dropdown-arrow" aria-hidden="true"></i>Change Pins</a>
-                  <a class="dropdown-item" id="nav-tab-tools" data-nav="compare-conversion-rate" href="/tools/compare-conversion-rate"><i class="fa-solid fa-angle-right kexo-nav-dropdown-item-icon me-2" data-icon-key="nav-dropdown-arrow" aria-hidden="true"></i>Conversion Rate Compare</a>
-                  <a class="dropdown-item" id="nav-tab-tools-shipping-cr" data-nav="shipping-cr" href="/tools/shipping-cr"><i class="fa-solid fa-angle-right kexo-nav-dropdown-item-icon me-2" data-icon-key="nav-dropdown-arrow" aria-hidden="true"></i>Shipping CR</a>
+                  <a class="dropdown-item" id="nav-tab-tools-click-order-lookup" data-nav="click-order-lookup" href="/tools/click-order-lookup" data-kexo-perm="page.tools.click_order_lookup"><i class="fa-solid fa-angle-right kexo-nav-dropdown-item-icon me-2" data-icon-key="nav-dropdown-arrow" aria-hidden="true"></i>Click &amp; Order Lookup</a>
+                  <a class="dropdown-item" id="nav-tab-tools-change-pins" data-nav="change-pins" href="/tools/change-pins" data-kexo-perm="page.tools.change_pins"><i class="fa-solid fa-angle-right kexo-nav-dropdown-item-icon me-2" data-icon-key="nav-dropdown-arrow" aria-hidden="true"></i>Change Pins</a>
+                  <a class="dropdown-item" id="nav-tab-tools" data-nav="compare-conversion-rate" href="/tools/compare-conversion-rate" data-kexo-perm="page.tools.compare_conversion_rate"><i class="fa-solid fa-angle-right kexo-nav-dropdown-item-icon me-2" data-icon-key="nav-dropdown-arrow" aria-hidden="true"></i>Conversion Rate Compare</a>
+                  <a class="dropdown-item" id="nav-tab-tools-shipping-cr" data-nav="shipping-cr" href="/tools/shipping-cr" data-kexo-perm="page.tools.shipping_cr"><i class="fa-solid fa-angle-right kexo-nav-dropdown-item-icon me-2" data-icon-key="nav-dropdown-arrow" aria-hidden="true"></i>Shipping CR</a>
                 </div>
               </li>
             </ul>

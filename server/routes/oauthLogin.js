@@ -258,10 +258,12 @@ async function handleShopifyLoginCallback(req, res) {
   const tokenData = await tokenRes.json();
   const accessToken = tokenData && tokenData.access_token;
   const scope = (tokenData && tokenData.scope) || '';
+  const now = Date.now();
+  let oauthEmail = null;
+  let oauthUserId = null;
   if (accessToken) {
     try {
       const db = getDb();
-      const now = Date.now();
       if (isPostgres()) {
         await db.run(
           'INSERT INTO shop_sessions (shop, access_token, scope, updated_at) VALUES (?, ?, ?, ?) ON CONFLICT (shop) DO UPDATE SET access_token = ?, scope = ?, updated_at = ?',
@@ -273,23 +275,45 @@ async function handleShopifyLoginCallback(req, res) {
           [shopNorm, accessToken, scope, now]
         );
       }
-
-      // Kick off background reconcile after login reauth (helps recover immediately after token revocation).
+      try {
+        const userRes = await fetch(`https://${shopNorm}/admin/api/2024-01/users/current.json`, {
+          headers: { 'X-Shopify-Access-Token': accessToken },
+        });
+        if (userRes.ok) {
+          const userData = await userRes.json();
+          const shopifyUser = userData && userData.user;
+          const email = shopifyUser && shopifyUser.email ? String(shopifyUser.email).trim().toLowerCase() : '';
+          const userId = shopifyUser && shopifyUser.id != null ? Number(shopifyUser.id) : null;
+          if (email && email.includes('@')) {
+            oauthEmail = email;
+            oauthUserId = Number.isFinite(userId) ? userId : null;
+            const existing = await users.getUserByEmail(email);
+            if (!existing) {
+              await users.createPendingUser(email, null, {}, { now });
+            } else if ((existing.status || '').toString().trim().toLowerCase() === 'active') {
+              const meta = buildMetaFromRequest(req);
+              await users.updateLoginMeta(email, meta, { now });
+            }
+            await getDb().run(
+              'UPDATE shop_sessions SET last_oauth_email = ?, last_oauth_user_id = ?, last_oauth_at = ? WHERE shop = ?',
+              [oauthEmail, oauthUserId, now, shopNorm]
+            );
+          }
+        }
+      } catch (_) {}
       try {
         const endMs = now;
         const startMs = endMs - 48 * 60 * 60 * 1000;
         setTimeout(() => {
           salesTruth.reconcileRange(shopNorm, startMs, endMs, 'today').catch(warnOnReject('[oauthLogin] reconcileRange'));
         }, 0);
-      } catch (_) {
-        // ignore
-      }
+      } catch (_) {}
     } catch (err) {
       console.error('[oauth] Failed to persist Shopify access token:', err);
-      // Fail-open: dashboard login can still succeed.
     }
   }
-  const token = signOauthSession({ shop: shopNorm });
+  const payload = oauthEmail ? { email: oauthEmail } : { shop: shopNorm };
+  const token = signOauthSession(payload);
   if (!token) {
     return res.redirect(302, '/app/login?error=session');
   }

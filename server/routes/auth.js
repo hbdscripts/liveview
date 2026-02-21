@@ -7,6 +7,7 @@ const config = require('../config');
 const { getDb, isPostgres } = require('../db');
 const { writeAudit } = require('../audit');
 const salesTruth = require('../salesTruth');
+const users = require('../usersService');
 const { signOauthSession, OAUTH_COOKIE_NAME } = require('../middleware/dashboardAuth');
 const { warnOnReject } = require('../shared/warnReject');
 
@@ -161,12 +162,50 @@ async function handleCallback(req, res) {
       // ignore
     }
 
-    // If this callback came from the dashboard "Login with Shopify" flow (state is our base64url JSON),
-    // set the oauth_session cookie so direct visits can work (no Shopify admin Referer).
+    const allowed = !config.allowedShopDomain || shopNorm === String(config.allowedShopDomain).trim().toLowerCase();
+    let oauthEmail = null;
+    let oauthUserId = null;
+    if (wantsOauthCookie && allowed) {
+      try {
+        const userRes = await fetch(`https://${shop}/admin/api/2024-01/users/current.json`, {
+          headers: { 'X-Shopify-Access-Token': accessToken },
+        });
+        if (userRes.ok) {
+          const userData = await userRes.json();
+          const shopifyUser = userData && userData.user;
+          const email = shopifyUser && shopifyUser.email ? String(shopifyUser.email).trim().toLowerCase() : '';
+          const userId = shopifyUser && shopifyUser.id != null ? Number(shopifyUser.id) : null;
+          if (email && email.includes('@')) {
+            oauthEmail = email;
+            oauthUserId = Number.isFinite(userId) ? userId : null;
+            const existing = await users.getUserByEmail(email);
+            if (!existing) {
+              await users.createPendingUser(email, null, {}, { now });
+            } else if ((existing.status || '').toString().trim().toLowerCase() === 'active') {
+              const meta = {};
+              if (req) {
+                const ip = (req.get && req.get('cf-connecting-ip')) || (req.get && req.get('x-forwarded-for')) || (req.ip || '');
+                const ua = (req.get && (req.get('user-agent') || req.get('User-Agent'))) || '';
+                if (ua) meta.last_user_agent = ua.slice(0, 320);
+                if (ip) meta.last_ip = String(ip).slice(0, 64);
+              }
+              await users.updateLoginMeta(email, meta, { now });
+            }
+            await db.run(
+              'UPDATE shop_sessions SET last_oauth_email = ?, last_oauth_user_id = ?, last_oauth_at = ? WHERE shop = ?',
+              [oauthEmail, oauthUserId, now, shopNorm]
+            );
+          }
+        }
+      } catch (err) {
+        console.warn('[auth] Failed to fetch current user for OAuth attribution:', err && err.message ? String(err.message).slice(0, 200) : err);
+      }
+    }
+
     try {
-      const allowed = !config.allowedShopDomain || shopNorm === String(config.allowedShopDomain).trim().toLowerCase();
       if (wantsOauthCookie && allowed) {
-        const token = signOauthSession({ shop: shopNorm });
+        const payload = oauthEmail ? { email: oauthEmail } : { shop: shopNorm };
+        const token = signOauthSession(payload);
         if (token) setOauthCookie(res, token);
       }
     } catch (_) {}

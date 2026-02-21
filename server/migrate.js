@@ -65,6 +65,8 @@ const { up: up057 } = require('./migrations/057_purchases_payment_method_key');
 const { up: up058 } = require('./migrations/058_attribution_tags');
 const { up: up059 } = require('./migrations/059_orders_shopify_line_items_net_columns');
 const { up: up060 } = require('./migrations/060_orders_shopify_refunds');
+const { up: up061 } = require('./migrations/061_role_permissions');
+const { up: up062 } = require('./migrations/062_shop_sessions_oauth_attribution');
 const { runAdsMigrations } = require('./ads/adsMigrate');
 
 const APP_MIGRATIONS = [
@@ -128,6 +130,8 @@ const APP_MIGRATIONS = [
   ['058_attribution_tags', up058],
   ['059_orders_shopify_line_items_net_columns', up059],
   ['060_orders_shopify_refunds', up060],
+  ['061_role_permissions', up061],
+  ['062_shop_sessions_oauth_attribution', up062],
 ];
 
 async function ensureAppMigrationsTable(db) {
