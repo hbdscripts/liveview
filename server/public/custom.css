@@ -221,6 +221,14 @@ html, body {
 .kexo-6color > :nth-child(6n + 5) { --kexo-accent: var(--kexo-accent-5, #6681e8); }
 .kexo-6color > :nth-child(6n + 6) { --kexo-accent: var(--kexo-accent-6, #8395aa); }
 
+/* 6 widgets: start from accent 4 (tables above use 1–3) */
+.kexo-6color-offset-3 > *:nth-child(6n + 1) .kexo-overview-widget-card { --kexo-accent: var(--kexo-accent-4, #e4644b); }
+.kexo-6color-offset-3 > *:nth-child(6n + 2) .kexo-overview-widget-card { --kexo-accent: var(--kexo-accent-5, #6681e8); }
+.kexo-6color-offset-3 > *:nth-child(6n + 3) .kexo-overview-widget-card { --kexo-accent: var(--kexo-accent-6, #8395aa); }
+.kexo-6color-offset-3 > *:nth-child(6n + 4) .kexo-overview-widget-card { --kexo-accent: var(--kexo-accent-1, #4b94e4); }
+.kexo-6color-offset-3 > *:nth-child(6n + 5) .kexo-overview-widget-card { --kexo-accent: var(--kexo-accent-2, #3eb3ab); }
+.kexo-6color-offset-3 > *:nth-child(6n + 6) .kexo-overview-widget-card { --kexo-accent: var(--kexo-accent-3, #f59e34); }
+
 /* Contain horizontal table overflow inside the card, not the viewport */
 .table-scroll-wrap {
   overflow-x: auto;
