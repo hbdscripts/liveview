@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 36ae21ad19d4a310
+// checksum: af76882a423dbe63
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -951,8 +951,17 @@ const API = '';
     var _sectionStripEl = null;
     var _progressActive = 0;
     var _progressHideTimer = null;
+    function _syncStripWidth() {
+      try {
+        var w = document.documentElement && document.documentElement.clientWidth;
+        if (typeof w === 'number' && w >= 0) {
+          document.documentElement.style.setProperty('--kexo-strip-viewport-width', w + 'px');
+        }
+      } catch (_) {}
+    }
     function _ensureSectionStrip() {
       if (_sectionStripEl) return;
+      _syncStripWidth();
       _sectionStripEl = document.createElement('div');
       _sectionStripEl.className = 'kexo-section-strip';
       _sectionStripEl.setAttribute('aria-hidden', 'true');
@@ -997,13 +1006,18 @@ const API = '';
       }, 200);
     }
     (function ensureLoaderAndStripOnBoot() {
+      _syncStripWidth();
       if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', function() {
           _ensureProgress();
+          _syncStripWidth();
         });
       } else {
         _ensureProgress();
       }
+      try {
+        window.addEventListener('resize', function() { _syncStripWidth(); }, { passive: true });
+      } catch (_) {}
     })();
     const LIVE_REFRESH_MS = 60000;
     const RANGE_REFRESH_MS = 5 * 60 * 1000; // Today and Sales refresh every 5 min

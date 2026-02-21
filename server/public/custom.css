@@ -2330,7 +2330,8 @@ body:not([data-page="settings"]) .table-responsive table thead th {
   position: fixed;
   top: 0;
   left: 0;
-  width: 100%;
+  width: var(--kexo-strip-viewport-width, 100%);
+  max-width: 100%;
   height: var(--kexo-loader-strip-height, 3px);
   background: var(--kexo-section-accent, var(--tblr-primary, #3eb3ab));
   pointer-events: none;
@@ -2379,7 +2380,8 @@ body[data-page="admin"] {
   position: fixed;
   top: 0;
   left: 0;
-  width: 100%;
+  width: var(--kexo-strip-viewport-width, 100%);
+  max-width: 100%;
   height: var(--kexo-loader-strip-height, 3px);
   z-index: 9999;
   pointer-events: none;
