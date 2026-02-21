@@ -41,9 +41,33 @@ test('Settings/Admin panels satisfy UI contract after normalisation', () => {
   const panels = Array.from(doc.querySelectorAll(api.SETTINGS_PANEL_SELECTOR));
   assert.ok(panels.length > 0, 'expected at least one Settings/Admin sub-panel');
 
+  // Top-level panels: not inside another panel's wrap. Only these must have a direct wrap and no nested wrap (nested panels may have had their wrap flattened).
+  const topLevelPanels = panels.filter((panel) => {
+    for (const other of panels) {
+      if (other === panel) continue;
+      const otherWrap = other.querySelector(':scope > .settings-panel-wrap');
+      if (!otherWrap || !otherWrap.contains(panel)) continue;
+      return false; // panel is inside another panel's wrap
+    }
+    return true;
+  });
+
   for (const panel of panels) {
     const wrap = panel.querySelector(':scope > .settings-panel-wrap');
-    assert.ok(wrap, `${panel.id || '<no id>'}: missing direct .settings-panel-wrap`);
+    if (topLevelPanels.includes(panel)) {
+      assert.ok(wrap, `${panel.id || '<no id>'}: missing direct .settings-panel-wrap`);
+    }
+    if (!wrap) continue;
+
+    // No nested .settings-panel-wrap (only check for top-level; nested panels get flattened into parent wrap).
+    if (topLevelPanels.includes(panel)) {
+      const nestedWraps = wrap.querySelectorAll('.settings-panel-wrap');
+      assert.equal(nestedWraps.length, 0, `${panel.id}: nested .settings-panel-wrap found`);
+    }
+
+    // No btn-secondary after normalisation (use btn-outline-secondary).
+    const secondaryBtns = wrap.querySelectorAll('.btn-secondary');
+    assert.equal(secondaryBtns.length, 0, `${panel.id}: .btn-secondary found after normalisation`);
 
     // No grids inside panel content after normalisation.
     assert.equal(wrap.querySelectorAll('.row').length, 0, `${panel.id}: .row found inside settings-panel-wrap`);
@@ -92,5 +116,17 @@ test('Settings/Admin panels satisfy UI contract after normalisation', () => {
   const saveButtons = Array.from(doc.querySelectorAll('button')).filter((b) => String(b.textContent || '').trim() === 'Save Settings');
   assert.ok(saveButtons.length > 0, 'expected at least one Save Settings button');
   for (const b of saveButtons) assert.ok(b.classList.contains('btn-primary'), 'Save Settings button should be .btn-primary');
+});
+
+test('Theme settings renderer has no per-item Revert or inline styles', () => {
+  const themeSettingsJs = readText('server/public/theme-settings.js');
+  assert.ok(
+    themeSettingsJs.indexOf('kexo-css-var-revert') === -1,
+    'theme-settings.js must not contain per-item Revert (kexo-css-var-revert); use global footer Revert only'
+  );
+  assert.ok(
+    themeSettingsJs.indexOf('style="') === -1 && themeSettingsJs.indexOf("style='") === -1,
+    'theme-settings.js must not contain inline style attributes; use classes in settings-ui.css'
+  );
 });
 

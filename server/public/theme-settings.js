@@ -314,10 +314,7 @@
     var groupId = it && it.accordion ? String(it.accordion) : 'misc';
     return '' +
       '<div class="mb-3 kexo-css-var-row" data-kexo-css-var-row="1" data-kexo-css-var-group="' + escapeHtml(groupId) + '" data-kexo-css-var-search="' + escapeHtml(searchText) + '">' +
-        '<div class="d-flex align-items-center gap-2 justify-content-between mb-1">' +
-          '<div class="form-label mb-0"><strong>' + escapeHtml(label) + '</strong></div>' +
-          '<a href="#" class="kexo-css-var-revert text-secondary small" data-kexo-css-var="' + escapeHtml(name) + '" role="button" aria-label="Revert">Revert</a>' +
-        '</div>' +
+        '<div class="form-label mb-1"><strong>' + escapeHtml(label) + '</strong></div>' +
         '<div class="d-flex align-items-center gap-2 flex-wrap">' +
           '<input type="color" class="form-control form-control-color kexo-css-var-swatch" data-kexo-css-var="' + escapeHtml(name) + '" title="Pick colour" />' +
           '<input type="text" class="form-control kexo-css-var-input settings-ui-maxw-360" data-kexo-css-var="' + escapeHtml(name) + '" placeholder="#rrggbb or rgb()/hsl()" maxlength="150" />' +
@@ -1211,7 +1208,7 @@
             '<div class="card card-sm h-100">' +
               '<div class="card-body">' +
                 '<div class="d-flex align-items-center mb-2">' +
-                  '<span class="theme-icons-attribution-preview me-2 d-inline-flex align-items-center justify-content-center" style="width:1.5rem;height:1.5rem;" data-payment-icon-preview="1" aria-hidden="true"></span>' +
+                  '<span class="theme-icons-attribution-preview me-2" data-payment-icon-preview="1" aria-hidden="true"></span>' +
                   '<strong class="me-auto">' + escapeHtml(label) + '</strong>' +
                   (hasSaved ? '<span class="badge bg-azure-lt text-azure">Saved</span>' : '') +
                 '</div>' +
@@ -1220,7 +1217,7 @@
                 '<div class="form-hint small mt-1">Starts blank intentionally. Paste Font Awesome, image URL/path, or SVG markup.</div>' +
                 '<div class="d-flex align-items-center gap-2 mt-2">' +
                   '<button type="button" class="kexo-icon-action-btn kexo-icon-action-save payment-icon-save" aria-label="Save">' +
-                    '<span class="kexo-theme-icon-preview kexo-icon-action-icon d-inline-flex align-items-center justify-content-center" style="width:16px;height:16px;" data-theme-icon-preview-glyph="theme-icon-glyph-admin-tab-save-icon" aria-hidden="true"></span>' +
+                    '<span class="kexo-theme-icon-preview kexo-icon-action-icon" data-theme-icon-preview-glyph="theme-icon-glyph-admin-tab-save-icon" aria-hidden="true"></span>' +
                   '</button>' +
                   '<span class="small text-secondary ms-auto" data-payment-icon-msg="1"></span>' +
                 '</div>' +
@@ -1359,7 +1356,7 @@ btn.classList.remove('btn-success');
             '<div class="card card-sm h-100">' +
               '<div class="card-body">' +
                 '<div class="d-flex align-items-center mb-2">' +
-                  '<span class="theme-icons-attribution-preview me-2 d-inline-flex align-items-center justify-content-center" style="width:1.5rem;height:1.5rem;" data-variant-rule-icon-preview="1" aria-hidden="true"></span>' +
+                  '<span class="theme-icons-attribution-preview me-2" data-variant-rule-icon-preview="1" aria-hidden="true"></span>' +
                   '<strong class="me-auto">' + escapeHtml(row.label) + '</strong>' +
                 '</div>' +
                 '<div class="text-secondary small mb-2"><code>' + escapeHtml(row.overrideKey) + '</code></div>' +
@@ -1367,7 +1364,7 @@ btn.classList.remove('btn-success');
                 '<div class="form-hint small mt-1">Save a unique icon per variant rule row.</div>' +
                 '<div class="d-flex align-items-center gap-2 mt-2">' +
                   '<button type="button" class="kexo-icon-action-btn kexo-icon-action-save variant-rule-icon-save" aria-label="Save">' +
-                    '<span class="kexo-theme-icon-preview kexo-icon-action-icon d-inline-flex align-items-center justify-content-center" style="width:16px;height:16px;" data-theme-icon-preview-glyph="theme-icon-glyph-admin-tab-save-icon" aria-hidden="true"></span>' +
+                    '<span class="kexo-theme-icon-preview kexo-icon-action-icon" data-theme-icon-preview-glyph="theme-icon-glyph-admin-tab-save-icon" aria-hidden="true"></span>' +
                   '</button>' +
                   '<span class="small text-secondary ms-auto" data-variant-rule-icon-msg="1"></span>' +
                 '</div>' +
@@ -1558,7 +1555,7 @@ btn.classList.remove('btn-success');
             '<div class="card card-sm h-100">' +
               '<div class="card-body">' +
                 '<div class="d-flex align-items-center mb-2">' +
-                  '<span class="theme-icons-attribution-preview me-2 d-inline-flex align-items-center justify-content-center" style="width:1.5rem;height:1.5rem;" data-attribution-icon-preview="1" aria-hidden="true"></span>' +
+                  '<span class="theme-icons-attribution-preview me-2" data-attribution-icon-preview="1" aria-hidden="true"></span>' +
                   '<strong class="me-auto">Source: ' + escapeHtml(label) + '</strong>' +
                 '</div>' +
                 '<div class="text-secondary small mb-2"><code>' + escapeHtml(key) + '</code></div>' +
@@ -1566,7 +1563,7 @@ btn.classList.remove('btn-success');
                 '<div class="form-hint small mt-1">Font Awesome class, image URL/path, or inline SVG. Blank clears the icon.</div>' +
                 '<div class="d-flex align-items-center gap-2 mt-2">' +
                   '<button type="button" class="kexo-icon-action-btn kexo-icon-action-save attribution-icon-save" data-kind="source" data-key="' + escapeHtml(key) + '" aria-label="Save">' +
-                    '<span class="kexo-theme-icon-preview kexo-icon-action-icon d-inline-flex align-items-center justify-content-center" style="width:16px;height:16px;" data-theme-icon-preview-glyph="theme-icon-glyph-admin-tab-save-icon" aria-hidden="true"></span>' +
+                    '<span class="kexo-theme-icon-preview kexo-icon-action-icon" data-theme-icon-preview-glyph="theme-icon-glyph-admin-tab-save-icon" aria-hidden="true"></span>' +
                   '</button>' +
                   '<span class="small text-secondary ms-auto" data-attribution-icon-msg="1"></span>' +
                 '</div>' +
@@ -1593,7 +1590,7 @@ btn.classList.remove('btn-success');
             '<div class="card card-sm h-100">' +
               '<div class="card-body">' +
                 '<div class="d-flex align-items-center mb-2">' +
-                  '<span class="theme-icons-attribution-preview me-2 d-inline-flex align-items-center justify-content-center" style="width:1.5rem;height:1.5rem;" data-attribution-icon-preview="1" aria-hidden="true"></span>' +
+                  '<span class="theme-icons-attribution-preview me-2" data-attribution-icon-preview="1" aria-hidden="true"></span>' +
                   '<strong class="me-auto">Variant: ' + escapeHtml(label) + '</strong>' +
                 '</div>' +
                 '<div class="text-secondary small mb-2"><code>' + escapeHtml(key) + '</code></div>' +
@@ -1601,7 +1598,7 @@ btn.classList.remove('btn-success');
                 '<div class="form-hint small mt-1">Font Awesome class, image URL/path, or inline SVG. Blank clears the icon.</div>' +
                 '<div class="d-flex align-items-center gap-2 mt-2">' +
                   '<button type="button" class="kexo-icon-action-btn kexo-icon-action-save attribution-icon-save" data-kind="variant" data-key="' + escapeHtml(key) + '" aria-label="Save">' +
-                    '<span class="kexo-theme-icon-preview kexo-icon-action-icon d-inline-flex align-items-center justify-content-center" style="width:16px;height:16px;" data-theme-icon-preview-glyph="theme-icon-glyph-admin-tab-save-icon" aria-hidden="true"></span>' +
+                    '<span class="kexo-theme-icon-preview kexo-icon-action-icon" data-theme-icon-preview-glyph="theme-icon-glyph-admin-tab-save-icon" aria-hidden="true"></span>' +
                   '</button>' +
                   '<span class="small text-secondary ms-auto" data-attribution-icon-msg="1"></span>' +
                 '</div>' +
@@ -2069,16 +2066,16 @@ btn.classList.remove('btn-success');
       '<div class="card card-sm h-100">' +
         '<div class="card-body">' +
           '<div class="d-flex align-items-center mb-2">' +
-            '<span class="kexo-theme-icon-preview me-2 d-inline-flex align-items-center justify-content-center" style="width:1.25rem;height:1.25rem;" data-theme-icon-preview-glyph="' + key + '" aria-hidden="true"></span>' +
+            '<span class="kexo-theme-icon-preview me-2" data-theme-icon-preview-glyph="' + key + '" aria-hidden="true"></span>' +
             '<strong class="me-auto">' + meta.title + '</strong>' +
             '<button type="button" class="kexo-icon-help-trigger" data-theme-icon-help-trigger data-theme-icon-help-key="' + escapeHtml(key) + '" aria-label="Show description">' +
-              '<span class="kexo-icon-help-trigger-icon kexo-theme-icon-preview d-inline-flex align-items-center justify-content-center" style="width:16px;height:16px;" data-theme-icon-preview-glyph="theme-icon-glyph-admin-tab-help-tooltip" aria-hidden="true"></span>' +
+              '<span class="kexo-icon-help-trigger-icon kexo-theme-icon-preview" data-theme-icon-preview-glyph="theme-icon-glyph-admin-tab-help-tooltip" aria-hidden="true"></span>' +
             '</button>' +
           '</div>' +
           '<textarea class="form-control font-monospace" id="' + inputId + '" name="' + key + '" data-theme-icon-glyph-input="' + key + '" rows="2" placeholder="' + (DEFAULTS[key] || 'fa-circle') + '"></textarea>' +
           '<div class="d-flex align-items-center gap-2 mt-2">' +
             '<button type="button" class="kexo-icon-action-btn kexo-icon-action-save" data-theme-icon-save-glyph="' + key + '" aria-label="Save">' +
-              '<span class="kexo-theme-icon-preview kexo-icon-action-icon d-inline-flex align-items-center justify-content-center" style="width:16px;height:16px;" data-theme-icon-preview-glyph="theme-icon-glyph-admin-tab-save-icon" aria-hidden="true"></span>' +
+              '<span class="kexo-theme-icon-preview kexo-icon-action-icon" data-theme-icon-preview-glyph="theme-icon-glyph-admin-tab-save-icon" aria-hidden="true"></span>' +
             '</button>' +
             '<span class="small text-secondary ms-auto" data-theme-icon-glyph-msg="' + key + '"></span>' +
           '</div>' +
@@ -2087,7 +2084,7 @@ btn.classList.remove('btn-success');
     '</div>';
   }
 
-  var TOOLTIP_ICON = ' <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i>';
+  var TOOLTIP_ICON = ' <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i>';
   function headerInputCard(key, title, help, placeholder) {
     var inputId = 'theme-input-' + key;
     var titleAttr = help ? (' title="' + String(help).replace(/"/g, '&quot;') + '"') : '';
@@ -2153,7 +2150,7 @@ btn.classList.remove('btn-success');
             '<strong>' + title + '</strong>' +
           '</div>' +
           '<div class="d-flex align-items-center gap-2">' +
-            '<input type="color" class="form-control form-control-color theme-accent-swatch" data-accent-sync="' + key + '" style="width:2.5rem;height:2rem;padding:2px;cursor:pointer" title="Pick color" />' +
+            '<input type="color" class="form-control form-control-color theme-accent-swatch" data-accent-sync="' + key + '" title="Pick color" />' +
             '<input type="text" class="form-control theme-accent-hex" id="' + inputId + '" name="' + key + '" placeholder="' + placeholder + '" maxlength="7" />' +
           '</div>' +
         '</div>' +
@@ -2184,13 +2181,12 @@ btn.classList.remove('btn-success');
     var attrs = extraDataAttrs ? String(extraDataAttrs) : '';
     return '<div class="kexo-theme-grid-item kexo-css-var-card"' + attrs + '>' +
       '<div class="card card-sm h-100">' +
-        '<div class="card-body position-relative">' +
-          '<a href="#" class="kexo-css-var-revert text-secondary small position-absolute top-0 end-0 me-1 mt-1" data-kexo-css-var="' + escapeHtml(name) + '" role="button" aria-label="Revert to default">Revert</a>' +
+        '<div class="card-body">' +
           '<div class="mb-2">' +
             '<strong' + titleAttr + '>' + escapeHtml(label) + (help ? TOOLTIP_ICON : '') + '</strong>' +
           '</div>' +
           '<div class="d-flex align-items-center gap-2">' +
-            '<input type="color" class="form-control form-control-color kexo-css-var-swatch" data-kexo-css-var="' + escapeHtml(name) + '" style="width:2.5rem;height:2rem;padding:2px;cursor:pointer" title="Pick colour" />' +
+            '<input type="color" class="form-control form-control-color kexo-css-var-swatch" data-kexo-css-var="' + escapeHtml(name) + '" title="Pick colour" />' +
             '<input type="text" class="form-control kexo-css-var-input" data-kexo-css-var="' + escapeHtml(name) + '" placeholder="Leave blank for default" maxlength="150" />' +
           '</div>' +
         '</div>' +
@@ -2354,7 +2350,7 @@ btn.classList.remove('btn-success');
     ].join('');
     var customCssFieldset =
       '<fieldset class="mb-4">' +
-        '<legend class="form-label" title="Injected inline into head after other stylesheets. Changes are global.">Custom CSS <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></legend>' +
+        '<legend class="form-label" title="Injected inline into head after other stylesheets. Changes are global.">Custom CSS <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></legend>' +
         '<textarea class="form-control font-monospace" name="theme-custom-css" rows="9" spellcheck="false" placeholder="/* Custom CSS */"></textarea>' +
       '</fieldset>';
     return '<form id="theme-settings-form">' +
@@ -2374,11 +2370,11 @@ btn.classList.remove('btn-success');
       '</div>' +
 
       '<div class="theme-subpanel" data-theme-subpanel="header" hidden>' +
-        '<h4 class="mb-2" title="Configure header visibility and shape. Header/nav colors are in the Color tab.">Shape <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></h4>' +
-        '<div class="row g-3">' + headerShapeGrid + '</div>' +
+        '<h4 class="mb-2" title="Configure header visibility and shape. Header/nav colors are in the Color tab.">Shape <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></h4>' +
+        '<div class="settings-responsive-grid">' + headerShapeGrid + '</div>' +
         '<hr class="my-3" />' +
         '<h4 class="mb-2">Visibility & borders</h4>' +
-        '<div class="row g-3">' + headerToggleGrid + '</div>' +
+        '<div class="settings-responsive-grid">' + headerToggleGrid + '</div>' +
       '</div>' +
 
       '<div class="theme-subpanel" data-theme-subpanel="color" hidden>' +
@@ -2476,7 +2472,7 @@ btn.classList.remove('btn-success');
               '<option value="custom">Custom URL or upload</option>' +
             '</select>' +
           '</div>' +
-          '<div class="mb-3" id="settings-sale-sound-custom-wrap" style="display:none">' +
+          '<div class="mb-3" id="settings-sale-sound-custom-wrap" hidden>' +
             '<label class="form-label" for="settings-asset-sale-sound">Custom sound URL</label>' +
             '<input type="url" class="form-control" id="settings-asset-sale-sound" placeholder="https://… or upload below" />' +
             '<div class="input-group mt-2">' +
@@ -2856,23 +2852,6 @@ btn.classList.remove('btn-success');
       });
       applyKpiAdvancedUiState();
     }
-
-    grid.addEventListener('click', function (e) {
-      var t = e && e.target ? e.target : null;
-      if (!t || !t.classList) return;
-
-      if (t.classList.contains('kexo-css-var-revert')) {
-        e.preventDefault();
-        var name = t.getAttribute('data-kexo-css-var');
-        if (!name) return;
-        var input = root.querySelector('.kexo-css-var-input[data-kexo-css-var="' + CSS.escape(name) + '"]');
-        if (input) { try { input.value = ''; } catch (_) {} }
-        applyCfgToDom(readCfgFromUi());
-        updateCssVarPreviewCircles();
-        return;
-      }
-
-    });
 
     function syncSwatchToInput(t) {
       if (!t || !t.classList || !t.classList.contains('kexo-css-var-swatch')) return;
@@ -3345,7 +3324,7 @@ btn.classList.remove('btn-success');
       matched = 'kexo1';
     }
     presetSel.value = matched;
-    if (customWrap) customWrap.style.display = matched === 'custom' ? 'block' : 'none';
+    if (customWrap) customWrap.hidden = matched !== 'custom';
   }
 
   function wireSaleNotificationPanel() {
@@ -3475,7 +3454,7 @@ btn.classList.remove('btn-success');
     if (presetSel) {
       presetSel.addEventListener('change', function () {
         var v = (this.value || '').trim();
-        if (customWrap) customWrap.style.display = v === 'custom' ? 'block' : 'none';
+        if (customWrap) customWrap.hidden = v !== 'custom';
       });
     }
 

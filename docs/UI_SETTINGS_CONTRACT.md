@@ -12,8 +12,9 @@ If you touch Settings/Admin UI, you must follow this contract and keep it passin
 ### Panel (Settings / Admin sub-panel)
 
 - **Tabs / accordion headers are the section headers.**
-- Panels must have a single wrapper immediately under the sub-panel root: `.settings-panel-wrap`
-- **No grids** in Settings/Admin panel content. All content is single-column stacked (cards full-width).
+- Panels must have **exactly one** `.settings-panel-wrap` as the **direct** child of the sub-panel root (created/enforced by the normaliser). **No nested layout:** do not inject another `.settings-panel-wrap` inside panels; templates and renderers must not add this wrapper.
+- Default layout is single-column stacked (cards full-width).
+- **Grids:** Use a **grid for 2+ repeated like-for-like items** (e.g. colors, icons, images, variant tiles). Use the class `.settings-responsive-grid`; do **not** use Bootstrap `.row`/`.col-*` or `.d-grid` for tile collections. Do not grid single, unique controls or mixed feature groupings—those stay stacked.
 
 Example (sub-panel root IDs are important for the normaliser/tests):
 
@@ -65,8 +66,8 @@ Files:
 
 Use Tabler conventions:
 
-- **Primary action** (Save/Apply/Update): `btn btn-primary`
-- **Secondary**: `btn btn-outline-secondary`
+- **Primary action** (Save/Apply/Update): `btn btn-primary btn-md`
+- **Secondary**: `btn btn-outline-secondary btn-md` — **do not use `btn-secondary`** in Settings/Admin UI
 - **Danger**: `btn btn-danger` (or `btn btn-outline-danger` for soft actions)
 - **Action row**: `d-flex align-items-center gap-2 flex-wrap` (buttons grouped, consistent spacing)
 - **Form spacing**: prefer `mb-3` group spacing, `form-label`, `form-hint`
@@ -94,17 +95,21 @@ Use consistent states:
 
 ### Do
 
-- Do wrap panel content in `.settings-panel-wrap`
-- Do stack cards full-width
-- Do keep later card headers (Truth Sync / Pixel / Diagnostics, etc.)
-- Do use Tabler button/form classes
-- Do make read-only fields clearly read-only with a hint
-- Do make read-only fields clearly read-only (plaintext) without adding repetitive hint blocks
+- Do have exactly one `.settings-panel-wrap` as the direct child of each sub-panel (normaliser enforces this).
+- Do stack cards full-width when showing single or unique controls.
+- Do use `.settings-responsive-grid` when showing **2+** repeated like-for-like items (colors, icons, images, variants, etc.).
+- Do keep later card headers (Truth Sync / Pixel / Diagnostics, etc.).
+- Do use Tabler button/form classes; use `btn-md` and `btn-outline-secondary` (not `btn-secondary`).
+- Do make read-only fields clearly read-only with a hint (plaintext); avoid repetitive hint blocks.
+- Do put all Settings-only CSS in `server/public/settings-ui.css` (no inline styles in templates/renderers).
 
 ### Don’t
 
-- Don’t introduce multi-column grids (`.row`, `.col-*`, `display: grid`) inside panel content
-- Don’t add new Settings-only CSS to random global stylesheets (put it in `server/public/settings-ui.css`)
-- Don’t add inline styles in Settings templates/renderers
-- Don’t author a first card header in new Settings/Admin UI (tabs/accordion is the header)
+- Don’t use nested `.settings-panel-wrap` or inject `.settings-panel-wrap` in renderers.
+- Don’t use `btn-secondary` in Settings/Admin UI (use `btn-outline-secondary`).
+- Don’t use Bootstrap `.row`/`.d-grid` for tile grids; use `.settings-responsive-grid`.
+- Don’t use grids for one-off controls or mixed content.
+- Don’t add Settings-only CSS to global stylesheets (use `server/public/settings-ui.css` only).
+- Don’t add inline styles in Settings templates/renderers.
+- Don’t author a first card header in new Settings/Admin UI (tabs/accordion is the header).
 

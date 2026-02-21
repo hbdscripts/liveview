@@ -32,9 +32,15 @@
     var wrap = null;
     try { wrap = panelEl.querySelector(':scope > .' + SETTINGS_PANEL_WRAP_CLASS); } catch (_) { wrap = null; }
     if (!wrap) {
-      wrap = document.createElement('div');
-      wrap.className = SETTINGS_PANEL_WRAP_CLASS;
-      panelEl.insertBefore(wrap, panelEl.firstChild);
+      var existing = panelEl.querySelector('.' + SETTINGS_PANEL_WRAP_CLASS);
+      if (existing) {
+        wrap = existing;
+        try { panelEl.insertBefore(wrap, panelEl.firstChild); } catch (_) {}
+      } else {
+        wrap = document.createElement('div');
+        wrap.className = SETTINGS_PANEL_WRAP_CLASS;
+        panelEl.insertBefore(wrap, panelEl.firstChild);
+      }
     }
     // Ensure ALL direct children (except wrap) are inside the wrap.
     var toMove = [];
@@ -48,6 +54,19 @@
     } catch (_) {}
     toMove.forEach(function (n) { try { wrap.appendChild(n); } catch (_) {} });
     return wrap;
+  }
+
+  function flattenNestedPanelWraps(wrap) {
+    if (!wrap || !wrap.querySelectorAll) return;
+    var inner;
+    while (true) {
+      try { inner = wrap.querySelector('.' + SETTINGS_PANEL_WRAP_CLASS); } catch (_) { inner = null; }
+      if (!inner || inner === wrap) break;
+      try {
+        while (inner.firstChild) wrap.appendChild(inner.firstChild);
+        if (inner.parentNode) inner.parentNode.removeChild(inner);
+      } catch (_) { break; }
+    }
   }
 
   function removeClassPrefix(el, prefix) {
@@ -295,10 +314,14 @@
         btn.classList.remove('btn-ghost-danger');
         btn.classList.add('btn-outline-danger');
       }
+      if (btn.classList.contains('btn-secondary')) {
+        btn.classList.remove('btn-secondary');
+        btn.classList.add('btn-outline-secondary');
+      }
 
       var text = '';
       try { text = String(btn.textContent || '').trim().toLowerCase(); } catch (_) { text = ''; }
-      var isPrimaryAction = text === 'save' || text === 'apply' || text === 'update';
+      var isPrimaryAction = text === 'save' || text === 'apply' || text === 'update' || text === 'save settings';
       if (isPrimaryAction) {
         btn.classList.remove(
           'btn-outline-primary',
@@ -310,12 +333,17 @@
         );
         btn.classList.add('btn-primary');
       }
+
+      if (!btn.classList.contains('btn-sm') && !btn.classList.contains('btn-lg')) {
+        btn.classList.add('btn-md');
+      }
     });
   }
 
   function normaliseSettingsPanel(panelEl) {
     if (!isElement(panelEl)) return;
-    ensurePanelWrap(panelEl);
+    var wrap = ensurePanelWrap(panelEl);
+    if (wrap) flattenNestedPanelWraps(wrap);
     normaliseGridLayouts(panelEl);
     stripFirstCardHeaderInPanel(panelEl);
     removeDeadCardHeaderChevrons(panelEl);
@@ -329,6 +357,13 @@
     var panels = [];
     try { panels = Array.prototype.slice.call(scope.querySelectorAll(SETTINGS_PANEL_SELECTOR)); } catch (_) { panels = []; }
     panels.forEach(function (p) { try { normaliseSettingsPanel(p); } catch (_) {} });
+    // Second pass: flatten nested wraps so no wrap contains another .settings-panel-wrap.
+    panels.forEach(function (p) {
+      try {
+        var w = getPanelWrap(p);
+        if (w) flattenNestedPanelWraps(w);
+      } catch (_) {}
+    });
   }
 
   function wireSettingsUiMutationObserver() {
