@@ -843,6 +843,37 @@
         });
       },
     });
+    registerSettingsSection({
+      id: 'theme-defaults',
+      read: function () {
+        if (typeof window.__kexoThemeGetState !== 'function') return { themePayload: {}, cssVarOverridesV1: { v: 1, vars: {} } };
+        return window.__kexoThemeGetState();
+      },
+      apply: function (state) {
+        if (state && typeof window.__kexoThemeApplyState === 'function') window.__kexoThemeApplyState(state);
+      },
+      save: function (state) {
+        if (!state) return Promise.resolve({ ok: false });
+        var themePromise = (state.themePayload && typeof state.themePayload === 'object')
+          ? saveThemeDefaults(state.themePayload)
+          : Promise.resolve({ ok: true });
+        var overridesPromise = (state.cssVarOverridesV1 && typeof state.cssVarOverridesV1 === 'object')
+          ? saveSettings({ cssVarOverridesV1: state.cssVarOverridesV1 })
+          : Promise.resolve({ ok: true });
+        return Promise.all([themePromise, overridesPromise]).then(function (results) {
+          var r1 = results[0];
+          var r2 = results[1];
+          if (r1 && r1.ok && r2 && r2.ok) return r1;
+          return (r2 && !r2.ok) ? r2 : (r1 || r2);
+        });
+      },
+    });
+    window.__kexoThemeBaselineReady = function () {
+      if (typeof window.__kexoThemeGetState !== 'function') return;
+      var state = window.__kexoThemeGetState();
+      setSettingsDraftBaseline('theme-defaults', state);
+      try { syncGlobalFooter(); } catch (_) {}
+    };
   }
 
   function renderTablesWhenVisible() {

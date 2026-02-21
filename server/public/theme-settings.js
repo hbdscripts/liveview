@@ -358,9 +358,6 @@
         '<div id="' + escapeHtml(collapseId) + '" class="accordion-collapse collapse' + (open ? ' show' : '') + '"' + parentAttr + ' aria-labelledby="' + escapeHtml(headingId) + '">' +
           '<div class="accordion-body">' +
             '<div class="text-secondary small mb-3">Leave blank to use theme default.</div>' +
-            '<div class="d-flex align-items-center gap-2 flex-wrap mb-3">' +
-              '<button type="button" class="btn btn-md kexo-css-var-revert-section" data-kexo-css-var-group="' + escapeHtml(accordionId) + '">Revert section</button>' +
-            '</div>' +
             bodyContent +
           '</div>' +
         '</div>' +
@@ -2069,6 +2066,27 @@ btn.classList.remove('btn-success');
     refreshIconPreviews(form);
   }
 
+  window.__kexoThemeGetState = function () {
+    var themePayload = buildFullThemePayload();
+    var cssVarOverridesV1 = (typeof window.__kexoThemeReadCssVarOverrides === 'function')
+      ? window.__kexoThemeReadCssVarOverrides()
+      : { v: 1, vars: {} };
+    return { themePayload: themePayload, cssVarOverridesV1: cssVarOverridesV1 };
+  };
+  window.__kexoThemeApplyState = function (state) {
+    if (state.themePayload && typeof state.themePayload === 'object') {
+      KEYS.forEach(function (key) {
+        var dbKey = key.replace(/-/g, '_');
+        var val = state.themePayload[dbKey];
+        if (val !== undefined) setStored(key, val);
+      });
+      syncUI();
+    }
+    if (state.cssVarOverridesV1 && typeof window.__kexoThemeApplyCssVarOverrides === 'function') {
+      window.__kexoThemeApplyCssVarOverrides(state.cssVarOverridesV1);
+    }
+  };
+
   function styleInputCard(key) {
     var meta = ICON_STYLE_META[key] || { title: key, help: '', icon: 'fa-circle-info' };
     var inputId = 'theme-input-' + key;
@@ -2269,10 +2287,7 @@ btn.classList.remove('btn-success');
       collapseId: 'theme-color-accordion-theme-accents',
       bodyHtml:
         '<div class="text-secondary small mb-3">Accent 1 is the primary accent (Top Bar + Top Nav). Accents 1–10 rotate for nav underline/accents. Leave blank to use defaults.</div>' +
-        '<div class="d-flex align-items-center gap-2 flex-wrap mb-3">' +
-          '<button type="button" class="btn btn-md kexo-theme-accents-revert-section">Revert section</button>' +
-        '</div>' +
-        '<div class="d-flex flex-column gap-3 kexo-theme-stack">' + accentGrid + '</div>',
+        '<div class="settings-responsive-grid">' + accentGrid + '</div>',
     });
 
     var headerNavAccordion = buildCssVarOverridesAccordionHtml(schemeMap, 'header-nav', 'Header & Navigation', { open: false, parentId: themeAccordionsId });
@@ -2307,9 +2322,6 @@ btn.classList.remove('btn-success');
       dataAttrs: ' data-kexo-css-var-accordion="kpis"',
       bodyHtml:
         '<div class="text-secondary small mb-3">Leave blank to use theme default.</div>' +
-        '<div class="d-flex align-items-center gap-2 flex-wrap mb-3">' +
-          '<button type="button" class="btn btn-md kexo-css-var-revert-section" data-kexo-css-var-group="kpis">Revert section</button>' +
-        '</div>' +
         '<div class="settings-responsive-grid" data-kexo-css-var-accordion-body="kpis">' + kpiBaseCards + '</div>' +
         (kpiBaseCards ? '' : '<div class="text-secondary small">No items.</div>') +
         '<hr class="my-3" />' +
@@ -2347,9 +2359,6 @@ btn.classList.remove('btn-success');
       dataAttrs: ' data-kexo-css-var-accordion="advanced-grays"',
       bodyHtml:
         '<div class="text-secondary small mb-3">Leave blank to use theme default.</div>' +
-        '<div class="d-flex align-items-center gap-2 flex-wrap mb-3">' +
-          '<button type="button" class="btn btn-md kexo-css-var-revert-section" data-kexo-css-var-group="advanced-grays">Revert section</button>' +
-        '</div>' +
         '<div class="mb-3">' +
           '<label class="form-label">Theme base</label>' +
           '<div class="form-selectgroup">' +
@@ -2383,11 +2392,6 @@ btn.classList.remove('btn-success');
           '<input type="text" class="form-control" id="kexo-css-var-overrides-search" placeholder="Search/filter colours…" aria-label="Search colours" />' +
         '</div>' +
         '<div id="kexo-css-var-overrides-grid">' + colorsAccordionHtml + '</div>' +
-        '<div class="d-flex align-items-center gap-2 flex-wrap mt-3">' +
-          '<button type="button" class="btn btn-primary btn-md" id="kexo-css-var-overrides-save">Save colour overrides</button>' +
-          '<button type="button" class="btn btn-md" id="kexo-css-var-overrides-reset">Reset overrides</button>' +
-          '<span id="kexo-css-var-overrides-msg" class="form-hint"></span>' +
-        '</div>' +
       '</div>';
 
     var menuHoverGrid = [
@@ -2537,11 +2541,7 @@ btn.classList.remove('btn-success');
         '</form>' +
       '</div>' +
     '</form>' +
-    buildIconEditModalHtml() +
-    '<div class="d-flex gap-2 mt-3">' +
-      '<button type="button" class="btn btn-primary btn-md flex-fill" id="theme-save-defaults">Save as default</button>' +
-      '<button type="button" class="btn btn-md" id="theme-reset">Reset</button>' +
-    '</div>';
+    buildIconEditModalHtml();
   }
 
   function wireThemeSubTabs(root) {
@@ -2692,10 +2692,7 @@ btn.classList.remove('btn-success');
     var grid = root.querySelector('#kexo-css-var-overrides-grid');
     if (!grid) return;
     var searchInput = root.querySelector('#kexo-css-var-overrides-search');
-    var saveBtn = root.querySelector('#kexo-css-var-overrides-save');
-    var resetBtn = root.querySelector('#kexo-css-var-overrides-reset');
     var msgEl = root.querySelector('#kexo-css-var-overrides-msg');
-    if (!saveBtn || !resetBtn) return;
     var base = '';
     try { if (typeof API !== 'undefined') base = String(API || ''); } catch (_) {}
 
@@ -2922,31 +2919,6 @@ btn.classList.remove('btn-success');
         return;
       }
 
-      if (t.classList.contains('kexo-css-var-revert-section')) {
-        e.preventDefault();
-        var g = String(t.getAttribute('data-kexo-css-var-group') || '').trim();
-        if (!g) return;
-        root.querySelectorAll('.kexo-css-var-row[data-kexo-css-var-group="' + CSS.escape(g) + '"] .kexo-css-var-input[data-kexo-css-var], .kexo-css-var-card[data-kexo-css-var-group="' + CSS.escape(g) + '"] .kexo-css-var-input[data-kexo-css-var]').forEach(function (el) {
-          try { el.value = ''; } catch (_) {}
-        });
-        applyCfgToDom(readCfgFromUi());
-        updateCssVarPreviewCircles();
-        return;
-      }
-
-      if (t.classList.contains('kexo-theme-accents-revert-section')) {
-        e.preventDefault();
-        ACCENT_HEX_KEYS.forEach(function (key) {
-          var input = root.querySelector('.theme-accent-hex[name="' + key + '"]');
-          var swatch = root.querySelector('.theme-accent-swatch[data-accent-sync="' + key + '"]');
-          var def = DEFAULTS[key];
-          if (input) try { input.value = def; } catch (_) {}
-          if (swatch) try { swatch.value = def; } catch (_) {}
-          setStored(key, def);
-          try { applyTheme(key, def); } catch (_) {}
-        });
-        return;
-      }
     });
 
     function syncSwatchToInput(t) {
@@ -2967,30 +2939,15 @@ btn.classList.remove('btn-success');
       updateCssVarPreviewCircles();
     });
 
-    saveBtn.addEventListener('click', function () {
-      var cfg = readCfgFromUi();
-      setMsg('Saving…', null);
-      postCfg(cfg)
-        .then(function (r) {
-          if (!r || !r.ok) { setMsg((r && r.error) ? r.error : 'Save failed', false); return; }
-          applyCfgToDom(cfg);
-          setMsg('Saved.', true);
-        })
-        .catch(function () { setMsg('Save failed', false); });
+    window.__kexoThemeReadCssVarOverrides = readCfgFromUi;
+    window.__kexoThemeApplyCssVarOverrides = function (cfg) {
+      applyCfgToUi(cfg);
+      applyCfgToDom(cfg);
+      updateCssVarPreviewCircles();
+    };
+    fetchCurrent().then(function () {
+      if (typeof window.__kexoThemeBaselineReady === 'function') window.__kexoThemeBaselineReady();
     });
-    resetBtn.addEventListener('click', function () {
-      setMsg('Resetting…', null);
-      postCfg({ v: 1, vars: {} })
-        .then(function (r) {
-          if (!r || !r.ok) { setMsg((r && r.error) ? r.error : 'Reset failed', false); return; }
-          applyCfgToUi({ v: 1, vars: {} });
-          applyCfgToDom({ v: 1, vars: {} });
-          setMsg('Reset.', true);
-        })
-        .catch(function () { setMsg('Reset failed', false); });
-    });
-
-    fetchCurrent();
   }
 
   function bindThemeForm(formEl) {
@@ -3360,44 +3317,6 @@ btn.classList.remove('btn-md');
     if (refreshBtn) refreshBtn.addEventListener('click', function () {
       refreshIconPreviews(formEl);
       triggerIconThemeRefresh();
-    });
-
-    var saveBtn = root.querySelector('#theme-save-defaults');
-    var resetBtn = root.querySelector('#theme-reset');
-    if (saveBtn) saveBtn.addEventListener('click', function () {
-      var btn = this;
-      if (btn.disabled) return;
-      var originalText = 'Save as default';
-      btn.disabled = true;
-      btn.textContent = 'Saving...';
-      saveToServer().then(function () {
-        btn.textContent = 'Saved!';
-        btn.classList.replace('btn-primary', 'btn-success');
-        setTimeout(function () {
-          btn.textContent = originalText;
-          btn.classList.replace('btn-success', 'btn-primary');
-          btn.disabled = false;
-        }, 1500);
-      }).catch(function () {
-        btn.textContent = 'Save failed';
-        btn.classList.replace('btn-primary', 'btn-danger');
-        setTimeout(function () {
-          btn.textContent = originalText;
-          btn.classList.replace('btn-danger', 'btn-primary');
-          btn.disabled = false;
-        }, 2200);
-      });
-    });
-    if (resetBtn) resetBtn.addEventListener('click', function () {
-      var modeBeforeReset = getPreferenceMode();
-      KEYS.forEach(function (key) {
-        if (key === 'theme-preference-mode') return;
-        removeStored(key);
-        applyTheme(key, DEFAULTS[key]);
-      });
-      syncUI();
-      triggerIconThemeRefresh();
-      if (modeBeforeReset === 'global') queueGlobalSaveAll();
     });
 
     wireThemeSubTabs(root);
