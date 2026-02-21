@@ -155,8 +155,17 @@ body[data-page="settings"] .settings-main-tabs .nav-link.active {
   text-decoration-color: #555;
 }
 
+@media (min-width: 992px) {
+  /* Desktop: overlap the join-container border to avoid double borders/overhang. */
+  body[data-page="settings"] .settings-main-tabs .nav-link:not(.active) {
+    margin-bottom: -1px;
+  }
+}
+
 @media (max-width: 991.98px) {
   body[data-page="settings"] .settings-main-tabs {
+    /* Mobile: overlap a bit more so scroller row meets the border below. */
+    margin-bottom: -3px !important;
     flex-wrap: nowrap;
     overflow-x: auto;
     overflow-y: hidden;
