@@ -808,9 +808,8 @@
   function iconGroupIdForName(name) {
     var key = String(name || '').trim().toLowerCase();
     if (!key) return 'misc';
-    if (key === 'nav-notifications-bell') return 'notifications';
     if (key.indexOf('admin-tab-') === 0 || key === 'nav-item-admin') return 'admin';
-    if (key.indexOf('nav-toggle-') === 0 || key.indexOf('nav-item-') === 0 || key === 'topnav-date-chevron' || key === 'online-status-indicator' || key === 'nav-dropdown-arrow') return 'header-nav';
+    if (key.indexOf('nav-toggle-') === 0 || key.indexOf('nav-item-') === 0 || key === 'nav-notifications-bell' || key === 'topnav-date-chevron' || key === 'online-status-indicator' || key === 'nav-dropdown-arrow') return 'header-nav';
     if (key.indexOf('footer-') === 0) return 'footer';
     if (key.indexOf('table-icon-') === 0 || key.indexOf('table-short-') === 0) return 'mobile-icons';
     if (key === 'table-builder-icon' || key === 'table-sticky-resize-handle') return 'tables';
@@ -820,7 +819,6 @@
   }
 
   function iconGroupLabel(groupId) {
-    if (groupId === 'notifications') return 'Notifications';
     if (groupId === 'header-nav') return 'Header & Nav';
     if (groupId === 'footer') return 'Footer';
     if (groupId === 'mobile-icons') return 'Mobile icons';
@@ -846,7 +844,7 @@
       groups[groupId].push(glyphInputCard(themeKey));
     });
 
-    var order = ['notifications', 'header-nav', 'footer', 'mobile-icons', 'tables', 'cards', 'runtime', 'admin', 'misc'];
+    var order = ['header-nav', 'footer', 'mobile-icons', 'tables', 'cards', 'runtime', 'admin', 'misc'];
     var accordionId = 'theme-icons-accordion';
     var html = '<div class="accordion settings-layout-accordion" id="' + accordionId + '">';
     var itemIdx = 0;
