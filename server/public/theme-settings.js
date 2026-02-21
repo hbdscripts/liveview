@@ -1118,6 +1118,44 @@
       .catch(function () { return { ok: false, status: 0, error: 'Request failed' }; });
   }
 
+  /** Collect payment/variant/attribution icon values from the Icons form and save them. Used when global Save Settings is clicked. */
+  function flushIconOverridesFromForm() {
+    var root = document.getElementById('theme-icons-accordion');
+    if (!root) return Promise.resolve({ ok: true });
+    var assetPatch = {};
+    root.querySelectorAll('[data-payment-method-icon-card]').forEach(function (card) {
+      var key = card.getAttribute('data-payment-key');
+      var input = card.querySelector('.payment-icon-input');
+      if (key && input) assetPatch['payment_' + key] = String(input.value || '').trim();
+    });
+    root.querySelectorAll('[data-variant-rule-icon-card]').forEach(function (card) {
+      var key = card.getAttribute('data-variant-override-key');
+      var input = card.querySelector('.variant-rule-icon-input');
+      if (key && input) assetPatch[key] = String(input.value || '').trim();
+    });
+    var sources = [];
+    var variants = [];
+    root.querySelectorAll('.attribution-icon-input[data-kind="source"]').forEach(function (input) {
+      var key = input.getAttribute('data-key');
+      if (key) sources.push({ source_key: key, icon_spec: String(input.value || '').trim() || null });
+    });
+    root.querySelectorAll('.attribution-icon-input[data-kind="variant"]').forEach(function (input) {
+      var key = input.getAttribute('data-key');
+      if (key) variants.push({ variant_key: key, icon_spec: String(input.value || '').trim() || null });
+    });
+    var assetPromise = Object.keys(assetPatch).length ? saveAssetOverridesPatch(assetPatch) : Promise.resolve({ ok: true });
+    var attrPromise = (sources.length || variants.length)
+      ? saveAttributionIcons({ sources: sources, variants: variants })
+      : Promise.resolve({ ok: true });
+    return Promise.all([assetPromise, attrPromise]).then(function (results) {
+      var a = results[0];
+      var b = results[1];
+      if (a && a.ok && b && b.ok) return a;
+      return (b && !b.ok) ? b : (a || b);
+    });
+  }
+  window.__kexoThemeFlushIconOverridesFromForm = flushIconOverridesFromForm;
+
   function fetchPaymentMethodsCatalog() {
     var base = '';
     try { if (typeof API !== 'undefined') base = String(API || ''); } catch (_) {}
@@ -1215,12 +1253,6 @@
                 '<div class="text-secondary small mb-2"><code>payment_' + escapeHtml(key) + '</code></div>' +
                 '<textarea class="form-control form-control-sm payment-icon-input font-monospace" rows="2" spellcheck="false" placeholder="fa-brands fa-cc-visa  OR  https://...svg  OR  <svg ...>">' + escapeHtml(m && m.iconSpec != null ? String(m.iconSpec) : '') + '</textarea>' +
                 '<div class="form-hint small mt-1">Starts blank intentionally. Paste Font Awesome, image URL/path, or SVG markup.</div>' +
-                '<div class="d-flex align-items-center gap-2 mt-2">' +
-                  '<button type="button" class="kexo-icon-action-btn kexo-icon-action-save payment-icon-save" aria-label="Save">' +
-                    '<span class="kexo-theme-icon-preview kexo-icon-action-icon" data-theme-icon-preview-glyph="theme-icon-glyph-admin-tab-save-icon" aria-hidden="true"></span>' +
-                  '</button>' +
-                  '<span class="small text-secondary ms-auto" data-payment-icon-msg="1"></span>' +
-                '</div>' +
               '</div>' +
             '</div>' +
           '</div>'
@@ -1246,76 +1278,6 @@
           var cardEl = input.closest ? input.closest('[data-payment-method-icon-card]') : null;
           if (!cardEl) return;
           updatePreview(cardEl);
-          var msgEl = cardEl.querySelector('[data-payment-icon-msg]');
-          if (msgEl) {
-            msgEl.textContent = '';
-            msgEl.className = 'small text-secondary ms-auto';
-          }
-        });
-        body.addEventListener('click', function (e) {
-          var target = e && e.target ? e.target : null;
-          var btn = target && target.closest ? target.closest('.payment-icon-save') : null;
-          if (!btn) return;
-          e.preventDefault();
-          if (btn.disabled) return;
-          var cardEl = btn.closest('[data-payment-method-icon-card]');
-          if (!cardEl) return;
-          var key = cardEl.getAttribute('data-payment-key') || '';
-          if (!key) return;
-          var input = cardEl.querySelector('.payment-icon-input');
-          var msgEl = cardEl.querySelector('[data-payment-icon-msg]');
-          var spec = input ? String(input.value || '').trim() : '';
-          var patch = {};
-          patch['payment_' + key] = spec || '';
-          var isIconOnly = btn.classList.contains('kexo-icon-action-save');
-          var originalText = isIconOnly ? '' : (btn.textContent || 'Save');
-          btn.disabled = true;
-          if (!isIconOnly) btn.textContent = 'Saving…';
-          if (msgEl) {
-            msgEl.textContent = '';
-            msgEl.className = 'small text-secondary ms-auto';
-          }
-          saveAssetOverridesPatch(patch).then(function (saveRes) {
-            if (saveRes && saveRes.ok) {
-              if (!isIconOnly) {
-                btn.textContent = 'Saved!';
-btn.classList.remove('btn-md');
-          btn.classList.add('btn-success');
-              }
-              if (msgEl) {
-                msgEl.textContent = 'Saved';
-                msgEl.className = 'small text-success ms-auto';
-              }
-              try { window.dispatchEvent(new CustomEvent('kexo:payment-icons-updated')); } catch (_) {}
-            } else {
-              if (!isIconOnly) {
-                btn.textContent = 'Save failed';
-btn.classList.remove('btn-md');
-              btn.classList.add('btn-danger');
-              }
-              if (msgEl) {
-                msgEl.textContent = (saveRes && saveRes.error) ? String(saveRes.error) : 'Save failed';
-                msgEl.className = 'small text-danger ms-auto';
-              }
-              setTimeout(function () {
-                if (!isIconOnly) {
-                  btn.textContent = originalText;
-btn.classList.remove('btn-danger');
-                btn.classList.add('btn-md');
-                }
-                btn.disabled = false;
-              }, 1800);
-              return;
-            }
-            setTimeout(function () {
-              if (!isIconOnly) {
-                btn.textContent = originalText;
-btn.classList.remove('btn-success');
-            btn.classList.add('btn-md');
-              }
-              btn.disabled = false;
-            }, 1200);
-          });
         });
       }
       updateThemeIconsAccordionCounts(accordion);
@@ -1361,13 +1323,7 @@ btn.classList.remove('btn-success');
                 '</div>' +
                 '<div class="text-secondary small mb-2"><code>' + escapeHtml(row.overrideKey) + '</code></div>' +
                 '<textarea class="form-control form-control-sm variant-rule-icon-input font-monospace" rows="2" spellcheck="false" placeholder="fa-light fa-gem  OR  https://...svg  OR  <svg ...>">' + escapeHtml(row.iconSpec || '') + '</textarea>' +
-                '<div class="form-hint small mt-1">Save a unique icon per variant rule row.</div>' +
-                '<div class="d-flex align-items-center gap-2 mt-2">' +
-                  '<button type="button" class="kexo-icon-action-btn kexo-icon-action-save variant-rule-icon-save" aria-label="Save">' +
-                    '<span class="kexo-theme-icon-preview kexo-icon-action-icon" data-theme-icon-preview-glyph="theme-icon-glyph-admin-tab-save-icon" aria-hidden="true"></span>' +
-                  '</button>' +
-                  '<span class="small text-secondary ms-auto" data-variant-rule-icon-msg="1"></span>' +
-                '</div>' +
+                '<div class="form-hint small mt-1">Use global Save Settings at bottom to persist.</div>' +
               '</div>' +
             '</div>' +
           '</div>'
@@ -1392,76 +1348,6 @@ btn.classList.remove('btn-success');
           var cardEl = input.closest ? input.closest('[data-variant-rule-icon-card]') : null;
           if (!cardEl) return;
           updatePreview(cardEl);
-          var msgEl = cardEl.querySelector('[data-variant-rule-icon-msg]');
-          if (msgEl) {
-            msgEl.textContent = '';
-            msgEl.className = 'small text-secondary ms-auto';
-          }
-        });
-        body.addEventListener('click', function (e) {
-          var target = e && e.target ? e.target : null;
-          var btn = target && target.closest ? target.closest('.variant-rule-icon-save') : null;
-          if (!btn) return;
-          e.preventDefault();
-          if (btn.disabled) return;
-          var cardEl = btn.closest('[data-variant-rule-icon-card]');
-          if (!cardEl) return;
-          var overrideKey = cardEl.getAttribute('data-variant-override-key') || '';
-          if (!overrideKey) return;
-          var input = cardEl.querySelector('.variant-rule-icon-input');
-          var msgEl = cardEl.querySelector('[data-variant-rule-icon-msg]');
-          var spec = input ? String(input.value || '').trim() : '';
-          var patch = {};
-          patch[overrideKey] = spec || '';
-          var isIconOnly = btn.classList.contains('kexo-icon-action-save');
-          var originalText = isIconOnly ? '' : (btn.textContent || 'Save');
-          btn.disabled = true;
-          if (!isIconOnly) btn.textContent = 'Saving…';
-          if (msgEl) {
-            msgEl.textContent = '';
-            msgEl.className = 'small text-secondary ms-auto';
-          }
-          saveAssetOverridesPatch(patch).then(function (saveRes) {
-            if (saveRes && saveRes.ok) {
-              if (!isIconOnly) {
-                btn.textContent = 'Saved!';
-btn.classList.remove('btn-md');
-          btn.classList.add('btn-success');
-              }
-              if (msgEl) {
-                msgEl.textContent = 'Saved';
-                msgEl.className = 'small text-success ms-auto';
-              }
-              try { window.dispatchEvent(new CustomEvent('kexo:variants-icons-updated')); } catch (_) {}
-            } else {
-              if (!isIconOnly) {
-                btn.textContent = 'Save failed';
-btn.classList.remove('btn-md');
-              btn.classList.add('btn-danger');
-              }
-              if (msgEl) {
-                msgEl.textContent = (saveRes && saveRes.error) ? String(saveRes.error) : 'Save failed';
-                msgEl.className = 'small text-danger ms-auto';
-              }
-              setTimeout(function () {
-                if (!isIconOnly) {
-                  btn.textContent = originalText;
-btn.classList.remove('btn-danger');
-                btn.classList.add('btn-md');
-                }
-                btn.disabled = false;
-              }, 1800);
-              return;
-            }
-            setTimeout(function () {
-              if (!isIconOnly) {
-                btn.textContent = originalText;
-btn.classList.remove('btn-success');
-            btn.classList.add('btn-md');
-              }
-              btn.disabled = false;
-            }, 1200);
-          });
         });
       }
       updateThemeIconsAccordionCounts(accordion);
@@ -1560,13 +1446,7 @@ btn.classList.remove('btn-success');
                 '</div>' +
                 '<div class="text-secondary small mb-2"><code>' + escapeHtml(key) + '</code></div>' +
                 '<textarea class="form-control form-control-sm attribution-icon-input font-monospace" data-kind="source" data-key="' + escapeHtml(key) + '" rows="2" spellcheck="false" placeholder="fa-brands fa-google  OR  /assets/icon.png  OR  <svg ...>">' + escapeHtml(icon) + '</textarea>' +
-                '<div class="form-hint small mt-1">Font Awesome class, image URL/path, or inline SVG. Blank clears the icon.</div>' +
-                '<div class="d-flex align-items-center gap-2 mt-2">' +
-                  '<button type="button" class="kexo-icon-action-btn kexo-icon-action-save attribution-icon-save" data-kind="source" data-key="' + escapeHtml(key) + '" aria-label="Save">' +
-                    '<span class="kexo-theme-icon-preview kexo-icon-action-icon" data-theme-icon-preview-glyph="theme-icon-glyph-admin-tab-save-icon" aria-hidden="true"></span>' +
-                  '</button>' +
-                  '<span class="small text-secondary ms-auto" data-attribution-icon-msg="1"></span>' +
-                '</div>' +
+                '<div class="form-hint small mt-1">Font Awesome class, image URL/path, or inline SVG. Use global Save at bottom.</div>' +
               '</div>' +
             '</div>' +
           '</div>');
@@ -1595,13 +1475,7 @@ btn.classList.remove('btn-success');
                 '</div>' +
                 '<div class="text-secondary small mb-2"><code>' + escapeHtml(key) + '</code></div>' +
                 '<textarea class="form-control form-control-sm attribution-icon-input font-monospace" data-kind="variant" data-key="' + escapeHtml(key) + '" rows="2" spellcheck="false" placeholder="fa-solid fa-bolt  OR  /assets/icon.png  OR  <svg ...>">' + escapeHtml(icon) + '</textarea>' +
-                '<div class="form-hint small mt-1">Font Awesome class, image URL/path, or inline SVG. Blank clears the icon.</div>' +
-                '<div class="d-flex align-items-center gap-2 mt-2">' +
-                  '<button type="button" class="kexo-icon-action-btn kexo-icon-action-save attribution-icon-save" data-kind="variant" data-key="' + escapeHtml(key) + '" aria-label="Save">' +
-                    '<span class="kexo-theme-icon-preview kexo-icon-action-icon" data-theme-icon-preview-glyph="theme-icon-glyph-admin-tab-save-icon" aria-hidden="true"></span>' +
-                  '</button>' +
-                  '<span class="small text-secondary ms-auto" data-attribution-icon-msg="1"></span>' +
-                '</div>' +
+                '<div class="form-hint small mt-1">Font Awesome class, image URL/path, or inline SVG. Use global Save at bottom.</div>' +
               '</div>' +
             '</div>' +
           '</div>');
@@ -1630,78 +1504,6 @@ btn.classList.remove('btn-success');
           var cardEl = input.closest ? input.closest('[data-attribution-icon]') : null;
           if (!cardEl) return;
           updateCardPreview(cardEl);
-          var msgEl = cardEl.querySelector('[data-attribution-icon-msg]');
-          if (msgEl) {
-            msgEl.textContent = '';
-            msgEl.className = 'small text-secondary ms-auto';
-          }
-        });
-
-        body.addEventListener('click', function (e) {
-          var target = e && e.target ? e.target : null;
-          var btn = target && target.closest ? target.closest('.attribution-icon-save') : null;
-          if (!btn) return;
-          e.preventDefault();
-          if (btn.disabled) return;
-          var kind = btn.getAttribute('data-kind');
-          var key = btn.getAttribute('data-key');
-          var cardEl = btn.closest('[data-attribution-icon]');
-          var input = cardEl ? cardEl.querySelector('.attribution-icon-input') : null;
-          var msgEl = cardEl ? cardEl.querySelector('[data-attribution-icon-msg]') : null;
-          var spec = input ? String(input.value || '').trim() : '';
-          var payload = kind === 'source' ? { sources: [{ source_key: key, icon_spec: spec || null }] } : { variants: [{ variant_key: key, icon_spec: spec || null }] };
-
-          var isIconOnly = btn.classList.contains('kexo-icon-action-save');
-          var originalText = isIconOnly ? '' : (btn.textContent || 'Save');
-          btn.disabled = true;
-          if (!isIconOnly) btn.textContent = 'Saving…';
-          if (msgEl) {
-            msgEl.textContent = '';
-            msgEl.className = 'small text-secondary ms-auto';
-          }
-          saveAttributionIcons(payload).then(function (res2) {
-            if (res2 && res2.ok) {
-              if (!isIconOnly) {
-                btn.textContent = 'Saved!';
-btn.classList.remove('btn-md');
-          btn.classList.add('btn-success');
-              }
-              if (msgEl) {
-                msgEl.textContent = 'Saved';
-                msgEl.className = 'small text-success ms-auto';
-              }
-              setTimeout(function () {
-                try { window.dispatchEvent(new CustomEvent('kexo:attribution-icons-updated')); } catch (_) {}
-              }, 350);
-            } else {
-              if (!isIconOnly) {
-                btn.textContent = 'Save failed';
-btn.classList.remove('btn-md');
-              btn.classList.add('btn-danger');
-              }
-              if (msgEl) {
-                msgEl.textContent = (res2 && res2.error) ? String(res2.error) : 'Save failed';
-                msgEl.className = 'small text-danger ms-auto';
-              }
-              setTimeout(function () {
-                if (!isIconOnly) {
-                  btn.textContent = originalText;
-btn.classList.remove('btn-danger');
-                btn.classList.add('btn-md');
-                }
-                btn.disabled = false;
-              }, 1800);
-              return;
-            }
-            setTimeout(function () {
-              if (!isIconOnly) {
-                btn.textContent = originalText;
-btn.classList.remove('btn-success');
-            btn.classList.add('btn-md');
-              }
-              btn.disabled = false;
-            }, 1200);
-          });
         });
       }
 
@@ -2073,12 +1875,6 @@ btn.classList.remove('btn-success');
             '</button>' +
           '</div>' +
           '<textarea class="form-control font-monospace" id="' + inputId + '" name="' + key + '" data-theme-icon-glyph-input="' + key + '" rows="2" placeholder="' + (DEFAULTS[key] || 'fa-circle') + '"></textarea>' +
-          '<div class="d-flex align-items-center gap-2 mt-2">' +
-            '<button type="button" class="kexo-icon-action-btn kexo-icon-action-save" data-theme-icon-save-glyph="' + key + '" aria-label="Save">' +
-              '<span class="kexo-theme-icon-preview kexo-icon-action-icon" data-theme-icon-preview-glyph="theme-icon-glyph-admin-tab-save-icon" aria-hidden="true"></span>' +
-            '</button>' +
-            '<span class="small text-secondary ms-auto" data-theme-icon-glyph-msg="' + key + '"></span>' +
-          '</div>' +
         '</div>' +
       '</div>' +
     '</div>';
@@ -2921,61 +2717,7 @@ btn.classList.remove('btn-success');
     }
 
     function wireIconEditModal() {
-      var root = formEl.parentElement || document;
-      root.addEventListener('click', function (e) {
-        var btn = e && e.target && e.target.closest ? e.target.closest('[data-theme-icon-save-glyph]') : null;
-        if (!btn) return;
-        e.preventDefault();
-        var key = btn.getAttribute('data-theme-icon-save-glyph') || '';
-        if (!key || ICON_GLYPH_KEYS.indexOf(key) < 0) return;
-        var input = formEl.querySelector('[name="' + key + '"]');
-        var msgEl = formEl.querySelector('[data-theme-icon-glyph-msg="' + key + '"]');
-        if (!input) return;
-        var rawVal = String(input.value != null ? input.value : '').trim();
-        var val = normalizeIconGlyph(rawVal, DEFAULTS[key]);
-        setStored(key, val);
-        if (input) input.value = val;
-        applyTheme(key, val);
-        refreshIconPreviews(formEl);
-        triggerIconThemeRefresh();
-        var dbKey = key.replace(/-/g, '_');
-        var payload = {};
-        payload[dbKey] = (val != null && String(val).trim() !== '') ? String(val) : (DEFAULTS[key] || '');
-        var isIconOnly = btn.classList.contains('kexo-icon-action-save');
-        var originalText = isIconOnly ? '' : (btn.textContent || 'Save');
-        btn.disabled = true;
-        if (!isIconOnly) btn.textContent = 'Saving…';
-        if (msgEl) { msgEl.textContent = ''; msgEl.className = 'small text-secondary ms-auto'; }
-        saveToServer(payload).then(function () {
-          if (msgEl) {
-            var isLocalOnly = getPreferenceMode() !== 'global';
-            msgEl.textContent = isLocalOnly ? 'Saved locally. Switch to Global to apply everywhere.' : 'Saved';
-            msgEl.className = isLocalOnly ? 'small text-warning ms-auto' : 'small text-success ms-auto';
-            setTimeout(function () { msgEl.textContent = ''; msgEl.className = 'small text-secondary ms-auto'; }, isLocalOnly ? 3500 : 2000);
-          }
-          if (!isIconOnly) {
-            btn.textContent = 'Saved!';
-            btn.classList.remove('btn-md');
-            btn.classList.add('btn-success');
-          }
-          setTimeout(function () {
-            if (!isIconOnly) {
-              btn.textContent = originalText;
-              btn.classList.remove('btn-success');
-              btn.classList.add('btn-md');
-            }
-            btn.disabled = false;
-          }, 1200);
-        }).catch(function (err) {
-          if (!isIconOnly) btn.textContent = originalText;
-          btn.disabled = false;
-          if (msgEl) {
-            msgEl.textContent = (err && err.message) ? String(err.message) : 'Save failed';
-            msgEl.className = 'small text-danger ms-auto';
-            setTimeout(function () { msgEl.textContent = ''; msgEl.className = 'small text-secondary ms-auto'; }, 4000);
-          }
-        });
-      });
+      /* Per-icon save buttons removed; use global Save Settings at bottom. */
     }
 
     formEl.addEventListener('change', function (e) {

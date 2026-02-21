@@ -887,11 +887,17 @@
         var overridesPromise = (state.cssVarOverridesV1 && typeof state.cssVarOverridesV1 === 'object')
           ? saveSettings({ cssVarOverridesV1: state.cssVarOverridesV1 })
           : Promise.resolve({ ok: true });
-        return Promise.all([themePromise, overridesPromise]).then(function (results) {
+        var iconOverridesPromise = (typeof window.__kexoThemeFlushIconOverridesFromForm === 'function')
+          ? window.__kexoThemeFlushIconOverridesFromForm()
+          : Promise.resolve({ ok: true });
+        return Promise.all([themePromise, overridesPromise, iconOverridesPromise]).then(function (results) {
           var r1 = results[0];
           var r2 = results[1];
-          if (r1 && r1.ok && r2 && r2.ok) return r1;
-          return (r2 && !r2.ok) ? r2 : (r1 || r2);
+          var r3 = results[2];
+          if (r1 && r1.ok && r2 && r2.ok && r3 && r3.ok) return r1;
+          if (r3 && !r3.ok) return r3;
+          if (r2 && !r2.ok) return r2;
+          return r1 || r2;
         });
       },
     });
