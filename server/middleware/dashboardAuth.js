@@ -376,6 +376,7 @@ module.exports = {
   middleware,
   COOKIE_NAME,
   OAUTH_COOKIE_NAME,
+  requiresAuth,
   SESSION_HOURS,
   signSession,
   verifySession,
