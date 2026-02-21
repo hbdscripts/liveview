@@ -2269,6 +2269,9 @@ function normalizeCssToggle(value, fallback) {
 async function getThemeVarsCss(req, res) {
   const FALLBACKS = {
     theme_accent_1: '#4b94e4',
+    theme_radius: '1',
+    theme_font: 'sans',
+    theme_base: 'slate',
     theme_header_top_text_color: '#1f2937',
     theme_header_main_link_color: '#1f2937',
     theme_header_main_dropdown_link_color: '#1f2937',
@@ -2307,20 +2310,30 @@ async function getThemeVarsCss(req, res) {
 
   const [
     _skip,
+    radiusKey,
+    fontKey,
+    baseKey,
+    iconSize,
+    iconColor,
+    headerTopBgRaw,
     topText,
+    headerMainBgRaw,
     mainLink,
+    headerMainDropdownBgRaw,
     ddLink,
     ddIcon,
     mainBorderMode,
     mainBorderColor,
     mainShadow,
     settingsLabelMode,
+    headerSettingsBgRaw,
     settingsText,
     settingsRadius,
     settingsBorderMode,
     settingsBorderColor,
     menuHoverOpacity,
     menuHoverColor,
+    headerOnlineBgRaw,
     onlineText,
     onlineRadius,
     onlineBorderMode,
@@ -2330,20 +2343,30 @@ async function getThemeVarsCss(req, res) {
     stripPadding,
   ] = await Promise.all([
     Promise.resolve(accent1),
+    getThemeKey('theme_radius', FALLBACKS.theme_radius),
+    getThemeKey('theme_font', FALLBACKS.theme_font),
+    getThemeKey('theme_base', FALLBACKS.theme_base),
+    getThemeKey('theme_icon_size', ''),
+    getThemeKey('theme_icon_color', ''),
+    getThemeKey('theme_header_top_bg', ''),
     getThemeKey('theme_header_top_text_color', FALLBACKS.theme_header_top_text_color),
+    getThemeKey('theme_header_main_bg', ''),
     getThemeKey('theme_header_main_link_color', FALLBACKS.theme_header_main_link_color),
+    getThemeKey('theme_header_main_dropdown_bg', ''),
     getThemeKey('theme_header_main_dropdown_link_color', FALLBACKS.theme_header_main_dropdown_link_color),
     getThemeKey('theme_header_main_dropdown_icon_color', FALLBACKS.theme_header_main_dropdown_icon_color),
     getThemeKey('theme_header_main_border', FALLBACKS.theme_header_main_border),
     getThemeKey('theme_header_main_border_color', FALLBACKS.theme_header_main_border_color),
     getThemeKey('theme_header_main_shadow', FALLBACKS.theme_header_main_shadow),
     getThemeKey('theme_header_settings_label', FALLBACKS.theme_header_settings_label),
+    getThemeKey('theme_header_settings_bg', ''),
     getThemeKey('theme_header_settings_text_color', FALLBACKS.theme_header_settings_text_color),
     getThemeKey('theme_header_settings_radius', FALLBACKS.theme_header_settings_radius),
     getThemeKey('theme_header_settings_border', FALLBACKS.theme_header_settings_border),
     getThemeKey('theme_header_settings_border_color', FALLBACKS.theme_header_settings_border_color),
     getThemeKey('theme_menu_hover_opacity', FALLBACKS.theme_menu_hover_opacity),
     getThemeKey('theme_menu_hover_color', FALLBACKS.theme_menu_hover_color),
+    getThemeKey('theme_header_online_bg', ''),
     getThemeKey('theme_header_online_text_color', FALLBACKS.theme_header_online_text_color),
     getThemeKey('theme_header_online_radius', FALLBACKS.theme_header_online_radius),
     getThemeKey('theme_header_online_border', FALLBACKS.theme_header_online_border),
@@ -2366,10 +2389,76 @@ async function getThemeVarsCss(req, res) {
   const [a2, a3, a4, a5, a6] = await Promise.all([
     getThemeKey('theme_accent_2', '#3eb3ab'),
     getThemeKey('theme_accent_3', '#f59e34'),
-    getThemeKey('theme_accent_4', '#8b5cf6'),
-    getThemeKey('theme_accent_5', '#ef4444'),
+    getThemeKey('theme_accent_4', '#e4644b'),
+    getThemeKey('theme_accent_5', '#6681e8'),
     getThemeKey('theme_accent_6', '#8395aa'),
   ]);
+
+  const accent2Hex = normalizeCssColor(a2, '#3eb3ab');
+  const accent3Hex = normalizeCssColor(a3, '#f59e34');
+  const accent4Hex = normalizeCssColor(a4, '#e4644b');
+  const accent5Hex = normalizeCssColor(a5, '#6681e8');
+  const accent6Hex = normalizeCssColor(a6, '#8395aa');
+
+  function hexToRgbString(hex) {
+    const raw = String(hex || '').trim();
+    if (!/^#([0-9a-f]{6})$/i.test(raw)) return '';
+    const r = parseInt(raw.slice(1, 3), 16);
+    const g = parseInt(raw.slice(3, 5), 16);
+    const b = parseInt(raw.slice(5, 7), 16);
+    return `${r},${g},${b}`;
+  }
+
+  const primaryRgb = hexToRgbString(accent1Hex) || '32,107,196';
+
+  // Header backgrounds: keep existing behavior (accent-1) when unset,
+  // but respect explicit values saved in Theme → Header.
+  const headerTopBg = String(headerTopBgRaw || '').trim() ? normalizeCssColor(headerTopBgRaw, accent1Hex) : accent1Hex;
+  const headerMainBg = String(headerMainBgRaw || '').trim() ? normalizeCssColor(headerMainBgRaw, accent1Hex) : accent1Hex;
+  const headerMainDropdownBg = String(headerMainDropdownBgRaw || '').trim() ? normalizeCssColor(headerMainDropdownBgRaw, accent1Hex) : accent1Hex;
+  const headerSettingsBg = String(headerSettingsBgRaw || '').trim() ? normalizeCssColor(headerSettingsBgRaw, accent1Hex) : accent1Hex;
+  const headerOnlineBg = String(headerOnlineBgRaw || '').trim() ? normalizeCssColor(headerOnlineBgRaw, accent1Hex) : accent1Hex;
+
+  // Radius/font/base (Tabler variables) from global theme defaults.
+  const RADIUS_MAP = { '0': '0', '0.5': '.25rem', '1': '.375rem', '1.5': '.5rem', '2': '2rem' };
+  const radiusVal = RADIUS_MAP[String(radiusKey || '').trim()] || '';
+  const FONT_MAP = {
+    sans: 'Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif',
+    serif: 'Georgia, Cambria, "Times New Roman", Times, serif',
+    mono: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+    comic: '"Comic Sans MS", "Comic Sans", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif',
+  };
+  const fontVal = FONT_MAP[String(fontKey || '').trim()] || '';
+  const BASES = {
+    slate: { 50:'#f8fafc',100:'#f1f5f9',200:'#e2e8f0',300:'#cbd5e1',400:'#94a3b8',500:'#64748b',600:'#475569',700:'#334155',800:'#1e293b',900:'#0f172a',950:'#020617' },
+    gray: { 50:'#f9fafb',100:'#f3f4f6',200:'#e5e7eb',300:'#d1d5db',400:'#9ca3af',500:'#6b7280',600:'#4b5563',700:'#374151',800:'#1f2937',900:'#111827',950:'#030712' },
+    zinc: { 50:'#fafafa',100:'#f4f4f5',200:'#e4e4e7',300:'#d4d4d8',400:'#a1a1aa',500:'#71717a',600:'#52525b',700:'#3f3f46',800:'#27272a',900:'#18181b',950:'#09090b' },
+    neutral: { 50:'#fafafa',100:'#f5f5f5',200:'#e5e5e5',300:'#d4d4d4',400:'#a3a3a3',500:'#737373',600:'#525252',700:'#404040',800:'#262626',900:'#171717',950:'#0a0a0a' },
+    stone: { 50:'#fafaf9',100:'#f5f5f4',200:'#e7e5e4',300:'#d6d3d1',400:'#a8a29e',500:'#78716c',600:'#57534e',700:'#44403c',800:'#292524',900:'#1c1917',950:'#0c0a09' },
+  };
+  const basePalette = BASES[String(baseKey || '').trim()] || null;
+
+  const radiusLines = (() => {
+    if (!radiusVal) return '';
+    const sm = radiusVal === '0' ? '0' : `calc(${radiusVal} * .75)`;
+    const lg = radiusVal === '0' ? '0' : `calc(${radiusVal} * 1.5)`;
+    const xl = radiusVal === '0' ? '0' : `calc(${radiusVal} * 3)`;
+    return [
+      `--tblr-border-radius:${radiusVal};`,
+      `--tblr-border-radius-sm:${sm};`,
+      `--tblr-border-radius-lg:${lg};`,
+      `--tblr-border-radius-xl:${xl};`,
+      `--radius:${radiusVal};`,
+    ].join('\n');
+  })();
+
+  const fontLines = fontVal ? [`--tblr-font-sans-serif:${fontVal};`, `--bs-body-font-family:${fontVal};`].join('\n') : '';
+
+  const rawIconSize = iconSize != null ? String(iconSize).trim() : '';
+  const safeIconSize = rawIconSize && rawIconSize.length < 32 && !/[;{}\r\n]/.test(rawIconSize) ? rawIconSize : '';
+  const safeIconColor = normalizeCssColor(iconColor, '');
+
+  const baseLines = basePalette ? Object.keys(basePalette).map((k) => `--tblr-gray-${k}:${basePalette[k]};`) : [];
 
   let cssVarOverridesV1 = defaultCssVarOverridesV1();
   try {
@@ -2394,33 +2483,40 @@ async function getThemeVarsCss(req, res) {
     '/* KEXO: server-injected theme variables (header + top menu) */',
     ':root{',
     `--kexo-accent-1:${accent1Hex};`,
-    `--kexo-accent-2:${normalizeCssColor(a2, '#3eb3ab')};`,
-    `--kexo-accent-3:${normalizeCssColor(a3, '#f59e34')};`,
-    `--kexo-accent-4:${normalizeCssColor(a4, '#8b5cf6')};`,
-    `--kexo-accent-5:${normalizeCssColor(a5, '#ef4444')};`,
-    `--kexo-accent-6:${normalizeCssColor(a6, '#8395aa')};`,
+    `--kexo-accent-2:${accent2Hex};`,
+    `--kexo-accent-3:${accent3Hex};`,
+    `--kexo-accent-4:${accent4Hex};`,
+    `--kexo-accent-5:${accent5Hex};`,
+    `--kexo-accent-6:${accent6Hex};`,
+    `--tblr-primary:${accent1Hex};`,
+    `--tblr-primary-rgb:${primaryRgb};`,
     `--kexo-strip-opacity-filter:${stripOpacityVal.toFixed(2)};`,
     `--kexo-menu-opacity-filter:${menuOpacityVal.toFixed(2)};`,
     `--kexo-header-strip-padding:${stripPadding && stripPadding.length < 80 ? stripPadding : '0 5px'};`,
-    `--kexo-header-top-bg:${accent1Hex};`,
+    `--kexo-header-top-bg:${headerTopBg};`,
     `--kexo-header-top-text-color:${normalizeCssColor(topText, FALLBACKS.theme_header_top_text_color)};`,
-    `--kexo-header-main-bg:${accent1Hex};`,
-    `--kexo-top-menu-bg:${accent1Hex};`,
+    `--kexo-header-main-bg:${headerMainBg};`,
+    `--kexo-top-menu-bg:${headerMainBg};`,
     `--kexo-top-menu-link-color:${normalizeCssColor(mainLink, FALLBACKS.theme_header_main_link_color)};`,
-    `--kexo-top-menu-dropdown-bg:${accent1Hex};`,
+    `--kexo-top-menu-dropdown-bg:${headerMainDropdownBg};`,
     `--kexo-top-menu-dropdown-link-color:${normalizeCssColor(ddLink, FALLBACKS.theme_header_main_dropdown_link_color)};`,
     `--kexo-top-menu-dropdown-icon-color:${normalizeCssColor(ddIcon, FALLBACKS.theme_header_main_dropdown_icon_color)};`,
     `--kexo-top-menu-border-width:${mainBorder === 'hide' ? '0px' : '1px'};`,
-    `--kexo-top-menu-border-color:transparent;`,
+    `--kexo-top-menu-border-color:${mainBorder === 'hide' ? 'transparent' : normalizeCssColor(mainBorderColor, FALLBACKS.theme_header_main_border_color)};`,
     `--kexo-top-menu-shadow:${normalizeCssShadow(mainShadow, FALLBACKS.theme_header_main_shadow)};`,
 
-    `--kexo-header-settings-bg:${accent1Hex};`,
+    `--kexo-header-settings-bg:${headerSettingsBg};`,
     `--kexo-header-settings-text-color:${normalizeCssColor(settingsText, FALLBACKS.theme_header_settings_text_color)};`,
     `--kexo-header-settings-radius:${normalizeCssRadius(settingsRadius, FALLBACKS.theme_header_settings_radius)};`,
     `--kexo-header-settings-border-width:${settingsBorder === 'hide' ? '0px' : '1px'};`,
-    `--kexo-header-settings-border-color:${accent1Hex};`,
+    `--kexo-header-settings-border-color:${normalizeCssColor(settingsBorderColor, FALLBACKS.theme_header_settings_border_color)};`,
     `--kexo-header-settings-label-display:${labelMode === 'hide' ? 'none' : 'inline'};`,
     `--kexo-header-settings-icon-gap:${labelMode === 'hide' ? '0' : '.35rem'};`,
+    radiusLines,
+    fontLines,
+    (safeIconSize ? `--kexo-theme-icon-size:${safeIconSize};` : ''),
+    (safeIconColor ? `--kexo-theme-icon-color:${safeIconColor};` : ''),
+    ...baseLines,
 
     (() => {
       const hovOp = Math.min(100, Math.max(0, parseFloat(menuHoverOpacity) || 0)) / 100;
@@ -2431,7 +2527,7 @@ async function getThemeVarsCss(req, res) {
       return `--kexo-menu-hover-bg:rgba(${r},${g},${b},${hovOp.toFixed(2)});`;
     })(),
 
-    `--kexo-header-online-bg:${accent1Hex};`,
+    `--kexo-header-online-bg:${headerOnlineBg};`,
     `--kexo-header-online-text-color:${normalizeCssColor(onlineText, FALLBACKS.theme_header_online_text_color)};`,
     `--kexo-header-online-radius:${normalizeCssRadius(onlineRadius, FALLBACKS.theme_header_online_radius)};`,
     `--kexo-header-online-border-width:${onlineBorder === 'hide' ? '0px' : '1px'};`,
@@ -2531,7 +2627,18 @@ async function getThemeVarsCss(req, res) {
   } catch (_) {}
 
   res.setHeader('Cache-Control', 'no-store');
-  const extraCss = [chartsCss, kpisCss].filter(Boolean).join('\n');
+  let themeCustomCss = '';
+  try {
+    const raw = await getThemeKey('theme_custom_css', '');
+    const txt = raw != null ? String(raw) : '';
+    if (txt.trim()) {
+      themeCustomCss = ['/* KEXO: theme custom css */', txt.trim(), ''].join('\n');
+    }
+  } catch (_) {
+    themeCustomCss = '';
+  }
+
+  const extraCss = [chartsCss, kpisCss, themeCustomCss].filter(Boolean).join('\n');
   res.type('text/css').send(css + (extraCss ? ('\n' + extraCss) : ''));
 }
 

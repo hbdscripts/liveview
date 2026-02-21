@@ -159,13 +159,13 @@ html, body {
   display: block;
   text-decoration: underline;
   text-underline-offset: 2px;
-  color: #006699;
+  color: var(--tblr-link-color, var(--tblr-primary, #006699));
   font-weight: 400;
   cursor: pointer;
   user-select: none;
 }
 .kexo-abandoned-mode-switch:hover {
-  color: #004b73;
+  color: color-mix(in srgb, var(--tblr-link-color, var(--tblr-primary, #006699)) 82%, black);
 }
 .kexo-abandoned-mode-switch:focus-visible {
   outline: 2px solid rgba(var(--tblr-primary-rgb), 0.35);
@@ -1556,7 +1556,7 @@ body[data-page="attribution"] #attribution-mount .source-icons i {
   align-items: center;
   justify-items: start;
   padding: 0 0 10px;
-  color: #090f17;
+  color: var(--tblr-body-color, #090f17);
 }
 .dash-devices-icon-cell {
   width: 100%;
@@ -1569,7 +1569,7 @@ body[data-page="attribution"] #attribution-mount .source-icons i {
 .dash-devices-icon-label {
   font-size: 10px;
   font-weight: 500;
-  color: #0f172a;
+  color: var(--tblr-body-color, #0f172a);
   opacity: 0.72;
   white-space: nowrap;
   overflow: hidden;
@@ -1620,7 +1620,7 @@ body[data-page="attribution"] #attribution-mount .source-icons i {
   font-size: 0.95rem;
   font-weight: 500;
   line-height: 1.1;
-  color: #0f172a;
+  color: var(--tblr-body-color, #0f172a);
 }
 
 /* Dashboard Overview: Attribution donut icons (outside ring) */
@@ -1855,7 +1855,8 @@ body[data-page="dashboard"] #dash-trending-down tbody td:nth-child(5) {
   white-space: nowrap;
   font-size: 10px;
   letter-spacing: 1px;
-  color: #334155;
+  color: var(--tblr-body-color, #334155);
+  opacity: 0.85;
 }
 
 .th-label-short {
@@ -1888,7 +1889,7 @@ body:not([data-page="settings"]) .table-responsive table thead th {
 
 /* Product Insights modal */
 .modal-backdrop {
-  background: #000 !important;
+  background: var(--bs-backdrop-bg, #000) !important;
 }
 
 .modal-backdrop.show {
@@ -1928,7 +1929,7 @@ body:not([data-page="settings"]) .table-responsive table thead th {
 
 .kexo-theme-icon-edit-backdrop.modal-backdrop,
 .kexo-theme-icon-edit-backdrop.modal-backdrop.show {
-  background: #000 !important;
+  background: var(--bs-backdrop-bg, #000) !important;
   opacity: 0.72 !important;
 }
 
@@ -5338,12 +5339,11 @@ img[data-kexo-logo-slot="footer"][data-kexo-logo-ready="1"] {
   align-items: center;
   justify-content: center;
   gap: 0;
-  border: none;
-  background: none;
+  border: var(--kexo-header-settings-border-width, 1px) solid var(--kexo-header-settings-border-color, transparent);
+  background: var(--kexo-header-settings-bg, transparent);
   border-radius: var(--kexo-header-settings-radius, var(--tblr-border-radius, .375rem));
   padding: 7px 5px !important;
   font-size: 15px;
-  border-radius: 4px;
   font-weight: 500;
   margin: 0 5px 0 0;
   color: var(--kexo-header-settings-text-color, var(--kexo-header-top-text-color, #1f2937)) !important;
@@ -5351,7 +5351,7 @@ img[data-kexo-logo-slot="footer"][data-kexo-logo-ready="1"] {
 .kexo-top-strip-settings-toggle:hover,
 .kexo-top-strip-settings-toggle:focus {
   color: var(--kexo-header-settings-text-color, var(--kexo-header-top-text-color, #1f2937)) !important;
-  background: none !important;
+  background: var(--kexo-menu-hover-bg, rgba(0, 0, 0, 0.06)) !important;
 }
 .kexo-top-strip-settings-toggle .kexo-settings-label {
   display: var(--kexo-header-settings-label-display, inline);
@@ -5360,11 +5360,11 @@ img[data-kexo-logo-slot="footer"][data-kexo-logo-ready="1"] {
   margin: 0;
   color: var(--kexo-header-settings-text-color, var(--kexo-header-top-text-color, #1f2937)) !important;
 }
-/* Strip dropdowns (Online, Settings, Avatar): white bg, black text/icons, aligned with nav left. */
+/* Strip dropdowns (Online, Settings, Avatar): use theme header settings colours so they match Theme → Header. */
 .kexo-top-strip-settings-menu,
 .kexo-top-strip-online-menu,
 .kexo-footer-settings-menu {
-  background: #fff !important;
+  background: var(--kexo-header-settings-bg, #fff) !important;
   border: none !important;
   border-radius: 4px;
   margin-top: 5px !important;
@@ -5374,16 +5374,16 @@ img[data-kexo-logo-slot="footer"][data-kexo-logo-ready="1"] {
   font-size: 13px;
 }
 .kexo-top-strip-settings-item {
-  color: #000 !important;
+  color: var(--kexo-header-settings-text-color, var(--kexo-header-top-text-color, #1f2937)) !important;
 }
 .kexo-top-strip-settings-item:hover,
 .kexo-top-strip-settings-item:focus {
-  color: #000 !important;
+  color: var(--kexo-header-settings-text-color, var(--kexo-header-top-text-color, #1f2937)) !important;
   background: rgba(0, 0, 0, 0.06) !important;
 }
 .kexo-top-strip-settings-item-icon {
   margin-right: .5rem;
-  color: #000 !important;
+  color: var(--kexo-header-settings-text-color, var(--kexo-header-top-text-color, #1f2937)) !important;
 }
 .kexo-top-strip-online {
   display: inline-flex;
@@ -5394,8 +5394,8 @@ img[data-kexo-logo-slot="footer"][data-kexo-logo-ready="1"] {
   line-height: 1;
   border-radius: var(--kexo-header-online-radius, .375rem);
   color: var(--kexo-header-online-text-color, var(--kexo-header-top-text-color, #1f2937)) !important;
-  background: none;
-  border: none;
+  background: var(--kexo-header-online-bg, transparent);
+  border: var(--kexo-header-online-border-width, 1px) solid var(--kexo-header-online-border-color, transparent);
   cursor: pointer;
   pointer-events: auto;
   user-select: none;
@@ -5405,6 +5405,7 @@ img[data-kexo-logo-slot="footer"][data-kexo-logo-ready="1"] {
 .kexo-top-strip-online:hover,
 .kexo-top-strip-online:focus {
   text-decoration: none !important;
+  background: var(--kexo-menu-hover-bg, rgba(0, 0, 0, 0.06));
 }
 .kexo-top-strip-online:focus-visible {
   outline: 2px solid rgba(255,255,255,0.38);

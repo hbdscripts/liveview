@@ -1861,8 +1861,10 @@
     });
   }
 
-  // Fetch server defaults and apply globally (shared).
-  function fetchDefaults() {
+  // Fetch server defaults and optionally apply to the DOM.
+  // On non-settings pages we sync localStorage without re-theming the page to avoid colour flashes.
+  function fetchDefaults(opts) {
+    var shouldApply = !(opts && opts.apply === false);
     var base = '';
     try { if (typeof API !== 'undefined') base = String(API || ''); } catch (_) {}
     fetch(base + '/api/theme-defaults', { credentials: 'same-origin', cache: 'no-store' })
@@ -1871,13 +1873,13 @@
         if (!data || !data.ok) return;
         var mode = 'global';
         setStored('theme-preference-mode', mode);
-        applyTheme('theme-preference-mode', mode);
+        if (shouldApply) applyTheme('theme-preference-mode', mode);
         var legacyPrimary = data.theme_primary || getStored('theme-primary');
         if (legacyPrimary && ACCENT_HEX_KEYS.indexOf('theme-accent-1') >= 0) {
           var legacyMap = { blue: '#4b94e4', teal: '#3eb3ab', orange: '#f59e34', green: '#3eb3ab' };
           var migrated = legacyMap[String(legacyPrimary).trim().toLowerCase()] || ACCENT_DEFAULTS[0];
           setStored('theme-accent-1', migrated);
-          applyTheme('theme-accent-1', migrated);
+          if (shouldApply) applyTheme('theme-accent-1', migrated);
         }
         KEYS.forEach(function (key) {
           if (key === 'theme-preference-mode') return;
@@ -1893,9 +1895,9 @@
           if (ACCENT_OPACITY_KEYS.indexOf(key) >= 0) serverVal = normalizeOpacityFilter(serverVal, DEFAULTS[key]);
           if (key === 'theme-header-strip-padding') serverVal = normalizeStripPadding(serverVal, DEFAULTS[key]);
           setStored(key, serverVal);
-          applyTheme(key, serverVal || DEFAULTS[key]);
+          if (shouldApply) applyTheme(key, serverVal || DEFAULTS[key]);
         });
-        syncUI();
+        if (shouldApply) syncUI();
       })
       .catch(function () {});
   }
@@ -3397,19 +3399,27 @@
   }
 
   // Init
-  clearLockedIconOverrides();
-  restoreAll();
+  var IS_SETTINGS_PAGE = document.body && document.body.getAttribute
+    ? (document.body.getAttribute('data-page') === 'settings')
+    : false;
+
+  // Only apply theme JS-driven overrides on the Settings page.
+  // Everywhere else, the page should follow server-injected /theme-vars.css to avoid inconsistent flashes.
+  if (IS_SETTINGS_PAGE) {
+    clearLockedIconOverrides();
+    restoreAll();
+  }
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function () {
       bindThemeButtons();
-      fetchDefaults();
-      if (document.body.getAttribute('data-page') === 'settings') injectSettingsThemePanel();
+      fetchDefaults({ apply: IS_SETTINGS_PAGE });
+      if (IS_SETTINGS_PAGE) injectSettingsThemePanel();
       fetchAssetOverridesAndApply();
     });
   } else {
     bindThemeButtons();
-    fetchDefaults();
-    if (document.body.getAttribute('data-page') === 'settings') injectSettingsThemePanel();
+    fetchDefaults({ apply: IS_SETTINGS_PAGE });
+    if (IS_SETTINGS_PAGE) injectSettingsThemePanel();
     fetchAssetOverridesAndApply();
   }
 })();
