@@ -32,6 +32,21 @@
   margin-top: .25rem;
 }
 
+/* Inside accordion bodies, the accordion already provides framing.
+   Avoid double padding/borders that make loaders/content look indented. */
+body[data-page="settings"] .accordion-body .settings-panel-wrap {
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  margin-top: 0;
+  background: transparent;
+}
+
+/* Tabs/underlines should visually "touch" the content frame below. */
+body[data-page="settings"] .settings-panel-wrap ul.nav {
+  margin-bottom: 1px;
+}
+
 /* Remove grid-layout drift: charts color “grid” becomes a simple vertical stack. */
 body[data-page="settings"] .settings-charts-color-grid {
   display: flex;

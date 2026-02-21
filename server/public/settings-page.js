@@ -179,6 +179,7 @@
   }
 
   function showGlobalPageLoader(title, step) {
+    if (!isSettingsPageLoaderEnabled()) return;
     var st = getGlobalPageLoaderEls();
     if (!st) return;
     try { st.pageBody.classList.add('report-building'); } catch (_) {}
@@ -188,6 +189,7 @@
   }
 
   function dismissGlobalPageLoader() {
+    if (!isSettingsPageLoaderEnabled()) return;
     var st = getGlobalPageLoaderEls();
     if (!st) return;
     try { st.overlay.classList.add('is-hidden'); } catch (_) {}

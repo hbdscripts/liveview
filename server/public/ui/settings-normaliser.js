@@ -237,9 +237,33 @@
     try { el.insertAdjacentElement('afterend', hint); } catch (_) { try { el.parentElement && el.parentElement.appendChild(hint); } catch (_) {} }
   }
 
+  function removeReadOnlyHints(panelEl) {
+    var wrap = getPanelWrap(panelEl) || panelEl;
+    if (!wrap || !wrap.querySelectorAll) return;
+    try {
+      wrap.querySelectorAll('.form-hint.settings-readonly-hint').forEach(function (el) {
+        try { el.parentNode && el.parentNode.removeChild(el); } catch (_) {}
+      });
+    } catch (_) {}
+  }
+
+  function removeDeadCardHeaderChevrons(panelEl) {
+    var wrap = getPanelWrap(panelEl) || panelEl;
+    if (!wrap || !wrap.querySelectorAll) return;
+    // Accordion chevrons only belong in accordion headers, not in card headers.
+    try {
+      wrap.querySelectorAll('.card-header .kexo-settings-accordion-chevron').forEach(function (ch) {
+        try { ch.parentNode && ch.parentNode.removeChild(ch); } catch (_) {}
+      });
+    } catch (_) {}
+  }
+
   function normaliseButtonsAndForms(panelEl) {
     var wrap = getPanelWrap(panelEl) || panelEl;
     if (!wrap || !wrap.querySelectorAll) return;
+
+    // Remove any previously injected read-only hints (avoid duplicate/unstyled "Read-only…" text).
+    removeReadOnlyHints(panelEl);
 
     // Read-only fields must look read-only (Tabler plaintext + hint).
     wrap.querySelectorAll('input[readonly], textarea[readonly], select[disabled], input[disabled], textarea[disabled]').forEach(function (field) {
@@ -252,9 +276,8 @@
         field.classList.add('form-control-plaintext', 'settings-readonly-plaintext');
         try { field.readOnly = true; } catch (_) {}
         try { field.setAttribute('aria-readonly', 'true'); } catch (_) {}
-        ensureReadOnlyHint(field, 'Read-only — set via environment config.');
       } else if (field.hasAttribute('disabled')) {
-        ensureReadOnlyHint(field, 'Read-only — not editable in this UI.');
+        // Disabled fields should look disabled; do not add redundant read-only hint text.
       }
     });
 
@@ -295,6 +318,7 @@
     ensurePanelWrap(panelEl);
     normaliseGridLayouts(panelEl);
     stripFirstCardHeaderInPanel(panelEl);
+    removeDeadCardHeaderChevrons(panelEl);
     normaliseHeadingsAndSpacing(panelEl);
     normaliseButtonsAndForms(panelEl);
     try { panelEl.setAttribute(SETTINGS_PANEL_NORMALISE_ATTR, '1'); } catch (_) {}

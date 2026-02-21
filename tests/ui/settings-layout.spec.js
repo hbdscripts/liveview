@@ -69,13 +69,11 @@ test('Settings/Admin panels satisfy UI contract after normalisation', () => {
     }
   }
 
-  // Read-only env-backed fields must look read-only + have a hint.
+  // Read-only env-backed fields must look read-only (visual + non-editable).
   const ro = Array.from(doc.querySelectorAll('.kexo-readonly-field'));
   assert.ok(ro.length > 0, 'expected at least one .kexo-readonly-field in settings.html');
   for (const f of ro) {
     assert.ok(f.classList.contains('form-control-plaintext'), 'readonly field should be form-control-plaintext');
-    const hint = f.parentElement ? f.parentElement.querySelector('.form-hint.settings-readonly-hint') : null;
-    assert.ok(hint, 'readonly field should have .settings-readonly-hint');
   }
 
   // Spot-check: Shopify panel keeps Truth Sync/Pixel headers after stripping Shopify Auth.

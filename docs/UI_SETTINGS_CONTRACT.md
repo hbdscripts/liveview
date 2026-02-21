@@ -78,7 +78,7 @@ Avoid bespoke layout wrappers when Tabler provides a standard utility/class.
 Fields that are environment-backed or otherwise not editable must **not** look editable:
 
 - Prefer Tabler plaintext pattern for inputs: `form-control-plaintext`
-- Add a consistent hint: `Read-only — set via environment config.`
+- Use the existing **Read-only** label/badge + tooltip; do not add repetitive hint blocks.
 
 ## Loading / error / empty states
 
@@ -99,6 +99,7 @@ Use consistent states:
 - Do keep later card headers (Truth Sync / Pixel / Diagnostics, etc.)
 - Do use Tabler button/form classes
 - Do make read-only fields clearly read-only with a hint
+- Do make read-only fields clearly read-only (plaintext) without adding repetitive hint blocks
 
 ### Don’t
 
