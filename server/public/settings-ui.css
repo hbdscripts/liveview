@@ -66,6 +66,20 @@ body[data-page="settings"] #settings-panel-cost-expenses .settings-tab-content-b
   background: transparent;
 }
 
+/* Flatten outer panel card so the only frame is .settings-tab-content-box (tabs "outside" the panel). */
+body[data-page="settings"] .settings-panel > .card {
+  border: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  margin: 0 !important;
+}
+body[data-page="settings"] .settings-panel > .card > .card-body {
+  border: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  background: transparent !important;
+}
+
 /* Left nav: category and child links (Settings-only). */
 .settings-nav-category { margin-bottom: 0.15rem; margin-right: 10px; }
 .settings-nav-category > .list-group-item:first-child {
@@ -146,11 +160,14 @@ body[data-page="settings"] .settings-main-tabs {
 body[data-page="settings"] .settings-main-tabs .nav-link {
   border: 1px solid transparent;
   border-bottom-color: transparent;
-  border-radius: 8px 8px 0 0;
-  padding: 10px 15px;
+  border-radius: 4px 4px 0 0;
+  padding: 8px 14px;
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
   font-weight: 500;
   font-size: 14px;
-  background: var(--tblr-bg-surface-secondary, #f6f8fb);
+  background: transparent;
   color: var(--tblr-secondary, #66758c);
   margin-bottom: 0;
 }
@@ -164,10 +181,6 @@ body[data-page="settings"] .settings-main-tabs .nav-link.active {
   font-weight: 600;
   position: relative;
   z-index: 2;
-  text-decoration: underline;
-  text-decoration-thickness: 2px;
-  text-underline-offset: 5px;
-  text-decoration-color: #555;
 }
 
 @media (min-width: 992px) {
@@ -193,6 +206,16 @@ body[data-page="settings"] .settings-main-tabs .nav-link.active {
   body[data-page="settings"] .settings-main-tabs .nav-link {
     white-space: nowrap;
   }
+}
+
+/* Global footer: rounded tinted bar with left-aligned actions. */
+body[data-page="settings"] #settings-global-footer {
+  border-top: 0 !important;
+  background: var(--tblr-active-bg, rgba(0, 0, 0, 0.04));
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+  margin-top: 1rem;
+  justify-content: flex-start;
 }
 
 /* Remove grid-layout drift: charts color “grid” becomes a simple vertical stack. */

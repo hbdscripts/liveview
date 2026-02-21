@@ -727,12 +727,10 @@
     var dirtyIds = getSettingsDraftDirtyIds();
     var sectionIds = getSectionIdsForActiveTab();
     var tabDirty = dirtyIds.some(function (id) { return sectionIds.indexOf(id) !== -1; });
-    var footerRight = document.getElementById('settings-global-save-btn') && document.getElementById('settings-global-save-btn').closest ? document.getElementById('settings-global-save-btn').closest('.settings-footer-right') : null;
-    if (footerRight) {
-      footerRight.style.display = tabDirty ? '' : 'none';
-    }
     var globalSave = document.getElementById('settings-global-save-btn');
     var globalRevert = document.getElementById('settings-global-revert-btn');
+    if (globalSave) globalSave.disabled = !tabDirty;
+    if (globalRevert) globalRevert.disabled = !tabDirty;
     if (globalSave) {
       globalSave.onclick = function () {
         settingsDraftSaveAll();
