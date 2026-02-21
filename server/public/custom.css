@@ -2322,17 +2322,17 @@ body:not([data-page="settings"]) .table-responsive table thead th {
 
 /* ── Page progress bar (Tabler turbo-style) ── */
 :root {
-  --kexo-loader-strip-height: 3px;
+  --kexo-loader-strip-height: 5px;
 }
 
 /* Section strip: same height as loader; hidden while loader active */
 .kexo-section-strip {
-  position: fixed;
+  position: absolute;
   top: 0;
   left: 0;
   width: var(--kexo-strip-viewport-width, 100%);
   max-width: 100%;
-  height: var(--kexo-loader-strip-height, 3px);
+  height: 5px;
   background: var(--kexo-section-accent, var(--tblr-primary, #3eb3ab));
   pointer-events: none;
   z-index: 9998;
@@ -2382,7 +2382,7 @@ body[data-page="admin"] {
   left: 0;
   width: var(--kexo-strip-viewport-width, 100%);
   max-width: 100%;
-  height: var(--kexo-loader-strip-height, 3px);
+  height: 5px;
   z-index: 9999;
   pointer-events: none;
   opacity: 0;
