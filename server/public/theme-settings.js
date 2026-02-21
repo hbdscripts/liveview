@@ -3261,12 +3261,15 @@ btn.classList.remove('btn-md');
       triggers.forEach(function (trigger) {
         trigger.removeAttribute('title');
         trigger.removeAttribute('data-bs-title');
+        trigger.removeAttribute('data-bs-original-title');
         var key = trigger.getAttribute('data-theme-icon-help-key') || '';
         var name = glyphNameFromThemeKey(key);
         var meta = glyphMetaFor(name);
-        var contentHtml = '<div class="kexo-icon-help-popover-body position-relative">' +
+        var helpText = (meta && meta.help) ? String(meta.help) : defaultIconHelpFor(name);
+        if (!helpText) helpText = 'Icon shown in the app UI.';
+        var contentHtml = '<div class="position-relative" style="padding:0;margin:0;font-size:11px;border:0;background:none;">' +
           '<button type="button" class="btn-close position-absolute top-0 end-0" aria-label="Close"></button>' +
-          '<div class="small text-secondary pe-3">' + escapeHtml(meta.help) + '</div></div>';
+          '<div class="pe-3">' + escapeHtml(helpText) + '</div></div>';
         new bootstrap.Popover(trigger, {
           title: '',
           content: contentHtml,
