@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 0254ce851899cf31
+// checksum: 09938878276d3865
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -343,6 +343,7 @@ const API = '';
       var tier = previewEnabled
         ? previewTier
         : (me && me.tier != null ? String(me.tier).trim().toLowerCase() : '');
+      var permissions = (me && me.permissions && typeof me.permissions === 'object') ? me.permissions : {};
       return {
         email: me && me.email ? String(me.email) : null,
         role: effectiveIsAdmin ? 'admin' : 'user',
@@ -350,6 +351,7 @@ const API = '';
         isAdmin: effectiveIsAdmin,
         // Keep legacy name for existing code paths.
         isMaster: effectiveIsAdmin,
+        permissions: permissions,
         preview: { enabled: previewEnabled, tier: previewTier || '' },
         real: {
           role: me && me.role != null ? String(me.role) : null,
@@ -365,6 +367,20 @@ const API = '';
         els.forEach(function (el) {
           if (!el || !el.classList) return;
           if (isAdmin) el.classList.remove('d-none');
+          else el.classList.add('d-none');
+        });
+      } catch (_) {}
+    }
+    function applyPermissionGating(permissions) {
+      try {
+        var els = document.querySelectorAll ? document.querySelectorAll('[data-kexo-perm]') : [];
+        if (!els || !els.length) return;
+        var perms = permissions && typeof permissions === 'object' ? permissions : {};
+        els.forEach(function (el) {
+          if (!el || !el.classList) return;
+          var perm = el.getAttribute && el.getAttribute('data-kexo-perm');
+          if (!perm) return;
+          if (perms[perm] === true) el.classList.remove('d-none');
           else el.classList.add('d-none');
         });
       } catch (_) {}
@@ -415,6 +431,7 @@ const API = '';
       try { window.__kexoEffectiveViewer = v; } catch (_) {}
       try { window.__kexoEffectiveIsAdmin = !!v.isAdmin; } catch (_) {}
       try { applyAdminOnlyVisibility(!!v.isAdmin); } catch (_) {}
+      try { applyPermissionGating(v.permissions); } catch (_) {}
       try { ensurePreviewExitMenuItem(v); } catch (_) {}
       try { window.dispatchEvent(new CustomEvent('kexo:viewer-changed', { detail: v })); } catch (_) {}
       return v;
