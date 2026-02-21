@@ -103,11 +103,23 @@ body[data-page="settings"] .kexo-css-var-name {
 /* Icons & assets: click-to-open help popover (trigger at far right of each label). */
 .popover.kexo-icon-help-popover {
   max-width: 320px;
-  border-radius: var(--tblr-border-radius, 0.75rem);
+  border: none;
+  padding: 0;
+  opacity: 0.6;
+  box-shadow: none;
+}
+.popover.kexo-icon-help-popover:hover {
+  opacity: 1;
+}
+.popover.kexo-icon-help-popover .popover-header {
+  display: none;
+}
+.popover.kexo-icon-help-popover .popover-body {
+  padding: 0;
 }
 .popover.kexo-icon-help-popover .kexo-icon-help-popover-body {
   position: relative;
-  padding: 0.5rem 2rem 0.5rem 0.75rem;
+  padding: 0;
 }
 .popover.kexo-icon-help-popover .kexo-icon-help-popover-body .btn-close {
   position: absolute;
@@ -115,5 +127,56 @@ body[data-page="settings"] .kexo-css-var-name {
   right: 0;
   margin: 0.35rem;
   padding: 0.25rem;
+}
+/* Help trigger button: same opacity behaviour, no other hover effect. */
+.kexo-icon-help-trigger {
+  opacity: 0.6;
+}
+.kexo-icon-help-trigger:hover {
+  opacity: 1;
+}
+.kexo-icon-help-trigger .kexo-icon-help-trigger-icon {
+  width: 16px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.kexo-icon-help-trigger .kexo-icon-help-trigger-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Icon card Edit/Save: icon-only, no border/hover effects; opacity 0.8, hover 1. */
+.kexo-icon-action-btn {
+  border: none;
+  background: transparent;
+  padding: 0.25rem;
+  box-shadow: none;
+  opacity: 0.8;
+  transition: none;
+}
+.kexo-icon-action-btn:hover {
+  opacity: 1;
+}
+.kexo-icon-action-btn:focus {
+  box-shadow: none;
+  outline: none;
+}
+.kexo-icon-action-btn .kexo-icon-action-icon {
+  width: 16px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.kexo-icon-action-btn .kexo-icon-action-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Per-panel save buttons hidden in favor of page-level footer Save Settings. */
+.settings-panel-save-hidden {
+  display: none !important;
 }
 

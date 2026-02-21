@@ -337,7 +337,7 @@
       '<div class="alert alert-danger mb-0">' +
         '<div class="fw-semibold mb-1">Theme settings failed to load.</div>' +
         '<div class="text-secondary small mb-2">Try reloading the page. If this keeps happening, check that <code>/theme-settings.js</code> is loading without errors.</div>' +
-        '<button type="button" class="btn btn-sm btn-outline-danger" id="settings-theme-reload-btn">Reload</button>' +
+        '<button type="button" class="btn btn-md" id="settings-theme-reload-btn">Reload</button>' +
       '</div>';
     try {
       var btn = panel.querySelector('#settings-theme-reload-btn');
@@ -353,7 +353,7 @@
       '<div class="alert alert-danger mb-0">' +
         '<div class="fw-semibold mb-1">' + escapeHtml(label) + ' failed to load.</div>' +
         '<div class="text-secondary small mb-2">Try reloading the page. If this keeps happening, check that the attribution settings scripts are loading without errors.</div>' +
-        '<button type="button" class="btn btn-sm btn-outline-danger" data-kexo-attribution-retry="1">Retry</button>' +
+        '<button type="button" class="btn btn-md" data-kexo-attribution-retry="1">Retry</button>' +
       '</div>';
     try {
       var btn = root.querySelector('[data-kexo-attribution-retry="1"]');
@@ -575,6 +575,60 @@
     return 'cost-sources';
   }
 
+  /** Map (tab, subtab) to the per-panel save button id. Null if this panel has no single save. */
+  function getActivePanelSaveButtonId() {
+    var tab = getActiveSettingsTab();
+    if (!tab) return null;
+    if (tab === 'kexo') {
+      var kexoSub = getActiveKexoSubTab();
+      if (kexoSub === 'general') return 'settings-general-save-btn';
+      if (kexoSub === 'icons-assets') return 'settings-assets-save-btn';
+      return null;
+    }
+    if (tab === 'integrations') {
+      return getActiveIntegrationsSubTab() === 'googleads' ? 'settings-ga-profit-save-btn' : null;
+    }
+    if (tab === 'layout') {
+      var layoutSub = getActiveLayoutSubTab();
+      if (layoutSub === 'tables') return 'settings-layout-tables-save-btn';
+      if (layoutSub === 'kpis') return 'settings-kpis-save-btn';
+      if (layoutSub === 'date-ranges') return 'settings-date-ranges-save-btn';
+      return null;
+    }
+    if (tab === 'insights') return 'settings-insights-variants-save-btn';
+    if (tab === 'cost-expenses') return 'cost-expenses-save-btn';
+    return null;
+  }
+
+  var SETTINGS_PANEL_SAVE_BUTTON_IDS = [
+    'settings-general-save-btn',
+    'settings-assets-save-btn',
+    'settings-ga-profit-save-btn',
+    'settings-insights-variants-save-btn',
+    'settings-layout-tables-save-btn',
+    'settings-kpis-save-btn',
+    'settings-date-ranges-save-btn',
+    'cost-expenses-save-btn'
+  ];
+
+  function syncGlobalFooter() {
+    var saveId = getActivePanelSaveButtonId();
+    SETTINGS_PANEL_SAVE_BUTTON_IDS.forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) el.classList.add('settings-panel-save-hidden');
+    });
+    var globalSave = document.getElementById('settings-global-save-btn');
+    var footerRight = globalSave && globalSave.closest ? globalSave.closest('.settings-footer-right') : null;
+    if (footerRight) {
+      footerRight.style.display = saveId ? '' : 'none';
+    }
+    if (globalSave && saveId) {
+      globalSave.onclick = function () {
+        var btn = document.getElementById(saveId);
+        if (btn) btn.click();
+      };
+    }
+  }
 
   function renderTablesWhenVisible() {
     if (tablesUiPanelRendered) return;
@@ -691,6 +745,7 @@
         }
       } catch (_) {}
     }
+    try { syncGlobalFooter(); } catch (_) {}
   }
 
   function activateFromSettingsNavAnchor(a, opts) {
@@ -1371,6 +1426,7 @@
           updateUrl('integrations');
           syncLeftNavActiveClasses('integrations');
         }
+        try { syncGlobalFooter(); } catch (_) {}
       },
     });
   }
@@ -1665,7 +1721,7 @@
           msg.textContent = message || 'Failed to load postback health.';
           var btn = document.createElement('button');
           btn.type = 'button';
-          btn.className = 'btn btn-sm btn-outline-secondary';
+          btn.className = 'btn btn-md';
           btn.textContent = 'Retry';
           btn.addEventListener('click', function () { loadPostbackHealth(); });
           statusEl.appendChild(msg);
@@ -1780,7 +1836,7 @@
           '<td><code class="small">' + escapeHtml(ord) + '</code></td>' +
           '<td><span class="text-muted small">' + escapeHtml(ts) + '</span></td>' +
           '<td><span class="text-muted small">' + escapeHtml(st) + '</span></td>' +
-          '<td class="text-end"><button type="button" class="btn btn-outline-secondary btn-sm" data-settings-ga-issue-view="1" data-issue-id="' + escapeHtml(id) + '">View details</button></td>' +
+          '<td class="text-end"><button type="button" class="btn btn-md" data-settings-ga-issue-view="1" data-issue-id="' + escapeHtml(id) + '">View details</button></td>' +
           '</tr>';
       }).join('');
     }
@@ -2790,8 +2846,7 @@
         try { btn.textContent = 'Upgrade required'; } catch (_) {}
         try { btn.disabled = true; } catch (_) {}
         try {
-          btn.classList.remove('btn-outline-primary');
-          btn.classList.add('btn-outline-secondary');
+          btn.classList.add('btn-md');
         } catch (_) {}
       }
 
@@ -2829,8 +2884,7 @@
         } catch (_) { try { btn.textContent = 'Upload'; } catch (_) {} }
         try { btn.disabled = false; } catch (_) {}
         try {
-          btn.classList.remove('btn-outline-secondary');
-          btn.classList.add('btn-outline-primary');
+          btn.classList.add('btn-md');
         } catch (_) {}
       }
 
@@ -3918,6 +3972,7 @@
           updateUrl('layout');
           syncLeftNavActiveClasses('layout');
         }
+        try { syncGlobalFooter(); } catch (_) {}
       },
     });
   }
@@ -3962,6 +4017,7 @@
           updateUrl('kexo');
           syncLeftNavActiveClasses('kexo');
         }
+        try { syncGlobalFooter(); } catch (_) {}
       },
     });
   }
@@ -3996,6 +4052,7 @@
           updateUrl('attribution');
           syncLeftNavActiveClasses('attribution');
         }
+        try { syncGlobalFooter(); } catch (_) {}
       },
     });
   }
@@ -4017,6 +4074,7 @@
           updateUrl('admin');
           syncLeftNavActiveClasses('admin');
         }
+        try { syncGlobalFooter(); } catch (_) {}
       },
     });
   }
@@ -4078,7 +4136,7 @@
     var html = '' +
       '<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">' +
         '<div class="text-muted small">Each section is grouped by page so table settings are easier to scan and edit one row at a time.</div>' +
-        '<button type="button" class="btn btn-outline-secondary btn-sm" disabled title="Coming later">Add table\u2026</button>' +
+        '<button type="button" class="btn btn-md" disabled title="Coming later">Add table\u2026</button>' +
       '</div>' +
       '<div class="accordion settings-layout-accordion" id="settings-layout-tables-accordion">';
 
@@ -4144,8 +4202,8 @@
               '</div>' +
               '<div class="d-flex align-items-center justify-content-end gap-2 flex-wrap">' +
                 '<div class="btn-group btn-group-sm" role="group" aria-label="Reorder">' +
-                  '<button type="button" class="btn btn-outline-secondary" data-action="up" aria-label="Move up">\u2191</button>' +
-                  '<button type="button" class="btn btn-outline-secondary" data-action="down" aria-label="Move down">\u2193</button>' +
+                  '<button type="button" class="btn btn-md" data-action="up" aria-label="Move up">\u2191</button>' +
+                  '<button type="button" class="btn btn-md" data-action="down" aria-label="Move down">\u2193</button>' +
                 '</div>' +
               '</div>' +
             '</div>' +
@@ -4369,8 +4427,7 @@
     var hasTables = tables.length > 0;
     var canReset = canResetInsightsVariantsNow();
     btn.textContent = 'Reset variants';
-    btn.classList.toggle('btn-outline-danger', hasTables && canReset);
-    btn.classList.toggle('btn-outline-secondary', !(hasTables && canReset));
+    btn.classList.add('btn-md');
     if (!canReset) btn.setAttribute('title', 'Admins only. Resets variant mapping tables, rules, and ignored titles (does not delete database data).');
     else if (!hasTables) btn.setAttribute('title', 'Nothing to reset yet.');
     else btn.setAttribute('title', 'Reset ALL variant mapping tables, rules, and ignored titles (does not delete database data).');
@@ -4399,15 +4456,15 @@
     if (!insightsVariantsWarningsCache) {
       btn.disabled = false;
       btn.textContent = 'Warnings';
-      btn.classList.remove('btn-danger');
-      btn.classList.add('btn-outline-danger');
+      btn.classList.remove('btn-danger', 'btn-outline-danger');
+      btn.classList.add('btn-md');
       return;
     }
     var n = countCoverageWarningTables(insightsVariantsWarningsCache);
     btn.disabled = false;
     btn.textContent = n > 0 ? ('Warnings (' + String(n) + ')') : 'Warnings';
-    btn.classList.remove('btn-outline-danger');
-    btn.classList.add('btn-danger');
+    btn.classList.remove('btn-danger', 'btn-outline-danger');
+    btn.classList.add('btn-md');
   }
 
   function buildInsightsVariantsCoverageWarningsHtml(details) {
@@ -4593,7 +4650,7 @@
         return '<tr>' +
           '<td>' + escapeHtml(entry.tableName) + '<div class="text-secondary small"><code>' + escapeHtml(entry.tableId) + '</code></div></td>' +
           '<td>' + escapeHtml(entry.title) + '</td>' +
-          '<td class="text-end"><button type="button" class="btn btn-sm btn-outline-danger" data-action="remove-ignore" data-table-idx="' + String(entry.tableIdx) + '" data-ignore-idx="' + String(entry.ignoreIdx) + '">Remove</button></td>' +
+          '<td class="text-end"><button type="button" class="btn btn-md" data-action="remove-ignore" data-table-idx="' + String(entry.tableIdx) + '" data-ignore-idx="' + String(entry.ignoreIdx) + '">Remove</button></td>' +
         '</tr>';
       }
     });
@@ -5075,7 +5132,7 @@
       '<div class="mb-3 d-flex justify-content-between align-items-center flex-wrap gap-2">' +
         '<div class="text-muted small">Define table rows by aliases. Includes are required. Overlap is auto-managed (most-specific include wins; earlier rows win ties). Titles outside table scope (e.g. non-length titles for length tables) are skipped. <strong>Table aliases</strong> are synonyms for Shopify option labels (e.g. Size/Chain Length) and help Suggestions merge into the same table.</div>' +
         '<div class="d-flex align-items-center gap-2">' +
-          '<button type="button" class="btn btn-outline-primary btn-sm" data-action="add-table">Add custom table</button>' +
+          '<button type="button" class="btn btn-md" data-action="add-table">Add custom table</button>' +
         '</div>' +
       '</div>';
 
@@ -5098,7 +5155,7 @@
           '</div>' +
           '<div class="d-flex align-items-center gap-2">' +
             '<label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-field="table-enabled" data-table-idx="' + String(tableIdx) + '"' + (table.enabled !== false ? ' checked' : '') + '><span class="form-check-label small ms-2">Enabled</span></label>' +
-            '<button type="button" class="btn btn-sm btn-outline-danger" data-action="remove-table" data-table-idx="' + String(tableIdx) + '">Delete</button>' +
+            '<button type="button" class="btn btn-md" data-action="remove-table" data-table-idx="' + String(tableIdx) + '">Delete</button>' +
           '</div>' +
         '</div>' +
         '<div class="card-body">' +
@@ -5122,7 +5179,7 @@
                 var rule = item.rule;
                 var ruleIdx = item.ruleIdx;
                 var mergeBtn = rules.length > 1
-                  ? ('<button type="button" class="btn btn-sm btn-outline-primary" data-action="merge-rule" data-table-idx="' + String(tableIdx) + '" data-rule-idx="' + String(ruleIdx) + '">Merge</button>')
+                  ? ('<button type="button" class="btn btn-md" data-action="merge-rule" data-table-idx="' + String(tableIdx) + '" data-rule-idx="' + String(ruleIdx) + '">Merge</button>')
                   : '';
                 return '<tr data-table-idx="' + String(tableIdx) + '" data-rule-idx="' + String(ruleIdx) + '">' +
                   '<td><input type="text" class="form-control form-control-sm" data-field="rule-label" data-table-idx="' + String(tableIdx) + '" data-rule-idx="' + String(ruleIdx) + '" value="' + escapeHtml(rule.label || '') + '"></td>' +
@@ -5130,7 +5187,7 @@
                   '<td class="text-end">' +
                     '<div class="d-inline-flex align-items-center gap-2">' +
                       mergeBtn +
-                      '<button type="button" class="btn btn-sm btn-outline-secondary" data-action="remove-rule" data-table-idx="' + String(tableIdx) + '" data-rule-idx="' + String(ruleIdx) + '">Remove</button>' +
+                      '<button type="button" class="btn btn-md" data-action="remove-rule" data-table-idx="' + String(tableIdx) + '" data-rule-idx="' + String(ruleIdx) + '">Remove</button>' +
                     '</div>' +
                   '</td>' +
                 '</tr>';
@@ -5139,7 +5196,7 @@
           })() +
         '<div class="mt-2 d-flex justify-content-between align-items-center flex-wrap gap-2">' +
           '<div class="d-flex align-items-center gap-2 flex-wrap">' +
-            '<button type="button" class="btn btn-outline-secondary btn-sm" data-action="add-rule" data-table-idx="' + String(tableIdx) + '">Add row mapping</button>' +
+            '<button type="button" class="btn btn-md" data-action="add-rule" data-table-idx="' + String(tableIdx) + '">Add row mapping</button>' +
             '<input type="text" class="form-control form-control-sm settings-ui-maxw-260" data-field="table-icon" data-table-idx="' + String(tableIdx) + '" value="' + escapeHtml(iconValue) + '" placeholder="Icon (e.g. fa-solid fa-grid-round)" aria-label="Table icon (Font Awesome classes)">' +
           '</div>' +
           '<span class="text-muted small">Rule count: ' + String(rules.length) + '</span>' +
@@ -5730,8 +5787,8 @@
             '<td><input type="text" class="form-control form-control-sm" data-field="label" value="' + escapeHtml(label) + '"></td>' +
             '<td class="text-muted small">' + escapeHtml(key) + '</td>' +
             '<td class="text-end"><div class="btn-group btn-group-sm" role="group" aria-label="Reorder">' +
-              '<button type="button" class="btn btn-outline-secondary" data-action="up" aria-label="Move up">\u2191</button>' +
-              '<button type="button" class="btn btn-outline-secondary" data-action="down" aria-label="Move down">\u2193</button>' +
+              '<button type="button" class="btn btn-md" data-action="up" aria-label="Move up">\u2191</button>' +
+              '<button type="button" class="btn btn-md" data-action="down" aria-label="Move down">\u2193</button>' +
             '</div></td>' +
           '</tr>';
         }
@@ -5753,8 +5810,8 @@
           '<td><input type="text" class="form-control form-control-sm" data-field="label" value="' + escapeHtml(label) + '"></td>' +
           '<td class="text-muted small">' + escapeHtml(key) + '</td>' +
           '<td class="text-end"><div class="btn-group btn-group-sm" role="group" aria-label="Reorder">' +
-            '<button type="button" class="btn btn-outline-secondary" data-action="up" aria-label="Move up">\u2191</button>' +
-            '<button type="button" class="btn btn-outline-secondary" data-action="down" aria-label="Move down">\u2193</button>' +
+            '<button type="button" class="btn btn-md" data-action="up" aria-label="Move up">\u2191</button>' +
+            '<button type="button" class="btn btn-md" data-action="down" aria-label="Move down">\u2193</button>' +
           '</div></td>' +
         '</tr>';
       });
@@ -5801,8 +5858,8 @@
             '<td><input type="text" class="form-control form-control-sm" data-field="label" value="' + escapeHtml(label) + '"></td>' +
             '<td class="text-muted small">' + escapeHtml(key) + '</td>' +
             '<td class="text-end"><div class="btn-group btn-group-sm" role="group" aria-label="Reorder">' +
-              '<button type="button" class="btn btn-outline-secondary" data-action="up" aria-label="Move up">\u2191</button>' +
-              '<button type="button" class="btn btn-outline-secondary" data-action="down" aria-label="Move down">\u2193</button>' +
+              '<button type="button" class="btn btn-md" data-action="up" aria-label="Move up">\u2191</button>' +
+              '<button type="button" class="btn btn-md" data-action="down" aria-label="Move down">\u2193</button>' +
             '</div></td>' +
           '</tr>';
         }
@@ -5823,8 +5880,8 @@
           '<td><input type="text" class="form-control form-control-sm" data-field="label" value="' + escapeHtml(label) + '"></td>' +
           '<td class="text-muted small">' + escapeHtml(key) + '</td>' +
           '<td class="text-end"><div class="btn-group btn-group-sm" role="group" aria-label="Reorder">' +
-            '<button type="button" class="btn btn-outline-secondary" data-action="up" aria-label="Move up">\u2191</button>' +
-            '<button type="button" class="btn btn-outline-secondary" data-action="down" aria-label="Move down">\u2193</button>' +
+            '<button type="button" class="btn btn-md" data-action="up" aria-label="Move up">\u2191</button>' +
+            '<button type="button" class="btn btn-md" data-action="down" aria-label="Move down">\u2193</button>' +
           '</div></td>' +
         '</tr>';
       });
@@ -6081,6 +6138,7 @@
     // panel is still active (Kexo → General), that can overwrite deep-links via updateUrl().
     syncFromUrl();
     wireAdminOnlyVisibility();
+    try { syncGlobalFooter(); } catch (_) {}
     // Layout is now a multi-tab section (Tables / Charts / KPIs). If the URL used legacy
     // `tab=charts` or `tab=kpis`, preselect the right Layout subtab BEFORE activating the panel.
     wireLayoutSubTabs(initialLayoutSubTab);
@@ -6113,6 +6171,7 @@
           syncLeftNavActiveClasses('cost-expenses');
           updateUrl('cost-expenses');
         }
+        try { syncGlobalFooter(); } catch (_) {}
       });
     }
 

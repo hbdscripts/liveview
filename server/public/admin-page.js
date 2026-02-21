@@ -345,8 +345,8 @@
         actions = makeBadge('Admin', 'primary');
       } else {
         actions =
-          '<button type="button" class="btn btn-sm btn-outline-secondary me-1" data-admin-action="edit" data-user-id="' + escapeHtml(row.id) + '" data-user-tier="' + escapeHtml(tier) + '">Edit</button>' +
-          '<button type="button" class="btn btn-sm btn-outline-primary" data-admin-action="promote" data-user-id="' + escapeHtml(row.id) + '">Promote to admin</button>';
+          '<button type="button" class="btn btn-md me-1" data-admin-action="edit" data-user-id="' + escapeHtml(row.id) + '" data-user-tier="' + escapeHtml(tier) + '">Edit</button>' +
+          '<button type="button" class="btn btn-md" data-admin-action="promote" data-user-id="' + escapeHtml(row.id) + '">Promote to admin</button>';
       }
 
       if (status && status !== 'active') {
@@ -391,9 +391,9 @@
 
       var roleSelect = '<select class="form-select form-select-sm admin-pending-tier-select" data-user-id="' + escapeHtml(rowId) + '" aria-label="Assign role">' + tierOpts + '</select>';
       var actions =
-        '<button type="button" class="btn btn-sm btn-outline-success" data-admin-action="approve" data-user-id="' + escapeHtml(rowId) + '">Approve</button>' +
-        '<button type="button" class="btn btn-sm btn-outline-danger" data-admin-action="deny" data-user-id="' + escapeHtml(rowId) + '">Deny</button>' +
-        '<button type="button" class="btn btn-sm btn-outline-primary" data-admin-action="promote" data-user-id="' + escapeHtml(rowId) + '">Promote to admin</button>';
+        '<button type="button" class="btn btn-md" data-admin-action="approve" data-user-id="' + escapeHtml(rowId) + '">Approve</button>' +
+        '<button type="button" class="btn btn-md" data-admin-action="deny" data-user-id="' + escapeHtml(rowId) + '">Deny</button>' +
+        '<button type="button" class="btn btn-md" data-admin-action="promote" data-user-id="' + escapeHtml(rowId) + '">Promote to admin</button>';
 
       h +=
         '<tr>' +

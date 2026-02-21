@@ -88,9 +88,9 @@ test('Settings/Admin panels satisfy UI contract after normalisation', () => {
     assert.ok(gaPanel.querySelectorAll('#settings-ga-diagnostics-card > .card-header').length === 1, 'Google Ads Diagnostics card header must remain');
   }
 
-  // Primary actions should be btn-primary.
-  const saveButtons = Array.from(doc.querySelectorAll('button')).filter((b) => String(b.textContent || '').trim() === 'Save');
-  assert.ok(saveButtons.length > 0, 'expected at least one Save button');
-  for (const b of saveButtons) assert.ok(b.classList.contains('btn-primary'), 'Save button should be .btn-primary');
+  // Primary save actions use label "Save Settings" and btn-primary.
+  const saveButtons = Array.from(doc.querySelectorAll('button')).filter((b) => String(b.textContent || '').trim() === 'Save Settings');
+  assert.ok(saveButtons.length > 0, 'expected at least one Save Settings button');
+  for (const b of saveButtons) assert.ok(b.classList.contains('btn-primary'), 'Save Settings button should be .btn-primary');
 });
 
