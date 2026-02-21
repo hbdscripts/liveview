@@ -3204,7 +3204,6 @@
     }
 
     function kpiDeltaToneColor(dir, bundleKey) {
-      if (bundleKey) return chartsKpiToneColor(bundleKey, dir);
       const d = String(dir || '').toLowerCase();
       if (d === 'up') {
         return cssVarColor('--kexo-kpi-delta-up', cssVarColor('--kexo-accent-2', '#3eb3ab'));
@@ -3435,9 +3434,9 @@
       if (!sourceSeries || !sourceSeries.length) return;
       var bundleCfg = getChartsKpiBundle('headerStrip');
       var sparkCfg = bundleCfg.sparkline || defaultChartsKpiSparklineConfig('headerStrip');
-      var GREEN = bundleCfg.palette && bundleCfg.palette.up ? bundleCfg.palette.up : kpiDeltaToneColor('up');
-      var RED = bundleCfg.palette && bundleCfg.palette.down ? bundleCfg.palette.down : kpiDeltaToneColor('down');
-      var NEUTRAL = bundleCfg.palette && bundleCfg.palette.same ? bundleCfg.palette.same : kpiDeltaToneColor('flat');
+      var GREEN = chartsKpiToneColor('headerStrip', 'up');
+      var RED = chartsKpiToneColor('headerStrip', 'down');
+      var NEUTRAL = chartsKpiToneColor('headerStrip', 'same');
       var map = {
         'cond-kpi-orders-sparkline': function(d) { return d.orders; },
         'cond-kpi-revenue-sparkline': function(d) { return d.revenue; },
@@ -4602,16 +4601,29 @@
     }
 
     function chartsKpiToneColor(bundleKey, dir) {
-      var bundle = getChartsKpiBundle(bundleKey);
+      var key = String(bundleKey || '').trim();
+      var prefix = 'dashboard';
+      if (key === 'headerStrip') prefix = 'header';
+      else if (key === 'yearlySnapshot') prefix = 'snapshot';
+
       var d = String(dir || '').toLowerCase();
-      if (d === 'up') return bundle.palette.up;
-      if (d === 'down') return bundle.palette.down;
-      return bundle.palette.same;
+      var tone = (d === 'down') ? 'down' : (d === 'up' ? 'up' : 'same');
+
+      // Optional per-section overrides (advanced). When unset, fall back to global KPI palette.
+      var sectionVar = cssVarColor('--kexo-' + prefix + '-kpi-' + tone, '');
+      if (sectionVar) return sectionVar;
+      return kpiDeltaToneColor(tone);
     }
 
     function chartsKpiCompareLineColor(bundleKey) {
-      var bundle = getChartsKpiBundle(bundleKey);
-      return bundle.palette.compareLine || '#cccccc';
+      var key = String(bundleKey || '').trim();
+      var prefix = 'dashboard';
+      if (key === 'headerStrip') prefix = 'header';
+      else if (key === 'yearlySnapshot') prefix = 'snapshot';
+
+      var sectionVar = cssVarColor('--kexo-' + prefix + '-kpi-compare-line', '');
+      if (sectionVar) return sectionVar;
+      return cssVarColor('--kexo-kpi-compare-line', '#cccccc');
     }
 
     // Hydrate KPI prefs from localStorage so disabled KPIs are hidden on first paint.
@@ -4942,26 +4954,9 @@
     }
 
     function applyKpiBundleCssVars() {
-      var root = document && document.documentElement ? document.documentElement : null;
-      if (!root || !root.style) return;
-      function applyBundleVars(bundleKey, prefix) {
-        var bundle = getChartsKpiBundle(bundleKey);
-        root.style.setProperty('--kexo-' + prefix + '-kpi-up', bundle.palette.up);
-        root.style.setProperty('--kexo-' + prefix + '-kpi-down', bundle.palette.down);
-        root.style.setProperty('--kexo-' + prefix + '-kpi-same', bundle.palette.same);
-        root.style.setProperty('--kexo-' + prefix + '-kpi-compare-line', bundle.palette.compareLine);
-        root.style.setProperty('--kexo-' + prefix + '-kpi-delta-font-size', String(bundle.deltaStyle.fontSize) + 'px');
-        root.style.setProperty('--kexo-' + prefix + '-kpi-delta-font-weight', String(bundle.deltaStyle.fontWeight));
-        root.style.setProperty('--kexo-' + prefix + '-kpi-delta-icon-size', String(bundle.deltaStyle.iconSize) + 'px');
-      }
-      applyBundleVars('dashboardCards', 'dashboard');
-      applyBundleVars('headerStrip', 'header');
-      applyBundleVars('yearlySnapshot', 'snapshot');
-      var dash = getChartsKpiBundle('dashboardCards');
-      root.style.setProperty('--kexo-kpi-delta-up', dash.palette.up);
-      root.style.setProperty('--kexo-kpi-delta-down', dash.palette.down);
-      root.style.setProperty('--kexo-kpi-delta-same', dash.palette.same);
-      root.style.setProperty('--kexo-kpi-compare-line', dash.palette.compareLine);
+      // KPI palette is theme-driven via /theme-vars.css + css_var_overrides_v1.
+      // Charts UI config should not override KPI theme variables on :root.
+      return;
     }
 
     function applyChartsUiConfigV1(cfg) {

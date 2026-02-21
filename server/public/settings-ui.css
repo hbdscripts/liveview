@@ -73,6 +73,23 @@ body[data-page="settings"] .settings-responsive-grid {
 body[data-page="settings"] .settings-responsive-grid > * { min-width: 0; }
 body[data-page="settings"] .settings-responsive-grid .settings-responsive-grid-span-all { grid-column: 1 / -1; }
 
+/* Color overrides rows (Settings → Color Scheme) */
+body[data-page="settings"] .kexo-css-var-swatch {
+  width: 2.5rem;
+  height: 2rem;
+  padding: 2px;
+  cursor: pointer;
+}
+body[data-page="settings"] .kexo-css-var-name {
+  word-break: break-all;
+  white-space: nowrap;
+}
+@media (max-width: 575.98px) {
+  body[data-page="settings"] .kexo-css-var-name {
+    display: none;
+  }
+}
+
 @media (max-width: 1199.98px) {
   body[data-page="settings"] .settings-responsive-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }

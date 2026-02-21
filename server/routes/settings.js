@@ -30,6 +30,7 @@ const {
 } = require('../googleAdsProfitConfig');
 const { getThemeIconGlyphSettingKeys } = require('../shared/icon-registry');
 const { normalizeIconSpec } = require('../utils/svgNormalize');
+const colorSchemeMap = require('../public/ui/color-scheme-map');
 
 const GOOGLE_ADS_PROFIT_DEDUCTIONS_V1_KEY = 'google_ads_profit_deductions_v1';
 const GOOGLE_ADS_ADD_TO_CART_VALUE_KEY = 'google_ads_add_to_cart_value';
@@ -1469,13 +1470,20 @@ function normalizeCssVarOverridesV1(raw) {
   if (Number(parsed.v) !== 1) return out;
   const vars = parsed.vars && typeof parsed.vars === 'object' ? parsed.vars : null;
   if (!vars) return out;
+  const allow = (colorSchemeMap && typeof colorSchemeMap.cssVarOverrideAllowlist === 'function')
+    ? colorSchemeMap.cssVarOverrideAllowlist()
+    : null;
+  const dead = new Set(Array.isArray(colorSchemeMap && colorSchemeMap.deadCssVars) ? colorSchemeMap.deadCssVars : []);
   const next = {};
   let count = 0;
   for (const k of Object.keys(vars)) {
     if (count >= 120) break;
     const name = normalizeCssVarName(k);
     if (!name) continue;
-    const val = normalizeCssVarOverrideValue(vars[k]);
+    if (dead.has(name)) continue;
+    if (allow && !allow.has(name)) continue;
+    const isOpaque = !!(colorSchemeMap && typeof colorSchemeMap.isOpaqueVar === 'function' && colorSchemeMap.isOpaqueVar(name));
+    const val = isOpaque ? normalizeOpaqueCssColor(vars[k], '') : normalizeCssVarOverrideValue(vars[k]);
     if (!val) continue;
     next[name] = val;
     count++;
@@ -1634,6 +1642,17 @@ async function readSettingsPayload() {
   try {
     const raw = rawMap[CSS_VAR_OVERRIDES_V1_KEY];
     cssVarOverridesV1 = normalizeCssVarOverridesV1(raw);
+    // One-time-ish cleanup: if normalization drops legacy/dead keys, persist the cleaned payload.
+    try {
+      const cleaned = JSON.stringify(cssVarOverridesV1);
+      const rawStr = raw != null ? String(raw).trim() : '';
+      if (cleaned && cleaned !== rawStr) {
+        // Avoid writing an empty object back over an empty DB value.
+        if (rawStr || (cssVarOverridesV1 && cssVarOverridesV1.vars && Object.keys(cssVarOverridesV1.vars).length)) {
+          await store.setSetting(CSS_VAR_OVERRIDES_V1_KEY, cleaned);
+        }
+      }
+    } catch (_) {}
   } catch (_) {}
   try {
     const raw = rawMap[PROFIT_RULES_V1_KEY];
@@ -2148,28 +2167,14 @@ const THEME_BASE_KEYS = [
   'theme_font',
   'theme_base',
   'theme_preference_mode',
-  'theme_header_top_bg',
-  'theme_header_top_text_color',
-  'theme_header_main_bg',
-  'theme_header_link_color',
-  'theme_header_main_link_color',
-  'theme_header_main_dropdown_bg',
-  'theme_header_main_dropdown_link_color',
-  'theme_header_main_dropdown_icon_color',
+  'theme_kpi_separate_palettes',
   'theme_header_main_border',
-  'theme_header_main_border_color',
   'theme_header_main_shadow',
   'theme_header_settings_label',
-  'theme_header_settings_bg',
-  'theme_header_settings_text_color',
   'theme_header_settings_radius',
   'theme_header_settings_border',
-  'theme_header_settings_border_color',
-  'theme_header_online_bg',
-  'theme_header_online_text_color',
   'theme_header_online_radius',
   'theme_header_online_border',
-  'theme_header_online_border_color',
   'theme_header_logo_url',
   'theme_menu_hover_opacity',
   'theme_menu_hover_color',
@@ -2186,9 +2191,93 @@ const THEME_BASE_KEYS = [
 ];
 const THEME_KEYS = THEME_BASE_KEYS.concat(THEME_ICON_GLYPH_KEYS);
 
+const THEME_COLOR_SCHEME_MIGRATION_V1_KEY = 'theme_color_scheme_migration_v1';
+let didThemeColorSchemeMigrationThisProcess = false;
+
+async function migrateLegacyThemeHeaderColorsToCssVarOverridesOnce() {
+  // Migrates legacy theme_* header/nav color keys -> css_var_overrides_v1 and clears the legacy keys.
+  // This keeps user values working after the Settings UI moved to CSS variable overrides.
+  try {
+    const marker = await store.getSetting(THEME_COLOR_SCHEME_MIGRATION_V1_KEY);
+    if (String(marker || '').trim() === '1') return;
+  } catch (_) {}
+
+  const legacyMap = (colorSchemeMap && colorSchemeMap.legacyThemeColorKeysToCssVars && typeof colorSchemeMap.legacyThemeColorKeysToCssVars === 'object')
+    ? colorSchemeMap.legacyThemeColorKeysToCssVars
+    : {};
+  const legacyKeys = Object.keys(legacyMap || {});
+  if (!legacyKeys.length) {
+    try { await store.setSetting(THEME_COLOR_SCHEME_MIGRATION_V1_KEY, '1'); } catch (_) {}
+    return;
+  }
+
+  const legacyVals = {};
+  let hasAny = false;
+  for (const k of legacyKeys) {
+    try {
+      const raw = await store.getSetting('theme_' + k);
+      const val = raw != null ? String(raw).trim() : '';
+      if (!val) continue;
+      legacyVals[k] = val;
+      hasAny = true;
+    } catch (_) {}
+  }
+  if (!hasAny) {
+    try { await store.setSetting(THEME_COLOR_SCHEME_MIGRATION_V1_KEY, '1'); } catch (_) {}
+    return;
+  }
+
+  let cfg = defaultCssVarOverridesV1();
+  try {
+    const rawOverrides = await store.getSetting(CSS_VAR_OVERRIDES_V1_KEY);
+    cfg = normalizeCssVarOverridesV1(rawOverrides);
+  } catch (_) {
+    cfg = defaultCssVarOverridesV1();
+  }
+  const nextVars = { ...(cfg && cfg.vars && typeof cfg.vars === 'object' ? cfg.vars : {}) };
+
+  function setOverrideIfMissing(cssVarName, rawValue) {
+    const name = normalizeCssVarName(cssVarName);
+    if (!name) return;
+    if (Object.prototype.hasOwnProperty.call(nextVars, name)) return;
+    const isOpaque = !!(colorSchemeMap && typeof colorSchemeMap.isOpaqueVar === 'function' && colorSchemeMap.isOpaqueVar(name));
+    const normalized = isOpaque ? normalizeOpaqueCssColor(rawValue, '') : normalizeCssVarOverrideValue(rawValue);
+    if (!normalized) return;
+    nextVars[name] = normalized;
+  }
+
+  for (const themeKey of Object.keys(legacyVals)) {
+    const mapped = legacyMap[themeKey];
+    const val = legacyVals[themeKey];
+    if (!val) continue;
+    if (mapped) {
+      setOverrideIfMissing(mapped, val);
+      continue;
+    }
+    // Special legacy key: theme_header_link_color previously fanned out to multiple outputs.
+    if (themeKey === 'theme_header_link_color') {
+      setOverrideIfMissing('--kexo-header-top-text-color', val);
+      setOverrideIfMissing('--kexo-top-menu-link-color', val);
+    }
+  }
+
+  cfg.vars = nextVars;
+  try {
+    await store.setSetting(CSS_VAR_OVERRIDES_V1_KEY, JSON.stringify(cfg));
+  } catch (_) {}
+
+  // Clear legacy theme keys (so they don't linger in storage).
+  for (const k of Object.keys(legacyVals)) {
+    try { await store.setSetting('theme_' + k, ''); } catch (_) {}
+  }
+
+  try { await store.setSetting(THEME_COLOR_SCHEME_MIGRATION_V1_KEY, '1'); } catch (_) {}
+}
+
 async function getThemeDefaults(req, res) {
   const result = { ok: true };
   try {
+    await migrateLegacyThemeHeaderColorsToCssVarOverridesOnce();
     const dbKeys = THEME_KEYS.map((k) => 'theme_' + k);
     const map = await readSettingsKeyMap(dbKeys);
     for (const key of THEME_KEYS) {
@@ -2293,27 +2382,23 @@ function normalizeCssToggle(value, fallback) {
 }
 
 async function getThemeVarsCss(req, res) {
+  if (!didThemeColorSchemeMigrationThisProcess) {
+    didThemeColorSchemeMigrationThisProcess = true;
+    try { await migrateLegacyThemeHeaderColorsToCssVarOverridesOnce(); } catch (_) { didThemeColorSchemeMigrationThisProcess = false; }
+  }
   const FALLBACKS = {
     theme_accent_1: '#4b94e4',
     theme_radius: '1',
     theme_font: 'sans',
     theme_base: 'slate',
-    theme_header_top_text_color: '#1f2937',
-    theme_header_main_link_color: '#1f2937',
-    theme_header_main_dropdown_link_color: '#1f2937',
-    theme_header_main_dropdown_icon_color: '#1f2937',
+    theme_kpi_separate_palettes: '0',
     theme_header_main_border: 'show',
-    theme_header_main_border_color: '#e6e7e9',
     theme_header_main_shadow: '2px 2px 2px #eee',
     theme_header_settings_label: 'show',
-    theme_header_settings_text_color: '#1f2937',
     theme_header_settings_radius: '.375rem',
     theme_header_settings_border: 'show',
-    theme_header_settings_border_color: '#e6e7e9',
-    theme_header_online_text_color: '#1f2937',
     theme_header_online_radius: '.375rem',
     theme_header_online_border: 'show',
-    theme_header_online_border_color: '#e6e7e9',
     theme_menu_hover_opacity: '8',
     theme_menu_hover_color: 'black',
     theme_header_strip_padding: '0 5px',
@@ -2339,29 +2424,16 @@ async function getThemeVarsCss(req, res) {
     baseKey,
     iconSize,
     iconColor,
-    headerTopBgRaw,
-    topText,
-    headerMainBgRaw,
-    mainLink,
-    headerMainDropdownBgRaw,
-    ddLink,
-    ddIcon,
+    kpiSeparatePalettesRaw,
     mainBorderMode,
-    mainBorderColor,
     mainShadow,
     settingsLabelMode,
-    headerSettingsBgRaw,
-    settingsText,
     settingsRadius,
     settingsBorderMode,
-    settingsBorderColor,
     menuHoverOpacity,
     menuHoverColor,
-    headerOnlineBgRaw,
-    onlineText,
     onlineRadius,
     onlineBorderMode,
-    onlineBorderColor,
     stripPadding,
   ] = await Promise.all([
     Promise.resolve(accent1),
@@ -2370,29 +2442,16 @@ async function getThemeVarsCss(req, res) {
     getThemeKey('theme_base', FALLBACKS.theme_base),
     getThemeKey('theme_icon_size', ''),
     getThemeKey('theme_icon_color', ''),
-    getThemeKey('theme_header_top_bg', ''),
-    getThemeKey('theme_header_top_text_color', FALLBACKS.theme_header_top_text_color),
-    getThemeKey('theme_header_main_bg', ''),
-    getThemeKey('theme_header_main_link_color', FALLBACKS.theme_header_main_link_color),
-    getThemeKey('theme_header_main_dropdown_bg', ''),
-    getThemeKey('theme_header_main_dropdown_link_color', FALLBACKS.theme_header_main_dropdown_link_color),
-    getThemeKey('theme_header_main_dropdown_icon_color', FALLBACKS.theme_header_main_dropdown_icon_color),
+    getThemeKey('theme_kpi_separate_palettes', FALLBACKS.theme_kpi_separate_palettes),
     getThemeKey('theme_header_main_border', FALLBACKS.theme_header_main_border),
-    getThemeKey('theme_header_main_border_color', FALLBACKS.theme_header_main_border_color),
     getThemeKey('theme_header_main_shadow', FALLBACKS.theme_header_main_shadow),
     getThemeKey('theme_header_settings_label', FALLBACKS.theme_header_settings_label),
-    getThemeKey('theme_header_settings_bg', ''),
-    getThemeKey('theme_header_settings_text_color', FALLBACKS.theme_header_settings_text_color),
     getThemeKey('theme_header_settings_radius', FALLBACKS.theme_header_settings_radius),
     getThemeKey('theme_header_settings_border', FALLBACKS.theme_header_settings_border),
-    getThemeKey('theme_header_settings_border_color', FALLBACKS.theme_header_settings_border_color),
     getThemeKey('theme_menu_hover_opacity', FALLBACKS.theme_menu_hover_opacity),
     getThemeKey('theme_menu_hover_color', FALLBACKS.theme_menu_hover_color),
-    getThemeKey('theme_header_online_bg', ''),
-    getThemeKey('theme_header_online_text_color', FALLBACKS.theme_header_online_text_color),
     getThemeKey('theme_header_online_radius', FALLBACKS.theme_header_online_radius),
     getThemeKey('theme_header_online_border', FALLBACKS.theme_header_online_border),
-    getThemeKey('theme_header_online_border_color', FALLBACKS.theme_header_online_border_color),
     getThemeKey('theme_header_strip_padding', FALLBACKS.theme_header_strip_padding),
   ]);
 
@@ -2402,6 +2461,7 @@ async function getThemeVarsCss(req, res) {
   const settingsBorder = normalizeCssToggle(settingsBorderMode, 'show');
   const onlineBorder = normalizeCssToggle(onlineBorderMode, 'show');
   const labelMode = normalizeCssToggle(settingsLabelMode, 'show');
+  const kpiSeparatePalettes = normalizeCssToggle(kpiSeparatePalettesRaw, 'hide') === 'show';
 
   const [a2, a3, a4, a5, a6] = await Promise.all([
     getThemeKey('theme_accent_2', '#3eb3ab'),
@@ -2428,13 +2488,23 @@ async function getThemeVarsCss(req, res) {
 
   const primaryRgb = hexToRgbString(accent1Hex) || '32,107,196';
 
-  // Header backgrounds: keep existing behavior (accent-1) when unset,
-  // but respect explicit values saved in Theme → Header.
-  const headerTopBg = String(headerTopBgRaw || '').trim() ? normalizeOpaqueCssColor(headerTopBgRaw, accent1Hex) : accent1Hex;
-  const headerMainBg = String(headerMainBgRaw || '').trim() ? normalizeOpaqueCssColor(headerMainBgRaw, accent1Hex) : accent1Hex;
-  const headerMainDropdownBg = String(headerMainDropdownBgRaw || '').trim() ? normalizeOpaqueCssColor(headerMainDropdownBgRaw, accent1Hex) : accent1Hex;
-  const headerSettingsBg = String(headerSettingsBgRaw || '').trim() ? normalizeOpaqueCssColor(headerSettingsBgRaw, accent1Hex) : accent1Hex;
-  const headerOnlineBg = String(headerOnlineBgRaw || '').trim() ? normalizeOpaqueCssColor(headerOnlineBgRaw, accent1Hex) : accent1Hex;
+  // Header/nav color defaults are derived from Accent 1, with optional CSS var overrides.
+  const HEADER_TEXT_DEFAULT = '#1f2937';
+  const DEFAULT_BORDER = '#e6e7e9';
+  const headerTopBg = accent1Hex;
+  const headerTopText = HEADER_TEXT_DEFAULT;
+  const topMenuBg = accent1Hex;
+  const topMenuLink = HEADER_TEXT_DEFAULT;
+  const topMenuDropdownBg = accent1Hex;
+  const topMenuDropdownLink = HEADER_TEXT_DEFAULT;
+  const topMenuDropdownIcon = HEADER_TEXT_DEFAULT;
+  const topMenuBorderColor = DEFAULT_BORDER;
+  const settingsBg = accent1Hex;
+  const settingsText = HEADER_TEXT_DEFAULT;
+  const settingsBorderColor = DEFAULT_BORDER;
+  const onlineBg = accent1Hex;
+  const onlineText = HEADER_TEXT_DEFAULT;
+  const onlineBorderColor = DEFAULT_BORDER;
 
   // Radius/font/base (Tabler variables) from global theme defaults.
   const RADIUS_MAP = { '0': '0', '0.5': '.25rem', '1': '.375rem', '1.5': '.5rem', '2': '2rem' };
@@ -2487,20 +2557,18 @@ async function getThemeVarsCss(req, res) {
   const overrideLines = [];
   try {
     const vars = cssVarOverridesV1 && cssVarOverridesV1.vars && typeof cssVarOverridesV1.vars === 'object' ? cssVarOverridesV1.vars : {};
-    const OPAQUE_BG_VARS = new Set([
-      '--kexo-header-top-bg',
-      '--kexo-header-main-bg',
-      '--kexo-top-menu-bg',
-      '--kexo-top-menu-dropdown-bg',
-      '--kexo-header-settings-bg',
-      '--kexo-header-online-bg',
-    ]);
+    const allow = (colorSchemeMap && typeof colorSchemeMap.cssVarOverrideAllowlist === 'function')
+      ? colorSchemeMap.cssVarOverrideAllowlist()
+      : null;
+    const dead = new Set(Array.isArray(colorSchemeMap && colorSchemeMap.deadCssVars) ? colorSchemeMap.deadCssVars : []);
     for (const name of Object.keys(vars)) {
       const safeName = normalizeCssVarName(name);
       if (!safeName) continue;
-      const safeVal = OPAQUE_BG_VARS.has(safeName)
-        ? normalizeOpaqueCssColor(vars[name], '')
-        : normalizeCssVarOverrideValue(vars[name]);
+      if (dead.has(safeName)) continue;
+      if (allow && !allow.has(safeName)) continue;
+      if (!kpiSeparatePalettes && colorSchemeMap && typeof colorSchemeMap.isKpiPerSectionVar === 'function' && colorSchemeMap.isKpiPerSectionVar(safeName)) continue;
+      const isOpaque = !!(colorSchemeMap && typeof colorSchemeMap.isOpaqueVar === 'function' && colorSchemeMap.isOpaqueVar(safeName));
+      const safeVal = isOpaque ? normalizeOpaqueCssColor(vars[name], '') : normalizeCssVarOverrideValue(vars[name]);
       if (!safeVal) continue;
       overrideLines.push(`${safeName}:${safeVal};`);
     }
@@ -2519,22 +2587,21 @@ async function getThemeVarsCss(req, res) {
     `--tblr-primary-rgb:${primaryRgb};`,
     `--kexo-header-strip-padding:${stripPadding && stripPadding.length < 80 ? stripPadding : '0 5px'};`,
     `--kexo-header-top-bg:${headerTopBg};`,
-    `--kexo-header-top-text-color:${normalizeCssColor(topText, FALLBACKS.theme_header_top_text_color)};`,
-    `--kexo-header-main-bg:${headerMainBg};`,
-    `--kexo-top-menu-bg:${headerMainBg};`,
-    `--kexo-top-menu-link-color:${normalizeCssColor(mainLink, FALLBACKS.theme_header_main_link_color)};`,
-    `--kexo-top-menu-dropdown-bg:${headerMainDropdownBg};`,
-    `--kexo-top-menu-dropdown-link-color:${normalizeCssColor(ddLink, FALLBACKS.theme_header_main_dropdown_link_color)};`,
-    `--kexo-top-menu-dropdown-icon-color:${normalizeCssColor(ddIcon, FALLBACKS.theme_header_main_dropdown_icon_color)};`,
+    `--kexo-header-top-text-color:${headerTopText};`,
+    `--kexo-top-menu-bg:${topMenuBg};`,
+    `--kexo-top-menu-link-color:${topMenuLink};`,
+    `--kexo-top-menu-dropdown-bg:${topMenuDropdownBg};`,
+    `--kexo-top-menu-dropdown-link-color:${topMenuDropdownLink};`,
+    `--kexo-top-menu-dropdown-icon-color:${topMenuDropdownIcon};`,
     `--kexo-top-menu-border-width:${mainBorder === 'hide' ? '0px' : '1px'};`,
-    `--kexo-top-menu-border-color:${mainBorder === 'hide' ? 'transparent' : normalizeCssColor(mainBorderColor, FALLBACKS.theme_header_main_border_color)};`,
+    `--kexo-top-menu-border-color:${mainBorder === 'hide' ? 'transparent' : topMenuBorderColor};`,
     `--kexo-top-menu-shadow:${normalizeCssShadow(mainShadow, FALLBACKS.theme_header_main_shadow)};`,
 
-    `--kexo-header-settings-bg:${headerSettingsBg};`,
-    `--kexo-header-settings-text-color:${normalizeCssColor(settingsText, FALLBACKS.theme_header_settings_text_color)};`,
+    `--kexo-header-settings-bg:${settingsBg};`,
+    `--kexo-header-settings-text-color:${settingsText};`,
     `--kexo-header-settings-radius:${normalizeCssRadius(settingsRadius, FALLBACKS.theme_header_settings_radius)};`,
     `--kexo-header-settings-border-width:${settingsBorder === 'hide' ? '0px' : '1px'};`,
-    `--kexo-header-settings-border-color:${normalizeCssColor(settingsBorderColor, FALLBACKS.theme_header_settings_border_color)};`,
+    `--kexo-header-settings-border-color:${settingsBorderColor};`,
     `--kexo-header-settings-label-display:${labelMode === 'hide' ? 'none' : 'inline'};`,
     `--kexo-header-settings-icon-gap:${labelMode === 'hide' ? '0' : '.35rem'};`,
     radiusLines,
@@ -2552,11 +2619,11 @@ async function getThemeVarsCss(req, res) {
       return `--kexo-menu-hover-bg:rgba(${r},${g},${b},${hovOp.toFixed(2)});`;
     })(),
 
-    `--kexo-header-online-bg:${headerOnlineBg};`,
-    `--kexo-header-online-text-color:${normalizeCssColor(onlineText, FALLBACKS.theme_header_online_text_color)};`,
+    `--kexo-header-online-bg:${onlineBg};`,
+    `--kexo-header-online-text-color:${onlineText};`,
     `--kexo-header-online-radius:${normalizeCssRadius(onlineRadius, FALLBACKS.theme_header_online_radius)};`,
     `--kexo-header-online-border-width:${onlineBorder === 'hide' ? '0px' : '1px'};`,
-    `--kexo-header-online-border-color:${normalizeCssColor(onlineBorderColor, FALLBACKS.theme_header_online_border_color)};`,
+    `--kexo-header-online-border-color:${onlineBorderColor};`,
     ...overrideLines,
     '}',
     '',

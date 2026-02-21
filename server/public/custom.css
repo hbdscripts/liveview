@@ -190,18 +190,6 @@ html, body {
   --kexo-kpi-delta-same: #66bdb7;
   --kexo-kpi-delta-down: #d63939;
   --kexo-kpi-compare-line: #cccccc;
-  --kexo-dashboard-kpi-up: #2fb344;
-  --kexo-dashboard-kpi-same: #66bdb7;
-  --kexo-dashboard-kpi-down: #d63939;
-  --kexo-dashboard-kpi-compare-line: #cccccc;
-  --kexo-header-kpi-up: #2fb344;
-  --kexo-header-kpi-same: #66bdb7;
-  --kexo-header-kpi-down: #d63939;
-  --kexo-header-kpi-compare-line: #cccccc;
-  --kexo-snapshot-kpi-up: #2fb344;
-  --kexo-snapshot-kpi-same: #66bdb7;
-  --kexo-snapshot-kpi-down: #d63939;
-  --kexo-snapshot-kpi-compare-line: #cccccc;
 }
 
 .kexo-5color > :nth-child(5n + 1) { --kexo-accent: var(--kexo-accent-1, #4b94e4); }
@@ -5666,8 +5654,8 @@ img[data-kexo-logo-slot="footer"][data-kexo-logo-ready="1"] {
 }
 /* Closed only: dark color-mix (never applies when .show) */
 .kexo-desktop-nav-list .nav-item.dropdown:not(.show) .dropdown-menu {
-  --tblr-dropdown-bg: var(--kexo-top-menu-bg, var(--kexo-header-main-bg, #fff));
-  background: var(--kexo-top-menu-bg, var(--kexo-header-main-bg, #fff)) !important;
+  --tblr-dropdown-bg: var(--kexo-top-menu-dropdown-bg, var(--kexo-top-menu-bg, #fff));
+  background: var(--kexo-top-menu-dropdown-bg, var(--kexo-top-menu-bg, #fff)) !important;
   color: var(--kexo-top-menu-dropdown-link-color, var(--tblr-body-color, #1f2937)) !important;
 }
 /* When open: tab + dropdown same bright accent (kexo icon logic per nth-child) */
@@ -5678,8 +5666,8 @@ img[data-kexo-logo-slot="footer"][data-kexo-logo-ready="1"] {
   color: #fff !important;
 }
 .kexo-desktop-nav-settings .nav-item.dropdown .dropdown-menu {
-  --tblr-dropdown-bg: var(--kexo-top-menu-bg, var(--kexo-header-main-bg, #fff));
-  background: var(--kexo-top-menu-bg, var(--kexo-header-main-bg, #fff)) !important;
+  --tblr-dropdown-bg: var(--kexo-top-menu-dropdown-bg, var(--kexo-top-menu-bg, #fff));
+  background: var(--kexo-top-menu-dropdown-bg, var(--kexo-top-menu-bg, #fff)) !important;
   color: var(--kexo-top-menu-dropdown-link-color, var(--tblr-body-color, #1f2937)) !important;
 }
 .kexo-desktop-nav-list .dropdown-item,
