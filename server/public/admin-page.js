@@ -114,6 +114,17 @@
     runLazyLoadForAdminTab(t);
   }
 
+  function kexoAdminSetActiveTab(tab, opts) {
+    if (!isSettingsPage()) return;
+    var t = (tab || '').trim().toLowerCase();
+    if (t !== 'users' && t !== 'diagnostics' && t !== 'controls' && t !== 'role-permissions') t = 'controls';
+    setActiveTab(t, opts);
+  }
+
+  try {
+    window.kexoAdminSetActiveTab = kexoAdminSetActiveTab;
+  } catch (_) {}
+
   function runLazyLoadForAdminTab(t) {
     if (t === 'users') {
       if (!usersLoadedOnce) {

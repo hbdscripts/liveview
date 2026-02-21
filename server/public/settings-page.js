@@ -97,13 +97,13 @@
       // kexo
       var rawKexo = String(params.get('kexoTab') || params.get('kexo') || '').trim().toLowerCase();
       if (!rawKexo) {
-        if (legacyTab === 'theme') rawKexo = 'theme-display';
+        if (legacyTab === 'theme') rawKexo = 'colours';
         else if (legacyTab === 'general' || legacyTab === 'assets') rawKexo = 'general';
       }
-      var kexoToNew = { ui: 'icons-assets', icons: 'icons-assets', 'payment-methods': 'icons-assets', header: 'theme-display', color: 'theme-display', fonts: 'theme-display', notifications: 'theme-display' };
+      var kexoToNew = { ui: 'icons', icons: 'icons', 'payment-methods': 'assets', header: 'layout-styling', color: 'colours', colours: 'colours', fonts: 'layout-styling', notifications: 'layout-styling', 'icons-assets': 'assets', 'theme-display': 'colours' };
       if (kexoToNew[rawKexo]) rawKexo = kexoToNew[rawKexo];
-      if (rawKexo === 'brand-appearance') rawKexo = 'icons-assets';
-      var allowedKexo = { general: true, 'icons-assets': true, 'theme-display': true };
+      if (rawKexo === 'brand-appearance') rawKexo = 'assets';
+      var allowedKexo = { general: true, assets: true, icons: true, colours: true, 'layout-styling': true };
       if (tab === 'kexo') {
         if (allowedKexo[rawKexo]) setParam('kexoTab', rawKexo);
         else delParam('kexoTab');
@@ -413,7 +413,7 @@
       var t = m[1].toLowerCase().replace(/\s+/g, '-');
       if (t === 'sources') t = 'attribution';
       if (t === 'general' || t === 'assets' || t === 'theme') {
-        initialKexoSubTab = (t === 'theme') ? 'theme-display' : 'general';
+        initialKexoSubTab = (t === 'theme') ? 'colours' : 'general';
         return 'kexo';
       }
       if (t === 'kpis') {
@@ -424,10 +424,10 @@
         var km = /[?&](?:kexoTab|kexo)=([^&]+)/.exec(window.location.search || '');
         if (km && km[1]) {
           var kk = km[1].toLowerCase().replace(/\s+/g, '-');
-          var kexoMap = { ui: 'icons-assets', icons: 'icons-assets', 'payment-methods': 'icons-assets', header: 'theme-display', color: 'theme-display', fonts: 'theme-display', notifications: 'theme-display' };
+          var kexoMap = { ui: 'icons', icons: 'icons', 'payment-methods': 'assets', header: 'layout-styling', color: 'colours', colours: 'colours', fonts: 'layout-styling', notifications: 'layout-styling', 'icons-assets': 'assets', 'theme-display': 'colours' };
           if (kexoMap[kk]) kk = kexoMap[kk];
-          if (kk === 'brand-appearance') kk = 'icons-assets';
-          if (kk === 'general' || kk === 'icons-assets' || kk === 'theme-display') {
+          if (kk === 'brand-appearance') kk = 'assets';
+          if (kk === 'general' || kk === 'assets' || kk === 'icons' || kk === 'colours' || kk === 'layout-styling') {
             initialKexoSubTab = kk;
           }
         }
@@ -480,7 +480,7 @@
     var hash = (window.location.hash || '').replace(/^#/, '').toLowerCase();
     if (hash === 'sources') return 'attribution';
     if (hash === 'general' || hash === 'assets' || hash === 'theme') {
-      initialKexoSubTab = hash === 'theme' ? 'theme-display' : 'general';
+      initialKexoSubTab = hash === 'theme' ? 'colours' : 'general';
       return 'kexo';
     }
     if (hash === 'kpis') {
@@ -582,7 +582,7 @@
     if (tab === 'kexo') {
       var kexoSub = getActiveKexoSubTab();
       if (kexoSub === 'general') return 'settings-general-save-btn';
-      if (kexoSub === 'icons-assets') return 'settings-assets-save-btn';
+      if (kexoSub === 'assets') return 'settings-assets-save-btn';
       return null;
     }
     if (tab === 'integrations') {
@@ -611,23 +611,238 @@
     'cost-expenses-save-btn'
   ];
 
+  var SETTINGS_DRAFT_REGISTRY = {};
+  function registerSettingsSection(opts) {
+    var id = opts && opts.id ? String(opts.id).trim() : '';
+    if (!id) return;
+    SETTINGS_DRAFT_REGISTRY[id] = {
+      read: typeof opts.read === 'function' ? opts.read : function () { return null; },
+      apply: typeof opts.apply === 'function' ? opts.apply : function () {},
+      save: typeof opts.save === 'function' ? opts.save : function () { return Promise.resolve({ ok: false }); },
+      baseline: opts.baseline != null ? opts.baseline : null,
+    };
+  }
+  function setSettingsDraftBaseline(id, state) {
+    if (SETTINGS_DRAFT_REGISTRY[id]) SETTINGS_DRAFT_REGISTRY[id].baseline = state;
+  }
+  function getSettingsDraftDirtyIds() {
+    var ids = [];
+    try {
+      Object.keys(SETTINGS_DRAFT_REGISTRY).forEach(function (id) {
+        var s = SETTINGS_DRAFT_REGISTRY[id];
+        if (!s || s.baseline == null) return;
+        var current = s.read();
+        var a = JSON.stringify(current);
+        var b = JSON.stringify(s.baseline);
+        if (a !== b) ids.push(id);
+      });
+    } catch (_) {}
+    return ids;
+  }
+  function settingsDraftRevertAll() {
+    var ids = getSettingsDraftDirtyIds();
+    ids.forEach(function (id) {
+      var s = SETTINGS_DRAFT_REGISTRY[id];
+      if (s && s.apply && s.baseline != null) {
+        try { s.apply(s.baseline); } catch (_) {}
+      }
+    });
+    try { syncGlobalFooter(); } catch (_) {}
+  }
+  function settingsDraftSaveAll() {
+    var ids = getSettingsDraftDirtyIds();
+    if (!ids.length) return Promise.resolve();
+    var globalSave = document.getElementById('settings-global-save-btn');
+    if (globalSave) { globalSave.disabled = true; }
+    var seq = Promise.resolve();
+    ids.forEach(function (id) {
+      var s = SETTINGS_DRAFT_REGISTRY[id];
+      if (!s) return;
+      seq = seq.then(function () {
+        var state = s.read();
+        return Promise.resolve(s.save(state)).then(function (r) {
+          if (r && r.ok) setSettingsDraftBaseline(id, state);
+          return r;
+        });
+      });
+    });
+    return seq.finally(function () {
+      if (globalSave) { globalSave.disabled = false; }
+      try { syncGlobalFooter(); } catch (_) {}
+    });
+  }
+
   function syncGlobalFooter() {
-    var saveId = getActivePanelSaveButtonId();
     SETTINGS_PANEL_SAVE_BUTTON_IDS.forEach(function (id) {
       var el = document.getElementById(id);
       if (el) el.classList.add('settings-panel-save-hidden');
     });
-    var globalSave = document.getElementById('settings-global-save-btn');
-    var footerRight = globalSave && globalSave.closest ? globalSave.closest('.settings-footer-right') : null;
+    var dirtyIds = getSettingsDraftDirtyIds();
+    var footerRight = document.getElementById('settings-global-save-btn') && document.getElementById('settings-global-save-btn').closest ? document.getElementById('settings-global-save-btn').closest('.settings-footer-right') : null;
     if (footerRight) {
-      footerRight.style.display = saveId ? '' : 'none';
+      footerRight.style.display = dirtyIds.length > 0 ? '' : 'none';
     }
-    if (globalSave && saveId) {
+    var globalSave = document.getElementById('settings-global-save-btn');
+    var globalRevert = document.getElementById('settings-global-revert-btn');
+    if (globalSave) {
       globalSave.onclick = function () {
-        var btn = document.getElementById(saveId);
-        if (btn) btn.click();
+        settingsDraftSaveAll();
       };
     }
+    if (globalRevert) {
+      globalRevert.onclick = function () {
+        settingsDraftRevertAll();
+      };
+    }
+  }
+
+  function registerSettingsDraftSections() {
+    registerSettingsSection({
+      id: 'general',
+      read: function () {
+        var formatEl = document.getElementById('settings-general-date-format');
+        var tzEl = document.getElementById('settings-general-timezone');
+        var attributionEl = document.querySelector('input[name="settings-general-returns-refunds-attribution"]:checked');
+        var scopeGlobal = document.getElementById('admin-settings-scope-global') || document.getElementById('settings-scope-global');
+        var scopeUser = document.getElementById('admin-settings-scope-user') || document.getElementById('settings-scope-user');
+        var nextFormat = formatEl ? normalizeDateLabelFormat(formatEl.value) : (kpiUiConfigCache && kpiUiConfigCache.options && kpiUiConfigCache.options.general && kpiUiConfigCache.options.general.dateLabelFormat) || 'DD MMM YYYY';
+        var nextAttribution = (attributionEl && (attributionEl.value === 'processing_date' || attributionEl.value === 'original_sale_date')) ? attributionEl.value : 'processing_date';
+        var cfg = deepClone(kpiUiConfigCache || defaultKpiUiConfigV1()) || defaultKpiUiConfigV1();
+        if (!cfg.options || typeof cfg.options !== 'object') cfg.options = {};
+        if (!cfg.options.general || typeof cfg.options.general !== 'object') cfg.options.general = {};
+        cfg.options.general.dateLabelFormat = nextFormat;
+        cfg.options.general.returnsRefundsAttribution = nextAttribution;
+        var scopeMode = (scopeUser && scopeUser.checked) ? 'user' : 'global';
+        return {
+          adminTimezone: tzEl ? String(tzEl.value || '').trim() : adminTimezoneCache || '',
+          kpiUiConfig: cfg,
+          settingsScopeMode: scopeMode,
+        };
+      },
+      apply: function (state) {
+        var formatEl = document.getElementById('settings-general-date-format');
+        var tzEl = document.getElementById('settings-general-timezone');
+        var scopeGlobal = document.getElementById('admin-settings-scope-global') || document.getElementById('settings-scope-global');
+        var scopeUser = document.getElementById('admin-settings-scope-user') || document.getElementById('settings-scope-user');
+        if (state.kpiUiConfig) kpiUiConfigCache = deepClone(state.kpiUiConfig);
+        if (state.adminTimezone != null) adminTimezoneCache = String(state.adminTimezone).trim();
+        var fmt = (state.kpiUiConfig && state.kpiUiConfig.options && state.kpiUiConfig.options.general && state.kpiUiConfig.options.general.dateLabelFormat) || 'DD MMM YYYY';
+        if (formatEl) formatEl.value = normalizeDateLabelFormat(fmt);
+        if (tzEl) tzEl.value = adminTimezoneCache || tzEl.value;
+        var attr = (state.kpiUiConfig && state.kpiUiConfig.options && state.kpiUiConfig.options.general && state.kpiUiConfig.options.general.returnsRefundsAttribution) || 'processing_date';
+        if (attr !== 'processing_date' && attr !== 'original_sale_date') attr = 'processing_date';
+        document.querySelectorAll('input[name="settings-general-returns-refunds-attribution"]').forEach(function (el) {
+          if (el && el.value === attr) el.checked = true;
+          else if (el) el.checked = false;
+        });
+        var scopeMode = String(state.settingsScopeMode || 'global').toLowerCase();
+        if (scopeGlobal) scopeGlobal.checked = scopeMode !== 'user';
+        if (scopeUser) scopeUser.checked = scopeMode === 'user';
+        try { renderKpisUiPanel(kpiUiConfigCache); } catch (_) {}
+      },
+      save: function (state) {
+        var payload = { kpiUiConfig: state.kpiUiConfig, settingsScopeMode: state.settingsScopeMode };
+        if (state.adminTimezone != null && state.adminTimezone !== '') payload.adminTimezone = state.adminTimezone;
+        return saveSettings(payload).then(function (r) {
+          if (r && r.ok) {
+            if (r.kpiUiConfig) kpiUiConfigCache = r.kpiUiConfig;
+            if (r.adminTimezone != null) adminTimezoneCache = String(r.adminTimezone).trim();
+          }
+          return r;
+        });
+      },
+    });
+    registerSettingsSection({
+      id: 'assets',
+      read: function () {
+        var favicon = (document.getElementById('settings-asset-favicon') || {}).value || '';
+        var logo = (document.getElementById('settings-asset-logo') || {}).value || '';
+        var footerLogo = (document.getElementById('settings-asset-footer-logo') || {}).value || '';
+        var loginLogo = (document.getElementById('settings-asset-login-logo') || {}).value || '';
+        var kexoLogoFullcolor = (document.getElementById('settings-asset-kexo-fullcolor-logo') || {}).value || '';
+        var overrides = { favicon: favicon, logo: logo, footerLogo: footerLogo, loginLogo: loginLogo, kexoLogoFullcolor: kexoLogoFullcolor };
+        return { assetOverrides: overrides, theme_header_logo_url: logo };
+      },
+      apply: function (state) {
+        var o = state.assetOverrides || {};
+        document.querySelectorAll('#settings-asset-favicon').forEach(function (el) { el.value = o.favicon || ''; });
+        document.querySelectorAll('#settings-asset-footer-logo').forEach(function (el) { el.value = o.footerLogo || o.footer_logo || ''; });
+        document.querySelectorAll('#settings-asset-login-logo').forEach(function (el) { el.value = o.loginLogo || o.login_logo || ''; });
+        document.querySelectorAll('#settings-asset-kexo-fullcolor-logo').forEach(function (el) { el.value = o.kexoLogoFullcolor || o.kexo_logo_fullcolor || ''; });
+        document.querySelectorAll('#settings-asset-logo').forEach(function (el) { el.value = (state.theme_header_logo_url != null ? state.theme_header_logo_url : o.logo) || ''; });
+      },
+      save: function (state) {
+        return Promise.all([
+          saveSettings({ assetOverrides: state.assetOverrides || {} }),
+          saveThemeDefaults({ theme_header_logo_url: state.theme_header_logo_url || '' }),
+        ]).then(function (results) {
+          var r1 = results[0];
+          var r2 = results[1];
+          if (r1 && r1.ok && r2 && r2.ok) return r1;
+          return (r2 && !r2.ok) ? r2 : (r1 || r2);
+        });
+      },
+    });
+    registerSettingsSection({
+      id: 'layout-tables',
+      read: function () {
+        var tablesCfg = typeof buildTablesUiConfigFromDom === 'function' ? buildTablesUiConfigFromDom() : (tablesUiConfigCache || defaultTablesUiConfigV1());
+        var chartsCfg = typeof buildChartsUiConfigFromDom === 'function' ? buildChartsUiConfigFromDom() : (chartsUiConfigCache || defaultChartsUiConfigV1());
+        return { tablesUiConfig: tablesCfg, chartsUiConfig: chartsCfg };
+      },
+      apply: function (state) {
+        if (state.tablesUiConfig) tablesUiConfigCache = state.tablesUiConfig;
+        if (state.chartsUiConfig) chartsUiConfigCache = state.chartsUiConfig;
+        try { renderLayoutTablesUiPanel(tablesUiConfigCache); } catch (_) {}
+        try { renderChartsUiPanel(chartsUiConfigCache); } catch (_) {}
+      },
+      save: function (state) {
+        return saveSettings({ tablesUiConfig: state.tablesUiConfig, chartsUiConfig: state.chartsUiConfig }).then(function (r) {
+          if (r && r.ok) {
+            if (r.tablesUiConfig) tablesUiConfigCache = r.tablesUiConfig;
+            if (r.chartsUiConfig) chartsUiConfigCache = r.chartsUiConfig;
+          }
+          return r;
+        });
+      },
+    });
+    registerSettingsSection({
+      id: 'kpis',
+      read: function () {
+        return typeof buildKpiUiConfigFromDom === 'function' ? buildKpiUiConfigFromDom() : (kpiUiConfigCache || defaultKpiUiConfigV1());
+      },
+      apply: function (state) {
+        kpiUiConfigCache = state;
+        try { renderKpisUiPanel(state); } catch (_) {}
+      },
+      save: function (state) {
+        return saveSettings({ kpiUiConfig: state }).then(function (r) {
+          if (r && r.ok && r.kpiUiConfig) kpiUiConfigCache = r.kpiUiConfig;
+          return r;
+        });
+      },
+    });
+    registerSettingsSection({
+      id: 'insights-variants',
+      read: function () {
+        var draft = insightsVariantsDraft != null ? insightsVariantsDraft : insightsVariantsConfigCache;
+        return deepClone(draft && typeof draft === 'object' ? draft : defaultInsightsVariantsConfigV1());
+      },
+      apply: function (state) {
+        insightsVariantsDraft = deepClone(state);
+        insightsVariantsConfigCache = deepClone(state);
+        try { renderInsightsVariantsPanel(state); } catch (_) {}
+      },
+      save: function (state) {
+        return saveSettings({ insightsVariantsConfig: state }).then(function (r) {
+          if (r && r.ok && r.insightsVariantsConfig) {
+            insightsVariantsConfigCache = r.insightsVariantsConfig;
+            insightsVariantsDraft = deepClone(r.insightsVariantsConfig);
+          }
+          return r;
+        });
+      },
+    });
   }
 
   function renderTablesWhenVisible() {
@@ -1001,9 +1216,10 @@
 
   function ensureKexoUiPanel() {
     ensurePanelClass('settings-kexo-panel-general', 'settings-kexo-panel');
-    ensurePanelClass('settings-kexo-panel-icons-assets', 'settings-kexo-panel');
-    var themeDisplay = document.getElementById('settings-kexo-panel-theme-display');
-    if (themeDisplay) themeDisplay.classList.add('settings-kexo-panel');
+    ensurePanelClass('settings-kexo-panel-assets', 'settings-kexo-panel');
+    ensurePanelClass('settings-kexo-panel-icons', 'settings-kexo-panel');
+    ensurePanelClass('settings-kexo-panel-colours', 'settings-kexo-panel');
+    ensurePanelClass('settings-kexo-panel-layout-styling', 'settings-kexo-panel');
   }
 
   function injectMainTabsFromAccordion(opts) {
@@ -1078,8 +1294,10 @@
       panelClass: 'settings-kexo-panel',
       tabs: [
         { key: 'general', label: 'General', panelId: 'settings-kexo-panel-general' },
-        { key: 'icons-assets', label: 'Icons & assets', panelId: 'settings-kexo-panel-icons-assets' },
-        { key: 'theme-display', label: 'Color Scheme', panelId: 'settings-kexo-panel-theme-display' },
+        { key: 'assets', label: 'Assets', panelId: 'settings-kexo-panel-assets' },
+        { key: 'icons', label: 'Icons', panelId: 'settings-kexo-panel-icons' },
+        { key: 'colours', label: 'Colours', panelId: 'settings-kexo-panel-colours' },
+        { key: 'layout-styling', label: 'Layout & Styling', panelId: 'settings-kexo-panel-layout-styling' },
       ],
     });
 
@@ -3979,23 +4197,23 @@
 
   function wireKexoSubTabs(initialKey) {
     function placeThemeCard(viewKey) {
-      var iconsPanel = document.getElementById('settings-kexo-panel-icons-assets');
-      var themePanel = document.getElementById('settings-kexo-panel-theme-display');
-      if (!iconsPanel || !themePanel) return;
+      var iconsPanel = document.getElementById('settings-kexo-panel-icons');
+      var coloursPanel = document.getElementById('settings-kexo-panel-colours');
+      var layoutPanel = document.getElementById('settings-kexo-panel-layout-styling');
       var themeCard = document.querySelector('#settings-panel-kexo .kexo-brand-theme');
       if (!themeCard) return;
-      if (viewKey === 'icons-assets') {
-        if (themeCard.parentElement !== iconsPanel) iconsPanel.appendChild(themeCard);
-        return;
-      }
-      if (themeCard.parentElement !== themePanel) themePanel.appendChild(themeCard);
+      var target = coloursPanel;
+      if (viewKey === 'icons' && iconsPanel) target = iconsPanel;
+      else if (viewKey === 'colours' && coloursPanel) target = coloursPanel;
+      else if (viewKey === 'layout-styling' && layoutPanel) target = layoutPanel;
+      if (target && themeCard.parentElement !== target) target.appendChild(themeCard);
     }
 
     kexoTabsetApi = wireKexoTabset({
       tabSelector: '#settings-kexo-main-tabs [data-settings-kexo-tab]',
       tabAttr: 'data-settings-kexo-tab',
       panelIdPrefix: 'settings-kexo-panel-',
-      keys: ['general', 'icons-assets', 'theme-display'],
+      keys: ['general', 'assets', 'icons', 'colours', 'layout-styling'],
       initialKey: initialKey || activeKexoSubTab || 'general',
       onActivate: function (key) {
         activeKexoSubTab = key;
@@ -4004,13 +4222,22 @@
           var p = document.getElementById('settings-kexo-panel-' + String(key || '').trim().toLowerCase());
           if (p) normaliseSettingsPanel(p);
         } catch (_) {}
-        var requestedThemeSubtab = null;
-        if (key === 'icons-assets') requestedThemeSubtab = 'icons';
-        else if (key === 'theme-display') requestedThemeSubtab = 'color';
-        if (requestedThemeSubtab) {
+        if (key === 'icons') {
           try {
-            try { window.__kexoThemeRequestedSubtab = requestedThemeSubtab; } catch (_) {}
-            if (typeof window.kexoThemeActivateSubtab === 'function') window.kexoThemeActivateSubtab(requestedThemeSubtab);
+            try { window.__kexoThemeRequestedSubtab = 'icons'; } catch (_) {}
+            if (typeof window.kexoThemeActivateSubtab === 'function') window.kexoThemeActivateSubtab('icons');
+          } catch (_) {}
+        } else if (key === 'colours') {
+          try {
+            try { window.__kexoThemeRequestedSubtab = 'color'; window.__kexoThemeRequestedColorSubtab = 'colors'; } catch (_) {}
+            if (typeof window.kexoThemeActivateSubtab === 'function') window.kexoThemeActivateSubtab('color');
+            if (typeof window.kexoThemeActivateColorSubtab === 'function') window.kexoThemeActivateColorSubtab('colors');
+          } catch (_) {}
+        } else if (key === 'layout-styling') {
+          try {
+            try { window.__kexoThemeRequestedSubtab = 'color'; window.__kexoThemeRequestedColorSubtab = 'layout'; } catch (_) {}
+            if (typeof window.kexoThemeActivateSubtab === 'function') window.kexoThemeActivateSubtab('color');
+            if (typeof window.kexoThemeActivateColorSubtab === 'function') window.kexoThemeActivateColorSubtab('layout');
           } catch (_) {}
         }
         if (getActiveSettingsTab() === 'kexo') {
@@ -4066,6 +4293,9 @@
       initialKey: initialKey || initialAdminSubTab || 'users',
       onActivate: function (key) {
         activeAdminSubTab = key;
+        try {
+          if (typeof window.kexoAdminSetActiveTab === 'function') window.kexoAdminSetActiveTab(key, { skipUrl: true });
+        } catch (_) {}
         try {
           var p = document.getElementById('admin-panel-' + String(key || '').trim().toLowerCase());
           if (p) normaliseSettingsPanel(p);
@@ -6094,8 +6324,13 @@
   }
 
   function init() {
+    registerSettingsDraftSections();
     try {
       var tooltipRoot = document.querySelector('.page-body') || document.body;
+      if (tooltipRoot) {
+        if (typeof window.migrateTitleToHelpPopover === 'function') window.migrateTitleToHelpPopover(tooltipRoot);
+        if (typeof window.initKexoHelpPopovers === 'function') window.initKexoHelpPopovers(tooltipRoot);
+      }
       if (typeof window.initKexoTooltips === 'function') window.initKexoTooltips(tooltipRoot);
       copyLabelTitlesToControls(tooltipRoot);
     } catch (_) {}
@@ -6178,6 +6413,11 @@
     window.addEventListener('popstate', function () {
       syncFromUrl();
     });
+    var settingsMain = document.getElementById('settings-main-content') || document.querySelector('.settings-panel-wrap') || document.body;
+    if (settingsMain) {
+      settingsMain.addEventListener('input', function () { try { syncGlobalFooter(); } catch (_) {} });
+      settingsMain.addEventListener('change', function () { try { syncGlobalFooter(); } catch (_) {} });
+    }
 
     var loaderEnabled = isSettingsPageLoaderEnabled();
     if (loaderEnabled) {
@@ -6212,6 +6452,44 @@
     wireAssets();
     wireGeneralSettingsSave();
     wireDateRangesSaveShortcut();
+    try {
+      var data = window.__kexoSettingsPayload;
+      if (data) {
+        var generalBase = {
+          adminTimezone: data.adminTimezone != null ? String(data.adminTimezone).trim() : '',
+          kpiUiConfig: deepClone(data.kpiUiConfig || kpiUiConfigCache || defaultKpiUiConfigV1()),
+          settingsScopeMode: String(data.settingsScopeMode || 'global').toLowerCase(),
+        };
+        if (generalBase.kpiUiConfig && generalBase.kpiUiConfig.options && generalBase.kpiUiConfig.options.general) {
+          generalBase.kpiUiConfig.options.general.dateLabelFormat = normalizeDateLabelFormat(generalBase.kpiUiConfig.options.general.dateLabelFormat);
+        }
+        setSettingsDraftBaseline('general', generalBase);
+        var overrides = data.assetOverrides || {};
+        setSettingsDraftBaseline('assets', {
+          assetOverrides: {
+            favicon: overrides.favicon || '',
+            logo: overrides.logo || '',
+            footerLogo: overrides.footerLogo || overrides.footer_logo || '',
+            loginLogo: overrides.loginLogo || overrides.login_logo || '',
+            kexoLogoFullcolor: overrides.kexoLogoFullcolor || overrides.kexo_logo_fullcolor || '',
+          },
+          theme_header_logo_url: overrides.logo || '',
+        });
+        if (data.tablesUiConfig != null || data.chartsUiConfig != null) {
+          setSettingsDraftBaseline('layout-tables', {
+            tablesUiConfig: data.tablesUiConfig != null ? deepClone(data.tablesUiConfig) : (tablesUiConfigCache || defaultTablesUiConfigV1()),
+            chartsUiConfig: data.chartsUiConfig != null ? deepClone(data.chartsUiConfig) : (chartsUiConfigCache || defaultChartsUiConfigV1()),
+          });
+        }
+        if (data.kpiUiConfig != null) {
+          setSettingsDraftBaseline('kpis', deepClone(data.kpiUiConfig));
+        }
+        if (data.insightsVariantsConfig != null) {
+          setSettingsDraftBaseline('insights-variants', deepClone(data.insightsVariantsConfig));
+        }
+        syncGlobalFooter();
+      }
+    } catch (_) {}
     // Integrations main-tabs are wired above so left-nav child clicks can activate them.
     wireGoogleAdsSettingsUi();
     wireKpisLayoutSubTabs();

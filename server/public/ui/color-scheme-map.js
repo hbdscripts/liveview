@@ -21,6 +21,7 @@
     tabler: { id: 'tabler-semantic', label: 'Tabler Semantic', defaultOpen: false },
     feature: { id: 'feature-tokens', label: 'Feature Tokens', defaultOpen: false },
     grays: { id: 'advanced-grays', label: 'Advanced Grays', defaultOpen: false, advanced: true },
+    settingsUi: { id: 'settings-ui', label: 'Settings UI', defaultOpen: false },
   };
 
   const LAYOUT_ACCORDIONS = {
@@ -61,6 +62,8 @@
     { key: '--kexo-header-online-bg', label: 'Online badge background', tab: TABS.colors.id, accordion: COLOR_ACCORDIONS.headerNav.id, opaque: true },
     { key: '--kexo-header-online-text-color', label: 'Online badge text/icon', tab: TABS.colors.id, accordion: COLOR_ACCORDIONS.headerNav.id },
     { key: '--kexo-header-online-border-color', label: 'Online badge border', tab: TABS.colors.id, accordion: COLOR_ACCORDIONS.headerNav.id },
+    { key: '--kexo-notification-badge-bg', label: 'Notification badge background', tab: TABS.colors.id, accordion: COLOR_ACCORDIONS.headerNav.id, opaque: true },
+    { key: '--kexo-notification-badge-text', label: 'Notification badge text', tab: TABS.colors.id, accordion: COLOR_ACCORDIONS.headerNav.id },
 
     // KPIs (base palette)
     { key: '--kexo-kpi-delta-up', label: 'KPI Delta Up', tab: TABS.colors.id, accordion: COLOR_ACCORDIONS.kpis.id },
@@ -123,7 +126,24 @@
     { key: '--tblr-gray-800', label: 'Gray 800', tab: TABS.colors.id, accordion: COLOR_ACCORDIONS.grays.id, advanced: true, opaque: true },
     { key: '--tblr-gray-900', label: 'Gray 900', tab: TABS.colors.id, accordion: COLOR_ACCORDIONS.grays.id, advanced: true, opaque: true },
     { key: '--tblr-gray-950', label: 'Gray 950', tab: TABS.colors.id, accordion: COLOR_ACCORDIONS.grays.id, advanced: true, opaque: true },
+
+    // Settings UI (left nav, panels)
+    { key: '--kexo-settings-nav-category-color', label: 'Settings nav category', tab: TABS.colors.id, accordion: COLOR_ACCORDIONS.settingsUi.id },
+    { key: '--kexo-settings-nav-child-color', label: 'Settings nav child link', tab: TABS.colors.id, accordion: COLOR_ACCORDIONS.settingsUi.id },
+    { key: '--kexo-settings-nav-chevron-color', label: 'Settings nav chevron', tab: TABS.colors.id, accordion: COLOR_ACCORDIONS.settingsUi.id },
+    { key: '--kexo-settings-nav-active-color', label: 'Settings nav active link', tab: TABS.colors.id, accordion: COLOR_ACCORDIONS.settingsUi.id },
+    { key: '--kexo-settings-nav-active-bg', label: 'Settings nav active background', tab: TABS.colors.id, accordion: COLOR_ACCORDIONS.settingsUi.id, opaque: true },
   ];
+
+  (function assertNoDuplicateCssVarKeys() {
+    const seen = new Set();
+    CSS_VAR_OVERRIDES.forEach((it) => {
+      const k = it && it.key ? String(it.key).trim() : '';
+      if (!k) return;
+      if (seen.has(k)) throw new Error('color-scheme-map: duplicate CSS_VAR_OVERRIDES key: ' + k);
+      seen.add(k);
+    });
+  })();
 
   // Layout/styling theme keys (not stored in css_var_overrides_v1).
   const LAYOUT_THEME_KEYS = [

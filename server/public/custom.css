@@ -5435,6 +5435,11 @@ img[data-kexo-logo-slot="footer"][data-kexo-logo-ready="1"] {
   width: 10px !important;
 }
 
+.kexo-notifications-badge {
+  background: var(--kexo-notification-badge-bg, var(--tblr-danger, #d63939)) !important;
+  color: var(--kexo-notification-badge-text, #fff) !important;
+}
+
 .kexo-user-avatar-toggle {
   display: inline-flex;
   align-items: center;
@@ -6888,34 +6893,6 @@ body[data-bs-theme="dark"] .kexo-upgrade-locked .kexo-upgrade-lock-overlay {
 .admin-users-badge { font-size: .7rem; letter-spacing: .02em; text-transform: uppercase; }
 .admin-users-pane { display: none; }
 .admin-users-pane.active { display: block; }
-.settings-nav-category { margin-bottom: 0.15rem; }
-.settings-nav-category > .list-group-item:first-child{
-  border-radius:var(--tblr-border-radius,.375rem);
-  padding:0;
-  min-height:30px;
-  line-height:30px;
-  text-indent:15px;
-  font-weight:600;
-  color: var(--kexo-top-menu-link-color, var(--tblr-body-color, #1f2937)) !important;
-}
-.settings-nav-children { padding-left: 0; }
-.settings-nav-child{
-  position:relative;
-  padding: 7px 0 7px 40px;
-}
-.settings-nav-child::before{
-  content:'›';
-  position:absolute;
-  left:25px;
-  top:50%;
-  transform:translateY(-50%);
-  color:var(--tblr-primary,#206bc4);
-  opacity:.5;
-  font-size:.9em;
-  pointer-events:none;
-}
-.settings-nav-child.active::before { opacity: 1; }
-
 /* Settings read-only fields (env-backed). Keep copyable, but look non-editable. */
 body[data-page="settings"] .kexo-readonly-field[readonly] {
   background: color-mix(in srgb, var(--tblr-bg-surface, #fff) 88%, var(--tblr-border-color, #e6e7e9));

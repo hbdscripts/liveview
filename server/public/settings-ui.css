@@ -1,17 +1,51 @@
 /* Settings/Admin UI contract helpers (Tabler-first).
    This file is Settings-only and is included only on /settings. */
 
-/* Panel wrapper: joins to nav-tabs/accordion above (no top border). */
+/* Panel wrapper: joins to nav-tabs/accordion above; softened framing. */
 .settings-panel-wrap {
-  border-left: 1px solid var(--tblr-border-color, #e6e7e9);
-  border-right: 1px solid var(--tblr-border-color, #e6e7e9);
-  border-bottom: 1px solid var(--tblr-border-color, #e6e7e9);
+  border-left: 1px solid var(--tblr-border-color-translucent, rgba(0, 0, 0, 0.06));
+  border-right: 1px solid var(--tblr-border-color-translucent, rgba(0, 0, 0, 0.06));
+  border-bottom: 1px solid var(--tblr-border-color-translucent, rgba(0, 0, 0, 0.06));
   border-top: 0;
   border-radius: 0 0 var(--tblr-border-radius, .75rem) var(--tblr-border-radius, .75rem);
-  padding: 1rem;
-  margin-top: -1px; /* visually joins the tab bottom border */
+  padding: 0.875rem 1rem;
+  margin-top: -1px;
   background: var(--tblr-bg-surface, #fff);
 }
+
+/* Left nav: category and child links (Settings-only). */
+.settings-nav-category { margin-bottom: 0.15rem; }
+.settings-nav-category > .list-group-item:first-child {
+  border-radius: var(--tblr-border-radius, .375rem);
+  padding: 0;
+  min-height: 30px;
+  line-height: 30px;
+  text-indent: 15px;
+  font-weight: 600;
+  color: var(--kexo-settings-nav-category-color, var(--kexo-top-menu-link-color, var(--tblr-body-color, #1f2937)) !important;
+}
+.settings-nav-children { padding-left: 0; }
+.settings-nav-child {
+  position: relative;
+  padding: 7px 0 7px 40px;
+  color: var(--kexo-settings-nav-child-color, inherit);
+}
+.settings-nav-child::before {
+  content: '›';
+  position: absolute;
+  left: 25px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--kexo-settings-nav-chevron-color, var(--tblr-primary, #206bc4));
+  opacity: 0.5;
+  font-size: 0.9em;
+  pointer-events: none;
+}
+.settings-nav-child.active {
+  color: var(--kexo-settings-nav-active-color, var(--tblr-primary, #206bc4));
+  background: var(--kexo-settings-nav-active-bg, transparent) !important;
+}
+.settings-nav-child.active::before { opacity: 1; }
 
 /* Moved header controls container when stripping the first card header. */
 .settings-card-controls {
@@ -102,34 +136,40 @@ body[data-page="settings"] .kexo-css-var-name {
 
 /* Icons & assets: click-to-open help popover (trigger at far right of each label). */
 .popover.kexo-icon-help-popover {
-  padding: 0;
-  margin: 0;
-  font-size: 11px;
-  border: 0;
-  background: none;
-  max-width: 320px;
-  box-shadow: none;
-  opacity: 0.6;
-}
-.popover.kexo-icon-help-popover:hover {
-  opacity: 1;
+  max-width: 340px;
+  border: 1px solid var(--tblr-border-color, rgba(0, 0, 0, 0.08));
+  border-radius: var(--tblr-border-radius, 0.5rem);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08), 0 2px 6px rgba(0, 0, 0, 0.04);
+  background: var(--tblr-bg-surface-secondary, #f8f9fa);
 }
 .popover.kexo-icon-help-popover .popover-header {
   display: none;
 }
 .popover.kexo-icon-help-popover .popover-body {
   padding: 0;
-  margin: 0;
-  font-size: 11px;
-  border: 0;
-  background: none;
 }
-.popover.kexo-icon-help-popover .btn-close {
+.popover.kexo-icon-help-popover .kexo-icon-help-popover-content {
+  position: relative;
+  padding: 0.75rem 2rem 0.75rem 1rem;
+  min-height: 2.5rem;
+}
+.popover.kexo-icon-help-popover .kexo-icon-help-popover-close {
   position: absolute;
-  top: 0;
-  right: 0;
-  margin: 0.35rem;
+  top: 0.5rem;
+  right: 0.5rem;
+  margin: 0;
   padding: 0.25rem;
+  opacity: 0.6;
+  font-size: 0.75rem;
+}
+.popover.kexo-icon-help-popover .kexo-icon-help-popover-close:hover {
+  opacity: 1;
+}
+.popover.kexo-icon-help-popover .kexo-icon-help-popover-text {
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--tblr-body-color, #1e293b);
+  padding-right: 0.5rem;
 }
 /* Help trigger: icon only, no button look; opacity 0.6, hover 1, no other hover effect. */
 .kexo-icon-help-trigger {
@@ -186,6 +226,38 @@ body[data-page="settings"] .kexo-css-var-name {
 .kexo-icon-action-btn .kexo-icon-action-icon svg {
   width: 16px;
   height: 16px;
+}
+
+/* Click-only help popover (Settings): black bubble, one open at a time, close button. */
+.kexo-help-popover {
+  position: fixed;
+  z-index: 9999;
+  max-width: 320px;
+  padding: 0.75rem 2rem 0.75rem 1rem;
+  background: #1e293b;
+  color: #e2e8f0;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  pointer-events: auto;
+}
+.kexo-help-popover .kexo-help-popover-content {
+  padding-right: 0.5rem;
+}
+.kexo-help-popover .kexo-help-popover-close {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  margin: 0;
+  padding: 0.25rem;
+  opacity: 0.7;
+}
+.kexo-help-popover .kexo-help-popover-close:hover {
+  opacity: 1;
+}
+[data-kexo-help] {
+  cursor: pointer;
 }
 
 /* Per-panel save buttons hidden in favor of page-level footer Save Settings. */

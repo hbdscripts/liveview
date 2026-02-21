@@ -61,7 +61,7 @@
     if (!key) return 'fa-light';
     if (isLockedSettingsIconKey(key)) return 'fa-thin';
     if (key === 'nav-item-refresh' || key === 'nav-item-sound-on' || key === 'nav-item-sound-off' || key === 'nav-item-settings') return 'fa-thin';
-    if (key.indexOf('nav-toggle-') === 0 || key === 'topnav-date-chevron') return 'fa-jelly-filled';
+    if (key.indexOf('nav-toggle-') === 0 || key === 'topnav-date-chevron' || key === 'nav-notifications-bell') return 'fa-jelly-filled';
     if (key.indexOf('header-') === 0) return 'fa-jelly-filled';
     if (key === 'nav-dropdown-arrow') return 'fa-solid';
     if (key.indexOf('nav-item-') === 0) return 'fa-jelly';
@@ -334,8 +334,17 @@
     var collapseId = 'theme-color-accordion-' + String(accordionId || 'section').replace(/[^a-z0-9_-]/ig, '-');
     var headingId = collapseId + '-h';
     var items = listCssVarOverrideItemsForAccordion(map, accordionId, { includeAdvanced: o.includeAdvanced === true });
-    var rows = items.map(cssVarOverrideRow).join('');
-    if (!rows) rows = '<div class="text-secondary small">No items.</div>';
+    var cards = items.map(function (it) {
+      var name = it && it.key ? String(it.key).trim() : '';
+      var label = it && it.label ? String(it.label) : name;
+      var groupId = it && it.accordion ? String(it.accordion) : 'misc';
+      var searchText = (label + ' ' + name).toLowerCase();
+      var extraAttrs = ' data-kexo-css-var-group="' + escapeHtml(groupId) + '" data-kexo-css-var-search="' + escapeHtml(searchText) + '"';
+      return cssVarOverrideInputCard(name, label, null, extraAttrs);
+    }).join('');
+    var bodyContent = cards
+      ? '<div class="settings-responsive-grid" data-kexo-css-var-accordion-body="' + escapeHtml(accordionId) + '">' + cards + '</div>'
+      : '<div class="text-secondary small">No items.</div>';
     return '' +
       '<div class="accordion-item" data-kexo-css-var-accordion="' + escapeHtml(accordionId) + '">' +
         '<h4 class="accordion-header" id="' + escapeHtml(headingId) + '">' +
@@ -352,7 +361,7 @@
             '<div class="d-flex align-items-center gap-2 flex-wrap mb-3">' +
               '<button type="button" class="btn btn-md kexo-css-var-revert-section" data-kexo-css-var-group="' + escapeHtml(accordionId) + '">Revert section</button>' +
             '</div>' +
-            rows +
+            bodyContent +
           '</div>' +
         '</div>' +
       '</div>';
@@ -777,6 +786,7 @@
     if (key.indexOf('pagination-') === 0) return 'Pagination arrow icon. Shows in paginated cards/tables across dashboard and insights pages.';
     if (key.indexOf('card-title-') === 0) return 'Auto card-title icon. Added to matching card headers across dashboard, insights, acquisition, integrations, tools, and settings pages.';
     if (key === 'online-status-indicator') return 'Online visitors badge icon. Shows in the top strip header on all pages.';
+    if (key === 'nav-notifications-bell') return 'Notifications bell. Shows in the top strip next to Settings and in the footer on all pages.';
     if (key.indexOf('card-collapse-') === 0) return 'Card collapse chevron icon. Shows on collapsible cards in dashboard and insights pages.';
     if (key.indexOf('dash-kpi-delta-') === 0) return 'Overview KPI delta icon. Shows in KPI cards on /dashboard/overview.';
     if (key.indexOf('settings-tab-') === 0 || key.indexOf('settings-diagnostics-') === 0) return 'Settings page icon. Locked to a fixed fa-thin class and not editable.';
@@ -804,7 +814,7 @@
     var key = String(name || '').trim().toLowerCase();
     if (!key) return 'misc';
     if (key.indexOf('admin-tab-') === 0 || key === 'nav-item-admin') return 'admin';
-    if (key.indexOf('nav-toggle-') === 0 || key.indexOf('nav-item-') === 0 || key === 'topnav-date-chevron' || key === 'online-status-indicator' || key === 'nav-dropdown-arrow') return 'header-nav';
+    if (key.indexOf('nav-toggle-') === 0 || key.indexOf('nav-item-') === 0 || key === 'topnav-date-chevron' || key === 'online-status-indicator' || key === 'nav-dropdown-arrow' || key === 'nav-notifications-bell') return 'header-nav';
     if (key.indexOf('footer-') === 0) return 'footer';
     if (key.indexOf('table-icon-') === 0 || key.indexOf('table-short-') === 0) return 'mobile-icons';
     if (key === 'table-builder-icon' || key === 'table-sticky-resize-handle') return 'tables';
@@ -2267,14 +2277,26 @@ btn.classList.remove('btn-success');
 
     var headerNavAccordion = buildCssVarOverridesAccordionHtml(schemeMap, 'header-nav', 'Header & Navigation', { open: false, parentId: themeAccordionsId });
 
-    var kpiBaseRows = (function () {
+    var kpiBaseCards = (function () {
       var items = listCssVarOverrideItemsForAccordion(schemeMap, 'kpis', { includeAdvanced: false });
-      return items.map(cssVarOverrideRow).join('') || '<div class="text-secondary small">No items.</div>';
+      return items.map(function (it) {
+        var name = it && it.key ? String(it.key).trim() : '';
+        var label = it && it.label ? String(it.label) : name;
+        var groupId = it && it.accordion ? String(it.accordion) : 'kpis';
+        var searchText = (label + ' ' + name).toLowerCase();
+        return cssVarOverrideInputCard(name, label, null, ' data-kexo-css-var-group="' + escapeHtml(groupId) + '" data-kexo-css-var-search="' + escapeHtml(searchText) + '"');
+      }).join('');
     })();
-    var kpiAdvancedRows = (function () {
+    var kpiAdvancedCards = (function () {
       var all = listCssVarOverrideItemsForAccordion(schemeMap, 'kpis', { includeAdvanced: true });
       var adv = all.filter(function (it) { return it && it.advanced; });
-      return adv.map(cssVarOverrideRow).join('');
+      return adv.map(function (it) {
+        var name = it && it.key ? String(it.key).trim() : '';
+        var label = it && it.label ? String(it.label) : name;
+        var groupId = it && it.accordion ? String(it.accordion) : 'kpis';
+        var searchText = (label + ' ' + name).toLowerCase();
+        return cssVarOverrideInputCard(name, label, null, ' data-kexo-css-var-group="' + escapeHtml(groupId) + '" data-kexo-css-var-search="' + escapeHtml(searchText) + '"');
+      }).join('');
     })();
     var kpiAccordion = buildAccordionItemHtml({
       accordionId: 'kpis',
@@ -2288,7 +2310,8 @@ btn.classList.remove('btn-success');
         '<div class="d-flex align-items-center gap-2 flex-wrap mb-3">' +
           '<button type="button" class="btn btn-md kexo-css-var-revert-section" data-kexo-css-var-group="kpis">Revert section</button>' +
         '</div>' +
-        kpiBaseRows +
+        '<div class="settings-responsive-grid" data-kexo-css-var-accordion-body="kpis">' + kpiBaseCards + '</div>' +
+        (kpiBaseCards ? '' : '<div class="text-secondary small">No items.</div>') +
         '<hr class="my-3" />' +
         '<div class="form-check form-switch mb-3">' +
           '<input class="form-check-input" type="checkbox" id="theme-kpi-separate-palettes" name="theme-kpi-separate-palettes" />' +
@@ -2297,16 +2320,23 @@ btn.classList.remove('btn-success');
         '</div>' +
         '<div id="theme-kpi-advanced-overrides" hidden>' +
           '<div class="text-secondary small mb-3">Section-specific overrides (only applied when enabled).</div>' +
-          kpiAdvancedRows +
+          '<div class="settings-responsive-grid" data-kexo-css-var-accordion-body="kpis">' + kpiAdvancedCards + '</div>' +
         '</div>',
     });
 
     var tablerAccordion = buildCssVarOverridesAccordionHtml(schemeMap, 'tabler-semantic', 'Tabler Semantic', { open: false, parentId: themeAccordionsId });
     var featureAccordion = buildCssVarOverridesAccordionHtml(schemeMap, 'feature-tokens', 'Feature Tokens', { open: false, parentId: themeAccordionsId });
+    var settingsUiAccordion = buildCssVarOverridesAccordionHtml(schemeMap, 'settings-ui', 'Settings UI', { open: false, parentId: themeAccordionsId });
 
-    var graysRows = (function () {
+    var graysCards = (function () {
       var all = listCssVarOverrideItemsForAccordion(schemeMap, 'advanced-grays', { includeAdvanced: true });
-      return all.map(cssVarOverrideRow).join('') || '<div class="text-secondary small">No items.</div>';
+      return all.map(function (it) {
+        var name = it && it.key ? String(it.key).trim() : '';
+        var label = it && it.label ? String(it.label) : name;
+        var groupId = it && it.accordion ? String(it.accordion) : 'advanced-grays';
+        var searchText = (label + ' ' + name).toLowerCase();
+        return cssVarOverrideInputCard(name, label, null, ' data-kexo-css-var-group="' + escapeHtml(groupId) + '" data-kexo-css-var-search="' + escapeHtml(searchText) + '"');
+      }).join('');
     })();
     var advancedGraysAccordion = buildAccordionItemHtml({
       accordionId: 'advanced-grays',
@@ -2331,7 +2361,8 @@ btn.classList.remove('btn-success');
           '</div>' +
           '<div class="form-hint">Sets the default gray palette. Manual overrides below take precedence.</div>' +
         '</div>' +
-        graysRows,
+        '<div class="settings-responsive-grid" data-kexo-css-var-accordion-body="advanced-grays">' + graysCards + '</div>' +
+        (graysCards ? '' : '<div class="text-secondary small">No items.</div>'),
     });
 
     var colorsAccordionHtml =
@@ -2341,6 +2372,7 @@ btn.classList.remove('btn-success');
         kpiAccordion +
         tablerAccordion +
         featureAccordion +
+        settingsUiAccordion +
         advancedGraysAccordion +
       '</div>';
 
@@ -2575,6 +2607,10 @@ btn.classList.remove('btn-success');
       try { localStorage.setItem('kexo:theme-color-subtab:v1', k); } catch (_) {}
     }
 
+    try {
+      window.kexoThemeActivateColorSubtab = function (key) { activate(key); };
+    } catch (_) {}
+
     tabs.forEach(function (tab) {
       tab.addEventListener('click', function () {
         activate(tab.getAttribute('data-theme-color-subtab') || 'colors');
@@ -2583,10 +2619,22 @@ btn.classList.remove('btn-success');
 
     var initial = 'colors';
     try {
-      var raw = localStorage.getItem('kexo:theme-color-subtab:v1');
-      if (raw) initial = String(raw).trim().toLowerCase() || initial;
+      if (document.body && document.body.getAttribute('data-page') === 'settings') {
+        var requested = window.__kexoThemeRequestedColorSubtab;
+        if (requested) initial = String(requested).trim().toLowerCase() || initial;
+      } else {
+        var raw = localStorage.getItem('kexo:theme-color-subtab:v1');
+        if (raw) initial = String(raw).trim().toLowerCase() || initial;
+      }
     } catch (_) {}
     activate(initial);
+
+    try {
+      if (document.body && document.body.getAttribute('data-page') === 'settings') {
+        var nav = wrap.querySelector('#theme-color-subtabs');
+        if (nav) nav.hidden = true;
+      }
+    } catch (_) {}
   }
 
   function setPreviewIconClass(previewEl, glyphCls) {
@@ -2658,15 +2706,15 @@ btn.classList.remove('btn-success');
 
     function filterCssVarGrid() {
       var q = (searchInput && searchInput.value) ? String(searchInput.value).trim().toLowerCase() : '';
-      var rows = root.querySelectorAll('.kexo-css-var-row[data-kexo-css-var-row]');
+      var tiles = root.querySelectorAll('.kexo-css-var-row[data-kexo-css-var-row], .kexo-css-var-card[data-kexo-css-var-search]');
       var accordions = root.querySelectorAll('[data-kexo-css-var-accordion]');
       if (!q) {
-        rows.forEach(function (el) { el.hidden = false; });
+        tiles.forEach(function (el) { el.hidden = false; });
         accordions.forEach(function (el) { el.hidden = false; });
         return;
       }
       var visibleByGroup = {};
-      rows.forEach(function (el) {
+      tiles.forEach(function (el) {
         var searchAttr = el.getAttribute('data-kexo-css-var-search') || '';
         var show = searchAttr.indexOf(q) !== -1;
         el.hidden = !show;
@@ -2878,7 +2926,7 @@ btn.classList.remove('btn-success');
         e.preventDefault();
         var g = String(t.getAttribute('data-kexo-css-var-group') || '').trim();
         if (!g) return;
-        root.querySelectorAll('.kexo-css-var-row[data-kexo-css-var-group="' + CSS.escape(g) + '"] .kexo-css-var-input[data-kexo-css-var]').forEach(function (el) {
+        root.querySelectorAll('.kexo-css-var-row[data-kexo-css-var-group="' + CSS.escape(g) + '"] .kexo-css-var-input[data-kexo-css-var], .kexo-css-var-card[data-kexo-css-var-group="' + CSS.escape(g) + '"] .kexo-css-var-input[data-kexo-css-var]').forEach(function (el) {
           try { el.value = ''; } catch (_) {}
         });
         applyCfgToDom(readCfgFromUi());
@@ -3279,9 +3327,9 @@ btn.classList.remove('btn-md');
         var meta = glyphMetaFor(name);
         var helpText = (meta && meta.help) ? String(meta.help) : defaultIconHelpFor(name);
         if (!helpText) helpText = 'Icon shown in the app UI.';
-        var contentHtml = '<div class="position-relative" style="padding:0;margin:0;font-size:11px;border:0;background:none;">' +
-          '<button type="button" class="btn-close position-absolute top-0 end-0" aria-label="Close"></button>' +
-          '<div class="pe-3">' + escapeHtml(helpText) + '</div></div>';
+        var contentHtml = '<div class="kexo-icon-help-popover-content">' +
+          '<button type="button" class="btn-close kexo-icon-help-popover-close" aria-label="Close"></button>' +
+          '<div class="kexo-icon-help-popover-text">' + escapeHtml(helpText) + '</div></div>';
         new Bootstrap.Popover(trigger, {
           title: '',
           content: contentHtml,
