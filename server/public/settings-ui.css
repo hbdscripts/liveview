@@ -172,7 +172,7 @@ body[data-page="settings"] .settings-main-tabs .nav-link.active {
 
 @media (min-width: 992px) {
   /* Desktop: overlap the join-container border to avoid double borders/overhang. */
-  body[data-page="settings"] .settings-main-tabs .nav-link:not(.active) {
+  body[data-page="settings"] .settings-main-tabs .nav-link {
     margin-bottom: -1px;
   }
 }

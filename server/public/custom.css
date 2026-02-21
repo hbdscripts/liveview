@@ -5361,13 +5361,14 @@ img[data-kexo-logo-slot="footer"][data-kexo-logo-ready="1"] {
 
 /* Notifications bell in the top strip: match Theme → Header strip text colour (don't use btn-ghost-secondary defaults). */
 #notifications-bell-btn-header {
-  color: var(--kexo-header-settings-text-color, var(--kexo-header-top-text-color, #1f2937)) !important;
+  /* Prefer explicit header settings/icon colour; fall back to other header text vars if misconfigured. */
+  color: var(--kexo-header-settings-text-color, var(--kexo-header-online-text-color, var(--kexo-top-menu-link-color, var(--kexo-header-top-text-color, #fff)))) !important;
   background: transparent !important;
   border-color: transparent !important;
 }
 #notifications-bell-btn-header:hover,
 #notifications-bell-btn-header:focus {
-  color: var(--kexo-header-settings-text-color, var(--kexo-header-top-text-color, #1f2937)) !important;
+  color: var(--kexo-header-settings-text-color, var(--kexo-header-online-text-color, var(--kexo-top-menu-link-color, var(--kexo-header-top-text-color, #fff)))) !important;
   background: transparent !important;
   border-color: transparent !important;
 }
