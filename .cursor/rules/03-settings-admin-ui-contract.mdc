@@ -1,0 +1,30 @@
+---
+description: Settings/Admin UI contract (prevent layout drift)
+alwaysApply: true
+---
+
+# Settings/Admin UI must follow contract
+
+When changing **any Settings/Admin UI** (Settings page, Admin panels, or Settings-rendered sub-panels):
+
+- Follow `docs/UI_SETTINGS_CONTRACT.md` (canonical rules).
+- **Tabs/accordion headers are the section headers.** Do not add new first-card headers inside sub-panels.
+- Panels must have a `.settings-panel-wrap` wrapper (created/enforced by the normaliser).
+- **No grids** inside Settings/Admin panel content (no `.row`, `col-*`, or `.d-grid` patterns in final DOM).
+- Read-only / env-backed fields must look read-only (`form-control-plaintext`) and include a read-only hint.
+- Prefer Tabler patterns/utilities; avoid bespoke layout wrappers.
+
+## Guardrails you must keep passing
+
+Before landing changes:
+
+- `npm run ui:check`
+- `npm test` (includes Settings/Admin layout contract test)
+
+## Don’t bypass the guardrails
+
+- Do not re-implement Settings normalisation logic inside `server/public/settings-page.js`.
+  - Use the shared module: `server/public/ui/settings-normaliser.js`.
+- Do not add Settings-only CSS to random global files.
+  - Use `server/public/settings-ui.css` for Settings-only rules.
+
