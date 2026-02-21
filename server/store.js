@@ -372,6 +372,45 @@ async function setSetting(key, value) {
   }
 }
 
+// Admin timezone (per-install override stored in settings table).
+// Env ADMIN_TIMEZONE remains the fallback default.
+const ADMIN_TIMEZONE_SETTING_KEY = 'admin_timezone';
+let _adminTimezoneOverride = null;
+
+function normalizeAdminTimeZone(value) {
+  const tz = value == null ? '' : String(value).trim();
+  if (!tz) return null;
+  if (tz.length > 64) return null;
+  try {
+    // Throws RangeError for invalid IANA TZ names.
+    new Intl.DateTimeFormat('en-GB', { timeZone: tz }).format(new Date());
+    return tz;
+  } catch (_) {
+    return null;
+  }
+}
+
+async function hydrateAdminTimeZoneFromDb() {
+  try {
+    const raw = await getSetting(ADMIN_TIMEZONE_SETTING_KEY);
+    const tz = normalizeAdminTimeZone(raw);
+    if (tz) _adminTimezoneOverride = tz;
+  } catch (_) {}
+  return resolveAdminTimeZone();
+}
+
+async function setAdminTimeZone(value) {
+  const tz = normalizeAdminTimeZone(value);
+  if (!tz) {
+    const err = new Error('Invalid timezone. Use an IANA name like Europe/London or America/New_York.');
+    err.code = 'invalid_timezone';
+    throw err;
+  }
+  await setSetting(ADMIN_TIMEZONE_SETTING_KEY, tz);
+  _adminTimezoneOverride = tz;
+  return tz;
+}
+
 // Reporting sources (used to switch between Shopify truth vs pixel-derived reporting)
 const REPORTING_ORDERS_SOURCE_KEY = 'reporting_orders_source'; // orders_shopify | pixel
 const REPORTING_SESSIONS_SOURCE_KEY = 'reporting_sessions_source'; // sessions | shopify_sessions
@@ -1551,7 +1590,7 @@ const CONVERSION_ROLLING_WINDOWS = [
 ];
 
 function resolveAdminTimeZone() {
-  const tz = config.adminTimezone || 'Europe/London';
+  const tz = _adminTimezoneOverride || config.adminTimezone || 'Europe/London';
   try {
     new Intl.DateTimeFormat('en-GB', { timeZone: tz }).format(new Date());
     return tz;
@@ -4335,6 +4374,8 @@ module.exports = {
   sanitize,
   getSetting,
   setSetting,
+  hydrateAdminTimeZoneFromDb,
+  setAdminTimeZone,
   getReportingConfig,
   isTrackingEnabled,
   getVisitor,

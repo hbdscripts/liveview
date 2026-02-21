@@ -138,6 +138,7 @@
   var profitRulesCache = null;
   var tablesUiConfigCache = null;
   var chartsUiConfigCache = null;
+  var adminTimezoneCache = '';
   var insightsVariantsConfigCache = null;
   var insightsVariantsDraft = null;
   var tablesUiPanelRendered = false;
@@ -1744,6 +1745,7 @@
         document.querySelectorAll('#settings-general-timezone').forEach(function (el) {
           el.value = cd.adminTimezone || '\u2014';
         });
+        try { if (cd && cd.adminTimezone) adminTimezoneCache = String(cd.adminTimezone).trim(); } catch (_) {}
         document.querySelectorAll('#settings-general-shop-domain').forEach(function (el) {
           el.value = cd.shopDomain || '\u2014';
         });
@@ -1771,6 +1773,13 @@
       .then(function (data) {
         if (!data || !data.ok) return;
         try { window.__kexoSettingsPayload = data; } catch (_) {}
+        try {
+          if (data.adminTimezone) {
+            adminTimezoneCache = String(data.adminTimezone).trim();
+            var tzEl = document.getElementById('settings-general-timezone');
+            if (tzEl) tzEl.value = adminTimezoneCache || tzEl.value;
+          }
+        } catch (_) {}
         try {
           if (typeof window.__kexoApplyGoogleAdsProfitDeductions === 'function') {
             window.__kexoApplyGoogleAdsProfitDeductions(data.googleAdsProfitDeductions || null, data.googleAdsAddToCartValue != null ? data.googleAdsAddToCartValue : 1);
@@ -1806,15 +1815,6 @@
         var scopeUser = document.getElementById('settings-scope-user');
         if (scopeGlobal) scopeGlobal.checked = String(scopeMode).toLowerCase() !== 'user';
         if (scopeUser) scopeUser.checked = String(scopeMode).toLowerCase() === 'user';
-
-        var ordSel = document.getElementById('settings-orders-source');
-        if (ordSel) ordSel.value = reporting.ordersSource || 'orders_shopify';
-
-        var sessSel = document.getElementById('settings-sessions-source');
-        if (sessSel) sessSel.value = reporting.sessionsSource || 'sessions';
-
-        var pxToggle = document.getElementById('settings-pixel-session-mode');
-        if (pxToggle) pxToggle.checked = sessionMode === 'shared_ttl';
 
         document.querySelectorAll('#settings-asset-favicon').forEach(function (el) {
           el.value = overrides.favicon || '';
@@ -1887,7 +1887,60 @@
     var formatEl = document.getElementById('settings-general-date-format');
     var saveBtn = document.getElementById('settings-general-save-btn');
     var msgEl = document.getElementById('settings-general-msg');
+    var tzEl = document.getElementById('settings-general-timezone');
+    var tzList = document.getElementById('settings-timezone-list');
+    var tzBrowserBtn = document.getElementById('settings-general-timezone-browser-btn');
     if (!formatEl || !saveBtn) return;
+
+    function isEffectiveAdmin() {
+      try {
+        if (typeof window.__kexoGetEffectiveViewer === 'function') {
+          var v = window.__kexoGetEffectiveViewer();
+          return !!(v && (v.isAdmin === true || v.isMaster === true));
+        }
+      } catch (_) {}
+      try { if (window.__kexoIsMasterUser === true) return true; } catch (_) {}
+      return false;
+    }
+
+    function isValidTimeZone(tz) {
+      var s = tz == null ? '' : String(tz).trim();
+      if (!s) return false;
+      if (s.length > 64) return false;
+      try {
+        new Intl.DateTimeFormat('en-GB', { timeZone: s }).format(new Date());
+        return true;
+      } catch (_) {
+        return false;
+      }
+    }
+
+    function ensureTimezoneList() {
+      if (!tzList || tzList.getAttribute('data-kexo-filled') === '1') return;
+      tzList.setAttribute('data-kexo-filled', '1');
+      try {
+        var zones = [];
+        if (typeof Intl !== 'undefined' && Intl.supportedValuesOf) {
+          zones = Intl.supportedValuesOf('timeZone') || [];
+        }
+        if (!zones || !zones.length) zones = ['Europe/London', 'UTC', 'America/New_York', 'America/Los_Angeles', 'Europe/Dublin'];
+        zones.slice(0, 1200).forEach(function (z) {
+          var opt = document.createElement('option');
+          opt.value = String(z);
+          tzList.appendChild(opt);
+        });
+      } catch (_) {}
+    }
+
+    function applyTimezoneEditability() {
+      if (!tzEl) return;
+      var admin = isEffectiveAdmin();
+      try { tzEl.readOnly = !admin; } catch (_) {}
+      try { tzEl.classList.toggle('bg-muted-lt', !admin); } catch (_) {}
+      if (tzBrowserBtn) {
+        try { tzBrowserBtn.disabled = !admin; } catch (_) {}
+      }
+    }
 
     function setMsg(text, ok) {
       if (!msgEl) return;
@@ -1895,6 +1948,23 @@
       if (ok === true) msgEl.className = 'form-hint text-success';
       else if (ok === false) msgEl.className = 'form-hint text-danger';
       else msgEl.className = 'form-hint';
+    }
+
+    try {
+      applyTimezoneEditability();
+      window.addEventListener('kexo:viewer-changed', applyTimezoneEditability);
+    } catch (_) {}
+    if (tzEl) {
+      try { tzEl.addEventListener('focus', ensureTimezoneList); } catch (_) {}
+    }
+    if (tzBrowserBtn && tzEl) {
+      tzBrowserBtn.addEventListener('click', function () {
+        try {
+          var tz = (Intl && Intl.DateTimeFormat) ? Intl.DateTimeFormat().resolvedOptions().timeZone : '';
+          if (tz) tzEl.value = String(tz);
+          tzEl.focus();
+        } catch (_) {}
+      });
     }
 
     saveBtn.addEventListener('click', function () {
@@ -1907,11 +1977,28 @@
       cfg.options.general.dateLabelFormat = nextFormat;
       cfg.options.general.returnsRefundsAttribution = nextAttribution;
 
+      var payload = { kpiUiConfig: cfg };
+      if (tzEl && isEffectiveAdmin()) {
+        var nextTz = String(tzEl.value || '').trim();
+        if (nextTz === '\u2014') nextTz = '';
+        if (nextTz && nextTz !== adminTimezoneCache) {
+          if (!isValidTimeZone(nextTz)) {
+            setMsg('Invalid timezone (use an IANA name like Europe/London).', false);
+            return;
+          }
+          payload.adminTimezone = nextTz;
+        }
+      }
+
       setMsg('Saving…', true);
-      saveSettings({ kpiUiConfig: cfg })
+      saveSettings(payload)
         .then(function (r) {
           if (r && r.ok) {
             kpiUiConfigCache = r.kpiUiConfig || cfg;
+            if (r.adminTimezone) {
+              adminTimezoneCache = String(r.adminTimezone).trim();
+              if (tzEl) tzEl.value = adminTimezoneCache || tzEl.value;
+            }
             var saved = normalizeDateLabelFormat(
               kpiUiConfigCache &&
               kpiUiConfigCache.options &&
@@ -1932,34 +2019,30 @@
               }
             } catch (_) {}
           } else {
-            setMsg((r && r.error) ? String(r.error) : 'Save failed', false);
+            setMsg((r && (r.message || r.error)) ? String(r.message || r.error) : 'Save failed', false);
           }
         })
         .catch(function () { setMsg('Save failed', false); });
     });
   }
 
-  function wireDataReporting() {
-    var ordSel = document.getElementById('settings-orders-source');
-    var sessSel = document.getElementById('settings-sessions-source');
-    var pxToggle = document.getElementById('settings-pixel-session-mode');
-
-    function persist() {
-      var payload = {
-        reporting: {
-          ordersSource: ordSel ? ordSel.value : 'orders_shopify',
-          sessionsSource: sessSel ? sessSel.value : 'sessions',
-        },
-      };
-      if (pxToggle) {
-        payload.pixelSessionMode = pxToggle.checked ? 'shared_ttl' : 'legacy';
-      }
-      saveSettings(payload).catch(function () {});
-    }
-
-    if (ordSel) ordSel.addEventListener('change', persist);
-    if (sessSel) sessSel.addEventListener('change', persist);
-    if (pxToggle) pxToggle.addEventListener('change', persist);
+  function wireDateRangesSaveShortcut() {
+    var btn = document.getElementById('settings-date-ranges-save-btn');
+    if (!btn) return;
+    if (btn.getAttribute('data-kexo-wired') === '1') return;
+    btn.setAttribute('data-kexo-wired', '1');
+    btn.addEventListener('click', function () {
+      try {
+        var kpisAccordionBtn = document.querySelector('#settings-panel-layout [data-bs-target="#settings-layout-accordion-kpis"]');
+        if (kpisAccordionBtn) kpisAccordionBtn.click();
+      } catch (_) {}
+      setTimeout(function () {
+        try {
+          var saveBtn = document.getElementById('settings-kpis-save-btn');
+          if (saveBtn) saveBtn.click();
+        } catch (_) {}
+      }, 50);
+    });
   }
 
   function wireAssets() {
@@ -3197,7 +3280,7 @@
     var hideOnMobile = c.hideOnMobile !== false;
     var accordionId = 'settings-layout-charts-accordion';
     var html = '<div class="d-flex align-items-start justify-content-between flex-wrap gap-3 mb-3">' +
-      '<label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" id="settings-charts-hide-mobile" ' + (!hideOnMobile ? 'checked' : '') + '><span class="form-check-label ms-2">Show graphs on mobile</span></label>' +
+      '<label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" id="settings-charts-hide-mobile" ' + (!hideOnMobile ? 'checked' : '') + '><span class="form-check-label ms-2">Show charts on mobile</span></label>' +
       '<div class="text-muted small" style="max-width:560px;">Configure one chart/KPI bundle at a time with live previews.</div>' +
       '</div>' +
       '<div class="accordion settings-layout-accordion settings-charts-accordion" id="' + escapeHtml(accordionId) + '">';
@@ -5552,6 +5635,7 @@
     wirePlanBasedBrandingLocks();
     wireAssets();
     wireGeneralSettingsSave();
+    wireDateRangesSaveShortcut();
     // Integrations main-tabs are wired above so left-nav child clicks can activate them.
     wireGoogleAdsSettingsUi();
     wireKpisLayoutSubTabs();

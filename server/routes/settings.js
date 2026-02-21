@@ -1558,6 +1558,7 @@ async function readSettingsKeyMap(keys) {
 
 async function readSettingsPayload() {
   let pixelSessionMode = 'legacy';
+  const adminTimezone = store.resolveAdminTimeZone();
   let assetOverrides = {};
   let kpiUiConfig = defaultKpiUiConfigV1();
   let chartsUiConfig = defaultChartsUiConfigV1();
@@ -1674,6 +1675,7 @@ async function readSettingsPayload() {
   return {
     ok: true,
     settingsScopeMode,
+    adminTimezone,
     pixelSessionMode,
     sharedSessionTtlMinutes: 30,
     assetOverrides,
@@ -1707,6 +1709,7 @@ async function postSettings(req, res) {
   let insightsVariantsWarnings = null;
   const wantsAdminOnlyWrite =
     Object.prototype.hasOwnProperty.call(body, 'settingsScopeMode') ||
+    Object.prototype.hasOwnProperty.call(body, 'adminTimezone') ||
     Object.prototype.hasOwnProperty.call(body, 'pixelSessionMode') ||
     Object.prototype.hasOwnProperty.call(body, 'reporting');
   const wantsPlanLockedAssetsWrite = (() => {
@@ -1742,6 +1745,16 @@ async function postSettings(req, res) {
       await store.setSetting(SETTINGS_SCOPE_MODE_KEY, normalized);
     } catch (err) {
       return res.status(500).json({ ok: false, error: err && err.message ? String(err.message) : 'Failed to save setting scope' });
+    }
+  }
+
+  // Admin timezone (IANA name, used for date bounds and display).
+  if (Object.prototype.hasOwnProperty.call(body, 'adminTimezone')) {
+    try {
+      await store.setAdminTimeZone(body.adminTimezone);
+    } catch (err) {
+      const msg = err && err.message ? String(err.message) : 'Invalid timezone';
+      return res.status(400).json({ ok: false, error: 'invalid_timezone', message: msg });
     }
   }
 

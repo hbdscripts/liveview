@@ -67,6 +67,7 @@
             <a href="/settings?tab=cost-expenses&costExpensesTab=cost-sources" class="list-group-item list-group-item-action settings-nav-child" data-settings-tab="cost-expenses" data-settings-cost-expenses-tab="cost-sources" role="tab" aria-controls="settings-panel-cost-expenses">Cost sources</a>
             <a href="/settings?tab=cost-expenses&costExpensesTab=shipping" class="list-group-item list-group-item-action settings-nav-child" data-settings-tab="cost-expenses" data-settings-cost-expenses-tab="shipping" role="tab" aria-controls="settings-panel-cost-expenses">Shipping costs</a>
             <a href="/settings?tab=cost-expenses&costExpensesTab=rules" class="list-group-item list-group-item-action settings-nav-child" data-settings-tab="cost-expenses" data-settings-cost-expenses-tab="rules" role="tab" aria-controls="settings-panel-cost-expenses">Rules &amp; adjustments</a>
+            <a href="/settings?tab=cost-expenses&costExpensesTab=breakdown" class="list-group-item list-group-item-action settings-nav-child" data-settings-tab="cost-expenses" data-settings-cost-expenses-tab="breakdown" role="tab" aria-controls="settings-panel-cost-expenses">Cost breakdown</a>
           </div>
         </div>
         <!-- KEXO_COST_EXPENSES_NAV_END -->
@@ -98,9 +99,6 @@
 
       <div id="settings-panel-kexo" class="settings-panel active" role="tabpanel" aria-labelledby="settings-tab-kexo">
         <div class="card">
-          <div class="card-header">
-            <h3 class="card-title">Kexo</h3>
-          </div>
           <div class="card-body">
             <div class="accordion settings-layout-accordion" id="settings-kexo-accordion">
               <div class="accordion-item">
@@ -111,17 +109,19 @@
                   <div class="accordion-body">
             <div id="settings-kexo-panel-general">
               <div class="card card-sm mb-3">
-                <div class="card-header">
-                  <h4 class="card-title">General</h4>
-                </div>
                 <div class="card-body">
                   <div class="mb-3">
                     <label class="form-label" for="settings-general-app-url" title="Read-only app base URL from environment.">App URL <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>
                     <input type="text" class="form-control" id="settings-general-app-url" value="—" readonly />
                   </div>
                   <div class="mb-3">
-                    <label class="form-label" for="settings-general-timezone" title="Admin timezone for display (TODO per-install).">Admin timezone <span class="badge bg-primary-lt">TODO per-install</span> <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>
-                    <input type="text" class="form-control" id="settings-general-timezone" value="—" readonly />
+                    <label class="form-label" for="settings-general-timezone" title="Timezone used for date boundaries (Today/Yesterday/7d) and time formatting in the dashboard. Use an IANA name like Europe/London.">Admin timezone <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>
+                    <div class="input-group">
+                      <input type="text" class="form-control" id="settings-general-timezone" value="—" placeholder="Europe/London" autocomplete="off" list="settings-timezone-list" />
+                      <button type="button" class="btn btn-outline-secondary kexo-admin-only d-none" id="settings-general-timezone-browser-btn" title="Set to your browser/device timezone">Use browser</button>
+                    </div>
+                    <datalist id="settings-timezone-list"></datalist>
+                    <div class="text-muted small mt-1">Admins can change this. Everyone will see dates/times in this timezone.</div>
                   </div>
                   <div class="mb-3">
                     <label class="form-label" for="settings-general-shop-domain" title="Read-only store domain from environment.">Store domain <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>
@@ -179,9 +179,6 @@
                   <div class="accordion-body">
             <div id="settings-kexo-panel-icons-assets" class="settings-kexo-panel">
               <div class="card card-sm mb-3 kexo-brand-assets">
-                <div class="card-header">
-                  <h4 class="card-title">Assets</h4>
-                </div>
                 <div class="card-body">
                   <form id="settings-assets-form">
                     <div class="row g-3">
@@ -246,9 +243,6 @@
                   <div class="accordion-body">
             <div id="settings-kexo-panel-theme-display" class="settings-kexo-panel">
               <div class="card card-sm kexo-brand-theme">
-                <div class="card-header">
-                  <h4 class="card-title" id="settings-theme-title"><span id="settings-theme-title-text">Icons</span></h4>
-                </div>
                 <div class="card-body" id="settings-theme-panel">
                   <div class="dm-loading">Loading theme…</div>
                 </div>
@@ -264,9 +258,6 @@
 
       <div id="settings-panel-integrations" class="settings-panel" role="tabpanel" aria-labelledby="settings-tab-integrations">
         <div class="card">
-          <div class="card-header">
-            <h3 class="card-title" title="Shopify + Google Ads integration status and controls.">Integrations <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></h3>
-          </div>
           <div class="card-body">
             <div class="accordion settings-layout-accordion" id="settings-integrations-accordion">
               <div class="accordion-item">
@@ -307,6 +298,7 @@
                       <div class="mb-2"><strong>Expected ingestUrl</strong> <span id="settings-int-expected-ingest" class="text-muted">—</span></div>
                       <div class="mb-2"><strong>Ingest URL match</strong> <span id="settings-int-pixel-match" class="text-muted">—</span></div>
                       <div class="mb-0"><strong>Session mode</strong> <span id="settings-int-session-mode" class="text-muted">—</span></div>
+                      <div class="text-muted small mt-2 kexo-admin-only d-none">Change under <a href="/settings?tab=admin&adminTab=controls">Admin → Controls → Data &amp; Reporting</a>.</div>
                     </div>
                   </div>
                 </div>
@@ -602,9 +594,6 @@
 
       <div id="settings-panel-attribution" class="settings-panel" role="tabpanel" aria-labelledby="settings-tab-attribution">
         <div class="card">
-          <div class="card-header">
-            <h3 class="card-title" title="Map observed tokens (UTMs, referrer host, entry URL params, explicit kexo_attr) into persisted Attribution (Channel + Variant), with optional Tags for nested reporting.">Attribution <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></h3>
-          </div>
           <div class="card-body">
             <div class="accordion settings-layout-accordion" id="settings-attribution-accordion">
               <div class="accordion-item">
@@ -623,7 +612,7 @@
               </div>
               <div class="accordion-item">
                 <h4 class="accordion-header">
-                  <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#settings-attribution-accordion-tree" aria-expanded="false" aria-controls="settings-attribution-accordion-tree"><span class="d-flex align-items-center w-100 gap-2"><span class="kexo-settings-accordion-chevron" aria-hidden="true"><i class="fa-regular fa-chevron-down" aria-hidden="true"></i></span><span class="me-auto">Mapped tree</span></span></button>
+                  <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#settings-attribution-accordion-tree" aria-expanded="false" aria-controls="settings-attribution-accordion-tree"><span class="d-flex align-items-center w-100 gap-2"><span class="kexo-settings-accordion-chevron" aria-hidden="true"><i class="fa-regular fa-chevron-down" aria-hidden="true"></i></span><span class="me-auto">Channel tree</span></span></button>
                 </h4>
                 <div id="settings-attribution-accordion-tree" class="accordion-collapse collapse" data-bs-parent="#settings-attribution-accordion">
                   <div class="accordion-body">
@@ -642,9 +631,6 @@
 
       <div id="settings-panel-insights" class="settings-panel" role="tabpanel" aria-labelledby="settings-tab-insights">
         <div class="card">
-          <div class="card-header">
-            <h3 class="card-title" title="Create and manage custom variant mapping tables used by Insights → Variants.">Insights configuration <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></h3>
-          </div>
           <div class="card-body">
             <div class="accordion settings-layout-accordion" id="settings-insights-accordion">
               <div class="accordion-item">
@@ -765,9 +751,6 @@
 
       <div id="settings-panel-layout" class="settings-panel" role="tabpanel" aria-labelledby="settings-tab-layout">
         <div class="card">
-          <div class="card-header">
-            <h3 class="card-title" title="Configure table pagination, sticky column sizing, chart types/colors, KPI labels, and date ranges. Layout and chart settings are global.">Dashboards &amp; layout <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></h3>
-          </div>
           <div class="card-body">
             <div class="accordion settings-layout-accordion" id="settings-layout-accordion">
               <div class="accordion-item">
@@ -778,7 +761,7 @@
                   <div class="accordion-body">
             <div id="settings-layout-panel-tables">
               <div class="d-flex align-items-center gap-2 mb-3">
-                <label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" id="settings-charts-hide-mobile" checked><span class="form-check-label ms-2">Show graphs on mobile</span></label>
+                <label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" id="settings-charts-hide-mobile" checked><span class="form-check-label ms-2">Show charts on mobile</span></label>
               </div>
               <div id="settings-layout-tables-root" class="dm-root">
                 <div class="dm-loading">Loading tables…</div>
@@ -923,7 +906,10 @@
               <div id="settings-date-ranges-root" class="dm-root">
                 <div class="dm-loading">Loading date ranges…</div>
               </div>
-              <p class="text-muted small mt-2">Save layout changes from the KPIs tab.</p>
+              <div class="d-flex align-items-center gap-2 flex-wrap mt-3">
+                <button type="button" class="btn btn-primary" id="settings-date-ranges-save-btn">Save</button>
+                <span class="text-muted small">Saves KPI + date range layout.</span>
+              </div>
             </div>
                   </div>
                 </div>
@@ -936,11 +922,8 @@
       <!-- KEXO_COST_EXPENSES_PANEL_START -->
       <div id="settings-panel-cost-expenses" class="settings-panel" role="tabpanel" aria-labelledby="settings-tab-cost-expenses">
         <div class="card">
-          <div class="card-header">
-            <h3 class="card-title" title="Configure cost components, expense categories, and profit calculation rules.">Costs &amp; profit <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></h3>
-          </div>
           <div class="card-body">
-            <ul class="nav nav-tabs mb-3" id="settings-cost-expenses-tabs" role="tablist" aria-label="Costs &amp; profit tabs">
+            <ul class="nav nav-tabs" id="settings-cost-expenses-tabs" role="tablist" aria-label="Costs &amp; profit tabs">
               <li class="nav-item" role="presentation">
                 <button class="nav-link active" type="button" role="tab" id="settings-cost-expenses-tab-cost-sources" data-settings-cost-expenses-tab="cost-sources" aria-selected="true" aria-controls="settings-cost-expenses-panel-cost-sources">Cost sources</button>
               </li>
@@ -1144,9 +1127,6 @@
       <!-- KEXO_ADMIN_PANEL_START -->
       <div id="settings-panel-admin" class="settings-panel kexo-admin-only d-none" role="tabpanel" aria-labelledby="settings-tab-admin">
         <div class="card">
-          <div class="card-header">
-            <h3 class="card-title" title="Admin controls apply globally. Admin is always loader-disabled.">Admin (admin-only) <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></h3>
-          </div>
           <div class="card-body" id="settings-admin-root">
             <div class="accordion settings-layout-accordion" id="settings-admin-accordion">
               <div class="accordion-item">
@@ -1374,7 +1354,7 @@
                 </div>
                 <div class="card-body">
                   <div class="text-secondary small mb-3">Pending accounts are blocked everywhere until approved.</div>
-                  <ul class="nav nav-underline mb-3" id="settings-admin-users-tabs" role="tablist" aria-label="Users">
+                  <ul class="nav nav-underline" id="settings-admin-users-tabs" role="tablist" aria-label="Users">
                     <li class="nav-item" role="presentation">
                       <button class="nav-link active" type="button" role="tab" id="settings-admin-users-tab-active" data-admin-users-tab="active" aria-selected="true" aria-controls="admin-users-active">Active</button>
                     </li>

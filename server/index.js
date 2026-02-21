@@ -845,6 +845,12 @@ async function migrateAndStart() {
 
   await runAppMigrations(db);
 
+  // Hydrate per-install settings that must be available synchronously on request paths.
+  try {
+    const store = require('./store');
+    await store.hydrateAdminTimeZoneFromDb();
+  } catch (_) {}
+
   try {
     const r = await runAdsMigrations();
     if (r && r.skipped) console.log('[ads.migrate] skipped:', r.reason);

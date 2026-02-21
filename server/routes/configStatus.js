@@ -160,7 +160,7 @@ async function configStatus(req, res, next) {
 
     const configDisplay = {
       shopifyAppUrl: (config.shopify.appUrl || '').replace(/\/$/, ''),
-      adminTimezone: config.adminTimezone || 'Europe/London',
+      adminTimezone: timeZone,
       shopDomain: config.shopDomain || config.allowedShopDomain || '',
       shopDisplayDomain: config.shopDisplayDomain || '',
       storeMainDomain: config.storeMainDomain || '',
@@ -851,7 +851,7 @@ async function configStatus(req, res, next) {
 
   const configDisplay = {
     shopifyAppUrl: (config.shopify.appUrl || '').replace(/\/$/, ''),
-    adminTimezone: config.adminTimezone || 'Europe/London',
+    adminTimezone: timeZone,
     shopDomain: config.shopDomain || config.allowedShopDomain || '',
     shopDisplayDomain: config.shopDisplayDomain || '',
     storeMainDomain: config.storeMainDomain || '',
