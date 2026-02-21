@@ -43,6 +43,7 @@
     'dash-kpi-delta-down': { title: 'Overview KPI - Delta down', help: 'Down-trend icon in KPI cards on /dashboard/overview when metric delta is negative.' },
     'dash-kpi-delta-flat': { title: 'Overview KPI - Delta flat', help: 'Flat-trend icon in KPI cards on /dashboard/overview when metric delta is neutral.' },
     'nav-dropdown-arrow': { title: 'Nav Dropdown Arrow', help: 'Arrow icon shown next to each item in the top-nav dropdown menus (Dashboard, Insights, Acquisition, etc.).' },
+    'nav-notifications-bell': { title: 'Notifications (bell)', help: 'Bell icon in the header (top strip) next to Settings. Opens the notifications panel.' },
     'nav-item-admin': { title: 'Settings menu - Admin', help: 'Icon shown for the Admin item in the top-right settings dropdown.' },
     'admin-tab-controls': { title: 'Admin - Controls', help: 'Sidebar icon shown for Controls in /admin.' },
     'admin-tab-diagnostics': { title: 'Admin - Diagnostics', help: 'Sidebar icon shown for Diagnostics in /admin.' },
@@ -807,8 +808,9 @@
   function iconGroupIdForName(name) {
     var key = String(name || '').trim().toLowerCase();
     if (!key) return 'misc';
+    if (key === 'nav-notifications-bell') return 'notifications';
     if (key.indexOf('admin-tab-') === 0 || key === 'nav-item-admin') return 'admin';
-    if (key.indexOf('nav-toggle-') === 0 || key.indexOf('nav-item-') === 0 || key === 'topnav-date-chevron' || key === 'online-status-indicator' || key === 'nav-dropdown-arrow' || key === 'nav-notifications-bell') return 'header-nav';
+    if (key.indexOf('nav-toggle-') === 0 || key.indexOf('nav-item-') === 0 || key === 'topnav-date-chevron' || key === 'online-status-indicator' || key === 'nav-dropdown-arrow') return 'header-nav';
     if (key.indexOf('footer-') === 0) return 'footer';
     if (key.indexOf('table-icon-') === 0 || key.indexOf('table-short-') === 0) return 'mobile-icons';
     if (key === 'table-builder-icon' || key === 'table-sticky-resize-handle') return 'tables';
@@ -818,6 +820,7 @@
   }
 
   function iconGroupLabel(groupId) {
+    if (groupId === 'notifications') return 'Notifications';
     if (groupId === 'header-nav') return 'Header & Nav';
     if (groupId === 'footer') return 'Footer';
     if (groupId === 'mobile-icons') return 'Mobile icons';
@@ -843,7 +846,7 @@
       groups[groupId].push(glyphInputCard(themeKey));
     });
 
-    var order = ['header-nav', 'footer', 'mobile-icons', 'tables', 'cards', 'runtime', 'admin', 'misc'];
+    var order = ['notifications', 'header-nav', 'footer', 'mobile-icons', 'tables', 'cards', 'runtime', 'admin', 'misc'];
     var accordionId = 'theme-icons-accordion';
     var html = '<div class="accordion settings-layout-accordion" id="' + accordionId + '">';
     var itemIdx = 0;
