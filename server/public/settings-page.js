@@ -668,6 +668,26 @@
   function setSettingsDraftBaseline(id, state) {
     if (SETTINGS_DRAFT_REGISTRY[id]) SETTINGS_DRAFT_REGISTRY[id].baseline = state;
   }
+
+  // Theme settings (Icons/Colours/Layout & Styling) load via defer scripts and may fire
+  // "baseline ready" before Settings draft sections register on DOMContentLoaded.
+  // Buffer the baseline so global Save/Revert can correctly track dirty state.
+  var _pendingThemeDefaultsBaseline = null;
+  function applyThemeDefaultsBaselineMaybe(state) {
+    if (state == null) return;
+    if (SETTINGS_DRAFT_REGISTRY['theme-defaults']) {
+      setSettingsDraftBaseline('theme-defaults', state);
+      _pendingThemeDefaultsBaseline = null;
+      try { syncGlobalFooter(); } catch (_) {}
+      return;
+    }
+    _pendingThemeDefaultsBaseline = state;
+  }
+  window.__kexoThemeBaselineReady = function () {
+    if (typeof window.__kexoThemeGetState !== 'function') return;
+    var state = window.__kexoThemeGetState();
+    applyThemeDefaultsBaselineMaybe(state);
+  };
   function getSettingsDraftDirtyIds() {
     var ids = [];
     try {
@@ -921,12 +941,11 @@
         });
       },
     });
-    window.__kexoThemeBaselineReady = function () {
-      if (typeof window.__kexoThemeGetState !== 'function') return;
-      var state = window.__kexoThemeGetState();
-      setSettingsDraftBaseline('theme-defaults', state);
+    if (_pendingThemeDefaultsBaseline != null) {
+      setSettingsDraftBaseline('theme-defaults', _pendingThemeDefaultsBaseline);
+      _pendingThemeDefaultsBaseline = null;
       try { syncGlobalFooter(); } catch (_) {}
-    };
+    }
   }
 
   function renderTablesWhenVisible() {
