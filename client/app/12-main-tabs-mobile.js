@@ -197,6 +197,10 @@
               var row = pretitle.closest('.row.align-items-center');
               if (row && computedColor) row.style.setProperty('--kexo-page-header-accent', computedColor);
             } catch (_) {}
+            // Top-of-page section strip: same color as active category underline.
+            try {
+              if (computedColor) document.documentElement.style.setProperty('--kexo-section-accent', computedColor);
+            } catch (_) {}
           } catch (_) {}
         }
         function updateNavSelection(tab) {
