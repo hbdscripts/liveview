@@ -9,10 +9,13 @@
   var detailViewEl = document.getElementById('notifications-detail-view');
   var detailBodyEl = document.getElementById('notifications-detail-body');
   var backBtn = document.getElementById('notifications-back-btn');
-  var badgeEl = document.getElementById('notifications-unread-badge');
   var offcanvasEl = document.getElementById('notifications-offcanvas');
 
   if (!listEl || !offcanvasEl) return;
+
+  function getBadgeEls() {
+    return document.querySelectorAll('.kexo-notifications-unread-badge');
+  }
 
   function esc(s) {
     if (s == null) return '';
@@ -106,15 +109,15 @@
     }
     listEl.innerHTML = html || '';
 
-    if (badgeEl) {
-      var count = (data.unreadCount != null ? data.unreadCount : unread.length);
+    var count = (data.unreadCount != null ? data.unreadCount : unread.length);
+    getBadgeEls().forEach(function (el) {
       if (count > 0) {
-        badgeEl.textContent = count > 99 ? '99+' : String(count);
-        badgeEl.classList.remove('is-hidden');
+        el.textContent = count > 99 ? '99+' : String(count);
+        el.classList.remove('is-hidden');
       } else {
-        badgeEl.classList.add('is-hidden');
+        el.classList.add('is-hidden');
       }
-    }
+    });
   }
 
   function showListView() {
@@ -177,15 +180,16 @@
   }
 
   function updateBadge(data) {
-    if (!badgeEl) return;
     if (!data || !data.ok) return;
     var count = data.unreadCount != null ? data.unreadCount : (data.unread || []).length;
-    if (count > 0) {
-      badgeEl.textContent = count > 99 ? '99+' : String(count);
-      badgeEl.classList.remove('is-hidden');
-    } else {
-      badgeEl.classList.add('is-hidden');
-    }
+    getBadgeEls().forEach(function (el) {
+      if (count > 0) {
+        el.textContent = count > 99 ? '99+' : String(count);
+        el.classList.remove('is-hidden');
+      } else {
+        el.classList.add('is-hidden');
+      }
+    });
   }
 
   fetchList().then(updateBadge);

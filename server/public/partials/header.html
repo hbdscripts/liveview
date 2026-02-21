@@ -23,7 +23,11 @@
               <img src="/api/header-logo" alt="Kexo" data-kexo-logo-slot="header" hidden>
             </a>
           </div>
-          <div class="kexo-desktop-top-strip-right">
+          <div class="kexo-desktop-top-strip-right d-flex align-items-center gap-1">
+            <a class="btn btn-ghost-secondary btn-icon position-relative" href="#notifications-offcanvas" role="button" data-bs-toggle="offcanvas" data-bs-target="#notifications-offcanvas" aria-controls="notifications-offcanvas" aria-label="Notifications" title="Notifications" id="notifications-bell-btn-header">
+              <i class="fa-jelly-filled fa-bell" data-icon-key="nav-notifications-bell" aria-hidden="true"></i>
+              <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger border border-light kexo-notifications-badge kexo-notifications-unread-badge is-hidden" id="notifications-unread-badge-header" aria-live="polite">0</span>
+            </a>
             <div class="dropdown">
               <button type="button" class="kexo-top-strip-settings-toggle" id="kexo-top-strip-settings-btn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" aria-haspopup="true" aria-controls="navbar-settings-menu">
                 <i class="fa-jelly-filled fa-gear kexo-settings-icon" data-icon-key="nav-toggle-settings" aria-hidden="true"></i>
