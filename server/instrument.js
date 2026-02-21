@@ -52,6 +52,14 @@ function captureException(err, ctx, level) {
       } catch (_) {}
       Sentry.captureException(e);
     });
+    setImmediate(() => {
+      try {
+        const notificationsService = require('./notificationsService');
+        if (notificationsService && typeof notificationsService.createSentryNotification === 'function') {
+          notificationsService.createSentryNotification(err).catch(() => {});
+        }
+      } catch (_) {}
+    });
     return true;
   } catch (_) {
     return false;
@@ -72,6 +80,14 @@ function captureMessage(message, ctx, level) {
         if (ctx && typeof ctx === 'object') scope.setExtras(ctx);
       } catch (_) {}
       Sentry.captureMessage(msg);
+    });
+    setImmediate(() => {
+      try {
+        const notificationsService = require('./notificationsService');
+        if (notificationsService && typeof notificationsService.createSentryNotification === 'function') {
+          notificationsService.createSentryNotification(message).catch(() => {});
+        }
+      } catch (_) {}
     });
     return true;
   } catch (_) {

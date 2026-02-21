@@ -10,6 +10,7 @@ const crypto = require('crypto');
 const config = require('../config');
 const users = require('../usersService');
 const dashboardAuth = require('../middleware/dashboardAuth');
+const notificationsService = require('../notificationsService');
 
 let geoip;
 try {
@@ -187,6 +188,17 @@ async function postRegister(req, res) {
     const err = (r && r.error) ? String(r.error) : 'register_failed';
     return res.redirect(302, '/app/register?error=' + encodeURIComponent(err) + '&redirect=' + encodeURIComponent(safeRedirect));
   }
+  try {
+    const prefs = await notificationsService.getPreferences();
+    if (prefs.pending_signup !== false) {
+      await notificationsService.create({
+        type: 'pending_signup',
+        title: 'New sign-up pending approval',
+        body: e,
+        forAdminOnly: true,
+      });
+    }
+  } catch (_) {}
   return res.redirect(302, '/app/login?registered=1&redirect=' + encodeURIComponent(safeRedirect));
 }
 

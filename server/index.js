@@ -19,6 +19,7 @@ const ingestRouter = require('./routes/ingest');
 const streamRouter = require('./routes/stream');
 const sessionsRouter = require('./routes/sessions');
 const configStatus = require('./routes/configStatus');
+const notificationsRouter = require('./routes/notifications');
 const versionRoute = require('./routes/version');
 const shopifySessions = require('./routes/shopifySessions');
 const statsRouter = require('./routes/stats');
@@ -129,6 +130,9 @@ app.get('/api/sessions/:id/events', sessionsRouter.events);
 app.get('/api/latest-sales', sessionsRouter.latestSales);
 app.use('/api/fraud', fraudRouter);
 app.get('/api/config-status', configStatus);
+app.get('/api/notifications', notificationsRouter.getList);
+app.get('/api/notifications/:id', notificationsRouter.getOne);
+app.patch('/api/notifications/:id', notificationsRouter.patchOne);
 app.get('/api/settings', settings.getSettings);
 app.post('/api/settings', settings.postSettings);
 app.get('/api/settings/profit-rules', requireMaster.middleware, settings.getProfitRules);
@@ -741,6 +745,7 @@ const { up: up059 } = require('./migrations/059_orders_shopify_line_items_net_co
 const { up: up060 } = require('./migrations/060_orders_shopify_refunds');
 const { up: up061 } = require('./migrations/061_role_permissions');
 const { up: up062 } = require('./migrations/062_shop_sessions_oauth_attribution');
+const { up: up063 } = require('./migrations/063_notifications');
 const backup = require('./backup');
 const { writeAudit } = require('./audit');
 const { runAdsMigrations } = require('./ads/adsMigrate');
@@ -808,6 +813,7 @@ const APP_MIGRATIONS = [
   ['060_orders_shopify_refunds', up060],
   ['061_role_permissions', up061],
   ['062_shop_sessions_oauth_attribution', up062],
+  ['063_notifications', up063],
 ];
 
 async function ensureAppMigrationsTable(db) {
@@ -983,6 +989,19 @@ migrateAndStart().catch(err => {
 setInterval(() => {
   cleanup.run().catch(err => warnBackgroundFailure('[cleanup] run failed:', err));
 }, 2 * 60 * 1000);
+
+// Notifications daily job: daily report (yesterday KPIs) + diagnostics unresolved, once per day
+(function scheduleNotificationsDaily() {
+  const DAY_MS = 24 * 60 * 60 * 1000;
+  const notificationsDailyJob = require('./notificationsDailyJob');
+  const notificationsDiagnosticsJob = require('./notificationsDiagnosticsJob');
+  const runAll = () => {
+    notificationsDailyJob.runOnce().catch((err) => warnBackgroundFailure('[notifications-daily] run failed:', err));
+    notificationsDiagnosticsJob.runOnce().catch((err) => warnBackgroundFailure('[notifications-diagnostics] run failed:', err));
+  };
+  setTimeout(runAll, 2 * 60 * 1000);
+  setInterval(runAll, DAY_MS);
+})();
 
 // Ads spend sync runs in the background so the Ads table can refresh without wiping UI.
 (function scheduleAdsSync() {

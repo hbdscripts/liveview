@@ -1,6 +1,6 @@
 # KEXO Liveview — Current state (handover)
 
-**Last updated:** 2026-02-19
+**Last updated:** 2026-02-21
 
 Read this file before making changes. If you change **core paths** (routes, auth, dashboard UX, ingest, DB schema, deploy), update this file in the same commit.
 
@@ -95,3 +95,4 @@ Full route → handler list: **docs/ROUTES.md**.
 - 2026-02-18: Cost & profit settings: Shipping country overrides now use a table layout (like Rules) with tooltip-able headers and clearer placeholders; Rules form inputs have placeholders for faster setup.
 - 2026-02-18: Tables + assets polish: `.grid-table` base font-size pinned to `12px`; header/footer logo rotation starts `hidden` to avoid showing a “default” logo before the stable random variant is applied. Chart settings builder click binding hardened to bind immediately and tolerate non-HTMLElement click targets.
 - 2026-02-19: Payment method icon overrides now live in Settings → Kexo → Icons & assets (no separate tab). Expanded mapping + inputs for Visa, Mastercard, Amex, Maestro, Discover, JCB, Diners Club, UnionPay, PayPal, Klarna, Clearpay, Afterpay, Affirm, Zip, Sezzle, Stripe, Shop Pay, Apple Pay, Google Pay. Defaults now point to SVGrepo-hosted SVGs; overrides stored in `asset_overrides` as `payment_<key>` and applied in payment methods report API.
+- 2026-02-21: Notification system: bell in footer (right of Kexo Score) opens offcanvas with list (unread/read/archived) and detail view; auto-archive on view. Settings → Notifications tab: toggles for Daily report, Sale, Sentry (admin), Pending sign-ups (admin), Diagnostics unresolved (admin). API: GET/PATCH `/api/notifications`, `notifications_preferences_v1` in settings. Daily job: daily report (yesterday KPIs), diagnostics unresolved (pixel/Google Ads). Sentry and pending sign-up create admin notifications. See **docs/ROUTES.md** for notifications routes; integrability note in AGENT_RULES.md.

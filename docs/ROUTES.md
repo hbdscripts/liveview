@@ -15,30 +15,30 @@ When adding a route, re-run this script so the doc stays in sync.
 | GET | `/admin` | (inline) |
 | GET | `/ads` | (inline) |
 | USE | `/api/abandoned-carts` | server/routes/abandonedCarts.js |
-| USE | `/api/admin` | (+ requireMaster) server/routes/adminUsers.js |
+| USE | `/api/admin` | (+ requireMaster) |
 | USE | `/api/ads` | server/routes/ads.js |
 | GET | `/api/asset-overrides` | server/routes/assets.js (getAssetOverrides) |
 | POST | `/api/assets/upload` | (inline) |
 | GET | `/api/attribution/config` | server/routes/attribution.js (getAttributionConfig) |
-| POST | `/api/attribution/config` | (+ requireMaster) server/routes/attribution.js (postAttributionConfig) |
-| POST | `/api/attribution/icons` | (+ requireMaster) server/routes/attribution.js (postAttributionIcons) |
-| POST | `/api/attribution/map` | (+ requireMaster) server/routes/attribution.js (postAttributionMap) |
+| POST | `/api/attribution/config` | (+ requireMaster) |
+| POST | `/api/attribution/icons` | (+ requireMaster) |
+| POST | `/api/attribution/map` | (+ requireMaster) |
 | GET | `/api/attribution/observed` | server/routes/attribution.js (getAttributionObserved) |
 | GET | `/api/attribution/prefs` | server/routes/attribution.js (getAttributionPrefs) |
-| POST | `/api/attribution/prefs` | (+ requireMaster) server/routes/attribution.js (postAttributionPrefs) |
+| POST | `/api/attribution/prefs` | (+ requireMaster) |
 | GET | `/api/attribution/report` | server/routes/attribution.js (getAttributionReport) |
-| DELETE | `/api/attribution/rules/:id` | (+ requireMaster) server/routes/attribution.js (deleteAttributionRule) |
-| PATCH | `/api/attribution/rules/:id` | (+ requireMaster) server/routes/attribution.js (patchAttributionRule) |
+| DELETE | `/api/attribution/rules/:id` | (+ requireMaster) |
+| PATCH | `/api/attribution/rules/:id` | (+ requireMaster) |
 | GET | `/api/available-days` | server/routes/availableDays.js (getAvailableDays) |
 | POST | `/api/bot-blocked` | server/routes/botBlocked.js (postBotBlocked) |
 | GET | `/api/browsers/series` | server/routes/browsers.js (getBrowsersSeries) |
 | GET | `/api/browsers/table` | server/routes/browsers.js (getBrowsersTable) |
-| GET | `/api/business-snapshot` | (+ requireMaster) server/routes/businessSnapshot.js (getBusinessSnapshot) |
+| GET | `/api/business-snapshot` | (+ requireMaster) |
 | GET | `/api/chart-settings/:chartKey` | server/routes/settings.js (getChartSettings) |
 | PUT | `/api/chart-settings/:chartKey` | server/routes/settings.js (putChartSettings) |
 | GET | `/api/config-status` | server/routes/configStatus.js |
-| GET | `/api/cost-breakdown` | (+ requireMaster) server/routes/costBreakdown.js (getCostBreakdown) |
-| GET | `/api/cost/health` | (+ requireMaster) server/routes/costHealth.js (getCostHealth) |
+| GET | `/api/cost-breakdown` | (+ requireMaster) |
+| GET | `/api/cost/health` | (+ requireMaster) |
 | GET | `/api/dashboard-series` | server/routes/dashboardSeries.js (getDashboardSeries) |
 | GET | `/api/devices/observed` | server/routes/devices.js (getObservedDevices) |
 | GET | `/api/devices/report` | server/routes/devices.js (getDevicesReport) |
@@ -60,6 +60,9 @@ When adding a route, re-run this script so the doc stays in sync.
 | GET | `/api/latest-sale` | server/routes/latestSale.js (getLatestSale) |
 | GET | `/api/latest-sales` | server/routes/sessions.js (latestSales) |
 | GET | `/api/me` | server/routes/me.js |
+| GET | `/api/notifications` | server/routes/notifications.js (getList) |
+| GET | `/api/notifications/:id` | server/routes/notifications.js (getOne) |
+| PATCH | `/api/notifications/:id` | server/routes/notifications.js (patchOne) |
 | GET | `/api/og-thumb` | server/routes/ogThumb.js (handleOgThumb) |
 | GET | `/api/page-insights` | server/routes/pageInsights.js (getPageInsights) |
 | GET | `/api/payment-methods/catalog` | server/routes/paymentMethods.js (getPaymentMethodsCatalog) |
@@ -71,16 +74,16 @@ When adding a route, re-run this script so the doc stays in sync.
 | POST | `/api/pixel/ensure` | server/routes/pixel.js (ensurePixel) |
 | GET | `/api/pixel/status` | server/routes/pixel.js (getPixelStatus) |
 | GET | `/api/product-insights` | server/routes/productInsights.js (getProductInsights) |
-| GET | `/api/reconcile-sales` | (+ requireMaster) server/routes/reconcileSales.js (reconcileSales) |
-| POST | `/api/reconcile-sales` | (+ requireMaster) server/routes/reconcileSales.js (reconcileSales) |
+| GET | `/api/reconcile-sales` | (+ requireMaster) |
+| POST | `/api/reconcile-sales` | (+ requireMaster) |
 | GET | `/api/sales-diagnostics` | server/routes/salesDiagnostics.js (getSalesDiagnostics) |
 | GET | `/api/sessions` | server/routes/sessions.js (list) |
 | GET | `/api/sessions/:id/events` | server/routes/sessions.js (events) |
 | GET | `/api/sessions/online-series` | server/routes/sessions.js (onlineSeries) |
 | GET | `/api/settings` | server/routes/settings.js (getSettings) |
 | POST | `/api/settings` | server/routes/settings.js (postSettings) |
-| GET | `/api/settings/profit-rules` | (+ requireMaster) server/routes/settings.js (getProfitRules) |
-| PUT | `/api/settings/profit-rules` | (+ requireMaster) server/routes/settings.js (putProfitRules) |
+| GET | `/api/settings/profit-rules` | (+ requireMaster) |
+| PUT | `/api/settings/profit-rules` | (+ requireMaster) |
 | GET | `/api/shopify-best-sellers` | server/routes/shopifyBestSellers.js (getShopifyBestSellers) |
 | GET | `/api/shopify-best-variants` | server/routes/shopifyBestVariants.js (getShopifyBestVariants) |
 | GET | `/api/shopify-chain-styles` | server/routes/shopifyChainStyles.js (getShopifyChainStyles) |

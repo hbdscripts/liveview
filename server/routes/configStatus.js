@@ -935,3 +935,4 @@ async function configStatus(req, res, next) {
 module.exports = configStatus;
 module.exports.fetchShopifySessionsToday = fetchShopifySessionsToday;
 module.exports.fetchShopifySessionsMetricsToday = fetchShopifySessionsMetricsToday;
+module.exports.fetchShopifyWebPixelIngestUrl = fetchShopifyWebPixelIngestUrl;

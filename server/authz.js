@@ -48,7 +48,15 @@ async function isMasterRequest(req) {
   return (role === 'admin' || role === 'master') && status === 'active';
 }
 
+function getRequestEmail(req) {
+  const cookieValue = getCookie(req, dashboardAuth.OAUTH_COOKIE_NAME);
+  if (!cookieValue || !dashboardAuth.verifyOauthSession(cookieValue)) return null;
+  const raw = parseOauthCookie(cookieValue) || {};
+  return users.normalizeEmail(raw.email) || null;
+}
+
 module.exports = {
   isMasterRequest,
+  getRequestEmail,
 };
 

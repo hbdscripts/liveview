@@ -27,6 +27,10 @@
                   </div>
                 </div>
               </button>
+              <a class="kexo-footer-action btn btn-ghost-secondary position-relative" href="#notifications-offcanvas" role="button" data-bs-toggle="offcanvas" data-bs-target="#notifications-offcanvas" aria-controls="notifications-offcanvas" aria-label="Notifications" title="Notifications" id="notifications-bell-btn">
+                <i class="fa-jelly-filled fa-bell" data-icon-key="nav-notifications-bell" aria-hidden="true"></i>
+                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger border border-light kexo-notifications-badge is-hidden" id="notifications-unread-badge" aria-live="polite">0</span>
+              </a>
             </div>
             <div class="kexo-footer-right kexo-footer-actions-slot d-flex align-items-center gap-2">
               <div class="dropdown dropup d-none d-lg-block">
@@ -53,3 +57,21 @@
           </div>
         </div>
       </footer>
+      <div class="offcanvas offcanvas-end" tabindex="-1" id="notifications-offcanvas" aria-labelledby="notifications-offcanvas-label">
+        <div class="offcanvas-header">
+          <h2 class="offcanvas-title" id="notifications-offcanvas-label">Notifications</h2>
+          <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
+        <div class="offcanvas-body p-0" id="notifications-offcanvas-body">
+          <div id="notifications-list-view" class="d-flex flex-column h-100">
+            <div class="list-group list-group-flush rounded-0 flex-grow-1 overflow-auto" id="notifications-list"></div>
+            <div class="p-3 border-top small text-secondary text-center" id="notifications-list-empty">Loading…</div>
+          </div>
+          <div id="notifications-detail-view" class="h-100 d-none flex-column">
+            <div class="p-3 border-bottom">
+              <button type="button" class="btn btn-ghost-secondary btn-sm" id="notifications-back-btn" aria-label="Back to list"><i class="fa-jelly fa-arrow-left me-1" aria-hidden="true"></i> Back</button>
+            </div>
+            <div class="p-3 overflow-auto flex-grow-1" id="notifications-detail-body"></div>
+          </div>
+        </div>
+      </div>

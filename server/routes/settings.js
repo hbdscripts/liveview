@@ -31,6 +31,28 @@ const {
 const { getThemeIconGlyphSettingKeys } = require('../shared/icon-registry');
 const { normalizeIconSpec } = require('../utils/svgNormalize');
 const colorSchemeMap = require('../public/ui/color-scheme-map');
+const notificationsService = require('../notificationsService');
+
+const NOTIFICATIONS_PREFERENCES_V1_KEY = 'notifications_preferences_v1';
+
+function normalizeNotificationsPreferencesV1(raw) {
+  const defaults = {
+    daily_report: true,
+    sale: true,
+    sentry: true,
+    pending_signup: true,
+    diagnostics_unresolved: true,
+  };
+  if (raw == null || typeof raw !== 'object') return defaults;
+  const out = { ...defaults };
+  const keys = ['daily_report', 'sale', 'sentry', 'pending_signup', 'diagnostics_unresolved'];
+  for (const k of keys) {
+    if (Object.prototype.hasOwnProperty.call(raw, k)) {
+      out[k] = raw[k] === true || raw[k] === 'true' || raw[k] === '1';
+    }
+  }
+  return out;
+}
 
 const GOOGLE_ADS_PROFIT_DEDUCTIONS_V1_KEY = 'google_ads_profit_deductions_v1';
 const GOOGLE_ADS_ADD_TO_CART_VALUE_KEY = 'google_ads_add_to_cart_value';
@@ -1690,6 +1712,10 @@ async function readSettingsPayload() {
     const raw = rawMap[GOOGLE_ADS_POSTBACK_ENABLED_KEY];
     googleAdsPostbackEnabled = raw === 'true' || raw === '1';
   } catch (_) {}
+  let notificationsPreferencesV1 = {};
+  try {
+    notificationsPreferencesV1 = await notificationsService.getPreferences();
+  } catch (_) {}
   const reporting = await store.getReportingConfig().catch(() => ({ ordersSource: 'orders_shopify', sessionsSource: 'sessions' }));
   return {
     ok: true,
@@ -1712,6 +1738,7 @@ async function readSettingsPayload() {
     insightsVariantsConfig,
     pageLoaderEnabled,
     googleAdsPostbackEnabled,
+    notificationsPreferencesV1,
   };
 }
 
@@ -1877,6 +1904,15 @@ async function postSettings(req, res) {
       await store.setSetting('google_ads_postback_enabled', v ? 'true' : 'false');
     } catch (err) {
       return res.status(500).json({ ok: false, error: err && err.message ? String(err.message) : 'Failed to save postback setting' });
+    }
+  }
+
+  if (Object.prototype.hasOwnProperty.call(body, 'notificationsPreferencesV1')) {
+    try {
+      const normalized = normalizeNotificationsPreferencesV1(body.notificationsPreferencesV1);
+      await store.setSetting(NOTIFICATIONS_PREFERENCES_V1_KEY, JSON.stringify(normalized));
+    } catch (err) {
+      return res.status(500).json({ ok: false, error: err && err.message ? String(err.message) : 'Failed to save notification preferences' });
     }
   }
 
