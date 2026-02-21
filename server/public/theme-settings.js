@@ -370,7 +370,7 @@
     var parts = [];
     for (var g = 0; g < CSS_VAR_COLOR_GROUPS.length; g++) {
       var group = CSS_VAR_COLOR_GROUPS[g];
-      parts.push('<div class="col-12 kexo-css-var-group-heading" data-kexo-css-var-group="' + escapeHtml(group.groupId) + '"><h5 class="text-secondary small text-uppercase fw-semibold mb-2 mt-3">' + group.heading + '</h5></div>');
+      parts.push('<div class="settings-responsive-grid-span-all kexo-css-var-group-heading" data-kexo-css-var-group="' + escapeHtml(group.groupId) + '"><h5 class="text-secondary small text-uppercase fw-semibold mb-2 mt-3">' + group.heading + '</h5></div>');
       for (var v = 0; v < group.vars.length; v++) {
         var entry = group.vars[v];
         var searchText = (entry.label + ' ' + entry.name).toLowerCase();
@@ -855,7 +855,7 @@
             '</button>' +
           '</h2>' +
           '<div id="' + collapseId + '" class="accordion-collapse collapse' + (isOpen ? ' show' : '') + '" aria-labelledby="' + headingId + '" data-bs-parent="#' + accordionId + '">' +
-            '<div class="accordion-body"><div class="row g-3">' + rows.join('') + '</div></div>' +
+            '<div class="accordion-body"><div class="settings-responsive-grid" data-theme-icon-group-body="' + groupId + '">' + rows.join('') + '</div></div>' +
           '</div>' +
         '</div>';
       itemIdx += 1;
@@ -911,7 +911,7 @@
           '</button>' +
         '</h2>' +
         '<div id="' + collapseId + '" class="accordion-collapse collapse" aria-labelledby="' + headingId + '" data-bs-parent="#' + accordionId + '">' +
-          '<div class="accordion-body"><div class="row g-3" data-theme-icon-group-body="' + gid + '"></div></div>' +
+          '<div class="accordion-body"><div class="settings-responsive-grid" data-theme-icon-group-body="' + gid + '"></div></div>' +
         '</div>' +
       '</div>';
 
@@ -933,9 +933,14 @@
   function updateThemeIconsAccordionCounts(accordionEl) {
     if (!accordionEl) return;
     accordionEl.querySelectorAll('.accordion-item').forEach(function (item) {
-      var body = item.querySelector('.accordion-body .row');
+      var body = item.querySelector('.accordion-body .settings-responsive-grid');
       if (!body) return;
-      var n = body.querySelectorAll('.col-12:not([data-theme-icon-count-exclude="1"])').length;
+      var n = body.querySelectorAll(
+        '[data-theme-icon-glyph-card]:not([data-theme-icon-count-exclude="1"]),' +
+        '[data-payment-method-icon-card]:not([data-theme-icon-count-exclude="1"]),' +
+        '[data-variant-rule-icon-card]:not([data-theme-icon-count-exclude="1"]),' +
+        '[data-attribution-icon]:not([data-theme-icon-count-exclude="1"])'
+      ).length;
       var countEl = item.querySelector('[data-theme-icon-group-count]') || item.querySelector('.accordion-header .text-muted.small');
       if (countEl) countEl.textContent = String(n) + ' icons';
     });
@@ -993,9 +998,9 @@
         var themeKey = 'theme-icon-glyph-' + iconKey;
         var input = root.querySelector('[data-theme-icon-glyph-input="' + themeKey + '"]');
         if (!input) return;
-        var col = input.closest('.col-12');
-        if (!col) return;
-        body.appendChild(col);
+        var card = input.closest('[data-theme-icon-glyph-card]');
+        if (!card) return;
+        body.appendChild(card);
       });
 
       updateThemeIconsAccordionCounts(accordion);
@@ -1024,7 +1029,7 @@
           '</button>' +
         '</h2>' +
         '<div id="' + collapseId + '" class="accordion-collapse collapse" aria-labelledby="' + headingId + '" data-bs-parent="#' + accordionId + '">' +
-          '<div class="accordion-body"><div class="row g-3" data-theme-icon-group-body="' + groupId + '"></div></div>' +
+          '<div class="accordion-body"><div class="settings-responsive-grid" data-theme-icon-group-body="' + groupId + '"></div></div>' +
         '</div>' +
       '</div>';
     var wrap = document.createElement('div');
@@ -1168,15 +1173,15 @@
     if (!item) return;
     var body = item.querySelector('[data-theme-icon-group-body="payment-methods"]');
     if (!body) return;
-    body.innerHTML = '<div class="col-12"><div class="spinner-border spinner-border-sm text-primary" role="status"></div> Loading payment methods…</div>';
+    body.innerHTML = '<div class="settings-responsive-grid-span-all"><div class="spinner-border spinner-border-sm text-primary" role="status"></div> Loading payment methods…</div>';
     fetchPaymentMethodsCatalog().then(function (res) {
       if (!res || !res.ok || !Array.isArray(res.methods)) {
-        body.innerHTML = '<div class="col-12 text-secondary small">Could not load payment methods.</div>';
+        body.innerHTML = '<div class="settings-responsive-grid-span-all text-secondary small">Could not load payment methods.</div>';
         return;
       }
       var cards = [];
       cards.push(
-        '<div class="col-12" data-theme-icon-count-exclude="1">' +
+        '<div class="settings-responsive-grid-span-all" data-theme-icon-count-exclude="1">' +
           '<div class="d-flex align-items-center justify-content-between flex-wrap gap-2">' +
             '<h4 class="mb-0">Payment Methods</h4>' +
             '<span class="text-secondary small">Auto-seeded from common methods + what appears in purchases</span>' +
@@ -1189,7 +1194,7 @@
         var label = m && m.label != null ? String(m.label).trim() : titleFromKey(key);
         var hasSaved = !!(m && m.iconSpec != null && String(m.iconSpec).trim());
         cards.push(
-          '<div class="col-12 col-md-6 col-lg-4" data-payment-method-icon-card="1" data-payment-key="' + escapeHtml(key) + '" data-payment-label="' + escapeHtml(label) + '">' +
+          '<div class="kexo-theme-grid-item" data-payment-method-icon-card="1" data-payment-key="' + escapeHtml(key) + '" data-payment-label="' + escapeHtml(label) + '">' +
             '<div class="card card-sm h-100">' +
               '<div class="card-body">' +
                 '<div class="d-flex align-items-center mb-2">' +
@@ -1309,16 +1314,16 @@
     if (!item) return;
     var body = item.querySelector('[data-theme-icon-group-body="variants"]');
     if (!body) return;
-    body.innerHTML = '<div class="col-12"><div class="spinner-border spinner-border-sm text-primary" role="status"></div> Loading variants…</div>';
+    body.innerHTML = '<div class="settings-responsive-grid-span-all"><div class="spinner-border spinner-border-sm text-primary" role="status"></div> Loading variants…</div>';
     fetchSettingsPayloadForIconGroups().then(function (payload) {
       var rows = buildVariantRuleIconRows(payload);
       if (!rows.length) {
-        body.innerHTML = '<div class="col-12 text-secondary small">No variant rules found yet. Configure tables in Settings → Variants.</div>';
+        body.innerHTML = '<div class="settings-responsive-grid-span-all text-secondary small">No variant rules found yet. Configure tables in Settings → Variants.</div>';
         return;
       }
       var cards = [];
       cards.push(
-        '<div class="col-12" data-theme-icon-count-exclude="1">' +
+        '<div class="settings-responsive-grid-span-all" data-theme-icon-count-exclude="1">' +
           '<div class="d-flex align-items-center justify-content-between flex-wrap gap-2">' +
             '<h4 class="mb-0">Variant Rule Icons</h4>' +
             '<span class="text-secondary small">Applies to Insights → Variants and Overview finishes widget</span>' +
@@ -1327,7 +1332,7 @@
       );
       rows.forEach(function (row) {
         cards.push(
-          '<div class="col-12 col-md-6 col-lg-4" data-variant-rule-icon-card="1" data-variant-override-key="' + escapeHtml(row.overrideKey) + '" data-variant-label="' + escapeHtml(row.label) + '">' +
+          '<div class="kexo-theme-grid-item" data-variant-rule-icon-card="1" data-variant-override-key="' + escapeHtml(row.overrideKey) + '" data-variant-label="' + escapeHtml(row.label) + '">' +
             '<div class="card card-sm h-100">' +
               '<div class="card-body">' +
                 '<div class="d-flex align-items-center mb-2">' +
@@ -1445,10 +1450,10 @@
     if (!item) return;
     var body = item.querySelector('[data-theme-icon-group-body="attribution"]');
     if (!body) return;
-    body.innerHTML = '<div class="col-12"><div class="spinner-border spinner-border-sm text-primary" role="status"></div> Loading attribution…</div>';
+    body.innerHTML = '<div class="settings-responsive-grid-span-all"><div class="spinner-border spinner-border-sm text-primary" role="status"></div> Loading attribution…</div>';
     fetchAttributionConfig().then(function (res) {
       if (!res || !res.ok || !res.config) {
-        body.innerHTML = '<div class="col-12 text-secondary small">Could not load attribution config.</div>';
+        body.innerHTML = '<div class="settings-responsive-grid-span-all text-secondary small">Could not load attribution config.</div>';
         return;
       }
       var rawSources = Array.isArray(res.config.sources) ? res.config.sources : [];
@@ -1504,7 +1509,7 @@
       var cards = [];
       if (sources.length) {
         cards.push(
-          '<div class="col-12" data-theme-icon-count-exclude="1">' +
+          '<div class="settings-responsive-grid-span-all" data-theme-icon-count-exclude="1">' +
             '<div class="d-flex align-items-center justify-content-between flex-wrap gap-2">' +
               '<h4 class="mb-0">Attribution Sources</h4>' +
               '<span class="text-secondary small">Syncs with Settings → Attribution → Mapped tree</span>' +
@@ -1516,7 +1521,7 @@
           var label = r.label || key || '—';
           var icon = r.icon_spec != null ? String(r.icon_spec) : '';
           if (!key) return;
-          cards.push('<div class="col-12 col-md-6 col-lg-4" data-attribution-icon="source" data-attribution-key="' + escapeHtml(key) + '" data-attribution-label="' + escapeHtml(label) + '">' +
+          cards.push('<div class="kexo-theme-grid-item" data-attribution-icon="source" data-attribution-key="' + escapeHtml(key) + '" data-attribution-label="' + escapeHtml(label) + '">' +
             '<div class="card card-sm h-100">' +
               '<div class="card-body">' +
                 '<div class="d-flex align-items-center mb-2">' +
@@ -1538,7 +1543,7 @@
       }
       if (variants.length) {
         cards.push(
-          '<div class="col-12 mt-2" data-theme-icon-count-exclude="1">' +
+          '<div class="settings-responsive-grid-span-all mt-2" data-theme-icon-count-exclude="1">' +
             '<div class="d-flex align-items-center justify-content-between flex-wrap gap-2">' +
               '<h4 class="mb-0">Attribution Variants</h4>' +
               '<span class="text-secondary small">Syncs with Settings → Attribution → Mapped tree</span>' +
@@ -1550,7 +1555,7 @@
           var label = r.label || key || '—';
           var icon = r.icon_spec != null ? String(r.icon_spec) : '';
           if (!key) return;
-          cards.push('<div class="col-12 col-md-6 col-lg-4" data-attribution-icon="variant" data-attribution-key="' + escapeHtml(key) + '" data-attribution-label="' + escapeHtml(label) + '">' +
+          cards.push('<div class="kexo-theme-grid-item" data-attribution-icon="variant" data-attribution-key="' + escapeHtml(key) + '" data-attribution-label="' + escapeHtml(label) + '">' +
             '<div class="card card-sm h-100">' +
               '<div class="card-body">' +
                 '<div class="d-flex align-items-center mb-2">' +
@@ -1571,7 +1576,7 @@
         });
       }
 
-      body.innerHTML = cards.length ? cards.join('') : '<div class="col-12 text-secondary small">No sources or variants yet. Add them in Settings → Attribution → Mapping.</div>';
+      body.innerHTML = cards.length ? cards.join('') : '<div class="settings-responsive-grid-span-all text-secondary small">No sources or variants yet. Add them in Settings → Attribution → Mapping.</div>';
 
       function updateCardPreview(cardEl) {
         if (!cardEl) return;
@@ -2002,7 +2007,7 @@
   function styleInputCard(key) {
     var meta = ICON_STYLE_META[key] || { title: key, help: '', icon: 'fa-circle-info' };
     var inputId = 'theme-input-' + key;
-    return '<div class="col-12 col-md-6 col-lg-4">' +
+    return '<div class="kexo-theme-grid-item">' +
       '<div class="card card-sm h-100">' +
         '<div class="card-body">' +
           '<div class="d-flex align-items-center mb-2">' +
@@ -2020,7 +2025,7 @@
     var name = glyphNameFromThemeKey(key);
     var meta = glyphMetaFor(name);
     var inputId = 'theme-input-' + key;
-    return '<div class="col-12 col-md-6 col-lg-4" data-theme-icon-glyph-card="' + key + '">' +
+    return '<div class="kexo-theme-grid-item" data-theme-icon-glyph-card="' + key + '">' +
       '<div class="card card-sm h-100">' +
         '<div class="card-body">' +
           '<div class="d-flex align-items-center mb-2">' +
@@ -2043,7 +2048,7 @@
   function headerInputCard(key, title, help, placeholder) {
     var inputId = 'theme-input-' + key;
     var titleAttr = help ? (' title="' + String(help).replace(/"/g, '&quot;') + '"') : '';
-    return '<div class="col-12 col-md-6 col-lg-4">' +
+    return '<div class="kexo-theme-grid-item">' +
       '<div class="card card-sm h-100">' +
         '<div class="card-body">' +
           '<label class="form-label d-flex align-items-center mb-2" for="' + inputId + '"' + titleAttr + '><i class="fa-jelly fa-window-maximize me-2" aria-hidden="true"></i><strong>' + title + '</strong>' + TOOLTIP_ICON + '</label>' +
@@ -2056,7 +2061,7 @@
   function headerInputCardNoIcon(key, title, help, placeholder) {
     var inputId = 'theme-input-' + key;
     var titleAttr = help ? (' title="' + String(help).replace(/"/g, '&quot;') + '"') : '';
-    return '<div class="col-12 col-md-6 col-lg-4">' +
+    return '<div class="kexo-theme-grid-item">' +
       '<div class="card card-sm h-100">' +
         '<div class="card-body">' +
           '<label class="form-label mb-2" for="' + inputId + '"' + titleAttr + '><strong>' + title + '</strong>' + TOOLTIP_ICON + '</label>' +
@@ -2068,7 +2073,7 @@
 
   function headerToggleCardNoIcon(key, title, help) {
     var titleAttr = help ? (' title="' + String(help).replace(/"/g, '&quot;') + '"') : '';
-    return '<div class="col-12 col-md-6 col-lg-4">' +
+    return '<div class="kexo-theme-grid-item">' +
       '<div class="card card-sm h-100">' +
         '<div class="card-body">' +
           '<div class="mb-2"><strong' + titleAttr + '>' + title + TOOLTIP_ICON + '</strong></div>' +
@@ -2085,7 +2090,7 @@
     var opts = options || {};
     var radios = Object.keys(opts).map(function (v) { return radioCard(key, v, opts[v] || v); }).join('');
     var titleAttr = help ? (' title="' + String(help).replace(/"/g, '&quot;') + '"') : '';
-    return '<div class="col-12 col-md-6 col-lg-4">' +
+    return '<div class="kexo-theme-grid-item">' +
       '<div class="card card-sm h-100">' +
         '<div class="card-body">' +
           '<div class="mb-2"><strong' + titleAttr + '>' + title + TOOLTIP_ICON + '</strong></div>' +
@@ -2098,7 +2103,7 @@
   function accentHexInputCard(key, title, placeholder) {
     var inputId = 'theme-input-' + key;
     var def = ACCENT_DEFAULTS[ACCENT_HEX_KEYS.indexOf(key)] || '#4b94e4';
-    return '<div class="col-12 col-md-6 col-lg-4">' +
+    return '<div class="kexo-theme-grid-item">' +
       '<div class="card card-sm h-100">' +
         '<div class="card-body">' +
           '<div class="mb-2">' +
@@ -2115,7 +2120,7 @@
 
   function headerToggleCard(key, title, help) {
     var titleAttr = help ? (' title="' + String(help).replace(/"/g, '&quot;') + '"') : '';
-    return '<div class="col-12 col-md-6 col-lg-4">' +
+    return '<div class="kexo-theme-grid-item">' +
       '<div class="card card-sm h-100">' +
         '<div class="card-body">' +
           '<div class="d-flex align-items-center mb-2"><i class="fa-jelly fa-toggle-on me-2" aria-hidden="true"></i><strong' + titleAttr + '>' + title + TOOLTIP_ICON + '</strong></div>' +
@@ -2134,7 +2139,7 @@
     var help = helpText ? String(helpText) : '';
     var titleAttr = help ? (' title="' + escapeHtml(help) + '"') : '';
     var attrs = extraDataAttrs ? String(extraDataAttrs) : '';
-    return '<div class="col-12 col-md-6 col-lg-4 kexo-css-var-card"' + attrs + '>' +
+    return '<div class="kexo-theme-grid-item kexo-css-var-card"' + attrs + '>' +
       '<div class="card card-sm h-100">' +
         '<div class="card-body position-relative">' +
           '<a href="#" class="kexo-css-var-revert text-secondary small position-absolute top-0 end-0 me-1 mt-1" data-kexo-css-var="' + escapeHtml(name) + '" role="button" aria-label="Revert to default">Revert</a>' +
@@ -2186,7 +2191,7 @@
         '<div class="mb-3">' +
           '<input type="text" class="form-control" id="kexo-css-var-overrides-search" placeholder="Filter colours…" aria-label="Filter colours" />' +
         '</div>' +
-        '<div class="row g-3" id="kexo-css-var-overrides-grid">' + cssVarGrid + '</div>' +
+        '<div class="settings-responsive-grid" id="kexo-css-var-overrides-grid">' + cssVarGrid + '</div>' +
         '<div class="d-flex align-items-center gap-2 flex-wrap mt-3">' +
           '<button type="button" class="btn btn-primary btn-sm" id="kexo-css-var-overrides-save">Save colours</button>' +
           '<button type="button" class="btn btn-outline-secondary btn-sm" id="kexo-css-var-overrides-reset">Reset to defaults</button>' +
@@ -2239,17 +2244,17 @@
         '<div class="mb-4">' +
           '<label class="form-label">Theme accents (6 colours)</label>' +
           '<div class="text-secondary small mb-3">Accent 1 drives strip, menu, settings, and dropdown backgrounds. Accents 1–5 rotate for nav active underline.</div>' +
-          '<div class="row g-3">' + accentGrid + '</div>' +
+          '<div class="settings-responsive-grid">' + accentGrid + '</div>' +
         '</div>' +
         cssVarOverridesPanel +
         '<div class="mb-4">' +
           '<label class="form-label">Menu hover tint</label>' +
           '<div class="text-secondary small mb-3">Control the hover overlay on menu links and dropdown items. Black = darken, White = lighten. Opacity 0–100% sets strength.</div>' +
-          '<div class="row g-3">' + menuHoverGrid + '</div>' +
+          '<div class="settings-responsive-grid">' + menuHoverGrid + '</div>' +
         '</div>' +
         '<div class="mb-4">' +
           '<label class="form-label">Header & nav colors</label>' +
-          '<div class="row g-3">' + colorRemainingGrid + '</div>' +
+          '<div class="settings-responsive-grid">' + colorRemainingGrid + '</div>' +
         '</div>' +
         customCssFieldset +
         '<div class="mb-4">' +

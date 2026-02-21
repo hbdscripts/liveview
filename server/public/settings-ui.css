@@ -62,3 +62,24 @@ body[data-page="settings"] .settings-charts-color-grid {
 .settings-ui-w-5rem { width: 5rem; }
 .settings-ui-cursor-pointer { cursor: pointer; }
 
+/* Responsive tile grid used in Settings → Icons & Color Scheme.
+   Avoids Bootstrap .row/.col-* so the Settings normaliser doesn't collapse it. */
+body[data-page="settings"] .settings-responsive-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+  align-items: start;
+}
+body[data-page="settings"] .settings-responsive-grid > * { min-width: 0; }
+body[data-page="settings"] .settings-responsive-grid .settings-responsive-grid-span-all { grid-column: 1 / -1; }
+
+@media (max-width: 1199.98px) {
+  body[data-page="settings"] .settings-responsive-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 991.98px) {
+  body[data-page="settings"] .settings-responsive-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 575.98px) {
+  body[data-page="settings"] .settings-responsive-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
