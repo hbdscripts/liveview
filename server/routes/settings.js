@@ -2239,6 +2239,34 @@ function normalizeCssColor(value, fallback) {
   return fallback;
 }
 
+function normalizeOpaqueCssColor(value, fallback) {
+  const raw = value == null ? '' : String(value).trim();
+  if (!raw) return fallback;
+
+  // Disallow alpha formats (these create the “overlay/see-through header” effect).
+  // - #RRGGBBAA / #RGBA
+  // - rgba(...) / hsla(...)
+  // - modern rgb(... / <alpha>) / hsl(... / <alpha>)
+  if (/^#([0-9a-f]{4}|[0-9a-f]{8})$/i.test(raw)) return fallback;
+  if (/^(rgba|hsla)\(/i.test(raw)) return fallback;
+  if (/^(rgb|hsl)\(/i.test(raw) && raw.indexOf('/') !== -1) return fallback;
+  if (/^color-mix\(/i.test(raw)) return fallback;
+
+  // Accept opaque hex (expand short form to 6-digit for downstream RGB parsing).
+  const hex3 = /^#([0-9a-f]{3})$/i.exec(raw);
+  if (hex3) {
+    const h = hex3[1];
+    return '#' + h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+  }
+  if (/^#([0-9a-f]{6})$/i.test(raw)) return raw;
+
+  // Accept rgb()/hsl() (no slash alpha form) and named colors.
+  if (/^(rgb|hsl)\(/i.test(raw)) return raw;
+  if (raw.toLowerCase() === 'currentcolor') return 'currentColor';
+  if (/^[a-z-]+$/i.test(raw)) return raw;
+  return fallback;
+}
+
 function normalizeCssRadius(value, fallback) {
   const raw = value == null ? '' : String(value).trim();
   if (!raw) return fallback;
@@ -2368,7 +2396,7 @@ async function getThemeVarsCss(req, res) {
     getThemeKey('theme_header_strip_padding', FALLBACKS.theme_header_strip_padding),
   ]);
 
-  const accent1Hex = normalizeCssColor(accent1, FALLBACKS.theme_accent_1);
+  const accent1Hex = normalizeOpaqueCssColor(accent1, FALLBACKS.theme_accent_1);
   void _skip;
   const mainBorder = normalizeCssToggle(mainBorderMode, 'show');
   const settingsBorder = normalizeCssToggle(settingsBorderMode, 'show');
@@ -2383,11 +2411,11 @@ async function getThemeVarsCss(req, res) {
     getThemeKey('theme_accent_6', '#8395aa'),
   ]);
 
-  const accent2Hex = normalizeCssColor(a2, '#3eb3ab');
-  const accent3Hex = normalizeCssColor(a3, '#f59e34');
-  const accent4Hex = normalizeCssColor(a4, '#e4644b');
-  const accent5Hex = normalizeCssColor(a5, '#6681e8');
-  const accent6Hex = normalizeCssColor(a6, '#8395aa');
+  const accent2Hex = normalizeOpaqueCssColor(a2, '#3eb3ab');
+  const accent3Hex = normalizeOpaqueCssColor(a3, '#f59e34');
+  const accent4Hex = normalizeOpaqueCssColor(a4, '#e4644b');
+  const accent5Hex = normalizeOpaqueCssColor(a5, '#6681e8');
+  const accent6Hex = normalizeOpaqueCssColor(a6, '#8395aa');
 
   function hexToRgbString(hex) {
     const raw = String(hex || '').trim();
@@ -2402,11 +2430,11 @@ async function getThemeVarsCss(req, res) {
 
   // Header backgrounds: keep existing behavior (accent-1) when unset,
   // but respect explicit values saved in Theme → Header.
-  const headerTopBg = String(headerTopBgRaw || '').trim() ? normalizeCssColor(headerTopBgRaw, accent1Hex) : accent1Hex;
-  const headerMainBg = String(headerMainBgRaw || '').trim() ? normalizeCssColor(headerMainBgRaw, accent1Hex) : accent1Hex;
-  const headerMainDropdownBg = String(headerMainDropdownBgRaw || '').trim() ? normalizeCssColor(headerMainDropdownBgRaw, accent1Hex) : accent1Hex;
-  const headerSettingsBg = String(headerSettingsBgRaw || '').trim() ? normalizeCssColor(headerSettingsBgRaw, accent1Hex) : accent1Hex;
-  const headerOnlineBg = String(headerOnlineBgRaw || '').trim() ? normalizeCssColor(headerOnlineBgRaw, accent1Hex) : accent1Hex;
+  const headerTopBg = String(headerTopBgRaw || '').trim() ? normalizeOpaqueCssColor(headerTopBgRaw, accent1Hex) : accent1Hex;
+  const headerMainBg = String(headerMainBgRaw || '').trim() ? normalizeOpaqueCssColor(headerMainBgRaw, accent1Hex) : accent1Hex;
+  const headerMainDropdownBg = String(headerMainDropdownBgRaw || '').trim() ? normalizeOpaqueCssColor(headerMainDropdownBgRaw, accent1Hex) : accent1Hex;
+  const headerSettingsBg = String(headerSettingsBgRaw || '').trim() ? normalizeOpaqueCssColor(headerSettingsBgRaw, accent1Hex) : accent1Hex;
+  const headerOnlineBg = String(headerOnlineBgRaw || '').trim() ? normalizeOpaqueCssColor(headerOnlineBgRaw, accent1Hex) : accent1Hex;
 
   // Radius/font/base (Tabler variables) from global theme defaults.
   const RADIUS_MAP = { '0': '0', '0.5': '.25rem', '1': '.375rem', '1.5': '.5rem', '2': '2rem' };
@@ -2459,10 +2487,20 @@ async function getThemeVarsCss(req, res) {
   const overrideLines = [];
   try {
     const vars = cssVarOverridesV1 && cssVarOverridesV1.vars && typeof cssVarOverridesV1.vars === 'object' ? cssVarOverridesV1.vars : {};
+    const OPAQUE_BG_VARS = new Set([
+      '--kexo-header-top-bg',
+      '--kexo-header-main-bg',
+      '--kexo-top-menu-bg',
+      '--kexo-top-menu-dropdown-bg',
+      '--kexo-header-settings-bg',
+      '--kexo-header-online-bg',
+    ]);
     for (const name of Object.keys(vars)) {
       const safeName = normalizeCssVarName(name);
       if (!safeName) continue;
-      const safeVal = normalizeCssVarOverrideValue(vars[name]);
+      const safeVal = OPAQUE_BG_VARS.has(safeName)
+        ? normalizeOpaqueCssColor(vars[name], '')
+        : normalizeCssVarOverrideValue(vars[name]);
       if (!safeVal) continue;
       overrideLines.push(`${safeName}:${safeVal};`);
     }

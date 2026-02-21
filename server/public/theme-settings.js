@@ -2484,13 +2484,46 @@
       return '';
     }
 
+    function normalizeOpaqueCssVarOverrideValue(raw) {
+      var v = raw == null ? '' : String(raw).trim();
+      if (!v) return '';
+      if (v.length > 150) return '';
+      if (/[;\r\n{}]/.test(v)) return '';
+      // Do not allow indirection or alpha formats for header/menu backgrounds.
+      if (/^var\(/i.test(v)) return '';
+      if (/^#([0-9a-f]{4}|[0-9a-f]{8})$/i.test(v)) return '';
+      if (/^(rgba|hsla)\(/i.test(v)) return '';
+      if (/^(rgb|hsl)\(/i.test(v) && v.indexOf('/') !== -1) return '';
+      if (/^color-mix\(/i.test(v)) return '';
+      if (v.toLowerCase() === 'transparent') return '';
+
+      var m3 = /^#([0-9a-f]{3})$/i.exec(v);
+      if (m3) {
+        var h = m3[1];
+        return '#' + h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+      }
+      if (/^#([0-9a-f]{6})$/i.test(v)) return v;
+      if (/^(rgb|hsl)\(/i.test(v)) return v;
+      if (v.toLowerCase() === 'currentcolor') return 'currentColor';
+      if (/^[a-z-]+$/i.test(v)) return v;
+      return '';
+    }
+
     function readCfgFromUi() {
       var vars = {};
+      var OPAQUE_BG_VARS = {
+        '--kexo-header-top-bg': 1,
+        '--kexo-header-main-bg': 1,
+        '--kexo-top-menu-bg': 1,
+        '--kexo-top-menu-dropdown-bg': 1,
+        '--kexo-header-settings-bg': 1,
+        '--kexo-header-online-bg': 1,
+      };
       var inputs = root.querySelectorAll('.kexo-css-var-input[data-kexo-css-var]');
       Array.prototype.forEach.call(inputs, function (el) {
         var name = el && el.getAttribute ? String(el.getAttribute('data-kexo-css-var') || '').trim() : '';
         if (!name || !/^--[a-zA-Z0-9._-]+$/.test(name)) return;
-        var val = normalizeCssVarOverrideValue(el.value);
+        var val = OPAQUE_BG_VARS[name] ? normalizeOpaqueCssVarOverrideValue(el.value) : normalizeCssVarOverrideValue(el.value);
         if (!val) return;
         vars[name] = val;
       });
