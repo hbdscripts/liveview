@@ -19,6 +19,8 @@ live_visitors.sqlite
 .cursor/**
 !.cursor/rules/
 !.cursor/rules/00-kexo-agent-rules.mdc
+!.cursor/rules/01-kexo-deploy.mdc
+!.cursor/rules/02-assets-never-delete-images.mdc
 !.cursor/rules/tables-use-builder.mdc
 kexo-todos.txt
 *.psd

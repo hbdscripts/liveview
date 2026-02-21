@@ -1,0 +1,13 @@
+---
+description: Prevent accidental deletion of asset images
+alwaysApply: true
+---
+
+# Assets safety: never delete images
+
+- **Never delete or “clean up” files under `assets/`**, especially image files (`.png`, `.jpg`, `.jpeg`, `.webp`, `.gif`, `.svg`, `.ico`, `.avif`).
+- Treat **untracked images in `assets/` as intentional** (the user may be waiting to stage/commit them).
+- Do **not** use destructive cleanup commands that could remove assets (e.g. `git clean`, bulk deletes, or “remove unknown files”) without an explicit user instruction.
+- If something in `assets/` looks wrong or accidental:
+  - **Do not delete it.**
+  - Call it out and ask the user what they want done (keep / stage / move / delete).

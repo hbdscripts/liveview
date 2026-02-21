@@ -11,7 +11,7 @@ Read this file before making changes. If you change **core paths** (routes, auth
 - **Before you start**: `git status --short` (must be clean or understood), then `git fetch origin`, then skim this file.
 - **Branch-by-default**: work on a topic branch; **deploy by default** at the end of the task (land on `main`, push) unless the user explicitly says **don’t deploy**.
 - **No clobbering**: never use `git restore .` / `git checkout -- .` / `git reset --hard` as a “cleanup” step unless you are 100% sure you’re discarding **only your own** work.
-- **If the repo changes under you** (new commits, files changing unexpectedly): stop, inspect, and prefer `git stash -u` to preserve work while you re-sync.
+- **If the repo changes under you** (new commits, files changing unexpectedly): stop, inspect `git status` and `git diff`, then stage/commit only the files you changed; leave others’ edits visible and unstaged. Do not use `git stash`.
 
 ### Active work (optional but recommended)
 
@@ -71,6 +71,19 @@ Templates under `server/public/**`; served via `sendPage()` in `server/index.js`
 - **KPIs / dashboard:** `GET /api/kpis`, `/api/kpis-expanded-extra`, `/api/kexo-score`, `/api/dashboard-series`, `/api/business-snapshot`; `server/store.js`, `server/routes/dashboardSeries.js`, `server/businessSnapshotService.js`
 - **Settings:** `GET/POST /api/settings`; `GET/PUT /api/chart-settings/:chartKey` (per-chart settings; stored in same `charts_ui_config_v1` blob). Auth: protected by `dashboardAuth` (same as `/api/settings`); writes are **not** `requireMaster`-gated today. UI: `server/public/settings.html`, `settings-page.js`; chart cog opens unified modal from `client/app/18-chart-settings-builder.js`.
 - **Frontend bundle:** `server/public/app.js` is **generated** from `client/app/*.js` via `scripts/build-app-js.js` and `client/app/manifest.txt`. After any `client/app/**` edit, run `npm run build:app`.
+
+### Where to find (by area)
+
+| Area | Primary files |
+|------|----------------|
+| Ingest | `server/routes/ingest.js`, `server/store.js` |
+| Auth | `server/middleware/dashboardAuth.js`, `server/routes/login.js`, `oauthLogin.js`, `auth.js`, `localAuth.js` |
+| KPIs / dashboard | `server/routes/kpis.js`, `server/routes/dashboardSeries.js`, `server/store.js`, `server/businessSnapshotService.js` |
+| Settings (API + UI) | `server/routes/settings.js`, `server/public/settings.html`, `server/public/settings-page.js`; chart modal: `client/app/18-chart-settings-builder.js` |
+| Frontend bundle | Source: `client/app/manifest.txt` + `client/app/*.js` → build → `server/public/app.js` |
+| Tables (grid/native) | `server/public/kexo-table-defs.js`, `server/public/kexo-table-builder.js`; rule: `.cursor/rules/tables-use-builder.mdc` |
+
+Full route → handler list: **docs/ROUTES.md**.
 
 ---
 

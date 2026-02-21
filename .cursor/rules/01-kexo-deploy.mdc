@@ -1,0 +1,20 @@
+---
+description: Deployment guidance (don’t stop at commit)
+alwaysApply: true
+---
+
+# Deployment (Kexo)
+
+- **Always deploy** once the task is complete (commit, land on `main`, push) unless the user explicitly says **don’t deploy**.
+- **Backend deploy (Railway)**: Railway auto-deploys from git. **Push to `main` is sufficient**. Do **not** run `railway up` manually.
+- **Frontend bundle**: if you changed `client/app/**`, run `npm run build:app` (never edit `server/public/app.js` directly).
+- **Shopify app/pixel deploy**: only when explicitly requested; use `npm run deploy` (or Actions → “Deploy to Shopify” workflow dispatch).
+- **After every push**, run and paste push proof:
+
+```
+git rev-parse HEAD
+git branch --show-current
+git ls-remote --heads origin $(git branch --show-current)
+```
+
+Remote ref must match HEAD.

@@ -36,3 +36,4 @@ When multiple agents (or humans) may touch the repo at the same time, follow thi
 - **Handover discipline**:
   - If you touched core paths (routes/auth/dashboard UX/ingest/schema/deploy), update `HANDOVER.md` in the same commit.
   - When pausing, leave a short note in `HANDOVER.md` describing the branch, what changed, and next steps.
+  - For route→file mapping and “where is X?”, see **HANDOVER.md** and **docs/ROUTES.md** before searching the codebase. When adding a new API or page route, run `npm run docs:routes` to update docs/ROUTES.md.

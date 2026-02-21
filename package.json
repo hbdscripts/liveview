@@ -16,7 +16,8 @@
     "config:link:interactive": "shopify app config link",
     "shopify:info": "shopify app info",
     "build:app": "node scripts/build-app-js.js",
-    "ui:check": "node scripts/ui-enforce.js"
+    "ui:check": "node scripts/ui-enforce.js",
+    "docs:routes": "node scripts/generate-routes-doc.js"
   },
   "engines": {
     "node": ">=18.0.0"
