@@ -5263,7 +5263,7 @@ body[data-page="dashboard"] .kexo-overview-widget-card .kexo-widget-head-right {
   width: 100%;
     min-height: 3.5rem;
     padding-top: 6px;
-    background: color-mix(in srgb, black calc(var(--kexo-strip-opacity-filter, 0) * 100%), var(--kexo-header-top-bg, #fff));
+    background: var(--kexo-header-top-bg, #fff);
   color: var(--kexo-header-top-text-color, #1f2937);
 }
 .kexo-desktop-top-strip-container {
@@ -5348,10 +5348,17 @@ img[data-kexo-logo-slot="footer"][data-kexo-logo-ready="1"] {
   margin: 0 5px 0 0;
   color: var(--kexo-header-settings-text-color, var(--kexo-header-top-text-color, #1f2937)) !important;
 }
+
+/* Top-strip triggers (Online / Settings): always transparent, no borders, no hover fill. */
+.kexo-top-strip-settings-toggle,
+.kexo-top-strip-online {
+  background: transparent !important;
+  border-color: transparent !important;
+}
 .kexo-top-strip-settings-toggle:hover,
 .kexo-top-strip-settings-toggle:focus {
   color: var(--kexo-header-settings-text-color, var(--kexo-header-top-text-color, #1f2937)) !important;
-  background: var(--kexo-menu-hover-bg, rgba(0, 0, 0, 0.06)) !important;
+  background: transparent !important;
 }
 .kexo-top-strip-settings-toggle .kexo-settings-label {
   display: var(--kexo-header-settings-label-display, inline);
@@ -5405,7 +5412,7 @@ img[data-kexo-logo-slot="footer"][data-kexo-logo-ready="1"] {
 .kexo-top-strip-online:hover,
 .kexo-top-strip-online:focus {
   text-decoration: none !important;
-  background: var(--kexo-menu-hover-bg, rgba(0, 0, 0, 0.06));
+  background: transparent !important;
 }
 .kexo-top-strip-online:focus-visible {
   outline: 2px solid rgba(255,255,255,0.38);
@@ -5463,7 +5470,7 @@ img[data-kexo-logo-slot="footer"][data-kexo-logo-ready="1"] {
 }
 
 .kexo-desktop-nav {
-  background: color-mix(in srgb, black calc(var(--kexo-menu-opacity-filter, 0) * 100%), var(--kexo-top-menu-bg, var(--kexo-header-main-bg, #fff))) !important;
+  background: var(--kexo-top-menu-bg, var(--kexo-header-main-bg, #fff)) !important;
   min-height: 2.5rem;
   width: 100%;
   padding: 0;
@@ -5663,8 +5670,8 @@ img[data-kexo-logo-slot="footer"][data-kexo-logo-ready="1"] {
 }
 /* Closed only: dark color-mix (never applies when .show) */
 .kexo-desktop-nav-list .nav-item.dropdown:not(.show) .dropdown-menu {
-  --tblr-dropdown-bg: color-mix(in srgb, black calc(var(--kexo-menu-opacity-filter, 0) * 100%), var(--kexo-top-menu-bg, var(--kexo-header-main-bg, #fff)));
-  background: color-mix(in srgb, black calc(var(--kexo-menu-opacity-filter, 0) * 100%), var(--kexo-top-menu-bg, var(--kexo-header-main-bg, #fff))) !important;
+  --tblr-dropdown-bg: var(--kexo-top-menu-bg, var(--kexo-header-main-bg, #fff));
+  background: var(--kexo-top-menu-bg, var(--kexo-header-main-bg, #fff)) !important;
   color: var(--kexo-top-menu-dropdown-link-color, var(--tblr-body-color, #1f2937)) !important;
 }
 /* When open: tab + dropdown same bright accent (kexo icon logic per nth-child) */
@@ -5675,8 +5682,8 @@ img[data-kexo-logo-slot="footer"][data-kexo-logo-ready="1"] {
   color: #fff !important;
 }
 .kexo-desktop-nav-settings .nav-item.dropdown .dropdown-menu {
-  --tblr-dropdown-bg: color-mix(in srgb, black calc(var(--kexo-menu-opacity-filter, 0) * 100%), var(--kexo-top-menu-bg, var(--kexo-header-main-bg, #fff)));
-  background: color-mix(in srgb, black calc(var(--kexo-menu-opacity-filter, 0) * 100%), var(--kexo-top-menu-bg, var(--kexo-header-main-bg, #fff))) !important;
+  --tblr-dropdown-bg: var(--kexo-top-menu-bg, var(--kexo-header-main-bg, #fff));
+  background: var(--kexo-top-menu-bg, var(--kexo-header-main-bg, #fff)) !important;
   color: var(--kexo-top-menu-dropdown-link-color, var(--tblr-body-color, #1f2937)) !important;
 }
 .kexo-desktop-nav-list .dropdown-item,
@@ -5850,6 +5857,21 @@ body[data-page="snapshot"] #kexo-date-display {
   font-weight: 500;
   text-transform: capitalize;
   line-height: 20px;
+}
+
+/* Snapshot page header accent colour (replaces inline CSS var). */
+body[data-page="snapshot"] .kexo-page-header-accent-snapshot {
+  --kexo-page-header-accent: rgb(75, 148, 228);
+}
+
+/* Snapshot date inputs (replaces inline max-width). */
+body[data-page="snapshot"] .snapshot-date-input {
+  max-width: 8rem;
+}
+
+/* Small icon size helper (replaces inline font-size). */
+.kexo-icon-085 {
+  font-size: 0.85em;
 }
 
 /* Desktop page header layout (when JS enables it):

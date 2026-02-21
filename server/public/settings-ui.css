@@ -1,0 +1,49 @@
+/* Settings/Admin UI contract helpers (Tabler-first).
+   This file is Settings-only and is included only on /settings. */
+
+/* Panel wrapper: joins to nav-tabs/accordion above (no top border). */
+.settings-panel-wrap {
+  border-left: 1px solid var(--tblr-border-color, #e6e7e9);
+  border-right: 1px solid var(--tblr-border-color, #e6e7e9);
+  border-bottom: 1px solid var(--tblr-border-color, #e6e7e9);
+  border-top: 0;
+  border-radius: 0 0 var(--tblr-border-radius, .75rem) var(--tblr-border-radius, .75rem);
+  padding: 1rem;
+  margin-top: -1px; /* visually joins the tab bottom border */
+  background: var(--tblr-bg-surface, #fff);
+}
+
+/* Moved header controls container when stripping the first card header. */
+.settings-card-controls {
+  justify-content: flex-end;
+}
+
+/* Direct headings inside a panel wrapper. */
+.settings-panel-heading {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+/* Read-only fields should not look editable. */
+.settings-readonly-plaintext {
+  cursor: default;
+}
+.settings-readonly-hint {
+  margin-top: .25rem;
+}
+
+/* Remove grid-layout drift: charts color “grid” becomes a simple vertical stack. */
+body[data-page="settings"] .settings-charts-color-grid {
+  display: flex;
+  flex-direction: column;
+  gap: .75rem;
+}
+
+/* Shared max-width helpers used by Settings renderers (avoid inline styles). */
+.settings-ui-maxw-560 { max-width: 560px; }
+.settings-ui-maxw-360 { max-width: 360px; width: 100%; }
+.settings-ui-maxw-280 { max-width: 280px; width: 100%; }
+.settings-ui-maxw-260 { max-width: 260px; width: 100%; }
+.settings-ui-w-5rem { width: 5rem; }
+.settings-ui-cursor-pointer { cursor: pointer; }
+

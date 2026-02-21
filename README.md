@@ -123,8 +123,16 @@ All colors are defined as CSS variables in `server/public/app.css` at the `:root
 | `npm run config:link` | Run Shopify CLI: link this project to your app using `SHOPIFY_API_KEY` from `.env` (non-interactive). |
 | `npm run deploy` | Run Shopify CLI: deploy app and Web Pixel extension with `--allow-updates` (non-interactive). |
 | `npm run shopify:info` | Run Shopify CLI: show app and extension info. |
+| `npm run ui:check` | UI guardrails (no inline styles + Settings/Admin UI contract lint). |
 
 The project runs **Shopify CLI directly** from scripts (like theme check in another project). Set `SHOPIFY_API_KEY` in `.env`, run `shopify auth login` once, then `npm run config:link` and `npm run deploy` from this repo.
+
+## Settings/Admin UI contract
+
+Settings/Admin UI must follow the contract in `docs/UI_SETTINGS_CONTRACT.md`.
+
+- Runtime guardrails: `server/public/ui/settings-normaliser.js` + `server/public/settings-ui.css`
+- Checks: `npm run ui:check` and `npm test`
 
 ## UI modal overlay standard
 

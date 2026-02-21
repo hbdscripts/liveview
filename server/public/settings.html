@@ -13,6 +13,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.4.0/dist/css/tabler-flags.min.css" />
   <link rel="stylesheet" href="/tabler-theme.css" />
   <link rel="stylesheet" href="/custom.css" />
+  <link rel="stylesheet" href="/settings-ui.css" />
   <link rel="stylesheet" href="/diagnostics-modal.css" />
   <title>Kexo · Settings</title>
 </head>
@@ -67,7 +68,7 @@
             <a href="/settings?tab=cost-expenses&costExpensesTab=cost-sources" class="list-group-item list-group-item-action settings-nav-child" data-settings-tab="cost-expenses" data-settings-cost-expenses-tab="cost-sources" role="tab" aria-controls="settings-panel-cost-expenses">Cost sources</a>
             <a href="/settings?tab=cost-expenses&costExpensesTab=shipping" class="list-group-item list-group-item-action settings-nav-child" data-settings-tab="cost-expenses" data-settings-cost-expenses-tab="shipping" role="tab" aria-controls="settings-panel-cost-expenses">Shipping costs</a>
             <a href="/settings?tab=cost-expenses&costExpensesTab=rules" class="list-group-item list-group-item-action settings-nav-child" data-settings-tab="cost-expenses" data-settings-cost-expenses-tab="rules" role="tab" aria-controls="settings-panel-cost-expenses">Rules &amp; adjustments</a>
-            <a href="/settings?tab=cost-expenses&costExpensesTab=breakdown" class="list-group-item list-group-item-action settings-nav-child" data-settings-tab="cost-expenses" data-settings-cost-expenses-tab="breakdown" role="tab" aria-controls="settings-panel-cost-expenses">Cost breakdown</a>
+            <a href="/settings?tab=cost-expenses&costExpensesTab=breakdown" class="list-group-item list-group-item-action settings-nav-child" data-settings-tab="cost-expenses" data-settings-cost-expenses-tab="breakdown" role="tab" aria-controls="settings-panel-cost-expenses">Cost Breakdown</a>
           </div>
         </div>
         <!-- KEXO_COST_EXPENSES_NAV_END -->
@@ -122,7 +123,7 @@
                 <div class="card-body">
                   <div class="mb-3">
                     <label class="form-label" for="settings-general-app-url" title="Read-only app base URL from environment.">App URL <span class="badge bg-secondary-lt ms-1">Read-only</span> <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>
-                    <input type="text" class="form-control kexo-readonly-field" id="settings-general-app-url" value="—" readonly aria-readonly="true" />
+                    <input type="text" class="form-control kexo-readonly-field" id="settings-general-app-url" value="Loading…" readonly aria-readonly="true" />
                   </div>
                   <div class="mb-3">
                     <label class="form-label" for="settings-general-timezone" title="Timezone used for date boundaries (Today/Yesterday/7d) and time formatting in the dashboard. Use an IANA name like Europe/London.">Admin timezone <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>
@@ -135,23 +136,23 @@
                   </div>
                   <div class="mb-3">
                     <label class="form-label" for="settings-general-shop-domain" title="Read-only store domain from environment.">Store domain <span class="badge bg-secondary-lt ms-1">Read-only</span> <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>
-                    <input type="text" class="form-control kexo-readonly-field" id="settings-general-shop-domain" value="—" readonly aria-readonly="true" />
+                    <input type="text" class="form-control kexo-readonly-field" id="settings-general-shop-domain" value="Loading…" readonly aria-readonly="true" />
                   </div>
                   <div class="mb-3">
                     <label class="form-label" for="settings-general-display-domain" title="Read-only display domain from environment.">Display domain <span class="badge bg-secondary-lt ms-1">Read-only</span> <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>
-                    <input type="text" class="form-control kexo-readonly-field" id="settings-general-display-domain" value="—" readonly aria-readonly="true" />
+                    <input type="text" class="form-control kexo-readonly-field" id="settings-general-display-domain" value="Loading…" readonly aria-readonly="true" />
                   </div>
                   <div class="mb-3">
                     <label class="form-label" for="settings-general-store-main" title="Read-only store main URL from environment.">Store main URL <span class="badge bg-secondary-lt ms-1">Read-only</span> <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>
-                    <input type="text" class="form-control kexo-readonly-field" id="settings-general-store-main" value="—" readonly aria-readonly="true" />
+                    <input type="text" class="form-control kexo-readonly-field" id="settings-general-store-main" value="Loading…" readonly aria-readonly="true" />
                   </div>
                   <div class="mb-3">
                     <label class="form-label" for="settings-general-ingest-url" title="Read-only ingest endpoint URL from environment.">Ingest URL <span class="badge bg-secondary-lt ms-1">Read-only</span> <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>
-                    <input type="text" class="form-control kexo-readonly-field" id="settings-general-ingest-url" value="—" readonly aria-readonly="true" />
+                    <input type="text" class="form-control kexo-readonly-field" id="settings-general-ingest-url" value="Loading…" readonly aria-readonly="true" />
                   </div>
                   <div class="mb-3">
                     <label class="form-label" for="settings-general-traffic-mode" title="Read-only acquisition mode and DB from environment.">Acquisition mode / DB <span class="badge bg-secondary-lt ms-1">Read-only</span> <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>
-                    <input type="text" class="form-control kexo-readonly-field" id="settings-general-traffic-mode" value="—" readonly aria-readonly="true" />
+                    <input type="text" class="form-control kexo-readonly-field" id="settings-general-traffic-mode" value="Loading…" readonly aria-readonly="true" />
                   </div>
                   <div class="form-hint mb-3" id="settings-general-env-readonly-hint">These values are read-only and come from environment variables.</div>
                   <div class="mb-3">
@@ -283,10 +284,10 @@
                   <div class="card card-sm">
                     <div class="card-header"><h4 class="card-title">Shopify Auth</h4></div>
                     <div class="card-body">
-                      <div class="mb-2"><strong>Shop</strong> <span id="settings-int-shopify-shop" class="text-muted">—</span></div>
-                      <div class="mb-2"><strong>Token</strong> <span id="settings-int-shopify-token" class="text-muted">—</span></div>
-                      <div class="mb-2"><strong>Stored scopes</strong> <span id="settings-int-shopify-scopes" class="text-muted">—</span></div>
-                      <div class="mb-0"><strong>Missing scopes</strong> <span id="settings-int-shopify-missing-scopes" class="text-muted">—</span></div>
+                      <div class="mb-2"><strong>Shop</strong> <span id="settings-int-shopify-shop" class="text-muted">Loading…</span></div>
+                      <div class="mb-2"><strong>Token</strong> <span id="settings-int-shopify-token" class="text-muted">Loading…</span></div>
+                      <div class="mb-2"><strong>Stored scopes</strong> <span id="settings-int-shopify-scopes" class="text-muted">Loading…</span></div>
+                      <div class="mb-0"><strong>Missing scopes</strong> <span id="settings-int-shopify-missing-scopes" class="text-muted">Loading…</span></div>
                     </div>
                   </div>
                 </div>
@@ -294,9 +295,9 @@
                   <div class="card card-sm">
                     <div class="card-header"><h4 class="card-title">Truth Sync</h4></div>
                     <div class="card-body">
-                      <div class="mb-2"><strong>Sync age</strong> <span id="settings-int-shopify-sync-age" class="text-muted">—</span></div>
-                      <div class="mb-2"><strong>Last sync</strong> <span id="settings-int-shopify-last-sync" class="text-muted">—</span></div>
-                      <div class="mb-0"><strong>Last error</strong> <span id="settings-int-shopify-last-error" class="text-muted">—</span></div>
+                      <div class="mb-2"><strong>Sync age</strong> <span id="settings-int-shopify-sync-age" class="text-muted">Loading…</span></div>
+                      <div class="mb-2"><strong>Last sync</strong> <span id="settings-int-shopify-last-sync" class="text-muted">Loading…</span></div>
+                      <div class="mb-0"><strong>Last error</strong> <span id="settings-int-shopify-last-error" class="text-muted">Loading…</span></div>
                     </div>
                   </div>
                 </div>
@@ -304,11 +305,11 @@
                   <div class="card card-sm">
                     <div class="card-header"><h4 class="card-title">Pixel</h4></div>
                     <div class="card-body">
-                      <div class="mb-2"><strong>Installed</strong> <span id="settings-int-pixel-installed" class="text-muted">—</span></div>
-                      <div class="mb-2"><strong>Pixel ingestUrl</strong> <span id="settings-int-pixel-ingest" class="text-muted">—</span></div>
-                      <div class="mb-2"><strong>Expected ingestUrl</strong> <span id="settings-int-expected-ingest" class="text-muted">—</span></div>
-                      <div class="mb-2"><strong>Ingest URL match</strong> <span id="settings-int-pixel-match" class="text-muted">—</span></div>
-                      <div class="mb-0"><strong>Session mode</strong> <span id="settings-int-session-mode" class="text-muted">—</span></div>
+                      <div class="mb-2"><strong>Installed</strong> <span id="settings-int-pixel-installed" class="text-muted">Loading…</span></div>
+                      <div class="mb-2"><strong>Pixel ingestUrl</strong> <span id="settings-int-pixel-ingest" class="text-muted">Loading…</span></div>
+                      <div class="mb-2"><strong>Expected ingestUrl</strong> <span id="settings-int-expected-ingest" class="text-muted">Loading…</span></div>
+                      <div class="mb-2"><strong>Ingest URL match</strong> <span id="settings-int-pixel-match" class="text-muted">Loading…</span></div>
+                      <div class="mb-0"><strong>Session mode</strong> <span id="settings-int-session-mode" class="text-muted">Loading…</span></div>
                       <div class="text-muted small mt-2 kexo-admin-only d-none">Change under <a href="/settings?tab=admin&adminTab=controls">Admin → Controls → Data &amp; Reporting</a>.</div>
                     </div>
                   </div>
@@ -328,18 +329,18 @@
               <div class="card card-sm mb-3" id="settings-ga-connection-card">
                 <div class="card-header d-flex align-items-center">
                   <h4 class="card-title mb-0">Connection</h4>
-                  <span class="ms-auto" id="settings-ga-connection-status">—</span>
+                  <span class="ms-auto text-muted" id="settings-ga-connection-status">Loading…</span>
                 </div>
                 <div class="card-body">
                   <div class="row g-3">
                     <div class="col-12 col-lg-6">
-                      <div class="mb-2"><strong>Customer ID</strong> <span id="settings-ga-customer-id" class="text-muted">—</span></div>
-                      <div class="mb-2"><strong>Login Customer ID (MCC)</strong> <span id="settings-ga-login-customer-id" class="text-muted">—</span></div>
-                      <div class="mb-2"><strong>Conversion customer ID</strong> <span id="settings-ga-conversion-customer-id" class="text-muted">—</span></div>
+                      <div class="mb-2"><strong>Customer ID</strong> <span id="settings-ga-customer-id" class="text-muted">Loading…</span></div>
+                      <div class="mb-2"><strong>Login Customer ID (MCC)</strong> <span id="settings-ga-login-customer-id" class="text-muted">Loading…</span></div>
+                      <div class="mb-2"><strong>Conversion customer ID</strong> <span id="settings-ga-conversion-customer-id" class="text-muted">Loading…</span></div>
                       <div class="d-flex align-items-center gap-2 flex-wrap mb-2">
                         <strong>Tokens</strong>
-                        <span id="settings-ga-devtoken-badge">—</span>
-                        <span id="settings-ga-refreshtoken-badge">—</span>
+                        <span id="settings-ga-devtoken-badge" class="text-muted">Loading…</span>
+                        <span id="settings-ga-refreshtoken-badge" class="text-muted">Loading…</span>
                       </div>
                       <div class="text-muted small">
                         Conversion uploads are sent to the customer that owns the conversion action (Conversion customer ID if set, otherwise Customer ID).
@@ -464,7 +465,7 @@
                   <div class="text-muted small mb-2">Value sent for each Add to Cart conversion (usually 1).</div>
                   <div class="row g-2 align-items-center">
                     <div class="col-auto">
-                      <input type="number" class="form-control form-control-sm" id="settings-ga-addtocart-value" min="0" step="0.01" value="1" style="width:5rem;" />
+                      <input type="number" class="form-control form-control-sm settings-ui-w-5rem" id="settings-ga-addtocart-value" min="0" step="0.01" value="1" />
                     </div>
                   </div>
                   <div class="d-flex align-items-center gap-2 flex-wrap mt-3">
@@ -510,41 +511,42 @@
                   <div class="row g-2">
                     <div class="col-6 col-lg-3">
                       <div class="text-muted small">Last run</div>
-                      <div class="fw-semibold" id="settings-ga-pb-last-run">—</div>
+                      <div class="fw-semibold text-muted" id="settings-ga-pb-last-run">Loading…</div>
                     </div>
                     <div class="col-6 col-lg-3">
                       <div class="text-muted small">Jobs queued</div>
-                      <div class="fw-semibold" id="settings-ga-pb-queued">—</div>
+                      <div class="fw-semibold text-muted" id="settings-ga-pb-queued">Loading…</div>
                     </div>
                     <div class="col-6 col-lg-3">
                       <div class="text-muted small">Success rate (24h)</div>
-                      <div class="fw-semibold" id="settings-ga-pb-sr-24h">—</div>
+                      <div class="fw-semibold text-muted" id="settings-ga-pb-sr-24h">Loading…</div>
                     </div>
                     <div class="col-6 col-lg-3">
                       <div class="text-muted small">Success rate (7d)</div>
-                      <div class="fw-semibold" id="settings-ga-pb-sr-7d">—</div>
+                      <div class="fw-semibold text-muted" id="settings-ga-pb-sr-7d">Loading…</div>
                     </div>
                     <div class="col-6 col-lg-3">
                       <div class="text-muted small">Failures (7d)</div>
-                      <div class="fw-semibold" id="settings-ga-pb-failures-7d">—</div>
+                      <div class="fw-semibold text-muted" id="settings-ga-pb-failures-7d">Loading…</div>
                     </div>
                     <div class="col-6 col-lg-3">
                       <div class="text-muted small">Coverage (7d)</div>
-                      <div class="fw-semibold" id="settings-ga-pb-coverage-7d">—</div>
+                      <div class="fw-semibold text-muted" id="settings-ga-pb-coverage-7d">Loading…</div>
                     </div>
                     <div class="col-6 col-lg-3">
                       <div class="text-muted small">Missing click ID</div>
-                      <div class="fw-semibold" id="settings-ga-pb-missing-clickid">—</div>
+                      <div class="fw-semibold text-muted" id="settings-ga-pb-missing-clickid">Loading…</div>
                     </div>
                     <div class="col-6 col-lg-3">
                       <div class="text-muted small">Rejected uploads</div>
-                      <div class="fw-semibold" id="settings-ga-pb-rejected">—</div>
+                      <div class="fw-semibold text-muted" id="settings-ga-pb-rejected">Loading…</div>
                     </div>
                   </div>
+                  <div class="d-flex align-items-center gap-2 flex-wrap mt-2" id="settings-ga-pb-status"></div>
                   <div class="kexo-admin-only d-none mt-3">
                     <details>
-                      <summary class="text-muted small" style="cursor:pointer;">Technical details</summary>
-                      <pre class="dm-json-pre small mt-2 mb-0" id="settings-ga-pb-tech">—</pre>
+                      <summary class="text-muted small settings-ui-cursor-pointer">Technical details</summary>
+                      <pre class="dm-json-pre small mt-2 mb-0 text-muted" id="settings-ga-pb-tech">Loading…</pre>
                     </details>
                   </div>
                 </div>
@@ -780,10 +782,10 @@
               </div>
               <div class="mt-3 d-flex align-items-center gap-2 flex-wrap">
                 <button type="button" class="btn btn-primary" id="settings-layout-tables-save-btn">Save</button>
-                <button type="button" class="btn btn-outline-secondary" id="settings-layout-tables-reset-btn">Reset to defaults</button>
+                <button type="button" class="btn btn-outline-secondary" id="settings-layout-tables-reset-btn">Reset tables to defaults</button>
                 <span id="settings-layout-tables-msg" class="form-hint"></span>
               </div>
-              <div class="text-muted small mt-2">Save applies to both table layout and the “Show charts on mobile” toggle. Reset to defaults only resets table layout.</div>
+              <div class="text-muted small mt-2">Save applies to both table layout and the “Show charts on mobile” toggle. Reset only resets table layout.</div>
             </div>
                   </div>
                 </div>
@@ -947,7 +949,7 @@
                 <button class="nav-link" type="button" role="tab" id="settings-cost-expenses-tab-rules" data-settings-cost-expenses-tab="rules" aria-selected="false" aria-controls="settings-cost-expenses-panel-rules">Rules &amp; adjustments</button>
               </li>
               <li class="nav-item" role="presentation">
-                <button class="nav-link" type="button" role="tab" id="settings-cost-expenses-tab-breakdown" data-settings-cost-expenses-tab="breakdown" aria-selected="false" aria-controls="settings-cost-expenses-panel-breakdown">Cost breakdown</button>
+                <button class="nav-link" type="button" role="tab" id="settings-cost-expenses-tab-breakdown" data-settings-cost-expenses-tab="breakdown" aria-selected="false" aria-controls="settings-cost-expenses-panel-breakdown">Cost Breakdown</button>
               </li>
             </ul>
             <div id="settings-cost-expenses-panel-cost-sources" class="settings-cost-expenses-panel active" role="tabpanel" aria-labelledby="settings-cost-expenses-tab-cost-sources">
@@ -1088,8 +1090,8 @@
             </div>
             <div id="settings-cost-expenses-panel-breakdown" class="settings-cost-expenses-panel" role="tabpanel" aria-labelledby="settings-cost-expenses-tab-breakdown">
               <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
-                <h4 class="m-0">Cost breakdown</h4>
-                <div class="btn-group" role="group" aria-label="Cost breakdown date range" id="cost-breakdown-range-group">
+                <h4 class="m-0">Cost Breakdown</h4>
+                <div class="btn-group" role="group" aria-label="Cost Breakdown date range" id="cost-breakdown-range-group">
                   <button type="button" class="btn btn-sm btn-outline-primary" data-cost-breakdown-range="today">Today</button>
                   <button type="button" class="btn btn-sm btn-outline-primary" data-cost-breakdown-range="yesterday">Yesterday</button>
                   <button type="button" class="btn btn-sm btn-outline-primary" data-cost-breakdown-range="7d">7 Days</button>
@@ -1118,11 +1120,11 @@
                   <div class="row g-2">
                     <div class="col-12 col-md-6">
                       <div class="text-muted small">Total Active Costs</div>
-                      <div class="h3 m-0" id="cost-breakdown-total-active">—</div>
+                      <div class="h3 m-0 text-muted" id="cost-breakdown-total-active">Loading…</div>
                     </div>
                     <div class="col-12 col-md-6">
                       <div class="text-muted small">Total Inactive Costs</div>
-                      <div class="h3 m-0" id="cost-breakdown-total-inactive">—</div>
+                      <div class="h3 m-0 text-muted" id="cost-breakdown-total-inactive">Loading…</div>
                     </div>
                   </div>
                 </div>
@@ -1448,6 +1450,8 @@
   <script src="/cost-expenses-settings.js"></script>
   <script src="/cost-breakdown-settings.js"></script>
   <!-- KEXO_COST_EXPENSES_SCRIPT_END -->
+  <script src="/ui/settings-normaliser.js"></script>
+  <script src="/ui/settings-ui.js"></script>
   <script src="/settings-page.js"></script>
   <!-- KEXO_ADMIN_SCRIPT_START -->
   <script src="/admin-page.js"></script>

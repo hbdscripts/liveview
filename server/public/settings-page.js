@@ -264,6 +264,22 @@
     } catch (_) {}
   }
 
+  // ── Settings/Admin UI normaliser (runtime guardrails) ─────────────────────
+
+  var _settingsUiNormaliser = (typeof window !== 'undefined' && window.KexoSettingsUiNormaliser) ? window.KexoSettingsUiNormaliser : null;
+
+  function normaliseSettingsPanel(panelEl) {
+    try { if (_settingsUiNormaliser && _settingsUiNormaliser.normaliseSettingsPanel) _settingsUiNormaliser.normaliseSettingsPanel(panelEl); } catch (_) {}
+  }
+
+  function normaliseAllSettingsPanels(rootEl) {
+    try { if (_settingsUiNormaliser && _settingsUiNormaliser.normaliseAllSettingsPanels) _settingsUiNormaliser.normaliseAllSettingsPanels(rootEl); } catch (_) {}
+  }
+
+  function wireSettingsUiMutationObserver() {
+    try { if (_settingsUiNormaliser && _settingsUiNormaliser.wireSettingsUiMutationObserver) _settingsUiNormaliser.wireSettingsUiMutationObserver(); } catch (_) {}
+  }
+
   function isEffectiveAdminViewer(viewer) {
     try { return !!(viewer && (viewer.isAdmin === true || viewer.isMaster === true)); } catch (_) { return false; }
   }
@@ -1345,6 +1361,10 @@
       initialKey: initialIntegrationsSubTab || 'shopify',
       onActivate: function (key) {
         activeIntegrationsSubTab = key;
+        try {
+          var p = document.getElementById('settings-integrations-panel-' + String(key || '').trim().toLowerCase());
+          if (p) normaliseSettingsPanel(p);
+        } catch (_) {}
         if (getActiveSettingsTab() === 'integrations') {
           updateUrl('integrations');
           syncLeftNavActiveClasses('integrations');
@@ -1602,30 +1622,83 @@
     }
 
     function loadPostbackHealth() {
+      var lastRunEl = document.getElementById('settings-ga-pb-last-run');
+      var queuedEl = document.getElementById('settings-ga-pb-queued');
+      var sr24El = document.getElementById('settings-ga-pb-sr-24h');
+      var sr7El = document.getElementById('settings-ga-pb-sr-7d');
+      var fail7El = document.getElementById('settings-ga-pb-failures-7d');
+      var cov7El = document.getElementById('settings-ga-pb-coverage-7d');
+      var missEl = document.getElementById('settings-ga-pb-missing-clickid');
+      var rejEl = document.getElementById('settings-ga-pb-rejected');
+      var techEl = document.getElementById('settings-ga-pb-tech');
+      var statusEl = document.getElementById('settings-ga-pb-status');
+
+      function setStat(el, text, muted) {
+        if (!el) return;
+        el.textContent = text;
+        try {
+          if (muted) el.classList.add('text-muted');
+          else el.classList.remove('text-muted');
+        } catch (_) {}
+      }
+
+      function setStatus(kind, message) {
+        if (!statusEl) return;
+        statusEl.innerHTML = '';
+        if (kind === 'loading') {
+          var sp = document.createElement('span');
+          sp.className = 'spinner-border spinner-border-sm text-primary';
+          sp.setAttribute('role', 'status');
+          sp.setAttribute('aria-hidden', 'true');
+          var tx = document.createElement('span');
+          tx.className = 'text-muted small';
+          tx.textContent = message || 'Loading…';
+          statusEl.appendChild(sp);
+          statusEl.appendChild(tx);
+          return;
+        }
+        if (kind === 'error') {
+          var msg = document.createElement('span');
+          msg.className = 'text-danger small';
+          msg.textContent = message || 'Failed to load postback health.';
+          var btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'btn btn-sm btn-outline-secondary';
+          btn.textContent = 'Retry';
+          btn.addEventListener('click', function () { loadPostbackHealth(); });
+          statusEl.appendChild(msg);
+          statusEl.appendChild(btn);
+          return;
+        }
+      }
+
+      // Optimistic loading state (replaces dash placeholders).
+      setStatus('loading', 'Loading postback health…');
+      setStat(lastRunEl, 'Loading…', true);
+      setStat(queuedEl, 'Loading…', true);
+      setStat(sr24El, 'Loading…', true);
+      setStat(sr7El, 'Loading…', true);
+      setStat(fail7El, 'Loading…', true);
+      setStat(cov7El, 'Loading…', true);
+      setStat(missEl, 'Loading…', true);
+      setStat(rejEl, 'Loading…', true);
+      if (techEl) setStat(techEl, 'Loading…', true);
+
       var shop = getShopParam();
       var qs = shop ? ('?shop=' + encodeURIComponent(shop)) : '';
       return apiGet('/api/ads/google/goal-health' + qs)
         .then(function (r) {
-          var lastRunEl = document.getElementById('settings-ga-pb-last-run');
-          var queuedEl = document.getElementById('settings-ga-pb-queued');
-          var sr24El = document.getElementById('settings-ga-pb-sr-24h');
-          var sr7El = document.getElementById('settings-ga-pb-sr-7d');
-          var fail7El = document.getElementById('settings-ga-pb-failures-7d');
-          var cov7El = document.getElementById('settings-ga-pb-coverage-7d');
-          var missEl = document.getElementById('settings-ga-pb-missing-clickid');
-          var rejEl = document.getElementById('settings-ga-pb-rejected');
-          var techEl = document.getElementById('settings-ga-pb-tech');
-
           if (!r || !r.ok || !r.json || !r.json.ok) {
-            if (lastRunEl) lastRunEl.textContent = '—';
-            if (queuedEl) queuedEl.textContent = '—';
-            if (sr24El) sr24El.textContent = '—';
-            if (sr7El) sr7El.textContent = '—';
-            if (fail7El) fail7El.textContent = '—';
-            if (cov7El) cov7El.textContent = '—';
-            if (missEl) missEl.textContent = '—';
-            if (rejEl) rejEl.textContent = '—';
-            if (techEl) techEl.textContent = safeText(r && r.json ? r.json.error : null);
+            setStatus('error', (r && r.json && r.json.error) ? String(r.json.error) : 'Failed to load postback health.');
+            setStat(lastRunEl, 'Failed to load', true);
+            setStat(queuedEl, 'Failed to load', true);
+            setStat(sr24El, 'Failed to load', true);
+            setStat(sr7El, 'Failed to load', true);
+            setStat(fail7El, 'Failed to load', true);
+            setStat(cov7El, 'Failed to load', true);
+            setStat(missEl, 'Failed to load', true);
+            setStat(rejEl, 'Failed to load', true);
+            if (techEl) setStat(techEl, (r && r.json && r.json.error) ? String(r.json.error) : 'Failed to load', true);
             return false;
           }
 
@@ -1645,20 +1718,33 @@
           var pending24 = (Number(rev24.pending) || 0) + (Number(prof24.pending) || 0);
           var sr24 = computeSuccessRate({ success: success24, failure: failure24, pending: pending24 });
 
-          if (lastRunEl) lastRunEl.textContent = safeText(r.json.last_run_at ? fmtTs(r.json.last_run_at) : null);
-          if (queuedEl) queuedEl.textContent = safeText(r.json.jobs_queued != null ? fmtNum(r.json.jobs_queued) : null);
-          if (sr24El) sr24El.textContent = sr24 == null ? '—' : fmtPct(sr24);
-          if (sr7El) sr7El.textContent = sr7 == null ? '—' : fmtPct(sr7);
-          if (fail7El) fail7El.textContent = fmtNum(failure7);
-          if (cov7El) cov7El.textContent = (r.json.coverage_percent_7d == null) ? '—' : fmtPct(r.json.coverage_percent_7d);
-          if (missEl) missEl.textContent = safeText(r.json.reconciliation && r.json.reconciliation.missing_click_id_orders != null ? fmtNum(r.json.reconciliation.missing_click_id_orders) : null);
-          if (rejEl) rejEl.textContent = safeText(r.json.reconciliation && r.json.reconciliation.rejected_uploads != null ? fmtNum(r.json.reconciliation.rejected_uploads) : null);
+          if (statusEl) statusEl.innerHTML = '';
+          setStat(lastRunEl, r.json.last_run_at ? fmtTs(r.json.last_run_at) : 'Not run yet', false);
+          setStat(queuedEl, r.json.jobs_queued != null ? fmtNum(r.json.jobs_queued) : 'N/A', false);
+          setStat(sr24El, sr24 == null ? 'N/A' : fmtPct(sr24), false);
+          setStat(sr7El, sr7 == null ? 'N/A' : fmtPct(sr7), false);
+          setStat(fail7El, fmtNum(failure7), false);
+          setStat(cov7El, (r.json.coverage_percent_7d == null) ? 'N/A' : fmtPct(r.json.coverage_percent_7d), false);
+          setStat(missEl, (r.json.reconciliation && r.json.reconciliation.missing_click_id_orders != null) ? fmtNum(r.json.reconciliation.missing_click_id_orders) : 'N/A', false);
+          setStat(rejEl, (r.json.reconciliation && r.json.reconciliation.rejected_uploads != null) ? fmtNum(r.json.reconciliation.rejected_uploads) : 'N/A', false);
           if (techEl) {
-            try { techEl.textContent = JSON.stringify(r.json, null, 2); } catch (_) { techEl.textContent = '—'; }
+            try { setStat(techEl, JSON.stringify(r.json, null, 2), false); } catch (_) { setStat(techEl, 'N/A', true); }
           }
           return true;
         })
-        .catch(function () { return false; });
+        .catch(function (e) {
+          setStatus('error', e && e.message ? String(e.message) : 'Failed to load postback health.');
+          setStat(lastRunEl, 'Failed to load', true);
+          setStat(queuedEl, 'Failed to load', true);
+          setStat(sr24El, 'Failed to load', true);
+          setStat(sr7El, 'Failed to load', true);
+          setStat(fail7El, 'Failed to load', true);
+          setStat(cov7El, 'Failed to load', true);
+          setStat(missEl, 'Failed to load', true);
+          setStat(rejEl, 'Failed to load', true);
+          if (techEl) setStat(techEl, e && e.message ? String(e.message) : 'Failed to load', true);
+          return false;
+        });
     }
 
     function normalizeIssueType(t) {
@@ -1914,6 +2000,7 @@
   }
 
   function renderIntegrationsFromConfig(c) {
+    var NA = 'Not available';
     var shopify = c && c.shopify ? c.shopify : {};
     var health = c && c.sales && c.sales.truth && c.sales.truth.health ? c.sales.truth.health : {};
     var pixel = c && c.pixel ? c.pixel : {};
@@ -1930,34 +2017,36 @@
     var requiredList = requiredScopes ? requiredScopes.split(',').map(function (s) { return s.trim(); }).filter(Boolean) : [];
     var missing = requiredList.filter(function (s) { return storedList.indexOf(s) === -1; });
 
-    setText('settings-int-shopify-shop', shopify && shopify.shop ? shopify.shop : '\u2014');
-    setHtml('settings-int-shopify-token', shopify && shopify.hasToken ? badge('Stored', 'ok') : badge('Missing', 'bad'));
-    setText('settings-int-shopify-scopes', storedScopes || '\u2014');
-    setHtml('settings-int-shopify-missing-scopes', missing.length ? badge(missing.join(', '), 'bad') : badge('None', 'ok'));
+    setText('settings-int-shopify-shop', shopify && shopify.shop ? shopify.shop : NA);
+    setHtml('settings-int-shopify-token', (c && c.shopify) ? (shopify && shopify.hasToken ? badge('Stored', 'ok') : badge('Missing', 'bad')) : badge('Not available', 'warn'));
+    setText('settings-int-shopify-scopes', storedScopes || ((c && c.shopify) ? 'None' : NA));
+    setHtml('settings-int-shopify-missing-scopes', requiredList.length ? (missing.length ? badge(missing.join(', '), 'bad') : badge('None', 'ok')) : badge('Not available', 'warn'));
 
     var staleSec = (health && typeof health.staleMs === 'number' && isFinite(health.staleMs)) ? Math.round(health.staleMs / 1000) : null;
-    setText('settings-int-shopify-sync-age', staleSec == null ? '\u2014' : (staleSec + 's'));
-    setText('settings-int-shopify-last-sync', health && health.lastSuccessAt ? formatTs(health.lastSuccessAt) : '\u2014');
-    setText('settings-int-shopify-last-error', health && health.lastError ? String(health.lastError).slice(0, 220) : '\u2014');
+    setText('settings-int-shopify-sync-age', staleSec == null ? ((health && health.lastSuccessAt) ? 'N/A' : 'Not synced yet') : (staleSec + 's'));
+    setText('settings-int-shopify-last-sync', health && health.lastSuccessAt ? formatTs(health.lastSuccessAt) : 'Not synced yet');
+    setText('settings-int-shopify-last-error', health && health.lastError ? String(health.lastError).slice(0, 220) : 'None');
 
     var pixelIngestUrl = pixel && pixel.ingestUrl != null ? String(pixel.ingestUrl) : '';
     var expectedIngestUrl = ingest && ingest.effectiveIngestUrl != null ? String(ingest.effectiveIngestUrl) : '';
     var match = pixelIngestUrl && expectedIngestUrl ? pixelIngestUrl === expectedIngestUrl : null;
-    setHtml('settings-int-pixel-installed', pixel && pixel.installed === true ? badge('Installed', 'ok') : badge('Not installed', 'bad'));
-    setText('settings-int-pixel-ingest', pixelIngestUrl || '\u2014');
-    setText('settings-int-expected-ingest', expectedIngestUrl || '\u2014');
-    setHtml('settings-int-pixel-match', match == null ? badge('Unknown', 'warn') : (match ? badge('Match', 'ok') : badge('Mismatch', 'bad')));
+    if (pixel && pixel.ok === false) setHtml('settings-int-pixel-installed', badge('Error', 'bad'));
+    else setHtml('settings-int-pixel-installed', pixel && pixel.installed === true ? badge('Installed', 'ok') : badge('Not installed', 'warn'));
+    setText('settings-int-pixel-ingest', pixelIngestUrl || 'Not set');
+    setText('settings-int-expected-ingest', expectedIngestUrl || 'Not set');
+    setHtml('settings-int-pixel-match', match == null ? badge('Not available', 'warn') : (match ? badge('Match', 'ok') : badge('Mismatch', 'bad')));
     setText('settings-int-session-mode', (settings && settings.pixelSessionMode === 'shared_ttl') ? 'shared_ttl (cross-tab)' : 'legacy');
 
     var connBadge = document.getElementById('settings-ga-connection-status');
     if (connBadge) {
-      if (ga && ga.connected) connBadge.innerHTML = badge('Connected', 'ok');
+      if (ga && ga.connected && ga.hasRefreshToken === false) connBadge.innerHTML = badge('Reconnect required', 'warn');
+      else if (ga && ga.connected) connBadge.innerHTML = badge('Connected', 'ok');
       else if (ga && ga.configured) connBadge.innerHTML = badge('Not connected', 'warn');
       else connBadge.innerHTML = badge('Not configured', 'bad');
     }
-    setText('settings-ga-customer-id', ga && ga.customerId ? String(ga.customerId) : '\u2014');
-    setText('settings-ga-login-customer-id', ga && ga.loginCustomerId ? String(ga.loginCustomerId) : '\u2014');
-    setText('settings-ga-conversion-customer-id', ga && ga.conversionCustomerId ? String(ga.conversionCustomerId) : '\u2014');
+    setText('settings-ga-customer-id', ga && ga.customerId ? String(ga.customerId) : (ga && ga.configured ? 'Not set' : 'Not configured'));
+    setText('settings-ga-login-customer-id', ga && ga.loginCustomerId ? String(ga.loginCustomerId) : (ga && ga.configured ? 'Not set' : 'Not configured'));
+    setText('settings-ga-conversion-customer-id', ga && ga.conversionCustomerId ? String(ga.conversionCustomerId) : (ga && ga.configured ? 'Not set' : 'Not configured'));
     setHtml('settings-ga-devtoken-badge', ga && ga.hasDeveloperToken ? badge('Developer token: present', 'ok') : badge('Developer token: missing', 'bad'));
     setHtml('settings-ga-refreshtoken-badge', ga && ga.hasRefreshToken ? badge('Refresh token: present', 'ok') : badge('Refresh token: missing', 'bad'));
 
@@ -1995,8 +2084,9 @@
     var signInBtn = document.getElementById('settings-ga-signin-btn');
     var reconnectBtn = document.getElementById('settings-ga-reconnect-btn');
     var isConnected = !!(ga && ga.connected);
-    if (signInBtn) signInBtn.classList.toggle('d-none', !googleAdsOAuthEnabled || isConnected);
-    if (reconnectBtn) reconnectBtn.classList.toggle('d-none', !googleAdsOAuthEnabled || !isConnected);
+    var needsReconnect = !!(ga && ga.connected && ga.hasRefreshToken === false);
+    if (signInBtn) signInBtn.classList.toggle('d-none', !googleAdsOAuthEnabled || (isConnected && !needsReconnect));
+    if (reconnectBtn) reconnectBtn.classList.toggle('d-none', !googleAdsOAuthEnabled || (!isConnected && !needsReconnect));
     if (googleAdsOAuthEnabled) {
       var anyVisible = (signInBtn && !signInBtn.classList.contains('d-none')) || (reconnectBtn && !reconnectBtn.classList.contains('d-none'));
       if (!anyVisible && signInBtn) signInBtn.classList.remove('d-none');
@@ -2025,24 +2115,25 @@
           return false;
         }
         var cd = c && c.configDisplay ? c.configDisplay : {};
+        var notConfigured = 'Not configured';
         document.querySelectorAll('#settings-general-app-url').forEach(function (el) {
-          el.value = cd.shopifyAppUrl || '\u2014';
+          el.value = cd.shopifyAppUrl || notConfigured;
         });
         document.querySelectorAll('#settings-general-timezone').forEach(function (el) {
-          el.value = cd.adminTimezone || '\u2014';
+          el.value = cd.adminTimezone || notConfigured;
         });
         try { if (cd && cd.adminTimezone) adminTimezoneCache = String(cd.adminTimezone).trim(); } catch (_) {}
         document.querySelectorAll('#settings-general-shop-domain').forEach(function (el) {
-          el.value = cd.shopDomain || '\u2014';
+          el.value = cd.shopDomain || notConfigured;
         });
         document.querySelectorAll('#settings-general-display-domain').forEach(function (el) {
-          el.value = cd.shopDisplayDomain || '\u2014';
+          el.value = cd.shopDisplayDomain || notConfigured;
         });
         document.querySelectorAll('#settings-general-store-main').forEach(function (el) {
-          el.value = cd.storeMainDomain || '\u2014';
+          el.value = cd.storeMainDomain || notConfigured;
         });
         document.querySelectorAll('#settings-general-ingest-url').forEach(function (el) {
-          el.value = cd.ingestUrl || '\u2014';
+          el.value = cd.ingestUrl || notConfigured;
         });
         document.querySelectorAll('#settings-general-traffic-mode').forEach(function (el) {
           el.value = (cd.trafficMode || 'all') + (cd.dbEngine ? ' \u00b7 ' + cd.dbEngine : '');
@@ -3286,7 +3377,7 @@
     for (var i = 0; i < count; i += 1) {
       var label = String(i + 1);
       var val = normalizeHexColor(colors[i], '#3eb3ab');
-      html += '<label class="settings-charts-color-field"><span class="form-label mb-1">' + escapeHtml(label) + '</span><div class="settings-charts-color-field-row"><input type="text" class="form-control form-control-sm" data-chart-field="color" data-idx="' + i + '" value="' + escapeHtml(val) + '" placeholder="#3eb3ab"></div><span class="settings-charts-color-swatch" data-color-swatch style="background:' + escapeHtml(val) + ';" title="' + escapeHtml(val) + '" aria-hidden="true"></span></label>';
+      html += '<label class="settings-charts-color-field"><span class="form-label mb-1">' + escapeHtml(label) + '</span><div class="settings-charts-color-field-row"><input type="text" class="form-control form-control-sm" data-chart-field="color" data-idx="' + i + '" value="' + escapeHtml(val) + '" placeholder="#3eb3ab"></div><span class="settings-charts-color-swatch" data-color-swatch title="' + escapeHtml(val) + '" aria-hidden="true"></span></label>';
     }
     html += '</div>';
     return html;
@@ -3294,7 +3385,7 @@
 
   function renderBundleColorInput(field, value, labelText) {
     var val = normalizeHexColor(value, '#2fb344');
-    return '<label class="settings-charts-color-field"><span class="form-label mb-1">' + escapeHtml(labelText) + '</span><div class="settings-charts-color-field-row"><input type="text" class="form-control form-control-sm" data-bundle-field="' + escapeHtml(field) + '" value="' + escapeHtml(val) + '" placeholder="#2fb344"></div><span class="settings-charts-color-swatch" data-color-swatch style="background:' + escapeHtml(val) + ';" aria-hidden="true"></span></label>';
+    return '<label class="settings-charts-color-field"><span class="form-label mb-1">' + escapeHtml(labelText) + '</span><div class="settings-charts-color-field-row"><input type="text" class="form-control form-control-sm" data-bundle-field="' + escapeHtml(field) + '" value="' + escapeHtml(val) + '" placeholder="#2fb344"></div><span class="settings-charts-color-swatch" data-color-swatch aria-hidden="true"></span></label>';
   }
 
   function renderChartAccordionItem(item, idx, accordionId) {
@@ -3621,7 +3712,7 @@
     var accordionId = 'settings-layout-charts-accordion';
     var html = '<div class="d-flex align-items-start justify-content-between flex-wrap gap-3 mb-3">' +
       '<label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" id="settings-charts-hide-mobile" ' + (!hideOnMobile ? 'checked' : '') + '><span class="form-check-label ms-2">Show charts on mobile</span></label>' +
-      '<div class="text-muted small" style="max-width:560px;">Configure one chart/KPI bundle at a time with live previews.</div>' +
+      '<div class="text-muted small settings-ui-maxw-560">Configure one chart/KPI bundle at a time with live previews.</div>' +
       '</div>' +
       '<div class="accordion settings-layout-accordion settings-charts-accordion" id="' + escapeHtml(accordionId) + '">';
     var itemIndex = 0;
@@ -3816,6 +3907,10 @@
       initialKey: (function () { var k = initialKey || activeLayoutSubTab || 'tables'; return k === 'charts' ? 'tables' : k; })(),
       onActivate: function (key) {
         activeLayoutSubTab = key;
+        try {
+          var p = document.getElementById('settings-layout-panel-' + String(key || '').trim().toLowerCase());
+          if (p) normaliseSettingsPanel(p);
+        } catch (_) {}
         if (getActiveSettingsTab() === 'layout') {
           if (key === 'tables') try { renderTablesWhenVisible(); } catch (_) {}
           updateUrl('layout');
@@ -3848,6 +3943,10 @@
       onActivate: function (key) {
         activeKexoSubTab = key;
         placeThemeCard(key);
+        try {
+          var p = document.getElementById('settings-kexo-panel-' + String(key || '').trim().toLowerCase());
+          if (p) normaliseSettingsPanel(p);
+        } catch (_) {}
         var requestedThemeSubtab = null;
         if (key === 'icons-assets') requestedThemeSubtab = 'icons';
         else if (key === 'theme-display') requestedThemeSubtab = 'color';
@@ -3874,6 +3973,10 @@
       initialKey: initialKey || 'mapping',
       onActivate: function (key) {
         activeAttributionSubTab = key;
+        try {
+          var p = document.getElementById('settings-attribution-panel-' + String(key || '').trim().toLowerCase());
+          if (p) normaliseSettingsPanel(p);
+        } catch (_) {}
         if (getActiveSettingsTab() === 'attribution') {
           if (key === 'mapping') {
             if (typeof window.initAttributionMappingSettings === 'function') {
@@ -3904,6 +4007,10 @@
       initialKey: initialKey || initialAdminSubTab || 'users',
       onActivate: function (key) {
         activeAdminSubTab = key;
+        try {
+          var p = document.getElementById('admin-panel-' + String(key || '').trim().toLowerCase());
+          if (p) normaliseSettingsPanel(p);
+        } catch (_) {}
         if (getActiveSettingsTab() === 'admin') {
           updateUrl('admin');
           syncLeftNavActiveClasses('admin');
@@ -4979,9 +5086,9 @@
       var iconValue = String((table.icon || '').trim() || DEFAULT_VARIANTS_TABLE_ICON);
       html += '<div class="card card-sm mb-3" data-table-idx="' + String(tableIdx) + '">' +
         '<div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">' +
-          '<div class="d-flex align-items-center gap-2 flex-grow-1">' +
-            '<input type="text" class="form-control form-control-sm" style="max-width:280px" data-field="table-name" data-table-idx="' + String(tableIdx) + '" value="' + escapeHtml(table.name || '') + '">' +
-            '<div class="kexo-alias-chipbox ts-wrapper multi form-control form-control-sm" style="max-width:360px" data-alias-chipbox data-table-idx="' + String(tableIdx) + '" title="Type and press Enter or comma to add. These are Shopify option-name synonyms to merge Suggestions into the same table.">' +
+          '<div class="d-flex align-items-center gap-2 flex-grow-1 flex-wrap">' +
+            '<input type="text" class="form-control form-control-sm settings-ui-maxw-280" data-field="table-name" data-table-idx="' + String(tableIdx) + '" value="' + escapeHtml(table.name || '') + '">' +
+            '<div class="kexo-alias-chipbox ts-wrapper multi form-control form-control-sm settings-ui-maxw-360" data-alias-chipbox data-table-idx="' + String(tableIdx) + '" title="Type and press Enter or comma to add. These are Shopify option-name synonyms to merge Suggestions into the same table.">' +
               '<input type="hidden" data-field="table-aliases" data-table-idx="' + String(tableIdx) + '" value="' + escapeHtml(aliasValue) + '">' +
               '<div class="kexo-alias-chipbox-chips ts-control" data-alias-chips data-table-idx="' + String(tableIdx) + '">' + aliasChips + '<input type="text" class="kexo-alias-chipbox-input" data-alias-input data-table-idx="' + String(tableIdx) + '" placeholder="Aliases (Enter or comma)"></div>' +
             '</div>' +
@@ -5031,7 +5138,7 @@
         '<div class="mt-2 d-flex justify-content-between align-items-center flex-wrap gap-2">' +
           '<div class="d-flex align-items-center gap-2 flex-wrap">' +
             '<button type="button" class="btn btn-outline-secondary btn-sm" data-action="add-rule" data-table-idx="' + String(tableIdx) + '">Add row mapping</button>' +
-            '<input type="text" class="form-control form-control-sm" style="max-width:260px" data-field="table-icon" data-table-idx="' + String(tableIdx) + '" value="' + escapeHtml(iconValue) + '" placeholder="Icon (e.g. fa-solid fa-grid-round)" aria-label="Table icon (Font Awesome classes)">' +
+            '<input type="text" class="form-control form-control-sm settings-ui-maxw-260" data-field="table-icon" data-table-idx="' + String(tableIdx) + '" value="' + escapeHtml(iconValue) + '" placeholder="Icon (e.g. fa-solid fa-grid-round)" aria-label="Table icon (Font Awesome classes)">' +
           '</div>' +
           '<span class="text-muted small">Rule count: ' + String(rules.length) + '</span>' +
         '</div>' +
@@ -5933,6 +6040,10 @@
       if (typeof window.initKexoTooltips === 'function') window.initKexoTooltips(tooltipRoot);
       copyLabelTitlesToControls(tooltipRoot);
     } catch (_) {}
+
+    // One-pass Settings/Admin layout normalisation (idempotent) + dynamic render guard.
+    try { normaliseAllSettingsPanels(document.querySelector('.col-lg-9') || document.body); } catch (_) {}
+    try { wireSettingsUiMutationObserver(); } catch (_) {}
 
     function syncFromUrl() {
       var tab = getTabFromQuery() || getTabFromHash() || 'kexo';

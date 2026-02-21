@@ -20,7 +20,7 @@
   <!--#include partials/header.html-->
   <!--#include partials/page-body-start.html-->
   <div class="page-header mb-3">
-    <div class="row align-items-center kexo-page-header-layout-triple kexo-page-header-accent-teal" style="--kexo-page-header-accent: rgb(75, 148, 228);">
+    <div class="row align-items-center kexo-page-header-layout-triple kexo-page-header-accent-teal kexo-page-header-accent-snapshot">
       <div class="col-auto kexo-page-header-left-col">
         <div class="page-pretitle"><i class="kexo-nav-svg kexo-page-header-category-icon kexo-accent-2 fa-jelly-fill fa-regular fa-chart-pie" data-icon-key="nav-toggle-breakdown" aria-hidden="true"></i>Insights</div>
       </div>
@@ -46,11 +46,11 @@
           </div>
         </div>
         <div class="snapshot-custom-only is-hidden d-flex align-items-center gap-1 mt-1" id="snapshot-custom-start-wrap">
-          <input id="snapshot-custom-start" type="date" class="form-control form-control-sm" style="max-width: 8rem;" aria-label="Start date" />
+          <input id="snapshot-custom-start" type="date" class="form-control form-control-sm snapshot-date-input" aria-label="Start date" />
           <span class="text-muted small">–</span>
         </div>
         <div class="snapshot-custom-only is-hidden d-flex align-items-center gap-1 mt-1" id="snapshot-custom-end-wrap">
-          <input id="snapshot-custom-end" type="date" class="form-control form-control-sm" style="max-width: 8rem;" aria-label="End date" />
+          <input id="snapshot-custom-end" type="date" class="form-control form-control-sm snapshot-date-input" aria-label="End date" />
           <button type="button" id="snapshot-custom-apply-btn" class="btn btn-sm btn-primary">Apply</button>
         </div>
       </div>

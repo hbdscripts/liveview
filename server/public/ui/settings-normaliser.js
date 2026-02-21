@@ -1,0 +1,377 @@
+(function () {
+  'use strict';
+
+  // Settings/Admin UI normaliser (runtime guardrails).
+  // Idempotent + memory-safe: panel-level attributes prevent repeated destructive changes.
+
+  var SETTINGS_PANEL_SELECTOR = '[id^="settings-"][id*="-panel-"]:not([id^="settings-panel-"]), [id^="admin-panel-"]';
+  var SETTINGS_PANEL_WRAP_CLASS = 'settings-panel-wrap';
+  var SETTINGS_PANEL_NORMALISE_ATTR = 'data-settings-ui-normalised';
+  var SETTINGS_PANEL_HEADER_STRIPPED_ATTR = 'data-settings-ui-first-header-stripped';
+  var SETTINGS_PANEL_OBSERVER_ATTR = 'data-settings-ui-observer';
+
+  function isElement(node) {
+    return !!(node && node.nodeType === 1 && node.querySelector);
+  }
+
+  function safeMatches(el, selector) {
+    if (!el || !el.matches) return false;
+    try { return el.matches(selector); } catch (_) { return false; }
+  }
+
+  function getPanelWrap(panelEl) {
+    if (!panelEl || !panelEl.querySelector) return null;
+    var direct = null;
+    try { direct = panelEl.querySelector(':scope > .' + SETTINGS_PANEL_WRAP_CLASS); } catch (_) { direct = null; }
+    if (direct) return direct;
+    return panelEl.querySelector('.' + SETTINGS_PANEL_WRAP_CLASS) || null;
+  }
+
+  function ensurePanelWrap(panelEl) {
+    if (!isElement(panelEl)) return null;
+    var wrap = null;
+    try { wrap = panelEl.querySelector(':scope > .' + SETTINGS_PANEL_WRAP_CLASS); } catch (_) { wrap = null; }
+    if (!wrap) {
+      wrap = document.createElement('div');
+      wrap.className = SETTINGS_PANEL_WRAP_CLASS;
+      panelEl.insertBefore(wrap, panelEl.firstChild);
+    }
+    // Ensure ALL direct children (except wrap) are inside the wrap.
+    var toMove = [];
+    try {
+      Array.prototype.slice.call(panelEl.childNodes || []).forEach(function (n) {
+        if (!n) return;
+        if (n === wrap) return;
+        if (n.nodeType === 3 && !String(n.nodeValue || '').trim()) return; // whitespace
+        toMove.push(n);
+      });
+    } catch (_) {}
+    toMove.forEach(function (n) { try { wrap.appendChild(n); } catch (_) {} });
+    return wrap;
+  }
+
+  function removeClassPrefix(el, prefix) {
+    if (!el || !el.classList) return;
+    var p = String(prefix || '');
+    if (!p) return;
+    Array.prototype.slice.call(el.classList).forEach(function (c) {
+      if (c && c.indexOf(p) === 0) el.classList.remove(c);
+    });
+  }
+
+  function normaliseGridLayouts(panelEl) {
+    var wrap = getPanelWrap(panelEl) || panelEl;
+    if (!wrap || !wrap.querySelectorAll) return;
+
+    // Collapse CSS grids used for vertical stacks into flex-column.
+    wrap.querySelectorAll('.d-grid:not([data-settings-ui-grid])').forEach(function (grid) {
+      if (!grid || !grid.classList) return;
+      grid.setAttribute('data-settings-ui-grid', '1');
+      var gap = 'gap-3';
+      try {
+        Array.prototype.slice.call(grid.classList).forEach(function (c) {
+          if (!c) return;
+          var m = /^gap-(\d)$/.exec(c);
+          if (m) gap = 'gap-' + m[1];
+        });
+      } catch (_) {}
+      grid.classList.remove('d-grid');
+      grid.classList.add('d-flex', 'flex-column', gap);
+    });
+
+    // Collapse Bootstrap grid rows into predictable single-column stacks.
+    wrap.querySelectorAll('.row:not([data-settings-ui-row])').forEach(function (row) {
+      if (!row || !row.classList) return;
+      row.setAttribute('data-settings-ui-row', '1');
+
+      var kids = Array.prototype.slice.call(row.children || []);
+      if (!kids.length) {
+        row.classList.remove('row');
+        removeClassPrefix(row, 'g-');
+        return;
+      }
+
+      var isInline = row.classList.contains('align-items-center') || kids.some(function (k) { return k && k.classList && k.classList.contains('col-auto'); });
+      var gap = 'gap-3';
+      try {
+        Array.prototype.slice.call(row.classList).forEach(function (c) {
+          if (!c) return;
+          var m = /^g-(\d)$/.exec(c);
+          if (m) gap = 'gap-' + m[1];
+        });
+      } catch (_) {}
+
+      // Convert the row container itself.
+      row.classList.remove('row');
+      removeClassPrefix(row, 'g-');
+      removeClassPrefix(row, 'row-cols-');
+      if (isInline) row.classList.add('d-flex', 'flex-wrap', 'align-items-center', gap);
+      else row.classList.add('d-flex', 'flex-column', gap);
+
+      // Normalise columns.
+      kids.forEach(function (col) {
+        if (!col || !col.classList) return;
+        col.classList.remove('col', 'col-auto');
+        removeClassPrefix(col, 'col-');
+        if (isInline) col.classList.add('w-auto');
+        else col.classList.add('w-100');
+        // If this column is only a wrapper around a single card/section, unwrap it to reduce nesting.
+        try {
+          if (!isInline && col.children && col.children.length === 1) {
+            var only = col.children[0];
+            if (only && only.classList && (only.classList.contains('card') || only.classList.contains('accordion') || only.classList.contains('table-responsive'))) {
+              row.insertBefore(only, col);
+              col.parentNode.removeChild(col);
+            }
+          }
+        } catch (_) {}
+      });
+    });
+  }
+
+  function ensureCardBody(cardEl) {
+    if (!isElement(cardEl)) return null;
+    var body = null;
+    try { body = cardEl.querySelector(':scope > .card-body'); } catch (_) { body = null; }
+    if (!body) body = cardEl.querySelector('.card-body');
+    if (body) return body;
+    body = document.createElement('div');
+    body.className = 'card-body';
+    var first = cardEl.firstElementChild;
+    if (first) cardEl.insertBefore(body, first.nextSibling);
+    else cardEl.appendChild(body);
+    return body;
+  }
+
+  function isTitleNode(el) {
+    if (!isElement(el)) return false;
+    if (el.classList && el.classList.contains('card-title')) return true;
+    var tag = String(el.tagName || '').toUpperCase();
+    return tag === 'H1' || tag === 'H2' || tag === 'H3' || tag === 'H4' || tag === 'H5' || tag === 'H6';
+  }
+
+  function stripFirstCardHeaderInPanel(panelEl) {
+    if (!isElement(panelEl)) return false;
+    if (panelEl.getAttribute(SETTINGS_PANEL_HEADER_STRIPPED_ATTR) === '1') return false;
+    var wrap = getPanelWrap(panelEl) || panelEl;
+    if (!wrap) return false;
+
+    // Only strip the header on the FIRST card in the panel. If the first card has no header,
+    // we must NOT touch later cards (2nd/3rd/etc headers must remain).
+    var firstCard = null;
+    try { firstCard = wrap.querySelector(':scope > .card'); } catch (_) { firstCard = null; }
+    if (!firstCard) {
+      try { firstCard = wrap.querySelector('.card'); } catch (_) { firstCard = null; }
+    }
+    if (!firstCard || !firstCard.classList || !firstCard.classList.contains('card')) return false;
+
+    var firstHeader = null;
+    try { firstHeader = firstCard.querySelector(':scope > .card-header'); } catch (_) { firstHeader = null; }
+    if (!firstHeader || !firstHeader.parentElement) {
+      panelEl.setAttribute(SETTINGS_PANEL_HEADER_STRIPPED_ATTR, '1');
+      return false;
+    }
+
+    var headerChildren = Array.prototype.slice.call(firstHeader.children || []);
+    var titleEls = headerChildren.filter(isTitleNode);
+    var controlEls = headerChildren.filter(function (el) { return el && !isTitleNode(el); });
+    // Also remove any nested title nodes (handles wrapped header layouts).
+    try {
+      Array.prototype.slice.call(firstHeader.querySelectorAll('.card-title, h1, h2, h3, h4, h5, h6')).forEach(function (t) {
+        if (titleEls.indexOf(t) === -1) titleEls.push(t);
+      });
+    } catch (_) {}
+
+    // If the header is title-only, remove it entirely.
+    if (controlEls.length === 0) {
+      try { firstHeader.parentNode.removeChild(firstHeader); } catch (_) {}
+      panelEl.setAttribute(SETTINGS_PANEL_HEADER_STRIPPED_ATTR, '1');
+      return true;
+    }
+
+    // Preserve non-title controls by moving them into the top of the card body.
+    var body = ensureCardBody(firstCard);
+    if (body) {
+      var controlsWrap = document.createElement('div');
+      controlsWrap.className = 'settings-card-controls d-flex align-items-center flex-wrap gap-2 mb-3';
+      controlEls.forEach(function (el) { try { controlsWrap.appendChild(el); } catch (_) {} });
+      // Ensure we don't preserve a duplicated title inside moved controls.
+      try {
+        Array.prototype.slice.call(controlsWrap.querySelectorAll('.card-title, h1, h2, h3, h4, h5, h6')).forEach(function (t) {
+          try { t.parentNode && t.parentNode.removeChild(t); } catch (_) {}
+        });
+      } catch (_) {}
+      try { body.insertBefore(controlsWrap, body.firstChild); } catch (_) { try { body.appendChild(controlsWrap); } catch (_) {} }
+    }
+
+    // Remove any title elements left behind, then remove header container.
+    titleEls.forEach(function (el) { try { el.parentNode && el.parentNode.removeChild(el); } catch (_) {} });
+    try { firstHeader.parentNode.removeChild(firstHeader); } catch (_) {}
+
+    panelEl.setAttribute(SETTINGS_PANEL_HEADER_STRIPPED_ATTR, '1');
+    return true;
+  }
+
+  function normaliseHeadingsAndSpacing(panelEl) {
+    var wrap = getPanelWrap(panelEl) || panelEl;
+    if (!wrap || !wrap.querySelectorAll) return;
+    // Loose headings: ensure consistent spacing and avoid touching tabs/accordion edges.
+    wrap.querySelectorAll(':scope > h1, :scope > h2, :scope > h3, :scope > h4, :scope > h5, :scope > h6').forEach(function (h) {
+      if (!h || !h.classList) return;
+      if (h.getAttribute('data-settings-ui-heading') === '1') return;
+      h.setAttribute('data-settings-ui-heading', '1');
+      h.classList.add('settings-panel-heading');
+      h.classList.remove('mb-0', 'mb-1');
+      if (!h.classList.contains('mb-2')) h.classList.add('mb-2');
+    });
+  }
+
+  function ensureReadOnlyHint(el, hintText) {
+    if (!isElement(el)) return;
+    var existing = null;
+    try { existing = el.parentElement && el.parentElement.querySelector ? el.parentElement.querySelector('.form-hint.settings-readonly-hint') : null; } catch (_) { existing = null; }
+    if (existing) return;
+    var hint = document.createElement('div');
+    hint.className = 'form-hint settings-readonly-hint';
+    hint.textContent = hintText || 'Read-only — set via environment config.';
+    try { el.insertAdjacentElement('afterend', hint); } catch (_) { try { el.parentElement && el.parentElement.appendChild(hint); } catch (_) {} }
+  }
+
+  function normaliseButtonsAndForms(panelEl) {
+    var wrap = getPanelWrap(panelEl) || panelEl;
+    if (!wrap || !wrap.querySelectorAll) return;
+
+    // Read-only fields must look read-only (Tabler plaintext + hint).
+    wrap.querySelectorAll('input[readonly], textarea[readonly], select[disabled], input[disabled], textarea[disabled]').forEach(function (field) {
+      if (!field || !field.classList) return;
+      if (field.getAttribute('data-settings-ui-ro') === '1') return;
+      field.setAttribute('data-settings-ui-ro', '1');
+      var isEnvReadOnly = field.classList.contains('kexo-readonly-field') || field.getAttribute('aria-readonly') === 'true' || field.hasAttribute('readonly');
+      if (isEnvReadOnly && (field.tagName || '').toUpperCase() === 'INPUT') {
+        field.classList.remove('form-control');
+        field.classList.add('form-control-plaintext', 'settings-readonly-plaintext');
+        try { field.readOnly = true; } catch (_) {}
+        try { field.setAttribute('aria-readonly', 'true'); } catch (_) {}
+        ensureReadOnlyHint(field, 'Read-only — set via environment config.');
+      } else if (field.hasAttribute('disabled')) {
+        ensureReadOnlyHint(field, 'Read-only — not editable in this UI.');
+      }
+    });
+
+    // Button class normalisation (Tabler conventions).
+    wrap.querySelectorAll('button, a.btn').forEach(function (btn) {
+      if (!btn || !btn.classList) return;
+      if (btn.getAttribute('data-settings-ui-btn') === '1') return;
+      btn.setAttribute('data-settings-ui-btn', '1');
+
+      if (btn.classList.contains('btn-ghost-secondary')) {
+        btn.classList.remove('btn-ghost-secondary');
+        btn.classList.add('btn-outline-secondary');
+      }
+      if (btn.classList.contains('btn-ghost-danger')) {
+        btn.classList.remove('btn-ghost-danger');
+        btn.classList.add('btn-outline-danger');
+      }
+
+      var text = '';
+      try { text = String(btn.textContent || '').trim().toLowerCase(); } catch (_) { text = ''; }
+      var isPrimaryAction = text === 'save' || text === 'apply' || text === 'update';
+      if (isPrimaryAction) {
+        btn.classList.remove(
+          'btn-outline-primary',
+          'btn-outline-secondary',
+          'btn-outline-danger',
+          'btn-secondary',
+          'btn-success',
+          'btn-danger'
+        );
+        btn.classList.add('btn-primary');
+      }
+    });
+  }
+
+  function normaliseSettingsPanel(panelEl) {
+    if (!isElement(panelEl)) return;
+    ensurePanelWrap(panelEl);
+    normaliseGridLayouts(panelEl);
+    stripFirstCardHeaderInPanel(panelEl);
+    normaliseHeadingsAndSpacing(panelEl);
+    normaliseButtonsAndForms(panelEl);
+    try { panelEl.setAttribute(SETTINGS_PANEL_NORMALISE_ATTR, '1'); } catch (_) {}
+  }
+
+  function normaliseAllSettingsPanels(rootEl) {
+    var scope = isElement(rootEl) ? rootEl : document;
+    var panels = [];
+    try { panels = Array.prototype.slice.call(scope.querySelectorAll(SETTINGS_PANEL_SELECTOR)); } catch (_) { panels = []; }
+    panels.forEach(function (p) { try { normaliseSettingsPanel(p); } catch (_) {} });
+  }
+
+  function wireSettingsUiMutationObserver() {
+    if (document.documentElement.getAttribute(SETTINGS_PANEL_OBSERVER_ATTR) === '1') return;
+    document.documentElement.setAttribute(SETTINGS_PANEL_OBSERVER_ATTR, '1');
+
+    var container = document.querySelector('.col-lg-9') || document.querySelector('.page-body') || document.body;
+    if (!container || typeof MutationObserver === 'undefined') return;
+
+    var pending = new Set();
+    var scheduled = false;
+
+    function flush() {
+      scheduled = false;
+      try {
+        pending.forEach(function (p) { try { normaliseSettingsPanel(p); } catch (_) {} });
+      } finally {
+        pending.clear();
+      }
+    }
+
+    function scheduleFlush() {
+      if (scheduled) return;
+      scheduled = true;
+      if (typeof requestAnimationFrame === 'function') requestAnimationFrame(flush);
+      else setTimeout(flush, 0);
+    }
+
+    function queue(panel) {
+      if (!isElement(panel)) return;
+      pending.add(panel);
+      scheduleFlush();
+    }
+
+    var obs = new MutationObserver(function (mutations) {
+      mutations.forEach(function (m) {
+        if (!m || !m.addedNodes) return;
+        Array.prototype.slice.call(m.addedNodes).forEach(function (n) {
+          if (!isElement(n)) return;
+          if (safeMatches(n, SETTINGS_PANEL_SELECTOR)) {
+            queue(n);
+            return;
+          }
+          var parentPanel = null;
+          try { parentPanel = n.closest(SETTINGS_PANEL_SELECTOR); } catch (_) { parentPanel = null; }
+          if (parentPanel) queue(parentPanel);
+        });
+      });
+    });
+    try { obs.observe(container, { childList: true, subtree: true }); } catch (_) {}
+    try {
+      window.addEventListener('beforeunload', function () {
+        try { obs.disconnect(); } catch (_) {}
+      });
+    } catch (_) {}
+  }
+
+  window.KexoSettingsUiNormaliser = {
+    SETTINGS_PANEL_SELECTOR: SETTINGS_PANEL_SELECTOR,
+    ensurePanelWrap: ensurePanelWrap,
+    normaliseGridLayouts: normaliseGridLayouts,
+    stripFirstCardHeaderInPanel: stripFirstCardHeaderInPanel,
+    normaliseHeadingsAndSpacing: normaliseHeadingsAndSpacing,
+    normaliseButtonsAndForms: normaliseButtonsAndForms,
+    normaliseSettingsPanel: normaliseSettingsPanel,
+    normaliseAllSettingsPanels: normaliseAllSettingsPanels,
+    wireSettingsUiMutationObserver: wireSettingsUiMutationObserver,
+  };
+})();
+
