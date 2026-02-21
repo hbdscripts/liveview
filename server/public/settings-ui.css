@@ -15,14 +15,31 @@
 
 /* Consistent framed container directly under Settings in-panel tab bars. */
 body[data-page="settings"] .settings-tab-content-box {
-  border-left: 1px solid var(--tblr-border-color-translucent, rgba(0, 0, 0, 0.06));
-  border-right: 1px solid var(--tblr-border-color-translucent, rgba(0, 0, 0, 0.06));
-  border-bottom: 1px solid var(--tblr-border-color-translucent, rgba(0, 0, 0, 0.06));
-  border-top: 0;
+  border: 1px solid var(--tblr-border-color-translucent, rgba(0, 0, 0, 0.06));
   border-radius: 0 0 var(--tblr-border-radius, .75rem) var(--tblr-border-radius, .75rem);
   padding: 0.875rem 1rem;
-  margin-top: -1px;
+  margin-top: 0;
   background: var(--tblr-bg-surface, #fff);
+}
+
+/* Nullify extra outer wrappers inside the join container (avoid double frames/padding). */
+body[data-page="settings"] .settings-tab-content-box > .settings-main-tabs-accordion {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+}
+body[data-page="settings"] .settings-tab-content-box > .settings-main-tabs-accordion > .accordion-item {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+}
+body[data-page="settings"] .settings-tab-content-box > .settings-main-tabs-accordion > .accordion-item > .accordion-collapse > .accordion-body {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  background: transparent;
 }
 
 /* Cost & profit panels are not accordion-framed; use the shared tab box frame instead. */
@@ -105,9 +122,11 @@ body[data-page="settings"] .settings-panel-wrap ul.nav {
 /* In-panel main tabs (JS-injected + Costs & profit). */
 body[data-page="settings"] .settings-main-tabs {
   border: 0;
-  margin: 0 !important;
+  margin: 0 0 -1px !important;
   padding: 0 !important;
   gap: 0.35rem;
+  position: relative;
+  z-index: 3;
 }
 body[data-page="settings"] .settings-main-tabs .nav-link {
   border: 1px solid transparent;
@@ -118,6 +137,7 @@ body[data-page="settings"] .settings-main-tabs .nav-link {
   font-size: 14px;
   background: var(--tblr-bg-surface-secondary, #f6f8fb);
   color: var(--tblr-secondary, #66758c);
+  margin-bottom: 0;
 }
 body[data-page="settings"] .settings-main-tabs .nav-link:hover {
   color: var(--tblr-body-color, #1f2937);
