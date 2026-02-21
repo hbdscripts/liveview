@@ -5510,6 +5510,18 @@ img[data-kexo-logo-slot="footer"][data-kexo-logo-ready="1"] {
 }
 
 .kexo-notifications-badge {
+  z-index: 9999999999;
+  position: absolute !important;
+  display: block;
+  top: 10px !important;
+  left: 28px !important;
+  font-size: 10px;
+  height: 18px;
+  width: 18px;
+  padding: 0;
+  vertical-align: middle;
+  line-height: 18px;
+  border: 0 !important;
   background: var(--kexo-notification-badge-bg, var(--tblr-danger, #d63939)) !important;
   color: var(--kexo-notification-badge-text, #fff) !important;
 }
