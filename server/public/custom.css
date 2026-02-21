@@ -25,10 +25,6 @@ html, body {
   align-self: stretch !important;
   overflow: visible !important;
 }
-.page > .page-wrapper {
-  flex: 1 0 auto !important;
-  min-height: 100%;
-}
 
 .kexo-nav-svg {
   width: 1em;
