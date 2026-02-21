@@ -2163,6 +2163,10 @@ const THEME_BASE_KEYS = [
   'theme_accent_4',
   'theme_accent_5',
   'theme_accent_6',
+  'theme_accent_7',
+  'theme_accent_8',
+  'theme_accent_9',
+  'theme_accent_10',
   'theme_radius',
   'theme_font',
   'theme_base',
@@ -2388,6 +2392,15 @@ async function getThemeVarsCss(req, res) {
   }
   const FALLBACKS = {
     theme_accent_1: '#4b94e4',
+    theme_accent_2: '#3eb3ab',
+    theme_accent_3: '#f59e34',
+    theme_accent_4: '#e4644b',
+    theme_accent_5: '#6681e8',
+    theme_accent_6: '#8395aa',
+    theme_accent_7: '#a3e635',
+    theme_accent_8: '#f43f5e',
+    theme_accent_9: '#06b6d4',
+    theme_accent_10: '#8b5cf6',
     theme_radius: '1',
     theme_font: 'sans',
     theme_base: 'slate',
@@ -2463,19 +2476,27 @@ async function getThemeVarsCss(req, res) {
   const labelMode = normalizeCssToggle(settingsLabelMode, 'show');
   const kpiSeparatePalettes = normalizeCssToggle(kpiSeparatePalettesRaw, 'hide') === 'show';
 
-  const [a2, a3, a4, a5, a6] = await Promise.all([
-    getThemeKey('theme_accent_2', '#3eb3ab'),
-    getThemeKey('theme_accent_3', '#f59e34'),
-    getThemeKey('theme_accent_4', '#e4644b'),
-    getThemeKey('theme_accent_5', '#6681e8'),
-    getThemeKey('theme_accent_6', '#8395aa'),
+  const [a2, a3, a4, a5, a6, a7, a8, a9, a10] = await Promise.all([
+    getThemeKey('theme_accent_2', FALLBACKS.theme_accent_2),
+    getThemeKey('theme_accent_3', FALLBACKS.theme_accent_3),
+    getThemeKey('theme_accent_4', FALLBACKS.theme_accent_4),
+    getThemeKey('theme_accent_5', FALLBACKS.theme_accent_5),
+    getThemeKey('theme_accent_6', FALLBACKS.theme_accent_6),
+    getThemeKey('theme_accent_7', FALLBACKS.theme_accent_7),
+    getThemeKey('theme_accent_8', FALLBACKS.theme_accent_8),
+    getThemeKey('theme_accent_9', FALLBACKS.theme_accent_9),
+    getThemeKey('theme_accent_10', FALLBACKS.theme_accent_10),
   ]);
 
-  const accent2Hex = normalizeOpaqueCssColor(a2, '#3eb3ab');
-  const accent3Hex = normalizeOpaqueCssColor(a3, '#f59e34');
-  const accent4Hex = normalizeOpaqueCssColor(a4, '#e4644b');
-  const accent5Hex = normalizeOpaqueCssColor(a5, '#6681e8');
-  const accent6Hex = normalizeOpaqueCssColor(a6, '#8395aa');
+  const accent2Hex = normalizeOpaqueCssColor(a2, FALLBACKS.theme_accent_2);
+  const accent3Hex = normalizeOpaqueCssColor(a3, FALLBACKS.theme_accent_3);
+  const accent4Hex = normalizeOpaqueCssColor(a4, FALLBACKS.theme_accent_4);
+  const accent5Hex = normalizeOpaqueCssColor(a5, FALLBACKS.theme_accent_5);
+  const accent6Hex = normalizeOpaqueCssColor(a6, FALLBACKS.theme_accent_6);
+  const accent7Hex = normalizeOpaqueCssColor(a7, FALLBACKS.theme_accent_7);
+  const accent8Hex = normalizeOpaqueCssColor(a8, FALLBACKS.theme_accent_8);
+  const accent9Hex = normalizeOpaqueCssColor(a9, FALLBACKS.theme_accent_9);
+  const accent10Hex = normalizeOpaqueCssColor(a10, FALLBACKS.theme_accent_10);
 
   function hexToRgbString(hex) {
     const raw = String(hex || '').trim();
@@ -2486,7 +2507,16 @@ async function getThemeVarsCss(req, res) {
     return `${r},${g},${b}`;
   }
 
-  const primaryRgb = hexToRgbString(accent1Hex) || '32,107,196';
+  const accent1Rgb = hexToRgbString(accent1Hex) || '32,107,196';
+  const accent2Rgb = hexToRgbString(accent2Hex) || accent1Rgb;
+  const accent3Rgb = hexToRgbString(accent3Hex) || accent1Rgb;
+  const accent4Rgb = hexToRgbString(accent4Hex) || accent1Rgb;
+  const accent5Rgb = hexToRgbString(accent5Hex) || accent1Rgb;
+  const accent6Rgb = hexToRgbString(accent6Hex) || accent1Rgb;
+  const accent7Rgb = hexToRgbString(accent7Hex) || accent1Rgb;
+  const accent8Rgb = hexToRgbString(accent8Hex) || accent1Rgb;
+  const accent9Rgb = hexToRgbString(accent9Hex) || accent1Rgb;
+  const accent10Rgb = hexToRgbString(accent10Hex) || accent1Rgb;
 
   // Header/nav color defaults are derived from Accent 1, with optional CSS var overrides.
   const HEADER_TEXT_DEFAULT = '#1f2937';
@@ -2583,8 +2613,22 @@ async function getThemeVarsCss(req, res) {
     `--kexo-accent-4:${accent4Hex};`,
     `--kexo-accent-5:${accent5Hex};`,
     `--kexo-accent-6:${accent6Hex};`,
+    `--kexo-accent-7:${accent7Hex};`,
+    `--kexo-accent-8:${accent8Hex};`,
+    `--kexo-accent-9:${accent9Hex};`,
+    `--kexo-accent-10:${accent10Hex};`,
+    `--kexo-accent-1-rgb:${accent1Rgb};`,
+    `--kexo-accent-2-rgb:${accent2Rgb};`,
+    `--kexo-accent-3-rgb:${accent3Rgb};`,
+    `--kexo-accent-4-rgb:${accent4Rgb};`,
+    `--kexo-accent-5-rgb:${accent5Rgb};`,
+    `--kexo-accent-6-rgb:${accent6Rgb};`,
+    `--kexo-accent-7-rgb:${accent7Rgb};`,
+    `--kexo-accent-8-rgb:${accent8Rgb};`,
+    `--kexo-accent-9-rgb:${accent9Rgb};`,
+    `--kexo-accent-10-rgb:${accent10Rgb};`,
     `--tblr-primary:${accent1Hex};`,
-    `--tblr-primary-rgb:${primaryRgb};`,
+    `--tblr-primary-rgb:${accent1Rgb};`,
     `--kexo-header-strip-padding:${stripPadding && stripPadding.length < 80 ? stripPadding : '0 5px'};`,
     `--kexo-header-top-bg:${headerTopBg};`,
     `--kexo-header-top-text-color:${headerTopText};`,

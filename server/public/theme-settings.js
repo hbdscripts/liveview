@@ -111,7 +111,7 @@
     ICON_GLYPH_DEFAULTS[k] = withDefaultIconStyle(k, ICON_GLYPH_DEFAULTS[k]);
   });
 
-  var ACCENT_DEFAULTS = ['#4b94e4', '#3eb3ab', '#f59e34', '#e4644b', '#6681e8', '#8395aa'];
+  var ACCENT_DEFAULTS = ['#4b94e4', '#3eb3ab', '#f59e34', '#e4644b', '#6681e8', '#8395aa', '#a3e635', '#f43f5e', '#06b6d4', '#8b5cf6'];
   var DEFAULTS = {
     theme: 'light',
     'theme-accent-1': ACCENT_DEFAULTS[0],
@@ -120,6 +120,10 @@
     'theme-accent-4': ACCENT_DEFAULTS[3],
     'theme-accent-5': ACCENT_DEFAULTS[4],
     'theme-accent-6': ACCENT_DEFAULTS[5],
+    'theme-accent-7': ACCENT_DEFAULTS[6],
+    'theme-accent-8': ACCENT_DEFAULTS[7],
+    'theme-accent-9': ACCENT_DEFAULTS[8],
+    'theme-accent-10': ACCENT_DEFAULTS[9],
     'theme-radius': '1',
     'theme-font': 'sans',
     'theme-base': 'slate',
@@ -185,7 +189,7 @@
     if (LOCKED_GLYPH_THEME_KEYS.indexOf(k) >= 0) return false;
     return true;
   });
-  var ACCENT_HEX_KEYS = ['theme-accent-1', 'theme-accent-2', 'theme-accent-3', 'theme-accent-4', 'theme-accent-5', 'theme-accent-6'];
+  var ACCENT_HEX_KEYS = ['theme-accent-1', 'theme-accent-2', 'theme-accent-3', 'theme-accent-4', 'theme-accent-5', 'theme-accent-6', 'theme-accent-7', 'theme-accent-8', 'theme-accent-9', 'theme-accent-10'];
   var HEADER_THEME_TEXT_KEYS = [
     'theme-header-top-text-color',
     'theme-header-main-link-color',
@@ -2176,12 +2180,16 @@
     ].join('');
     var schemeMap = getColorSchemeMap();
     var themeAccordionsId = 'theme-color-accordion';
-    var accentGrid = accentHexInputCard('theme-accent-1', 'Accent 1', DEFAULTS['theme-accent-1']) +
-      accentHexInputCard('theme-accent-2', 'Accent 2', DEFAULTS['theme-accent-2']) +
-      accentHexInputCard('theme-accent-3', 'Accent 3', DEFAULTS['theme-accent-3']) +
-      accentHexInputCard('theme-accent-4', 'Accent 4', DEFAULTS['theme-accent-4']) +
-      accentHexInputCard('theme-accent-5', 'Accent 5', DEFAULTS['theme-accent-5']) +
-      accentHexInputCard('theme-accent-6', 'Accent 6', DEFAULTS['theme-accent-6']);
+    var accentItems = (schemeMap && Array.isArray(schemeMap.themeAccents) && schemeMap.themeAccents.length)
+      ? schemeMap.themeAccents.slice()
+      : ACCENT_HEX_KEYS.map(function (k, i) {
+        return { themeKeyHyphen: k, label: 'Accent ' + String(i + 1) };
+      });
+    var accentGrid = accentItems.map(function (it) {
+      var key = it && it.themeKeyHyphen ? String(it.themeKeyHyphen) : '';
+      var label = it && it.label ? String(it.label) : key;
+      return accentHexInputCard(key, label, DEFAULTS[key] || '');
+    }).join('');
 
     var themeAccentsAccordion = buildAccordionItemHtml({
       accordionId: 'theme-accents',
@@ -2190,7 +2198,7 @@
       parentId: themeAccordionsId,
       collapseId: 'theme-color-accordion-theme-accents',
       bodyHtml:
-        '<div class="text-secondary small mb-3">Accent 1 is the primary accent (Top Bar + Top Nav). Accents 1–5 rotate for nav underline/accents. Leave blank to use defaults.</div>' +
+        '<div class="text-secondary small mb-3">Accent 1 is the primary accent (Top Bar + Top Nav). Accents 1–10 rotate for nav underline/accents. Leave blank to use defaults.</div>' +
         '<div class="d-flex align-items-center gap-2 flex-wrap mb-3">' +
           '<button type="button" class="btn btn-outline-secondary btn-sm kexo-theme-accents-revert-section">Revert section</button>' +
         '</div>' +

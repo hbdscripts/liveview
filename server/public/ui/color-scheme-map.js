@@ -37,6 +37,10 @@
     { themeKeyUnderscore: 'theme_accent_4', themeKeyHyphen: 'theme-accent-4', label: 'Accent 4', cssVars: ['--kexo-accent-4', '--kexo-accent-4-rgb'] },
     { themeKeyUnderscore: 'theme_accent_5', themeKeyHyphen: 'theme-accent-5', label: 'Accent 5', cssVars: ['--kexo-accent-5', '--kexo-accent-5-rgb'] },
     { themeKeyUnderscore: 'theme_accent_6', themeKeyHyphen: 'theme-accent-6', label: 'Accent 6', cssVars: ['--kexo-accent-6', '--kexo-accent-6-rgb'] },
+    { themeKeyUnderscore: 'theme_accent_7', themeKeyHyphen: 'theme-accent-7', label: 'Accent 7', cssVars: ['--kexo-accent-7', '--kexo-accent-7-rgb'] },
+    { themeKeyUnderscore: 'theme_accent_8', themeKeyHyphen: 'theme-accent-8', label: 'Accent 8', cssVars: ['--kexo-accent-8', '--kexo-accent-8-rgb'] },
+    { themeKeyUnderscore: 'theme_accent_9', themeKeyHyphen: 'theme-accent-9', label: 'Accent 9', cssVars: ['--kexo-accent-9', '--kexo-accent-9-rgb'] },
+    { themeKeyUnderscore: 'theme_accent_10', themeKeyHyphen: 'theme-accent-10', label: 'Accent 10', cssVars: ['--kexo-accent-10', '--kexo-accent-10-rgb'] },
   ];
 
   // CSS variable overrides stored under css_var_overrides_v1 (key is the CSS custom property name).

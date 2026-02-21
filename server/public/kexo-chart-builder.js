@@ -574,7 +574,18 @@
     if (!containerEl) return null;
     var chartKey = String(c.chartKey || '').trim().toLowerCase();
     var mode = String(c.mode || '').trim().toLowerCase() || 'line';
-    var colors = Array.isArray(c.colors) && c.colors.length ? c.colors : ['#4b94e4', '#3eb3ab', '#f59e34', '#8b5cf6'];
+    var colors = Array.isArray(c.colors) && c.colors.length ? c.colors : [
+      'var(--kexo-accent-1, #4b94e4)',
+      'var(--kexo-accent-2, #3eb3ab)',
+      'var(--kexo-accent-3, #f59e34)',
+      'var(--kexo-accent-4, #e4644b)',
+      'var(--kexo-accent-5, #6681e8)',
+      'var(--kexo-accent-6, #8395aa)',
+      'var(--kexo-accent-7, #a3e635)',
+      'var(--kexo-accent-8, #f43f5e)',
+      'var(--kexo-accent-9, #06b6d4)',
+      'var(--kexo-accent-10, #8b5cf6)',
+    ];
     if (mode === 'map-animated' || mode === 'map-flat') {
       renderMapPreviewPlaceholder(containerEl, mode, colors[0] || '#3eb3ab');
       return null;
