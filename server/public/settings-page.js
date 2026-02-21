@@ -1317,13 +1317,31 @@
     var tabs = Array.isArray(o.tabs) ? o.tabs : [];
     if (!accordion || !tabAttr || !navId || !tabs.length) return;
 
-    var host = accordion.parentElement;
-    if (!host) return;
+    // Ensure there is a consistent framed container directly under the tab bar.
+    // This allows the active tab to visually "join" the content on every panel.
+    var contentWrap = null;
+    var host = null;
+    try {
+      if (accordion.parentElement && accordion.parentElement.classList && accordion.parentElement.classList.contains('settings-tab-content-box')) {
+        contentWrap = accordion.parentElement;
+        host = contentWrap.parentElement;
+      } else {
+        host = accordion.parentElement;
+        if (!host) return;
+        contentWrap = document.createElement('div');
+        contentWrap.className = 'settings-tab-content-box';
+        host.insertBefore(contentWrap, accordion);
+        contentWrap.appendChild(accordion);
+      }
+    } catch (_) {
+      return;
+    }
+    if (!host || !contentWrap) return;
 
     var nav = document.getElementById(navId);
     if (!nav) {
       nav = document.createElement('ul');
-      nav.className = 'nav nav-tabs mb-3';
+      nav.className = 'nav nav-tabs mb-3 settings-main-tabs';
       nav.id = navId;
       nav.setAttribute('role', 'tablist');
       tabs.forEach(function (tab, idx) {
@@ -1344,7 +1362,12 @@
         li.appendChild(link);
         nav.appendChild(li);
       });
-      host.insertBefore(nav, accordion);
+      host.insertBefore(nav, contentWrap);
+    } else {
+      try { nav.classList && nav.classList.add('settings-main-tabs'); } catch (_) {}
+      try {
+        if (nav.parentElement === host && nav.nextSibling !== contentWrap) host.insertBefore(nav, contentWrap);
+      } catch (_) {}
     }
 
     accordion.classList.add('settings-main-tabs-accordion');

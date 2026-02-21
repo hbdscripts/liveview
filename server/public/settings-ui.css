@@ -13,8 +13,29 @@
   background: var(--tblr-bg-surface, #fff);
 }
 
+/* Consistent framed container directly under Settings in-panel tab bars. */
+body[data-page="settings"] .settings-tab-content-box {
+  border-left: 1px solid var(--tblr-border-color-translucent, rgba(0, 0, 0, 0.06));
+  border-right: 1px solid var(--tblr-border-color-translucent, rgba(0, 0, 0, 0.06));
+  border-bottom: 1px solid var(--tblr-border-color-translucent, rgba(0, 0, 0, 0.06));
+  border-top: 0;
+  border-radius: 0 0 var(--tblr-border-radius, .75rem) var(--tblr-border-radius, .75rem);
+  padding: 0.875rem 1rem;
+  margin-top: -1px;
+  background: var(--tblr-bg-surface, #fff);
+}
+
+/* Cost & profit panels are not accordion-framed; use the shared tab box frame instead. */
+body[data-page="settings"] #settings-panel-cost-expenses .settings-tab-content-box .settings-panel-wrap {
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  margin-top: 0;
+  background: transparent;
+}
+
 /* Left nav: category and child links (Settings-only). */
-.settings-nav-category { margin-bottom: 0.15rem; }
+.settings-nav-category { margin-bottom: 0.15rem; margin-right: 10px; }
 .settings-nav-category > .list-group-item:first-child {
   border-radius: var(--tblr-border-radius, .375rem);
   padding: 0;
@@ -79,6 +100,55 @@ body[data-page="settings"] .accordion-body .settings-panel-wrap {
 /* Tabs/underlines should visually "touch" the content frame below. */
 body[data-page="settings"] .settings-panel-wrap ul.nav {
   margin-bottom: 1px;
+}
+
+/* In-panel main tabs (JS-injected + Costs & profit). */
+body[data-page="settings"] .settings-main-tabs {
+  border: 0;
+  margin: 0 !important;
+  padding: 0 !important;
+  gap: 0.35rem;
+}
+body[data-page="settings"] .settings-main-tabs .nav-link {
+  border: 1px solid transparent;
+  border-bottom-color: transparent;
+  border-radius: 8px 8px 0 0;
+  padding: 10px 15px;
+  font-weight: 500;
+  font-size: 14px;
+  background: var(--tblr-bg-surface-secondary, #f6f8fb);
+  color: var(--tblr-secondary, #66758c);
+}
+body[data-page="settings"] .settings-main-tabs .nav-link:hover {
+  color: var(--tblr-body-color, #1f2937);
+}
+body[data-page="settings"] .settings-main-tabs .nav-link.active {
+  background: var(--tblr-bg-surface, #fff);
+  border-color: var(--tblr-border-color-translucent, rgba(0, 0, 0, 0.06));
+  border-bottom-color: var(--tblr-bg-surface, #fff);
+  font-weight: 600;
+  position: relative;
+  z-index: 2;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 5px;
+  text-decoration-color: #555;
+}
+
+@media (max-width: 991.98px) {
+  body[data-page="settings"] .settings-main-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 0.25rem !important;
+  }
+  body[data-page="settings"] .settings-main-tabs .nav-item {
+    flex: 0 0 auto;
+  }
+  body[data-page="settings"] .settings-main-tabs .nav-link {
+    white-space: nowrap;
+  }
 }
 
 /* Remove grid-layout drift: charts color “grid” becomes a simple vertical stack. */
