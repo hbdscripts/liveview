@@ -5376,7 +5376,7 @@ img[data-kexo-logo-slot="footer"][data-kexo-logo-ready="1"] {
   border-radius: 4px;
   margin-top: 5px !important;
   box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
-  opacity: 0.9;
+  opacity: 1;
   padding: 0;
   font-size: 13px;
 }
@@ -6886,7 +6886,7 @@ body[data-bs-theme="dark"] .kexo-upgrade-locked .kexo-upgrade-lock-overlay {
   line-height:30px;
   text-indent:15px;
   font-weight:600;
-  color:color-mix(in srgb, black calc(var(--kexo-menu-opacity-filter, 0) * 100%), var(--kexo-top-menu-bg, var(--kexo-header-main-bg, #fff))) !important;
+  color: var(--kexo-top-menu-link-color, var(--tblr-body-color, #1f2937)) !important;
 }
 .settings-nav-children { padding-left: 0; }
 .settings-nav-child{

@@ -153,8 +153,6 @@
     'theme-header-online-border': 'show',
     'theme-header-online-border-color': '#e6e7e9',
     'theme-header-logo-url': '',
-    'theme-strip-opacity-filter': '0',
-    'theme-menu-opacity-filter': '0',
     'theme-menu-hover-opacity': '8',
     'theme-menu-hover-color': 'black',
     'theme-header-strip-padding': '0 5px',
@@ -207,7 +205,7 @@
     'theme-header-settings-border',
     'theme-header-online-border',
   ];
-  var ACCENT_OPACITY_KEYS = ['theme-strip-opacity-filter', 'theme-menu-opacity-filter', 'theme-menu-hover-opacity'];
+  var ACCENT_OPACITY_KEYS = ['theme-menu-hover-opacity'];
   var HEADER_THEME_RADIO_KEYS = ['theme-menu-hover-color'];
   var CUSTOM_CSS_KEYS = ['theme-custom-css'];
 
@@ -1742,12 +1740,6 @@
         root.style.setProperty('--kexo-top-menu-bg', derived);
         root.style.setProperty('--kexo-top-menu-dropdown-bg', derived);
       }
-    } else if (key === 'theme-strip-opacity-filter') {
-      var pct = normalizeOpacityFilter(value, DEFAULTS[key]);
-      root.style.setProperty('--kexo-strip-opacity-filter', (parseFloat(pct) / 100).toFixed(2));
-    } else if (key === 'theme-menu-opacity-filter') {
-      var pct = normalizeOpacityFilter(value, DEFAULTS[key]);
-      root.style.setProperty('--kexo-menu-opacity-filter', (parseFloat(pct) / 100).toFixed(2));
     } else if (key === 'theme-header-strip-padding') {
       root.style.setProperty('--kexo-header-strip-padding', normalizeStripPadding(value, DEFAULTS[key]));
     } else if (key === 'theme-radius') {
@@ -2210,10 +2202,6 @@
       headerInputCardNoIcon('theme-header-online-text-color', 'Online badge text/icon color', 'Text/icon color for the visitors badge.', DEFAULTS['theme-header-online-text-color']),
       headerInputCardNoIcon('theme-header-strip-padding', 'Strip padding', 'CSS padding for the top strip (for example 0 5px).', DEFAULTS['theme-header-strip-padding']),
     ].join('');
-    var opacityGrid = [
-      headerInputCardNoIcon('theme-strip-opacity-filter', 'Strip opacity filter', 'Darken strip by 0–100%. 0 = no change, 5 = 5% black overlay.', '0'),
-      headerInputCardNoIcon('theme-menu-opacity-filter', 'Menu opacity filter', 'Darken menu by 0–100%. 0 = no change, 5 = 5% black overlay.', '0'),
-    ].join('');
     var menuHoverGrid = [
       headerInputCardNoIcon('theme-menu-hover-opacity', 'Menu hover opacity', 'Hover tint strength 0–100%. 0 = no overlay, 8 = subtle.', '8'),
       headerSelectCardNoIcon('theme-menu-hover-color', 'Menu hover tint', 'Black = darken on hover, White = lighten on hover.', { black: 'Black', white: 'White' }, 'black'),
@@ -2254,11 +2242,6 @@
           '<div class="row g-3">' + accentGrid + '</div>' +
         '</div>' +
         cssVarOverridesPanel +
-        '<div class="mb-4">' +
-          '<label class="form-label">Opacity filters</label>' +
-          '<div class="text-secondary small mb-3">Darken strip or menu by %. 0 = no change.</div>' +
-          '<div class="row g-3">' + opacityGrid + '</div>' +
-        '</div>' +
         '<div class="mb-4">' +
           '<label class="form-label">Menu hover tint</label>' +
           '<div class="text-secondary small mb-3">Control the hover overlay on menu links and dropdown items. Black = darken, White = lighten. Opacity 0–100% sets strength.</div>' +

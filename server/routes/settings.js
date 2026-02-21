@@ -2171,8 +2171,6 @@ const THEME_BASE_KEYS = [
   'theme_header_online_border',
   'theme_header_online_border_color',
   'theme_header_logo_url',
-  'theme_strip_opacity_filter',
-  'theme_menu_opacity_filter',
   'theme_menu_hover_opacity',
   'theme_menu_hover_color',
   'theme_header_strip_padding',
@@ -2288,8 +2286,6 @@ async function getThemeVarsCss(req, res) {
     theme_header_online_radius: '.375rem',
     theme_header_online_border: 'show',
     theme_header_online_border_color: '#e6e7e9',
-    theme_strip_opacity_filter: '0',
-    theme_menu_opacity_filter: '0',
     theme_menu_hover_opacity: '8',
     theme_menu_hover_color: 'black',
     theme_header_strip_padding: '0 5px',
@@ -2338,8 +2334,6 @@ async function getThemeVarsCss(req, res) {
     onlineRadius,
     onlineBorderMode,
     onlineBorderColor,
-    stripOpacity,
-    menuOpacity,
     stripPadding,
   ] = await Promise.all([
     Promise.resolve(accent1),
@@ -2371,8 +2365,6 @@ async function getThemeVarsCss(req, res) {
     getThemeKey('theme_header_online_radius', FALLBACKS.theme_header_online_radius),
     getThemeKey('theme_header_online_border', FALLBACKS.theme_header_online_border),
     getThemeKey('theme_header_online_border_color', FALLBACKS.theme_header_online_border_color),
-    getThemeKey('theme_strip_opacity_filter', FALLBACKS.theme_strip_opacity_filter),
-    getThemeKey('theme_menu_opacity_filter', FALLBACKS.theme_menu_opacity_filter),
     getThemeKey('theme_header_strip_padding', FALLBACKS.theme_header_strip_padding),
   ]);
 
@@ -2382,9 +2374,6 @@ async function getThemeVarsCss(req, res) {
   const settingsBorder = normalizeCssToggle(settingsBorderMode, 'show');
   const onlineBorder = normalizeCssToggle(onlineBorderMode, 'show');
   const labelMode = normalizeCssToggle(settingsLabelMode, 'show');
-
-  const stripOpacityVal = Math.min(100, Math.max(0, parseFloat(stripOpacity) || 0)) / 100;
-  const menuOpacityVal = Math.min(100, Math.max(0, parseFloat(menuOpacity) || 0)) / 100;
 
   const [a2, a3, a4, a5, a6] = await Promise.all([
     getThemeKey('theme_accent_2', '#3eb3ab'),
@@ -2490,8 +2479,6 @@ async function getThemeVarsCss(req, res) {
     `--kexo-accent-6:${accent6Hex};`,
     `--tblr-primary:${accent1Hex};`,
     `--tblr-primary-rgb:${primaryRgb};`,
-    `--kexo-strip-opacity-filter:${stripOpacityVal.toFixed(2)};`,
-    `--kexo-menu-opacity-filter:${menuOpacityVal.toFixed(2)};`,
     `--kexo-header-strip-padding:${stripPadding && stripPadding.length < 80 ? stripPadding : '0 5px'};`,
     `--kexo-header-top-bg:${headerTopBg};`,
     `--kexo-header-top-text-color:${normalizeCssColor(topText, FALLBACKS.theme_header_top_text_color)};`,
