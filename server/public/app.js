@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 7427391bc7d52913
+// checksum: d41568662e93e275
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -10941,7 +10941,11 @@ const API = '';
           try { applyOverviewWidgetsUiConfigV1(uiSettingsCache.overviewWidgetsUiConfig); } catch (_) {}
         }
         if (options.apply && uiSettingsCache.cssVarOverridesV1) {
-          try { applyCssVarOverridesV1(uiSettingsCache.cssVarOverridesV1); } catch (_) {}
+          var cachedVars = uiSettingsCache.cssVarOverridesV1.vars;
+          var hasCachedVars = cachedVars && typeof cachedVars === 'object' && Object.keys(cachedVars).length > 0;
+          if (hasCachedVars) {
+            try { applyCssVarOverridesV1(uiSettingsCache.cssVarOverridesV1); } catch (_) {}
+          }
         }
         if (options.apply && uiSettingsCache.tablesUiConfig) {
           try { applyTablesUiConfigV1(uiSettingsCache.tablesUiConfig); } catch (_) {}
@@ -10975,7 +10979,11 @@ const API = '';
             try { applyOverviewWidgetsUiConfigV1(uiSettingsCache.overviewWidgetsUiConfig); } catch (_) {}
           }
           if (options.apply && uiSettingsCache && uiSettingsCache.cssVarOverridesV1) {
-            try { applyCssVarOverridesV1(uiSettingsCache.cssVarOverridesV1); } catch (_) {}
+            var serverVars = uiSettingsCache.cssVarOverridesV1.vars;
+            var hasServerVars = serverVars && typeof serverVars === 'object' && Object.keys(serverVars).length > 0;
+            if (hasServerVars) {
+              try { applyCssVarOverridesV1(uiSettingsCache.cssVarOverridesV1); } catch (_) {}
+            }
           }
           if (options.apply && uiSettingsCache && uiSettingsCache.tablesUiConfig) {
             try { applyTablesUiConfigV1(uiSettingsCache.tablesUiConfig); } catch (_) {}

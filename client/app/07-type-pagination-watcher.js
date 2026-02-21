@@ -5404,7 +5404,11 @@
           try { applyOverviewWidgetsUiConfigV1(uiSettingsCache.overviewWidgetsUiConfig); } catch (_) {}
         }
         if (options.apply && uiSettingsCache.cssVarOverridesV1) {
-          try { applyCssVarOverridesV1(uiSettingsCache.cssVarOverridesV1); } catch (_) {}
+          var cachedVars = uiSettingsCache.cssVarOverridesV1.vars;
+          var hasCachedVars = cachedVars && typeof cachedVars === 'object' && Object.keys(cachedVars).length > 0;
+          if (hasCachedVars) {
+            try { applyCssVarOverridesV1(uiSettingsCache.cssVarOverridesV1); } catch (_) {}
+          }
         }
         if (options.apply && uiSettingsCache.tablesUiConfig) {
           try { applyTablesUiConfigV1(uiSettingsCache.tablesUiConfig); } catch (_) {}
@@ -5438,7 +5442,11 @@
             try { applyOverviewWidgetsUiConfigV1(uiSettingsCache.overviewWidgetsUiConfig); } catch (_) {}
           }
           if (options.apply && uiSettingsCache && uiSettingsCache.cssVarOverridesV1) {
-            try { applyCssVarOverridesV1(uiSettingsCache.cssVarOverridesV1); } catch (_) {}
+            var serverVars = uiSettingsCache.cssVarOverridesV1.vars;
+            var hasServerVars = serverVars && typeof serverVars === 'object' && Object.keys(serverVars).length > 0;
+            if (hasServerVars) {
+              try { applyCssVarOverridesV1(uiSettingsCache.cssVarOverridesV1); } catch (_) {}
+            }
           }
           if (options.apply && uiSettingsCache && uiSettingsCache.tablesUiConfig) {
             try { applyTablesUiConfigV1(uiSettingsCache.tablesUiConfig); } catch (_) {}

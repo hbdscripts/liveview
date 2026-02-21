@@ -6,7 +6,8 @@
         root.setAttribute('data-bs-theme', 'light');
         root.classList.remove('theme-dark-early');
 
-        var ACCENT_DEFAULTS = ['#4b94e4', '#3eb3ab', '#f59e34', '#8b5cf6', '#ef4444'];
+        /* Must match theme-settings.js ACCENT_DEFAULTS (6 accents) so saved theme and first-paint match */
+        var ACCENT_DEFAULTS = ['#4b94e4', '#3eb3ab', '#f59e34', '#e4644b', '#6681e8', '#8395aa'];
         function parseHex(hex) {
           if (!hex || typeof hex !== 'string') return null;
           hex = hex.trim();
@@ -17,7 +18,7 @@
           var b = parseInt(hex.slice(5, 7), 16);
           return r + ',' + g + ',' + b;
         }
-        for (var i = 1; i <= 5; i++) {
+        for (var i = 1; i <= 6; i++) {
           var stored = localStorage.getItem('tabler-theme-accent-' + i);
           var hex = stored && /^#?[0-9a-f]{6}$/i.test(stored.trim()) ? (stored.charAt(0) === '#' ? stored : '#' + stored) : ACCENT_DEFAULTS[i - 1];
           var rgb = parseHex(hex);
@@ -30,6 +31,18 @@
         var rgb1 = parseHex(hex1);
         if (rgb1) root.style.setProperty('--tblr-primary-rgb', rgb1);
         root.style.setProperty('--kexo-top-menu-border-color', 'transparent');
+
+        /* Apply header/strip and all CSS var overrides from localStorage before any CSS loads to avoid flash of wrong colors */
+        try {
+          var cssVarPayload = localStorage.getItem('kexo:css_var_overrides:v1');
+          if (cssVarPayload) {
+            var parsed = JSON.parse(cssVarPayload);
+            var vars = parsed && parsed.vars && typeof parsed.vars === 'object' ? parsed.vars : {};
+            Object.keys(vars).forEach(function (k) {
+              try { root.style.setProperty(k, String(vars[k])); } catch (_) {}
+            });
+          }
+        } catch (_) {}
 
         var RADIUS = { '0': '0', '0.5': '.25rem', '1': '.375rem', '1.5': '.5rem', '2': '2rem' };
         var radius = localStorage.getItem('tabler-theme-radius');
