@@ -327,7 +327,12 @@ async function allowWithUserGate(req) {
   // Fast path: if not using oauth_session, fall back to allow() rules.
   const oauthCookie = getCookie(req, OAUTH_COOKIE_NAME);
   const session = oauthCookie ? readOauthSession(oauthCookie) : null;
-  if (!session || !session.email) return { ok: allow(req), reason: '' };
+  if (!session || !session.email) {
+    // If a cookie exists but can't be read/verified, it's usually an expired/invalidated session.
+    // Preserve Shopify-embed allowlist behaviour (allow(req)), but provide a helpful reason when blocked.
+    const ok = allow(req);
+    return { ok, reason: ok ? '' : (oauthCookie ? 'session_expired' : '') };
+  }
 
   const email = users.normalizeEmail(session.email);
   if (!email) return { ok: false, reason: 'unauthorized' };
