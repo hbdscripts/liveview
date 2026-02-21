@@ -280,7 +280,6 @@ a {
   --converted-bg: #edf7f6;
   --converted-hover: #e0f2ef;
   --returning-bg: #fff;
-  --badge-new-fg: #fff;
   --badge-returning: #6366f1;
   --chip-abandoned: #dc2626;
   --online-dot-color: #22c55e;
@@ -5454,7 +5453,7 @@ img[data-kexo-logo-slot="footer"][data-kexo-logo-ready="1"] {
 }
 
 .kexo-desktop-nav {
-  background: var(--kexo-top-menu-bg, var(--kexo-header-main-bg, #fff)) !important;
+  background: var(--kexo-top-menu-bg, #fff) !important;
   min-height: 2.5rem;
   width: 100%;
   padding: 0;

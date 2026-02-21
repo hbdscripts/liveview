@@ -4,13 +4,10 @@
       --converted-bg: #f1f9f8;
       --converted-hover: #edf4f3;
       --returning-bg: #fff;
-      --badge-new-fg: #fff;
       --badge-returning: #6366f1;
       --chip-abandoned: #dc2626;
       --side-panel-shadow: -4px 0 24px rgba(0, 0, 0, .08);
       --side-panel-sale-bg: rgba(13, 148, 136, 0.08);
-      --button-hover-bg: #f0f0f0;
-      --select-arrow: #333;
       /* Table: universal — one gap, one padding, one font stack for all tables at all resolutions */
       --table-gap: 15px;
       --table-cell-padding-y: 0.6rem;
