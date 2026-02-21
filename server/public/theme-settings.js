@@ -783,7 +783,7 @@
     if (key.indexOf('pagination-') === 0) return 'Pagination arrow icon. Shows in paginated cards/tables across dashboard and insights pages.';
     if (key.indexOf('card-title-') === 0) return 'Auto card-title icon. Added to matching card headers across dashboard, insights, acquisition, integrations, tools, and settings pages.';
     if (key === 'online-status-indicator') return 'Online visitors badge icon. Shows in the top strip header on all pages.';
-    if (key === 'nav-notifications-bell') return 'Notifications bell. Shows in the top strip next to Settings and in the footer on all pages.';
+    if (key === 'nav-notifications-bell') return 'Notifications bell. Shows in the header (top strip) next to Settings.';
     if (key.indexOf('card-collapse-') === 0) return 'Card collapse chevron icon. Shows on collapsible cards in dashboard and insights pages.';
     if (key.indexOf('dash-kpi-delta-') === 0) return 'Overview KPI delta icon. Shows in KPI cards on /dashboard/overview.';
     if (key.indexOf('settings-tab-') === 0 || key.indexOf('settings-diagnostics-') === 0) return 'Settings page icon. Locked to a fixed fa-thin class and not editable.';
@@ -1219,9 +1219,6 @@
                 '<textarea class="form-control form-control-sm payment-icon-input font-monospace" rows="2" spellcheck="false" placeholder="fa-brands fa-cc-visa  OR  https://...svg  OR  <svg ...>">' + escapeHtml(m && m.iconSpec != null ? String(m.iconSpec) : '') + '</textarea>' +
                 '<div class="form-hint small mt-1">Starts blank intentionally. Paste Font Awesome, image URL/path, or SVG markup.</div>' +
                 '<div class="d-flex align-items-center gap-2 mt-2">' +
-                  '<button type="button" class="kexo-icon-action-btn kexo-icon-action-edit payment-icon-edit" data-theme-icon-edit="payment-method-' + escapeHtml(key) + '" aria-label="Edit">' +
-                    '<span class="kexo-theme-icon-preview kexo-icon-action-icon d-inline-flex align-items-center justify-content-center" style="width:16px;height:16px;" data-theme-icon-preview-glyph="theme-icon-glyph-admin-tab-edit-icon" aria-hidden="true"></span>' +
-                  '</button>' +
                   '<button type="button" class="kexo-icon-action-btn kexo-icon-action-save payment-icon-save" aria-label="Save">' +
                     '<span class="kexo-theme-icon-preview kexo-icon-action-icon d-inline-flex align-items-center justify-content-center" style="width:16px;height:16px;" data-theme-icon-preview-glyph="theme-icon-glyph-admin-tab-save-icon" aria-hidden="true"></span>' +
                   '</button>' +
@@ -1369,9 +1366,6 @@ btn.classList.remove('btn-success');
                 '<textarea class="form-control form-control-sm variant-rule-icon-input font-monospace" rows="2" spellcheck="false" placeholder="fa-light fa-gem  OR  https://...svg  OR  <svg ...>">' + escapeHtml(row.iconSpec || '') + '</textarea>' +
                 '<div class="form-hint small mt-1">Save a unique icon per variant rule row.</div>' +
                 '<div class="d-flex align-items-center gap-2 mt-2">' +
-                  '<button type="button" class="kexo-icon-action-btn kexo-icon-action-edit variant-rule-icon-edit" data-theme-icon-edit="' + escapeHtml(row.overrideKey) + '" aria-label="Edit">' +
-                    '<span class="kexo-theme-icon-preview kexo-icon-action-icon d-inline-flex align-items-center justify-content-center" style="width:16px;height:16px;" data-theme-icon-preview-glyph="theme-icon-glyph-admin-tab-edit-icon" aria-hidden="true"></span>' +
-                  '</button>' +
                   '<button type="button" class="kexo-icon-action-btn kexo-icon-action-save variant-rule-icon-save" aria-label="Save">' +
                     '<span class="kexo-theme-icon-preview kexo-icon-action-icon d-inline-flex align-items-center justify-content-center" style="width:16px;height:16px;" data-theme-icon-preview-glyph="theme-icon-glyph-admin-tab-save-icon" aria-hidden="true"></span>' +
                   '</button>' +
@@ -1571,9 +1565,6 @@ btn.classList.remove('btn-success');
                 '<textarea class="form-control form-control-sm attribution-icon-input font-monospace" data-kind="source" data-key="' + escapeHtml(key) + '" rows="2" spellcheck="false" placeholder="fa-brands fa-google  OR  /assets/icon.png  OR  <svg ...>">' + escapeHtml(icon) + '</textarea>' +
                 '<div class="form-hint small mt-1">Font Awesome class, image URL/path, or inline SVG. Blank clears the icon.</div>' +
                 '<div class="d-flex align-items-center gap-2 mt-2">' +
-                  '<button type="button" class="kexo-icon-action-btn kexo-icon-action-edit attribution-icon-edit" data-kind="source" data-key="' + escapeHtml(key) + '" data-theme-icon-edit="attribution-source-' + escapeHtml(key) + '" aria-label="Edit">' +
-                    '<span class="kexo-theme-icon-preview kexo-icon-action-icon d-inline-flex align-items-center justify-content-center" style="width:16px;height:16px;" data-theme-icon-preview-glyph="theme-icon-glyph-admin-tab-edit-icon" aria-hidden="true"></span>' +
-                  '</button>' +
                   '<button type="button" class="kexo-icon-action-btn kexo-icon-action-save attribution-icon-save" data-kind="source" data-key="' + escapeHtml(key) + '" aria-label="Save">' +
                     '<span class="kexo-theme-icon-preview kexo-icon-action-icon d-inline-flex align-items-center justify-content-center" style="width:16px;height:16px;" data-theme-icon-preview-glyph="theme-icon-glyph-admin-tab-save-icon" aria-hidden="true"></span>' +
                   '</button>' +
@@ -1609,9 +1600,6 @@ btn.classList.remove('btn-success');
                 '<textarea class="form-control form-control-sm attribution-icon-input font-monospace" data-kind="variant" data-key="' + escapeHtml(key) + '" rows="2" spellcheck="false" placeholder="fa-solid fa-bolt  OR  /assets/icon.png  OR  <svg ...>">' + escapeHtml(icon) + '</textarea>' +
                 '<div class="form-hint small mt-1">Font Awesome class, image URL/path, or inline SVG. Blank clears the icon.</div>' +
                 '<div class="d-flex align-items-center gap-2 mt-2">' +
-                  '<button type="button" class="kexo-icon-action-btn kexo-icon-action-edit attribution-icon-edit" data-kind="variant" data-key="' + escapeHtml(key) + '" data-theme-icon-edit="attribution-variant-' + escapeHtml(key) + '" aria-label="Edit">' +
-                    '<span class="kexo-theme-icon-preview kexo-icon-action-icon d-inline-flex align-items-center justify-content-center" style="width:16px;height:16px;" data-theme-icon-preview-glyph="theme-icon-glyph-admin-tab-edit-icon" aria-hidden="true"></span>' +
-                  '</button>' +
                   '<button type="button" class="kexo-icon-action-btn kexo-icon-action-save attribution-icon-save" data-kind="variant" data-key="' + escapeHtml(key) + '" aria-label="Save">' +
                     '<span class="kexo-theme-icon-preview kexo-icon-action-icon d-inline-flex align-items-center justify-content-center" style="width:16px;height:16px;" data-theme-icon-preview-glyph="theme-icon-glyph-admin-tab-save-icon" aria-hidden="true"></span>' +
                   '</button>' +
@@ -1722,37 +1710,6 @@ btn.classList.remove('btn-success');
 
       updateThemeIconsAccordionCounts(accordion);
     });
-  }
-
-  function buildIconEditModalHtml() {
-    return '' +
-      '<div class="modal fade" id="theme-icon-edit-modal" tabindex="-1" aria-hidden="true">' +
-        '<div class="modal-dialog">' +
-          '<div class="modal-content">' +
-            '<div class="modal-header">' +
-              '<h3 class="modal-title h5">Edit icon overrides</h3>' +
-              '<button type="button" class="btn-close" data-bs-dismiss="modal" data-theme-icon-edit-close aria-label="Close"></button>' +
-            '</div>' +
-            '<div class="modal-body">' +
-              '<div class="text-secondary small mb-3" id="theme-icon-edit-target">Set optional size and color overrides for this icon. Leave blank to use global defaults.</div>' +
-              '<div class="mb-3">' +
-                '<label class="form-label" for="theme-icon-edit-size">Size override</label>' +
-                '<input type="text" class="form-control" id="theme-icon-edit-size" placeholder="e.g. 1em, 14px">' +
-              '</div>' +
-              '<div class="mb-0">' +
-                '<label class="form-label" for="theme-icon-edit-color">Color override</label>' +
-                '<input type="text" class="form-control" id="theme-icon-edit-color" placeholder="e.g. #ffffff, currentColor">' +
-              '</div>' +
-              '<input type="hidden" id="theme-icon-edit-key" value="">' +
-            '</div>' +
-            '<div class="modal-footer d-flex align-items-center flex-wrap gap-2">' +
-              '<span class="small text-secondary me-auto" id="theme-icon-edit-msg" aria-live="polite"></span>' +
-              '<button type="button" class="btn btn-md" id="theme-icon-edit-clear">Clear</button>' +
-              '<button type="button" class="btn btn-primary btn-md" id="theme-icon-edit-save">Save</button>' +
-            '</div>' +
-          '</div>' +
-        '</div>' +
-      '</div>';
   }
 
   function applyThemeCustomCss(rawCss) {
@@ -2120,9 +2077,6 @@ btn.classList.remove('btn-success');
           '</div>' +
           '<textarea class="form-control font-monospace" id="' + inputId + '" name="' + key + '" data-theme-icon-glyph-input="' + key + '" rows="2" placeholder="' + (DEFAULTS[key] || 'fa-circle') + '"></textarea>' +
           '<div class="d-flex align-items-center gap-2 mt-2">' +
-            '<button type="button" class="kexo-icon-action-btn kexo-icon-action-edit" data-theme-icon-edit="' + key + '" aria-label="Edit">' +
-              '<span class="kexo-theme-icon-preview kexo-icon-action-icon d-inline-flex align-items-center justify-content-center" style="width:16px;height:16px;" data-theme-icon-preview-glyph="theme-icon-glyph-admin-tab-edit-icon" aria-hidden="true"></span>' +
-            '</button>' +
             '<button type="button" class="kexo-icon-action-btn kexo-icon-action-save" data-theme-icon-save-glyph="' + key + '" aria-label="Save">' +
               '<span class="kexo-theme-icon-preview kexo-icon-action-icon d-inline-flex align-items-center justify-content-center" style="width:16px;height:16px;" data-theme-icon-preview-glyph="theme-icon-glyph-admin-tab-save-icon" aria-hidden="true"></span>' +
             '</button>' +
@@ -2540,8 +2494,7 @@ btn.classList.remove('btn-success');
           '</div>' +
         '</form>' +
       '</div>' +
-    '</form>' +
-    buildIconEditModalHtml();
+    '</form>';
   }
 
   function wireThemeSubTabs(root) {
@@ -2990,122 +2943,6 @@ btn.classList.remove('btn-success');
 
     function wireIconEditModal() {
       var root = formEl.parentElement || document;
-      var modalEl = root.querySelector('#theme-icon-edit-modal');
-      if (!modalEl) return;
-      var targetEl = modalEl.querySelector('#theme-icon-edit-target');
-      var keyInput = modalEl.querySelector('#theme-icon-edit-key');
-      var sizeInput = modalEl.querySelector('#theme-icon-edit-size');
-      var colorInput = modalEl.querySelector('#theme-icon-edit-color');
-      var saveBtn = modalEl.querySelector('#theme-icon-edit-save');
-      var clearBtn = modalEl.querySelector('#theme-icon-edit-clear');
-      var closeBtn = modalEl.querySelector('[data-theme-icon-edit-close]');
-      if (!keyInput || !sizeInput || !colorInput || !saveBtn || !clearBtn) return;
-      var fallbackBackdropEl = null;
-
-      function getModal() {
-        try {
-          if (typeof bootstrap === 'undefined' || !bootstrap.Modal) return null;
-          return bootstrap.Modal.getOrCreateInstance(modalEl);
-        } catch (_) {
-          return null;
-        }
-      }
-
-      function closeModal() {
-        var modal = getModal();
-        if (modal) {
-          modal.hide();
-          try {
-            if (fallbackBackdropEl && fallbackBackdropEl.parentNode) fallbackBackdropEl.parentNode.removeChild(fallbackBackdropEl);
-            fallbackBackdropEl = null;
-          } catch (_) {}
-          return;
-        }
-        modalEl.classList.remove('show');
-        modalEl.style.display = 'none';
-        modalEl.setAttribute('aria-hidden', 'true');
-        try {
-          document.body.classList.remove('modal-open');
-          if (fallbackBackdropEl && fallbackBackdropEl.parentNode) fallbackBackdropEl.parentNode.removeChild(fallbackBackdropEl);
-          fallbackBackdropEl = null;
-        } catch (_) {}
-      }
-
-      function openModal(themeKey) {
-        var key = String(themeKey || '');
-        var iconName = glyphNameFromThemeKey(key);
-        var meta = glyphMetaFor(iconName);
-        var map = readIconOverridesMap();
-        var row = map[iconName] || {};
-        keyInput.value = key;
-        sizeInput.value = row.size || '';
-        colorInput.value = row.color || '';
-        if (targetEl) targetEl.textContent = 'Overrides for ' + String(meta.title || iconName) + ' (' + iconName + '). Leave blank to use global defaults.';
-        var modal = getModal();
-        if (modal) {
-          modal.show();
-          return;
-        }
-        if (!fallbackBackdropEl || !fallbackBackdropEl.parentNode) {
-          fallbackBackdropEl = document.createElement('div');
-          fallbackBackdropEl.className = 'modal-backdrop fade show kexo-theme-icon-edit-backdrop';
-          fallbackBackdropEl.setAttribute('aria-hidden', 'true');
-          fallbackBackdropEl.addEventListener('click', function () {
-            closeModal();
-          });
-          document.body.appendChild(fallbackBackdropEl);
-        }
-        modalEl.style.display = 'block';
-        modalEl.classList.add('show');
-        modalEl.setAttribute('aria-hidden', 'false');
-        document.body.classList.add('modal-open');
-      }
-
-      function persistIconEdit(clearValues) {
-        var themeKey = keyInput.value || '';
-        var iconName = glyphNameFromThemeKey(themeKey);
-        if (!iconName) return;
-        if (!isAllowedIconOverrideKey(iconName)) return;
-        var map = readIconOverridesMap();
-        var size = clearValues ? '' : normalizeIconOverrideSize(sizeInput.value);
-        var color = clearValues ? '' : normalizeIconOverrideColor(colorInput.value);
-        if (size || color) map[iconName] = { size: size, color: color };
-        else delete map[iconName];
-        writeIconOverridesMap(map);
-        applyTheme(ICON_OVERRIDES_JSON_KEY, getStored(ICON_OVERRIDES_JSON_KEY) || DEFAULTS[ICON_OVERRIDES_JSON_KEY]);
-        refreshIconPreviews(formEl);
-        triggerIconThemeRefresh();
-        var msgEl = modalEl.querySelector('#theme-icon-edit-msg');
-        if (msgEl) { msgEl.textContent = 'Saving…'; msgEl.className = 'small text-secondary me-auto'; }
-        var payload = {};
-        payload['theme_icon_overrides_json'] = getStored(ICON_OVERRIDES_JSON_KEY) || DEFAULTS[ICON_OVERRIDES_JSON_KEY] || '';
-        saveToServer(payload).then(function () {
-          var isLocalOnly = getPreferenceMode() !== 'global';
-          if (msgEl) {
-            msgEl.textContent = isLocalOnly
-              ? 'Saved locally. Switch to Global theme to apply everywhere.'
-              : 'Saved';
-            msgEl.className = isLocalOnly ? 'small text-warning me-auto' : 'small text-success me-auto';
-          }
-          setTimeout(function () {
-            if (msgEl) { msgEl.textContent = ''; msgEl.className = 'small text-secondary me-auto'; }
-            closeModal();
-          }, isLocalOnly ? 2200 : 600);
-        }).catch(function (err) {
-          if (msgEl) {
-            msgEl.textContent = (err && err.message) ? String(err.message) : 'Save failed';
-            msgEl.className = 'small text-danger me-auto';
-          }
-        });
-      }
-
-      root.addEventListener('click', function (e) {
-        var btn = e && e.target && e.target.closest ? e.target.closest('[data-theme-icon-edit]') : null;
-        if (!btn) return;
-        e.preventDefault();
-        openModal(btn.getAttribute('data-theme-icon-edit') || '');
-      });
-
       root.addEventListener('click', function (e) {
         var btn = e && e.target && e.target.closest ? e.target.closest('[data-theme-icon-save-glyph]') : null;
         if (!btn) return;
@@ -3139,8 +2976,8 @@ btn.classList.remove('btn-success');
           }
           if (!isIconOnly) {
             btn.textContent = 'Saved!';
-btn.classList.remove('btn-md');
-          btn.classList.add('btn-success');
+            btn.classList.remove('btn-md');
+            btn.classList.add('btn-success');
           }
           setTimeout(function () {
             if (!isIconOnly) {
@@ -3159,28 +2996,6 @@ btn.classList.remove('btn-md');
             setTimeout(function () { msgEl.textContent = ''; msgEl.className = 'small text-secondary ms-auto'; }, 4000);
           }
         });
-      });
-
-      saveBtn.addEventListener('click', function () {
-        persistIconEdit(false);
-      });
-      clearBtn.addEventListener('click', function () {
-        persistIconEdit(true);
-      });
-      if (closeBtn) {
-        closeBtn.addEventListener('click', function (e) {
-          e.preventDefault();
-          closeModal();
-        });
-      }
-      modalEl.addEventListener('click', function (e) {
-        if (e.target === modalEl) closeModal();
-      });
-      document.addEventListener('keydown', function (e) {
-        if (!e || e.key !== 'Escape') return;
-        var visible = modalEl.classList.contains('show') && modalEl.style.display !== 'none' && modalEl.getAttribute('aria-hidden') !== 'true';
-        if (!visible) return;
-        closeModal();
       });
     }
 

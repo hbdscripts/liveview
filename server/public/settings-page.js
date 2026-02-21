@@ -575,6 +575,27 @@
     return 'cost-sources';
   }
 
+  /** Section id(s) for the current (tab, subtab). Footer Revert/Save act only on these. */
+  function getSectionIdsForActiveTab() {
+    var tab = getActiveSettingsTab();
+    if (!tab) return [];
+    if (tab === 'kexo') {
+      var kexoSub = getActiveKexoSubTab();
+      if (kexoSub === 'general') return ['general'];
+      if (kexoSub === 'assets') return ['assets'];
+      if (kexoSub === 'icons' || kexoSub === 'colours' || kexoSub === 'layout-styling') return ['theme-defaults'];
+      return [];
+    }
+    if (tab === 'layout') {
+      var layoutSub = getActiveLayoutSubTab();
+      if (layoutSub === 'tables') return ['layout-tables'];
+      if (layoutSub === 'kpis' || layoutSub === 'date-ranges') return ['kpis'];
+      return [];
+    }
+    if (tab === 'insights') return ['insights-variants'];
+    return [];
+  }
+
   /** Map (tab, subtab) to the per-panel save button id. Null if this panel has no single save. */
   function getActivePanelSaveButtonId() {
     var tab = getActiveSettingsTab();
@@ -640,8 +661,10 @@
     return ids;
   }
   function settingsDraftRevertAll() {
-    var ids = getSettingsDraftDirtyIds();
-    ids.forEach(function (id) {
+    var sectionIds = getSectionIdsForActiveTab();
+    var dirtyIds = getSettingsDraftDirtyIds();
+    var toRevert = dirtyIds.filter(function (id) { return sectionIds.indexOf(id) !== -1; });
+    toRevert.forEach(function (id) {
       var s = SETTINGS_DRAFT_REGISTRY[id];
       if (s && s.apply && s.baseline != null) {
         try { s.apply(s.baseline); } catch (_) {}
@@ -650,12 +673,14 @@
     try { syncGlobalFooter(); } catch (_) {}
   }
   function settingsDraftSaveAll() {
-    var ids = getSettingsDraftDirtyIds();
-    if (!ids.length) return Promise.resolve();
+    var sectionIds = getSectionIdsForActiveTab();
+    var dirtyIds = getSettingsDraftDirtyIds();
+    var toSave = dirtyIds.filter(function (id) { return sectionIds.indexOf(id) !== -1; });
+    if (!toSave.length) return Promise.resolve();
     var globalSave = document.getElementById('settings-global-save-btn');
     if (globalSave) { globalSave.disabled = true; }
     var seq = Promise.resolve();
-    ids.forEach(function (id) {
+    toSave.forEach(function (id) {
       var s = SETTINGS_DRAFT_REGISTRY[id];
       if (!s) return;
       seq = seq.then(function () {
@@ -678,9 +703,11 @@
       if (el) el.classList.add('settings-panel-save-hidden');
     });
     var dirtyIds = getSettingsDraftDirtyIds();
+    var sectionIds = getSectionIdsForActiveTab();
+    var tabDirty = dirtyIds.some(function (id) { return sectionIds.indexOf(id) !== -1; });
     var footerRight = document.getElementById('settings-global-save-btn') && document.getElementById('settings-global-save-btn').closest ? document.getElementById('settings-global-save-btn').closest('.settings-footer-right') : null;
     if (footerRight) {
-      footerRight.style.display = dirtyIds.length > 0 ? '' : 'none';
+      footerRight.style.display = tabDirty ? '' : 'none';
     }
     var globalSave = document.getElementById('settings-global-save-btn');
     var globalRevert = document.getElementById('settings-global-revert-btn');
