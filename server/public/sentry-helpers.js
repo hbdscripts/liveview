@@ -153,7 +153,35 @@
     var method = (opts && opts.method) || 'GET';
     kexoBreadcrumb('fetch', method + ' ' + urlStr, { url: urlStr, method: method });
     if (!_nativeFetch) return Promise.reject(new Error('fetch not available'));
-    return _nativeFetch.apply(this, arguments).then(
+
+    // Mobile loader safety: when the page-body loader overlay is visible, avoid fetches that hang forever.
+    // Only applies to same-origin API GETs without an explicit signal.
+    var useArgs = arguments;
+    var timeoutId = null;
+    var controller = null;
+    try {
+      var m = String(method || 'GET').toUpperCase();
+      var hasSignal = !!(opts && opts.signal);
+      var overlayActive =
+        (typeof document !== 'undefined' &&
+          document.body &&
+          ((document.body.classList && document.body.classList.contains('kexo-report-loading')) ||
+            (document.querySelector && document.querySelector('.page-body.report-building'))));
+      var isMobile =
+        !!(typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(max-width: 991.98px)').matches);
+      var isApiGet = (m === 'GET') && isSameOriginApiUrl(urlStr);
+      if (overlayActive && isMobile && isApiGet && !hasSignal && typeof AbortController !== 'undefined') {
+        controller = new AbortController();
+        var nextOpts = opts && typeof opts === 'object' ? Object.assign({}, opts) : {};
+        nextOpts.signal = controller.signal;
+        useArgs = [url, nextOpts];
+        timeoutId = setTimeout(function () {
+          try { controller.abort(); } catch (_) {}
+        }, 25000);
+      }
+    } catch (_) {}
+
+    return _nativeFetch.apply(this, useArgs).then(
       function (r) {
         if (!r || !r.ok) {
           kexoBreadcrumb('fetch', 'error ' + (r ? r.status : 'no-response'), { url: urlStr, status: r ? r.status : 0 });
@@ -167,7 +195,11 @@
         }
         throw err;
       }
-    );
+    ).finally(function () {
+      if (timeoutId) {
+        try { clearTimeout(timeoutId); } catch (_) {}
+      }
+    });
   }
 
   window.kexoBreadcrumb = kexoBreadcrumb;
