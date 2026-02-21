@@ -47,6 +47,9 @@
     'admin-tab-controls': { title: 'Admin - Controls', help: 'Sidebar icon shown for Controls in /admin.' },
     'admin-tab-diagnostics': { title: 'Admin - Diagnostics', help: 'Sidebar icon shown for Diagnostics in /admin.' },
     'admin-tab-users': { title: 'Admin - Users', help: 'Sidebar icon shown for Users in /admin.' },
+    'admin-tab-help-tooltip': { title: 'Admin - Help tooltip', help: 'Icon shown on the Icons & assets panel as the click-to-open help trigger at the end of each icon label row.' },
+    'admin-tab-save-icon': { title: 'Admin - Save icon', help: 'Icon used for Save on icon cards (glyphs, payment, attribution, variants).' },
+    'admin-tab-edit-icon': { title: 'Admin - Edit icon', help: 'Icon used for Edit on icon cards (glyphs, payment, attribution, variants).' },
   };
 
   function isLockedSettingsIconKey(name) {
@@ -347,7 +350,7 @@
           '<div class="accordion-body">' +
             '<div class="text-secondary small mb-3">Leave blank to use theme default.</div>' +
             '<div class="d-flex align-items-center gap-2 flex-wrap mb-3">' +
-              '<button type="button" class="btn btn-outline-secondary btn-sm kexo-css-var-revert-section" data-kexo-css-var-group="' + escapeHtml(accordionId) + '">Revert section</button>' +
+              '<button type="button" class="btn btn-md kexo-css-var-revert-section" data-kexo-css-var-group="' + escapeHtml(accordionId) + '">Revert section</button>' +
             '</div>' +
             rows +
           '</div>' +
@@ -1209,8 +1212,12 @@
                 '<textarea class="form-control form-control-sm payment-icon-input font-monospace" rows="2" spellcheck="false" placeholder="fa-brands fa-cc-visa  OR  https://...svg  OR  <svg ...>">' + escapeHtml(m && m.iconSpec != null ? String(m.iconSpec) : '') + '</textarea>' +
                 '<div class="form-hint small mt-1">Starts blank intentionally. Paste Font Awesome, image URL/path, or SVG markup.</div>' +
                 '<div class="d-flex align-items-center gap-2 mt-2">' +
-                  '<button type="button" class="btn btn-outline-secondary btn-sm payment-icon-edit" data-theme-icon-edit="payment-method-' + escapeHtml(key) + '">Edit</button>' +
-                  '<button type="button" class="btn btn-outline-primary btn-sm payment-icon-save">Save</button>' +
+                  '<button type="button" class="kexo-icon-action-btn kexo-icon-action-edit payment-icon-edit" data-theme-icon-edit="payment-method-' + escapeHtml(key) + '" aria-label="Edit">' +
+                    '<span class="kexo-theme-icon-preview kexo-icon-action-icon d-inline-flex align-items-center justify-content-center" style="width:16px;height:16px;" data-theme-icon-preview-glyph="theme-icon-glyph-admin-tab-edit-icon" aria-hidden="true"></span>' +
+                  '</button>' +
+                  '<button type="button" class="kexo-icon-action-btn kexo-icon-action-save payment-icon-save" aria-label="Save">' +
+                    '<span class="kexo-theme-icon-preview kexo-icon-action-icon d-inline-flex align-items-center justify-content-center" style="width:16px;height:16px;" data-theme-icon-preview-glyph="theme-icon-glyph-admin-tab-save-icon" aria-hidden="true"></span>' +
+                  '</button>' +
                   '<span class="small text-secondary ms-auto" data-payment-icon-msg="1"></span>' +
                 '</div>' +
               '</div>' +
@@ -1259,43 +1266,52 @@
           var spec = input ? String(input.value || '').trim() : '';
           var patch = {};
           patch['payment_' + key] = spec || '';
-          var originalText = btn.textContent || 'Save';
+          var isIconOnly = btn.classList.contains('kexo-icon-action-save');
+          var originalText = isIconOnly ? '' : (btn.textContent || 'Save');
           btn.disabled = true;
-          btn.textContent = 'Saving…';
+          if (!isIconOnly) btn.textContent = 'Saving…';
           if (msgEl) {
             msgEl.textContent = '';
             msgEl.className = 'small text-secondary ms-auto';
           }
           saveAssetOverridesPatch(patch).then(function (saveRes) {
             if (saveRes && saveRes.ok) {
-              btn.textContent = 'Saved!';
-              btn.classList.remove('btn-outline-primary');
-              btn.classList.add('btn-success');
+              if (!isIconOnly) {
+                btn.textContent = 'Saved!';
+btn.classList.remove('btn-md');
+          btn.classList.add('btn-success');
+              }
               if (msgEl) {
                 msgEl.textContent = 'Saved';
                 msgEl.className = 'small text-success ms-auto';
               }
               try { window.dispatchEvent(new CustomEvent('kexo:payment-icons-updated')); } catch (_) {}
             } else {
-              btn.textContent = 'Save failed';
-              btn.classList.remove('btn-outline-primary');
+              if (!isIconOnly) {
+                btn.textContent = 'Save failed';
+btn.classList.remove('btn-md');
               btn.classList.add('btn-danger');
+              }
               if (msgEl) {
                 msgEl.textContent = (saveRes && saveRes.error) ? String(saveRes.error) : 'Save failed';
                 msgEl.className = 'small text-danger ms-auto';
               }
               setTimeout(function () {
-                btn.textContent = originalText;
-                btn.classList.remove('btn-danger');
-                btn.classList.add('btn-outline-primary');
+                if (!isIconOnly) {
+                  btn.textContent = originalText;
+btn.classList.remove('btn-danger');
+                btn.classList.add('btn-md');
+                }
                 btn.disabled = false;
               }, 1800);
               return;
             }
             setTimeout(function () {
-              btn.textContent = originalText;
-              btn.classList.remove('btn-success');
-              btn.classList.add('btn-outline-primary');
+              if (!isIconOnly) {
+                btn.textContent = originalText;
+btn.classList.remove('btn-success');
+            btn.classList.add('btn-md');
+              }
               btn.disabled = false;
             }, 1200);
           });
@@ -1346,8 +1362,12 @@
                 '<textarea class="form-control form-control-sm variant-rule-icon-input font-monospace" rows="2" spellcheck="false" placeholder="fa-light fa-gem  OR  https://...svg  OR  <svg ...>">' + escapeHtml(row.iconSpec || '') + '</textarea>' +
                 '<div class="form-hint small mt-1">Save a unique icon per variant rule row.</div>' +
                 '<div class="d-flex align-items-center gap-2 mt-2">' +
-                  '<button type="button" class="btn btn-outline-secondary btn-sm variant-rule-icon-edit" data-theme-icon-edit="' + escapeHtml(row.overrideKey) + '">Edit</button>' +
-                  '<button type="button" class="btn btn-outline-primary btn-sm variant-rule-icon-save">Save</button>' +
+                  '<button type="button" class="kexo-icon-action-btn kexo-icon-action-edit variant-rule-icon-edit" data-theme-icon-edit="' + escapeHtml(row.overrideKey) + '" aria-label="Edit">' +
+                    '<span class="kexo-theme-icon-preview kexo-icon-action-icon d-inline-flex align-items-center justify-content-center" style="width:16px;height:16px;" data-theme-icon-preview-glyph="theme-icon-glyph-admin-tab-edit-icon" aria-hidden="true"></span>' +
+                  '</button>' +
+                  '<button type="button" class="kexo-icon-action-btn kexo-icon-action-save variant-rule-icon-save" aria-label="Save">' +
+                    '<span class="kexo-theme-icon-preview kexo-icon-action-icon d-inline-flex align-items-center justify-content-center" style="width:16px;height:16px;" data-theme-icon-preview-glyph="theme-icon-glyph-admin-tab-save-icon" aria-hidden="true"></span>' +
+                  '</button>' +
                   '<span class="small text-secondary ms-auto" data-variant-rule-icon-msg="1"></span>' +
                 '</div>' +
               '</div>' +
@@ -1395,43 +1415,52 @@
           var spec = input ? String(input.value || '').trim() : '';
           var patch = {};
           patch[overrideKey] = spec || '';
-          var originalText = btn.textContent || 'Save';
+          var isIconOnly = btn.classList.contains('kexo-icon-action-save');
+          var originalText = isIconOnly ? '' : (btn.textContent || 'Save');
           btn.disabled = true;
-          btn.textContent = 'Saving…';
+          if (!isIconOnly) btn.textContent = 'Saving…';
           if (msgEl) {
             msgEl.textContent = '';
             msgEl.className = 'small text-secondary ms-auto';
           }
           saveAssetOverridesPatch(patch).then(function (saveRes) {
             if (saveRes && saveRes.ok) {
-              btn.textContent = 'Saved!';
-              btn.classList.remove('btn-outline-primary');
-              btn.classList.add('btn-success');
+              if (!isIconOnly) {
+                btn.textContent = 'Saved!';
+btn.classList.remove('btn-md');
+          btn.classList.add('btn-success');
+              }
               if (msgEl) {
                 msgEl.textContent = 'Saved';
                 msgEl.className = 'small text-success ms-auto';
               }
               try { window.dispatchEvent(new CustomEvent('kexo:variants-icons-updated')); } catch (_) {}
             } else {
-              btn.textContent = 'Save failed';
-              btn.classList.remove('btn-outline-primary');
+              if (!isIconOnly) {
+                btn.textContent = 'Save failed';
+btn.classList.remove('btn-md');
               btn.classList.add('btn-danger');
+              }
               if (msgEl) {
                 msgEl.textContent = (saveRes && saveRes.error) ? String(saveRes.error) : 'Save failed';
                 msgEl.className = 'small text-danger ms-auto';
               }
               setTimeout(function () {
-                btn.textContent = originalText;
-                btn.classList.remove('btn-danger');
-                btn.classList.add('btn-outline-primary');
+                if (!isIconOnly) {
+                  btn.textContent = originalText;
+btn.classList.remove('btn-danger');
+                btn.classList.add('btn-md');
+                }
                 btn.disabled = false;
               }, 1800);
               return;
             }
             setTimeout(function () {
-              btn.textContent = originalText;
-              btn.classList.remove('btn-success');
-              btn.classList.add('btn-outline-primary');
+              if (!isIconOnly) {
+                btn.textContent = originalText;
+btn.classList.remove('btn-success');
+            btn.classList.add('btn-md');
+              }
               btn.disabled = false;
             }, 1200);
           });
@@ -1535,8 +1564,12 @@
                 '<textarea class="form-control form-control-sm attribution-icon-input font-monospace" data-kind="source" data-key="' + escapeHtml(key) + '" rows="2" spellcheck="false" placeholder="fa-brands fa-google  OR  /assets/icon.png  OR  <svg ...>">' + escapeHtml(icon) + '</textarea>' +
                 '<div class="form-hint small mt-1">Font Awesome class, image URL/path, or inline SVG. Blank clears the icon.</div>' +
                 '<div class="d-flex align-items-center gap-2 mt-2">' +
-                  '<button type="button" class="btn btn-outline-secondary btn-sm attribution-icon-edit" data-kind="source" data-key="' + escapeHtml(key) + '" data-theme-icon-edit="attribution-source-' + escapeHtml(key) + '">Edit</button>' +
-                  '<button type="button" class="btn btn-outline-primary btn-sm attribution-icon-save" data-kind="source" data-key="' + escapeHtml(key) + '">Save</button>' +
+                  '<button type="button" class="kexo-icon-action-btn kexo-icon-action-edit attribution-icon-edit" data-kind="source" data-key="' + escapeHtml(key) + '" data-theme-icon-edit="attribution-source-' + escapeHtml(key) + '" aria-label="Edit">' +
+                    '<span class="kexo-theme-icon-preview kexo-icon-action-icon d-inline-flex align-items-center justify-content-center" style="width:16px;height:16px;" data-theme-icon-preview-glyph="theme-icon-glyph-admin-tab-edit-icon" aria-hidden="true"></span>' +
+                  '</button>' +
+                  '<button type="button" class="kexo-icon-action-btn kexo-icon-action-save attribution-icon-save" data-kind="source" data-key="' + escapeHtml(key) + '" aria-label="Save">' +
+                    '<span class="kexo-theme-icon-preview kexo-icon-action-icon d-inline-flex align-items-center justify-content-center" style="width:16px;height:16px;" data-theme-icon-preview-glyph="theme-icon-glyph-admin-tab-save-icon" aria-hidden="true"></span>' +
+                  '</button>' +
                   '<span class="small text-secondary ms-auto" data-attribution-icon-msg="1"></span>' +
                 '</div>' +
               '</div>' +
@@ -1569,8 +1602,12 @@
                 '<textarea class="form-control form-control-sm attribution-icon-input font-monospace" data-kind="variant" data-key="' + escapeHtml(key) + '" rows="2" spellcheck="false" placeholder="fa-solid fa-bolt  OR  /assets/icon.png  OR  <svg ...>">' + escapeHtml(icon) + '</textarea>' +
                 '<div class="form-hint small mt-1">Font Awesome class, image URL/path, or inline SVG. Blank clears the icon.</div>' +
                 '<div class="d-flex align-items-center gap-2 mt-2">' +
-                  '<button type="button" class="btn btn-outline-secondary btn-sm attribution-icon-edit" data-kind="variant" data-key="' + escapeHtml(key) + '" data-theme-icon-edit="attribution-variant-' + escapeHtml(key) + '">Edit</button>' +
-                  '<button type="button" class="btn btn-outline-primary btn-sm attribution-icon-save" data-kind="variant" data-key="' + escapeHtml(key) + '">Save</button>' +
+                  '<button type="button" class="kexo-icon-action-btn kexo-icon-action-edit attribution-icon-edit" data-kind="variant" data-key="' + escapeHtml(key) + '" data-theme-icon-edit="attribution-variant-' + escapeHtml(key) + '" aria-label="Edit">' +
+                    '<span class="kexo-theme-icon-preview kexo-icon-action-icon d-inline-flex align-items-center justify-content-center" style="width:16px;height:16px;" data-theme-icon-preview-glyph="theme-icon-glyph-admin-tab-edit-icon" aria-hidden="true"></span>' +
+                  '</button>' +
+                  '<button type="button" class="kexo-icon-action-btn kexo-icon-action-save attribution-icon-save" data-kind="variant" data-key="' + escapeHtml(key) + '" aria-label="Save">' +
+                    '<span class="kexo-theme-icon-preview kexo-icon-action-icon d-inline-flex align-items-center justify-content-center" style="width:16px;height:16px;" data-theme-icon-preview-glyph="theme-icon-glyph-admin-tab-save-icon" aria-hidden="true"></span>' +
+                  '</button>' +
                   '<span class="small text-secondary ms-auto" data-attribution-icon-msg="1"></span>' +
                 '</div>' +
               '</div>' +
@@ -1622,18 +1659,21 @@
           var spec = input ? String(input.value || '').trim() : '';
           var payload = kind === 'source' ? { sources: [{ source_key: key, icon_spec: spec || null }] } : { variants: [{ variant_key: key, icon_spec: spec || null }] };
 
-          var originalText = btn.textContent || 'Save';
+          var isIconOnly = btn.classList.contains('kexo-icon-action-save');
+          var originalText = isIconOnly ? '' : (btn.textContent || 'Save');
           btn.disabled = true;
-          btn.textContent = 'Saving…';
+          if (!isIconOnly) btn.textContent = 'Saving…';
           if (msgEl) {
             msgEl.textContent = '';
             msgEl.className = 'small text-secondary ms-auto';
           }
           saveAttributionIcons(payload).then(function (res2) {
             if (res2 && res2.ok) {
-              btn.textContent = 'Saved!';
-              btn.classList.remove('btn-outline-primary');
-              btn.classList.add('btn-success');
+              if (!isIconOnly) {
+                btn.textContent = 'Saved!';
+btn.classList.remove('btn-md');
+          btn.classList.add('btn-success');
+              }
               if (msgEl) {
                 msgEl.textContent = 'Saved';
                 msgEl.className = 'small text-success ms-auto';
@@ -1642,25 +1682,31 @@
                 try { window.dispatchEvent(new CustomEvent('kexo:attribution-icons-updated')); } catch (_) {}
               }, 350);
             } else {
-              btn.textContent = 'Save failed';
-              btn.classList.remove('btn-outline-primary');
+              if (!isIconOnly) {
+                btn.textContent = 'Save failed';
+btn.classList.remove('btn-md');
               btn.classList.add('btn-danger');
+              }
               if (msgEl) {
                 msgEl.textContent = (res2 && res2.error) ? String(res2.error) : 'Save failed';
                 msgEl.className = 'small text-danger ms-auto';
               }
               setTimeout(function () {
-                btn.textContent = originalText;
-                btn.classList.remove('btn-danger');
-                btn.classList.add('btn-outline-primary');
+                if (!isIconOnly) {
+                  btn.textContent = originalText;
+btn.classList.remove('btn-danger');
+                btn.classList.add('btn-md');
+                }
                 btn.disabled = false;
               }, 1800);
               return;
             }
             setTimeout(function () {
-              btn.textContent = originalText;
-              btn.classList.remove('btn-success');
-              btn.classList.add('btn-outline-primary');
+              if (!isIconOnly) {
+                btn.textContent = originalText;
+btn.classList.remove('btn-success');
+            btn.classList.add('btn-md');
+              }
               btn.disabled = false;
             }, 1200);
           });
@@ -1694,8 +1740,8 @@
             '</div>' +
             '<div class="modal-footer d-flex align-items-center flex-wrap gap-2">' +
               '<span class="small text-secondary me-auto" id="theme-icon-edit-msg" aria-live="polite"></span>' +
-              '<button type="button" class="btn btn-outline-secondary" id="theme-icon-edit-clear">Clear</button>' +
-              '<button type="button" class="btn btn-primary" id="theme-icon-edit-save">Save</button>' +
+              '<button type="button" class="btn btn-md" id="theme-icon-edit-clear">Clear</button>' +
+              '<button type="button" class="btn btn-primary btn-md" id="theme-icon-edit-save">Save</button>' +
             '</div>' +
           '</div>' +
         '</div>' +
@@ -2040,14 +2086,18 @@
           '<div class="d-flex align-items-center mb-2">' +
             '<span class="kexo-theme-icon-preview me-2 d-inline-flex align-items-center justify-content-center" style="width:1.25rem;height:1.25rem;" data-theme-icon-preview-glyph="' + key + '" aria-hidden="true"></span>' +
             '<strong class="me-auto">' + meta.title + '</strong>' +
-            '<button type="button" class="btn btn-icon btn-ghost-secondary btn-sm kexo-icon-help-trigger" data-theme-icon-help-trigger data-theme-icon-help-key="' + escapeHtml(key) + '" aria-label="Help" title="Help">' +
-              '<i class="fa-thin fa-circle-info" aria-hidden="true"></i>' +
+            '<button type="button" class="btn btn-md btn-icon kexo-icon-help-trigger" data-theme-icon-help-trigger data-theme-icon-help-key="' + escapeHtml(key) + '" data-bs-title="" aria-label="Show description">' +
+              '<span class="kexo-icon-help-trigger-icon kexo-theme-icon-preview d-inline-flex align-items-center justify-content-center" style="width:16px;height:16px;" data-theme-icon-preview-glyph="theme-icon-glyph-admin-tab-help-tooltip" aria-hidden="true"></span>' +
             '</button>' +
           '</div>' +
           '<textarea class="form-control font-monospace" id="' + inputId + '" name="' + key + '" data-theme-icon-glyph-input="' + key + '" rows="2" placeholder="' + (DEFAULTS[key] || 'fa-circle') + '"></textarea>' +
           '<div class="d-flex align-items-center gap-2 mt-2">' +
-            '<button type="button" class="btn btn-outline-secondary btn-sm" data-theme-icon-edit="' + key + '">Edit</button>' +
-            '<button type="button" class="btn btn-outline-primary btn-sm" data-theme-icon-save-glyph="' + key + '">Save</button>' +
+            '<button type="button" class="kexo-icon-action-btn kexo-icon-action-edit" data-theme-icon-edit="' + key + '" aria-label="Edit">' +
+              '<span class="kexo-theme-icon-preview kexo-icon-action-icon d-inline-flex align-items-center justify-content-center" style="width:16px;height:16px;" data-theme-icon-preview-glyph="theme-icon-glyph-admin-tab-edit-icon" aria-hidden="true"></span>' +
+            '</button>' +
+            '<button type="button" class="kexo-icon-action-btn kexo-icon-action-save" data-theme-icon-save-glyph="' + key + '" aria-label="Save">' +
+              '<span class="kexo-theme-icon-preview kexo-icon-action-icon d-inline-flex align-items-center justify-content-center" style="width:16px;height:16px;" data-theme-icon-preview-glyph="theme-icon-glyph-admin-tab-save-icon" aria-hidden="true"></span>' +
+            '</button>' +
             '<span class="small text-secondary ms-auto" data-theme-icon-glyph-msg="' + key + '"></span>' +
           '</div>' +
         '</div>' +
@@ -2210,7 +2260,7 @@
       bodyHtml:
         '<div class="text-secondary small mb-3">Accent 1 is the primary accent (Top Bar + Top Nav). Accents 1–10 rotate for nav underline/accents. Leave blank to use defaults.</div>' +
         '<div class="d-flex align-items-center gap-2 flex-wrap mb-3">' +
-          '<button type="button" class="btn btn-outline-secondary btn-sm kexo-theme-accents-revert-section">Revert section</button>' +
+          '<button type="button" class="btn btn-md kexo-theme-accents-revert-section">Revert section</button>' +
         '</div>' +
         '<div class="d-flex flex-column gap-3 kexo-theme-stack">' + accentGrid + '</div>',
     });
@@ -2236,7 +2286,7 @@
       bodyHtml:
         '<div class="text-secondary small mb-3">Leave blank to use theme default.</div>' +
         '<div class="d-flex align-items-center gap-2 flex-wrap mb-3">' +
-          '<button type="button" class="btn btn-outline-secondary btn-sm kexo-css-var-revert-section" data-kexo-css-var-group="kpis">Revert section</button>' +
+          '<button type="button" class="btn btn-md kexo-css-var-revert-section" data-kexo-css-var-group="kpis">Revert section</button>' +
         '</div>' +
         kpiBaseRows +
         '<hr class="my-3" />' +
@@ -2268,7 +2318,7 @@
       bodyHtml:
         '<div class="text-secondary small mb-3">Leave blank to use theme default.</div>' +
         '<div class="d-flex align-items-center gap-2 flex-wrap mb-3">' +
-          '<button type="button" class="btn btn-outline-secondary btn-sm kexo-css-var-revert-section" data-kexo-css-var-group="advanced-grays">Revert section</button>' +
+          '<button type="button" class="btn btn-md kexo-css-var-revert-section" data-kexo-css-var-group="advanced-grays">Revert section</button>' +
         '</div>' +
         '<div class="mb-3">' +
           '<label class="form-label">Theme base</label>' +
@@ -2302,8 +2352,8 @@
         '</div>' +
         '<div id="kexo-css-var-overrides-grid">' + colorsAccordionHtml + '</div>' +
         '<div class="d-flex align-items-center gap-2 flex-wrap mt-3">' +
-          '<button type="button" class="btn btn-primary btn-sm" id="kexo-css-var-overrides-save">Save colour overrides</button>' +
-          '<button type="button" class="btn btn-outline-secondary btn-sm" id="kexo-css-var-overrides-reset">Reset overrides</button>' +
+          '<button type="button" class="btn btn-primary btn-md" id="kexo-css-var-overrides-save">Save colour overrides</button>' +
+          '<button type="button" class="btn btn-md" id="kexo-css-var-overrides-reset">Reset overrides</button>' +
           '<span id="kexo-css-var-overrides-msg" class="form-hint"></span>' +
         '</div>' +
       '</div>';
@@ -2329,7 +2379,7 @@
       '<div class="theme-subpanel" data-theme-subpanel="icons">' +
         glyphAccordion +
         '<div class="d-flex align-items-center gap-2 mt-3">' +
-          '<button type="button" class="btn btn-outline-secondary btn-sm" id="theme-icons-refresh" title="Debounced preview updates after typing stops.">Refresh previews</button>' +
+          '<button type="button" class="btn btn-md" id="theme-icons-refresh" title="Debounced preview updates after typing stops.">Refresh previews</button>' +
         '</div>' +
       '</div>' +
 
@@ -2430,15 +2480,15 @@
             '<input type="url" class="form-control" id="settings-asset-sale-sound" placeholder="https://… or upload below" />' +
             '<div class="input-group mt-2">' +
               '<input type="file" class="form-control" id="settings-upload-sale-sound" accept="audio/mpeg,audio/mp3" />' +
-              '<button type="button" class="btn btn-outline-primary" data-kexo-asset-upload="1" data-kexo-slot="sale_sound" data-kexo-file="settings-upload-sale-sound" data-kexo-url="settings-asset-sale-sound">Upload</button>' +
+              '<button type="button" class="btn btn-md" data-kexo-asset-upload="1" data-kexo-slot="sale_sound" data-kexo-file="settings-upload-sale-sound" data-kexo-url="settings-asset-sale-sound">Upload</button>' +
             '</div>' +
             '<div class="form-hint">MP3 only. Max 2MB.</div>' +
           '</div>' +
           '<div class="mb-3">' +
-            '<button type="button" class="btn btn-outline-secondary" id="settings-sale-sound-preview">Preview</button>' +
+            '<button type="button" class="btn btn-md" id="settings-sale-sound-preview">Preview</button>' +
           '</div>' +
           '<div class="mt-3">' +
-            '<button type="submit" class="btn btn-primary">Save</button>' +
+            '<button type="submit" class="btn btn-primary btn-md">Save</button>' +
             '<span id="settings-sale-notification-msg" class="form-hint ms-2"></span>' +
           '</div>' +
         '</form>' +
@@ -2446,8 +2496,8 @@
     '</form>' +
     buildIconEditModalHtml() +
     '<div class="d-flex gap-2 mt-3">' +
-      '<button type="button" class="btn btn-primary flex-fill" id="theme-save-defaults">Save as default</button>' +
-      '<button type="button" class="btn btn-outline-secondary" id="theme-reset">Reset</button>' +
+      '<button type="button" class="btn btn-primary btn-md flex-fill" id="theme-save-defaults">Save as default</button>' +
+      '<button type="button" class="btn btn-md" id="theme-reset">Reset</button>' +
     '</div>';
   }
 
@@ -2570,10 +2620,10 @@
     if (!formEl) return;
     ICON_GLYPH_KEYS.forEach(function (key) {
       var input = formEl.querySelector('[name="' + key + '"]');
-      var preview = formEl.querySelector('[data-theme-icon-preview-glyph="' + key + '"]');
+      var previews = formEl.querySelectorAll('[data-theme-icon-preview-glyph="' + key + '"]');
       var glyphVal = (getStored(key) != null && getStored(key) !== '') ? getStored(key) : (input && input.value ? input.value : DEFAULTS[key]);
       if (input && input.value !== glyphVal) input.value = glyphVal;
-      setPreviewIconClass(preview, glyphVal);
+      previews.forEach(function (preview) { setPreviewIconClass(preview, glyphVal); });
     });
   }
 
@@ -3059,9 +3109,10 @@
         var dbKey = key.replace(/-/g, '_');
         var payload = {};
         payload[dbKey] = (val != null && String(val).trim() !== '') ? String(val) : (DEFAULTS[key] || '');
-        var originalText = btn.textContent || 'Save';
+        var isIconOnly = btn.classList.contains('kexo-icon-action-save');
+        var originalText = isIconOnly ? '' : (btn.textContent || 'Save');
         btn.disabled = true;
-        btn.textContent = 'Saving…';
+        if (!isIconOnly) btn.textContent = 'Saving…';
         if (msgEl) { msgEl.textContent = ''; msgEl.className = 'small text-secondary ms-auto'; }
         saveToServer(payload).then(function () {
           if (msgEl) {
@@ -3070,17 +3121,21 @@
             msgEl.className = isLocalOnly ? 'small text-warning ms-auto' : 'small text-success ms-auto';
             setTimeout(function () { msgEl.textContent = ''; msgEl.className = 'small text-secondary ms-auto'; }, isLocalOnly ? 3500 : 2000);
           }
-          btn.textContent = 'Saved!';
-          btn.classList.remove('btn-outline-primary');
+          if (!isIconOnly) {
+            btn.textContent = 'Saved!';
+btn.classList.remove('btn-md');
           btn.classList.add('btn-success');
+          }
           setTimeout(function () {
-            btn.textContent = originalText;
-            btn.classList.remove('btn-success');
-            btn.classList.add('btn-outline-primary');
+            if (!isIconOnly) {
+              btn.textContent = originalText;
+              btn.classList.remove('btn-success');
+              btn.classList.add('btn-md');
+            }
             btn.disabled = false;
           }, 1200);
         }).catch(function (err) {
-          btn.textContent = originalText;
+          if (!isIconOnly) btn.textContent = originalText;
           btn.disabled = false;
           if (msgEl) {
             msgEl.textContent = (err && err.message) ? String(err.message) : 'Save failed';
@@ -3204,6 +3259,8 @@
       if (!triggers || !triggers.length) return;
       if (typeof bootstrap === 'undefined' || !bootstrap.Popover) return;
       triggers.forEach(function (trigger) {
+        trigger.removeAttribute('title');
+        trigger.removeAttribute('data-bs-title');
         var key = trigger.getAttribute('data-theme-icon-help-key') || '';
         var name = glyphNameFromThemeKey(key);
         var meta = glyphMetaFor(name);
@@ -3211,6 +3268,7 @@
           '<button type="button" class="btn-close position-absolute top-0 end-0" aria-label="Close"></button>' +
           '<div class="small text-secondary pe-3">' + escapeHtml(meta.help) + '</div></div>';
         new bootstrap.Popover(trigger, {
+          title: '',
           content: contentHtml,
           html: true,
           trigger: 'click',
