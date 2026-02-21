@@ -31,6 +31,9 @@ function main() {
   if (/\sstyle="/i.test(settingsHtml)) fail('Inline `style="..."` found in settings.html (forbidden).');
   if (/<style[\s>]/i.test(settingsHtml)) fail('<style> tag found in settings.html (forbidden).');
 
+  // 2b) Settings nav must use canonical path URLs, not query-style.
+  if (settingsHtml.includes('href="/settings?tab=')) fail('settings.html must not contain query-style Settings links (href="/settings?tab=..."); use canonical paths e.g. /settings/kexo/icons.');
+
   // 3) settings-page.js must rely on the shared normaliser module (no drift back into the monolith).
   if (settingsPageJs.includes('data-settings-ui-first-header-stripped')) fail('settings-page.js contains normaliser internals; use `server/public/ui/settings-normaliser.js`.');
   if (settingsPageJs.includes('SETTINGS_PANEL_SELECTOR')) fail('settings-page.js contains normaliser internals; use `server/public/ui/settings-normaliser.js`.');

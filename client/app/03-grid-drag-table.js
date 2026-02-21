@@ -303,7 +303,7 @@
             e.preventDefault();
             e.stopPropagation();
             if (tableId === 'ads-root') {
-              window.location.href = '/settings?tab=integrations&integrationsTab=googleads';
+              window.location.href = '/settings/integrations/googleads';
               return;
             }
             if (typeof window.KexoLayoutShortcuts !== 'undefined' && typeof window.KexoLayoutShortcuts.openTableModal === 'function') {

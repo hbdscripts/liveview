@@ -921,7 +921,7 @@
             var hasAdsDb = g && g.adsDb === true;
             var apiVer = (ads && typeof ads.googleAdsApiVersion === 'string') ? ads.googleAdsApiVersion : '';
             var oauthEnabled = ads && ads.googleAdsOAuthEnabled === true;
-            var connectUrl = '/api/ads/google/connect?redirect=' + encodeURIComponent('/settings?tab=integrations');
+            var connectUrl = '/api/ads/google/connect?redirect=' + encodeURIComponent('/settings/integrations/googleads');
             googleAdsBody += '<div class="row g-3">';
             googleAdsBody +=   '<div class="col-12 col-xl-6">' + cardSm('Connection', kvTable([
               ['Configured', configured ? badgeLt('Yes', 'ok') : badgeLt('No', 'bad')],

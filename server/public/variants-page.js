@@ -717,7 +717,7 @@
           '<div class="card-header"><h3 class="card-title">Variants</h3></div>' +
           '<div class="card-body text-secondary">' +
             '<div>No enabled variant tables. Open Settings → Insights → Variants to configure tables.</div>' +
-            '<a class="btn btn-sm btn-primary text-white mt-3" href="/settings?tab=insights">Configure variants</a>' +
+            '<a class="btn btn-sm btn-primary text-white mt-3" href="/settings/insights/variants">Configure variants</a>' +
           '</div>' +
         '</div>';
       dismissGlobalPageLoader();

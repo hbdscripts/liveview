@@ -480,6 +480,80 @@ function stripAdminMarkupFromSettings(html) {
     .replace(/<!-- KEXO_COST_EXPENSES_SCRIPT_START -->[\s\S]*?<!-- KEXO_COST_EXPENSES_SCRIPT_END -->/g, '');
 }
 
+/** Canonical settings path: tab -> default subtab and allowed subtabs. */
+const SETTINGS_TAB_DEFAULTS = {
+  kexo: { default: 'general', allowed: new Set(['general', 'assets', 'icons', 'colours', 'layout-styling']) },
+  integrations: { default: 'shopify', allowed: new Set(['shopify', 'googleads']) },
+  layout: { default: 'tables', allowed: new Set(['tables', 'kpis', 'date-ranges']) },
+  attribution: { default: 'mapping', allowed: new Set(['mapping', 'tree']) },
+  insights: { default: 'variants', allowed: new Set(['variants']) },
+  'cost-expenses': { default: 'cost-sources', allowed: new Set(['cost-sources', 'shipping', 'rules', 'breakdown']) },
+  admin: { default: 'users', allowed: new Set(['users', 'diagnostics', 'controls']) },
+};
+
+/** Preserve only non-routing query params when building canonical settings URL. */
+function getSettingsPreservedQuery(req) {
+  const params = new URLSearchParams(req.query || '');
+  const preserved = new URLSearchParams();
+  const shop = String(params.get('shop') || '').trim();
+  if (shop) preserved.set('shop', shop);
+  const adsOauth = String(params.get('ads_oauth') || '').trim();
+  if (adsOauth) preserved.set('ads_oauth', adsOauth);
+  return preserved.toString();
+}
+
+/** Compute canonical settings path from query params (for 301 redirect). Returns path only (no query). */
+function getSettingsCanonicalPathFromQuery(queryOrObj, hasAdminNav, hasCostExpensesNav) {
+  const params = queryOrObj && typeof queryOrObj === 'object' && !(queryOrObj instanceof URLSearchParams)
+    ? new URLSearchParams(queryOrObj)
+    : new URLSearchParams(typeof queryOrObj === 'string' ? queryOrObj : '');
+  let tab = String(params.get('tab') || '').trim().toLowerCase();
+  if (tab === 'sources') tab = 'attribution';
+  if (tab === 'general' || tab === 'assets' || tab === 'theme') tab = 'kexo';
+  if (tab === 'charts' || tab === 'kpis') tab = 'layout';
+  const allowedTabs = new Set(['kexo', 'integrations', 'attribution', 'insights', 'layout', 'cost-expenses', 'admin']);
+  if (!allowedTabs.has(tab)) return '/settings/kexo/general';
+  if (tab === 'admin' && !hasAdminNav) return '/settings/kexo/general';
+  if (tab === 'cost-expenses' && !hasCostExpensesNav) return '/settings/kexo/general';
+  const def = SETTINGS_TAB_DEFAULTS[tab];
+  if (!def) return '/settings/kexo/general';
+  let subtab = '';
+  if (tab === 'kexo') subtab = String(params.get('kexoTab') || params.get('kexo') || '').trim().toLowerCase();
+  else if (tab === 'layout') subtab = String(params.get('layoutTab') || params.get('layout') || '').trim().toLowerCase();
+  else if (tab === 'integrations') subtab = String(params.get('integrationsTab') || '').trim().toLowerCase();
+  else if (tab === 'attribution') subtab = String(params.get('attributionTab') || '').trim().toLowerCase();
+  else if (tab === 'admin') subtab = String(params.get('adminTab') || '').trim().toLowerCase();
+  else if (tab === 'cost-expenses') subtab = String(params.get('costExpensesTab') || '').trim().toLowerCase();
+  if (tab === 'kexo') {
+    const kexoMap = { ui: 'icons', icons: 'icons', 'payment-methods': 'assets', header: 'layout-styling', color: 'colours', colours: 'colours', fonts: 'layout-styling', notifications: 'layout-styling', 'icons-assets': 'assets', 'theme-display': 'colours', 'brand-appearance': 'assets' };
+    if (kexoMap[subtab]) subtab = kexoMap[subtab];
+  }
+  if (tab === 'layout' && subtab === 'charts') subtab = 'tables';
+  if (!subtab || !def.allowed.has(subtab)) subtab = def.default;
+  return '/settings/' + tab + '/' + subtab;
+}
+
+/** Parse /settings/<tab>/<subtab> path. Returns { tab, subtab } or null if invalid. */
+function parseSettingsPath(pathname) {
+  if (!pathname || typeof pathname !== 'string') return null;
+  const normalized = pathname.replace(/\/+/g, '/').replace(/\/$/, '');
+  if (normalized === '/settings') return { tab: 'kexo', subtab: 'general' };
+  const match = /^\/settings\/([^/]+)\/([^/]+)$/.exec(normalized);
+  if (match) {
+    const tab = match[1].toLowerCase();
+    const subtab = match[2].toLowerCase();
+    const def = SETTINGS_TAB_DEFAULTS[tab];
+    if (def && def.allowed.has(subtab)) return { tab, subtab };
+  }
+  const matchTabOnly = /^\/settings\/([^/]+)$/.exec(normalized);
+  if (matchTabOnly) {
+    const tab = matchTabOnly[1].toLowerCase();
+    const def = SETTINGS_TAB_DEFAULTS[tab];
+    if (def) return { tab, subtab: def.default };
+  }
+  return null;
+}
+
 /** Parse tab from query and return valid main tab key. Mirrors settings-page.js logic. */
 function getSettingsInitialTabFromQuery(queryOrObj) {
   const params = queryOrObj && typeof queryOrObj === 'object' && !(queryOrObj instanceof URLSearchParams)
@@ -494,9 +568,12 @@ function getSettingsInitialTabFromQuery(queryOrObj) {
   return rawTab;
 }
 
-/** Apply correct settings panel and nav active state from URL so direct links show the right tab immediately (no flash). */
-function applySettingsInitialTab(html, queryOrObj, hasAdminNav, hasCostExpensesNav) {
-  const tab = getSettingsInitialTabFromQuery(queryOrObj);
+/** Apply correct settings panel and nav active state from URL so direct links show the right tab immediately (no flash).
+ * pathInfo: optional { tab, subtab } from path (e.g. parseSettingsPath); when set, tab is taken from path, not query. */
+function applySettingsInitialTab(html, queryOrObj, hasAdminNav, hasCostExpensesNav, pathInfo) {
+  const tab = pathInfo && pathInfo.tab
+    ? pathInfo.tab
+    : getSettingsInitialTabFromQuery(queryOrObj);
   if (tab === 'admin' && !hasAdminNav) return html;
   if (tab === 'cost-expenses' && !hasCostExpensesNav) return html;
   const navClass = 'list-group-item list-group-item-action d-flex align-items-center';
@@ -615,7 +692,7 @@ app.get('/compare-conversion-rate', redirectWithQuery(301, '/tools/compare-conve
 app.get('/shipping-cr', redirectWithQuery(301, '/tools/shipping-cr'));
 app.get('/click-order-lookup', redirectWithQuery(301, '/tools/click-order-lookup'));
 app.get('/change-pins', redirectWithQuery(301, '/tools/change-pins'));
-app.get('/settings', async (req, res, next) => {
+async function settingsPageHandler(req, res, next) {
   try {
     const isMaster = await isMasterRequest(req);
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
@@ -626,12 +703,42 @@ app.get('/settings', async (req, res, next) => {
     if (!isMaster) html = stripAdminMarkupFromSettings(html);
     const hasAdminNav = html.includes('id="settings-tab-admin"');
     const hasCostExpensesNav = html.includes('id="settings-tab-cost-expenses"');
-    html = applySettingsInitialTab(html, req.query, hasAdminNav, hasCostExpensesNav);
+    const preservedQuery = getSettingsPreservedQuery(req);
+    const qs = preservedQuery ? '?' + preservedQuery : '';
+
+    if (req.path === '/settings') {
+      if (req.query && Object.prototype.hasOwnProperty.call(req.query, 'tab')) {
+        const canonicalPath = getSettingsCanonicalPathFromQuery(req.query, hasAdminNav, hasCostExpensesNav);
+        return res.redirect(301, canonicalPath + qs);
+      }
+      return res.redirect(301, '/settings/kexo/general' + qs);
+    }
+
+    if (req.params.tab && !req.params.subtab) {
+      const tab = req.params.tab.toLowerCase();
+      const def = SETTINGS_TAB_DEFAULTS[tab];
+      if (!def || (tab === 'admin' && !hasAdminNav) || (tab === 'cost-expenses' && !hasCostExpensesNav)) {
+        return res.redirect(301, '/settings/kexo/general' + qs);
+      }
+      return res.redirect(301, '/settings/' + tab + '/' + def.default + qs);
+    }
+
+    const tab = (req.params.tab || '').toLowerCase();
+    const subtab = (req.params.subtab || '').toLowerCase();
+    const pathInfo = parseSettingsPath('/settings/' + tab + '/' + subtab);
+    if (!pathInfo || (pathInfo.tab === 'admin' && !hasAdminNav) || (pathInfo.tab === 'cost-expenses' && !hasCostExpensesNav)) {
+      return res.redirect(301, '/settings/kexo/general' + qs);
+    }
+    html = applySettingsInitialTab(html, null, hasAdminNav, hasCostExpensesNav, pathInfo);
     res.type('html').send(applyAssetVersionToHtml(html));
   } catch (err) {
     next(err);
   }
-});
+}
+
+app.get('/settings/:tab/:subtab', settingsPageHandler);
+app.get('/settings/:tab', settingsPageHandler);
+app.get('/settings', settingsPageHandler);
 app.get('/upgrade', (req, res) => sendPage(res, 'upgrade.html'));
 app.get('/ui-kit', (req, res) => sendPage(res, 'ui-kit.html'));
 app.get('/admin', async (req, res, next) => {
@@ -641,9 +748,9 @@ app.get('/admin', async (req, res, next) => {
     const legacyTab = String(params.get('tab') || '').trim().toLowerCase();
     const adminTab = (legacyTab === 'controls' || legacyTab === 'diagnostics' || legacyTab === 'users') ? legacyTab : 'controls';
     if (isMaster) {
-      return res.redirect(302, '/settings?tab=admin&adminTab=' + encodeURIComponent(adminTab));
+      return res.redirect(302, '/settings/admin/' + encodeURIComponent(adminTab));
     }
-    return res.redirect(302, '/settings?tab=kexo');
+    return res.redirect(302, '/settings/kexo/general');
   } catch (err) {
     next(err);
   }

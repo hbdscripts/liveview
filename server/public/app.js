@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 57aee937558eac25
+// checksum: d631a4e62e3d9706
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -1542,7 +1542,7 @@ const API = '';
             e.preventDefault();
             e.stopPropagation();
             if (tableId === 'ads-root') {
-              window.location.href = '/settings?tab=integrations&integrationsTab=googleads';
+              window.location.href = '/settings/integrations/googleads';
               return;
             }
             if (typeof window.KexoLayoutShortcuts !== 'undefined' && typeof window.KexoLayoutShortcuts.openTableModal === 'function') {
@@ -1727,7 +1727,7 @@ const API = '';
             if (!existingSettingsLink) {
               var a = document.createElement('a');
               a.className = 'kexo-attribution-settings-link';
-              a.href = '/settings?tab=attribution&attributionTab=mapping';
+              a.href = '/settings/attribution/mapping';
               a.title = 'Attribution settings';
               a.setAttribute('aria-label', 'Attribution settings');
               a.innerHTML = '<i class="fa-light fa-sliders" aria-hidden="true"></i>';
@@ -15856,7 +15856,7 @@ const API = '';
             var hasAdsDb = g && g.adsDb === true;
             var apiVer = (ads && typeof ads.googleAdsApiVersion === 'string') ? ads.googleAdsApiVersion : '';
             var oauthEnabled = ads && ads.googleAdsOAuthEnabled === true;
-            var connectUrl = '/api/ads/google/connect?redirect=' + encodeURIComponent('/settings?tab=integrations');
+            var connectUrl = '/api/ads/google/connect?redirect=' + encodeURIComponent('/settings/integrations/googleads');
             googleAdsBody += '<div class="row g-3">';
             googleAdsBody +=   '<div class="col-12 col-xl-6">' + cardSm('Connection', kvTable([
               ['Configured', configured ? badgeLt('Yes', 'ok') : badgeLt('No', 'bad')],
@@ -24837,7 +24837,7 @@ const API = '';
               var statusCls = it.ok ? 'kexo-status-indicator--online' : 'kexo-status-indicator--offline';
               var esc = function(s) { return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); };
               html += '<div class="kexo-footer-diagnostics-tag">';
-              html += '<a href="/settings?tab=admin&adminTab=diagnostics" class="kexo-footer-diagnostics-tag-link" title="' + esc(it.label) + ' ' + esc(it.status) + ' \u2014 click for diagnostics">';
+              html += '<a href="/settings/admin/diagnostics" class="kexo-footer-diagnostics-tag-link" title="' + esc(it.label) + ' ' + esc(it.status) + ' \u2014 click for diagnostics">';
               html += '<span class="kexo-footer-diagnostics-label">' + esc(it.label) + '</span>';
               html += '</a>';
               html += '<span class="kexo-footer-diagnostics-status">';
@@ -26538,7 +26538,7 @@ const API = '';
       openBtn.addEventListener('click', function (e) {
         e.preventDefault();
         try {
-          var url = '/settings?tab=cost-expenses&costExpensesTab=rules';
+          var url = '/settings/cost-expenses/rules';
           if (typeof window !== 'undefined' && window.location && typeof window.location.assign === 'function') window.location.assign(url);
           else window.location.href = url;
         } catch (_) {}
@@ -27044,7 +27044,7 @@ const API = '';
           body += '</div></div>';
 
           body += '<div class="col-12">';
-          body += '<a class="btn btn-sm btn-outline-secondary" href="/settings?tab=cost-expenses&costExpensesTab=rules">Open cost settings</a>';
+          body += '<a class="btn btn-sm btn-outline-secondary" href="/settings/cost-expenses/rules">Open cost settings</a>';
           body += '<div class="form-hint">Manage cost sources, shipping, and profit rules.</div>';
           body += '</div>';
         }

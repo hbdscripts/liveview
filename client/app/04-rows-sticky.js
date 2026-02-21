@@ -47,7 +47,7 @@
             if (!existingSettingsLink) {
               var a = document.createElement('a');
               a.className = 'kexo-attribution-settings-link';
-              a.href = '/settings?tab=attribution&attributionTab=mapping';
+              a.href = '/settings/attribution/mapping';
               a.title = 'Attribution settings';
               a.setAttribute('aria-label', 'Attribution settings');
               a.innerHTML = '<i class="fa-light fa-sliders" aria-hidden="true"></i>';

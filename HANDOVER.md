@@ -37,7 +37,7 @@ If you start a significant change that may overlap with others, add a short entr
 - **Integrations:** `/integrations/google-ads`
 - **Tools:** `/tools/compare-conversion-rate`, `/tools/shipping-cr`, `/tools/click-order-lookup`, `/tools/change-pins`
 - **Settings:** `/settings` (tabs: kexo, integrations, layout, attribution, insights, cost-expenses, admin). Kexo has General, Icons & assets, Color Scheme. Payment method icon overrides live inside Icons & assets. Layout has Tables, KPIs, Date ranges only (chart settings via cog on each chart). Admin-only content gated by `isMasterRequest`.
-- **Auth:** `/app/login` (Google); `/admin` → redirect to `/settings?tab=admin` or `/settings?tab=kexo`
+- **Auth:** `/app/login` (Google); `/admin` → redirect to `/settings/admin/users` or `/settings/kexo/general`
 - **Root `/`:** Shopify embed or redirect to dashboard/login
 
 Templates under `server/public/**`; served via `sendPage()` in `server/index.js`.

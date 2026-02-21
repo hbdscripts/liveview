@@ -115,7 +115,7 @@
               var statusCls = it.ok ? 'kexo-status-indicator--online' : 'kexo-status-indicator--offline';
               var esc = function(s) { return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); };
               html += '<div class="kexo-footer-diagnostics-tag">';
-              html += '<a href="/settings?tab=admin&adminTab=diagnostics" class="kexo-footer-diagnostics-tag-link" title="' + esc(it.label) + ' ' + esc(it.status) + ' \u2014 click for diagnostics">';
+              html += '<a href="/settings/admin/diagnostics" class="kexo-footer-diagnostics-tag-link" title="' + esc(it.label) + ' ' + esc(it.status) + ' \u2014 click for diagnostics">';
               html += '<span class="kexo-footer-diagnostics-label">' + esc(it.label) + '</span>';
               html += '</a>';
               html += '<span class="kexo-footer-diagnostics-status">';

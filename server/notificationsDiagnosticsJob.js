@@ -57,7 +57,7 @@ async function runOnce() {
         type: 'diagnostics_unresolved',
         title: 'Unresolved: ' + item.label,
         body: item.label + ' is not connected or not healthy. Check Settings → Diagnostics.',
-        link: '/settings?tab=admin&adminTab=diagnostics',
+        link: '/settings/admin/diagnostics',
         meta: { key: item.key },
         forAdminOnly: true,
       });

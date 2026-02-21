@@ -407,6 +407,53 @@
     admin: 'settings-panel-admin',
   };
 
+  var SETTINGS_PATH_SUBTABS = {
+    kexo: ['general', 'assets', 'icons', 'colours', 'layout-styling'],
+    integrations: ['shopify', 'googleads'],
+    layout: ['tables', 'kpis', 'date-ranges'],
+    attribution: ['mapping', 'tree'],
+    insights: ['variants'],
+    'cost-expenses': ['cost-sources', 'shipping', 'rules', 'breakdown'],
+    admin: ['users', 'diagnostics', 'controls'],
+  };
+
+  function getTabFromPath() {
+    var pathname = (window.location.pathname || '').replace(/\/+$/, '');
+    if (pathname === '/settings') return null;
+    var m = /^\/settings\/([^/]+)\/([^/]+)$/.exec(pathname);
+    if (!m) return null;
+    var tab = m[1].toLowerCase();
+    var subtab = m[2].toLowerCase();
+    var allowed = SETTINGS_PATH_SUBTABS[tab];
+    if (!allowed || allowed.indexOf(subtab) === -1) return null;
+    if (tab === 'admin' && !document.getElementById('settings-tab-admin')) return null;
+    if (tab === 'cost-expenses' && !document.getElementById('settings-tab-cost-expenses')) return null;
+    if (tab === 'kexo') initialKexoSubTab = subtab;
+    else if (tab === 'layout') initialLayoutSubTab = subtab;
+    else if (tab === 'integrations') initialIntegrationsSubTab = subtab;
+    else if (tab === 'attribution') initialAttributionSubTab = subtab;
+    else if (tab === 'admin') initialAdminSubTab = subtab;
+    else if (tab === 'cost-expenses') initialCostExpensesSubTab = subtab;
+    return tab;
+  }
+
+  function getSubtabForKey(key) {
+    if (key === 'kexo') return getActiveKexoSubTab();
+    if (key === 'layout') return getActiveLayoutSubTab();
+    if (key === 'integrations') return getActiveIntegrationsSubTab();
+    if (key === 'attribution') return getActiveAttributionSubTab();
+    if (key === 'admin') return getActiveAdminSubTab();
+    if (key === 'cost-expenses') return getActiveCostExpensesSubTab();
+    if (key === 'insights') return 'variants';
+    return null;
+  }
+
+  function getSettingsCanonicalPath(key) {
+    var subtab = getSubtabForKey(key);
+    if (!subtab) return '/settings/kexo/general';
+    return '/settings/' + key + '/' + subtab;
+  }
+
   function getTabFromQuery() {
     var m = /[?&]tab=([^&]+)/.exec(window.location.search || '');
     if (m && m[1]) {
@@ -496,42 +543,17 @@
   }
 
   function updateUrl(key) {
-    var params = new URLSearchParams();
-    params.set('tab', key);
-    if (key === 'layout') {
-      var layoutKey = getActiveLayoutSubTab();
-      if (layoutKey === 'tables' || layoutKey === 'charts' || layoutKey === 'kpis' || layoutKey === 'date-ranges') params.set('layoutTab', layoutKey);
-    }
-    if (key === 'integrations') {
-      var integrationsKey = getActiveIntegrationsSubTab();
-      if (integrationsKey === 'shopify' || integrationsKey === 'googleads') params.set('integrationsTab', integrationsKey);
-    }
-    if (key === 'kexo') {
-      var kexoKey = getActiveKexoSubTab();
-      if (kexoKey) params.set('kexoTab', kexoKey);
-    }
-    if (key === 'attribution') {
-      var attributionKey = getActiveAttributionSubTab();
-      if (attributionKey === 'mapping' || attributionKey === 'tree') params.set('attributionTab', attributionKey);
-    }
-    if (key === 'admin') {
-      var adminKey = getActiveAdminSubTab();
-      if (adminKey === 'controls' || adminKey === 'diagnostics' || adminKey === 'users') params.set('adminTab', adminKey);
-    }
-    if (key === 'cost-expenses') {
-      var costExpensesKey = getActiveCostExpensesSubTab();
-      if (costExpensesKey === 'cost-sources' || costExpensesKey === 'shipping' || costExpensesKey === 'rules' || costExpensesKey === 'breakdown') params.set('costExpensesTab', costExpensesKey);
-    }
-    // Preserve shop and Google Ads OAuth marker (used to show post-redirect hints).
+    var path = getSettingsCanonicalPath(key);
+    var preserved = [];
     try {
       var sp = getShopParam();
-      if (sp) params.set('shop', sp);
+      if (sp) preserved.push('shop=' + encodeURIComponent(sp));
     } catch (_) {}
     try {
       var ao = String(new URLSearchParams(window.location.search || '').get('ads_oauth') || '').trim();
-      if (ao) params.set('ads_oauth', ao);
+      if (ao) preserved.push('ads_oauth=' + encodeURIComponent(ao));
     } catch (_) {}
-    var url = window.location.pathname + '?' + params.toString();
+    var url = path + (preserved.length ? ('?' + preserved.join('&')) : '');
     try { history.replaceState(null, '', url); } catch (_) {}
   }
 
@@ -2407,7 +2429,7 @@
       var login = document.getElementById('settings-ga-account-login-customer-id');
       var conv = document.getElementById('settings-ga-account-conversion-customer-id');
       var sp = getShopParam();
-      var base = (typeof API !== 'undefined' ? API : '') + '/api/ads/google/connect?redirect=' + encodeURIComponent('/settings?tab=integrations&integrationsTab=googleads');
+      var base = (typeof API !== 'undefined' ? API : '') + '/api/ads/google/connect?redirect=' + encodeURIComponent('/settings/integrations/googleads');
       if (sp) base += '&shop=' + encodeURIComponent(sp);
       if (cust && cust.value.trim()) base += '&customer_id=' + encodeURIComponent(cust.value.trim());
       if (login && login.value.trim()) base += '&login_customer_id=' + encodeURIComponent(login.value.trim());
@@ -6404,7 +6426,7 @@
     try { wireSettingsUiMutationObserver(); } catch (_) {}
 
     function syncFromUrl() {
-      var tab = getTabFromQuery() || getTabFromHash() || 'kexo';
+      var tab = getTabFromPath() || getTabFromQuery() || getTabFromHash() || 'kexo';
       // Fail-safe: if the URL explicitly requests cost-expenses, honor it on direct loads.
       // This prevents falling back to Kexo when query parsing or DOM timing is off.
       try {

@@ -483,10 +483,17 @@
       });
     });
 
-    // Apply initial sub-tab from URL for direct loads / cached settings-page.
+    // Apply initial sub-tab from URL (path first, then query) for direct loads / cached settings-page.
     try {
-      var params = new URLSearchParams(window.location.search || '');
-      var initial = String(params.get('costExpensesTab') || '').trim().toLowerCase();
+      var initial = '';
+      var pathMatch = /^\/settings\/cost-expenses\/([^/]+)$/.exec((window.location.pathname || '').replace(/\/+$/, ''));
+      if (pathMatch && pathMatch[1]) {
+        initial = String(pathMatch[1]).trim().toLowerCase();
+      }
+      if (!initial) {
+        var params = new URLSearchParams(window.location.search || '');
+        initial = String(params.get('costExpensesTab') || '').trim().toLowerCase();
+      }
       if (initial === 'cost-sources' || initial === 'shipping' || initial === 'rules' || initial === 'breakdown') setActiveSubTab(initial, { updateUrl: false });
       else setActiveSubTab('cost-sources', { updateUrl: false });
     } catch (_) {}
@@ -524,13 +531,21 @@
   // Always bind the UI once so buttons/tabs work even if Settings init is cached/broken.
   try { bindUi(); } catch (_) {}
 
-  // Fail-safe: direct loads to /settings?tab=cost-expenses should initialize even if script order changes.
+  // Fail-safe: direct loads to /settings/cost-expenses/* or legacy ?tab=cost-expenses should initialize even if script order changes.
   try {
-    var params = new URLSearchParams(window.location.search || '');
-    var tab = String(params.get('tab') || '').trim().toLowerCase();
-    if (tab === 'cost-expenses') {
+    var pathMatch = /^\/settings\/cost-expenses\/([^/]+)$/.exec((window.location.pathname || '').replace(/\/+$/, ''));
+    var isCostExpensesPath = pathMatch && pathMatch[1];
+    if (!isCostExpensesPath) {
+      var params = new URLSearchParams(window.location.search || '');
+      isCostExpensesPath = String(params.get('tab') || '').trim().toLowerCase() === 'cost-expenses';
+    }
+    if (isCostExpensesPath) {
       try { window.initCostExpensesSettings(); } catch (_) {}
-      var sub = String(params.get('costExpensesTab') || '').trim().toLowerCase();
+      var sub = pathMatch && pathMatch[1] ? String(pathMatch[1]).trim().toLowerCase() : '';
+      if (!sub) {
+        var params = new URLSearchParams(window.location.search || '');
+        sub = String(params.get('costExpensesTab') || '').trim().toLowerCase();
+      }
       if (sub === 'shipping' || sub === 'rules' || sub === 'breakdown') setActiveSubTab(sub, { updateUrl: false });
     }
   } catch (_) {}

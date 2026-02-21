@@ -403,7 +403,7 @@
           body += '</div></div>';
 
           body += '<div class="col-12">';
-          body += '<a class="btn btn-sm btn-outline-secondary" href="/settings?tab=cost-expenses&costExpensesTab=rules">Open cost settings</a>';
+          body += '<a class="btn btn-sm btn-outline-secondary" href="/settings/cost-expenses/rules">Open cost settings</a>';
           body += '<div class="form-hint">Manage cost sources, shipping, and profit rules.</div>';
           body += '</div>';
         }
