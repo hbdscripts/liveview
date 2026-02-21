@@ -42,6 +42,21 @@ body[data-page="settings"] .settings-tab-content-box > .settings-main-tabs-accor
   background: transparent;
 }
 
+/* Flatten wrapper cards inside panels to avoid "container inside container" framing. */
+body[data-page="settings"] .settings-flat-card {
+  border: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  margin: 0 !important;
+}
+body[data-page="settings"] .settings-flat-card > .card-body,
+body[data-page="settings"] .settings-flat-card-body {
+  border: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+}
+
 /* Cost & profit panels are not accordion-framed; use the shared tab box frame instead. */
 body[data-page="settings"] #settings-panel-cost-expenses .settings-tab-content-box .settings-panel-wrap {
   border: 0;

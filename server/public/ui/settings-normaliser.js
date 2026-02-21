@@ -231,6 +231,41 @@
     return true;
   }
 
+  function flattenWrapperCards(panelEl) {
+    var wrap = getPanelWrap(panelEl) || panelEl;
+    if (!wrap || !wrap.querySelectorAll) return;
+
+    var cards = [];
+    try { cards = Array.prototype.slice.call(wrap.querySelectorAll(':scope > .card')); } catch (_) { cards = []; }
+
+    cards.forEach(function (card) {
+      if (!isElement(card) || !card.classList) return;
+      if (card.classList.contains('settings-flat-card')) return;
+
+      // Never flatten cards that still have a header — those are intentional sections.
+      var header = null;
+      try { header = card.querySelector(':scope > .card-header'); } catch (_) { header = null; }
+      if (header) return;
+
+      var body = null;
+      try { body = card.querySelector(':scope > .card-body'); } catch (_) { body = null; }
+      if (!body) return;
+
+      // Flatten only "wrapper cards" that contain nested containers (cards/accordions/grids).
+      // This avoids the "container inside container inside container" look where every wrapper adds
+      // its own border + padding on top of the Settings tab frame.
+      var hasNestedContainer = false;
+      try {
+        hasNestedContainer = !!body.querySelector('.accordion, .settings-layout-accordion, .settings-responsive-grid, .table-responsive, .card');
+      } catch (_) { hasNestedContainer = false; }
+
+      if (!hasNestedContainer) return;
+
+      try { card.classList.add('settings-flat-card'); } catch (_) {}
+      try { body.classList.add('settings-flat-card-body'); } catch (_) {}
+    });
+  }
+
   function normaliseHeadingsAndSpacing(panelEl) {
     var wrap = getPanelWrap(panelEl) || panelEl;
     if (!wrap || !wrap.querySelectorAll) return;
@@ -346,6 +381,7 @@
     if (wrap) flattenNestedPanelWraps(wrap);
     normaliseGridLayouts(panelEl);
     stripFirstCardHeaderInPanel(panelEl);
+    flattenWrapperCards(panelEl);
     removeDeadCardHeaderChevrons(panelEl);
     normaliseHeadingsAndSpacing(panelEl);
     normaliseButtonsAndForms(panelEl);
@@ -426,6 +462,7 @@
     ensurePanelWrap: ensurePanelWrap,
     normaliseGridLayouts: normaliseGridLayouts,
     stripFirstCardHeaderInPanel: stripFirstCardHeaderInPanel,
+    flattenWrapperCards: flattenWrapperCards,
     normaliseHeadingsAndSpacing: normaliseHeadingsAndSpacing,
     normaliseButtonsAndForms: normaliseButtonsAndForms,
     normaliseSettingsPanel: normaliseSettingsPanel,
