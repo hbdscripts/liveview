@@ -4524,8 +4524,8 @@ body[data-page="dashboard"] .kexo-overview-widget-card .kexo-widget-head-right {
 }
 
 .kexo-trending-days-dropdown-btn {
-  min-width: 70px;
-  margin-right: 0.35rem;
+  /* min-width: 70px; */
+  /* margin-right: 0.35rem; */
   border: 0 !important;
   box-shadow: 0 0 0 !important;
   padding: 0 !important;
@@ -4538,13 +4538,6 @@ body[data-page="dashboard"] .kexo-overview-widget-card .kexo-widget-head-right {
 .kexo-trending-days-dropdown-menu .dropdown-item {
   text-transform: capitalize;
   font-weight: normal;
-}
-.kexo-trending-days-dropdown-btn.dropdown-toggle::after {
-  margin-left: 0.25em;
-  margin-right: 0.1em;
-  vertical-align: 0.1em;
-  opacity: 0.8;
-  border-width: 5px 4px 0;
 }
 
 .dash-thumb-wrap {

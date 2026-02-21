@@ -1031,10 +1031,12 @@ async function fetchTrendingProducts(db, shop, nowBounds, prevBounds, filter) {
     });
   });
 
-  // Trending by % growth (so list differs from "top by revenue" — surfaces fast growers).
+  // Sort by highest revenue first (revenueNow), then by growth/delta so order is stable across date ranges.
   const up = base
     .filter(function(r) { return r.deltaRevenue > 0.005; })
     .sort(function(a, b) {
+      const byRev = (b.revenueNow || 0) - (a.revenueNow || 0);
+      if (byRev !== 0) return byRev;
       const byPct = (b.pctGrowth != null ? b.pctGrowth : -Infinity) - (a.pctGrowth != null ? a.pctGrowth : -Infinity);
       if (byPct !== 0) return byPct;
       return (b.deltaRevenue || 0) - (a.deltaRevenue || 0);
@@ -1043,6 +1045,8 @@ async function fetchTrendingProducts(db, shop, nowBounds, prevBounds, filter) {
   const down = base
     .filter(function(r) { return r.deltaRevenue < -0.005; })
     .sort(function(a, b) {
+      const byRev = (b.revenueNow || 0) - (a.revenueNow || 0);
+      if (byRev !== 0) return byRev;
       const byPct = (a.pctGrowth != null ? a.pctGrowth : Infinity) - (b.pctGrowth != null ? b.pctGrowth : Infinity);
       if (byPct !== 0) return byPct;
       return (a.deltaRevenue || 0) - (b.deltaRevenue || 0);
