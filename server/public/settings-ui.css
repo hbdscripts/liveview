@@ -131,12 +131,22 @@ body[data-page="settings"] .kexo-css-var-name {
   margin: 0.35rem;
   padding: 0.25rem;
 }
-/* Help trigger button: same opacity behaviour, no other hover effect. */
+/* Help trigger: icon only, no button look; opacity 0.6, hover 1, no other hover effect. */
 .kexo-icon-help-trigger {
+  border: none;
+  background: none;
+  padding: 0;
+  margin: 0;
+  box-shadow: none;
   opacity: 0.6;
+  cursor: pointer;
 }
 .kexo-icon-help-trigger:hover {
   opacity: 1;
+}
+.kexo-icon-help-trigger:focus {
+  outline: none;
+  box-shadow: none;
 }
 .kexo-icon-help-trigger .kexo-icon-help-trigger-icon {
   width: 16px;

@@ -2086,7 +2086,7 @@ btn.classList.remove('btn-success');
           '<div class="d-flex align-items-center mb-2">' +
             '<span class="kexo-theme-icon-preview me-2 d-inline-flex align-items-center justify-content-center" style="width:1.25rem;height:1.25rem;" data-theme-icon-preview-glyph="' + key + '" aria-hidden="true"></span>' +
             '<strong class="me-auto">' + meta.title + '</strong>' +
-            '<button type="button" class="btn btn-md btn-icon kexo-icon-help-trigger" data-theme-icon-help-trigger data-theme-icon-help-key="' + escapeHtml(key) + '" data-bs-title="" aria-label="Show description">' +
+            '<button type="button" class="kexo-icon-help-trigger" data-theme-icon-help-trigger data-theme-icon-help-key="' + escapeHtml(key) + '" aria-label="Show description">' +
               '<span class="kexo-icon-help-trigger-icon kexo-theme-icon-preview d-inline-flex align-items-center justify-content-center" style="width:16px;height:16px;" data-theme-icon-preview-glyph="theme-icon-glyph-admin-tab-help-tooltip" aria-hidden="true"></span>' +
             '</button>' +
           '</div>' +
@@ -2463,6 +2463,17 @@ btn.classList.remove('btn-success');
       '</div>' +
 
       '<div class="theme-subpanel" data-theme-subpanel="sale-notification" hidden>' +
+        '<h4 class="mb-2">Notification types</h4>' +
+        '<p class="text-secondary small mb-3">Turn each notification type on or off. Sale sound is played when a new sale is detected.</p>' +
+        '<div class="mb-4" id="settings-notification-types-wrap">' +
+          '<div class="form-check form-switch mb-2"><input class="form-check-input" type="checkbox" id="settings-notif-daily-report" data-notification-pref="daily_report" checked><label class="form-check-label" for="settings-notif-daily-report">Daily report</label></div>' +
+          '<div class="form-check form-switch mb-2"><input class="form-check-input" type="checkbox" id="settings-notif-sale" data-notification-pref="sale" checked><label class="form-check-label" for="settings-notif-sale">Sale (sound + banner)</label></div>' +
+          '<div class="form-check form-switch mb-2"><input class="form-check-input" type="checkbox" id="settings-notif-sentry" data-notification-pref="sentry" checked><label class="form-check-label" for="settings-notif-sentry">Sentry errors <span class="text-muted">(admins only)</span></label></div>' +
+          '<div class="form-check form-switch mb-2"><input class="form-check-input" type="checkbox" id="settings-notif-pending-signup" data-notification-pref="pending_signup" checked><label class="form-check-label" for="settings-notif-pending-signup">Pending sign-ups <span class="text-muted">(admins only)</span></label></div>' +
+          '<div class="form-check form-switch mb-2"><input class="form-check-input" type="checkbox" id="settings-notif-diagnostics" data-notification-pref="diagnostics_unresolved" checked><label class="form-check-label" for="settings-notif-diagnostics">Unresolved diagnostics <span class="text-muted">(admins only)</span></label></div>' +
+        '</div>' +
+        '<hr class="my-3" />' +
+        '<h4 class="mb-2">Sale sound</h4>' +
         '<div class="text-secondary mb-3">Choose the sound played when a new sale is detected. Use a preset or upload your own MP3.</div>' +
         '<form id="settings-sale-notification-form">' +
           '<div class="mb-3">' +
@@ -3257,7 +3268,8 @@ btn.classList.remove('btn-md');
     function wireIconHelpPopovers() {
       var triggers = formEl.querySelectorAll('[data-theme-icon-help-trigger]');
       if (!triggers || !triggers.length) return;
-      if (typeof bootstrap === 'undefined' || !bootstrap.Popover) return;
+      var Bootstrap = window.bootstrap || (window.tabler && window.tabler.bootstrap);
+      if (!Bootstrap || !Bootstrap.Popover) return;
       triggers.forEach(function (trigger) {
         trigger.removeAttribute('title');
         trigger.removeAttribute('data-bs-title');
@@ -3270,7 +3282,7 @@ btn.classList.remove('btn-md');
         var contentHtml = '<div class="position-relative" style="padding:0;margin:0;font-size:11px;border:0;background:none;">' +
           '<button type="button" class="btn-close position-absolute top-0 end-0" aria-label="Close"></button>' +
           '<div class="pe-3">' + escapeHtml(helpText) + '</div></div>';
-        new bootstrap.Popover(trigger, {
+        new Bootstrap.Popover(trigger, {
           title: '',
           content: contentHtml,
           html: true,
@@ -3288,7 +3300,8 @@ btn.classList.remove('btn-md');
           var popoverEl = closeBtn.closest('.popover');
           if (!popoverEl || !popoverEl.id) return;
           var trigger = document.querySelector('[aria-describedby="' + popoverEl.id + '"]');
-          if (trigger && bootstrap.Popover.getInstance(trigger)) bootstrap.Popover.getInstance(trigger).hide();
+          var BootstrapRef = window.bootstrap || (window.tabler && window.tabler.bootstrap);
+          if (trigger && BootstrapRef && BootstrapRef.Popover && BootstrapRef.Popover.getInstance(trigger)) BootstrapRef.Popover.getInstance(trigger).hide();
         });
       }
     }
@@ -3476,11 +3489,18 @@ btn.classList.remove('btn-md');
   function fetchAssetOverridesAndApply() {
     var base = '';
     try { if (typeof API !== 'undefined') base = String(API || ''); } catch (_) {}
-    fetch(base + '/api/asset-overrides', { credentials: 'same-origin', cache: 'no-store' })
-      .then(function (r) { return r && r.ok ? r.json() : null; })
-      .then(function (data) {
-        if (!data || !data.ok) return;
+    Promise.all([
+      fetch(base + '/api/asset-overrides', { credentials: 'same-origin', cache: 'no-store' }).then(function (r) { return r && r.ok ? r.json() : null; }),
+      fetch(base + '/api/settings', { credentials: 'same-origin', cache: 'no-store' }).then(function (r) { return r && r.ok ? r.json() : null; })
+    ])
+      .then(function (results) {
+        var data = results[0];
+        var settingsData = results[1] || {};
+        if (!data || !data.ok) data = { ok: true, assetOverrides: {} };
         var overrides = data.assetOverrides || {};
+        if (settingsData.notificationsPreferencesV1 && typeof settingsData.notificationsPreferencesV1 === 'object') {
+          overrides.notificationsPreferencesV1 = settingsData.notificationsPreferencesV1;
+        }
 
         var favicon = normalizeAssetOverrideUrl(overrides.favicon);
         if (favicon) applyFaviconOverride(favicon);
@@ -3511,6 +3531,16 @@ btn.classList.remove('btn-md');
   };
 
   function populateSaleNotificationPanel(overrides) {
+    var prefs = (overrides && overrides.notificationsPreferencesV1 && typeof overrides.notificationsPreferencesV1 === 'object')
+      ? overrides.notificationsPreferencesV1
+      : {};
+    var prefKeys = ['daily_report', 'sale', 'sentry', 'pending_signup', 'diagnostics_unresolved'];
+    prefKeys.forEach(function (key) {
+      var el = document.querySelector('[data-notification-pref="' + key + '"]');
+      if (!el) return;
+      var val = prefs[key];
+      el.checked = val !== false;
+    });
     var url = ((overrides && overrides.saleSound) || (overrides && overrides.sale_sound) || '').trim();
     var presetSel = document.getElementById('settings-sale-sound-preset');
     var customWrap = document.getElementById('settings-sale-sound-custom-wrap');
@@ -3541,6 +3571,30 @@ btn.classList.remove('btn-md');
     if (!form) return;
     if (form.dataset.saleNotificationBound === '1') return;
     form.dataset.saleNotificationBound = '1';
+    var base = '';
+    try { if (typeof API !== 'undefined') base = String(API || ''); } catch (_) {}
+    function readNotificationPrefs() {
+      var prefs = { daily_report: true, sale: true, sentry: true, pending_signup: true, diagnostics_unresolved: true };
+      document.querySelectorAll('[data-notification-pref]').forEach(function (el) {
+        var key = el.getAttribute('data-notification-pref');
+        if (key && prefs.hasOwnProperty(key)) prefs[key] = el.checked;
+      });
+      return prefs;
+    }
+    function saveNotificationPrefs() {
+      var prefs = readNotificationPrefs();
+      return fetch(base + '/api/settings', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notificationsPreferencesV1: prefs }),
+      }).then(function (r) { return r && r.ok ? r.json() : null; });
+    }
+    document.querySelectorAll('[data-notification-pref]').forEach(function (el) {
+      el.addEventListener('change', function () {
+        saveNotificationPrefs().catch(function () {});
+      });
+    });
     var previewAudio = null;
     var previewAudioPrimed = false;
     var previewMsgTimer = null;
