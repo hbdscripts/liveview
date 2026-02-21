@@ -25,28 +25,28 @@
     try { console.error('[theme-settings] Missing icon registry payload from /icon-registry.js'); } catch (_) {}
   }
   var ICON_GLYPH_META = {
-    'live-landing-entry': { title: 'Live Table Entry Icon', help: 'Landing direction entry icon. Shows in the Live table on /dashboard/live.' },
-    'live-landing-exit': { title: 'Live Table Exit Icon', help: 'Landing direction exit icon. Shows in the Live table on /dashboard/live.' },
-    'table-icon-variants-variant': { title: 'Variants Table Variant Icon', help: 'Short header icon for the Variant column in Insights → Variants.' },
-    'table-icon-variants-sessions': { title: 'Variants Table Sessions Icon', help: 'Short header icon for the Sessions column in Insights → Variants.' },
-    'table-icon-variants-orders': { title: 'Variants Table Orders Icon', help: 'Short header icon for the Orders column in Insights → Variants.' },
-    'table-icon-variants-cr': { title: 'Variants Table CR Icon', help: 'Short header icon for the CR% column in Insights → Variants.' },
-    'table-icon-variants-revenue': { title: 'Variants Table Revenue Icon', help: 'Short header icon for the Rev column in Insights → Variants.' },
-    'table-icon-converted-sale': { title: 'Converted Row Sale Icon', help: 'Sale icon shown in the Compliance column when a session has a conversion.' },
-    'table-icon-compliance-header': { title: 'Compliance Column Header Icon', help: 'Icon shown in the Compliance column header in sessions tables (Live, Sales, Table views).' },
-    'table-icon-compliance-check': { title: 'Compliance Check Icon', help: 'Icon shown when a session passes compliance checks (no fraud warning).' },
-    'table-icon-compliance-warning': { title: 'Compliance Warning Icon', help: 'Icon shown when compliance checks warn (fraud triggered).' },
-    'table-icon-compliance-search': { title: 'Compliance Search Icon', help: 'Default icon in the Compliance column when no fraud evaluation exists; replaced by check or warning when evaluation is present.' },
-    'table-sticky-resize-handle': { title: 'Sticky Column Resize Handle', help: 'Icon shown on the sticky column resize handle in sessions tables (Live, Sales, Table views).' },
-    'chart-builder-icon': { title: 'Chart Layout Icon', help: 'Icon shown at the top of chart cards that links to Settings → Layout. Use full Font Awesome classes (e.g. fa-light fa-gear).' },
-    'dash-kpi-delta-up': { title: 'Overview KPI Delta Up', help: 'Up-trend icon in KPI cards on /dashboard/overview when metric delta is positive.' },
-    'dash-kpi-delta-down': { title: 'Overview KPI Delta Down', help: 'Down-trend icon in KPI cards on /dashboard/overview when metric delta is negative.' },
-    'dash-kpi-delta-flat': { title: 'Overview KPI Delta Flat', help: 'Flat-trend icon in KPI cards on /dashboard/overview when metric delta is neutral.' },
+    'live-landing-entry': { title: 'Live Table - "Entry"', help: 'Landing direction entry icon. Shows in the Live table on /dashboard/live.' },
+    'live-landing-exit': { title: 'Live Table - "Exit"', help: 'Landing direction exit icon. Shows in the Live table on /dashboard/live.' },
+    'table-icon-variants-variant': { title: 'Variants table - Variant', help: 'Short header icon for the Variant column in Insights → Variants.' },
+    'table-icon-variants-sessions': { title: 'Variants table - Sessions', help: 'Short header icon for the Sessions column in Insights → Variants.' },
+    'table-icon-variants-orders': { title: 'Variants table - Orders', help: 'Short header icon for the Orders column in Insights → Variants.' },
+    'table-icon-variants-cr': { title: 'Variants table - CR', help: 'Short header icon for the CR% column in Insights → Variants.' },
+    'table-icon-variants-revenue': { title: 'Variants table - Revenue', help: 'Short header icon for the Rev column in Insights → Variants.' },
+    'table-icon-converted-sale': { title: 'Converted row - Sale', help: 'Sale icon shown in the Compliance column when a session has a conversion.' },
+    'table-icon-compliance-header': { title: 'Compliance - Header', help: 'Icon shown in the Compliance column header in sessions tables (Live, Sales, Table views).' },
+    'table-icon-compliance-check': { title: 'Compliance - Check', help: 'Icon shown when a session passes compliance checks (no fraud warning).' },
+    'table-icon-compliance-warning': { title: 'Compliance - Warning', help: 'Icon shown when compliance checks warn (fraud triggered).' },
+    'table-icon-compliance-search': { title: 'Compliance - Search', help: 'Default icon in the Compliance column when no fraud evaluation exists; replaced by check or warning when evaluation is present.' },
+    'table-sticky-resize-handle': { title: 'Sticky column - Resize handle', help: 'Icon shown on the sticky column resize handle in sessions tables (Live, Sales, Table views).' },
+    'chart-builder-icon': { title: 'Chart - Layout', help: 'Icon shown at the top of chart cards that links to Settings → Layout. Use full Font Awesome classes (e.g. fa-light fa-gear).' },
+    'dash-kpi-delta-up': { title: 'Overview KPI - Delta up', help: 'Up-trend icon in KPI cards on /dashboard/overview when metric delta is positive.' },
+    'dash-kpi-delta-down': { title: 'Overview KPI - Delta down', help: 'Down-trend icon in KPI cards on /dashboard/overview when metric delta is negative.' },
+    'dash-kpi-delta-flat': { title: 'Overview KPI - Delta flat', help: 'Flat-trend icon in KPI cards on /dashboard/overview when metric delta is neutral.' },
     'nav-dropdown-arrow': { title: 'Nav Dropdown Arrow', help: 'Arrow icon shown next to each item in the top-nav dropdown menus (Dashboard, Insights, Acquisition, etc.).' },
-    'nav-item-admin': { title: 'Settings Menu Admin Icon', help: 'Icon shown for the Admin item in the top-right settings dropdown.' },
-    'admin-tab-controls': { title: 'Admin Controls Icon', help: 'Sidebar icon shown for Controls in /admin.' },
-    'admin-tab-diagnostics': { title: 'Admin Diagnostics Icon', help: 'Sidebar icon shown for Diagnostics in /admin.' },
-    'admin-tab-users': { title: 'Admin Users Icon', help: 'Sidebar icon shown for Users in /admin.' },
+    'nav-item-admin': { title: 'Settings menu - Admin', help: 'Icon shown for the Admin item in the top-right settings dropdown.' },
+    'admin-tab-controls': { title: 'Admin - Controls', help: 'Sidebar icon shown for Controls in /admin.' },
+    'admin-tab-diagnostics': { title: 'Admin - Diagnostics', help: 'Sidebar icon shown for Diagnostics in /admin.' },
+    'admin-tab-users': { title: 'Admin - Users', help: 'Sidebar icon shown for Users in /admin.' },
   };
 
   function isLockedSettingsIconKey(name) {
@@ -743,7 +743,9 @@
   function titleizeIconKey(name) {
     var s = String(name || '').replace(/-/g, ' ').trim();
     if (!s) return 'Icon';
-    return s.replace(/\b\w/g, function (m) { return m.toUpperCase(); });
+    s = s.replace(/\b\w/g, function (m) { return m.toUpperCase(); });
+    s = s.replace(/\s+Icon\s+/g, ' - ').replace(/\s*Icon\s*$/i, '').trim();
+    return s || 'Icon';
   }
 
   function defaultIconHelpFor(name) {
@@ -2038,8 +2040,10 @@
           '<div class="d-flex align-items-center mb-2">' +
             '<span class="kexo-theme-icon-preview me-2 d-inline-flex align-items-center justify-content-center" style="width:1.25rem;height:1.25rem;" data-theme-icon-preview-glyph="' + key + '" aria-hidden="true"></span>' +
             '<strong class="me-auto">' + meta.title + '</strong>' +
+            '<button type="button" class="btn btn-icon btn-ghost-secondary btn-sm kexo-icon-help-trigger" data-theme-icon-help-trigger data-theme-icon-help-key="' + escapeHtml(key) + '" aria-label="Help" title="Help">' +
+              '<i class="fa-thin fa-circle-info" aria-hidden="true"></i>' +
+            '</button>' +
           '</div>' +
-          '<div class="text-secondary small mb-2">' + meta.help + '</div>' +
           '<textarea class="form-control font-monospace" id="' + inputId + '" name="' + key + '" data-theme-icon-glyph-input="' + key + '" rows="2" placeholder="' + (DEFAULTS[key] || 'fa-circle') + '"></textarea>' +
           '<div class="d-flex align-items-center gap-2 mt-2">' +
             '<button type="button" class="btn btn-outline-secondary btn-sm" data-theme-icon-edit="' + key + '">Edit</button>' +
@@ -3194,6 +3198,40 @@
 
     wireAccentHexInputs();
     wireIconEditModal();
+
+    function wireIconHelpPopovers() {
+      var triggers = formEl.querySelectorAll('[data-theme-icon-help-trigger]');
+      if (!triggers || !triggers.length) return;
+      if (typeof bootstrap === 'undefined' || !bootstrap.Popover) return;
+      triggers.forEach(function (trigger) {
+        var key = trigger.getAttribute('data-theme-icon-help-key') || '';
+        var name = glyphNameFromThemeKey(key);
+        var meta = glyphMetaFor(name);
+        var contentHtml = '<div class="kexo-icon-help-popover-body position-relative">' +
+          '<button type="button" class="btn-close position-absolute top-0 end-0" aria-label="Close"></button>' +
+          '<div class="small text-secondary pe-3">' + escapeHtml(meta.help) + '</div></div>';
+        new bootstrap.Popover(trigger, {
+          content: contentHtml,
+          html: true,
+          trigger: 'click',
+          placement: 'left',
+          customClass: 'kexo-icon-help-popover',
+          sanitize: false
+        });
+      });
+      if (!window.__kexoIconHelpCloseBound) {
+        window.__kexoIconHelpCloseBound = true;
+        document.addEventListener('click', function (e) {
+          var closeBtn = e.target && e.target.closest ? e.target.closest('.kexo-icon-help-popover .btn-close') : null;
+          if (!closeBtn) return;
+          var popoverEl = closeBtn.closest('.popover');
+          if (!popoverEl || !popoverEl.id) return;
+          var trigger = document.querySelector('[aria-describedby="' + popoverEl.id + '"]');
+          if (trigger && bootstrap.Popover.getInstance(trigger)) bootstrap.Popover.getInstance(trigger).hide();
+        });
+      }
+    }
+    wireIconHelpPopovers();
 
     var root = formEl.parentElement || document;
     var refreshBtn = root.querySelector('#theme-icons-refresh');
