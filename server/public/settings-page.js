@@ -740,17 +740,26 @@
   }
 
   function syncGlobalFooter() {
+    var sectionIds = getSectionIdsForActiveTab();
+    var usesGlobalDraft = Array.isArray(sectionIds) && sectionIds.length > 0;
     SETTINGS_PANEL_SAVE_BUTTON_IDS.forEach(function (id) {
       var el = document.getElementById(id);
-      if (el) el.classList.add('settings-panel-save-hidden');
+      if (!el || !el.classList) return;
+      if (usesGlobalDraft) el.classList.add('settings-panel-save-hidden');
+      else el.classList.remove('settings-panel-save-hidden');
     });
-    var dirtyIds = getSettingsDraftDirtyIds();
-    var sectionIds = getSectionIdsForActiveTab();
-    var tabDirty = dirtyIds.some(function (id) { return sectionIds.indexOf(id) !== -1; });
+    var dirtyIds = usesGlobalDraft ? getSettingsDraftDirtyIds() : [];
+    var tabDirty = usesGlobalDraft && dirtyIds.some(function (id) { return sectionIds.indexOf(id) !== -1; });
+    var footer = document.getElementById('settings-global-footer');
+    var footerLeft = document.getElementById('settings-footer-left');
     var globalSave = document.getElementById('settings-global-save-btn');
     var globalRevert = document.getElementById('settings-global-revert-btn');
-    if (globalSave) globalSave.disabled = !tabDirty;
-    if (globalRevert) globalRevert.disabled = !tabDirty;
+    var footerRight = (globalSave && globalSave.closest) ? globalSave.closest('.settings-footer-right') : null;
+    if (footerRight) footerRight.style.display = usesGlobalDraft ? '' : 'none';
+    var hasLeftActions = !!(footerLeft && footerLeft.children && footerLeft.children.length);
+    if (footer) footer.hidden = !(usesGlobalDraft || hasLeftActions);
+    if (globalSave) globalSave.disabled = !(usesGlobalDraft && tabDirty);
+    if (globalRevert) globalRevert.disabled = !(usesGlobalDraft && tabDirty);
     if (globalSave) {
       globalSave.onclick = function () {
         settingsDraftSaveAll();
