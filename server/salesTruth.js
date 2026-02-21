@@ -1754,7 +1754,7 @@ async function getTruthOrderCount(shop, startMs, endMs) {
   const db = getDb();
   const row = await db.get(
     `SELECT COUNT(*) AS n FROM orders_shopify
-     WHERE shop = ? AND created_at >= ? AND created_at < ?
+     WHERE shop = ? AND (COALESCE(processed_at, created_at) >= ? AND COALESCE(processed_at, created_at) < ?)
        AND (test IS NULL OR test = 0)
        AND cancelled_at IS NULL
        AND financial_status = 'paid'`,
@@ -1774,7 +1774,7 @@ async function getTruthCheckoutOrderCount(shop, startMs, endMs) {
   const db = getDb();
   const row = await db.get(
     `SELECT COUNT(*) AS n FROM orders_shopify
-     WHERE shop = ? AND created_at >= ? AND created_at < ?
+     WHERE shop = ? AND (COALESCE(processed_at, created_at) >= ? AND COALESCE(processed_at, created_at) < ?)
        AND (test IS NULL OR test = 0)
        AND cancelled_at IS NULL
        AND financial_status = 'paid'
@@ -1791,7 +1791,7 @@ async function getTruthSalesRows(shop, startMs, endMs) {
   return db.all(
     `SELECT COALESCE(NULLIF(TRIM(currency), ''), 'GBP') AS currency, COALESCE(SUM(total_price), 0) AS total
      FROM orders_shopify
-     WHERE shop = ? AND created_at >= ? AND created_at < ?
+     WHERE shop = ? AND (COALESCE(processed_at, created_at) >= ? AND COALESCE(processed_at, created_at) < ?)
        AND (test IS NULL OR test = 0)
        AND cancelled_at IS NULL
        AND financial_status = 'paid'
@@ -1807,7 +1807,7 @@ async function getTruthCheckoutSalesRows(shop, startMs, endMs) {
   return db.all(
     `SELECT COALESCE(NULLIF(TRIM(currency), ''), 'GBP') AS currency, COALESCE(SUM(total_price), 0) AS total
      FROM orders_shopify
-     WHERE shop = ? AND created_at >= ? AND created_at < ?
+     WHERE shop = ? AND (COALESCE(processed_at, created_at) >= ? AND COALESCE(processed_at, created_at) < ?)
        AND (test IS NULL OR test = 0)
        AND cancelled_at IS NULL
        AND financial_status = 'paid'
@@ -1887,7 +1887,7 @@ async function getTruthReturningRevenueRows(shop, startMs, endMs) {
     SELECT COALESCE(NULLIF(TRIM(o.currency), ''), 'GBP') AS currency, COALESCE(SUM(o.total_price), 0) AS total
     FROM orders_shopify o
     LEFT JOIN customer_order_facts f ON f.shop = o.shop AND f.customer_id = o.customer_id
-    WHERE o.shop = ? AND o.created_at >= ? AND o.created_at < ?
+    WHERE o.shop = ? AND (COALESCE(o.processed_at, o.created_at) >= ? AND COALESCE(o.processed_at, o.created_at) < ?)
       AND (o.test IS NULL OR o.test = 0)
       AND o.cancelled_at IS NULL
       AND o.financial_status = 'paid'
@@ -1903,7 +1903,7 @@ async function getTruthReturningRevenueRows(shop, startMs, endMs) {
                 AND (p.test IS NULL OR p.test = 0)
                 AND p.cancelled_at IS NULL
                 AND p.financial_status = 'paid'
-                AND p.created_at < ?
+                AND COALESCE(p.processed_at, p.created_at) < ?
             )
           )
         )
@@ -1914,7 +1914,7 @@ async function getTruthReturningRevenueRows(shop, startMs, endMs) {
   const sqlPreferOrdersCount = `
     SELECT COALESCE(NULLIF(TRIM(o.currency), ''), 'GBP') AS currency, COALESCE(SUM(o.total_price), 0) AS total
     FROM orders_shopify o
-    WHERE o.shop = ? AND o.created_at >= ? AND o.created_at < ?
+    WHERE o.shop = ? AND (COALESCE(o.processed_at, o.created_at) >= ? AND COALESCE(o.processed_at, o.created_at) < ?)
       AND (o.test IS NULL OR o.test = 0)
       AND o.cancelled_at IS NULL
       AND o.financial_status = 'paid'
@@ -1928,7 +1928,7 @@ async function getTruthReturningRevenueRows(shop, startMs, endMs) {
               AND (p.test IS NULL OR p.test = 0)
               AND p.cancelled_at IS NULL
               AND p.financial_status = 'paid'
-              AND p.created_at < ?
+              AND COALESCE(p.processed_at, p.created_at) < ?
           )
         )
       )
@@ -1947,7 +1947,7 @@ async function getTruthReturningRevenueRows(shop, startMs, endMs) {
       `
       SELECT COALESCE(NULLIF(TRIM(o.currency), ''), 'GBP') AS currency, COALESCE(SUM(o.total_price), 0) AS total
       FROM orders_shopify o
-      WHERE o.shop = ? AND o.created_at >= ? AND o.created_at < ?
+      WHERE o.shop = ? AND (COALESCE(o.processed_at, o.created_at) >= ? AND COALESCE(o.processed_at, o.created_at) < ?)
         AND (o.test IS NULL OR o.test = 0)
         AND o.cancelled_at IS NULL
         AND o.financial_status = 'paid'
@@ -1958,7 +1958,7 @@ async function getTruthReturningRevenueRows(shop, startMs, endMs) {
             AND (p.test IS NULL OR p.test = 0)
             AND p.cancelled_at IS NULL
             AND p.financial_status = 'paid'
-            AND p.created_at < ?
+            AND COALESCE(p.processed_at, p.created_at) < ?
         )
       GROUP BY currency
       `,
@@ -1980,7 +1980,7 @@ async function getTruthReturningOrderCount(shop, startMs, endMs) {
     SELECT COUNT(*) AS n
     FROM orders_shopify o
     LEFT JOIN customer_order_facts f ON f.shop = o.shop AND f.customer_id = o.customer_id
-    WHERE o.shop = ? AND o.created_at >= ? AND o.created_at < ?
+    WHERE o.shop = ? AND (COALESCE(o.processed_at, o.created_at) >= ? AND COALESCE(o.processed_at, o.created_at) < ?)
       AND (o.test IS NULL OR o.test = 0)
       AND o.cancelled_at IS NULL
       AND o.financial_status = 'paid'
@@ -1996,7 +1996,7 @@ async function getTruthReturningOrderCount(shop, startMs, endMs) {
                 AND (p.test IS NULL OR p.test = 0)
                 AND p.cancelled_at IS NULL
                 AND p.financial_status = 'paid'
-                AND p.created_at < ?
+                AND COALESCE(p.processed_at, p.created_at) < ?
             )
           )
         )
@@ -2005,7 +2005,7 @@ async function getTruthReturningOrderCount(shop, startMs, endMs) {
   const sqlPreferOrdersCount = `
     SELECT COUNT(*) AS n
     FROM orders_shopify o
-    WHERE o.shop = ? AND o.created_at >= ? AND o.created_at < ?
+    WHERE o.shop = ? AND (COALESCE(o.processed_at, o.created_at) >= ? AND COALESCE(o.processed_at, o.created_at) < ?)
       AND (o.test IS NULL OR o.test = 0)
       AND o.cancelled_at IS NULL
       AND o.financial_status = 'paid'
@@ -2019,7 +2019,7 @@ async function getTruthReturningOrderCount(shop, startMs, endMs) {
               AND (p.test IS NULL OR p.test = 0)
               AND p.cancelled_at IS NULL
               AND p.financial_status = 'paid'
-              AND p.created_at < ?
+              AND COALESCE(p.processed_at, p.created_at) < ?
           )
         )
       )
@@ -2039,7 +2039,7 @@ async function getTruthReturningOrderCount(shop, startMs, endMs) {
       `
       SELECT COUNT(*) AS n
       FROM orders_shopify o
-      WHERE o.shop = ? AND o.created_at >= ? AND o.created_at < ?
+      WHERE o.shop = ? AND (COALESCE(o.processed_at, o.created_at) >= ? AND COALESCE(o.processed_at, o.created_at) < ?)
         AND (o.test IS NULL OR o.test = 0)
         AND o.cancelled_at IS NULL
         AND o.financial_status = 'paid'
@@ -2050,7 +2050,7 @@ async function getTruthReturningOrderCount(shop, startMs, endMs) {
             AND (p.test IS NULL OR p.test = 0)
             AND p.cancelled_at IS NULL
             AND p.financial_status = 'paid'
-            AND p.created_at < ?
+            AND COALESCE(p.processed_at, p.created_at) < ?
         )
       `,
       [safeShop, startMs, endMs, startMs]
@@ -2067,7 +2067,7 @@ async function getTruthReturningCustomerCount(shop, startMs, endMs) {
     SELECT COUNT(DISTINCT o.customer_id) AS n
     FROM orders_shopify o
     LEFT JOIN customer_order_facts f ON f.shop = o.shop AND f.customer_id = o.customer_id
-    WHERE o.shop = ? AND o.created_at >= ? AND o.created_at < ?
+    WHERE o.shop = ? AND (COALESCE(o.processed_at, o.created_at) >= ? AND COALESCE(o.processed_at, o.created_at) < ?)
       AND (o.test IS NULL OR o.test = 0)
       AND o.cancelled_at IS NULL
       AND o.financial_status = 'paid'
@@ -2083,7 +2083,7 @@ async function getTruthReturningCustomerCount(shop, startMs, endMs) {
                 AND (p.test IS NULL OR p.test = 0)
                 AND p.cancelled_at IS NULL
                 AND p.financial_status = 'paid'
-                AND p.created_at < ?
+                AND COALESCE(p.processed_at, p.created_at) < ?
             )
           )
         )
@@ -2093,7 +2093,7 @@ async function getTruthReturningCustomerCount(shop, startMs, endMs) {
   const sqlPreferOrdersCount = `
     SELECT COUNT(DISTINCT o.customer_id) AS n
     FROM orders_shopify o
-    WHERE o.shop = ? AND o.created_at >= ? AND o.created_at < ?
+    WHERE o.shop = ? AND (COALESCE(o.processed_at, o.created_at) >= ? AND COALESCE(o.processed_at, o.created_at) < ?)
       AND (o.test IS NULL OR o.test = 0)
       AND o.cancelled_at IS NULL
       AND o.financial_status = 'paid'
@@ -2107,7 +2107,7 @@ async function getTruthReturningCustomerCount(shop, startMs, endMs) {
               AND (p.test IS NULL OR p.test = 0)
               AND p.cancelled_at IS NULL
               AND p.financial_status = 'paid'
-              AND p.created_at < ?
+              AND COALESCE(p.processed_at, p.created_at) < ?
           )
         )
       )
@@ -2127,7 +2127,7 @@ async function getTruthReturningCustomerCount(shop, startMs, endMs) {
       `
       SELECT COUNT(DISTINCT o.customer_id) AS n
       FROM orders_shopify o
-      WHERE o.shop = ? AND o.created_at >= ? AND o.created_at < ?
+      WHERE o.shop = ? AND (COALESCE(o.processed_at, o.created_at) >= ? AND COALESCE(o.processed_at, o.created_at) < ?)
         AND (o.test IS NULL OR o.test = 0)
         AND o.cancelled_at IS NULL
         AND o.financial_status = 'paid'
@@ -2138,7 +2138,7 @@ async function getTruthReturningCustomerCount(shop, startMs, endMs) {
             AND (p.test IS NULL OR p.test = 0)
             AND p.cancelled_at IS NULL
             AND p.financial_status = 'paid'
-            AND p.created_at < ?
+            AND COALESCE(p.processed_at, p.created_at) < ?
         )
       `,
       [safeShop, startMs, endMs, startMs]

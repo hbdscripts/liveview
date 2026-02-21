@@ -17,6 +17,66 @@ const { warnOnReject } = require('../shared/warnReject');
 const DASHBOARD_TOP_TABLE_MAX_ROWS = 5;
 const DASHBOARD_TRENDING_MAX_ROWS = 5;
 
+let _lineItemsHasLineNet = null; // null unknown, true exists, false missing
+let _lineItemsHasLineNetInFlight = null;
+async function lineItemsHasLineNet(db) {
+  if (_lineItemsHasLineNet === true) return true;
+  if (_lineItemsHasLineNet === false) return false;
+  if (_lineItemsHasLineNetInFlight) return _lineItemsHasLineNetInFlight;
+
+  _lineItemsHasLineNetInFlight = Promise.resolve()
+    .then(() => db.get('SELECT line_net FROM orders_shopify_line_items LIMIT 1'))
+    .then(() => {
+      _lineItemsHasLineNet = true;
+      return true;
+    })
+    .catch((err) => {
+      const msg = String(err && err.message ? err.message : err);
+      // Postgres: column "line_net" does not exist
+      // SQLite: no such column: line_net
+      if (/line_net/i.test(msg) && /(does not exist|no such column|has no column)/i.test(msg)) {
+        _lineItemsHasLineNet = false;
+        return false;
+      }
+      throw err;
+    })
+    .finally(() => {
+      _lineItemsHasLineNetInFlight = null;
+    });
+
+  return _lineItemsHasLineNetInFlight;
+}
+
+let _lineItemsHasOrderProcessedAt = null; // null unknown, true exists, false missing
+let _lineItemsHasOrderProcessedAtInFlight = null;
+async function lineItemsHasOrderProcessedAt(db) {
+  if (_lineItemsHasOrderProcessedAt === true) return true;
+  if (_lineItemsHasOrderProcessedAt === false) return false;
+  if (_lineItemsHasOrderProcessedAtInFlight) return _lineItemsHasOrderProcessedAtInFlight;
+
+  _lineItemsHasOrderProcessedAtInFlight = Promise.resolve()
+    .then(() => db.get('SELECT order_processed_at FROM orders_shopify_line_items LIMIT 1'))
+    .then(() => {
+      _lineItemsHasOrderProcessedAt = true;
+      return true;
+    })
+    .catch((err) => {
+      const msg = String(err && err.message ? err.message : err);
+      // Postgres: column "order_processed_at" does not exist
+      // SQLite: no such column: order_processed_at
+      if (/order_processed_at/i.test(msg) && /(does not exist|no such column|has no column)/i.test(msg)) {
+        _lineItemsHasOrderProcessedAt = false;
+        return false;
+      }
+      throw err;
+    })
+    .finally(() => {
+      _lineItemsHasOrderProcessedAtInFlight = null;
+    });
+
+  return _lineItemsHasOrderProcessedAtInFlight;
+}
+
 // Best-effort truth warmup. Must never block the request path.
 let _truthNudgeLastAt = 0;
 let _truthNudgeInFlight = false;
@@ -1271,19 +1331,25 @@ async function computeDashboardSeries(days, nowMs, timeZone, trafficMode) {
   let topProducts = [];
   if (shop) {
     try {
+      const hasLineNet = await lineItemsHasLineNet(db);
+      const revenueExpr = hasLineNet
+        ? 'COALESCE(SUM(COALESCE(li.line_net, li.line_revenue)), 0)'
+        : 'COALESCE(SUM(li.line_revenue), 0)';
+      const hasProcessedAt = await lineItemsHasOrderProcessedAt(db);
+      const tsExpr = hasProcessedAt ? 'COALESCE(li.order_processed_at, li.order_created_at)' : 'li.order_created_at';
       const productRows = await db.all(
         config.dbUrl
-          ? `SELECT TRIM(li.product_id) AS product_id, MAX(NULLIF(TRIM(li.title), '')) AS title, COALESCE(SUM(COALESCE(li.line_net, li.line_revenue)), 0) AS revenue, COUNT(DISTINCT li.order_id) AS orders
+          ? `SELECT TRIM(li.product_id) AS product_id, MAX(NULLIF(TRIM(li.title), '')) AS title, ${revenueExpr} AS revenue, COUNT(DISTINCT li.order_id) AS orders
              FROM orders_shopify_line_items li
-             WHERE li.shop = $1 AND (COALESCE(li.order_processed_at, li.order_created_at) >= $2 AND COALESCE(li.order_processed_at, li.order_created_at) < $3)
+             WHERE li.shop = $1 AND (${tsExpr} >= $2 AND ${tsExpr} < $3)
                AND (li.order_test IS NULL OR li.order_test = 0) AND li.order_cancelled_at IS NULL AND li.order_financial_status IN ('paid', 'partially_paid')
                AND li.product_id IS NOT NULL AND TRIM(li.product_id) != ''
              GROUP BY TRIM(li.product_id)
              ORDER BY revenue DESC
              LIMIT ${DASHBOARD_TOP_TABLE_MAX_ROWS}`
-          : `SELECT TRIM(li.product_id) AS product_id, MAX(NULLIF(TRIM(li.title), '')) AS title, COALESCE(SUM(COALESCE(li.line_net, li.line_revenue)), 0) AS revenue, COUNT(DISTINCT li.order_id) AS orders
+          : `SELECT TRIM(li.product_id) AS product_id, MAX(NULLIF(TRIM(li.title), '')) AS title, ${revenueExpr} AS revenue, COUNT(DISTINCT li.order_id) AS orders
              FROM orders_shopify_line_items li
-             WHERE li.shop = ? AND (COALESCE(li.order_processed_at, li.order_created_at) >= ? AND COALESCE(li.order_processed_at, li.order_created_at) < ?)
+             WHERE li.shop = ? AND (${tsExpr} >= ? AND ${tsExpr} < ?)
                AND (li.order_test IS NULL OR li.order_test = 0) AND li.order_cancelled_at IS NULL AND li.order_financial_status IN ('paid', 'partially_paid')
                AND li.product_id IS NOT NULL AND TRIM(li.product_id) != ''
              GROUP BY TRIM(li.product_id)
@@ -1736,19 +1802,25 @@ async function computeDashboardSeriesForBounds(bounds, nowMs, timeZone, trafficM
   let topProducts = [];
   if (shop) {
     try {
+      const hasLineNet = await lineItemsHasLineNet(db);
+      const revenueExpr = hasLineNet
+        ? 'COALESCE(SUM(COALESCE(li.line_net, li.line_revenue)), 0)'
+        : 'COALESCE(SUM(li.line_revenue), 0)';
+      const hasProcessedAt = await lineItemsHasOrderProcessedAt(db);
+      const tsExpr = hasProcessedAt ? 'COALESCE(li.order_processed_at, li.order_created_at)' : 'li.order_created_at';
       const productRows = await db.all(
         config.dbUrl
-          ? `SELECT TRIM(li.product_id) AS product_id, MAX(NULLIF(TRIM(li.title), '')) AS title, COALESCE(SUM(COALESCE(li.line_net, li.line_revenue)), 0) AS revenue, COUNT(DISTINCT li.order_id) AS orders
+          ? `SELECT TRIM(li.product_id) AS product_id, MAX(NULLIF(TRIM(li.title), '')) AS title, ${revenueExpr} AS revenue, COUNT(DISTINCT li.order_id) AS orders
              FROM orders_shopify_line_items li
-             WHERE li.shop = $1 AND (COALESCE(li.order_processed_at, li.order_created_at) >= $2 AND COALESCE(li.order_processed_at, li.order_created_at) < $3)
+             WHERE li.shop = $1 AND (${tsExpr} >= $2 AND ${tsExpr} < $3)
                AND (li.order_test IS NULL OR li.order_test = 0) AND li.order_cancelled_at IS NULL AND li.order_financial_status IN ('paid', 'partially_paid')
                AND li.product_id IS NOT NULL AND TRIM(li.product_id) != ''
              GROUP BY TRIM(li.product_id)
              ORDER BY revenue DESC
              LIMIT ${DASHBOARD_TOP_TABLE_MAX_ROWS}`
-          : `SELECT TRIM(li.product_id) AS product_id, MAX(NULLIF(TRIM(li.title), '')) AS title, COALESCE(SUM(COALESCE(li.line_net, li.line_revenue)), 0) AS revenue, COUNT(DISTINCT li.order_id) AS orders
+          : `SELECT TRIM(li.product_id) AS product_id, MAX(NULLIF(TRIM(li.title), '')) AS title, ${revenueExpr} AS revenue, COUNT(DISTINCT li.order_id) AS orders
              FROM orders_shopify_line_items li
-             WHERE li.shop = ? AND (COALESCE(li.order_processed_at, li.order_created_at) >= ? AND COALESCE(li.order_processed_at, li.order_created_at) < ?)
+             WHERE li.shop = ? AND (${tsExpr} >= ? AND ${tsExpr} < ?)
                AND (li.order_test IS NULL OR li.order_test = 0) AND li.order_cancelled_at IS NULL AND li.order_financial_status IN ('paid', 'partially_paid')
                AND li.product_id IS NOT NULL AND TRIM(li.product_id) != ''
              GROUP BY TRIM(li.product_id)

@@ -15,6 +15,66 @@ const fx = require('../fx');
 const { normalizeRangeKey } = require('../rangeKey');
 const revenueNetSales = require('../revenueNetSales');
 
+let _lineItemsHasLineNet = null; // null unknown, true exists, false missing
+let _lineItemsHasLineNetInFlight = null;
+async function lineItemsHasLineNet(db) {
+  if (_lineItemsHasLineNet === true) return true;
+  if (_lineItemsHasLineNet === false) return false;
+  if (_lineItemsHasLineNetInFlight) return _lineItemsHasLineNetInFlight;
+
+  _lineItemsHasLineNetInFlight = Promise.resolve()
+    .then(() => db.get('SELECT line_net FROM orders_shopify_line_items LIMIT 1'))
+    .then(() => {
+      _lineItemsHasLineNet = true;
+      return true;
+    })
+    .catch((err) => {
+      const msg = String(err && err.message ? err.message : err);
+      // Postgres: column "line_net" does not exist
+      // SQLite: no such column: line_net
+      if (/line_net/i.test(msg) && /(does not exist|no such column|has no column)/i.test(msg)) {
+        _lineItemsHasLineNet = false;
+        return false;
+      }
+      throw err;
+    })
+    .finally(() => {
+      _lineItemsHasLineNetInFlight = null;
+    });
+
+  return _lineItemsHasLineNetInFlight;
+}
+
+let _lineItemsHasOrderProcessedAt = null; // null unknown, true exists, false missing
+let _lineItemsHasOrderProcessedAtInFlight = null;
+async function lineItemsHasOrderProcessedAt(db) {
+  if (_lineItemsHasOrderProcessedAt === true) return true;
+  if (_lineItemsHasOrderProcessedAt === false) return false;
+  if (_lineItemsHasOrderProcessedAtInFlight) return _lineItemsHasOrderProcessedAtInFlight;
+
+  _lineItemsHasOrderProcessedAtInFlight = Promise.resolve()
+    .then(() => db.get('SELECT order_processed_at FROM orders_shopify_line_items LIMIT 1'))
+    .then(() => {
+      _lineItemsHasOrderProcessedAt = true;
+      return true;
+    })
+    .catch((err) => {
+      const msg = String(err && err.message ? err.message : err);
+      // Postgres: column "order_processed_at" does not exist
+      // SQLite: no such column: order_processed_at
+      if (/order_processed_at/i.test(msg) && /(does not exist|no such column|has no column)/i.test(msg)) {
+        _lineItemsHasOrderProcessedAt = false;
+        return false;
+      }
+      throw err;
+    })
+    .finally(() => {
+      _lineItemsHasOrderProcessedAtInFlight = null;
+    });
+
+  return _lineItemsHasOrderProcessedAtInFlight;
+}
+
 function clampInt(v, fallback, min, max) {
   const n = parseInt(String(v), 10);
   if (!Number.isFinite(n)) return fallback;
@@ -107,6 +167,12 @@ async function getShopifyBestSellers(req, res) {
         const rawKpi = await store.getSetting('kpi_ui_config_v1');
         const attribution = revenueNetSales.parseReturnsRefundsAttribution(rawKpi);
         const tAgg0 = Date.now();
+        const hasLineNet = await lineItemsHasLineNet(db);
+        const revenueExpr = hasLineNet
+          ? 'COALESCE(SUM(COALESCE(line_net, line_revenue)), 0)'
+          : 'COALESCE(SUM(line_revenue), 0)';
+        const hasProcessedAt = await lineItemsHasOrderProcessedAt(db);
+        const tsExpr = hasProcessedAt ? 'COALESCE(order_processed_at, order_created_at)' : 'order_created_at';
         const rows = resolvedShop ? await db.all(
           `
             SELECT
@@ -114,10 +180,10 @@ async function getShopifyBestSellers(req, res) {
               COALESCE(NULLIF(TRIM(currency), ''), 'GBP') AS currency,
               MAX(title) AS title,
               COUNT(DISTINCT order_id) AS orders,
-              COALESCE(SUM(COALESCE(line_net, line_revenue)), 0) AS revenue
+              ${revenueExpr} AS revenue
             FROM orders_shopify_line_items
             WHERE shop = ?
-              AND (COALESCE(order_processed_at, order_created_at) >= ? AND COALESCE(order_processed_at, order_created_at) < ?)
+              AND (${tsExpr} >= ? AND ${tsExpr} < ?)
               AND (order_test IS NULL OR order_test = 0)
               AND order_cancelled_at IS NULL
               AND order_financial_status = 'paid'

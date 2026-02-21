@@ -2705,7 +2705,7 @@ async function getProductConversionRate(start, end, options = {}) {
         SELECT raw_json
         FROM orders_shopify
         WHERE shop = $1
-          AND created_at >= $2 AND created_at < $3
+          AND (COALESCE(processed_at, created_at) >= $2 AND COALESCE(processed_at, created_at) < $3)
           AND (test IS NULL OR test = 0)
           AND cancelled_at IS NULL
           AND financial_status = 'paid'
@@ -2717,7 +2717,7 @@ async function getProductConversionRate(start, end, options = {}) {
         SELECT raw_json
         FROM orders_shopify
         WHERE shop = ?
-          AND created_at >= ? AND created_at < ?
+          AND (COALESCE(processed_at, created_at) >= ? AND COALESCE(processed_at, created_at) < ?)
           AND (test IS NULL OR test = 0)
           AND cancelled_at IS NULL
           AND financial_status = 'paid'
@@ -2796,7 +2796,7 @@ async function getCountryStats(start, end, options = {}) {
           SELECT order_id, COALESCE(NULLIF(TRIM(currency), ''), 'GBP') AS currency, total_price AS revenue, raw_json
           FROM orders_shopify
           WHERE shop = $1
-            AND created_at >= $2 AND created_at < $3
+            AND (COALESCE(processed_at, created_at) >= $2 AND COALESCE(processed_at, created_at) < $3)
             AND (test IS NULL OR test = 0)
             AND cancelled_at IS NULL
             AND financial_status = 'paid'
@@ -2809,7 +2809,7 @@ async function getCountryStats(start, end, options = {}) {
           SELECT order_id, COALESCE(NULLIF(TRIM(currency), ''), 'GBP') AS currency, total_price AS revenue, raw_json
           FROM orders_shopify
           WHERE shop = ?
-            AND created_at >= ? AND created_at < ?
+            AND (COALESCE(processed_at, created_at) >= ? AND COALESCE(processed_at, created_at) < ?)
             AND (test IS NULL OR test = 0)
             AND cancelled_at IS NULL
             AND financial_status = 'paid'
@@ -2965,7 +2965,7 @@ async function getBestGeoProducts(start, end, options = {}) {
         SELECT order_id, raw_json
         FROM orders_shopify
         WHERE shop = $1
-          AND created_at >= $2 AND created_at < $3
+          AND (COALESCE(processed_at, created_at) >= $2 AND COALESCE(processed_at, created_at) < $3)
           AND (test IS NULL OR test = 0)
           AND cancelled_at IS NULL
           AND financial_status = 'paid'
@@ -2977,7 +2977,7 @@ async function getBestGeoProducts(start, end, options = {}) {
         SELECT order_id, raw_json
         FROM orders_shopify
         WHERE shop = ?
-          AND created_at >= ? AND created_at < ?
+          AND (COALESCE(processed_at, created_at) >= ? AND COALESCE(processed_at, created_at) < ?)
           AND (test IS NULL OR test = 0)
           AND cancelled_at IS NULL
           AND financial_status = 'paid'
@@ -3005,7 +3005,7 @@ async function getBestGeoProducts(start, end, options = {}) {
           line_revenue AS revenue
         FROM orders_shopify_line_items
         WHERE shop = $1
-          AND order_created_at >= $2 AND order_created_at < $3
+          AND (COALESCE(order_processed_at, order_created_at) >= $2 AND COALESCE(order_processed_at, order_created_at) < $3)
           AND (order_test IS NULL OR order_test = 0)
           AND order_cancelled_at IS NULL
           AND order_financial_status = 'paid'
@@ -3024,7 +3024,7 @@ async function getBestGeoProducts(start, end, options = {}) {
           line_revenue AS revenue
         FROM orders_shopify_line_items
         WHERE shop = ?
-          AND order_created_at >= ? AND order_created_at < ?
+          AND (COALESCE(order_processed_at, order_created_at) >= ? AND COALESCE(order_processed_at, order_created_at) < ?)
           AND (order_test IS NULL OR order_test = 0)
           AND order_cancelled_at IS NULL
           AND order_financial_status = 'paid'
@@ -3950,7 +3950,7 @@ async function getKexoScore(options = {}) {
           `SELECT COALESCE(SUM(li.quantity), 0) AS total
            FROM orders_shopify_line_items li
            WHERE li.shop = $1
-             AND li.order_created_at >= $2 AND li.order_created_at < $3
+             AND (COALESCE(li.order_processed_at, li.order_created_at) >= $2 AND COALESCE(li.order_processed_at, li.order_created_at) < $3)
              AND (li.order_test IS NULL OR li.order_test = 0)
              AND li.order_cancelled_at IS NULL
              AND li.order_financial_status = 'paid'`,
@@ -3960,7 +3960,7 @@ async function getKexoScore(options = {}) {
           `SELECT COALESCE(SUM(li.quantity), 0) AS total
            FROM orders_shopify_line_items li
            WHERE li.shop = ?
-             AND li.order_created_at >= ? AND li.order_created_at < ?
+             AND (COALESCE(li.order_processed_at, li.order_created_at) >= ? AND COALESCE(li.order_processed_at, li.order_created_at) < ?)
              AND (li.order_test IS NULL OR li.order_test = 0)
              AND li.order_cancelled_at IS NULL
              AND li.order_financial_status = 'paid'`,
