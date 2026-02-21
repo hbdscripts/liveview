@@ -1863,6 +1863,7 @@
   // On non-settings pages we sync localStorage without re-theming the page to avoid colour flashes.
   function fetchDefaults(opts) {
     var shouldApply = !(opts && opts.apply === false);
+    var shouldSyncUI = shouldApply || !!(opts && opts.syncUI === true);
     var base = '';
     try { if (typeof API !== 'undefined') base = String(API || ''); } catch (_) {}
     fetch(base + '/api/theme-defaults', { credentials: 'same-origin', cache: 'no-store' })
@@ -1882,6 +1883,11 @@
         KEYS.forEach(function (key) {
           if (key === 'theme-preference-mode') return;
           var dbKey = key.replace(/-/g, '_');
+          // If the server no longer provides this key (e.g. legacy header color keys migrated to css_var_overrides_v1),
+          // do not write defaults into localStorage and do not apply DOM overrides. The page should follow /theme-vars.css.
+          var hasDbProp = Object.prototype.hasOwnProperty.call(data, dbKey);
+          var hasKeyProp = Object.prototype.hasOwnProperty.call(data, key);
+          if (!hasDbProp && !hasKeyProp) return;
           var rawDbVal = data[dbKey];
           var rawKeyVal = data[key];
           var hasDbVal = rawDbVal != null && String(rawDbVal).trim() !== '';
@@ -1895,7 +1901,7 @@
           setStored(key, serverVal);
           if (shouldApply) applyTheme(key, serverVal || DEFAULTS[key]);
         });
-        if (shouldApply) syncUI();
+        if (shouldSyncUI) syncUI();
       })
       .catch(function () {});
   }
@@ -3619,18 +3625,19 @@
   // Everywhere else, the page should follow server-injected /theme-vars.css to avoid inconsistent flashes.
   if (IS_SETTINGS_PAGE) {
     clearLockedIconOverrides();
-    restoreAll();
   }
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function () {
       bindThemeButtons();
-      fetchDefaults({ apply: IS_SETTINGS_PAGE });
+      // Settings page: never re-theme the DOM on load (prevents header/menu flip-flops).
+      // We only sync localStorage + form UI; live preview happens on user edits.
+      fetchDefaults({ apply: false, syncUI: IS_SETTINGS_PAGE });
       if (IS_SETTINGS_PAGE) injectSettingsThemePanel();
       fetchAssetOverridesAndApply();
     });
   } else {
     bindThemeButtons();
-    fetchDefaults({ apply: IS_SETTINGS_PAGE });
+    fetchDefaults({ apply: false, syncUI: IS_SETTINGS_PAGE });
     if (IS_SETTINGS_PAGE) injectSettingsThemePanel();
     fetchAssetOverridesAndApply();
   }
