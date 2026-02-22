@@ -1897,14 +1897,20 @@
     '</div>';
   }
 
-  var TOOLTIP_ICON = ' <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i>';
+  function helpTrigger(helpText) {
+    var t = helpText ? String(helpText).trim() : '';
+    if (!t) return '';
+    return ' <button type="button" class="kexo-icon-help-trigger ms-1" data-settings-ui-btn="1" data-kexo-help="' + escapeHtml(t) + '" aria-label="Show description" aria-expanded="false">' +
+      '<i class="kexo-icon-help-trigger-icon" data-icon-key="admin-tab-help-tooltip" aria-hidden="true"></i>' +
+    '</button>';
+  }
   function headerInputCard(key, title, help, placeholder) {
     var inputId = 'theme-input-' + key;
-    var titleAttr = help ? (' title="' + String(help).replace(/"/g, '&quot;') + '"') : '';
+    var helpBtn = helpTrigger(help);
     return '<div class="kexo-theme-grid-item">' +
       '<div class="card card-sm h-100">' +
         '<div class="card-body">' +
-          '<label class="form-label d-flex align-items-center mb-2" for="' + inputId + '"' + titleAttr + '><i class="fa-jelly fa-window-maximize me-2" aria-hidden="true"></i><strong>' + title + '</strong>' + TOOLTIP_ICON + '</label>' +
+          '<label class="form-label d-flex align-items-center mb-2" for="' + inputId + '"><i class="fa-jelly fa-window-maximize me-2" aria-hidden="true"></i><strong>' + title + '</strong>' + helpBtn + '</label>' +
           '<input type="text" class="form-control" id="' + inputId + '" name="' + key + '" placeholder="' + placeholder + '" />' +
         '</div>' +
       '</div>' +
@@ -1913,11 +1919,11 @@
 
   function headerInputCardNoIcon(key, title, help, placeholder) {
     var inputId = 'theme-input-' + key;
-    var titleAttr = help ? (' title="' + String(help).replace(/"/g, '&quot;') + '"') : '';
+    var helpBtn = helpTrigger(help);
     return '<div class="kexo-theme-grid-item">' +
       '<div class="card card-sm h-100">' +
         '<div class="card-body">' +
-          '<label class="form-label mb-2" for="' + inputId + '"' + titleAttr + '><strong>' + title + '</strong>' + TOOLTIP_ICON + '</label>' +
+          '<label class="form-label mb-2" for="' + inputId + '"><strong>' + title + '</strong>' + helpBtn + '</label>' +
           '<input type="text" class="form-control" id="' + inputId + '" name="' + key + '" placeholder="' + placeholder + '" />' +
         '</div>' +
       '</div>' +
@@ -1925,11 +1931,11 @@
   }
 
   function headerToggleCardNoIcon(key, title, help) {
-    var titleAttr = help ? (' title="' + String(help).replace(/"/g, '&quot;') + '"') : '';
+    var helpBtn = helpTrigger(help);
     return '<div class="kexo-theme-grid-item">' +
       '<div class="card card-sm h-100">' +
         '<div class="card-body">' +
-          '<div class="mb-2"><strong' + titleAttr + '>' + title + TOOLTIP_ICON + '</strong></div>' +
+          '<div class="mb-2"><strong>' + title + '</strong>' + helpBtn + '</div>' +
           '<div class="form-selectgroup">' +
             radioCard(key, 'show', 'Show') +
             radioCard(key, 'hide', 'Hide') +
@@ -1942,11 +1948,11 @@
   function headerSelectCardNoIcon(key, title, help, options, defaultValue) {
     var opts = options || {};
     var radios = Object.keys(opts).map(function (v) { return radioCard(key, v, opts[v] || v); }).join('');
-    var titleAttr = help ? (' title="' + String(help).replace(/"/g, '&quot;') + '"') : '';
+    var helpBtn = helpTrigger(help);
     return '<div class="kexo-theme-grid-item">' +
       '<div class="card card-sm h-100">' +
         '<div class="card-body">' +
-          '<div class="mb-2"><strong' + titleAttr + '>' + title + TOOLTIP_ICON + '</strong></div>' +
+          '<div class="mb-2"><strong>' + title + '</strong>' + helpBtn + '</div>' +
           '<div class="form-selectgroup">' + radios + '</div>' +
         '</div>' +
       '</div>' +
@@ -1972,11 +1978,11 @@
   }
 
   function headerToggleCard(key, title, help) {
-    var titleAttr = help ? (' title="' + String(help).replace(/"/g, '&quot;') + '"') : '';
+    var helpBtn = helpTrigger(help);
     return '<div class="kexo-theme-grid-item">' +
       '<div class="card card-sm h-100">' +
         '<div class="card-body">' +
-          '<div class="d-flex align-items-center mb-2"><i class="fa-jelly fa-toggle-on me-2" aria-hidden="true"></i><strong' + titleAttr + '>' + title + TOOLTIP_ICON + '</strong></div>' +
+          '<div class="d-flex align-items-center mb-2"><i class="fa-jelly fa-toggle-on me-2" aria-hidden="true"></i><strong>' + title + '</strong>' + helpBtn + '</div>' +
           '<div class="form-selectgroup">' +
             radioCard(key, 'show', 'Show') +
             radioCard(key, 'hide', 'Hide') +
@@ -1990,13 +1996,13 @@
     var name = String(varName || '').trim();
     var label = String(title || name || 'CSS var').trim();
     var help = helpText ? String(helpText) : '';
-    var titleAttr = help ? (' title="' + escapeHtml(help) + '"') : '';
+    var helpBtn = helpTrigger(help);
     var attrs = extraDataAttrs ? String(extraDataAttrs) : '';
     return '<div class="kexo-theme-grid-item kexo-css-var-card"' + attrs + '>' +
       '<div class="card card-sm h-100">' +
         '<div class="card-body">' +
           '<div class="mb-2">' +
-            '<strong' + titleAttr + '>' + escapeHtml(label) + (help ? TOOLTIP_ICON : '') + '</strong>' +
+            '<strong>' + escapeHtml(label) + '</strong>' + helpBtn +
           '</div>' +
           '<div class="d-flex align-items-center gap-2">' +
             '<input type="color" class="form-control form-control-color kexo-css-var-swatch" data-kexo-css-var="' + escapeHtml(name) + '" title="Pick colour" />' +
@@ -2163,7 +2169,7 @@
     ].join('');
     var customCssFieldset =
       '<fieldset class="mb-4">' +
-        '<legend class="form-label" title="Injected inline into head after other stylesheets. Changes are global.">Custom CSS <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></legend>' +
+        '<legend class="form-label">Custom CSS' + helpTrigger('Injected inline into head after other stylesheets. Changes are global.') + '</legend>' +
         '<textarea class="form-control font-monospace" name="theme-custom-css" rows="9" spellcheck="false" placeholder="/* Custom CSS */"></textarea>' +
       '</fieldset>';
     return '<form id="theme-settings-form">' +
@@ -2183,7 +2189,7 @@
       '</div>' +
 
       '<div class="theme-subpanel" data-theme-subpanel="header" hidden>' +
-        '<h4 class="mb-2" title="Configure header visibility and shape. Header/nav colors are in the Color tab.">Shape <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></h4>' +
+        '<h4 class="mb-2">Shape' + helpTrigger('Configure header visibility and shape. Header/nav colors are in the Color tab.') + '</h4>' +
         '<div class="settings-responsive-grid">' + headerShapeGrid + '</div>' +
         '<hr class="my-3" />' +
         '<h4 class="mb-2">Visibility & borders</h4>' +
@@ -2927,6 +2933,14 @@
     '</div>';
     document.body.insertAdjacentHTML('beforeend', html);
     bindThemeForm(document.getElementById('theme-settings-form'));
+    try {
+      var offcanvas = document.getElementById('theme-offcanvas');
+      if (offcanvas) {
+        if (typeof window.migrateTitleToHelpPopover === 'function') window.migrateTitleToHelpPopover(offcanvas);
+        if (typeof window.initKexoHelpPopovers === 'function') window.initKexoHelpPopovers(offcanvas);
+        if (typeof window.initKexoTooltips === 'function') window.initKexoTooltips(offcanvas);
+      }
+    } catch (_) {}
   }
 
   function injectSettingsThemePanel() {

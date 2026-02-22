@@ -331,10 +331,10 @@
   function renderSkeleton(root) {
     root.innerHTML = '' +
       '<div class="mb-3">' +
-        '<h4 class="mb-2" title="Tokens captured from visitor sessions (UTMs, referrer host, click IDs). Filter by type, set Min seen to hide rare values, then click Use to map a token to an attribution variant.">Observed tokens <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i> <a href=\"#\" class=\"link-primary small ms-2\" data-am-action=\"refresh-observed\" title=\"Reload observed tokens from the database.\">Refresh</a></h4>' +
+        '<h4 class="mb-2" title="Tokens captured from visitor sessions (UTMs, referrer host, click IDs). Filter by type, set Min seen to hide rare values, then click Use to map a token to an attribution variant.">Observed tokens <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i> <a href=\"#\" class=\"link-primary small ms-2\" data-am-action=\"refresh-observed\" title=\"Reload observed tokens from the database.\">Refresh</a></h4>' +
         '<div class="row g-2 align-items-end">' +
           '<div class="col-12 col-md-3">' +
-            '<label class="form-label" for="am-token-type" title="Filter the list: utm_source/medium/campaign, referrer_host, param_name (click IDs like gclid), param_pair, or kexo_attr (explicit URL param).">Token type <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></label>' +
+            '<label class="form-label" for="am-token-type" title="Filter the list: utm_source/medium/campaign, referrer_host, param_name (click IDs like gclid), param_pair, or kexo_attr (explicit URL param).">Token type <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>' +
             '<select class="form-select" id="am-token-type">' +
               '<option value="">All types</option>' +
               '<option value="utm_source" selected>source (utm_source)</option>' +
@@ -349,11 +349,11 @@
             '</select>' +
           '</div>' +
           '<div class="col-6 col-md-2">' +
-            '<label class="form-label" for="am-min-seen" title="Only show tokens seen at least this many times. Increase to focus on common traffic sources.">Min seen <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></label>' +
+            '<label class="form-label" for="am-min-seen" title="Only show tokens seen at least this many times. Increase to focus on common traffic sources.">Min seen <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>' +
             '<input class="form-control" id="am-min-seen" type="number" min="1" max="1000000" value="2" />' +
           '</div>' +
           '<div class="col-6 col-md-2">' +
-            '<label class="form-label" for="am-limit" title="Max number of tokens to load. Higher values may be slower.">Limit <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></label>' +
+            '<label class="form-label" for="am-limit" title="Max number of tokens to load. Higher values may be slower.">Limit <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>' +
             '<input class="form-control" id="am-limit" type="number" min="10" max="5000" value="500" />' +
           '</div>' +
           '<div class="col-12 col-md-auto">' +
@@ -383,51 +383,51 @@
       '</div>' +
 
       '<div class="card card-sm mb-3" id="am-create-mapping-card">' +
-        '<div class="card-header"><h4 class="card-title mb-0" title="Map a selected token to an attribution variant. Sessions with that token will be attributed to the variant (Channel + Variant), with an optional Tag for nested reporting.">Create mapping <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></h4></div>' +
+        '<div class="card-header"><h4 class="card-title mb-0" title="Map a selected token to an attribution variant. Sessions with that token will be attributed to the variant (Channel + Variant), with an optional Tag for nested reporting.">Create mapping <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></h4></div>' +
         '<div class="card-body">' +
           '<div class="row g-2">' +
             '<div class="col-12 col-md-4">' +
-              '<label class="form-label" title="The token you selected from the table. Click Use on a row above to select.">Token <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></label>' +
+              '<label class="form-label" title="The token you selected from the table. Click Use on a row above to select.">Token <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>' +
               '<input class="form-control" id="am-selected-token" type="text" value="Select a token above" readonly />' +
             '</div>' +
             '<div class="col-12 col-md-4">' +
-              '<label class="form-label" for="am-variant-key" title="Variant key (e.g. google_ads). This is the second tier under Channel.">Variant key <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></label>' +
+              '<label class="form-label" for="am-variant-key" title="Variant key (e.g. google_ads). This is the second tier under Channel.">Variant key <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>' +
               '<input class="form-control font-monospace" id="am-variant-key" list="am-variants-list" placeholder="e.g. google_ads" />' +
               '<datalist id="am-variants-list"></datalist>' +
             '</div>' +
             '<div class="col-12 col-md-4">' +
-              '<label class="form-label" for="am-priority" title="Rule priority (lower = higher). Rules are evaluated in priority order; first match wins.">Priority <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></label>' +
+              '<label class="form-label" for="am-priority" title="Rule priority (lower = higher). Rules are evaluated in priority order; first match wins.">Priority <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>' +
               '<input class="form-control" id="am-priority" type="number" value="1000" min="-1000000" max="1000000" />' +
             '</div>' +
 
             '<div class="col-12 col-md-4">' +
-              '<label class="form-label" for="am-tag-key" title="Optional Tag (third tier) for nested reporting. Only shows as a sub-row when explicitly set.">Tag (optional) <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></label>' +
+              '<label class="form-label" for="am-tag-key" title="Optional Tag (third tier) for nested reporting. Only shows as a sub-row when explicitly set.">Tag (optional) <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>' +
               '<input class="form-control font-monospace" id="am-tag-key" type="text" list="am-tags-list" placeholder="e.g. affiliate_1" />' +
               '<datalist id="am-tags-list"></datalist>' +
             '</div>' +
             '<div class="col-12 col-md-4">' +
-              '<label class="form-label" for="am-variant-label" title="Human-readable label for the variant (e.g. Google Ads). Shown in Acquisition reports.">Variant label (optional) <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></label>' +
+              '<label class="form-label" for="am-variant-label" title="Human-readable label for the variant (e.g. Google Ads). Shown in Acquisition reports.">Variant label (optional) <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>' +
               '<input class="form-control" id="am-variant-label" type="text" placeholder="e.g. Google Ads" />' +
             '</div>' +
             '<div class="col-6 col-md-2">' +
-              '<label class="form-label" for="am-channel-key" title="High-level channel: paid_search, organic_search, email, affiliate, direct, other.">Channel <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></label>' +
+              '<label class="form-label" for="am-channel-key" title="High-level channel: paid_search, organic_search, email, affiliate, direct, other.">Channel <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>' +
               '<input class="form-control font-monospace" id="am-channel-key" type="text" list="am-channels-list" placeholder="paid_search" />' +
               '<datalist id="am-channels-list"></datalist>' +
             '</div>' +
             '<div class="col-6 col-md-2">' +
-              '<label class="form-label" for="am-source-key" title="Traffic source: google, bing, meta, omnisend, direct, other.">Source <span id="am-source-icon-preview" class="ms-1" aria-hidden="true"></span> <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></label>' +
+              '<label class="form-label" for="am-source-key" title="Traffic source: google, bing, meta, omnisend, direct, other.">Source <span id="am-source-icon-preview" class="ms-1" aria-hidden="true"></span> <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>' +
               '<input class="form-control font-monospace" id="am-source-key" type="text" list="am-sources-list" placeholder="google" />' +
               '<datalist id="am-sources-list"></datalist>' +
             '</div>' +
 
             '<div class="col-12 col-md-6">' +
-              '<label class="form-label" for="am-source-icon-spec" title="Optional: seed the source icon (icon_spec) only if it is blank. This will not overwrite an existing icon.">Source icon (optional, set if blank) <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></label>' +
+              '<label class="form-label" for="am-source-icon-spec" title="Optional: seed the source icon (icon_spec) only if it is blank. This will not overwrite an existing icon.">Source icon (optional, set if blank) <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>' +
               '<textarea class="form-control font-monospace" id="am-source-icon-spec" rows="2" spellcheck="false" placeholder="fa-brands fa-google  OR  /assets/icon.png  OR  <svg ...>"></textarea>' +
               '<div class="form-hint small">Only applied when the source has no icon yet.</div>' +
               '<div id="am-source-icon-input-preview" class="am-map-icon-live-preview mt-1"></div>' +
             '</div>' +
             '<div class="col-12 col-md-6">' +
-              '<label class="form-label" for="am-variant-icon-spec" title="Optional: seed the variant icon (icon_spec) only if it is blank. This will not overwrite an existing icon.">Variant icon (optional, set if blank) <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></label>' +
+              '<label class="form-label" for="am-variant-icon-spec" title="Optional: seed the variant icon (icon_spec) only if it is blank. This will not overwrite an existing icon.">Variant icon (optional, set if blank) <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>' +
               '<textarea class="form-control font-monospace" id="am-variant-icon-spec" rows="2" spellcheck="false" placeholder="fa-solid fa-bolt  OR  /assets/icon.png  OR  <svg ...>"></textarea>' +
               '<div class="form-hint small">Only applied when the variant has no icon yet. Leaving blank is fine.</div>' +
               '<div id="am-variant-icon-input-preview" class="am-map-icon-live-preview mt-1"></div>' +
@@ -435,7 +435,7 @@
           '</div>' +
           '<div class="d-flex align-items-center gap-2 flex-wrap mt-3">' +
             '<button type="button" class="btn btn-primary" data-am-action="map-token" title="Save this rule. New sessions with the token will be attributed to the variant.">Create mapping</button>' +
-            '<button type="button" class="btn btn-secondary" data-am-action="clear-selected" title="Deselect the current token.">Clear</button>' +
+            '<button type="button" class="btn btn-ghost-secondary" data-am-action="clear-selected" title="Deselect the current token.">Clear</button>' +
             '<span id="am-map-msg" class="form-hint"></span>' +
           '</div>' +
           '<div class="text-secondary small mt-2">' +
@@ -445,11 +445,11 @@
       '</div>' +
 
       '<details class="mb-0">' +
-        '<summary class="text-secondary" title="Edit the raw config (channels, sources, variants, rules, allowlist). Use Reload to discard edits, Save config to apply.">Advanced: edit full config (JSON) <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></summary>' +
+        '<summary class="text-secondary" title="Edit the raw config (channels, sources, variants, rules, allowlist). Use Reload to discard edits, Save config to apply.">Advanced: edit full config (JSON) <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></summary>' +
         '<div class="mt-2">' +
           '<textarea class="form-control font-monospace" id="am-config-json" rows="14" spellcheck="false" placeholder="{\\n  &quot;channels&quot;: [],\\n  &quot;sources&quot;: [],\\n  &quot;variants&quot;: [],\\n  &quot;tags&quot;: [],\\n  &quot;rules&quot;: [],\\n  &quot;allowlist&quot;: []\\n}"></textarea>' +
           '<div class="d-flex align-items-center gap-2 flex-wrap mt-2">' +
-            '<button type="button" class="btn btn-secondary" data-am-action="reload-config" title="Discard JSON edits and reload from database.">Reload</button>' +
+            '<button type="button" class="btn btn-ghost-secondary" data-am-action="reload-config" title="Discard JSON edits and reload from database.">Reload</button>' +
             '<button type="button" class="btn btn-success" data-am-action="save-config" title="Replace the entire config with the JSON. Use with caution.">Save config</button>' +
             '<span id="am-config-msg" class="form-hint"></span>' +
           '</div>' +
@@ -620,7 +620,7 @@
           '<td class="text-end">' + escapeHtml(String(seen || 0)) + '</td>' +
           '<td>' + escapeHtml(lastTxt) + '</td>' +
           '<td class="text-end">' +
-            '<button type="button" class="btn btn-sm btn-secondary" data-am-action="select-token" data-token-type="' + escapeHtml(trimLower(t, 48)) + '" data-token-value="' + escapeHtml(trimLower(v, 256)) + '">Use</button>' +
+            '<button type="button" class="btn btn-sm btn-ghost-secondary" data-am-action="select-token" data-token-type="' + escapeHtml(trimLower(t, 48)) + '" data-token-value="' + escapeHtml(trimLower(v, 256)) + '">Use</button>' +
           '</td>' +
         '</tr>';
     }).join('');

@@ -86,7 +86,10 @@
   }
 
   Object.keys(ICON_GLYPH_DEFAULTS).forEach(function (k) {
-    ICON_GLYPH_DEFAULTS[k] = withDefaultIconStyle(k, ICON_GLYPH_DEFAULTS[k]);
+    var v = String(ICON_GLYPH_DEFAULTS[k] == null ? '' : ICON_GLYPH_DEFAULTS[k]).trim();
+    // Allow SVG defaults from the icon registry (do not coerce to FA class strings).
+    if (/^<svg[\s>]/i.test(v)) return;
+    ICON_GLYPH_DEFAULTS[k] = withDefaultIconStyle(k, v);
   });
 
   var TI_TO_FA = {
@@ -353,7 +356,13 @@
       });
     }
     var safeFallback = (fallbackStyle || 'fa-light') + ' ' + (fallbackGlyph || 'fa-circle');
-    if (!rawInput) return { mode: 'full', value: safeFallback, full: safeFallback };
+    if (!rawInput) {
+      var fb = String(fallback == null ? '' : fallback).trim();
+      var fallbackSvg = sanitizeSvgMarkup(fb);
+      if (fallbackSvg) return { mode: 'svg', value: fallbackSvg, full: safeFallback };
+      if (/^(https?:\/\/|\/\/|\/)/i.test(fb)) return { mode: 'img', value: fb, full: safeFallback };
+      return { mode: 'full', value: safeFallback, full: safeFallback };
+    }
     if (svgMarkup) return { mode: 'svg', value: svgMarkup, full: safeFallback };
     if (/^(https?:\/\/|\/\/|\/)/i.test(rawInput)) return { mode: 'img', value: rawInput, full: safeFallback };
     var raw = sanitizeIconClassString(rawInput).toLowerCase();

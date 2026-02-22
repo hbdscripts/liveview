@@ -364,6 +364,20 @@ body[data-page="settings"] .kexo-css-var-name {
   height: 16px;
 }
 
+/* Destructive actions (Settings/Admin): outlined + custom colors. */
+body[data-page="settings"] .kexo-btn-danger-outline {
+  border: 1px solid #e4644b !important;
+  color: #cb2100 !important;
+  background: transparent !important;
+}
+body[data-page="settings"] .kexo-btn-danger-outline:hover,
+body[data-page="settings"] .kexo-btn-danger-outline:focus,
+body[data-page="settings"] .kexo-btn-danger-outline:focus-visible {
+  border: 1px solid #e4644b !important;
+  color: #cb2100 !important;
+  background: transparent !important;
+}
+
 /* Icon card Edit/Save: icon-only, no border/hover effects; opacity 0.8, hover 1. */
 .kexo-icon-action-btn {
   border: none;

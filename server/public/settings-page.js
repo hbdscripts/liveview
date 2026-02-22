@@ -6559,7 +6559,7 @@
   function init() {
     registerSettingsDraftSections();
     try {
-      var tooltipRoot = document.querySelector('.page-body') || document.body;
+      var tooltipRoot = document.body;
       if (tooltipRoot) {
         if (typeof window.migrateTitleToHelpPopover === 'function') window.migrateTitleToHelpPopover(tooltipRoot);
         if (typeof window.initKexoHelpPopovers === 'function') window.initKexoHelpPopovers(tooltipRoot);

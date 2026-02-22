@@ -410,7 +410,7 @@
       '<span class="am-tree-cell text-secondary small">' + escapeHtml(label || '?') + '</span>' +
       '<span class="am-tree-cell text-muted small" title="' + escapeHtml(matchStr) + '">' + escapeHtml(summary) + '</span>' +
       '<span class="am-tree-cell text-end">' +
-      '<button type="button" class="btn btn-secondary btn-sm" data-am-tree-action="move-rule" data-rule-id="' + escapeHtml(id) + '" data-current-variant-key="' + escapeHtml(vk) + '" data-current-tag-key="' + escapeHtml(tk) + '">Edit rule</button> ' +
+      '<button type="button" class="btn btn-ghost-secondary btn-sm" data-am-tree-action="move-rule" data-rule-id="' + escapeHtml(id) + '" data-current-variant-key="' + escapeHtml(vk) + '" data-current-tag-key="' + escapeHtml(tk) + '">Edit rule</button> ' +
       '<button type="button" class="btn btn-danger btn-sm" data-am-tree-action="delete-rule" data-rule-id="' + escapeHtml(id) + '">Delete</button></span>' +
       '</div>';
   }
@@ -466,7 +466,7 @@
       '<span class="am-tree-cell am-tree-label">' + iconSpecToPreviewHtml(iconSpec, label) + ' <strong>' + escapeHtml(label) + '</strong> <code class="small">' + escapeHtml(vk) + '</code></span>' +
       '<span class="am-tree-cell text-muted small">' + String(ruleCount) + ' rule(s)</span>' +
       '<span class="am-tree-cell d-flex align-items-center gap-2 justify-content-end">' +
-        '<button type="button" class="btn btn-secondary btn-sm" data-am-tree-action="edit-variant" data-variant-key="' + escapeHtml(vk) + '" data-current-channel-key="' + escapeHtml(channelKey || '') + '" data-label="' + escapeHtml(label) + '" data-icon-spec="' + escapeHtml(explicitIcon) + '">Edit variant</button>' +
+        '<button type="button" class="btn btn-ghost-secondary btn-sm" data-am-tree-action="edit-variant" data-variant-key="' + escapeHtml(vk) + '" data-current-channel-key="' + escapeHtml(channelKey || '') + '" data-label="' + escapeHtml(label) + '" data-icon-spec="' + escapeHtml(explicitIcon) + '">Edit variant</button>' +
       '</span>' +
       '</div>' +
       '<div class="am-tree-children' + (isOpen ? '' : ' is-hidden') + '" data-am-tree-children="' + escapeHtml(expandedKey) + '">' +
@@ -506,8 +506,8 @@
       '<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">' +
       '<p class="text-secondary small mb-0">Use <strong>Edit variant</strong> to change channel + icon. Use <strong>Edit rule</strong> to move rules between variants.</p>' +
       '<div class="btn-group btn-group-sm" role="group" aria-label="Tree display controls">' +
-      '<button type="button" class="btn btn-secondary" data-am-tree-action="expand-all">Expand all</button>' +
-      '<button type="button" class="btn btn-secondary" data-am-tree-action="collapse-all">Collapse all</button>' +
+      '<button type="button" class="btn btn-ghost-secondary" data-am-tree-action="expand-all">Expand all</button>' +
+      '<button type="button" class="btn btn-ghost-secondary" data-am-tree-action="collapse-all">Collapse all</button>' +
       '</div>' +
       '</div>' +
       model.map(function (ch) { return renderChannelRow(ch); }).join('') +
@@ -544,7 +544,7 @@
               '<div class="form-hint" id="am-move-msg"></div>' +
             '</div>' +
             '<div class="modal-footer">' +
-              '<button type="button" class="btn btn-secondary" data-am-move-close>Cancel</button>' +
+              '<button type="button" class="btn btn-ghost-secondary" data-am-move-close>Cancel</button>' +
               '<button type="button" class="btn btn-primary" id="am-move-confirm">Save</button>' +
             '</div>' +
           '</div>' +
@@ -742,13 +742,13 @@
                 '<div class="form-hint small">Font Awesome class, image URL/path, or inline SVG.</div>' +
                 '<div class="am-tree-icon-live-preview mt-2" id="am-assign-icon-preview"></div>' +
                 '<div class="d-flex align-items-center gap-2 mt-2">' +
-                  '<button type="button" class="btn btn-secondary btn-sm" id="am-assign-icon-reset">Reset icon</button>' +
+                  '<button type="button" class="btn btn-ghost-secondary btn-sm" id="am-assign-icon-reset">Reset icon</button>' +
                 '</div>' +
               '</div>' +
               '<div class="form-hint" id="am-assign-msg"></div>' +
             '</div>' +
             '<div class="modal-footer">' +
-              '<button type="button" class="btn btn-secondary" data-am-assign-close>Cancel</button>' +
+              '<button type="button" class="btn btn-ghost-secondary" data-am-assign-close>Cancel</button>' +
               '<button type="button" class="btn btn-primary" id="am-assign-confirm">Save</button>' +
             '</div>' +
           '</div>' +

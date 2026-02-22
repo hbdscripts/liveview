@@ -376,10 +376,6 @@
       if (btn.getAttribute('data-settings-ui-btn') === '1') return;
       btn.setAttribute('data-settings-ui-btn', '1');
 
-      if (btn.classList.contains('btn-ghost-secondary')) {
-        btn.classList.remove('btn-ghost-secondary');
-        btn.classList.add('btn-secondary');
-      }
       if (btn.classList.contains('btn-ghost-danger')) {
         btn.classList.remove('btn-ghost-danger');
         btn.classList.add('btn-danger');
@@ -387,7 +383,7 @@
 
       if (btn.classList.contains('btn-secondary-outline')) {
         btn.classList.remove('btn-secondary-outline');
-        btn.classList.add('btn-secondary');
+        btn.classList.add('btn-ghost-secondary');
       }
 
       // Contract: no outline buttons. Convert outline variants to solid.
@@ -395,7 +391,8 @@
         var outline = 'btn-outline-' + v;
         if (btn.classList.contains(outline)) {
           btn.classList.remove(outline);
-          btn.classList.add('btn-' + v);
+          if (v === 'secondary') btn.classList.add('btn-ghost-secondary');
+          else btn.classList.add('btn-' + v);
         }
       });
 
@@ -418,6 +415,36 @@
           'btn-danger'
         );
         btn.classList.add('btn-primary');
+      }
+
+      // Settings/Admin: no btn-secondary; use ghost-secondary instead.
+      if (btn.classList.contains('btn-secondary')) {
+        btn.classList.remove('btn-secondary');
+        btn.classList.add('btn-ghost-secondary');
+      }
+
+      // Destructive actions: outlined style (transparent background) + custom colors.
+      var actionHint = '';
+      try {
+        actionHint = String(
+          btn.getAttribute('data-action') ||
+          btn.getAttribute('data-am-action') ||
+          btn.getAttribute('data-am-tree-action') ||
+          btn.getAttribute('data-settings-action') ||
+          ''
+        ).trim().toLowerCase();
+      } catch (_) { actionHint = ''; }
+      var aria = '';
+      try { aria = String(btn.getAttribute('aria-label') || '').trim().toLowerCase(); } catch (_) { aria = ''; }
+      var title = '';
+      try { title = String(btn.getAttribute('title') || '').trim().toLowerCase(); } catch (_) { title = ''; }
+      var isDestructive = (text.indexOf('delete') >= 0 || text.indexOf('remove') >= 0) ||
+        (actionHint.indexOf('delete') >= 0 || actionHint.indexOf('remove') >= 0) ||
+        (aria.indexOf('delete') >= 0 || aria.indexOf('remove') >= 0) ||
+        (title.indexOf('delete') >= 0 || title.indexOf('remove') >= 0);
+      if (isDestructive) {
+        btn.classList.add('kexo-btn-danger-outline');
+        btn.classList.remove('btn-danger', 'btn-ghost-danger', 'btn-outline-danger');
       }
 
       if (!btn.classList.contains('btn-sm') && !btn.classList.contains('btn-lg')) {
@@ -489,6 +516,10 @@
         pending.forEach(function (p) {
           try {
             normaliseSettingsPanel(p);
+            // Help cues/tooltips can be injected dynamically; keep them migrated/bound.
+            try { if (typeof window.migrateTitleToHelpPopover === 'function') window.migrateTitleToHelpPopover(p); } catch (_) {}
+            try { if (typeof window.initKexoHelpPopovers === 'function') window.initKexoHelpPopovers(p); } catch (_) {}
+            try { if (typeof window.initKexoTooltips === 'function') window.initKexoTooltips(p); } catch (_) {}
           } catch (e) {
             reportNormaliserError('observer.normaliseSettingsPanel', e, { panelId: (p && p.id) ? String(p.id) : '' });
           }
@@ -523,6 +554,16 @@
           var parentPanel = null;
           try { parentPanel = n.closest(SETTINGS_PANEL_SELECTOR); } catch (_) { parentPanel = null; }
           if (parentPanel) queue(parentPanel);
+
+          // Also normalise buttons/help cues inside modals/offcanvas that live outside panels.
+          var modalRoot = null;
+          try { modalRoot = safeMatches(n, '.modal, .offcanvas') ? n : (n.closest ? n.closest('.modal, .offcanvas') : null); } catch (_) { modalRoot = null; }
+          if (modalRoot) {
+            try { normaliseButtonsAndForms(modalRoot); } catch (e) { reportNormaliserError('observer.normaliseButtonsAndForms', e, { rootId: (modalRoot && modalRoot.id) ? String(modalRoot.id) : '' }); }
+            try { if (typeof window.migrateTitleToHelpPopover === 'function') window.migrateTitleToHelpPopover(modalRoot); } catch (_) {}
+            try { if (typeof window.initKexoHelpPopovers === 'function') window.initKexoHelpPopovers(modalRoot); } catch (_) {}
+            try { if (typeof window.initKexoTooltips === 'function') window.initKexoTooltips(modalRoot); } catch (_) {}
+          }
         });
       });
     });
