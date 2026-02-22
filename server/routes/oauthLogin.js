@@ -10,6 +10,7 @@ const { signOauthSession, OAUTH_COOKIE_NAME } = require('../middleware/dashboard
 const auth = require('./auth');
 const salesTruth = require('../salesTruth');
 const users = require('../usersService');
+const shopOauthIdentities = require('../shopOauthIdentitiesService');
 const { warnOnReject } = require('../shared/warnReject');
 
 let geoip;
@@ -298,6 +299,9 @@ async function handleShopifyLoginCallback(req, res) {
               'UPDATE shop_sessions SET last_oauth_email = ?, last_oauth_user_id = ?, last_oauth_at = ? WHERE shop = ?',
               [oauthEmail, oauthUserId, now, shopNorm]
             );
+            try {
+              await shopOauthIdentities.upsertIdentity({ shop: shopNorm, email: oauthEmail, shopifyUserId: oauthUserId, now });
+            } catch (_) {}
           }
         }
       } catch (_) {}

@@ -8,6 +8,7 @@ const { getDb, isPostgres } = require('../db');
 const { writeAudit } = require('../audit');
 const salesTruth = require('../salesTruth');
 const users = require('../usersService');
+const shopOauthIdentities = require('../shopOauthIdentitiesService');
 const { signOauthSession, OAUTH_COOKIE_NAME } = require('../middleware/dashboardAuth');
 const { warnOnReject } = require('../shared/warnReject');
 
@@ -195,6 +196,9 @@ async function handleCallback(req, res) {
               'UPDATE shop_sessions SET last_oauth_email = ?, last_oauth_user_id = ?, last_oauth_at = ? WHERE shop = ?',
               [oauthEmail, oauthUserId, now, shopNorm]
             );
+            try {
+              await shopOauthIdentities.upsertIdentity({ shop: shopNorm, email: oauthEmail, shopifyUserId: oauthUserId, now });
+            } catch (_) {}
           }
         }
       } catch (err) {

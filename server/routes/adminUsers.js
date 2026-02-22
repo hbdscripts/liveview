@@ -27,29 +27,47 @@ function coerceEpochMs(value) {
 async function listShopifyAuthRows(limit = 20) {
   const db = getDb();
   try {
-    const rows = await db.all(
-      `
-        SELECT shop, updated_at, last_oauth_email, last_oauth_at
-        FROM shop_sessions
-        WHERE shop IS NOT NULL AND TRIM(shop) <> ''
-        ORDER BY COALESCE(last_oauth_at, updated_at) DESC
-        LIMIT ?
-      `,
-      [Math.max(1, Math.min(100, Number(limit) || 20))]
-    );
+    const safeLimit = Math.max(1, Math.min(200, Number(limit) || 20));
+    // Prefer identity rows (one per staff email per shop). Fallback to legacy per-shop row if table missing.
+    let rows = [];
+    try {
+      rows = await db.all(
+        `
+          SELECT shop, email, shopify_user_id, first_oauth_at, last_oauth_at
+          FROM shop_oauth_identities
+          WHERE shop IS NOT NULL AND TRIM(shop) <> '' AND email IS NOT NULL AND TRIM(email) <> ''
+          ORDER BY last_oauth_at DESC
+          LIMIT ?
+        `,
+        [safeLimit]
+      );
+    } catch (_) {
+      rows = await db.all(
+        `
+          SELECT shop, updated_at, last_oauth_email AS email, last_oauth_user_id AS shopify_user_id, updated_at AS first_oauth_at, COALESCE(last_oauth_at, updated_at) AS last_oauth_at
+          FROM shop_sessions
+          WHERE shop IS NOT NULL AND TRIM(shop) <> ''
+          ORDER BY COALESCE(last_oauth_at, updated_at) DESC
+          LIMIT ?
+        `,
+        [safeLimit]
+      );
+    }
     return (rows || []).map((row) => {
       const shop = row && row.shop ? String(row.shop).trim().toLowerCase() : '';
-      const at = coerceEpochMs(row && (row.last_oauth_at != null ? row.last_oauth_at : row.updated_at));
-      const oauthEmail = row && row.last_oauth_email ? String(row.last_oauth_email).trim() : '';
+      const at = coerceEpochMs(row && row.last_oauth_at);
+      const oauthEmail = row && row.email ? String(row.email).trim() : '';
+      const oauthUserId = row && row.shopify_user_id != null ? Number(row.shopify_user_id) : null;
+      const createdAt = coerceEpochMs(row && row.first_oauth_at);
       const emailLabel = shop ? `Shopify (${shop})` : 'Shopify';
       const email = oauthEmail ? emailLabel + ' — ' + oauthEmail : emailLabel;
       return {
-        id: `shop:${shop || 'unknown'}`,
+        id: `shop:${shop || 'unknown'}:${oauthEmail || 'unknown'}`,
         email,
         status: 'active',
         role: 'shopify',
         tier: 'n/a',
-        created_at: at,
+        created_at: createdAt || at,
         last_login_at: at,
         last_country: null,
         last_city: null,
@@ -57,6 +75,7 @@ async function listShopifyAuthRows(limit = 20) {
         last_platform: 'oauth',
         auth_provider: 'shopify',
         shop: shop || null,
+        shopify_user_id: Number.isFinite(oauthUserId) ? oauthUserId : null,
       };
     });
   } catch (_) {

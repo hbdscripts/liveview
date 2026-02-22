@@ -985,14 +985,9 @@
     bindActions();
 
     if (isSettingsPage()) {
-      var hasSettingsAdminTabs = !!document.querySelector('[data-settings-admin-tab]');
-      if (hasSettingsAdminTabs) {
-        var initialSettingsTab = getTabFromQuery() || 'controls';
-        setActiveTab(initialSettingsTab, { skipUrl: true });
-      } else {
-        wireAdminAccordionShown();
-        expandAdminAccordionFromUrl();
-      }
+      // Settings Admin UI is an accordion. Always wire + expand based on URL.
+      wireAdminAccordionShown();
+      expandAdminAccordionFromUrl();
     } else {
       var initial = getTabFromQuery() || 'controls';
       setActiveTab(initial, { skipUrl: true });
