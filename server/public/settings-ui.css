@@ -143,6 +143,11 @@ body[data-page="settings"] .accordion-body .settings-panel-wrap {
   background: transparent;
 }
 
+/* When a section ends in an accordion header/button, tighten the outer spacing. */
+body[data-page="settings"] .mb-4.settings-accordion-mb-tight {
+  margin-bottom: 4px !important;
+}
+
 /* Tabs/underlines should visually "touch" the content frame below. */
 body[data-page="settings"] .settings-panel-wrap ul.nav {
   margin-bottom: 1px;
@@ -222,6 +227,13 @@ body[data-page="settings"] #settings-global-footer {
    Ensure the Settings footer is truly hidden until JS explicitly shows it. */
 body[data-page="settings"] #settings-global-footer[hidden] {
   display: none !important;
+}
+
+body[data-page="settings"] #settings-global-footer .settings-global-save-status {
+  font-weight: 600;
+  background: transparent !important;
+  padding: 0 !important;
+  border: 0 !important;
 }
 
 /* Remove grid-layout drift: charts color “grid” becomes a simple vertical stack. */

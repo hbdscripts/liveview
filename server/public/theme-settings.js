@@ -1758,7 +1758,8 @@
     var form = document.getElementById('theme-settings-form');
     if (!form) return;
     KEYS.forEach(function (key) {
-      var val = getStored(key) || DEFAULTS[key];
+      var stored = getStored(key);
+      var val = stored != null ? stored : DEFAULTS[key];
       if (ACCENT_HEX_KEYS.indexOf(key) >= 0) {
         val = normalizeAccentHex(val, ACCENT_DEFAULTS[ACCENT_HEX_KEYS.indexOf(key)]);
         setStored(key, val);
@@ -1777,7 +1778,7 @@
       }
       if (ICON_GLYPH_KEYS.indexOf(key) >= 0) {
         var glyphInput = form.querySelector('[name="' + key + '"]');
-        if (glyphInput) glyphInput.value = normalizeIconGlyph(val, DEFAULTS[key]);
+        if (glyphInput) glyphInput.value = val ? normalizeIconGlyph(val, DEFAULTS[key]) : '';
         return;
       }
       if (ACCENT_HEX_KEYS.indexOf(key) >= 0) {
@@ -2426,9 +2427,20 @@
     ICON_GLYPH_KEYS.forEach(function (key) {
       var input = formEl.querySelector('[name="' + key + '"]');
       var previews = formEl.querySelectorAll('[data-theme-icon-preview-glyph="' + key + '"]');
-      var glyphVal = (getStored(key) != null && getStored(key) !== '') ? getStored(key) : (input && input.value ? input.value : DEFAULTS[key]);
-      if (input && input.value !== glyphVal) input.value = glyphVal;
-      previews.forEach(function (preview) { setPreviewIconClass(preview, glyphVal); });
+      var stored = getStored(key);
+      var storedHasValue = stored != null && String(stored) !== '';
+      var rawInput = (input && input.value != null) ? String(input.value) : '';
+      var isEditing = !!(input && document.activeElement === input);
+      var previewVal = storedHasValue ? String(stored) : (rawInput ? rawInput : DEFAULTS[key]);
+
+      // Never fight the user while typing. Keep blank inputs blank (blank = “use default”).
+      // Placeholder shows the default; preview uses DEFAULTS when blank.
+      if (input && !isEditing) {
+        var next = storedHasValue ? String(stored) : '';
+        if (String(input.value || '') !== next) input.value = next;
+      }
+
+      previews.forEach(function (preview) { setPreviewIconClass(preview, previewVal); });
     });
   }
 
@@ -2727,7 +2739,7 @@
       var val = name === 'theme-custom-css' ? rawVal : rawVal.trim();
       if (!name) return;
       if (ICON_STYLE_KEYS.indexOf(name) >= 0) val = normalizeIconStyle(val, DEFAULTS[name]);
-      if (ICON_GLYPH_KEYS.indexOf(name) >= 0) val = normalizeIconGlyph(val, DEFAULTS[name]);
+      if (ICON_GLYPH_KEYS.indexOf(name) >= 0) val = val ? normalizeIconGlyph(val, DEFAULTS[name]) : '';
       if (ACCENT_OPACITY_KEYS.indexOf(name) >= 0) val = normalizeOpacityFilter(val, DEFAULTS[name]);
       if (name === 'theme-header-strip-padding') val = normalizeStripPadding(val, DEFAULTS[name]);
       if (HEADER_THEME_TEXT_KEYS.indexOf(name) >= 0) {
@@ -2788,7 +2800,8 @@
         var rawVal = String(input.value || '');
         var val = key === 'theme-custom-css' ? rawVal : rawVal.trim();
         if (ICON_STYLE_KEYS.indexOf(key) >= 0) val = normalizeIconStyle(val, DEFAULTS[key]);
-        if (ICON_GLYPH_KEYS.indexOf(key) >= 0) val = normalizeIconGlyph(val, DEFAULTS[key]);
+        // Icon glyph textareas should not normalise while typing (it causes “fighting”).
+        // We normalise on change/blur instead.
         if (ACCENT_OPACITY_KEYS.indexOf(key) >= 0) val = normalizeOpacityFilter(val, DEFAULTS[key]);
         if (key === 'theme-header-strip-padding') val = normalizeStripPadding(val, DEFAULTS[key]);
         if (HEADER_THEME_TEXT_KEYS.indexOf(key) >= 0) {

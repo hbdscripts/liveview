@@ -688,6 +688,25 @@
     var state = window.__kexoThemeGetState();
     applyThemeDefaultsBaselineMaybe(state);
   };
+
+  // Global footer "Saved." indicator (per active top-level tab).
+  var _settingsGlobalFooterSavedTab = null;
+  var _settingsGlobalFooterLastTab = null;
+  function clearGlobalFooterSavedIndicator() {
+    _settingsGlobalFooterSavedTab = null;
+  }
+  function getGlobalFooterContextKey() {
+    var tab = getActiveSettingsTab();
+    if (!tab) return '';
+    if (tab === 'kexo') return tab + ':' + getActiveKexoSubTab();
+    if (tab === 'layout') return tab + ':' + getActiveLayoutSubTab();
+    if (tab === 'integrations') return tab + ':' + getActiveIntegrationsSubTab();
+    if (tab === 'attribution') return tab + ':' + getActiveAttributionSubTab();
+    if (tab === 'admin') return tab + ':' + getActiveAdminSubTab();
+    if (tab === 'cost-expenses') return tab + ':' + getActiveCostExpensesSubTab();
+    return tab;
+  }
+
   function getSettingsDraftDirtyIds() {
     var ids = [];
     try {
@@ -718,9 +737,10 @@
     var sectionIds = getSectionIdsForActiveTab();
     var dirtyIds = getSettingsDraftDirtyIds();
     var toSave = dirtyIds.filter(function (id) { return sectionIds.indexOf(id) !== -1; });
-    if (!toSave.length) return Promise.resolve();
+    if (!toSave.length) return Promise.resolve([]);
     var globalSave = document.getElementById('settings-global-save-btn');
     if (globalSave) { globalSave.disabled = true; }
+    var results = [];
     var seq = Promise.resolve();
     toSave.forEach(function (id) {
       var s = SETTINGS_DRAFT_REGISTRY[id];
@@ -729,17 +749,24 @@
         var state = s.read();
         return Promise.resolve(s.save(state)).then(function (r) {
           if (r && r.ok) setSettingsDraftBaseline(id, state);
+          results.push(r);
           return r;
         });
       });
     });
-    return seq.finally(function () {
+    return seq.then(function () { return results; }).finally(function () {
       if (globalSave) { globalSave.disabled = false; }
       try { syncGlobalFooter(); } catch (_) {}
     });
   }
 
   function syncGlobalFooter() {
+    var ctxKey = getGlobalFooterContextKey();
+    if (_settingsGlobalFooterLastTab != null && _settingsGlobalFooterLastTab !== ctxKey) {
+      clearGlobalFooterSavedIndicator();
+    }
+    _settingsGlobalFooterLastTab = ctxKey;
+
     var sectionIds = getSectionIdsForActiveTab();
     var usesGlobalDraft = Array.isArray(sectionIds) && sectionIds.length > 0;
     SETTINGS_PANEL_SAVE_BUTTON_IDS.forEach(function (id) {
@@ -755,18 +782,39 @@
     var globalSave = document.getElementById('settings-global-save-btn');
     var globalRevert = document.getElementById('settings-global-revert-btn');
     var footerRight = (globalSave && globalSave.closest) ? globalSave.closest('.settings-footer-right') : null;
-    if (footerRight) footerRight.style.display = (usesGlobalDraft && tabDirty) ? '' : 'none';
+
+    var showSaved = usesGlobalDraft && !tabDirty && _settingsGlobalFooterSavedTab === ctxKey;
+
+    if (footerRight && !document.getElementById('settings-global-save-status')) {
+      var savedEl = document.createElement('div');
+      savedEl.id = 'settings-global-save-status';
+      savedEl.className = 'settings-global-save-status text-success';
+      savedEl.textContent = 'Saved.';
+      savedEl.hidden = true;
+      try { footerRight.appendChild(savedEl); } catch (_) {}
+    }
+    var savedStatusEl = document.getElementById('settings-global-save-status');
+    if (savedStatusEl) savedStatusEl.hidden = !showSaved;
+
+    if (footerRight) footerRight.style.display = (usesGlobalDraft && (tabDirty || showSaved)) ? '' : 'none';
     var hasLeftActions = !!(footerLeft && footerLeft.children && footerLeft.children.length);
-    if (footer) footer.hidden = !(hasLeftActions || (usesGlobalDraft && tabDirty));
+    if (footer) footer.hidden = !(hasLeftActions || (usesGlobalDraft && (tabDirty || showSaved)));
     if (globalSave) globalSave.disabled = !(usesGlobalDraft && tabDirty);
     if (globalRevert) globalRevert.disabled = !(usesGlobalDraft && tabDirty);
+    if (globalSave) globalSave.hidden = !!showSaved;
+    if (globalRevert) globalRevert.hidden = !!showSaved;
     if (globalSave) {
       globalSave.onclick = function () {
-        settingsDraftSaveAll();
+        settingsDraftSaveAll().then(function (results) {
+          var allOk = Array.isArray(results) && results.length > 0 && results.every(function (r) { return !!(r && r.ok); });
+          if (allOk) _settingsGlobalFooterSavedTab = getGlobalFooterContextKey() || null;
+          try { syncGlobalFooter(); } catch (_) {}
+        }).catch(function () {});
       };
     }
     if (globalRevert) {
       globalRevert.onclick = function () {
+        clearGlobalFooterSavedIndicator();
         settingsDraftRevertAll();
       };
     }
@@ -6571,8 +6619,8 @@
     });
     var settingsMain = document.getElementById('settings-main-content') || document.querySelector('.settings-panel-wrap') || document.body;
     if (settingsMain) {
-      settingsMain.addEventListener('input', function () { try { syncGlobalFooter(); } catch (_) {} });
-      settingsMain.addEventListener('change', function () { try { syncGlobalFooter(); } catch (_) {} });
+      settingsMain.addEventListener('input', function () { try { clearGlobalFooterSavedIndicator(); syncGlobalFooter(); } catch (_) {} });
+      settingsMain.addEventListener('change', function () { try { clearGlobalFooterSavedIndicator(); syncGlobalFooter(); } catch (_) {} });
     }
 
     var loaderEnabled = isSettingsPageLoaderEnabled();

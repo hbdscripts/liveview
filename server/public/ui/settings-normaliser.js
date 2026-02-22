@@ -280,6 +280,30 @@
     });
   }
 
+  function tightenAccordionEndingMb4(panelEl) {
+    var wrap = getPanelWrap(panelEl) || panelEl;
+    if (!wrap || !wrap.querySelectorAll) return;
+    // When a section ends with an accordion header/button, large Bootstrap spacing
+    // (e.g. mb-4) feels too loose. Tag those wrappers so CSS can tighten it.
+    wrap.querySelectorAll('.mb-4').forEach(function (el) {
+      if (!el || !el.classList) return;
+      if (el.getAttribute('data-settings-ui-accordion-mb-tight') === '1') return;
+      var last = null;
+      try { last = el.lastElementChild; } catch (_) { last = null; }
+      if (!last) return;
+      var hasAccordionButton = false;
+      try {
+        hasAccordionButton = !!(
+          (last.matches && last.matches('.accordion-button')) ||
+          (last.querySelector && last.querySelector('.accordion-button'))
+        );
+      } catch (_) { hasAccordionButton = false; }
+      if (!hasAccordionButton) return;
+      try { el.setAttribute('data-settings-ui-accordion-mb-tight', '1'); } catch (_) {}
+      try { el.classList.add('settings-accordion-mb-tight'); } catch (_) {}
+    });
+  }
+
   function ensureReadOnlyHint(el, hintText) {
     if (!isElement(el)) return;
     var existing = null;
@@ -412,6 +436,7 @@
     removeDeadCardHeaderChevrons(panelEl);
     removeCardCollapseToggles(panelEl);
     normaliseHeadingsAndSpacing(panelEl);
+    tightenAccordionEndingMb4(panelEl);
     normaliseButtonsAndForms(panelEl);
     try { panelEl.setAttribute(SETTINGS_PANEL_NORMALISE_ATTR, '1'); } catch (_) {}
   }
