@@ -906,18 +906,49 @@ function getCompareWindow(rangeKey, bounds, nowMs, timeZone) {
   return { start: compareStart, end: compareEnd };
 }
 
-async function fetchProductAggByProductId(db, shop, startMs, endMs) {
+async function fetchProductAggByProductId(db, shop, startMs, endMs, ratesToGbp) {
   if (!shop) return [];
   const start = Number(startMs);
   const end = Number(endMs);
   if (!Number.isFinite(start) || !Number.isFinite(end) || !(end > start)) return [];
   try {
-    return await db.all(
+    const hasLineNet = await lineItemsHasLineNet(db);
+    const revenueExpr = hasLineNet
+      ? 'COALESCE(SUM(COALESCE(li.line_net, li.line_revenue)), 0)'
+      : 'COALESCE(SUM(li.line_revenue), 0)';
+    const revRows = await db.all(
+      config.dbUrl
+        ? `SELECT COALESCE(NULLIF(TRIM(li.product_id), ''), ('title:' || LOWER(TRIM(COALESCE(li.title, ''))))) AS product_key,
+                  NULLIF(TRIM(li.product_id), '') AS product_id,
+                  COALESCE(NULLIF(TRIM(li.currency), ''), 'GBP') AS currency,
+                  ${revenueExpr} AS revenue
+           FROM orders_shopify_line_items li
+           WHERE li.shop = $1 AND li.order_created_at >= $2 AND li.order_created_at < $3
+             AND (li.order_test IS NULL OR li.order_test = 0) AND li.order_cancelled_at IS NULL AND li.order_financial_status IN ('paid', 'partially_paid')
+             AND (
+               (li.product_id IS NOT NULL AND TRIM(li.product_id) != '')
+               OR (li.title IS NOT NULL AND TRIM(li.title) != '')
+             )
+           GROUP BY COALESCE(NULLIF(TRIM(li.product_id), ''), ('title:' || LOWER(TRIM(COALESCE(li.title, ''))))), COALESCE(NULLIF(TRIM(li.currency), ''), 'GBP')`
+        : `SELECT COALESCE(NULLIF(TRIM(li.product_id), ''), ('title:' || LOWER(TRIM(COALESCE(li.title, ''))))) AS product_key,
+                  NULLIF(TRIM(li.product_id), '') AS product_id,
+                  COALESCE(NULLIF(TRIM(li.currency), ''), 'GBP') AS currency,
+                  ${revenueExpr} AS revenue
+           FROM orders_shopify_line_items li
+           WHERE li.shop = ? AND li.order_created_at >= ? AND li.order_created_at < ?
+             AND (li.order_test IS NULL OR li.order_test = 0) AND li.order_cancelled_at IS NULL AND li.order_financial_status IN ('paid', 'partially_paid')
+             AND (
+               (li.product_id IS NOT NULL AND TRIM(li.product_id) != '')
+               OR (li.title IS NOT NULL AND TRIM(li.title) != '')
+             )
+           GROUP BY COALESCE(NULLIF(TRIM(li.product_id), ''), ('title:' || LOWER(TRIM(COALESCE(li.title, ''))))), COALESCE(NULLIF(TRIM(li.currency), ''), 'GBP')`,
+      [shop, start, end]
+    );
+    const metaRows = await db.all(
       config.dbUrl
         ? `SELECT COALESCE(NULLIF(TRIM(li.product_id), ''), ('title:' || LOWER(TRIM(COALESCE(li.title, ''))))) AS product_key,
                   NULLIF(TRIM(li.product_id), '') AS product_id,
                   MAX(NULLIF(TRIM(li.title), '')) AS title,
-                  COALESCE(SUM(li.line_revenue), 0) AS revenue,
                   COUNT(DISTINCT li.order_id) AS orders
            FROM orders_shopify_line_items li
            WHERE li.shop = $1 AND li.order_created_at >= $2 AND li.order_created_at < $3
@@ -930,7 +961,6 @@ async function fetchProductAggByProductId(db, shop, startMs, endMs) {
         : `SELECT COALESCE(NULLIF(TRIM(li.product_id), ''), ('title:' || LOWER(TRIM(COALESCE(li.title, ''))))) AS product_key,
                   NULLIF(TRIM(li.product_id), '') AS product_id,
                   MAX(NULLIF(TRIM(li.title), '')) AS title,
-                  COALESCE(SUM(li.line_revenue), 0) AS revenue,
                   COUNT(DISTINCT li.order_id) AS orders
            FROM orders_shopify_line_items li
            WHERE li.shop = ? AND li.order_created_at >= ? AND li.order_created_at < ?
@@ -942,6 +972,38 @@ async function fetchProductAggByProductId(db, shop, startMs, endMs) {
            GROUP BY COALESCE(NULLIF(TRIM(li.product_id), ''), ('title:' || LOWER(TRIM(COALESCE(li.title, '')))))`,
       [shop, start, end]
     );
+    const metaByKey = new Map();
+    for (const r of (metaRows || [])) {
+      const key = (r.product_key != null ? String(r.product_key) : '') || (r.product_id != null ? String(r.product_id) : '');
+      if (key) metaByKey.set(key, { title: r.title || 'Unknown', orders: Number(r.orders) || 0 });
+    }
+    const gbpByKey = new Map();
+    for (const r of (revRows || [])) {
+      const key = (r.product_key != null ? String(r.product_key) : '') || (r.product_id != null ? String(r.product_id) : '');
+      if (!key) continue;
+      const cur = (r.currency && String(r.currency).trim()) ? String(r.currency).trim().toUpperCase() : 'GBP';
+      const amt = Number(r.revenue) || 0;
+      const gbpVal = Number.isFinite(amt) && ratesToGbp && typeof fx.convertToGbp === 'function'
+        ? fx.convertToGbp(amt, cur, ratesToGbp)
+        : amt;
+      const gbp = (typeof gbpVal === 'number' && Number.isFinite(gbpVal)) ? gbpVal : 0;
+      const prev = gbpByKey.get(key) || 0;
+      gbpByKey.set(key, prev + gbp);
+    }
+    const out = [];
+    for (const [key, revenue] of gbpByKey) {
+      const meta = metaByKey.get(key);
+      const firstRev = revRows && revRows.find(r => ((r.product_key != null ? String(r.product_key) : '') || (r.product_id != null ? String(r.product_id) : '')) === key);
+      const pid = (firstRev && firstRev.product_id != null && String(firstRev.product_id).trim() !== '') ? firstRev.product_id : null;
+      out.push({
+        product_key: key,
+        product_id: pid || key,
+        title: meta && meta.title ? meta.title : 'Unknown',
+        revenue: Math.round(revenue * 100) / 100,
+        orders: meta && meta.orders != null ? meta.orders : 0,
+      });
+    }
+    return out;
   } catch (e) {
     if (e && typeof e.message === 'string') console.error('[dashSeries] fetchProductAggByProductId err', e.message);
     return [];
@@ -966,16 +1028,16 @@ function rawTopRowsToTrendingAggRows(rawRows) {
   return out;
 }
 
-async function fetchTrendingProducts(db, shop, nowBounds, prevBounds, filter) {
+async function fetchTrendingProducts(db, shop, nowBounds, prevBounds, filter, ratesToGbp) {
   if (!shop || !nowBounds || !prevBounds) return { trendingUp: [], trendingDown: [] };
-  let nowRows = await fetchProductAggByProductId(db, shop, nowBounds.start, nowBounds.end);
-  let prevRows = await fetchProductAggByProductId(db, shop, prevBounds.start, prevBounds.end);
+  let nowRows = await fetchProductAggByProductId(db, shop, nowBounds.start, nowBounds.end, ratesToGbp);
+  let prevRows = await fetchProductAggByProductId(db, shop, prevBounds.start, prevBounds.end, ratesToGbp);
   if (!nowRows.length || !prevRows.length) {
     try {
-      const ratesToGbp = await fx.getRatesToGbp();
+      const fallbackRates = ratesToGbp || await fx.getRatesToGbp();
       const fallbackLimit = Math.max(20, DASHBOARD_TRENDING_MAX_ROWS * 4);
       if (!nowRows.length) {
-        const rawNow = await fallbackTopProductsFromOrdersRawJson(db, shop, nowBounds.start, nowBounds.end, ratesToGbp, {
+        const rawNow = await fallbackTopProductsFromOrdersRawJson(db, shop, nowBounds.start, nowBounds.end, fallbackRates, {
           limit: fallbackLimit,
           maxOrders: 2000,
         });
@@ -983,7 +1045,7 @@ async function fetchTrendingProducts(db, shop, nowBounds, prevBounds, filter) {
         if (nowFallback.length) nowRows = nowFallback;
       }
       if (!prevRows.length) {
-        const rawPrev = await fallbackTopProductsFromOrdersRawJson(db, shop, prevBounds.start, prevBounds.end, ratesToGbp, {
+        const rawPrev = await fallbackTopProductsFromOrdersRawJson(db, shop, prevBounds.start, prevBounds.end, fallbackRates, {
           limit: fallbackLimit,
           maxOrders: 2000,
         });
@@ -1055,7 +1117,15 @@ async function fetchTrendingProducts(db, shop, nowBounds, prevBounds, filter) {
     });
   });
 
-  // Sort by highest revenue first (revenueNow), then by growth/delta so order is stable across date ranges.
+  // Sort by highest revenue first (revenueNow), then by growth/delta; stable tie-break by product_id then title.
+  const stableCmp = (a, b) => {
+    const aid = (a && a.product_id != null ? String(a.product_id) : '') || '';
+    const bid = (b && b.product_id != null ? String(b.product_id) : '') || '';
+    if (aid !== bid) return aid < bid ? -1 : 1;
+    const at = (a && a.title != null ? String(a.title) : '') || '';
+    const bt = (b && b.title != null ? String(b.title) : '') || '';
+    return at < bt ? -1 : at > bt ? 1 : 0;
+  };
   const up = base
     .filter(function(r) { return r.deltaRevenue > 0.005; })
     .sort(function(a, b) {
@@ -1063,7 +1133,9 @@ async function fetchTrendingProducts(db, shop, nowBounds, prevBounds, filter) {
       if (byRev !== 0) return byRev;
       const byPct = (b.pctGrowth != null ? b.pctGrowth : -Infinity) - (a.pctGrowth != null ? a.pctGrowth : -Infinity);
       if (byPct !== 0) return byPct;
-      return (b.deltaRevenue || 0) - (a.deltaRevenue || 0);
+      const byDelta = (b.deltaRevenue || 0) - (a.deltaRevenue || 0);
+      if (byDelta !== 0) return byDelta;
+      return stableCmp(a, b);
     })
     .slice(0, DASHBOARD_TRENDING_MAX_ROWS);
   const down = base
@@ -1073,7 +1145,9 @@ async function fetchTrendingProducts(db, shop, nowBounds, prevBounds, filter) {
       if (byRev !== 0) return byRev;
       const byPct = (a.pctGrowth != null ? a.pctGrowth : Infinity) - (b.pctGrowth != null ? b.pctGrowth : Infinity);
       if (byPct !== 0) return byPct;
-      return (a.deltaRevenue || 0) - (b.deltaRevenue || 0);
+      const byDelta = (a.deltaRevenue || 0) - (b.deltaRevenue || 0);
+      if (byDelta !== 0) return byDelta;
+      return stableCmp(a, b);
     })
     .slice(0, DASHBOARD_TRENDING_MAX_ROWS);
   const candidateIds = new Set();
@@ -1355,7 +1429,7 @@ async function computeDashboardSeries(days, nowMs, timeZone, trafficMode) {
     };
   });
 
-  // Top products (last N days)
+  // Top products (last N days); revenue converted to GBP for consistent ordering in multi-currency stores.
   let topProducts = [];
   if (shop) {
     try {
@@ -1365,26 +1439,70 @@ async function computeDashboardSeries(days, nowMs, timeZone, trafficMode) {
         : 'COALESCE(SUM(li.line_revenue), 0)';
       const hasProcessedAt = await lineItemsHasOrderProcessedAt(db);
       const tsExpr = hasProcessedAt ? 'COALESCE(li.order_processed_at, li.order_created_at)' : 'li.order_created_at';
-      const productRows = await db.all(
+      const revByCurRows = await db.all(
         config.dbUrl
-          ? `SELECT TRIM(li.product_id) AS product_id, MAX(NULLIF(TRIM(li.title), '')) AS title, ${revenueExpr} AS revenue, COUNT(DISTINCT li.order_id) AS orders
+          ? `SELECT TRIM(li.product_id) AS product_id, COALESCE(NULLIF(TRIM(li.currency), ''), 'GBP') AS currency, ${revenueExpr} AS revenue
              FROM orders_shopify_line_items li
              WHERE li.shop = $1 AND (${tsExpr} >= $2 AND ${tsExpr} < $3)
                AND (li.order_test IS NULL OR li.order_test = 0) AND li.order_cancelled_at IS NULL AND li.order_financial_status IN ('paid', 'partially_paid')
                AND li.product_id IS NOT NULL AND TRIM(li.product_id) != ''
-             GROUP BY TRIM(li.product_id)
-             ORDER BY revenue DESC
-             LIMIT ${DASHBOARD_TOP_TABLE_MAX_ROWS}`
-          : `SELECT TRIM(li.product_id) AS product_id, MAX(NULLIF(TRIM(li.title), '')) AS title, ${revenueExpr} AS revenue, COUNT(DISTINCT li.order_id) AS orders
+             GROUP BY TRIM(li.product_id), COALESCE(NULLIF(TRIM(li.currency), ''), 'GBP')`
+          : `SELECT TRIM(li.product_id) AS product_id, COALESCE(NULLIF(TRIM(li.currency), ''), 'GBP') AS currency, ${revenueExpr} AS revenue
              FROM orders_shopify_line_items li
              WHERE li.shop = ? AND (${tsExpr} >= ? AND ${tsExpr} < ?)
                AND (li.order_test IS NULL OR li.order_test = 0) AND li.order_cancelled_at IS NULL AND li.order_financial_status IN ('paid', 'partially_paid')
                AND li.product_id IS NOT NULL AND TRIM(li.product_id) != ''
-             GROUP BY TRIM(li.product_id)
-             ORDER BY revenue DESC
-             LIMIT ${DASHBOARD_TOP_TABLE_MAX_ROWS}`,
+             GROUP BY TRIM(li.product_id), COALESCE(NULLIF(TRIM(li.currency), ''), 'GBP')`,
         [shop, overallStart, overallEnd]
       );
+      const metaRows = await db.all(
+        config.dbUrl
+          ? `SELECT TRIM(li.product_id) AS product_id, MAX(NULLIF(TRIM(li.title), '')) AS title, COUNT(DISTINCT li.order_id) AS orders
+             FROM orders_shopify_line_items li
+             WHERE li.shop = $1 AND (${tsExpr} >= $2 AND ${tsExpr} < $3)
+               AND (li.order_test IS NULL OR li.order_test = 0) AND li.order_cancelled_at IS NULL AND li.order_financial_status IN ('paid', 'partially_paid')
+               AND li.product_id IS NOT NULL AND TRIM(li.product_id) != ''
+             GROUP BY TRIM(li.product_id)`
+          : `SELECT TRIM(li.product_id) AS product_id, MAX(NULLIF(TRIM(li.title), '')) AS title, COUNT(DISTINCT li.order_id) AS orders
+             FROM orders_shopify_line_items li
+             WHERE li.shop = ? AND (${tsExpr} >= ? AND ${tsExpr} < ?)
+               AND (li.order_test IS NULL OR li.order_test = 0) AND li.order_cancelled_at IS NULL AND li.order_financial_status IN ('paid', 'partially_paid')
+               AND li.product_id IS NOT NULL AND TRIM(li.product_id) != ''
+             GROUP BY TRIM(li.product_id)`,
+        [shop, overallStart, overallEnd]
+      );
+      const gbpByPid = new Map();
+      for (const r of (revByCurRows || [])) {
+        const pid = r.product_id ? String(r.product_id).trim() : '';
+        if (!pid) continue;
+        const cur = (r.currency && String(r.currency).trim()) ? String(r.currency).trim().toUpperCase() : 'GBP';
+        const amt = Number(r.revenue) || 0;
+        const gbpVal = Number.isFinite(amt) && ratesToGbp && typeof fx.convertToGbp === 'function'
+          ? fx.convertToGbp(amt, cur, ratesToGbp)
+          : amt;
+        const gbp = (typeof gbpVal === 'number' && Number.isFinite(gbpVal)) ? gbpVal : 0;
+        gbpByPid.set(pid, (gbpByPid.get(pid) || 0) + gbp);
+      }
+      const metaByPid = new Map();
+      for (const r of (metaRows || [])) {
+        const pid = r.product_id ? String(r.product_id).trim() : '';
+        if (pid) metaByPid.set(pid, { title: r.title || 'Unknown', orders: Number(r.orders) || 0 });
+      }
+      const productRows = Array.from(gbpByPid.entries())
+        .map(([pid, revenue]) => ({
+          product_id: pid,
+          title: (metaByPid.get(pid) || {}).title,
+          revenue: Math.round(revenue * 100) / 100,
+          orders: (metaByPid.get(pid) || {}).orders,
+        }))
+        .sort((a, b) => {
+          const byRev = (b.revenue || 0) - (a.revenue || 0);
+          if (byRev !== 0) return byRev;
+          const byId = (a.product_id || '').localeCompare(b.product_id || '');
+          if (byId !== 0) return byId;
+          return (a.title || '').localeCompare(b.title || '');
+        })
+        .slice(0, DASHBOARD_TOP_TABLE_MAX_ROWS);
       let token = null;
       try { token = await salesTruth.getAccessToken(shop); } catch (_) {}
       const productIds = productRows.map(r => r.product_id).filter(Boolean);
@@ -1480,14 +1598,30 @@ async function computeDashboardSeries(days, nowMs, timeZone, trafficMode) {
   try { sessionsByCountryAll = await fetchSessionCountsByCountryCodeAll(db, overallStart, overallEnd, filter); } catch (_) {}
   topCountries = fillTopCountriesWithSessionsFallback(topCountries, sessionsByCountryAll, { limit: DASHBOARD_TOP_TABLE_MAX_ROWS });
 
-  // Trending up/down vs previous equivalent period
+  // Trending up/down vs previous equivalent period (use trendingPresetOrDays window when provided)
   let trendingUp = [];
   let trendingDown = [];
   if (shop) {
-    const nowBounds = { start: overallStart, end: overallEnd };
-    const prevBounds = { start: Math.max(getPlatformStartMs(nowMs, timeZone), overallStart - (overallEnd - overallStart)), end: overallStart };
+    let nowBounds = { start: overallStart, end: overallEnd };
+    let prevBounds = { start: Math.max(getPlatformStartMs(nowMs, timeZone), overallStart - (overallEnd - overallStart)), end: overallStart };
+    if (trendingPresetOrDays != null) {
+      const presetKey = typeof trendingPresetOrDays === 'string'
+        ? trendingPresetOrDays
+        : ([3, 7, 14].indexOf(Number(trendingPresetOrDays)) >= 0 ? (Number(trendingPresetOrDays) + 'd') : null);
+      if (presetKey && ['today', 'yesterday', '3d', '7d', '14d'].indexOf(presetKey) >= 0) {
+        const trendingBounds = store.getRangeBounds(presetKey, nowMs, timeZone);
+        if (trendingBounds && Number.isFinite(trendingBounds.start) && Number.isFinite(trendingBounds.end) && trendingBounds.end > trendingBounds.start) {
+          nowBounds = { start: trendingBounds.start, end: trendingBounds.end };
+          const periodMs = trendingBounds.end - trendingBounds.start;
+          prevBounds = {
+            start: Math.max(getPlatformStartMs(nowMs, timeZone), trendingBounds.start - periodMs),
+            end: trendingBounds.start,
+          };
+        }
+      }
+    }
     try {
-      const t = await fetchTrendingProducts(db, shop, nowBounds, prevBounds, filter);
+      const t = await fetchTrendingProducts(db, shop, nowBounds, prevBounds, filter, ratesToGbp);
       trendingUp = t && t.trendingUp ? t.trendingUp : [];
       trendingDown = t && t.trendingDown ? t.trendingDown : [];
     } catch (_) {}
@@ -1829,7 +1963,7 @@ async function computeDashboardSeriesForBounds(bounds, nowMs, timeZone, trafficM
     };
   });
 
-  // Top products (range)
+  // Top products (range); revenue converted to GBP for consistent ordering in multi-currency stores.
   let topProducts = [];
   if (shop) {
     try {
@@ -1839,26 +1973,70 @@ async function computeDashboardSeriesForBounds(bounds, nowMs, timeZone, trafficM
         : 'COALESCE(SUM(li.line_revenue), 0)';
       const hasProcessedAt = await lineItemsHasOrderProcessedAt(db);
       const tsExpr = hasProcessedAt ? 'COALESCE(li.order_processed_at, li.order_created_at)' : 'li.order_created_at';
-      const productRows = await db.all(
+      const revByCurRows = await db.all(
         config.dbUrl
-          ? `SELECT TRIM(li.product_id) AS product_id, MAX(NULLIF(TRIM(li.title), '')) AS title, ${revenueExpr} AS revenue, COUNT(DISTINCT li.order_id) AS orders
+          ? `SELECT TRIM(li.product_id) AS product_id, COALESCE(NULLIF(TRIM(li.currency), ''), 'GBP') AS currency, ${revenueExpr} AS revenue
              FROM orders_shopify_line_items li
              WHERE li.shop = $1 AND (${tsExpr} >= $2 AND ${tsExpr} < $3)
                AND (li.order_test IS NULL OR li.order_test = 0) AND li.order_cancelled_at IS NULL AND li.order_financial_status IN ('paid', 'partially_paid')
                AND li.product_id IS NOT NULL AND TRIM(li.product_id) != ''
-             GROUP BY TRIM(li.product_id)
-             ORDER BY revenue DESC
-             LIMIT ${DASHBOARD_TOP_TABLE_MAX_ROWS}`
-          : `SELECT TRIM(li.product_id) AS product_id, MAX(NULLIF(TRIM(li.title), '')) AS title, ${revenueExpr} AS revenue, COUNT(DISTINCT li.order_id) AS orders
+             GROUP BY TRIM(li.product_id), COALESCE(NULLIF(TRIM(li.currency), ''), 'GBP')`
+          : `SELECT TRIM(li.product_id) AS product_id, COALESCE(NULLIF(TRIM(li.currency), ''), 'GBP') AS currency, ${revenueExpr} AS revenue
              FROM orders_shopify_line_items li
              WHERE li.shop = ? AND (${tsExpr} >= ? AND ${tsExpr} < ?)
                AND (li.order_test IS NULL OR li.order_test = 0) AND li.order_cancelled_at IS NULL AND li.order_financial_status IN ('paid', 'partially_paid')
                AND li.product_id IS NOT NULL AND TRIM(li.product_id) != ''
-             GROUP BY TRIM(li.product_id)
-             ORDER BY revenue DESC
-             LIMIT ${DASHBOARD_TOP_TABLE_MAX_ROWS}`,
+             GROUP BY TRIM(li.product_id), COALESCE(NULLIF(TRIM(li.currency), ''), 'GBP')`,
         [shop, overallStart, overallEnd]
       );
+      const metaRows = await db.all(
+        config.dbUrl
+          ? `SELECT TRIM(li.product_id) AS product_id, MAX(NULLIF(TRIM(li.title), '')) AS title, COUNT(DISTINCT li.order_id) AS orders
+             FROM orders_shopify_line_items li
+             WHERE li.shop = $1 AND (${tsExpr} >= $2 AND ${tsExpr} < $3)
+               AND (li.order_test IS NULL OR li.order_test = 0) AND li.order_cancelled_at IS NULL AND li.order_financial_status IN ('paid', 'partially_paid')
+               AND li.product_id IS NOT NULL AND TRIM(li.product_id) != ''
+             GROUP BY TRIM(li.product_id)`
+          : `SELECT TRIM(li.product_id) AS product_id, MAX(NULLIF(TRIM(li.title), '')) AS title, COUNT(DISTINCT li.order_id) AS orders
+             FROM orders_shopify_line_items li
+             WHERE li.shop = ? AND (${tsExpr} >= ? AND ${tsExpr} < ?)
+               AND (li.order_test IS NULL OR li.order_test = 0) AND li.order_cancelled_at IS NULL AND li.order_financial_status IN ('paid', 'partially_paid')
+               AND li.product_id IS NOT NULL AND TRIM(li.product_id) != ''
+             GROUP BY TRIM(li.product_id)`,
+        [shop, overallStart, overallEnd]
+      );
+      const gbpByPid = new Map();
+      for (const r of (revByCurRows || [])) {
+        const pid = r.product_id ? String(r.product_id).trim() : '';
+        if (!pid) continue;
+        const cur = (r.currency && String(r.currency).trim()) ? String(r.currency).trim().toUpperCase() : 'GBP';
+        const amt = Number(r.revenue) || 0;
+        const gbpVal = Number.isFinite(amt) && ratesToGbp && typeof fx.convertToGbp === 'function'
+          ? fx.convertToGbp(amt, cur, ratesToGbp)
+          : amt;
+        const gbp = (typeof gbpVal === 'number' && Number.isFinite(gbpVal)) ? gbpVal : 0;
+        gbpByPid.set(pid, (gbpByPid.get(pid) || 0) + gbp);
+      }
+      const metaByPid = new Map();
+      for (const r of (metaRows || [])) {
+        const pid = r.product_id ? String(r.product_id).trim() : '';
+        if (pid) metaByPid.set(pid, { title: r.title || 'Unknown', orders: Number(r.orders) || 0 });
+      }
+      const productRows = Array.from(gbpByPid.entries())
+        .map(([pid, revenue]) => ({
+          product_id: pid,
+          title: (metaByPid.get(pid) || {}).title,
+          revenue: Math.round(revenue * 100) / 100,
+          orders: (metaByPid.get(pid) || {}).orders,
+        }))
+        .sort((a, b) => {
+          const byRev = (b.revenue || 0) - (a.revenue || 0);
+          if (byRev !== 0) return byRev;
+          const byId = (a.product_id || '').localeCompare(b.product_id || '');
+          if (byId !== 0) return byId;
+          return (a.title || '').localeCompare(b.title || '');
+        })
+        .slice(0, DASHBOARD_TOP_TABLE_MAX_ROWS);
       let token = null;
       try { token = await salesTruth.getAccessToken(shop); } catch (_) {}
       const productIds = productRows.map(r => r.product_id).filter(Boolean);
@@ -1990,7 +2168,7 @@ async function computeDashboardSeriesForBounds(bounds, nowMs, timeZone, trafficM
     }
     if (prevBounds) {
       try {
-        const t = await fetchTrendingProducts(db, shop, nowBounds, prevBounds, filter);
+        const t = await fetchTrendingProducts(db, shop, nowBounds, prevBounds, filter, ratesToGbp);
         trendingUp = t && t.trendingUp ? t.trendingUp : [];
         trendingDown = t && t.trendingDown ? t.trendingDown : [];
       } catch (e) {

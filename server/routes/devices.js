@@ -154,7 +154,13 @@ function splitDeviceKey(deviceKey) {
 async function getDevicesReport(req, res) {
   const now = Date.now();
   const timeZone = store.resolveAdminTimeZone();
-  const rangeKey = normalizeRangeKey(req.query.range, { defaultKey: 'today' });
+  const rangeKey = normalizeRangeKey(req.query.range, {
+    defaultKey: 'today',
+    allowed: new Set(['today', 'yesterday', '3d', '7d', '14d', '30d', 'month']),
+    allowCustomDay: true,
+    allowCustomRange: true,
+    allowFriendlyDays: true,
+  });
   const bounds = store.getRangeBounds(rangeKey, now, timeZone);
   const force = !!(req.query && (req.query.force === '1' || req.query.force === 'true' || req.query._));
 

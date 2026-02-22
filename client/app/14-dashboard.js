@@ -227,7 +227,9 @@
         var s = (raw == null ? '' : String(raw)).trim().toLowerCase();
         if (!s) return fb;
         if (s === '7days') s = '7d';
-        if (s === 'today' || s === 'yesterday' || s === '7d') return s;
+        if (s === '14days') s = '14d';
+        if (s === '30days') s = '30d';
+        if (s === 'today' || s === 'yesterday' || s === '3d' || s === '7d' || s === '14d' || s === '30d' || s === 'month') return s;
         if (/^r:\d{4}-\d{2}-\d{2}:\d{4}-\d{2}-\d{2}$/.test(s)) return s;
         if (/^d:\d{4}-\d{2}-\d{2}$/.test(s)) return s;
         return fb;
@@ -266,7 +268,11 @@
         if (!rk) return '';
         if (rk === 'today') return 'Today';
         if (rk === 'yesterday') return 'Yesterday';
+        if (rk === '3d') return '3 Days';
         if (rk === '7d') return '7 Days';
+        if (rk === '14d') return '14 Days';
+        if (rk === '30d') return '30 Days';
+        if (rk === 'month') return 'This month';
         if (/^d:\d{4}-\d{2}-\d{2}$/.test(rk)) return formatYmdDayMonth(rk.slice(2));
         var m = rk.match(/^r:(\d{4}-\d{2}-\d{2}):(\d{4}-\d{2}-\d{2})$/);
         if (m && m[1] && m[2]) {
@@ -280,6 +286,9 @@
       function overviewCardRevenueSubtitle(rangeKey) {
         var rk = normalizeOverviewCardRangeKey(rangeKey, OVERVIEW_CARD_DEFAULT_RANGE);
         if (rk === '7d') return '7 Day Revenue';
+        if (rk === '14d') return '14 Day Revenue';
+        if (rk === '30d') return '30 Day Revenue';
+        if (rk === 'month') return 'This month Revenue';
         var label = formatRangeKeyDayMonth(rk);
         if (!label) return 'Revenue';
         return label + ' Revenue';
@@ -3196,17 +3205,29 @@
         var rk = normalizeOverviewCardRangeKey(rangeKey, OVERVIEW_CARD_DEFAULT_RANGE);
         var url = API + '/api/business-snapshot?mode=range';
         var isSingleDay = rk === 'today' || rk === 'yesterday' || /^d:\d{4}-\d{2}-\d{2}$/.test(rk);
+        var todayYmd = (typeof ymdNowInTz === 'function') ? ymdNowInTz() : null;
         if (rk === '7d') {
           url += '&preset=last_7_days';
+        } else if (rk === '30d') {
+          url += '&preset=last_30_days';
+        } else if (rk === 'month') {
+          url += '&preset=this_month';
+        } else if (rk === '3d' && todayYmd) {
+          var since3 = safeYmdAddDays(todayYmd, -2);
+          if (since3) url += '&preset=custom&since=' + encodeURIComponent(since3) + '&until=' + encodeURIComponent(todayYmd);
+          else url += '&preset=last_7_days';
+        } else if (rk === '14d' && todayYmd) {
+          var since14 = safeYmdAddDays(todayYmd, -13);
+          if (since14) url += '&preset=custom&since=' + encodeURIComponent(since14) + '&until=' + encodeURIComponent(todayYmd);
+          else url += '&preset=last_7_days';
         } else {
           var since = null;
           var until = null;
           if (rk === 'today') {
-            since = (typeof ymdNowInTz === 'function') ? ymdNowInTz() : null;
+            since = todayYmd;
             until = since;
           } else if (rk === 'yesterday') {
-            var y = (typeof ymdNowInTz === 'function') ? ymdNowInTz() : null;
-            var yd = y ? safeYmdAddDays(y, -1) : null;
+            var yd = todayYmd ? safeYmdAddDays(todayYmd, -1) : null;
             since = yd;
             until = yd;
           } else if (/^d:\d{4}-\d{2}-\d{2}$/.test(rk)) {
@@ -5267,7 +5288,7 @@
                       '<select class="form-select" id="kexo-ovw-sort-by">' +
                         '<option value="revenue">Revenue</option>' +
                         '<option value="clicks">Clicks</option>' +
-                        '<option value="ctr">CTR</option>' +
+                        '<option value="ctr">CR</option>' +
                       '</select>' +
                       '<div class="form-hint" id="kexo-ovw-sort-hint"></div>' +
                     '</div>' +
@@ -5435,7 +5456,7 @@
           });
           if (!widgetSupportsSortBy(key, sortBy)) sortBy = 'revenue';
           sortEl.value = sortBy;
-          if (hintEl) hintEl.textContent = widgetSupportsSortBy(key, 'ctr') ? '' : 'CTR is not available for this widget.';
+          if (hintEl) hintEl.textContent = widgetSupportsSortBy(key, 'ctr') ? '' : 'CR is not available for this widget.';
         }
         var wrapGb = document.getElementById('kexo-ovw-finishes-groupby-wrap');
         if (wrapGb) wrapGb.classList.toggle('is-hidden', key !== 'finishes');
@@ -6220,7 +6241,7 @@
           var icon = top && top.iconHtml ? stripSvgDimensions(String(top.iconHtml)) : '';
           var labelText = top && top.label != null ? String(top.label) : '—';
           var valueText = fmtMetric(metric, top);
-          var ctrLabel = (widgetKey === 'payment_methods') ? 'Share' : 'CTR';
+          var ctrLabel = (widgetKey === 'payment_methods') ? 'Share' : 'CR';
           var shareText = metric === 'ctr' ? ctrLabel : (String(Math.round(pct)) + '% share');
           var tip = labelText + '\n' + valueText + '\n' + (metric === 'ctr' ? (ctrLabel + ': ' + valueText) : ('Share: ' + (Math.round(pct * 10) / 10).toFixed(1) + '%'));
           var size = 111;

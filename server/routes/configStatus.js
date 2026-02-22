@@ -100,7 +100,7 @@ async function configStatus(req, res, next) {
   const last24hStart = now - 24 * 60 * 60 * 1000;
   const timeZone = store.resolveAdminTimeZone();
   const todayBounds = store.getRangeBounds('today', now, timeZone);
-  const overviewAllowed = new Set(['today', 'yesterday', '7d', '14d', '30d']);
+  const overviewAllowed = new Set(['today', 'yesterday', '3d', '7d', '14d', '30d', 'month']);
   const overviewRangeKey = normalizeRangeKey(req && req.query ? req.query.range : '', { defaultKey: 'today', allowed: overviewAllowed });
   const overviewBounds = store.getRangeBounds(overviewRangeKey, now, timeZone);
   function ymdFromMs(ms) {

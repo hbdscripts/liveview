@@ -76,7 +76,13 @@ async function getProductLandingSessionsCount(db, start, end) {
 async function getShopifyFinishes(req, res) {
   const rawShop = (req.query.shop || '').trim().toLowerCase();
   const shop = salesTruth.resolveShopForSales(rawShop) || salesTruth.resolveShopForSales('') || rawShop;
-  const range = normalizeRangeKey(req.query.range, { defaultKey: 'today' });
+  const range = normalizeRangeKey(req.query.range, {
+    defaultKey: 'today',
+    allowed: new Set(['today', 'yesterday', '3d', '7d', '14d', '30d', 'month']),
+    allowCustomDay: true,
+    allowCustomRange: true,
+    allowFriendlyDays: true,
+  });
   if (!shop || !shop.endsWith('.myshopify.com')) {
     return res.status(400).json({ error: 'Missing or invalid shop (e.g. ?shop=store.myshopify.com)' });
   }
