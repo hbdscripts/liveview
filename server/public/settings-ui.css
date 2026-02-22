@@ -119,9 +119,16 @@ body[data-page="settings"] .settings-panel > .card > .card-body {
   justify-content: flex-end;
 }
 
-/* Direct headings inside a panel wrapper. */
-.settings-panel-heading {
-  font-size: 1rem;
+/* Opening title in each settings/admin content block: one size for all. */
+.settings-panel-heading,
+h1.settings-panel-heading,
+h2.settings-panel-heading,
+h3.settings-panel-heading,
+h4.settings-panel-heading,
+h5.settings-panel-heading,
+h6.settings-panel-heading,
+.card-title.settings-panel-heading {
+  font-size: 1rem !important;
   font-weight: 600;
 }
 

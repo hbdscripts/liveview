@@ -267,18 +267,36 @@
     });
   }
 
+  // Selectors for UI chrome we must not treat as the panel's "opening" title.
+  var FIRST_TITLE_EXCLUDE_SELECTOR = '.accordion-button, .nav, .nav-tabs, .settings-main-tabs';
+
+  function getFirstTitleInContainer(container) {
+    if (!container || !container.querySelectorAll) return null;
+    var candidates = [];
+    try { candidates = Array.prototype.slice.call(container.querySelectorAll('h1, h2, h3, h4, h5, h6, .card-title')); } catch (_) { return null; }
+    for (var i = 0; i < candidates.length; i++) {
+      var el = candidates[i];
+      if (!el || !isTitleNode(el)) continue;
+      try {
+        if (el.closest && el.closest(FIRST_TITLE_EXCLUDE_SELECTOR)) continue;
+      } catch (_) {}
+      return el;
+    }
+    return null;
+  }
+
   function normaliseHeadingsAndSpacing(panelEl) {
     var wrap = getPanelWrap(panelEl) || panelEl;
     if (!wrap || !wrap.querySelectorAll) return;
-    // Loose headings: ensure consistent spacing and avoid touching tabs/accordion edges.
-    wrap.querySelectorAll(':scope > h1, :scope > h2, :scope > h3, :scope > h4, :scope > h5, :scope > h6').forEach(function (h) {
-      if (!h || !h.classList) return;
-      if (h.getAttribute('data-settings-ui-heading') === '1') return;
-      h.setAttribute('data-settings-ui-heading', '1');
-      h.classList.add('settings-panel-heading');
-      h.classList.remove('mb-0', 'mb-1');
-      if (!h.classList.contains('mb-2')) h.classList.add('mb-2');
-    });
+    // Mark the first visible title in this content block (at any depth) so it uses a consistent font size.
+    var firstTitle = getFirstTitleInContainer(wrap);
+    if (firstTitle && firstTitle.classList) {
+      if (firstTitle.getAttribute('data-settings-ui-heading') === '1') return;
+      firstTitle.setAttribute('data-settings-ui-heading', '1');
+      firstTitle.classList.add('settings-panel-heading');
+      firstTitle.classList.remove('mb-0', 'mb-1');
+      if (!firstTitle.classList.contains('mb-2')) firstTitle.classList.add('mb-2');
+    }
   }
 
   function tightenAccordionEndingMb4(panelEl) {
