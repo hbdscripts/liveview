@@ -42,6 +42,38 @@ html, body {
   opacity: 0.9;
 }
 
+/* Platform-wide kexo tooltip/help popover (same as Settings). */
+.kexo-help-popover {
+  position: fixed;
+  z-index: 9999;
+  max-width: 320px;
+  padding: 0.75rem 2rem 0.75rem 1rem;
+  background: #1e293b;
+  color: #e2e8f0;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  pointer-events: auto;
+}
+.kexo-help-popover .kexo-help-popover-content {
+  padding-right: 0.5rem;
+}
+.kexo-help-popover .kexo-help-popover-close {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  margin: 0;
+  padding: 0.25rem;
+  opacity: 0.7;
+}
+.kexo-help-popover .kexo-help-popover-close:hover {
+  opacity: 1;
+}
+[data-kexo-help] {
+  cursor: pointer;
+}
+
 .kexo-card-collapse-toggle {
   min-width: 28px;
   min-height: 28px;
@@ -1944,7 +1976,17 @@ body:not([data-page="settings"]) .table-responsive table thead th {
 }
 
 #product-insights-modal .modal-header {
-  padding: 1.25rem;
+  max-height: 100px;
+  padding: 0.75rem 1rem;
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+}
+#product-insights-modal .modal-header .modal-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 #product-insights-modal .modal-footer {
   padding: 1rem 1.25rem;
@@ -2044,6 +2086,23 @@ body:not([data-page="settings"]) .table-responsive table thead th {
 #product-insights-modal .kexo-product-insights-metrics tbody tr:last-child td {
   border-bottom: none !important;
   padding-bottom: 1.1rem;
+}
+
+@media (max-width: 767.98px) {
+  #product-insights-modal #product-insights-col-right .card > div,
+  #product-insights-modal #product-insights-metrics-table-wrap,
+  #product-insights-modal #product-insights-col-right .table-responsive {
+    overflow-x: auto;
+    max-width: 100%;
+    -webkit-overflow-scrolling: touch;
+  }
+  #product-insights-modal .kexo-product-insights-metrics td:first-child {
+    width: 50%;
+    min-width: 0;
+  }
+  #product-insights-modal .kexo-product-insights-metrics {
+    min-width: 0;
+  }
 }
 
 #product-insights-modal .modal-footer .btn {

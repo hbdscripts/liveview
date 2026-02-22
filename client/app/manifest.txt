@@ -20,3 +20,4 @@
 19-logo-rotator.js
 20-insights-payment-methods.js
 21-notifications-offcanvas.js
+22-kexo-tooltips-init.js

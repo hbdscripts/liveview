@@ -269,20 +269,15 @@
   function setCompareTooltipHtml(html) {
     var el = els.compareTip;
     if (!el) return;
-    try { el.setAttribute('title', String(html || '')); } catch (_) {}
-    var inst = null;
-    try { inst = ensureTooltip(el); } catch (_) { inst = null; }
-    // Bootstrap 5.2+: setContent exists. If not, recreate.
+    var text = '';
     try {
-      if (inst && typeof inst.setContent === 'function') {
-        var obj = {};
-        obj['.tooltip-inner'] = String(html || '');
-        inst.setContent(obj);
+      if (html && typeof html === 'string') {
+        var div = document.createElement('div');
+        div.innerHTML = html;
+        text = (div.textContent || div.innerText || '').trim();
       }
-    } catch (_) {
-      try { if (inst && typeof inst.dispose === 'function') inst.dispose(); } catch (_) {}
-      try { ensureTooltip(el); } catch (_) {}
-    }
+      el.setAttribute('title', text);
+    } catch (_) {}
   }
 
   function toFiniteNumber(v) {
@@ -759,7 +754,6 @@
   function init() {
     try { bindToolsCollapsibles(); } catch (_) {}
     try { bindPinsFiltersToggle(); } catch (_) {}
-    try { if (els.compareTip) ensureTooltip(els.compareTip); } catch (_) {}
 
     attachFlatpickr(els.date, function () { updateCreateUi(); });
     attachFlatpickr(els.filterFrom, function () {});

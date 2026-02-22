@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 1c5fb729be7f6945
+// checksum: ec6a12ee7b88aa95
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -28181,6 +28181,39 @@ const API = '';
   setInterval(function () {
     fetchList().then(updateBadge);
   }, 60000);
+})();
+/**
+ * Load kexo-tooltips.js app-wide (when not already loaded, e.g. on Settings)
+ * and init tooltips + help popovers on document.body.
+ */
+(function () {
+  'use strict';
+
+  function run() {
+    if (typeof window.initKexoTooltips === 'function' && typeof window.initKexoHelpPopovers === 'function') {
+      try {
+        window.initKexoTooltips(document.body);
+        window.initKexoHelpPopovers(document.body);
+      } catch (_) {}
+      return;
+    }
+    var script = document.createElement('script');
+    script.src = '/kexo-tooltips.js';
+    script.async = false;
+    script.onload = function () {
+      try {
+        if (typeof window.initKexoTooltips === 'function') window.initKexoTooltips(document.body);
+        if (typeof window.initKexoHelpPopovers === 'function') window.initKexoHelpPopovers(document.body);
+      } catch (_) {}
+    };
+    document.head.appendChild(script);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', run);
+  } else {
+    run();
+  }
 })();
 
 })();
