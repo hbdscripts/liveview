@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 5f643e0bd25f440f
+// checksum: 48cec9c179740656
 
 (function () {
   // Shared formatters + scheduling/fetch helpers — reduces UI jank + duplicate requests.
@@ -11566,16 +11566,53 @@ const API = '';
           }
         } catch (_) {}
       } catch (_) {}
-      try { window.addEventListener('orientationchange', function() { scheduleCondensedKpiOverflowUpdate(); }); } catch (_) {}
-      try {
-        const strip = document.getElementById('kexo-condensed-kpis');
-        if (strip && typeof ResizeObserver !== 'undefined') {
+      var _condensedStripResizeObservedEl = null;
+      var _condensedKpiOverflowOrientationHandler = null;
+
+      function ensureCondensedKpiOverflowResizeObserver() {
+        try {
+          var strip = document.getElementById('kexo-condensed-kpis');
+          if (!strip) return;
+          if (typeof ResizeObserver === 'undefined') return;
+          try {
+            if (_condensedStripResizeObserver && _condensedStripResizeObservedEl === strip) return;
+          } catch (_) {}
+          try { if (_condensedStripResizeObserver && typeof _condensedStripResizeObserver.disconnect === 'function') _condensedStripResizeObserver.disconnect(); } catch (_) {}
           _condensedStripResizeObserver = new ResizeObserver(function() { scheduleCondensedKpiOverflowUpdate(); });
           _condensedStripResizeObserver.observe(strip);
+          _condensedStripResizeObservedEl = strip;
+        } catch (_) {}
+      }
+
+      try {
+        _condensedKpiOverflowOrientationHandler = function() { try { scheduleCondensedKpiOverflowUpdate(); } catch (_) {} };
+        window.addEventListener('orientationchange', _condensedKpiOverflowOrientationHandler);
+      } catch (_) {}
+
+      try { ensureCondensedKpiOverflowResizeObserver(); } catch (_) {}
+      try { scheduleCondensedKpiOverflowUpdate(); } catch (_) {}
+      try { setTimeout(function() { ensureTrafficSafeToggle(); }, 100); } catch (_) {}
+
+      try {
+        if (typeof registerCleanup === 'function') {
+          registerCleanup(function () {
+            try {
+              if (_condensedStripResizeObserver && typeof _condensedStripResizeObserver.disconnect === 'function') _condensedStripResizeObserver.disconnect();
+            } catch (_) {}
+            _condensedStripResizeObserver = null;
+            _condensedStripResizeObservedEl = null;
+          });
         }
       } catch (_) {}
-      scheduleCondensedKpiOverflowUpdate();
-      try { setTimeout(function() { ensureTrafficSafeToggle(); }, 100); } catch (_) {}
+
+      // bfcache restore: observers are disconnected on pagehide cleanup; re-wire on restore.
+      try {
+        window.addEventListener('pageshow', function (ev) {
+          if (!ev || !ev.persisted) return;
+          try { ensureCondensedKpiOverflowResizeObserver(); } catch (_) {}
+          try { scheduleCondensedKpiOverflowUpdate(); } catch (_) {}
+        });
+      } catch (_) {}
     })();
 
     function delay(ms) {
@@ -18668,6 +18705,8 @@ const API = '';
       var dashCharts = {};
       var dashSparkCharts = {};
       var dashController = null;
+      var dashProfitRulesUpdatedBound = false;
+      var dashProfitRulesUpdatedHandler = null;
       var overviewMiniResizeObserver = null;
       var overviewMiniResizeScheduled = false;
       var overviewMiniSizeSignature = '';
@@ -25451,10 +25490,23 @@ const API = '';
       // When Profit Rules are saved via the dashboard Cost Settings modal,
       // refresh the 7d overview snapshot payload (cost/revenue series depend on profit rule fingerprint).
       try {
-        window.addEventListener('kexo:profitRulesUpdated', function () {
-          try { fetchOverviewCardData('dash-chart-overview-30d', { force: true, renderIfFresh: true }); } catch (_) {}
-          try { requestDashboardWidgetsRefresh({ force: true, rangeKey: dashRangeKeyFromDateRange() }); } catch (_) {}
-        });
+        if (!dashProfitRulesUpdatedHandler) {
+          dashProfitRulesUpdatedHandler = function () {
+            // This event can fire outside the dashboard context; avoid doing any work unless the dashboard is present/active.
+            try {
+              var p = document.getElementById('tab-panel-dashboard');
+              if (!p) return;
+              var isDash = (PAGE === 'dashboard') || (p.classList && p.classList.contains('active')) || (typeof activeMainTab === 'string' && activeMainTab === 'dashboard');
+              if (!isDash) return;
+            } catch (_) {}
+            try { fetchOverviewCardData('dash-chart-overview-30d', { force: true, renderIfFresh: true }); } catch (_) {}
+            try { requestDashboardWidgetsRefresh({ force: true, rangeKey: dashRangeKeyFromDateRange() }); } catch (_) {}
+          };
+        }
+        if (!dashProfitRulesUpdatedBound) {
+          window.addEventListener('kexo:profitRulesUpdated', dashProfitRulesUpdatedHandler);
+          dashProfitRulesUpdatedBound = true;
+        }
       } catch (_) {}
 
       // Failsafe: on some post-login flows (mobile app switching, bfcache restores),

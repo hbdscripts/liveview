@@ -937,7 +937,42 @@
       });
   }
 
+  var _variantsEscKeyBound = false;
+  var _variantsEscKeyHandler = null;
+  function ensureVariantsEscKeyHandler() {
+    if (_variantsEscKeyBound) return;
+    _variantsEscKeyBound = true;
+    _variantsEscKeyHandler = function (e) {
+      if (!e || e.key !== 'Escape') return;
+      try {
+        var issuesModal = document.getElementById('variants-issues-modal');
+        if (issuesModal && issuesModal.classList && issuesModal.classList.contains('show')) {
+          closeIssuesModal();
+          return;
+        }
+      } catch (_) {}
+      try {
+        var allStatsModal = document.getElementById('variants-all-stats-modal');
+        if (allStatsModal && allStatsModal.classList && allStatsModal.classList.contains('show')) {
+          closeAllStatsModal();
+          return;
+        }
+      } catch (_) {}
+    };
+    try { document.addEventListener('keydown', _variantsEscKeyHandler); } catch (_) {}
+  }
+  function unbindVariantsEscKeyHandler() {
+    if (!_variantsEscKeyBound) return;
+    _variantsEscKeyBound = false;
+    try { if (_variantsEscKeyHandler) document.removeEventListener('keydown', _variantsEscKeyHandler); } catch (_) {}
+    _variantsEscKeyHandler = null;
+  }
+  // bfcache: rebind on restore; drop references while hidden.
+  try { window.addEventListener('pageshow', function (ev) { if (ev && ev.persisted) ensureVariantsEscKeyHandler(); }); } catch (_) {}
+  try { window.addEventListener('pagehide', function () { unbindVariantsEscKeyHandler(); }); } catch (_) {}
+
   function bindGlobalListeners() {
+    ensureVariantsEscKeyHandler();
     var root = document.getElementById('variants-tables-row');
     if (root && root.getAttribute('data-variants-issues-bound') !== '1') {
       root.setAttribute('data-variants-issues-bound', '1');
@@ -969,11 +1004,6 @@
         var closeBtn = e.target.closest ? e.target.closest('[data-close-variants-issues]') : null;
         if (closeBtn) closeIssuesModal();
       });
-      document.addEventListener('keydown', function (e) {
-        if (!e || e.key !== 'Escape') return;
-        if (!modal.classList.contains('show')) return;
-        closeIssuesModal();
-      });
     }
 
     var allStatsBtn = document.getElementById('variants-all-stats-btn');
@@ -995,11 +1025,6 @@
         }
         var closeBtn = e.target.closest ? e.target.closest('[data-close-variants-all-stats]') : null;
         if (closeBtn) closeAllStatsModal();
-      });
-      document.addEventListener('keydown', function (e) {
-        if (!e || e.key !== 'Escape') return;
-        if (!allStatsModal.classList.contains('show')) return;
-        closeAllStatsModal();
       });
     }
 

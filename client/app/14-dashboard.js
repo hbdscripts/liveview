@@ -10,6 +10,8 @@
       var dashCharts = {};
       var dashSparkCharts = {};
       var dashController = null;
+      var dashProfitRulesUpdatedBound = false;
+      var dashProfitRulesUpdatedHandler = null;
       var overviewMiniResizeObserver = null;
       var overviewMiniResizeScheduled = false;
       var overviewMiniSizeSignature = '';
@@ -6793,10 +6795,23 @@
       // When Profit Rules are saved via the dashboard Cost Settings modal,
       // refresh the 7d overview snapshot payload (cost/revenue series depend on profit rule fingerprint).
       try {
-        window.addEventListener('kexo:profitRulesUpdated', function () {
-          try { fetchOverviewCardData('dash-chart-overview-30d', { force: true, renderIfFresh: true }); } catch (_) {}
-          try { requestDashboardWidgetsRefresh({ force: true, rangeKey: dashRangeKeyFromDateRange() }); } catch (_) {}
-        });
+        if (!dashProfitRulesUpdatedHandler) {
+          dashProfitRulesUpdatedHandler = function () {
+            // This event can fire outside the dashboard context; avoid doing any work unless the dashboard is present/active.
+            try {
+              var p = document.getElementById('tab-panel-dashboard');
+              if (!p) return;
+              var isDash = (PAGE === 'dashboard') || (p.classList && p.classList.contains('active')) || (typeof activeMainTab === 'string' && activeMainTab === 'dashboard');
+              if (!isDash) return;
+            } catch (_) {}
+            try { fetchOverviewCardData('dash-chart-overview-30d', { force: true, renderIfFresh: true }); } catch (_) {}
+            try { requestDashboardWidgetsRefresh({ force: true, rangeKey: dashRangeKeyFromDateRange() }); } catch (_) {}
+          };
+        }
+        if (!dashProfitRulesUpdatedBound) {
+          window.addEventListener('kexo:profitRulesUpdated', dashProfitRulesUpdatedHandler);
+          dashProfitRulesUpdatedBound = true;
+        }
       } catch (_) {}
 
       // Failsafe: on some post-login flows (mobile app switching, bfcache restores),

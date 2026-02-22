@@ -1,13 +1,50 @@
-      try { window.addEventListener('orientationchange', function() { scheduleCondensedKpiOverflowUpdate(); }); } catch (_) {}
-      try {
-        const strip = document.getElementById('kexo-condensed-kpis');
-        if (strip && typeof ResizeObserver !== 'undefined') {
+      var _condensedStripResizeObservedEl = null;
+      var _condensedKpiOverflowOrientationHandler = null;
+
+      function ensureCondensedKpiOverflowResizeObserver() {
+        try {
+          var strip = document.getElementById('kexo-condensed-kpis');
+          if (!strip) return;
+          if (typeof ResizeObserver === 'undefined') return;
+          try {
+            if (_condensedStripResizeObserver && _condensedStripResizeObservedEl === strip) return;
+          } catch (_) {}
+          try { if (_condensedStripResizeObserver && typeof _condensedStripResizeObserver.disconnect === 'function') _condensedStripResizeObserver.disconnect(); } catch (_) {}
           _condensedStripResizeObserver = new ResizeObserver(function() { scheduleCondensedKpiOverflowUpdate(); });
           _condensedStripResizeObserver.observe(strip);
+          _condensedStripResizeObservedEl = strip;
+        } catch (_) {}
+      }
+
+      try {
+        _condensedKpiOverflowOrientationHandler = function() { try { scheduleCondensedKpiOverflowUpdate(); } catch (_) {} };
+        window.addEventListener('orientationchange', _condensedKpiOverflowOrientationHandler);
+      } catch (_) {}
+
+      try { ensureCondensedKpiOverflowResizeObserver(); } catch (_) {}
+      try { scheduleCondensedKpiOverflowUpdate(); } catch (_) {}
+      try { setTimeout(function() { ensureTrafficSafeToggle(); }, 100); } catch (_) {}
+
+      try {
+        if (typeof registerCleanup === 'function') {
+          registerCleanup(function () {
+            try {
+              if (_condensedStripResizeObserver && typeof _condensedStripResizeObserver.disconnect === 'function') _condensedStripResizeObserver.disconnect();
+            } catch (_) {}
+            _condensedStripResizeObserver = null;
+            _condensedStripResizeObservedEl = null;
+          });
         }
       } catch (_) {}
-      scheduleCondensedKpiOverflowUpdate();
-      try { setTimeout(function() { ensureTrafficSafeToggle(); }, 100); } catch (_) {}
+
+      // bfcache restore: observers are disconnected on pagehide cleanup; re-wire on restore.
+      try {
+        window.addEventListener('pageshow', function (ev) {
+          if (!ev || !ev.persisted) return;
+          try { ensureCondensedKpiOverflowResizeObserver(); } catch (_) {}
+          try { scheduleCondensedKpiOverflowUpdate(); } catch (_) {}
+        });
+      } catch (_) {}
     })();
 
     function delay(ms) {
