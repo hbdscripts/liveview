@@ -2245,7 +2245,14 @@
           if (it.suggested_fix) html += '<div class="mt-3"><div class="text-muted small mb-1">Suggested fix</div><div>' + escapeHtml(String(it.suggested_fix)) + '</div></div>';
           bodyEl.innerHTML = html || '<div class="text-muted small">—</div>';
         })
-        .catch(function () {});
+        .catch(function (err) {
+          try { console.warn('[settings] failed to load GA issue', id, err); } catch (_) {}
+          try {
+            if (window.kexoSentry && typeof window.kexoSentry.captureException === 'function') {
+              window.kexoSentry.captureException(err, { context: 'settings.googleAds.issueModal.load', issueId: id });
+            }
+          } catch (_) {}
+        });
     }
 
     function resolveCurrentIssue() {
@@ -2263,7 +2270,14 @@
             loadConversionActions();
           }
         })
-        .catch(function () {});
+        .catch(function (err) {
+          try { console.warn('[settings] failed to resolve GA issue', id, err); } catch (_) {}
+          try {
+            if (window.kexoSentry && typeof window.kexoSentry.captureException === 'function') {
+              window.kexoSentry.captureException(err, { context: 'settings.googleAds.issueModal.resolve', issueId: id });
+            }
+          } catch (_) {}
+        });
     }
 
     if (disconnectBtn) {
@@ -2694,7 +2708,14 @@
           el.value = headerLogo || '';
         });
       })
-      .catch(function () {});
+      .catch(function (err) {
+        try { console.warn('[settings] failed to load theme defaults', err); } catch (_) {}
+        try {
+          if (window.kexoSentry && typeof window.kexoSentry.captureException === 'function') {
+            window.kexoSentry.captureException(err, { context: 'settings.themeDefaults.load' }, 'warning');
+          }
+        } catch (_) {}
+      });
   }
 
   function saveSettings(payload) {

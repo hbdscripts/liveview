@@ -1,6 +1,7 @@
 <script>
 (function(){
   var dsn = {{SENTRY_DSN}};
+  if (dsn && typeof window !== 'undefined' && window.__kexoSentryInited) return;
   if (dsn && typeof Sentry !== 'undefined') {
     Sentry.init({
       dsn: dsn,
@@ -48,6 +49,7 @@
         return event;
       }
     });
+    try { if (typeof window !== 'undefined') window.__kexoSentryInited = true; } catch (_) {}
   }
 })();
 </script>

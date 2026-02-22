@@ -1328,6 +1328,6 @@ setInterval(() => {
       postbackInFlight = false;
     }
   }
-  setTimeout(() => runPostbackOnce().catch(() => {}), 60 * 1000);
-  setInterval(() => runPostbackOnce().catch(() => {}), POSTBACK_MS);
+  setTimeout(() => { runPostbackOnce(); }, 60 * 1000);
+  setInterval(() => { runPostbackOnce(); }, POSTBACK_MS);
 })();

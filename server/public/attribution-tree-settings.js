@@ -70,7 +70,15 @@
   function apiGetJson(url) {
     return fetchWithTimeout(url, { credentials: 'same-origin', cache: 'no-store' }, 25000)
       .then(function (r) { return r && r.ok ? r.json() : null; })
-      .catch(function () { return null; });
+      .catch(function (err) {
+        try { console.warn('[attribution-tree] apiGetJson failed', url, err); } catch (_) {}
+        try {
+          if (window.kexoSentry && typeof window.kexoSentry.captureException === 'function') {
+            window.kexoSentry.captureException(err, { context: 'attributionTree.apiGetJson', url: String(url || '') }, 'warning');
+          }
+        } catch (_) {}
+        return null;
+      });
   }
 
   function apiPostJson(url, payload) {
@@ -82,12 +90,28 @@
       body: JSON.stringify(payload || {}),
     }, 25000)
       .then(function (r) {
-        return r.json().catch(function () { return null; }).then(function (body) {
+        return r.json().catch(function (err) {
+          try { console.warn('[attribution-tree] apiPostJson invalid json', url, r && r.status, err); } catch (_) {}
+          try {
+            if (window.kexoSentry && typeof window.kexoSentry.captureException === 'function') {
+              window.kexoSentry.captureException(err, { context: 'attributionTree.apiPostJson.invalidJson', url: String(url || ''), status: r && r.status }, 'warning');
+            }
+          } catch (_) {}
+          return null;
+        }).then(function (body) {
           if (r && r.ok) return body;
           return { ok: false, status: r && r.status, error: (body && body.error) || (r && r.status === 403 ? 'Admin only' : 'Request failed') };
         });
       })
-      .catch(function () { return { ok: false, status: 0, error: 'Request failed' }; });
+      .catch(function (err) {
+        try { console.warn('[attribution-tree] apiPostJson failed', url, err); } catch (_) {}
+        try {
+          if (window.kexoSentry && typeof window.kexoSentry.captureException === 'function') {
+            window.kexoSentry.captureException(err, { context: 'attributionTree.apiPostJson', url: String(url || '') }, 'warning');
+          }
+        } catch (_) {}
+        return { ok: false, status: 0, error: 'Request failed' };
+      });
   }
 
   function apiPatchJson(url, payload) {
@@ -99,12 +123,28 @@
       body: JSON.stringify(payload || {}),
     }, 25000)
       .then(function (r) {
-        return r.json().catch(function () { return null; }).then(function (body) {
+        return r.json().catch(function (err) {
+          try { console.warn('[attribution-tree] apiPatchJson invalid json', url, r && r.status, err); } catch (_) {}
+          try {
+            if (window.kexoSentry && typeof window.kexoSentry.captureException === 'function') {
+              window.kexoSentry.captureException(err, { context: 'attributionTree.apiPatchJson.invalidJson', url: String(url || ''), status: r && r.status }, 'warning');
+            }
+          } catch (_) {}
+          return null;
+        }).then(function (body) {
           if (r && r.ok) return body;
           return { ok: false, status: r && r.status, error: (body && body.error) || (r && r.status === 403 ? 'Admin only' : 'Request failed') };
         });
       })
-      .catch(function () { return { ok: false, status: 0, error: 'Request failed' }; });
+      .catch(function (err) {
+        try { console.warn('[attribution-tree] apiPatchJson failed', url, err); } catch (_) {}
+        try {
+          if (window.kexoSentry && typeof window.kexoSentry.captureException === 'function') {
+            window.kexoSentry.captureException(err, { context: 'attributionTree.apiPatchJson', url: String(url || '') }, 'warning');
+          }
+        } catch (_) {}
+        return { ok: false, status: 0, error: 'Request failed' };
+      });
   }
 
   function apiDeleteJson(url) {
@@ -114,12 +154,28 @@
       cache: 'no-store',
     }, 25000)
       .then(function (r) {
-        return r.json().catch(function () { return null; }).then(function (body) {
+        return r.json().catch(function (err) {
+          try { console.warn('[attribution-tree] apiDeleteJson invalid json', url, r && r.status, err); } catch (_) {}
+          try {
+            if (window.kexoSentry && typeof window.kexoSentry.captureException === 'function') {
+              window.kexoSentry.captureException(err, { context: 'attributionTree.apiDeleteJson.invalidJson', url: String(url || ''), status: r && r.status }, 'warning');
+            }
+          } catch (_) {}
+          return null;
+        }).then(function (body) {
           if (r && r.ok) return body;
           return { ok: false, status: r && r.status, error: (body && body.error) || (r && r.status === 403 ? 'Admin only' : 'Request failed') };
         });
       })
-      .catch(function () { return { ok: false, status: 0, error: 'Request failed' }; });
+      .catch(function (err) {
+        try { console.warn('[attribution-tree] apiDeleteJson failed', url, err); } catch (_) {}
+        try {
+          if (window.kexoSentry && typeof window.kexoSentry.captureException === 'function') {
+            window.kexoSentry.captureException(err, { context: 'attributionTree.apiDeleteJson', url: String(url || '') }, 'warning');
+          }
+        } catch (_) {}
+        return { ok: false, status: 0, error: 'Request failed' };
+      });
   }
 
   function fetchConfig() {

@@ -402,17 +402,35 @@
     try { panelEl.setAttribute(SETTINGS_PANEL_NORMALISE_ATTR, '1'); } catch (_) {}
   }
 
+  function reportNormaliserError(where, err, extra) {
+    try { console.warn('[settings-normaliser]', where, err); } catch (_) {}
+    try {
+      if (window.kexoSentry && typeof window.kexoSentry.captureException === 'function') {
+        var ctx = Object.assign({ context: 'settings.normaliser.' + String(where || 'unknown') }, (extra && typeof extra === 'object') ? extra : {});
+        window.kexoSentry.captureException(err, ctx, 'warning');
+      }
+    } catch (_) {}
+  }
+
   function normaliseAllSettingsPanels(rootEl) {
     var scope = isElement(rootEl) ? rootEl : document;
     var panels = [];
-    try { panels = Array.prototype.slice.call(scope.querySelectorAll(SETTINGS_PANEL_SELECTOR)); } catch (_) { panels = []; }
-    panels.forEach(function (p) { try { normaliseSettingsPanel(p); } catch (_) {} });
+    try { panels = Array.prototype.slice.call(scope.querySelectorAll(SETTINGS_PANEL_SELECTOR)); } catch (e) { panels = []; reportNormaliserError('querySelectorAll', e, { selector: SETTINGS_PANEL_SELECTOR }); }
+    panels.forEach(function (p) {
+      try {
+        normaliseSettingsPanel(p);
+      } catch (e) {
+        reportNormaliserError('normaliseSettingsPanel', e, { panelId: (p && p.id) ? String(p.id) : '' });
+      }
+    });
     // Second pass: flatten nested wraps so no wrap contains another .settings-panel-wrap.
     panels.forEach(function (p) {
       try {
         var w = getPanelWrap(p);
         if (w) flattenNestedPanelWraps(w);
-      } catch (_) {}
+      } catch (e) {
+        reportNormaliserError('flattenNestedPanelWraps', e, { panelId: (p && p.id) ? String(p.id) : '' });
+      }
     });
   }
 
@@ -429,7 +447,13 @@
     function flush() {
       scheduled = false;
       try {
-        pending.forEach(function (p) { try { normaliseSettingsPanel(p); } catch (_) {} });
+        pending.forEach(function (p) {
+          try {
+            normaliseSettingsPanel(p);
+          } catch (e) {
+            reportNormaliserError('observer.normaliseSettingsPanel', e, { panelId: (p && p.id) ? String(p.id) : '' });
+          }
+        });
       } finally {
         pending.clear();
       }
@@ -463,10 +487,10 @@
         });
       });
     });
-    try { obs.observe(container, { childList: true, subtree: true }); } catch (_) {}
+    try { obs.observe(container, { childList: true, subtree: true }); } catch (e) { reportNormaliserError('observer.observe', e); }
     try {
       window.addEventListener('beforeunload', function () {
-        try { obs.disconnect(); } catch (_) {}
+        try { obs.disconnect(); } catch (e) { reportNormaliserError('observer.disconnect', e); }
       });
     } catch (_) {}
   }

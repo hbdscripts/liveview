@@ -202,11 +202,111 @@
     });
   }
 
+  function normalizeContext(ctx) {
+    if (!ctx) return {};
+    if (typeof ctx === 'string') return { context: ctx };
+    if (typeof ctx === 'object') return ctx;
+    return { context: String(ctx) };
+  }
+
+  function captureException(err, ctx, level) {
+    if (!hasSentry()) return false;
+    try {
+      var context = normalizeContext(ctx);
+      var msg = '';
+      try { msg = err && err.message ? String(err.message) : String(err || 'error'); } catch (_) { msg = 'error'; }
+      msg = msg.slice(0, 260);
+      var key = 'ex:' + msg + '|' + String(context && context.context ? context.context : '').slice(0, 120);
+      if (kexoDedupe(key, 15000)) return false;
+      window.Sentry.withScope(function (scope) {
+        try {
+          if (level) scope.setLevel(String(level));
+          try { scope.setTag('kexo_ctx', String(context && context.context ? context.context : '').slice(0, 80)); } catch (_) {}
+          try { scope.setExtras(context); } catch (_) {}
+        } catch (_) {}
+        try { window.Sentry.captureException(err); } catch (_) {}
+      });
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function captureMessage(message, ctx, level) {
+    if (!hasSentry()) return false;
+    try {
+      var context = normalizeContext(ctx);
+      var msg = message == null ? '' : String(message);
+      msg = msg.slice(0, 260);
+      if (!msg) return false;
+      var key = 'msg:' + msg + '|' + String(context && context.context ? context.context : '').slice(0, 120);
+      if (kexoDedupe(key, 15000)) return false;
+      window.Sentry.captureMessage(msg, {
+        level: level == null ? 'error' : String(level),
+        extra: context
+      });
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function addBreadcrumb(category, message, data) {
+    try {
+      kexoBreadcrumb(category, message, data);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function safeWrap(fn, ctx, fallback) {
+    var context = normalizeContext(ctx);
+    return function kexoSafeWrap() {
+      try {
+        return fn.apply(this, arguments);
+      } catch (err) {
+        try { if (console && console.error) console.error('[safeWrap]', (context && context.context) || 'error', err); } catch (_) {}
+        try { captureException(err, context, 'error'); } catch (_) {}
+        return fallback;
+      }
+    };
+  }
+
+  function safeAsync(fn, ctx, fallback) {
+    var context = normalizeContext(ctx);
+    try {
+      return Promise.resolve().then(function () { return fn(); }).catch(function (err) {
+        try { if (console && console.error) console.error('[safeAsync]', (context && context.context) || 'error', err); } catch (_) {}
+        try { captureException(err, context, 'error'); } catch (_) {}
+        return fallback;
+      });
+    } catch (err) {
+      try { if (console && console.error) console.error('[safeAsync]', (context && context.context) || 'error', err); } catch (_) {}
+      try { captureException(err, context, 'error'); } catch (_) {}
+      return Promise.resolve(fallback);
+    }
+  }
+
   window.kexoBreadcrumb = kexoBreadcrumb;
   window.kexoCaptureError = kexoCaptureError;
   window.kexoCaptureMessage = kexoCaptureMessage;
   window.kexoSetContext = kexoSetContext;
   window.kexoFetch = kexoFetch;
+  // Standardised helpers (server + browser API parity)
+  window.kexoCaptureException = captureException;
+  window.kexoCaptureMsg = captureMessage;
+  window.kexoAddBreadcrumb = addBreadcrumb;
+  window.kexoSafeWrap = safeWrap;
+  window.kexoSafeAsync = safeAsync;
+  window.kexoSentry = {
+    captureException: captureException,
+    captureMessage: captureMessage,
+    addBreadcrumb: addBreadcrumb,
+    safeWrap: safeWrap,
+    safeAsync: safeAsync,
+  };
+  window.KexoSentry = window.kexoSentry;
 
   (function installGlobalErrorHandlers() {
     if (typeof window === 'undefined') return;
