@@ -218,6 +218,12 @@ body[data-page="settings"] #settings-global-footer {
   justify-content: flex-start;
 }
 
+/* Tabler/Bootstrap display utilities (e.g. .d-flex) can override UA [hidden] display:none.
+   Ensure the Settings footer is truly hidden until JS explicitly shows it. */
+body[data-page="settings"] #settings-global-footer[hidden] {
+  display: none !important;
+}
+
 /* Remove grid-layout drift: charts color “grid” becomes a simple vertical stack. */
 
 /* Shared max-width helpers used by Settings renderers (avoid inline styles). */
