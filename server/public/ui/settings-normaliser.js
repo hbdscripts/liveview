@@ -339,6 +339,10 @@
     if (!wrap || !wrap.querySelectorAll) return;
     try {
       wrap.querySelectorAll('.form-hint.settings-readonly-hint').forEach(function (el) {
+        // Only remove orphaned hints. Keep hints that are still next to a field we marked
+        // (data-settings-ui-ro="1") to avoid a mutation loop: remove → observer → normalise → remove → …
+        var prev = el.previousElementSibling;
+        if (prev && prev.getAttribute && prev.getAttribute('data-settings-ui-ro') === '1') return;
         try { el.parentNode && el.parentNode.removeChild(el); } catch (_) {}
       });
     } catch (_) {}
