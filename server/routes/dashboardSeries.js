@@ -117,10 +117,13 @@ function nudgeTruthWarmupDetached(shop, startMs, endMs, scopeKey) {
 }
 
 function sessionFilterForTraffic(trafficMode) {
+  const botSql = ' AND (s.cf_known_bot IS NULL OR s.cf_known_bot = 0)';
+  const fraudSql = " AND NOT EXISTS (SELECT 1 FROM fraud_evaluations fe WHERE fe.entity_type = 'session' AND fe.entity_id = s.session_id AND fe.triggered = 1)";
+  if (trafficMode === 'human_safe') {
+    return { sql: botSql + fraudSql, params: [] };
+  }
   if (trafficMode === 'human_only') {
-    return config.dbUrl
-      ? { sql: ' AND (s.cf_known_bot IS NULL OR s.cf_known_bot = 0)', params: [] }
-      : { sql: ' AND (s.cf_known_bot IS NULL OR s.cf_known_bot = 0)', params: [] };
+    return { sql: botSql, params: [] };
   }
   return { sql: '', params: [] };
 }
@@ -786,7 +789,8 @@ async function getDashboardSeries(req, res) {
   const daysRaw = parseInt(req.query.days, 10);
   const days = Number.isFinite(daysRaw) && daysRaw > 0 && daysRaw <= 90 ? daysRaw : 7;
   const force = !!(req.query.force === '1' || req.query.force === 'true' || req.query._);
-  const trafficMode = 'human_only';
+  const trafficParam = typeof req.query.traffic === 'string' ? req.query.traffic.trim().toLowerCase() : '';
+  const trafficMode = trafficParam === 'safe' ? 'human_safe' : 'human_only';
   const trendingPresetRaw = (typeof req.query.trendingPreset === 'string' ? req.query.trendingPreset : '').trim().toLowerCase();
   const trendingPreset = ['today', 'yesterday', '3d', '7d', '14d'].indexOf(trendingPresetRaw) >= 0 ? trendingPresetRaw : null;
   const trendingDaysRaw = parseInt(req.query.trendingDays, 10);

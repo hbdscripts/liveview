@@ -439,7 +439,7 @@
         if (fresh) return Promise.resolve(dashCompareSeriesCache);
         if (dashCompareSeriesInFlight && dashCompareRangeKey === cacheKey) return dashCompareSeriesInFlight;
         dashCompareRangeKey = cacheKey;
-        var url = API + '/api/dashboard-series?range=' + encodeURIComponent(compareRangeKey);
+        var url = API + '/api/dashboard-series?range=' + encodeURIComponent(compareRangeKey) + (typeof window.kexoGetTrafficQuerySuffix === 'function' ? window.kexoGetTrafficQuerySuffix() : '');
         if (endMsRounded != null) url += '&endMs=' + encodeURIComponent(String(endMsRounded));
         dashCompareSeriesInFlight = fetchWithTimeout(url, { credentials: 'same-origin', cache: 'default' }, 20000)
           .then(function(r) { return (r && r.ok) ? r.json() : null; })
@@ -5013,7 +5013,7 @@
             try { build.finish(); } catch (_) {}
           }, 35000);
         }
-        var url = API + '/api/dashboard-series?range=' + encodeURIComponent(rangeKey) + '&trendingPreset=' + encodeURIComponent(trendingPresetAtStart) + (force ? ('&force=1&_=' + Date.now()) : '');
+        var url = API + '/api/dashboard-series?range=' + encodeURIComponent(rangeKey) + '&trendingPreset=' + encodeURIComponent(trendingPresetAtStart) + (typeof window.kexoGetTrafficQuerySuffix === 'function' ? window.kexoGetTrafficQuerySuffix() : '') + (force ? ('&force=1&_=' + Date.now()) : '');
         var forceMini = !!force;
         if (silent && forceMini && String(reason || '').trim().toLowerCase() !== 'new-sale') {
           var miniAgeMs = overviewMiniFetchedAt ? (Date.now() - overviewMiniFetchedAt) : Number.POSITIVE_INFINITY;

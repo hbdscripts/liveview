@@ -24,6 +24,25 @@ function trimStr(v, maxLen = 2048) {
   return s.length > maxLen ? s.slice(0, maxLen) : s;
 }
 
+/** Privacy-safe IP prefix: IPv4 /24 or IPv6 /64 (never raw IP). */
+function ipPrefixFromIp(ip) {
+  const raw = trimStr(ip, 128);
+  if (!raw) return null;
+  if (raw.indexOf(':') !== -1) {
+    const parts = raw.split(':').filter(Boolean);
+    if (parts.length < 4) return null;
+    return parts.slice(0, 4).join(':') + '::/64';
+  }
+  const m = raw.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (!m) return null;
+  const a = Number(m[1]);
+  const b = Number(m[2]);
+  const c = Number(m[3]);
+  const d = Number(m[4]);
+  if (![a, b, c, d].every((n) => Number.isFinite(n) && n >= 0 && n <= 255)) return null;
+  return `${a}.${b}.${c}.0/24`;
+}
+
 function safeUrlParams(url) {
   if (typeof url !== 'string') return null;
   const raw = url.trim();
@@ -111,6 +130,15 @@ function hmacHex(secret, value) {
   } catch (_) {
     return null;
   }
+}
+
+/** Compute privacy-safe hashes/prefix from request (for fraud when attribution row missing). */
+function computeRequestHashes(clientIp, userAgent) {
+  const salt = (config.fraudIpSalt || '').trim();
+  const ipHash = hmacHex(salt, trimStr(clientIp, 128)) || null;
+  const uaHash = hmacHex(salt, trimStr(userAgent, 512)) || null;
+  const ipPrefix = ipPrefixFromIp(clientIp);
+  return { ip_hash: ipHash, ua_hash: uaHash, ip_prefix: ipPrefix };
 }
 
 function objectFromParams(params, keys) {
@@ -253,6 +281,7 @@ async function upsertFromIngest({
   const salt = config.fraudIpSalt || '';
   const ipHash = hmacHex(salt, trimStr(clientIp, 128)) || null;
   const uaHash = hmacHex(salt, trimStr(userAgent, 512)) || null;
+  const ipPrefix = ipPrefixFromIp(clientIp);
 
   const landingUrl = sanitizeUrlForEvidence(firstUrlRaw || currentUrlRaw, keepParams);
   const referrer = sanitizeUrlForEvidence(trimStr(payload && payload.referrer, 2048), keepParams);
@@ -281,15 +310,15 @@ async function upsertFromIngest({
          utm_source, utm_medium, utm_campaign, utm_content, utm_term,
          paid_click_ids_json, affiliate_click_ids_json,
          affiliate_network_hint, affiliate_id_hint,
-         landing_url, referrer, ip_hash, ua_hash,
+         landing_url, referrer, ip_hash, ua_hash, ip_prefix,
          last_seen_at, last_seen_json, evidence_version, updated_at)
       VALUES
         (?, ?, ?, ?,
          ?, ?, ?, ?, ?,
          ?, ?,
          ?, ?,
-         ?, ?, ?, ?,
-         ?, ?, ?, ?)
+         ?, ?, ?, ?, ?,
+         ?, ?, ?, ?, ?)
       `,
       [
         sid,
@@ -309,6 +338,7 @@ async function upsertFromIngest({
         referrer || null,
         ipHash,
         uaHash,
+        ipPrefix || null,
         null,
         null,
         'v1',
@@ -368,5 +398,7 @@ module.exports = {
   safeUrlParams,
   hasAny,
   upsertFromIngest,
+  computeRequestHashes,
+  ipPrefixFromIp,
 };
 

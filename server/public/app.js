@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: ed495961957692f8
+// checksum: d4b60a6283264ce6
 
 (function () {
   // Shared formatters + scheduling/fetch helpers — reduces UI jank + duplicate requests.
@@ -3546,21 +3546,37 @@ const API = '';
     }
 
     var liveComplianceMarkersCache = {};
-    function getComplianceCellHtmlFromState(hasSale, hasEval, triggered, score) {
+    function riskBandFromScore(score, triggered) {
+      if (triggered) return 'high';
+      if (score == null || !Number.isFinite(score)) return 'low';
+      var s = Number(score);
+      if (s >= 85) return 'high';
+      if (s >= 60) return 'medium';
+      return 'low';
+    }
+    function getComplianceCellHtmlFromState(hasSale, hasEval, triggered, score, sessionId) {
       var scoreText = (typeof score === 'number' && Number.isFinite(score)) ? String(Math.trunc(score)) : '';
+      var band = hasEval ? riskBandFromScore(score, triggered) : '';
       var title = hasEval
-        ? (triggered
-          ? ('Compliance warning' + (scoreText ? (' (score ' + scoreText + ')') : ''))
-          : ('Compliance passed' + (scoreText ? (' (score ' + scoreText + ')') : '')))
+        ? (band === 'high'
+          ? ('High risk' + (scoreText ? (' (score ' + scoreText + ')') : ''))
+          : band === 'medium'
+            ? ('Medium risk' + (scoreText ? (' (score ' + scoreText + ')') : ''))
+            : ('Low risk' + (scoreText ? (' (score ' + scoreText + ')') : '')))
         : 'Compliance';
       var saleIcon = hasSale
         ? '<i class="fa-solid fa-sterling-sign compliance-sale-icon" data-icon-key="table-icon-converted-sale" aria-hidden="true"></i>'
         : '';
       var statusIcon = '';
       if (hasEval) {
-        statusIcon = triggered
-          ? '<i class="fa-light fa-triangle-exclamation compliance-status-icon is-warn" data-icon-key="table-icon-compliance-warning" aria-hidden="true"></i>'
-          : '<i class="fa-light fa-circle-check compliance-status-icon is-ok" data-icon-key="table-icon-compliance-check" aria-hidden="true"></i>';
+        var iconClass = 'compliance-status-icon';
+        if (band === 'high') iconClass += ' is-warn';
+        else if (band === 'medium') iconClass += ' is-medium';
+        else iconClass += ' is-ok';
+        var fraudAttrs = (sessionId != null && sessionId !== '')
+          ? ' data-fraud-open="1" data-fraud-entity-type="session" data-fraud-entity-id="' + escapeHtml(String(sessionId)) + '" role="button" tabindex="0" class="compliance-status-clickable"'
+          : '';
+        statusIcon = '<span' + fraudAttrs + '><i class="fa-light ' + (band === 'high' ? 'fa-triangle-exclamation' : band === 'medium' ? 'fa-circle-exclamation' : 'fa-circle-check') + ' ' + iconClass + '" data-icon-key="table-icon-compliance-' + band + '" aria-hidden="true"></i></span>';
       } else {
         statusIcon = '<i class="fa-light fa-magnifying-glass compliance-status-icon is-search" data-icon-key="table-icon-compliance-search" aria-hidden="true"></i>';
       }
@@ -3637,7 +3653,7 @@ const API = '';
       const hasEval = cached ? !!cached.hasEval : false;
       const triggered = cached ? !!cached.triggered : false;
       const score = (cached && cached.score != null) ? Number(cached.score) : null;
-      const complianceCellHtml = getComplianceCellHtmlFromState(!!s.has_purchased, hasEval, triggered, score);
+      const complianceCellHtml = getComplianceCellHtmlFromState(!!s.has_purchased, hasEval, triggered, score, s.session_id);
       const fromCell = flagImg(countryCode);
       let consentDebug = '';
       if (s && s.meta_json) {
@@ -3980,7 +3996,7 @@ const API = '';
       var sid = sessionId != null ? String(sessionId) : '';
       if (!sid) return '';
       var opts = options && typeof options === 'object' ? options : {};
-      return getComplianceCellHtmlFromState(!!opts.hasSale, !!opts.hasEval, !!opts.triggered, opts.score != null ? Number(opts.score) : null);
+      return getComplianceCellHtmlFromState(!!opts.hasSale, !!opts.hasEval, !!opts.triggered, opts.score != null ? Number(opts.score) : null, opts.sessionId != null ? String(opts.sessionId) : sid);
     }
 
     function refreshComplianceMarkersForSessionsTable() {
@@ -4013,7 +4029,7 @@ const API = '';
           var sig = (hasSale ? '1' : '0') + '|' + (hasEval ? '1' : '0') + '|' + (triggered ? '1' : '0') + '|' + (score != null && Number.isFinite(score) ? String(Math.trunc(score)) : '');
           if (cell.getAttribute('data-compliance-sig') === sig) return;
           try { cell.setAttribute('data-compliance-sig', sig); } catch (_) {}
-          cell.innerHTML = complianceCellHtml(sid, { hasSale: hasSale, hasEval: hasEval, triggered: triggered, score: score });
+          cell.innerHTML = complianceCellHtml(sid, { hasSale: hasSale, hasEval: hasEval, triggered: triggered, score: score, sessionId: sid });
         });
       }).catch(function(err) {
         try { if (typeof window.kexoCaptureError === 'function') window.kexoCaptureError(err, { context: 'complianceMarkersRefresh', page: (document.body && document.body.getAttribute('data-page')) || '' }); } catch (_) {}
@@ -4035,7 +4051,11 @@ const API = '';
           if (!slot) return;
           var m = markers && markers[sid] ? markers[sid] : null;
           var triggered = !!(m && m.triggered === true);
-          slot.innerHTML = triggered ? buildFraudAlertIconHtml('session', sid, m) : '';
+          var score = m && m.score != null ? Number(m.score) : null;
+          var highRisk = triggered || (Number.isFinite(score) && score >= 85);
+          var mediumRisk = !highRisk && Number.isFinite(score) && score >= 60;
+          var showCue = highRisk || mediumRisk;
+          slot.innerHTML = showCue ? buildFraudAlertIconHtml('session', sid, m) : '';
         });
       }).catch(function(err) {
         try { if (typeof window.kexoCaptureError === 'function') window.kexoCaptureError(err, { context: 'latestSalesFraudMarkersRefresh', page: (document.body && document.body.getAttribute('data-page')) || '' }); } catch (_) {}
@@ -4278,15 +4298,19 @@ const API = '';
       if (fraudUiBound) return;
       fraudUiBound = true;
       try {
+        function handleFraudOpenClick(openEl) {
+          if (!openEl) return;
+          var et = openEl.getAttribute('data-fraud-entity-type') || 'session';
+          var eid = openEl.getAttribute('data-fraud-entity-id') || '';
+          openFraudDetailModal(et, eid);
+        }
         document.addEventListener('click', function(e) {
           var target = e && e.target ? e.target : null;
           var openEl = target && target.closest ? target.closest('[data-fraud-open]') : null;
           if (openEl) {
             try { e.preventDefault(); } catch (_) {}
             try { e.stopPropagation(); } catch (_) {}
-            var et = openEl.getAttribute('data-fraud-entity-type') || 'session';
-            var eid = openEl.getAttribute('data-fraud-entity-id') || '';
-            openFraudDetailModal(et, eid);
+            handleFraudOpenClick(openEl);
             return;
           }
           var closeEl = target && target.closest ? target.closest('[data-fraud-close]') : null;
@@ -4315,6 +4339,15 @@ const API = '';
                 navigator.clipboard.writeText(txt).catch(function() {});
               }
             } catch (_) {}
+          }
+        }, true);
+        document.addEventListener('keydown', function(e) {
+          var target = e && e.target ? e.target : null;
+          var openEl = target && target.closest ? target.closest('[data-fraud-open]') : null;
+          if (openEl && (e.key === 'Enter' || e.key === ' ')) {
+            try { e.preventDefault(); } catch (_) {}
+            try { e.stopPropagation(); } catch (_) {}
+            handleFraudOpenClick(openEl);
           }
         }, true);
       } catch (_) {}
@@ -9292,7 +9325,7 @@ const API = '';
         return Promise.resolve(sparklineHistorySeriesCache);
       }
       if (sparklineHistorySeriesInFlight) return sparklineHistorySeriesInFlight;
-      sparklineHistorySeriesInFlight = fetchWithTimeout(API + '/api/dashboard-series?range=' + encodeURIComponent(fallbackRange), { credentials: 'same-origin', cache: 'default' }, 15000)
+      sparklineHistorySeriesInFlight = fetchWithTimeout(API + '/api/dashboard-series?range=' + encodeURIComponent(fallbackRange) + (typeof window.kexoGetTrafficQuerySuffix === 'function' ? window.kexoGetTrafficQuerySuffix() : ''), { credentials: 'same-origin', cache: 'default' }, 15000)
         .then(function(r) { return r && r.ok ? r.json() : null; })
         .then(function(data) {
           var s = data && Array.isArray(data.series) ? data.series : [];
@@ -9395,7 +9428,7 @@ const API = '';
         renderCondensedSparklines(condensedSeriesCache);
         return;
       }
-      fetchWithTimeout(API + '/api/dashboard-series?range=' + encodeURIComponent(rangeKey), { credentials: 'same-origin', cache: 'default' }, 15000)
+      fetchWithTimeout(API + '/api/dashboard-series?range=' + encodeURIComponent(rangeKey) + (typeof window.kexoGetTrafficQuerySuffix === 'function' ? window.kexoGetTrafficQuerySuffix() : ''), { credentials: 'same-origin', cache: 'default' }, 15000)
         .then(function(r) { return r && r.ok ? r.json() : null; })
         .then(function(data) {
           var s = data && data.series ? data.series : null;
@@ -9630,7 +9663,7 @@ const API = '';
     function fetchKpisForRangeKey(rangeKey) {
       rangeKey = (rangeKey == null ? '' : String(rangeKey)).trim().toLowerCase();
       if (!rangeKey) rangeKey = 'today';
-      const url = API + '/api/kpis?range=' + encodeURIComponent(rangeKey);
+      const url = API + '/api/kpis?range=' + encodeURIComponent(rangeKey) + (typeof window.kexoGetTrafficQuerySuffix === 'function' ? window.kexoGetTrafficQuerySuffix() : '');
       return fetchWithTimeout(url, { credentials: 'same-origin', cache: 'no-store' }, 25000)
         .then(function(r) {
           if (!r || !r.ok) throw new Error('KPIs HTTP ' + (r ? r.status : '0'));
@@ -11528,6 +11561,7 @@ const API = '';
         }
       } catch (_) {}
       scheduleCondensedKpiOverflowUpdate();
+      try { setTimeout(function() { ensureTrafficSafeToggle(); }, 100); } catch (_) {}
     })();
 
     function delay(ms) {
@@ -11806,9 +11840,61 @@ const API = '';
       return { step: step, title: title, finish: finish };
     }
 
+    const KPI_TRAFFIC_SAFE_LS_KEY = 'kexo_traffic_safe';
+    function getTrafficSafe() {
+      try {
+        const v = localStorage.getItem(KPI_TRAFFIC_SAFE_LS_KEY);
+        return v === '1' || v === 'true';
+      } catch (_) { return false; }
+    }
+    function setTrafficSafe(on) {
+      try { localStorage.setItem(KPI_TRAFFIC_SAFE_LS_KEY, on ? '1' : '0'); } catch (_) {}
+      try { window.dispatchEvent(new CustomEvent('kexo:traffic-safe-changed', { detail: { trafficSafe: !!on } })); } catch (_) {}
+    }
+    function getTrafficQuerySuffix() {
+      return getTrafficSafe() ? '&traffic=safe' : '';
+    }
+    try {
+      window.kexoGetTrafficQuerySuffix = getTrafficQuerySuffix;
+      window.kexoGetTrafficSafe = getTrafficSafe;
+      window.kexoSetTrafficSafe = setTrafficSafe;
+    } catch (_) {}
+
+    function ensureTrafficSafeToggle() {
+      const row = document.getElementById('kexo-kpis-condensed-row');
+      if (!row) return;
+      let wrap = document.getElementById('kexo-traffic-safe-toggle-wrap');
+      if (wrap) {
+        const cb = wrap.querySelector('input[type="checkbox"]');
+        if (cb) cb.checked = getTrafficSafe();
+        return;
+      }
+      wrap = document.createElement('div');
+      wrap.id = 'kexo-traffic-safe-toggle-wrap';
+      wrap.className = 'kexo-traffic-safe-toggle d-flex align-items-center ms-2';
+      const label = document.createElement('label');
+      label.className = 'form-check form-check-inline mb-0 small text-secondary';
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.className = 'form-check-input';
+      cb.checked = getTrafficSafe();
+      cb.setAttribute('aria-label', 'Exclude high-risk traffic from KPIs and charts');
+      label.appendChild(cb);
+      label.appendChild(document.createTextNode(' Exclude high-risk'));
+      wrap.appendChild(label);
+      row.appendChild(wrap);
+      cb.addEventListener('change', function() {
+        setTrafficSafe(cb.checked);
+        refreshKpis({ force: true }).catch(function() {});
+        fetchStatsData({ force: true }).catch(function() {});
+        if (typeof refreshSessionsOverviewChart === 'function') refreshSessionsOverviewChart({ force: true }).catch(function() {});
+        try { if (typeof window.refreshDashboard === 'function') window.refreshDashboard({ force: true, silent: true }); } catch (_) {}
+      });
+    }
+
     function fetchStatsData(options = {}) {
       const force = !!options.force;
-      let url = API + '/api/stats?range=' + encodeURIComponent(getStatsRange());
+      let url = API + '/api/stats?range=' + encodeURIComponent(getStatsRange()) + getTrafficQuerySuffix();
       if (force) url += (url.indexOf('?') >= 0 ? '&' : '?') + '_=' + Date.now();
       const cacheMode = force ? 'no-store' : 'default';
       return fetchWithTimeout(url, { credentials: 'same-origin', cache: cacheMode }, 30000)
@@ -11926,7 +12012,7 @@ const API = '';
 
     function fetchKpisData(options = {}) {
       const force = !!options.force;
-      let url = API + '/api/kpis?range=' + encodeURIComponent(getStatsRange());
+      let url = API + '/api/kpis?range=' + encodeURIComponent(getStatsRange()) + getTrafficQuerySuffix();
       if (force) url += (url.indexOf('?') >= 0 ? '&' : '?') + 'force=1';
       return fetchWithTimeout(url, { credentials: 'same-origin', cache: 'no-store' }, 25000)
         .then(function(r) {
@@ -13893,7 +13979,7 @@ const API = '';
       var cacheKey = (PAGE || 'page') + '|' + rangeKey;
       if (!force && rangeOverviewChart && rangeOverviewChartKey === cacheKey) return Promise.resolve(null);
       if (rangeOverviewChartInFlight) return rangeOverviewChartInFlight;
-      var url = API + '/api/dashboard-series?range=' + encodeURIComponent(rangeKey) + (force ? ('&force=1&_=' + Date.now()) : '');
+      var url = API + '/api/dashboard-series?range=' + encodeURIComponent(rangeKey) + getTrafficQuerySuffix() + (force ? ('&force=1&_=' + Date.now()) : '');
       rangeOverviewChartInFlight = fetchWithTimeout(url, { credentials: 'same-origin', cache: force ? 'no-store' : 'default' }, 20000)
         .then(function(r) { return (r && r.ok) ? r.json() : null; })
         .then(function(data) {
@@ -18935,7 +19021,7 @@ const API = '';
         if (fresh) return Promise.resolve(dashCompareSeriesCache);
         if (dashCompareSeriesInFlight && dashCompareRangeKey === cacheKey) return dashCompareSeriesInFlight;
         dashCompareRangeKey = cacheKey;
-        var url = API + '/api/dashboard-series?range=' + encodeURIComponent(compareRangeKey);
+        var url = API + '/api/dashboard-series?range=' + encodeURIComponent(compareRangeKey) + (typeof window.kexoGetTrafficQuerySuffix === 'function' ? window.kexoGetTrafficQuerySuffix() : '');
         if (endMsRounded != null) url += '&endMs=' + encodeURIComponent(String(endMsRounded));
         dashCompareSeriesInFlight = fetchWithTimeout(url, { credentials: 'same-origin', cache: 'default' }, 20000)
           .then(function(r) { return (r && r.ok) ? r.json() : null; })
@@ -23509,7 +23595,7 @@ const API = '';
             try { build.finish(); } catch (_) {}
           }, 35000);
         }
-        var url = API + '/api/dashboard-series?range=' + encodeURIComponent(rangeKey) + '&trendingPreset=' + encodeURIComponent(trendingPresetAtStart) + (force ? ('&force=1&_=' + Date.now()) : '');
+        var url = API + '/api/dashboard-series?range=' + encodeURIComponent(rangeKey) + '&trendingPreset=' + encodeURIComponent(trendingPresetAtStart) + (typeof window.kexoGetTrafficQuerySuffix === 'function' ? window.kexoGetTrafficQuerySuffix() : '') + (force ? ('&force=1&_=' + Date.now()) : '');
         var forceMini = !!force;
         if (silent && forceMini && String(reason || '').trim().toLowerCase() !== 'new-sale') {
           var miniAgeMs = overviewMiniFetchedAt ? (Date.now() - overviewMiniFetchedAt) : Number.POSITIVE_INFINITY;

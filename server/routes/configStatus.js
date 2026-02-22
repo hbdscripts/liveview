@@ -849,6 +849,50 @@ async function configStatus(req, res, next) {
     adsStatus = { ok: false, error: err && err.message ? String(err.message).slice(0, 220) : 'ads_status_failed' };
   }
 
+  // --- Fraud / attribution health (diagnose why markers rarely appear) ---
+  const last7dStart = now - 7 * 24 * 60 * 60 * 1000;
+  const fraudHealth = {
+    tablesPresent: {
+      fraud_evaluations: tables.fraud_evaluations,
+      affiliate_attribution_sessions: tables.affiliate_attribution_sessions,
+    },
+    fraudIpSaltConfigured: !!(config.fraudIpSalt && String(config.fraudIpSalt).trim()),
+    evals24h: null,
+    evals7d: null,
+    triggered24h: null,
+    triggered7d: null,
+    pctTriggered24h: null,
+    pctTriggered7d: null,
+  };
+  if (tables.fraud_evaluations) {
+    try {
+      const ph = isPostgres() ? '$1' : '?';
+      const r24 = await db.get(
+        `SELECT COUNT(*) AS n, SUM(CASE WHEN triggered = 1 THEN 1 ELSE 0 END) AS triggered FROM fraud_evaluations WHERE entity_type = 'session' AND created_at >= ${ph}`,
+        [last24hStart]
+      );
+      fraudHealth.evals24h = num(r24?.n) ?? 0;
+      fraudHealth.triggered24h = num(r24?.triggered) ?? 0;
+      fraudHealth.pctTriggered24h =
+        fraudHealth.evals24h > 0 && fraudHealth.triggered24h != null
+          ? Math.round((fraudHealth.triggered24h / fraudHealth.evals24h) * 1000) / 10
+          : null;
+    } catch (_) {}
+    try {
+      const ph = isPostgres() ? '$1' : '?';
+      const r7 = await db.get(
+        `SELECT COUNT(*) AS n, SUM(CASE WHEN triggered = 1 THEN 1 ELSE 0 END) AS triggered FROM fraud_evaluations WHERE entity_type = 'session' AND created_at >= ${ph}`,
+        [last7dStart]
+      );
+      fraudHealth.evals7d = num(r7?.n) ?? 0;
+      fraudHealth.triggered7d = num(r7?.triggered) ?? 0;
+      fraudHealth.pctTriggered7d =
+        fraudHealth.evals7d > 0 && fraudHealth.triggered7d != null
+          ? Math.round((fraudHealth.triggered7d / fraudHealth.evals7d) * 1000) / 10
+          : null;
+    } catch (_) {}
+  }
+
   const configDisplay = {
     shopifyAppUrl: (config.shopify.appUrl || '').replace(/\/$/, ''),
     adminTimezone: timeZone,
@@ -928,6 +972,7 @@ async function configStatus(req, res, next) {
       googleAdsApiVersion: config.googleAdsApiVersion || '',
       googleAdsOAuthEnabled: !!config.googleAdsOAuthEnabled,
     },
+    fraud: fraudHealth,
     trackerDefinitions,
   });
 }

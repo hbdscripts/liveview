@@ -1564,12 +1564,16 @@ async function getSessionEvents(sessionId, limit = 20) {
   }));
 }
 
-/** When trafficMode is human_only, exclude sessions with cf_known_bot = 1. No bot score used. */
+/** When trafficMode is human_only, exclude sessions with cf_known_bot = 1.
+ *  When human_safe, same as human_only plus exclude sessions with fraud_evaluations (entity_type=session) triggered=1. */
 function sessionFilterForTraffic(trafficMode) {
+  const botSql = ' AND (sessions.cf_known_bot IS NULL OR sessions.cf_known_bot = 0)';
+  const fraudSql = " AND NOT EXISTS (SELECT 1 FROM fraud_evaluations fe WHERE fe.entity_type = 'session' AND fe.entity_id = sessions.session_id AND fe.triggered = 1)";
+  if (trafficMode === 'human_safe') {
+    return { sql: botSql + fraudSql, params: [] };
+  }
   if (trafficMode === 'human_only') {
-    return config.dbUrl
-      ? { sql: ' AND (sessions.cf_known_bot IS NULL OR sessions.cf_known_bot = 0)', params: [] }
-      : { sql: ' AND (sessions.cf_known_bot IS NULL OR sessions.cf_known_bot = 0)', params: [] };
+    return { sql: botSql, params: [] };
   }
   return { sql: '', params: [] };
 }

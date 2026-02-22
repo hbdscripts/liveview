@@ -1567,21 +1567,37 @@
     }
 
     var liveComplianceMarkersCache = {};
-    function getComplianceCellHtmlFromState(hasSale, hasEval, triggered, score) {
+    function riskBandFromScore(score, triggered) {
+      if (triggered) return 'high';
+      if (score == null || !Number.isFinite(score)) return 'low';
+      var s = Number(score);
+      if (s >= 85) return 'high';
+      if (s >= 60) return 'medium';
+      return 'low';
+    }
+    function getComplianceCellHtmlFromState(hasSale, hasEval, triggered, score, sessionId) {
       var scoreText = (typeof score === 'number' && Number.isFinite(score)) ? String(Math.trunc(score)) : '';
+      var band = hasEval ? riskBandFromScore(score, triggered) : '';
       var title = hasEval
-        ? (triggered
-          ? ('Compliance warning' + (scoreText ? (' (score ' + scoreText + ')') : ''))
-          : ('Compliance passed' + (scoreText ? (' (score ' + scoreText + ')') : '')))
+        ? (band === 'high'
+          ? ('High risk' + (scoreText ? (' (score ' + scoreText + ')') : ''))
+          : band === 'medium'
+            ? ('Medium risk' + (scoreText ? (' (score ' + scoreText + ')') : ''))
+            : ('Low risk' + (scoreText ? (' (score ' + scoreText + ')') : '')))
         : 'Compliance';
       var saleIcon = hasSale
         ? '<i class="fa-solid fa-sterling-sign compliance-sale-icon" data-icon-key="table-icon-converted-sale" aria-hidden="true"></i>'
         : '';
       var statusIcon = '';
       if (hasEval) {
-        statusIcon = triggered
-          ? '<i class="fa-light fa-triangle-exclamation compliance-status-icon is-warn" data-icon-key="table-icon-compliance-warning" aria-hidden="true"></i>'
-          : '<i class="fa-light fa-circle-check compliance-status-icon is-ok" data-icon-key="table-icon-compliance-check" aria-hidden="true"></i>';
+        var iconClass = 'compliance-status-icon';
+        if (band === 'high') iconClass += ' is-warn';
+        else if (band === 'medium') iconClass += ' is-medium';
+        else iconClass += ' is-ok';
+        var fraudAttrs = (sessionId != null && sessionId !== '')
+          ? ' data-fraud-open="1" data-fraud-entity-type="session" data-fraud-entity-id="' + escapeHtml(String(sessionId)) + '" role="button" tabindex="0" class="compliance-status-clickable"'
+          : '';
+        statusIcon = '<span' + fraudAttrs + '><i class="fa-light ' + (band === 'high' ? 'fa-triangle-exclamation' : band === 'medium' ? 'fa-circle-exclamation' : 'fa-circle-check') + ' ' + iconClass + '" data-icon-key="table-icon-compliance-' + band + '" aria-hidden="true"></i></span>';
       } else {
         statusIcon = '<i class="fa-light fa-magnifying-glass compliance-status-icon is-search" data-icon-key="table-icon-compliance-search" aria-hidden="true"></i>';
       }
@@ -1658,7 +1674,7 @@
       const hasEval = cached ? !!cached.hasEval : false;
       const triggered = cached ? !!cached.triggered : false;
       const score = (cached && cached.score != null) ? Number(cached.score) : null;
-      const complianceCellHtml = getComplianceCellHtmlFromState(!!s.has_purchased, hasEval, triggered, score);
+      const complianceCellHtml = getComplianceCellHtmlFromState(!!s.has_purchased, hasEval, triggered, score, s.session_id);
       const fromCell = flagImg(countryCode);
       let consentDebug = '';
       if (s && s.meta_json) {
@@ -2001,7 +2017,7 @@
       var sid = sessionId != null ? String(sessionId) : '';
       if (!sid) return '';
       var opts = options && typeof options === 'object' ? options : {};
-      return getComplianceCellHtmlFromState(!!opts.hasSale, !!opts.hasEval, !!opts.triggered, opts.score != null ? Number(opts.score) : null);
+      return getComplianceCellHtmlFromState(!!opts.hasSale, !!opts.hasEval, !!opts.triggered, opts.score != null ? Number(opts.score) : null, opts.sessionId != null ? String(opts.sessionId) : sid);
     }
 
     function refreshComplianceMarkersForSessionsTable() {
@@ -2034,7 +2050,7 @@
           var sig = (hasSale ? '1' : '0') + '|' + (hasEval ? '1' : '0') + '|' + (triggered ? '1' : '0') + '|' + (score != null && Number.isFinite(score) ? String(Math.trunc(score)) : '');
           if (cell.getAttribute('data-compliance-sig') === sig) return;
           try { cell.setAttribute('data-compliance-sig', sig); } catch (_) {}
-          cell.innerHTML = complianceCellHtml(sid, { hasSale: hasSale, hasEval: hasEval, triggered: triggered, score: score });
+          cell.innerHTML = complianceCellHtml(sid, { hasSale: hasSale, hasEval: hasEval, triggered: triggered, score: score, sessionId: sid });
         });
       }).catch(function(err) {
         try { if (typeof window.kexoCaptureError === 'function') window.kexoCaptureError(err, { context: 'complianceMarkersRefresh', page: (document.body && document.body.getAttribute('data-page')) || '' }); } catch (_) {}
@@ -2056,7 +2072,11 @@
           if (!slot) return;
           var m = markers && markers[sid] ? markers[sid] : null;
           var triggered = !!(m && m.triggered === true);
-          slot.innerHTML = triggered ? buildFraudAlertIconHtml('session', sid, m) : '';
+          var score = m && m.score != null ? Number(m.score) : null;
+          var highRisk = triggered || (Number.isFinite(score) && score >= 85);
+          var mediumRisk = !highRisk && Number.isFinite(score) && score >= 60;
+          var showCue = highRisk || mediumRisk;
+          slot.innerHTML = showCue ? buildFraudAlertIconHtml('session', sid, m) : '';
         });
       }).catch(function(err) {
         try { if (typeof window.kexoCaptureError === 'function') window.kexoCaptureError(err, { context: 'latestSalesFraudMarkersRefresh', page: (document.body && document.body.getAttribute('data-page')) || '' }); } catch (_) {}

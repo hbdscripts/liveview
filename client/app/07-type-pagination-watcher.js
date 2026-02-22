@@ -3425,7 +3425,7 @@
         return Promise.resolve(sparklineHistorySeriesCache);
       }
       if (sparklineHistorySeriesInFlight) return sparklineHistorySeriesInFlight;
-      sparklineHistorySeriesInFlight = fetchWithTimeout(API + '/api/dashboard-series?range=' + encodeURIComponent(fallbackRange), { credentials: 'same-origin', cache: 'default' }, 15000)
+      sparklineHistorySeriesInFlight = fetchWithTimeout(API + '/api/dashboard-series?range=' + encodeURIComponent(fallbackRange) + (typeof window.kexoGetTrafficQuerySuffix === 'function' ? window.kexoGetTrafficQuerySuffix() : ''), { credentials: 'same-origin', cache: 'default' }, 15000)
         .then(function(r) { return r && r.ok ? r.json() : null; })
         .then(function(data) {
           var s = data && Array.isArray(data.series) ? data.series : [];
@@ -3528,7 +3528,7 @@
         renderCondensedSparklines(condensedSeriesCache);
         return;
       }
-      fetchWithTimeout(API + '/api/dashboard-series?range=' + encodeURIComponent(rangeKey), { credentials: 'same-origin', cache: 'default' }, 15000)
+      fetchWithTimeout(API + '/api/dashboard-series?range=' + encodeURIComponent(rangeKey) + (typeof window.kexoGetTrafficQuerySuffix === 'function' ? window.kexoGetTrafficQuerySuffix() : ''), { credentials: 'same-origin', cache: 'default' }, 15000)
         .then(function(r) { return r && r.ok ? r.json() : null; })
         .then(function(data) {
           var s = data && data.series ? data.series : null;
@@ -3763,7 +3763,7 @@
     function fetchKpisForRangeKey(rangeKey) {
       rangeKey = (rangeKey == null ? '' : String(rangeKey)).trim().toLowerCase();
       if (!rangeKey) rangeKey = 'today';
-      const url = API + '/api/kpis?range=' + encodeURIComponent(rangeKey);
+      const url = API + '/api/kpis?range=' + encodeURIComponent(rangeKey) + (typeof window.kexoGetTrafficQuerySuffix === 'function' ? window.kexoGetTrafficQuerySuffix() : '');
       return fetchWithTimeout(url, { credentials: 'same-origin', cache: 'no-store' }, 25000)
         .then(function(r) {
           if (!r || !r.ok) throw new Error('KPIs HTTP ' + (r ? r.status : '0'));

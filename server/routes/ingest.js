@@ -318,7 +318,7 @@ function ingestRouter(req, res, next) {
       if (!shouldCapture) return null;
       const clientIp = getClientIp(req);
       const ua = (req.get('user-agent') || req.get('User-Agent') || '').trim();
-      affiliateAttribution
+      return affiliateAttribution
         .upsertFromIngest({
           sessionId,
           visitorId,
@@ -328,8 +328,19 @@ function ingestRouter(req, res, next) {
           userAgent: ua,
           nowMs: Date.now(),
         })
+        .then(() => {
+          if (isPageViewed || isCheckoutStarted) {
+            fraudService.evaluateSessionTraffic({
+              sessionId,
+              payload,
+              receivedAtMs: Date.now(),
+              clientIp,
+              userAgent: ua,
+            }).catch(() => null);
+          }
+          return null;
+        })
         .catch(() => null);
-      return null;
     })
     .then(() => {
       // On checkout_* events we write purchase_events (append-only evidence) so Shopify truth orders

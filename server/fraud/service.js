@@ -88,6 +88,16 @@ async function getAttributionRow(sessionId) {
   return getDb().get('SELECT * FROM affiliate_attribution_sessions WHERE session_id = ? LIMIT 1', [sessionId]);
 }
 
+const SESSION_TRAFFIC_THROTTLE_MS = 60 * 1000;
+
+async function getSessionEvalUpdatedAt(sessionId) {
+  const row = await getDb().get(
+    'SELECT updated_at FROM fraud_evaluations WHERE entity_type = ? AND entity_id = ? LIMIT 1',
+    ['session', String(sessionId)]
+  );
+  return row && row.updated_at != null ? Number(row.updated_at) : null;
+}
+
 async function getEventSummary(sessionId) {
   const row = await getDb().get(
     `
@@ -122,6 +132,38 @@ async function countTriggeredByIp(ipHash, sinceMs) {
     [ipHash, sinceMs]
   );
   return row ? Number(row.n) || 0 : 0;
+}
+
+async function getVelocityFlags(cfg, ipHash, uaHash, sinceMs) {
+  const vel = cfg && cfg.velocity ? cfg.velocity : {};
+  const windowMinutes = Number.isFinite(Number(vel.windowMinutes)) ? Number(vel.windowMinutes) : 15;
+  const minIp = Number.isFinite(Number(vel.minSessionsPerIpHash)) ? Number(vel.minSessionsPerIpHash) : 5;
+  const minUa = Number.isFinite(Number(vel.minSessionsPerUaHash)) ? Number(vel.minSessionsPerUaHash) : 10;
+  const since = typeof sinceMs === 'number' && Number.isFinite(sinceMs)
+    ? sinceMs - (windowMinutes * 60 * 1000)
+    : Date.now() - (windowMinutes * 60 * 1000);
+  const flags = [];
+  try {
+    if (ipHash) {
+      const row = await getDb().get(
+        'SELECT COUNT(*) AS n FROM affiliate_attribution_sessions WHERE ip_hash = ? AND first_seen_at >= ?',
+        [ipHash, since]
+      );
+      const n = row ? Number(row.n) || 0 : 0;
+      if (n >= minIp) flags.push('ip_velocity_high');
+    }
+    if (uaHash) {
+      const row = await getDb().get(
+        'SELECT COUNT(*) AS n FROM affiliate_attribution_sessions WHERE ua_hash = ? AND first_seen_at >= ?',
+        [uaHash, since]
+      );
+      const n = row ? Number(row.n) || 0 : 0;
+      if (n >= minUa) flags.push('ua_velocity_high');
+    }
+  } catch (_) {
+    // fail-open
+  }
+  return flags;
 }
 
 async function upsertEvaluation(e) {
@@ -202,7 +244,7 @@ async function updateAiSummaryForSession(sessionId, { ai, ai_model, ai_version }
   );
 }
 
-function buildSyntheticAttributionFromSession(sessionRow, cfg) {
+function buildSyntheticAttributionFromSession(sessionRow, cfg, requestHashes = null) {
   const s = sessionRow || {};
   const known = cfg && cfg.known ? cfg.known : {};
   const keepParams = Array.from(new Set([...(known.paidClickIdParams || []), ...(known.affiliateClickIdParams || []), 'utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term']));
@@ -221,7 +263,7 @@ function buildSyntheticAttributionFromSession(sessionRow, cfg) {
     if (!kk || !params) return;
     try { const v = params.get(kk); if (v) aff[kk] = String(v).slice(0, 256); } catch (_) {}
   });
-  return {
+  const base = {
     session_id: s.session_id,
     visitor_id: s.visitor_id,
     source_kind: 'unknown',
@@ -241,6 +283,103 @@ function buildSyntheticAttributionFromSession(sessionRow, cfg) {
     last_seen_at: null,
     last_seen_json: null,
   };
+  if (requestHashes && typeof requestHashes === 'object') {
+    if (requestHashes.ip_hash != null) base.ip_hash = requestHashes.ip_hash;
+    if (requestHashes.ua_hash != null) base.ua_hash = requestHashes.ua_hash;
+    if (requestHashes.ip_prefix != null) base.ip_prefix = requestHashes.ip_prefix;
+  }
+  return base;
+}
+
+/**
+ * Early session traffic evaluation (page_viewed / checkout_started).
+ * Upserts only session entity; no purchase/order. Throttled to once per session per 60s.
+ */
+async function evaluateSessionTraffic({
+  sessionId,
+  payload,
+  receivedAtMs = Date.now(),
+  clientIp = null,
+  userAgent = null,
+} = {}) {
+  if (!sessionId) return { ok: false, skipped: true };
+  if (!(await tablesOk())) return { ok: false, skipped: true };
+
+  const now = Date.now();
+  const occurredAtMs = (payload && payload.ts != null && Number.isFinite(Number(payload.ts))) ? Number(payload.ts) : receivedAtMs;
+
+  const existingUpdatedAt = await getSessionEvalUpdatedAt(sessionId).catch(() => null);
+  if (existingUpdatedAt != null && Number.isFinite(existingUpdatedAt) && (now - existingUpdatedAt) < SESSION_TRAFFIC_THROTTLE_MS) {
+    return { ok: true, skipped: true, reason: 'throttled' };
+  }
+
+  const cfg = await fraudConfig.readFraudConfig({ allowCache: true }).then((r) => r.config).catch(() => fraudConfig.defaultFraudConfigV1());
+
+  const session = await getSessionRow(sessionId);
+  if (!session) return { ok: false, skipped: true };
+
+  let attribution = await getAttributionRow(sessionId);
+  const requestHashes = (clientIp != null || userAgent != null) ? attributionCapture.computeRequestHashes(clientIp || '', userAgent || '') : null;
+  if (!attribution) attribution = buildSyntheticAttributionFromSession(session, cfg, requestHashes);
+
+  const eventSummary = await getEventSummary(sessionId);
+
+  const ipHash = attribution && attribution.ip_hash ? String(attribution.ip_hash) : null;
+  const uaHash = attribution && attribution.ua_hash ? String(attribution.ua_hash) : null;
+  const dup = cfg && cfg.duplicateIp ? cfg.duplicateIp : {};
+  const windowHours = Number.isFinite(Number(dup.windowHours)) ? Number(dup.windowHours) : 6;
+  const minTriggered = Number.isFinite(Number(dup.minTriggered)) ? Number(dup.minTriggered) : 3;
+  let extraFlags = [];
+  let dupTriggeredCount = null;
+  if (ipHash) {
+    const since = occurredAtMs - (windowHours * 60 * 60 * 1000);
+    const n = await countTriggeredByIp(ipHash, since);
+    dupTriggeredCount = n;
+    if (n >= minTriggered) extraFlags.push('duplicate_ip_pattern');
+  }
+  const velocityFlags = await getVelocityFlags(cfg, ipHash, uaHash, occurredAtMs).catch(() => []);
+  velocityFlags.forEach((f) => { if (!extraFlags.includes(f)) extraFlags.push(f); });
+
+  const checkoutCtx = null;
+
+  const scored = scoreDeterministic({
+    cfg,
+    session,
+    attribution,
+    checkout: checkoutCtx,
+    eventSummary,
+    extraFlags,
+  });
+  try {
+    if (scored && scored.evidence && typeof scored.evidence === 'object' && dupTriggeredCount != null) {
+      if (!scored.evidence.signals || typeof scored.evidence.signals !== 'object') scored.evidence.signals = {};
+      scored.evidence.signals.duplicate_ip_triggered_recent = dupTriggeredCount;
+      scored.evidence.signals.duplicate_ip_window_hours = windowHours;
+    }
+  } catch (_) {}
+
+  const flagsJson = JSON.stringify(scored.flags || []);
+  const evidenceJson = JSON.stringify(scored.evidence || null);
+
+  await upsertEvaluation({
+    created_at: occurredAtMs,
+    updated_at: now,
+    entity_type: 'session',
+    entity_id: String(sessionId),
+    session_id: sessionId,
+    visitor_id: session.visitor_id || (attribution && attribution.visitor_id) || null,
+    order_id: null,
+    checkout_token: null,
+    score: scored.score,
+    triggered: scored.triggered ? 1 : 0,
+    flags_json: flagsJson,
+    evidence_json: evidenceJson,
+    ip_hash: ipHash,
+    affiliate_network_hint: attribution && attribution.affiliate_network_hint ? String(attribution.affiliate_network_hint) : null,
+    affiliate_id_hint: attribution && attribution.affiliate_id_hint ? String(attribution.affiliate_id_hint) : null,
+  });
+
+  return { ok: true, score: scored.score, triggered: scored.triggered, flags: scored.flags || [] };
 }
 
 async function evaluateCheckoutCompleted({
@@ -269,6 +408,7 @@ async function evaluateCheckoutCompleted({
 
   // Duplicate IP pattern (computed via indexed lookup).
   const ipHash = attribution && attribution.ip_hash ? String(attribution.ip_hash) : null;
+  const uaHash = attribution && attribution.ua_hash ? String(attribution.ua_hash) : null;
   const dup = cfg && cfg.duplicateIp ? cfg.duplicateIp : {};
   const windowHours = Number.isFinite(Number(dup.windowHours)) ? Number(dup.windowHours) : 6;
   const minTriggered = Number.isFinite(Number(dup.minTriggered)) ? Number(dup.minTriggered) : 3;
@@ -280,6 +420,8 @@ async function evaluateCheckoutCompleted({
     dupTriggeredCount = n;
     if (n >= minTriggered) extraFlags.push('duplicate_ip_pattern');
   }
+  const velocityFlags = await getVelocityFlags(cfg, ipHash, uaHash, occurredAtMs).catch(() => []);
+  velocityFlags.forEach((f) => { if (!extraFlags.includes(f)) extraFlags.push(f); });
 
   const checkoutCtx = {
     occurred_at: occurredAtMs,
@@ -378,6 +520,7 @@ async function evaluateCheckoutCompleted({
 
 module.exports = {
   tablesOk,
+  evaluateSessionTraffic,
   evaluateCheckoutCompleted,
   upsertEvaluation,
   updateAiSummaryForSession,

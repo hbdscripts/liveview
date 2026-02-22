@@ -77,6 +77,15 @@ function detectAffiliate(attribution, session) {
 function detectSuspiciousReferrer(cfg, attribution, session) {
   const rawRef = (attribution && attribution.referrer) || (session && session.referrer) || '';
   const host = safeUrlHost(String(rawRef || ''));
+  const allowlist = cfg && cfg.allowlist && cfg.allowlist.referrerDomains ? cfg.allowlist.referrerDomains : [];
+  if (host) {
+    const h = String(host).trim().toLowerCase();
+    for (const d of allowlist) {
+      const dd = String(d || '').trim().toLowerCase();
+      if (!dd) continue;
+      if (h === dd || h.endsWith('.' + dd)) return { suspicious: false, match: null };
+    }
+  }
   const sus = cfg && cfg.suspiciousReferrers ? cfg.suspiciousReferrers : {};
   const domains = Array.isArray(sus.domains) ? sus.domains : [];
   const subs = Array.isArray(sus.substrings) ? sus.substrings : [];
@@ -97,6 +106,50 @@ function detectSuspiciousReferrer(cfg, attribution, session) {
     }
   }
   return { suspicious: !!match, match };
+}
+
+function detectBotSignals(session) {
+  const flags = [];
+  if (session && (session.cf_known_bot === 1 || session.cf_known_bot === '1' || session.cf_known_bot === true)) {
+    flags.push('cf_known_bot');
+  }
+  const vbc = session && (session.cf_verified_bot_category || session.cf_verified_bot_category === '1');
+  if (vbc && String(vbc).trim()) {
+    flags.push('cf_verified_bot_category');
+  }
+  return flags;
+}
+
+function detectDatacenterAsn(cfg, session) {
+  const asnList = cfg && cfg.datacenterAsn && Array.isArray(cfg.datacenterAsn.asns) ? cfg.datacenterAsn.asns : [];
+  if (!asnList.length || !session || (session.cf_asn != null && session.cf_asn === '')) return [];
+  const raw = session.cf_asn;
+  const normalized = raw != null ? String(raw).replace(/^AS/i, '').trim() : '';
+  if (!normalized) return [];
+  const set = new Set(asnList.map((a) => String(a != null ? a : '').replace(/^AS/i, '').trim()).filter(Boolean));
+  return set.has(normalized) ? ['datacenter_asn'] : [];
+}
+
+function detectAllowDenyList(cfg, attribution, session) {
+  const flags = [];
+  const denylist = cfg && cfg.denylist ? cfg.denylist : { affiliateIds: [], referrerDomains: [] };
+  const affIds = Array.isArray(denylist.affiliateIds) ? denylist.affiliateIds.map((a) => String(a || '').trim().toLowerCase()).filter(Boolean) : [];
+  const refDomains = Array.isArray(denylist.referrerDomains) ? denylist.referrerDomains.map((d) => String(d || '').trim().toLowerCase()).filter(Boolean) : [];
+  if (affIds.length) {
+    const hint = (attribution && attribution.affiliate_id_hint) || (session && session.utm_source) || '';
+    const val = String(hint || '').trim().toLowerCase();
+    if (val && affIds.includes(val)) flags.push('affiliate_denylisted');
+  }
+  if (refDomains.length) {
+    const rawRef = (attribution && attribution.referrer) || (session && session.referrer) || '';
+    const host = safeUrlHost(String(rawRef || ''));
+    const val = host ? String(host).trim().toLowerCase() : '';
+    if (val) {
+      const match = refDomains.some((d) => val === d || val.endsWith('.' + d));
+      if (match) flags.push('referrer_denylisted');
+    }
+  }
+  return flags;
 }
 
 function buildEvidence({ cfg, session, attribution, checkout, eventSummary, paid, aff, flags, score, triggered }) {
@@ -156,6 +209,9 @@ function buildEvidence({ cfg, session, attribution, checkout, eventSummary, paid
       ua_device_type: normalizeText(session && session.ua_device_type, 16),
       ua_platform: normalizeText(session && session.ua_platform, 16),
       ua_model: normalizeText(session && session.ua_model, 16),
+      cf_known_bot: session && (session.cf_known_bot === 1 || session.cf_known_bot === '1' || session.cf_known_bot === true) ? 1 : 0,
+      cf_verified_bot_category: session && session.cf_verified_bot_category ? String(session.cf_verified_bot_category).slice(0, 64) : null,
+      cf_asn: session && session.cf_asn != null ? String(session.cf_asn).slice(0, 32) : null,
     },
     engagement: {
       total_events: eventSummary && eventSummary.total_events != null ? Number(eventSummary.total_events) : 0,
@@ -190,6 +246,21 @@ function scoreDeterministic({ cfg, session, attribution, checkout, eventSummary,
   const flags = [];
   const paid = detectPaid(attribution, session);
   const aff = detectAffiliate(attribution, session);
+
+  // Denylist (hard triggers)
+  detectAllowDenyList(cfg, attribution, session).forEach((f) => {
+    if (!flags.includes(f)) flags.push(f);
+  });
+
+  // Bot / edge signals
+  detectBotSignals(session).forEach((f) => {
+    if (!flags.includes(f)) flags.push(f);
+  });
+
+  // Datacenter ASN
+  detectDatacenterAsn(cfg, session).forEach((f) => {
+    if (!flags.includes(f)) flags.push(f);
+  });
 
   // High severity: paid + affiliate present
   if ((paid.hasPaidClickId || paid.hasPaidMedium) && (aff.hasAffiliateClickId || aff.hasAffiliateMedium)) {

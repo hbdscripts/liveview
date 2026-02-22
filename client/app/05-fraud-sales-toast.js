@@ -1,14 +1,18 @@
       fraudUiBound = true;
       try {
+        function handleFraudOpenClick(openEl) {
+          if (!openEl) return;
+          var et = openEl.getAttribute('data-fraud-entity-type') || 'session';
+          var eid = openEl.getAttribute('data-fraud-entity-id') || '';
+          openFraudDetailModal(et, eid);
+        }
         document.addEventListener('click', function(e) {
           var target = e && e.target ? e.target : null;
           var openEl = target && target.closest ? target.closest('[data-fraud-open]') : null;
           if (openEl) {
             try { e.preventDefault(); } catch (_) {}
             try { e.stopPropagation(); } catch (_) {}
-            var et = openEl.getAttribute('data-fraud-entity-type') || 'session';
-            var eid = openEl.getAttribute('data-fraud-entity-id') || '';
-            openFraudDetailModal(et, eid);
+            handleFraudOpenClick(openEl);
             return;
           }
           var closeEl = target && target.closest ? target.closest('[data-fraud-close]') : null;
@@ -37,6 +41,15 @@
                 navigator.clipboard.writeText(txt).catch(function() {});
               }
             } catch (_) {}
+          }
+        }, true);
+        document.addEventListener('keydown', function(e) {
+          var target = e && e.target ? e.target : null;
+          var openEl = target && target.closest ? target.closest('[data-fraud-open]') : null;
+          if (openEl && (e.key === 'Enter' || e.key === ' ')) {
+            try { e.preventDefault(); } catch (_) {}
+            try { e.stopPropagation(); } catch (_) {}
+            handleFraudOpenClick(openEl);
           }
         }, true);
       } catch (_) {}

@@ -35,7 +35,7 @@ function defaultFraudConfigV1() {
   return {
     v: 1,
     threshold: 70,
-    hardTriggers: ['google_ads_conflict', 'duplicate_ip_pattern', 'no_affiliate_evidence'],
+    hardTriggers: ['google_ads_conflict', 'duplicate_ip_pattern', 'no_affiliate_evidence', 'affiliate_denylisted', 'referrer_denylisted'],
     weights: {
       google_ads_conflict: 50,
       no_affiliate_evidence: 40,
@@ -43,6 +43,13 @@ function defaultFraudConfigV1() {
       late_injection: 30,
       low_engagement: 20,
       suspicious_referrer: 15,
+      cf_known_bot: 50,
+      cf_verified_bot_category: 40,
+      datacenter_asn: 35,
+      ip_velocity_high: 25,
+      ua_velocity_high: 25,
+      affiliate_denylisted: 60,
+      referrer_denylisted: 50,
     },
     known: {
       paidClickIdParams: [
@@ -77,6 +84,19 @@ function defaultFraudConfigV1() {
     duplicateIp: {
       windowHours: 6,
       minTriggered: 3,
+    },
+    velocity: {
+      windowMinutes: 15,
+      minSessionsPerIpHash: 5,
+      minSessionsPerUaHash: 10,
+    },
+    datacenterAsn: {
+      asns: ['16509', '14061', '15169', '8075', '13335', '20473', '24940', '16276', '63949', '46606'],
+      weight: 35,
+    },
+    botSignals: {
+      knownBotWeight: 50,
+      verifiedBotCategoryWeight: 40,
     },
     lowEngagement: {
       maxPageViews: 1,
@@ -164,6 +184,30 @@ function normalizeFraudConfigV1(input) {
   if (parsed.duplicateIp && typeof parsed.duplicateIp === 'object') {
     out.duplicateIp.windowHours = clampInt(parsed.duplicateIp.windowHours, { min: 1, max: 168, fallback: base.duplicateIp.windowHours });
     out.duplicateIp.minTriggered = clampInt(parsed.duplicateIp.minTriggered, { min: 2, max: 50, fallback: base.duplicateIp.minTriggered });
+  }
+
+  // velocity
+  out.velocity = { ...base.velocity };
+  if (parsed.velocity && typeof parsed.velocity === 'object') {
+    out.velocity.windowMinutes = clampInt(parsed.velocity.windowMinutes, { min: 1, max: 1440, fallback: base.velocity.windowMinutes });
+    out.velocity.minSessionsPerIpHash = clampInt(parsed.velocity.minSessionsPerIpHash, { min: 2, max: 100, fallback: base.velocity.minSessionsPerIpHash });
+    out.velocity.minSessionsPerUaHash = clampInt(parsed.velocity.minSessionsPerUaHash, { min: 2, max: 200, fallback: base.velocity.minSessionsPerUaHash });
+  }
+
+  // datacenter ASN
+  out.datacenterAsn = { ...base.datacenterAsn };
+  if (parsed.datacenterAsn && typeof parsed.datacenterAsn === 'object') {
+    const asns = Array.isArray(parsed.datacenterAsn.asns) ? parsed.datacenterAsn.asns : base.datacenterAsn.asns;
+    out.datacenterAsn.asns = asns.map((a) => String(a != null ? a : '').trim()).filter(Boolean).slice(0, 500);
+    if (!out.datacenterAsn.asns.length) out.datacenterAsn.asns = base.datacenterAsn.asns.slice();
+    out.datacenterAsn.weight = clampInt(parsed.datacenterAsn.weight, { min: 0, max: 100, fallback: base.datacenterAsn.weight });
+  }
+
+  // bot signals
+  out.botSignals = { ...base.botSignals };
+  if (parsed.botSignals && typeof parsed.botSignals === 'object') {
+    out.botSignals.knownBotWeight = clampInt(parsed.botSignals.knownBotWeight, { min: 0, max: 100, fallback: base.botSignals.knownBotWeight });
+    out.botSignals.verifiedBotCategoryWeight = clampInt(parsed.botSignals.verifiedBotCategoryWeight, { min: 0, max: 100, fallback: base.botSignals.verifiedBotCategoryWeight });
   }
 
   // low engagement

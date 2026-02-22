@@ -48,7 +48,8 @@ function maybePruneStatsMemo(now) {
 
 function getStats(req, res, next) {
   Sentry.addBreadcrumb({ category: 'api', message: 'stats.get', data: { range: req?.query?.range, force: !!req?.query?.force } });
-  const trafficMode = 'human_only';
+  const trafficParam = req && req.query && typeof req.query.traffic === 'string' ? req.query.traffic.trim().toLowerCase() : '';
+  const trafficMode = trafficParam === 'safe' ? 'human_safe' : 'human_only';
   // Stats refresh cadence: manual or every 15 minutes (client). Match with 15 min private cache.
   res.setHeader('Cache-Control', 'private, max-age=900');
   res.setHeader('Vary', 'Cookie');

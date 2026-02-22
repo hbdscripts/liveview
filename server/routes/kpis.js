@@ -39,7 +39,8 @@ function round2(v) {
 
 async function getKpis(req, res) {
   Sentry.addBreadcrumb({ category: 'api', message: 'kpis.get', data: { range: req?.query?.range } });
-  const trafficMode = 'human_only';
+  const trafficParam = req && req.query && typeof req.query.traffic === 'string' ? req.query.traffic.trim().toLowerCase() : '';
+  const trafficMode = trafficParam === 'safe' ? 'human_safe' : 'human_only';
   // Polled frequently; keep it cheap and cacheable.
   res.setHeader('Cache-Control', 'private, max-age=120');
   res.setHeader('Vary', 'Cookie');

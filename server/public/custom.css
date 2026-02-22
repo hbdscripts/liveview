@@ -1127,6 +1127,14 @@ body.side-panel-open {
 #sessions-table.grid-table .grid-body .grid-row .grid-cell.compliance-cell .compliance-status-icon.is-warn {
   color: var(--tblr-danger, #d63939);
 }
+#sessions-table.grid-table .grid-body .grid-row .grid-cell.compliance-cell .compliance-status-icon.is-medium {
+  color: var(--tblr-warning, #f59e0b);
+}
+#sessions-table.grid-table .grid-body .grid-row .grid-cell.compliance-cell .compliance-status-clickable {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+}
 
 #sessions-table.grid-table .grid-body .grid-row .grid-cell.compliance-cell .compliance-sale-icon {
   font-size: .85rem;

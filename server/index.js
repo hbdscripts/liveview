@@ -858,6 +858,7 @@ const { up: up063 } = require('./migrations/063_notifications');
 const { up: up064 } = require('./migrations/064_notification_deleted_at');
 const { up: up065 } = require('./migrations/065_user_permission_overrides');
 const { up: up066 } = require('./migrations/066_shop_oauth_identities');
+const { up: up067 } = require('./migrations/067_affiliate_attribution_ip_prefix');
 const backup = require('./backup');
 const { writeAudit } = require('./audit');
 const { runAdsMigrations } = require('./ads/adsMigrate');
@@ -929,6 +930,7 @@ const APP_MIGRATIONS = [
   ['064_notification_deleted_at', up064],
   ['065_user_permission_overrides', up065],
   ['066_shop_oauth_identities', up066],
+  ['067_affiliate_attribution_ip_prefix', up067],
 ];
 
 async function ensureAppMigrationsTable(db) {
