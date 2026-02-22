@@ -110,6 +110,7 @@
           products: 'nav-item-products',
           variants: 'nav-item-variants',
           'abandoned-carts': 'nav-item-sales',
+          'checkout-funnel': 'nav-item-countries',
           channels: 'nav-item-channels',
           type: 'nav-item-type',
           attribution: 'nav-item-attribution',
@@ -242,7 +243,7 @@
             else dashboardDropdownItem.classList.remove('active');
           }
           // Insights dropdown (Snapshot + Countries + Products + Variants)
-          var isInsightsChild = (tab === 'snapshot' || tab === 'stats' || tab === 'products' || tab === 'variants' || tab === 'abandoned-carts');
+          var isInsightsChild = (tab === 'snapshot' || tab === 'stats' || tab === 'products' || tab === 'variants' || tab === 'abandoned-carts' || tab === 'checkout-funnel');
           var insightsToggle = document.querySelector('.nav-item.dropdown .dropdown-toggle[href="#navbar-insights-menu"]');
           var insightsDropdownItem = insightsToggle ? insightsToggle.closest('.nav-item') : null;
           if (insightsToggle) {
@@ -343,6 +344,9 @@
           } else if (tab === 'abandoned-carts') {
             try { refreshAbandonedCarts({ force: false }); } catch (_) { fetchSessions(); }
             ensureKpis();
+          } else if (tab === 'checkout-funnel') {
+            try { refreshCheckoutFunnel({ force: false }); } catch (_) {}
+            ensureKpis();
           } else if (tab === 'attribution') {
             refreshAttribution({ force: false });
             ensureKpis();
@@ -419,6 +423,7 @@
             : PAGE === 'devices' ? 'devices'
             : PAGE === 'browsers' ? 'browsers'
             : (PAGE === 'compare-conversion-rate' || PAGE === 'shipping-cr' || PAGE === 'click-order-lookup' || PAGE === 'change-pins') ? PAGE
+            : PAGE === 'checkout-funnel' ? 'checkout-funnel'
             : PAGE;
           setTab(pageTab);
           return;
@@ -657,6 +662,8 @@
                 try { if (typeof window.__refreshVariantsInsights === 'function') window.__refreshVariantsInsights({ force: true }); } catch (_) {}
               } else if (activeMainTab === 'abandoned-carts') {
                 try { refreshAbandonedCarts({ force: true }); } catch (_) { try { fetchSessions(); } catch (_) {} }
+              } else if (activeMainTab === 'checkout-funnel') {
+                try { refreshCheckoutFunnel({ force: true }); } catch (_) {}
               } else if (activeMainTab === 'attribution') {
                 try { refreshAttribution({ force: true }); } catch (_) {}
               } else if (activeMainTab === 'devices') {

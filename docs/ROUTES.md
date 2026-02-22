@@ -52,6 +52,7 @@ When adding a route, re-run this script so the doc stays in sync.
 | GET | `/api/insights-variants` | server/routes/insightsVariants.js (getInsightsVariants) |
 | GET | `/api/insights-variants-suggestions` | server/routes/insightsVariantsSuggestions.js (getInsightsVariantsSuggestions) |
 | POST | `/api/insights-variants-suggestions/apply` | server/routes/insightsVariantsSuggestions.js (postApplyInsightsVariantsSuggestions) |
+| USE | `/api/insights/checkout-funnel` | server/routes/checkoutFunnel.js |
 | USE | `/api/integrations/google-ads/issues` | server/routes/googleAdsIssues.js |
 | GET | `/api/kexo-score` | server/routes/kexoScore.js (getKexoScore) |
 | GET | `/api/kexo-score-summary` | server/routes/kexoScoreSummary.js (getKexoScoreSummary) |
@@ -121,6 +122,7 @@ When adding a route, re-run this script so the doc stays in sync.
 | GET | `/browsers` | (inline) |
 | GET | `/change-pins` | (inline) |
 | GET | `/channels` | (inline) |
+| GET | `/checkout-funnel` | (inline) |
 | GET | `/click-order-lookup` | (inline) |
 | GET | `/compare-conversion-rate` | (inline) |
 | GET | `/countries` | (inline) |
@@ -176,6 +178,7 @@ When adding a route, re-run this script so the doc stays in sync.
 | `/dashboard/sales` | `server/public/dashboard/sales.html` |
 | `/dashboard/table` | `server/public/dashboard/table.html` |
 | `/insights/abandoned-carts` | `server/public/insights/abandoned-carts.html` |
+| `/insights/checkout-funnel` | `server/public/insights/checkout-funnel.html` |
 | `/insights/countries` | `server/public/insights/countries.html` |
 | `/insights/payment-methods` | `server/public/insights/payment-types.html` |
 | `/insights/products` | `server/public/insights/products.html` |

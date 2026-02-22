@@ -97,6 +97,8 @@ function isProtectedPath(pathname) {
     '/insights/countries',
     '/insights/products',
     '/insights/variants',
+    '/insights/abandoned-carts',
+    '/insights/checkout-funnel',
     '/acquisition',
     '/acquisition/attribution',
     '/acquisition/devices',

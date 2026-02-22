@@ -48,6 +48,7 @@ const pageInsights = require('./routes/pageInsights');
 const devicesRouter = require('./routes/devices');
 const attributionRouter = require('./routes/attribution');
 const abandonedCarts = require('./routes/abandonedCarts');
+const checkoutFunnel = require('./routes/checkoutFunnel');
 const adsRouter = require('./routes/ads');
 const googleAdsIssuesRouter = require('./routes/googleAdsIssues');
 const toolsRouter = require('./routes/tools');
@@ -226,6 +227,7 @@ app.get('/api/product-insights', productInsights.getProductInsights);
 app.get('/api/page-insights', pageInsights.getPageInsights);
 // Abandoned carts insights (cart vs checkout modes)
 app.use('/api/abandoned-carts', abandonedCarts);
+app.use('/api/insights/checkout-funnel', checkoutFunnel);
 app.get('/api/og-thumb', ogThumb.handleOgThumb);
 app.get('/api/available-days', availableDays.getAvailableDays);
 app.get('/api/dashboard-series', dashboardSeries.getDashboardSeries);
@@ -636,6 +638,7 @@ insightsPagesRouter.get('/payment-types', (req, res) => sendPage(res, 'insights/
 // Alias: keep /payment-types working but allow canonical naming in UI/links.
 insightsPagesRouter.get('/payment-methods', (req, res) => sendPage(res, 'insights/payment-types.html'));
 insightsPagesRouter.get('/abandoned-carts', (req, res) => sendPage(res, 'insights/abandoned-carts.html'));
+insightsPagesRouter.get('/checkout-funnel', (req, res) => sendPage(res, 'insights/checkout-funnel.html'));
 
 const acquisitionPagesRouter = express.Router();
 acquisitionPagesRouter.get('/attribution', (req, res) => sendPage(res, 'acquisition/attribution.html'));
@@ -688,6 +691,7 @@ app.get('/variants', redirectWithQuery(301, '/insights/variants'));
 app.get('/payment-types', redirectWithQuery(301, '/insights/payment-types'));
 app.get('/payment-methods', redirectWithQuery(301, '/insights/payment-methods'));
 app.get('/abandoned-carts', redirectWithQuery(301, '/insights/abandoned-carts'));
+app.get('/checkout-funnel', redirectWithQuery(301, '/insights/checkout-funnel'));
 app.get('/channels', redirectWithQuery(301, '/acquisition/attribution'));
 app.get('/type', redirectWithQuery(301, '/acquisition/devices'));
 app.get('/browsers', redirectWithQuery(301, '/acquisition/browsers'));

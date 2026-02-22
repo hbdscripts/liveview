@@ -583,7 +583,7 @@
     let devicesExpanded = null; // null = first render, default all open
     let devicesChartInstance = null;
     let devicesChartData = null;
-    let dateRange = PAGE === 'sales' ? 'sales' : PAGE === 'date' ? 'today' : PAGE === 'dashboard' ? 'today' : PAGE === 'abandoned-carts' ? 'today' : 'live';
+    let dateRange = PAGE === 'sales' ? 'sales' : PAGE === 'date' ? 'today' : PAGE === 'dashboard' ? 'today' : PAGE === 'abandoned-carts' ? 'today' : PAGE === 'checkout-funnel' ? 'today' : 'live';
     let customRangeStartYmd = null; // YYYY-MM-DD (admin TZ)
     let customRangeEndYmd = null; // YYYY-MM-DD (admin TZ)
     let pendingCustomRangeStartYmd = null; // modal-only pending selection

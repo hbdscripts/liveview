@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 284003745e8df4e9
+// checksum: 5f643e0bd25f440f
 
 (function () {
   // Shared formatters + scheduling/fetch helpers — reduces UI jank + duplicate requests.
@@ -564,11 +564,13 @@ const API = '';
         var els = document.querySelectorAll ? document.querySelectorAll('[data-kexo-perm]') : [];
         if (!els || !els.length) return;
         var perms = permissions && typeof permissions === 'object' ? permissions : {};
+        // When no permissions (e.g. Shopify embed, no OAuth), show all so nav items are visible.
+        var showAll = (Object.keys(perms).length === 0);
         els.forEach(function (el) {
           if (!el || !el.classList) return;
           var perm = el.getAttribute && el.getAttribute('data-kexo-perm');
           if (!perm) return;
-          if (perms[perm] === true) el.classList.remove('d-none');
+          if (showAll || perms[perm] === true) el.classList.remove('d-none');
           else el.classList.add('d-none');
         });
         // Settings left nav: hide empty categories (no visible children).

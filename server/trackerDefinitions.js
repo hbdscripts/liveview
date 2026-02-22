@@ -742,6 +742,37 @@ const TRACKER_TABLE_DEFINITIONS = [
     requires: { dbTables: ['sessions', 'visitors', 'events'], shopifyToken: false },
   },
   {
+    id: 'insights_checkout_funnel',
+    page: 'Checkout Funnel',
+    name: 'Checkout funnel (sessions → cart → checkout → purchase)',
+    ui: { elementIds: ['checkout-funnel-card', 'checkout-funnel-mount'] },
+    endpoint: {
+      method: 'GET',
+      path: '/api/insights/checkout-funnel',
+      params: [
+        'range=today|yesterday|3d|7d|14d|30d|month|d:YYYY-MM-DD|r:YYYY-MM-DD:YYYY-MM-DD',
+        'timezone/timeZone',
+        'traffic=all|human_only|human_safe (optional)',
+      ],
+    },
+    sources: [
+      { kind: 'db', tables: ['sessions'], note: 'Counts: sessions in range; cart (cart_qty>0); checkout_started_at IS NOT NULL; has_purchased=1. Human filter via sessionFilterForTraffic.' },
+    ],
+    columns: [
+      { name: 'Sessions', value: 'sessions', formula: 'COUNT(sessions) in range with traffic filter' },
+      { name: 'Cart', value: 'cart', formula: 'Sessions with COALESCE(cart_qty,0)>0' },
+      { name: 'Checkout started', value: 'checkoutStarted', formula: 'Sessions with checkout_started_at IS NOT NULL' },
+      { name: 'Purchased', value: 'purchased', formula: 'Sessions with has_purchased=1' },
+      { name: 'Conversion %', value: 'conversionToCart, conversionToCheckout, conversionToPurchase', formula: 'Step N+1 / Step N × 100; null when denominator 0' },
+    ],
+    math: [
+      { name: 'Steps', value: 'Sessions → Added to cart → Checkout started → Purchased.' },
+      { name: 'Null ratio', value: 'Step conversion is null when previous step count is 0 (per METRICS.md).' },
+    ],
+    respectsReporting: { ordersSource: false, sessionsSource: false },
+    requires: { dbTables: ['sessions'], shopifyToken: false },
+  },
+  {
     id: 'products_best_sellers',
     page: 'Products',
     name: 'Best sellers table',

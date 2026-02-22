@@ -282,6 +282,7 @@
             'page.insights.variants': 'Variants',
             'page.insights.payment_methods': 'Payment Methods',
             'page.insights.abandoned_carts': 'Abandoned Carts',
+            'page.insights.checkout_funnel': 'Checkout Funnel',
             'page.acquisition.attribution': 'Attribution',
             'page.acquisition.browsers': 'Browsers',
             'page.acquisition.devices': 'Devices',
@@ -325,7 +326,7 @@
 
         var PAGE_GROUPS = [
           { id: 'dashboard', label: 'Dashboard', keys: pick(['page.dashboard.overview', 'page.dashboard.live', 'page.dashboard.sales', 'page.dashboard.table']) },
-          { id: 'insights', label: 'Insights', keys: pick(['page.insights.snapshot', 'page.insights.countries', 'page.insights.products', 'page.insights.variants', 'page.insights.payment_methods', 'page.insights.abandoned_carts']) },
+          { id: 'insights', label: 'Insights', keys: pick(['page.insights.snapshot', 'page.insights.countries', 'page.insights.products', 'page.insights.variants', 'page.insights.payment_methods', 'page.insights.abandoned_carts', 'page.insights.checkout_funnel']) },
           { id: 'acquisition', label: 'Acquisition', keys: pick(['page.acquisition.attribution', 'page.acquisition.browsers', 'page.acquisition.devices']) },
           { id: 'integrations', label: 'Integrations', keys: pick(['page.integrations.google_ads']) },
           { id: 'tools', label: 'Tools', keys: pick(['page.tools.click_order_lookup', 'page.tools.change_pins', 'page.tools.compare_conversion_rate', 'page.tools.shipping_cr']) },
@@ -678,7 +679,7 @@
   var PERM_KEYS_FRONTEND = [
     'page.dashboard.overview', 'page.dashboard.live', 'page.dashboard.sales', 'page.dashboard.table',
     'page.insights.snapshot', 'page.insights.countries', 'page.insights.products', 'page.insights.variants',
-    'page.insights.payment_methods', 'page.insights.abandoned_carts',
+    'page.insights.payment_methods', 'page.insights.abandoned_carts', 'page.insights.checkout_funnel',
     'page.acquisition.attribution', 'page.acquisition.browsers', 'page.acquisition.devices',
     'page.integrations.google_ads',
     'page.tools.compare_conversion_rate', 'page.tools.shipping_cr', 'page.tools.click_order_lookup', 'page.tools.change_pins',

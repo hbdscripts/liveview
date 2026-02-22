@@ -4630,6 +4630,46 @@ async function getKexoScore(options = {}) {
   };
 }
 
+/** Checkout funnel: sessions, cart, checkout started, purchased in range (human filter). Conversion % null when denominator 0. */
+async function getCheckoutFunnelCounts(start, end, options = {}) {
+  const trafficMode = options.trafficMode || config.trafficMode || 'all';
+  const filter = sessionFilterForTraffic(trafficMode);
+  const db = getDb();
+  const sql = config.dbUrl
+    ? `SELECT
+        COUNT(*) AS sessions,
+        SUM(CASE WHEN COALESCE(sessions.cart_qty, 0) > 0 THEN 1 ELSE 0 END) AS cart,
+        SUM(CASE WHEN sessions.checkout_started_at IS NOT NULL THEN 1 ELSE 0 END) AS checkout_started,
+        SUM(CASE WHEN sessions.has_purchased = 1 THEN 1 ELSE 0 END) AS purchased
+       FROM sessions
+       WHERE sessions.started_at >= $1 AND sessions.started_at < $2${filter.sql}`
+    : `SELECT
+        COUNT(*) AS sessions,
+        SUM(CASE WHEN COALESCE(sessions.cart_qty, 0) > 0 THEN 1 ELSE 0 END) AS cart,
+        SUM(CASE WHEN sessions.checkout_started_at IS NOT NULL THEN 1 ELSE 0 END) AS checkout_started,
+        SUM(CASE WHEN sessions.has_purchased = 1 THEN 1 ELSE 0 END) AS purchased
+       FROM sessions
+       WHERE sessions.started_at >= ? AND sessions.started_at < ?${filter.sql}`;
+  const params = config.dbUrl ? [start, end, ...filter.params] : [start, end, ...filter.params];
+  const row = await db.get(sql, params);
+  const sessions = row && row.sessions != null ? Number(row.sessions) || 0 : 0;
+  const cart = row && row.cart != null ? Number(row.cart) || 0 : 0;
+  const checkoutStarted = row && row.checkout_started != null ? Number(row.checkout_started) || 0 : 0;
+  const purchased = row && row.purchased != null ? Number(row.purchased) || 0 : 0;
+  const conversionToCart = sessions > 0 ? Math.round((cart / sessions) * 1000) / 10 : null;
+  const conversionToCheckout = cart > 0 ? Math.round((checkoutStarted / cart) * 1000) / 10 : null;
+  const conversionToPurchase = checkoutStarted > 0 ? Math.round((purchased / checkoutStarted) * 1000) / 10 : null;
+  return {
+    sessions,
+    cart,
+    checkoutStarted,
+    purchased,
+    conversionToCart,
+    conversionToCheckout,
+    conversionToPurchase,
+  };
+}
+
 async function rangeHasSessions(start, end, options = {}) {
   const trafficMode = options.trafficMode || config.trafficMode || 'all';
   const filter = sessionFilterForTraffic(trafficMode);
@@ -4683,4 +4723,5 @@ module.exports = {
   validateEventType,
   ALLOWED_EVENT_TYPES,
   extractBsAdsIdsFromEntryUrl,
+  getCheckoutFunnelCounts,
 };

@@ -44,6 +44,7 @@ const API = '';
           products: true,
           variants: true,
           'abandoned-carts': true,
+          'checkout-funnel': true,
           attribution: true,
           devices: true,
           ads: true,
@@ -266,11 +267,13 @@ const API = '';
         var els = document.querySelectorAll ? document.querySelectorAll('[data-kexo-perm]') : [];
         if (!els || !els.length) return;
         var perms = permissions && typeof permissions === 'object' ? permissions : {};
+        // When no permissions (e.g. Shopify embed, no OAuth), show all so nav items are visible.
+        var showAll = (Object.keys(perms).length === 0);
         els.forEach(function (el) {
           if (!el || !el.classList) return;
           var perm = el.getAttribute && el.getAttribute('data-kexo-perm');
           if (!perm) return;
-          if (perms[perm] === true) el.classList.remove('d-none');
+          if (showAll || perms[perm] === true) el.classList.remove('d-none');
           else el.classList.add('d-none');
         });
         // Settings left nav: hide empty categories (no visible children).
