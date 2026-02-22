@@ -755,9 +755,9 @@
     var globalSave = document.getElementById('settings-global-save-btn');
     var globalRevert = document.getElementById('settings-global-revert-btn');
     var footerRight = (globalSave && globalSave.closest) ? globalSave.closest('.settings-footer-right') : null;
-    if (footerRight) footerRight.style.display = usesGlobalDraft ? '' : 'none';
+    if (footerRight) footerRight.style.display = (usesGlobalDraft && tabDirty) ? '' : 'none';
     var hasLeftActions = !!(footerLeft && footerLeft.children && footerLeft.children.length);
-    if (footer) footer.hidden = !(usesGlobalDraft || hasLeftActions);
+    if (footer) footer.hidden = !(hasLeftActions || (usesGlobalDraft && tabDirty));
     if (globalSave) globalSave.disabled = !(usesGlobalDraft && tabDirty);
     if (globalRevert) globalRevert.disabled = !(usesGlobalDraft && tabDirty);
     if (globalSave) {
