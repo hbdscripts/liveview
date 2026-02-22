@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: e75db2bf87fc5803
+// checksum: 35df0fbd83361781
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -22202,9 +22202,30 @@ const API = '';
           return s;
         }
         function renderTrendingTable(tableId, items, isUp) {
+          function sortTrendingRows(list) {
+            var out = Array.isArray(list) ? list.slice() : [];
+            out.sort(function (a, b) {
+              var ad = a && Number.isFinite(Number(a.deltaRevenue)) ? Number(a.deltaRevenue) : 0;
+              var bd = b && Number.isFinite(Number(b.deltaRevenue)) ? Number(b.deltaRevenue) : 0;
+              var byDelta = isUp ? (bd - ad) : (ad - bd);
+              if (byDelta !== 0) return byDelta;
+              var ar = a && Number.isFinite(Number(a.revenueNow)) ? Number(a.revenueNow) : 0;
+              var br = b && Number.isFinite(Number(b.revenueNow)) ? Number(b.revenueNow) : 0;
+              var byRev = br - ar;
+              if (byRev !== 0) return byRev;
+              var at = a && a.title != null ? String(a.title) : '';
+              var bt = b && b.title != null ? String(b.title) : '';
+              if (at !== bt) return at < bt ? -1 : 1;
+              var aid = a && a.product_id != null ? String(a.product_id) : '';
+              var bid = b && b.product_id != null ? String(b.product_id) : '';
+              if (aid !== bid) return aid < bid ? -1 : 1;
+              return 0;
+            });
+            return out;
+          }
           var bodyEl = el(tableId + '-body');
           if (bodyEl) {
-            var rows = Array.isArray(items) ? items : [];
+            var rows = sortTrendingRows(items);
             var pageSize = getTableRowsPerPage(tableId, 'dashboard');
             var pages = Math.max(1, Math.ceil(rows.length / pageSize));
             if (tableId === 'dash-trending') dashTrendingPage = clampPage(dashTrendingPage, pages);
@@ -22245,7 +22266,7 @@ const API = '';
           var t = el(tableId);
           var tbody = t ? t.querySelector('tbody') : null;
           if (!tbody) return;
-          var rows = Array.isArray(items) ? items : [];
+          var rows = sortTrendingRows(items);
           var pagePrefix = tableId;
           var pageSize = getTableRowsPerPage(tableId, 'dashboard');
           var pages = Math.max(1, Math.ceil(rows.length / pageSize));

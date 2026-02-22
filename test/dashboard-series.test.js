@@ -157,6 +157,67 @@ test('GET /api/dashboard-series: CR% is null when sessions=0; sessions attribute
   assert.equal(r2.body.topProducts[0].sessions, 1);
   assert.equal(r2.body.topProducts[0].cr, 100);
 
+  // 3) Trending: ordered by revenue delta (deltaRevenue), not by revenueNow.
+  const prevKey = 'd:2025-02-01';
+  const prevBounds = store.getRangeBounds(prevKey, now, tz);
+  assert.ok(Number.isFinite(prevBounds?.start));
+  const tPrevMid = Number(prevBounds.start) + 12 * 60 * 60 * 1000;
+
+  // Up: product A delta +100 (prev 0 -> now 100) should outrank product B delta +50 (prev 1000 -> now 1050).
+  // Down: product D delta -100 (prev 100 -> now 0) should outrank product C delta -50 (prev 2000 -> now 1950).
+  await db.run(
+    `INSERT OR REPLACE INTO orders_shopify_line_items
+     (shop, line_item_id, order_id, order_created_at, order_financial_status, order_cancelled_at, order_test, currency, product_id, quantity, unit_price, line_revenue, title, synced_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [shop, 'liB_prev', 'oB_prev', tPrevMid - 1000, 'paid', null, 0, 'GBP', 'B', 1, 1000, 1000, 'Prod B', now]
+  );
+  await db.run(
+    `INSERT OR REPLACE INTO orders_shopify_line_items
+     (shop, line_item_id, order_id, order_created_at, order_financial_status, order_cancelled_at, order_test, currency, product_id, quantity, unit_price, line_revenue, title, synced_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [shop, 'liC_prev', 'oC_prev', tPrevMid - 900, 'paid', null, 0, 'GBP', 'C', 1, 2000, 2000, 'Prod C', now]
+  );
+  await db.run(
+    `INSERT OR REPLACE INTO orders_shopify_line_items
+     (shop, line_item_id, order_id, order_created_at, order_financial_status, order_cancelled_at, order_test, currency, product_id, quantity, unit_price, line_revenue, title, synced_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [shop, 'liD_prev', 'oD_prev', tPrevMid - 800, 'paid', null, 0, 'GBP', 'D', 1, 100, 100, 'Prod D', now]
+  );
+
+  await db.run(
+    `INSERT OR REPLACE INTO orders_shopify_line_items
+     (shop, line_item_id, order_id, order_created_at, order_financial_status, order_cancelled_at, order_test, currency, product_id, quantity, unit_price, line_revenue, title, synced_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [shop, 'liA_now', 'oA_now', tMid - 800, 'paid', null, 0, 'GBP', 'A', 1, 100, 100, 'Prod A', now]
+  );
+  await db.run(
+    `INSERT OR REPLACE INTO orders_shopify_line_items
+     (shop, line_item_id, order_id, order_created_at, order_financial_status, order_cancelled_at, order_test, currency, product_id, quantity, unit_price, line_revenue, title, synced_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [shop, 'liB_now', 'oB_now', tMid - 700, 'paid', null, 0, 'GBP', 'B', 1, 1050, 1050, 'Prod B', now]
+  );
+  await db.run(
+    `INSERT OR REPLACE INTO orders_shopify_line_items
+     (shop, line_item_id, order_id, order_created_at, order_financial_status, order_cancelled_at, order_test, currency, product_id, quantity, unit_price, line_revenue, title, synced_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [shop, 'liC_now', 'oC_now', tMid - 600, 'paid', null, 0, 'GBP', 'C', 1, 1950, 1950, 'Prod C', now]
+  );
+
+  const rTrend = await callDashboardSeries({ range: dayKey, force: '1' });
+  assert.equal(rTrend.status, 200);
+  assert.ok(Array.isArray(rTrend.body?.trendingUp));
+  assert.ok(Array.isArray(rTrend.body?.trendingDown));
+  assert.ok(rTrend.body.trendingUp.length >= 2);
+  assert.ok(rTrend.body.trendingDown.length >= 2);
+  assert.equal(rTrend.body.trendingUp[0].product_id, 'A');
+  assert.equal(rTrend.body.trendingUp[0].deltaRevenue, 100);
+  assert.equal(rTrend.body.trendingUp[1].product_id, 'B');
+  assert.equal(rTrend.body.trendingUp[1].deltaRevenue, 50);
+  assert.equal(rTrend.body.trendingDown[0].product_id, 'D');
+  assert.equal(rTrend.body.trendingDown[0].deltaRevenue, -100);
+  assert.equal(rTrend.body.trendingDown[1].product_id, 'C');
+  assert.equal(rTrend.body.trendingDown[1].deltaRevenue, -50);
+
   // 3) endMs clip: single-day range clipped to 3h => 15-min buckets (12 points).
   const clipBounds = store.getRangeBounds(dayKey, now, tz);
   assert.ok(Number.isFinite(clipBounds?.start));

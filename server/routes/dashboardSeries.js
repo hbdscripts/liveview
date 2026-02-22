@@ -1117,7 +1117,7 @@ async function fetchTrendingProducts(db, shop, nowBounds, prevBounds, filter, ra
     });
   });
 
-  // Sort by highest revenue first (revenueNow), then by growth/delta; stable tie-break by product_id then title.
+  // Sort by revenue delta (the number shown in the UI), then tie-break deterministically.
   const stableCmp = (a, b) => {
     const aid = (a && a.product_id != null ? String(a.product_id) : '') || '';
     const bid = (b && b.product_id != null ? String(b.product_id) : '') || '';
@@ -1129,24 +1129,24 @@ async function fetchTrendingProducts(db, shop, nowBounds, prevBounds, filter, ra
   const up = base
     .filter(function(r) { return r.deltaRevenue > 0.005; })
     .sort(function(a, b) {
+      const byDelta = (b.deltaRevenue || 0) - (a.deltaRevenue || 0);
+      if (byDelta !== 0) return byDelta;
       const byRev = (b.revenueNow || 0) - (a.revenueNow || 0);
       if (byRev !== 0) return byRev;
       const byPct = (b.pctGrowth != null ? b.pctGrowth : -Infinity) - (a.pctGrowth != null ? a.pctGrowth : -Infinity);
       if (byPct !== 0) return byPct;
-      const byDelta = (b.deltaRevenue || 0) - (a.deltaRevenue || 0);
-      if (byDelta !== 0) return byDelta;
       return stableCmp(a, b);
     })
     .slice(0, DASHBOARD_TRENDING_MAX_ROWS);
   const down = base
     .filter(function(r) { return r.deltaRevenue < -0.005; })
     .sort(function(a, b) {
+      const byDelta = (a.deltaRevenue || 0) - (b.deltaRevenue || 0);
+      if (byDelta !== 0) return byDelta;
       const byRev = (b.revenueNow || 0) - (a.revenueNow || 0);
       if (byRev !== 0) return byRev;
       const byPct = (a.pctGrowth != null ? a.pctGrowth : Infinity) - (b.pctGrowth != null ? b.pctGrowth : Infinity);
       if (byPct !== 0) return byPct;
-      const byDelta = (a.deltaRevenue || 0) - (b.deltaRevenue || 0);
-      if (byDelta !== 0) return byDelta;
       return stableCmp(a, b);
     })
     .slice(0, DASHBOARD_TRENDING_MAX_ROWS);
