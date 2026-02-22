@@ -246,36 +246,41 @@ router.get('/google/goal-health', async (req, res) => {
       const cutoff24h = now - ms24h;
       const cutoff7d = now - ms7d;
       const cutoff30d = now - ms30d;
-      for (const goal of ['revenue', 'profit']) {
-        const r24 = await db.all(
-          `SELECT status, COUNT(*) AS c FROM google_ads_postback_jobs WHERE shop = ? AND goal_type = ? AND created_at >= ? GROUP BY status`,
-          [normShop, goal, cutoff24h]
-        );
-        for (const r of r24 || []) {
-          const c = Number(r.c) || 0;
-          if (r.status === 'pending' || r.status === 'retry') coverage24h[goal].pending += c;
-          else if (r.status === 'success') coverage24h[goal].success += c;
-          else if (r.status === 'failed') coverage24h[goal].failure += c;
-        }
-        const r7 = await db.all(
-          `SELECT status, COUNT(*) AS c FROM google_ads_postback_jobs WHERE shop = ? AND goal_type = ? AND created_at >= ? GROUP BY status`,
-          [normShop, goal, cutoff7d]
-        );
-        for (const r of r7 || []) {
-          const c = Number(r.c) || 0;
-          if (r.status === 'pending' || r.status === 'retry') coverage7d[goal].pending += c;
-          else if (r.status === 'success') coverage7d[goal].success += c;
-          else if (r.status === 'failed') coverage7d[goal].failure += c;
-        }
-        const r30 = await db.all(
-          `SELECT status, COUNT(*) AS c FROM google_ads_postback_jobs WHERE shop = ? AND goal_type = ? AND created_at >= ? GROUP BY status`,
-          [normShop, goal, cutoff30d]
-        );
-        for (const r of r30 || []) {
-          const c = Number(r.c) || 0;
-          if (r.status === 'pending' || r.status === 'retry') coverage30d[goal].pending += c;
-          else if (r.status === 'success') coverage30d[goal].success += c;
-          else if (r.status === 'failed') coverage30d[goal].failure += c;
+      const coverageRows = await db.all(
+        `
+          SELECT
+            goal_type,
+            status,
+            SUM(CASE WHEN created_at >= ? THEN 1 ELSE 0 END) AS c24,
+            SUM(CASE WHEN created_at >= ? THEN 1 ELSE 0 END) AS c7,
+            SUM(CASE WHEN created_at >= ? THEN 1 ELSE 0 END) AS c30
+          FROM google_ads_postback_jobs
+          WHERE shop = ?
+            AND goal_type IN ('revenue', 'profit')
+            AND created_at >= ?
+          GROUP BY goal_type, status
+        `,
+        [cutoff24h, cutoff7d, cutoff30d, normShop, cutoff30d]
+      );
+      for (const r of coverageRows || []) {
+        const goal = r && r.goal_type ? String(r.goal_type) : '';
+        if (!goal || !coverage24h[goal] || !coverage7d[goal] || !coverage30d[goal]) continue;
+        const status = r && r.status != null ? String(r.status) : '';
+        const c24 = r && r.c24 != null ? Number(r.c24) : 0;
+        const c7 = r && r.c7 != null ? Number(r.c7) : 0;
+        const c30 = r && r.c30 != null ? Number(r.c30) : 0;
+        if (status === 'pending' || status === 'retry') {
+          coverage24h[goal].pending += c24 || 0;
+          coverage7d[goal].pending += c7 || 0;
+          coverage30d[goal].pending += c30 || 0;
+        } else if (status === 'success') {
+          coverage24h[goal].success += c24 || 0;
+          coverage7d[goal].success += c7 || 0;
+          coverage30d[goal].success += c30 || 0;
+        } else if (status === 'failed') {
+          coverage24h[goal].failure += c24 || 0;
+          coverage7d[goal].failure += c7 || 0;
+          coverage30d[goal].failure += c30 || 0;
         }
       }
       const missingRow = await db.get(
@@ -305,65 +310,40 @@ router.get('/google/goal-health', async (req, res) => {
       );
       lastRunAt = lastRunRow && lastRunRow.ts != null ? Number(lastRunRow.ts) : null;
 
-      const eligibleRow7 = await db.get(
-        `SELECT COUNT(DISTINCT order_id) AS c
-         FROM ads_orders_attributed
-         WHERE shop = ? AND created_at_ms >= ?
-           AND (
-             (gclid IS NOT NULL AND TRIM(gclid) != '')
-             OR (gbraid IS NOT NULL AND TRIM(gbraid) != '')
-             OR (wbraid IS NOT NULL AND TRIM(wbraid) != '')
-           )`,
-        [normShop, cutoff7d]
-      ).catch(() => null);
-      eligibleOrders7d = eligibleRow7 && eligibleRow7.c != null ? Number(eligibleRow7.c) : 0;
-      const uploadedRow7 = await db.get(
-        `SELECT COUNT(DISTINCT order_id) AS c
-         FROM google_ads_postback_jobs
-         WHERE shop = ? AND created_at >= ? AND status = 'success'`,
-        [normShop, cutoff7d]
-      ).catch(() => null);
-      uploadedOrders7d = uploadedRow7 && uploadedRow7.c != null ? Number(uploadedRow7.c) : 0;
+      const eligibleRow = await db.get(
+        `
+          SELECT
+            COUNT(DISTINCT CASE WHEN created_at_ms >= ? THEN order_id END) AS c24,
+            COUNT(DISTINCT CASE WHEN created_at_ms >= ? THEN order_id END) AS c7,
+            COUNT(DISTINCT CASE WHEN created_at_ms >= ? THEN order_id END) AS c30
+          FROM ads_orders_attributed
+          WHERE shop = ? AND created_at_ms >= ?
+            AND (
+              (gclid IS NOT NULL AND TRIM(gclid) != '')
+              OR (gbraid IS NOT NULL AND TRIM(gbraid) != '')
+              OR (wbraid IS NOT NULL AND TRIM(wbraid) != '')
+            )
+        `,
+        [cutoff24h, cutoff7d, cutoff30d, normShop, cutoff30d]
+      );
+      eligibleOrders24h = eligibleRow && eligibleRow.c24 != null ? Number(eligibleRow.c24) : 0;
+      eligibleOrders7d = eligibleRow && eligibleRow.c7 != null ? Number(eligibleRow.c7) : 0;
+      eligibleOrders30d = eligibleRow && eligibleRow.c30 != null ? Number(eligibleRow.c30) : 0;
 
-      const eligibleRow24 = await db.get(
-        `SELECT COUNT(DISTINCT order_id) AS c
-         FROM ads_orders_attributed
-         WHERE shop = ? AND created_at_ms >= ?
-           AND (
-             (gclid IS NOT NULL AND TRIM(gclid) != '')
-             OR (gbraid IS NOT NULL AND TRIM(gbraid) != '')
-             OR (wbraid IS NOT NULL AND TRIM(wbraid) != '')
-           )`,
-        [normShop, cutoff24h]
-      ).catch(() => null);
-      eligibleOrders24h = eligibleRow24 && eligibleRow24.c != null ? Number(eligibleRow24.c) : 0;
-      const uploadedRow24 = await db.get(
-        `SELECT COUNT(DISTINCT order_id) AS c
-         FROM google_ads_postback_jobs
-         WHERE shop = ? AND created_at >= ? AND status = 'success'`,
-        [normShop, cutoff24h]
-      ).catch(() => null);
-      uploadedOrders24h = uploadedRow24 && uploadedRow24.c != null ? Number(uploadedRow24.c) : 0;
-
-      const eligibleRow30 = await db.get(
-        `SELECT COUNT(DISTINCT order_id) AS c
-         FROM ads_orders_attributed
-         WHERE shop = ? AND created_at_ms >= ?
-           AND (
-             (gclid IS NOT NULL AND TRIM(gclid) != '')
-             OR (gbraid IS NOT NULL AND TRIM(gbraid) != '')
-             OR (wbraid IS NOT NULL AND TRIM(wbraid) != '')
-           )`,
-        [normShop, cutoff30d]
-      ).catch(() => null);
-      eligibleOrders30d = eligibleRow30 && eligibleRow30.c != null ? Number(eligibleRow30.c) : 0;
-      const uploadedRow30 = await db.get(
-        `SELECT COUNT(DISTINCT order_id) AS c
-         FROM google_ads_postback_jobs
-         WHERE shop = ? AND created_at >= ? AND status = 'success'`,
-        [normShop, cutoff30d]
-      ).catch(() => null);
-      uploadedOrders30d = uploadedRow30 && uploadedRow30.c != null ? Number(uploadedRow30.c) : 0;
+      const uploadedRow = await db.get(
+        `
+          SELECT
+            COUNT(DISTINCT CASE WHEN created_at >= ? THEN order_id END) AS c24,
+            COUNT(DISTINCT CASE WHEN created_at >= ? THEN order_id END) AS c7,
+            COUNT(DISTINCT CASE WHEN created_at >= ? THEN order_id END) AS c30
+          FROM google_ads_postback_jobs
+          WHERE shop = ? AND created_at >= ? AND status = 'success'
+        `,
+        [cutoff24h, cutoff7d, cutoff30d, normShop, cutoff30d]
+      );
+      uploadedOrders24h = uploadedRow && uploadedRow.c24 != null ? Number(uploadedRow.c24) : 0;
+      uploadedOrders7d = uploadedRow && uploadedRow.c7 != null ? Number(uploadedRow.c7) : 0;
+      uploadedOrders30d = uploadedRow && uploadedRow.c30 != null ? Number(uploadedRow.c30) : 0;
     }
     const diagnostics = await getCachedDiagnostics(shop);
     const coveragePercent24h = eligibleOrders24h > 0 ? Math.round((uploadedOrders24h / eligibleOrders24h) * 1000) / 10 : null;

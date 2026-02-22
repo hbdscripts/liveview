@@ -627,6 +627,41 @@ async function postAttributionConfig(req, res) {
 
   const db = getDb();
 
+  function chunkSizeForBulkInsert(colsCount) {
+    const n = Math.max(1, Math.trunc(Number(colsCount) || 1));
+    // SQLite default max variables is typically 999; keep headroom for safety.
+    const maxRows = Math.max(1, Math.floor(900 / n));
+    return Math.min(300, maxRows);
+  }
+
+  async function bulkUpsert(table, cols, rowsIn, conflictCols, updateCols) {
+    const rows = Array.isArray(rowsIn) ? rowsIn : [];
+    if (!rows.length) return;
+    const columns = Array.isArray(cols) ? cols.filter(Boolean) : [];
+    if (!columns.length) return;
+    const conflict = Array.isArray(conflictCols) ? conflictCols.filter(Boolean) : [];
+    const updates = Array.isArray(updateCols) ? updateCols.filter(Boolean) : [];
+    if (!conflict.length) throw new Error('bulkUpsert missing conflict columns for ' + table);
+
+    const perRow = columns.length;
+    const rowChunk = chunkSizeForBulkInsert(perRow);
+    for (let start = 0; start < rows.length; start += rowChunk) {
+      const chunk = rows.slice(start, start + rowChunk);
+      const valuesSql = chunk
+        .map(() => '(' + columns.map(() => '?').join(', ') + ')')
+        .join(', ');
+      const params = [];
+      for (const r of chunk) {
+        for (const c of columns) params.push(r && r[c] != null ? r[c] : null);
+      }
+      const updateSql = updates.length
+        ? (' DO UPDATE SET ' + updates.map((c) => `${c} = EXCLUDED.${c}`).join(', '))
+        : ' DO NOTHING';
+      const sql = `INSERT INTO ${table} (${columns.join(', ')}) VALUES ${valuesSql} ON CONFLICT (${conflict.join(', ')})${updateSql}`;
+      await db.run(sql, params);
+    }
+  }
+
   async function deleteRowsNotIn(table, col, keys) {
     const list = Array.isArray(keys) ? keys.map((k) => (k != null ? String(k) : '')).map((k) => k.trim()).filter(Boolean) : [];
     if (!list.length) {
@@ -638,105 +673,59 @@ async function postAttributionConfig(req, res) {
   }
 
   try {
-    // Upsert new config first (avoid deleting the old config before inserts succeed).
-    for (const r of channels) {
-      await db.run(
-        `
-          INSERT INTO attribution_channels (channel_key, label, sort_order, enabled, updated_at)
-          VALUES (?, ?, ?, ?, ?)
-          ON CONFLICT (channel_key) DO UPDATE SET
-            label = EXCLUDED.label,
-            sort_order = EXCLUDED.sort_order,
-            enabled = EXCLUDED.enabled,
-            updated_at = EXCLUDED.updated_at
-        `,
-        [r.channel_key, r.label, r.sort_order, r.enabled, r.updated_at]
+    await db.transaction(async () => {
+      // Upsert new config first (avoid deleting the old config before inserts succeed).
+      await bulkUpsert(
+        'attribution_channels',
+        ['channel_key', 'label', 'sort_order', 'enabled', 'updated_at'],
+        channels,
+        ['channel_key'],
+        ['label', 'sort_order', 'enabled', 'updated_at']
       );
-    }
-    for (const r of sources) {
-      await db.run(
-        `
-          INSERT INTO attribution_sources (source_key, label, icon_spec, sort_order, enabled, updated_at)
-          VALUES (?, ?, ?, ?, ?, ?)
-          ON CONFLICT (source_key) DO UPDATE SET
-            label = EXCLUDED.label,
-            icon_spec = EXCLUDED.icon_spec,
-            sort_order = EXCLUDED.sort_order,
-            enabled = EXCLUDED.enabled,
-            updated_at = EXCLUDED.updated_at
-        `,
-        [r.source_key, r.label, r.icon_spec, r.sort_order, r.enabled, r.updated_at]
+      await bulkUpsert(
+        'attribution_sources',
+        ['source_key', 'label', 'icon_spec', 'sort_order', 'enabled', 'updated_at'],
+        sources,
+        ['source_key'],
+        ['label', 'icon_spec', 'sort_order', 'enabled', 'updated_at']
       );
-    }
-    for (const r of tags) {
-      await db.run(
-        `
-          INSERT INTO attribution_tags (tag_key, label, icon_spec, sort_order, enabled, updated_at)
-          VALUES (?, ?, ?, ?, ?, ?)
-          ON CONFLICT (tag_key) DO UPDATE SET
-            label = EXCLUDED.label,
-            icon_spec = EXCLUDED.icon_spec,
-            sort_order = EXCLUDED.sort_order,
-            enabled = EXCLUDED.enabled,
-            updated_at = EXCLUDED.updated_at
-        `,
-        [r.tag_key, r.label, r.icon_spec, r.sort_order, r.enabled, r.updated_at]
+      await bulkUpsert(
+        'attribution_tags',
+        ['tag_key', 'label', 'icon_spec', 'sort_order', 'enabled', 'updated_at'],
+        tags,
+        ['tag_key'],
+        ['label', 'icon_spec', 'sort_order', 'enabled', 'updated_at']
       );
-    }
-    for (const r of variants) {
-      await db.run(
-        `
-          INSERT INTO attribution_variants (variant_key, label, channel_key, source_key, icon_spec, sort_order, enabled, updated_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-          ON CONFLICT (variant_key) DO UPDATE SET
-            label = EXCLUDED.label,
-            channel_key = EXCLUDED.channel_key,
-            source_key = EXCLUDED.source_key,
-            icon_spec = EXCLUDED.icon_spec,
-            sort_order = EXCLUDED.sort_order,
-            enabled = EXCLUDED.enabled,
-            updated_at = EXCLUDED.updated_at
-        `,
-        [r.variant_key, r.label, r.channel_key, r.source_key, r.icon_spec, r.sort_order, r.enabled, r.updated_at]
+      await bulkUpsert(
+        'attribution_variants',
+        ['variant_key', 'label', 'channel_key', 'source_key', 'icon_spec', 'sort_order', 'enabled', 'updated_at'],
+        variants,
+        ['variant_key'],
+        ['label', 'channel_key', 'source_key', 'icon_spec', 'sort_order', 'enabled', 'updated_at']
       );
-    }
-    for (const r of rules) {
-      await db.run(
-        `
-          INSERT INTO attribution_rules (id, label, priority, enabled, variant_key, tag_key, match_json, created_at, updated_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-          ON CONFLICT (id) DO UPDATE SET
-            label = EXCLUDED.label,
-            priority = EXCLUDED.priority,
-            enabled = EXCLUDED.enabled,
-            variant_key = EXCLUDED.variant_key,
-            tag_key = EXCLUDED.tag_key,
-            match_json = EXCLUDED.match_json,
-            updated_at = EXCLUDED.updated_at
-        `,
-        [r.id, r.label, r.priority, r.enabled, r.variant_key, r.tag_key, r.match_json, r.created_at, r.updated_at]
+      await bulkUpsert(
+        'attribution_rules',
+        ['id', 'label', 'priority', 'enabled', 'variant_key', 'tag_key', 'match_json', 'created_at', 'updated_at'],
+        rules,
+        ['id'],
+        ['label', 'priority', 'enabled', 'variant_key', 'tag_key', 'match_json', 'updated_at']
       );
-    }
-    for (const r of allowlist) {
-      await db.run(
-        `
-          INSERT INTO attribution_allowlist (variant_key, enabled, updated_at)
-          VALUES (?, ?, ?)
-          ON CONFLICT (variant_key) DO UPDATE SET
-            enabled = EXCLUDED.enabled,
-            updated_at = EXCLUDED.updated_at
-        `,
-        [r.variant_key, r.enabled, r.updated_at]
+      await bulkUpsert(
+        'attribution_allowlist',
+        ['variant_key', 'enabled', 'updated_at'],
+        allowlist,
+        ['variant_key'],
+        ['enabled', 'updated_at']
       );
-    }
 
-    // Then remove stale rows that were not present in the submitted config.
-    await deleteRowsNotIn('attribution_allowlist', 'variant_key', allowlist.map((r) => r.variant_key));
-    await deleteRowsNotIn('attribution_rules', 'id', rules.map((r) => r.id));
-    await deleteRowsNotIn('attribution_variants', 'variant_key', variants.map((r) => r.variant_key));
-    await deleteRowsNotIn('attribution_tags', 'tag_key', tags.map((r) => r.tag_key));
-    await deleteRowsNotIn('attribution_sources', 'source_key', sources.map((r) => r.source_key));
-    await deleteRowsNotIn('attribution_channels', 'channel_key', channels.map((r) => r.channel_key));
+      // Then remove stale rows that were not present in the submitted config.
+      await deleteRowsNotIn('attribution_allowlist', 'variant_key', allowlist.map((r) => r.variant_key));
+      await deleteRowsNotIn('attribution_rules', 'id', rules.map((r) => r.id));
+      await deleteRowsNotIn('attribution_variants', 'variant_key', variants.map((r) => r.variant_key));
+      await deleteRowsNotIn('attribution_tags', 'tag_key', tags.map((r) => r.tag_key));
+      await deleteRowsNotIn('attribution_sources', 'source_key', sources.map((r) => r.source_key));
+      await deleteRowsNotIn('attribution_channels', 'channel_key', channels.map((r) => r.channel_key));
+    });
   } catch (err) {
     Sentry.captureException(err, { extra: { route: 'attribution.config.save' } });
     return res.status(500).json({ ok: false, error: 'Failed to save config' });

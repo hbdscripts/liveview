@@ -10,6 +10,28 @@ function normalizeCustomerId(raw) {
   return s.replace(/[^0-9]/g, '').slice(0, 32);
 }
 
+function chunkArray(list, size) {
+  const arr = Array.isArray(list) ? list : [];
+  const n = arr.length;
+  const sz = Math.max(1, Math.min(2000, Math.trunc(Number(size) || 1)));
+  const out = [];
+  for (let i = 0; i < n; i += sz) out.push(arr.slice(i, i + sz));
+  return out;
+}
+
+async function bulkUpsert(db, sqlPrefix, rowSql, sqlSuffix, rows, rowsPerChunk) {
+  const list = Array.isArray(rows) ? rows : [];
+  if (!list.length) return;
+  const per = Math.max(1, Math.min(2000, Math.trunc(Number(rowsPerChunk) || 500)));
+  for (const chunk of chunkArray(list, per)) {
+    if (!chunk.length) continue;
+    const valuesSql = chunk.map(() => rowSql).join(', ');
+    const params = [];
+    for (const row of chunk) params.push(...row);
+    await db.run(sqlPrefix + valuesSql + sqlSuffix, params);
+  }
+}
+
 function fmtYmdInTz(tsMs, timeZone) {
   try {
     const d = new Date(Number(tsMs));
@@ -400,7 +422,7 @@ async function syncGoogleAdsSpendHourly(options = {}) {
   }
 
   const now = Date.now();
-  let upserts = 0;
+  const upsertRows = [];
   for (const v of grouped.values()) {
     const spendGbp = Math.round((Number(v.spendGbp) || 0) * 100) / 100;
     const clicks = Math.max(0, Math.floor(Number(v.clicks) || 0));
@@ -409,27 +431,46 @@ async function syncGoogleAdsSpendHourly(options = {}) {
     const conv = Math.round((Number(v.conversions) || 0) * 100) / 100;
     const convVal = Math.round((Number(v.conversionsValueGbp) || 0) * 100) / 100;
 
-    await adsDb.run(
-      `
-        INSERT INTO google_ads_spend_hourly (provider, hour_ts, customer_id, campaign_id, adgroup_id, cost_micros, spend_gbp, clicks, impressions, campaign_name, campaign_status, adgroup_name, conversions, conversions_value_gbp, updated_at)
-        VALUES (?, TO_TIMESTAMP(?/1000.0), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ON CONFLICT (provider, hour_ts, campaign_id, adgroup_id) DO UPDATE SET
-          customer_id = EXCLUDED.customer_id,
-          cost_micros = EXCLUDED.cost_micros,
-          spend_gbp = EXCLUDED.spend_gbp,
-          clicks = EXCLUDED.clicks,
-          impressions = EXCLUDED.impressions,
-          campaign_name = COALESCE(NULLIF(EXCLUDED.campaign_name, ''), google_ads_spend_hourly.campaign_name),
-          campaign_status = COALESCE(NULLIF(EXCLUDED.campaign_status, ''), google_ads_spend_hourly.campaign_status),
-          adgroup_name = COALESCE(NULLIF(EXCLUDED.adgroup_name, ''), google_ads_spend_hourly.adgroup_name),
-          conversions = EXCLUDED.conversions,
-          conversions_value_gbp = EXCLUDED.conversions_value_gbp,
-          updated_at = EXCLUDED.updated_at
-      `,
-      ['google_ads', v.hourUtcMs, customerId, v.campaignId, v.adgroupId, costMicros, spendGbp, clicks, impressions, v.campaignName || '', v.campaignStatus || '', v.adgroupName || '', conv, convVal, now]
-    );
-    upserts++;
+    upsertRows.push([
+      'google_ads',
+      v.hourUtcMs,
+      customerId,
+      v.campaignId,
+      v.adgroupId,
+      costMicros,
+      spendGbp,
+      clicks,
+      impressions,
+      v.campaignName || '',
+      v.campaignStatus || '',
+      v.adgroupName || '',
+      conv,
+      convVal,
+      now,
+    ]);
   }
+  await bulkUpsert(
+    adsDb,
+    'INSERT INTO google_ads_spend_hourly (provider, hour_ts, customer_id, campaign_id, adgroup_id, cost_micros, spend_gbp, clicks, impressions, campaign_name, campaign_status, adgroup_name, conversions, conversions_value_gbp, updated_at) VALUES ',
+    '(?, TO_TIMESTAMP(?/1000.0), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    `
+      ON CONFLICT (provider, hour_ts, campaign_id, adgroup_id) DO UPDATE SET
+        customer_id = EXCLUDED.customer_id,
+        cost_micros = EXCLUDED.cost_micros,
+        spend_gbp = EXCLUDED.spend_gbp,
+        clicks = EXCLUDED.clicks,
+        impressions = EXCLUDED.impressions,
+        campaign_name = COALESCE(NULLIF(EXCLUDED.campaign_name, ''), google_ads_spend_hourly.campaign_name),
+        campaign_status = COALESCE(NULLIF(EXCLUDED.campaign_status, ''), google_ads_spend_hourly.campaign_status),
+        adgroup_name = COALESCE(NULLIF(EXCLUDED.adgroup_name, ''), google_ads_spend_hourly.adgroup_name),
+        conversions = EXCLUDED.conversions,
+        conversions_value_gbp = EXCLUDED.conversions_value_gbp,
+        updated_at = EXCLUDED.updated_at
+    `,
+    upsertRows,
+    500
+  );
+  const upserts = upsertRows.length;
 
     return {
       ok: true,
@@ -592,7 +633,7 @@ async function syncGoogleAdsGeoDaily(options = {}) {
     }
 
     const now = Date.now();
-    let upserts = 0;
+    const upsertRows = [];
     for (const v of grouped.values()) {
       const spend = (Number(v.costMicros) || 0) / 1_000_000;
       const spendGbp = fx.convertToGbp(spend, accountCur, ratesToGbp);
@@ -602,40 +643,41 @@ async function syncGoogleAdsGeoDaily(options = {}) {
       const costMicros = Math.max(0, Math.floor(Number(v.costMicros) || 0));
       const countryCode = idToCountryCode.get(String(v.countryCriterionId)) || null;
 
-      await adsDb.run(
-        `
-          INSERT INTO google_ads_geo_daily
-            (provider, day_ymd, customer_id, campaign_id, campaign_name, country_criterion_id, country_code, location_type, cost_micros, spend_gbp, clicks, impressions, updated_at)
-          VALUES
-            (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-          ON CONFLICT (provider, day_ymd, campaign_id, country_criterion_id, location_type) DO UPDATE SET
-            customer_id = EXCLUDED.customer_id,
-            campaign_name = COALESCE(NULLIF(EXCLUDED.campaign_name, ''), google_ads_geo_daily.campaign_name),
-            country_code = COALESCE(NULLIF(EXCLUDED.country_code, ''), google_ads_geo_daily.country_code),
-            cost_micros = EXCLUDED.cost_micros,
-            spend_gbp = EXCLUDED.spend_gbp,
-            clicks = EXCLUDED.clicks,
-            impressions = EXCLUDED.impressions,
-            updated_at = EXCLUDED.updated_at
-        `,
-        [
-          'google_ads',
-          v.dayYmd,
-          customerId,
-          v.campaignId,
-          v.campaignName || '',
-          v.countryCriterionId,
-          countryCode,
-          v.locationType,
-          costMicros,
-          spendGbpRounded,
-          clicks,
-          impressions,
-          now,
-        ]
-      );
-      upserts++;
+      upsertRows.push([
+        'google_ads',
+        v.dayYmd,
+        customerId,
+        v.campaignId,
+        v.campaignName || '',
+        v.countryCriterionId,
+        countryCode,
+        v.locationType,
+        costMicros,
+        spendGbpRounded,
+        clicks,
+        impressions,
+        now,
+      ]);
     }
+    await bulkUpsert(
+      adsDb,
+      'INSERT INTO google_ads_geo_daily (provider, day_ymd, customer_id, campaign_id, campaign_name, country_criterion_id, country_code, location_type, cost_micros, spend_gbp, clicks, impressions, updated_at) VALUES ',
+      '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      `
+        ON CONFLICT (provider, day_ymd, campaign_id, country_criterion_id, location_type) DO UPDATE SET
+          customer_id = EXCLUDED.customer_id,
+          campaign_name = COALESCE(NULLIF(EXCLUDED.campaign_name, ''), google_ads_geo_daily.campaign_name),
+          country_code = COALESCE(NULLIF(EXCLUDED.country_code, ''), google_ads_geo_daily.country_code),
+          cost_micros = EXCLUDED.cost_micros,
+          spend_gbp = EXCLUDED.spend_gbp,
+          clicks = EXCLUDED.clicks,
+          impressions = EXCLUDED.impressions,
+          updated_at = EXCLUDED.updated_at
+      `,
+      upsertRows,
+      600
+    );
+    const upserts = upsertRows.length;
 
     return {
       ok: true,
@@ -758,7 +800,7 @@ async function syncGoogleAdsDeviceDaily(options = {}) {
     }
 
     const now = Date.now();
-    let upserts = 0;
+    const upsertRows = [];
     for (const v of grouped.values()) {
       const spend = (Number(v.costMicros) || 0) / 1_000_000;
       const spendGbp = fx.convertToGbp(spend, accountCur, ratesToGbp);
@@ -767,37 +809,38 @@ async function syncGoogleAdsDeviceDaily(options = {}) {
       const impressions = Math.max(0, Math.floor(Number(v.impressions) || 0));
       const costMicros = Math.max(0, Math.floor(Number(v.costMicros) || 0));
 
-      await adsDb.run(
-        `
-          INSERT INTO google_ads_device_daily
-            (provider, day_ymd, customer_id, campaign_id, campaign_name, device, cost_micros, spend_gbp, clicks, impressions, updated_at)
-          VALUES
-            (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-          ON CONFLICT (provider, day_ymd, campaign_id, device) DO UPDATE SET
-            customer_id = EXCLUDED.customer_id,
-            campaign_name = COALESCE(NULLIF(EXCLUDED.campaign_name, ''), google_ads_device_daily.campaign_name),
-            cost_micros = EXCLUDED.cost_micros,
-            spend_gbp = EXCLUDED.spend_gbp,
-            clicks = EXCLUDED.clicks,
-            impressions = EXCLUDED.impressions,
-            updated_at = EXCLUDED.updated_at
-        `,
-        [
-          'google_ads',
-          v.dayYmd,
-          customerId,
-          v.campaignId,
-          v.campaignName || '',
-          v.device,
-          costMicros,
-          spendGbpRounded,
-          clicks,
-          impressions,
-          now,
-        ]
-      );
-      upserts++;
+      upsertRows.push([
+        'google_ads',
+        v.dayYmd,
+        customerId,
+        v.campaignId,
+        v.campaignName || '',
+        v.device,
+        costMicros,
+        spendGbpRounded,
+        clicks,
+        impressions,
+        now,
+      ]);
     }
+    await bulkUpsert(
+      adsDb,
+      'INSERT INTO google_ads_device_daily (provider, day_ymd, customer_id, campaign_id, campaign_name, device, cost_micros, spend_gbp, clicks, impressions, updated_at) VALUES ',
+      '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      `
+        ON CONFLICT (provider, day_ymd, campaign_id, device) DO UPDATE SET
+          customer_id = EXCLUDED.customer_id,
+          campaign_name = COALESCE(NULLIF(EXCLUDED.campaign_name, ''), google_ads_device_daily.campaign_name),
+          cost_micros = EXCLUDED.cost_micros,
+          spend_gbp = EXCLUDED.spend_gbp,
+          clicks = EXCLUDED.clicks,
+          impressions = EXCLUDED.impressions,
+          updated_at = EXCLUDED.updated_at
+      `,
+      upsertRows,
+      800
+    );
+    const upserts = upsertRows.length;
 
     return {
       ok: true,
@@ -1077,35 +1120,62 @@ async function backfillCampaignIdsFromGclid(options = {}) {
 
     // Step 4b: Persist click_id→campaign mappings to ads DB cache for order attribution
     const cacheNow = Date.now();
+    const cacheRows = [];
     for (const [clickId, mapping] of clickIdCampaignMap) {
-      try {
-        await adsDb.run(
-          `INSERT INTO gclid_campaign_cache (gclid, campaign_id, adgroup_id, cached_at)
-           VALUES (?, ?, ?, ?)
-           ON CONFLICT (gclid) DO UPDATE SET campaign_id = EXCLUDED.campaign_id, adgroup_id = EXCLUDED.adgroup_id, cached_at = EXCLUDED.cached_at`,
-          [clickId, mapping.campaignId, mapping.adgroupId, cacheNow]
-        );
-      } catch (_) {}
+      cacheRows.push([clickId, mapping.campaignId, mapping.adgroupId, cacheNow]);
+    }
+    if (cacheRows.length) {
+      await bulkUpsert(
+        adsDb,
+        'INSERT INTO gclid_campaign_cache (gclid, campaign_id, adgroup_id, cached_at) VALUES ',
+        '(?, ?, ?, ?)',
+        ' ON CONFLICT (gclid) DO UPDATE SET campaign_id = EXCLUDED.campaign_id, adgroup_id = EXCLUDED.adgroup_id, cached_at = EXCLUDED.cached_at',
+        cacheRows,
+        900
+      );
     }
 
     // Step 5: Update sessions
-    let updated = 0;
+    const updates = [];
     for (const [clickId, sessionIds] of clickIdToSessions) {
       const mapping = clickIdCampaignMap.get(clickId);
       if (!mapping) continue;
-
-      for (const sessionId of sessionIds) {
-        await db.run(
-          `UPDATE sessions SET
-             bs_source = COALESCE(NULLIF(TRIM(bs_source), ''), ?),
-             bs_campaign_id = ?,
-             bs_adgroup_id = COALESCE(NULLIF(TRIM(bs_adgroup_id), ''), ?)
-           WHERE session_id = ? AND (bs_campaign_id IS NULL OR TRIM(bs_campaign_id) = '')`,
-          ['googleads', mapping.campaignId, mapping.adgroupId, sessionId]
-        );
-        updated++;
+      for (const sessionId of sessionIds || []) {
+        if (!sessionId) continue;
+        updates.push([String(sessionId), mapping.campaignId, mapping.adgroupId]);
       }
     }
+    const uniqUpdates = new Map();
+    for (const [sid, campId, agId] of updates) {
+      if (!sid || !campId) continue;
+      if (!uniqUpdates.has(sid)) uniqUpdates.set(sid, { campaignId: campId, adgroupId: agId || '_all_' });
+    }
+
+    let updated = 0;
+    const updateEntries = Array.from(uniqUpdates.entries()); // [sid, { campaignId, adgroupId }]
+    const UPDATE_CHUNK = 120;
+    await db.transaction(async () => {
+      for (const chunk of chunkArray(updateEntries, UPDATE_CHUNK)) {
+        if (!chunk.length) continue;
+        const caseCampaign = chunk.map(() => 'WHEN ? THEN ?').join(' ');
+        const caseAdgroup = chunk.map(() => 'WHEN ? THEN ?').join(' ');
+        const inList = chunk.map(() => '?').join(', ');
+        const sql = `
+          UPDATE sessions SET
+            bs_source = COALESCE(NULLIF(TRIM(bs_source), ''), ?),
+            bs_campaign_id = CASE session_id ${caseCampaign} ELSE bs_campaign_id END,
+            bs_adgroup_id = COALESCE(NULLIF(TRIM(bs_adgroup_id), ''), CASE session_id ${caseAdgroup} ELSE bs_adgroup_id END)
+          WHERE session_id IN (${inList})
+            AND (bs_campaign_id IS NULL OR TRIM(bs_campaign_id) = '')
+        `;
+        const params = ['googleads'];
+        for (const [sid, m] of chunk) { params.push(sid, m.campaignId); }
+        for (const [sid, m] of chunk) { params.push(sid, m.adgroupId); }
+        for (const [sid] of chunk) params.push(sid);
+        const r = await db.run(sql, params);
+        updated += r && r.changes != null ? Number(r.changes) : 0;
+      }
+    });
 
     return {
       ok: true,

@@ -2146,6 +2146,244 @@ async function listLatestSales(limit = 5) {
   const truthOrderCache = new Map(); // key -> order row | null
   const topProductCache = new Map(); // order_id -> { title, productId } | null
 
+  function uniqNonEmptyStrings(list) {
+    const seen = new Set();
+    const out = [];
+    for (const v of (Array.isArray(list) ? list : [])) {
+      const s = v != null ? String(v).trim() : '';
+      if (!s || seen.has(s)) continue;
+      seen.add(s);
+      out.push(s);
+    }
+    return out;
+  }
+
+  function chunkArray(list, size) {
+    const out = [];
+    const n = Array.isArray(list) ? list.length : 0;
+    const sz = Math.max(1, Math.trunc(Number(size) || 1));
+    for (let i = 0; i < n; i += sz) out.push(list.slice(i, i + sz));
+    return out;
+  }
+
+  async function mapWithConcurrency(list, limit, mapper) {
+    const items = Array.isArray(list) ? list : [];
+    const n = items.length;
+    if (!n) return [];
+    const lim = Math.max(1, Math.min(20, Math.trunc(Number(limit) || 8)));
+    const out = new Array(n);
+    let idx = 0;
+    async function worker() {
+      while (true) {
+        const i = idx++;
+        if (i >= n) return;
+        out[i] = await mapper(items[i], i);
+      }
+    }
+    const workers = [];
+    for (let i = 0; i < Math.min(lim, n); i++) workers.push(worker());
+    await Promise.all(workers);
+    return out;
+  }
+
+  async function prefetchLatestPurchaseLinks(sessionIds) {
+    const sids = uniqNonEmptyStrings(sessionIds);
+    if (!sids.length) return;
+    const CHUNK = 200;
+    for (const chunk of chunkArray(sids, CHUNK)) {
+      const sql = `
+        SELECT session_id, order_id, checkout_token, order_total, order_currency, purchased_at
+        FROM purchases
+        WHERE session_id IN (${chunk.map(() => '?').join(', ')})
+        ORDER BY session_id ASC, purchased_at DESC
+      `;
+      let rows = [];
+      try { rows = await db.all(sql, chunk); } catch (_) { rows = []; }
+      for (const r of rows || []) {
+        const sid = r && r.session_id != null ? String(r.session_id).trim() : '';
+        if (!sid || purchaseLinkCache.has(sid)) continue;
+        purchaseLinkCache.set(sid, r || null);
+      }
+      for (const sid of chunk) {
+        if (!purchaseLinkCache.has(sid)) purchaseLinkCache.set(sid, null);
+      }
+    }
+  }
+
+  async function prefetchLatestPurchaseEvidence(sessionIds) {
+    if (!shop) return;
+    const sids = uniqNonEmptyStrings(sessionIds);
+    if (!sids.length) return;
+    const CHUNK = 120;
+    for (const chunk of chunkArray(sids, CHUNK)) {
+      const sql = `
+        SELECT session_id, linked_order_id, order_id, checkout_token, currency, total_price, occurred_at, received_at
+        FROM purchase_events
+        WHERE shop = ?
+          AND session_id IN (${chunk.map(() => '?').join(', ')})
+          AND event_type IN ('checkout_completed', 'checkout_started')
+        ORDER BY session_id ASC, occurred_at DESC, received_at DESC
+      `;
+      let rows = [];
+      try { rows = await db.all(sql, [shop, ...chunk]); } catch (_) { rows = []; }
+
+      const perSession = new Map();
+      for (const r of rows || []) {
+        const sid = r && r.session_id != null ? String(r.session_id).trim() : '';
+        if (!sid || perSession.has(sid)) continue;
+        perSession.set(sid, []);
+      }
+      // Build ordered arrays per session (already ordered by sid + occurred_at desc).
+      for (const r of rows || []) {
+        const sid = r && r.session_id != null ? String(r.session_id).trim() : '';
+        if (!sid) continue;
+        const arr = perSession.get(sid);
+        if (!arr) continue;
+        if (arr.length >= 10) continue;
+        arr.push(r);
+      }
+
+      for (const sid of chunk) {
+        if (purchaseEvidenceCache.has(sid)) continue;
+        const arr = perSession.get(sid) || [];
+        let best = null;
+        try {
+          let bestAny = null;
+          let bestLinked = null;
+          let bestOrder = null;
+          let bestToken = null;
+          for (const r of arr) {
+            const cand = {
+              linked_order_id: safeNonJunkStr(r && r.linked_order_id, 64) || null,
+              order_id: safeNonJunkStr(r && r.order_id, 64) || null,
+              checkout_token: safeNonJunkStr(r && r.checkout_token, 128) || null,
+              currency: safeNonJunkStr(r && r.currency, 16) || null,
+              total_price: numOrNull(r && r.total_price),
+              occurred_at: numOrNull(r && r.occurred_at),
+              received_at: numOrNull(r && r.received_at),
+            };
+            if (!bestAny) bestAny = cand;
+            if (!bestLinked && cand.linked_order_id) bestLinked = cand;
+            if (!bestOrder && cand.order_id) bestOrder = cand;
+            if (!bestToken && cand.checkout_token) bestToken = cand;
+          }
+          best = bestLinked || bestOrder || bestToken || bestAny || null;
+        } catch (_) {
+          best = null;
+        }
+        purchaseEvidenceCache.set(sid, best || null);
+      }
+    }
+  }
+
+  async function prefetchTruthOrdersByOrderId(orderIds) {
+    if (!shop) return;
+    const ids = uniqNonEmptyStrings(orderIds);
+    if (!ids.length) return;
+    const CHUNK = 200;
+    for (const chunk of chunkArray(ids, CHUNK)) {
+      const sql = `
+        SELECT order_id, COALESCE(NULLIF(TRIM(currency), ''), 'GBP') AS currency, total_price, raw_json, created_at
+        FROM orders_shopify
+        WHERE shop = ?
+          AND order_id IN (${chunk.map(() => '?').join(', ')})
+          AND (test IS NULL OR test = 0)
+          AND cancelled_at IS NULL
+          AND financial_status = 'paid'
+      `;
+      let rows = [];
+      try { rows = await db.all(sql, [shop, ...chunk]); } catch (_) { rows = []; }
+      const found = new Set();
+      for (const r of rows || []) {
+        const oid = safeNonJunkStr(r && r.order_id, 64);
+        if (!oid) continue;
+        truthOrderCache.set('order:' + oid, r || null);
+        found.add(oid);
+      }
+      for (const oid of chunk) {
+        if (!found.has(oid) && !truthOrderCache.has('order:' + oid)) truthOrderCache.set('order:' + oid, null);
+      }
+    }
+  }
+
+  async function prefetchTruthOrdersByCheckoutToken(tokens) {
+    if (!shop) return;
+    const list = uniqNonEmptyStrings(tokens);
+    if (!list.length) return;
+    const CHUNK = 150;
+    for (const chunk of chunkArray(list, CHUNK)) {
+      const sql = `
+        SELECT order_id, checkout_token, COALESCE(NULLIF(TRIM(currency), ''), 'GBP') AS currency, total_price, raw_json, created_at
+        FROM orders_shopify
+        WHERE shop = ?
+          AND checkout_token IN (${chunk.map(() => '?').join(', ')})
+          AND (test IS NULL OR test = 0)
+          AND cancelled_at IS NULL
+          AND financial_status = 'paid'
+        ORDER BY created_at DESC
+      `;
+      let rows = [];
+      try { rows = await db.all(sql, [shop, ...chunk]); } catch (_) { rows = []; }
+      const picked = new Set();
+      for (const r of rows || []) {
+        const tok = safeNonJunkStr(r && r.checkout_token, 128);
+        if (!tok || picked.has(tok)) continue;
+        truthOrderCache.set('token:' + tok, r || null);
+        const oid = safeNonJunkStr(r && r.order_id, 64);
+        if (oid && !truthOrderCache.has('order:' + oid)) truthOrderCache.set('order:' + oid, r || null);
+        picked.add(tok);
+      }
+      for (const tok of chunk) {
+        if (!picked.has(tok) && !truthOrderCache.has('token:' + tok)) truthOrderCache.set('token:' + tok, null);
+      }
+    }
+  }
+
+  async function prefetchTopProductsForTruthOrders(orderIds) {
+    if (!shop) return;
+    const ids = uniqNonEmptyStrings(orderIds);
+    if (!ids.length) return;
+    const CHUNK = 120;
+    for (const chunk of chunkArray(ids, CHUNK)) {
+      const sql = `
+        SELECT
+          li.order_id AS order_id,
+          TRIM(li.product_id) AS product_id,
+          NULLIF(TRIM(li.title), '') AS title,
+          li.quantity AS quantity,
+          li.unit_price AS unit_price,
+          li.line_revenue AS line_revenue
+        FROM orders_shopify_line_items li
+        WHERE li.shop = ?
+          AND li.order_id IN (${chunk.map(() => '?').join(', ')})
+          AND (li.order_test IS NULL OR li.order_test = 0)
+          AND li.order_cancelled_at IS NULL
+          AND li.order_financial_status = 'paid'
+        ORDER BY li.order_id ASC, COALESCE(li.line_revenue, 0) DESC, COALESCE(li.unit_price, 0) DESC, COALESCE(li.quantity, 0) DESC
+      `;
+      let rows = [];
+      try { rows = await db.all(sql, [shop, ...chunk]); } catch (_) { rows = []; }
+      const best = new Map(); // order_id -> { title, productId } (prefer has productId + title)
+
+      for (const r of rows || []) {
+        const oid = safeNonJunkStr(r && r.order_id, 64);
+        if (!oid) continue;
+        const title = safeStr(r && r.title, 256);
+        const productId = normalizeProductId(r && r.product_id);
+        const cur = best.get(oid);
+        if (cur && cur.productId && cur.title) continue;
+        if (title && productId) { best.set(oid, { title, productId }); continue; }
+        if (!cur && title) { best.set(oid, { title, productId: productId || null }); }
+      }
+
+      for (const oid of chunk) {
+        if (topProductCache.has(oid)) continue;
+        const v = best.get(oid);
+        topProductCache.set(oid, v || { title: '', productId: null });
+      }
+    }
+  }
+
   async function getLatestPurchaseLink(sessionId) {
     const sid = String(sessionId || '').trim();
     if (!sid) return null;
@@ -2428,10 +2666,41 @@ async function listLatestSales(limit = 5) {
     }
   }
 
-  const out = [];
-  for (const r of rows || []) {
+  const sessionIds = uniqNonEmptyStrings((rows || []).map((r) => r && r.session_id != null ? String(r.session_id) : ''));
+  await prefetchLatestPurchaseLinks(sessionIds);
+  await prefetchLatestPurchaseEvidence(sessionIds);
+
+  // Preload likely truth orders (by direct order_id / checkout_token) in bulk to avoid N+1 queries.
+  const orderIds = [];
+  const tokens = [];
+  for (const sid of sessionIds) {
+    const purchase = purchaseLinkCache.get(sid);
+    const evidence = purchaseEvidenceCache.get(sid);
+    const directOrderId = safeStr(purchase && purchase.order_id, 64);
+    const directToken = safeStr(purchase && purchase.checkout_token, 128);
+    const linkedOrderId = safeNonJunkStr(evidence && evidence.linked_order_id, 64);
+    const evOrderId = safeNonJunkStr(evidence && evidence.order_id, 64);
+    const evToken = safeNonJunkStr(evidence && evidence.checkout_token, 128);
+    if (directOrderId) orderIds.push(directOrderId);
+    if (linkedOrderId) orderIds.push(linkedOrderId);
+    if (evOrderId) orderIds.push(evOrderId);
+    if (directToken) tokens.push(directToken);
+    if (evToken) tokens.push(evToken);
+  }
+  await prefetchTruthOrdersByOrderId(orderIds);
+  await prefetchTruthOrdersByCheckoutToken(tokens);
+
+  // Preload top product rows for already-known truth orders.
+  const truthOrderIds = [];
+  for (const r of truthOrderCache.values()) {
+    const oid = safeNonJunkStr(r && r.order_id, 64);
+    if (oid) truthOrderIds.push(oid);
+  }
+  await prefetchTopProductsForTruthOrders(truthOrderIds);
+
+  const mapped = await mapWithConcurrency(rows || [], 8, async (r) => {
     const sessionId = r && r.session_id != null ? String(r.session_id) : null;
-    if (!sessionId) continue;
+    if (!sessionId) return null;
     const rawCountry = (r && r.session_country != null) ? String(r.session_country) : '';
     const cc = (rawCountry || 'XX').toUpperCase().slice(0, 2) || 'XX';
     const cur = (r && r.order_currency != null) ? String(r.order_currency).trim().toUpperCase() : '';
@@ -2490,10 +2759,10 @@ async function listLatestSales(limit = 5) {
     const outCur = truth
       ? (fx.normalizeCurrency(truth && truth.currency) || baseCur || 'GBP')
       : (baseCur || null);
-    const outLastHandle = truth ? (resolvedHandle || null) : (resolvedHandle || null);
+    const outLastHandle = resolvedHandle || null;
     const outFirstHandle = truth ? (resolvedHandle || null) : (firstHandle || resolvedHandle || null);
 
-    out.push({
+    return {
       session_id: sessionId,
       country_code: cc,
       purchased_at: purchasedAt,
@@ -2504,9 +2773,10 @@ async function listLatestSales(limit = 5) {
       product_id: productId,
       last_product_handle: outLastHandle,
       first_product_handle: outFirstHandle,
-    });
-  }
-  return out;
+    };
+  });
+
+  return mapped.filter(Boolean);
 }
 
 function purchaseDedupeKeySql(alias = '') {

@@ -696,51 +696,134 @@ async function ensureCustomerOrderFactsForCustomers(shop, accessToken, customerI
   const uniq = Array.from(new Set((customerIds || []).map((c) => (c == null ? '' : String(c).trim())).filter(Boolean)));
   const list = uniq.slice(0, Math.max(0, maxCustomers | 0));
 
-  let checked = 0;
+  const checked = list.length;
   let fetched = 0;
   let stored = 0;
   let errors = 0;
 
-  for (const cid of list) {
-    checked += 1;
-    let prevFirstPaidAt = null;
-    try {
-      const existing = await db.get(
-        'SELECT first_paid_order_at, checked_at FROM customer_order_facts WHERE shop = ? AND customer_id = ?',
-        [safeShop, cid]
-      );
-      prevFirstPaidAt = existing && existing.first_paid_order_at != null ? Number(existing.first_paid_order_at) : null;
-      if (prevFirstPaidAt != null && Number.isFinite(prevFirstPaidAt) && prevFirstPaidAt < boundaryMs) continue;
+  function chunkArray(listIn, size) {
+    const arr = Array.isArray(listIn) ? listIn : [];
+    const n = arr.length;
+    const sz = Math.max(1, Math.trunc(Number(size) || 1));
+    const out = [];
+    for (let i = 0; i < n; i += sz) out.push(arr.slice(i, i + sz));
+    return out;
+  }
 
-      const prevCheckedAt = existing && existing.checked_at != null ? Number(existing.checked_at) : null;
-      // If we have never found a prior paid order yet (null), avoid rechecking too frequently.
-      if ((prevFirstPaidAt == null || !Number.isFinite(prevFirstPaidAt)) && prevCheckedAt && (Date.now() - prevCheckedAt) < CUSTOMER_FACTS_NULL_RECHECK_TTL_MS) continue;
-    } catch (_) {
-      // continue; we'll try fetch + insert anyway
+  async function mapWithConcurrency(items, limit, fn) {
+    const arr = Array.isArray(items) ? items : [];
+    const n = arr.length;
+    if (!n) return [];
+    const lim = Math.max(1, Math.min(8, Math.trunc(Number(limit) || 3)));
+    const out = new Array(n);
+    let idx = 0;
+    async function worker() {
+      while (true) {
+        const i = idx++;
+        if (i >= n) return;
+        out[i] = await fn(arr[i], i);
+      }
     }
+    await Promise.all(Array.from({ length: Math.min(lim, n) }, () => worker()));
+    return out;
+  }
 
+  // Bulk load existing facts to avoid N+1 DB queries.
+  const existingByCustomerId = new Map();
+  try {
+    const CHUNK = 200;
+    for (const chunk of chunkArray(list, CHUNK)) {
+      const rows = await db.all(
+        `SELECT customer_id, first_paid_order_at, checked_at FROM customer_order_facts WHERE shop = ? AND customer_id IN (${chunk.map(() => '?').join(', ')})`,
+        [safeShop, ...chunk]
+      );
+      for (const r of rows || []) {
+        const cid = r && r.customer_id != null ? String(r.customer_id).trim() : '';
+        if (!cid) continue;
+        existingByCustomerId.set(cid, {
+          first_paid_order_at: r.first_paid_order_at != null ? Number(r.first_paid_order_at) : null,
+          checked_at: r.checked_at != null ? Number(r.checked_at) : null,
+        });
+      }
+    }
+  } catch (_) {
+    // Fail-open: treat as missing and fetch again (rate limited by concurrency).
+  }
+
+  const toFetch = [];
+  for (const cid of list) {
+    const existing = existingByCustomerId.get(cid) || null;
+    const prevFirstPaidAt = existing && existing.first_paid_order_at != null ? Number(existing.first_paid_order_at) : null;
+    if (prevFirstPaidAt != null && Number.isFinite(prevFirstPaidAt) && prevFirstPaidAt < boundaryMs) continue;
+    const prevCheckedAt = existing && existing.checked_at != null ? Number(existing.checked_at) : null;
+    if ((prevFirstPaidAt == null || !Number.isFinite(prevFirstPaidAt)) && prevCheckedAt && (Date.now() - prevCheckedAt) < CUSTOMER_FACTS_NULL_RECHECK_TTL_MS) continue;
+    toFetch.push(cid);
+  }
+
+  const results = await mapWithConcurrency(toFetch, 3, async (cid) => {
+    const prev = existingByCustomerId.get(cid) || null;
+    const prevFirstPaidAt = prev && prev.first_paid_order_at != null ? Number(prev.first_paid_order_at) : null;
     try {
       const url = priorPaidOrderForCustomerBeforeApiUrl(safeShop, cid, boundaryIso);
       const res = await shopifyFetchWithRetry(url, accessToken, { maxRetries: 6 });
       const text = await res.text();
-      if (!res.ok) {
-        errors += 1;
-        continue;
-      }
+      if (!res.ok) return { ok: false, cid, prevFirstPaidAt, error: 'http_' + String(res.status || 0) };
       let json = null;
       try { json = text ? JSON.parse(text) : null; } catch (_) { json = null; }
       const order = json && Array.isArray(json.orders) ? json.orders[0] : null;
       const priorPaidOrderAt = parseMs(order?.created_at);
-      let nextFirstPaidAt = prevFirstPaidAt;
-      if (priorPaidOrderAt != null && (nextFirstPaidAt == null || !Number.isFinite(nextFirstPaidAt) || priorPaidOrderAt < nextFirstPaidAt)) {
-        nextFirstPaidAt = priorPaidOrderAt;
-      }
-      await upsertCustomerOrderFact(safeShop, cid, nextFirstPaidAt, Date.now());
-      fetched += 1;
-      stored += 1;
-    } catch (_) {
-      errors += 1;
+      return { ok: true, cid, prevFirstPaidAt, priorPaidOrderAt };
+    } catch (e) {
+      return { ok: false, cid, prevFirstPaidAt, error: e && e.message ? String(e.message).slice(0, 200) : 'fetch_failed' };
     }
+  });
+
+  const nowMs = Date.now();
+  const upserts = [];
+  for (const r of results || []) {
+    if (!r || r.ok !== true) { errors += 1; continue; }
+    const cid = r.cid != null ? String(r.cid).trim() : '';
+    if (!cid) continue;
+    const prevFirstPaidAt = r.prevFirstPaidAt != null ? Number(r.prevFirstPaidAt) : null;
+    const priorPaidOrderAt = r.priorPaidOrderAt != null ? Number(r.priorPaidOrderAt) : null;
+    let nextFirstPaidAt = prevFirstPaidAt;
+    if (priorPaidOrderAt != null && Number.isFinite(priorPaidOrderAt) && (nextFirstPaidAt == null || !Number.isFinite(nextFirstPaidAt) || priorPaidOrderAt < nextFirstPaidAt)) {
+      nextFirstPaidAt = priorPaidOrderAt;
+    }
+    upserts.push({ cid, first_paid_order_at: (nextFirstPaidAt != null && Number.isFinite(nextFirstPaidAt)) ? nextFirstPaidAt : null, checked_at: nowMs });
+    fetched += 1;
+    stored += 1;
+  }
+
+  // Bulk upsert results (reduces write amplification vs per-customer run()).
+  try {
+    if (upserts.length) {
+      await db.transaction(async () => {
+        const CHUNK = 200;
+        for (const chunk of chunkArray(upserts, CHUNK)) {
+          const values = chunk.map(() => '(?, ?, ?, ?)').join(', ');
+          const params = [];
+          for (const row of chunk) params.push(safeShop, row.cid, row.first_paid_order_at, row.checked_at);
+          if (isPostgres()) {
+            await db.run(
+              `INSERT INTO customer_order_facts (shop, customer_id, first_paid_order_at, checked_at)
+               VALUES ${values}
+               ON CONFLICT (shop, customer_id)
+               DO UPDATE SET first_paid_order_at = EXCLUDED.first_paid_order_at, checked_at = EXCLUDED.checked_at`,
+              params
+            );
+          } else {
+            await db.run(
+              `INSERT OR REPLACE INTO customer_order_facts (shop, customer_id, first_paid_order_at, checked_at)
+               VALUES ${values}`,
+              params
+            );
+          }
+        }
+      });
+    }
+  } catch (_) {
+    // Fail-open: don't block callers if facts persistence fails.
   }
 
   try {
