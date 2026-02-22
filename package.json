@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "node server/index.js",
     "start": "cross-env NODE_ENV=production node scripts/prune-runtime-files.js && cross-env NODE_ENV=production node server/index.js",
-    "test": "node --test \"test/**/*.test.js\" \"tests/**/*.spec.js\"",
+    "test": "node scripts/run-tests.js",
     "test:ui": "node --test tests/ui/settings-layout.spec.js",
     "migrate": "node server/migrate.js",
     "backup:daily": "node server/runDailyBackup.js",
