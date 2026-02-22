@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 31e8f59224c6228e
+// checksum: e75db2bf87fc5803
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -383,6 +383,60 @@ const API = '';
           if (perms[perm] === true) el.classList.remove('d-none');
           else el.classList.add('d-none');
         });
+        // Settings left nav: hide empty categories (no visible children).
+        try {
+          var cats = document.querySelectorAll ? document.querySelectorAll('.settings-nav-category') : [];
+          if (!cats || !cats.length) return;
+          cats.forEach(function (cat) {
+            if (!cat || !cat.classList || !cat.querySelectorAll) return;
+            // Admin-only categories are handled by applyAdminOnlyVisibility().
+            if (cat.classList.contains('kexo-admin-only')) return;
+
+            var catPerm = cat.getAttribute && cat.getAttribute('data-kexo-perm');
+            var catPermAllows = !catPerm || perms[catPerm] === true;
+            // Never override permission-based hiding.
+            if (!catPermAllows) {
+              try { cat.removeAttribute('data-kexo-empty-hidden'); } catch (_) {}
+              var lockedLink = cat.querySelector('a[data-settings-tab]:not(.settings-nav-child)');
+              if (lockedLink) {
+                try { lockedLink.removeAttribute('data-kexo-empty-hidden'); } catch (_) {}
+              }
+              return;
+            }
+
+            var children = cat.querySelectorAll('.settings-nav-children a.settings-nav-child');
+            var anyVisible = false;
+            if (children && children.length) {
+              children.forEach(function (a) {
+                if (!a || !a.classList) return;
+                if (!a.classList.contains('d-none')) anyVisible = true;
+              });
+            }
+
+            var catLink = cat.querySelector('a[data-settings-tab]:not(.settings-nav-child)');
+            var isEmptyHidden = (cat.getAttribute && cat.getAttribute('data-kexo-empty-hidden') === '1');
+            if (!anyVisible) {
+              if (!isEmptyHidden) {
+                try { cat.setAttribute('data-kexo-empty-hidden', '1'); } catch (_) {}
+                try { cat.classList.add('d-none'); } catch (_) {}
+              }
+              if (catLink && (catLink.getAttribute('data-kexo-empty-hidden') !== '1')) {
+                try { catLink.setAttribute('data-kexo-empty-hidden', '1'); } catch (_) {}
+                try { catLink.classList.add('d-none'); } catch (_) {}
+              }
+              return;
+            }
+
+            if (isEmptyHidden) {
+              try { cat.removeAttribute('data-kexo-empty-hidden'); } catch (_) {}
+              try { cat.classList.remove('d-none'); } catch (_) {}
+            }
+            if (catLink && catLink.getAttribute('data-kexo-empty-hidden') === '1') {
+              try { catLink.removeAttribute('data-kexo-empty-hidden'); } catch (_) {}
+              try { catLink.classList.remove('d-none'); } catch (_) {}
+            }
+          });
+        } catch (_) {}
       } catch (_) {}
     }
     function ensurePreviewExitMenuItem(viewer) {
