@@ -92,13 +92,22 @@
   function renderItem(n, readFlag) {
     var icon = getIconForType(n.type);
     var readAttr = readFlag ? '1' : '0';
-    var html = '<a href="#" class="list-group-item list-group-item-action notification-item" data-id="' + esc(n.id) + '" data-type="' + esc(n.type) + '" data-read="' + readAttr + '">';
+    var showArchive = !n.archived_at && currentTab !== 'archived';
+    var html = '<div class="list-group-item list-group-item-action notification-item" data-id="' + esc(n.id) + '" data-type="' + esc(n.type) + '" data-read="' + readAttr + '">';
+    html += '<a href="#" class="notification-item-main" data-notification-open="1" aria-label="Open notification">';
     html += '<span class="notification-type-icon bg-primary-lt text-primary"><i class="fa-solid ' + esc(icon) + '" aria-hidden="true"></i></span>';
     html += '<span class="notification-item-content">';
     html += '<span class="notification-item-title">' + esc(n.title) + '</span>';
     html += '<span class="notification-item-time d-block">' + esc(formatTime(n.created_at)) + '</span>';
     html += '</span>';
     html += '</a>';
+    html += '<div class="notification-item-actions" aria-label="Quick actions">';
+    if (showArchive) {
+      html += '<button type="button" class="notification-quick-btn notification-quick-btn--archive" data-notification-action="archive" aria-label="Archive"><i class="fa-solid fa-archive" aria-hidden="true"></i></button>';
+    }
+    html += '<button type="button" class="notification-quick-btn notification-quick-btn--delete" data-notification-action="delete" aria-label="Delete permanently"><i class="fa-solid fa-trash" aria-hidden="true"></i></button>';
+    html += '</div>';
+    html += '</div>';
     return html;
   }
 
@@ -197,7 +206,7 @@
     var item = listEl.querySelector('.notification-item[data-id="' + CSS.escape(String(id)) + '"]');
     var alreadyRead = item && item.getAttribute('data-read') === '1';
     showDetailView();
-    if (detailBodyEl) detailBodyEl.innerHTML = '<div class="text-secondary">Loading…</div>';
+    if (detailBodyEl) detailBodyEl.innerHTML = '<div class="text-muted">Loading…</div>';
     if (detailActionsEl) detailActionsEl.innerHTML = '';
     fetchDetail(id).then(function (res) {
       if (!res || !res.notification) {
@@ -209,15 +218,15 @@
       var bodyHtml = '<div class="d-flex align-items-start gap-2 mb-2">';
       bodyHtml += '<span class="notification-type-icon bg-primary-lt text-primary flex-shrink-0"><i class="fa-solid ' + esc(icon) + '" aria-hidden="true"></i></span>';
       bodyHtml += '<div class="flex-grow-1 min-w-0"><strong>' + esc(n.title) + '</strong></div></div>';
-      bodyHtml += '<div class="small text-secondary mb-2">' + esc(formatTime(n.created_at)) + '</div>';
+      bodyHtml += '<div class="small text-muted mb-2">' + esc(formatTime(n.created_at)) + '</div>';
       if (n.body) bodyHtml += '<div class="notification-body">' + esc(n.body).replace(/\n/g, '<br>') + '</div>';
-      if (n.link) bodyHtml += '<p class="mt-3"><a href="' + esc(n.link) + '" class="btn btn-primary btn-sm">View</a></p>';
+      if (n.link) bodyHtml += '<p class="mt-3"><a href="' + esc(n.link) + '" class="btn">View</a></p>';
       if (detailBodyEl) detailBodyEl.innerHTML = bodyHtml;
 
       if (detailActionsEl) {
         var actionsHtml = '';
         if (!n.archived_at) {
-          actionsHtml += '<button type="button" class="btn btn-secondary btn-sm" id="notifications-archive-btn" aria-label="Archive"><i class="fa-solid fa-archive me-1" aria-hidden="true"></i>Archive</button>';
+          actionsHtml += '<button type="button" class="btn btn-light btn-sm" id="notifications-archive-btn" aria-label="Archive"><i class="fa-solid fa-archive me-1" aria-hidden="true"></i>Archive</button>';
         }
         actionsHtml += '<button type="button" class="btn btn-danger btn-sm" id="notifications-delete-btn" aria-label="Delete permanently"><i class="fa-solid fa-trash me-1" aria-hidden="true"></i>Delete</button>';
         detailActionsEl.innerHTML = actionsHtml;
@@ -269,6 +278,27 @@
   });
 
   listEl.addEventListener('click', function (e) {
+    var actionBtn = e.target && e.target.closest ? e.target.closest('[data-notification-action]') : null;
+    if (actionBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+      var action = actionBtn.getAttribute('data-notification-action');
+      var row = actionBtn.closest('.notification-item');
+      var idForAction = row && row.getAttribute ? row.getAttribute('data-id') : null;
+      if (!idForAction) return;
+      actionBtn.disabled = true;
+      if (action === 'archive') {
+        patchNotification(idForAction, { read: true, archived: true }).then(function () {
+          fetchList().then(function (d) { renderList(d); });
+        });
+      } else if (action === 'delete') {
+        deleteNotification(idForAction).then(function () {
+          fetchList().then(function (d) { renderList(d); });
+        });
+      }
+      return;
+    }
+
     var a = e.target && e.target.closest ? e.target.closest('.notification-item') : null;
     if (!a) return;
     e.preventDefault();

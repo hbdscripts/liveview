@@ -63,13 +63,6 @@
     if (root.getAttribute && root.getAttribute('data-kexo-tooltips-bound') === '1') return;
     root.setAttribute('data-kexo-tooltips-bound', '1');
     root.classList.add('kexo-has-tooltips');
-
-    if (!document.getElementById('kexo-tooltip-styles')) {
-      var s = document.createElement('style');
-      s.id = 'kexo-tooltip-styles';
-      s.textContent = '.kexo-has-tooltips [title], .kexo-has-tooltips [data-kexo-title] { cursor: help; }';
-      document.head.appendChild(s);
-    }
     if (!_tooltipEl) {
       _tooltipEl = document.createElement('div');
       _tooltipEl.id = 'kexo-tooltip-popup';
