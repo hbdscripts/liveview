@@ -26,7 +26,7 @@ When adding a route, re-run this script so the doc stays in sync.
 | GET | `/api/attribution/observed` | server/routes/attribution.js (getAttributionObserved) |
 | GET | `/api/attribution/prefs` | server/routes/attribution.js (getAttributionPrefs) |
 | POST | `/api/attribution/prefs` | (+ requireMaster) |
-| GET | `/api/attribution/report` | server/routes/attribution.js (getAttributionReport) |
+| GET | `/api/attribution/report` | (inline) |
 | DELETE | `/api/attribution/rules/:id` | (+ requireMaster) |
 | PATCH | `/api/attribution/rules/:id` | (+ requireMaster) |
 | GET | `/api/available-days` | server/routes/availableDays.js (getAvailableDays) |
@@ -54,9 +54,9 @@ When adding a route, re-run this script so the doc stays in sync.
 | POST | `/api/insights-variants-suggestions/apply` | server/routes/insightsVariantsSuggestions.js (postApplyInsightsVariantsSuggestions) |
 | USE | `/api/insights/checkout-funnel` | server/routes/checkoutFunnel.js |
 | USE | `/api/integrations/google-ads/issues` | server/routes/googleAdsIssues.js |
-| GET | `/api/kexo-score` | server/routes/kexoScore.js (getKexoScore) |
+| GET | `/api/kexo-score` | (inline) |
 | GET | `/api/kexo-score-summary` | server/routes/kexoScoreSummary.js (getKexoScoreSummary) |
-| GET | `/api/kpis` | server/routes/kpis.js (getKpis) |
+| GET | `/api/kpis` | (inline) |
 | GET | `/api/kpis-expanded-extra` | server/routes/kpisExpandedExtra.js (getKpisExpandedExtra) |
 | GET | `/api/latest-sale` | server/routes/latestSale.js (getLatestSale) |
 | GET | `/api/latest-sales` | server/routes/sessions.js (latestSales) |
@@ -83,7 +83,7 @@ When adding a route, re-run this script so the doc stays in sync.
 | GET | `/api/sessions` | server/routes/sessions.js (list) |
 | GET | `/api/sessions/:id/events` | server/routes/sessions.js (events) |
 | GET | `/api/sessions/online-series` | server/routes/sessions.js (onlineSeries) |
-| GET | `/api/settings` | server/routes/settings.js (getSettings) |
+| GET | `/api/settings` | (inline) |
 | POST | `/api/settings` | server/routes/settings.js (postSettings) |
 | GET | `/api/settings/profit-rules` | (+ requireMaster) |
 | PUT | `/api/settings/profit-rules` | (+ requireMaster) |

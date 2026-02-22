@@ -691,10 +691,12 @@ async function getKpisExpandedExtra(req, res) {
         if (compareStart < 0) compareStart = 0;
         if (compareEnd < 0) compareEnd = 0;
 
-        const current = await computeExpandedExtras(bounds, shop, accessToken, { nowMs: now, timeZone });
-        const compare = (compareEnd > compareStart)
-          ? await computeExpandedExtras({ start: compareStart, end: compareEnd }, shop, accessToken, { nowMs: now, timeZone })
-          : null;
+        const [current, compare] = (compareEnd > compareStart)
+          ? await Promise.all([
+              computeExpandedExtras(bounds, shop, accessToken, { nowMs: now, timeZone }),
+              computeExpandedExtras({ start: compareStart, end: compareEnd }, shop, accessToken, { nowMs: now, timeZone }),
+            ])
+          : [await computeExpandedExtras(bounds, shop, accessToken, { nowMs: now, timeZone }), null];
 
         return {
           ...current,

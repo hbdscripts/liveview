@@ -363,12 +363,53 @@ async function getSetting(key) {
   return row ? row.value : null;
 }
 
+/**
+ * Bulk read settings by keys. Returns { key: value } (value string or null). Single query.
+ */
+async function getSettingsMap(keys) {
+  const list = Array.isArray(keys) ? keys.map((k) => (k == null ? '' : String(k))).filter(Boolean) : [];
+  if (!list.length) return {};
+  const db = getDb();
+  const placeholders = list.map(() => '?').join(', ');
+  const rows = await db.all(`SELECT key, value FROM settings WHERE key IN (${placeholders})`, list);
+  const map = {};
+  for (const row of rows || []) {
+    const k = row && row.key != null ? String(row.key) : '';
+    if (!k) continue;
+    map[k] = row && row.value != null ? String(row.value) : null;
+  }
+  return map;
+}
+
 async function setSetting(key, value) {
   const db = getDb();
   if (config.dbUrl) {
     await db.run('INSERT INTO settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2', [key, String(value)]);
   } else {
     await db.run('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', [key, String(value)]);
+  }
+}
+
+/**
+ * Bulk upsert settings. entries: [[key, value], ...]. Single query (Postgres) or single transaction (SQLite).
+ */
+async function setSettingsBulk(entries) {
+  const list = Array.isArray(entries) ? entries.filter((e) => Array.isArray(e) && e.length >= 2) : [];
+  if (!list.length) return;
+  const db = getDb();
+  if (config.dbUrl) {
+    const placeholders = list.map((_, i) => `($${2 * i + 1}, $${2 * i + 2})`).join(', ');
+    const params = list.flatMap(([k, v]) => [String(k), String(v)]);
+    await db.run(
+      `INSERT INTO settings (key, value) VALUES ${placeholders} ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
+      params
+    );
+  } else {
+    await db.transaction(async () => {
+      for (const [key, value] of list) {
+        await db.run('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', [String(key), String(value)]);
+      }
+    });
   }
 }
 
@@ -428,12 +469,17 @@ function normalizeReportingSessionsSource(v) {
   return null;
 }
 
-async function getReportingConfig() {
-  const rawOrders = await getSetting(REPORTING_ORDERS_SOURCE_KEY);
-  const rawSessions = await getSetting(REPORTING_SESSIONS_SOURCE_KEY);
+function getReportingConfigFromMap(map) {
+  const rawOrders = map && map[REPORTING_ORDERS_SOURCE_KEY] != null ? map[REPORTING_ORDERS_SOURCE_KEY] : null;
+  const rawSessions = map && map[REPORTING_SESSIONS_SOURCE_KEY] != null ? map[REPORTING_SESSIONS_SOURCE_KEY] : null;
   const ordersSource = normalizeReportingOrdersSource(rawOrders) || 'orders_shopify';
   const sessionsSource = normalizeReportingSessionsSource(rawSessions) || 'sessions';
   return { ordersSource, sessionsSource };
+}
+
+async function getReportingConfig() {
+  const map = await getSettingsMap([REPORTING_ORDERS_SOURCE_KEY, REPORTING_SESSIONS_SOURCE_KEY]);
+  return getReportingConfigFromMap(map);
 }
 
 async function isTrackingEnabled() {
@@ -4125,7 +4171,9 @@ async function getKexoScore(options = {}) {
   const force = !!options.force;
   const now = Date.now();
   const timeZone = resolveAdminTimeZone();
-  const reporting = await getReportingConfig();
+  const { PROFIT_RULES_V1_KEY } = require('./profitRulesConfig');
+  const scoreSettingsMap = await getSettingsMap([REPORTING_ORDERS_SOURCE_KEY, REPORTING_SESSIONS_SOURCE_KEY, PROFIT_RULES_V1_KEY]);
+  const reporting = getReportingConfigFromMap(scoreSettingsMap);
   const opts = { trafficMode, timeZone, reporting };
 
   const requestedRangeRaw =
@@ -4292,8 +4340,8 @@ async function getKexoScore(options = {}) {
   let profitToggles = null;
   try {
     profitShop = salesTruth.resolveShopForSales('') || '';
-    const { PROFIT_RULES_V1_KEY, normalizeProfitRulesConfigV1, hasEnabledProfitRules } = require('./profitRulesConfig');
-    const raw = await getSetting(PROFIT_RULES_V1_KEY);
+    const { normalizeProfitRulesConfigV1, hasEnabledProfitRules } = require('./profitRulesConfig');
+    const raw = scoreSettingsMap[PROFIT_RULES_V1_KEY] != null ? scoreSettingsMap[PROFIT_RULES_V1_KEY] : null;
     const cfg = normalizeProfitRulesConfigV1(raw);
     if (cfg && cfg.enabled === true) {
       const integ = cfg.integrations && typeof cfg.integrations === 'object' ? cfg.integrations : {};
@@ -4687,7 +4735,9 @@ function validateEventType(type) {
 module.exports = {
   sanitize,
   getSetting,
+  getSettingsMap,
   setSetting,
+  setSettingsBulk,
   hydrateAdminTimeZoneFromDb,
   setAdminTimeZone,
   getReportingConfig,

@@ -1709,12 +1709,14 @@ async function readSettingsPayload(req) {
   }
   const userEmail = req ? getRequestEmail(req) : null;
   if (userEmail) {
-    for (const baseKey of PER_USER_UI_KEYS) {
-      try {
-        const v = await store.getSetting(scopedKey(baseKey, userEmail));
+    const perUserKeys = PER_USER_UI_KEYS.map((baseKey) => scopedKey(baseKey, userEmail));
+    try {
+      const perUserMap = await store.getSettingsMap(perUserKeys);
+      for (const baseKey of PER_USER_UI_KEYS) {
+        const v = perUserMap[scopedKey(baseKey, userEmail)];
         if (v != null && String(v).trim() !== '') rawMap[baseKey] = v;
-      } catch (_) {}
-    }
+      }
+    } catch (_) {}
   }
   try {
     pixelSessionMode = normalizePixelSessionMode(rawMap[PIXEL_SESSION_MODE_KEY]);
@@ -2452,8 +2454,8 @@ async function postThemeDefaults(req, res) {
     if (!isMaster) return res.status(402).json({ ok: false, error: 'upgrade_required', upgradeUrl: '/upgrade' });
   }
   try {
-    // Patch semantics: only update provided keys (prevents large payload requirements
-    // and avoids wiping other keys when partial payloads are sent).
+    // Patch semantics: only update provided keys. Normalize values, then one bulk upsert.
+    const entries = [];
     for (const key of Object.keys(body)) {
       if (!THEME_KEYS.includes(key)) continue;
       let val = body[key] != null ? String(body[key]).trim() : '';
@@ -2461,8 +2463,9 @@ async function postThemeDefaults(req, res) {
         const normalizedIconSpec = await normalizeIconSpec(body[key], { fetchRemoteSvg: true, timeoutMs: 5000 });
         val = normalizedIconSpec || '';
       }
-      await store.setSetting('theme_' + key, val);
+      entries.push(['theme_' + key, val]);
     }
+    if (entries.length) await store.setSettingsBulk(entries);
   } catch (err) {
     return res.status(500).json({ ok: false, error: err && err.message ? String(err.message) : 'Failed to save theme' });
   }

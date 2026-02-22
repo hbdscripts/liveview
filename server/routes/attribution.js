@@ -110,9 +110,8 @@ function titleFromKey(key) {
 }
 
 async function getAttributionPrefsRaw() {
-  const raw =
-    (await store.getSetting(PREFS_KEY).catch(() => null)) ??
-    (await store.getSetting(PREFS_KEY_V1).catch(() => null));
+  const map = await store.getSettingsMap([PREFS_KEY, PREFS_KEY_V1]).catch(() => ({}));
+  const raw = (map[PREFS_KEY] != null ? map[PREFS_KEY] : null) ?? (map[PREFS_KEY_V1] != null ? map[PREFS_KEY_V1] : null);
   const parsed = safeJsonParse(raw);
   const prefs = parsed && typeof parsed === 'object' ? parsed : {};
   const includeUnknownObserved = !!prefs.includeUnknownObserved;

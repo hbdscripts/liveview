@@ -311,6 +311,10 @@
   (function installGlobalErrorHandlers() {
     if (typeof window === 'undefined') return;
     if (window.__kexoSentryGlobalHandlersApplied) return;
+    try {
+      var pageAttr = document.body && document.body.getAttribute && document.body.getAttribute('data-page');
+      if (pageAttr) kexoSetContext(pageAttr, {});
+    } catch (_) {}
 
     function shouldSkipGlobalError(message) {
       var msg = message == null ? '' : String(message);
@@ -320,15 +324,29 @@
       return false;
     }
 
+    function isNonActionableWindowError(evt) {
+      var msg = (evt.message != null ? String(evt.message) : '') || 'window.error';
+      var filename = evt.filename != null ? String(evt.filename) : '';
+      var lineno = evt.lineno != null ? Number(evt.lineno) : 0;
+      var colno = evt.colno != null ? Number(evt.colno) : 0;
+      var hasError = evt.error && typeof evt.error === 'object';
+      return (!msg || msg === 'window.error') && !filename && lineno === 0 && colno === 0 && !hasError;
+    }
+
     function onError(evt) {
       try {
         if (!evt) return;
+        if (isNonActionableWindowError(evt)) return;
         var err = evt.error;
         var msg = (evt.message != null ? String(evt.message) : '') || (err && err.message ? String(err.message) : '') || 'window.error';
         if (shouldSkipGlobalError(msg)) return;
         var filename = evt.filename != null ? String(evt.filename) : '';
         var lineno = evt.lineno != null ? Number(evt.lineno) : 0;
         var colno = evt.colno != null ? Number(evt.colno) : 0;
+        try {
+          var pageAttr = document.body && document.body.getAttribute && document.body.getAttribute('data-page');
+          if (pageAttr) kexoSetContext(pageAttr, {});
+        } catch (_) {}
         var key = 'winerr:' + msg + '|' + filename + ':' + lineno + ':' + colno;
         if (kexoDedupe(key, 20000)) return;
         kexoBreadcrumb('window', 'error', { message: msg, filename: filename, lineno: lineno, colno: colno });

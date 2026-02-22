@@ -4,7 +4,6 @@
  * Admin (role === 'admin') always allowed.
  * Caches (email -> user + effectivePerms) for 60s to reduce DB hits.
  */
-const dashboardAuth = require('./dashboardAuth');
 const users = require('../usersService');
 const rolePermissionsService = require('../rolePermissionsService');
 const userPermissionOverrides = require('../userPermissionOverridesService');
@@ -54,19 +53,22 @@ async function resolveUserAndPerms(email) {
   return { user, effectivePerms };
 }
 
-async function middleware(req, res, next) {
+function createMiddleware(dashboardAuth) {
+  const auth = dashboardAuth || require('./dashboardAuth');
+  return async function middleware(req, res, next) {
   try {
     const pathname = (req && req.path) ? String(req.path) : '';
     const method = (req && req.method) ? String(req.method) : '';
-    if (!dashboardAuth.requiresAuth(pathname, method)) return next();
+    const requiresAuthFn = auth && typeof auth.requiresAuth === 'function';
+    if (requiresAuthFn && !auth.requiresAuth(pathname, method)) return next();
 
     const required = rbac.getRequiredPermissionsForRequest(req);
     const anyLen = required && Array.isArray(required.any) ? required.any.length : 0;
     const allLen = required && Array.isArray(required.all) ? required.all.length : 0;
     if (anyLen === 0 && allLen === 0) return next();
 
-    const oauthCookie = getCookie(req, dashboardAuth.OAUTH_COOKIE_NAME);
-    const session = oauthCookie ? dashboardAuth.readOauthSession(oauthCookie) : null;
+    const oauthCookie = getCookie(req, auth.OAUTH_COOKIE_NAME);
+    const session = oauthCookie && typeof auth.readOauthSession === 'function' ? auth.readOauthSession(oauthCookie) : null;
     if (!session || !session.email) return next(); // already blocked by dashboardAuth for protected paths
 
     const email = users.normalizeEmail(session.email);
@@ -97,6 +99,8 @@ async function middleware(req, res, next) {
   } catch (err) {
     next(err);
   }
+};
 }
 
-module.exports = { middleware };
+const defaultAuth = require('./dashboardAuth');
+module.exports = { middleware: createMiddleware(defaultAuth), createMiddleware };

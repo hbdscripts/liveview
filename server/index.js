@@ -90,6 +90,20 @@ function warnBackgroundFailure(tag, err) {
   } catch (_) {}
 }
 
+/** Wrap a route handler so all DB work runs in a single transaction (reduces pg-pool connect fan-out). */
+function withDbTransaction(handler) {
+  return async (req, res, next) => {
+    const database = getDb();
+    try {
+      await database.transaction(async () => {
+        await handler(req, res, next);
+      });
+    } catch (err) {
+      next(err);
+    }
+  };
+}
+
 // Health check (for Railway/proxy – no auth, no redirects)
 app.get('/health', (req, res) => {
   res.status(200).send('OK');
@@ -142,7 +156,7 @@ app.get('/api/notifications', notificationsRouter.getList);
   app.get('/api/notifications/:id', notificationsRouter.getOne);
   app.patch('/api/notifications/:id', notificationsRouter.patchOne);
   app.delete('/api/notifications/:id', notificationsRouter.deleteOne);
-app.get('/api/settings', settings.getSettings);
+app.get('/api/settings', withDbTransaction(settings.getSettings));
 app.post('/api/settings', settings.postSettings);
 app.get('/api/settings/profit-rules', requireMaster.middleware, settings.getProfitRules);
   app.put('/api/settings/profit-rules', requireMaster.middleware, settings.putProfitRules);
@@ -174,7 +188,7 @@ app.get('/api/devices/observed', devicesRouter.getObservedDevices);
 app.get('/api/devices/report', devicesRouter.getDevicesReport);
 app.get('/api/browsers/series', require('./routes/browsers').getBrowsersSeries);
 app.get('/api/browsers/table', require('./routes/browsers').getBrowsersTable);
-app.get('/api/attribution/report', attributionRouter.getAttributionReport);
+app.get('/api/attribution/report', withDbTransaction(attributionRouter.getAttributionReport));
 app.get('/api/attribution/prefs', attributionRouter.getAttributionPrefs);
 app.post('/api/attribution/prefs', requireMaster.middleware, attributionRouter.postAttributionPrefs);
 app.get('/api/attribution/config', attributionRouter.getAttributionConfig);
@@ -200,9 +214,9 @@ app.post('/api/edge-blocked', require('./routes/edgeBlocked').postEdgeBlocked);
 app.get('/api/edge-blocked/summary', requireMaster.middleware, require('./routes/edgeBlocked').getEdgeBlockedSummary);
 app.get('/api/edge-blocked/events', requireMaster.middleware, require('./routes/edgeBlocked').getEdgeBlockedEvents);
 app.get('/api/stats', statsRouter.getStats);
-app.get('/api/kpis', kpisRouter.getKpis);
+app.get('/api/kpis', withDbTransaction(kpisRouter.getKpis));
 app.get('/api/kpis-expanded-extra', kpisExpandedExtra.getKpisExpandedExtra);
-app.get('/api/kexo-score', kexoScoreRouter.getKexoScore);
+app.get('/api/kexo-score', withDbTransaction(kexoScoreRouter.getKexoScore));
 app.get('/api/kexo-score-summary', kexoScoreSummaryRouter.getKexoScoreSummary);
 app.get('/api/sales-diagnostics', salesDiagnostics.getSalesDiagnostics);
 app.get('/api/reconcile-sales', requireMaster.middleware, reconcileSales.reconcileSales);

@@ -3450,7 +3450,18 @@
             return data;
           })
           .catch(function(err) {
-            try { if (typeof window.kexoCaptureError === 'function') window.kexoCaptureError(err, { context: 'dashboardOverviewCard', chartId: id, page: PAGE }); } catch (_) {}
+            var status = err && err.status != null ? Number(err.status) : NaN;
+            if (!Number.isFinite(status) && err && err.message) {
+              try {
+                var m = String(err.message);
+                var mm = m.match(/\((\d{3})\)/);
+                if (mm && mm[1]) status = Number(mm[1]);
+              } catch (_) {}
+            }
+            var isExpectedAuth = (status === 401 || status === 403);
+            if (!isExpectedAuth) {
+              try { if (typeof window.kexoCaptureError === 'function') window.kexoCaptureError(err, { context: 'dashboardOverviewCard', chartId: id, page: PAGE }); } catch (_) {}
+            }
             var cached = overviewCardCache && overviewCardCache[id] ? overviewCardCache[id] : null;
             if (cached && cached.payload && cached.rangeKey === rk) {
               try { renderOverviewCardById(id, cached.payload, { reason: 'error-cache', rangeKey: rk, forceRender: true }); } catch (_) {}
@@ -3461,14 +3472,6 @@
             if (ls && ls.payload) {
               try { renderOverviewCardById(id, ls.payload, { reason: 'error-local-cache', rangeKey: rk, forceRender: true }); } catch (_) {}
               return ls.payload;
-            }
-            var status = err && err.status != null ? Number(err.status) : NaN;
-            if (!Number.isFinite(status)) {
-              try {
-                var m = err && err.message ? String(err.message) : '';
-                var mm = m.match(/\((\d{3})\)/);
-                if (mm && mm[1]) status = Number(mm[1]);
-              } catch (_) {}
             }
             var msg = 'Failed to load';
             if (status === 401 || status === 403) msg = 'Session expired';
