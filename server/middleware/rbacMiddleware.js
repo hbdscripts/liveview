@@ -6,6 +6,7 @@
 const dashboardAuth = require('./dashboardAuth');
 const users = require('../usersService');
 const rolePermissionsService = require('../rolePermissionsService');
+const userPermissionOverrides = require('../userPermissionOverridesService');
 const rbac = require('../rbac');
 
 function getCookie(req, name) {
@@ -26,8 +27,10 @@ async function middleware(req, res, next) {
     const method = (req && req.method) ? String(req.method) : '';
     if (!dashboardAuth.requiresAuth(pathname, method)) return next();
 
-    const requiredPerms = rbac.getRequiredPermissionsForRequest(req);
-    if (!requiredPerms || requiredPerms.length === 0) return next();
+    const required = rbac.getRequiredPermissionsForRequest(req);
+    const anyLen = required && Array.isArray(required.any) ? required.any.length : 0;
+    const allLen = required && Array.isArray(required.all) ? required.all.length : 0;
+    if (anyLen === 0 && allLen === 0) return next();
 
     const oauthCookie = getCookie(req, dashboardAuth.OAUTH_COOKIE_NAME);
     const session = oauthCookie ? dashboardAuth.readOauthSession(oauthCookie) : null;
@@ -55,7 +58,12 @@ async function middleware(req, res, next) {
     } catch (_) {
       tierPerms = rbac.getDefaultPermissionsForTier();
     }
-    if (rbac.isAllowed(user, requiredPerms, tierPerms)) return next();
+    let overrides = {};
+    try {
+      overrides = await userPermissionOverrides.getOverrides(user.id);
+    } catch (_) {}
+    const effectivePerms = userPermissionOverrides.getEffectivePermissions(tierPerms, overrides);
+    if (rbac.isAllowed(user, required, effectivePerms)) return next();
 
     const isApi = pathname.startsWith('/api/');
     if (isApi) {

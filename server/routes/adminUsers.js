@@ -6,6 +6,7 @@
 const express = require('express');
 const users = require('../usersService');
 const rolePermissionsService = require('../rolePermissionsService');
+const userPermissionOverrides = require('../userPermissionOverridesService');
 const rbac = require('../rbac');
 const { getDb } = require('../db');
 
@@ -137,6 +138,48 @@ router.put('/role-permissions/:tier', async (req, res) => {
   const r = await rolePermissionsService.putRolePermissions(tier, permissions);
   if (!r || r.ok !== true) return res.status(400).json({ ok: false, error: (r && r.error) || 'save_failed' });
   res.json({ ok: true, permissions: r.permissions });
+});
+
+function parseUserId(id) {
+  if (id == null || String(id).startsWith('shop:')) return null;
+  const n = Number(id);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+router.get('/users/:id/permissions', async (req, res) => {
+  const userId = parseUserId(req.params && req.params.id);
+  if (userId == null) return res.status(404).json({ ok: false, error: 'user_not_found' });
+  const user = await users.getUserById(userId);
+  if (!user) return res.status(404).json({ ok: false, error: 'user_not_found' });
+  const tier = rbac.normalizeUserTierForRbac(user.tier);
+  let tierPerms;
+  try {
+    tierPerms = await rolePermissionsService.getRolePermissions(tier);
+  } catch (_) {
+    tierPerms = rbac.getDefaultPermissionsForTier();
+  }
+  let overrides = {};
+  try {
+    overrides = await userPermissionOverrides.getOverrides(userId);
+  } catch (_) {}
+  const effectivePermissions = userPermissionOverrides.getEffectivePermissions(tierPerms, overrides);
+  res.json({
+    ok: true,
+    user: { id: user.id, email: user.email, tier: user.tier, role: user.role },
+    overrides,
+    effectivePermissions,
+  });
+});
+
+router.put('/users/:id/permissions', async (req, res) => {
+  const userId = parseUserId(req.params && req.params.id);
+  if (userId == null) return res.status(404).json({ ok: false, error: 'user_not_found' });
+  const user = await users.getUserById(userId);
+  if (!user) return res.status(404).json({ ok: false, error: 'user_not_found' });
+  const overrides = req.body && typeof req.body.overrides === 'object' ? req.body.overrides : {};
+  const r = await userPermissionOverrides.putOverrides(userId, overrides);
+  if (!r || r.ok !== true) return res.status(400).json({ ok: false, error: (r && r.error) || 'save_failed' });
+  res.json({ ok: true, overrides: r.overrides });
 });
 
 module.exports = router;

@@ -39,6 +39,24 @@ const ALL_PERMISSION_KEYS = Object.freeze([
   'settings.attribution',
   'settings.insights',
   'settings.cost_expenses',
+  // Granular settings subsections
+  'settings.kexo.general',
+  'settings.kexo.assets',
+  'settings.kexo.icons',
+  'settings.kexo.colours',
+  'settings.kexo.layout_styling',
+  'settings.integrations.shopify',
+  'settings.integrations.google_ads',
+  'settings.layout.tables',
+  'settings.layout.kpis',
+  'settings.layout.date_ranges',
+  'settings.attribution.mapping',
+  'settings.attribution.tree',
+  'settings.insights.variants',
+  'settings.cost_expenses.cost_sources',
+  'settings.cost_expenses.shipping',
+  'settings.cost_expenses.rules',
+  'settings.cost_expenses.breakdown',
 ]);
 
 const PERMISSION_KEY_SET = new Set(ALL_PERMISSION_KEYS);
@@ -96,14 +114,46 @@ function isAdminViewer(viewer) {
 
 /**
  * Get required permission keys for a request (path + method).
- * Returns an array; if empty, no permission check is needed (e.g. public or admin-only route).
- * Access is allowed if the user has ANY of the returned permissions (OR).
+ * Returns { any: string[], all: string[] }. If both empty, no permission check needed.
+ * Access allowed iff: every key in .all is true AND ( .any is empty OR at least one in .any is true ).
  */
 function getRequiredPermissionsForRequest(req) {
   const pathname = (req && req.path) ? String(req.path) : '';
   const method = (req && req.method) ? String(req.method).toUpperCase() : '';
+  const empty = { any: [], all: [] };
 
-  // Page routes (exact or prefix match)
+  // Settings subpages: require page.settings + granular subsection (all-of)
+  const settingsSubMap = [
+    ['/settings/kexo/general', 'settings.kexo.general'],
+    ['/settings/kexo/assets', 'settings.kexo.assets'],
+    ['/settings/kexo/icons', 'settings.kexo.icons'],
+    ['/settings/kexo/colours', 'settings.kexo.colours'],
+    ['/settings/kexo/theme-display', 'settings.kexo.colours'],
+    ['/settings/kexo/layout-styling', 'settings.kexo.layout_styling'],
+    ['/settings/integrations/shopify', 'settings.integrations.shopify'],
+    ['/settings/integrations/googleads', 'settings.integrations.google_ads'],
+    ['/settings/layout/tables', 'settings.layout.tables'],
+    ['/settings/layout/kpis', 'settings.layout.kpis'],
+    ['/settings/layout/date-ranges', 'settings.layout.date_ranges'],
+    ['/settings/attribution/mapping', 'settings.attribution.mapping'],
+    ['/settings/attribution/tree', 'settings.attribution.tree'],
+    ['/settings/insights/variants', 'settings.insights.variants'],
+    ['/settings/insights', 'settings.insights.variants'],
+    ['/settings/cost-expenses/cost-sources', 'settings.cost_expenses.cost_sources'],
+    ['/settings/cost-expenses/shipping', 'settings.cost_expenses.shipping'],
+    ['/settings/cost-expenses/rules', 'settings.cost_expenses.rules'],
+    ['/settings/cost-expenses/breakdown', 'settings.cost_expenses.breakdown'],
+  ];
+  for (const [path, perm] of settingsSubMap) {
+    if (pathname === path || pathname.startsWith(path + '/') || pathname.startsWith(path + '?')) {
+      return { any: [], all: ['page.settings', perm] };
+    }
+  }
+  if (pathname === '/settings' || pathname.startsWith('/settings/') || pathname.startsWith('/settings?')) {
+    return { any: ['page.settings'], all: [] };
+  }
+
+  // Page routes (exact or prefix match) — any one grants
   const pageMap = [
     ['/dashboard/overview', 'page.dashboard.overview'],
     ['/dashboard/live', 'page.dashboard.live'],
@@ -124,16 +174,14 @@ function getRequiredPermissionsForRequest(req) {
     ['/tools/shipping-cr', 'page.tools.shipping_cr'],
     ['/tools/click-order-lookup', 'page.tools.click_order_lookup'],
     ['/tools/change-pins', 'page.tools.change_pins'],
-    ['/settings', 'page.settings'],
   ];
-
   for (const [path, perm] of pageMap) {
     if (pathname === path || pathname.startsWith(path + '/') || pathname.startsWith(path + '?')) {
-      return [perm];
+      return { any: [perm], all: [] };
     }
   }
 
-  // Legacy flat redirects (same permissions as canonical)
+  // Legacy flat redirects
   const legacyPageMap = [
     ['/overview', 'page.dashboard.overview'],
     ['/live', 'page.dashboard.live'],
@@ -155,13 +203,12 @@ function getRequiredPermissionsForRequest(req) {
     ['/change-pins', 'page.tools.change_pins'],
   ];
   for (const [path, perm] of legacyPageMap) {
-    if (pathname === path) return [perm];
+    if (pathname === path) return { any: [perm], all: [] };
   }
 
-  // API routes: map prefix or path to permission(s). Any one grants access.
+  // API routes: any one grants
   if (pathname.startsWith('/api/')) {
     const apiPerms = [];
-    // Dashboard / overview / KPIs
     if (pathname === '/api/stats' || pathname === '/api/kpis' || pathname.startsWith('/api/kpis') ||
         pathname === '/api/dashboard-series' || pathname === '/api/available-days') {
       apiPerms.push('page.dashboard.overview');
@@ -175,7 +222,6 @@ function getRequiredPermissionsForRequest(req) {
     if (pathname.startsWith('/api/shopify-') && pathname !== '/api/shopify-sessions' && pathname !== '/api/shopify-sales') {
       apiPerms.push('page.dashboard.table');
     }
-    // Insights
     if (pathname === '/api/insights-variants' || pathname.startsWith('/api/insights-variants')) {
       apiPerms.push('page.insights.variants');
     }
@@ -188,7 +234,6 @@ function getRequiredPermissionsForRequest(req) {
     if (pathname === '/api/product-insights' || pathname === '/api/page-insights' || pathname === '/api/worst-products') {
       apiPerms.push('page.insights.products');
     }
-    // Acquisition
     if (pathname.startsWith('/api/attribution')) {
       apiPerms.push('page.acquisition.attribution');
     }
@@ -198,46 +243,47 @@ function getRequiredPermissionsForRequest(req) {
     if (pathname.startsWith('/api/devices')) {
       apiPerms.push('page.acquisition.devices');
     }
-    // Integrations / Ads
     if (pathname.startsWith('/api/ads') || pathname.startsWith('/api/integrations/google-ads')) {
       apiPerms.push('page.integrations.google_ads');
     }
-    // Tools
     if (pathname.startsWith('/api/tools')) {
       apiPerms.push('page.tools.compare_conversion_rate', 'page.tools.shipping_cr', 'page.tools.click_order_lookup', 'page.tools.change_pins');
     }
-    // Settings (read/write) — gate by page.settings
     if (pathname === '/api/settings' || pathname.startsWith('/api/settings') ||
         pathname.startsWith('/api/chart-settings') || pathname === '/api/config-status' ||
         pathname.startsWith('/api/assets') || pathname === '/api/asset-overrides' ||
         pathname === '/api/theme-defaults' || pathname === '/api/header-logo' || pathname === '/api/footer-logo') {
       apiPerms.push('page.settings');
     }
-    // Kexo score, sales diagnostics, etc. used across dashboard
     if (pathname.startsWith('/api/kexo-score') || pathname === '/api/sales-diagnostics') {
       apiPerms.push('page.dashboard.overview');
     }
     if (apiPerms.length) {
-      return [...new Set(apiPerms)];
+      return { any: [...new Set(apiPerms)], all: [] };
     }
-    // /api/admin is requireMaster only; no tier permission.
-    // Other APIs not in list: allow if they passed dashboard auth (e.g. /api/me).
-    return [];
+    return empty;
   }
 
-  return [];
+  return empty;
 }
 
 /**
- * Check if the viewer is allowed given required permissions and their tier's permission map.
- * Admin always allowed. If requiredPerms is empty, allowed. Otherwise at least one required perm must be true in tierPerms.
+ * Check if the viewer is allowed given required { any, all } and effective permission map.
+ * Admin always allowed. If both any and all are empty, allowed.
+ * Otherwise: every key in .all must be true, and ( .any empty OR at least one in .any true ).
  */
-function isAllowed(viewer, requiredPerms, tierPerms) {
+function isAllowed(viewer, required, effectivePerms) {
   if (isAdminViewer(viewer)) return true;
-  if (!requiredPerms || requiredPerms.length === 0) return true;
-  if (!tierPerms || typeof tierPerms !== 'object') return false;
-  for (const key of requiredPerms) {
-    if (tierPerms[key] === true) return true;
+  const anyList = required && Array.isArray(required.any) ? required.any : [];
+  const allList = required && Array.isArray(required.all) ? required.all : [];
+  if (anyList.length === 0 && allList.length === 0) return true;
+  if (!effectivePerms || typeof effectivePerms !== 'object') return false;
+  for (const key of allList) {
+    if (effectivePerms[key] !== true) return false;
+  }
+  if (anyList.length === 0) return true;
+  for (const key of anyList) {
+    if (effectivePerms[key] === true) return true;
   }
   return false;
 }

@@ -8,6 +8,7 @@
 const dashboardAuth = require('../middleware/dashboardAuth');
 const users = require('../usersService');
 const rolePermissions = require('../rolePermissionsService');
+const userPermissionOverrides = require('../userPermissionOverridesService');
 const rbac = require('../rbac');
 
 const OAUTH_COOKIE_NAME = 'oauth_session';
@@ -62,15 +63,21 @@ async function me(req, res) {
   let permissions = {};
   if (isAdmin) {
     rbac.ALL_PERMISSION_KEYS.forEach((k) => { permissions[k] = true; });
-  } else if (tier) {
-    const normalizedTier = rbac.normalizeUserTierForRbac(tier);
-    try {
-      permissions = await rolePermissions.getRolePermissions(normalizedTier);
-    } catch (_) {
-      permissions = rbac.getDefaultPermissionsForTier();
-    }
   } else {
-    permissions = rbac.getDefaultPermissionsForTier();
+    let tierPerms = rbac.getDefaultPermissionsForTier();
+    if (tier) {
+      const normalizedTier = rbac.normalizeUserTierForRbac(tier);
+      try {
+        tierPerms = await rolePermissions.getRolePermissions(normalizedTier);
+      } catch (_) {}
+    }
+    let overrides = {};
+    if (user && user.id != null) {
+      try {
+        overrides = await userPermissionOverrides.getOverrides(user.id);
+      } catch (_) {}
+    }
+    permissions = userPermissionOverrides.getEffectivePermissions(tierPerms, overrides);
   }
 
   res.json({

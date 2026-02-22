@@ -67,6 +67,7 @@ const { up: up059 } = require('./migrations/059_orders_shopify_line_items_net_co
 const { up: up060 } = require('./migrations/060_orders_shopify_refunds');
 const { up: up061 } = require('./migrations/061_role_permissions');
 const { up: up062 } = require('./migrations/062_shop_sessions_oauth_attribution');
+const { up: up065 } = require('./migrations/065_user_permission_overrides');
 const { runAdsMigrations } = require('./ads/adsMigrate');
 
 const APP_MIGRATIONS = [
@@ -132,6 +133,9 @@ const APP_MIGRATIONS = [
   ['060_orders_shopify_refunds', up060],
   ['061_role_permissions', up061],
   ['062_shop_sessions_oauth_attribution', up062],
+  ['063_notifications', require('./migrations/063_notifications').up],
+  ['064_notification_deleted_at', require('./migrations/064_notification_deleted_at').up],
+  ['065_user_permission_overrides', up065],
 ];
 
 async function ensureAppMigrationsTable(db) {

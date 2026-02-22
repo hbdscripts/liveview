@@ -453,18 +453,112 @@
       .catch(function () { return null; });
   }
 
+  function getUserPermissions(id) {
+    var url = '/api/admin/users/' + encodeURIComponent(id) + '/permissions';
+    return kfetch(url, { method: 'GET' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .catch(function () { return null; });
+  }
+
+  function putUserPermissions(id, overrides) {
+    var url = '/api/admin/users/' + encodeURIComponent(id) + '/permissions';
+    return kfetch(url, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ overrides: overrides }) })
+      .then(function (r) { return r && r.ok ? r.json().catch(function () { return { ok: true }; }) : null; })
+      .catch(function () { return null; });
+  }
+
+  var PERM_KEYS_FRONTEND = [
+    'page.dashboard.overview', 'page.dashboard.live', 'page.dashboard.sales', 'page.dashboard.table',
+    'page.insights.snapshot', 'page.insights.countries', 'page.insights.products', 'page.insights.variants',
+    'page.insights.payment_methods', 'page.insights.abandoned_carts',
+    'page.acquisition.attribution', 'page.acquisition.browsers', 'page.acquisition.devices',
+    'page.integrations.google_ads',
+    'page.tools.compare_conversion_rate', 'page.tools.shipping_cr', 'page.tools.click_order_lookup', 'page.tools.change_pins',
+    'page.settings',
+  ];
+  var PERM_KEYS_BACKEND = [
+    'settings.kexo', 'settings.kexo.general', 'settings.kexo.assets', 'settings.kexo.icons', 'settings.kexo.colours', 'settings.kexo.layout_styling',
+    'settings.integrations', 'settings.integrations.shopify', 'settings.integrations.google_ads',
+    'settings.layout', 'settings.layout.tables', 'settings.layout.kpis', 'settings.layout.date_ranges',
+    'settings.attribution', 'settings.attribution.mapping', 'settings.attribution.tree',
+    'settings.insights', 'settings.insights.variants',
+    'settings.cost_expenses', 'settings.cost_expenses.cost_sources', 'settings.cost_expenses.shipping', 'settings.cost_expenses.rules', 'settings.cost_expenses.breakdown',
+  ];
+  function permKeyToLabel(key) {
+    var parts = key.split('.');
+    if (parts[0] === 'page') {
+      if (parts[1] === 'dashboard') return 'Dashboard \u00BB ' + (parts[2] === 'overview' ? 'Overview' : parts[2] === 'live' ? 'Live View' : parts[2] === 'sales' ? 'Recent Sales' : parts[2] === 'table' ? 'Table View' : parts[2] || key);
+      if (parts[1] === 'insights') return 'Insights \u00BB ' + (parts[2] || key);
+      if (parts[1] === 'acquisition') return 'Acquisition \u00BB ' + (parts[2] || key);
+      if (parts[1] === 'integrations') return 'Integrations \u00BB Google Ads';
+      if (parts[1] === 'tools') return 'Tools \u00BB ' + (parts[2] ? parts[2].replace(/_/g, ' ') : key);
+      if (parts[1] === 'settings') return 'Settings';
+    }
+    if (parts[0] === 'settings') {
+      if (parts[1] === 'kexo') return parts[2] ? 'Kexo \u00BB ' + (parts[2].replace(/_/g, ' ') || '') : 'Kexo';
+      if (parts[1] === 'integrations') return parts[2] ? 'Integrations \u00BB ' + (parts[2] === 'google_ads' ? 'Google Ads' : parts[2]) : 'Integrations';
+      if (parts[1] === 'layout') return parts[2] ? 'Layout \u00BB ' + (parts[2].replace(/_/g, ' ') || '') : 'Layout';
+      if (parts[1] === 'attribution') return parts[2] ? 'Attribution \u00BB ' + (parts[2] || '') : 'Attribution';
+      if (parts[1] === 'insights') return parts[2] ? 'Insights \u00BB ' + (parts[2] || '') : 'Insights';
+      if (parts[1] === 'cost_expenses') return parts[2] ? 'Costs \u00BB ' + (parts[2].replace(/_/g, ' ') || '') : 'Costs & profit';
+    }
+    return key.replace(/\./g, ' \u00BB ').replace(/_/g, ' ');
+  }
+
+  function renderPermissionList(container, keys, overrides, effectivePerms) {
+    if (!container) return;
+    var html = '';
+    keys.forEach(function (key) {
+      var label = permKeyToLabel(key);
+      var state = overrides && overrides[key] === true ? 'enabled' : overrides && overrides[key] === false ? 'disabled' : 'default';
+      var name = 'admin-user-perm-' + key.replace(/\./g, '-');
+      html += '<div class="d-flex align-items-center gap-3 py-2 border-bottom border-secondary border-opacity-25 admin-user-perm-row" data-perm-key="' + escapeHtml(key) + '">';
+      html += '<span class="flex-grow-1 text-break">' + escapeHtml(label) + '</span>';
+      html += '<div class="d-flex align-items-center gap-2 flex-shrink-0">';
+      html += '<label class="d-flex align-items-center gap-1 mb-0"><input type="radio" name="' + escapeHtml(name) + '" value="default" ' + (state === 'default' ? 'checked' : '') + '> Default</label>';
+      html += '<label class="d-flex align-items-center gap-1 mb-0"><input type="radio" name="' + escapeHtml(name) + '" value="enabled" ' + (state === 'enabled' ? 'checked' : '') + '> Enabled</label>';
+      html += '<label class="d-flex align-items-center gap-1 mb-0"><input type="radio" name="' + escapeHtml(name) + '" value="disabled" ' + (state === 'disabled' ? 'checked' : '') + '> Disabled</label>';
+      html += '</div></div>';
+    });
+    container.innerHTML = html || '<p class="text-secondary small mb-0">No permissions.</p>';
+  }
+
+  function collectOverridesFromModal() {
+    var overrides = {};
+    document.querySelectorAll('.admin-user-perm-row').forEach(function (row) {
+      var key = row.getAttribute('data-perm-key');
+      if (!key) return;
+      var checked = row.querySelector('input[type="radio"]:checked');
+      var val = checked ? String(checked.value) : 'default';
+      if (val === 'enabled') overrides[key] = true;
+      else if (val === 'disabled') overrides[key] = false;
+    });
+    return overrides;
+  }
+
+  function isNumericUserId(id) {
+    if (!id || String(id).startsWith('shop:')) return false;
+    var n = Number(id);
+    return Number.isFinite(n) && n > 0;
+  }
+
   function bindEditModal() {
     var modal = document.getElementById('admin-user-edit-modal');
     var idEl = document.getElementById('admin-user-edit-id');
     var tierEl = document.getElementById('admin-user-edit-tier');
     var saveBtn = document.getElementById('admin-user-edit-save');
+    var frontendEl = document.getElementById('admin-user-edit-perms-frontend');
+    var backendEl = document.getElementById('admin-user-edit-perms-backend');
+    var permTabs = document.getElementById('admin-user-edit-perm-tabs');
     if (!modal || !idEl || !tierEl || !saveBtn) return;
     saveBtn.addEventListener('click', function () {
       var id = (idEl && idEl.value) ? String(idEl.value).trim() : '';
       var tier = (tierEl && tierEl.value) ? String(tierEl.value).trim() : '';
       if (!id || !tier) return;
       saveBtn.disabled = true;
-      patchUserTier(id, tier)
+      var tierPromise = isNumericUserId(id) ? patchUserTier(id, tier) : Promise.resolve(null);
+      var permPromise = isNumericUserId(id) ? putUserPermissions(id, collectOverridesFromModal()) : Promise.resolve(null);
+      Promise.all([tierPromise, permPromise])
         .then(function () {
           if (typeof window.bootstrap !== 'undefined' && window.bootstrap.Modal && modal) {
             var m = window.bootstrap.Modal.getInstance(modal);
@@ -492,6 +586,21 @@
         var tier = String(btn.getAttribute('data-user-tier') || 'starter').trim().toLowerCase();
         if (idEl) idEl.value = id;
         if (tierEl) tierEl.value = tier;
+        var frontendEl = document.getElementById('admin-user-edit-perms-frontend');
+        var backendEl = document.getElementById('admin-user-edit-perms-backend');
+        var permTabs = document.getElementById('admin-user-edit-perm-tabs');
+        if (permTabs) permTabs.style.display = isNumericUserId(id) ? '' : 'none';
+        if (isNumericUserId(id)) {
+          getUserPermissions(id).then(function (d) {
+            var overrides = (d && d.overrides) ? d.overrides : {};
+            var effective = (d && d.effectivePermissions) ? d.effectivePermissions : {};
+            if (frontendEl) renderPermissionList(frontendEl, PERM_KEYS_FRONTEND, overrides, effective);
+            if (backendEl) renderPermissionList(backendEl, PERM_KEYS_BACKEND, overrides, effective);
+          });
+        } else {
+          if (frontendEl) renderPermissionList(frontendEl, PERM_KEYS_FRONTEND, {}, {});
+          if (backendEl) renderPermissionList(backendEl, PERM_KEYS_BACKEND, {}, {});
+        }
         if (typeof window.bootstrap !== 'undefined' && window.bootstrap.Modal && modal) {
           var m = new window.bootstrap.Modal(modal);
           m.show();
