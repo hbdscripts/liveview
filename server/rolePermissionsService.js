@@ -1,12 +1,44 @@
 /**
  * Role permissions: read/update per-tier permission maps (starter/growth/pro/scale).
+ * In-memory cache for getRolePermissions to reduce DB hits (TTL 120s; invalidated on put).
  */
 const { getDb, isPostgres } = require('./db');
 const rbac = require('./rbac');
 
+const ROLE_PERMS_CACHE_TTL_MS = 120 * 1000;
+const _rolePermsCache = {};
+const _rolePermsCacheExpiry = {};
+
+function getRolePermissionsCached(tier) {
+  const t = rbac.validateTier(tier);
+  if (!t) return null;
+  const now = Date.now();
+  if (_rolePermsCacheExpiry[t] != null && now < _rolePermsCacheExpiry[t]) {
+    return _rolePermsCache[t];
+  }
+  return null;
+}
+
+function setRolePermissionsCached(tier, perms) {
+  const t = rbac.validateTier(tier);
+  if (!t) return;
+  _rolePermsCache[t] = perms;
+  _rolePermsCacheExpiry[t] = Date.now() + ROLE_PERMS_CACHE_TTL_MS;
+}
+
+function invalidateRolePermissionsCached(tier) {
+  const t = tier != null ? String(tier).trim().toLowerCase() : '';
+  if (t) {
+    delete _rolePermsCache[t];
+    delete _rolePermsCacheExpiry[t];
+  }
+}
+
 async function getRolePermissions(tier) {
   const t = rbac.validateTier(tier);
   if (!t) return rbac.getDefaultPermissionsForTier();
+  const cached = getRolePermissionsCached(t);
+  if (cached != null) return cached;
   const db = getDb();
   try {
     const row = await db.get('SELECT permissions_json FROM role_permissions WHERE tier = ?', [t]);
@@ -19,6 +51,7 @@ async function getRolePermissions(tier) {
         out[key] = parsed[key] === true;
       }
     }
+    setRolePermissionsCached(t, out);
     return out;
   } catch (_) {
     return rbac.getDefaultPermissionsForTier();
@@ -62,6 +95,7 @@ async function putRolePermissions(tier, permissions) {
         [t, json, now]
       );
     }
+    invalidateRolePermissionsCached(t);
     return { ok: true, permissions: next };
   } catch (err) {
     return { ok: false, error: 'db_error' };

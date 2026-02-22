@@ -9,6 +9,7 @@ const Sentry = require('@sentry/node');
 const config = require('./config');
 const salesTruth = require('./salesTruth');
 const express = require('express');
+const compression = require('compression');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
@@ -99,11 +100,16 @@ app.get('/robots.txt', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'robots.txt'));
 });
 
-// Log every request (so we can see in Railway logs if the request reached the app)
-app.use((req, res, next) => {
-  console.log('[Request]', req.method, req.path);
-  next();
-});
+// Log every request only when LOG_REQUESTS=1 or in development (reduces I/O in production)
+const logRequests = process.env.LOG_REQUESTS === '1' || process.env.NODE_ENV !== 'production';
+if (logRequests) {
+  app.use((req, res, next) => {
+    console.log('[Request]', req.method, req.path);
+    next();
+  });
+}
+
+app.use(compression());
 
 // CORS: ingest allows * (pixel sandbox Origin: null)
 app.use('/api/ingest', cors({ origin: true, credentials: false }));

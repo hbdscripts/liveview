@@ -55,6 +55,7 @@
   var activeTab = 'controls';
   var usersLoadedOnce = false;
   var controlsLoadedOnce = false;
+  var rolePermissionsLoadedOnce = false;
 
   function isSettingsPage() {
     try {
@@ -160,7 +161,7 @@
       } catch (_) {}
       try { if (typeof window.refreshConfigStatus === 'function') window.refreshConfigStatus({ force: true, preserveView: false }); } catch (_) {}
     } else if (t === 'role-permissions') {
-      loadRolePermissionsPanel();
+      if (!rolePermissionsLoadedOnce) loadRolePermissionsPanel();
     }
   }
 
@@ -231,6 +232,7 @@
   function loadRolePermissionsPanel() {
     var container = document.getElementById('admin-role-permissions-content');
     if (!container) return;
+    if (isSettingsPage() && container.querySelector('.admin-role-perms-tiers')) return;
     container.innerHTML = '<div class="d-flex align-items-center gap-2 text-secondary"><div class="spinner-border spinner-border-sm text-primary" role="status"></div><span>Loading…</span></div>';
     kfetch('/api/admin/role-permissions', { method: 'GET' })
       .then(function (r) { return r.json ? r.json() : null; })
@@ -456,6 +458,7 @@
         });
         html += '</div>';
         container.innerHTML = html;
+        rolePermissionsLoadedOnce = true;
 
         if (container.getAttribute('data-role-perms-bound') !== '1') {
           container.setAttribute('data-role-perms-bound', '1');

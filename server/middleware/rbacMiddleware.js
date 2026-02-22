@@ -2,12 +2,17 @@
  * RBAC middleware: enforce tier permissions on protected pages and APIs.
  * Runs after dashboardAuth; only applies when request has required permission(s).
  * Admin (role === 'admin') always allowed.
+ * Caches (email -> user + effectivePerms) for 60s to reduce DB hits.
  */
 const dashboardAuth = require('./dashboardAuth');
 const users = require('../usersService');
 const rolePermissionsService = require('../rolePermissionsService');
 const userPermissionOverrides = require('../userPermissionOverridesService');
 const rbac = require('../rbac');
+
+const RBAC_CACHE_TTL_MS = 60 * 1000;
+const _rbacCache = {};
+const _rbacCacheExpiry = {};
 
 function getCookie(req, name) {
   const raw = (req.get && (req.get('Cookie') || req.get('cookie'))) || '';
@@ -19,6 +24,34 @@ function getCookie(req, name) {
     }
   }
   return undefined;
+}
+
+async function resolveUserAndPerms(email) {
+  let user = null;
+  if (users.isBootstrapMasterEmail(email)) {
+    try {
+      user = await users.ensureBootstrapMaster(email);
+    } catch (_) {}
+  } else {
+    user = await users.getUserByEmail(email);
+  }
+  if (!user || (user.status || '').toString().trim().toLowerCase() !== 'active') return null;
+
+  if (rbac.isAdminViewer(user)) return { user, effectivePerms: null };
+
+  const tier = rbac.normalizeUserTierForRbac(user.tier);
+  let tierPerms;
+  try {
+    tierPerms = await rolePermissionsService.getRolePermissions(tier);
+  } catch (_) {
+    tierPerms = rbac.getDefaultPermissionsForTier();
+  }
+  let overrides = {};
+  try {
+    overrides = await userPermissionOverrides.getOverrides(user.id);
+  } catch (_) {}
+  const effectivePerms = userPermissionOverrides.getEffectivePermissions(tierPerms, overrides);
+  return { user, effectivePerms };
 }
 
 async function middleware(req, res, next) {
@@ -39,30 +72,19 @@ async function middleware(req, res, next) {
     const email = users.normalizeEmail(session.email);
     if (!email) return next();
 
-    let user = null;
-    if (users.isBootstrapMasterEmail(email)) {
-      try {
-        user = await users.ensureBootstrapMaster(email);
-      } catch (_) {}
-    } else {
-      user = await users.getUserByEmail(email);
+    const now = Date.now();
+    let cached = _rbacCacheExpiry[email] != null && now < _rbacCacheExpiry[email] ? _rbacCache[email] : null;
+    if (!cached) {
+      cached = await resolveUserAndPerms(email);
+      if (cached) {
+        _rbacCache[email] = cached;
+        _rbacCacheExpiry[email] = now + RBAC_CACHE_TTL_MS;
+      }
     }
-    if (!user || (user.status || '').toString().trim().toLowerCase() !== 'active') return next();
+    if (!cached) return next();
 
+    const { user, effectivePerms } = cached;
     if (rbac.isAdminViewer(user)) return next();
-
-    const tier = rbac.normalizeUserTierForRbac(user.tier);
-    let tierPerms;
-    try {
-      tierPerms = await rolePermissionsService.getRolePermissions(tier);
-    } catch (_) {
-      tierPerms = rbac.getDefaultPermissionsForTier();
-    }
-    let overrides = {};
-    try {
-      overrides = await userPermissionOverrides.getOverrides(user.id);
-    } catch (_) {}
-    const effectivePerms = userPermissionOverrides.getEffectivePermissions(tierPerms, overrides);
     if (rbac.isAllowed(user, required, effectivePerms)) return next();
 
     const isApi = pathname.startsWith('/api/');

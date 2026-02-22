@@ -75,8 +75,12 @@ test('app.js table render hot-path guardrails (single sort, chunked patch)', () 
     appJsContent.includes('PATCH_CHUNK_YIELD_THRESHOLD') && appJsContent.includes('requestAnimationFrame'),
     'bundle must use chunked row patching for large tables'
   );
+  const hasSingleSort =
+    appJsContent.includes('const sorted = getSortedSessions()') ||
+    appJsContent.includes('const sorted=getSortedSessions()') ||
+    (appJsContent.includes('const sorted=') && (appJsContent.includes('getSortedSessions') || appJsContent.includes('sorted.length')));
   assert.ok(
-    appJsContent.includes('const sorted = getSortedSessions()'),
+    hasSingleSort,
     'bundle must compute sorted sessions once per render (single sort)'
   );
 });

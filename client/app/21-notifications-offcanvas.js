@@ -369,18 +369,32 @@
 
   fetchList().then(updateBadge);
 
-  var badgeIntervalId = setInterval(function () {
+  var badgeIntervalId = null;
+  var BADGE_POLL_MS = 60000;
+  function tickBadge() {
     if (document.visibilityState !== 'visible') return;
     fetchList().then(updateBadge);
-  }, 60000);
+  }
+  function startBadgePoll() {
+    if (badgeIntervalId != null) return;
+    badgeIntervalId = setInterval(tickBadge, BADGE_POLL_MS);
+  }
+  function stopBadgePoll() {
+    if (badgeIntervalId != null) {
+      clearInterval(badgeIntervalId);
+      badgeIntervalId = null;
+    }
+  }
+  startBadgePoll();
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'visible') startBadgePoll();
+    else stopBadgePoll();
+  });
 
   try {
     if (typeof registerCleanup === 'function') {
       registerCleanup(function () {
-        if (badgeIntervalId != null) {
-          clearInterval(badgeIntervalId);
-          badgeIntervalId = null;
-        }
+        stopBadgePoll();
       });
     }
   } catch (_) {}

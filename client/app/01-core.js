@@ -136,7 +136,7 @@ const API = '';
     function fetchChangePinsRecent(days) {
       var d = (typeof days === 'number' && isFinite(days)) ? Math.max(7, Math.min(400, Math.floor(days))) : 120;
       var url = API + '/api/tools/change-pins/recent?days=' + encodeURIComponent(String(d));
-      return fetch(url, { credentials: 'same-origin', cache: 'no-store' })
+      return fetch(url, { credentials: 'same-origin', cache: 'default' })
         .then(function (r) { return (r && r.ok) ? r.json().catch(function () { return null; }) : null; })
         .then(function (json) {
           var pins = json && json.ok && Array.isArray(json.pins) ? json.pins : null;

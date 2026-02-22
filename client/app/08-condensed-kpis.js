@@ -497,7 +497,7 @@
       const force = !!options.force;
       let url = API + '/api/kpis?range=' + encodeURIComponent(getStatsRange()) + getTrafficQuerySuffix();
       if (force) url += (url.indexOf('?') >= 0 ? '&' : '?') + 'force=1';
-      return fetchWithTimeout(url, { credentials: 'same-origin', cache: 'no-store' }, 25000)
+      return fetchWithTimeout(url, { credentials: 'same-origin', cache: force ? 'no-store' : 'default' }, 25000)
         .then(function(r) {
           if (!r.ok) throw new Error('KPIs HTTP ' + r.status);
           return r.json();
