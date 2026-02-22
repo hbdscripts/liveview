@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 1afbf6eb11d9ae7b
+// checksum: b07b816324ea47bd
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -2256,7 +2256,7 @@ const API = '';
     let kpisRefreshRangeKey = '';
     let configStatusRefreshInFlight = null;
     let activeKpiCompareKey = 'conv';
-    let reportBuildTokens = { stats: 0, breakdown: 0, products: 0, attribution: 0, devices: 0, sessions: 0, diagnostics: 0, kpiCompare: 0, dashboard: 0 };
+    let reportBuildTokens = { stats: 0, breakdown: 0, products: 0, attribution: 0, devices: 0, browsers: 0, sessions: 0, diagnostics: 0, kpiCompare: 0, dashboard: 0 };
     var _intervals = [];
     var _eventSource = null;
     var _fetchAbortControllers = {};
