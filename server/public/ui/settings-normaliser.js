@@ -312,6 +312,17 @@
     } catch (_) {}
   }
 
+  function removeCardCollapseToggles(panelEl) {
+    var wrap = getPanelWrap(panelEl) || panelEl;
+    if (!wrap || !wrap.querySelectorAll) return;
+    // Remove chevron collapse toggle buttons from all cards in Settings panels.
+    try {
+      wrap.querySelectorAll('.kexo-card-collapse-toggle').forEach(function (btn) {
+        try { btn.parentNode && btn.parentNode.removeChild(btn); } catch (_) {}
+      });
+    } catch (_) {}
+  }
+
   function normaliseButtonsAndForms(panelEl) {
     var wrap = getPanelWrap(panelEl) || panelEl;
     if (!wrap || !wrap.querySelectorAll) return;
@@ -383,6 +394,7 @@
     stripFirstCardHeaderInPanel(panelEl);
     flattenWrapperCards(panelEl);
     removeDeadCardHeaderChevrons(panelEl);
+    removeCardCollapseToggles(panelEl);
     normaliseHeadingsAndSpacing(panelEl);
     normaliseButtonsAndForms(panelEl);
     try { panelEl.setAttribute(SETTINGS_PANEL_NORMALISE_ATTR, '1'); } catch (_) {}
