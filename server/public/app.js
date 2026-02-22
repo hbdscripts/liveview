@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 3e46cfba07837949
+// checksum: a822ca79e4c960ae
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -995,6 +995,12 @@ const API = '';
         try { document.body.classList.remove('kexo-page-progress-active'); } catch (_) {}
       }, 200);
     }
+    try {
+      if (typeof window !== 'undefined') {
+        window.__kexoShowPageProgress = showPageProgress;
+        window.__kexoHidePageProgress = hidePageProgress;
+      }
+    } catch (_) {}
     (function ensureLoaderOnBoot() {
       _syncStripWidth();
       if (document.readyState === 'loading') {
@@ -11394,9 +11400,11 @@ const API = '';
     function startReportBuild(opts) {
       opts = opts && typeof opts === 'object' ? opts : {};
       const key = opts.key ? String(opts.key) : '';
-      if (!key || !reportBuildTokens || typeof reportBuildTokens[key] !== 'number') {
-        return { step: function() {}, title: function() {}, finish: function() {} };
-      }
+      if (!key) return { step: function() {}, title: function() {}, finish: function() {} };
+      // Be permissive: allow any key so pages don't silently lose the top loader
+      // when a new report key is introduced but not added to the token map.
+      if (!reportBuildTokens || typeof reportBuildTokens !== 'object') reportBuildTokens = {};
+      if (typeof reportBuildTokens[key] !== 'number') reportBuildTokens[key] = 0;
 
       // Default: keep the page visible (top progress bar + header spinner only).
       // Only show the full overlay when explicitly requested.
@@ -18111,8 +18119,6 @@ const API = '';
     (function initDashboard() {
       var dashLoading = false;
       var dashLastRangeKey = null;
-      var dashLastTrendingPreset = null;
-      var dashFetchRequestId = 0;
       var dashLastDayYmd = null;
       var dashCompareSeriesCache = null;
       var dashCompareRangeKey = null;
@@ -22990,9 +22996,6 @@ const API = '';
         if (dashLoading && !force) return;
         rangeKey = (rangeKey == null ? '' : String(rangeKey)).trim().toLowerCase();
         if (!rangeKey) rangeKey = 'today';
-        dashFetchRequestId += 1;
-        var myRequestId = dashFetchRequestId;
-        var trendingPresetAtStart = getTrendingPreset();
         dashLoading = true;
         var silent = !!(opts && opts.silent);
         var reason = opts && opts.reason != null ? String(opts.reason) : '';
@@ -23009,7 +23012,7 @@ const API = '';
             try { build.finish(); } catch (_) {}
           }, 35000);
         }
-        var url = API + '/api/dashboard-series?range=' + encodeURIComponent(rangeKey) + '&trendingPreset=' + encodeURIComponent(trendingPresetAtStart) + (force ? ('&force=1&_=' + Date.now()) : '');
+        var url = API + '/api/dashboard-series?range=' + encodeURIComponent(rangeKey) + '&trendingPreset=' + encodeURIComponent(getTrendingPreset()) + (force ? ('&force=1&_=' + Date.now()) : '');
         var forceMini = !!force;
         if (silent && forceMini && String(reason || '').trim().toLowerCase() !== 'new-sale') {
           var miniAgeMs = overviewMiniFetchedAt ? (Date.now() - overviewMiniFetchedAt) : Number.POSITIVE_INFINITY;
@@ -23028,14 +23031,12 @@ const API = '';
         fetchWithTimeout(url, { credentials: 'same-origin', cache: force ? 'no-store' : 'default' }, 30000)
           .then(function(r) { return (r && r.ok) ? r.json() : null; })
           .then(function(data) {
-            if (myRequestId !== dashFetchRequestId) return;
             dashLoading = false;
             if (data) {
-              var nextSig = dashboardPayloadSignature(data, rangeKey, trendingPresetAtStart);
+              var nextSig = dashboardPayloadSignature(data, rangeKey, getTrendingPreset());
               var shouldRender = !!force || !(dashPayloadSignature && nextSig && nextSig === dashPayloadSignature);
               dashCache = data;
               dashLastRangeKey = rangeKey;
-              dashLastTrendingPreset = trendingPresetAtStart;
               dashPayloadSignature = nextSig;
               if (shouldRender || (opts && opts.rerender)) {
                 build.step('Rendering dashboard panels');
@@ -23051,14 +23052,12 @@ const API = '';
             else setTimeout(deferSecondary, 0);
           })
           .catch(function(err) {
-            if (myRequestId !== dashFetchRequestId) return;
             try { if (typeof window.kexoCaptureError === 'function') window.kexoCaptureError(err, { context: 'dashboardSeries', page: PAGE }); } catch (_) {}
             dashLoading = false;
             build.step('Dashboard data unavailable');
             console.error('[dashboard] fetch error:', err);
           })
           .finally(function() {
-            if (myRequestId !== dashFetchRequestId) return;
             if (buildFinishTimeout != null) {
               try { clearTimeout(buildFinishTimeout); } catch (_) {}
               buildFinishTimeout = null;
@@ -24586,14 +24585,12 @@ const API = '';
           if (curYmd && dashLastDayYmd && dashLastDayYmd !== curYmd) {
             dashCache = null;
             dashLastRangeKey = null;
-            dashLastTrendingPreset = null;
             dashPayloadSignature = '';
             force = true;
           }
           if (curYmd) dashLastDayYmd = curYmd;
         } catch (_) {}
-        var trendingPreset = typeof getTrendingPreset === 'function' ? getTrendingPreset() : null;
-        if (!force && dashCache && dashLastRangeKey === rk && dashLastTrendingPreset === trendingPreset) {
+        if (!force && dashCache && dashLastRangeKey === rk) {
           if (rerender) renderDashboard(dashCache);
           fetchOverviewCardData('dash-chart-overview-30d', { force: false, renderIfFresh: true });
           requestDashboardWidgetsRefresh({ force: false, rangeKey: rk });

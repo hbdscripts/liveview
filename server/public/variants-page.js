@@ -896,6 +896,7 @@
     if (state.loading) return Promise.resolve(null);
     state.loading = true;
     setLoadingUi(true);
+    try { if (typeof window.__kexoShowPageProgress === 'function') window.__kexoShowPageProgress(); } catch (_) {}
     beginGlobalReportLoadingDelayed(250);
 
     var ensureShop = state.shop
@@ -932,6 +933,7 @@
         state.loading = false;
         dismissGlobalPageLoader();
         endGlobalReportLoading();
+        try { if (typeof window.__kexoHidePageProgress === 'function') window.__kexoHidePageProgress(); } catch (_) {}
       });
   }
 
