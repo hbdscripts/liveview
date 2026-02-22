@@ -2325,22 +2325,7 @@ body:not([data-page="settings"]) .table-responsive table thead th {
   --kexo-loader-strip-height: 5px;
 }
 
-/* Section strip: same height as loader; hidden while loader active */
-.kexo-section-strip {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: var(--kexo-strip-viewport-width, 100%);
-  max-width: 100%;
-  height: 5px;
-  background: var(--kexo-section-accent, var(--tblr-primary, #3eb3ab));
-  pointer-events: none;
-  z-index: 9998;
-  transition: opacity 0.3s;
-}
-body.kexo-page-progress-active .kexo-section-strip {
-  opacity: 0;
-}
+/* Section strip removed; page-progress bar only. */
 
 /* Section strip fallback by data-page (early paint before JS sets --kexo-section-accent) */
 body[data-page="dashboard"],

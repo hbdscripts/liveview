@@ -17,10 +17,15 @@ function formatPct(n) {
   return Math.round(n * 10) / 10 + '%';
 }
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
 async function runOnce() {
   try {
     const prefs = await notificationsService.getPreferences();
     if (!prefs.daily_report) return;
+
+    // At most one daily report per 24h (avoids spam when server restarts hourly, e.g. Railway).
+    if (await notificationsService.existsRecentNotification('daily_report', { sinceMs: DAY_MS })) return;
 
     const kpis = await store.getKpis({ trafficMode: 'human_only', rangeKey: 'yesterday' });
     if (!kpis) return;

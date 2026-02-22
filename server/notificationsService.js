@@ -2,7 +2,7 @@
  * Notifications: create, list, get, mark read/archived.
  * Preferences (notifications_preferences_v1) control which types are shown and created.
  */
-const { getDb } = require('./db');
+const { getDb, isPostgres } = require('./db');
 const store = require('./store');
 
 const PREFS_KEY = 'notifications_preferences_v1';
@@ -35,6 +35,35 @@ async function getPreferences() {
 function isTypeEnabled(prefs, type) {
   const key = type === 'diagnostics_unresolved' ? 'diagnostics_unresolved' : type;
   return prefs[key] !== false;
+}
+
+/**
+ * Return true if a notification of this type (and optional meta.key) was created within sinceMs.
+ * Used to avoid duplicate daily_report and diagnostics_unresolved when the job runs on every restart.
+ */
+async function existsRecentNotification(type, options = {}) {
+  const { sinceMs, metaKey } = options;
+  const db = getDb();
+  const since = sinceMs != null ? Date.now() - Number(sinceMs) : 0;
+  if (metaKey != null) {
+    if (isPostgres()) {
+      const row = await db.get(
+        `SELECT 1 FROM notifications WHERE type = ? AND created_at >= ? AND (meta::json)->>'key' = ? LIMIT 1`,
+        [type, since, String(metaKey)]
+      );
+      return !!row;
+    }
+    const row = await db.get(
+      `SELECT 1 FROM notifications WHERE type = ? AND created_at >= ? AND json_extract(meta, '$.key') = ? LIMIT 1`,
+      [type, since, String(metaKey)]
+    );
+    return !!row;
+  }
+  const row = await db.get(
+    `SELECT 1 FROM notifications WHERE type = ? AND created_at >= ? LIMIT 1`,
+    [type, since]
+  );
+  return !!row;
 }
 
 /**
@@ -204,6 +233,7 @@ async function createSentryNotification(messageOrError) {
 
 module.exports = {
   getPreferences,
+  existsRecentNotification,
   create,
   list,
   get,

@@ -52,7 +52,10 @@ async function runOnce() {
       unresolved.push({ key: 'google_ads', label: 'Google Ads' });
     }
 
+    const DAY_MS = 24 * 60 * 60 * 1000;
     for (const item of unresolved) {
+      // At most one notification per issue per 24h (avoids spam when server restarts hourly).
+      if (await notificationsService.existsRecentNotification('diagnostics_unresolved', { sinceMs: DAY_MS, metaKey: item.key })) continue;
       await notificationsService.create({
         type: 'diagnostics_unresolved',
         title: 'Unresolved: ' + item.label,

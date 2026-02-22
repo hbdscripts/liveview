@@ -460,10 +460,8 @@
     // Desktop date picker is mounted into the page header right slot.
 
     // Page progress bar (Tabler Turbo-style): refcount + width animation
-    // Section strip (same height): always present; hidden while progress active
     var _progressEl = null;
     var _progressBarEl = null;
-    var _sectionStripEl = null;
     var _progressActive = 0;
     var _progressHideTimer = null;
     function _syncStripWidth() {
@@ -474,17 +472,9 @@
         }
       } catch (_) {}
     }
-    function _ensureSectionStrip() {
-      if (_sectionStripEl) return;
-      _syncStripWidth();
-      _sectionStripEl = document.createElement('div');
-      _sectionStripEl.className = 'kexo-section-strip';
-      _sectionStripEl.setAttribute('aria-hidden', 'true');
-      document.body.prepend(_sectionStripEl);
-    }
     function _ensureProgress() {
       if (_progressEl) return;
-      _ensureSectionStrip();
+      _syncStripWidth();
       _progressEl = document.createElement('div');
       _progressEl.className = 'page-progress';
       _progressEl.innerHTML = '<div class="page-progress-bar"></div>';
@@ -520,7 +510,7 @@
         try { document.body.classList.remove('kexo-page-progress-active'); } catch (_) {}
       }, 200);
     }
-    (function ensureLoaderAndStripOnBoot() {
+    (function ensureLoaderOnBoot() {
       _syncStripWidth();
       if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', function() {
