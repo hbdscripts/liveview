@@ -250,7 +250,8 @@ body[data-page="settings"] #settings-global-footer .settings-global-save-status 
    Avoids Bootstrap .row/.col-* so the Settings normaliser doesn't collapse it. */
 body[data-page="settings"] .settings-responsive-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  /* Mobile-first: default to 1 column, then step up by breakpoint. */
+  grid-template-columns: minmax(0, 1fr);
   gap: 1rem;
   align-items: start;
 }
@@ -260,7 +261,7 @@ body[data-page="settings"] .settings-responsive-grid .settings-responsive-grid-s
 /* Icons accordion: ensure at least 4 per row on desktop (override any conflicting context). */
 body[data-page="settings"] #theme-icons-accordion .settings-responsive-grid {
   display: grid !important;
-  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  grid-template-columns: minmax(0, 1fr) !important;
   gap: 1rem;
   align-items: start;
 }
@@ -284,21 +285,17 @@ body[data-page="settings"] .kexo-css-var-name {
   }
 }
 
-@media (max-width: 1199.98px) {
-  body[data-page="settings"] .settings-responsive-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  body[data-page="settings"] #theme-icons-accordion .settings-responsive-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-}
-@media (max-width: 991.98px) {
+@media (min-width: 768px) {
   body[data-page="settings"] .settings-responsive-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  body[data-page="settings"] #theme-icons-accordion .settings-responsive-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  body[data-page="settings"] #theme-icons-accordion .settings-responsive-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
 }
-@media (max-width: 767.98px) {
-  body[data-page="settings"] .settings-responsive-grid { grid-template-columns: minmax(0, 1fr); }
-  body[data-page="settings"] #theme-icons-accordion .settings-responsive-grid { grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 992px) {
+  body[data-page="settings"] .settings-responsive-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  body[data-page="settings"] #theme-icons-accordion .settings-responsive-grid { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
 }
-@media (max-width: 575.98px) {
-  body[data-page="settings"] .settings-responsive-grid { grid-template-columns: minmax(0, 1fr); }
-  body[data-page="settings"] #theme-icons-accordion .settings-responsive-grid { grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 1200px) {
+  body[data-page="settings"] .settings-responsive-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  body[data-page="settings"] #theme-icons-accordion .settings-responsive-grid { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
 }
 
 /* Icons & assets: click-to-open help popover (trigger at far right of each label). */
