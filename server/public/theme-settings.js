@@ -44,6 +44,15 @@
     'dash-kpi-delta-flat': { title: 'Overview KPI - Delta flat', help: 'Flat-trend icon in KPI cards on /dashboard/overview when metric delta is neutral.' },
     'nav-dropdown-arrow': { title: 'Nav Dropdown Arrow', help: 'Arrow icon shown next to each item in the top-nav dropdown menus (Dashboard, Insights, Acquisition, etc.).' },
     'nav-notifications-bell': { title: 'Notifications (bell)', help: 'Bell icon in the header (top strip) next to Settings. Opens the notifications panel.' },
+    'notifications-type-daily-report': { title: 'Notifications - Daily report', help: 'Icon shown for daily report notifications in the notifications panel (bell offcanvas).' },
+    'notifications-type-sale': { title: 'Notifications - Sale', help: 'Icon shown for sale notifications in the notifications panel (bell offcanvas).' },
+    'notifications-type-sentry': { title: 'Notifications - Sentry', help: 'Icon shown for Sentry notifications in the notifications panel (bell offcanvas).' },
+    'notifications-type-pending-signup': { title: 'Notifications - Pending signup', help: 'Icon shown for pending signup notifications in the notifications panel (bell offcanvas).' },
+    'notifications-type-diagnostics-unresolved': { title: 'Notifications - Diagnostics unresolved', help: 'Icon shown for unresolved diagnostics notifications in the notifications panel (bell offcanvas).' },
+    'notifications-type-default': { title: 'Notifications - Default', help: 'Fallback icon shown for unknown notification types in the notifications panel (bell offcanvas).' },
+    'notifications-action-archive': { title: 'Notifications - Archive action', help: 'Icon shown for Archive actions in the notifications panel (quick actions and detail view).' },
+    'notifications-action-delete': { title: 'Notifications - Delete action', help: 'Icon shown for Delete actions in the notifications panel (quick actions and detail view).' },
+    'notifications-back': { title: 'Notifications - Back', help: 'Back arrow icon in the notifications detail header.' },
     'nav-item-admin': { title: 'Settings menu - Admin', help: 'Icon shown for the Admin item in the top-right settings dropdown.' },
     'admin-tab-controls': { title: 'Admin - Controls', help: 'Sidebar icon shown for Controls in /admin.' },
     'admin-tab-diagnostics': { title: 'Admin - Diagnostics', help: 'Sidebar icon shown for Diagnostics in /admin.' },
@@ -66,6 +75,7 @@
     if (key.indexOf('header-') === 0) return 'fa-jelly-filled';
     if (key === 'nav-dropdown-arrow') return 'fa-solid';
     if (key.indexOf('nav-item-') === 0) return 'fa-jelly';
+    if (key.indexOf('notifications-') === 0) return 'fa-solid';
     if (key === 'table-icon-compliance-search') return 'fa-light';
     if (key.indexOf('table-icon-') === 0) return 'fa-jelly-filled';
     if (key.indexOf('table-short-') === 0) return 'fa-solid';

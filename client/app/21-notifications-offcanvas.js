@@ -17,17 +17,17 @@
   var currentTab = 'unread';
   var listData = null;
 
-  var TYPE_ICONS = {
-    daily_report: 'fa-chart-line',
-    sale: 'fa-cart-shopping',
-    sentry: 'fa-bug',
-    pending_signup: 'fa-user-clock',
-    diagnostics_unresolved: 'fa-wrench',
+  var TYPE_ICON_KEYS = {
+    daily_report: 'notifications-type-daily-report',
+    sale: 'notifications-type-sale',
+    sentry: 'notifications-type-sentry',
+    pending_signup: 'notifications-type-pending-signup',
+    diagnostics_unresolved: 'notifications-type-diagnostics-unresolved',
   };
-  var DEFAULT_ICON = 'fa-bell';
+  var DEFAULT_ICON_KEY = 'notifications-type-default';
 
-  function getIconForType(type) {
-    return TYPE_ICONS[type] || DEFAULT_ICON;
+  function getIconKeyForType(type) {
+    return TYPE_ICON_KEYS[type] || DEFAULT_ICON_KEY;
   }
 
   function getBadgeEls() {
@@ -90,12 +90,12 @@
   }
 
   function renderItem(n, readFlag) {
-    var icon = getIconForType(n.type);
+    var iconKey = getIconKeyForType(n.type);
     var readAttr = readFlag ? '1' : '0';
     var showArchive = !n.archived_at && currentTab !== 'archived';
     var html = '<div class="list-group-item list-group-item-action notification-item" data-id="' + esc(n.id) + '" data-type="' + esc(n.type) + '" data-read="' + readAttr + '">';
     html += '<a href="#" class="notification-item-main" data-notification-open="1" aria-label="Open notification">';
-    html += '<span class="notification-type-icon bg-primary-lt text-primary"><i class="fa-solid ' + esc(icon) + '" aria-hidden="true"></i></span>';
+    html += '<span class="notification-type-icon bg-primary-lt text-primary"><i data-icon-key="' + esc(iconKey) + '" aria-hidden="true"></i></span>';
     html += '<span class="notification-item-content">';
     html += '<span class="notification-item-title">' + esc(n.title) + '</span>';
     html += '<span class="notification-item-time d-block">' + esc(formatTime(n.created_at)) + '</span>';
@@ -103,9 +103,9 @@
     html += '</a>';
     html += '<div class="notification-item-actions" aria-label="Quick actions">';
     if (showArchive) {
-      html += '<button type="button" class="notification-quick-btn notification-quick-btn--archive" data-notification-action="archive" aria-label="Archive"><i class="fa-solid fa-archive" aria-hidden="true"></i></button>';
+      html += '<button type="button" class="notification-quick-btn notification-quick-btn--archive" data-notification-action="archive" aria-label="Archive"><i data-icon-key="notifications-action-archive" aria-hidden="true"></i></button>';
     }
-    html += '<button type="button" class="notification-quick-btn notification-quick-btn--delete" data-notification-action="delete" aria-label="Delete permanently"><i class="fa-solid fa-trash" aria-hidden="true"></i></button>';
+    html += '<button type="button" class="notification-quick-btn notification-quick-btn--delete" data-notification-action="delete" aria-label="Delete permanently"><i data-icon-key="notifications-action-delete" aria-hidden="true"></i></button>';
     html += '</div>';
     html += '</div>';
     return html;
@@ -214,9 +214,9 @@
         return;
       }
       var n = res.notification;
-      var icon = getIconForType(n.type);
+      var iconKey = getIconKeyForType(n.type);
       var bodyHtml = '<div class="d-flex align-items-start gap-2 mb-2">';
-      bodyHtml += '<span class="notification-type-icon bg-primary-lt text-primary flex-shrink-0"><i class="fa-solid ' + esc(icon) + '" aria-hidden="true"></i></span>';
+      bodyHtml += '<span class="notification-type-icon bg-primary-lt text-primary flex-shrink-0"><i data-icon-key="' + esc(iconKey) + '" aria-hidden="true"></i></span>';
       bodyHtml += '<div class="flex-grow-1 min-w-0"><strong>' + esc(n.title) + '</strong></div></div>';
       bodyHtml += '<div class="small text-muted mb-2">' + esc(formatTime(n.created_at)) + '</div>';
       if (n.body) bodyHtml += '<div class="notification-body">' + esc(n.body).replace(/\n/g, '<br>') + '</div>';
@@ -226,9 +226,9 @@
       if (detailActionsEl) {
         var actionsHtml = '';
         if (!n.archived_at) {
-          actionsHtml += '<button type="button" class="btn btn-light btn-sm" id="notifications-archive-btn" aria-label="Archive"><i class="fa-solid fa-archive me-1" aria-hidden="true"></i>Archive</button>';
+          actionsHtml += '<button type="button" class="btn btn-light btn-sm" id="notifications-archive-btn" aria-label="Archive"><i class="me-1" data-icon-key="notifications-action-archive" aria-hidden="true"></i>Archive</button>';
         }
-        actionsHtml += '<button type="button" class="btn btn-danger btn-sm" id="notifications-delete-btn" aria-label="Delete permanently"><i class="fa-solid fa-trash me-1" aria-hidden="true"></i>Delete</button>';
+        actionsHtml += '<button type="button" class="btn btn-danger btn-sm" id="notifications-delete-btn" aria-label="Delete permanently"><i class="me-1" data-icon-key="notifications-action-delete" aria-hidden="true"></i>Delete</button>';
         detailActionsEl.innerHTML = actionsHtml;
 
         var archiveBtn = document.getElementById('notifications-archive-btn');

@@ -37,6 +37,8 @@
     if (isLockedSettingsIconKey(key)) return 'fa-thin';
     if (key === 'nav-item-refresh' || key === 'nav-item-sound-on' || key === 'nav-item-sound-off' || key === 'nav-item-settings') return 'fa-thin';
     if (key.indexOf('nav-toggle-') === 0 || key === 'topnav-date-chevron') return 'fa-jelly-filled';
+    if (key === 'nav-notifications-bell') return 'fa-jelly-filled';
+    if (key.indexOf('notifications-') === 0) return 'fa-solid';
     if (key.indexOf('header-') === 0) return 'fa-jelly-filled';
     if (key.indexOf('nav-item-') === 0) return 'fa-jelly';
     if (key.indexOf('table-icon-') === 0) return 'fa-jelly-filled';
