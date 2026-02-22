@@ -340,15 +340,26 @@
           { id: 'costs', label: 'Costs & profit', parent: 'settings.cost_expenses', children: pick(['settings.cost_expenses.cost_sources', 'settings.cost_expenses.shipping', 'settings.cost_expenses.rules', 'settings.cost_expenses.breakdown']) },
         ];
 
-        function checkboxHtml(tier, key, label, checked, extraClass) {
+        function switchRowHtml(tier, key, label, checked, opts) {
+          var o = opts && typeof opts === 'object' ? opts : {};
           var safeTier = escapeHtml(tier);
           var safeKey = escapeHtml(key);
           var id = 'rp-' + safeTier + '-' + escapeHtml(String(key).replace(/\./g, '-'));
-          var cls = 'form-check admin-role-perms-item' + (extraClass ? (' ' + extraClass) : '');
+          var textCls = '';
+          if (o.kind === 'parent') textCls = 'fw-semibold';
+          else if (o.kind === 'child') textCls = 'text-secondary ps-3';
+          else if (o.kind === 'meta') textCls = 'text-secondary';
+          var labelText = '<span class="' + textCls + '">' + escapeHtml(label) + '</span>';
           return '' +
-            '<div class="' + cls + '">' +
-              '<input class="form-check-input admin-role-perm-cb" type="checkbox" data-tier="' + safeTier + '" data-perm="' + safeKey + '" id="' + id + '"' + (checked ? ' checked' : '') + '>' +
-              '<label class="form-check-label" for="' + id + '">' + escapeHtml(label) + '</label>' +
+            '<div>' +
+              '<label class="row align-items-center">' +
+                '<span class="col">' + labelText + '</span>' +
+                '<span class="col-auto">' +
+                  '<label class="form-check form-check-single form-switch m-0">' +
+                    '<input class="form-check-input admin-role-perm-cb" type="checkbox" data-tier="' + safeTier + '" data-perm="' + safeKey + '" id="' + id + '"' + (checked ? ' checked' : '') + ' />' +
+                  '</label>' +
+                '</span>' +
+              '</label>' +
             '</div>';
         }
 
@@ -385,7 +396,7 @@
         tiers.forEach(function (tier) {
           var tierPerms = perms[tier] || {};
           html += '<div class="col-12 col-xl-6">';
-          html += '<div class="card admin-role-perms-tier" data-role-perms-tier="' + escapeHtml(tier) + '">';
+          html += '<div class="card" data-role-perms-tier="' + escapeHtml(tier) + '">';
           html +=   '<div class="card-header d-flex align-items-center gap-2 flex-wrap">';
           html +=     '<div class="me-auto min-w-0">';
           html +=       '<div class="fw-semibold">' + escapeHtml(tierLabels[tier] || tier) + '</div>';
@@ -401,30 +412,26 @@
 
           // Pages (left)
           html +=       '<div class="col-12 col-lg-6">';
-          html +=         '<div class="admin-role-perms-section">';
-          html +=           '<div class="admin-role-perms-section-title">Pages</div>';
           PAGE_GROUPS.forEach(function (g) {
             if (!g || !g.keys || !g.keys.length) return;
-            html += '<div class="admin-role-perms-group">';
-            html +=   '<div class="admin-role-perms-group-title">' + escapeHtml(g.label) + '</div>';
-            html +=   '<div class="admin-role-perms-checks">';
+            html += '<div class="mb-3">';
+            html +=   '<label class="form-label">' + escapeHtml(g.label) + '</label>';
+            html +=   '<div class="divide-y">';
             g.keys.forEach(function (key) {
-              html += checkboxHtml(tier, key, labelForPermKey(key), tierPerms[key] === true);
+              html += switchRowHtml(tier, key, labelForPermKey(key), tierPerms[key] === true);
             });
             html +=   '</div>';
             html += '</div>';
           });
-          html +=         '</div>';
           html +=       '</div>';
 
           // Settings (right)
           html +=       '<div class="col-12 col-lg-6">';
-          html +=         '<div class="admin-role-perms-section">';
-          html +=           '<div class="admin-role-perms-section-title">Settings</div>';
           if (SETTINGS_MASTER) {
-            html += '<div class="admin-role-perms-group">';
-            html +=   '<div class="admin-role-perms-checks">';
-            html +=     checkboxHtml(tier, SETTINGS_MASTER, 'Settings access', tierPerms[SETTINGS_MASTER] === true);
+            html += '<div class="mb-3">';
+            html +=   '<label class="form-label">Settings</label>';
+            html +=   '<div class="divide-y">';
+            html +=     switchRowHtml(tier, SETTINGS_MASTER, 'Settings access', tierPerms[SETTINGS_MASTER] === true, { kind: 'parent' });
             html +=   '</div>';
             html += '</div>';
           }
@@ -433,19 +440,18 @@
             var parentKey = g.parent && hasKey(g.parent) ? g.parent : '';
             var children = Array.isArray(g.children) ? g.children : [];
             if (!parentKey && !children.length) return;
-            html += '<div class="admin-role-perms-group">';
-            html +=   '<div class="admin-role-perms-group-title">' + escapeHtml(g.label) + '</div>';
-            html +=   '<div class="admin-role-perms-checks">';
+            html += '<div class="mb-3">';
+            html +=   '<label class="form-label">' + escapeHtml(g.label) + '</label>';
+            html +=   '<div class="divide-y">';
             if (parentKey) {
-              html += checkboxHtml(tier, parentKey, escapeHtml(labelForPermKey(parentKey)), tierPerms[parentKey] === true);
+              html += switchRowHtml(tier, parentKey, String(g.label || '') + ' (category)', tierPerms[parentKey] === true, { kind: 'parent' });
             }
             children.forEach(function (key) {
-              html += checkboxHtml(tier, key, labelForPermKey(key), tierPerms[key] === true, 'admin-role-perms-item--child');
+              html += switchRowHtml(tier, key, labelForPermKey(key), tierPerms[key] === true, { kind: 'child' });
             });
             html +=   '</div>';
             html += '</div>';
           });
-          html +=         '</div>';
           html +=       '</div>';
 
           html +=     '</div>';
