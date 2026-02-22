@@ -1,4 +1,6 @@
       var dashLastRangeKey = null;
+      var dashLastTrendingPreset = null;
+      var dashFetchRequestId = 0;
       var dashLastDayYmd = null;
       var dashCompareSeriesCache = null;
       var dashCompareRangeKey = null;
@@ -4876,6 +4878,9 @@
         if (dashLoading && !force) return;
         rangeKey = (rangeKey == null ? '' : String(rangeKey)).trim().toLowerCase();
         if (!rangeKey) rangeKey = 'today';
+        dashFetchRequestId += 1;
+        var myRequestId = dashFetchRequestId;
+        var trendingPresetAtStart = getTrendingPreset();
         dashLoading = true;
         var silent = !!(opts && opts.silent);
         var reason = opts && opts.reason != null ? String(opts.reason) : '';
@@ -4892,7 +4897,7 @@
             try { build.finish(); } catch (_) {}
           }, 35000);
         }
-        var url = API + '/api/dashboard-series?range=' + encodeURIComponent(rangeKey) + '&trendingPreset=' + encodeURIComponent(getTrendingPreset()) + (force ? ('&force=1&_=' + Date.now()) : '');
+        var url = API + '/api/dashboard-series?range=' + encodeURIComponent(rangeKey) + '&trendingPreset=' + encodeURIComponent(trendingPresetAtStart) + (force ? ('&force=1&_=' + Date.now()) : '');
         var forceMini = !!force;
         if (silent && forceMini && String(reason || '').trim().toLowerCase() !== 'new-sale') {
           var miniAgeMs = overviewMiniFetchedAt ? (Date.now() - overviewMiniFetchedAt) : Number.POSITIVE_INFINITY;
@@ -4911,12 +4916,14 @@
         fetchWithTimeout(url, { credentials: 'same-origin', cache: force ? 'no-store' : 'default' }, 30000)
           .then(function(r) { return (r && r.ok) ? r.json() : null; })
           .then(function(data) {
+            if (myRequestId !== dashFetchRequestId) return;
             dashLoading = false;
             if (data) {
-              var nextSig = dashboardPayloadSignature(data, rangeKey, getTrendingPreset());
+              var nextSig = dashboardPayloadSignature(data, rangeKey, trendingPresetAtStart);
               var shouldRender = !!force || !(dashPayloadSignature && nextSig && nextSig === dashPayloadSignature);
               dashCache = data;
               dashLastRangeKey = rangeKey;
+              dashLastTrendingPreset = trendingPresetAtStart;
               dashPayloadSignature = nextSig;
               if (shouldRender || (opts && opts.rerender)) {
                 build.step('Rendering dashboard panels');
@@ -4932,12 +4939,14 @@
             else setTimeout(deferSecondary, 0);
           })
           .catch(function(err) {
+            if (myRequestId !== dashFetchRequestId) return;
             try { if (typeof window.kexoCaptureError === 'function') window.kexoCaptureError(err, { context: 'dashboardSeries', page: PAGE }); } catch (_) {}
             dashLoading = false;
             build.step('Dashboard data unavailable');
             console.error('[dashboard] fetch error:', err);
           })
           .finally(function() {
+            if (myRequestId !== dashFetchRequestId) return;
             if (buildFinishTimeout != null) {
               try { clearTimeout(buildFinishTimeout); } catch (_) {}
               buildFinishTimeout = null;
@@ -6465,12 +6474,14 @@
           if (curYmd && dashLastDayYmd && dashLastDayYmd !== curYmd) {
             dashCache = null;
             dashLastRangeKey = null;
+            dashLastTrendingPreset = null;
             dashPayloadSignature = '';
             force = true;
           }
           if (curYmd) dashLastDayYmd = curYmd;
         } catch (_) {}
-        if (!force && dashCache && dashLastRangeKey === rk) {
+        var trendingPreset = typeof getTrendingPreset === 'function' ? getTrendingPreset() : null;
+        if (!force && dashCache && dashLastRangeKey === rk && dashLastTrendingPreset === trendingPreset) {
           if (rerender) renderDashboard(dashCache);
           fetchOverviewCardData('dash-chart-overview-30d', { force: false, renderIfFresh: true });
           requestDashboardWidgetsRefresh({ force: false, rangeKey: rk });
