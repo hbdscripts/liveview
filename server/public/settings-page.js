@@ -532,7 +532,7 @@
         var adm = /[?&]adminTab=([^&]+)/.exec(window.location.search || '');
         if (adm && adm[1]) {
           var adk = adm[1].toLowerCase().replace(/\s+/g, '-');
-          if (adk === 'controls' || adk === 'diagnostics' || adk === 'users') initialAdminSubTab = adk;
+          if (adk === 'controls' || adk === 'diagnostics' || adk === 'users' || adk === 'role-permissions') initialAdminSubTab = adk;
         }
       }
       if (t === 'cost-expenses') {
@@ -1565,6 +1565,7 @@
         { key: 'users', label: 'Users & roles', panelId: 'admin-panel-users' },
         { key: 'diagnostics', label: 'Diagnostics', panelId: 'admin-panel-diagnostics' },
         { key: 'controls', label: 'Controls', panelId: 'admin-panel-controls' },
+        { key: 'role-permissions', label: 'Role permissions', panelId: 'admin-panel-role-permissions' },
       ],
     });
   }
