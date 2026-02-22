@@ -227,7 +227,7 @@
     }
   }
 
-  var _rolePermsSaveTimer = null;
+  var _rolePermsSaveTimers = {};
   function loadRolePermissionsPanel() {
     var container = document.getElementById('admin-role-permissions-content');
     if (!container) return;
@@ -248,55 +248,242 @@
           return;
         }
         keys.sort();
-        var pageKeys = keys.filter(function (k) { return k.indexOf('page.') === 0; });
-        var settingsKeys = keys.filter(function (k) { return k.indexOf('settings.') === 0 || k === 'page.settings'; });
-        function labelForKey(k) {
-          var s = k.replace(/^page\./, '').replace(/^settings\./, '').replace(/\./g, ' ');
-          return s.charAt(0).toUpperCase() + s.slice(1);
+        var keySet = {};
+        keys.forEach(function (k) { keySet[k] = true; });
+        function hasKey(k) { return !!keySet[k]; }
+        function pick(list) {
+          var out = [];
+          (Array.isArray(list) ? list : []).forEach(function (k) { if (hasKey(k)) out.push(k); });
+          return out;
         }
-        var html = '';
+        function titleCaseWords(text) {
+          var raw = (text == null ? '' : String(text)).trim();
+          if (!raw) return '';
+          return raw.split(/\s+/g).map(function (w) {
+            var t = w.trim();
+            if (!t) return '';
+            if (t.toLowerCase() === 'cr') return 'CR';
+            if (t.toLowerCase() === 'kpis') return 'KPIs';
+            if (t.toLowerCase() === 'ads') return 'Ads';
+            return t.charAt(0).toUpperCase() + t.slice(1);
+          }).join(' ');
+        }
+        function labelForPermKey(k) {
+          var key = String(k || '');
+          var map = {
+            // Pages
+            'page.dashboard.overview': 'Overview',
+            'page.dashboard.live': 'Live View',
+            'page.dashboard.sales': 'Recent Sales',
+            'page.dashboard.table': 'Table View',
+            'page.insights.snapshot': 'Snapshot',
+            'page.insights.countries': 'Countries',
+            'page.insights.products': 'Products',
+            'page.insights.variants': 'Variants',
+            'page.insights.payment_methods': 'Payment Methods',
+            'page.insights.abandoned_carts': 'Abandoned Carts',
+            'page.acquisition.attribution': 'Attribution',
+            'page.acquisition.browsers': 'Browsers',
+            'page.acquisition.devices': 'Devices',
+            'page.integrations.google_ads': 'Google Ads',
+            'page.tools.compare_conversion_rate': 'Conversion Rate Compare',
+            'page.tools.shipping_cr': 'Shipping CR',
+            'page.tools.click_order_lookup': 'Click & Order Lookup',
+            'page.tools.change_pins': 'Change Pins',
+            // Settings master
+            'page.settings': 'Settings',
+            // Settings categories + children
+            'settings.kexo': 'Kexo',
+            'settings.kexo.general': 'General',
+            'settings.kexo.assets': 'Assets',
+            'settings.kexo.icons': 'Icons',
+            'settings.kexo.colours': 'Colours',
+            'settings.kexo.layout_styling': 'Layout & Styling',
+            'settings.integrations': 'Integrations',
+            'settings.integrations.shopify': 'Shopify',
+            'settings.integrations.google_ads': 'Google Ads',
+            'settings.layout': 'Dashboards & layout',
+            'settings.layout.tables': 'Tables & charts',
+            'settings.layout.kpis': 'KPIs',
+            'settings.layout.date_ranges': 'Date ranges',
+            'settings.attribution': 'Attribution',
+            'settings.attribution.mapping': 'Mapping rules',
+            'settings.attribution.tree': 'Channel tree',
+            'settings.insights': 'Insights configuration',
+            'settings.insights.variants': 'Variants',
+            'settings.cost_expenses': 'Costs & profit',
+            'settings.cost_expenses.cost_sources': 'Cost sources',
+            'settings.cost_expenses.shipping': 'Shipping costs',
+            'settings.cost_expenses.rules': 'Rules & adjustments',
+            'settings.cost_expenses.breakdown': 'Cost Breakdown',
+          };
+          if (map[key]) return map[key];
+          var s = key.replace(/^page\./, '').replace(/^settings\./, '');
+          s = s.replace(/_/g, ' ').replace(/\./g, ' ');
+          return titleCaseWords(s);
+        }
+
+        var PAGE_GROUPS = [
+          { id: 'dashboard', label: 'Dashboard', keys: pick(['page.dashboard.overview', 'page.dashboard.live', 'page.dashboard.sales', 'page.dashboard.table']) },
+          { id: 'insights', label: 'Insights', keys: pick(['page.insights.snapshot', 'page.insights.countries', 'page.insights.products', 'page.insights.variants', 'page.insights.payment_methods', 'page.insights.abandoned_carts']) },
+          { id: 'acquisition', label: 'Acquisition', keys: pick(['page.acquisition.attribution', 'page.acquisition.browsers', 'page.acquisition.devices']) },
+          { id: 'integrations', label: 'Integrations', keys: pick(['page.integrations.google_ads']) },
+          { id: 'tools', label: 'Tools', keys: pick(['page.tools.click_order_lookup', 'page.tools.change_pins', 'page.tools.compare_conversion_rate', 'page.tools.shipping_cr']) },
+        ];
+        var SETTINGS_MASTER = hasKey('page.settings') ? 'page.settings' : '';
+        var SETTINGS_GROUPS = [
+          { id: 'kexo', label: 'Kexo', parent: 'settings.kexo', children: pick(['settings.kexo.general', 'settings.kexo.assets', 'settings.kexo.icons', 'settings.kexo.colours', 'settings.kexo.layout_styling']) },
+          { id: 'integrations', label: 'Integrations', parent: 'settings.integrations', children: pick(['settings.integrations.shopify', 'settings.integrations.google_ads']) },
+          { id: 'layout', label: 'Dashboards & layout', parent: 'settings.layout', children: pick(['settings.layout.tables', 'settings.layout.kpis', 'settings.layout.date_ranges']) },
+          { id: 'attribution', label: 'Attribution', parent: 'settings.attribution', children: pick(['settings.attribution.mapping', 'settings.attribution.tree']) },
+          { id: 'insights', label: 'Insights configuration', parent: 'settings.insights', children: pick(['settings.insights.variants']) },
+          { id: 'costs', label: 'Costs & profit', parent: 'settings.cost_expenses', children: pick(['settings.cost_expenses.cost_sources', 'settings.cost_expenses.shipping', 'settings.cost_expenses.rules', 'settings.cost_expenses.breakdown']) },
+        ];
+
+        function checkboxHtml(tier, key, label, checked, extraClass) {
+          var safeTier = escapeHtml(tier);
+          var safeKey = escapeHtml(key);
+          var id = 'rp-' + safeTier + '-' + escapeHtml(String(key).replace(/\./g, '-'));
+          var cls = 'form-check admin-role-perms-item' + (extraClass ? (' ' + extraClass) : '');
+          return '' +
+            '<div class="' + cls + '">' +
+              '<input class="form-check-input admin-role-perm-cb" type="checkbox" data-tier="' + safeTier + '" data-perm="' + safeKey + '" id="' + id + '"' + (checked ? ' checked' : '') + '>' +
+              '<label class="form-check-label" for="' + id + '">' + escapeHtml(label) + '</label>' +
+            '</div>';
+        }
+
+        function collectPermsForTier(tier) {
+          var permsForTier = {};
+          container.querySelectorAll('.admin-role-perm-cb[data-tier="' + tier + '"]').forEach(function (c) {
+            var key = c.getAttribute('data-perm');
+            if (key) permsForTier[key] = c.checked;
+          });
+          return permsForTier;
+        }
+
+        function putTier(tier) {
+          var permsForTier = collectPermsForTier(tier);
+          return kfetch('/api/admin/role-permissions/' + encodeURIComponent(tier), {
+            method: 'PUT',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ permissions: permsForTier })
+          }).then(function (r) { return r && r.ok ? r.json() : null; }).catch(function () { return null; });
+        }
+
+        function scheduleSaveForTier(tier) {
+          var t = String(tier || '').trim().toLowerCase();
+          if (!t) return;
+          if (_rolePermsSaveTimers[t]) clearTimeout(_rolePermsSaveTimers[t]);
+          _rolePermsSaveTimers[t] = setTimeout(function () {
+            try { clearTimeout(_rolePermsSaveTimers[t]); } catch (_) {}
+            delete _rolePermsSaveTimers[t];
+            putTier(t);
+          }, 450);
+        }
+
+        var html = '<div class="admin-role-perms-tiers row g-3">';
         tiers.forEach(function (tier) {
           var tierPerms = perms[tier] || {};
-          html += '<div class="card mb-3"><div class="card-header"><strong>' + escapeHtml(tierLabels[tier] || tier) + '</strong></div><div class="card-body">';
-          if (pageKeys.length) {
-            html += '<div class="mb-2"><span class="text-secondary small">Pages</span></div><div class="d-flex flex-wrap gap-3 mb-3">';
-            pageKeys.forEach(function (key) {
-              var checked = tierPerms[key] === true ? ' checked' : '';
-              html += '<div class="form-check"><input class="form-check-input admin-role-perm-cb" type="checkbox" data-tier="' + escapeHtml(tier) + '" data-perm="' + escapeHtml(key) + '" id="rp-' + escapeHtml(tier) + '-' + escapeHtml(key.replace(/\./g, '-')) + '"' + checked + '><label class="form-check-label" for="rp-' + escapeHtml(tier) + '-' + escapeHtml(key.replace(/\./g, '-')) + '">' + escapeHtml(labelForKey(key)) + '</label></div>';
+          html += '<div class="col-12 col-xl-6">';
+          html += '<div class="card admin-role-perms-tier" data-role-perms-tier="' + escapeHtml(tier) + '">';
+          html +=   '<div class="card-header d-flex align-items-center gap-2 flex-wrap">';
+          html +=     '<div class="me-auto min-w-0">';
+          html +=       '<div class="fw-semibold">' + escapeHtml(tierLabels[tier] || tier) + '</div>';
+          html +=       '<div class="text-secondary small">Changes auto-save.</div>';
+          html +=     '</div>';
+          html +=     '<div class="btn-group btn-group-sm" role="group" aria-label="Bulk role permission actions">';
+          html +=       '<button type="button" class="btn btn-outline-secondary" data-role-perm-bulk="all" data-tier="' + escapeHtml(tier) + '">All</button>';
+          html +=       '<button type="button" class="btn btn-outline-secondary" data-role-perm-bulk="none" data-tier="' + escapeHtml(tier) + '">None</button>';
+          html +=     '</div>';
+          html +=   '</div>';
+          html +=   '<div class="card-body">';
+          html +=     '<div class="row g-3">';
+
+          // Pages (left)
+          html +=       '<div class="col-12 col-lg-6">';
+          html +=         '<div class="admin-role-perms-section">';
+          html +=           '<div class="admin-role-perms-section-title">Pages</div>';
+          PAGE_GROUPS.forEach(function (g) {
+            if (!g || !g.keys || !g.keys.length) return;
+            html += '<div class="admin-role-perms-group">';
+            html +=   '<div class="admin-role-perms-group-title">' + escapeHtml(g.label) + '</div>';
+            html +=   '<div class="admin-role-perms-checks">';
+            g.keys.forEach(function (key) {
+              html += checkboxHtml(tier, key, labelForPermKey(key), tierPerms[key] === true);
             });
+            html +=   '</div>';
+            html += '</div>';
+          });
+          html +=         '</div>';
+          html +=       '</div>';
+
+          // Settings (right)
+          html +=       '<div class="col-12 col-lg-6">';
+          html +=         '<div class="admin-role-perms-section">';
+          html +=           '<div class="admin-role-perms-section-title">Settings</div>';
+          if (SETTINGS_MASTER) {
+            html += '<div class="admin-role-perms-group">';
+            html +=   '<div class="admin-role-perms-checks">';
+            html +=     checkboxHtml(tier, SETTINGS_MASTER, 'Settings access', tierPerms[SETTINGS_MASTER] === true);
+            html +=   '</div>';
             html += '</div>';
           }
-          if (settingsKeys.length) {
-            html += '<div class="mb-2"><span class="text-secondary small">Settings</span></div><div class="d-flex flex-wrap gap-3">';
-            settingsKeys.forEach(function (key) {
-              var checked = tierPerms[key] === true ? ' checked' : '';
-              html += '<div class="form-check"><input class="form-check-input admin-role-perm-cb" type="checkbox" data-tier="' + escapeHtml(tier) + '" data-perm="' + escapeHtml(key) + '" id="rp-' + escapeHtml(tier) + '-' + escapeHtml(key.replace(/\./g, '-')) + '"' + checked + '><label class="form-check-label" for="rp-' + escapeHtml(tier) + '-' + escapeHtml(key.replace(/\./g, '-')) + '">' + escapeHtml(labelForKey(key)) + '</label></div>';
+          SETTINGS_GROUPS.forEach(function (g) {
+            if (!g) return;
+            var parentKey = g.parent && hasKey(g.parent) ? g.parent : '';
+            var children = Array.isArray(g.children) ? g.children : [];
+            if (!parentKey && !children.length) return;
+            html += '<div class="admin-role-perms-group">';
+            html +=   '<div class="admin-role-perms-group-title">' + escapeHtml(g.label) + '</div>';
+            html +=   '<div class="admin-role-perms-checks">';
+            if (parentKey) {
+              html += checkboxHtml(tier, parentKey, escapeHtml(labelForPermKey(parentKey)), tierPerms[parentKey] === true);
+            }
+            children.forEach(function (key) {
+              html += checkboxHtml(tier, key, labelForPermKey(key), tierPerms[key] === true, 'admin-role-perms-item--child');
             });
+            html +=   '</div>';
             html += '</div>';
-          }
-          html += '</div></div>';
+          });
+          html +=         '</div>';
+          html +=       '</div>';
+
+          html +=     '</div>';
+          html +=   '</div>';
+          html += '</div>';
+          html += '</div>';
         });
+        html += '</div>';
         container.innerHTML = html;
-        container.querySelectorAll('.admin-role-perm-cb').forEach(function (cb) {
-          cb.addEventListener('change', function () {
+
+        if (container.getAttribute('data-role-perms-bound') !== '1') {
+          container.setAttribute('data-role-perms-bound', '1');
+          container.addEventListener('change', function (ev) {
+            var cb = ev && ev.target ? ev.target : null;
+            if (!cb || !cb.classList || !cb.classList.contains('admin-role-perm-cb')) return;
             var tier = cb.getAttribute('data-tier');
             if (!tier) return;
-            if (_rolePermsSaveTimer) clearTimeout(_rolePermsSaveTimer);
-            _rolePermsSaveTimer = setTimeout(function () {
-              _rolePermsSaveTimer = null;
-              var permsForTier = {};
-              container.querySelectorAll('.admin-role-perm-cb[data-tier="' + tier + '"]').forEach(function (c) {
-                var key = c.getAttribute('data-perm');
-                if (key) permsForTier[key] = c.checked;
-              });
-              kfetch('/api/admin/role-permissions/' + encodeURIComponent(tier), {
-                method: 'PUT',
-                headers: { 'content-type': 'application/json' },
-                body: JSON.stringify({ permissions: permsForTier })
-              }).then(function (r) { return r && r.ok ? r.json() : null; }).catch(function () { return null; });
-            }, 400);
+            scheduleSaveForTier(tier);
           });
-        });
+          container.addEventListener('click', function (ev) {
+            var btn = ev && ev.target && ev.target.closest ? ev.target.closest('[data-role-perm-bulk]') : null;
+            if (!btn) return;
+            ev.preventDefault();
+            var tier = String(btn.getAttribute('data-tier') || '').trim().toLowerCase();
+            var mode = String(btn.getAttribute('data-role-perm-bulk') || '').trim().toLowerCase();
+            if (!tier) return;
+            var next = (mode === 'all');
+            container.querySelectorAll('.admin-role-perm-cb[data-tier="' + tier + '"]').forEach(function (c) {
+              c.checked = next;
+            });
+            // Save immediately after a bulk toggle (single PUT).
+            try {
+              if (_rolePermsSaveTimers[tier]) clearTimeout(_rolePermsSaveTimers[tier]);
+              delete _rolePermsSaveTimers[tier];
+            } catch (_) {}
+            putTier(tier);
+          });
+        }
       })
       .catch(function () {
         if (container) container.innerHTML = '<p class="text-secondary">Failed to load.</p>';
