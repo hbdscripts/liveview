@@ -510,6 +510,12 @@
         try { document.body.classList.remove('kexo-page-progress-active'); } catch (_) {}
       }, 200);
     }
+    try {
+      if (typeof window !== 'undefined') {
+        window.__kexoShowPageProgress = showPageProgress;
+        window.__kexoHidePageProgress = hidePageProgress;
+      }
+    } catch (_) {}
     (function ensureLoaderOnBoot() {
       _syncStripWidth();
       if (document.readyState === 'loading') {

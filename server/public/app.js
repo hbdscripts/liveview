@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 3e46cfba07837949
+// checksum: ec260e1658f20148
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -995,6 +995,12 @@ const API = '';
         try { document.body.classList.remove('kexo-page-progress-active'); } catch (_) {}
       }, 200);
     }
+    try {
+      if (typeof window !== 'undefined') {
+        window.__kexoShowPageProgress = showPageProgress;
+        window.__kexoHidePageProgress = hidePageProgress;
+      }
+    } catch (_) {}
     (function ensureLoaderOnBoot() {
       _syncStripWidth();
       if (document.readyState === 'loading') {
@@ -11394,9 +11400,11 @@ const API = '';
     function startReportBuild(opts) {
       opts = opts && typeof opts === 'object' ? opts : {};
       const key = opts.key ? String(opts.key) : '';
-      if (!key || !reportBuildTokens || typeof reportBuildTokens[key] !== 'number') {
-        return { step: function() {}, title: function() {}, finish: function() {} };
-      }
+      if (!key) return { step: function() {}, title: function() {}, finish: function() {} };
+      // Be permissive: allow any key so pages don't silently lose the top loader
+      // when a new report key is introduced but not added to the token map.
+      if (!reportBuildTokens || typeof reportBuildTokens !== 'object') reportBuildTokens = {};
+      if (typeof reportBuildTokens[key] !== 'number') reportBuildTokens[key] = 0;
 
       // Default: keep the page visible (top progress bar + header spinner only).
       // Only show the full overlay when explicitly requested.
@@ -18111,8 +18119,6 @@ const API = '';
     (function initDashboard() {
       var dashLoading = false;
       var dashLastRangeKey = null;
-      var dashLastTrendingPreset = null;
-      var dashFetchRequestId = 0;
       var dashLastDayYmd = null;
       var dashCompareSeriesCache = null;
       var dashCompareRangeKey = null;
@@ -22990,9 +22996,6 @@ const API = '';
         if (dashLoading && !force) return;
         rangeKey = (rangeKey == null ? '' : String(rangeKey)).trim().toLowerCase();
         if (!rangeKey) rangeKey = 'today';
-        dashFetchRequestId += 1;
-        var myRequestId = dashFetchRequestId;
-        var trendingPresetAtStart = getTrendingPreset();
         dashLoading = true;
         var silent = !!(opts && opts.silent);
         var reason = opts && opts.reason != null ? String(opts.reason) : '';
@@ -23009,7 +23012,7 @@ const API = '';
             try { build.finish(); } catch (_) {}
           }, 35000);
         }
-        var url = API + '/api/dashboard-series?range=' + encodeURIComponent(rangeKey) + '&trendingPreset=' + encodeURIComponent(trendingPresetAtStart) + (force ? ('&force=1&_=' + Date.now()) : '');
+        var url = API + '/api/dashboard-series?range=' + encodeURIComponent(rangeKey) + '&trendingPreset=' + encodeURIComponent(getTrendingPreset()) + (force ? ('&force=1&_=' + Date.now()) : '');
         var forceMini = !!force;
         if (silent && forceMini && String(reason || '').trim().toLowerCase() !== 'new-sale') {
           var miniAgeMs = overviewMiniFetchedAt ? (Date.now() - overviewMiniFetchedAt) : Number.POSITIVE_INFINITY;
@@ -23028,14 +23031,12 @@ const API = '';
         fetchWithTimeout(url, { credentials: 'same-origin', cache: force ? 'no-store' : 'default' }, 30000)
           .then(function(r) { return (r && r.ok) ? r.json() : null; })
           .then(function(data) {
-            if (myRequestId !== dashFetchRequestId) return;
             dashLoading = false;
             if (data) {
-              var nextSig = dashboardPayloadSignature(data, rangeKey, trendingPresetAtStart);
+              var nextSig = dashboardPayloadSignature(data, rangeKey, getTrendingPreset());
               var shouldRender = !!force || !(dashPayloadSignature && nextSig && nextSig === dashPayloadSignature);
               dashCache = data;
               dashLastRangeKey = rangeKey;
-              dashLastTrendingPreset = trendingPresetAtStart;
               dashPayloadSignature = nextSig;
               if (shouldRender || (opts && opts.rerender)) {
                 build.step('Rendering dashboard panels');
@@ -23051,14 +23052,12 @@ const API = '';
             else setTimeout(deferSecondary, 0);
           })
           .catch(function(err) {
-            if (myRequestId !== dashFetchRequestId) return;
             try { if (typeof window.kexoCaptureError === 'function') window.kexoCaptureError(err, { context: 'dashboardSeries', page: PAGE }); } catch (_) {}
             dashLoading = false;
             build.step('Dashboard data unavailable');
             console.error('[dashboard] fetch error:', err);
           })
           .finally(function() {
-            if (myRequestId !== dashFetchRequestId) return;
             if (buildFinishTimeout != null) {
               try { clearTimeout(buildFinishTimeout); } catch (_) {}
               buildFinishTimeout = null;
@@ -24586,14 +24585,12 @@ const API = '';
           if (curYmd && dashLastDayYmd && dashLastDayYmd !== curYmd) {
             dashCache = null;
             dashLastRangeKey = null;
-            dashLastTrendingPreset = null;
             dashPayloadSignature = '';
             force = true;
           }
           if (curYmd) dashLastDayYmd = curYmd;
         } catch (_) {}
-        var trendingPreset = typeof getTrendingPreset === 'function' ? getTrendingPreset() : null;
-        if (!force && dashCache && dashLastRangeKey === rk && dashLastTrendingPreset === trendingPreset) {
+        if (!force && dashCache && dashLastRangeKey === rk) {
           if (rerender) renderDashboard(dashCache);
           fetchOverviewCardData('dash-chart-overview-30d', { force: false, renderIfFresh: true });
           requestDashboardWidgetsRefresh({ force: false, rangeKey: rk });
@@ -27865,7 +27862,7 @@ const API = '';
 })();
 
 /**
- * Notifications offcanvas: tabs (Unread/Read/Archived), type icons, detail with Archive + Delete; mark read on view only.
+ * Notifications offcanvas: list (unread/read/archived), detail view, mark read + auto-archive on view.
  */
 (function () {
   var API = typeof window.API !== 'undefined' ? window.API : '';
@@ -27874,27 +27871,10 @@ const API = '';
   var listViewEl = document.getElementById('notifications-list-view');
   var detailViewEl = document.getElementById('notifications-detail-view');
   var detailBodyEl = document.getElementById('notifications-detail-body');
-  var detailActionsEl = document.getElementById('notifications-detail-actions');
   var backBtn = document.getElementById('notifications-back-btn');
   var offcanvasEl = document.getElementById('notifications-offcanvas');
 
   if (!listEl || !offcanvasEl) return;
-
-  var currentTab = 'unread';
-  var listData = null;
-
-  var TYPE_ICONS = {
-    daily_report: 'fa-chart-line',
-    sale: 'fa-cart-shopping',
-    sentry: 'fa-bug',
-    pending_signup: 'fa-user-clock',
-    diagnostics_unresolved: 'fa-wrench',
-  };
-  var DEFAULT_ICON = 'fa-bell';
-
-  function getIconForType(type) {
-    return TYPE_ICONS[type] || DEFAULT_ICON;
-  }
 
   function getBadgeEls() {
     return document.querySelectorAll('.kexo-notifications-unread-badge');
@@ -27948,91 +27928,49 @@ const API = '';
     }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; });
   }
 
-  function deleteNotification(id) {
-    return fetch(API + '/api/notifications/' + encodeURIComponent(String(id)), {
-      method: 'DELETE',
-      credentials: 'same-origin',
-    }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; });
-  }
-
-  function renderItem(n, readFlag) {
-    var icon = getIconForType(n.type);
-    var readAttr = readFlag ? '1' : '0';
-    var html = '<a href="#" class="list-group-item list-group-item-action notification-item" data-id="' + esc(n.id) + '" data-type="' + esc(n.type) + '" data-read="' + readAttr + '">';
-    html += '<span class="notification-type-icon bg-primary-lt text-primary"><i class="fa-solid ' + esc(icon) + '" aria-hidden="true"></i></span>';
-    html += '<span class="notification-item-content">';
-    html += '<span class="notification-item-title">' + esc(n.title) + '</span>';
-    html += '<span class="notification-item-time d-block">' + esc(formatTime(n.created_at)) + '</span>';
-    html += '</span>';
-    html += '</a>';
-    return html;
-  }
-
-  function updateTabCounts(data) {
-    var unread = (data && data.unread) ? data.unread.length : 0;
-    var read = (data && data.read) ? data.read.length : 0;
-    var archived = (data && data.archived) ? data.archived.length : 0;
-    var countUnread = document.getElementById('notifications-count-unread');
-    var countRead = document.getElementById('notifications-count-read');
-    var countArchived = document.getElementById('notifications-count-archived');
-    if (countUnread) countUnread.textContent = String(unread);
-    if (countRead) countRead.textContent = String(read);
-    if (countArchived) countArchived.textContent = String(archived);
-  }
-
-  function setActiveTab(tab) {
-    currentTab = tab;
-    var tabs = ['unread', 'read', 'archived'];
-    tabs.forEach(function (t) {
-      var btn = document.getElementById('notifications-tab-' + t);
-      if (btn) {
-        btn.classList.toggle('active', t === tab);
-        btn.setAttribute('aria-selected', t === tab ? 'true' : 'false');
-      }
-    });
-    renderListForTab();
-  }
-
-  function getItemsForCurrentTab() {
-    if (!listData || !listData.ok) return [];
-    if (currentTab === 'unread') return listData.unread || [];
-    if (currentTab === 'read') return listData.read || [];
-    return listData.archived || [];
-  }
-
-  function getEmptyMessage() {
-    if (currentTab === 'unread') return 'No unread notifications.';
-    if (currentTab === 'read') return 'No read notifications.';
-    return 'No archived notifications.';
-  }
-
-  function renderListForTab() {
-    var items = getItemsForCurrentTab();
-    var html = '';
-    items.forEach(function (n) {
-      var isUnread = currentTab === 'unread';
-      html += renderItem(n, !isUnread);
-    });
-    listEl.innerHTML = html;
-    if (listEmptyEl) {
-      listEmptyEl.textContent = getEmptyMessage();
-      listEmptyEl.classList.toggle('d-none', items.length > 0);
-    }
-  }
-
   function renderList(data) {
-    listData = data;
     if (!data || !data.ok) {
       if (listEmptyEl) listEmptyEl.textContent = 'Unable to load notifications.';
       if (listEl) listEl.innerHTML = '';
-      updateTabCounts({ unread: 0, read: 0, archived: 0 });
       return;
     }
     var unread = data.unread || [];
     var read = data.read || [];
     var archived = data.archived || [];
-    updateTabCounts(data);
-    renderListForTab();
+    var all = unread.concat(read).concat(archived);
+    if (listEmptyEl) {
+      listEmptyEl.textContent = all.length === 0 ? 'No notifications.' : '';
+      listEmptyEl.classList.toggle('d-none', all.length > 0);
+    }
+    var html = '';
+    if (unread.length) {
+      html += '<div class="list-group-item list-group-item-secondary small text-uppercase">Unread</div>';
+      unread.forEach(function (n) {
+        html += '<a href="#" class="list-group-item list-group-item-action notification-item" data-id="' + esc(n.id) + '" data-read="0">';
+        html += '<span class="text-body">' + esc(n.title) + '</span>';
+        html += '<span class="small text-secondary ms-2">' + esc(formatTime(n.created_at)) + '</span>';
+        html += '</a>';
+      });
+    }
+    if (read.length) {
+      html += '<div class="list-group-item list-group-item-secondary small text-uppercase">Read</div>';
+      read.forEach(function (n) {
+        html += '<a href="#" class="list-group-item list-group-item-action notification-item" data-id="' + esc(n.id) + '" data-read="1">';
+        html += '<span class="text-body">' + esc(n.title) + '</span>';
+        html += '<span class="small text-secondary ms-2">' + esc(formatTime(n.created_at)) + '</span>';
+        html += '</a>';
+      });
+    }
+    if (archived.length) {
+      html += '<div class="list-group-item list-group-item-secondary small text-uppercase">Archived</div>';
+      archived.forEach(function (n) {
+        html += '<a href="#" class="list-group-item list-group-item-action notification-item text-secondary" data-id="' + esc(n.id) + '" data-read="1">';
+        html += '<span class="text-body">' + esc(n.title) + '</span>';
+        html += '<span class="small text-secondary ms-2">' + esc(formatTime(n.created_at)) + '</span>';
+        html += '</a>';
+      });
+    }
+    listEl.innerHTML = html || '';
 
     var count = (data.unreadCount != null ? data.unreadCount : unread.length);
     getBadgeEls().forEach(function (el) {
@@ -28064,64 +28002,21 @@ const API = '';
     var alreadyRead = item && item.getAttribute('data-read') === '1';
     showDetailView();
     if (detailBodyEl) detailBodyEl.innerHTML = '<div class="text-secondary">Loading…</div>';
-    if (detailActionsEl) detailActionsEl.innerHTML = '';
     fetchDetail(id).then(function (res) {
       if (!res || !res.notification) {
         if (detailBodyEl) detailBodyEl.innerHTML = '<div class="text-danger">Could not load notification.</div>';
         return;
       }
       var n = res.notification;
-      var icon = getIconForType(n.type);
-      var bodyHtml = '<div class="d-flex align-items-start gap-2 mb-2">';
-      bodyHtml += '<span class="notification-type-icon bg-primary-lt text-primary flex-shrink-0"><i class="fa-solid ' + esc(icon) + '" aria-hidden="true"></i></span>';
-      bodyHtml += '<div class="flex-grow-1 min-w-0"><strong>' + esc(n.title) + '</strong></div></div>';
+      var bodyHtml = '<div class="mb-2"><strong>' + esc(n.title) + '</strong></div>';
       bodyHtml += '<div class="small text-secondary mb-2">' + esc(formatTime(n.created_at)) + '</div>';
       if (n.body) bodyHtml += '<div class="notification-body">' + esc(n.body).replace(/\n/g, '<br>') + '</div>';
       if (n.link) bodyHtml += '<p class="mt-3"><a href="' + esc(n.link) + '" class="btn btn-outline-primary btn-sm">View</a></p>';
       if (detailBodyEl) detailBodyEl.innerHTML = bodyHtml;
 
-      if (detailActionsEl) {
-        var actionsHtml = '';
-        if (!n.archived_at) {
-          actionsHtml += '<button type="button" class="btn btn-outline-secondary btn-sm" id="notifications-archive-btn" aria-label="Archive"><i class="fa-solid fa-archive me-1" aria-hidden="true"></i>Archive</button>';
-        }
-        actionsHtml += '<button type="button" class="btn btn-outline-danger btn-sm" id="notifications-delete-btn" aria-label="Delete permanently"><i class="fa-solid fa-trash me-1" aria-hidden="true"></i>Delete</button>';
-        detailActionsEl.innerHTML = actionsHtml;
-
-        var archiveBtn = document.getElementById('notifications-archive-btn');
-        if (archiveBtn) {
-          archiveBtn.addEventListener('click', function (e) {
-            e.preventDefault();
-            archiveBtn.disabled = true;
-            patchNotification(id, { read: true, archived: true }).then(function () {
-              fetchList().then(function (d) {
-                renderList(d);
-                showListView();
-              });
-            });
-          });
-        }
-        var deleteBtn = document.getElementById('notifications-delete-btn');
-        if (deleteBtn) {
-          deleteBtn.addEventListener('click', function (e) {
-            e.preventDefault();
-            deleteBtn.disabled = true;
-            deleteNotification(id).then(function () {
-              fetchList().then(function (d) {
-                renderList(d);
-                showListView();
-              });
-            });
-          });
-        }
-      }
-
       if (!alreadyRead) {
-        patchNotification(id, { read: true }).then(function () {
-          fetchList().then(function (d) {
-            listData = d;
-            updateTabCounts(d && d.ok ? d : null);
-          });
+        patchNotification(id, { read: true, archived: true }).then(function () {
+          fetchList().then(renderList);
         });
       }
     });
@@ -28129,8 +28024,6 @@ const API = '';
 
   offcanvasEl.addEventListener('shown.bs.offcanvas', function () {
     if (listEmptyEl) { listEmptyEl.textContent = 'Loading…'; listEmptyEl.classList.remove('d-none'); }
-    currentTab = 'unread';
-    setActiveTab('unread');
     fetchList().then(renderList);
   });
 
@@ -28140,13 +28033,6 @@ const API = '';
     e.preventDefault();
     var id = a.getAttribute('data-id');
     if (id) openDetail(id);
-  });
-
-  document.querySelectorAll('[data-notifications-tab]').forEach(function (btn) {
-    btn.addEventListener('click', function () {
-      var tab = btn.getAttribute('data-notifications-tab');
-      if (tab) setActiveTab(tab);
-    });
   });
 
   if (backBtn) {

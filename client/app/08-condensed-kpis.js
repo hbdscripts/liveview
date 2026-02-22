@@ -196,9 +196,11 @@
     function startReportBuild(opts) {
       opts = opts && typeof opts === 'object' ? opts : {};
       const key = opts.key ? String(opts.key) : '';
-      if (!key || !reportBuildTokens || typeof reportBuildTokens[key] !== 'number') {
-        return { step: function() {}, title: function() {}, finish: function() {} };
-      }
+      if (!key) return { step: function() {}, title: function() {}, finish: function() {} };
+      // Be permissive: allow any key so pages don't silently lose the top loader
+      // when a new report key is introduced but not added to the token map.
+      if (!reportBuildTokens || typeof reportBuildTokens !== 'object') reportBuildTokens = {};
+      if (typeof reportBuildTokens[key] !== 'number') reportBuildTokens[key] = 0;
 
       // Default: keep the page visible (top progress bar + header spinner only).
       // Only show the full overlay when explicitly requested.
