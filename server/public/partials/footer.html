@@ -53,19 +53,25 @@
           </div>
         </div>
       </footer>
-      <div class="offcanvas offcanvas-end" tabindex="-1" id="notifications-offcanvas" aria-labelledby="notifications-offcanvas-label">
-        <div class="offcanvas-header">
+      <div class="offcanvas offcanvas-end kexo-notifications-panel" tabindex="-1" id="notifications-offcanvas" aria-labelledby="notifications-offcanvas-label">
+        <div class="offcanvas-header border-bottom">
           <h2 class="offcanvas-title" id="notifications-offcanvas-label">Notifications</h2>
           <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
         </div>
         <div class="offcanvas-body p-0" id="notifications-offcanvas-body">
           <div id="notifications-list-view" class="d-flex flex-column h-100">
-            <div class="list-group list-group-flush rounded-0 flex-grow-1 overflow-auto" id="notifications-list"></div>
+            <nav class="kexo-notifications-tabs nav nav-tabs px-3 pt-2" role="tablist">
+              <button type="button" class="nav-link active" data-notifications-tab="unread" role="tab" aria-selected="true" id="notifications-tab-unread">Unread <span class="kexo-notifications-tab-count badge bg-primary-lt ms-1" id="notifications-count-unread">0</span></button>
+              <button type="button" class="nav-link" data-notifications-tab="read" role="tab" aria-selected="false" id="notifications-tab-read">Read <span class="kexo-notifications-tab-count badge bg-secondary-lt ms-1" id="notifications-count-read">0</span></button>
+              <button type="button" class="nav-link" data-notifications-tab="archived" role="tab" aria-selected="false" id="notifications-tab-archived">Archived <span class="kexo-notifications-tab-count badge bg-secondary-lt ms-1" id="notifications-count-archived">0</span></button>
+            </nav>
+            <div class="list-group list-group-flush kexo-notifications-list flex-grow-1 overflow-auto" id="notifications-list"></div>
             <div class="p-3 border-top small text-secondary text-center" id="notifications-list-empty">Loading…</div>
           </div>
           <div id="notifications-detail-view" class="h-100 d-none flex-column">
-            <div class="p-3 border-bottom">
+            <div class="p-3 border-bottom d-flex align-items-center gap-2">
               <button type="button" class="btn btn-ghost-secondary btn-sm" id="notifications-back-btn" aria-label="Back to list"><i class="fa-jelly fa-arrow-left me-1" aria-hidden="true"></i> Back</button>
+              <div class="kexo-notifications-detail-actions ms-auto" id="notifications-detail-actions"></div>
             </div>
             <div class="p-3 overflow-auto flex-grow-1" id="notifications-detail-body"></div>
           </div>

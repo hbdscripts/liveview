@@ -131,8 +131,9 @@ app.get('/api/latest-sales', sessionsRouter.latestSales);
 app.use('/api/fraud', fraudRouter);
 app.get('/api/config-status', configStatus);
 app.get('/api/notifications', notificationsRouter.getList);
-app.get('/api/notifications/:id', notificationsRouter.getOne);
-app.patch('/api/notifications/:id', notificationsRouter.patchOne);
+  app.get('/api/notifications/:id', notificationsRouter.getOne);
+  app.patch('/api/notifications/:id', notificationsRouter.patchOne);
+  app.delete('/api/notifications/:id', notificationsRouter.deleteOne);
 app.get('/api/settings', settings.getSettings);
 app.post('/api/settings', settings.postSettings);
 app.get('/api/settings/profit-rules', requireMaster.middleware, settings.getProfitRules);
@@ -853,6 +854,7 @@ const { up: up060 } = require('./migrations/060_orders_shopify_refunds');
 const { up: up061 } = require('./migrations/061_role_permissions');
 const { up: up062 } = require('./migrations/062_shop_sessions_oauth_attribution');
 const { up: up063 } = require('./migrations/063_notifications');
+const { up: up064 } = require('./migrations/064_notification_deleted_at');
 const backup = require('./backup');
 const { writeAudit } = require('./audit');
 const { runAdsMigrations } = require('./ads/adsMigrate');
@@ -921,6 +923,7 @@ const APP_MIGRATIONS = [
   ['061_role_permissions', up061],
   ['062_shop_sessions_oauth_attribution', up062],
   ['063_notifications', up063],
+  ['064_notification_deleted_at', up064],
 ];
 
 async function ensureAppMigrationsTable(db) {

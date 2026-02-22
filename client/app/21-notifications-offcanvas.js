@@ -1,5 +1,5 @@
 /**
- * Notifications offcanvas: list (unread/read/archived), detail view, mark read + auto-archive on view.
+ * Notifications offcanvas: tabs (Unread/Read/Archived), type icons, detail with Archive + Delete; mark read on view only.
  */
 (function () {
   var API = typeof window.API !== 'undefined' ? window.API : '';
@@ -8,10 +8,27 @@
   var listViewEl = document.getElementById('notifications-list-view');
   var detailViewEl = document.getElementById('notifications-detail-view');
   var detailBodyEl = document.getElementById('notifications-detail-body');
+  var detailActionsEl = document.getElementById('notifications-detail-actions');
   var backBtn = document.getElementById('notifications-back-btn');
   var offcanvasEl = document.getElementById('notifications-offcanvas');
 
   if (!listEl || !offcanvasEl) return;
+
+  var currentTab = 'unread';
+  var listData = null;
+
+  var TYPE_ICONS = {
+    daily_report: 'fa-chart-line',
+    sale: 'fa-cart-shopping',
+    sentry: 'fa-bug',
+    pending_signup: 'fa-user-clock',
+    diagnostics_unresolved: 'fa-wrench',
+  };
+  var DEFAULT_ICON = 'fa-bell';
+
+  function getIconForType(type) {
+    return TYPE_ICONS[type] || DEFAULT_ICON;
+  }
 
   function getBadgeEls() {
     return document.querySelectorAll('.kexo-notifications-unread-badge');
@@ -65,49 +82,91 @@
     }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; });
   }
 
+  function deleteNotification(id) {
+    return fetch(API + '/api/notifications/' + encodeURIComponent(String(id)), {
+      method: 'DELETE',
+      credentials: 'same-origin',
+    }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; });
+  }
+
+  function renderItem(n, readFlag) {
+    var icon = getIconForType(n.type);
+    var readAttr = readFlag ? '1' : '0';
+    var html = '<a href="#" class="list-group-item list-group-item-action notification-item" data-id="' + esc(n.id) + '" data-type="' + esc(n.type) + '" data-read="' + readAttr + '">';
+    html += '<span class="notification-type-icon bg-primary-lt text-primary"><i class="fa-solid ' + esc(icon) + '" aria-hidden="true"></i></span>';
+    html += '<span class="notification-item-content">';
+    html += '<span class="notification-item-title">' + esc(n.title) + '</span>';
+    html += '<span class="notification-item-time d-block">' + esc(formatTime(n.created_at)) + '</span>';
+    html += '</span>';
+    html += '</a>';
+    return html;
+  }
+
+  function updateTabCounts(data) {
+    var unread = (data && data.unread) ? data.unread.length : 0;
+    var read = (data && data.read) ? data.read.length : 0;
+    var archived = (data && data.archived) ? data.archived.length : 0;
+    var countUnread = document.getElementById('notifications-count-unread');
+    var countRead = document.getElementById('notifications-count-read');
+    var countArchived = document.getElementById('notifications-count-archived');
+    if (countUnread) countUnread.textContent = String(unread);
+    if (countRead) countRead.textContent = String(read);
+    if (countArchived) countArchived.textContent = String(archived);
+  }
+
+  function setActiveTab(tab) {
+    currentTab = tab;
+    var tabs = ['unread', 'read', 'archived'];
+    tabs.forEach(function (t) {
+      var btn = document.getElementById('notifications-tab-' + t);
+      if (btn) {
+        btn.classList.toggle('active', t === tab);
+        btn.setAttribute('aria-selected', t === tab ? 'true' : 'false');
+      }
+    });
+    renderListForTab();
+  }
+
+  function getItemsForCurrentTab() {
+    if (!listData || !listData.ok) return [];
+    if (currentTab === 'unread') return listData.unread || [];
+    if (currentTab === 'read') return listData.read || [];
+    return listData.archived || [];
+  }
+
+  function getEmptyMessage() {
+    if (currentTab === 'unread') return 'No unread notifications.';
+    if (currentTab === 'read') return 'No read notifications.';
+    return 'No archived notifications.';
+  }
+
+  function renderListForTab() {
+    var items = getItemsForCurrentTab();
+    var html = '';
+    items.forEach(function (n) {
+      var isUnread = currentTab === 'unread';
+      html += renderItem(n, !isUnread);
+    });
+    listEl.innerHTML = html;
+    if (listEmptyEl) {
+      listEmptyEl.textContent = getEmptyMessage();
+      listEmptyEl.classList.toggle('d-none', items.length > 0);
+    }
+  }
+
   function renderList(data) {
+    listData = data;
     if (!data || !data.ok) {
       if (listEmptyEl) listEmptyEl.textContent = 'Unable to load notifications.';
       if (listEl) listEl.innerHTML = '';
+      updateTabCounts({ unread: 0, read: 0, archived: 0 });
       return;
     }
     var unread = data.unread || [];
     var read = data.read || [];
     var archived = data.archived || [];
-    var all = unread.concat(read).concat(archived);
-    if (listEmptyEl) {
-      listEmptyEl.textContent = all.length === 0 ? 'No notifications.' : '';
-      listEmptyEl.classList.toggle('d-none', all.length > 0);
-    }
-    var html = '';
-    if (unread.length) {
-      html += '<div class="list-group-item list-group-item-secondary small text-uppercase">Unread</div>';
-      unread.forEach(function (n) {
-        html += '<a href="#" class="list-group-item list-group-item-action notification-item" data-id="' + esc(n.id) + '" data-read="0">';
-        html += '<span class="text-body">' + esc(n.title) + '</span>';
-        html += '<span class="small text-secondary ms-2">' + esc(formatTime(n.created_at)) + '</span>';
-        html += '</a>';
-      });
-    }
-    if (read.length) {
-      html += '<div class="list-group-item list-group-item-secondary small text-uppercase">Read</div>';
-      read.forEach(function (n) {
-        html += '<a href="#" class="list-group-item list-group-item-action notification-item" data-id="' + esc(n.id) + '" data-read="1">';
-        html += '<span class="text-body">' + esc(n.title) + '</span>';
-        html += '<span class="small text-secondary ms-2">' + esc(formatTime(n.created_at)) + '</span>';
-        html += '</a>';
-      });
-    }
-    if (archived.length) {
-      html += '<div class="list-group-item list-group-item-secondary small text-uppercase">Archived</div>';
-      archived.forEach(function (n) {
-        html += '<a href="#" class="list-group-item list-group-item-action notification-item text-secondary" data-id="' + esc(n.id) + '" data-read="1">';
-        html += '<span class="text-body">' + esc(n.title) + '</span>';
-        html += '<span class="small text-secondary ms-2">' + esc(formatTime(n.created_at)) + '</span>';
-        html += '</a>';
-      });
-    }
-    listEl.innerHTML = html || '';
+    updateTabCounts(data);
+    renderListForTab();
 
     var count = (data.unreadCount != null ? data.unreadCount : unread.length);
     getBadgeEls().forEach(function (el) {
@@ -139,21 +198,64 @@
     var alreadyRead = item && item.getAttribute('data-read') === '1';
     showDetailView();
     if (detailBodyEl) detailBodyEl.innerHTML = '<div class="text-secondary">Loading…</div>';
+    if (detailActionsEl) detailActionsEl.innerHTML = '';
     fetchDetail(id).then(function (res) {
       if (!res || !res.notification) {
         if (detailBodyEl) detailBodyEl.innerHTML = '<div class="text-danger">Could not load notification.</div>';
         return;
       }
       var n = res.notification;
-      var bodyHtml = '<div class="mb-2"><strong>' + esc(n.title) + '</strong></div>';
+      var icon = getIconForType(n.type);
+      var bodyHtml = '<div class="d-flex align-items-start gap-2 mb-2">';
+      bodyHtml += '<span class="notification-type-icon bg-primary-lt text-primary flex-shrink-0"><i class="fa-solid ' + esc(icon) + '" aria-hidden="true"></i></span>';
+      bodyHtml += '<div class="flex-grow-1 min-w-0"><strong>' + esc(n.title) + '</strong></div></div>';
       bodyHtml += '<div class="small text-secondary mb-2">' + esc(formatTime(n.created_at)) + '</div>';
       if (n.body) bodyHtml += '<div class="notification-body">' + esc(n.body).replace(/\n/g, '<br>') + '</div>';
       if (n.link) bodyHtml += '<p class="mt-3"><a href="' + esc(n.link) + '" class="btn btn-outline-primary btn-sm">View</a></p>';
       if (detailBodyEl) detailBodyEl.innerHTML = bodyHtml;
 
+      if (detailActionsEl) {
+        var actionsHtml = '';
+        if (!n.archived_at) {
+          actionsHtml += '<button type="button" class="btn btn-outline-secondary btn-sm" id="notifications-archive-btn" aria-label="Archive"><i class="fa-solid fa-archive me-1" aria-hidden="true"></i>Archive</button>';
+        }
+        actionsHtml += '<button type="button" class="btn btn-outline-danger btn-sm" id="notifications-delete-btn" aria-label="Delete permanently"><i class="fa-solid fa-trash me-1" aria-hidden="true"></i>Delete</button>';
+        detailActionsEl.innerHTML = actionsHtml;
+
+        var archiveBtn = document.getElementById('notifications-archive-btn');
+        if (archiveBtn) {
+          archiveBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+            archiveBtn.disabled = true;
+            patchNotification(id, { read: true, archived: true }).then(function () {
+              fetchList().then(function (d) {
+                renderList(d);
+                showListView();
+              });
+            });
+          });
+        }
+        var deleteBtn = document.getElementById('notifications-delete-btn');
+        if (deleteBtn) {
+          deleteBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+            deleteBtn.disabled = true;
+            deleteNotification(id).then(function () {
+              fetchList().then(function (d) {
+                renderList(d);
+                showListView();
+              });
+            });
+          });
+        }
+      }
+
       if (!alreadyRead) {
-        patchNotification(id, { read: true, archived: true }).then(function () {
-          fetchList().then(renderList);
+        patchNotification(id, { read: true }).then(function () {
+          fetchList().then(function (d) {
+            listData = d;
+            updateTabCounts(d && d.ok ? d : null);
+          });
         });
       }
     });
@@ -161,6 +263,8 @@
 
   offcanvasEl.addEventListener('shown.bs.offcanvas', function () {
     if (listEmptyEl) { listEmptyEl.textContent = 'Loading…'; listEmptyEl.classList.remove('d-none'); }
+    currentTab = 'unread';
+    setActiveTab('unread');
     fetchList().then(renderList);
   });
 
@@ -170,6 +274,13 @@
     e.preventDefault();
     var id = a.getAttribute('data-id');
     if (id) openDetail(id);
+  });
+
+  document.querySelectorAll('[data-notifications-tab]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var tab = btn.getAttribute('data-notifications-tab');
+      if (tab) setActiveTab(tab);
+    });
   });
 
   if (backBtn) {

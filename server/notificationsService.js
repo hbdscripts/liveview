@@ -98,7 +98,7 @@ async function list(options = {}) {
 
   let sql = `
     SELECT n.id, n.type, n.title, n.body, n.link, n.created_at, n.for_admin_only,
-           r.read_at, r.archived_at
+           r.read_at, r.archived_at, r.deleted_at
     FROM notifications n
     LEFT JOIN notification_read_state r ON r.notification_id = n.id AND r.user_email = ?
     WHERE 1=1
@@ -121,6 +121,7 @@ async function list(options = {}) {
     if (!isTypeEnabled(prefs, row.type)) continue;
     const forAdmin = row.for_admin_only === 1 || row.for_admin_only === true;
     if (forAdmin && !isMaster) continue;
+    if (row.deleted_at != null) continue;
 
     const item = {
       id: row.id,
@@ -215,6 +216,20 @@ async function markArchived(notificationId, userEmail) {
   );
 }
 
+async function markDeleted(notificationId, userEmail) {
+  if (!userEmail) return;
+  const db = getDb();
+  const nId = Number(notificationId);
+  if (!Number.isFinite(nId)) return;
+  const now = Date.now();
+  await db.run(
+    `INSERT INTO notification_read_state (notification_id, user_email, read_at, archived_at, deleted_at)
+     VALUES (?, ?, ?, ?, ?)
+     ON CONFLICT (notification_id, user_email) DO UPDATE SET deleted_at = excluded.deleted_at`,
+    [nId, userEmail, now, now, now]
+  );
+}
+
 /**
  * Create a Sentry error notification (admin-only). Call from instrument.js after capture.
  * Checks preference so we don't create if sentry notifications are disabled.
@@ -239,5 +254,6 @@ module.exports = {
   get,
   markRead,
   markArchived,
+  markDeleted,
   createSentryNotification,
 };

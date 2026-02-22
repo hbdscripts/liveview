@@ -81,8 +81,27 @@ async function patchOne(req, res) {
   }
 }
 
+async function deleteOne(req, res) {
+  try {
+    const userEmail = getRequestEmail(req);
+    if (!userEmail) return res.status(401).json({ ok: false, error: 'auth_required' });
+
+    const id = req.params && req.params.id ? req.params.id : null;
+    if (!id) return res.status(400).json({ ok: false, error: 'missing_id' });
+
+    await notificationsService.markDeleted(id, userEmail);
+
+    res.setHeader('Cache-Control', 'no-store');
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error('[notifications.delete]', err && err.message ? err.message : err);
+    return res.status(500).json({ ok: false, error: 'delete_failed' });
+  }
+}
+
 module.exports = {
   getList,
   getOne,
   patchOne,
+  deleteOne,
 };
