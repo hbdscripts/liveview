@@ -935,11 +935,11 @@
             ])) + '</div>';
             googleAdsBody +=   '<div class="col-12 col-xl-6">' + cardSm('Actions', (
               '<div class="d-flex align-items-center gap-2 flex-wrap">' +
-                (oauthEnabled ? ('<a class="btn btn-outline-primary btn-sm" href="' + escapeHtml(connectUrl) + '">' + copyIcon + ' Connect</a>') : '') +
-                '<button type="button" id="ga-status-btn" class="btn btn-outline-secondary btn-sm">' + copyIcon + ' Status</button>' +
-                '<button type="button" id="ga-summary-btn" class="btn btn-outline-secondary btn-sm">' + copyIcon + ' Summary</button>' +
-                '<button type="button" id="ga-refresh-7d-btn" class="btn btn-outline-secondary btn-sm">' + copyIcon + ' Refresh 7d</button>' +
-                '<button type="button" id="ga-refresh-month-btn" class="btn btn-outline-secondary btn-sm">' + copyIcon + ' Refresh month</button>' +
+                (oauthEnabled ? ('<a class="btn btn-primary btn-sm" href="' + escapeHtml(connectUrl) + '">' + copyIcon + ' Connect</a>') : '') +
+                '<button type="button" id="ga-status-btn" class="btn btn-secondary btn-sm">' + copyIcon + ' Status</button>' +
+                '<button type="button" id="ga-summary-btn" class="btn btn-secondary btn-sm">' + copyIcon + ' Summary</button>' +
+                '<button type="button" id="ga-refresh-7d-btn" class="btn btn-secondary btn-sm">' + copyIcon + ' Refresh 7d</button>' +
+                '<button type="button" id="ga-refresh-month-btn" class="btn btn-secondary btn-sm">' + copyIcon + ' Refresh month</button>' +
                 '<span id="ga-msg" class="form-hint ms-2"></span>' +
               '</div>' +
               '<div class="text-secondary small mt-2">Refresh returns spend sync diagnostics including per-version attempts when Google Ads REST errors occur.</div>'
@@ -1001,8 +1001,8 @@
 
           var advancedBody = '';
           advancedBody += '<div class="d-flex align-items-center gap-2 flex-wrap">';
-          advancedBody +=   '<button type="button" id="be-copy-ai-btn" class="btn btn-outline-secondary btn-sm" title="Copy a detailed diagnostics payload for AI">' + copyIcon + ' Copy AI debug</button>';
-          advancedBody +=   '<button type="button" id="be-download-ai-json-btn" class="btn btn-outline-secondary btn-sm" title="Download diagnostics JSON for AI"><i class="fa-light fa-download" aria-hidden="true"></i> Download JSON</button>';
+          advancedBody +=   '<button type="button" id="be-copy-ai-btn" class="btn btn-secondary btn-sm" title="Copy a detailed diagnostics payload for AI">' + copyIcon + ' Copy AI debug</button>';
+          advancedBody +=   '<button type="button" id="be-download-ai-json-btn" class="btn btn-secondary btn-sm" title="Download diagnostics JSON for AI"><i class="fa-light fa-download" aria-hidden="true"></i> Download JSON</button>';
           advancedBody +=   '<span id="be-copy-ai-msg" class="form-hint ms-2"></span>';
           advancedBody += '</div>';
           advancedBody += '<div class="text-secondary small mt-2">Generated at ' + escapeHtml(aiCopyGeneratedAt) + '.</div>';

@@ -11,7 +11,7 @@ When changing **any Settings/Admin UI** (Settings page, Admin panels, or Setting
 - **Tabs/accordion headers are the section headers.** Do not add new first-card headers inside sub-panels.
 - Panels must have **exactly one** `.settings-panel-wrap` as the **direct** child (no nested layout; normaliser enforces this).
 - Layout defaults to stacked single-column cards. **Use `.settings-responsive-grid` for 2+ repeated like-for-like items** (colors, icons, variants, etc.); never Bootstrap `.row`/`.d-grid` for tiles.
-- **No `btn-secondary`** in Settings/Admin UI — use `btn btn-outline-secondary btn-md`.
+- **No `btn-outline-*`** button classes in Settings/Admin UI — use solid variants like `btn btn-secondary btn-md`.
 - No inline styles in Settings renderers; use `server/public/settings-ui.css` for Settings-only styling.
 - Read-only / env-backed fields must look read-only (`form-control-plaintext`) and include a read-only hint.
 - Prefer Tabler patterns/utilities; avoid bespoke layout wrappers.

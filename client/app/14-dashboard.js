@@ -5297,7 +5297,7 @@
                     '</div>' +
                   '</div>' +
                   '<div class="d-flex align-items-center justify-content-between gap-2 mt-3">' +
-                    '<button type="button" class="btn btn-outline-secondary" id="kexo-ovw-reset">Reset to default</button>' +
+                    '<button type="button" class="btn btn-secondary" id="kexo-ovw-reset">Reset to default</button>' +
                     '<span id="kexo-ovw-modal-msg" class="form-hint text-secondary"></span>' +
                   '</div>' +
                 '</div>' +

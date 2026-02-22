@@ -369,7 +369,7 @@
                       </div>
                       <div class="d-flex align-items-center gap-2 flex-wrap mt-3">
                         <a class="btn btn-primary btn-md d-inline-flex align-items-center gap-2" id="settings-ga-signin-btn" href="/api/ads/google/connect?redirect=%2Fsettings%3Ftab%3Dintegrations%26integrationsTab%3Dgoogleads"><i class="fa-brands fa-google" data-icon-key="settings-googleads-google" aria-hidden="true"></i> Sign in with Google</a>
-                        <a class="btn btn-outline-primary btn-sm d-none" id="settings-ga-reconnect-btn" href="/api/ads/google/connect?redirect=%2Fsettings%3Ftab%3Dintegrations%26integrationsTab%3Dgoogleads">Reconnect (re-authorize)</a>
+                        <a class="btn btn-secondary btn-sm d-none" id="settings-ga-reconnect-btn" href="/api/ads/google/connect?redirect=%2Fsettings%3Ftab%3Dintegrations%26integrationsTab%3Dgoogleads">Reconnect (re-authorize)</a>
                         <button type="button" class="btn btn-md" id="settings-ga-test-connection-btn">Test connection</button>
                         <button type="button" class="btn btn-md" id="settings-ga-disconnect-btn">Disconnect</button>
                         <span id="settings-ga-connection-msg" class="form-hint"></span>
@@ -383,7 +383,7 @@
               <div class="card card-sm mb-3" id="settings-ga-actions-card">
                 <div class="card-header d-flex align-items-center">
                   <h4 class="card-title mb-0">Conversion actions (uploaded by Kexo)</h4>
-                  <button type="button" class="btn btn-outline-primary btn-sm ms-auto" id="settings-ga-provision-goals-btn">Provision conversion actions</button>
+                  <button type="button" class="btn btn-secondary btn-sm ms-auto" id="settings-ga-provision-goals-btn">Provision conversion actions</button>
                 </div>
                 <div class="table-responsive">
                   <table class="table table-sm table-vcenter card-table mb-0" aria-label="Google Ads conversion actions">
@@ -566,7 +566,7 @@
                 <div class="card-header d-flex align-items-center flex-wrap gap-2">
                   <h4 class="card-title mb-0">Diagnostics</h4>
                   <div class="btn-group btn-group-sm ms-auto" role="group" aria-label="Issue filter">
-                    <button type="button" class="btn btn-outline-secondary active" data-settings-ga-issue-filter="open">Open</button>
+                    <button type="button" class="btn btn-secondary active" data-settings-ga-issue-filter="open">Open</button>
                     <button type="button" class="btn btn-md" data-settings-ga-issue-filter="resolved">Resolved</button>
                     <button type="button" class="btn btn-md" data-settings-ga-issue-filter="all">All</button>
                   </div>
@@ -669,10 +669,10 @@
               </div>
               <div class="mt-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
                 <div class="d-flex align-items-center gap-2 flex-wrap">
-                  <button type="button" class="btn btn-outline-secondary btn-md" id="settings-insights-variants-suggest-btn">Suggest mappings</button>
-                  <button type="button" class="btn btn-outline-secondary btn-md" id="settings-insights-variants-warnings-btn">Warnings</button>
-                  <button type="button" class="btn btn-outline-secondary btn-md" id="settings-insights-variants-ignore-btn">Ignored List</button>
-                  <button type="button" class="btn btn-outline-secondary btn-md" id="settings-insights-variants-reset-variants-btn" title="Admins only. Resets variant mapping tables, rules, and ignored titles (does not delete database data).">Reset variants</button>
+                  <button type="button" class="btn btn-secondary btn-md" id="settings-insights-variants-suggest-btn">Suggest mappings</button>
+                  <button type="button" class="btn btn-secondary btn-md" id="settings-insights-variants-warnings-btn">Warnings</button>
+                  <button type="button" class="btn btn-secondary btn-md" id="settings-insights-variants-ignore-btn">Ignored List</button>
+                  <button type="button" class="btn btn-secondary btn-md" id="settings-insights-variants-reset-variants-btn" title="Admins only. Resets variant mapping tables, rules, and ignored titles (does not delete database data).">Reset variants</button>
                 </div>
               </div>
               <div class="mt-2"><span id="settings-insights-variants-msg" class="form-hint"></span></div>
@@ -1003,7 +1003,7 @@
               </div>
               <div class="d-flex align-items-center justify-content-between mb-2">
                 <h5 class="mb-0">Country overrides</h5>
-                <button type="button" class="btn btn-sm btn-outline-primary" id="cost-expenses-shipping-add-override">Add override</button>
+                <button type="button" class="btn btn-sm btn-primary" id="cost-expenses-shipping-add-override">Add override</button>
               </div>
               <div class="text-muted small mb-2">Overrides apply per order. Enter ISO2 country codes (comma-separated). Priority is evaluated low → high; first match wins.</div>
               <div class="table-responsive">
@@ -1026,7 +1026,7 @@
               <div id="cost-expenses-rules-excluded-hint" class="text-muted small mb-2 is-hidden">Rules are currently excluded from Cost sources.</div>
               <div class="d-flex align-items-center justify-content-between mb-2">
                 <h6 class="m-0">Rules</h6>
-                <button type="button" class="btn btn-sm btn-outline-primary" id="cost-expenses-rules-add-btn">Add rule</button>
+                <button type="button" class="btn btn-sm btn-primary" id="cost-expenses-rules-add-btn">Add rule</button>
               </div>
               <div class="text-muted small mb-2">Rules run in priority order. Scope can be All countries or specific ISO country codes.</div>
               <div id="cost-expenses-rules-msg" class="is-hidden"></div>
@@ -1089,10 +1089,10 @@
               <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
                 <h4 class="m-0">Cost Breakdown</h4>
                 <div class="btn-group" role="group" aria-label="Cost Breakdown date range" id="cost-breakdown-range-group">
-                  <button type="button" class="btn btn-sm btn-outline-primary" data-cost-breakdown-range="today">Today</button>
-                  <button type="button" class="btn btn-sm btn-outline-primary" data-cost-breakdown-range="yesterday">Yesterday</button>
-                  <button type="button" class="btn btn-sm btn-outline-primary" data-cost-breakdown-range="7d">7 Days</button>
-                  <button type="button" class="btn btn-sm btn-outline-primary" data-cost-breakdown-range="30d">30 Days</button>
+                  <button type="button" class="btn btn-sm btn-secondary" data-cost-breakdown-range="today">Today</button>
+                  <button type="button" class="btn btn-sm btn-secondary" data-cost-breakdown-range="yesterday">Yesterday</button>
+                  <button type="button" class="btn btn-sm btn-secondary" data-cost-breakdown-range="7d">7 Days</button>
+                  <button type="button" class="btn btn-sm btn-secondary" data-cost-breakdown-range="30d">30 Days</button>
                 </div>
               </div>
               <div class="text-muted small mb-2">Inactive rows are shown muted but amounts are still calculated for comparison.</div>
@@ -1314,10 +1314,10 @@
                         <option value="30d">Last 30 days</option>
                       </select>
                     </div>
-                    <button type="button" class="btn btn-sm btn-outline-primary" id="config-refresh-btn" aria-label="Refresh diagnostics">
+                    <button type="button" class="btn btn-sm btn-primary" id="config-refresh-btn" aria-label="Refresh diagnostics">
                       <i class="fa-thin fa-rotate-right" data-icon-key="settings-diagnostics-refresh" aria-hidden="true"></i> Refresh
                     </button>
-                    <button type="button" class="btn btn-sm btn-outline-secondary" id="config-reconcile-btn" aria-label="Reconcile sales">
+                    <button type="button" class="btn btn-sm btn-secondary" id="config-reconcile-btn" aria-label="Reconcile sales">
                       <i class="fa-thin fa-sliders" data-icon-key="settings-diagnostics-reconcile" aria-hidden="true"></i> Reconcile
                     </button>
                     <span id="config-action-msg" class="form-hint"></span>
@@ -1467,7 +1467,7 @@
       <footer class="settings-global-footer d-flex align-items-center justify-content-start gap-2 flex-wrap mt-3 pt-3 border-top" id="settings-global-footer" aria-label="Settings actions" hidden>
         <div class="settings-footer-left d-flex align-items-center gap-2" id="settings-footer-left"></div>
         <div class="settings-footer-right d-flex align-items-center gap-2">
-          <button type="button" class="btn btn-outline-secondary btn-md" id="settings-global-revert-btn">Revert</button>
+          <button type="button" class="btn btn-secondary btn-md" id="settings-global-revert-btn">Revert</button>
           <button type="button" class="btn btn-primary btn-md" id="settings-global-save-btn">Save Settings</button>
         </div>
       </footer>

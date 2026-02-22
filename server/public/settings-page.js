@@ -4842,14 +4842,14 @@
     if (!insightsVariantsWarningsCache) {
       btn.disabled = false;
       btn.textContent = 'Warnings';
-      btn.classList.remove('btn-danger', 'btn-outline-danger');
+      btn.classList.remove('btn-danger');
       btn.classList.add('btn-md');
       return;
     }
     var n = countCoverageWarningTables(insightsVariantsWarningsCache);
     btn.disabled = false;
     btn.textContent = n > 0 ? ('Warnings (' + String(n) + ')') : 'Warnings';
-    btn.classList.remove('btn-danger', 'btn-outline-danger');
+    btn.classList.remove('btn-danger');
     btn.classList.add('btn-md');
   }
 

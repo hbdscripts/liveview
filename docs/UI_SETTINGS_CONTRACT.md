@@ -67,12 +67,24 @@ Files:
 Use Tabler conventions:
 
 - **Primary action** (Save/Apply/Update): `btn btn-primary btn-md`
-- **Secondary**: `btn btn-outline-secondary btn-md` — **do not use `btn-secondary`** in Settings/Admin UI
-- **Danger**: `btn btn-danger` (or `btn btn-outline-danger` for soft actions)
+- **Secondary**: `btn btn-secondary btn-md`
+- **Danger**: `btn btn-danger btn-md`
 - **Action row**: `d-flex align-items-center gap-2 flex-wrap` (buttons grouped, consistent spacing)
 - **Form spacing**: prefer `mb-3` group spacing, `form-label`, `form-hint`
 
 Avoid bespoke layout wrappers when Tabler provides a standard utility/class.
+
+### Button variants (absolute)
+
+- **Do not use any `btn-outline-*` classes** in Settings/Admin UI.
+- Use solid variants instead (`btn-primary`, `btn-secondary`, `btn-danger`, etc.).
+
+Migration mapping:
+
+- `btn btn-outline-primary …` → `btn btn-primary …`
+- `btn btn-outline-secondary …` → `btn btn-secondary …`
+- `btn btn-outline-danger …` → `btn btn-danger …`
+- `btn btn-outline-success …` → `btn btn-success …`
 
 ## Read-only / environment-backed fields
 
@@ -99,14 +111,14 @@ Use consistent states:
 - Do stack cards full-width when showing single or unique controls.
 - Do use `.settings-responsive-grid` when showing **2+** repeated like-for-like items (colors, icons, images, variants, etc.).
 - Do keep later card headers (Truth Sync / Pixel / Diagnostics, etc.).
-- Do use Tabler button/form classes; use `btn-md` and `btn-outline-secondary` (not `btn-secondary`).
+- Do use Tabler button/form classes; prefer solid variants and use `btn-md`.
 - Do make read-only fields clearly read-only with a hint (plaintext); avoid repetitive hint blocks.
 - Do put all Settings-only CSS in `server/public/settings-ui.css` (no inline styles in templates/renderers).
 
 ### Don’t
 
 - Don’t use nested `.settings-panel-wrap` or inject `.settings-panel-wrap` in renderers.
-- Don’t use `btn-secondary` in Settings/Admin UI (use `btn-outline-secondary`).
+- Don’t use `btn-outline-*` button classes anywhere in Settings/Admin UI.
 - Don’t use Bootstrap `.row`/`.d-grid` for tile grids; use `.settings-responsive-grid`.
 - Don’t use grids for one-off controls or mixed content.
 - Don’t add Settings-only CSS to global stylesheets (use `server/public/settings-ui.css` only).

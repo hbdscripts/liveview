@@ -435,7 +435,7 @@
           '</div>' +
           '<div class="d-flex align-items-center gap-2 flex-wrap mt-3">' +
             '<button type="button" class="btn btn-primary" data-am-action="map-token" title="Save this rule. New sessions with the token will be attributed to the variant.">Create mapping</button>' +
-            '<button type="button" class="btn btn-outline-secondary" data-am-action="clear-selected" title="Deselect the current token.">Clear</button>' +
+            '<button type="button" class="btn btn-secondary" data-am-action="clear-selected" title="Deselect the current token.">Clear</button>' +
             '<span id="am-map-msg" class="form-hint"></span>' +
           '</div>' +
           '<div class="text-secondary small mt-2">' +
@@ -449,7 +449,7 @@
         '<div class="mt-2">' +
           '<textarea class="form-control font-monospace" id="am-config-json" rows="14" spellcheck="false" placeholder="{\\n  &quot;channels&quot;: [],\\n  &quot;sources&quot;: [],\\n  &quot;variants&quot;: [],\\n  &quot;tags&quot;: [],\\n  &quot;rules&quot;: [],\\n  &quot;allowlist&quot;: []\\n}"></textarea>' +
           '<div class="d-flex align-items-center gap-2 flex-wrap mt-2">' +
-            '<button type="button" class="btn btn-outline-primary" data-am-action="reload-config" title="Discard JSON edits and reload from database.">Reload</button>' +
+            '<button type="button" class="btn btn-secondary" data-am-action="reload-config" title="Discard JSON edits and reload from database.">Reload</button>' +
             '<button type="button" class="btn btn-success" data-am-action="save-config" title="Replace the entire config with the JSON. Use with caution.">Save config</button>' +
             '<span id="am-config-msg" class="form-hint"></span>' +
           '</div>' +
@@ -620,7 +620,7 @@
           '<td class="text-end">' + escapeHtml(String(seen || 0)) + '</td>' +
           '<td>' + escapeHtml(lastTxt) + '</td>' +
           '<td class="text-end">' +
-            '<button type="button" class="btn btn-sm btn-outline-secondary" data-am-action="select-token" data-token-type="' + escapeHtml(trimLower(t, 48)) + '" data-token-value="' + escapeHtml(trimLower(v, 256)) + '">Use</button>' +
+            '<button type="button" class="btn btn-sm btn-secondary" data-am-action="select-token" data-token-type="' + escapeHtml(trimLower(t, 48)) + '" data-token-value="' + escapeHtml(trimLower(v, 256)) + '">Use</button>' +
           '</td>' +
         '</tr>';
     }).join('');

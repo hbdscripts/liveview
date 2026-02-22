@@ -245,7 +245,7 @@
       var key = it.key != null ? String(it.key) : '';
       var canDetail = auditOn && !isDetail && key;
       var btn = canDetail
-        ? (' <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 ms-2" data-cost-breakdown-detail-toggle="' + esc(key) + '" aria-expanded="false">Details</button>')
+        ? (' <button type="button" class="btn btn-sm btn-secondary py-0 px-2 ms-2" data-cost-breakdown-detail-toggle="' + esc(key) + '" aria-expanded="false">Details</button>')
         : '';
       var labelHtml = baseLabel + btn;
       html += '<tr class="' + rowCls + '">' +

@@ -69,7 +69,7 @@
       el('div', { class: 'text-secondary small mb-2', text: message || 'Something went wrong.' }),
     ]);
     if (typeof o.onRetry === 'function') {
-      var btn = el('button', { type: 'button', class: 'btn btn-sm btn-outline-danger', text: o.retryLabel || 'Retry' });
+      var btn = el('button', { type: 'button', class: 'btn btn-sm btn-danger', text: o.retryLabel || 'Retry' });
       btn.addEventListener('click', function () { try { o.onRetry(); } catch (_) {} });
       wrap.appendChild(btn);
     }

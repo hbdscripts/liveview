@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 9f96c60c9e1cdf9c
+// checksum: 1c5fb729be7f6945
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -2550,7 +2550,7 @@ const API = '';
           pendingBtn = document.createElement('button');
           pendingBtn.type = 'button';
           pendingBtn.id = 'live-sales-updates-btn';
-          pendingBtn.className = 'btn btn-sm btn-outline-primary is-hidden';
+          pendingBtn.className = 'btn btn-sm btn-primary is-hidden';
           pendingBtn.textContent = 'Updates available';
           block.appendChild(pendingBtn);
         } catch (_) { pendingBtn = null; }
@@ -3777,8 +3777,8 @@ const API = '';
               '</div>' +
               '<div class="modal-body" id="fraud-detail-body"></div>' +
               '<div class="modal-footer">' +
-                '<button type="button" class="btn btn-outline-secondary" data-fraud-open-session="1" style="display:none">Open session</button>' +
-                '<a class="btn btn-outline-secondary" data-fraud-shopify-order="1" target="_blank" rel="noopener" style="display:none">Open order (Shopify)</a>' +
+                '<button type="button" class="btn btn-secondary" data-fraud-open-session="1" style="display:none">Open session</button>' +
+                '<a class="btn btn-secondary" data-fraud-shopify-order="1" target="_blank" rel="noopener" style="display:none">Open order (Shopify)</a>' +
                 '<button type="button" class="btn btn-primary" data-fraud-close="1">Close</button>' +
               '</div>' +
             '</div>' +
@@ -3941,7 +3941,7 @@ const API = '';
         '<hr class="my-3" />' +
         '<div class="mb-2 d-flex align-items-center justify-content-between">' +
           '<div style="font-weight:500">Evidence (safe snapshot)</div>' +
-          '<button type="button" class="btn btn-sm btn-outline-secondary" data-fraud-copy-evidence="1">Copy</button>' +
+          '<button type="button" class="btn btn-sm btn-secondary" data-fraud-copy-evidence="1">Copy</button>' +
         '</div>' +
         '<pre class="fraud-evidence-pre" data-fraud-evidence-pre="1">' + escapeHtml(evidenceJson || '{}') + '</pre>'
       );
@@ -14278,7 +14278,7 @@ const API = '';
           '<div class="side-panel-detail-row side-panel-lookup-id-row">' +
             '<span class="side-panel-label">' + escapeHtml(label) + '</span>' +
             '<span class="side-panel-value"><code>' + escapeHtml(v) + '</code>' +
-              '<button type="button" class="btn btn-sm btn-outline-secondary ms-2 side-panel-copy-btn" data-side-copy="' + escapeHtml(v) + '">Copy</button>' +
+              '<button type="button" class="btn btn-sm btn-secondary ms-2 side-panel-copy-btn" data-side-copy="' + escapeHtml(v) + '">Copy</button>' +
             '</span>' +
           '</div>';
       }
@@ -15906,11 +15906,11 @@ const API = '';
             ])) + '</div>';
             googleAdsBody +=   '<div class="col-12 col-xl-6">' + cardSm('Actions', (
               '<div class="d-flex align-items-center gap-2 flex-wrap">' +
-                (oauthEnabled ? ('<a class="btn btn-outline-primary btn-sm" href="' + escapeHtml(connectUrl) + '">' + copyIcon + ' Connect</a>') : '') +
-                '<button type="button" id="ga-status-btn" class="btn btn-outline-secondary btn-sm">' + copyIcon + ' Status</button>' +
-                '<button type="button" id="ga-summary-btn" class="btn btn-outline-secondary btn-sm">' + copyIcon + ' Summary</button>' +
-                '<button type="button" id="ga-refresh-7d-btn" class="btn btn-outline-secondary btn-sm">' + copyIcon + ' Refresh 7d</button>' +
-                '<button type="button" id="ga-refresh-month-btn" class="btn btn-outline-secondary btn-sm">' + copyIcon + ' Refresh month</button>' +
+                (oauthEnabled ? ('<a class="btn btn-primary btn-sm" href="' + escapeHtml(connectUrl) + '">' + copyIcon + ' Connect</a>') : '') +
+                '<button type="button" id="ga-status-btn" class="btn btn-secondary btn-sm">' + copyIcon + ' Status</button>' +
+                '<button type="button" id="ga-summary-btn" class="btn btn-secondary btn-sm">' + copyIcon + ' Summary</button>' +
+                '<button type="button" id="ga-refresh-7d-btn" class="btn btn-secondary btn-sm">' + copyIcon + ' Refresh 7d</button>' +
+                '<button type="button" id="ga-refresh-month-btn" class="btn btn-secondary btn-sm">' + copyIcon + ' Refresh month</button>' +
                 '<span id="ga-msg" class="form-hint ms-2"></span>' +
               '</div>' +
               '<div class="text-secondary small mt-2">Refresh returns spend sync diagnostics including per-version attempts when Google Ads REST errors occur.</div>'
@@ -15972,8 +15972,8 @@ const API = '';
 
           var advancedBody = '';
           advancedBody += '<div class="d-flex align-items-center gap-2 flex-wrap">';
-          advancedBody +=   '<button type="button" id="be-copy-ai-btn" class="btn btn-outline-secondary btn-sm" title="Copy a detailed diagnostics payload for AI">' + copyIcon + ' Copy AI debug</button>';
-          advancedBody +=   '<button type="button" id="be-download-ai-json-btn" class="btn btn-outline-secondary btn-sm" title="Download diagnostics JSON for AI"><i class="fa-light fa-download" aria-hidden="true"></i> Download JSON</button>';
+          advancedBody +=   '<button type="button" id="be-copy-ai-btn" class="btn btn-secondary btn-sm" title="Copy a detailed diagnostics payload for AI">' + copyIcon + ' Copy AI debug</button>';
+          advancedBody +=   '<button type="button" id="be-download-ai-json-btn" class="btn btn-secondary btn-sm" title="Download diagnostics JSON for AI"><i class="fa-light fa-download" aria-hidden="true"></i> Download JSON</button>';
           advancedBody +=   '<span id="be-copy-ai-msg" class="form-hint ms-2"></span>';
           advancedBody += '</div>';
           advancedBody += '<div class="text-secondary small mt-2">Generated at ' + escapeHtml(aiCopyGeneratedAt) + '.</div>';
@@ -23417,7 +23417,7 @@ const API = '';
                     '</div>' +
                   '</div>' +
                   '<div class="d-flex align-items-center justify-content-between gap-2 mt-3">' +
-                    '<button type="button" class="btn btn-outline-secondary" id="kexo-ovw-reset">Reset to default</button>' +
+                    '<button type="button" class="btn btn-secondary" id="kexo-ovw-reset">Reset to default</button>' +
                     '<span id="kexo-ovw-modal-msg" class="form-hint text-secondary"></span>' +
                   '</div>' +
                 '</div>' +
@@ -27095,7 +27095,7 @@ const API = '';
           body += '</div></div>';
 
           body += '<div class="col-12">';
-          body += '<a class="btn btn-sm btn-outline-secondary" href="/settings/cost-expenses/rules">Open cost settings</a>';
+          body += '<a class="btn btn-sm btn-secondary" href="/settings/cost-expenses/rules">Open cost settings</a>';
           body += '<div class="form-hint">Manage cost sources, shipping, and profit rules.</div>';
           body += '</div>';
         }
@@ -28085,15 +28085,15 @@ const API = '';
       bodyHtml += '<div class="flex-grow-1 min-w-0"><strong>' + esc(n.title) + '</strong></div></div>';
       bodyHtml += '<div class="small text-secondary mb-2">' + esc(formatTime(n.created_at)) + '</div>';
       if (n.body) bodyHtml += '<div class="notification-body">' + esc(n.body).replace(/\n/g, '<br>') + '</div>';
-      if (n.link) bodyHtml += '<p class="mt-3"><a href="' + esc(n.link) + '" class="btn btn-outline-primary btn-sm">View</a></p>';
+      if (n.link) bodyHtml += '<p class="mt-3"><a href="' + esc(n.link) + '" class="btn btn-primary btn-sm">View</a></p>';
       if (detailBodyEl) detailBodyEl.innerHTML = bodyHtml;
 
       if (detailActionsEl) {
         var actionsHtml = '';
         if (!n.archived_at) {
-          actionsHtml += '<button type="button" class="btn btn-outline-secondary btn-sm" id="notifications-archive-btn" aria-label="Archive"><i class="fa-solid fa-archive me-1" aria-hidden="true"></i>Archive</button>';
+          actionsHtml += '<button type="button" class="btn btn-secondary btn-sm" id="notifications-archive-btn" aria-label="Archive"><i class="fa-solid fa-archive me-1" aria-hidden="true"></i>Archive</button>';
         }
-        actionsHtml += '<button type="button" class="btn btn-outline-danger btn-sm" id="notifications-delete-btn" aria-label="Delete permanently"><i class="fa-solid fa-trash me-1" aria-hidden="true"></i>Delete</button>';
+        actionsHtml += '<button type="button" class="btn btn-danger btn-sm" id="notifications-delete-btn" aria-label="Delete permanently"><i class="fa-solid fa-trash me-1" aria-hidden="true"></i>Delete</button>';
         detailActionsEl.innerHTML = actionsHtml;
 
         var archiveBtn = document.getElementById('notifications-archive-btn');

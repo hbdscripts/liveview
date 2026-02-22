@@ -354,18 +354,26 @@
 
       if (btn.classList.contains('btn-ghost-secondary')) {
         btn.classList.remove('btn-ghost-secondary');
-        btn.classList.add('btn-outline-secondary');
+        btn.classList.add('btn-secondary');
       }
       if (btn.classList.contains('btn-ghost-danger')) {
         btn.classList.remove('btn-ghost-danger');
-        btn.classList.add('btn-outline-danger');
+        btn.classList.add('btn-danger');
       }
-      if (btn.classList.contains('btn-secondary')) {
-        btn.classList.remove('btn-secondary');
-      }
+
       if (btn.classList.contains('btn-secondary-outline')) {
         btn.classList.remove('btn-secondary-outline');
+        btn.classList.add('btn-secondary');
       }
+
+      // Contract: no outline buttons. Convert outline variants to solid.
+      ['primary', 'secondary', 'danger', 'success', 'warning', 'info', 'light', 'dark'].forEach(function (v) {
+        var outline = 'btn-outline-' + v;
+        if (btn.classList.contains(outline)) {
+          btn.classList.remove(outline);
+          btn.classList.add('btn-' + v);
+        }
+      });
 
       var text = '';
       try { text = String(btn.textContent || '').trim().toLowerCase(); } catch (_) { text = ''; }
@@ -375,7 +383,13 @@
           'btn-outline-primary',
           'btn-outline-secondary',
           'btn-outline-danger',
+          'btn-outline-success',
+          'btn-outline-warning',
+          'btn-outline-info',
+          'btn-outline-light',
+          'btn-outline-dark',
           'btn-secondary',
+          'btn-secondary-outline',
           'btn-success',
           'btn-danger'
         );

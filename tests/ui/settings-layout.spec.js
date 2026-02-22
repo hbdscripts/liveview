@@ -65,9 +65,9 @@ test('Settings/Admin panels satisfy UI contract after normalisation', () => {
       assert.equal(nestedWraps.length, 0, `${panel.id}: nested .settings-panel-wrap found`);
     }
 
-    // No btn-secondary after normalisation (use btn-outline-secondary).
-    const secondaryBtns = wrap.querySelectorAll('.btn-secondary');
-    assert.equal(secondaryBtns.length, 0, `${panel.id}: .btn-secondary found after normalisation`);
+    // No outline buttons after normalisation (contract: forbid btn-outline-*).
+    const outlineBtns = wrap.querySelectorAll('.btn[class*="btn-outline-"]');
+    assert.equal(outlineBtns.length, 0, `${panel.id}: outline button(s) found after normalisation`);
 
     // No grids inside panel content after normalisation.
     assert.equal(wrap.querySelectorAll('.row').length, 0, `${panel.id}: .row found inside settings-panel-wrap`);

@@ -211,15 +211,15 @@
       bodyHtml += '<div class="flex-grow-1 min-w-0"><strong>' + esc(n.title) + '</strong></div></div>';
       bodyHtml += '<div class="small text-secondary mb-2">' + esc(formatTime(n.created_at)) + '</div>';
       if (n.body) bodyHtml += '<div class="notification-body">' + esc(n.body).replace(/\n/g, '<br>') + '</div>';
-      if (n.link) bodyHtml += '<p class="mt-3"><a href="' + esc(n.link) + '" class="btn btn-outline-primary btn-sm">View</a></p>';
+      if (n.link) bodyHtml += '<p class="mt-3"><a href="' + esc(n.link) + '" class="btn btn-primary btn-sm">View</a></p>';
       if (detailBodyEl) detailBodyEl.innerHTML = bodyHtml;
 
       if (detailActionsEl) {
         var actionsHtml = '';
         if (!n.archived_at) {
-          actionsHtml += '<button type="button" class="btn btn-outline-secondary btn-sm" id="notifications-archive-btn" aria-label="Archive"><i class="fa-solid fa-archive me-1" aria-hidden="true"></i>Archive</button>';
+          actionsHtml += '<button type="button" class="btn btn-secondary btn-sm" id="notifications-archive-btn" aria-label="Archive"><i class="fa-solid fa-archive me-1" aria-hidden="true"></i>Archive</button>';
         }
-        actionsHtml += '<button type="button" class="btn btn-outline-danger btn-sm" id="notifications-delete-btn" aria-label="Delete permanently"><i class="fa-solid fa-trash me-1" aria-hidden="true"></i>Delete</button>';
+        actionsHtml += '<button type="button" class="btn btn-danger btn-sm" id="notifications-delete-btn" aria-label="Delete permanently"><i class="fa-solid fa-trash me-1" aria-hidden="true"></i>Delete</button>';
         detailActionsEl.innerHTML = actionsHtml;
 
         var archiveBtn = document.getElementById('notifications-archive-btn');
