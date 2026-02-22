@@ -44,6 +44,7 @@
     var tableAttrs = ' class="grid-table ' + escapeHtml(tableClass) + '" role="table"';
     if (tableId) tableAttrs += ' id="' + escapeHtml(tableId) + '"';
     if (ariaLabel) tableAttrs += ' aria-label="' + escapeHtml(ariaLabel) + '"';
+    if (c.virtualizeRows === true) tableAttrs += ' data-kexo-virtualize="1"';
 
     var headerCells = '';
     columns.forEach(function (col) {

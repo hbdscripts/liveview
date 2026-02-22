@@ -94,20 +94,28 @@
         cards.forEach(function(card) { ensureRowsControl(card); });
       }
 
+      // Reduce MutationObserver work: debounce and scope to page body.
       if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', function() { run(document); });
       } else {
         run(document);
       }
+      var schedule = (typeof kexoDebounce === 'function')
+        ? kexoDebounce(function () { run(document); }, 120)
+        : function () { run(document); };
       var observer = new MutationObserver(function(muts) {
-        muts.forEach(function(m) {
-          m.addedNodes.forEach(function(n) {
-            if (!(n instanceof Element)) return;
-            run(n);
-          });
-        });
+        try { schedule(); } catch (_) {}
       });
-      observer.observe(document.documentElement, { childList: true, subtree: true });
+      var root = document.querySelector('.page-body') || document.body || document.documentElement;
+      observer.observe(root, { childList: true, subtree: true });
+      try {
+        if (typeof registerCleanup === 'function') {
+          registerCleanup(function () {
+            try { observer.disconnect(); } catch (_) {}
+            try { if (schedule && schedule.cancel) schedule.cancel(); } catch (_) {}
+          });
+        }
+      } catch (_) {}
       window.addEventListener('kexo:table-rows-changed', function() {
         run(document);
       });
@@ -480,6 +488,9 @@
         if (docMo) return;
         if (typeof MutationObserver === 'undefined') return;
         try {
+          var schedule = (typeof kexoDebounce === 'function')
+            ? kexoDebounce(function () { run(); }, 120)
+            : function () { run(); };
           docMo = new MutationObserver(function(muts) {
             muts.forEach(function(m) {
               (m.addedNodes || []).forEach(function(n) {
@@ -492,12 +503,15 @@
                 } catch (_) {}
               });
             });
+            try { schedule(); } catch (_) {}
           });
-          docMo.observe(document.documentElement, { childList: true, subtree: true });
+          var root = document.querySelector('.page-body') || document.body || document.documentElement;
+          docMo.observe(root, { childList: true, subtree: true });
           if (typeof registerCleanup === 'function') {
             registerCleanup(function() {
               try { if (docMo && typeof docMo.disconnect === 'function') docMo.disconnect(); } catch (_) {}
               docMo = null;
+              try { if (schedule && schedule.cancel) schedule.cancel(); } catch (_) {}
             });
           }
         } catch (_) {}

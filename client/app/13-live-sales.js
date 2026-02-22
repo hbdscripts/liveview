@@ -1,4 +1,5 @@
-      // Defer the first poll slightly so initial page load fetch/render completes first.
+    // Stable GETs: cache small TTL to reduce duplicate version/config reads.
+    // Defer the first poll slightly so initial page load fetch/render completes first.
       scheduleLiveSalesPoll(LIVE_SALES_POLL_MS);
     })();
 
@@ -63,8 +64,11 @@
 
     function fetchVersionSig() {
       if (_versionCheckInFlight) return _versionCheckInFlight;
-      _versionCheckInFlight = fetch(API + '/api/version', { credentials: 'same-origin', cache: 'no-store' })
-        .then(function(r) { return r && r.ok ? r.json() : null; })
+      var url = API + '/api/version';
+      _versionCheckInFlight = (typeof kexoFetchOkJsonStable === 'function'
+        ? kexoFetchOkJsonStable(url, { credentials: 'same-origin' }, 60000)
+        : fetch(url, { credentials: 'same-origin', cache: 'default' }).then(function(r) { return r && r.ok ? r.json() : null; })
+      )
         .then(function(data) {
           _versionCheckInFlight = null;
           if (!data) return null;
@@ -73,7 +77,11 @@
           var sig = (av || pv) ? (av + '|' + pv) : '';
           return sig && sig.trim() ? sig : null;
         })
-        .catch(function() { _versionCheckInFlight = null; return null; });
+        .catch(function(err) {
+          try { if (typeof window.kexoCaptureError === 'function') window.kexoCaptureError(err, { context: 'version.fetchSig' }); } catch (_) {}
+          _versionCheckInFlight = null;
+          return null;
+        });
       return _versionCheckInFlight;
     }
 

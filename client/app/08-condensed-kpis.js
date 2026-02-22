@@ -830,7 +830,7 @@
             const vRev = (v && typeof v.revenue_gbp === 'number') ? formatRevenueTableHtml(v.revenue_gbp) : '-';
             const vVpv = metric(v, 'vpv') != null ? formatRevenue(metric(v, 'vpv')) : '\u2014';
             html += '<div class="grid-row traffic-type-child attribution-variant-row' + (srcOpen ? '' : ' is-hidden') + '" role="row" data-parent="' + escapeHtml(parentKey) + '" data-channel="' + escapeHtml(chKey) + '" data-source="' + escapeHtml(sKey) + '">' +
-              '<div class="grid-cell" role="cell"><span style="display:inline-flex;align-items:center;gap:8px;padding-left:18px">' + (vIcon || '') + '<span>' + escapeHtml(vLabel) + '</span></span></div>' +
+              '<div class="grid-cell" role="cell"><span class="d-inline-flex align-items-center gap-2 ps-3">' + (vIcon || '') + '<span>' + escapeHtml(vLabel) + '</span></span></div>' +
               '<div class="grid-cell" role="cell">' + escapeHtml(vSessions || '-') + '</div>' +
               '<div class="grid-cell" role="cell">' + escapeHtml(vOrders || '-') + '</div>' +
               '<div class="grid-cell" role="cell">' + escapeHtml(vCr || '-') + '</div>' +
@@ -862,7 +862,7 @@
 
       const rows = data && data.attribution && Array.isArray(data.attribution.rows) ? data.attribution.rows.slice() : [];
       if (!rows.length) {
-        el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:#6b7280;font-size:.875rem">No attribution data</div>';
+        el.innerHTML = '<div class="kexo-chart-empty kexo-chart-empty--h320">No attribution data</div>';
         return;
       }
 
@@ -894,7 +894,7 @@
         .slice(0, 10);
 
       if (!items.length) {
-        el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:#6b7280;font-size:.875rem">No attribution data</div>';
+        el.innerHTML = '<div class="kexo-chart-empty kexo-chart-empty--h320">No attribution data</div>';
         return;
       }
 
@@ -919,7 +919,7 @@
           advancedApexOverride: chartAdvancedOverrideFromUiConfig(chartKey, mode),
         });
       } catch (_) {
-        el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:#ef4444;font-size:.875rem">Chart rendering failed</div>';
+        el.innerHTML = '<div class="kexo-chart-empty kexo-chart-empty--h320 kexo-chart-empty--error">Chart rendering failed</div>';
       }
     }
 
@@ -1094,7 +1094,7 @@
           const crev = (c && typeof c.revenue_gbp === 'number') ? formatRevenueTableHtml(c.revenue_gbp) : '-';
           const cvpv = metric(c, 'vpv') != null ? formatRevenue(metric(c, 'vpv')) : '\u2014';
           html += '<div class="grid-row traffic-type-child devices-child' + (open ? '' : ' is-hidden') + '" role="row" data-parent="' + escapeHtml(dKey) + '">' +
-            '<div class="grid-cell" role="cell"><span style="display:inline-flex;align-items:center;gap:8px">' + trafficTypePlatformIcon(platform) + '<span>' + escapeHtml(clabel) + '</span></span></div>' +
+            '<div class="grid-cell" role="cell"><span class="d-inline-flex align-items-center gap-2">' + trafficTypePlatformIcon(platform) + '<span>' + escapeHtml(clabel) + '</span></span></div>' +
             '<div class="grid-cell" role="cell">' + escapeHtml(csessions || '-') + '</div>' +
             '<div class="grid-cell" role="cell">' + escapeHtml(corders || '-') + '</div>' +
             '<div class="grid-cell" role="cell">' + escapeHtml(ccr || '-') + '</div>' +
@@ -1125,7 +1125,7 @@
 
       const rows = data && data.devices && Array.isArray(data.devices.rows) ? data.devices.rows.slice() : [];
       if (!rows.length) {
-        el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:#6b7280;font-size:.875rem">No device data</div>';
+        el.innerHTML = '<div class="kexo-chart-empty kexo-chart-empty--h320">No device data</div>';
         return;
       }
 
@@ -1160,7 +1160,7 @@
         .slice(0, 10);
 
       if (!items.length) {
-        el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:#6b7280;font-size:.875rem">No device data</div>';
+        el.innerHTML = '<div class="kexo-chart-empty kexo-chart-empty--h320">No device data</div>';
         return;
       }
 
@@ -1185,7 +1185,7 @@
           advancedApexOverride: chartAdvancedOverrideFromUiConfig(chartKey, mode),
         });
       } catch (_) {
-        el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:#ef4444;font-size:.875rem">Chart rendering failed</div>';
+        el.innerHTML = '<div class="kexo-chart-empty kexo-chart-empty--h320 kexo-chart-empty--error">Chart rendering failed</div>';
       }
     }
 
@@ -1347,7 +1347,7 @@
         const rev = (r && typeof r.revenue === 'number') ? formatRevenueTableHtml(r.revenue) : '\u2014';
         const aov = (r && typeof r.aov === 'number') ? formatRevenue(r.aov) : '\u2014';
         html += '<div class="grid-row" role="row">' +
-          '<div class="grid-cell" role="cell"><span style="display:inline-flex;align-items:center;gap:8px"><span class="tt-browser-icon" aria-hidden="true">' + browserIconHtml(k) + '</span><span>' + escapeHtml(label) + '</span></span></div>' +
+          '<div class="grid-cell" role="cell"><span class="d-inline-flex align-items-center gap-2"><span class="tt-browser-icon" aria-hidden="true">' + browserIconHtml(k) + '</span><span>' + escapeHtml(label) + '</span></span></div>' +
           '<div class="grid-cell" role="cell">' + escapeHtml(sessions) + '</div>' +
           '<div class="grid-cell" role="cell">' + escapeHtml(carts) + '</div>' +
           '<div class="grid-cell" role="cell">' + escapeHtml(orders) + '</div>' +
@@ -1380,7 +1380,7 @@
 
       const rows = data && data.browsers && Array.isArray(data.browsers.rows) ? data.browsers.rows.slice() : [];
       if (!rows.length) {
-        el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:#6b7280;font-size:.875rem">No browser data</div>';
+        el.innerHTML = '<div class="kexo-chart-empty kexo-chart-empty--h320">No browser data</div>';
         return;
       }
 
@@ -1409,7 +1409,7 @@
         .slice(0, 10);
 
       if (!items.length) {
-        el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:#6b7280;font-size:.875rem">No browser data</div>';
+        el.innerHTML = '<div class="kexo-chart-empty kexo-chart-empty--h320">No browser data</div>';
         return;
       }
 
@@ -1434,7 +1434,7 @@
           advancedApexOverride: chartAdvancedOverrideFromUiConfig(chartKey, mode),
         });
       } catch (_) {
-        el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:#ef4444;font-size:.875rem">Chart rendering failed</div>';
+        el.innerHTML = '<div class="kexo-chart-empty kexo-chart-empty--h320 kexo-chart-empty--error">Chart rendering failed</div>';
       }
     }
 
@@ -1541,14 +1541,15 @@
       if (!el) return;
       var message = String(text == null ? '' : text).trim() || 'Unavailable';
       var isError = !!(opts && opts.error);
-      var color = isError ? '#ef4444' : 'var(--tblr-secondary)';
       var h = (opts && Number.isFinite(opts.height)) ? Math.max(80, opts.height) : 220;
       var chartKey = (opts && opts.chartKey != null) ? String(opts.chartKey).trim() : 'live-online-chart';
       if (isError) captureChartMessage(message, 'liveOnlineMapState', { chartKey: chartKey }, 'error');
-      el.innerHTML =
-        '<div style="display:flex;align-items:center;justify-content:center;height:' + h + 'px;color:' + color + ';text-align:center;padding:0 18px;font-size:.875rem">' +
-          escapeHtml(message) +
-        '</div>';
+      var cls = 'kexo-chart-empty' + (isError ? ' kexo-chart-empty--error' : '');
+      el.innerHTML = '<div class="' + cls + '" data-kexo-chart-empty="1">' + escapeHtml(message) + '</div>';
+      try {
+        var child = el.querySelector('[data-kexo-chart-empty="1"]');
+        if (child && child.style) child.style.height = String(h) + 'px';
+      } catch (_) {}
     }
 
     function renderLiveOnlineMapChartFromSessions(sessionList) {
@@ -1859,7 +1860,7 @@
             if (!n) {
               setVectorMapTooltipContent(
                 tooltip,
-                '<div style="min-width:140px;font-weight:600">' + escapeHtml(name) + '</div>',
+                '<div class="kexo-map-tooltip-title kexo-map-tooltip-title--min140">' + escapeHtml(name) + '</div>',
                 name
               );
               return;
@@ -1867,20 +1868,20 @@
             var sessionsText = formatSessions(n);
             setVectorMapTooltipContent(
               tooltip,
-              '<div style="min-width:180px">' +
-                '<div style="font-weight:600;margin-bottom:2px">' + escapeHtml(name) + '</div>' +
-                '<div style="color:' + escapeHtml(muted) + ';font-size:.8125rem">Sessions (last 5m): <span style="color:inherit">' + escapeHtml(sessionsText) + '</span></div>' +
+              '<div class="kexo-map-tooltip-card">' +
+                '<div class="kexo-map-tooltip-name">' + escapeHtml(name) + '</div>' +
+                '<div class="kexo-map-tooltip-meta text-secondary">Sessions (last 5m): <span class="kexo-map-tooltip-value">' + escapeHtml(sessionsText) + '</span></div>' +
                 (function() {
                   var sc = stageCountsByIso2[iso2] || {};
                   var b = Number(sc.browse || 0) || 0;
                   var c = Number(sc.cart || 0) || 0;
                   var co = Number(sc.checkout || 0) || 0;
                   var p = Number(sc.purchase || 0) || 0;
-                  return '<div style="margin-top:6px;display:grid;grid-template-columns:10px 1fr auto;gap:4px 8px;align-items:center;font-size:.8125rem">' +
-                    '<span style="display:inline-block;width:10px;height:10px;border-radius:999px;background:var(--kexo-map-stage-browse,var(--kexo-accent-1,#4b94e4))"></span><span style="color:' + escapeHtml(muted) + '">Browsing</span><span>' + escapeHtml(String(b)) + '</span>' +
-                    '<span style="display:inline-block;width:10px;height:10px;border-radius:999px;background:var(--kexo-map-stage-cart,var(--kexo-accent-3,#f59e34))"></span><span style="color:' + escapeHtml(muted) + '">In cart</span><span>' + escapeHtml(String(c)) + '</span>' +
-                    '<span style="display:inline-block;width:10px;height:10px;border-radius:999px;background:var(--kexo-map-stage-checkout,var(--kexo-accent-5,#6681e8))"></span><span style="color:' + escapeHtml(muted) + '">Checkout</span><span>' + escapeHtml(String(co)) + '</span>' +
-                    '<span style="display:inline-block;width:10px;height:10px;border-radius:999px;background:var(--kexo-map-stage-purchase,var(--kexo-accent-2,#3eb3ab))"></span><span style="color:' + escapeHtml(muted) + '">Purchased</span><span>' + escapeHtml(String(p)) + '</span>' +
+                  return '<div class="kexo-map-tooltip-grid">' +
+                    '<span class="kexo-map-stage-dot kexo-map-stage-dot--browse" aria-hidden="true"></span><span class="kexo-map-stage-label text-secondary">Browsing</span><span>' + escapeHtml(String(b)) + '</span>' +
+                    '<span class="kexo-map-stage-dot kexo-map-stage-dot--cart" aria-hidden="true"></span><span class="kexo-map-stage-label text-secondary">In cart</span><span>' + escapeHtml(String(c)) + '</span>' +
+                    '<span class="kexo-map-stage-dot kexo-map-stage-dot--checkout" aria-hidden="true"></span><span class="kexo-map-stage-label text-secondary">Checkout</span><span>' + escapeHtml(String(co)) + '</span>' +
+                    '<span class="kexo-map-stage-dot kexo-map-stage-dot--purchase" aria-hidden="true"></span><span class="kexo-map-stage-label text-secondary">Purchased</span><span>' + escapeHtml(String(p)) + '</span>' +
                   '</div>';
                 })() +
               '</div>',
@@ -1894,9 +1895,8 @@
             if (hasNoLiveActivity && showEmptyCaption) {
               var noActivity = document.createElement('div');
               noActivity.setAttribute('class', 'kexo-live-map-empty-caption');
-              noActivity.style.cssText = 'position:absolute;left:0;right:0;bottom:12px;text-align:center;font-size:.8125rem;color:' + (muted || 'var(--tblr-secondary)') + ';pointer-events:none;';
               noActivity.textContent = 'No live activity yet';
-              if (containerEl && containerEl.style) containerEl.style.position = 'relative';
+              try { if (containerEl && containerEl.classList) containerEl.classList.add('kexo-live-map-container'); } catch (_) {}
               try { containerEl.appendChild(noActivity); } catch (_) {}
             }
             setTimeout(function () {
@@ -1976,7 +1976,7 @@
         if (tries >= 25) {
           el.__kexoApexWaitTries = 0;
           captureChartMessage('Chart library failed to load.', 'liveOnlineTrendLibraryLoad', { chartKey: 'live-online-chart', tries: tries }, 'error');
-          el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:220px;color:var(--tblr-secondary);text-align:center;padding:0 18px;font-size:.875rem">Chart library failed to load.</div>';
+          el.innerHTML = '<div class="kexo-chart-empty kexo-chart-empty--h220">Chart library failed to load.</div>';
           return;
         }
         setTimeout(function() { renderLiveOnlineTrendChart(payload); }, 180);
@@ -2003,7 +2003,7 @@
       var compactMode = viewport > 0 && viewport <= 960;
       var points = compactMode && allPoints.length > 6 ? allPoints.slice(-6) : allPoints;
       if (!points.length) {
-        el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:220px;color:var(--tblr-secondary);font-size:.875rem">No live activity yet</div>';
+        el.innerHTML = '<div class="kexo-chart-empty kexo-chart-empty--h220">No live activity yet</div>';
         return;
       }
       var labels = points.map(function(p) { return shortTimeLabel(p && p.ts); });
@@ -2197,7 +2197,7 @@
         if (tries >= 25) {
           el.__kexoApexWaitTries = 0;
           captureChartMessage('Chart library failed to load.', 'sessionsOverviewLibraryLoad', { chartKey: (PAGE === 'sales' ? 'sales-overview-chart' : 'date-overview-chart'), tries: tries }, 'error');
-          el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:220px;color:var(--tblr-secondary);text-align:center;padding:0 18px;font-size:.875rem">Chart library failed to load.</div>';
+          el.innerHTML = '<div class="kexo-chart-empty kexo-chart-empty--h220">Chart library failed to load.</div>';
           return;
         }
         setTimeout(function() { renderSessionsOverviewChart(payload, rangeKey); }, 180);
@@ -2218,7 +2218,7 @@
         rangeOverviewChart = null;
       }
       if (!rows.length) {
-        el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:220px;color:var(--tblr-secondary);font-size:.875rem">No data for this range</div>';
+        el.innerHTML = '<div class="kexo-chart-empty kexo-chart-empty--h220">No data for this range</div>';
         var lbl2 = document.getElementById('sessions-overview-bucket-label');
         if (lbl2) { lbl2.textContent = ''; lbl2.setAttribute('aria-hidden', 'true'); }
         return;
@@ -3229,7 +3229,7 @@
               '</div>' +
             '</div>' +
             '<div class="progress progress-sm kexo-kpi-chip-progress" role="progressbar" aria-valuenow="' + esc(String(safety)) + '" aria-valuemin="0" aria-valuemax="100">' +
-              '<div class="progress-bar ' + esc(barClass) + '" style="width:' + esc(String(safety)) + '%"></div>' +
+              '<div class="progress-bar ' + esc(barClass) + '" data-kexo-width="' + esc(String(safety)) + '%"></div>' +
             '</div>' +
           '</div>';
       }
@@ -3281,7 +3281,7 @@
 
         var body = rows.map(function (row) {
           var v = String(row.v);
-          return '<tr><th style="width:180px">' + esc(row.k) + '</th><td><code>' + esc(v) + '</code>' + (row.copy ? copyLinkHtml(v) : '') + '</td></tr>';
+          return '<tr><th class="kexo-kv-th">' + esc(row.k) + '</th><td><code>' + esc(v) + '</code>' + (row.copy ? copyLinkHtml(v) : '') + '</td></tr>';
         }).join('');
         return '<div class="table-responsive"><table class="table table-sm table-vcenter mb-0"><tbody>' + body + '</tbody></table></div>';
       }
@@ -3325,7 +3325,7 @@
         var evidenceDetails = '' +
           '<details class="kexo-fraud-evidence-details">' +
             '<summary class="text-muted">Show evidence snapshot</summary>' +
-            '<pre class="mt-2 mb-0 kexo-fraud-evidence-pre" style="white-space:pre-wrap">' + esc(evidenceJson || '{}') + '</pre>' +
+            '<pre class="mt-2 mb-0 kexo-fraud-evidence-pre kexo-pre-wrap">' + esc(evidenceJson || '{}') + '</pre>' +
           '</details>';
 
         if (mode === 'drawer') {
@@ -3405,7 +3405,7 @@
             ? (
                 '<details class="kexo-lookup-attribution-details">' +
                   '<summary class="text-muted">Show attribution</summary>' +
-                  '<pre class="mt-2 mb-0" style="white-space:pre-wrap">' + esc(safeJsonPre(attribution)) + '</pre>' +
+                  '<pre class="mt-2 mb-0 kexo-pre-wrap">' + esc(safeJsonPre(attribution)) + '</pre>' +
                 '</details>'
               )
             : '<div class="text-muted">No attribution row.</div>';
@@ -3437,7 +3437,7 @@
             { k: 'UTM', v: utm || '\u2014' },
           ];
           var body = sRows.map(function (r) {
-            return '<tr><th style="width:180px">' + esc(r.k) + '</th><td><code>' + esc(r.v) + '</code></td></tr>';
+            return '<tr><th class="kexo-kv-th">' + esc(r.k) + '</th><td><code>' + esc(r.v) + '</code></td></tr>';
           }).join('');
           html += section('Session', '<div class="table-responsive"><table class="table table-sm table-vcenter mb-0"><tbody>' + body + '</tbody></table></div>');
         }
@@ -3452,7 +3452,7 @@
               { k: 'Total', v: (p.order_total != null ? String(p.order_total) : '\u2014') + (p.order_currency ? (' ' + p.order_currency) : '') },
             ];
             var body = rows.map(function (r) {
-              return '<tr><th style="width:180px">' + esc(r.k) + '</th><td><code>' + esc(r.v) + '</code></td></tr>';
+              return '<tr><th class="kexo-kv-th">' + esc(r.k) + '</th><td><code>' + esc(r.v) + '</code></td></tr>';
             }).join('');
             return '<div class="mb-3"><div class="table-responsive"><table class="table table-sm table-vcenter mb-0"><tbody>' + body + '</tbody></table></div></div>';
           }).join('');
@@ -3460,7 +3460,7 @@
         }
         html += section('Fraud', renderFraudHtml(fraud, 'page'));
         if (attribution) {
-          html += section('Attribution', '<details><summary class="text-muted">Show attribution payload</summary><pre class="mt-2 mb-0" style="white-space:pre-wrap">' + esc(safeJsonPre(attribution)) + '</pre></details>');
+          html += section('Attribution', '<details><summary class="text-muted">Show attribution payload</summary><pre class="mt-2 mb-0 kexo-pre-wrap">' + esc(safeJsonPre(attribution)) + '</pre></details>');
         }
         return html;
       }
@@ -3469,6 +3469,13 @@
         if (!el) return;
         ensureCopyLinksBound();
         el.innerHTML = renderLookupHtml(payload, options || {}) || '';
+        try {
+          el.querySelectorAll('[data-kexo-width]').forEach(function (bar) {
+            if (!bar || !bar.style || !bar.getAttribute) return;
+            var w = String(bar.getAttribute('data-kexo-width') || '').trim();
+            if (w) bar.style.width = w;
+          });
+        } catch (_) {}
         try { animateFraudGauges(el); } catch (_) {}
       }
 
@@ -3527,24 +3534,31 @@
         } catch (_) {}
       }
 
-      function wireSidePanelSectionToggles() {
+      // Side panel section toggles: bind to the current panel (re-bind if panel DOM is replaced).
+      (function wireSidePanelSectionToggles(panelEl) {
         try {
-          if (panel.getAttribute('data-side-toggles-wired') === '1') return;
-          panel.setAttribute('data-side-toggles-wired', '1');
-          panel.addEventListener('click', function (e) {
+          if (!panelEl || !panelEl.addEventListener) return;
+          if (panelEl.getAttribute('data-side-toggles-wired') === '1') return;
+          panelEl.setAttribute('data-side-toggles-wired', '1');
+          var handler = function (e) {
             var t = e && e.target ? e.target : null;
             var title = t && t.closest ? t.closest('.side-panel-section-title') : null;
             if (!title) return;
-            var sec = title.closest('.side-panel-section');
-            if (!sec || sec.classList.contains('side-panel-summary')) return;
+            var sec = (title && title.closest) ? title.closest('.side-panel-section') : null;
+            if (!sec || !sec.classList || sec.classList.contains('side-panel-summary')) return;
             e.preventDefault();
             sec.classList.toggle('is-minimized');
             title.setAttribute('aria-expanded', sec.classList.contains('is-minimized') ? 'false' : 'true');
-          });
+          };
+          panelEl.addEventListener('click', handler);
+          try { panelEl._kexoSidePanelTogglesHandler = handler; } catch (_) {}
+          try {
+            if (typeof kexoRegisterCleanup === 'function') {
+              kexoRegisterCleanup(function () { try { panelEl.removeEventListener('click', handler); } catch (_) {} });
+            }
+          } catch (_) {}
         } catch (_) {}
-      }
-
-      wireSidePanelSectionToggles();
+      })(panel);
       minimizeSidePanelSections();
 
       var summaryEl = ensureSidePanelSummarySection();

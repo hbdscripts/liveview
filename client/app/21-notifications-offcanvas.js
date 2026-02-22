@@ -1,5 +1,6 @@
 /**
  * Notifications offcanvas: tabs (Unread/Read/Archived), type icons, detail with Archive + Delete; mark read on view only.
+ * Dedupe in-flight fetches to reduce duplicate requests.
  */
 (function () {
   var API = typeof window.API !== 'undefined' ? window.API : '';
@@ -35,12 +36,28 @@
   }
 
   function esc(s) {
+    try { if (typeof window.kexoEscapeHtml === 'function') return window.kexoEscapeHtml(s); } catch (_) {}
     if (s == null) return '';
     return String(s)
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;');
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function safeHref(raw) {
+    try { if (typeof window.kexoSafeHref === 'function') return window.kexoSafeHref(raw); } catch (_) {}
+    var s = raw != null ? String(raw).trim() : '';
+    if (!s) return '';
+    if (s[0] === '#') return s;
+    if (s[0] === '/' || s.startsWith('./') || s.startsWith('../') || s[0] === '?') return s;
+    try {
+      var u = new URL(s, window.location.origin);
+      var proto = (u && u.protocol) ? String(u.protocol).toLowerCase() : '';
+      if (proto === 'http:' || proto === 'https:' || proto === 'mailto:' || proto === 'tel:') return u.href;
+    } catch (_) {}
+    return '';
   }
 
   function formatTime(createdAt) {
@@ -61,16 +78,32 @@
     }
   }
 
+  var _notificationsListInFlight = null;
   function fetchList() {
-    return fetch(API + '/api/notifications', { credentials: 'same-origin', cache: 'no-store' })
-      .then(function (r) { return r.ok ? r.json() : null; })
-      .catch(function () { return null; });
+    if (_notificationsListInFlight) return _notificationsListInFlight;
+    _notificationsListInFlight = fetch(API + '/api/notifications', { credentials: 'same-origin', cache: 'no-store' })
+      .then(function (r) { return r && r.ok ? r.json() : null; })
+      .catch(function (err) {
+        try { if (typeof window.kexoCaptureError === 'function') window.kexoCaptureError(err, { context: 'notifications.fetchList' }); } catch (_) {}
+        return null;
+      })
+      .finally(function () { _notificationsListInFlight = null; });
+    return _notificationsListInFlight;
   }
 
+  var _notificationsDetailInFlight = new Map();
   function fetchDetail(id) {
-    return fetch(API + '/api/notifications/' + encodeURIComponent(String(id)), { credentials: 'same-origin', cache: 'no-store' })
-      .then(function (r) { return r.ok ? r.json() : null; })
-      .catch(function () { return null; });
+    var key = String(id);
+    if (_notificationsDetailInFlight.has(key)) return _notificationsDetailInFlight.get(key);
+    var p = fetch(API + '/api/notifications/' + encodeURIComponent(String(id)), { credentials: 'same-origin', cache: 'no-store' })
+      .then(function (r) { return r && r.ok ? r.json() : null; })
+      .catch(function (err) {
+        try { if (typeof window.kexoCaptureError === 'function') window.kexoCaptureError(err, { context: 'notifications.fetchDetail', id: key }); } catch (_) {}
+        return null;
+      })
+      .finally(function () { try { _notificationsDetailInFlight.delete(key); } catch (_) {} });
+    _notificationsDetailInFlight.set(key, p);
+    return p;
   }
 
   function patchNotification(id, body) {
@@ -220,7 +253,8 @@
       bodyHtml += '<div class="flex-grow-1 min-w-0"><strong>' + esc(n.title) + '</strong></div></div>';
       bodyHtml += '<div class="small text-muted mb-2">' + esc(formatTime(n.created_at)) + '</div>';
       if (n.body) bodyHtml += '<div class="notification-body">' + esc(n.body).replace(/\n/g, '<br>') + '</div>';
-      if (n.link) bodyHtml += '<p class="mt-3"><a href="' + esc(n.link) + '" class="btn">View</a></p>';
+      var href = safeHref(n.link);
+      if (href) bodyHtml += '<p class="mt-3"><a href="' + esc(href) + '" class="btn">View</a></p>';
       if (detailBodyEl) detailBodyEl.innerHTML = bodyHtml;
 
       if (detailActionsEl) {

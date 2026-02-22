@@ -1,3 +1,4 @@
+        // Throttle resize-driven table refresh to reduce layout churn.
         if (!tableEl || !tableEl.querySelector) return;
         var headerRow = tableEl.querySelector('.grid-row--header');
         var headerCells = headerRow ? headerRow.querySelectorAll('.grid-cell') : [];
@@ -134,7 +135,6 @@
         document.querySelectorAll(WRAP_SELECTOR).forEach(function(wrap) { bind(wrap); });
       }
 
-      var resizeTid;
       function refreshAll() {
         document.querySelectorAll(WRAP_SELECTOR).forEach(function(wrap) {
           if (wrap.getAttribute('data-drag-scroll-bound') !== '1') return;
@@ -142,10 +142,20 @@
           if (!shouldSkipStickyScrollClass(wrap)) updateStickyScrollClass(wrap);
         });
       }
-      window.addEventListener('resize', function() {
-        clearTimeout(resizeTid);
-        resizeTid = setTimeout(refreshAll, 80);
-      });
+      try {
+        var onResize = (typeof kexoDebounce === 'function')
+          ? kexoDebounce(function () { refreshAll(); }, 120)
+          : function () { refreshAll(); };
+        window.addEventListener('resize', onResize, { passive: true });
+        try {
+          if (typeof kexoRegisterCleanup === 'function') {
+            kexoRegisterCleanup(function () {
+              try { window.removeEventListener('resize', onResize); } catch (_) {}
+              try { if (onResize && onResize.cancel) onResize.cancel(); } catch (_) {}
+            });
+          }
+        } catch (_) {}
+      } catch (_) {}
 
       if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', run);
@@ -412,19 +422,19 @@
       function initGridDocObserver() {
         if (gridDocObserver) return;
         try {
+          var schedule = (typeof kexoDebounce === 'function')
+            ? kexoDebounce(function () { run(document); }, 120)
+            : function () { run(document); };
           gridDocObserver = new MutationObserver(function(muts) {
-            muts.forEach(function(m) {
-              (m.addedNodes || []).forEach(function(n) {
-                if (!(n instanceof Element)) return;
-                run(n);
-              });
-            });
+            try { schedule(); } catch (_) {}
           });
-          gridDocObserver.observe(document.documentElement, { childList: true, subtree: true });
+          var root = document.querySelector('.page-body') || document.body || document.documentElement;
+          gridDocObserver.observe(root, { childList: true, subtree: true });
           if (typeof registerCleanup === 'function') {
             registerCleanup(function() {
               try { if (gridDocObserver && typeof gridDocObserver.disconnect === 'function') gridDocObserver.disconnect(); } catch (_) {}
               gridDocObserver = null;
+              try { if (schedule && schedule.cancel) schedule.cancel(); } catch (_) {}
             });
           }
         } catch (_) {}

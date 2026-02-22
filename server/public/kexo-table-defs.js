@@ -18,6 +18,7 @@
     'sessions-table': {
       wrapClass: 'table-scroll-wrap',
       tableClass: 'sessions-table',
+      virtualizeRows: true,
       ariaLabel: 'Sessions',
       bodyId: 'table-body',
       columns: [
@@ -66,6 +67,7 @@
     'type-necklaces-table': {
       wrapClass: 'country-table-wrap',
       tableClass: 'by-country-table type-products-table',
+      virtualizeRows: true,
       ariaLabel: 'Necklaces',
       bodyId: 'type-necklaces-body',
       columns: PRODUCT_COLS
@@ -73,6 +75,7 @@
     'type-bracelets-table': {
       wrapClass: 'country-table-wrap',
       tableClass: 'by-country-table type-products-table',
+      virtualizeRows: true,
       ariaLabel: 'Bracelets',
       bodyId: 'type-bracelets-body',
       columns: PRODUCT_COLS
@@ -80,6 +83,7 @@
     'type-earrings-table': {
       wrapClass: 'country-table-wrap',
       tableClass: 'by-country-table type-products-table',
+      virtualizeRows: true,
       ariaLabel: 'Earrings',
       bodyId: 'type-earrings-body',
       columns: PRODUCT_COLS
@@ -87,6 +91,7 @@
     'type-sets-table': {
       wrapClass: 'country-table-wrap',
       tableClass: 'by-country-table type-products-table',
+      virtualizeRows: true,
       ariaLabel: 'Sets',
       bodyId: 'type-sets-body',
       columns: PRODUCT_COLS
@@ -94,6 +99,7 @@
     'type-charms-table': {
       wrapClass: 'country-table-wrap',
       tableClass: 'by-country-table type-products-table',
+      virtualizeRows: true,
       ariaLabel: 'Charms',
       bodyId: 'type-charms-body',
       columns: PRODUCT_COLS
@@ -101,6 +107,7 @@
     'type-extras-table': {
       wrapClass: 'country-table-wrap',
       tableClass: 'by-country-table type-products-table',
+      virtualizeRows: true,
       ariaLabel: 'Extras',
       bodyId: 'type-extras-body',
       columns: PRODUCT_COLS

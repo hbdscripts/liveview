@@ -1,8 +1,11 @@
+        // Stable GETs: use short TTL + error reporting to reduce duplicate fetches.
         var avatarEl = document.getElementById('user-avatar');
         var emailEl = document.getElementById('user-email');
         // We still fetch /api/me even if avatar elements are missing, so we can gate master-only UI.
-        fetch('/api/me', { credentials: 'same-origin' })
-          .then(function(r) { return r.json(); })
+        (typeof kexoFetchJsonStable === 'function'
+          ? kexoFetchJsonStable('/api/me', { credentials: 'same-origin' }, 60000)
+          : fetch('/api/me', { credentials: 'same-origin', cache: 'default' }).then(function (r) { return r.json(); })
+        )
           .then(function(d) {
             var isMaster = !!(d && d.isMaster);
             try { window.__kexoMe = d || null; } catch (_) {}
@@ -13,7 +16,8 @@
             if (avatarEl && d.initial) avatarEl.textContent = d.initial;
             if (emailEl) emailEl.textContent = d.email;
           })
-          .catch(function() {
+          .catch(function(err) {
+            try { if (typeof window.kexoCaptureError === 'function') window.kexoCaptureError(err, { context: 'me.fetch' }); } catch (_) {}
             try { window.__kexoMe = null; } catch (_) {}
             try { window.__kexoIsMasterUser = false; } catch (_) {}
             try { window.dispatchEvent(new CustomEvent('kexo:me-loaded', { detail: { isMaster: false, email: '' } })); } catch (_) {}
@@ -27,14 +31,18 @@
       try {
         var el = document.getElementById('kexo-online-website');
         if (!el) return;
-        fetch('/api/store-base-url', { credentials: 'same-origin' })
-          .then(function(r) { return r.json(); })
+        (typeof kexoFetchJsonStable === 'function'
+          ? kexoFetchJsonStable('/api/store-base-url', { credentials: 'same-origin' }, 5 * 60 * 1000)
+          : fetch('/api/store-base-url', { credentials: 'same-origin', cache: 'default' }).then(function (r) { return r.json(); })
+        )
           .then(function(d) {
             var domain = (d && d.shopDisplayDomain) ? String(d.shopDisplayDomain).trim() : '';
             el.textContent = domain || '\u2014';
             el.title = domain || '';
           })
-          .catch(function() {});
+          .catch(function(err) {
+            try { if (typeof window.kexoCaptureError === 'function') window.kexoCaptureError(err, { context: 'storeBaseUrl.fetch' }); } catch (_) {}
+          });
       } catch (_) {}
     })();
 
@@ -98,8 +106,10 @@
           var shop = (typeof getShopParam === 'function' ? getShopParam() : null) || (typeof shopForSalesFallback === 'string' && shopForSalesFallback ? shopForSalesFallback : null);
           if (shop) url += (url.indexOf('?') >= 0 ? '&' : '?') + 'shop=' + encodeURIComponent(shop);
         } catch (_) {}
-        fetch(url, { credentials: 'same-origin', cache: 'no-store' })
-          .then(function(r) { return r.ok ? r.json() : null; })
+        (typeof kexoFetchOkJsonStable === 'function'
+          ? kexoFetchOkJsonStable(url, { credentials: 'same-origin' }, 15000)
+          : fetch(url, { credentials: 'same-origin', cache: 'default' }).then(function (r) { return r.ok ? r.json() : null; })
+        )
           .then(function(c) {
             if (myToken !== token) return;
             if (!c) return;
@@ -126,7 +136,9 @@
             tagsEl.innerHTML = html;
             wrap.style.display = 'block';
           })
-          .catch(function() {});
+          .catch(function(err) {
+            try { if (typeof window.kexoCaptureError === 'function') window.kexoCaptureError(err, { context: 'configStatus.fetch', page: PAGE || '' }); } catch (_) {}
+          });
       }
 
       function applyFromViewer(viewer) {

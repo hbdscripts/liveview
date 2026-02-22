@@ -1,8 +1,8 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: c8c5321992c399ca
+// checksum: 57b38a1608280556
 
 (function () {
-  // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
+  // Shared formatters + scheduling/fetch helpers — reduces UI jank + duplicate requests.
   function formatMoney(amount, currencyCode) {
     if (amount == null || typeof amount !== 'number') return '';
     var code = (currencyCode || 'GBP').toUpperCase();
@@ -52,6 +52,193 @@
   function fetchJson(url, opts) {
     var options = Object.assign({ credentials: 'same-origin', cache: 'no-store' }, opts || {});
     return fetch(url, options).then(function(r) { return r.json(); });
+  }
+
+  function kexoEscapeHtml(s) {
+    if (s == null) return '';
+    return String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function kexoSafeHref(raw) {
+    var s = raw != null ? String(raw).trim() : '';
+    if (!s) return '';
+    if (s[0] === '#') return s;
+    if (s[0] === '/' || s.startsWith('./') || s.startsWith('../') || s[0] === '?') return s;
+    try {
+      var u = new URL(s, window.location.origin);
+      var proto = (u && u.protocol) ? String(u.protocol).toLowerCase() : '';
+      if (proto === 'http:' || proto === 'https:' || proto === 'mailto:' || proto === 'tel:') return u.href;
+    } catch (_) {}
+    return '';
+  }
+
+  function kexoDebounce(fn, waitMs) {
+    var t = null;
+    var lastArgs = null;
+    var lastThis = null;
+    var wait = Math.max(0, Number(waitMs) || 0);
+    function run() {
+      t = null;
+      var args = lastArgs; lastArgs = null;
+      var ctx = lastThis; lastThis = null;
+      try { fn.apply(ctx, args || []); } catch (e) { throw e; }
+    }
+    function debounced() {
+      lastArgs = arguments;
+      lastThis = this;
+      if (t) { try { clearTimeout(t); } catch (_) {} }
+      t = setTimeout(run, wait);
+    }
+    debounced.cancel = function() {
+      if (t) { try { clearTimeout(t); } catch (_) {} }
+      t = null;
+      lastArgs = null;
+      lastThis = null;
+    };
+    return debounced;
+  }
+
+  function kexoThrottle(fn, waitMs) {
+    var wait = Math.max(0, Number(waitMs) || 0);
+    var last = 0;
+    var t = null;
+    var lastArgs = null;
+    var lastThis = null;
+    function invoke() {
+      t = null;
+      last = Date.now();
+      var args = lastArgs; lastArgs = null;
+      var ctx = lastThis; lastThis = null;
+      try { fn.apply(ctx, args || []); } catch (e) { throw e; }
+    }
+    function throttled() {
+      var now = Date.now();
+      lastArgs = arguments;
+      lastThis = this;
+      var remaining = wait - (now - last);
+      if (remaining <= 0 || remaining > wait) {
+        if (t) { try { clearTimeout(t); } catch (_) {} t = null; }
+        invoke();
+        return;
+      }
+      if (!t) t = setTimeout(invoke, remaining);
+    }
+    throttled.cancel = function() {
+      if (t) { try { clearTimeout(t); } catch (_) {} }
+      t = null;
+      lastArgs = null;
+      lastThis = null;
+    };
+    return throttled;
+  }
+
+  function kexoRafBatch(fn) {
+    var rafId = 0;
+    function run() {
+      rafId = 0;
+      try { fn(); } catch (e) { throw e; }
+    }
+    function schedule() {
+      if (rafId) return;
+      var raf = (typeof requestAnimationFrame === 'function') ? requestAnimationFrame : function(cb) { return setTimeout(cb, 16); };
+      rafId = raf(run);
+    }
+    schedule.cancel = function() {
+      if (!rafId) return;
+      try {
+        if (typeof cancelAnimationFrame === 'function') cancelAnimationFrame(rafId);
+        else clearTimeout(rafId);
+      } catch (_) {}
+      rafId = 0;
+    };
+    return schedule;
+  }
+
+  // registerCleanup isn't always available in standalone pages; provide a safe wrapper.
+  var _kexoFallbackCleanupWired = false;
+  var _kexoFallbackCleanupFns = [];
+  function kexoRegisterCleanup(fn) {
+    try {
+      if (typeof registerCleanup === 'function') return registerCleanup(fn);
+    } catch (_) {}
+    if (typeof fn === 'function') _kexoFallbackCleanupFns.push(fn);
+    if (_kexoFallbackCleanupWired) return;
+    _kexoFallbackCleanupWired = true;
+    function run() {
+      _kexoFallbackCleanupFns.forEach(function (f) { try { f(); } catch (_) {} });
+    }
+    try { window.addEventListener('beforeunload', run); } catch (_) {}
+    try { window.addEventListener('pagehide', run); } catch (_) {}
+  }
+
+  var _kexoJsonStableCache = new Map();
+  function kexoFetchJsonStable(url, opts, ttlMs) {
+    var ttl = Math.max(0, Number(ttlMs) || 0);
+    var method = (opts && opts.method) ? String(opts.method).toUpperCase() : 'GET';
+    if (method !== 'GET' || !ttl) return fetchJson(url, opts);
+    var key = method + ' ' + String(url);
+    var now = Date.now();
+    var cur = _kexoJsonStableCache.get(key) || null;
+    if (cur && cur.value !== undefined && cur.expiresAt && now < cur.expiresAt) return Promise.resolve(cur.value);
+    if (cur && cur.inFlight) return cur.inFlight;
+    var p = fetchJson(url, Object.assign({}, opts || {}, { cache: 'default' }))
+      .then(function (json) {
+        _kexoJsonStableCache.set(key, { value: json, expiresAt: now + ttl, inFlight: null });
+        return json;
+      })
+      .catch(function (err) {
+        var existing = _kexoJsonStableCache.get(key) || null;
+        if (existing && existing.inFlight) _kexoJsonStableCache.set(key, { value: existing.value, expiresAt: existing.expiresAt, inFlight: null });
+        throw err;
+      });
+    _kexoJsonStableCache.set(key, { value: cur ? cur.value : undefined, expiresAt: cur ? cur.expiresAt : 0, inFlight: p });
+    return p;
+  }
+
+  var _kexoJsonInFlight = new Map();
+  function kexoFetchJsonDedup(url, opts) {
+    var method = (opts && opts.method) ? String(opts.method).toUpperCase() : 'GET';
+    var key = method + ' ' + String(url);
+    var existing = _kexoJsonInFlight.get(key) || null;
+    if (existing) return existing;
+    var p = fetchJson(url, opts)
+      .finally(function () { try { _kexoJsonInFlight.delete(key); } catch (_) {} });
+    _kexoJsonInFlight.set(key, p);
+    return p;
+  }
+
+  function kexoFetchOkJson(url, opts) {
+    var options = Object.assign({ credentials: 'same-origin', cache: 'no-store' }, opts || {});
+    return fetch(url, options).then(function (r) { return (r && r.ok) ? r.json() : null; });
+  }
+
+  var _kexoOkJsonStableCache = new Map();
+  function kexoFetchOkJsonStable(url, opts, ttlMs) {
+    var ttl = Math.max(0, Number(ttlMs) || 0);
+    var method = (opts && opts.method) ? String(opts.method).toUpperCase() : 'GET';
+    if (method !== 'GET' || !ttl) return kexoFetchOkJson(url, opts);
+    var key = method + ' ' + String(url);
+    var now = Date.now();
+    var cur = _kexoOkJsonStableCache.get(key) || null;
+    if (cur && cur.value !== undefined && cur.expiresAt && now < cur.expiresAt) return Promise.resolve(cur.value);
+    if (cur && cur.inFlight) return cur.inFlight;
+    var p = kexoFetchOkJson(url, Object.assign({}, opts || {}, { cache: 'default' }))
+      .then(function (json) {
+        _kexoOkJsonStableCache.set(key, { value: json, expiresAt: now + ttl, inFlight: null });
+        return json;
+      })
+      .catch(function (err) {
+        var existing = _kexoOkJsonStableCache.get(key) || null;
+        if (existing && existing.inFlight) _kexoOkJsonStableCache.set(key, { value: existing.value, expiresAt: existing.expiresAt, inFlight: null });
+        throw err;
+      });
+    _kexoOkJsonStableCache.set(key, { value: cur ? cur.value : undefined, expiresAt: cur ? cur.expiresAt : 0, inFlight: p });
+    return p;
   }
 
   function normalizePaymentProviderKey(v) {
@@ -466,8 +653,8 @@ const API = '';
 
       var enabled = !!(viewer && viewer.preview && viewer.preview.enabled);
       if (!enabled) {
-        btn.style.display = 'none';
-        div.style.display = 'none';
+        try { btn.classList.add('d-none'); } catch (_) {}
+        try { div.classList.add('d-none'); } catch (_) {}
         return;
       }
       var label = previewTierLabel(viewer.preview.tier) || 'Preview';
@@ -475,8 +662,8 @@ const API = '';
       var span = btn.querySelector('[data-kexo-preview-exit-label]');
       if (span) span.textContent = text;
       else btn.textContent = text;
-      btn.style.display = '';
-      div.style.display = '';
+      try { btn.classList.remove('d-none'); } catch (_) {}
+      try { div.classList.remove('d-none'); } catch (_) {}
     }
     var _effectiveViewerCache = null;
     function applyEffectiveViewer() {
@@ -539,6 +726,7 @@ const API = '';
     } catch (_) {}
 
     (function initKexoTableMounts() {
+      // Debounce hot resize work to reduce layout jank.
       function run() {
         var mounts = document.querySelectorAll('[data-kexo-table]');
         if (!mounts.length) return;
@@ -1068,7 +1256,18 @@ const API = '';
         _ensureProgress();
       }
       try {
-        window.addEventListener('resize', function() { _syncStripWidth(); }, { passive: true });
+        var _kexoTablesProgressOnResize = (typeof kexoDebounce === 'function')
+          ? kexoDebounce(function() { _syncStripWidth(); }, 120)
+          : function() { _syncStripWidth(); };
+        window.addEventListener('resize', _kexoTablesProgressOnResize, { passive: true });
+        try {
+          if (typeof kexoRegisterCleanup === 'function') {
+            kexoRegisterCleanup(function () {
+              try { window.removeEventListener('resize', _kexoTablesProgressOnResize); } catch (_) {}
+              try { if (_kexoTablesProgressOnResize && _kexoTablesProgressOnResize.cancel) _kexoTablesProgressOnResize.cancel(); } catch (_) {}
+            });
+          }
+        } catch (_) {}
       } catch (_) {}
     })();
     const LIVE_REFRESH_MS = 60000;
@@ -1327,6 +1526,7 @@ const API = '';
     // Sync data-label from header to body cells for mobile card layout
     (function initGridTableMobileLabels() {
       function syncLabels(tableEl) {
+        // Throttle resize-driven table refresh to reduce layout churn.
         if (!tableEl || !tableEl.querySelector) return;
         var headerRow = tableEl.querySelector('.grid-row--header');
         var headerCells = headerRow ? headerRow.querySelectorAll('.grid-cell') : [];
@@ -1463,7 +1663,6 @@ const API = '';
         document.querySelectorAll(WRAP_SELECTOR).forEach(function(wrap) { bind(wrap); });
       }
 
-      var resizeTid;
       function refreshAll() {
         document.querySelectorAll(WRAP_SELECTOR).forEach(function(wrap) {
           if (wrap.getAttribute('data-drag-scroll-bound') !== '1') return;
@@ -1471,10 +1670,20 @@ const API = '';
           if (!shouldSkipStickyScrollClass(wrap)) updateStickyScrollClass(wrap);
         });
       }
-      window.addEventListener('resize', function() {
-        clearTimeout(resizeTid);
-        resizeTid = setTimeout(refreshAll, 80);
-      });
+      try {
+        var onResize = (typeof kexoDebounce === 'function')
+          ? kexoDebounce(function () { refreshAll(); }, 120)
+          : function () { refreshAll(); };
+        window.addEventListener('resize', onResize, { passive: true });
+        try {
+          if (typeof kexoRegisterCleanup === 'function') {
+            kexoRegisterCleanup(function () {
+              try { window.removeEventListener('resize', onResize); } catch (_) {}
+              try { if (onResize && onResize.cancel) onResize.cancel(); } catch (_) {}
+            });
+          }
+        } catch (_) {}
+      } catch (_) {}
 
       if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', run);
@@ -1741,19 +1950,19 @@ const API = '';
       function initGridDocObserver() {
         if (gridDocObserver) return;
         try {
+          var schedule = (typeof kexoDebounce === 'function')
+            ? kexoDebounce(function () { run(document); }, 120)
+            : function () { run(document); };
           gridDocObserver = new MutationObserver(function(muts) {
-            muts.forEach(function(m) {
-              (m.addedNodes || []).forEach(function(n) {
-                if (!(n instanceof Element)) return;
-                run(n);
-              });
-            });
+            try { schedule(); } catch (_) {}
           });
-          gridDocObserver.observe(document.documentElement, { childList: true, subtree: true });
+          var root = document.querySelector('.page-body') || document.body || document.documentElement;
+          gridDocObserver.observe(root, { childList: true, subtree: true });
           if (typeof registerCleanup === 'function') {
             registerCleanup(function() {
               try { if (gridDocObserver && typeof gridDocObserver.disconnect === 'function') gridDocObserver.disconnect(); } catch (_) {}
               gridDocObserver = null;
+              try { if (schedule && schedule.cancel) schedule.cancel(); } catch (_) {}
             });
           }
         } catch (_) {}
@@ -1864,20 +2073,28 @@ const API = '';
         cards.forEach(function(card) { ensureRowsControl(card); });
       }
 
+      // Reduce MutationObserver work: debounce and scope to page body.
       if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', function() { run(document); });
       } else {
         run(document);
       }
+      var schedule = (typeof kexoDebounce === 'function')
+        ? kexoDebounce(function () { run(document); }, 120)
+        : function () { run(document); };
       var observer = new MutationObserver(function(muts) {
-        muts.forEach(function(m) {
-          m.addedNodes.forEach(function(n) {
-            if (!(n instanceof Element)) return;
-            run(n);
-          });
-        });
+        try { schedule(); } catch (_) {}
       });
-      observer.observe(document.documentElement, { childList: true, subtree: true });
+      var root = document.querySelector('.page-body') || document.body || document.documentElement;
+      observer.observe(root, { childList: true, subtree: true });
+      try {
+        if (typeof registerCleanup === 'function') {
+          registerCleanup(function () {
+            try { observer.disconnect(); } catch (_) {}
+            try { if (schedule && schedule.cancel) schedule.cancel(); } catch (_) {}
+          });
+        }
+      } catch (_) {}
       window.addEventListener('kexo:table-rows-changed', function() {
         run(document);
       });
@@ -2250,6 +2467,9 @@ const API = '';
         if (docMo) return;
         if (typeof MutationObserver === 'undefined') return;
         try {
+          var schedule = (typeof kexoDebounce === 'function')
+            ? kexoDebounce(function () { run(); }, 120)
+            : function () { run(); };
           docMo = new MutationObserver(function(muts) {
             muts.forEach(function(m) {
               (m.addedNodes || []).forEach(function(n) {
@@ -2262,12 +2482,15 @@ const API = '';
                 } catch (_) {}
               });
             });
+            try { schedule(); } catch (_) {}
           });
-          docMo.observe(document.documentElement, { childList: true, subtree: true });
+          var root = document.querySelector('.page-body') || document.body || document.documentElement;
+          docMo.observe(root, { childList: true, subtree: true });
           if (typeof registerCleanup === 'function') {
             registerCleanup(function() {
               try { if (docMo && typeof docMo.disconnect === 'function') docMo.disconnect(); } catch (_) {}
               docMo = null;
+              try { if (schedule && schedule.cancel) schedule.cancel(); } catch (_) {}
             });
           }
         } catch (_) {}
@@ -5642,6 +5865,7 @@ const API = '';
 
     (function initProductsLeaderboardResizeWatcher() {
       let raf = null;
+      // Throttle hot resize handlers to reduce repeated layout work.
       function schedule() {
         if (activeMainTab !== 'products') return;
         if (!leaderboardCache && !leaderboardLoading) return;
@@ -5656,7 +5880,18 @@ const API = '';
           renderProductsLeaderboard(leaderboardCache);
         });
       }
-      try { window.addEventListener('resize', schedule); } catch (_) {}
+      try {
+        var onResize = (typeof kexoThrottle === 'function') ? kexoThrottle(schedule, 120) : schedule;
+        window.addEventListener('resize', onResize, { passive: true });
+        try {
+          if (typeof kexoRegisterCleanup === 'function') {
+            kexoRegisterCleanup(function () {
+              try { window.removeEventListener('resize', onResize); } catch (_) {}
+              try { if (onResize && onResize.cancel) onResize.cancel(); } catch (_) {}
+            });
+          }
+        } catch (_) {}
+      } catch (_) {}
     })();
 
     function fetchFinishes(options = {}) {
@@ -5911,7 +6146,7 @@ const API = '';
         if (tries >= 25) {
           el.__kexoApexWaitTries = 0;
           captureChartMessage('Chart library failed to load.', 'productsChartLibraryLoad', { chartKey: 'products-chart', tries: tries }, 'error');
-          el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:280px;color:var(--tblr-secondary);text-align:center;padding:0 18px;font-size:.875rem">Chart library failed to load.</div>';
+            el.innerHTML = '<div class="kexo-chart-empty kexo-chart-empty--h280">Chart library failed to load.</div>';
           return;
         }
         setTimeout(function() { renderProductsChart(data); }, 200);
@@ -5934,7 +6169,7 @@ const API = '';
       var d = productsChartData;
 
       if (!d || !Array.isArray(d.bestSellers) || d.bestSellers.length === 0) {
-        el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:280px;color:var(--tblr-secondary);font-size:.875rem">No product data available</div>';
+        el.innerHTML = '<div class="kexo-chart-empty kexo-chart-empty--h280">No product data available</div>';
         return;
       }
 
@@ -5943,7 +6178,7 @@ const API = '';
       }).slice(0, 10);
 
       if (!products.length) {
-        el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:280px;color:var(--tblr-secondary);font-size:.875rem">No product data available</div>';
+        el.innerHTML = '<div class="kexo-chart-empty kexo-chart-empty--h280">No product data available</div>';
         return;
       }
 
@@ -6000,13 +6235,13 @@ const API = '';
                 var row = idx >= 0 && idx < chartRows.length ? chartRows[idx] : null;
                 if (!row) return '';
                 var thumb = row.thumb
-                  ? ('<img src="' + escapeHtml(row.thumb) + '" alt="" style="width:28px;height:28px;border-radius:6px;object-fit:cover;border:1px solid rgba(15,23,42,.08);margin-right:8px;">')
+                  ? ('<img src="' + escapeHtml(row.thumb) + '" alt="" class="kexo-apex-tooltip-thumb">')
                   : '';
-                return '<div style="padding:8px 10px;min-width:170px;">' +
-                  '<div style="display:flex;align-items:center;margin-bottom:4px;">' + thumb +
-                    '<div style="font-weight:600;font-size:12px;line-height:1.2;">' + escapeHtml(row.title) + '</div>' +
+                return '<div class="kexo-apex-tooltip-card">' +
+                  '<div class="kexo-apex-tooltip-head">' + thumb +
+                    '<div class="kexo-apex-tooltip-title">' + escapeHtml(row.title) + '</div>' +
                   '</div>' +
-                  '<div style="font-size:12px;color:#475569;">Revenue: <strong style="color:#0f172a;">' + escapeHtml(formatRevenue(row.revenue) || '\u2014') + '</strong></div>' +
+                  '<div class="kexo-apex-tooltip-meta">Revenue: <strong class="kexo-apex-tooltip-strong">' + escapeHtml(formatRevenue(row.revenue) || '\u2014') + '</strong></div>' +
                 '</div>';
               }
             },
@@ -6027,7 +6262,7 @@ const API = '';
           }
         } catch (err) {
           captureChartError(err, 'productsChartRender', { chartKey: 'products-chart', mode: 'pie' });
-          el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:280px;color:#ef4444;font-size:.875rem">Chart rendering failed</div>';
+          el.innerHTML = '<div class="kexo-chart-empty kexo-chart-empty--h280 kexo-chart-empty--error">Chart rendering failed</div>';
         }
         return;
       }
@@ -6091,13 +6326,13 @@ const API = '';
               var row = idx >= 0 && idx < chartRows.length ? chartRows[idx] : null;
               if (!row) return '';
               var thumb = row.thumb
-                ? ('<img src="' + escapeHtml(row.thumb) + '" alt="" style="width:28px;height:28px;border-radius:6px;object-fit:cover;border:1px solid rgba(15,23,42,.08);margin-right:8px;">')
+                ? ('<img src="' + escapeHtml(row.thumb) + '" alt="" class="kexo-apex-tooltip-thumb">')
                 : '';
-              return '<div style="padding:8px 10px;min-width:170px;">' +
-                '<div style="display:flex;align-items:center;margin-bottom:4px;">' + thumb +
-                  '<div style="font-weight:600;font-size:12px;line-height:1.2;">' + escapeHtml(row.title) + '</div>' +
+              return '<div class="kexo-apex-tooltip-card">' +
+                '<div class="kexo-apex-tooltip-head">' + thumb +
+                  '<div class="kexo-apex-tooltip-title">' + escapeHtml(row.title) + '</div>' +
                 '</div>' +
-                '<div style="font-size:12px;color:#475569;">Revenue: <strong style="color:#0f172a;">' + escapeHtml(formatRevenue(row.revenue) || '\u2014') + '</strong></div>' +
+                '<div class="kexo-apex-tooltip-meta">Revenue: <strong class="kexo-apex-tooltip-strong">' + escapeHtml(formatRevenue(row.revenue) || '\u2014') + '</strong></div>' +
               '</div>';
             }
           },
@@ -6122,7 +6357,7 @@ const API = '';
         }
       } catch (err) {
         captureChartError(err, 'productsChartRender', { chartKey: 'products-chart', mode: chartType });
-        el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:280px;color:#ef4444;font-size:.875rem">Chart rendering failed</div>';
+        el.innerHTML = '<div class="kexo-chart-empty kexo-chart-empty--h280 kexo-chart-empty--error">Chart rendering failed</div>';
       }
     }
 
@@ -7316,7 +7551,7 @@ const API = '';
         legend.setAttribute('class', 'kexo-countries-map-legend');
         legend.innerHTML =
           '<div class="kexo-live-activity-legend-title">' + escapeHtml(title) + '</div>' +
-          (subtitle ? ('<div class="text-muted small" style="margin-top:-2px;margin-bottom:4px">' + escapeHtml(subtitle) + '</div>') : '') +
+          (subtitle ? ('<div class="text-muted small kexo-subtitle-tight">' + escapeHtml(subtitle) + '</div>') : '') +
           '<div class="text-muted small">Pinned: ' + escapeHtml(String(top.length)) + '</div>';
         try { el.appendChild(legend); } catch (_) {}
       } catch (_) {}
@@ -7326,13 +7561,14 @@ const API = '';
       if (!el) return;
       var message = String(text == null ? '' : text).trim() || 'Unavailable';
       var isError = !!(opts && opts.error);
-      var color = isError ? '#ef4444' : 'var(--tblr-secondary)';
       var h = (opts && Number.isFinite(opts.height)) ? Math.max(80, opts.height) : 320;
       if (isError) captureChartMessage(message, 'countriesMapState', { chartKey: 'countries-map-chart' }, 'error');
-      el.innerHTML =
-        '<div style="display:flex;align-items:center;justify-content:center;height:' + h + 'px;color:' + color + ';text-align:center;padding:0 18px;">' +
-          escapeHtml(message) +
-        '</div>';
+      var cls = 'kexo-chart-empty' + (isError ? ' kexo-chart-empty--error' : '');
+      el.innerHTML = '<div class="' + cls + '" data-kexo-chart-empty="1">' + escapeHtml(message) + '</div>';
+      try {
+        var child = el.querySelector('[data-kexo-chart-empty="1"]');
+        if (child && child.style) child.style.height = String(h) + 'px';
+      } catch (_) {}
     }
 
     var WORLD_MAP_ISO2 = ['AE','AF','AG','AL','AM','AO','AR','AT','AU','AZ','BA','BB','BD','BE','BF','BG','BI','BJ','BN','BO','BR','BS','BT','BW','BY','BZ','CA','CD','CF','CG','CH','CI','CL','CM','CN','CO','CR','CU','CV','CY','CZ','DE','DJ','DK','DM','DO','DZ','EC','EE','EG','ER','ES','ET','FI','FJ','FK','FR','GA','GB','GD','GE','GF','GH','GL','GM','GN','GQ','GR','GT','GW','GY','HN','HR','HT','HU','ID','IE','IL','IN','IQ','IR','IS','IT','JM','JO','JP','KE','KG','KH','KM','KN','KP','KR','KW','KZ','LA','LB','LC','LK','LR','LS','LT','LV','LY','MA','MD','MG','MK','ML','MM','MN','MR','MT','MU','MV','MW','MX','MY','MZ','NA','NC','NE','NG','NI','NL','NO','NP','NZ','OM','PA','PE','PF','PG','PH','PK','PL','PT','PY','QA','RE','RO','RS','RU','SA','SB','SC','SD','SE','SI','SK','SL','SN','SO','SR','ST','SV','SY','SZ','TD','TG','TH','TJ','TL','TM','TN','TR','TT','TW','TZ','UA','UG','US','UY','UZ','VE','VN','VU','YE','ZA','ZM','ZW'];
@@ -7781,7 +8017,7 @@ const API = '';
             if (!rev && !ord) {
               setVectorMapTooltipContent(
                 tooltip,
-                '<div style="min-width:140px;font-weight:600">' + escapeHtml(name) + '</div>',
+                '<div class="kexo-map-tooltip-title kexo-map-tooltip-title--min140">' + escapeHtml(name) + '</div>',
                 name
               );
               return;
@@ -7790,10 +8026,10 @@ const API = '';
             const ordHtml = ord ? (formatSessions(ord) + ' orders') : '\u2014';
             setVectorMapTooltipContent(
               tooltip,
-              '<div style="min-width:180px">' +
-                '<div style="font-weight:600;margin-bottom:2px">' + escapeHtml(name) + '</div>' +
-                '<div style="color:' + escapeHtml(muted) + ';font-size:.8125rem">Revenue: <span style="color:inherit">' + escapeHtml(revHtml) + '</span></div>' +
-                '<div style="color:' + escapeHtml(muted) + ';font-size:.8125rem">Orders: <span style="color:inherit">' + escapeHtml(ordHtml) + '</span></div>' +
+              '<div class="kexo-map-tooltip-card">' +
+                '<div class="kexo-map-tooltip-name">' + escapeHtml(name) + '</div>' +
+                '<div class="kexo-map-tooltip-meta text-secondary">Revenue: <span class="kexo-map-tooltip-value">' + escapeHtml(revHtml) + '</span></div>' +
+                '<div class="kexo-map-tooltip-meta text-secondary">Orders: <span class="kexo-map-tooltip-value">' + escapeHtml(ordHtml) + '</span></div>' +
               '</div>',
               name + ' | Revenue: ' + revHtml + ' | Orders: ' + ordHtml
             );
@@ -10330,9 +10566,18 @@ const API = '';
     try {
       applyHideChartsOnMobileClass();
       try { applyKpiBundleCssVars(); } catch (_) {}
-      window.addEventListener('resize', function() {
-        try { applyHideChartsOnMobileClass(); } catch (_) {}
-      });
+      var onResize = (typeof kexoThrottle === 'function')
+        ? kexoThrottle(function () { try { applyHideChartsOnMobileClass(); } catch (_) {} }, 120)
+        : function () { try { applyHideChartsOnMobileClass(); } catch (_) {} };
+      window.addEventListener('resize', onResize, { passive: true });
+      try {
+        if (typeof kexoRegisterCleanup === 'function') {
+          kexoRegisterCleanup(function () {
+            try { window.removeEventListener('resize', onResize); } catch (_) {}
+            try { if (onResize && onResize.cancel) onResize.cancel(); } catch (_) {}
+          });
+        }
+      } catch (_) {}
     } catch (_) {}
 
     function getChartsUiItem(key) {
@@ -11008,17 +11253,20 @@ const API = '';
       if (!_dashboardKpiResizeWired) {
         _dashboardKpiResizeWired = true;
         try {
-          window.addEventListener('resize', function () {
-            if (_dashboardKpiResizeTimer) {
-              try { clearTimeout(_dashboardKpiResizeTimer); } catch (_) {}
+          var onResize = (typeof kexoDebounce === 'function')
+            ? kexoDebounce(function () {
+              try { if (kpiUiConfigV1 && kpiUiConfigV1.v === 1) applyDashboardKpiUiConfig(kpiUiConfigV1); } catch (_) {}
+            }, 120)
+            : function () { try { if (kpiUiConfigV1 && kpiUiConfigV1.v === 1) applyDashboardKpiUiConfig(kpiUiConfigV1); } catch (_) {} };
+          window.addEventListener('resize', onResize, { passive: true });
+          try {
+            if (typeof kexoRegisterCleanup === 'function') {
+              kexoRegisterCleanup(function () {
+                try { window.removeEventListener('resize', onResize); } catch (_) {}
+                try { if (onResize && onResize.cancel) onResize.cancel(); } catch (_) {}
+              });
             }
-            _dashboardKpiResizeTimer = setTimeout(function () {
-              _dashboardKpiResizeTimer = 0;
-              try {
-                if (kpiUiConfigV1 && kpiUiConfigV1.v === 1) applyDashboardKpiUiConfig(kpiUiConfigV1);
-              } catch (_) {}
-            }, 120);
-          });
+          } catch (_) {}
         } catch (_) {}
       }
       try { syncDateSelectOptions(); } catch (_) {}
@@ -11257,7 +11505,20 @@ const API = '';
     }
 
     (function initCondensedKpisUi() {
-      try { window.addEventListener('resize', function() { scheduleCondensedKpiOverflowUpdate(); }); } catch (_) {}
+      try {
+        var onResize = (typeof kexoDebounce === 'function')
+          ? kexoDebounce(function () { scheduleCondensedKpiOverflowUpdate(); }, 120)
+          : function () { scheduleCondensedKpiOverflowUpdate(); };
+        window.addEventListener('resize', onResize, { passive: true });
+        try {
+          if (typeof kexoRegisterCleanup === 'function') {
+            kexoRegisterCleanup(function () {
+              try { window.removeEventListener('resize', onResize); } catch (_) {}
+              try { if (onResize && onResize.cancel) onResize.cancel(); } catch (_) {}
+            });
+          }
+        } catch (_) {}
+      } catch (_) {}
       try { window.addEventListener('orientationchange', function() { scheduleCondensedKpiOverflowUpdate(); }); } catch (_) {}
       try {
         const strip = document.getElementById('kexo-condensed-kpis');
@@ -12090,7 +12351,7 @@ const API = '';
             const vRev = (v && typeof v.revenue_gbp === 'number') ? formatRevenueTableHtml(v.revenue_gbp) : '-';
             const vVpv = metric(v, 'vpv') != null ? formatRevenue(metric(v, 'vpv')) : '\u2014';
             html += '<div class="grid-row traffic-type-child attribution-variant-row' + (srcOpen ? '' : ' is-hidden') + '" role="row" data-parent="' + escapeHtml(parentKey) + '" data-channel="' + escapeHtml(chKey) + '" data-source="' + escapeHtml(sKey) + '">' +
-              '<div class="grid-cell" role="cell"><span style="display:inline-flex;align-items:center;gap:8px;padding-left:18px">' + (vIcon || '') + '<span>' + escapeHtml(vLabel) + '</span></span></div>' +
+              '<div class="grid-cell" role="cell"><span class="d-inline-flex align-items-center gap-2 ps-3">' + (vIcon || '') + '<span>' + escapeHtml(vLabel) + '</span></span></div>' +
               '<div class="grid-cell" role="cell">' + escapeHtml(vSessions || '-') + '</div>' +
               '<div class="grid-cell" role="cell">' + escapeHtml(vOrders || '-') + '</div>' +
               '<div class="grid-cell" role="cell">' + escapeHtml(vCr || '-') + '</div>' +
@@ -12122,7 +12383,7 @@ const API = '';
 
       const rows = data && data.attribution && Array.isArray(data.attribution.rows) ? data.attribution.rows.slice() : [];
       if (!rows.length) {
-        el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:#6b7280;font-size:.875rem">No attribution data</div>';
+        el.innerHTML = '<div class="kexo-chart-empty kexo-chart-empty--h320">No attribution data</div>';
         return;
       }
 
@@ -12154,7 +12415,7 @@ const API = '';
         .slice(0, 10);
 
       if (!items.length) {
-        el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:#6b7280;font-size:.875rem">No attribution data</div>';
+        el.innerHTML = '<div class="kexo-chart-empty kexo-chart-empty--h320">No attribution data</div>';
         return;
       }
 
@@ -12179,7 +12440,7 @@ const API = '';
           advancedApexOverride: chartAdvancedOverrideFromUiConfig(chartKey, mode),
         });
       } catch (_) {
-        el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:#ef4444;font-size:.875rem">Chart rendering failed</div>';
+        el.innerHTML = '<div class="kexo-chart-empty kexo-chart-empty--h320 kexo-chart-empty--error">Chart rendering failed</div>';
       }
     }
 
@@ -12354,7 +12615,7 @@ const API = '';
           const crev = (c && typeof c.revenue_gbp === 'number') ? formatRevenueTableHtml(c.revenue_gbp) : '-';
           const cvpv = metric(c, 'vpv') != null ? formatRevenue(metric(c, 'vpv')) : '\u2014';
           html += '<div class="grid-row traffic-type-child devices-child' + (open ? '' : ' is-hidden') + '" role="row" data-parent="' + escapeHtml(dKey) + '">' +
-            '<div class="grid-cell" role="cell"><span style="display:inline-flex;align-items:center;gap:8px">' + trafficTypePlatformIcon(platform) + '<span>' + escapeHtml(clabel) + '</span></span></div>' +
+            '<div class="grid-cell" role="cell"><span class="d-inline-flex align-items-center gap-2">' + trafficTypePlatformIcon(platform) + '<span>' + escapeHtml(clabel) + '</span></span></div>' +
             '<div class="grid-cell" role="cell">' + escapeHtml(csessions || '-') + '</div>' +
             '<div class="grid-cell" role="cell">' + escapeHtml(corders || '-') + '</div>' +
             '<div class="grid-cell" role="cell">' + escapeHtml(ccr || '-') + '</div>' +
@@ -12385,7 +12646,7 @@ const API = '';
 
       const rows = data && data.devices && Array.isArray(data.devices.rows) ? data.devices.rows.slice() : [];
       if (!rows.length) {
-        el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:#6b7280;font-size:.875rem">No device data</div>';
+        el.innerHTML = '<div class="kexo-chart-empty kexo-chart-empty--h320">No device data</div>';
         return;
       }
 
@@ -12420,7 +12681,7 @@ const API = '';
         .slice(0, 10);
 
       if (!items.length) {
-        el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:#6b7280;font-size:.875rem">No device data</div>';
+        el.innerHTML = '<div class="kexo-chart-empty kexo-chart-empty--h320">No device data</div>';
         return;
       }
 
@@ -12445,7 +12706,7 @@ const API = '';
           advancedApexOverride: chartAdvancedOverrideFromUiConfig(chartKey, mode),
         });
       } catch (_) {
-        el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:#ef4444;font-size:.875rem">Chart rendering failed</div>';
+        el.innerHTML = '<div class="kexo-chart-empty kexo-chart-empty--h320 kexo-chart-empty--error">Chart rendering failed</div>';
       }
     }
 
@@ -12607,7 +12868,7 @@ const API = '';
         const rev = (r && typeof r.revenue === 'number') ? formatRevenueTableHtml(r.revenue) : '\u2014';
         const aov = (r && typeof r.aov === 'number') ? formatRevenue(r.aov) : '\u2014';
         html += '<div class="grid-row" role="row">' +
-          '<div class="grid-cell" role="cell"><span style="display:inline-flex;align-items:center;gap:8px"><span class="tt-browser-icon" aria-hidden="true">' + browserIconHtml(k) + '</span><span>' + escapeHtml(label) + '</span></span></div>' +
+          '<div class="grid-cell" role="cell"><span class="d-inline-flex align-items-center gap-2"><span class="tt-browser-icon" aria-hidden="true">' + browserIconHtml(k) + '</span><span>' + escapeHtml(label) + '</span></span></div>' +
           '<div class="grid-cell" role="cell">' + escapeHtml(sessions) + '</div>' +
           '<div class="grid-cell" role="cell">' + escapeHtml(carts) + '</div>' +
           '<div class="grid-cell" role="cell">' + escapeHtml(orders) + '</div>' +
@@ -12640,7 +12901,7 @@ const API = '';
 
       const rows = data && data.browsers && Array.isArray(data.browsers.rows) ? data.browsers.rows.slice() : [];
       if (!rows.length) {
-        el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:#6b7280;font-size:.875rem">No browser data</div>';
+        el.innerHTML = '<div class="kexo-chart-empty kexo-chart-empty--h320">No browser data</div>';
         return;
       }
 
@@ -12669,7 +12930,7 @@ const API = '';
         .slice(0, 10);
 
       if (!items.length) {
-        el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:#6b7280;font-size:.875rem">No browser data</div>';
+        el.innerHTML = '<div class="kexo-chart-empty kexo-chart-empty--h320">No browser data</div>';
         return;
       }
 
@@ -12694,7 +12955,7 @@ const API = '';
           advancedApexOverride: chartAdvancedOverrideFromUiConfig(chartKey, mode),
         });
       } catch (_) {
-        el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:320px;color:#ef4444;font-size:.875rem">Chart rendering failed</div>';
+        el.innerHTML = '<div class="kexo-chart-empty kexo-chart-empty--h320 kexo-chart-empty--error">Chart rendering failed</div>';
       }
     }
 
@@ -12801,14 +13062,15 @@ const API = '';
       if (!el) return;
       var message = String(text == null ? '' : text).trim() || 'Unavailable';
       var isError = !!(opts && opts.error);
-      var color = isError ? '#ef4444' : 'var(--tblr-secondary)';
       var h = (opts && Number.isFinite(opts.height)) ? Math.max(80, opts.height) : 220;
       var chartKey = (opts && opts.chartKey != null) ? String(opts.chartKey).trim() : 'live-online-chart';
       if (isError) captureChartMessage(message, 'liveOnlineMapState', { chartKey: chartKey }, 'error');
-      el.innerHTML =
-        '<div style="display:flex;align-items:center;justify-content:center;height:' + h + 'px;color:' + color + ';text-align:center;padding:0 18px;font-size:.875rem">' +
-          escapeHtml(message) +
-        '</div>';
+      var cls = 'kexo-chart-empty' + (isError ? ' kexo-chart-empty--error' : '');
+      el.innerHTML = '<div class="' + cls + '" data-kexo-chart-empty="1">' + escapeHtml(message) + '</div>';
+      try {
+        var child = el.querySelector('[data-kexo-chart-empty="1"]');
+        if (child && child.style) child.style.height = String(h) + 'px';
+      } catch (_) {}
     }
 
     function renderLiveOnlineMapChartFromSessions(sessionList) {
@@ -13119,7 +13381,7 @@ const API = '';
             if (!n) {
               setVectorMapTooltipContent(
                 tooltip,
-                '<div style="min-width:140px;font-weight:600">' + escapeHtml(name) + '</div>',
+                '<div class="kexo-map-tooltip-title kexo-map-tooltip-title--min140">' + escapeHtml(name) + '</div>',
                 name
               );
               return;
@@ -13127,20 +13389,20 @@ const API = '';
             var sessionsText = formatSessions(n);
             setVectorMapTooltipContent(
               tooltip,
-              '<div style="min-width:180px">' +
-                '<div style="font-weight:600;margin-bottom:2px">' + escapeHtml(name) + '</div>' +
-                '<div style="color:' + escapeHtml(muted) + ';font-size:.8125rem">Sessions (last 5m): <span style="color:inherit">' + escapeHtml(sessionsText) + '</span></div>' +
+              '<div class="kexo-map-tooltip-card">' +
+                '<div class="kexo-map-tooltip-name">' + escapeHtml(name) + '</div>' +
+                '<div class="kexo-map-tooltip-meta text-secondary">Sessions (last 5m): <span class="kexo-map-tooltip-value">' + escapeHtml(sessionsText) + '</span></div>' +
                 (function() {
                   var sc = stageCountsByIso2[iso2] || {};
                   var b = Number(sc.browse || 0) || 0;
                   var c = Number(sc.cart || 0) || 0;
                   var co = Number(sc.checkout || 0) || 0;
                   var p = Number(sc.purchase || 0) || 0;
-                  return '<div style="margin-top:6px;display:grid;grid-template-columns:10px 1fr auto;gap:4px 8px;align-items:center;font-size:.8125rem">' +
-                    '<span style="display:inline-block;width:10px;height:10px;border-radius:999px;background:var(--kexo-map-stage-browse,var(--kexo-accent-1,#4b94e4))"></span><span style="color:' + escapeHtml(muted) + '">Browsing</span><span>' + escapeHtml(String(b)) + '</span>' +
-                    '<span style="display:inline-block;width:10px;height:10px;border-radius:999px;background:var(--kexo-map-stage-cart,var(--kexo-accent-3,#f59e34))"></span><span style="color:' + escapeHtml(muted) + '">In cart</span><span>' + escapeHtml(String(c)) + '</span>' +
-                    '<span style="display:inline-block;width:10px;height:10px;border-radius:999px;background:var(--kexo-map-stage-checkout,var(--kexo-accent-5,#6681e8))"></span><span style="color:' + escapeHtml(muted) + '">Checkout</span><span>' + escapeHtml(String(co)) + '</span>' +
-                    '<span style="display:inline-block;width:10px;height:10px;border-radius:999px;background:var(--kexo-map-stage-purchase,var(--kexo-accent-2,#3eb3ab))"></span><span style="color:' + escapeHtml(muted) + '">Purchased</span><span>' + escapeHtml(String(p)) + '</span>' +
+                  return '<div class="kexo-map-tooltip-grid">' +
+                    '<span class="kexo-map-stage-dot kexo-map-stage-dot--browse" aria-hidden="true"></span><span class="kexo-map-stage-label text-secondary">Browsing</span><span>' + escapeHtml(String(b)) + '</span>' +
+                    '<span class="kexo-map-stage-dot kexo-map-stage-dot--cart" aria-hidden="true"></span><span class="kexo-map-stage-label text-secondary">In cart</span><span>' + escapeHtml(String(c)) + '</span>' +
+                    '<span class="kexo-map-stage-dot kexo-map-stage-dot--checkout" aria-hidden="true"></span><span class="kexo-map-stage-label text-secondary">Checkout</span><span>' + escapeHtml(String(co)) + '</span>' +
+                    '<span class="kexo-map-stage-dot kexo-map-stage-dot--purchase" aria-hidden="true"></span><span class="kexo-map-stage-label text-secondary">Purchased</span><span>' + escapeHtml(String(p)) + '</span>' +
                   '</div>';
                 })() +
               '</div>',
@@ -13154,9 +13416,8 @@ const API = '';
             if (hasNoLiveActivity && showEmptyCaption) {
               var noActivity = document.createElement('div');
               noActivity.setAttribute('class', 'kexo-live-map-empty-caption');
-              noActivity.style.cssText = 'position:absolute;left:0;right:0;bottom:12px;text-align:center;font-size:.8125rem;color:' + (muted || 'var(--tblr-secondary)') + ';pointer-events:none;';
               noActivity.textContent = 'No live activity yet';
-              if (containerEl && containerEl.style) containerEl.style.position = 'relative';
+              try { if (containerEl && containerEl.classList) containerEl.classList.add('kexo-live-map-container'); } catch (_) {}
               try { containerEl.appendChild(noActivity); } catch (_) {}
             }
             setTimeout(function () {
@@ -13236,7 +13497,7 @@ const API = '';
         if (tries >= 25) {
           el.__kexoApexWaitTries = 0;
           captureChartMessage('Chart library failed to load.', 'liveOnlineTrendLibraryLoad', { chartKey: 'live-online-chart', tries: tries }, 'error');
-          el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:220px;color:var(--tblr-secondary);text-align:center;padding:0 18px;font-size:.875rem">Chart library failed to load.</div>';
+          el.innerHTML = '<div class="kexo-chart-empty kexo-chart-empty--h220">Chart library failed to load.</div>';
           return;
         }
         setTimeout(function() { renderLiveOnlineTrendChart(payload); }, 180);
@@ -13263,7 +13524,7 @@ const API = '';
       var compactMode = viewport > 0 && viewport <= 960;
       var points = compactMode && allPoints.length > 6 ? allPoints.slice(-6) : allPoints;
       if (!points.length) {
-        el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:220px;color:var(--tblr-secondary);font-size:.875rem">No live activity yet</div>';
+        el.innerHTML = '<div class="kexo-chart-empty kexo-chart-empty--h220">No live activity yet</div>';
         return;
       }
       var labels = points.map(function(p) { return shortTimeLabel(p && p.ts); });
@@ -13457,7 +13718,7 @@ const API = '';
         if (tries >= 25) {
           el.__kexoApexWaitTries = 0;
           captureChartMessage('Chart library failed to load.', 'sessionsOverviewLibraryLoad', { chartKey: (PAGE === 'sales' ? 'sales-overview-chart' : 'date-overview-chart'), tries: tries }, 'error');
-          el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:220px;color:var(--tblr-secondary);text-align:center;padding:0 18px;font-size:.875rem">Chart library failed to load.</div>';
+          el.innerHTML = '<div class="kexo-chart-empty kexo-chart-empty--h220">Chart library failed to load.</div>';
           return;
         }
         setTimeout(function() { renderSessionsOverviewChart(payload, rangeKey); }, 180);
@@ -13478,7 +13739,7 @@ const API = '';
         rangeOverviewChart = null;
       }
       if (!rows.length) {
-        el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:220px;color:var(--tblr-secondary);font-size:.875rem">No data for this range</div>';
+        el.innerHTML = '<div class="kexo-chart-empty kexo-chart-empty--h220">No data for this range</div>';
         var lbl2 = document.getElementById('sessions-overview-bucket-label');
         if (lbl2) { lbl2.textContent = ''; lbl2.setAttribute('aria-hidden', 'true'); }
         return;
@@ -14489,7 +14750,7 @@ const API = '';
               '</div>' +
             '</div>' +
             '<div class="progress progress-sm kexo-kpi-chip-progress" role="progressbar" aria-valuenow="' + esc(String(safety)) + '" aria-valuemin="0" aria-valuemax="100">' +
-              '<div class="progress-bar ' + esc(barClass) + '" style="width:' + esc(String(safety)) + '%"></div>' +
+              '<div class="progress-bar ' + esc(barClass) + '" data-kexo-width="' + esc(String(safety)) + '%"></div>' +
             '</div>' +
           '</div>';
       }
@@ -14541,7 +14802,7 @@ const API = '';
 
         var body = rows.map(function (row) {
           var v = String(row.v);
-          return '<tr><th style="width:180px">' + esc(row.k) + '</th><td><code>' + esc(v) + '</code>' + (row.copy ? copyLinkHtml(v) : '') + '</td></tr>';
+          return '<tr><th class="kexo-kv-th">' + esc(row.k) + '</th><td><code>' + esc(v) + '</code>' + (row.copy ? copyLinkHtml(v) : '') + '</td></tr>';
         }).join('');
         return '<div class="table-responsive"><table class="table table-sm table-vcenter mb-0"><tbody>' + body + '</tbody></table></div>';
       }
@@ -14585,7 +14846,7 @@ const API = '';
         var evidenceDetails = '' +
           '<details class="kexo-fraud-evidence-details">' +
             '<summary class="text-muted">Show evidence snapshot</summary>' +
-            '<pre class="mt-2 mb-0 kexo-fraud-evidence-pre" style="white-space:pre-wrap">' + esc(evidenceJson || '{}') + '</pre>' +
+            '<pre class="mt-2 mb-0 kexo-fraud-evidence-pre kexo-pre-wrap">' + esc(evidenceJson || '{}') + '</pre>' +
           '</details>';
 
         if (mode === 'drawer') {
@@ -14665,7 +14926,7 @@ const API = '';
             ? (
                 '<details class="kexo-lookup-attribution-details">' +
                   '<summary class="text-muted">Show attribution</summary>' +
-                  '<pre class="mt-2 mb-0" style="white-space:pre-wrap">' + esc(safeJsonPre(attribution)) + '</pre>' +
+                  '<pre class="mt-2 mb-0 kexo-pre-wrap">' + esc(safeJsonPre(attribution)) + '</pre>' +
                 '</details>'
               )
             : '<div class="text-muted">No attribution row.</div>';
@@ -14697,7 +14958,7 @@ const API = '';
             { k: 'UTM', v: utm || '\u2014' },
           ];
           var body = sRows.map(function (r) {
-            return '<tr><th style="width:180px">' + esc(r.k) + '</th><td><code>' + esc(r.v) + '</code></td></tr>';
+            return '<tr><th class="kexo-kv-th">' + esc(r.k) + '</th><td><code>' + esc(r.v) + '</code></td></tr>';
           }).join('');
           html += section('Session', '<div class="table-responsive"><table class="table table-sm table-vcenter mb-0"><tbody>' + body + '</tbody></table></div>');
         }
@@ -14712,7 +14973,7 @@ const API = '';
               { k: 'Total', v: (p.order_total != null ? String(p.order_total) : '\u2014') + (p.order_currency ? (' ' + p.order_currency) : '') },
             ];
             var body = rows.map(function (r) {
-              return '<tr><th style="width:180px">' + esc(r.k) + '</th><td><code>' + esc(r.v) + '</code></td></tr>';
+              return '<tr><th class="kexo-kv-th">' + esc(r.k) + '</th><td><code>' + esc(r.v) + '</code></td></tr>';
             }).join('');
             return '<div class="mb-3"><div class="table-responsive"><table class="table table-sm table-vcenter mb-0"><tbody>' + body + '</tbody></table></div></div>';
           }).join('');
@@ -14720,7 +14981,7 @@ const API = '';
         }
         html += section('Fraud', renderFraudHtml(fraud, 'page'));
         if (attribution) {
-          html += section('Attribution', '<details><summary class="text-muted">Show attribution payload</summary><pre class="mt-2 mb-0" style="white-space:pre-wrap">' + esc(safeJsonPre(attribution)) + '</pre></details>');
+          html += section('Attribution', '<details><summary class="text-muted">Show attribution payload</summary><pre class="mt-2 mb-0 kexo-pre-wrap">' + esc(safeJsonPre(attribution)) + '</pre></details>');
         }
         return html;
       }
@@ -14729,6 +14990,13 @@ const API = '';
         if (!el) return;
         ensureCopyLinksBound();
         el.innerHTML = renderLookupHtml(payload, options || {}) || '';
+        try {
+          el.querySelectorAll('[data-kexo-width]').forEach(function (bar) {
+            if (!bar || !bar.style || !bar.getAttribute) return;
+            var w = String(bar.getAttribute('data-kexo-width') || '').trim();
+            if (w) bar.style.width = w;
+          });
+        } catch (_) {}
         try { animateFraudGauges(el); } catch (_) {}
       }
 
@@ -14787,24 +15055,31 @@ const API = '';
         } catch (_) {}
       }
 
-      function wireSidePanelSectionToggles() {
+      // Side panel section toggles: bind to the current panel (re-bind if panel DOM is replaced).
+      (function wireSidePanelSectionToggles(panelEl) {
         try {
-          if (panel.getAttribute('data-side-toggles-wired') === '1') return;
-          panel.setAttribute('data-side-toggles-wired', '1');
-          panel.addEventListener('click', function (e) {
+          if (!panelEl || !panelEl.addEventListener) return;
+          if (panelEl.getAttribute('data-side-toggles-wired') === '1') return;
+          panelEl.setAttribute('data-side-toggles-wired', '1');
+          var handler = function (e) {
             var t = e && e.target ? e.target : null;
             var title = t && t.closest ? t.closest('.side-panel-section-title') : null;
             if (!title) return;
-            var sec = title.closest('.side-panel-section');
-            if (!sec || sec.classList.contains('side-panel-summary')) return;
+            var sec = (title && title.closest) ? title.closest('.side-panel-section') : null;
+            if (!sec || !sec.classList || sec.classList.contains('side-panel-summary')) return;
             e.preventDefault();
             sec.classList.toggle('is-minimized');
             title.setAttribute('aria-expanded', sec.classList.contains('is-minimized') ? 'false' : 'true');
-          });
+          };
+          panelEl.addEventListener('click', handler);
+          try { panelEl._kexoSidePanelTogglesHandler = handler; } catch (_) {}
+          try {
+            if (typeof kexoRegisterCleanup === 'function') {
+              kexoRegisterCleanup(function () { try { panelEl.removeEventListener('click', handler); } catch (_) {} });
+            }
+          } catch (_) {}
         } catch (_) {}
-      }
-
-      wireSidePanelSectionToggles();
+      })(panel);
       minimizeSidePanelSections();
 
       var summaryEl = ensureSidePanelSummarySection();
@@ -15025,9 +15300,10 @@ const API = '';
     // Session table pagination (live/sales/date) ??? delegated
     (function initSessionTablePagination() {
       var wrap = document.getElementById('table-pagination');
+      // Guard delegated clicks + dedupe stable diagnostics reads to avoid jank.
       if (!wrap) return;
       wrap.addEventListener('click', function(e) {
-        var link = e.target.closest('a[data-page]');
+        var link = (e && e.target && e.target.closest) ? e.target.closest('a[data-page]') : null;
         if (!link) return;
         e.preventDefault();
         if (link.closest('.page-item.disabled') || link.closest('.page-item.active')) return;
@@ -15048,7 +15324,7 @@ const API = '';
         var wrap = document.getElementById(prefix + '-pagination');
         if (!wrap) return;
         wrap.addEventListener('click', function(e) {
-          var link = e.target.closest('a[data-page]');
+          var link = (e && e.target && e.target.closest) ? e.target.closest('a[data-page]') : null;
           if (!link) return;
           e.preventDefault();
           if (link.closest('.page-item.disabled') || link.closest('.page-item.active')) return;
@@ -15215,11 +15491,20 @@ const API = '';
 
       if (refreshBtn) refreshBtn.classList.add('spinning');
       if (compareOpen && compareRefreshBtn) compareRefreshBtn.classList.add('spinning');
-      const p = fetch(getConfigStatusUrl({ force: !!options.force }), { credentials: 'same-origin', cache: 'no-store' })
-        .then(function(r) {
+      var url = getConfigStatusUrl({ force: !!options.force });
+      const p = (!!options.force
+        ? fetch(url, { credentials: 'same-origin', cache: 'no-store' }).then(function(r) {
           if (!r.ok) throw new Error('Config status ' + r.status);
           return r.json();
         })
+        : (typeof kexoFetchOkJsonStable === 'function'
+            ? kexoFetchOkJsonStable(url, { credentials: 'same-origin' }, 15000).then(function (json) { if (!json) throw new Error('Config status empty'); return json; })
+            : fetch(url, { credentials: 'same-origin', cache: 'default' }).then(function(r) {
+              if (!r.ok) throw new Error('Config status ' + r.status);
+              return r.json();
+            })
+          )
+      )
         .then(c => {
           if (diagnosticsStepEl) diagnosticsStepEl.textContent = 'Analyzing diagnostics payload';
           if (compareStepEl) compareStepEl.textContent = 'Comparing KPI values';
@@ -17114,6 +17399,7 @@ const API = '';
       })();
       (function initMainTabs() {
         const TAB_KEY = 'kexo-main-tab';
+        // Mobile tabs/nav: throttle global resize/scroll handlers + cleanup to reduce jank.
         const VALID_TABS = ['dashboard', 'spy', 'sales', 'date', 'snapshot', 'stats', 'products', 'attribution', 'devices', 'ads', 'tools'];
         const TAB_LABELS = { dashboard: 'Overview', spy: 'Live View', sales: 'Recent Sales', date: 'Table View', snapshot: 'Snapshot', stats: 'Countries', products: 'Products', variants: 'Variants', attribution: 'Attribution', devices: 'Devices', ads: 'Google Ads', tools: 'Tools' };
         const HASH_TO_TAB = { dashboard: 'dashboard', 'live-view': 'spy', sales: 'sales', date: 'date', countries: 'stats', products: 'products', channels: 'attribution', type: 'devices', attribution: 'attribution', devices: 'devices', ads: 'ads', 'compare-conversion-rate': 'tools', 'change-pins': 'tools' };
@@ -17514,6 +17800,7 @@ const API = '';
           if (panelAds) panelAds.classList.toggle('active', isAds);
 
           try { sessionStorage.setItem(TAB_KEY, tab); } catch (_) {}
+          try { window.dispatchEvent(new CustomEvent('kexo:main-tab-changed', { detail: { tab: tab } })); } catch (_) {}
           runTabWork(tab);
           // Ensure navbar live visitors status updates immediately on navigation.
           try { updateKpis(); } catch (_) {}
@@ -17627,13 +17914,27 @@ const API = '';
           setTimeout(syncDropdownOverflowState, 0);
         });
 
-        window.addEventListener('resize', function() {
-          syncDropdownOverflowState();
-          updateMobileNavDropdownTop();
-        }, { passive: true });
-        window.addEventListener('scroll', function() {
-          closeOpenNavDropdowns();
-        }, { passive: false });
+        var onResize = (typeof kexoDebounce === 'function')
+          ? kexoDebounce(function () {
+            syncDropdownOverflowState();
+            updateMobileNavDropdownTop();
+          }, 120)
+          : function () { syncDropdownOverflowState(); updateMobileNavDropdownTop(); };
+        window.addEventListener('resize', onResize, { passive: true });
+        var onScroll = (typeof kexoThrottle === 'function')
+          ? kexoThrottle(function () { closeOpenNavDropdowns(); }, 120)
+          : function () { closeOpenNavDropdowns(); };
+        window.addEventListener('scroll', onScroll, { passive: true });
+        try {
+          if (typeof kexoRegisterCleanup === 'function') {
+            kexoRegisterCleanup(function () {
+              try { window.removeEventListener('resize', onResize); } catch (_) {}
+              try { window.removeEventListener('scroll', onScroll); } catch (_) {}
+              try { if (onResize && onResize.cancel) onResize.cancel(); } catch (_) {}
+              try { if (onScroll && onScroll.cancel) onScroll.cancel(); } catch (_) {}
+            });
+          }
+        } catch (_) {}
         window.addEventListener('orientationchange', function() {
           resetNavStartPosition();
           syncDropdownOverflowState();
@@ -17719,9 +18020,20 @@ const API = '';
         document.querySelectorAll('.kexo-desktop-top-strip .dropdown').forEach(function(dd) {
           dd.addEventListener('shown.bs.dropdown', onStripDropdownShown);
         });
-        window.addEventListener('resize', function() {
-          document.querySelectorAll('.dropdown-menu.kexo-strip-dropdown-align.show').forEach(positionStripDropdown);
-        }, { passive: true });
+        var onResize = (typeof kexoDebounce === 'function')
+          ? kexoDebounce(function () {
+            document.querySelectorAll('.dropdown-menu.kexo-strip-dropdown-align.show').forEach(positionStripDropdown);
+          }, 120)
+          : function () { document.querySelectorAll('.dropdown-menu.kexo-strip-dropdown-align.show').forEach(positionStripDropdown); };
+        window.addEventListener('resize', onResize, { passive: true });
+        try {
+          if (typeof kexoRegisterCleanup === 'function') {
+            kexoRegisterCleanup(function () {
+              try { window.removeEventListener('resize', onResize); } catch (_) {}
+              try { if (onResize && onResize.cancel) onResize.cancel(); } catch (_) {}
+            });
+          }
+        } catch (_) {}
       })();
       (function initRefreshBtn() {
         const btn = document.getElementById('refresh-btn');
@@ -17902,7 +18214,8 @@ const API = '';
 
     (function initLiveSalesPoller() {
       if (!liveSalesAutoPollEnabled()) return;
-      // Defer the first poll slightly so initial page load fetch/render completes first.
+    // Stable GETs: cache small TTL to reduce duplicate version/config reads.
+    // Defer the first poll slightly so initial page load fetch/render completes first.
       scheduleLiveSalesPoll(LIVE_SALES_POLL_MS);
     })();
 
@@ -17967,8 +18280,11 @@ const API = '';
 
     function fetchVersionSig() {
       if (_versionCheckInFlight) return _versionCheckInFlight;
-      _versionCheckInFlight = fetch(API + '/api/version', { credentials: 'same-origin', cache: 'no-store' })
-        .then(function(r) { return r && r.ok ? r.json() : null; })
+      var url = API + '/api/version';
+      _versionCheckInFlight = (typeof kexoFetchOkJsonStable === 'function'
+        ? kexoFetchOkJsonStable(url, { credentials: 'same-origin' }, 60000)
+        : fetch(url, { credentials: 'same-origin', cache: 'default' }).then(function(r) { return r && r.ok ? r.json() : null; })
+      )
         .then(function(data) {
           _versionCheckInFlight = null;
           if (!data) return null;
@@ -17977,7 +18293,11 @@ const API = '';
           var sig = (av || pv) ? (av + '|' + pv) : '';
           return sig && sig.trim() ? sig : null;
         })
-        .catch(function() { _versionCheckInFlight = null; return null; });
+        .catch(function(err) {
+          try { if (typeof window.kexoCaptureError === 'function') window.kexoCaptureError(err, { context: 'version.fetchSig' }); } catch (_) {}
+          _versionCheckInFlight = null;
+          return null;
+        });
       return _versionCheckInFlight;
     }
 
@@ -18197,6 +18517,7 @@ const API = '';
       var overviewMiniResizeTimer = null;
       var overviewHeightSyncObserver = null;
       var overviewHeightSyncTimer = null;
+      var overviewHeightSyncResizeBound = false;
       var overviewHeightSyncObservedElements = [];
       var overviewMiniResizeObservedElements = [];
       var OVERVIEW_MINI_CACHE_MS = 2 * 60 * 1000;
@@ -18210,6 +18531,91 @@ const API = '';
       var overviewLazyPending = {};
       var overviewLazyVisible = {};
       var overviewCardUiBound = false;
+      var dashDocClickBound = false;
+      var dashDocClickHandler = null;
+      function bindDashDocumentClickOnce() {
+        if (dashDocClickBound) return;
+        dashDocClickBound = true;
+        dashDocClickHandler = function (e) {
+          var t = e && e.target ? e.target : null;
+          if (!t || !t.closest) return;
+
+          // Kexo Score popover close buttons (modal + overview).
+          var closeBtn = t.closest('.kexo-score-popover-close');
+          if (closeBtn) {
+            try {
+              if (typeof window.bootstrap !== 'undefined' && window.bootstrap.Popover) {
+                var Popover = window.bootstrap.Popover;
+                var allTriggers = document.querySelectorAll('[data-kexo-score-popover="1"]');
+                allTriggers.forEach(function(n) {
+                  try {
+                    var inst = Popover.getInstance(n);
+                    if (inst) inst.hide();
+                  } catch (_) {}
+                });
+              }
+            } catch (_) {}
+            return;
+          }
+
+          // Overview card range controls.
+          var rangeBtn = t.closest('[data-overview-range][data-overview-chart]');
+          if (rangeBtn) {
+            e.preventDefault();
+            var chartId = String(rangeBtn.getAttribute('data-overview-chart') || '').trim();
+            var rangeKey = String(rangeBtn.getAttribute('data-overview-range') || '').trim().toLowerCase();
+            if (!chartId || !rangeKey) return;
+            if (rangeKey === 'custom') {
+              openOverviewCardCustomRange(chartId);
+              return;
+            }
+            var next = normalizeOverviewCardRangeKey(rangeKey, OVERVIEW_CARD_DEFAULT_RANGE);
+            setOverviewCardRange(chartId, next);
+            syncOverviewCardRangeUi(chartId);
+            fetchOverviewCardData(chartId, { force: true, rangeKey: next, renderIfFresh: true });
+            return;
+          }
+
+          // Overview card chart settings buttons.
+          var settingsBtn = t.closest('.kexo-overview-chart-settings-btn[data-kexo-chart-settings-key]');
+          if (settingsBtn) {
+            e.preventDefault();
+            e.stopPropagation();
+            var chartKey = String(settingsBtn.getAttribute('data-kexo-chart-settings-key') || '').trim();
+            if (!chartKey) return;
+            var cardTitle = '';
+            try {
+              var wrap = overviewCardWrap(chartKey);
+              var titleEl = wrap ? wrap.querySelector('.subheader') : null;
+              cardTitle = titleEl && titleEl.textContent ? String(titleEl.textContent).trim() : '';
+            } catch (_) {}
+            try {
+              if (window.KexoChartSettingsBuilder && typeof window.KexoChartSettingsBuilder.openModal === 'function') {
+                window.KexoChartSettingsBuilder.openModal({ chartKey: chartKey, cardTitle: cardTitle || chartKey });
+                return;
+              }
+              if (window.KexoLayoutShortcuts && typeof window.KexoLayoutShortcuts.openChartModal === 'function') {
+                window.KexoLayoutShortcuts.openChartModal({ chartKey: chartKey, cardTitle: cardTitle || chartKey });
+              }
+            } catch (_) {}
+            return;
+          }
+
+          // Overview widgets settings buttons.
+          var widgetBtn = t.closest('[data-kexo-overview-widget-settings]');
+          if (widgetBtn) {
+            e.preventDefault();
+            e.stopPropagation();
+            try { openOvwSettings(widgetBtn); } catch (_) {}
+          }
+        };
+        try { document.addEventListener('click', dashDocClickHandler); } catch (_) {}
+        registerCleanup(function () {
+          try { document.removeEventListener('click', dashDocClickHandler); } catch (_) {}
+          dashDocClickHandler = null;
+          dashDocClickBound = false;
+        });
+      }
       var OVERVIEW_LAZY_CHART_IDS = {
         'dash-chart-attribution-30d': true,
         'dash-chart-overview-30d': true
@@ -19204,13 +19610,22 @@ const API = '';
           if (midGrid) { overviewHeightSyncObserver.observe(midGrid); overviewHeightSyncObservedElements.push(midGrid); }
         } catch (_) {}
         try {
-          window.addEventListener('resize', scheduleOverviewHeightSync);
+          if (!overviewHeightSyncResizeBound) {
+            overviewHeightSyncResizeBound = true;
+            window.addEventListener('resize', scheduleOverviewHeightSync, { passive: true });
+          }
         } catch (_) {}
       }
       function pauseOverviewResizeObservers() {
         try {
           if (overviewHeightSyncObserver && typeof overviewHeightSyncObserver.disconnect === 'function') overviewHeightSyncObserver.disconnect();
           if (overviewMiniResizeObserver && typeof overviewMiniResizeObserver.disconnect === 'function') overviewMiniResizeObserver.disconnect();
+        } catch (_) {}
+        try {
+          if (overviewHeightSyncResizeBound) {
+            overviewHeightSyncResizeBound = false;
+            window.removeEventListener('resize', scheduleOverviewHeightSync);
+          }
         } catch (_) {}
       }
       function resumeOverviewResizeObservers() {
@@ -19220,6 +19635,12 @@ const API = '';
           }
           if (overviewMiniResizeObserver && overviewMiniResizeObservedElements.length) {
             overviewMiniResizeObservedElements.forEach(function(el) { if (el && el.isConnected) overviewMiniResizeObserver.observe(el); });
+          }
+        } catch (_) {}
+        try {
+          if (overviewHeightSyncObserver && !overviewHeightSyncResizeBound) {
+            overviewHeightSyncResizeBound = true;
+            window.addEventListener('resize', scheduleOverviewHeightSync, { passive: true });
           }
         } catch (_) {}
       }
@@ -19412,7 +19833,10 @@ const API = '';
           if (overviewHeightSyncTimer) clearTimeout(overviewHeightSyncTimer);
         } catch (_) {}
         try {
-          window.removeEventListener('resize', scheduleOverviewHeightSync);
+          if (overviewHeightSyncResizeBound) {
+            overviewHeightSyncResizeBound = false;
+            window.removeEventListener('resize', scheduleOverviewHeightSync);
+          }
         } catch (_) {}
         overviewMiniResizeTimer = null;
         overviewMiniResizeObserver = null;
@@ -19508,10 +19932,10 @@ const API = '';
         var code = rawCode == null ? '' : String(rawCode).trim().toUpperCase().slice(0, 2);
         if (code === 'UK') code = 'GB';
         if (!/^[A-Z]{2}$/.test(code)) {
-          return '<span class="kexo-flag-fallback" aria-hidden="true" style="display:inline-flex;align-items:center;margin-right:4px;opacity:.8"><i class="fa-light fa-globe"></i></span>';
+          return '<span class="kexo-flag-fallback" aria-hidden="true"><i class="fa-light fa-globe"></i></span>';
         }
         var raw = code.toLowerCase();
-        return '<span class="flag flag-xs flag-country-' + escapeHtml(raw) + '" style="vertical-align:middle;margin-right:4px;" aria-hidden="true"></span>';
+        return '<span class="flag flag-xs kexo-flag-inline flag-country-' + escapeHtml(raw) + '" aria-hidden="true"></span>';
       }
 
       function countryCodeFromRow(row) {
@@ -20904,11 +21328,18 @@ const API = '';
           if (!lbl) continue;
           var c = cols[i] != null ? String(cols[i]) : '';
           html += '<span class="kexo-overview-mini-legend-item">'
-            + '<span class="kexo-overview-mini-legend-swatch" style="background:' + escapeHtml(c || '#94a3b8') + '"></span>'
+            + '<span class="kexo-overview-mini-legend-swatch" data-kexo-swatch-bg="' + escapeHtml(c || '#94a3b8') + '"></span>'
             + escapeHtml(lbl)
             + '</span>';
         }
         host.innerHTML = html;
+        try {
+          host.querySelectorAll('[data-kexo-swatch-bg]').forEach(function (sw) {
+            if (!sw || !sw.style || !sw.getAttribute) return;
+            var bg = String(sw.getAttribute('data-kexo-swatch-bg') || '').trim();
+            if (bg) sw.style.background = bg;
+          });
+        } catch (_) {}
         try { scheduleOverviewHeightSync(); } catch (_) {}
       }
 
@@ -21554,51 +21985,7 @@ const API = '';
         if (overviewCardUiBound) return;
         overviewCardUiBound = true;
         try {
-          document.addEventListener('click', function(e) {
-            var t = e && e.target ? e.target : null;
-            if (!t || !t.closest) return;
-
-            var rangeBtn = t.closest('[data-overview-range][data-overview-chart]');
-            if (rangeBtn) {
-              e.preventDefault();
-              var chartId = String(rangeBtn.getAttribute('data-overview-chart') || '').trim();
-              var rangeKey = String(rangeBtn.getAttribute('data-overview-range') || '').trim().toLowerCase();
-              if (!chartId || !rangeKey) return;
-              if (rangeKey === 'custom') {
-                openOverviewCardCustomRange(chartId);
-                return;
-              }
-              var next = normalizeOverviewCardRangeKey(rangeKey, OVERVIEW_CARD_DEFAULT_RANGE);
-              setOverviewCardRange(chartId, next);
-              syncOverviewCardRangeUi(chartId);
-              fetchOverviewCardData(chartId, { force: true, rangeKey: next, renderIfFresh: true });
-              return;
-            }
-
-            var settingsBtn = t.closest('.kexo-overview-chart-settings-btn[data-kexo-chart-settings-key]');
-            if (settingsBtn) {
-              e.preventDefault();
-              e.stopPropagation();
-              var chartKey = String(settingsBtn.getAttribute('data-kexo-chart-settings-key') || '').trim();
-              if (!chartKey) return;
-              var cardTitle = '';
-              try {
-                var wrap = overviewCardWrap(chartKey);
-                var titleEl = wrap ? wrap.querySelector('.subheader') : null;
-                cardTitle = titleEl && titleEl.textContent ? String(titleEl.textContent).trim() : '';
-              } catch (_) {}
-              try {
-                if (window.KexoChartSettingsBuilder && typeof window.KexoChartSettingsBuilder.openModal === 'function') {
-                  window.KexoChartSettingsBuilder.openModal({ chartKey: chartKey, cardTitle: cardTitle || chartKey });
-                  return;
-                }
-                if (window.KexoLayoutShortcuts && typeof window.KexoLayoutShortcuts.openChartModal === 'function') {
-                  window.KexoLayoutShortcuts.openChartModal({ chartKey: chartKey, cardTitle: cardTitle || chartKey });
-                }
-              } catch (_) {}
-              return;
-            }
-          });
+          bindDashDocumentClickOnce();
         } catch (_) {}
       }
 
@@ -22682,12 +23069,19 @@ const API = '';
               '<span class="kexo-score-breakdown-value">' + escapeHtml(detail) + '</span>' +
             '</div>' +
             '<div class="progress kexo-score-progress">' +
-              '<div class="progress-bar kexo-score-bar-prev" role="progressbar" style="width:' + bars.prevPct.toFixed(1) + '%" aria-hidden="true"></div>' +
-              '<div class="progress-bar ' + bars.barClass + ' kexo-score-bar-cur" role="progressbar" style="width:' + curWidth + '" data-target-pct="' + bars.curPct.toFixed(1) + '" aria-valuenow="' + bars.curPct.toFixed(1) + '" aria-valuemin="0" aria-valuemax="100">' + escapeHtml(bars.barLabel) + '</div>' +
+              '<div class="progress-bar kexo-score-bar-prev" role="progressbar" data-kexo-width="' + bars.prevPct.toFixed(1) + '%" aria-hidden="true"></div>' +
+              '<div class="progress-bar ' + bars.barClass + ' kexo-score-bar-cur" role="progressbar" data-kexo-width="' + curWidth + '" data-target-pct="' + bars.curPct.toFixed(1) + '" aria-valuenow="' + bars.curPct.toFixed(1) + '" aria-valuemin="0" aria-valuemax="100">' + escapeHtml(bars.barLabel) + '</div>' +
             '</div>' +
           '</div>';
         }).join('');
         container.innerHTML = html;
+        try {
+          container.querySelectorAll('[data-kexo-width]').forEach(function (bar) {
+            if (!bar || !bar.style || !bar.getAttribute) return;
+            var w = String(bar.getAttribute('data-kexo-width') || '').trim();
+            if (w) bar.style.width = w;
+          });
+        } catch (_) {}
         if (shouldAnimateOnce) {
           container.setAttribute('data-kexo-score-animated-range', rangeKeyForAnim);
           requestAnimationFrame(function() { animateKexoScoreOverviewBars(container); });
@@ -22779,18 +23173,7 @@ const API = '';
         });
         if (scope.getAttribute('data-kexo-score-popover-scope-bound') !== '1') {
           scope.setAttribute('data-kexo-score-popover-scope-bound', '1');
-          var closeHandler = function(e) {
-            if (!e.target || !e.target.closest || !e.target.closest('.kexo-score-popover-close')) return;
-            var allTriggers = document.querySelectorAll('[data-kexo-score-popover="1"]');
-            allTriggers.forEach(function(n) {
-              try {
-                var inst = Popover.getInstance(n);
-                if (inst) inst.hide();
-              } catch (_) {}
-            });
-          };
-          scope.addEventListener('click', closeHandler);
-          document.addEventListener('click', closeHandler);
+          try { bindDashDocumentClickOnce(); } catch (_) {}
         }
       }
 
@@ -22957,8 +23340,8 @@ const API = '';
                 '<span class="kexo-score-breakdown-value">' + escapeHtml(detail) + '</span>' +
               '</div>' +
               '<div class="progress kexo-score-progress">' +
-                '<div class="progress-bar kexo-score-bar-prev" role="progressbar" style="width:' + bars.prevPct.toFixed(1) + '%" aria-hidden="true"></div>' +
-                '<div class="progress-bar ' + bars.barClass + ' kexo-score-bar-cur" role="progressbar" style="width:0%" data-target-pct="' + bars.curPct.toFixed(1) + '" aria-valuenow="' + bars.curPct.toFixed(1) + '" aria-valuemin="0" aria-valuemax="100">' + escapeHtml(bars.barLabel) + '</div>' +
+                '<div class="progress-bar kexo-score-bar-prev" role="progressbar" data-kexo-width="' + bars.prevPct.toFixed(1) + '%" aria-hidden="true"></div>' +
+                '<div class="progress-bar ' + bars.barClass + ' kexo-score-bar-cur" role="progressbar" data-kexo-width="0%" data-target-pct="' + bars.curPct.toFixed(1) + '" aria-valuenow="' + bars.curPct.toFixed(1) + '" aria-valuemin="0" aria-valuemax="100">' + escapeHtml(bars.barLabel) + '</div>' +
               '</div>' +
             '</div>';
           }).join('');
@@ -22972,6 +23355,13 @@ const API = '';
             '<div id="kexo-score-summary-wrap">' + summaryHtml + '</div>' +
           '</div>' +
           '<div id="kexo-score-breakdown">' + breakdownHtml + '</div>';
+        try {
+          body.querySelectorAll('[data-kexo-width]').forEach(function (bar) {
+            if (!bar || !bar.style || !bar.getAttribute) return;
+            var w = String(bar.getAttribute('data-kexo-width') || '').trim();
+            if (w) bar.style.width = w;
+          });
+        } catch (_) {}
         (function initSummaryCloseAndReset() {
           var section = document.getElementById('kexo-score-summary-section');
           var closeBtn = section && section.querySelector('.kexo-score-summary-close');
@@ -23805,15 +24195,7 @@ const API = '';
         try { ensureTrendingDaysDropdown(); } catch (_) {}
         try { applyOverviewWidgetsLayoutAndColors(readOverviewWidgetsUiConfigV1()); } catch (_) {}
         try {
-          document.addEventListener('click', function (e) {
-            var t = e && e.target ? e.target : null;
-            if (!t || !t.closest) return;
-            var btn = t.closest('[data-kexo-overview-widget-settings]');
-            if (!btn) return;
-            e.preventDefault();
-            e.stopPropagation();
-            openOvwSettings(btn);
-          });
+          bindDashDocumentClickOnce();
         } catch (_) {}
         try {
           document.addEventListener('keydown', function (e) {
@@ -23899,6 +24281,11 @@ const API = '';
         var list = Array.isArray(rows) ? rows : [];
         var opts = (options && typeof options === 'object') ? options : {};
         var accentCss = opts.accentCss ? String(opts.accentCss) : '';
+        var accentClass = '';
+        try {
+          var m = /--kexo-accent-(\d+)/.exec(accentCss);
+          if (m && m[1]) accentClass = 'kexo-accent-bg-' + String(m[1]);
+        } catch (_) { accentClass = ''; }
         if (!list.length) {
           host.innerHTML = '<div class="kexo-dash-top-list-wrap"><div class="kexo-widget-empty">No data</div></div>';
           return;
@@ -23937,7 +24324,7 @@ const API = '';
             '<span class="kexo-dash-top-row-label">' + escapeHtml(label) + '</span>' +
             '<span class="kexo-dash-top-row-cr">' + escapeHtml(crText) + '</span>' +
             '<span class="kexo-dash-top-row-value' + valueClass + '">' + escapeHtml(valueText) + '</span>' +
-            '<div class="kexo-dash-top-row-bar"><span style="' + (accentCss ? escapeHtml(accentCss) : '') + '" data-kexo-bar-fill="' + escapeHtml(String(pct)) + '"></span></div>' +
+            '<div class="kexo-dash-top-row-bar"><span class="kexo-widget-fill' + (accentClass ? (' ' + accentClass) : '') + '" data-kexo-bar-fill="' + escapeHtml(String(pct)) + '"></span></div>' +
           '</li>';
         });
         html += '</ul>';
@@ -23948,9 +24335,11 @@ const API = '';
       function animateWidgetFills(root) {
         if (!root || !root.querySelectorAll) return;
         try {
+          if (root._kexoWidgetFillsRaf) return;
           var fills = root.querySelectorAll('[data-kexo-bar-fill]');
           if (!fills || !fills.length) return;
-          requestAnimationFrame(function () {
+          root._kexoWidgetFillsRaf = requestAnimationFrame(function () {
+            root._kexoWidgetFillsRaf = 0;
             Array.prototype.forEach.call(fills, function (el) {
               var pct = Number(el.getAttribute('data-kexo-bar-fill') || 0);
               if (!Number.isFinite(pct)) pct = 0;
@@ -23966,6 +24355,11 @@ const API = '';
         var host = document.getElementById(mountId);
         if (!host) return;
         var list = Array.isArray(rows) ? rows : [];
+        var accentClass = '';
+        try {
+          var m = /--kexo-accent-(\d+)/.exec(String(accentCss || ''));
+          if (m && m[1]) accentClass = 'kexo-accent-bg-' + String(m[1]);
+        } catch (_) { accentClass = ''; }
         if (!list.length) { setWidgetEmpty(mountId, 'No data'); return; }
         var html = '<ul class="kexo-widget-list">';
         list.forEach(function (r) {
@@ -23986,7 +24380,7 @@ const API = '';
             '<span class="kexo-widget-row-icon" aria-hidden="true">' + icon + '</span>' +
             '<span class="kexo-widget-row-label">' + escapeHtml(label || '—') + '</span>' +
             '<span class="kexo-widget-row-value">' + escapeHtml(valueText) + '</span>' +
-            '<div class="kexo-widget-row-bar"><span style="' + (accentCss ? escapeHtml(accentCss) : '') + '"' +
+            '<div class="kexo-widget-row-bar"><span class="kexo-widget-fill' + (accentClass ? (' ' + accentClass) : '') + '"' +
               (placeholder ? ' data-kexo-placeholder="1"' : '') +
               ' data-kexo-bar-fill="' + escapeHtml(String(pct)) + '"></span></div>' +
           '</li>';
@@ -24000,6 +24394,11 @@ const API = '';
         var host = document.getElementById(mountId);
         if (!host) return;
         var list = Array.isArray(rows) ? rows : [];
+        var accentClass = '';
+        try {
+          var m = /--kexo-accent-(\d+)/.exec(String(accentCss || ''));
+          if (m && m[1]) accentClass = 'kexo-accent-bg-' + String(m[1]);
+        } catch (_) { accentClass = ''; }
         if (!list.length) { setWidgetEmpty(mountId, 'No data'); return; }
         var html = '<div class="kexo-widget-vbars"><div class="kexo-widget-vbars-grid">';
         list.forEach(function (r) {
@@ -24016,7 +24415,7 @@ const API = '';
             ? ((label ? (label + '\n') : '') + 'No data yet')
             : ((label ? (label + '\n') : '') + 'Value: ' + fmtGbp2(value) + '\nShare: ' + (Math.round(pct * 10) / 10).toFixed(1) + '%');
           html += '<div class="kexo-widget-vbar" title="' + escapeHtml(tip) + '">' +
-            '<div class="kexo-widget-vbar-col"><div class="kexo-widget-vbar-fill" style="' + (accentCss ? escapeHtml(accentCss) : '') + '"' +
+            '<div class="kexo-widget-vbar-col"><div class="kexo-widget-vbar-fill' + (accentClass ? (' ' + accentClass) : '') + '"' +
               (placeholder ? ' data-kexo-placeholder="1"' : '') +
               ' data-kexo-bar-fill="' + escapeHtml(String(pct)) + '"></div></div>' +
             '<div class="kexo-widget-vbar-label">' +
@@ -24134,11 +24533,10 @@ const API = '';
 
         var topHtml =
           '<div class="kexo-widget-radial-centered d-flex flex-column align-items-center text-center">' +
-            '<div class="position-relative flex-shrink-0 kexo-widget-radial-wrap" style="width:' + size + 'px;height:' + size + 'px" title="' + escapeHtml(tip) + '">' +
+            '<div class="position-relative flex-shrink-0 kexo-widget-radial-wrap" title="' + escapeHtml(tip) + '">' +
               '<svg width="' + size + '" height="' + size + '" viewBox="0 0 ' + size + ' ' + size + '" aria-hidden="true">' +
                 '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="rgba(15,23,42,0.10)" stroke-width="' + strokeW + '"></circle>' +
-                '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="' + escapeHtml(radialStroke) + '" stroke-width="' + strokeW + '" stroke-linecap="round"' +
-                  ' style="transform: rotate(-90deg); transform-origin: ' + cx + 'px ' + cy + 'px; transition: stroke-dashoffset 520ms cubic-bezier(.2,.9,.2,1);"' +
+                '<circle class="kexo-widget-radial-progress" cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="' + escapeHtml(radialStroke) + '" stroke-width="' + strokeW + '" stroke-linecap="round"' +
                   ' stroke-dasharray="' + escapeHtml(String(circ)) + '" stroke-dashoffset="' + escapeHtml(String(circ)) + '"' +
                   ' data-kexo-radial-pct="' + escapeHtml(String(placeholder ? 0 : pct)) + '" data-kexo-radial-circ="' + escapeHtml(String(circ)) + '"' +
                 '></circle>' +
@@ -24149,7 +24547,7 @@ const API = '';
                 '<div class="text-muted small kexo-widget-radial-revenue">' + escapeHtml(valText) + '</div>' +
               '</div>' +
             '</div>' +
-            '<div class="fw-semibold text-truncate mt-2 kexo-widget-radial-label" style="max-width:100%" title="' + escapeHtml(label) + '">' + escapeHtml(label || '—') + '</div>' +
+            '<div class="fw-semibold text-truncate mt-2 kexo-widget-radial-label" title="' + escapeHtml(label) + '">' + escapeHtml(label || '—') + '</div>' +
           '</div>';
 
         host.innerHTML = topHtml + '<div class="mt-3" id="' + escapeHtml(mountId + '-list') + '"></div>';
@@ -24219,12 +24617,13 @@ const API = '';
         svg += '<text x="' + cx + '" y="' + (cy + 14) + '" text-anchor="middle" font-size="10" fill="rgba(15,23,42,0.6)">total</text>';
         svg += '</svg>';
 
-        var legend = '<ul class="kexo-widget-list" style="margin-top:0.25rem">';
+        var legend = '<ul class="kexo-widget-list mt-1">';
         list.forEach(function (r, idx) {
           var label = r && r.label != null ? String(r.label) : '—';
           var v = Number(r && r.valueGbp) || 0;
+          var dot = '<span class="kexo-widget-dot" data-kexo-dot-bg="' + escapeHtml(colors[idx % colors.length]) + '" aria-hidden="true"></span>';
           legend += '<li class="kexo-widget-row">' +
-            '<span class="kexo-widget-row-icon" aria-hidden="true"><span style="display:inline-block;width:10px;height:10px;border-radius:999px;background:' + escapeHtml(colors[idx % colors.length]) + '"></span></span>' +
+            '<span class="kexo-widget-row-icon" aria-hidden="true">' + dot + '</span>' +
             '<span class="kexo-widget-row-label">' + escapeHtml(label) + '</span>' +
             '<span class="kexo-widget-row-value">' + escapeHtml(fmtGbp2(v)) + '</span>' +
           '</li>';
@@ -24232,6 +24631,13 @@ const API = '';
         legend += '</ul>';
 
         host.innerHTML = '<div class="d-flex flex-column align-items-center">' + svg + '</div>' + legend;
+        try {
+          host.querySelectorAll('[data-kexo-dot-bg]').forEach(function (el) {
+            if (!el || !el.style || !el.getAttribute) return;
+            var bg = String(el.getAttribute('data-kexo-dot-bg') || '').trim();
+            if (bg) el.style.background = bg;
+          });
+        } catch (_) {}
       }
 
       function requestDashboardWidgetsRefresh(opts) {
@@ -24264,12 +24670,20 @@ const API = '';
         var shopKey = shop ? String(shop) : '';
         var base = (typeof API === 'string') ? API : '';
         var ovwAssetOverrides = {};
-        var ovwOverridePromise = fetch(base + '/api/asset-overrides', { credentials: 'same-origin', cache: 'no-store' })
-          .then(function (r) { return r && r.ok ? r.json() : null; })
+        var ovwOverridesUrl = base + '/api/asset-overrides' + (force ? ('?_=' + Date.now()) : '');
+        var ovwOverridePromise = (force
+          ? fetch(ovwOverridesUrl, { credentials: 'same-origin', cache: 'no-store' }).then(function (r) { return r && r.ok ? r.json() : null; })
+          : (typeof kexoFetchOkJsonStable === 'function'
+              ? kexoFetchOkJsonStable(ovwOverridesUrl, { credentials: 'same-origin' }, 60000)
+              : fetch(ovwOverridesUrl, { credentials: 'same-origin', cache: 'default' }).then(function (r) { return r && r.ok ? r.json() : null; })
+            )
+        )
           .then(function (body) {
             if (body && body.ok && body.assetOverrides && typeof body.assetOverrides === 'object') ovwAssetOverrides = body.assetOverrides;
           })
-          .catch(function () {});
+          .catch(function (err) {
+            try { if (typeof window.kexoCaptureError === 'function') window.kexoCaptureError(err, { context: 'assetOverrides.fetch', page: 'dashboard' }); } catch (_) {}
+          });
 
         var urls = {
           finishes: base + '/api/insights-variants?range=' + encodeURIComponent(rk) + (shopKey ? ('&shop=' + encodeURIComponent(shopKey)) : '') + (force ? ('&force=1&_=' + Date.now()) : ''),
@@ -24454,8 +24868,7 @@ const API = '';
                 '<div class="kexo-ovw-ring">' +
                   '<svg width="' + size + '" height="' + size + '" viewBox="0 0 ' + size + ' ' + size + '" aria-hidden="true">' +
                     '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="rgba(15,23,42,0.10)" stroke-width="' + strokeW + '"></circle>' +
-                    '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="var(--kexo-accent, var(--kexo-accent-1, #4b94e4))" stroke-width="' + strokeW + '" stroke-linecap="round"' +
-                      ' style="transform: rotate(-90deg); transform-origin: ' + cx + 'px ' + cy + 'px; transition: stroke-dashoffset 520ms cubic-bezier(.2,.9,.2,1);"' +
+                    '<circle class="kexo-widget-radial-progress" cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="var(--kexo-accent, var(--kexo-accent-1, #4b94e4))" stroke-width="' + strokeW + '" stroke-linecap="round"' +
                       ' stroke-dasharray="' + escapeHtml(String(circ)) + '" stroke-dashoffset="' + escapeHtml(String(dashOffset)) + '"' +
                       ' data-kexo-radial-pct="' + escapeHtml(String(pct)) + '" data-kexo-radial-circ="' + escapeHtml(String(circ)) + '"' +
                     '></circle>' +
@@ -24717,6 +25130,7 @@ const API = '';
         var pollTimer = null;
         var visibilityBound = false;
         var pageShowBound = false;
+        var mainTabBound = false;
         var lastResumeAt = 0;
         var POLL_MS = 120000;
         function isDashboardActive() {
@@ -24785,6 +25199,14 @@ const API = '';
         function onPageShow(ev) {
           if (ev && ev.persisted) refreshOnceAndResume('pageshow');
         }
+        function onMainTabChanged(ev) {
+          var next = ev && ev.detail && ev.detail.tab != null ? String(ev.detail.tab).trim().toLowerCase() : '';
+          if (next && next !== 'dashboard') {
+            try { if (typeof pauseOverviewResizeObservers === 'function') pauseOverviewResizeObservers(); } catch (_) {}
+            return;
+          }
+          try { if (typeof resumeOverviewResizeObservers === 'function') resumeOverviewResizeObservers(); } catch (_) {}
+        }
         function init() {
           startPolling();
           if (!visibilityBound) {
@@ -24794,6 +25216,10 @@ const API = '';
           if (!pageShowBound) {
             window.addEventListener('pageshow', onPageShow);
             pageShowBound = true;
+          }
+          if (!mainTabBound) {
+            window.addEventListener('kexo:main-tab-changed', onMainTabChanged);
+            mainTabBound = true;
           }
         }
         function destroy() {
@@ -24805,6 +25231,10 @@ const API = '';
           if (pageShowBound) {
             try { window.removeEventListener('pageshow', onPageShow); } catch (_) {}
             pageShowBound = false;
+          }
+          if (mainTabBound) {
+            try { window.removeEventListener('kexo:main-tab-changed', onMainTabChanged); } catch (_) {}
+            mainTabBound = false;
           }
         }
         return {
@@ -24874,11 +25304,14 @@ const API = '';
     // ?????? User avatar: fetch /api/me and populate ????????????????????????????????????????????????????????????????????????
     (function initUserAvatar() {
       try {
+        // Stable GETs: use short TTL + error reporting to reduce duplicate fetches.
         var avatarEl = document.getElementById('user-avatar');
         var emailEl = document.getElementById('user-email');
         // We still fetch /api/me even if avatar elements are missing, so we can gate master-only UI.
-        fetch('/api/me', { credentials: 'same-origin' })
-          .then(function(r) { return r.json(); })
+        (typeof kexoFetchJsonStable === 'function'
+          ? kexoFetchJsonStable('/api/me', { credentials: 'same-origin' }, 60000)
+          : fetch('/api/me', { credentials: 'same-origin', cache: 'default' }).then(function (r) { return r.json(); })
+        )
           .then(function(d) {
             var isMaster = !!(d && d.isMaster);
             try { window.__kexoMe = d || null; } catch (_) {}
@@ -24889,7 +25322,8 @@ const API = '';
             if (avatarEl && d.initial) avatarEl.textContent = d.initial;
             if (emailEl) emailEl.textContent = d.email;
           })
-          .catch(function() {
+          .catch(function(err) {
+            try { if (typeof window.kexoCaptureError === 'function') window.kexoCaptureError(err, { context: 'me.fetch' }); } catch (_) {}
             try { window.__kexoMe = null; } catch (_) {}
             try { window.__kexoIsMasterUser = false; } catch (_) {}
             try { window.dispatchEvent(new CustomEvent('kexo:me-loaded', { detail: { isMaster: false, email: '' } })); } catch (_) {}
@@ -24903,14 +25337,18 @@ const API = '';
       try {
         var el = document.getElementById('kexo-online-website');
         if (!el) return;
-        fetch('/api/store-base-url', { credentials: 'same-origin' })
-          .then(function(r) { return r.json(); })
+        (typeof kexoFetchJsonStable === 'function'
+          ? kexoFetchJsonStable('/api/store-base-url', { credentials: 'same-origin' }, 5 * 60 * 1000)
+          : fetch('/api/store-base-url', { credentials: 'same-origin', cache: 'default' }).then(function (r) { return r.json(); })
+        )
           .then(function(d) {
             var domain = (d && d.shopDisplayDomain) ? String(d.shopDisplayDomain).trim() : '';
             el.textContent = domain || '\u2014';
             el.title = domain || '';
           })
-          .catch(function() {});
+          .catch(function(err) {
+            try { if (typeof window.kexoCaptureError === 'function') window.kexoCaptureError(err, { context: 'storeBaseUrl.fetch' }); } catch (_) {}
+          });
       } catch (_) {}
     })();
 
@@ -24974,8 +25412,10 @@ const API = '';
           var shop = (typeof getShopParam === 'function' ? getShopParam() : null) || (typeof shopForSalesFallback === 'string' && shopForSalesFallback ? shopForSalesFallback : null);
           if (shop) url += (url.indexOf('?') >= 0 ? '&' : '?') + 'shop=' + encodeURIComponent(shop);
         } catch (_) {}
-        fetch(url, { credentials: 'same-origin', cache: 'no-store' })
-          .then(function(r) { return r.ok ? r.json() : null; })
+        (typeof kexoFetchOkJsonStable === 'function'
+          ? kexoFetchOkJsonStable(url, { credentials: 'same-origin' }, 15000)
+          : fetch(url, { credentials: 'same-origin', cache: 'default' }).then(function (r) { return r.ok ? r.json() : null; })
+        )
           .then(function(c) {
             if (myToken !== token) return;
             if (!c) return;
@@ -25002,7 +25442,9 @@ const API = '';
             tagsEl.innerHTML = html;
             wrap.style.display = 'block';
           })
-          .catch(function() {});
+          .catch(function(err) {
+            try { if (typeof window.kexoCaptureError === 'function') window.kexoCaptureError(err, { context: 'configStatus.fetch', page: PAGE || '' }); } catch (_) {}
+          });
       }
 
       function applyFromViewer(viewer) {
@@ -27977,6 +28419,7 @@ const API = '';
 
 /**
  * Notifications offcanvas: tabs (Unread/Read/Archived), type icons, detail with Archive + Delete; mark read on view only.
+ * Dedupe in-flight fetches to reduce duplicate requests.
  */
 (function () {
   var API = typeof window.API !== 'undefined' ? window.API : '';
@@ -28012,12 +28455,28 @@ const API = '';
   }
 
   function esc(s) {
+    try { if (typeof window.kexoEscapeHtml === 'function') return window.kexoEscapeHtml(s); } catch (_) {}
     if (s == null) return '';
     return String(s)
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;');
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function safeHref(raw) {
+    try { if (typeof window.kexoSafeHref === 'function') return window.kexoSafeHref(raw); } catch (_) {}
+    var s = raw != null ? String(raw).trim() : '';
+    if (!s) return '';
+    if (s[0] === '#') return s;
+    if (s[0] === '/' || s.startsWith('./') || s.startsWith('../') || s[0] === '?') return s;
+    try {
+      var u = new URL(s, window.location.origin);
+      var proto = (u && u.protocol) ? String(u.protocol).toLowerCase() : '';
+      if (proto === 'http:' || proto === 'https:' || proto === 'mailto:' || proto === 'tel:') return u.href;
+    } catch (_) {}
+    return '';
   }
 
   function formatTime(createdAt) {
@@ -28038,16 +28497,32 @@ const API = '';
     }
   }
 
+  var _notificationsListInFlight = null;
   function fetchList() {
-    return fetch(API + '/api/notifications', { credentials: 'same-origin', cache: 'no-store' })
-      .then(function (r) { return r.ok ? r.json() : null; })
-      .catch(function () { return null; });
+    if (_notificationsListInFlight) return _notificationsListInFlight;
+    _notificationsListInFlight = fetch(API + '/api/notifications', { credentials: 'same-origin', cache: 'no-store' })
+      .then(function (r) { return r && r.ok ? r.json() : null; })
+      .catch(function (err) {
+        try { if (typeof window.kexoCaptureError === 'function') window.kexoCaptureError(err, { context: 'notifications.fetchList' }); } catch (_) {}
+        return null;
+      })
+      .finally(function () { _notificationsListInFlight = null; });
+    return _notificationsListInFlight;
   }
 
+  var _notificationsDetailInFlight = new Map();
   function fetchDetail(id) {
-    return fetch(API + '/api/notifications/' + encodeURIComponent(String(id)), { credentials: 'same-origin', cache: 'no-store' })
-      .then(function (r) { return r.ok ? r.json() : null; })
-      .catch(function () { return null; });
+    var key = String(id);
+    if (_notificationsDetailInFlight.has(key)) return _notificationsDetailInFlight.get(key);
+    var p = fetch(API + '/api/notifications/' + encodeURIComponent(String(id)), { credentials: 'same-origin', cache: 'no-store' })
+      .then(function (r) { return r && r.ok ? r.json() : null; })
+      .catch(function (err) {
+        try { if (typeof window.kexoCaptureError === 'function') window.kexoCaptureError(err, { context: 'notifications.fetchDetail', id: key }); } catch (_) {}
+        return null;
+      })
+      .finally(function () { try { _notificationsDetailInFlight.delete(key); } catch (_) {} });
+    _notificationsDetailInFlight.set(key, p);
+    return p;
   }
 
   function patchNotification(id, body) {
@@ -28197,7 +28672,8 @@ const API = '';
       bodyHtml += '<div class="flex-grow-1 min-w-0"><strong>' + esc(n.title) + '</strong></div></div>';
       bodyHtml += '<div class="small text-muted mb-2">' + esc(formatTime(n.created_at)) + '</div>';
       if (n.body) bodyHtml += '<div class="notification-body">' + esc(n.body).replace(/\n/g, '<br>') + '</div>';
-      if (n.link) bodyHtml += '<p class="mt-3"><a href="' + esc(n.link) + '" class="btn">View</a></p>';
+      var href = safeHref(n.link);
+      if (href) bodyHtml += '<p class="mt-3"><a href="' + esc(href) + '" class="btn">View</a></p>';
       if (detailBodyEl) detailBodyEl.innerHTML = bodyHtml;
 
       if (detailActionsEl) {

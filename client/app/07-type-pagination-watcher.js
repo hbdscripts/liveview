@@ -1,3 +1,4 @@
+      // Throttle hot resize handlers to reduce repeated layout work.
       function schedule() {
         if (activeMainTab !== 'products') return;
         if (!leaderboardCache && !leaderboardLoading) return;
@@ -12,7 +13,18 @@
           renderProductsLeaderboard(leaderboardCache);
         });
       }
-      try { window.addEventListener('resize', schedule); } catch (_) {}
+      try {
+        var onResize = (typeof kexoThrottle === 'function') ? kexoThrottle(schedule, 120) : schedule;
+        window.addEventListener('resize', onResize, { passive: true });
+        try {
+          if (typeof kexoRegisterCleanup === 'function') {
+            kexoRegisterCleanup(function () {
+              try { window.removeEventListener('resize', onResize); } catch (_) {}
+              try { if (onResize && onResize.cancel) onResize.cancel(); } catch (_) {}
+            });
+          }
+        } catch (_) {}
+      } catch (_) {}
     })();
 
     function fetchFinishes(options = {}) {
@@ -267,7 +279,7 @@
         if (tries >= 25) {
           el.__kexoApexWaitTries = 0;
           captureChartMessage('Chart library failed to load.', 'productsChartLibraryLoad', { chartKey: 'products-chart', tries: tries }, 'error');
-          el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:280px;color:var(--tblr-secondary);text-align:center;padding:0 18px;font-size:.875rem">Chart library failed to load.</div>';
+            el.innerHTML = '<div class="kexo-chart-empty kexo-chart-empty--h280">Chart library failed to load.</div>';
           return;
         }
         setTimeout(function() { renderProductsChart(data); }, 200);
@@ -290,7 +302,7 @@
       var d = productsChartData;
 
       if (!d || !Array.isArray(d.bestSellers) || d.bestSellers.length === 0) {
-        el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:280px;color:var(--tblr-secondary);font-size:.875rem">No product data available</div>';
+        el.innerHTML = '<div class="kexo-chart-empty kexo-chart-empty--h280">No product data available</div>';
         return;
       }
 
@@ -299,7 +311,7 @@
       }).slice(0, 10);
 
       if (!products.length) {
-        el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:280px;color:var(--tblr-secondary);font-size:.875rem">No product data available</div>';
+        el.innerHTML = '<div class="kexo-chart-empty kexo-chart-empty--h280">No product data available</div>';
         return;
       }
 
@@ -356,13 +368,13 @@
                 var row = idx >= 0 && idx < chartRows.length ? chartRows[idx] : null;
                 if (!row) return '';
                 var thumb = row.thumb
-                  ? ('<img src="' + escapeHtml(row.thumb) + '" alt="" style="width:28px;height:28px;border-radius:6px;object-fit:cover;border:1px solid rgba(15,23,42,.08);margin-right:8px;">')
+                  ? ('<img src="' + escapeHtml(row.thumb) + '" alt="" class="kexo-apex-tooltip-thumb">')
                   : '';
-                return '<div style="padding:8px 10px;min-width:170px;">' +
-                  '<div style="display:flex;align-items:center;margin-bottom:4px;">' + thumb +
-                    '<div style="font-weight:600;font-size:12px;line-height:1.2;">' + escapeHtml(row.title) + '</div>' +
+                return '<div class="kexo-apex-tooltip-card">' +
+                  '<div class="kexo-apex-tooltip-head">' + thumb +
+                    '<div class="kexo-apex-tooltip-title">' + escapeHtml(row.title) + '</div>' +
                   '</div>' +
-                  '<div style="font-size:12px;color:#475569;">Revenue: <strong style="color:#0f172a;">' + escapeHtml(formatRevenue(row.revenue) || '\u2014') + '</strong></div>' +
+                  '<div class="kexo-apex-tooltip-meta">Revenue: <strong class="kexo-apex-tooltip-strong">' + escapeHtml(formatRevenue(row.revenue) || '\u2014') + '</strong></div>' +
                 '</div>';
               }
             },
@@ -383,7 +395,7 @@
           }
         } catch (err) {
           captureChartError(err, 'productsChartRender', { chartKey: 'products-chart', mode: 'pie' });
-          el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:280px;color:#ef4444;font-size:.875rem">Chart rendering failed</div>';
+          el.innerHTML = '<div class="kexo-chart-empty kexo-chart-empty--h280 kexo-chart-empty--error">Chart rendering failed</div>';
         }
         return;
       }
@@ -447,13 +459,13 @@
               var row = idx >= 0 && idx < chartRows.length ? chartRows[idx] : null;
               if (!row) return '';
               var thumb = row.thumb
-                ? ('<img src="' + escapeHtml(row.thumb) + '" alt="" style="width:28px;height:28px;border-radius:6px;object-fit:cover;border:1px solid rgba(15,23,42,.08);margin-right:8px;">')
+                ? ('<img src="' + escapeHtml(row.thumb) + '" alt="" class="kexo-apex-tooltip-thumb">')
                 : '';
-              return '<div style="padding:8px 10px;min-width:170px;">' +
-                '<div style="display:flex;align-items:center;margin-bottom:4px;">' + thumb +
-                  '<div style="font-weight:600;font-size:12px;line-height:1.2;">' + escapeHtml(row.title) + '</div>' +
+              return '<div class="kexo-apex-tooltip-card">' +
+                '<div class="kexo-apex-tooltip-head">' + thumb +
+                  '<div class="kexo-apex-tooltip-title">' + escapeHtml(row.title) + '</div>' +
                 '</div>' +
-                '<div style="font-size:12px;color:#475569;">Revenue: <strong style="color:#0f172a;">' + escapeHtml(formatRevenue(row.revenue) || '\u2014') + '</strong></div>' +
+                '<div class="kexo-apex-tooltip-meta">Revenue: <strong class="kexo-apex-tooltip-strong">' + escapeHtml(formatRevenue(row.revenue) || '\u2014') + '</strong></div>' +
               '</div>';
             }
           },
@@ -478,7 +490,7 @@
         }
       } catch (err) {
         captureChartError(err, 'productsChartRender', { chartKey: 'products-chart', mode: chartType });
-        el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:280px;color:#ef4444;font-size:.875rem">Chart rendering failed</div>';
+        el.innerHTML = '<div class="kexo-chart-empty kexo-chart-empty--h280 kexo-chart-empty--error">Chart rendering failed</div>';
       }
     }
 
@@ -1672,7 +1684,7 @@
         legend.setAttribute('class', 'kexo-countries-map-legend');
         legend.innerHTML =
           '<div class="kexo-live-activity-legend-title">' + escapeHtml(title) + '</div>' +
-          (subtitle ? ('<div class="text-muted small" style="margin-top:-2px;margin-bottom:4px">' + escapeHtml(subtitle) + '</div>') : '') +
+          (subtitle ? ('<div class="text-muted small kexo-subtitle-tight">' + escapeHtml(subtitle) + '</div>') : '') +
           '<div class="text-muted small">Pinned: ' + escapeHtml(String(top.length)) + '</div>';
         try { el.appendChild(legend); } catch (_) {}
       } catch (_) {}
@@ -1682,13 +1694,14 @@
       if (!el) return;
       var message = String(text == null ? '' : text).trim() || 'Unavailable';
       var isError = !!(opts && opts.error);
-      var color = isError ? '#ef4444' : 'var(--tblr-secondary)';
       var h = (opts && Number.isFinite(opts.height)) ? Math.max(80, opts.height) : 320;
       if (isError) captureChartMessage(message, 'countriesMapState', { chartKey: 'countries-map-chart' }, 'error');
-      el.innerHTML =
-        '<div style="display:flex;align-items:center;justify-content:center;height:' + h + 'px;color:' + color + ';text-align:center;padding:0 18px;">' +
-          escapeHtml(message) +
-        '</div>';
+      var cls = 'kexo-chart-empty' + (isError ? ' kexo-chart-empty--error' : '');
+      el.innerHTML = '<div class="' + cls + '" data-kexo-chart-empty="1">' + escapeHtml(message) + '</div>';
+      try {
+        var child = el.querySelector('[data-kexo-chart-empty="1"]');
+        if (child && child.style) child.style.height = String(h) + 'px';
+      } catch (_) {}
     }
 
     var WORLD_MAP_ISO2 = ['AE','AF','AG','AL','AM','AO','AR','AT','AU','AZ','BA','BB','BD','BE','BF','BG','BI','BJ','BN','BO','BR','BS','BT','BW','BY','BZ','CA','CD','CF','CG','CH','CI','CL','CM','CN','CO','CR','CU','CV','CY','CZ','DE','DJ','DK','DM','DO','DZ','EC','EE','EG','ER','ES','ET','FI','FJ','FK','FR','GA','GB','GD','GE','GF','GH','GL','GM','GN','GQ','GR','GT','GW','GY','HN','HR','HT','HU','ID','IE','IL','IN','IQ','IR','IS','IT','JM','JO','JP','KE','KG','KH','KM','KN','KP','KR','KW','KZ','LA','LB','LC','LK','LR','LS','LT','LV','LY','MA','MD','MG','MK','ML','MM','MN','MR','MT','MU','MV','MW','MX','MY','MZ','NA','NC','NE','NG','NI','NL','NO','NP','NZ','OM','PA','PE','PF','PG','PH','PK','PL','PT','PY','QA','RE','RO','RS','RU','SA','SB','SC','SD','SE','SI','SK','SL','SN','SO','SR','ST','SV','SY','SZ','TD','TG','TH','TJ','TL','TM','TN','TR','TT','TW','TZ','UA','UG','US','UY','UZ','VE','VN','VU','YE','ZA','ZM','ZW'];
@@ -2137,7 +2150,7 @@
             if (!rev && !ord) {
               setVectorMapTooltipContent(
                 tooltip,
-                '<div style="min-width:140px;font-weight:600">' + escapeHtml(name) + '</div>',
+                '<div class="kexo-map-tooltip-title kexo-map-tooltip-title--min140">' + escapeHtml(name) + '</div>',
                 name
               );
               return;
@@ -2146,10 +2159,10 @@
             const ordHtml = ord ? (formatSessions(ord) + ' orders') : '\u2014';
             setVectorMapTooltipContent(
               tooltip,
-              '<div style="min-width:180px">' +
-                '<div style="font-weight:600;margin-bottom:2px">' + escapeHtml(name) + '</div>' +
-                '<div style="color:' + escapeHtml(muted) + ';font-size:.8125rem">Revenue: <span style="color:inherit">' + escapeHtml(revHtml) + '</span></div>' +
-                '<div style="color:' + escapeHtml(muted) + ';font-size:.8125rem">Orders: <span style="color:inherit">' + escapeHtml(ordHtml) + '</span></div>' +
+              '<div class="kexo-map-tooltip-card">' +
+                '<div class="kexo-map-tooltip-name">' + escapeHtml(name) + '</div>' +
+                '<div class="kexo-map-tooltip-meta text-secondary">Revenue: <span class="kexo-map-tooltip-value">' + escapeHtml(revHtml) + '</span></div>' +
+                '<div class="kexo-map-tooltip-meta text-secondary">Orders: <span class="kexo-map-tooltip-value">' + escapeHtml(ordHtml) + '</span></div>' +
               '</div>',
               name + ' | Revenue: ' + revHtml + ' | Orders: ' + ordHtml
             );
@@ -4686,9 +4699,18 @@
     try {
       applyHideChartsOnMobileClass();
       try { applyKpiBundleCssVars(); } catch (_) {}
-      window.addEventListener('resize', function() {
-        try { applyHideChartsOnMobileClass(); } catch (_) {}
-      });
+      var onResize = (typeof kexoThrottle === 'function')
+        ? kexoThrottle(function () { try { applyHideChartsOnMobileClass(); } catch (_) {} }, 120)
+        : function () { try { applyHideChartsOnMobileClass(); } catch (_) {} };
+      window.addEventListener('resize', onResize, { passive: true });
+      try {
+        if (typeof kexoRegisterCleanup === 'function') {
+          kexoRegisterCleanup(function () {
+            try { window.removeEventListener('resize', onResize); } catch (_) {}
+            try { if (onResize && onResize.cancel) onResize.cancel(); } catch (_) {}
+          });
+        }
+      } catch (_) {}
     } catch (_) {}
 
     function getChartsUiItem(key) {
@@ -5364,17 +5386,20 @@
       if (!_dashboardKpiResizeWired) {
         _dashboardKpiResizeWired = true;
         try {
-          window.addEventListener('resize', function () {
-            if (_dashboardKpiResizeTimer) {
-              try { clearTimeout(_dashboardKpiResizeTimer); } catch (_) {}
+          var onResize = (typeof kexoDebounce === 'function')
+            ? kexoDebounce(function () {
+              try { if (kpiUiConfigV1 && kpiUiConfigV1.v === 1) applyDashboardKpiUiConfig(kpiUiConfigV1); } catch (_) {}
+            }, 120)
+            : function () { try { if (kpiUiConfigV1 && kpiUiConfigV1.v === 1) applyDashboardKpiUiConfig(kpiUiConfigV1); } catch (_) {} };
+          window.addEventListener('resize', onResize, { passive: true });
+          try {
+            if (typeof kexoRegisterCleanup === 'function') {
+              kexoRegisterCleanup(function () {
+                try { window.removeEventListener('resize', onResize); } catch (_) {}
+                try { if (onResize && onResize.cancel) onResize.cancel(); } catch (_) {}
+              });
             }
-            _dashboardKpiResizeTimer = setTimeout(function () {
-              _dashboardKpiResizeTimer = 0;
-              try {
-                if (kpiUiConfigV1 && kpiUiConfigV1.v === 1) applyDashboardKpiUiConfig(kpiUiConfigV1);
-              } catch (_) {}
-            }, 120);
-          });
+          } catch (_) {}
         } catch (_) {}
       }
       try { syncDateSelectOptions(); } catch (_) {}
@@ -5613,4 +5638,17 @@
     }
 
     (function initCondensedKpisUi() {
-      try { window.addEventListener('resize', function() { scheduleCondensedKpiOverflowUpdate(); }); } catch (_) {}
+      try {
+        var onResize = (typeof kexoDebounce === 'function')
+          ? kexoDebounce(function () { scheduleCondensedKpiOverflowUpdate(); }, 120)
+          : function () { scheduleCondensedKpiOverflowUpdate(); };
+        window.addEventListener('resize', onResize, { passive: true });
+        try {
+          if (typeof kexoRegisterCleanup === 'function') {
+            kexoRegisterCleanup(function () {
+              try { window.removeEventListener('resize', onResize); } catch (_) {}
+              try { if (onResize && onResize.cancel) onResize.cancel(); } catch (_) {}
+            });
+          }
+        } catch (_) {}
+      } catch (_) {}

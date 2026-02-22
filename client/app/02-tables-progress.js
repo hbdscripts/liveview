@@ -1,3 +1,4 @@
+      // Debounce hot resize work to reduce layout jank.
       function run() {
         var mounts = document.querySelectorAll('[data-kexo-table]');
         if (!mounts.length) return;
@@ -527,7 +528,18 @@
         _ensureProgress();
       }
       try {
-        window.addEventListener('resize', function() { _syncStripWidth(); }, { passive: true });
+        var _kexoTablesProgressOnResize = (typeof kexoDebounce === 'function')
+          ? kexoDebounce(function() { _syncStripWidth(); }, 120)
+          : function() { _syncStripWidth(); };
+        window.addEventListener('resize', _kexoTablesProgressOnResize, { passive: true });
+        try {
+          if (typeof kexoRegisterCleanup === 'function') {
+            kexoRegisterCleanup(function () {
+              try { window.removeEventListener('resize', _kexoTablesProgressOnResize); } catch (_) {}
+              try { if (_kexoTablesProgressOnResize && _kexoTablesProgressOnResize.cancel) _kexoTablesProgressOnResize.cancel(); } catch (_) {}
+            });
+          }
+        } catch (_) {}
       } catch (_) {}
     })();
     const LIVE_REFRESH_MS = 60000;

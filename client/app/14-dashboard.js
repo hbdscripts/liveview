@@ -21,6 +21,7 @@
       var overviewMiniResizeTimer = null;
       var overviewHeightSyncObserver = null;
       var overviewHeightSyncTimer = null;
+      var overviewHeightSyncResizeBound = false;
       var overviewHeightSyncObservedElements = [];
       var overviewMiniResizeObservedElements = [];
       var OVERVIEW_MINI_CACHE_MS = 2 * 60 * 1000;
@@ -34,6 +35,91 @@
       var overviewLazyPending = {};
       var overviewLazyVisible = {};
       var overviewCardUiBound = false;
+      var dashDocClickBound = false;
+      var dashDocClickHandler = null;
+      function bindDashDocumentClickOnce() {
+        if (dashDocClickBound) return;
+        dashDocClickBound = true;
+        dashDocClickHandler = function (e) {
+          var t = e && e.target ? e.target : null;
+          if (!t || !t.closest) return;
+
+          // Kexo Score popover close buttons (modal + overview).
+          var closeBtn = t.closest('.kexo-score-popover-close');
+          if (closeBtn) {
+            try {
+              if (typeof window.bootstrap !== 'undefined' && window.bootstrap.Popover) {
+                var Popover = window.bootstrap.Popover;
+                var allTriggers = document.querySelectorAll('[data-kexo-score-popover="1"]');
+                allTriggers.forEach(function(n) {
+                  try {
+                    var inst = Popover.getInstance(n);
+                    if (inst) inst.hide();
+                  } catch (_) {}
+                });
+              }
+            } catch (_) {}
+            return;
+          }
+
+          // Overview card range controls.
+          var rangeBtn = t.closest('[data-overview-range][data-overview-chart]');
+          if (rangeBtn) {
+            e.preventDefault();
+            var chartId = String(rangeBtn.getAttribute('data-overview-chart') || '').trim();
+            var rangeKey = String(rangeBtn.getAttribute('data-overview-range') || '').trim().toLowerCase();
+            if (!chartId || !rangeKey) return;
+            if (rangeKey === 'custom') {
+              openOverviewCardCustomRange(chartId);
+              return;
+            }
+            var next = normalizeOverviewCardRangeKey(rangeKey, OVERVIEW_CARD_DEFAULT_RANGE);
+            setOverviewCardRange(chartId, next);
+            syncOverviewCardRangeUi(chartId);
+            fetchOverviewCardData(chartId, { force: true, rangeKey: next, renderIfFresh: true });
+            return;
+          }
+
+          // Overview card chart settings buttons.
+          var settingsBtn = t.closest('.kexo-overview-chart-settings-btn[data-kexo-chart-settings-key]');
+          if (settingsBtn) {
+            e.preventDefault();
+            e.stopPropagation();
+            var chartKey = String(settingsBtn.getAttribute('data-kexo-chart-settings-key') || '').trim();
+            if (!chartKey) return;
+            var cardTitle = '';
+            try {
+              var wrap = overviewCardWrap(chartKey);
+              var titleEl = wrap ? wrap.querySelector('.subheader') : null;
+              cardTitle = titleEl && titleEl.textContent ? String(titleEl.textContent).trim() : '';
+            } catch (_) {}
+            try {
+              if (window.KexoChartSettingsBuilder && typeof window.KexoChartSettingsBuilder.openModal === 'function') {
+                window.KexoChartSettingsBuilder.openModal({ chartKey: chartKey, cardTitle: cardTitle || chartKey });
+                return;
+              }
+              if (window.KexoLayoutShortcuts && typeof window.KexoLayoutShortcuts.openChartModal === 'function') {
+                window.KexoLayoutShortcuts.openChartModal({ chartKey: chartKey, cardTitle: cardTitle || chartKey });
+              }
+            } catch (_) {}
+            return;
+          }
+
+          // Overview widgets settings buttons.
+          var widgetBtn = t.closest('[data-kexo-overview-widget-settings]');
+          if (widgetBtn) {
+            e.preventDefault();
+            e.stopPropagation();
+            try { openOvwSettings(widgetBtn); } catch (_) {}
+          }
+        };
+        try { document.addEventListener('click', dashDocClickHandler); } catch (_) {}
+        registerCleanup(function () {
+          try { document.removeEventListener('click', dashDocClickHandler); } catch (_) {}
+          dashDocClickHandler = null;
+          dashDocClickBound = false;
+        });
+      }
       var OVERVIEW_LAZY_CHART_IDS = {
         'dash-chart-attribution-30d': true,
         'dash-chart-overview-30d': true
@@ -1028,13 +1114,22 @@
           if (midGrid) { overviewHeightSyncObserver.observe(midGrid); overviewHeightSyncObservedElements.push(midGrid); }
         } catch (_) {}
         try {
-          window.addEventListener('resize', scheduleOverviewHeightSync);
+          if (!overviewHeightSyncResizeBound) {
+            overviewHeightSyncResizeBound = true;
+            window.addEventListener('resize', scheduleOverviewHeightSync, { passive: true });
+          }
         } catch (_) {}
       }
       function pauseOverviewResizeObservers() {
         try {
           if (overviewHeightSyncObserver && typeof overviewHeightSyncObserver.disconnect === 'function') overviewHeightSyncObserver.disconnect();
           if (overviewMiniResizeObserver && typeof overviewMiniResizeObserver.disconnect === 'function') overviewMiniResizeObserver.disconnect();
+        } catch (_) {}
+        try {
+          if (overviewHeightSyncResizeBound) {
+            overviewHeightSyncResizeBound = false;
+            window.removeEventListener('resize', scheduleOverviewHeightSync);
+          }
         } catch (_) {}
       }
       function resumeOverviewResizeObservers() {
@@ -1044,6 +1139,12 @@
           }
           if (overviewMiniResizeObserver && overviewMiniResizeObservedElements.length) {
             overviewMiniResizeObservedElements.forEach(function(el) { if (el && el.isConnected) overviewMiniResizeObserver.observe(el); });
+          }
+        } catch (_) {}
+        try {
+          if (overviewHeightSyncObserver && !overviewHeightSyncResizeBound) {
+            overviewHeightSyncResizeBound = true;
+            window.addEventListener('resize', scheduleOverviewHeightSync, { passive: true });
           }
         } catch (_) {}
       }
@@ -1236,7 +1337,10 @@
           if (overviewHeightSyncTimer) clearTimeout(overviewHeightSyncTimer);
         } catch (_) {}
         try {
-          window.removeEventListener('resize', scheduleOverviewHeightSync);
+          if (overviewHeightSyncResizeBound) {
+            overviewHeightSyncResizeBound = false;
+            window.removeEventListener('resize', scheduleOverviewHeightSync);
+          }
         } catch (_) {}
         overviewMiniResizeTimer = null;
         overviewMiniResizeObserver = null;
@@ -1332,10 +1436,10 @@
         var code = rawCode == null ? '' : String(rawCode).trim().toUpperCase().slice(0, 2);
         if (code === 'UK') code = 'GB';
         if (!/^[A-Z]{2}$/.test(code)) {
-          return '<span class="kexo-flag-fallback" aria-hidden="true" style="display:inline-flex;align-items:center;margin-right:4px;opacity:.8"><i class="fa-light fa-globe"></i></span>';
+          return '<span class="kexo-flag-fallback" aria-hidden="true"><i class="fa-light fa-globe"></i></span>';
         }
         var raw = code.toLowerCase();
-        return '<span class="flag flag-xs flag-country-' + escapeHtml(raw) + '" style="vertical-align:middle;margin-right:4px;" aria-hidden="true"></span>';
+        return '<span class="flag flag-xs kexo-flag-inline flag-country-' + escapeHtml(raw) + '" aria-hidden="true"></span>';
       }
 
       function countryCodeFromRow(row) {
@@ -2728,11 +2832,18 @@
           if (!lbl) continue;
           var c = cols[i] != null ? String(cols[i]) : '';
           html += '<span class="kexo-overview-mini-legend-item">'
-            + '<span class="kexo-overview-mini-legend-swatch" style="background:' + escapeHtml(c || '#94a3b8') + '"></span>'
+            + '<span class="kexo-overview-mini-legend-swatch" data-kexo-swatch-bg="' + escapeHtml(c || '#94a3b8') + '"></span>'
             + escapeHtml(lbl)
             + '</span>';
         }
         host.innerHTML = html;
+        try {
+          host.querySelectorAll('[data-kexo-swatch-bg]').forEach(function (sw) {
+            if (!sw || !sw.style || !sw.getAttribute) return;
+            var bg = String(sw.getAttribute('data-kexo-swatch-bg') || '').trim();
+            if (bg) sw.style.background = bg;
+          });
+        } catch (_) {}
         try { scheduleOverviewHeightSync(); } catch (_) {}
       }
 
@@ -3378,51 +3489,7 @@
         if (overviewCardUiBound) return;
         overviewCardUiBound = true;
         try {
-          document.addEventListener('click', function(e) {
-            var t = e && e.target ? e.target : null;
-            if (!t || !t.closest) return;
-
-            var rangeBtn = t.closest('[data-overview-range][data-overview-chart]');
-            if (rangeBtn) {
-              e.preventDefault();
-              var chartId = String(rangeBtn.getAttribute('data-overview-chart') || '').trim();
-              var rangeKey = String(rangeBtn.getAttribute('data-overview-range') || '').trim().toLowerCase();
-              if (!chartId || !rangeKey) return;
-              if (rangeKey === 'custom') {
-                openOverviewCardCustomRange(chartId);
-                return;
-              }
-              var next = normalizeOverviewCardRangeKey(rangeKey, OVERVIEW_CARD_DEFAULT_RANGE);
-              setOverviewCardRange(chartId, next);
-              syncOverviewCardRangeUi(chartId);
-              fetchOverviewCardData(chartId, { force: true, rangeKey: next, renderIfFresh: true });
-              return;
-            }
-
-            var settingsBtn = t.closest('.kexo-overview-chart-settings-btn[data-kexo-chart-settings-key]');
-            if (settingsBtn) {
-              e.preventDefault();
-              e.stopPropagation();
-              var chartKey = String(settingsBtn.getAttribute('data-kexo-chart-settings-key') || '').trim();
-              if (!chartKey) return;
-              var cardTitle = '';
-              try {
-                var wrap = overviewCardWrap(chartKey);
-                var titleEl = wrap ? wrap.querySelector('.subheader') : null;
-                cardTitle = titleEl && titleEl.textContent ? String(titleEl.textContent).trim() : '';
-              } catch (_) {}
-              try {
-                if (window.KexoChartSettingsBuilder && typeof window.KexoChartSettingsBuilder.openModal === 'function') {
-                  window.KexoChartSettingsBuilder.openModal({ chartKey: chartKey, cardTitle: cardTitle || chartKey });
-                  return;
-                }
-                if (window.KexoLayoutShortcuts && typeof window.KexoLayoutShortcuts.openChartModal === 'function') {
-                  window.KexoLayoutShortcuts.openChartModal({ chartKey: chartKey, cardTitle: cardTitle || chartKey });
-                }
-              } catch (_) {}
-              return;
-            }
-          });
+          bindDashDocumentClickOnce();
         } catch (_) {}
       }
 
@@ -4506,12 +4573,19 @@
               '<span class="kexo-score-breakdown-value">' + escapeHtml(detail) + '</span>' +
             '</div>' +
             '<div class="progress kexo-score-progress">' +
-              '<div class="progress-bar kexo-score-bar-prev" role="progressbar" style="width:' + bars.prevPct.toFixed(1) + '%" aria-hidden="true"></div>' +
-              '<div class="progress-bar ' + bars.barClass + ' kexo-score-bar-cur" role="progressbar" style="width:' + curWidth + '" data-target-pct="' + bars.curPct.toFixed(1) + '" aria-valuenow="' + bars.curPct.toFixed(1) + '" aria-valuemin="0" aria-valuemax="100">' + escapeHtml(bars.barLabel) + '</div>' +
+              '<div class="progress-bar kexo-score-bar-prev" role="progressbar" data-kexo-width="' + bars.prevPct.toFixed(1) + '%" aria-hidden="true"></div>' +
+              '<div class="progress-bar ' + bars.barClass + ' kexo-score-bar-cur" role="progressbar" data-kexo-width="' + curWidth + '" data-target-pct="' + bars.curPct.toFixed(1) + '" aria-valuenow="' + bars.curPct.toFixed(1) + '" aria-valuemin="0" aria-valuemax="100">' + escapeHtml(bars.barLabel) + '</div>' +
             '</div>' +
           '</div>';
         }).join('');
         container.innerHTML = html;
+        try {
+          container.querySelectorAll('[data-kexo-width]').forEach(function (bar) {
+            if (!bar || !bar.style || !bar.getAttribute) return;
+            var w = String(bar.getAttribute('data-kexo-width') || '').trim();
+            if (w) bar.style.width = w;
+          });
+        } catch (_) {}
         if (shouldAnimateOnce) {
           container.setAttribute('data-kexo-score-animated-range', rangeKeyForAnim);
           requestAnimationFrame(function() { animateKexoScoreOverviewBars(container); });
@@ -4603,18 +4677,7 @@
         });
         if (scope.getAttribute('data-kexo-score-popover-scope-bound') !== '1') {
           scope.setAttribute('data-kexo-score-popover-scope-bound', '1');
-          var closeHandler = function(e) {
-            if (!e.target || !e.target.closest || !e.target.closest('.kexo-score-popover-close')) return;
-            var allTriggers = document.querySelectorAll('[data-kexo-score-popover="1"]');
-            allTriggers.forEach(function(n) {
-              try {
-                var inst = Popover.getInstance(n);
-                if (inst) inst.hide();
-              } catch (_) {}
-            });
-          };
-          scope.addEventListener('click', closeHandler);
-          document.addEventListener('click', closeHandler);
+          try { bindDashDocumentClickOnce(); } catch (_) {}
         }
       }
 
@@ -4781,8 +4844,8 @@
                 '<span class="kexo-score-breakdown-value">' + escapeHtml(detail) + '</span>' +
               '</div>' +
               '<div class="progress kexo-score-progress">' +
-                '<div class="progress-bar kexo-score-bar-prev" role="progressbar" style="width:' + bars.prevPct.toFixed(1) + '%" aria-hidden="true"></div>' +
-                '<div class="progress-bar ' + bars.barClass + ' kexo-score-bar-cur" role="progressbar" style="width:0%" data-target-pct="' + bars.curPct.toFixed(1) + '" aria-valuenow="' + bars.curPct.toFixed(1) + '" aria-valuemin="0" aria-valuemax="100">' + escapeHtml(bars.barLabel) + '</div>' +
+                '<div class="progress-bar kexo-score-bar-prev" role="progressbar" data-kexo-width="' + bars.prevPct.toFixed(1) + '%" aria-hidden="true"></div>' +
+                '<div class="progress-bar ' + bars.barClass + ' kexo-score-bar-cur" role="progressbar" data-kexo-width="0%" data-target-pct="' + bars.curPct.toFixed(1) + '" aria-valuenow="' + bars.curPct.toFixed(1) + '" aria-valuemin="0" aria-valuemax="100">' + escapeHtml(bars.barLabel) + '</div>' +
               '</div>' +
             '</div>';
           }).join('');
@@ -4796,6 +4859,13 @@
             '<div id="kexo-score-summary-wrap">' + summaryHtml + '</div>' +
           '</div>' +
           '<div id="kexo-score-breakdown">' + breakdownHtml + '</div>';
+        try {
+          body.querySelectorAll('[data-kexo-width]').forEach(function (bar) {
+            if (!bar || !bar.style || !bar.getAttribute) return;
+            var w = String(bar.getAttribute('data-kexo-width') || '').trim();
+            if (w) bar.style.width = w;
+          });
+        } catch (_) {}
         (function initSummaryCloseAndReset() {
           var section = document.getElementById('kexo-score-summary-section');
           var closeBtn = section && section.querySelector('.kexo-score-summary-close');
@@ -5629,15 +5699,7 @@
         try { ensureTrendingDaysDropdown(); } catch (_) {}
         try { applyOverviewWidgetsLayoutAndColors(readOverviewWidgetsUiConfigV1()); } catch (_) {}
         try {
-          document.addEventListener('click', function (e) {
-            var t = e && e.target ? e.target : null;
-            if (!t || !t.closest) return;
-            var btn = t.closest('[data-kexo-overview-widget-settings]');
-            if (!btn) return;
-            e.preventDefault();
-            e.stopPropagation();
-            openOvwSettings(btn);
-          });
+          bindDashDocumentClickOnce();
         } catch (_) {}
         try {
           document.addEventListener('keydown', function (e) {
@@ -5723,6 +5785,11 @@
         var list = Array.isArray(rows) ? rows : [];
         var opts = (options && typeof options === 'object') ? options : {};
         var accentCss = opts.accentCss ? String(opts.accentCss) : '';
+        var accentClass = '';
+        try {
+          var m = /--kexo-accent-(\d+)/.exec(accentCss);
+          if (m && m[1]) accentClass = 'kexo-accent-bg-' + String(m[1]);
+        } catch (_) { accentClass = ''; }
         if (!list.length) {
           host.innerHTML = '<div class="kexo-dash-top-list-wrap"><div class="kexo-widget-empty">No data</div></div>';
           return;
@@ -5761,7 +5828,7 @@
             '<span class="kexo-dash-top-row-label">' + escapeHtml(label) + '</span>' +
             '<span class="kexo-dash-top-row-cr">' + escapeHtml(crText) + '</span>' +
             '<span class="kexo-dash-top-row-value' + valueClass + '">' + escapeHtml(valueText) + '</span>' +
-            '<div class="kexo-dash-top-row-bar"><span style="' + (accentCss ? escapeHtml(accentCss) : '') + '" data-kexo-bar-fill="' + escapeHtml(String(pct)) + '"></span></div>' +
+            '<div class="kexo-dash-top-row-bar"><span class="kexo-widget-fill' + (accentClass ? (' ' + accentClass) : '') + '" data-kexo-bar-fill="' + escapeHtml(String(pct)) + '"></span></div>' +
           '</li>';
         });
         html += '</ul>';
@@ -5772,9 +5839,11 @@
       function animateWidgetFills(root) {
         if (!root || !root.querySelectorAll) return;
         try {
+          if (root._kexoWidgetFillsRaf) return;
           var fills = root.querySelectorAll('[data-kexo-bar-fill]');
           if (!fills || !fills.length) return;
-          requestAnimationFrame(function () {
+          root._kexoWidgetFillsRaf = requestAnimationFrame(function () {
+            root._kexoWidgetFillsRaf = 0;
             Array.prototype.forEach.call(fills, function (el) {
               var pct = Number(el.getAttribute('data-kexo-bar-fill') || 0);
               if (!Number.isFinite(pct)) pct = 0;
@@ -5790,6 +5859,11 @@
         var host = document.getElementById(mountId);
         if (!host) return;
         var list = Array.isArray(rows) ? rows : [];
+        var accentClass = '';
+        try {
+          var m = /--kexo-accent-(\d+)/.exec(String(accentCss || ''));
+          if (m && m[1]) accentClass = 'kexo-accent-bg-' + String(m[1]);
+        } catch (_) { accentClass = ''; }
         if (!list.length) { setWidgetEmpty(mountId, 'No data'); return; }
         var html = '<ul class="kexo-widget-list">';
         list.forEach(function (r) {
@@ -5810,7 +5884,7 @@
             '<span class="kexo-widget-row-icon" aria-hidden="true">' + icon + '</span>' +
             '<span class="kexo-widget-row-label">' + escapeHtml(label || '—') + '</span>' +
             '<span class="kexo-widget-row-value">' + escapeHtml(valueText) + '</span>' +
-            '<div class="kexo-widget-row-bar"><span style="' + (accentCss ? escapeHtml(accentCss) : '') + '"' +
+            '<div class="kexo-widget-row-bar"><span class="kexo-widget-fill' + (accentClass ? (' ' + accentClass) : '') + '"' +
               (placeholder ? ' data-kexo-placeholder="1"' : '') +
               ' data-kexo-bar-fill="' + escapeHtml(String(pct)) + '"></span></div>' +
           '</li>';
@@ -5824,6 +5898,11 @@
         var host = document.getElementById(mountId);
         if (!host) return;
         var list = Array.isArray(rows) ? rows : [];
+        var accentClass = '';
+        try {
+          var m = /--kexo-accent-(\d+)/.exec(String(accentCss || ''));
+          if (m && m[1]) accentClass = 'kexo-accent-bg-' + String(m[1]);
+        } catch (_) { accentClass = ''; }
         if (!list.length) { setWidgetEmpty(mountId, 'No data'); return; }
         var html = '<div class="kexo-widget-vbars"><div class="kexo-widget-vbars-grid">';
         list.forEach(function (r) {
@@ -5840,7 +5919,7 @@
             ? ((label ? (label + '\n') : '') + 'No data yet')
             : ((label ? (label + '\n') : '') + 'Value: ' + fmtGbp2(value) + '\nShare: ' + (Math.round(pct * 10) / 10).toFixed(1) + '%');
           html += '<div class="kexo-widget-vbar" title="' + escapeHtml(tip) + '">' +
-            '<div class="kexo-widget-vbar-col"><div class="kexo-widget-vbar-fill" style="' + (accentCss ? escapeHtml(accentCss) : '') + '"' +
+            '<div class="kexo-widget-vbar-col"><div class="kexo-widget-vbar-fill' + (accentClass ? (' ' + accentClass) : '') + '"' +
               (placeholder ? ' data-kexo-placeholder="1"' : '') +
               ' data-kexo-bar-fill="' + escapeHtml(String(pct)) + '"></div></div>' +
             '<div class="kexo-widget-vbar-label">' +
@@ -5958,11 +6037,10 @@
 
         var topHtml =
           '<div class="kexo-widget-radial-centered d-flex flex-column align-items-center text-center">' +
-            '<div class="position-relative flex-shrink-0 kexo-widget-radial-wrap" style="width:' + size + 'px;height:' + size + 'px" title="' + escapeHtml(tip) + '">' +
+            '<div class="position-relative flex-shrink-0 kexo-widget-radial-wrap" title="' + escapeHtml(tip) + '">' +
               '<svg width="' + size + '" height="' + size + '" viewBox="0 0 ' + size + ' ' + size + '" aria-hidden="true">' +
                 '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="rgba(15,23,42,0.10)" stroke-width="' + strokeW + '"></circle>' +
-                '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="' + escapeHtml(radialStroke) + '" stroke-width="' + strokeW + '" stroke-linecap="round"' +
-                  ' style="transform: rotate(-90deg); transform-origin: ' + cx + 'px ' + cy + 'px; transition: stroke-dashoffset 520ms cubic-bezier(.2,.9,.2,1);"' +
+                '<circle class="kexo-widget-radial-progress" cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="' + escapeHtml(radialStroke) + '" stroke-width="' + strokeW + '" stroke-linecap="round"' +
                   ' stroke-dasharray="' + escapeHtml(String(circ)) + '" stroke-dashoffset="' + escapeHtml(String(circ)) + '"' +
                   ' data-kexo-radial-pct="' + escapeHtml(String(placeholder ? 0 : pct)) + '" data-kexo-radial-circ="' + escapeHtml(String(circ)) + '"' +
                 '></circle>' +
@@ -5973,7 +6051,7 @@
                 '<div class="text-muted small kexo-widget-radial-revenue">' + escapeHtml(valText) + '</div>' +
               '</div>' +
             '</div>' +
-            '<div class="fw-semibold text-truncate mt-2 kexo-widget-radial-label" style="max-width:100%" title="' + escapeHtml(label) + '">' + escapeHtml(label || '—') + '</div>' +
+            '<div class="fw-semibold text-truncate mt-2 kexo-widget-radial-label" title="' + escapeHtml(label) + '">' + escapeHtml(label || '—') + '</div>' +
           '</div>';
 
         host.innerHTML = topHtml + '<div class="mt-3" id="' + escapeHtml(mountId + '-list') + '"></div>';
@@ -6043,12 +6121,13 @@
         svg += '<text x="' + cx + '" y="' + (cy + 14) + '" text-anchor="middle" font-size="10" fill="rgba(15,23,42,0.6)">total</text>';
         svg += '</svg>';
 
-        var legend = '<ul class="kexo-widget-list" style="margin-top:0.25rem">';
+        var legend = '<ul class="kexo-widget-list mt-1">';
         list.forEach(function (r, idx) {
           var label = r && r.label != null ? String(r.label) : '—';
           var v = Number(r && r.valueGbp) || 0;
+          var dot = '<span class="kexo-widget-dot" data-kexo-dot-bg="' + escapeHtml(colors[idx % colors.length]) + '" aria-hidden="true"></span>';
           legend += '<li class="kexo-widget-row">' +
-            '<span class="kexo-widget-row-icon" aria-hidden="true"><span style="display:inline-block;width:10px;height:10px;border-radius:999px;background:' + escapeHtml(colors[idx % colors.length]) + '"></span></span>' +
+            '<span class="kexo-widget-row-icon" aria-hidden="true">' + dot + '</span>' +
             '<span class="kexo-widget-row-label">' + escapeHtml(label) + '</span>' +
             '<span class="kexo-widget-row-value">' + escapeHtml(fmtGbp2(v)) + '</span>' +
           '</li>';
@@ -6056,6 +6135,13 @@
         legend += '</ul>';
 
         host.innerHTML = '<div class="d-flex flex-column align-items-center">' + svg + '</div>' + legend;
+        try {
+          host.querySelectorAll('[data-kexo-dot-bg]').forEach(function (el) {
+            if (!el || !el.style || !el.getAttribute) return;
+            var bg = String(el.getAttribute('data-kexo-dot-bg') || '').trim();
+            if (bg) el.style.background = bg;
+          });
+        } catch (_) {}
       }
 
       function requestDashboardWidgetsRefresh(opts) {
@@ -6088,12 +6174,20 @@
         var shopKey = shop ? String(shop) : '';
         var base = (typeof API === 'string') ? API : '';
         var ovwAssetOverrides = {};
-        var ovwOverridePromise = fetch(base + '/api/asset-overrides', { credentials: 'same-origin', cache: 'no-store' })
-          .then(function (r) { return r && r.ok ? r.json() : null; })
+        var ovwOverridesUrl = base + '/api/asset-overrides' + (force ? ('?_=' + Date.now()) : '');
+        var ovwOverridePromise = (force
+          ? fetch(ovwOverridesUrl, { credentials: 'same-origin', cache: 'no-store' }).then(function (r) { return r && r.ok ? r.json() : null; })
+          : (typeof kexoFetchOkJsonStable === 'function'
+              ? kexoFetchOkJsonStable(ovwOverridesUrl, { credentials: 'same-origin' }, 60000)
+              : fetch(ovwOverridesUrl, { credentials: 'same-origin', cache: 'default' }).then(function (r) { return r && r.ok ? r.json() : null; })
+            )
+        )
           .then(function (body) {
             if (body && body.ok && body.assetOverrides && typeof body.assetOverrides === 'object') ovwAssetOverrides = body.assetOverrides;
           })
-          .catch(function () {});
+          .catch(function (err) {
+            try { if (typeof window.kexoCaptureError === 'function') window.kexoCaptureError(err, { context: 'assetOverrides.fetch', page: 'dashboard' }); } catch (_) {}
+          });
 
         var urls = {
           finishes: base + '/api/insights-variants?range=' + encodeURIComponent(rk) + (shopKey ? ('&shop=' + encodeURIComponent(shopKey)) : '') + (force ? ('&force=1&_=' + Date.now()) : ''),
@@ -6278,8 +6372,7 @@
                 '<div class="kexo-ovw-ring">' +
                   '<svg width="' + size + '" height="' + size + '" viewBox="0 0 ' + size + ' ' + size + '" aria-hidden="true">' +
                     '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="rgba(15,23,42,0.10)" stroke-width="' + strokeW + '"></circle>' +
-                    '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="var(--kexo-accent, var(--kexo-accent-1, #4b94e4))" stroke-width="' + strokeW + '" stroke-linecap="round"' +
-                      ' style="transform: rotate(-90deg); transform-origin: ' + cx + 'px ' + cy + 'px; transition: stroke-dashoffset 520ms cubic-bezier(.2,.9,.2,1);"' +
+                    '<circle class="kexo-widget-radial-progress" cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="var(--kexo-accent, var(--kexo-accent-1, #4b94e4))" stroke-width="' + strokeW + '" stroke-linecap="round"' +
                       ' stroke-dasharray="' + escapeHtml(String(circ)) + '" stroke-dashoffset="' + escapeHtml(String(dashOffset)) + '"' +
                       ' data-kexo-radial-pct="' + escapeHtml(String(pct)) + '" data-kexo-radial-circ="' + escapeHtml(String(circ)) + '"' +
                     '></circle>' +
@@ -6541,6 +6634,7 @@
         var pollTimer = null;
         var visibilityBound = false;
         var pageShowBound = false;
+        var mainTabBound = false;
         var lastResumeAt = 0;
         var POLL_MS = 120000;
         function isDashboardActive() {
@@ -6609,6 +6703,14 @@
         function onPageShow(ev) {
           if (ev && ev.persisted) refreshOnceAndResume('pageshow');
         }
+        function onMainTabChanged(ev) {
+          var next = ev && ev.detail && ev.detail.tab != null ? String(ev.detail.tab).trim().toLowerCase() : '';
+          if (next && next !== 'dashboard') {
+            try { if (typeof pauseOverviewResizeObservers === 'function') pauseOverviewResizeObservers(); } catch (_) {}
+            return;
+          }
+          try { if (typeof resumeOverviewResizeObservers === 'function') resumeOverviewResizeObservers(); } catch (_) {}
+        }
         function init() {
           startPolling();
           if (!visibilityBound) {
@@ -6618,6 +6720,10 @@
           if (!pageShowBound) {
             window.addEventListener('pageshow', onPageShow);
             pageShowBound = true;
+          }
+          if (!mainTabBound) {
+            window.addEventListener('kexo:main-tab-changed', onMainTabChanged);
+            mainTabBound = true;
           }
         }
         function destroy() {
@@ -6629,6 +6735,10 @@
           if (pageShowBound) {
             try { window.removeEventListener('pageshow', onPageShow); } catch (_) {}
             pageShowBound = false;
+          }
+          if (mainTabBound) {
+            try { window.removeEventListener('kexo:main-tab-changed', onMainTabChanged); } catch (_) {}
+            mainTabBound = false;
           }
         }
         return {

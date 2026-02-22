@@ -23,6 +23,27 @@
       } catch (e) {}
     })();
   </script>
+  <script>
+    (function () {
+      // Preconnect to the API origin (same-origin by default) to speed up first fetch.
+      try {
+        var origin = (window.location && window.location.origin) ? String(window.location.origin) : '';
+        if (!origin) return;
+        function ensure(rel) {
+          try {
+            if (document.querySelector('link[rel="' + rel + '"][href="' + origin + '"]')) return;
+            var l = document.createElement('link');
+            l.rel = rel;
+            l.href = origin;
+            if (rel === 'preconnect') l.crossOrigin = '';
+            document.head.appendChild(l);
+          } catch (_) {}
+        }
+        ensure('dns-prefetch');
+        ensure('preconnect');
+      } catch (_) {}
+    })();
+  </script>
   <link rel="stylesheet" href="/theme-vars.css" />
   <script src="https://browser.sentry-cdn.com/10.38.0/bundle.min.js" crossorigin="anonymous"></script>
   <!--#include partials/sentry-init.html-->

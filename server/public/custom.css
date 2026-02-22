@@ -359,6 +359,121 @@ a {
   /* font-variant-numeric: tabular-nums; */
 }
 
+/* Large grid tables: allow the browser to skip offscreen row rendering. */
+.grid-table[data-kexo-virtualize="1"] .grid-body .grid-row {
+  content-visibility: auto;
+  contain-intrinsic-size: 44px;
+}
+
+/* Chart empty states: class-based (avoid inline styles in JS renderers). */
+.kexo-chart-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 18px;
+  text-align: center;
+  font-size: .875rem;
+  color: var(--tblr-secondary, #626976);
+}
+.kexo-chart-empty--h220 { height: 220px; }
+.kexo-chart-empty--h280 { height: 280px; }
+.kexo-chart-empty--h320 { height: 320px; }
+.kexo-chart-empty--error { color: var(--tblr-danger, #d63939); }
+
+.kexo-pre-wrap { white-space: pre-wrap; }
+.kexo-kv-th { width: 180px; }
+
+.kexo-map-tooltip-title { font-weight: 600; }
+.kexo-map-tooltip-title--min140 { min-width: 140px; }
+.kexo-map-tooltip-card { min-width: 180px; }
+.kexo-map-tooltip-name { font-weight: 600; margin-bottom: 2px; }
+.kexo-map-tooltip-meta { font-size: .8125rem; }
+.kexo-map-tooltip-value { color: inherit; }
+.kexo-map-tooltip-grid {
+  margin-top: 6px;
+  display: grid;
+  grid-template-columns: 10px 1fr auto;
+  gap: 4px 8px;
+  align-items: center;
+  font-size: .8125rem;
+}
+.kexo-map-stage-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+}
+.kexo-map-stage-dot--browse { background: var(--kexo-map-stage-browse, var(--kexo-accent-1, #4b94e4)); }
+.kexo-map-stage-dot--cart { background: var(--kexo-map-stage-cart, var(--kexo-accent-3, #f59e34)); }
+.kexo-map-stage-dot--checkout { background: var(--kexo-map-stage-checkout, var(--kexo-accent-5, #6681e8)); }
+.kexo-map-stage-dot--purchase { background: var(--kexo-map-stage-purchase, var(--kexo-accent-2, #3eb3ab)); }
+
+.kexo-live-map-container { position: relative; }
+.kexo-live-map-empty-caption {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 12px;
+  text-align: center;
+  font-size: .8125rem;
+  color: var(--tblr-secondary);
+  pointer-events: none;
+}
+
+.kexo-apex-tooltip-card { padding: 8px 10px; min-width: 170px; }
+.kexo-apex-tooltip-head { display: flex; align-items: center; margin-bottom: 4px; }
+.kexo-apex-tooltip-thumb {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  object-fit: cover;
+  border: 1px solid rgba(15, 23, 42, .08);
+  margin-right: 8px;
+}
+.kexo-apex-tooltip-title { font-weight: 600; font-size: 12px; line-height: 1.2; }
+.kexo-apex-tooltip-meta { font-size: 12px; color: var(--tblr-secondary, #475569); }
+.kexo-apex-tooltip-strong { color: var(--tblr-body-color, #0f172a); }
+
+.kexo-subtitle-tight { margin-top: -2px; margin-bottom: 4px; }
+
+.kexo-flag-fallback {
+  display: inline-flex;
+  align-items: center;
+  margin-right: 4px;
+  opacity: .8;
+}
+.kexo-flag-inline {
+  vertical-align: middle;
+  margin-right: 4px;
+}
+
+/* Accent background helpers (used by Overview widget fills). */
+.kexo-accent-bg-1 { background: var(--kexo-accent-1, #4b94e4) !important; }
+.kexo-accent-bg-2 { background: var(--kexo-accent-2, #3eb3ab) !important; }
+.kexo-accent-bg-3 { background: var(--kexo-accent-3, #f59e34) !important; }
+.kexo-accent-bg-4 { background: var(--kexo-accent-4, #94a3b8) !important; }
+.kexo-accent-bg-5 { background: var(--kexo-accent-5, #6681e8) !important; }
+.kexo-accent-bg-6 { background: var(--kexo-accent-6, #ef4444) !important; }
+.kexo-accent-bg-7 { background: var(--kexo-accent-7, #10b981) !important; }
+.kexo-accent-bg-8 { background: var(--kexo-accent-8, #f97316) !important; }
+.kexo-accent-bg-9 { background: var(--kexo-accent-9, #a855f7) !important; }
+.kexo-accent-bg-10 { background: var(--kexo-accent-10, #22c55e) !important; }
+
+.kexo-widget-radial-wrap { width: 180px; height: 180px; }
+.kexo-widget-radial-label { max-width: 100%; }
+.kexo-widget-radial-progress {
+  transform: rotate(-90deg);
+  transform-origin: 50% 50%;
+  transform-box: fill-box;
+  transition: stroke-dashoffset 520ms cubic-bezier(.2,.9,.2,1);
+}
+.kexo-widget-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+}
+
 /* No-data block mode: hide headers/cells and show a full-width message block. */
 .grid-table.kexo-grid-empty-state-active .grid-header,
 .grid-table.kexo-grid-empty-state-active .grid-body {

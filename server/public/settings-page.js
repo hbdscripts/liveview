@@ -1,5 +1,6 @@
 /**
  * Settings page – tab switching, data loading, form wiring.
+ * Lazy-load per-tab JS + normalise only visible panels for faster first paint.
  * Runs only when data-page="settings".
  */
 (function () {
@@ -1113,6 +1114,124 @@
       null;
   }
 
+  var _settingsTabNormalised = {};
+  var _settingsTabReady = {};
+  var _settingsTabReadyPromises = {};
+  var _settingsScriptPromises = {};
+  var _settingsTabReadyToken = 0;
+
+  function settingsPanelElForKey(key) {
+    var k = String(key || '').trim();
+    if (!k) return null;
+    return document.getElementById('settings-panel-' + k) || null;
+  }
+
+  function ensureScriptLoaded(src) {
+    var s = String(src || '').trim();
+    if (!s) return Promise.resolve(false);
+    if (_settingsScriptPromises[s]) return _settingsScriptPromises[s];
+
+    try {
+      var existing = document.querySelector('script[src="' + s + '"]');
+      if (existing && existing.getAttribute('data-kexo-script-ready') === '1') {
+        _settingsScriptPromises[s] = Promise.resolve(true);
+        return _settingsScriptPromises[s];
+      }
+    } catch (_) {}
+
+    _settingsScriptPromises[s] = new Promise(function (resolve) {
+      try {
+        var el = document.createElement('script');
+        el.src = s;
+        el.defer = true;
+        el.setAttribute('data-kexo-script-ready', '0');
+        el.onload = function () {
+          try { el.setAttribute('data-kexo-script-ready', '1'); } catch (_) {}
+          resolve(true);
+        };
+        el.onerror = function () { resolve(false); };
+        document.head.appendChild(el);
+      } catch (_) {
+        resolve(false);
+      }
+    });
+    return _settingsScriptPromises[s];
+  }
+
+  function scriptsForTab(key) {
+    var k = String(key || '').trim().toLowerCase();
+    if (k === 'attribution') return ['/attribution-mapping-settings.js', '/attribution-tree-settings.js'];
+    if (k === 'cost-expenses') return ['/cost-expenses-settings.js', '/cost-breakdown-settings.js'];
+    if (k === 'admin') return ['/admin-page.js'];
+    return [];
+  }
+
+  function ensureTabScriptsLoaded(key) {
+    var list = scriptsForTab(key);
+    if (!list.length) return Promise.resolve(true);
+    // Load sequentially to preserve any implicit globals.
+    return list.reduce(function (p, src) {
+      return p.then(function () { return ensureScriptLoaded(src); });
+    }, Promise.resolve(true));
+  }
+
+  function ensureTabNormalisedOnce(key) {
+    var k = String(key || '').trim().toLowerCase();
+    if (!k) return;
+    if (_settingsTabNormalised[k]) return;
+    var panel = settingsPanelElForKey(k);
+    if (!panel) return;
+    _settingsTabNormalised[k] = true;
+    try { normaliseAllSettingsPanels(panel); } catch (_) {}
+  }
+
+  function ensureTabReady(key) {
+    var k = String(key || '').trim().toLowerCase();
+    if (!k) return Promise.resolve(false);
+    if (_settingsTabReady[k]) return Promise.resolve(true);
+    if (_settingsTabReadyPromises[k]) return _settingsTabReadyPromises[k];
+
+    var token = ++_settingsTabReadyToken;
+    _settingsTabReadyPromises[k] = ensureTabScriptsLoaded(k)
+      .then(function () {
+        if (token !== _settingsTabReadyToken) return false;
+        if (k === 'attribution') {
+          try {
+            if (typeof window.initAttributionMappingSettings === 'function') {
+              window.initAttributionMappingSettings({ rootId: 'settings-attribution-mapping-root' });
+            }
+          } catch (_) {}
+        }
+        if (k === 'cost-expenses') {
+          try { if (typeof window.initCostExpensesSettings === 'function') window.initCostExpensesSettings(); } catch (_) {}
+          try {
+            var costExpensesSub = getActiveCostExpensesSubTab();
+            if (typeof window.__kexoCostExpensesSetActiveSubTab === 'function') {
+              window.__kexoCostExpensesSetActiveSubTab(costExpensesSub, { updateUrl: false });
+            }
+          } catch (_) {}
+        }
+        if (k === 'admin') {
+          try {
+            if (typeof window.kexoAdminSetActiveTab === 'function') {
+              window.kexoAdminSetActiveTab(getActiveAdminSubTab(), { skipUrl: true });
+            }
+          } catch (_) {}
+        }
+        // Normalise the visible category panel after any lazy-loaded script has injected markup.
+        try {
+          var panel = settingsPanelElForKey(k);
+          if (panel) normaliseAllSettingsPanels(panel);
+          _settingsTabNormalised[k] = true;
+        } catch (_) {}
+        _settingsTabReady[k] = true;
+        return true;
+      })
+      .catch(function () { return false; });
+
+    return _settingsTabReadyPromises[k];
+  }
+
   function activateTab(key) {
     syncLeftNavActiveClasses(key);
     document.querySelectorAll('.settings-panel').forEach(function (el) {
@@ -1120,13 +1239,8 @@
       el.classList.toggle('active', panelKey === key);
     });
     updateUrl(key);
-    if (key === 'attribution') {
-      try {
-        if (typeof window.initAttributionMappingSettings === 'function') {
-          window.initAttributionMappingSettings({ rootId: 'settings-attribution-mapping-root' });
-        }
-      } catch (_) {}
-    }
+    // Lazy-load + init the newly visible category.
+    try { ensureTabReady(key); } catch (_) {}
     if (key === 'layout') {
       try { renderTablesWhenVisible(); } catch (_) {}
     }
@@ -1137,17 +1251,8 @@
         }
       } catch (_) {}
     }
-    if (key === 'cost-expenses') {
-      try {
-        if (typeof window.initCostExpensesSettings === 'function') window.initCostExpensesSettings();
-      } catch (_) {}
-      try {
-        var costExpensesSub = getActiveCostExpensesSubTab();
-        if (typeof window.__kexoCostExpensesSetActiveSubTab === 'function') {
-          window.__kexoCostExpensesSetActiveSubTab(costExpensesSub, { updateUrl: false });
-        }
-      } catch (_) {}
-    }
+    // Ensure active category is normalised (only once per category).
+    try { ensureTabNormalisedOnce(key); } catch (_) {}
     try { syncGlobalFooter(); } catch (_) {}
   }
 
@@ -6568,8 +6673,8 @@
       copyLabelTitlesToControls(tooltipRoot);
     } catch (_) {}
 
-    // One-pass Settings/Admin layout normalisation (idempotent) + dynamic render guard.
-    try { normaliseAllSettingsPanels(document.querySelector('.col-lg-9') || document.body); } catch (_) {}
+    // Settings/Admin layout normalisation is now per-category (active tab only).
+    // Keep the dynamic guard, but scope it to active panels (see settings-normaliser).
     try { wireSettingsUiMutationObserver(); } catch (_) {}
 
     function syncFromUrl() {
@@ -6591,6 +6696,7 @@
       if (initialCostExpensesSubTab) activeCostExpensesSubTab = initialCostExpensesSubTab;
 
       activateTab(tab);
+      try { ensureTabReady(tab); } catch (_) {}
       try {
         if (tab === 'kexo' && kexoTabsetApi) kexoTabsetApi.activate(getActiveKexoSubTab());
         else if (tab === 'layout' && layoutTabsetApi) layoutTabsetApi.activate(getActiveLayoutSubTab());

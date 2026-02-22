@@ -1,3 +1,4 @@
+        // Mobile tabs/nav: throttle global resize/scroll handlers + cleanup to reduce jank.
         const VALID_TABS = ['dashboard', 'spy', 'sales', 'date', 'snapshot', 'stats', 'products', 'attribution', 'devices', 'ads', 'tools'];
         const TAB_LABELS = { dashboard: 'Overview', spy: 'Live View', sales: 'Recent Sales', date: 'Table View', snapshot: 'Snapshot', stats: 'Countries', products: 'Products', variants: 'Variants', attribution: 'Attribution', devices: 'Devices', ads: 'Google Ads', tools: 'Tools' };
         const HASH_TO_TAB = { dashboard: 'dashboard', 'live-view': 'spy', sales: 'sales', date: 'date', countries: 'stats', products: 'products', channels: 'attribution', type: 'devices', attribution: 'attribution', devices: 'devices', ads: 'ads', 'compare-conversion-rate': 'tools', 'change-pins': 'tools' };
@@ -398,6 +399,7 @@
           if (panelAds) panelAds.classList.toggle('active', isAds);
 
           try { sessionStorage.setItem(TAB_KEY, tab); } catch (_) {}
+          try { window.dispatchEvent(new CustomEvent('kexo:main-tab-changed', { detail: { tab: tab } })); } catch (_) {}
           runTabWork(tab);
           // Ensure navbar live visitors status updates immediately on navigation.
           try { updateKpis(); } catch (_) {}
@@ -511,13 +513,27 @@
           setTimeout(syncDropdownOverflowState, 0);
         });
 
-        window.addEventListener('resize', function() {
-          syncDropdownOverflowState();
-          updateMobileNavDropdownTop();
-        }, { passive: true });
-        window.addEventListener('scroll', function() {
-          closeOpenNavDropdowns();
-        }, { passive: false });
+        var onResize = (typeof kexoDebounce === 'function')
+          ? kexoDebounce(function () {
+            syncDropdownOverflowState();
+            updateMobileNavDropdownTop();
+          }, 120)
+          : function () { syncDropdownOverflowState(); updateMobileNavDropdownTop(); };
+        window.addEventListener('resize', onResize, { passive: true });
+        var onScroll = (typeof kexoThrottle === 'function')
+          ? kexoThrottle(function () { closeOpenNavDropdowns(); }, 120)
+          : function () { closeOpenNavDropdowns(); };
+        window.addEventListener('scroll', onScroll, { passive: true });
+        try {
+          if (typeof kexoRegisterCleanup === 'function') {
+            kexoRegisterCleanup(function () {
+              try { window.removeEventListener('resize', onResize); } catch (_) {}
+              try { window.removeEventListener('scroll', onScroll); } catch (_) {}
+              try { if (onResize && onResize.cancel) onResize.cancel(); } catch (_) {}
+              try { if (onScroll && onScroll.cancel) onScroll.cancel(); } catch (_) {}
+            });
+          }
+        } catch (_) {}
         window.addEventListener('orientationchange', function() {
           resetNavStartPosition();
           syncDropdownOverflowState();
@@ -603,9 +619,20 @@
         document.querySelectorAll('.kexo-desktop-top-strip .dropdown').forEach(function(dd) {
           dd.addEventListener('shown.bs.dropdown', onStripDropdownShown);
         });
-        window.addEventListener('resize', function() {
-          document.querySelectorAll('.dropdown-menu.kexo-strip-dropdown-align.show').forEach(positionStripDropdown);
-        }, { passive: true });
+        var onResize = (typeof kexoDebounce === 'function')
+          ? kexoDebounce(function () {
+            document.querySelectorAll('.dropdown-menu.kexo-strip-dropdown-align.show').forEach(positionStripDropdown);
+          }, 120)
+          : function () { document.querySelectorAll('.dropdown-menu.kexo-strip-dropdown-align.show').forEach(positionStripDropdown); };
+        window.addEventListener('resize', onResize, { passive: true });
+        try {
+          if (typeof kexoRegisterCleanup === 'function') {
+            kexoRegisterCleanup(function () {
+              try { window.removeEventListener('resize', onResize); } catch (_) {}
+              try { if (onResize && onResize.cancel) onResize.cancel(); } catch (_) {}
+            });
+          }
+        } catch (_) {}
       })();
       (function initRefreshBtn() {
         const btn = document.getElementById('refresh-btn');

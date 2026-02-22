@@ -3,6 +3,7 @@
 
   // Settings/Admin UI normaliser (runtime guardrails).
   // Idempotent + memory-safe: panel-level attributes prevent repeated destructive changes.
+  // Observer is scoped + debounced to avoid re-normalising hidden tabs.
 
   var SETTINGS_PANEL_SELECTOR = '[id^="settings-"][id*="-panel-"]:not([id^="settings-panel-"]), [id^="admin-panel-"]';
   var SETTINGS_PANEL_WRAP_CLASS = 'settings-panel-wrap';
@@ -504,17 +505,30 @@
     if (document.documentElement.getAttribute(SETTINGS_PANEL_OBSERVER_ATTR) === '1') return;
     document.documentElement.setAttribute(SETTINGS_PANEL_OBSERVER_ATTR, '1');
 
-    var container = document.querySelector('.col-lg-9') || document.querySelector('.page-body') || document.body;
+    var container = document.getElementById('settings-main-content') || document.querySelector('.col-lg-9') || document.querySelector('.page-body') || document.body;
     if (!container || typeof MutationObserver === 'undefined') return;
 
     var pending = new Set();
     var scheduled = false;
+    var flushTimer = 0;
+
+    function isInActiveCategory(panelEl) {
+      try {
+        var cat = panelEl && panelEl.closest ? panelEl.closest('.settings-panel') : null;
+        if (!cat || !cat.classList) return true;
+        return cat.classList.contains('active');
+      } catch (_) {
+        return true;
+      }
+    }
 
     function flush() {
       scheduled = false;
+      if (flushTimer) { try { clearTimeout(flushTimer); } catch (_) {} flushTimer = 0; }
       try {
         pending.forEach(function (p) {
           try {
+            if (!isInActiveCategory(p)) return;
             normaliseSettingsPanel(p);
             // Help cues/tooltips can be injected dynamically; keep them migrated/bound.
             try { if (typeof window.migrateTitleToHelpPopover === 'function') window.migrateTitleToHelpPopover(p); } catch (_) {}
@@ -532,8 +546,11 @@
     function scheduleFlush() {
       if (scheduled) return;
       scheduled = true;
-      if (typeof requestAnimationFrame === 'function') requestAnimationFrame(flush);
-      else setTimeout(flush, 0);
+      // Debounce to batch rapid DOM mutations (e.g. tab switches, dynamic cards).
+      flushTimer = setTimeout(function () {
+        if (typeof requestAnimationFrame === 'function') requestAnimationFrame(flush);
+        else flush();
+      }, 80);
     }
 
     function queue(panel) {
@@ -569,9 +586,11 @@
     });
     try { obs.observe(container, { childList: true, subtree: true }); } catch (e) { reportNormaliserError('observer.observe', e); }
     try {
-      window.addEventListener('beforeunload', function () {
+      function teardown() {
         try { obs.disconnect(); } catch (e) { reportNormaliserError('observer.disconnect', e); }
-      });
+      }
+      window.addEventListener('beforeunload', teardown);
+      window.addEventListener('pagehide', teardown);
     } catch (_) {}
   }
 

@@ -1,6 +1,7 @@
+      // Guard delegated clicks + dedupe stable diagnostics reads to avoid jank.
       if (!wrap) return;
       wrap.addEventListener('click', function(e) {
-        var link = e.target.closest('a[data-page]');
+        var link = (e && e.target && e.target.closest) ? e.target.closest('a[data-page]') : null;
         if (!link) return;
         e.preventDefault();
         if (link.closest('.page-item.disabled') || link.closest('.page-item.active')) return;
@@ -21,7 +22,7 @@
         var wrap = document.getElementById(prefix + '-pagination');
         if (!wrap) return;
         wrap.addEventListener('click', function(e) {
-          var link = e.target.closest('a[data-page]');
+          var link = (e && e.target && e.target.closest) ? e.target.closest('a[data-page]') : null;
           if (!link) return;
           e.preventDefault();
           if (link.closest('.page-item.disabled') || link.closest('.page-item.active')) return;
@@ -188,11 +189,20 @@
 
       if (refreshBtn) refreshBtn.classList.add('spinning');
       if (compareOpen && compareRefreshBtn) compareRefreshBtn.classList.add('spinning');
-      const p = fetch(getConfigStatusUrl({ force: !!options.force }), { credentials: 'same-origin', cache: 'no-store' })
-        .then(function(r) {
+      var url = getConfigStatusUrl({ force: !!options.force });
+      const p = (!!options.force
+        ? fetch(url, { credentials: 'same-origin', cache: 'no-store' }).then(function(r) {
           if (!r.ok) throw new Error('Config status ' + r.status);
           return r.json();
         })
+        : (typeof kexoFetchOkJsonStable === 'function'
+            ? kexoFetchOkJsonStable(url, { credentials: 'same-origin' }, 15000).then(function (json) { if (!json) throw new Error('Config status empty'); return json; })
+            : fetch(url, { credentials: 'same-origin', cache: 'default' }).then(function(r) {
+              if (!r.ok) throw new Error('Config status ' + r.status);
+              return r.json();
+            })
+          )
+      )
         .then(c => {
           if (diagnosticsStepEl) diagnosticsStepEl.textContent = 'Analyzing diagnostics payload';
           if (compareStepEl) compareStepEl.textContent = 'Comparing KPI values';

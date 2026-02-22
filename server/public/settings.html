@@ -1508,26 +1508,18 @@
 
   <!--#include partials/page-body-end.html-->
   <!--#include partials/footer.html-->
-  <script src="https://cdn.jsdelivr.net/npm/@tabler/core@1.4.0/dist/js/tabler.min.js"></script>
-  <script src="/kexo-table-builder.js"></script>
-  <script src="/kexo-table-defs.js"></script>
-  <script src="/kexo-chart-defs.js"></script>
-  <script src="/kexo-chart-builder.js"></script>
-  <script src="/app.js"></script>
-  <script src="/kexo-tooltips.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tabler/core@1.4.0/dist/js/tabler.min.js" defer></script>
+  <script src="/kexo-table-builder.js" defer></script>
+  <script src="/kexo-table-defs.js" defer></script>
+  <script src="/kexo-chart-defs.js" defer></script>
+  <script src="/kexo-chart-builder.js" defer></script>
+  <script src="/app.js" defer></script>
+  <script src="/kexo-tooltips.js" defer></script>
   <script src="/ui/color-scheme-map.js" defer></script>
   <script src="/theme-settings.js" defer></script>
-  <script src="/attribution-mapping-settings.js"></script>
-  <script src="/attribution-tree-settings.js"></script>
-  <!-- KEXO_COST_EXPENSES_SCRIPT_START -->
-  <script src="/cost-expenses-settings.js"></script>
-  <script src="/cost-breakdown-settings.js"></script>
-  <!-- KEXO_COST_EXPENSES_SCRIPT_END -->
-  <script src="/ui/settings-normaliser.js"></script>
-  <script src="/ui/settings-ui.js"></script>
-  <script src="/settings-page.js"></script>
-  <!-- KEXO_ADMIN_SCRIPT_START -->
-  <script src="/admin-page.js"></script>
-  <!-- KEXO_ADMIN_SCRIPT_END -->
+  <!-- Tab-specific settings scripts are lazy-loaded by /settings-page.js on first show. -->
+  <script src="/ui/settings-normaliser.js" defer></script>
+  <script src="/ui/settings-ui.js" defer></script>
+  <script src="/settings-page.js" defer></script>
 </body>
 </html>

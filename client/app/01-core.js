@@ -356,8 +356,8 @@ const API = '';
 
       var enabled = !!(viewer && viewer.preview && viewer.preview.enabled);
       if (!enabled) {
-        btn.style.display = 'none';
-        div.style.display = 'none';
+        try { btn.classList.add('d-none'); } catch (_) {}
+        try { div.classList.add('d-none'); } catch (_) {}
         return;
       }
       var label = previewTierLabel(viewer.preview.tier) || 'Preview';
@@ -365,8 +365,8 @@ const API = '';
       var span = btn.querySelector('[data-kexo-preview-exit-label]');
       if (span) span.textContent = text;
       else btn.textContent = text;
-      btn.style.display = '';
-      div.style.display = '';
+      try { btn.classList.remove('d-none'); } catch (_) {}
+      try { div.classList.remove('d-none'); } catch (_) {}
     }
     var _effectiveViewerCache = null;
     function applyEffectiveViewer() {

@@ -1,4 +1,4 @@
-  // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
+  // Shared formatters + scheduling/fetch helpers — reduces UI jank + duplicate requests.
   function formatMoney(amount, currencyCode) {
     if (amount == null || typeof amount !== 'number') return '';
     var code = (currencyCode || 'GBP').toUpperCase();
@@ -48,6 +48,193 @@
   function fetchJson(url, opts) {
     var options = Object.assign({ credentials: 'same-origin', cache: 'no-store' }, opts || {});
     return fetch(url, options).then(function(r) { return r.json(); });
+  }
+
+  function kexoEscapeHtml(s) {
+    if (s == null) return '';
+    return String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function kexoSafeHref(raw) {
+    var s = raw != null ? String(raw).trim() : '';
+    if (!s) return '';
+    if (s[0] === '#') return s;
+    if (s[0] === '/' || s.startsWith('./') || s.startsWith('../') || s[0] === '?') return s;
+    try {
+      var u = new URL(s, window.location.origin);
+      var proto = (u && u.protocol) ? String(u.protocol).toLowerCase() : '';
+      if (proto === 'http:' || proto === 'https:' || proto === 'mailto:' || proto === 'tel:') return u.href;
+    } catch (_) {}
+    return '';
+  }
+
+  function kexoDebounce(fn, waitMs) {
+    var t = null;
+    var lastArgs = null;
+    var lastThis = null;
+    var wait = Math.max(0, Number(waitMs) || 0);
+    function run() {
+      t = null;
+      var args = lastArgs; lastArgs = null;
+      var ctx = lastThis; lastThis = null;
+      try { fn.apply(ctx, args || []); } catch (e) { throw e; }
+    }
+    function debounced() {
+      lastArgs = arguments;
+      lastThis = this;
+      if (t) { try { clearTimeout(t); } catch (_) {} }
+      t = setTimeout(run, wait);
+    }
+    debounced.cancel = function() {
+      if (t) { try { clearTimeout(t); } catch (_) {} }
+      t = null;
+      lastArgs = null;
+      lastThis = null;
+    };
+    return debounced;
+  }
+
+  function kexoThrottle(fn, waitMs) {
+    var wait = Math.max(0, Number(waitMs) || 0);
+    var last = 0;
+    var t = null;
+    var lastArgs = null;
+    var lastThis = null;
+    function invoke() {
+      t = null;
+      last = Date.now();
+      var args = lastArgs; lastArgs = null;
+      var ctx = lastThis; lastThis = null;
+      try { fn.apply(ctx, args || []); } catch (e) { throw e; }
+    }
+    function throttled() {
+      var now = Date.now();
+      lastArgs = arguments;
+      lastThis = this;
+      var remaining = wait - (now - last);
+      if (remaining <= 0 || remaining > wait) {
+        if (t) { try { clearTimeout(t); } catch (_) {} t = null; }
+        invoke();
+        return;
+      }
+      if (!t) t = setTimeout(invoke, remaining);
+    }
+    throttled.cancel = function() {
+      if (t) { try { clearTimeout(t); } catch (_) {} }
+      t = null;
+      lastArgs = null;
+      lastThis = null;
+    };
+    return throttled;
+  }
+
+  function kexoRafBatch(fn) {
+    var rafId = 0;
+    function run() {
+      rafId = 0;
+      try { fn(); } catch (e) { throw e; }
+    }
+    function schedule() {
+      if (rafId) return;
+      var raf = (typeof requestAnimationFrame === 'function') ? requestAnimationFrame : function(cb) { return setTimeout(cb, 16); };
+      rafId = raf(run);
+    }
+    schedule.cancel = function() {
+      if (!rafId) return;
+      try {
+        if (typeof cancelAnimationFrame === 'function') cancelAnimationFrame(rafId);
+        else clearTimeout(rafId);
+      } catch (_) {}
+      rafId = 0;
+    };
+    return schedule;
+  }
+
+  // registerCleanup isn't always available in standalone pages; provide a safe wrapper.
+  var _kexoFallbackCleanupWired = false;
+  var _kexoFallbackCleanupFns = [];
+  function kexoRegisterCleanup(fn) {
+    try {
+      if (typeof registerCleanup === 'function') return registerCleanup(fn);
+    } catch (_) {}
+    if (typeof fn === 'function') _kexoFallbackCleanupFns.push(fn);
+    if (_kexoFallbackCleanupWired) return;
+    _kexoFallbackCleanupWired = true;
+    function run() {
+      _kexoFallbackCleanupFns.forEach(function (f) { try { f(); } catch (_) {} });
+    }
+    try { window.addEventListener('beforeunload', run); } catch (_) {}
+    try { window.addEventListener('pagehide', run); } catch (_) {}
+  }
+
+  var _kexoJsonStableCache = new Map();
+  function kexoFetchJsonStable(url, opts, ttlMs) {
+    var ttl = Math.max(0, Number(ttlMs) || 0);
+    var method = (opts && opts.method) ? String(opts.method).toUpperCase() : 'GET';
+    if (method !== 'GET' || !ttl) return fetchJson(url, opts);
+    var key = method + ' ' + String(url);
+    var now = Date.now();
+    var cur = _kexoJsonStableCache.get(key) || null;
+    if (cur && cur.value !== undefined && cur.expiresAt && now < cur.expiresAt) return Promise.resolve(cur.value);
+    if (cur && cur.inFlight) return cur.inFlight;
+    var p = fetchJson(url, Object.assign({}, opts || {}, { cache: 'default' }))
+      .then(function (json) {
+        _kexoJsonStableCache.set(key, { value: json, expiresAt: now + ttl, inFlight: null });
+        return json;
+      })
+      .catch(function (err) {
+        var existing = _kexoJsonStableCache.get(key) || null;
+        if (existing && existing.inFlight) _kexoJsonStableCache.set(key, { value: existing.value, expiresAt: existing.expiresAt, inFlight: null });
+        throw err;
+      });
+    _kexoJsonStableCache.set(key, { value: cur ? cur.value : undefined, expiresAt: cur ? cur.expiresAt : 0, inFlight: p });
+    return p;
+  }
+
+  var _kexoJsonInFlight = new Map();
+  function kexoFetchJsonDedup(url, opts) {
+    var method = (opts && opts.method) ? String(opts.method).toUpperCase() : 'GET';
+    var key = method + ' ' + String(url);
+    var existing = _kexoJsonInFlight.get(key) || null;
+    if (existing) return existing;
+    var p = fetchJson(url, opts)
+      .finally(function () { try { _kexoJsonInFlight.delete(key); } catch (_) {} });
+    _kexoJsonInFlight.set(key, p);
+    return p;
+  }
+
+  function kexoFetchOkJson(url, opts) {
+    var options = Object.assign({ credentials: 'same-origin', cache: 'no-store' }, opts || {});
+    return fetch(url, options).then(function (r) { return (r && r.ok) ? r.json() : null; });
+  }
+
+  var _kexoOkJsonStableCache = new Map();
+  function kexoFetchOkJsonStable(url, opts, ttlMs) {
+    var ttl = Math.max(0, Number(ttlMs) || 0);
+    var method = (opts && opts.method) ? String(opts.method).toUpperCase() : 'GET';
+    if (method !== 'GET' || !ttl) return kexoFetchOkJson(url, opts);
+    var key = method + ' ' + String(url);
+    var now = Date.now();
+    var cur = _kexoOkJsonStableCache.get(key) || null;
+    if (cur && cur.value !== undefined && cur.expiresAt && now < cur.expiresAt) return Promise.resolve(cur.value);
+    if (cur && cur.inFlight) return cur.inFlight;
+    var p = kexoFetchOkJson(url, Object.assign({}, opts || {}, { cache: 'default' }))
+      .then(function (json) {
+        _kexoOkJsonStableCache.set(key, { value: json, expiresAt: now + ttl, inFlight: null });
+        return json;
+      })
+      .catch(function (err) {
+        var existing = _kexoOkJsonStableCache.get(key) || null;
+        if (existing && existing.inFlight) _kexoOkJsonStableCache.set(key, { value: existing.value, expiresAt: existing.expiresAt, inFlight: null });
+        throw err;
+      });
+    _kexoOkJsonStableCache.set(key, { value: cur ? cur.value : undefined, expiresAt: cur ? cur.expiresAt : 0, inFlight: p });
+    return p;
   }
 
   function normalizePaymentProviderKey(v) {
