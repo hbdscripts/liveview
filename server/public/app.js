@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: ec6a12ee7b88aa95
+// checksum: bad679e92bc962b1
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -22979,6 +22979,7 @@ const API = '';
         function doToggle(e) {
           e.preventDefault();
           e.stopPropagation();
+          try { dashTrendingPage = 1; } catch (_) {}
           dashTrendingMode = dashTrendingMode === 'up' ? 'down' : 'up';
           syncTrendingCardTitleAndChevron();
           if (dashCache && typeof rerenderDashboardFromCache === 'function') {
@@ -23001,6 +23002,9 @@ const API = '';
         dashFetchRequestId += 1;
         var myRequestId = dashFetchRequestId;
         var trendingPresetAtStart = getTrendingPreset();
+        if (rangeKey !== dashLastRangeKey || trendingPresetAtStart !== dashLastTrendingPreset) {
+          try { dashTrendingPage = 1; } catch (_) {}
+        }
         dashLoading = true;
         var silent = !!(opts && opts.silent);
         var reason = opts && opts.reason != null ? String(opts.reason) : '';
@@ -23686,6 +23690,7 @@ const API = '';
               });
             } catch (_) {}
             try { if (window.bootstrap && window.bootstrap.Dropdown) window.bootstrap.Dropdown.getOrCreateInstance(btn).hide(); } catch (_) {}
+            try { dashTrendingPage = 1; } catch (_) {}
             if (typeof fetchDashboardData === 'function') fetchDashboardData(dashRangeKeyFromDateRange(), true);
           });
           menu.appendChild(item);

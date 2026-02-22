@@ -4859,6 +4859,7 @@
         function doToggle(e) {
           e.preventDefault();
           e.stopPropagation();
+          try { dashTrendingPage = 1; } catch (_) {}
           dashTrendingMode = dashTrendingMode === 'up' ? 'down' : 'up';
           syncTrendingCardTitleAndChevron();
           if (dashCache && typeof rerenderDashboardFromCache === 'function') {
@@ -4881,6 +4882,9 @@
         dashFetchRequestId += 1;
         var myRequestId = dashFetchRequestId;
         var trendingPresetAtStart = getTrendingPreset();
+        if (rangeKey !== dashLastRangeKey || trendingPresetAtStart !== dashLastTrendingPreset) {
+          try { dashTrendingPage = 1; } catch (_) {}
+        }
         dashLoading = true;
         var silent = !!(opts && opts.silent);
         var reason = opts && opts.reason != null ? String(opts.reason) : '';
@@ -5566,6 +5570,7 @@
               });
             } catch (_) {}
             try { if (window.bootstrap && window.bootstrap.Dropdown) window.bootstrap.Dropdown.getOrCreateInstance(btn).hide(); } catch (_) {}
+            try { dashTrendingPage = 1; } catch (_) {}
             if (typeof fetchDashboardData === 'function') fetchDashboardData(dashRangeKeyFromDateRange(), true);
           });
           menu.appendChild(item);
