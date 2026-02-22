@@ -148,7 +148,7 @@
       // admin
       var rawAdminTab = String(params.get('adminTab') || '').trim().toLowerCase();
       if (tab === 'admin') {
-        if (rawAdminTab === 'controls' || rawAdminTab === 'diagnostics' || rawAdminTab === 'users') setParam('adminTab', rawAdminTab);
+        if (rawAdminTab === 'controls' || rawAdminTab === 'diagnostics' || rawAdminTab === 'users' || rawAdminTab === 'role-permissions') setParam('adminTab', rawAdminTab);
         else delParam('adminTab');
       } else {
         delParam('adminTab');
@@ -163,6 +163,34 @@
     } catch (_) {}
   }
   normalizeSettingsUrlQueryEarly();
+
+  // Non-admin guard: if a non-admin lands on /settings/admin/*, redirect to a safe Settings page.
+  function redirectNonAdminFromAdminPath(viewer) {
+    try {
+      var pathname = String(window.location.pathname || '').replace(/\/+$/, '');
+      if (pathname.indexOf('/settings/admin/') !== 0) return;
+      var isAdmin = !!(viewer && (viewer.isAdmin === true || viewer.isMaster === true));
+      if (isAdmin) return;
+      var params = new URLSearchParams(window.location.search || '');
+      var keep = new URLSearchParams();
+      var shop = String(params.get('shop') || '').trim();
+      if (shop) keep.set('shop', shop);
+      var adsOauth = String(params.get('ads_oauth') || '').trim();
+      if (adsOauth) keep.set('ads_oauth', adsOauth);
+      var q = keep.toString();
+      window.location.href = '/settings/kexo/general' + (q ? ('?' + q) : '');
+    } catch (_) {}
+  }
+  try {
+    if (typeof window.__kexoGetEffectiveViewer === 'function') {
+      redirectNonAdminFromAdminPath(window.__kexoGetEffectiveViewer());
+    }
+  } catch (_) {}
+  try {
+    window.addEventListener('kexo:viewer-changed', function (ev) {
+      redirectNonAdminFromAdminPath(ev && ev.detail ? ev.detail : null);
+    });
+  } catch (_) {}
 
   function isSettingsPageLoaderEnabled() {
     // Settings should never show the page overlay loader.
@@ -414,7 +442,7 @@
     attribution: ['mapping', 'tree'],
     insights: ['variants'],
     'cost-expenses': ['cost-sources', 'shipping', 'rules', 'breakdown'],
-    admin: ['users', 'diagnostics', 'controls'],
+    admin: ['users', 'diagnostics', 'controls', 'role-permissions'],
   };
 
   function getTabFromPath() {
@@ -583,7 +611,7 @@
 
   function getActiveAdminSubTab() {
     var key = activeAdminSubTab || initialAdminSubTab || 'users';
-    if (key === 'users' || key === 'diagnostics') return key;
+    if (key === 'users' || key === 'diagnostics' || key === 'role-permissions') return key;
     return 'controls';
   }
 
@@ -4493,7 +4521,7 @@
       tabSelector: '#settings-admin-main-tabs [data-settings-admin-tab]',
       tabAttr: 'data-settings-admin-tab',
       panelIdPrefix: 'admin-panel-',
-      keys: ['users', 'diagnostics', 'controls'],
+      keys: ['users', 'diagnostics', 'controls', 'role-permissions'],
       initialKey: initialKey || initialAdminSubTab || 'users',
       onActivate: function (key) {
         activeAdminSubTab = key;

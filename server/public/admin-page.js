@@ -66,6 +66,12 @@
     try {
       var search = window.location.search || '';
       if (isSettingsPage()) {
+        var pathname = (window.location.pathname || '').replace(/\/+$/, '');
+        var pm = /^\/settings\/admin\/([^/?#]+)/.exec(pathname);
+        if (pm && pm[1]) {
+          var pt = String(pm[1]).trim().toLowerCase();
+          if (pt === 'users' || pt === 'diagnostics' || pt === 'controls' || pt === 'role-permissions') return pt;
+        }
         var m = /[?&]adminTab=([^&]+)/.exec(search);
         var raw = m && m[1] ? String(m[1]) : '';
         var t = raw.trim().toLowerCase();
@@ -78,6 +84,21 @@
       if (t === 'users' || t === 'diagnostics' || t === 'controls' || t === 'role-permissions') return t;
     } catch (_) {}
     return '';
+  }
+
+  function preservedSettingsQuery() {
+    try {
+      var params = new URLSearchParams(window.location.search || '');
+      var keep = new URLSearchParams();
+      var shop = String(params.get('shop') || '').trim();
+      if (shop) keep.set('shop', shop);
+      var adsOauth = String(params.get('ads_oauth') || '').trim();
+      if (adsOauth) keep.set('ads_oauth', adsOauth);
+      var q = keep.toString();
+      return q ? ('?' + q) : '';
+    } catch (_) {
+      return '';
+    }
   }
 
   function setActiveTab(next, opts) {
@@ -100,11 +121,7 @@
     if (!(opts && opts.skipUrl)) {
       try {
         if (isSettingsPage()) {
-          var params = new URLSearchParams(window.location.search);
-          params.set('tab', 'admin');
-          params.set('adminTab', t);
-          var q = params.toString();
-          history.replaceState(null, '', window.location.pathname + (q ? '?' + q : ''));
+          history.replaceState(null, '', '/settings/admin/' + encodeURIComponent(t) + preservedSettingsQuery());
         } else {
           history.replaceState(null, '', window.location.pathname + '?tab=' + encodeURIComponent(t));
         }
@@ -152,6 +169,13 @@
       var t = e && e.target ? e.target : null;
       var trigger = t && t.closest ? t.closest('a[data-admin-tab], button[data-admin-tab], a[data-settings-admin-tab], button[data-settings-admin-tab]') : null;
       if (!trigger) return;
+      // On Settings, let the left-nav admin links navigate (path-based URLs).
+      if (isSettingsPage() && trigger.tagName === 'A') {
+        try {
+          var href = String(trigger.getAttribute('href') || '');
+          if (href && href.indexOf('/settings/admin/') === 0) return;
+        } catch (_) {}
+      }
       var tab = String(
         trigger.getAttribute('data-admin-tab') ||
         trigger.getAttribute('data-settings-admin-tab') ||
@@ -170,10 +194,7 @@
     var rolePermsEl = document.getElementById('settings-admin-accordion-role-permissions');
     function updateUrlFromTab(t) {
       try {
-        var params = new URLSearchParams(window.location.search);
-        params.set('tab', 'admin');
-        params.set('adminTab', t);
-        history.replaceState(null, '', window.location.pathname + '?' + params.toString());
+        history.replaceState(null, '', '/settings/admin/' + encodeURIComponent(t) + preservedSettingsQuery());
       } catch (_) {}
     }
     if (controlsEl) {

@@ -345,6 +345,7 @@ app.use(express.static(path.join(__dirname, 'public'), {
         'kexo-table-defs.js',
         'theme-settings.js',
         'settings-page.js',
+        'admin-page.js',
         'custom.css',
       ]);
       if (noStore.has(base)) {
@@ -489,7 +490,7 @@ const SETTINGS_TAB_DEFAULTS = {
   attribution: { default: 'mapping', allowed: new Set(['mapping', 'tree']) },
   insights: { default: 'variants', allowed: new Set(['variants']) },
   'cost-expenses': { default: 'cost-sources', allowed: new Set(['cost-sources', 'shipping', 'rules', 'breakdown']) },
-  admin: { default: 'users', allowed: new Set(['users', 'diagnostics', 'controls']) },
+  admin: { default: 'users', allowed: new Set(['users', 'diagnostics', 'controls', 'role-permissions']) },
 };
 
 /** Preserve only non-routing query params when building canonical settings URL. */
@@ -586,7 +587,8 @@ function applySettingsInitialTab(html, queryOrObj, hasAdminNav, hasCostExpensesN
     .replace(/\bid="settings-panel-insights"\s+class="settings-panel"/, tab === 'insights' ? 'id="settings-panel-insights" class="settings-panel active"' : 'id="settings-panel-insights" class="settings-panel"')
     .replace(/\bid="settings-panel-layout"\s+class="settings-panel"/, tab === 'layout' ? 'id="settings-panel-layout" class="settings-panel active"' : 'id="settings-panel-layout" class="settings-panel"')
     .replace(/\bid="settings-panel-cost-expenses"\s+class="settings-panel"/, tab === 'cost-expenses' ? 'id="settings-panel-cost-expenses" class="settings-panel active"' : 'id="settings-panel-cost-expenses" class="settings-panel"')
-    .replace(/\bid="settings-panel-admin"\s+class="settings-panel[^"]*"/, tab === 'admin' ? 'id="settings-panel-admin" class="settings-panel active kexo-admin-only"' : 'id="settings-panel-admin" class="settings-panel kexo-admin-only"')
+    // Keep Admin panel hidden by default (client will reveal for admins).
+    .replace(/\bid="settings-panel-admin"\s+class="settings-panel[^"]*"/, tab === 'admin' ? 'id="settings-panel-admin" class="settings-panel active kexo-admin-only d-none"' : 'id="settings-panel-admin" class="settings-panel kexo-admin-only d-none"')
     .replace(/\bid="settings-panel-kexo"\s+class="settings-panel"/, tab === 'kexo' ? 'id="settings-panel-kexo" class="settings-panel active"' : 'id="settings-panel-kexo" class="settings-panel"');
   // Nav: add active to the correct parent tab link
   const navIds = ['kexo', 'integrations', 'layout', 'attribution', 'insights', 'cost-expenses', 'admin'];
@@ -695,13 +697,11 @@ app.get('/click-order-lookup', redirectWithQuery(301, '/tools/click-order-lookup
 app.get('/change-pins', redirectWithQuery(301, '/tools/change-pins'));
 async function settingsPageHandler(req, res, next) {
   try {
-    const isMaster = await isMasterRequest(req);
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
     const filePath = path.join(__dirname, 'public', 'settings.html');
     const raw = fs.readFileSync(filePath, 'utf8');
     let html = resolveIncludes(raw);
     html = applySentryTemplate(html);
-    if (!isMaster) html = stripAdminMarkupFromSettings(html);
     const hasAdminNav = html.includes('id="settings-tab-admin"');
     const hasCostExpensesNav = html.includes('id="settings-tab-cost-expenses"');
     const preservedQuery = getSettingsPreservedQuery(req);

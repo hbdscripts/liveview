@@ -5554,7 +5554,6 @@ img[data-kexo-logo-slot="footer"][data-kexo-logo-ready="1"] {
 }
 
 .kexo-notifications-badge {
-  z-index: 9999999999;
   position: absolute !important;
   display: block;
   top: 10px !important;
