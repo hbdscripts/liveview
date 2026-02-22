@@ -362,7 +362,9 @@
       }
       if (btn.classList.contains('btn-secondary')) {
         btn.classList.remove('btn-secondary');
-        btn.classList.add('btn-outline-secondary');
+      }
+      if (btn.classList.contains('btn-secondary-outline')) {
+        btn.classList.remove('btn-secondary-outline');
       }
 
       var text = '';
