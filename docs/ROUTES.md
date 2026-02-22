@@ -71,6 +71,7 @@ When adding a route, re-run this script so the doc stays in sync.
 | GET | `/api/payment-methods/report` | server/routes/paymentMethods.js (getPaymentMethodsReport) |
 | GET | `/api/payment-types/series` | server/routes/paymentTypes.js (getPaymentTypesSeries) |
 | GET | `/api/payment-types/table` | server/routes/paymentTypes.js (getPaymentTypesTable) |
+| USE | `/api/performance` | server/routes/performance.js |
 | GET | `/api/pixel/config` | server/routes/pixel.js (getPixelConfig) |
 | GET | `/api/pixel/ensure` | server/routes/pixel.js (ensurePixel) |
 | POST | `/api/pixel/ensure` | server/routes/pixel.js (ensurePixel) |
@@ -142,6 +143,7 @@ When adding a route, re-run this script so the doc stays in sync.
 | GET | `/overview` | (inline) |
 | GET | `/payment-methods` | (inline) |
 | GET | `/payment-types` | (inline) |
+| GET | `/performance` | (inline) |
 | GET | `/products` | (inline) |
 | GET | `/robots.txt` | (inline) |
 | GET | `/sales` | (inline) |
@@ -150,6 +152,7 @@ When adding a route, re-run this script so the doc stays in sync.
 | GET | `/settings/:tab/:subtab` | (inline) |
 | GET | `/shipping-cr` | (inline) |
 | GET | `/theme-vars.css` | server/routes/settings.js (getThemeVarsCss) |
+| GET | `/time-of-day` | (inline) |
 | GET | `/tools` | (inline) |
 | USE | `/tools` | (mounted router) |
 | GET | `/tools/` | (inline) |
@@ -189,5 +192,7 @@ When adding a route, re-run this script so the doc stays in sync.
 | `/tools/click-order-lookup` | `server/public/tools/click-order-lookup.html` |
 | `/tools/compare-conversion-rate` | `server/public/tools/compare-conversion-rate.html` |
 | `/tools/shipping-cr` | `server/public/tools/shipping-cr.html` |
+| `/tools/time-of-day` | `server/public/tools/time-of-day.html` |
 | `/ui-kit` | `server/public/ui-kit.html` |
 | `/upgrade` | `server/public/upgrade.html` |
+| (see index.js) | `server/public/performance.html` |

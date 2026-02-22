@@ -120,7 +120,8 @@
           'click-order-lookup': 'nav-item-tools',
           'compare-conversion-rate': 'nav-item-tools',
           'shipping-cr': 'nav-item-tools',
-          'change-pins': 'nav-item-tools'
+          'change-pins': 'nav-item-tools',
+          'time-of-day': 'nav-item-tools'
         };
         function syncPageHeaderCategoryIcon() {
           // Inject the active top-menu category icon into the page header (next to pretitle/title),
@@ -278,7 +279,7 @@
           }
 
           // Tools dropdown (include tool sub-pages so Tools is highlighted on /tools/* pages)
-          var isToolsChild = (tab === 'tools' || tab === 'compare-conversion-rate' || tab === 'shipping-cr' || tab === 'click-order-lookup' || tab === 'change-pins');
+          var isToolsChild = (tab === 'tools' || tab === 'compare-conversion-rate' || tab === 'shipping-cr' || tab === 'click-order-lookup' || tab === 'change-pins' || tab === 'time-of-day');
           var toolsToggle = document.querySelector('.nav-item.dropdown .dropdown-toggle[href="#navbar-tools-menu"]');
           var toolsDropdownItem = toolsToggle ? toolsToggle.closest('.nav-item') : null;
           if (toolsToggle) {
@@ -422,7 +423,7 @@
             : PAGE === 'attribution' ? 'attribution'
             : PAGE === 'devices' ? 'devices'
             : PAGE === 'browsers' ? 'browsers'
-            : (PAGE === 'compare-conversion-rate' || PAGE === 'shipping-cr' || PAGE === 'click-order-lookup' || PAGE === 'change-pins') ? PAGE
+            : (PAGE === 'compare-conversion-rate' || PAGE === 'shipping-cr' || PAGE === 'click-order-lookup' || PAGE === 'change-pins' || PAGE === 'time-of-day') ? PAGE
             : PAGE === 'checkout-funnel' ? 'checkout-funnel'
             : PAGE;
           setTab(pageTab);

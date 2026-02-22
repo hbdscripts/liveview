@@ -32,6 +32,7 @@ const ALL_PERMISSION_KEYS = Object.freeze([
   'page.tools.shipping_cr',
   'page.tools.click_order_lookup',
   'page.tools.change_pins',
+  'page.tools.time_of_day',
   // Settings (general + sections)
   'page.settings',
   'settings.kexo',
@@ -176,6 +177,8 @@ function getRequiredPermissionsForRequest(req) {
     ['/tools/shipping-cr', 'page.tools.shipping_cr'],
     ['/tools/click-order-lookup', 'page.tools.click_order_lookup'],
     ['/tools/change-pins', 'page.tools.change_pins'],
+    ['/tools/time-of-day', 'page.tools.time_of_day'],
+    ['/performance', 'settings.cost_expenses'],
   ];
   for (const [path, perm] of pageMap) {
     if (pathname === path || pathname.startsWith(path + '/') || pathname.startsWith(path + '?')) {
@@ -204,6 +207,8 @@ function getRequiredPermissionsForRequest(req) {
     ['/shipping-cr', 'page.tools.shipping_cr'],
     ['/click-order-lookup', 'page.tools.click_order_lookup'],
     ['/change-pins', 'page.tools.change_pins'],
+    ['/time-of-day', 'page.tools.time_of_day'],
+    ['/performance', 'settings.cost_expenses'],
   ];
   for (const [path, perm] of legacyPageMap) {
     if (pathname === path) return { any: [perm], all: [] };
@@ -253,7 +258,10 @@ function getRequiredPermissionsForRequest(req) {
       apiPerms.push('page.integrations.google_ads');
     }
     if (pathname.startsWith('/api/tools')) {
-      apiPerms.push('page.tools.compare_conversion_rate', 'page.tools.shipping_cr', 'page.tools.click_order_lookup', 'page.tools.change_pins');
+      apiPerms.push('page.tools.compare_conversion_rate', 'page.tools.shipping_cr', 'page.tools.click_order_lookup', 'page.tools.change_pins', 'page.tools.time_of_day');
+    }
+    if (pathname.startsWith('/api/performance')) {
+      apiPerms.push('settings.cost_expenses');
     }
     if (pathname === '/api/settings' || pathname.startsWith('/api/settings') ||
         pathname.startsWith('/api/chart-settings') || pathname === '/api/config-status' ||

@@ -2215,11 +2215,23 @@ body:not([data-page="settings"]) .table-responsive table thead th {
   opacity: 0.35;
 }
 
+/* Sticky first column: 100px in modal so values are not pushed too far right */
+#product-insights-modal .table-responsive,
+#product-insights-modal #product-insights-metrics-table-wrap {
+  --kexo-sticky-col-width: 100px;
+  --kexo-sticky-col-min-width: 72px;
+  --kexo-sticky-col-max-width: 200px;
+}
+
 #product-insights-modal .kexo-product-insights-metrics td:first-child {
   width: 58%;
 }
 #product-insights-modal .kexo-product-insights-metrics td:last-child {
   font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+#product-insights-modal .kexo-product-insights-metrics thead th:last-child {
+  text-align: center;
 }
 #product-insights-modal .kexo-product-insights-metrics tbody td {
   height: 44px;
@@ -2235,18 +2247,48 @@ body:not([data-page="settings"]) .table-responsive table thead th {
   border-bottom: none !important;
   padding-bottom: 1.1rem;
 }
+#product-insights-modal .kexo-product-insights-metrics tr.kexo-product-metrics-section td {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--tblr-secondary);
+  padding-top: 0.75rem;
+  padding-bottom: 0.25rem;
+  border-top: 1px solid var(--tblr-border-color, rgba(0,0,0,0.08));
+  vertical-align: middle;
+  height: auto;
+}
+#product-insights-modal .kexo-product-insights-metrics tr.kexo-product-metrics-section:first-child td {
+  border-top: none;
+  padding-top: 0;
+}
 
 @media (max-width: 767.98px) {
+  #product-insights-modal .modal-body {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
   #product-insights-modal #product-insights-col-right .card > div,
   #product-insights-modal #product-insights-metrics-table-wrap,
   #product-insights-modal #product-insights-col-right .table-responsive {
-    overflow-x: auto;
+    overflow-x: visible;
     max-width: 100%;
-    -webkit-overflow-scrolling: touch;
+  }
+  #product-insights-modal .table-responsive,
+  #product-insights-modal #product-insights-metrics-table-wrap {
+    --kexo-sticky-col-width: 88px;
+    --kexo-sticky-col-min-width: 64px;
+    --kexo-sticky-col-max-width: 160px;
   }
   #product-insights-modal .kexo-product-insights-metrics td:first-child {
     width: 50%;
     min-width: 0;
+    padding-right: 0.5rem;
+  }
+  #product-insights-modal .kexo-product-insights-metrics td:last-child {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
   }
   #product-insights-modal .kexo-product-insights-metrics {
     min-width: 0;

@@ -2746,6 +2746,40 @@
           el.value = (cd.trafficMode || 'all') + (cd.dbEngine ? ' \u00b7 ' + cd.dbEngine : '');
         });
 
+        var apiKeyStatus = (cd.apiKeyStatus && typeof cd.apiKeyStatus === 'object') ? cd.apiKeyStatus : {};
+        var apiKeyLabels = [
+          { key: 'shopifyApiKey', label: 'Shopify API key' },
+          { key: 'shopifyApiSecret', label: 'Shopify API secret' },
+          { key: 'ingestSecret', label: 'Ingest secret' },
+          { key: 'openaiApiKey', label: 'OpenAI API key', note: 'Optional; for AI features' },
+          { key: 'googleClientId', label: 'Google OAuth client ID' },
+          { key: 'googleClientSecret', label: 'Google OAuth client secret' },
+          { key: 'googleAdsDeveloperToken', label: 'Google Ads developer token' },
+          { key: 'googleAdsCustomerId', label: 'Google Ads customer ID' },
+          { key: 'googleAdsRefreshToken', label: 'Google Ads refresh token' },
+          { key: 'r2AccountId', label: 'R2 account ID' },
+          { key: 'r2AccessKeyId', label: 'R2 access key ID' },
+          { key: 'r2SecretAccessKey', label: 'R2 secret access key' },
+          { key: 'dashboardSecret', label: 'Dashboard secret' },
+          { key: 'oauthCookieSecret', label: 'OAuth cookie secret' },
+          { key: 'fraudIpSalt', label: 'Fraud IP salt' },
+          { key: 'sentryDsn', label: 'Sentry DSN' },
+        ];
+        var apiKeysHtml = '';
+        apiKeyLabels.forEach(function (item) {
+          var configured = !!apiKeyStatus[item.key];
+          var badgeClass = configured ? 'bg-success-lt' : 'bg-secondary-lt';
+          var badgeText = configured ? 'Configured' : 'Missing';
+          var labelText = (item.label || item.key) + (item.note ? ' (' + item.note + ')' : '');
+          apiKeysHtml += '<div class="d-flex align-items-center justify-content-between gap-2 py-1 kexo-settings-api-key-row">';
+          apiKeysHtml += '<span class="text-body">' + escapeHtml(labelText) + '</span>';
+          apiKeysHtml += '<span class="badge ' + badgeClass + '">' + escapeHtml(badgeText) + '</span>';
+          apiKeysHtml += '</div>';
+        });
+        document.querySelectorAll('#settings-general-api-keys-list').forEach(function (el) {
+          el.innerHTML = apiKeysHtml || '—';
+        });
+
         renderIntegrationsFromConfig(c || {});
         return true;
       })
@@ -3521,6 +3555,7 @@
           ads: true,
           'compare-conversion-rate': true,
           'shipping-cr': true,
+          'time-of-day': true,
           settings: false,
         },
       },

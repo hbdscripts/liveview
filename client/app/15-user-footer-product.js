@@ -302,9 +302,9 @@
                           tableClass: 'table table-vcenter card-table table-sm kexo-product-insights-metrics',
                           columns: (window.KEXO_APP_MODAL_TABLE_DEFS && window.KEXO_APP_MODAL_TABLE_DEFS['product-insights-metrics-table'] && window.KEXO_APP_MODAL_TABLE_DEFS['product-insights-metrics-table'].columns) || [
                             { header: 'Metric', headerClass: '' },
-                            { header: 'Value', headerClass: 'text-end' }
+                            { header: 'Value', headerClass: 'text-center' }
                           ]
-                        }) : '<div class="table-responsive"><table class="table table-vcenter card-table table-sm kexo-product-insights-metrics"><thead><tr><th>Metric</th><th class="text-end">Value</th></tr></thead><tbody id="product-insights-metrics-table"></tbody></table></div>') + '</div>' +
+                        }) : '<div class="table-responsive"><table class="table table-vcenter card-table table-sm kexo-product-insights-metrics"><thead><tr><th>Metric</th><th class="text-center">Value</th></tr></thead><tbody id="product-insights-metrics-table"></tbody></table></div>') + '</div>' +
                       '</div>' +
                       '<div class="card mt-3" data-no-card-collapse="1" id="product-insights-top-countries-card" style="display:none">' +
                         '<div class="card-header"><h3 class="card-title">Top countries</h3></div>' +
@@ -824,11 +824,14 @@
           });
         }
 
-        // Metrics table
+        // Metrics table (value column centered; product metrics grouped into sections)
         var mt = document.getElementById('product-insights-metrics-table');
         if (mt) {
           function row(label, value) {
-            return '<tr><td>' + escapeHtml(label) + '</td><td class="w-1 fw-bold text-end">' + escapeHtml(value) + '</td></tr>';
+            return '<tr><td>' + escapeHtml(label) + '</td><td class="w-1 fw-bold text-center">' + escapeHtml(value) + '</td></tr>';
+          }
+          function sectionRow(title) {
+            return '<tr class="kexo-product-metrics-section"><td colspan="2">' + escapeHtml(title) + '</td></tr>';
           }
           if (isPage) {
             var sessions = metrics && metrics.sessions != null ? fmtNum(metrics.sessions) : '\u2014';
@@ -864,17 +867,20 @@
             var stockUnits = details && details.inventoryUnits != null ? fmtNum(details.inventoryUnits) : '\u2014';
             var stockVariants = details && details.inStockVariants != null ? fmtNum(details.inStockVariants) : '\u2014';
             mt.innerHTML =
-              row('Clicks', clicks) +
+              sectionRow('Key metrics') +
+              row('Revenue (selected range)', revenue) +
               row('Conversions', conv) +
               row('Conversion rate', cr) +
-              row('Revenue (selected range)', revenue) +
               row('Units sold (selected range)', units) +
+              sectionRow('Engagement') +
+              row('Clicks', clicks) +
               row('Views (pixel)', views) +
               row('Add to cart', atc) +
               row('Checkout started', cs) +
               row('View to Cart rate', atcRate) +
               row('Revenue / Click', rpc) +
               row('Revenue / View', rpv) +
+              sectionRow('Stock & lifetime') +
               row('In stock (units)', stockUnits) +
               row('In-stock variants', stockVariants) +
               row('Total sales (lifetime)', totalSales) +
@@ -928,11 +934,10 @@
           if (!currentPageUrl) { setStatus('No page selected.'); return; }
           url = (API || '') + '/api/page-insights?url=' + encodeURIComponent(currentPageUrl) +
             '&kind=' + encodeURIComponent(currentLandingKind || 'entry') +
-            '&range=' + encodeURIComponent(currentRangeKey || 'today') +
-            '&_=' + Date.now();
+            '&range=' + encodeURIComponent(currentRangeKey || 'today');
         } else {
           if (!currentHandle && !currentProductId) { setStatus('No product selected.'); return; }
-          var q = 'range=' + encodeURIComponent(currentRangeKey || 'today') + (shop ? ('&shop=' + encodeURIComponent(shop)) : '') + '&_=' + Date.now();
+          var q = 'range=' + encodeURIComponent(currentRangeKey || 'today') + (shop ? ('&shop=' + encodeURIComponent(shop)) : '');
           if (currentHandle) {
             url = (API || '') + '/api/product-insights?handle=' + encodeURIComponent(currentHandle) + '&' + q;
           } else {
@@ -940,8 +945,11 @@
           }
         }
 
-        fetchWithTimeout(url, { credentials: 'same-origin', cache: 'no-store' }, 30000)
-          .then(function(r) { return r && r.ok ? r.json() : null; })
+        var fetchOpts = { credentials: 'same-origin', cache: 'default' };
+        var doFetch = (typeof kexoFetchJsonStable === 'function')
+          ? function() { return kexoFetchJsonStable(url, fetchOpts, 15000); }
+          : function() { return fetchWithTimeout(url, fetchOpts, 30000).then(function(r) { return r && r.ok ? r.json() : null; }); };
+        doFetch()
           .then(function(data) {
             if (!data || !data.ok) {
               setStatus(currentMode === 'page' ? 'No data available for this page.' : 'No data available for this product.');

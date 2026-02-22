@@ -509,3 +509,11 @@ body[data-page="settings"] #admin-role-permissions-content .admin-role-perms-ite
   padding-left: 0.85rem;
   color: var(--tblr-secondary, #66758c);
 }
+
+/* API keys & secrets list (Settings → General). */
+body[data-page="settings"] .kexo-settings-api-keys-list .kexo-settings-api-key-row {
+  border-bottom: 1px solid var(--tblr-border-color-translucent, rgba(0, 0, 0, 0.06));
+}
+body[data-page="settings"] .kexo-settings-api-keys-list .kexo-settings-api-key-row:last-child {
+  border-bottom: 0;
+}

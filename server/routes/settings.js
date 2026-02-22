@@ -205,6 +205,7 @@ const HEADER_KPI_STRIP_PAGE_KEYS = [
   'ads',
   'compare-conversion-rate',
   'shipping-cr',
+  'time-of-day',
   'click-order-lookup',
   'settings',
 ];
@@ -326,6 +327,7 @@ function defaultKpiUiConfigV1() {
         'compare-conversion-rate': true,
         'shipping-cr': true,
         'click-order-lookup': true,
+        'time-of-day': true,
         settings: false,
       },
     },
@@ -1448,6 +1450,7 @@ function defaultPageLoaderEnabledV1() {
       ads: true,
       'compare-conversion-rate': true,
       'shipping-cr': true,
+      'time-of-day': true,
       settings: true,
       upgrade: false,
       // Always disabled (admin should never show the overlay loader).

@@ -30,6 +30,7 @@ function defaultPageLoaderEnabledV1() {
       ads: true,
       'compare-conversion-rate': true,
       'shipping-cr': true,
+      'time-of-day': true,
       // Settings loader is intentionally locked off.
       settings: false,
       upgrade: false,

@@ -967,6 +967,7 @@
         ads: true,
         'compare-conversion-rate': true,
         'shipping-cr': true,
+        'time-of-day': true,
         // Settings loader is locked off.
         settings: false,
         upgrade: false,

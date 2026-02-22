@@ -1963,9 +1963,40 @@
       return instance;
     }
 
-    function renderCountriesMapChart(data) {
+    var countriesMapSource = 'live';
+
+    function setupCountriesMapSourceButtons() {
+      var liveBtn = document.getElementById('countries-map-source-live');
+      var periodBtn = document.getElementById('countries-map-source-period');
+      if (!liveBtn || !periodBtn || liveBtn.dataset.kexoMapSourceBound) return;
+      liveBtn.dataset.kexoMapSourceBound = '1';
+      periodBtn.dataset.kexoMapSourceBound = '1';
+      liveBtn.addEventListener('click', function() {
+        if (countriesMapSource === 'live') return;
+        countriesMapSource = 'live';
+        liveBtn.classList.add('active');
+        periodBtn.classList.remove('active');
+        renderCountriesMapChart(statsCache, { source: 'live' });
+      });
+      periodBtn.addEventListener('click', function() {
+        if (countriesMapSource === 'period') return;
+        countriesMapSource = 'period';
+        periodBtn.classList.add('active');
+        liveBtn.classList.remove('active');
+        renderCountriesMapChart(statsCache, { source: 'period' });
+      });
+    }
+
+    function renderCountriesMapChart(data, opts) {
       const el = document.getElementById('countries-map-chart');
       if (!el) return;
+      opts = (opts != null && typeof opts === 'object') ? opts : {};
+      var source = (opts.source === 'live' || opts.source === 'period') ? opts.source : countriesMapSource;
+      setupCountriesMapSourceButtons();
+      var liveBtn = document.getElementById('countries-map-source-live');
+      var periodBtn = document.getElementById('countries-map-source-period');
+      if (liveBtn) { liveBtn.classList.toggle('active', source === 'live'); }
+      if (periodBtn) { periodBtn.classList.toggle('active', source === 'period'); }
       var chartKey = 'countries-map-chart';
       var meta = typeof window.kexoChartMeta === 'function' ? window.kexoChartMeta(chartKey) : null;
       var baseHeight = (meta && Number.isFinite(Number(meta.height))) ? Number(meta.height) : 320;
@@ -1973,9 +2004,8 @@
       var mapHeight = Math.round(baseHeight * (pct / 100));
       if (mapHeight < 80) mapHeight = 80;
 
-      // Unify: show the same live online map used on /dashboard/live + /dashboard/overview.
-      // The Countries page still has its country tables below; the map itself reflects live activity.
-      if (typeof fetchLiveOnlineMapSessions === 'function' && typeof renderLiveOnlineMapChartFromSessions === 'function') {
+      // Live: same online map as /dashboard/live + /dashboard/overview. Period: choropleth from stats range.
+      if (source === 'live' && typeof fetchLiveOnlineMapSessions === 'function' && typeof renderLiveOnlineMapChartFromSessions === 'function') {
         el.style.height = mapHeight + 'px';
         el.style.minHeight = mapHeight + 'px';
         if (!isChartEnabledByUiConfig(chartKey, true)) {
@@ -2010,7 +2040,7 @@
           setCountriesMapState(el, 'Map library failed to load.', { error: true, height: mapHeight });
           return;
         }
-        setTimeout(function() { renderCountriesMapChart(data); }, 200);
+        setTimeout(function() { renderCountriesMapChart(data, opts); }, 200);
         return;
       }
       try { el.__kexoJvmWaitTries = 0; } catch (_) {}
@@ -2145,7 +2175,7 @@
           zoomButtons: !!mapStyle.mapZoomButtons,
           initialZoomMax: 2.1,
           focusOn: focusOn,
-          retry: function() { renderCountriesMapChart(data); },
+          retry: function() { renderCountriesMapChart(data, opts); },
           onRegionTooltipShow: function(event, tooltip, code) {
             const iso = (code || '').toString().trim().toUpperCase();
             const name = (countriesMapChartInstance && typeof countriesMapChartInstance.getRegionName === 'function')
@@ -3178,7 +3208,7 @@
       // for reports/tables and may not include compare (or may differ from truth sources).
       maybeTriggerSaleToastFromStatsLikeData(statsCache);
       if (statsCache.rangeAvailable) applyRangeAvailable(statsCache.rangeAvailable);
-      renderCountriesMapChart(statsCache);
+      renderCountriesMapChart(statsCache, { source: countriesMapSource });
       renderCountry(statsCache);
       renderBestGeoProducts(statsCache);
       renderAov(statsCache);

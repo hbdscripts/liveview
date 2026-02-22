@@ -67,6 +67,7 @@ const dashboardSeries = require('./routes/dashboardSeries');
 const businessSnapshot = require('./routes/businessSnapshot');
 const costHealth = require('./routes/costHealth');
 const costBreakdown = require('./routes/costBreakdown');
+const performance = require('./routes/performance');
 const dashboardAuth = require('./middleware/dashboardAuth');
 const requireMaster = require('./middleware/requireMaster');
 const { isMasterRequest } = require('./authz');
@@ -240,6 +241,7 @@ app.get('/api/dashboard-series', dashboardSeries.getDashboardSeries);
 app.get('/api/business-snapshot', requireMaster.middleware, businessSnapshot.getBusinessSnapshot);
 app.get('/api/cost/health', requireMaster.middleware, costHealth.getCostHealth);
 app.get('/api/cost-breakdown', requireMaster.middleware, costBreakdown.getCostBreakdown);
+app.use('/api/performance', performance);
 // Ads feature area: mounted as a router to keep Ads endpoints self-contained.
 app.use('/api/ads', adsRouter);
 app.use('/api/integrations/google-ads/issues', googleAdsIssuesRouter);
@@ -657,6 +659,7 @@ integrationsPagesRouter.get('/google-ads', (req, res) => sendPage(res, 'integrat
 const toolsPagesRouter = express.Router();
 toolsPagesRouter.get('/compare-conversion-rate', (req, res) => sendPage(res, 'tools/compare-conversion-rate.html'));
 toolsPagesRouter.get('/shipping-cr', (req, res) => sendPage(res, 'tools/shipping-cr.html'));
+toolsPagesRouter.get('/time-of-day', (req, res) => sendPage(res, 'tools/time-of-day.html'));
 toolsPagesRouter.get('/click-order-lookup', (req, res) => sendPage(res, 'tools/click-order-lookup.html'));
 toolsPagesRouter.get('/change-pins', (req, res) => sendPage(res, 'tools/change-pins.html'));
 
@@ -704,6 +707,7 @@ app.get('/browsers', redirectWithQuery(301, '/acquisition/browsers'));
 app.get('/ads', redirectWithQuery(301, '/integrations/google-ads'));
 app.get('/compare-conversion-rate', redirectWithQuery(301, '/tools/compare-conversion-rate'));
 app.get('/shipping-cr', redirectWithQuery(301, '/tools/shipping-cr'));
+app.get('/time-of-day', redirectWithQuery(301, '/tools/time-of-day'));
 app.get('/click-order-lookup', redirectWithQuery(301, '/tools/click-order-lookup'));
 app.get('/change-pins', redirectWithQuery(301, '/tools/change-pins'));
 async function settingsPageHandler(req, res, next) {
@@ -751,6 +755,7 @@ async function settingsPageHandler(req, res, next) {
 app.get('/settings/:tab/:subtab', settingsPageHandler);
 app.get('/settings/:tab', settingsPageHandler);
 app.get('/settings', settingsPageHandler);
+app.get('/performance', (req, res) => sendPage(res, 'performance.html'));
 app.get('/upgrade', (req, res) => sendPage(res, 'upgrade.html'));
 app.get('/ui-kit', (req, res) => sendPage(res, 'ui-kit.html'));
 app.get('/admin', async (req, res, next) => {

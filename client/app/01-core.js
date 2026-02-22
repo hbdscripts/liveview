@@ -52,6 +52,7 @@ const API = '';
           'shipping-cr': true,
           'click-order-lookup': true,
           'change-pins': true,
+          'time-of-day': true,
           // Settings must never show the page overlay loader.
           settings: false,
           // Upgrade page is static marketing (see docs/UPGRADE.md); never show the overlay loader there.

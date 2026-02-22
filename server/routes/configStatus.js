@@ -6,6 +6,29 @@
 
 const config = require('../config');
 const store = require('../store');
+
+/** Build API key/secret configured status (no raw values). Used by Settings → General. */
+function buildApiKeyStatus(cfg) {
+  if (!cfg || typeof cfg !== 'object') return {};
+  return {
+    shopifyApiKey: !!(cfg.shopify && cfg.shopify.apiKey && String(cfg.shopify.apiKey).trim()),
+    shopifyApiSecret: !!(cfg.shopify && cfg.shopify.apiSecret && String(cfg.shopify.apiSecret).trim()),
+    ingestSecret: !!(cfg.ingestSecret && String(cfg.ingestSecret).trim()),
+    openaiApiKey: !!(cfg.openaiApiKey && String(cfg.openaiApiKey).trim()),
+    googleClientId: !!(cfg.googleClientId && String(cfg.googleClientId).trim()),
+    googleClientSecret: !!(cfg.googleClientSecret && String(cfg.googleClientSecret).trim()),
+    googleAdsDeveloperToken: !!(cfg.googleAdsDeveloperToken && String(cfg.googleAdsDeveloperToken).trim()),
+    googleAdsCustomerId: !!(cfg.googleAdsCustomerId && String(cfg.googleAdsCustomerId).trim()),
+    googleAdsRefreshToken: !!(cfg.googleAdsRefreshToken && String(cfg.googleAdsRefreshToken).trim()),
+    r2AccountId: !!(cfg.r2 && cfg.r2.accountId && String(cfg.r2.accountId).trim()),
+    r2AccessKeyId: !!(cfg.r2 && cfg.r2.accessKeyId && String(cfg.r2.accessKeyId).trim()),
+    r2SecretAccessKey: !!(cfg.r2 && cfg.r2.secretAccessKey && String(cfg.r2.secretAccessKey).trim()),
+    dashboardSecret: !!(cfg.dashboardSecret && String(cfg.dashboardSecret).trim()),
+    oauthCookieSecret: !!(cfg.oauthCookieSecret && String(cfg.oauthCookieSecret).trim()),
+    fraudIpSalt: !!(cfg.fraudIpSalt && String(cfg.fraudIpSalt).trim()),
+    sentryDsn: !!(cfg.sentryDsn && String(cfg.sentryDsn).trim()),
+  };
+}
 const { normalizeRangeKey } = require('../rangeKey');
 const { getDb, isPostgres } = require('../db');
 const salesTruth = require('../salesTruth');
@@ -168,6 +191,7 @@ async function configStatus(req, res, next) {
       assetsBaseUrl: config.assetsBaseUrl || '',
       trafficMode: config.trafficMode || 'all',
       dbEngine,
+      apiKeyStatus: buildApiKeyStatus(config),
     };
 
     res.setHeader('Cache-Control', 'no-store');
@@ -903,6 +927,7 @@ async function configStatus(req, res, next) {
     assetsBaseUrl: config.assetsBaseUrl || '',
     trafficMode: config.trafficMode || 'all',
     dbEngine: isPostgres() ? 'postgres' : 'sqlite',
+    apiKeyStatus: buildApiKeyStatus(config),
   };
 
   res.setHeader('Cache-Control', 'no-store');

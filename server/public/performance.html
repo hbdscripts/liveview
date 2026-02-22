@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <!--#include partials/head-theme.html-->
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="icon" type="image/webp" href="/assets/logos/new/kexo.webp" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.4.0/dist/css/tabler.min.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.4.0/dist/css/tabler-flags.min.css" />
+  <link rel="stylesheet" href="/tabler-theme.css" />
+  <link rel="stylesheet" href="/custom.css" />
+  <link rel="stylesheet" href="/diagnostics-modal.css" />
+  <title>Kexo · Performance</title>
+</head>
+<body class="" data-page="performance">
+  <!--#include partials/header.html-->
+  <!--#include partials/page-body-start.html-->
+  <div class="page-header mb-3">
+    <div class="row align-items-center">
+      <div class="col">
+        <div class="page-pretitle">Report</div>
+        <h2 class="page-title">Performance</h2>
+      </div>
+      <div class="col-auto">
+        <div class="dropdown">
+          <button type="button" class="btn btn-secondary btn-md" id="performance-range-btn" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Date range" aria-haspopup="true">
+            <span id="performance-range-label">Last 30 days</span>
+            <i class="fa-light fa-chevron-down ms-1" aria-hidden="true"></i>
+          </button>
+          <div class="dropdown-menu dropdown-menu-end" id="performance-range-menu" aria-label="Date range">
+            <button type="button" class="dropdown-item" data-range="today">Today</button>
+            <button type="button" class="dropdown-item" data-range="yesterday">Yesterday</button>
+            <button type="button" class="dropdown-item" data-range="7d">Last 7 days</button>
+            <button type="button" class="dropdown-item" data-range="14d">Last 14 days</button>
+            <button type="button" class="dropdown-item active" data-range="30d">Last 30 days</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="text-muted small mt-2 mb-0">Gross profit = Revenue − all configured costs (allocated per order, then by line-item revenue share).</p>
+  </div>
+
+  <div id="performance-loading" class="text-center py-5">
+    <span class="spinner-border text-primary" role="status" aria-hidden="true"></span>
+    <p class="mt-2 text-muted mb-0">Loading…</p>
+  </div>
+  <div id="performance-error" class="alert alert-danger is-hidden" role="alert"></div>
+  <div id="performance-content" class="is-hidden">
+    <div class="row g-3">
+      <div class="col-12">
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title mb-0">High Gross Profit</h3>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-vcenter card-table table-sm mb-0">
+              <thead>
+                <tr>
+                  <th>Product</th>
+                  <th class="text-end">Revenue (GBP)</th>
+                  <th class="text-end">Cost (GBP)</th>
+                  <th class="text-end">Gross profit (GBP)</th>
+                </tr>
+              </thead>
+              <tbody id="performance-high-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="col-12">
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title mb-0">Low Gross Profit</h3>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-vcenter card-table table-sm mb-0">
+              <thead>
+                <tr>
+                  <th>Product</th>
+                  <th class="text-end">Revenue (GBP)</th>
+                  <th class="text-end">Cost (GBP)</th>
+                  <th class="text-end">Gross profit (GBP)</th>
+                </tr>
+              </thead>
+              <tbody id="performance-low-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!--#include partials/page-body-end.html-->
+  <!--#include partials/footer.html-->
+
+  <script src="https://cdn.jsdelivr.net/npm/@tabler/core@1.4.0/dist/js/tabler.min.js" defer></script>
+  <script src="/app.js" defer></script>
+  <script src="/performance-page.js" defer></script>
+  <script src="/theme-settings.js" defer></script>
+</body>
+</html>
