@@ -444,3 +444,47 @@ body[data-page="settings"] .theme-icons-attribution-preview {
 .settings-panel-save-hidden {
   display: none !important;
 }
+
+/* Admin → Role permissions: grid switch tiles */
+body[data-page="settings"] #admin-role-permissions-content .admin-role-perms-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem 0.75rem;
+}
+@media (min-width: 992px) {
+  body[data-page="settings"] #admin-role-permissions-content .admin-role-perms-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (min-width: 1200px) {
+  body[data-page="settings"] #admin-role-permissions-content .admin-role-perms-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+body[data-page="settings"] #admin-role-permissions-content .admin-role-perms-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-width: 0;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--tblr-border-color-translucent, rgba(0, 0, 0, 0.06));
+  border-radius: 0.5rem;
+  background: var(--tblr-bg-surface, #fff);
+}
+body[data-page="settings"] #admin-role-permissions-content .admin-role-perms-item-label {
+  min-width: 150px;
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin: 0;
+  cursor: pointer;
+}
+body[data-page="settings"] #admin-role-permissions-content .admin-role-perms-item--parent .admin-role-perms-item-label {
+  font-weight: 600;
+}
+body[data-page="settings"] #admin-role-permissions-content .admin-role-perms-item--child .admin-role-perms-item-label {
+  padding-left: 0.85rem;
+  color: var(--tblr-secondary, #66758c);
+}

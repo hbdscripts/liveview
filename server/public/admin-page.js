@@ -345,21 +345,15 @@
           var safeTier = escapeHtml(tier);
           var safeKey = escapeHtml(key);
           var id = 'rp-' + safeTier + '-' + escapeHtml(String(key).replace(/\./g, '-'));
-          var textCls = '';
-          if (o.kind === 'parent') textCls = 'fw-semibold';
-          else if (o.kind === 'child') textCls = 'text-secondary ps-3';
-          else if (o.kind === 'meta') textCls = 'text-secondary';
-          var labelText = '<span class="' + textCls + '">' + escapeHtml(label) + '</span>';
+          var itemCls = 'admin-role-perms-item';
+          if (o.kind === 'parent') itemCls += ' admin-role-perms-item--parent';
+          else if (o.kind === 'child') itemCls += ' admin-role-perms-item--child';
           return '' +
-            '<div>' +
-              '<label class="row align-items-center">' +
-                '<span class="col">' + labelText + '</span>' +
-                '<span class="col-auto">' +
-                  '<label class="form-check form-check-single form-switch m-0">' +
-                    '<input class="form-check-input admin-role-perm-cb" type="checkbox" data-tier="' + safeTier + '" data-perm="' + safeKey + '" id="' + id + '"' + (checked ? ' checked' : '') + ' />' +
-                  '</label>' +
-                '</span>' +
-              '</label>' +
+            '<div class="' + itemCls + '">' +
+              '<label class="admin-role-perms-item-label" for="' + id + '" title="' + escapeHtml(label) + '">' + escapeHtml(label) + '</label>' +
+              '<div class="form-check form-check-single form-switch m-0">' +
+                '<input class="form-check-input admin-role-perm-cb" type="checkbox" data-tier="' + safeTier + '" data-perm="' + safeKey + '" id="' + id + '"' + (checked ? ' checked' : '') + ' />' +
+              '</div>' +
             '</div>';
         }
 
@@ -392,10 +386,9 @@
           }, 450);
         }
 
-        var html = '<div class="admin-role-perms-tiers row g-3">';
+        var html = '<div class="admin-role-perms-tiers d-flex flex-column gap-3">';
         tiers.forEach(function (tier) {
           var tierPerms = perms[tier] || {};
-          html += '<div class="col-12 col-xl-6">';
           html += '<div class="card" data-role-perms-tier="' + escapeHtml(tier) + '">';
           html +=   '<div class="card-header d-flex align-items-center gap-2 flex-wrap">';
           html +=     '<div class="me-auto min-w-0">';
@@ -408,15 +401,16 @@
           html +=     '</div>';
           html +=   '</div>';
           html +=   '<div class="card-body">';
-          html +=     '<div class="row g-3">';
+          html +=     '<div class="admin-role-perms-sections d-flex flex-column gap-4">';
 
-          // Pages (left)
-          html +=       '<div class="col-12 col-lg-6">';
+          // Pages
+          html +=       '<div>';
+          html +=         '<div class="text-secondary small mb-2">Pages</div>';
           PAGE_GROUPS.forEach(function (g) {
             if (!g || !g.keys || !g.keys.length) return;
             html += '<div class="mb-3">';
             html +=   '<label class="form-label">' + escapeHtml(g.label) + '</label>';
-            html +=   '<div class="divide-y">';
+            html +=   '<div class="admin-role-perms-grid">';
             g.keys.forEach(function (key) {
               html += switchRowHtml(tier, key, labelForPermKey(key), tierPerms[key] === true);
             });
@@ -425,12 +419,13 @@
           });
           html +=       '</div>';
 
-          // Settings (right)
-          html +=       '<div class="col-12 col-lg-6">';
+          // Settings
+          html +=       '<div>';
+          html +=         '<div class="text-secondary small mb-2">Settings</div>';
           if (SETTINGS_MASTER) {
             html += '<div class="mb-3">';
-            html +=   '<label class="form-label">Settings</label>';
-            html +=   '<div class="divide-y">';
+            html +=   '<label class="form-label">Settings access</label>';
+            html +=   '<div class="admin-role-perms-grid">';
             html +=     switchRowHtml(tier, SETTINGS_MASTER, 'Settings access', tierPerms[SETTINGS_MASTER] === true, { kind: 'parent' });
             html +=   '</div>';
             html += '</div>';
@@ -442,7 +437,7 @@
             if (!parentKey && !children.length) return;
             html += '<div class="mb-3">';
             html +=   '<label class="form-label">' + escapeHtml(g.label) + '</label>';
-            html +=   '<div class="divide-y">';
+            html +=   '<div class="admin-role-perms-grid">';
             if (parentKey) {
               html += switchRowHtml(tier, parentKey, String(g.label || '') + ' (category)', tierPerms[parentKey] === true, { kind: 'parent' });
             }
@@ -454,9 +449,8 @@
           });
           html +=       '</div>';
 
-          html +=     '</div>';
+          html +=     '</div>'; // sections
           html +=   '</div>';
-          html += '</div>';
           html += '</div>';
         });
         html += '</div>';
