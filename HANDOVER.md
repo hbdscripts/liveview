@@ -17,11 +17,6 @@ Read this file before making changes. If you change **core paths** (routes, auth
 
 If you start a significant change that may overlap with others, add a short entry here (and remove it when merged):
 
-- **branch**: `agent/fix-sentry-node-issues`
-  - **scope**: Sentry node project — backend (RBAC, settings N+1, theme-defaults bulk, kpis-expanded-extra), frontend (window.error flood, 401 capture)
-  - **status**: in progress
-  - **notes**: Fix all 94 unresolved Sentry issues in one run; one branch → merge main → deploy
-
 - **branch**: `agent/YYYY-MM-DD-topic`
   - **scope**: settings / dashboard / ingest / etc
   - **status**: in progress / paused
