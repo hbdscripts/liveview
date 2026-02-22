@@ -984,6 +984,8 @@
 
     function fetchAttributionData(options = {}) {
       const force = !!options.force;
+      const attrEl = document.getElementById('attribution-chart');
+      if (attrEl) attrEl.innerHTML = '<div class="kexo-overview-chart-empty is-loading"><span class="kpi-mini-spinner" aria-hidden="true"></span><span>Loading…</span></div>';
       let url = API + '/api/attribution/report?range=' + encodeURIComponent(getStatsRange());
       if (force) url += (url.indexOf('?') >= 0 ? '&' : '?') + '_=' + Date.now();
       const cacheMode = force ? 'no-store' : 'default';
@@ -1250,6 +1252,8 @@
 
     function fetchDevicesData(options = {}) {
       const force = !!options.force;
+      const devEl = document.getElementById('devices-chart');
+      if (devEl) devEl.innerHTML = '<div class="kexo-overview-chart-empty is-loading"><span class="kpi-mini-spinner" aria-hidden="true"></span><span>Loading…</span></div>';
       let url = API + '/api/devices/report?range=' + encodeURIComponent(getStatsRange());
       if (force) url += (url.indexOf('?') >= 0 ? '&' : '?') + '_=' + Date.now();
       const cacheMode = force ? 'no-store' : 'default';
@@ -1594,9 +1598,15 @@
       if (!el) return;
       var message = String(text == null ? '' : text).trim() || 'Unavailable';
       var isError = !!(opts && opts.error);
+      var isLoading = !!(opts && opts.loading) || (!isError && /loading/i.test(message));
       var h = (opts && Number.isFinite(opts.height)) ? Math.max(80, opts.height) : 220;
       var chartKey = (opts && opts.chartKey != null) ? String(opts.chartKey).trim() : 'live-online-chart';
       if (isError) captureChartMessage(message, 'liveOnlineMapState', { chartKey: chartKey }, 'error');
+      if (isLoading) {
+        el.innerHTML = '<div class="kexo-overview-chart-empty is-loading" data-kexo-chart-empty="1" style="height:' + String(h) + 'px">' +
+          '<span class="kpi-mini-spinner" aria-hidden="true"></span><span>' + escapeHtml(message) + '</span></div>';
+        return;
+      }
       var cls = 'kexo-chart-empty' + (isError ? ' kexo-chart-empty--error' : '');
       el.innerHTML = '<div class="' + cls + '" data-kexo-chart-empty="1">' + escapeHtml(message) + '</div>';
       try {
@@ -2425,6 +2435,7 @@
       var cacheKey = (PAGE || 'page') + '|' + rangeKey;
       if (!force && rangeOverviewChart && rangeOverviewChartKey === cacheKey) return Promise.resolve(null);
       if (rangeOverviewChartInFlight) return rangeOverviewChartInFlight;
+      el.innerHTML = '<div class="kexo-overview-chart-empty is-loading"><span class="kpi-mini-spinner" aria-hidden="true"></span><span>Loading chart…</span></div>';
       var url = API + '/api/dashboard-series?range=' + encodeURIComponent(rangeKey) + getTrafficQuerySuffix() + (force ? ('&force=1&_=' + Date.now()) : '');
       rangeOverviewChartInFlight = fetchWithTimeout(url, { credentials: 'same-origin', cache: force ? 'no-store' : 'default' }, 20000)
         .then(function(r) { return (r && r.ok) ? r.json() : null; })
@@ -2767,6 +2778,50 @@
         refreshAbandonedCartsTopTables(options),
         fetchSessions(),
       ]);
+    }
+
+    function refreshCheckoutFunnel(options) {
+      if (PAGE !== 'checkout-funnel') return Promise.resolve(null);
+      options = options || {};
+      var rk = typeof dateRange !== 'undefined' ? dateRange : 'today';
+      var rangeKey = typeof normalizeRangeKeyForApi === 'function' ? normalizeRangeKeyForApi(rk) : rk;
+      var tzStr = typeof tz !== 'undefined' ? tz : '';
+      var url = (typeof API !== 'undefined' ? API : '') + '/api/insights/checkout-funnel?range=' + encodeURIComponent(rangeKey) + '&timezone=' + encodeURIComponent(tzStr) + (options.force ? ('&_=' + Date.now()) : '');
+      return fetch(url, { credentials: 'same-origin', cache: 'no-store' })
+        .then(function(r) {
+          if (!r.ok) return null;
+          return r.json();
+        })
+        .then(function(data) {
+          if (data == null) return;
+          var steps = data.steps || [];
+          var setCount = function(idSuffix, value) {
+            var el = document.getElementById('funnel-step-' + idSuffix + '-count');
+            if (el) el.textContent = typeof value === 'number' ? String(value) : '—';
+          };
+          var setPct = function(idSuffix, value) {
+            var el = document.getElementById('funnel-step-' + idSuffix + '-pct');
+            if (el) el.textContent = value != null && typeof value === 'number' ? (value + '% from previous') : '';
+          };
+          setCount('sessions', data.sessions);
+          setPct('sessions', null);
+          setCount('cart', data.cart);
+          setPct('cart', data.conversionToCart);
+          setCount('checkout', data.checkoutStarted);
+          setPct('checkout', data.conversionToCheckout);
+          setCount('purchased', data.purchased);
+          setPct('purchased', data.conversionToPurchase);
+        })
+        .catch(function() {
+          var setCount = function(idSuffix) {
+            var el = document.getElementById('funnel-step-' + idSuffix + '-count');
+            if (el) el.textContent = '—';
+          };
+          setCount('sessions');
+          setCount('cart');
+          setCount('checkout');
+          setCount('purchased');
+        });
     }
 
     function fetchSessions() {

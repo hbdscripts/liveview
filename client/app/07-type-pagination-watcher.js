@@ -1694,8 +1694,14 @@
       if (!el) return;
       var message = String(text == null ? '' : text).trim() || 'Unavailable';
       var isError = !!(opts && opts.error);
+      var isLoading = !!(opts && opts.loading) || (!isError && /loading/i.test(message));
       var h = (opts && Number.isFinite(opts.height)) ? Math.max(80, opts.height) : 320;
       if (isError) captureChartMessage(message, 'countriesMapState', { chartKey: 'countries-map-chart' }, 'error');
+      if (isLoading) {
+        el.innerHTML = '<div class="kexo-overview-chart-empty is-loading" data-kexo-chart-empty="1" style="height:' + String(h) + 'px">' +
+          '<span class="kpi-mini-spinner" aria-hidden="true"></span><span>' + escapeHtml(message) + '</span></div>';
+        return;
+      }
       var cls = 'kexo-chart-empty' + (isError ? ' kexo-chart-empty--error' : '');
       el.innerHTML = '<div class="' + cls + '" data-kexo-chart-empty="1">' + escapeHtml(message) + '</div>';
       try {
@@ -2887,10 +2893,11 @@
         else if (activeMainTab === 'variants') {
           try { tabPromise = typeof window.__refreshVariantsInsights === 'function' ? window.__refreshVariantsInsights({ force: true }) : null; } catch (_) {}
         } else if (activeMainTab === 'abandoned-carts') { try { tabPromise = refreshAbandonedCarts({ force: true }); } catch (_) {} }
+        else if (activeMainTab === 'checkout-funnel') { try { tabPromise = refreshCheckoutFunnel({ force: true }); } catch (_) {} }
         if (tabPromise && typeof tabPromise.then === 'function') promises.push(tabPromise);
         if (activeMainTab === 'dashboard') { try { if (typeof refreshDashboard === 'function') refreshDashboard({ force: false }); } catch (_) {} }
         if (activeMainTab === 'ads' || PAGE === 'ads') { try { if (window.__adsRefresh) window.__adsRefresh({ force: false }); } catch (_) {} }
-        if (activeMainTab !== 'dashboard' && activeMainTab !== 'stats' && activeMainTab !== 'products' && activeMainTab !== 'attribution' && activeMainTab !== 'devices' && activeMainTab !== 'variants' && activeMainTab !== 'abandoned-carts') {
+        if (activeMainTab !== 'dashboard' && activeMainTab !== 'stats' && activeMainTab !== 'products' && activeMainTab !== 'attribution' && activeMainTab !== 'devices' && activeMainTab !== 'variants' && activeMainTab !== 'abandoned-carts' && activeMainTab !== 'checkout-funnel') {
           updateKpis();
           try { fetchSessions(); } catch (_) {}
         }
@@ -2959,6 +2966,8 @@
         try { if (typeof window.__refreshVariantsInsights === 'function') window.__refreshVariantsInsights({ force: true }); } catch (_) {}
       } else if (activeMainTab === 'abandoned-carts') {
         try { refreshAbandonedCarts({ force: true }); } catch (_) { fetchSessions(); }
+      } else if (activeMainTab === 'checkout-funnel') {
+        try { refreshCheckoutFunnel({ force: true }); } catch (_) {}
       } else if (activeMainTab === 'ads' || PAGE === 'ads') {
         try { if (window.__adsRefresh) window.__adsRefresh({ force: false }); } catch (_) {}
       } else {

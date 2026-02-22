@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: d4b60a6283264ce6
+// checksum: 284003745e8df4e9
 
 (function () {
   // Shared formatters + scheduling/fetch helpers — reduces UI jank + duplicate requests.
@@ -341,6 +341,7 @@ const API = '';
           products: true,
           variants: true,
           'abandoned-carts': true,
+          'checkout-funnel': true,
           attribution: true,
           devices: true,
           ads: true,
@@ -1311,7 +1312,7 @@ const API = '';
     let devicesExpanded = null; // null = first render, default all open
     let devicesChartInstance = null;
     let devicesChartData = null;
-    let dateRange = PAGE === 'sales' ? 'sales' : PAGE === 'date' ? 'today' : PAGE === 'dashboard' ? 'today' : PAGE === 'abandoned-carts' ? 'today' : 'live';
+    let dateRange = PAGE === 'sales' ? 'sales' : PAGE === 'date' ? 'today' : PAGE === 'dashboard' ? 'today' : PAGE === 'abandoned-carts' ? 'today' : PAGE === 'checkout-funnel' ? 'today' : 'live';
     let customRangeStartYmd = null; // YYYY-MM-DD (admin TZ)
     let customRangeEndYmd = null; // YYYY-MM-DD (admin TZ)
     let pendingCustomRangeStartYmd = null; // modal-only pending selection
@@ -5412,6 +5413,8 @@ const API = '';
           '&sort=' + encodeURIComponent(String(bestSellersSortBy || 'rev')) +
           '&dir=' + encodeURIComponent(String(bestSellersSortDir || 'desc'));
       if (force) url += '&_=' + Date.now();
+      var chartEl = document.getElementById('products-chart');
+      if (chartEl) chartEl.innerHTML = '<div class="kexo-overview-chart-empty is-loading"><span class="kpi-mini-spinner" aria-hidden="true"></span><span>Loading…</span></div>';
       return fetchWithTimeout(url, { credentials: 'same-origin', cache: force ? 'no-store' : 'default' }, 30000)
         .then(function(r) { return r.json().then(function(data) { return { ok: r.ok, status: r.status, data: data || {} }; }).catch(function() { return { ok: r.ok, status: r.status, data: {} }; }); })
         .then(function(result) {
@@ -7594,8 +7597,14 @@ const API = '';
       if (!el) return;
       var message = String(text == null ? '' : text).trim() || 'Unavailable';
       var isError = !!(opts && opts.error);
+      var isLoading = !!(opts && opts.loading) || (!isError && /loading/i.test(message));
       var h = (opts && Number.isFinite(opts.height)) ? Math.max(80, opts.height) : 320;
       if (isError) captureChartMessage(message, 'countriesMapState', { chartKey: 'countries-map-chart' }, 'error');
+      if (isLoading) {
+        el.innerHTML = '<div class="kexo-overview-chart-empty is-loading" data-kexo-chart-empty="1" style="height:' + String(h) + 'px">' +
+          '<span class="kpi-mini-spinner" aria-hidden="true"></span><span>' + escapeHtml(message) + '</span></div>';
+        return;
+      }
       var cls = 'kexo-chart-empty' + (isError ? ' kexo-chart-empty--error' : '');
       el.innerHTML = '<div class="' + cls + '" data-kexo-chart-empty="1">' + escapeHtml(message) + '</div>';
       try {
@@ -8787,10 +8796,11 @@ const API = '';
         else if (activeMainTab === 'variants') {
           try { tabPromise = typeof window.__refreshVariantsInsights === 'function' ? window.__refreshVariantsInsights({ force: true }) : null; } catch (_) {}
         } else if (activeMainTab === 'abandoned-carts') { try { tabPromise = refreshAbandonedCarts({ force: true }); } catch (_) {} }
+        else if (activeMainTab === 'checkout-funnel') { try { tabPromise = refreshCheckoutFunnel({ force: true }); } catch (_) {} }
         if (tabPromise && typeof tabPromise.then === 'function') promises.push(tabPromise);
         if (activeMainTab === 'dashboard') { try { if (typeof refreshDashboard === 'function') refreshDashboard({ force: false }); } catch (_) {} }
         if (activeMainTab === 'ads' || PAGE === 'ads') { try { if (window.__adsRefresh) window.__adsRefresh({ force: false }); } catch (_) {} }
-        if (activeMainTab !== 'dashboard' && activeMainTab !== 'stats' && activeMainTab !== 'products' && activeMainTab !== 'attribution' && activeMainTab !== 'devices' && activeMainTab !== 'variants' && activeMainTab !== 'abandoned-carts') {
+        if (activeMainTab !== 'dashboard' && activeMainTab !== 'stats' && activeMainTab !== 'products' && activeMainTab !== 'attribution' && activeMainTab !== 'devices' && activeMainTab !== 'variants' && activeMainTab !== 'abandoned-carts' && activeMainTab !== 'checkout-funnel') {
           updateKpis();
           try { fetchSessions(); } catch (_) {}
         }
@@ -8859,6 +8869,8 @@ const API = '';
         try { if (typeof window.__refreshVariantsInsights === 'function') window.__refreshVariantsInsights({ force: true }); } catch (_) {}
       } else if (activeMainTab === 'abandoned-carts') {
         try { refreshAbandonedCarts({ force: true }); } catch (_) { fetchSessions(); }
+      } else if (activeMainTab === 'checkout-funnel') {
+        try { refreshCheckoutFunnel({ force: true }); } catch (_) {}
       } else if (activeMainTab === 'ads' || PAGE === 'ads') {
         try { if (window.__adsRefresh) window.__adsRefresh({ force: false }); } catch (_) {}
       } else {
@@ -12538,6 +12550,8 @@ const API = '';
 
     function fetchAttributionData(options = {}) {
       const force = !!options.force;
+      const attrEl = document.getElementById('attribution-chart');
+      if (attrEl) attrEl.innerHTML = '<div class="kexo-overview-chart-empty is-loading"><span class="kpi-mini-spinner" aria-hidden="true"></span><span>Loading…</span></div>';
       let url = API + '/api/attribution/report?range=' + encodeURIComponent(getStatsRange());
       if (force) url += (url.indexOf('?') >= 0 ? '&' : '?') + '_=' + Date.now();
       const cacheMode = force ? 'no-store' : 'default';
@@ -12804,6 +12818,8 @@ const API = '';
 
     function fetchDevicesData(options = {}) {
       const force = !!options.force;
+      const devEl = document.getElementById('devices-chart');
+      if (devEl) devEl.innerHTML = '<div class="kexo-overview-chart-empty is-loading"><span class="kpi-mini-spinner" aria-hidden="true"></span><span>Loading…</span></div>';
       let url = API + '/api/devices/report?range=' + encodeURIComponent(getStatsRange());
       if (force) url += (url.indexOf('?') >= 0 ? '&' : '?') + '_=' + Date.now();
       const cacheMode = force ? 'no-store' : 'default';
@@ -13148,9 +13164,15 @@ const API = '';
       if (!el) return;
       var message = String(text == null ? '' : text).trim() || 'Unavailable';
       var isError = !!(opts && opts.error);
+      var isLoading = !!(opts && opts.loading) || (!isError && /loading/i.test(message));
       var h = (opts && Number.isFinite(opts.height)) ? Math.max(80, opts.height) : 220;
       var chartKey = (opts && opts.chartKey != null) ? String(opts.chartKey).trim() : 'live-online-chart';
       if (isError) captureChartMessage(message, 'liveOnlineMapState', { chartKey: chartKey }, 'error');
+      if (isLoading) {
+        el.innerHTML = '<div class="kexo-overview-chart-empty is-loading" data-kexo-chart-empty="1" style="height:' + String(h) + 'px">' +
+          '<span class="kpi-mini-spinner" aria-hidden="true"></span><span>' + escapeHtml(message) + '</span></div>';
+        return;
+      }
       var cls = 'kexo-chart-empty' + (isError ? ' kexo-chart-empty--error' : '');
       el.innerHTML = '<div class="' + cls + '" data-kexo-chart-empty="1">' + escapeHtml(message) + '</div>';
       try {
@@ -13979,6 +14001,7 @@ const API = '';
       var cacheKey = (PAGE || 'page') + '|' + rangeKey;
       if (!force && rangeOverviewChart && rangeOverviewChartKey === cacheKey) return Promise.resolve(null);
       if (rangeOverviewChartInFlight) return rangeOverviewChartInFlight;
+      el.innerHTML = '<div class="kexo-overview-chart-empty is-loading"><span class="kpi-mini-spinner" aria-hidden="true"></span><span>Loading chart…</span></div>';
       var url = API + '/api/dashboard-series?range=' + encodeURIComponent(rangeKey) + getTrafficQuerySuffix() + (force ? ('&force=1&_=' + Date.now()) : '');
       rangeOverviewChartInFlight = fetchWithTimeout(url, { credentials: 'same-origin', cache: force ? 'no-store' : 'default' }, 20000)
         .then(function(r) { return (r && r.ok) ? r.json() : null; })
@@ -14321,6 +14344,50 @@ const API = '';
         refreshAbandonedCartsTopTables(options),
         fetchSessions(),
       ]);
+    }
+
+    function refreshCheckoutFunnel(options) {
+      if (PAGE !== 'checkout-funnel') return Promise.resolve(null);
+      options = options || {};
+      var rk = typeof dateRange !== 'undefined' ? dateRange : 'today';
+      var rangeKey = typeof normalizeRangeKeyForApi === 'function' ? normalizeRangeKeyForApi(rk) : rk;
+      var tzStr = typeof tz !== 'undefined' ? tz : '';
+      var url = (typeof API !== 'undefined' ? API : '') + '/api/insights/checkout-funnel?range=' + encodeURIComponent(rangeKey) + '&timezone=' + encodeURIComponent(tzStr) + (options.force ? ('&_=' + Date.now()) : '');
+      return fetch(url, { credentials: 'same-origin', cache: 'no-store' })
+        .then(function(r) {
+          if (!r.ok) return null;
+          return r.json();
+        })
+        .then(function(data) {
+          if (data == null) return;
+          var steps = data.steps || [];
+          var setCount = function(idSuffix, value) {
+            var el = document.getElementById('funnel-step-' + idSuffix + '-count');
+            if (el) el.textContent = typeof value === 'number' ? String(value) : '—';
+          };
+          var setPct = function(idSuffix, value) {
+            var el = document.getElementById('funnel-step-' + idSuffix + '-pct');
+            if (el) el.textContent = value != null && typeof value === 'number' ? (value + '% from previous') : '';
+          };
+          setCount('sessions', data.sessions);
+          setPct('sessions', null);
+          setCount('cart', data.cart);
+          setPct('cart', data.conversionToCart);
+          setCount('checkout', data.checkoutStarted);
+          setPct('checkout', data.conversionToCheckout);
+          setCount('purchased', data.purchased);
+          setPct('purchased', data.conversionToPurchase);
+        })
+        .catch(function() {
+          var setCount = function(idSuffix) {
+            var el = document.getElementById('funnel-step-' + idSuffix + '-count');
+            if (el) el.textContent = '—';
+          };
+          setCount('sessions');
+          setCount('cart');
+          setCount('checkout');
+          setCount('purchased');
+        });
     }
 
     function fetchSessions() {
@@ -17597,6 +17664,7 @@ const API = '';
           products: 'nav-item-products',
           variants: 'nav-item-variants',
           'abandoned-carts': 'nav-item-sales',
+          'checkout-funnel': 'nav-item-countries',
           channels: 'nav-item-channels',
           type: 'nav-item-type',
           attribution: 'nav-item-attribution',
@@ -17729,7 +17797,7 @@ const API = '';
             else dashboardDropdownItem.classList.remove('active');
           }
           // Insights dropdown (Snapshot + Countries + Products + Variants)
-          var isInsightsChild = (tab === 'snapshot' || tab === 'stats' || tab === 'products' || tab === 'variants' || tab === 'abandoned-carts');
+          var isInsightsChild = (tab === 'snapshot' || tab === 'stats' || tab === 'products' || tab === 'variants' || tab === 'abandoned-carts' || tab === 'checkout-funnel');
           var insightsToggle = document.querySelector('.nav-item.dropdown .dropdown-toggle[href="#navbar-insights-menu"]');
           var insightsDropdownItem = insightsToggle ? insightsToggle.closest('.nav-item') : null;
           if (insightsToggle) {
@@ -17830,6 +17898,9 @@ const API = '';
           } else if (tab === 'abandoned-carts') {
             try { refreshAbandonedCarts({ force: false }); } catch (_) { fetchSessions(); }
             ensureKpis();
+          } else if (tab === 'checkout-funnel') {
+            try { refreshCheckoutFunnel({ force: false }); } catch (_) {}
+            ensureKpis();
           } else if (tab === 'attribution') {
             refreshAttribution({ force: false });
             ensureKpis();
@@ -17906,6 +17977,7 @@ const API = '';
             : PAGE === 'devices' ? 'devices'
             : PAGE === 'browsers' ? 'browsers'
             : (PAGE === 'compare-conversion-rate' || PAGE === 'shipping-cr' || PAGE === 'click-order-lookup' || PAGE === 'change-pins') ? PAGE
+            : PAGE === 'checkout-funnel' ? 'checkout-funnel'
             : PAGE;
           setTab(pageTab);
           return;
@@ -18144,6 +18216,8 @@ const API = '';
                 try { if (typeof window.__refreshVariantsInsights === 'function') window.__refreshVariantsInsights({ force: true }); } catch (_) {}
               } else if (activeMainTab === 'abandoned-carts') {
                 try { refreshAbandonedCarts({ force: true }); } catch (_) { try { fetchSessions(); } catch (_) {} }
+              } else if (activeMainTab === 'checkout-funnel') {
+                try { refreshCheckoutFunnel({ force: true }); } catch (_) {}
               } else if (activeMainTab === 'attribution') {
                 try { refreshAttribution({ force: true }); } catch (_) {}
               } else if (activeMainTab === 'devices') {
@@ -19406,12 +19480,29 @@ const API = '';
             stroke: { show: true, width: strokeWidth, curve: 'smooth', lineCap: 'round' },
             fill: fillConfig,
             plotOptions: chartType === 'bar' ? { bar: { columnWidth: barColWidth, borderRadius: 3, stacked: stacked } } : (chartType === 'area' && stacked ? { area: { stacked: true } } : {}),
-            xaxis: {
-              categories: labels || [],
-              labels: { style: { fontSize: '10px', cssClass: 'apexcharts-xaxis-label' }, rotate: 0, hideOverlappingLabels: true },
-              axisBorder: { show: false },
-              axisTicks: { show: false }
-            },
+            xaxis: (function() {
+              var xaxisConfig = {
+                categories: labels || [],
+                labels: { style: { fontSize: '10px', cssClass: 'apexcharts-xaxis-label' }, rotate: 0, hideOverlappingLabels: true },
+                axisBorder: { show: false },
+                axisTicks: { show: false }
+              };
+              if (String(chartId || '') === 'dash-chart-overview-30d' && typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(max-width: 767px)').matches) {
+                var labelCount = Array.isArray(labels) ? labels.length : 0;
+                if (labelCount > 10) {
+                  var step = Math.ceil(labelCount / 8);
+                  xaxisConfig.labels.formatter = function(value, timestamp, opts) {
+                    try {
+                      var idx = opts && opts.dataPointIndex != null ? Number(opts.dataPointIndex) : -1;
+                      if (idx < 0 || idx >= labelCount) return value;
+                      if (idx === labelCount - 1) return value;
+                      return (idx % step === 0) ? value : '';
+                    } catch (_) { return value; }
+                  };
+                }
+              }
+              return xaxisConfig;
+            })(),
             yaxis: {
               labels: { style: { fontSize: '11px', cssClass: 'apexcharts-yaxis-label' }, formatter: yFmt },
               min: yMinOverride,

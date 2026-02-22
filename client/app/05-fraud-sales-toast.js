@@ -1114,6 +1114,8 @@
           '&sort=' + encodeURIComponent(String(bestSellersSortBy || 'rev')) +
           '&dir=' + encodeURIComponent(String(bestSellersSortDir || 'desc'));
       if (force) url += '&_=' + Date.now();
+      var chartEl = document.getElementById('products-chart');
+      if (chartEl) chartEl.innerHTML = '<div class="kexo-overview-chart-empty is-loading"><span class="kpi-mini-spinner" aria-hidden="true"></span><span>Loading…</span></div>';
       return fetchWithTimeout(url, { credentials: 'same-origin', cache: force ? 'no-store' : 'default' }, 30000)
         .then(function(r) { return r.json().then(function(data) { return { ok: r.ok, status: r.status, data: data || {} }; }).catch(function() { return { ok: r.ok, status: r.status, data: {} }; }); })
         .then(function(result) {

@@ -2333,6 +2333,8 @@
     }
 
     _lastFetchError = null;
+    var chartEl = document.getElementById('ads-overview-chart');
+    if (chartEl) chartEl.innerHTML = '<div class="kexo-overview-chart-empty is-loading"><span class="kpi-mini-spinner" aria-hidden="true"></span><span>Loading…</span></div>';
     var actions = document.getElementById('ads-actions');
     var footer = document.getElementById('ads-footer');
     var noteEl = document.getElementById('ads-note');

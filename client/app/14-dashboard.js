@@ -824,12 +824,29 @@
             stroke: { show: true, width: strokeWidth, curve: 'smooth', lineCap: 'round' },
             fill: fillConfig,
             plotOptions: chartType === 'bar' ? { bar: { columnWidth: barColWidth, borderRadius: 3, stacked: stacked } } : (chartType === 'area' && stacked ? { area: { stacked: true } } : {}),
-            xaxis: {
-              categories: labels || [],
-              labels: { style: { fontSize: '10px', cssClass: 'apexcharts-xaxis-label' }, rotate: 0, hideOverlappingLabels: true },
-              axisBorder: { show: false },
-              axisTicks: { show: false }
-            },
+            xaxis: (function() {
+              var xaxisConfig = {
+                categories: labels || [],
+                labels: { style: { fontSize: '10px', cssClass: 'apexcharts-xaxis-label' }, rotate: 0, hideOverlappingLabels: true },
+                axisBorder: { show: false },
+                axisTicks: { show: false }
+              };
+              if (String(chartId || '') === 'dash-chart-overview-30d' && typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(max-width: 767px)').matches) {
+                var labelCount = Array.isArray(labels) ? labels.length : 0;
+                if (labelCount > 10) {
+                  var step = Math.ceil(labelCount / 8);
+                  xaxisConfig.labels.formatter = function(value, timestamp, opts) {
+                    try {
+                      var idx = opts && opts.dataPointIndex != null ? Number(opts.dataPointIndex) : -1;
+                      if (idx < 0 || idx >= labelCount) return value;
+                      if (idx === labelCount - 1) return value;
+                      return (idx % step === 0) ? value : '';
+                    } catch (_) { return value; }
+                  };
+                }
+              }
+              return xaxisConfig;
+            })(),
             yaxis: {
               labels: { style: { fontSize: '11px', cssClass: 'apexcharts-yaxis-label' }, formatter: yFmt },
               min: yMinOverride,
