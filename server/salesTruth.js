@@ -12,6 +12,7 @@ const { writeAudit } = require('./audit');
 const backup = require('./backup');
 const reportCache = require('./reportCache');
 const fraudLinker = require('./fraud/linker');
+const { sleep } = require('./shared/sleep');
 
 const API_VERSION = '2024-01';
 const PRE_RECONCILE_BACKUP_TTL_MS = 24 * 60 * 60 * 1000;
@@ -54,10 +55,6 @@ async function ordersHasAcquisitionColumns(db) {
 
 function truthy(v) {
   return v === true || v === 1 || v === '1' || (typeof v === 'string' && v.trim().toLowerCase() === 'true');
-}
-
-function sleep(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function normalizeShopDomain(shop) {

@@ -14,15 +14,11 @@ const reportCache = require('../reportCache');
 const salesTruth = require('../salesTruth');
 const fx = require('../fx');
 const { normalizeRangeKey } = require('../rangeKey');
+const { sleep } = require('../shared/sleep');
 
 const SHOPIFY_API_VERSION = '2024-01';
 const VARIANT_COST_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 const variantCostCache = new Map();
-
-function sleep(ms) {
-  const n = Number(ms) || 0;
-  return new Promise((resolve) => setTimeout(resolve, Math.max(0, n)));
-}
 
 function parseNextPageUrl(linkHeader) {
   if (!linkHeader || typeof linkHeader !== 'string') return null;

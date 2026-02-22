@@ -13,16 +13,12 @@ const salesTruth = require('../salesTruth');
 const fx = require('../fx');
 const reportCache = require('../reportCache');
 const { normalizeRangeKey } = require('../rangeKey');
+const { sleep } = require('../shared/sleep');
 
 const API_VERSION = '2025-01';
 
 const VARIANT_COST_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 const variantCostCache = new Map();
-
-function sleep(ms) {
-  const n = Number(ms) || 0;
-  return new Promise((resolve) => setTimeout(resolve, Math.max(0, n)));
-}
 
 function chunkArray(arr, size) {
   const out = [];

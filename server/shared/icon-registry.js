@@ -65,6 +65,7 @@ const ICON_GLYPH_DEFAULTS = Object.freeze({
   'nav-item-sound-off': 'fa-volume-xmark',
   'nav-item-theme': 'fa-palette',
   'nav-item-signout': 'fa-right-from-bracket',
+  'nav-notifications-bell': 'fa-bell',
   'nav-item-admin': 'fa-user-gear',
   'tools-click-order-lookup-search': 'fa-magnifying-glass',
   'table-icon-converted-sale': 'fa-solid fa-sterling-sign',

@@ -4,6 +4,7 @@ const salesTruth = require('./salesTruth');
 const fx = require('./fx');
 const shopifyQl = require('./shopifyQl');
 const { getAdsDb } = require('./ads/adsDb');
+const { sleep } = require('./shared/sleep');
 const {
   PROFIT_RULES_V1_KEY,
   PROFIT_RULE_TYPES,
@@ -41,11 +42,6 @@ const shopNameCache = new Map(); // shop -> { name, expiresAt }
 const cogsRangeCache = new Map(); // key -> { value, expiresAt }
 const adsSpendCache = new Map(); // key -> { totalGbp, byYmdObj, expiresAt }
 const shopifyBalanceCostsCache = new Map(); // key -> { value, expiresAt }
-
-function sleep(ms) {
-  const n = Number(ms) || 0;
-  return new Promise((resolve) => setTimeout(resolve, Math.max(0, n)));
-}
 
 function chunkArray(arr, size) {
   const out = [];

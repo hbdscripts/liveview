@@ -65,9 +65,8 @@ function handleExpr(alias) {
   return `LOWER(TRIM(${a}.first_product_handle))`;
 }
 
-function buildOrPairsWhere(pairs, leftSql, rightSql, baseParamIndex) {
+function buildOrPairsWhere(pairs, leftSql, rightSql) {
   // Returns: { sql: "(left=? AND right=?) OR ...", params: [..] } but leaves placeholdering to DB adapter.
-  // baseParamIndex is unused (kept for readability with other modules).
   const list = Array.isArray(pairs) ? pairs : [];
   const parts = [];
   const params = [];
@@ -99,7 +98,7 @@ function abandonedModeSql(mode) {
     : `AND COALESCE(s.cart_qty, 0) > 0`;
 }
 
-async function sumToGbp(amount, currency, ratesToGbp) {
+function sumToGbp(amount, currency, ratesToGbp) {
   const n = typeof amount === 'number' ? amount : Number(amount);
   if (!Number.isFinite(n) || n === 0) return 0;
   const cur = normalizeCurrency(currency);
@@ -153,7 +152,7 @@ router.get('/series', async (req, res) => {
       const sum = r && r.value_sum != null ? Number(r.value_sum) : 0;
       const cur = normalizeCurrency(r && r.currency != null ? String(r.currency) : fx.BASE);
       points[idx].abandoned += Number.isFinite(abandoned) ? Math.max(0, Math.trunc(abandoned)) : 0;
-      points[idx].abandoned_value_gbp += await sumToGbp(Number.isFinite(sum) ? sum : 0, cur, ratesToGbp);
+      points[idx].abandoned_value_gbp += sumToGbp(Number.isFinite(sum) ? sum : 0, cur, ratesToGbp);
     }
 
     let totalAbandonedGbp = 0;
@@ -276,7 +275,7 @@ router.get('/top-countries', async (req, res) => {
       if (!cc) continue;
       const cur = normalizeCurrency(r && r.currency != null ? String(r.currency) : fx.BASE);
       const sum = r && r.value_sum != null ? Number(r.value_sum) : 0;
-      const gbp = await sumToGbp(Number.isFinite(sum) ? sum : 0, cur, ratesToGbp);
+      const gbp = sumToGbp(Number.isFinite(sum) ? sum : 0, cur, ratesToGbp);
       valueByCountry.set(cc, (valueByCountry.get(cc) || 0) + gbp);
     }
 
@@ -379,7 +378,7 @@ router.get('/top-country-products', async (req, res) => {
       if (!cc || !handle) continue;
       const cur = normalizeCurrency(r && r.currency != null ? String(r.currency) : fx.BASE);
       const sum = r && r.value_sum != null ? Number(r.value_sum) : 0;
-      const gbp = await sumToGbp(Number.isFinite(sum) ? sum : 0, cur, ratesToGbp);
+      const gbp = sumToGbp(Number.isFinite(sum) ? sum : 0, cur, ratesToGbp);
       const key = cc + '|' + handle;
       valueByKey.set(key, (valueByKey.get(key) || 0) + gbp);
     }

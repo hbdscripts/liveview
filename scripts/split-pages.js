@@ -3,6 +3,10 @@ const path = require('path');
 
 const srcPath = path.join(__dirname, '..', 'server', 'public', 'live-visitors.html');
 const outDir = path.join(__dirname, '..', 'server', 'public');
+if (!fs.existsSync(srcPath)) {
+  console.warn(`[split-pages] Skipping (missing source): ${srcPath}`);
+  process.exit(0);
+}
 const src = fs.readFileSync(srcPath, 'utf8');
 
 function extract(start, end) {
