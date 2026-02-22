@@ -307,7 +307,7 @@
   function renderSkeleton(root) {
     root.innerHTML = '' +
       '<div class="mb-3">' +
-        '<h4 class="mb-2" title="Tokens captured from visitor sessions (UTMs, referrer host, click IDs). Filter by type, set Min seen to hide rare values, then click Use to map a token to an attribution variant.">Observed tokens <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></h4>' +
+        '<h4 class="mb-2" title="Tokens captured from visitor sessions (UTMs, referrer host, click IDs). Filter by type, set Min seen to hide rare values, then click Use to map a token to an attribution variant.">Observed tokens <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i> <a href=\"#\" class=\"link-primary small ms-2\" data-am-action=\"refresh-observed\" title=\"Reload observed tokens from the database.\">Refresh</a></h4>' +
         '<div class="row g-2 align-items-end">' +
           '<div class="col-12 col-md-3">' +
             '<label class="form-label" for="am-token-type" title="Filter the list: utm_source/medium/campaign, referrer_host, param_name (click IDs like gclid), param_pair, or kexo_attr (explicit URL param).">Token type <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></label>' +
@@ -331,9 +331,6 @@
           '<div class="col-6 col-md-2">' +
             '<label class="form-label" for="am-limit" title="Max number of tokens to load. Higher values may be slower.">Limit <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" style="font-size:0.85em" aria-hidden="true"></i></label>' +
             '<input class="form-control" id="am-limit" type="number" min="10" max="5000" value="500" />' +
-          '</div>' +
-          '<div class="col-12 col-md-auto">' +
-            '<button type="button" class="btn btn-outline-primary" data-am-action="refresh-observed" title="Reload observed tokens from the database.">Refresh</button>' +
           '</div>' +
           '<div class="col-12 col-md-auto">' +
             '<label class="form-check mb-0">' +
