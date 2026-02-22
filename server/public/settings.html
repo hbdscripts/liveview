@@ -1483,9 +1483,11 @@
       <!-- Page-level footer: secondary actions left, Save Settings right (hidden until dirty) -->
       <footer class="settings-global-footer d-flex align-items-center justify-content-start gap-2 flex-wrap mt-3 pt-3 border-top" id="settings-global-footer" aria-label="Settings actions" hidden>
         <div class="settings-footer-left d-flex align-items-center gap-2" id="settings-footer-left"></div>
-        <div class="settings-footer-right d-flex align-items-center gap-2">
-          <button type="button" class="btn btn-ghost-secondary btn-md" id="settings-global-revert-btn">Revert</button>
+        <div class="settings-footer-right d-flex align-items-center gap-2 flex-grow-1 min-w-0">
           <button type="button" class="btn btn-primary btn-md" id="settings-global-save-btn">Save Settings</button>
+          <div id="settings-global-save-status" class="settings-global-save-status text-success" hidden>Saved.</div>
+          <div class="flex-grow-1" aria-hidden="true"></div>
+          <button type="button" class="btn btn-ghost-secondary btn-md" id="settings-global-revert-btn">Revert</button>
         </div>
       </footer>
 
