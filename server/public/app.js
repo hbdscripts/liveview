@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 57b38a1608280556
+// checksum: ed495961957692f8
 
 (function () {
   // Shared formatters + scheduling/fetch helpers — reduces UI jank + duplicate requests.
