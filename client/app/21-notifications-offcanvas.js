@@ -334,7 +334,20 @@
   }
 
   fetchList().then(updateBadge);
-  setInterval(function () {
+
+  var badgeIntervalId = setInterval(function () {
+    if (document.visibilityState !== 'visible') return;
     fetchList().then(updateBadge);
   }, 60000);
+
+  try {
+    if (typeof registerCleanup === 'function') {
+      registerCleanup(function () {
+        if (badgeIntervalId != null) {
+          clearInterval(badgeIntervalId);
+          badgeIntervalId = null;
+        }
+      });
+    }
+  } catch (_) {}
 })();

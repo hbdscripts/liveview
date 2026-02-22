@@ -53,7 +53,7 @@ const API = '';
           'change-pins': true,
           // Settings must never show the page overlay loader.
           settings: false,
-          // Upgrade page is a static marketing/TODO page; never show the overlay loader there.
+          // Upgrade page is static marketing (see docs/UPGRADE.md); never show the overlay loader there.
           upgrade: false,
           // Admin must never show the overlay loader.
           admin: false,
@@ -413,6 +413,8 @@ const API = '';
       'ads-root': 'live',
     });
 
+    // Long-lived timers (setInterval / setTimeout that outlive a single view) should call registerCleanup
+    // with a function that clears them, so pagehide/beforeunload can tear down without leaking.
     var _kexoCleanupFns = [];
     function registerCleanup(fn) {
       if (typeof fn === 'function') _kexoCleanupFns.push(fn);

@@ -1,6 +1,6 @@
-# Live Visitors – Private Shopify App
+# Live Visitors (Kexo) – Private Shopify App
 
-A private (custom) Shopify app that shows a near-real-time **Live Visitors** table in Shopify admin. Uses Shopify Customer Events (Web Pixel) only; no third-party trackers. Privacy-safe (no PII), config-first, fail-open storefront.
+**Kexo** / **Live Visitors** – a private (custom) Shopify app that shows a near-real-time **Live Visitors** table in Shopify admin. The repo and npm package name are `live-visitors`; the product is also referred to as Kexo in docs and UI. Uses Shopify Customer Events (Web Pixel) only; no third-party trackers. Privacy-safe (no PII), config-first, fail-open storefront.
 
 Install steps are below (clone, env, Shopify app, pixel, deploy). See [docs/CONFIG.md](docs/CONFIG.md) for env vars and runtime toggles.
 

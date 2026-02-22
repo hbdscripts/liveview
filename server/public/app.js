@@ -1,5 +1,5 @@
 // @generated from client/app - do not edit. Run: npm run build:app
-// checksum: 35df0fbd83361781
+// checksum: c8c5321992c399ca
 
 (function () {
   // Shared formatters and fetch – single source for client/app bundle (same IIFE scope).
@@ -163,7 +163,7 @@ const API = '';
           'change-pins': true,
           // Settings must never show the page overlay loader.
           settings: false,
-          // Upgrade page is a static marketing/TODO page; never show the overlay loader there.
+          // Upgrade page is static marketing (see docs/UPGRADE.md); never show the overlay loader there.
           upgrade: false,
           // Admin must never show the overlay loader.
           admin: false,
@@ -523,6 +523,8 @@ const API = '';
       'ads-root': 'live',
     });
 
+    // Long-lived timers (setInterval / setTimeout that outlive a single view) should call registerCleanup
+    // with a function that clears them, so pagehide/beforeunload can tear down without leaking.
     var _kexoCleanupFns = [];
     function registerCleanup(fn) {
       if (typeof fn === 'function') _kexoCleanupFns.push(fn);
@@ -28309,9 +28311,22 @@ const API = '';
   }
 
   fetchList().then(updateBadge);
-  setInterval(function () {
+
+  var badgeIntervalId = setInterval(function () {
+    if (document.visibilityState !== 'visible') return;
     fetchList().then(updateBadge);
   }, 60000);
+
+  try {
+    if (typeof registerCleanup === 'function') {
+      registerCleanup(function () {
+        if (badgeIntervalId != null) {
+          clearInterval(badgeIntervalId);
+          badgeIntervalId = null;
+        }
+      });
+    }
+  } catch (_) {}
 })();
 /**
  * Load kexo-tooltips.js app-wide (when not already loaded, e.g. on Settings)

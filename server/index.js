@@ -236,6 +236,7 @@ app.get('/api/cost-breakdown', requireMaster.middleware, costBreakdown.getCostBr
 app.use('/api/ads', adsRouter);
 app.use('/api/integrations/google-ads/issues', googleAdsIssuesRouter);
 app.use('/api/tools', toolsRouter);
+// Admin API: three routers share the same path; Express merges routes, each needs requireMaster.
 app.use('/api/admin', requireMaster.middleware, adminUsersApi);
 app.use('/api/admin', requireMaster.middleware, adminControlsApi);
 app.use('/api/admin', requireMaster.middleware, adminFraudApi);

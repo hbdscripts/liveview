@@ -156,6 +156,22 @@ for (const file of pageRoutes) {
 
 lines.push('');
 
+const outBody = lines.join('\n');
+const checkMode = process.argv.includes('--check');
+
+if (checkMode) {
+  let existing = '';
+  try {
+    existing = fs.readFileSync(outPath, 'utf8');
+  } catch (_) {}
+  if (existing !== outBody) {
+    console.error('docs/ROUTES.md is out of date. Run: npm run docs:routes');
+    process.exit(1);
+  }
+  console.log('docs/ROUTES.md is up to date');
+  process.exit(0);
+}
+
 fs.mkdirSync(path.dirname(outPath), { recursive: true });
-fs.writeFileSync(outPath, lines.join('\n'), 'utf8');
+fs.writeFileSync(outPath, outBody, 'utf8');
 console.log('Wrote', outPath);

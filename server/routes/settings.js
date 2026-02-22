@@ -7,7 +7,11 @@
 const store = require('../store');
 const { getDb } = require('../db');
 const salesTruth = require('../salesTruth');
-const { isMasterRequest } = require('../authz');
+const { isMasterRequest, getRequestEmail } = require('../authz');
+const users = require('../usersService');
+const rbac = require('../rbac');
+const rolePermissionsService = require('../rolePermissionsService');
+const userPermissionOverrides = require('../userPermissionOverridesService');
 const {
   VARIANTS_CONFIG_KEY,
   defaultVariantsConfigV1,
@@ -123,6 +127,44 @@ const SETTINGS_SCOPE_MODE_KEY = 'settings_scope_mode'; // global (shared) | user
 const PAGE_LOADER_ENABLED_V1_KEY = 'page_loader_enabled_v1'; // JSON object (per-page loader overlay enable)
 const OVERVIEW_WIDGETS_UI_CONFIG_V1_KEY = 'overview_widgets_ui_config_v1'; // JSON object (Overview 6-widget grid UI prefs)
 const CSS_VAR_OVERRIDES_V1_KEY = 'css_var_overrides_v1'; // JSON object (:root CSS var overrides)
+
+/** Keys that are stored per-user (scoped by OAuth email). Read: per-user then global then default. */
+const PER_USER_UI_KEYS = Object.freeze([
+  KPI_UI_CONFIG_V1_KEY,
+  CHARTS_UI_CONFIG_V1_KEY,
+  TABLES_UI_CONFIG_V1_KEY,
+  OVERVIEW_WIDGETS_UI_CONFIG_V1_KEY,
+]);
+
+function sanitizeEmailForKey(email) {
+  if (email == null || typeof email !== 'string') return '';
+  const s = String(email).trim().toLowerCase().slice(0, 96);
+  return s.replace(/[^a-z0-9._-]/g, '_');
+}
+
+function scopedKey(baseKey, userEmail) {
+  const safe = sanitizeEmailForKey(userEmail);
+  if (!safe || !baseKey) return baseKey;
+  return 'user_' + safe + '_' + baseKey;
+}
+
+/** Body field name -> RBAC permission key (for non-admin write checks). */
+const SETTINGS_FIELD_PERMISSION = Object.freeze({
+  kpiUiConfig: 'settings.layout.kpis',
+  chartsUiConfig: 'settings.layout.kpis',
+  tablesUiConfig: 'settings.layout.tables',
+  overviewWidgetsUiConfig: 'settings.layout.kpis',
+  cssVarOverridesV1: 'settings.kexo.colours',
+  assetOverrides: 'settings.kexo.assets',
+  insightsVariantsConfig: 'settings.insights.variants',
+  notificationsPreferencesV1: 'page.settings',
+  pageLoaderEnabled: 'settings.kexo.general',
+  googleAdsProfitConfig: 'settings.integrations.google_ads',
+  googleAdsProfitDeductions: 'settings.integrations.google_ads',
+  googleAdsAddToCartValue: 'settings.integrations.google_ads',
+  googleAdsPostbackGoals: 'settings.integrations.google_ads',
+  googleAdsPostbackEnabled: 'settings.integrations.google_ads',
+});
 
 const OVERVIEW_WIDGET_KEYS = ['finishes', 'devices', 'browsers', 'abandoned', 'attribution', 'payment_methods'];
 const OVERVIEW_WIDGET_KEY_SET = new Set(OVERVIEW_WIDGET_KEYS);
@@ -1568,6 +1610,41 @@ function normalizeOverviewWidgetsUiConfigV1(raw) {
   return out;
 }
 
+/**
+ * Check that the current user is allowed to write the given settings field.
+ * Admin bypasses. Non-admin must have the corresponding RBAC permission.
+ * Returns true if allowed; otherwise sends 403 and returns false.
+ */
+async function assertCanWriteSettingsField(req, bodyKey, res) {
+  const perm = SETTINGS_FIELD_PERMISSION[bodyKey];
+  if (!perm) return true;
+  const userEmail = getRequestEmail(req);
+  const perUserBodyFields = ['kpiUiConfig', 'chartsUiConfig', 'tablesUiConfig', 'overviewWidgetsUiConfig'];
+  if (!userEmail && perUserBodyFields.includes(bodyKey)) {
+    res.status(401).json({ ok: false, error: 'auth_required', message: 'Sign in to save layout preferences.' });
+    return false;
+  }
+  if (!userEmail) return true;
+  let user = null;
+  if (users.isBootstrapMasterEmail(userEmail)) {
+    try { user = await users.ensureBootstrapMaster(userEmail); } catch (_) {}
+  } else {
+    user = await users.getUserByEmail(userEmail);
+  }
+  if (!user) return true;
+  if (rbac.isAdminViewer(user)) return true;
+  const required = { any: [], all: [perm] };
+  const tier = rbac.normalizeUserTierForRbac(user.tier);
+  let tierPerms;
+  try { tierPerms = await rolePermissionsService.getRolePermissions(tier); } catch (_) { tierPerms = rbac.getDefaultPermissionsForTier(); }
+  let overrides = {};
+  try { overrides = await userPermissionOverrides.getOverrides(user.id); } catch (_) {}
+  const effectivePerms = userPermissionOverrides.getEffectivePermissions(tierPerms, overrides);
+  if (rbac.isAllowed(user, required, effectivePerms)) return true;
+  res.status(403).json({ ok: false, error: 'Forbidden', reason: 'insufficient_permission' });
+  return false;
+}
+
 async function readSettingsKeyMap(keys) {
   const list = Array.isArray(keys) ? keys.map((k) => (k == null ? '' : String(k))).filter(Boolean) : [];
   if (!list.length) return {};
@@ -1586,7 +1663,7 @@ async function readSettingsKeyMap(keys) {
   return map;
 }
 
-async function readSettingsPayload() {
+async function readSettingsPayload(req) {
   let pixelSessionMode = 'legacy';
   const adminTimezone = store.resolveAdminTimeZone();
   let assetOverrides = {};
@@ -1626,6 +1703,15 @@ async function readSettingsPayload() {
     ]);
   } catch (_) {
     rawMap = {};
+  }
+  const userEmail = req ? getRequestEmail(req) : null;
+  if (userEmail) {
+    for (const baseKey of PER_USER_UI_KEYS) {
+      try {
+        const v = await store.getSetting(scopedKey(baseKey, userEmail));
+        if (v != null && String(v).trim() !== '') rawMap[baseKey] = v;
+      } catch (_) {}
+    }
   }
   try {
     pixelSessionMode = normalizePixelSessionMode(rawMap[PIXEL_SESSION_MODE_KEY]);
@@ -1714,7 +1800,7 @@ async function readSettingsPayload() {
   } catch (_) {}
   let notificationsPreferencesV1 = {};
   try {
-    notificationsPreferencesV1 = await notificationsService.getPreferences();
+    notificationsPreferencesV1 = await notificationsService.getPreferences({ userEmail });
   } catch (_) {}
   const reporting = await store.getReportingConfig().catch(() => ({ ordersSource: 'orders_shopify', sessionsSource: 'sessions' }));
   return {
@@ -1744,7 +1830,7 @@ async function readSettingsPayload() {
 
 async function getSettings(req, res) {
   res.setHeader('Cache-Control', 'no-store');
-  res.json(await readSettingsPayload());
+  res.json(await readSettingsPayload(req));
 }
 
 async function postSettings(req, res) {
@@ -1861,6 +1947,7 @@ async function postSettings(req, res) {
 
   // Asset overrides (merge with existing)
   if (body.assetOverrides && typeof body.assetOverrides === 'object') {
+    if (!(await assertCanWriteSettingsField(req, 'assetOverrides', res))) return;
     try {
       let existing = {};
       const raw = await store.getSetting(ASSET_OVERRIDES_KEY);
@@ -1881,16 +1968,19 @@ async function postSettings(req, res) {
     }
   }
 
-  // KPI + date range UI config (v1)
+  // KPI + date range UI config (v1) – per-user when userEmail present
   if (Object.prototype.hasOwnProperty.call(body, 'kpiUiConfig')) {
+    if (!(await assertCanWriteSettingsField(req, 'kpiUiConfig', res))) return;
+    const userEmail = getRequestEmail(req);
+    const kpiKey = userEmail ? scopedKey(KPI_UI_CONFIG_V1_KEY, userEmail) : KPI_UI_CONFIG_V1_KEY;
     try {
       if (body.kpiUiConfig == null) {
-        await store.setSetting(KPI_UI_CONFIG_V1_KEY, '');
+        await store.setSetting(kpiKey, '');
       } else {
         const normalized = normalizeKpiUiConfigV1(body.kpiUiConfig);
         const json = JSON.stringify(normalized);
         if (json.length > 50000) throw new Error('KPI UI config too large');
-        await store.setSetting(KPI_UI_CONFIG_V1_KEY, json);
+        await store.setSetting(kpiKey, json);
       }
     } catch (err) {
       return res.status(500).json({ ok: false, error: err && err.message ? String(err.message) : 'Failed to save KPI UI config' });
@@ -1899,6 +1989,7 @@ async function postSettings(req, res) {
 
   // Google Ads postback (enable/disable)
   if (Object.prototype.hasOwnProperty.call(body, 'googleAdsPostbackEnabled')) {
+    if (!(await assertCanWriteSettingsField(req, 'googleAdsPostbackEnabled', res))) return;
     try {
       const v = body.googleAdsPostbackEnabled === true || body.googleAdsPostbackEnabled === 'true' || body.googleAdsPostbackEnabled === '1';
       await store.setSetting('google_ads_postback_enabled', v ? 'true' : 'false');
@@ -1908,9 +1999,12 @@ async function postSettings(req, res) {
   }
 
   if (Object.prototype.hasOwnProperty.call(body, 'notificationsPreferencesV1')) {
+    if (!(await assertCanWriteSettingsField(req, 'notificationsPreferencesV1', res))) return;
+    const notifUserEmail = getRequestEmail(req);
+    const notifPrefsKey = notifUserEmail ? scopedKey(NOTIFICATIONS_PREFERENCES_V1_KEY, notifUserEmail) : NOTIFICATIONS_PREFERENCES_V1_KEY;
     try {
       const normalized = normalizeNotificationsPreferencesV1(body.notificationsPreferencesV1);
-      await store.setSetting(NOTIFICATIONS_PREFERENCES_V1_KEY, JSON.stringify(normalized));
+      await store.setSetting(notifPrefsKey, JSON.stringify(normalized));
     } catch (err) {
       return res.status(500).json({ ok: false, error: err && err.message ? String(err.message) : 'Failed to save notification preferences' });
     }
@@ -1918,6 +2012,7 @@ async function postSettings(req, res) {
 
   // Google Ads profit config (v1) – used for Profit conversion uploads
   if (Object.prototype.hasOwnProperty.call(body, 'googleAdsProfitConfig')) {
+    if (!(await assertCanWriteSettingsField(req, 'googleAdsProfitConfig', res))) return;
     try {
       if (body.googleAdsProfitConfig == null) {
         await store.setSetting(GOOGLE_ADS_PROFIT_CONFIG_V1_KEY, '');
@@ -1934,6 +2029,7 @@ async function postSettings(req, res) {
 
   // Google Ads profit deductions (v1) – which costs to subtract for Profit upload value
   if (Object.prototype.hasOwnProperty.call(body, 'googleAdsProfitDeductions')) {
+    if (!(await assertCanWriteSettingsField(req, 'googleAdsProfitDeductions', res))) return;
     try {
       if (body.googleAdsProfitDeductions == null) {
         await store.setSetting(GOOGLE_ADS_PROFIT_DEDUCTIONS_V1_KEY, '');
@@ -1950,6 +2046,7 @@ async function postSettings(req, res) {
 
   // Google Ads Add to Cart conversion value
   if (Object.prototype.hasOwnProperty.call(body, 'googleAdsAddToCartValue')) {
+    if (!(await assertCanWriteSettingsField(req, 'googleAdsAddToCartValue', res))) return;
     try {
       const v = body.googleAdsAddToCartValue;
       const n = v != null && v !== '' ? Number(v) : 1;
@@ -1962,6 +2059,7 @@ async function postSettings(req, res) {
 
   // Google Ads postback goals – which goals to upload (revenue / profit / add_to_cart)
   if (Object.prototype.hasOwnProperty.call(body, 'googleAdsPostbackGoals')) {
+    if (!(await assertCanWriteSettingsField(req, 'googleAdsPostbackGoals', res))) return;
     try {
       if (body.googleAdsPostbackGoals == null) {
         await store.setSetting(GOOGLE_ADS_POSTBACK_GOALS_KEY, '');
@@ -1976,48 +2074,57 @@ async function postSettings(req, res) {
     }
   }
 
-  // Charts UI config (v1)
+  // Charts UI config (v1) – per-user when userEmail present
   if (Object.prototype.hasOwnProperty.call(body, 'chartsUiConfig')) {
+    if (!(await assertCanWriteSettingsField(req, 'chartsUiConfig', res))) return;
+    const chartsUserEmail = getRequestEmail(req);
+    const chartsKey = chartsUserEmail ? scopedKey(CHARTS_UI_CONFIG_V1_KEY, chartsUserEmail) : CHARTS_UI_CONFIG_V1_KEY;
     try {
       if (body.chartsUiConfig == null) {
-        await store.setSetting(CHARTS_UI_CONFIG_V1_KEY, '');
+        await store.setSetting(chartsKey, '');
       } else {
         const normalized = normalizeChartsUiConfigV1(body.chartsUiConfig);
         const json = JSON.stringify(normalized);
         if (json.length > 80000) throw new Error('Charts UI config too large');
-        await store.setSetting(CHARTS_UI_CONFIG_V1_KEY, json);
+        await store.setSetting(chartsKey, json);
       }
     } catch (err) {
       return res.status(500).json({ ok: false, error: err && err.message ? String(err.message) : 'Failed to save charts config' });
     }
   }
 
-  // Tables UI config (v1)
+  // Tables UI config (v1) – per-user when userEmail present
   if (Object.prototype.hasOwnProperty.call(body, 'tablesUiConfig')) {
+    if (!(await assertCanWriteSettingsField(req, 'tablesUiConfig', res))) return;
+    const tablesUserEmail = getRequestEmail(req);
+    const tablesKey = tablesUserEmail ? scopedKey(TABLES_UI_CONFIG_V1_KEY, tablesUserEmail) : TABLES_UI_CONFIG_V1_KEY;
     try {
       if (body.tablesUiConfig == null) {
-        await store.setSetting(TABLES_UI_CONFIG_V1_KEY, '');
+        await store.setSetting(tablesKey, '');
       } else {
         const normalized = normalizeTablesUiConfigV1(body.tablesUiConfig);
         const json = JSON.stringify(normalized);
         if (json.length > 120000) throw new Error('Tables UI config too large');
-        await store.setSetting(TABLES_UI_CONFIG_V1_KEY, json);
+        await store.setSetting(tablesKey, json);
       }
     } catch (err) {
       return res.status(500).json({ ok: false, error: err && err.message ? String(err.message) : 'Failed to save tables config' });
     }
   }
 
-  // Overview widgets UI config (v1)
+  // Overview widgets UI config (v1) – per-user when userEmail present
   if (Object.prototype.hasOwnProperty.call(body, 'overviewWidgetsUiConfig')) {
+    if (!(await assertCanWriteSettingsField(req, 'overviewWidgetsUiConfig', res))) return;
+    const overviewUserEmail = getRequestEmail(req);
+    const overviewKey = overviewUserEmail ? scopedKey(OVERVIEW_WIDGETS_UI_CONFIG_V1_KEY, overviewUserEmail) : OVERVIEW_WIDGETS_UI_CONFIG_V1_KEY;
     try {
       if (body.overviewWidgetsUiConfig == null) {
-        await store.setSetting(OVERVIEW_WIDGETS_UI_CONFIG_V1_KEY, '');
+        await store.setSetting(overviewKey, '');
       } else {
         const normalized = normalizeOverviewWidgetsUiConfigV1(body.overviewWidgetsUiConfig);
         const json = JSON.stringify(normalized);
         if (json.length > 30000) throw new Error('Overview widgets config too large');
-        await store.setSetting(OVERVIEW_WIDGETS_UI_CONFIG_V1_KEY, json);
+        await store.setSetting(overviewKey, json);
       }
     } catch (err) {
       return res.status(500).json({ ok: false, error: err && err.message ? String(err.message) : 'Failed to save overview widgets config' });
@@ -2026,6 +2133,7 @@ async function postSettings(req, res) {
 
   // CSS variable overrides (v1) – runtime :root overrides (colours, palette)
   if (Object.prototype.hasOwnProperty.call(body, 'cssVarOverridesV1')) {
+    if (!(await assertCanWriteSettingsField(req, 'cssVarOverridesV1', res))) return;
     try {
       if (body.cssVarOverridesV1 == null) {
         await store.setSetting(CSS_VAR_OVERRIDES_V1_KEY, '');
@@ -2102,6 +2210,7 @@ async function postSettings(req, res) {
 
   // Variants insights config (v1)
   if (Object.prototype.hasOwnProperty.call(body, 'insightsVariantsConfig')) {
+    if (!(await assertCanWriteSettingsField(req, 'insightsVariantsConfig', res))) return;
     try {
       const normalized = body.insightsVariantsConfig == null
         ? defaultVariantsConfigV1()
@@ -2152,7 +2261,7 @@ async function postSettings(req, res) {
   }
 
   res.setHeader('Cache-Control', 'no-store');
-  const payload = await readSettingsPayload();
+  const payload = await readSettingsPayload(req);
   if (insightsVariantsWarnings) payload.insightsVariantsWarnings = insightsVariantsWarnings;
   res.json(payload);
 }
@@ -2849,7 +2958,10 @@ async function getChartSettings(req, res) {
     if (!chartKey || !CHART_UI_KEY_SET.has(chartKey)) {
       return res.status(400).json({ ok: false, error: 'Invalid chart key' });
     }
-    const raw = await store.getSetting(CHARTS_UI_CONFIG_V1_KEY);
+    const userEmail = getRequestEmail(req);
+    const chartsKey = userEmail ? scopedKey(CHARTS_UI_CONFIG_V1_KEY, userEmail) : CHARTS_UI_CONFIG_V1_KEY;
+    let raw = userEmail ? await store.getSetting(chartsKey) : null;
+    if (raw == null || String(raw).trim() === '') raw = await store.getSetting(CHARTS_UI_CONFIG_V1_KEY);
     const cfg = normalizeChartsUiConfigV1(raw);
     const def = defaultChartsUiConfigV1();
     const entry = (cfg.charts || []).find((c) => c && c.key === chartKey);
@@ -2886,9 +2998,13 @@ async function putChartSettings(req, res) {
     if (!chartKey || !CHART_UI_KEY_SET.has(chartKey)) {
       return res.status(400).json({ ok: false, error: 'Invalid chart key' });
     }
+    if (!(await assertCanWriteSettingsField(req, 'chartsUiConfig', res))) return;
     const body = req.body && typeof req.body === 'object' ? req.body : {};
     const settings = body.settings && typeof body.settings === 'object' ? body.settings : {};
-    const raw = await store.getSetting(CHARTS_UI_CONFIG_V1_KEY);
+    const userEmail = getRequestEmail(req);
+    const chartsKey = userEmail ? scopedKey(CHARTS_UI_CONFIG_V1_KEY, userEmail) : CHARTS_UI_CONFIG_V1_KEY;
+    let raw = userEmail ? await store.getSetting(chartsKey) : null;
+    if (raw == null || String(raw).trim() === '') raw = await store.getSetting(CHARTS_UI_CONFIG_V1_KEY);
     const cfg = normalizeChartsUiConfigV1(raw);
     const def = defaultChartsUiConfigV1();
     const defEntry = (def.charts || []).find((c) => c && c.key === chartKey);
@@ -2929,7 +3045,7 @@ async function putChartSettings(req, res) {
     if (json.length > CHART_SETTINGS_BODY_LIMIT) {
       return res.status(413).json({ ok: false, error: 'Chart config too large' });
     }
-    await store.setSetting(CHARTS_UI_CONFIG_V1_KEY, json);
+    await store.setSetting(chartsKey, json);
     return res.json({ ok: true, chartsUiConfig: nextCfg });
   } catch (e) {
     return res.status(500).json({ ok: false, error: e && e.message ? String(e.message) : 'Failed to save chart settings' });

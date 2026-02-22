@@ -61,6 +61,7 @@ When adding a route, re-run this script so the doc stays in sync.
 | GET | `/api/latest-sales` | server/routes/sessions.js (latestSales) |
 | GET | `/api/me` | server/routes/me.js |
 | GET | `/api/notifications` | server/routes/notifications.js (getList) |
+| DELETE | `/api/notifications/:id` | server/routes/notifications.js (deleteOne) |
 | GET | `/api/notifications/:id` | server/routes/notifications.js (getOne) |
 | PATCH | `/api/notifications/:id` | server/routes/notifications.js (patchOne) |
 | GET | `/api/og-thumb` | server/routes/ogThumb.js (handleOgThumb) |
@@ -143,6 +144,8 @@ When adding a route, re-run this script so the doc stays in sync.
 | GET | `/robots.txt` | (inline) |
 | GET | `/sales` | (inline) |
 | GET | `/settings` | (inline) |
+| GET | `/settings/:tab` | (inline) |
+| GET | `/settings/:tab/:subtab` | (inline) |
 | GET | `/shipping-cr` | (inline) |
 | GET | `/theme-vars.css` | server/routes/settings.js (getThemeVarsCss) |
 | GET | `/tools` | (inline) |

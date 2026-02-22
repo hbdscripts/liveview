@@ -1,6 +1,7 @@
 /**
  * Notifications: create, list, get, mark read/archived.
  * Preferences (notifications_preferences_v1) control which types are shown and created.
+ * Stored per-user when userEmail is provided (scoped key); otherwise global.
  */
 const { getDb, isPostgres } = require('./db');
 const store = require('./store');
@@ -25,8 +26,27 @@ function safeJsonParse(str, fallback) {
   }
 }
 
-async function getPreferences() {
-  const raw = await store.getSetting(PREFS_KEY);
+function sanitizeEmailForKey(email) {
+  if (email == null || typeof email !== 'string') return '';
+  const s = String(email).trim().toLowerCase().slice(0, 96);
+  return s.replace(/[^a-z0-9._-]/g, '_');
+}
+
+function scopedPrefsKey(userEmail) {
+  const safe = sanitizeEmailForKey(userEmail);
+  if (!safe) return PREFS_KEY;
+  return 'user_' + safe + '_' + PREFS_KEY;
+}
+
+/**
+ * Get notification preferences. Options: { userEmail }.
+ * When userEmail is set, reads per-user key then global then defaults.
+ */
+async function getPreferences(options = {}) {
+  const userEmail = options && options.userEmail != null ? String(options.userEmail).trim() : null;
+  const key = userEmail ? scopedPrefsKey(userEmail) : PREFS_KEY;
+  let raw = await store.getSetting(key);
+  if ((raw == null || String(raw).trim() === '') && userEmail) raw = await store.getSetting(PREFS_KEY);
   const parsed = safeJsonParse(raw, null);
   if (!parsed || typeof parsed !== 'object') return { ...DEFAULT_PREFS };
   return { ...DEFAULT_PREFS, ...parsed };
@@ -93,7 +113,7 @@ async function create({ type, title, body, link, meta, forAdminOnly }) {
  */
 async function list(options = {}) {
   const { userEmail, isMaster, status: filterStatus } = options;
-  const prefs = await getPreferences();
+  const prefs = await getPreferences({ userEmail });
   const db = getDb();
 
   let sql = `
@@ -151,8 +171,8 @@ async function list(options = {}) {
  * Get one notification by id. Returns null if not found or not visible.
  */
 async function get(id, options = {}) {
-  const { isMaster } = options;
-  const prefs = await getPreferences();
+  const { isMaster, userEmail } = options;
+  const prefs = await getPreferences({ userEmail });
   const db = getDb();
   const nId = Number(id);
   if (!Number.isFinite(nId)) return null;

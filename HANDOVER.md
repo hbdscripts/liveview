@@ -1,6 +1,6 @@
 # KEXO Liveview — Current state (handover)
 
-**Last updated:** 2026-02-21
+**Last updated:** 2026-02-22
 
 Read this file before making changes. If you change **core paths** (routes, auth, dashboard UX, ingest, DB schema, deploy), update this file in the same commit.
 
@@ -21,11 +21,6 @@ If you start a significant change that may overlap with others, add a short entr
   - **scope**: settings / dashboard / ingest / etc
   - **status**: in progress / paused
   - **notes**: 1–2 lines on what’s changing
-
-- **branch**: `agent/2026-02-19-restore-google-ads-settings-yesterday`
-  - **scope**: settings (Google Ads integrations)
-  - **status**: in progress
-  - **notes**: roll back the Google Ads settings panel to the pre-“server configuration card” UX so it matches the prior (yesterday) layout; save the newer diagnostics UI on `backup/2026-02-19-google-ads-settings-current` for later reuse.
 
 ---
 
@@ -69,7 +64,7 @@ Templates under `server/public/**`; served via `sendPage()` in `server/index.js`
 - **Ingest:** `POST /api/ingest` → `server/store.js`
 - **Auth:** `server/middleware/dashboardAuth.js` (Shopify embed + OAuth cookie); `server/routes/login.js`, `oauthLogin.js`, `auth.js`, `localAuth.js`
 - **KPIs / dashboard:** `GET /api/kpis`, `/api/kpis-expanded-extra`, `/api/kexo-score`, `/api/dashboard-series`, `/api/business-snapshot`; `server/store.js`, `server/routes/dashboardSeries.js`, `server/businessSnapshotService.js`
-- **Settings:** `GET/POST /api/settings`; `GET/PUT /api/chart-settings/:chartKey` (per-chart settings; stored in same `charts_ui_config_v1` blob). Auth: protected by `dashboardAuth` (same as `/api/settings`); writes are **not** `requireMaster`-gated today. UI: `server/public/settings.html`, `settings-page.js`; chart cog opens unified modal from `client/app/18-chart-settings-builder.js`.
+- **Settings:** `GET/POST /api/settings`; `GET/PUT /api/chart-settings/:chartKey` (per-chart settings). Auth: protected by `dashboardAuth`. UI configs (KPI/charts/tables/overview widgets, notification prefs) are **per-user** (scoped by OAuth email); writes are gated by RBAC (e.g. `settings.layout.tables`). UI: `server/public/settings.html`, `settings-page.js`; chart cog opens unified modal from `client/app/18-chart-settings-builder.js`.
 - **Frontend bundle:** `server/public/app.js` is **generated** from `client/app/*.js` via `scripts/build-app-js.js` and `client/app/manifest.txt`. After any `client/app/**` edit, run `npm run build:app`.
 
 ### Where to find (by area)
@@ -96,3 +91,4 @@ Full route → handler list: **docs/ROUTES.md**.
 - 2026-02-18: Tables + assets polish: `.grid-table` base font-size pinned to `12px`; header/footer logo rotation starts `hidden` to avoid showing a “default” logo before the stable random variant is applied. Chart settings builder click binding hardened to bind immediately and tolerate non-HTMLElement click targets.
 - 2026-02-19: Payment method icon overrides now live in Settings → Kexo → Icons & assets (no separate tab). Expanded mapping + inputs for Visa, Mastercard, Amex, Maestro, Discover, JCB, Diners Club, UnionPay, PayPal, Klarna, Clearpay, Afterpay, Affirm, Zip, Sezzle, Stripe, Shop Pay, Apple Pay, Google Pay. Defaults now point to SVGrepo-hosted SVGs; overrides stored in `asset_overrides` as `payment_<key>` and applied in payment methods report API.
 - 2026-02-21: Notification system: bell in footer (right of Kexo Score) opens offcanvas with list (unread/read/archived) and detail view; auto-archive on view. Settings → Notifications tab: toggles for Daily report, Sale, Sentry (admin), Pending sign-ups (admin), Diagnostics unresolved (admin). API: GET/PATCH `/api/notifications`, `notifications_preferences_v1` in settings. Daily job: daily report (yesterday KPIs), diagnostics unresolved (pixel/Google Ads). Sentry and pending sign-up create admin notifications. See **docs/ROUTES.md** for notifications routes; integrability note in AGENT_RULES.md.
+- 2026-02-22: Settings/notifications hardening: per-user UI config (KPI, charts, tables, overview widgets, notification prefs) with fallback to global; field-level RBAC for Settings writes; notifications badge polling visibility-gated and registered for cleanup. Full test suite (`npm test` runs test/ + tests/); routes-doc drift check; ESLint + `npm run lint`; Windows-friendly `npm start` (cross-env). Docs: HANDOVER stale entry removed, server/backups README, docs/UPGRADE.md, README branding note, admin mount comment in index.js; timer cleanup convention in 01-core.js.
