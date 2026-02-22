@@ -54,6 +54,11 @@
     'notifications-action-delete': { title: 'Notifications - Delete action', help: 'Icon shown for Delete actions in the notifications panel (quick actions and detail view).' },
     'notifications-back': { title: 'Notifications - Back', help: 'Back arrow icon in the notifications detail header.' },
     'nav-item-admin': { title: 'Settings menu - Admin', help: 'Icon shown for the Admin item in the top-right settings dropdown.' },
+    'nav-item-settings-menu-attribution-map': { title: 'Settings menu - Attribution Map', help: 'Icon shown for the Attribution Map item in the top-right settings dropdown and footer settings menu.' },
+    'nav-item-settings-menu-costs-expenses': { title: 'Settings menu - Costs & Expenses', help: 'Icon shown for the Costs & Expenses item in the top-right settings dropdown and footer settings menu.' },
+    'nav-item-settings-menu-variant-management': { title: 'Settings menu - Variant Management', help: 'Icon shown for the Variant Management item in the top-right settings dropdown and footer settings menu.' },
+    'nav-item-settings-menu-view-all': { title: 'Settings menu - View All Settings', help: 'Icon shown for the View All Settings item in the top-right settings dropdown and footer settings menu.' },
+    'nav-item-settings-menu-signout': { title: 'Settings menu - Sign out', help: 'Icon shown for the Sign out item in the top-right settings dropdown and footer settings menu.' },
     'admin-tab-controls': { title: 'Admin - Controls', help: 'Sidebar icon shown for Controls in /admin.' },
     'admin-tab-diagnostics': { title: 'Admin - Diagnostics', help: 'Sidebar icon shown for Diagnostics in /admin.' },
     'admin-tab-users': { title: 'Admin - Users', help: 'Sidebar icon shown for Users in /admin.' },
@@ -818,7 +823,7 @@
   function iconGroupIdForName(name) {
     var key = String(name || '').trim().toLowerCase();
     if (!key) return 'misc';
-    if (key.indexOf('admin-tab-') === 0 || key === 'nav-item-admin') return 'admin';
+    if (key.indexOf('admin-tab-') === 0 || key === 'nav-item-admin' || key.indexOf('nav-item-settings-menu-') === 0) return 'admin';
     if (key.indexOf('nav-toggle-') === 0 || key.indexOf('nav-item-') === 0 || key === 'nav-notifications-bell' || key === 'topnav-date-chevron' || key === 'online-status-indicator' || key === 'nav-dropdown-arrow') return 'header-nav';
     if (key.indexOf('footer-') === 0) return 'footer';
     if (key.indexOf('table-icon-') === 0 || key.indexOf('table-short-') === 0) return 'mobile-icons';

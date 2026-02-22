@@ -33,11 +33,24 @@
                 <i class="fa-jelly-filled fa-gear kexo-settings-icon" data-icon-key="nav-toggle-settings" aria-hidden="true"></i>
               </button>
               <div class="dropdown-menu kexo-top-strip-settings-menu kexo-strip-dropdown-align" id="navbar-settings-menu">
-                <a href="/settings" class="dropdown-item kexo-top-strip-settings-item" id="config-open-btn" data-nav="settings" data-kexo-perm="page.settings" aria-label="Settings">
-                  <i class="fa-jelly fa-gear kexo-top-strip-settings-item-icon" data-icon-key="nav-item-settings" aria-hidden="true"></i>Settings
+                <a href="/settings/admin/users" class="dropdown-item kexo-top-strip-settings-item kexo-admin-only d-none" data-nav="settings" aria-label="Admin">
+                  <i class="fa-jelly fa-user-gear kexo-top-strip-settings-item-icon" data-icon-key="nav-item-admin" aria-hidden="true"></i>Admin
+                </a>
+                <a href="/settings/attribution/mapping" class="dropdown-item kexo-top-strip-settings-item" data-nav="settings" data-kexo-perm="settings.attribution" aria-label="Attribution Map">
+                  <i class="fa-jelly fa-map-location-dot kexo-top-strip-settings-item-icon" data-icon-key="nav-item-settings-menu-attribution-map" aria-hidden="true"></i>Attribution Map
+                </a>
+                <a href="/settings/cost-expenses/cost-sources" class="dropdown-item kexo-top-strip-settings-item" data-nav="settings" data-kexo-perm="settings.cost_expenses" aria-label="Costs &amp; Expenses">
+                  <i class="fa-jelly fa-receipt kexo-top-strip-settings-item-icon" data-icon-key="nav-item-settings-menu-costs-expenses" aria-hidden="true"></i>Costs &amp; Expenses
+                </a>
+                <a href="/settings/insights/variants" class="dropdown-item kexo-top-strip-settings-item" data-nav="settings" data-kexo-perm="settings.insights" aria-label="Variant Management">
+                  <i class="fa-jelly fa-bezier-curve kexo-top-strip-settings-item-icon" data-icon-key="nav-item-settings-menu-variant-management" aria-hidden="true"></i>Variant Management
+                </a>
+                <div class="dropdown-divider"></div>
+                <a href="/settings/kexo/general" class="dropdown-item kexo-top-strip-settings-item" id="config-open-btn" data-nav="settings" data-kexo-perm="page.settings" aria-label="View All Settings">
+                  <i class="fa-jelly fa-gear kexo-top-strip-settings-item-icon" data-icon-key="nav-item-settings-menu-view-all" aria-hidden="true"></i>View All Settings
                 </a>
                 <a href="/app/logout" class="dropdown-item kexo-top-strip-settings-item" aria-label="Sign out">
-                  <i class="fa-jelly fa-right-from-bracket kexo-top-strip-settings-item-icon" data-icon-key="nav-item-signout" aria-hidden="true"></i>Sign out
+                  <i class="fa-jelly fa-right-from-bracket kexo-top-strip-settings-item-icon" data-icon-key="nav-item-settings-menu-signout" aria-hidden="true"></i>Sign out
                 </a>
               </div>
             </div>
