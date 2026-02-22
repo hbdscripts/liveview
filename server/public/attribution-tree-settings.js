@@ -1076,7 +1076,7 @@
   function loadAndRender() {
     var root = _state.rootEl;
     if (!root) return;
-    root.innerHTML = '<div class="report-build-wrap"><div class="spinner-border text-primary" role="status"></div><div class="report-build-title">loading mapped tree</div></div>';
+    root.innerHTML = '<div class="d-flex align-items-center justify-content-center py-3"><div class="report-build-wrap"><div class="spinner-border text-primary" role="status"></div><div class="report-build-title">loading mapped tree</div></div></div>';
     fetchConfig().then(function (res) {
       if (!res || !res.ok || !res.config) {
         root.innerHTML = '<p class="text-secondary mb-0">Could not load attribution config.</p>';
