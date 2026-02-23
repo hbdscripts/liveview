@@ -1894,8 +1894,9 @@
       opts = opts || {};
       var el = document.getElementById(containerId);
       if (!el) return null;
-      bindJvmTooltipAutoHideOnce();
-      hideAllJvmTooltips();
+      // Tooltip system was refactored; keep map render path using current helpers.
+      bindGlobalMapTooltipDismiss();
+      hideMapTooltips();
       var setState = typeof opts.setState === 'function' ? opts.setState : setCountriesMapState;
       var mapHeight = Math.max(80, Number(opts.mapHeight) || 220);
       if (typeof jsVectorMap === 'undefined') {
