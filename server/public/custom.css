@@ -5446,10 +5446,10 @@ body[data-page="dashboard"] .kexo-overview-widget-card .kexo-widget-head-right {
   .kexo-desktop-nav-left::-webkit-scrollbar {
     display: none;
   }
-  /* Mobile: grid layout 20% each (5 nav items) */
+  /* Mobile: responsive columns (4 items for non-admin, 5 for admin) */
   .kexo-desktop-nav-list {
     display: grid !important;
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
     width: 100%;
     min-width: 0;
     justify-content: stretch;

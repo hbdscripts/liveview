@@ -13,6 +13,7 @@ When adding a route, re-run this script so the doc stays in sync.
 | USE | `/acquisition` | (mounted router) |
 | GET | `/acquisition/` | (inline) |
 | GET | `/admin` | (inline) |
+| USE | `/admin` | (mounted router) |
 | GET | `/ads` | (inline) |
 | USE | `/api/abandoned-carts` | server/routes/abandonedCarts.js |
 | USE | `/api/admin` | (+ requireMaster) |
@@ -103,6 +104,7 @@ When adding a route, re-run this script so the doc stays in sync.
 | GET | `/api/theme-defaults` | server/routes/settings.js (getThemeDefaults) |
 | POST | `/api/theme-defaults` | server/routes/settings.js (postThemeDefaults) |
 | USE | `/api/tools` | server/routes/tools.js |
+| GET | `/api/truth-orders` | server/routes/truthOrders.js (getTruthOrders) |
 | GET | `/api/verify-sales` | server/routes/verifySales.js (verifySales) |
 | GET | `/api/version` | (inline) |
 | GET | `/api/worst-products` | server/routes/worstProducts.js (getWorstProducts) |
@@ -137,8 +139,9 @@ When adding a route, re-run this script so the doc stays in sync.
 | GET | `/icon-registry.js` | (inline) |
 | USE | `/insights` | (mounted router) |
 | GET | `/integrations` | (inline) |
-| USE | `/integrations` | (mounted router) |
 | GET | `/integrations/` | (inline) |
+| GET | `/integrations/google-ads` | (inline) |
+| GET | `/integrations/google-ads/` | (inline) |
 | GET | `/live` | (inline) |
 | GET | `/mobile-unsupported` | (inline) |
 | GET | `/overview` | (inline) |
@@ -180,6 +183,7 @@ When adding a route, re-run this script so the doc stays in sync.
 | `/dashboard/overview` | `server/public/dashboard/overview.html` |
 | `/dashboard/sales` | `server/public/dashboard/sales.html` |
 | `/dashboard/table` | `server/public/dashboard/table.html` |
+| `/google-ads` | `server/public/integrations/google-ads.html` |
 | `/insights/abandoned-carts` | `server/public/insights/abandoned-carts.html` |
 | `/insights/countries` | `server/public/insights/countries.html` |
 | `/insights/pages/:pageId` | `server/public/insights/page.html` |
@@ -188,7 +192,6 @@ When adding a route, re-run this script so the doc stays in sync.
 | `/insights/products/:productId` | `server/public/insights/product.html` |
 | `/insights/snapshot` | `server/public/insights/snapshot.html` |
 | `/insights/variants` | `server/public/insights/variants.html` |
-| `/integrations/google-ads` | `server/public/integrations/google-ads.html` |
 | `/tools/change-pins` | `server/public/tools/change-pins.html` |
 | `/tools/click-order-lookup` | `server/public/tools/click-order-lookup.html` |
 | `/tools/compare-conversion-rate` | `server/public/tools/compare-conversion-rate.html` |

@@ -131,7 +131,7 @@
       // integrations
       var rawIntegrations = String(params.get('integrationsTab') || '').trim().toLowerCase();
       if (tab === 'integrations') {
-        if (rawIntegrations === 'shopify' || rawIntegrations === 'googleads') setParam('integrationsTab', rawIntegrations);
+        if (rawIntegrations === 'shopify') setParam('integrationsTab', rawIntegrations);
         else delParam('integrationsTab');
       } else {
         delParam('integrationsTab');
@@ -149,7 +149,7 @@
       // admin
       var rawAdminTab = String(params.get('adminTab') || '').trim().toLowerCase();
       if (tab === 'admin') {
-        if (rawAdminTab === 'controls' || rawAdminTab === 'diagnostics' || rawAdminTab === 'users' || rawAdminTab === 'role-permissions') setParam('adminTab', rawAdminTab);
+        if (rawAdminTab === 'controls' || rawAdminTab === 'diagnostics' || rawAdminTab === 'users' || rawAdminTab === 'role-permissions' || rawAdminTab === 'googleads') setParam('adminTab', rawAdminTab);
         else delParam('adminTab');
       } else {
         delParam('adminTab');
@@ -438,12 +438,12 @@
 
   var SETTINGS_PATH_SUBTABS = {
     kexo: ['general', 'assets', 'icons', 'colours', 'layout-styling'],
-    integrations: ['shopify', 'googleads'],
+    integrations: ['shopify'],
     layout: ['tables', 'kpis', 'date-ranges'],
     attribution: ['mapping', 'tree'],
     insights: ['variants'],
     'cost-expenses': ['cost-sources', 'shipping', 'rules', 'breakdown'],
-    admin: ['users', 'diagnostics', 'controls', 'role-permissions'],
+    admin: ['users', 'diagnostics', 'controls', 'role-permissions', 'googleads'],
   };
 
   function getTabFromPath() {
@@ -519,7 +519,7 @@
         var im = /[?&]integrationsTab=([^&]+)/.exec(window.location.search || '');
         if (im && im[1]) {
           var ik = im[1].toLowerCase().replace(/\s+/g, '-');
-          if (ik === 'shopify' || ik === 'googleads') initialIntegrationsSubTab = ik;
+          if (ik === 'shopify') initialIntegrationsSubTab = ik;
         }
       }
       if (t === 'attribution') {
@@ -533,7 +533,7 @@
         var adm = /[?&]adminTab=([^&]+)/.exec(window.location.search || '');
         if (adm && adm[1]) {
           var adk = adm[1].toLowerCase().replace(/\s+/g, '-');
-          if (adk === 'controls' || adk === 'diagnostics' || adk === 'users' || adk === 'role-permissions') initialAdminSubTab = adk;
+          if (adk === 'controls' || adk === 'diagnostics' || adk === 'users' || adk === 'role-permissions' || adk === 'googleads') initialAdminSubTab = adk;
         }
       }
       if (t === 'cost-expenses') {
@@ -598,7 +598,7 @@
 
   function getActiveIntegrationsSubTab() {
     var key = activeIntegrationsSubTab || initialIntegrationsSubTab || 'shopify';
-    return key === 'googleads' ? 'googleads' : 'shopify';
+    return key === 'shopify' ? 'shopify' : 'shopify';
   }
 
   function getActiveKexoSubTab() {
@@ -612,7 +612,7 @@
 
   function getActiveAdminSubTab() {
     var key = activeAdminSubTab || initialAdminSubTab || 'users';
-    if (key === 'users' || key === 'diagnostics' || key === 'role-permissions') return key;
+    if (key === 'users' || key === 'diagnostics' || key === 'role-permissions' || key === 'googleads') return key;
     return 'controls';
   }
 
@@ -657,8 +657,9 @@
       if (kexoSub === 'assets') return 'settings-assets-save-btn';
       return null;
     }
-    if (tab === 'integrations') {
-      return getActiveIntegrationsSubTab() === 'googleads' ? 'settings-ga-profit-save-btn' : null;
+    if (tab === 'integrations') return null;
+    if (tab === 'admin') {
+      return getActiveAdminSubTab() === 'googleads' ? 'settings-ga-profit-save-btn' : null;
     }
     if (tab === 'layout') {
       var layoutSub = getActiveLayoutSubTab();
@@ -1624,7 +1625,6 @@
       panelClass: 'settings-integrations-panel',
       tabs: [
         { key: 'shopify', label: 'Shopify', panelId: 'settings-integrations-panel-shopify' },
-        { key: 'googleads', label: 'Google Ads', panelId: 'settings-integrations-panel-googleads' },
       ],
     });
 
@@ -1671,6 +1671,7 @@
         { key: 'diagnostics', label: 'Diagnostics', panelId: 'admin-panel-diagnostics' },
         { key: 'controls', label: 'Controls', panelId: 'admin-panel-controls' },
         { key: 'role-permissions', label: 'Role permissions', panelId: 'admin-panel-role-permissions' },
+        { key: 'googleads', label: 'Google Ads', panelId: 'admin-panel-googleads' },
       ],
     });
   }
@@ -2674,7 +2675,7 @@
       var login = document.getElementById('settings-ga-account-login-customer-id');
       var conv = document.getElementById('settings-ga-account-conversion-customer-id');
       var sp = getShopParam();
-      var base = (typeof API !== 'undefined' ? API : '') + '/api/ads/google/connect?redirect=' + encodeURIComponent('/settings/integrations/googleads');
+      var base = (typeof API !== 'undefined' ? API : '') + '/api/ads/google/connect?redirect=' + encodeURIComponent('/settings/admin/googleads');
       if (sp) base += '&shop=' + encodeURIComponent(sp);
       if (cust && cust.value.trim()) base += '&customer_id=' + encodeURIComponent(cust.value.trim());
       if (login && login.value.trim()) base += '&login_customer_id=' + encodeURIComponent(login.value.trim());

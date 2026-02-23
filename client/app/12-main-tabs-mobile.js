@@ -265,16 +265,16 @@
             else acquisitionDropdownItem.classList.remove('active');
           }
 
-          // Integrations dropdown
-          var isIntegrationsChild = (tab === 'ads');
-          var integrationsToggle = document.querySelector('.nav-item.dropdown .dropdown-toggle[href="#navbar-integrations-menu"]');
-          var integrationsDropdownItem = integrationsToggle ? integrationsToggle.closest('.nav-item') : null;
-          if (integrationsToggle) {
-            integrationsToggle.setAttribute('aria-current', isIntegrationsChild ? 'page' : 'false');
+          // Admin dropdown (admin-only; Google Ads)
+          var isAdminChild = (tab === 'ads');
+          var adminToggle = document.querySelector('.nav-item.dropdown .dropdown-toggle[href="#navbar-admin-menu"]');
+          var adminDropdownItem = adminToggle ? adminToggle.closest('.nav-item') : null;
+          if (adminToggle) {
+            adminToggle.setAttribute('aria-current', isAdminChild ? 'page' : 'false');
           }
-          if (integrationsDropdownItem) {
-            if (isIntegrationsChild) integrationsDropdownItem.classList.add('active');
-            else integrationsDropdownItem.classList.remove('active');
+          if (adminDropdownItem) {
+            if (isAdminChild) adminDropdownItem.classList.add('active');
+            else adminDropdownItem.classList.remove('active');
           }
 
           // Tools dropdown (include tool sub-pages so Tools is highlighted on /tools/* pages)

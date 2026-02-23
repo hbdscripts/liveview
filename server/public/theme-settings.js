@@ -43,6 +43,7 @@
     'dash-kpi-delta-down': { title: 'Overview KPI - Delta down', help: 'Down-trend icon in KPI cards on /dashboard/overview when metric delta is negative.' },
     'dash-kpi-delta-flat': { title: 'Overview KPI - Delta flat', help: 'Flat-trend icon in KPI cards on /dashboard/overview when metric delta is neutral.' },
     'nav-dropdown-arrow': { title: 'Nav Dropdown Arrow', help: 'Arrow icon shown next to each item in the top-nav dropdown menus (Dashboard, Insights, Acquisition, etc.).' },
+    'nav-toggle-admin': { title: 'Admin menu (top nav)', help: 'Icon-only Admin dropdown in the top nav (admin-only). Links to Google Ads and other admin pages.' },
     'nav-notifications-bell': { title: 'Notifications (bell)', help: 'Bell icon in the header (top strip) next to Settings. Opens the notifications panel.' },
     'notifications-type-daily-report': { title: 'Notifications - Daily report', help: 'Icon shown for daily report notifications in the notifications panel (bell offcanvas).' },
     'notifications-type-sale': { title: 'Notifications - Sale', help: 'Icon shown for sale notifications in the notifications panel (bell offcanvas).' },
@@ -782,7 +783,7 @@
     if (key.indexOf('table-short-') === 0) return 'Compact table column icon. Shows in sortable table headers on /dashboard/live, /dashboard/sales, /dashboard/table, /insights/countries, /insights/products, /acquisition/attribution, and /acquisition/devices.';
     if (key.indexOf('footer-') === 0) return 'Footer quick-action icon. Shows in the bottom action bar on all pages.';
     if (key.indexOf('side-panel-') === 0) return 'Session details side panel icon. Shows on /dashboard/live, /dashboard/sales, and /dashboard/table.';
-    if (key.indexOf('kpi-compare-') === 0) return 'KPI compare modal icon. Shows on /dashboard/overview, /dashboard/live, /dashboard/sales, /dashboard/table, /insights/countries, /insights/products, /acquisition/attribution, /acquisition/devices, /integrations/google-ads, and /tools/ads.';
+    if (key.indexOf('kpi-compare-') === 0) return 'KPI compare modal icon. Shows on /dashboard/overview, /dashboard/live, /dashboard/sales, /dashboard/table, /insights/countries, /insights/products, /acquisition/attribution, /acquisition/devices, and /admin/google-ads.';
     if (key === 'tools-click-order-lookup-search') return 'Search icon shown inside the Click & Order Lookup input on /tools/click-order-lookup.';
     if (key === 'live-landing-entry') return 'Live table entry icon. Shows in the Landing direction column on /dashboard/live.';
     if (key === 'live-landing-exit') return 'Live table exit icon. Shows in the Landing direction column on /dashboard/live.';
@@ -792,7 +793,7 @@
     if (key.indexOf('type-platform-') === 0) return 'Platform icon. Shows in the Device table on /acquisition/devices.';
     if (key.indexOf('type-browser-') === 0) return 'Browser icon. Shows in the Browser table on /acquisition/browsers.';
     if (key === 'diag-copy') return 'Diagnostics copy icon. Shows in the diagnostics panel on /settings.';
-    if (key.indexOf('ads-status-') === 0 || key.indexOf('ads-actions-') === 0) return 'Ads integration status/action icon. Shows on /integrations/google-ads and /tools/ads.';
+    if (key.indexOf('ads-status-') === 0 || key.indexOf('ads-actions-') === 0) return 'Ads integration status/action icon. Shows on /admin/google-ads.';
     if (key.indexOf('pagination-') === 0) return 'Pagination arrow icon. Shows in paginated cards/tables across dashboard and insights pages.';
     if (key.indexOf('card-title-') === 0) return 'Auto card-title icon. Added to matching card headers across dashboard, insights, acquisition, integrations, tools, and settings pages.';
     if (key === 'online-status-indicator') return 'Online visitors badge icon. Shows in the top strip header on all pages.';
@@ -823,7 +824,7 @@
   function iconGroupIdForName(name) {
     var key = String(name || '').trim().toLowerCase();
     if (!key) return 'misc';
-    if (key.indexOf('admin-tab-') === 0 || key === 'nav-item-admin' || key.indexOf('nav-item-settings-menu-') === 0) return 'admin';
+    if (key.indexOf('admin-tab-') === 0 || key === 'nav-item-admin' || key === 'nav-toggle-admin' || key.indexOf('nav-item-settings-menu-') === 0) return 'admin';
     if (key.indexOf('nav-toggle-') === 0 || key.indexOf('nav-item-') === 0 || key === 'nav-notifications-bell' || key === 'topnav-date-chevron' || key === 'online-status-indicator' || key === 'nav-dropdown-arrow') return 'header-nav';
     if (key.indexOf('footer-') === 0) return 'footer';
     if (key.indexOf('table-icon-') === 0 || key.indexOf('table-short-') === 0) return 'mobile-icons';

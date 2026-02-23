@@ -11,6 +11,8 @@
   (remote ref must match HEAD.)
 - Do **not** edit `server/public/app.js` directly; edit `client/app/**` and run `npm run build:app`.
 - **No inline styles;** Tabler-first; follow [docs/UI_CONTRACT.md](docs/UI_CONTRACT.md). Do **not** use `btn-secondary`; use `btn btn-md` for secondary/default buttons.
+- **Settings/Admin UI:** Follow [docs/UI_SETTINGS_CONTRACT.md](docs/UI_SETTINGS_CONTRACT.md). Do **not** remove the normaliser’s “already normalised” early return in `normaliseSettingsPanel` (prevents MutationObserver → normalise → mutate loop and flashing); `npm run ui:check` enforces it.
+- **Admin dropdown / Settings → Admin:** Anything added under the top-nav **Admin** dropdown or Settings → **Admin** must be treated as **admin-only** and must be **server-side enforced** (RBAC / sentinel permission keys); non-admin users must not see or access these routes or APIs.
 - **Memory-safety:** single-init guards, cleanup timers/listeners/observers, avoid piling intervals, prefer `updateOptions`/`updateSeries` over destroy/recreate.
 - No dead code; remove unused routes/files when replacing systems.
 - No console spam in production (keep only logs that are clearly needed).

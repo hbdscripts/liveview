@@ -45,7 +45,7 @@ const ICON_GLYPH_DEFAULTS = Object.freeze({
   'nav-toggle-dashboard': 'fa-table-cells-large',
   'nav-toggle-breakdown': 'fa-chart-pie',
   'nav-toggle-traffic': 'fa-route',
-  'nav-toggle-integrations': 'fa-puzzle-piece',
+  'nav-toggle-admin': 'fa-user-shield',
   'nav-toggle-tools': 'fa-screwdriver-wrench',
   'nav-toggle-settings': 'fa-gear',
   'nav-dropdown-arrow': 'fa-solid fa-angle-right',

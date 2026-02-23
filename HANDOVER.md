@@ -1,6 +1,6 @@
 # KEXO Liveview — Current state (handover)
 
-**Last updated:** 2026-02-22
+**Last updated:** 2026-02-23
 
 Read this file before making changes. If you change **core paths** (routes, auth, dashboard UX, ingest, DB schema, deploy), update this file in the same commit.
 
@@ -29,9 +29,9 @@ If you start a significant change that may overlap with others, add a short entr
 - **Dashboard:** `/dashboard/overview`, `/dashboard/live`, `/dashboard/sales`, `/dashboard/table`
 - **Insights:** `/insights/snapshot`, `/insights/countries`, `/insights/products`, `/insights/variants`, `/insights/abandoned-carts`, `/insights/payment-types`
 - **Acquisition:** `/acquisition/attribution`, `/acquisition/devices`, `/acquisition/browsers`
-- **Integrations:** `/integrations/google-ads`
+- **Admin (admin-only):** `/admin/google-ads`. Top-nav **Admin** dropdown is icon-only, last in menu; visible only to admins. Items under Admin (e.g. Google Ads) are admin-only; non-admin must not see or access them (server-side enforced).
 - **Tools:** `/tools/compare-conversion-rate`, `/tools/shipping-cr`, `/tools/click-order-lookup`, `/tools/change-pins`
-- **Settings:** `/settings` (tabs: kexo, integrations, layout, attribution, insights, cost-expenses, admin). Kexo has General, Icons & assets, Color Scheme. Payment method icon overrides live inside Icons & assets. Layout has Tables, KPIs, Date ranges only (chart settings via cog on each chart). Admin-only content gated by `isMasterRequest`.
+- **Settings:** `/settings` (tabs: kexo, integrations, layout, attribution, insights, cost-expenses, admin). Kexo has General, Icons & assets, Color Scheme. Payment method icon overrides live inside Icons & assets. Layout has Tables, KPIs, Date ranges only (chart settings via cog on each chart). Admin tab has Users & roles, Diagnostics, Controls, Role permissions, Google Ads. Admin-only content gated by `isMasterRequest`.
 - **Auth:** `/app/login` (Google); `/admin` → redirect to `/settings/admin/users` or `/settings/kexo/general`
 - **Root `/`:** Shopify embed or redirect to dashboard/login
 
@@ -51,6 +51,7 @@ Templates under `server/public/**`; served via `sendPage()` in `server/index.js`
 
 ## Guardrails (non-negotiable)
 
+- **Settings normaliser mutation loop:** `server/public/ui/settings-normaliser.js` must **skip** re-normalising panels that already have `data-settings-ui-normalised="1"`. The MutationObserver queues panels when DOM changes (e.g. data load); if `normaliseSettingsPanel` always mutates, observer fires again → infinite loop and flashing. The early return is required; `npm run ui:check` enforces it.
 - **No deletes from app tables** (`purchases`, `sessions`, `purchase_events`, `orders_shopify`) to “fix numbers”. Over-reporting: handle via **dedupe in stats queries** only (e.g. exclude duplicate `h:` rows when token/order row exists for same session+total+currency+15min). See `server/store.js`.
 - **Sales/product mapping:** `/api/latest-sales` must resolve a single truth line item (`product_id` + `product_title`); open Product Insights by `product_id` when handle is missing.
 - **Incident/perf:** For “site down”/spinner reports: query Sentry **transactions/spans** first (not only Issues); check last 30–60 min for slow `GET /dashboard/overview`, `/api/kpis`, `/api/kexo-score`, `/api/kpis-expanded-extra`; include `release`; do not declare fixed until new traces show improved latency.
@@ -92,3 +93,5 @@ Full route → handler list: **docs/ROUTES.md**.
 - 2026-02-19: Payment method icon overrides now live in Settings → Kexo → Icons & assets (no separate tab). Expanded mapping + inputs for Visa, Mastercard, Amex, Maestro, Discover, JCB, Diners Club, UnionPay, PayPal, Klarna, Clearpay, Afterpay, Affirm, Zip, Sezzle, Stripe, Shop Pay, Apple Pay, Google Pay. Defaults now point to SVGrepo-hosted SVGs; overrides stored in `asset_overrides` as `payment_<key>` and applied in payment methods report API.
 - 2026-02-21: Notification system: bell in footer (right of Kexo Score) opens offcanvas with list (unread/read/archived) and detail view; auto-archive on view. Settings → Notifications tab: toggles for Daily report, Sale, Sentry (admin), Pending sign-ups (admin), Diagnostics unresolved (admin). API: GET/PATCH `/api/notifications`, `notifications_preferences_v1` in settings. Daily job: daily report (yesterday KPIs), diagnostics unresolved (pixel/Google Ads). Sentry and pending sign-up create admin notifications. See **docs/ROUTES.md** for notifications routes; integrability note in AGENT_RULES.md.
 - 2026-02-22: Settings/notifications hardening: per-user UI config (KPI, charts, tables, overview widgets, notification prefs) with fallback to global; field-level RBAC for Settings writes; notifications badge polling visibility-gated and registered for cleanup. Full test suite (`npm test` runs test/ + tests/); routes-doc drift check; ESLint + `npm run lint`; Windows-friendly `npm start` (cross-env). Docs: HANDOVER stale entry removed, server/backups README, docs/UPGRADE.md, README branding note, admin mount comment in index.js; timer cleanup convention in 01-core.js.
+- 2026-02-23: Settings flashing fix: normaliser now returns early in `normaliseSettingsPanel` when panel already has `data-settings-ui-normalised="1"`, preventing MutationObserver → normalise → mutate → observer loop (e.g. on /settings/admin/googleads). Contract (docs/UI_SETTINGS_CONTRACT.md) and HANDOVER guardrails updated; `ui:check` enforces the early-return guard.
+- 2026-02-23: Admin-only Google Ads separation: Integrations top-nav removed; Admin icon-only dropdown (last in nav, admin-only) added with Google Ads. Canonical route `/admin/google-ads`; legacy `/integrations/*`, `/ads`, `/tools/ads` redirect. Google Ads settings moved from Settings → Integrations to Settings → Admin (`admin-panel-googleads`). RBAC uses sentinel keys `admin.only.google_ads` / `admin.only.google_ads_settings` (not in `ALL_PERMISSION_KEYS`). Icon `nav-toggle-admin` in registry; `nav-toggle-integrations` removed. HANDOVER, AGENT_RULES, UI_SETTINGS_CONTRACT updated; ROUTES regenerated.
