@@ -88,8 +88,10 @@ function isSafeRelativeRedirectPath(p) {
 
 function setOauthCookie(res, value) {
   const maxAge = 24 * 60 * 60;
-  let set = `${OAUTH_COOKIE_NAME}=${encodeURIComponent(value)}; Path=/; Max-Age=${maxAge}; SameSite=lax; HttpOnly`;
-  if (config.nodeEnv === 'production') set += '; Secure';
+  const isProd = config.nodeEnv === 'production';
+  let set = `${OAUTH_COOKIE_NAME}=${encodeURIComponent(value)}; Path=/; Max-Age=${maxAge}; HttpOnly`;
+  if (isProd) set += '; SameSite=None; Secure';
+  else set += '; SameSite=lax';
   res.setHeader('Set-Cookie', set);
 }
 

@@ -90,8 +90,10 @@ function setOauthCookie(res, value, maxAgeSecOverride) {
   const maxAge = Number.isFinite(Number(maxAgeSecOverride)) && Number(maxAgeSecOverride) > 0
     ? Math.trunc(Number(maxAgeSecOverride))
     : (dashboardAuth.SESSION_HOURS * 60 * 60);
-  let set = `${dashboardAuth.OAUTH_COOKIE_NAME}=${encodeURIComponent(value)}; Path=/; Max-Age=${maxAge}; SameSite=lax; HttpOnly`;
-  if (config.nodeEnv === 'production') set += '; Secure';
+  const isProd = config.nodeEnv === 'production';
+  let set = `${dashboardAuth.OAUTH_COOKIE_NAME}=${encodeURIComponent(value)}; Path=/; Max-Age=${maxAge}; HttpOnly`;
+  if (isProd) set += '; SameSite=None; Secure';
+  else set += '; SameSite=lax';
   res.setHeader('Set-Cookie', set);
 }
 

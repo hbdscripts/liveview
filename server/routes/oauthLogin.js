@@ -28,13 +28,22 @@ const scopes = config.shopify.scopes || 'read_products,read_orders,read_all_orde
 
 function setOauthCookie(res, value) {
   const maxAge = SESSION_HOURS * 60 * 60;
-  let set = `${OAUTH_COOKIE_NAME}=${encodeURIComponent(value)}; Path=/; Max-Age=${maxAge}; SameSite=lax; HttpOnly`;
-  if (config.nodeEnv === 'production') set += '; Secure';
+  const isProd = config.nodeEnv === 'production';
+  // NOTE: Settings/Admin UI runs inside embedded contexts for some users. `SameSite=Lax`
+  // will not send cookies in iframes, causing /api/settings and /api/ads/* to 401.
+  // For production HTTPS, use `SameSite=None; Secure` so auth works in embedded contexts.
+  let set = `${OAUTH_COOKIE_NAME}=${encodeURIComponent(value)}; Path=/; Max-Age=${maxAge}; HttpOnly`;
+  if (isProd) set += '; SameSite=None; Secure';
+  else set += '; SameSite=lax';
   res.setHeader('Set-Cookie', set);
 }
 
 function clearOauthCookie(res) {
-  res.setHeader('Set-Cookie', `${OAUTH_COOKIE_NAME}=; Path=/; Max-Age=0; SameSite=lax; HttpOnly`);
+  const isProd = config.nodeEnv === 'production';
+  let set = `${OAUTH_COOKIE_NAME}=; Path=/; Max-Age=0; HttpOnly`;
+  if (isProd) set += '; SameSite=None; Secure';
+  else set += '; SameSite=lax';
+  res.setHeader('Set-Cookie', set);
 }
 
 function stateEncode(obj) {
