@@ -3,6 +3,7 @@ const store = require('../store');
 const salesTruth = require('../salesTruth');
 const { getDb } = require('../db');
 const { getAdsDb } = require('./adsDb');
+const googleAdsClient = require('./googleAdsClient');
 
 function normalizeSource(v) {
   const s = v != null ? String(v).trim().toLowerCase() : '';
@@ -588,6 +589,48 @@ async function syncAttributedOrdersToAdsDb(options = {}) {
     }
 
     if (o.source && !o.campaignId) unattributed++;
+  }
+
+  // Verified campaign-id fallback (no click-id):
+  // Some Shopify checkouts lose gclid/gbraid/wbraid; to avoid “spend-only” reports while still
+  // guarding against random/tinkered numeric IDs, only allow UTMs/bs_campaign_id attribution
+  // when the campaign_id is confirmed to exist in the connected Google Ads account.
+  try {
+    const candidateIds = new Set();
+    for (const o of parsed) {
+      if (!o || o.source) continue;
+      const cid = o.campaignId != null ? String(o.campaignId).trim() : '';
+      if (!cid || !/^\d+$/.test(cid)) continue;
+      candidateIds.add(cid);
+    }
+
+    if (candidateIds.size) {
+      const ids = Array.from(candidateIds);
+      const verified = new Set();
+
+      for (const idChunk of chunk(ids, 50)) {
+        const safeIds = (idChunk || []).filter((v) => /^\d+$/.test(String(v)));
+        if (!safeIds.length) continue;
+        const q = `SELECT campaign.id FROM campaign WHERE campaign.id IN (${safeIds.join(', ')}) AND campaign.status != 'REMOVED'`;
+        const out = await googleAdsClient.search(shop, q);
+        if (!out || !out.ok) continue;
+        for (const r of out.results || []) {
+          const id = r && r.campaign && r.campaign.id != null ? String(r.campaign.id).trim() : '';
+          if (id) verified.add(id);
+        }
+      }
+
+      for (const o of parsed) {
+        if (!o || o.source) continue;
+        const cid = o.campaignId != null ? String(o.campaignId).trim() : '';
+        if (!cid || !verified.has(cid)) continue;
+        o.source = source;
+        if (!o.adgroupId) o.adgroupId = '_all_';
+        o.attributionMethod = o.attributionMethod || 'campaign_id.verified_no_click_id';
+      }
+    }
+  } catch (e) {
+    console.warn('[ads.orders] campaign-id verification failed (non-fatal):', e && e.message ? e.message : e);
   }
 
   // 3) Upsert to Ads DB.
