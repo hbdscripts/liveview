@@ -21,6 +21,17 @@ Single source of truth for core metric semantics so UI tables/charts stay consis
 
 ---
 
+## KPI compare deltas (UI chips)
+
+- KPI delta chips show **percent change vs the compare period**.
+- For money / count-like metrics, percent change uses an **absolute baseline denominator**:
+  - \(\Delta\% = \frac{cur - prev}{\max(|prev|,\ \varepsilon)} \times 100\)
+  - When `prev` is effectively 0 (`|prev| < 1e-9`), treat any non-zero change as **±100%** (sign from `cur - prev`).
+  - Negative baselines use `abs(prev)` (so improving from `-£100` → `-£50` is **+50%**, not forced to ±100%).
+- UI must **not** show `+100%` for a negative change when `prev` is 0 (e.g. Profit `£0` → `£-37` must show **-100%**).
+
+---
+
 ## Traffic filtering
 
 - **Human-only:** Exclude sessions with `sessions.cf_known_bot = 1` (treat NULL as human).
