@@ -3381,10 +3381,9 @@
         toneDelta = denom > 1e-9 ? (diff / denom) : (diff === 0 ? 0 : (diff > 0 ? 1 : -1));
         if (invert) toneDelta = -toneDelta;
       }
-      const isNew = cur != null && base === 0 && cur !== 0;
-      const isUp = isNew || (toneDelta != null && toneDelta > KPI_STABLE_RATIO);
-      const isDown = !isNew && toneDelta != null && toneDelta < -KPI_STABLE_RATIO;
-      const isFlat = !isNew && toneDelta != null && !isUp && !isDown;
+      const isUp = toneDelta != null && toneDelta > KPI_STABLE_RATIO;
+      const isDown = toneDelta != null && toneDelta < -KPI_STABLE_RATIO;
+      const isFlat = toneDelta != null && !isUp && !isDown;
 
       if (deltaEl) {
         const textEl = deltaEl.querySelector('.kexo-kpi-chip-delta-text');
@@ -3392,7 +3391,7 @@
         let dir = 'none';
 
         if (rawDelta != null) {
-          text = isNew ? '+100%' : formatSignedPercentOneDecimalFromRatio(rawDelta);
+          text = formatSignedPercentOneDecimalFromRatio(rawDelta);
           dir = isUp ? 'up' : (isDown ? 'down' : 'flat');
         }
 
@@ -3439,17 +3438,14 @@
         const deltaPctAbs = Number.isFinite(rawDelta) ? (Math.round(Math.abs(rawDelta) * 1000) / 10) : null;
 
         if (!isFlat) {
-          widthPct = isNew ? 100 : Math.max(6, Math.min(100, Math.round(Math.abs(rawDelta) * 100)));
+          widthPct = Math.max(6, Math.min(100, Math.round(Math.abs(rawDelta) * 100)));
           barClass = isUp ? 'bg-success' : 'bg-danger';
         }
 
         barEl.style.width = String(widthPct) + '%';
         barEl.classList.add(barClass);
         barEl.setAttribute('aria-valuenow', String(widthPct));
-        if (isNew) {
-          barEl.setAttribute('aria-label', '100% change');
-          if (srText) srText.textContent = '100% change';
-        } else if (deltaPctAbs != null) {
+        if (deltaPctAbs != null) {
           barEl.setAttribute('aria-label', String(deltaPctAbs) + '% change');
           if (srText) srText.textContent = String(deltaPctAbs) + '% change';
         } else {
@@ -4100,15 +4096,14 @@
           toneDelta = denom > 1e-9 ? (diff / denom) : (diff === 0 ? 0 : (diff > 0 ? 1 : -1));
           if (invert) toneDelta = -toneDelta;
         }
-        var isNew = base === 0 && cur != null && cur !== 0;
-        var isUp = isNew || (toneDelta != null && toneDelta > KPI_STABLE_RATIO);
-        var isDown = !isNew && toneDelta != null && toneDelta < -KPI_STABLE_RATIO;
-        var isFlat = !isNew && toneDelta != null && !isUp && !isDown;
+        var isUp = toneDelta != null && toneDelta > KPI_STABLE_RATIO;
+        var isDown = toneDelta != null && toneDelta < -KPI_STABLE_RATIO;
+        var isFlat = toneDelta != null && !isUp && !isDown;
 
         var dir = 'none';
         var text = '\u2014';
         if (rawDelta != null) {
-          text = isNew ? '+100%' : formatSignedPercentOneDecimalFromRatio(rawDelta);
+          text = formatSignedPercentOneDecimalFromRatio(rawDelta);
           dir = isUp ? 'up' : (isDown ? 'down' : 'flat');
         }
         var forceNeutralTone = DASHBOARD_NEUTRAL_DELTA_KEYS.has(String(key || '').toLowerCase());

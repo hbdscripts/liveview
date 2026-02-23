@@ -4495,7 +4495,7 @@
             var roundedPp = Math.round(dpp * 10) / 10;
             return (roundedPp > 0 ? '+' : '') + roundedPp.toFixed(1) + 'pp';
           }
-          if (Math.abs(prev) < 1e-9) return (Math.abs(cur) < 1e-9) ? '0.0%' : '+100%';
+          if (Math.abs(prev) < 1e-9) return (Math.abs(cur) < 1e-9) ? '0.0%' : (cur > 0 ? '+100%' : '-100%');
           var denom = Math.max(Math.abs(prev), Number(spec.denomFloor) || 0, 1e-9);
           var deltaPct = ((cur - prev) / denom) * 100;
           var rounded = Math.round(deltaPct * 10) / 10;
@@ -4760,7 +4760,7 @@
             var roundedPp = Math.round(dpp * 10) / 10;
             return (roundedPp > 0 ? '+' : '') + roundedPp.toFixed(1) + 'pp';
           }
-          if (Math.abs(prev) < 1e-9) return (Math.abs(cur) < 1e-9) ? '0.0%' : '+100%';
+          if (Math.abs(prev) < 1e-9) return (Math.abs(cur) < 1e-9) ? '0.0%' : (cur > 0 ? '+100%' : '-100%');
           var denom = Math.max(Math.abs(prev), Number(spec.denomFloor) || 0, 1e-9);
           var deltaPct = ((cur - prev) / denom) * 100;
           var rounded = Math.round(deltaPct * 10) / 10;
