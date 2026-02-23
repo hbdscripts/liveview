@@ -1990,10 +1990,19 @@
       } catch (_) {}
       // Ensure the SVG itself centers within tall containers.
       // Some jsVectorMap builds end up with a top-aligned preserveAspectRatio.
+      function applySvgAspectRatio() {
+        try {
+          var svg = el && el.querySelector ? el.querySelector('svg') : null;
+          if (svg && svg.setAttribute) {
+            svg.setAttribute('preserveAspectRatio', mapFit === 'cover' ? 'xMidYMid slice' : 'xMidYMid meet');
+          }
+        } catch (_) {}
+      }
+      applySvgAspectRatio();
+      // Countries page sometimes injects SVG after init; retry next frame.
       try {
-        var svg = el && el.querySelector ? el.querySelector('svg') : null;
-        if (svg && svg.setAttribute) {
-          svg.setAttribute('preserveAspectRatio', mapFit === 'cover' ? 'xMidYMid slice' : 'xMidYMid meet');
+        if (containerId === 'countries-map-chart' && typeof requestAnimationFrame === 'function') {
+          requestAnimationFrame(applySvgAspectRatio);
         }
       } catch (_) {}
       // Fit mode: keep the SVG centered within the container (especially important for tall cards).

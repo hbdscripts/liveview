@@ -642,6 +642,11 @@ body[data-page="countries"] .card[data-kexo-chart-key="countries-map-chart"] .ke
   padding: 0;
 }
 
+/* Countries map: remove redundant overlay title (page title already says Countries). */
+body[data-page="countries"] .card[data-kexo-chart-key="countries-map-chart"] .kexo-widget-title {
+  display: none;
+}
+
 /* Recent Sales: center the chart card header like Overview widgets. */
 body[data-page="sales"] .kexo-sales-trend-card .kexo-widget-head {
   display: grid;
@@ -671,6 +676,19 @@ body[data-page="dashboard"] .kexo-widget-card[data-kexo-chart-key="overview-live
   background-image: radial-gradient(rgba(var(--tblr-primary-rgb, 62, 179, 171), .12) 1px, transparent 1px);
   background-size: 14px 14px;
   background-position: 0 0;
+}
+
+/* Countries map: vertically center the SVG within tall containers. */
+body[data-page="countries"] #countries-map-chart.jvm-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+body[data-page="countries"] #countries-map-chart.jvm-container > svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 100%;
 }
 #countries-map-chart .jvm-zoom-btn,
 #live-online-chart .jvm-zoom-btn {
