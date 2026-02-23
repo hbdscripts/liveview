@@ -2171,35 +2171,31 @@
             const name = (countriesMapChartInstance && typeof countriesMapChartInstance.getRegionName === 'function')
               ? (countriesMapChartInstance.getRegionName(iso) || iso)
               : iso;
-            const rev = revenueByIso2[iso] || 0;
-            const ord = ordersByIso2[iso] || 0;
-            const tot = sessionsByIso2[iso] || 0;
-            if (!rev && !ord && !tot) {
-              setVectorMapTooltipContent(
-                tooltip,
-                '<div class="kexo-map-tooltip-title kexo-map-tooltip-title--min140">' + escapeHtml(name) + '</div>',
-                name
-              );
-              return;
-            }
-            const revHtml = formatRevenue(Number(rev) || 0) || '\u2014';
-            const ordHtml = ord ? (formatSessions(ord) + ' orders') : '\u2014';
-            const totHtml = tot ? formatSessions(tot) : '\u2014';
-            const cr = (Number.isFinite(Number(tot)) && Number(tot) > 0) ? (Number(ord) / Number(tot)) : null;
+            const rev = Number.isFinite(Number(revenueByIso2[iso])) ? Number(revenueByIso2[iso]) : 0;
+            const ord = Number.isFinite(Number(ordersByIso2[iso])) ? Number(ordersByIso2[iso]) : 0;
+            const tot = Number.isFinite(Number(sessionsByIso2[iso])) ? Number(sessionsByIso2[iso]) : 0;
+            const revHtml = formatRevenue(rev) || '\u2014';
+            const ordHtml = formatSessions(ord);
+            const totHtml = formatSessions(tot);
+            const cr = tot > 0 ? (ord / tot) : null;
             const crHtml = cr != null ? pct(cr) : '\u2014';
-            const vpvNum = (Number.isFinite(Number(tot)) && Number(tot) > 0) ? (Number(rev) / Number(tot)) : null;
+            const vpvNum = tot > 0 ? (rev / tot) : null;
             const vpvHtml = vpvNum != null ? formatRevenue(vpvNum) : '\u2014';
+            const emptyNote = (!rev && !ord && !tot)
+              ? '<div class="kexo-map-tooltip-meta text-secondary">No data in selected timeframe.</div>'
+              : '';
             setVectorMapTooltipContent(
               tooltip,
               '<div class="kexo-map-tooltip-card">' +
                 '<div class="kexo-map-tooltip-name">' + escapeHtml(name) + '</div>' +
                 '<div class="kexo-map-tooltip-meta text-secondary">Sessions: <span class="kexo-map-tooltip-value">' + escapeHtml(totHtml) + '</span></div>' +
                 '<div class="kexo-map-tooltip-meta text-secondary">Revenue: <span class="kexo-map-tooltip-value">' + escapeHtml(revHtml) + '</span></div>' +
-                '<div class="kexo-map-tooltip-meta text-secondary">Orders: <span class="kexo-map-tooltip-value">' + escapeHtml(ordHtml) + '</span></div>' +
+                '<div class="kexo-map-tooltip-meta text-secondary">Sales: <span class="kexo-map-tooltip-value">' + escapeHtml(ordHtml) + '</span></div>' +
                 '<div class="kexo-map-tooltip-meta text-secondary">Conversion: <span class="kexo-map-tooltip-value">' + escapeHtml(crHtml) + '</span></div>' +
                 '<div class="kexo-map-tooltip-meta text-secondary">Value / session: <span class="kexo-map-tooltip-value">' + escapeHtml(vpvHtml) + '</span></div>' +
+                emptyNote +
               '</div>',
-              name + ' | Sessions: ' + totHtml + ' | Revenue: ' + revHtml + ' | Orders: ' + ordHtml + ' | CR: ' + crHtml + ' | VPV: ' + vpvHtml
+              name + ' | Sessions: ' + totHtml + ' | Revenue: ' + revHtml + ' | Sales: ' + ordHtml + ' | CR: ' + crHtml + ' | VPV: ' + vpvHtml
             );
           },
           afterMapCreated: function(instance, containerEl) {
