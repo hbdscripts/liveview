@@ -1540,6 +1540,181 @@ async function readOrderCountrySummary(shop, startMs, endMs) {
   return out;
 }
 
+function orderCountryFromObj(raw) {
+  if (!raw || typeof raw !== 'object') return 'XX';
+  const shipping =
+    raw?.shipping_address?.country_code ??
+    raw?.shipping_address?.countryCode ??
+    raw?.shippingAddress?.countryCode ??
+    raw?.shippingAddress?.country_code ??
+    null;
+  const billing =
+    raw?.billing_address?.country_code ??
+    raw?.billing_address?.countryCode ??
+    raw?.billingAddress?.countryCode ??
+    raw?.billingAddress?.country_code ??
+    null;
+  return normalizeCountryOrUnknown(shipping || billing);
+}
+
+function toFiniteNumber(value, fallback = 0) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+function orderTaxFromObj(raw) {
+  if (!raw || typeof raw !== 'object') return 0;
+  const v = raw?.total_tax ?? raw?.totalTax ?? raw?.total_tax_set?.shop_money?.amount ?? raw?.totalTaxSet?.shopMoney?.amount ?? null;
+  return Math.max(0, toFiniteNumber(v, 0));
+}
+
+function orderShippingFromObj(raw) {
+  if (!raw || typeof raw !== 'object') return 0;
+  const v =
+    raw?.total_shipping_price_set?.shop_money?.amount ??
+    raw?.totalShippingPriceSet?.shopMoney?.amount ??
+    raw?.total_shipping_price ??
+    raw?.totalShippingPrice ??
+    raw?.total_shipping ??
+    raw?.totalShipping ??
+    null;
+  return Math.max(0, toFiniteNumber(v, 0));
+}
+
+function orderItemsFromObj(raw) {
+  if (!raw || typeof raw !== 'object') return 0;
+  const lineItems = Array.isArray(raw?.line_items) ? raw.line_items : (Array.isArray(raw?.lineItems) ? raw.lineItems : []);
+  let total = 0;
+  for (const li of lineItems) {
+    const q = li && li.quantity != null ? Number(li.quantity) : 0;
+    if (!Number.isFinite(q) || q <= 0) continue;
+    total += q;
+  }
+  return Math.max(0, Math.round(total));
+}
+
+/**
+ * Read order totals grouped by day+country for cost allocation.
+ * Includes:
+ * - revenue bases: incl tax (legacy total_price), excl tax, excl shipping
+ * - order count and item count
+ * - pre-aggregated segments for deterministic per-order rules evaluation (by effective date + country)
+ */
+async function readOrderCostSummary(shop, startMs, endMs, timeZone) {
+  const out = {
+    revenueGbp: 0, // legacy: order total incl tax
+    orders: 0,
+    items: 0,
+    startYmd: null,
+    endYmd: null,
+    byCountry: new Map(), // CC -> { orders, items, revenueInclTaxGbp, revenueExclTaxGbp, revenueExclShippingGbp }
+    segments: [], // [{ ymd, country, orders, items, revenueInclTaxGbp, revenueExclTaxGbp, revenueExclShippingGbp }]
+  };
+  if (!shop) return out;
+  const tz = timeZone || store.resolveAdminTimeZone();
+  try {
+    const safeStart = Number(startMs);
+    const safeEnd = Number(endMs);
+    out.startYmd = ymdInTimeZone(safeStart, tz) || new Date(safeStart).toISOString().slice(0, 10);
+    out.endYmd = ymdInTimeZone(Math.max(safeStart, safeEnd - 1), tz) || new Date(Math.max(safeStart, safeEnd - 1)).toISOString().slice(0, 10);
+  } catch (_) {
+    out.startYmd = null;
+    out.endYmd = null;
+  }
+  const db = getDb();
+  const rows = await db.all(
+    `
+      SELECT created_at, COALESCE(NULLIF(TRIM(currency), ''), 'GBP') AS currency, total_price, raw_json
+      FROM orders_shopify
+      WHERE shop = ?
+        AND created_at >= ? AND created_at < ?
+        AND ${isPaidOrderWhereClause('')}
+        AND checkout_token IS NOT NULL
+        AND TRIM(checkout_token) != ''
+        AND total_price IS NOT NULL
+    `,
+    [shop, startMs, endMs]
+  );
+  if (!rows || !rows.length) return out;
+
+  const ratesToGbp = await fx.getRatesToGbp();
+  const segMap = new Map();
+  for (const row of rows) {
+    const createdAt = row && row.created_at != null ? Number(row.created_at) : NaN;
+    const amount = row && row.total_price != null ? Number(row.total_price) : NaN;
+    if (!Number.isFinite(amount)) continue;
+    const currency = fx.normalizeCurrency(row && row.currency != null ? String(row.currency) : '') || 'GBP';
+
+    const raw = safeJsonParse(row && row.raw_json != null ? String(row.raw_json) : '');
+    const country = orderCountryFromObj(raw);
+    const tax = orderTaxFromObj(raw);
+    const shipping = orderShippingFromObj(raw);
+    const items = orderItemsFromObj(raw);
+
+    const incl = Math.max(0, amount);
+    const exclTax = Math.max(0, amount - tax);
+    const exclShipping = Math.max(0, amount - shipping);
+
+    const inclGbp = fx.convertToGbp(incl, currency, ratesToGbp);
+    const exclTaxGbp = fx.convertToGbp(exclTax, currency, ratesToGbp);
+    const exclShipGbp = fx.convertToGbp(exclShipping, currency, ratesToGbp);
+    if (!Number.isFinite(inclGbp) || !Number.isFinite(exclTaxGbp) || !Number.isFinite(exclShipGbp)) continue;
+
+    const ymd = ymdInTimeZone(createdAt, tz) || new Date(createdAt).toISOString().slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(ymd)) continue;
+
+    out.revenueGbp += inclGbp;
+    out.orders += 1;
+    out.items += items;
+
+    const by = out.byCountry.get(country) || {
+      orders: 0,
+      items: 0,
+      revenueInclTaxGbp: 0,
+      revenueExclTaxGbp: 0,
+      revenueExclShippingGbp: 0,
+    };
+    by.orders += 1;
+    by.items += items;
+    by.revenueInclTaxGbp += inclGbp;
+    by.revenueExclTaxGbp += exclTaxGbp;
+    by.revenueExclShippingGbp += exclShipGbp;
+    out.byCountry.set(country, by);
+
+    const key = `${ymd}:${country}`;
+    const seg = segMap.get(key) || {
+      ymd,
+      country,
+      orders: 0,
+      items: 0,
+      revenueInclTaxGbp: 0,
+      revenueExclTaxGbp: 0,
+      revenueExclShippingGbp: 0,
+    };
+    seg.orders += 1;
+    seg.items += items;
+    seg.revenueInclTaxGbp += inclGbp;
+    seg.revenueExclTaxGbp += exclTaxGbp;
+    seg.revenueExclShippingGbp += exclShipGbp;
+    segMap.set(key, seg);
+  }
+
+  out.revenueGbp = round2(out.revenueGbp) || 0;
+  out.segments = Array.from(segMap.values()).map((s) => ({
+    ymd: s.ymd,
+    country: s.country,
+    orders: Number(s.orders) || 0,
+    items: Number(s.items) || 0,
+    revenueInclTaxGbp: round2(s.revenueInclTaxGbp) || 0,
+    revenueExclTaxGbp: round2(s.revenueExclTaxGbp) || 0,
+    revenueExclShippingGbp: round2(s.revenueExclShippingGbp) || 0,
+  })).sort((a, b) => {
+    if (a.ymd !== b.ymd) return String(a.ymd).localeCompare(String(b.ymd));
+    return String(a.country).localeCompare(String(b.country));
+  });
+  return out;
+}
+
 function computeShippingCostFromSummary(summary, shippingConfig) {
   if (!shippingConfig || shippingConfig.enabled !== true || !summary || !summary.byCountry || !summary.byCountry.size) return 0;
   const defaultGbp = Math.max(0, Number(shippingConfig.worldwideDefaultGbp) || 0);
@@ -1628,57 +1803,247 @@ function selectedScopeTotals(summary, appliesTo) {
   return { revenueGbp, orders };
 }
 
+function scopeLabelFromAppliesTo(appliesTo) {
+  const a = appliesTo && typeof appliesTo === 'object' ? appliesTo : {};
+  if (a.mode === 'countries' && Array.isArray(a.countries) && a.countries.length) return a.countries.join(', ');
+  return 'ALL';
+}
+
+function perOrderTypeLabel(rule) {
+  const t = rule && rule.type ? String(rule.type) : '';
+  if (t === PROFIT_RULE_TYPES.fixedPerOrder) return 'Fixed per order';
+  if (t === PROFIT_RULE_TYPES.fixedPerItem) return 'Fixed per item';
+  return '% of revenue';
+}
+
+function perOrderValueLabel(rule) {
+  const r = rule && typeof rule === 'object' ? rule : {};
+  const v = Number(r.value) || 0;
+  if (r.type === PROFIT_RULE_TYPES.percentRevenue) return v.toFixed(2).replace(/\.00$/, '') + '%';
+  return '£' + v.toFixed(2);
+}
+
+function segmentMatchesAppliesTo(seg, appliesTo) {
+  const a = appliesTo && typeof appliesTo === 'object' ? appliesTo : {};
+  if (!a.mode || a.mode === 'all') return true;
+  if (a.mode !== 'countries') return true;
+  const countries = Array.isArray(a.countries) ? a.countries : [];
+  if (!countries.length) return false;
+  const code = normalizeCountryCode(seg && seg.country);
+  if (!code) return false;
+  return countries.includes(code);
+}
+
+function segmentRevenueForBasis(seg, basis) {
+  if (!seg) return 0;
+  const b = basis == null ? '' : String(basis).trim().toLowerCase();
+  if (b === 'excl_tax') return Number(seg.revenueExclTaxGbp) || 0;
+  if (b === 'excl_shipping') return Number(seg.revenueExclShippingGbp) || 0;
+  return Number(seg.revenueInclTaxGbp) || 0;
+}
+
+function isLeapYear(year) {
+  const y = Number(year);
+  if (!Number.isFinite(y)) return false;
+  if (y % 400 === 0) return true;
+  if (y % 100 === 0) return false;
+  return y % 4 === 0;
+}
+
+function computeOverheadAllocationGbp(overhead, rangeStartYmd, rangeEndYmd) {
+  const o = overhead && typeof overhead === 'object' ? overhead : {};
+  const kind = o.kind === 'one_off' ? 'one_off' : 'recurring';
+  const amount = Math.max(0, Number(o.amount) || 0);
+  if (!Number.isFinite(amount) || amount <= 0) return { amountGbp: 0, notes: '' };
+
+  const start = normalizeYmd(rangeStartYmd, '');
+  const end = normalizeYmd(rangeEndYmd, '');
+  if (!start || !end || start > end) return { amountGbp: 0, notes: '' };
+
+  const oStart = normalizeYmd(o.date, '');
+  const oEnd = normalizeYmd(o.end_date, '');
+  if (!oStart) return { amountGbp: 0, notes: '' };
+
+  if (kind === 'one_off') {
+    const inRange = oStart >= start && oStart <= end;
+    if (!inRange) return { amountGbp: 0, notes: '' };
+    return { amountGbp: round2(amount) || 0, notes: (o.notes ? String(o.notes) : '') };
+  }
+
+  const overlapStart = oStart > start ? oStart : start;
+  const overlapEnd = (oEnd && oEnd < end) ? oEnd : end;
+  if (overlapStart > overlapEnd) return { amountGbp: 0, notes: '' };
+
+  const frequency = o.frequency === 'daily' || o.frequency === 'weekly' || o.frequency === 'monthly' || o.frequency === 'yearly'
+    ? o.frequency
+    : 'monthly';
+  const monthlyAllocation = o.monthly_allocation === 'calendar' ? 'calendar' : 'prorate';
+  const days = listYmdRange(overlapStart, overlapEnd, 4000);
+  if (!days.length) return { amountGbp: 0, notes: '' };
+
+  if (frequency === 'daily') {
+    const total = amount * days.length;
+    return { amountGbp: round2(total) || 0, notes: `£${amount.toFixed(2)}/day × ${days.length} days` + (o.notes ? ` · ${String(o.notes)}` : '') };
+  }
+  if (frequency === 'weekly') {
+    const perDay = amount / 7;
+    const total = perDay * days.length;
+    return { amountGbp: round2(total) || 0, notes: `£${perDay.toFixed(2)}/day (weekly) × ${days.length} days` + (o.notes ? ` · ${String(o.notes)}` : '') };
+  }
+  if (frequency === 'yearly') {
+    let total = 0;
+    for (const ymd of days) {
+      const parts = parseYmdParts(ymd);
+      if (!parts) continue;
+      const diy = isLeapYear(parts.year) ? 366 : 365;
+      total += amount / diy;
+    }
+    return { amountGbp: round2(total) || 0, notes: `Prorated by day × ${days.length} days` + (o.notes ? ` · ${String(o.notes)}` : '') };
+  }
+  // monthly
+  if (monthlyAllocation === 'calendar') {
+    const startParts = parseYmdParts(oStart);
+    const billDay = startParts ? startParts.day : 1;
+    let curMonth = ymdMonthStart(overlapStart);
+    let count = 0;
+    for (let i = 0; i < 240; i += 1) {
+      if (curMonth > overlapEnd) break;
+      const p = parseYmdParts(curMonth);
+      if (!p) break;
+      const maxDay = daysInMonth(p.year, p.month);
+      const occDay = Math.min(Math.max(1, billDay), maxDay);
+      const occ = formatYmd(p.year, p.month, occDay);
+      if (occ >= overlapStart && occ <= overlapEnd) count += 1;
+      curMonth = ymdAddMonths(curMonth, 1);
+    }
+    const total = amount * count;
+    return { amountGbp: round2(total) || 0, notes: `£${amount.toFixed(2)} × ${count} occurrence(s) (calendar monthly)` + (o.notes ? ` · ${String(o.notes)}` : '') };
+  }
+  // monthly prorate by day
+  let total2 = 0;
+  for (const ymd of days) {
+    const p = parseYmdParts(ymd);
+    if (!p) continue;
+    const dim = daysInMonth(p.year, p.month);
+    total2 += amount / dim;
+  }
+  return { amountGbp: round2(total2) || 0, notes: `Prorated by day × ${days.length} days` + (o.notes ? ` · ${String(o.notes)}` : '') };
+}
+
 function computeProfitDeductionsDetailed(summary, config) {
   const normalized = normalizeProfitRulesConfigV1(config);
-  const allRules = Array.isArray(normalized.rules) ? normalized.rules : [];
-  const rules = allRules.filter((rule) => rule && rule.enabled === true);
-  let totalDeductions = 0;
+  const ce = normalized && normalized.cost_expenses && typeof normalized.cost_expenses === 'object' ? normalized.cost_expenses : null;
+  const perOrderAll = ce && Array.isArray(ce.per_order_rules) ? ce.per_order_rules : [];
+  const overheadAll = ce && Array.isArray(ce.overheads) ? ce.overheads : [];
+  const perOrderRules = perOrderAll.filter((r) => r && r.enabled === true);
+  const overheads = overheadAll.filter((o) => o && o.enabled === true);
+
+  const segments = summary && Array.isArray(summary.segments) ? summary.segments : [];
+  const mode = ce && ce.rule_mode === 'first_match' ? 'first_match' : 'stack';
+  const consumed = mode === 'first_match' ? new Set() : null;
+
+  let perOrderTotal = 0;
+  let overheadTotal = 0;
   const lines = [];
 
-  // Estimated profit model:
-  // - Percent rules subtract a % of selected revenue scope.
-  // - Fixed per order rules subtract fixed cost * selected order count scope.
-  // - Fixed per period rules subtract once per selected period.
-  // Rules are applied in deterministic sort order (already normalized).
-  for (const rule of rules) {
-    const scoped = selectedScopeTotals(summary, rule.appliesTo);
+  for (const rule of perOrderRules) {
+    let scopedRevenueGbp = 0;
+    let scopedOrders = 0;
+    let scopedItems = 0;
+    const start = normalizeYmd(rule.start_date, '2000-01-01');
+    const end = normalizeYmd(rule.end_date, '');
+    for (const seg of segments) {
+      if (!seg || !seg.ymd) continue;
+      if (consumed && consumed.has(`${seg.ymd}:${seg.country}`)) continue;
+      if (start && seg.ymd < start) continue;
+      if (end && seg.ymd > end) continue;
+      if (!segmentMatchesAppliesTo(seg, rule.appliesTo)) continue;
+      scopedRevenueGbp += segmentRevenueForBasis(seg, rule.revenue_basis);
+      scopedOrders += Number(seg.orders) || 0;
+      scopedItems += Number(seg.items) || 0;
+      if (consumed) consumed.add(`${seg.ymd}:${seg.country}`);
+    }
     const value = Number(rule.value) || 0;
     let deduction = 0;
-    if (rule.type === PROFIT_RULE_TYPES.percentRevenue) {
-      deduction = scoped.revenueGbp * (value / 100);
-    } else if (rule.type === PROFIT_RULE_TYPES.fixedPerOrder) {
-      deduction = scoped.orders * value;
-    } else if (rule.type === PROFIT_RULE_TYPES.fixedPerPeriod) {
-      deduction = value;
-    }
+    if (rule.type === PROFIT_RULE_TYPES.percentRevenue) deduction = scopedRevenueGbp * (value / 100);
+    else if (rule.type === PROFIT_RULE_TYPES.fixedPerOrder) deduction = scopedOrders * value;
+    else if (rule.type === PROFIT_RULE_TYPES.fixedPerItem) deduction = scopedItems * value;
     if (!Number.isFinite(deduction) || deduction <= 0) continue;
-    totalDeductions += deduction;
+    const rounded = round2(deduction) || 0;
+    perOrderTotal += rounded;
     lines.push({
       id: rule.id ? String(rule.id) : '',
-      label: rule.name ? String(rule.name) : 'Expense',
+      label: 'Rule: ' + (rule.name ? String(rule.name) : 'Expense'),
       type: rule.type ? String(rule.type) : '',
-      amountGbp: round2(deduction) || 0,
+      value,
+      amountGbp: rounded,
+      notes: scopeLabelFromAppliesTo(rule.appliesTo) + ' · ' + perOrderTypeLabel(rule) + ' · ' + perOrderValueLabel(rule),
+      scopedRevenueGbp: round2(scopedRevenueGbp) || 0,
+      scopedOrders: Number(scopedOrders) || 0,
+      scopedItems: Number(scopedItems) || 0,
+      revenue_basis: rule.revenue_basis || 'incl_tax',
+      start_date: rule.start_date || '',
+      end_date: rule.end_date || '',
+      appliesTo: rule.appliesTo || { mode: 'all', countries: [] },
+      match_mode: mode,
     });
   }
-  return {
-    total: round2(totalDeductions) || 0,
-    lines,
-  };
+
+  for (const overhead of overheads) {
+    const alloc = computeOverheadAllocationGbp(overhead, summary && summary.startYmd, summary && summary.endYmd);
+    const amt = alloc && Number.isFinite(Number(alloc.amountGbp)) ? (Number(alloc.amountGbp) || 0) : 0;
+    if (amt <= 0) continue;
+    overheadTotal += amt;
+    lines.push({
+      id: overhead.id ? String(overhead.id) : '',
+      label: 'Overhead: ' + (overhead.name ? String(overhead.name) : 'Overhead'),
+      type: PROFIT_RULE_TYPES.fixedPerPeriod,
+      value: Number(overhead.amount) || 0,
+      amountGbp: round2(amt) || 0,
+      notes: alloc && alloc.notes ? String(alloc.notes) : '',
+    });
+  }
+
+  const total = round2(perOrderTotal + overheadTotal) || 0;
+  return { total, lines, perOrderTotal: round2(perOrderTotal) || 0, overheadTotal: round2(overheadTotal) || 0 };
 }
 
 function computeProfitDeductionsAudit(summary, config) {
   const normalized = normalizeProfitRulesConfigV1(config);
-  const allRules = Array.isArray(normalized.rules) ? normalized.rules : [];
-  const rules = allRules.filter((rule) => rule && rule.enabled === true);
+  const ce = normalized && normalized.cost_expenses && typeof normalized.cost_expenses === 'object' ? normalized.cost_expenses : null;
+  const perOrderAll = ce && Array.isArray(ce.per_order_rules) ? ce.per_order_rules : [];
+  const overheadAll = ce && Array.isArray(ce.overheads) ? ce.overheads : [];
+  const perOrderRules = perOrderAll.filter((r) => r && r.enabled === true);
+  const overheads = overheadAll.filter((o) => o && o.enabled === true);
+
+  const segments = summary && Array.isArray(summary.segments) ? summary.segments : [];
+  const mode = ce && ce.rule_mode === 'first_match' ? 'first_match' : 'stack';
+  const consumed = mode === 'first_match' ? new Set() : null;
+
   const lines = [];
   let total = 0;
-  for (const rule of rules) {
-    const scoped = selectedScopeTotals(summary, rule.appliesTo);
+  for (const rule of perOrderRules) {
+    let scopedRevenueGbp = 0;
+    let scopedOrders = 0;
+    let scopedItems = 0;
+    const start = normalizeYmd(rule.start_date, '2000-01-01');
+    const end = normalizeYmd(rule.end_date, '');
+    for (const seg of segments) {
+      if (!seg || !seg.ymd) continue;
+      if (consumed && consumed.has(`${seg.ymd}:${seg.country}`)) continue;
+      if (start && seg.ymd < start) continue;
+      if (end && seg.ymd > end) continue;
+      if (!segmentMatchesAppliesTo(seg, rule.appliesTo)) continue;
+      scopedRevenueGbp += segmentRevenueForBasis(seg, rule.revenue_basis);
+      scopedOrders += Number(seg.orders) || 0;
+      scopedItems += Number(seg.items) || 0;
+      if (consumed) consumed.add(`${seg.ymd}:${seg.country}`);
+    }
     const value = Number(rule.value) || 0;
     let deduction = 0;
-    if (rule.type === PROFIT_RULE_TYPES.percentRevenue) deduction = scoped.revenueGbp * (value / 100);
-    else if (rule.type === PROFIT_RULE_TYPES.fixedPerOrder) deduction = scoped.orders * value;
-    else if (rule.type === PROFIT_RULE_TYPES.fixedPerPeriod) deduction = value;
+    if (rule.type === PROFIT_RULE_TYPES.percentRevenue) deduction = scopedRevenueGbp * (value / 100);
+    else if (rule.type === PROFIT_RULE_TYPES.fixedPerOrder) deduction = scopedOrders * value;
+    else if (rule.type === PROFIT_RULE_TYPES.fixedPerItem) deduction = scopedItems * value;
     if (!Number.isFinite(deduction) || deduction <= 0) continue;
     const rounded = round2(deduction) || 0;
     total += rounded;
@@ -1689,9 +2054,35 @@ function computeProfitDeductionsAudit(summary, config) {
       applies_to: rule.appliesTo && rule.appliesTo.mode === 'countries' ? (rule.appliesTo.countries || []) : 'ALL',
       type: rule.type ? String(rule.type) : '',
       value,
-      scoped_revenue_gbp: round2(scoped.revenueGbp) || 0,
-      scoped_orders: Number(scoped.orders) || 0,
+      revenue_basis: rule.revenue_basis || 'incl_tax',
+      start_date: rule.start_date || '',
+      end_date: rule.end_date || '',
+      scoped_revenue_gbp: round2(scopedRevenueGbp) || 0,
+      scoped_orders: Number(scopedOrders) || 0,
+      scoped_items: Number(scopedItems) || 0,
       computed_deduction_gbp: rounded,
+      match_mode: mode,
+    });
+  }
+  for (const overhead of overheads) {
+    const alloc = computeOverheadAllocationGbp(overhead, summary && summary.startYmd, summary && summary.endYmd);
+    const amt = alloc && Number.isFinite(Number(alloc.amountGbp)) ? (Number(alloc.amountGbp) || 0) : 0;
+    if (amt <= 0) continue;
+    const rounded = round2(amt) || 0;
+    total += rounded;
+    lines.push({
+      id: overhead.id ? String(overhead.id) : '',
+      label: overhead.name ? String(overhead.name) : 'Overhead',
+      enabled: overhead.enabled === true,
+      applies_to: overhead.appliesTo && overhead.appliesTo.mode === 'countries' ? (overhead.appliesTo.countries || []) : 'ALL',
+      type: 'overhead_' + String(overhead.kind || 'recurring') + '_' + String(overhead.frequency || 'monthly'),
+      value: Number(overhead.amount) || 0,
+      start_date: overhead.date || '',
+      end_date: overhead.end_date || '',
+      scoped_revenue_gbp: 0,
+      scoped_orders: 0,
+      computed_deduction_gbp: rounded,
+      notes: alloc && alloc.notes ? String(alloc.notes) : '',
     });
   }
   return { totalGbp: round2(total) || 0, lines };
@@ -2377,7 +2768,7 @@ async function getBusinessSnapshot(options = {}) {
         if (t === PROFIT_RULE_TYPES.fixedPerPeriod) {
           const perDay = amt / daysCount;
           for (let i = 0; i < expensesDaily.length; i += 1) expensesDaily[i] += perDay;
-        } else if (t === PROFIT_RULE_TYPES.fixedPerOrder) {
+        } else if (t === PROFIT_RULE_TYPES.fixedPerOrder || t === PROFIT_RULE_TYPES.fixedPerItem) {
           const denom = ordTotalDaily > 0 ? ordTotalDaily : daysCount;
           for (let i = 0; i < expensesDaily.length; i += 1) {
             const w = ordTotalDaily > 0 ? (Number(ord[i]) || 0) : 1;
@@ -2488,8 +2879,8 @@ async function getBusinessSnapshot(options = {}) {
     readCustomerTypeTimeseries(shop, bounds.start, bounds.end, timeZone).catch(() => new Map()),
     readCustomerTypeTimeseries(shop, compareBounds.start, compareBounds.end, timeZone).catch(() => new Map()),
     readShopName(shop, token).catch(() => null),
-    (rulesEnabled || shippingEnabled) ? readOrderCountrySummary(shop, bounds.start, bounds.end) : Promise.resolve(null),
-    (rulesEnabled || shippingEnabled) ? readOrderCountrySummary(shop, compareBounds.start, compareBounds.end) : Promise.resolve(null),
+    (rulesEnabled || shippingEnabled) ? readOrderCostSummary(shop, bounds.start, bounds.end, timeZone).catch(() => null) : Promise.resolve(null),
+    (rulesEnabled || shippingEnabled) ? readOrderCostSummary(shop, compareBounds.start, compareBounds.end, timeZone).catch(() => null) : Promise.resolve(null),
     readCogsTotalGbpFromLineItems(shop, token, bounds.start, bounds.end).catch(() => null),
     readCogsTotalGbpFromLineItems(shop, token, compareBounds.start, compareBounds.end).catch(() => null),
     readGoogleAdsSpendDailyGbp(bounds.start, bounds.end, timeZone).catch(() => ({ totalGbp: 0, byYmd: new Map(), totalClicks: 0, clicksByYmd: new Map() })),
@@ -3110,9 +3501,13 @@ async function getCostBreakdown({ rangeKey, audit } = {}) {
   const endYmd = ymdInTimeZone(Math.max(startTs, endTs - 1), timeZone) || new Date(Math.max(startTs, endTs - 1)).toISOString().slice(0, 10);
 
   const profitRules = await readProfitRulesConfig();
-  const rulesList = Array.isArray(profitRules && profitRules.rules) ? profitRules.rules : [];
-  const enabledRulesCount = rulesList.filter((r) => r && r.enabled === true).length;
-  const rulesConfigured = rulesList.length > 0;
+  const ce = profitRules && profitRules.cost_expenses && typeof profitRules.cost_expenses === 'object' ? profitRules.cost_expenses : null;
+  const perOrderList = ce && Array.isArray(ce.per_order_rules) ? ce.per_order_rules : [];
+  const overheadList = ce && Array.isArray(ce.overheads) ? ce.overheads : [];
+  const enabledRulesCount =
+    perOrderList.filter((r) => r && r.enabled === true).length +
+    overheadList.filter((o) => o && o.enabled === true).length;
+  const rulesConfigured = (perOrderList.length + overheadList.length) > 0;
   const rulesWouldApply = enabledRulesCount > 0;
 
   const shippingCfg = profitRules && profitRules.shipping && typeof profitRules.shipping === 'object'
@@ -3130,7 +3525,7 @@ async function getCostBreakdown({ rangeKey, audit } = {}) {
 
   const needsOrderSummary = !!shop && (rulesWouldApply || shippingConfigured);
   const summaryPromise = needsOrderSummary
-    ? readOrderCountrySummary(shop, startTs, endTs).catch(() => null)
+    ? readOrderCostSummary(shop, startTs, endTs, timeZone).catch(() => null)
     : Promise.resolve(null);
 
   const cogsPromise = (shop && token)
@@ -3200,7 +3595,7 @@ async function getCostBreakdown({ rangeKey, audit } = {}) {
     ? (taxAmountRaw && typeof taxAmountRaw === 'object' ? (round2(Number(taxAmountRaw.totalGbp) || 0) || 0) : 0)
     : (round2(Number(taxAmountRaw) || 0) || 0);
 
-  const rulesDetailed = (summary && rulesWouldApply) ? computeProfitDeductionsDetailed(summary, profitRules) : { total: 0, lines: [] };
+  const rulesDetailed = (summary && rulesConfigured) ? computeProfitDeductionsDetailed(summary, profitRules) : { total: 0, lines: [] };
   const rulesAmount = round2(Number(rulesDetailed && rulesDetailed.total) || 0) || 0;
 
   const shippingAmount = (summary && shippingConfigured)
@@ -3278,41 +3673,37 @@ async function getCostBreakdown({ rangeKey, audit } = {}) {
   }
 
   const ruleDetails = [];
-  if (summary && rulesConfigured) {
-    const normalized = normalizeProfitRulesConfigV1(profitRules);
-    const list = Array.isArray(normalized && normalized.rules) ? normalized.rules : [];
-    for (const rule of list) {
-      if (!rule || rule.enabled !== true) continue;
-      const scoped = selectedScopeTotals(summary, rule.appliesTo);
-      const value = Number(rule.value) || 0;
-      let deduction = 0;
-      if (rule.type === PROFIT_RULE_TYPES.percentRevenue) deduction = scoped.revenueGbp * (value / 100);
-      else if (rule.type === PROFIT_RULE_TYPES.fixedPerOrder) deduction = scoped.orders * value;
-      else if (rule.type === PROFIT_RULE_TYPES.fixedPerPeriod) deduction = value;
-      if (!Number.isFinite(deduction) || deduction < 0) deduction = 0;
-      const scopeLabel = (rule.appliesTo && rule.appliesTo.mode === 'countries' && Array.isArray(rule.appliesTo.countries) && rule.appliesTo.countries.length)
-        ? rule.appliesTo.countries.join(', ')
-        : 'ALL';
-      const typeLabel = rule.type === PROFIT_RULE_TYPES.fixedPerOrder
-        ? 'Fixed per order'
-        : rule.type === PROFIT_RULE_TYPES.fixedPerPeriod
-          ? 'Fixed per period'
-          : '% of revenue';
-      const valueLabel = rule.type === PROFIT_RULE_TYPES.percentRevenue
-        ? (value.toFixed(2).replace(/\.00$/, '') + '%')
-        : ('£' + value.toFixed(2));
+  if (rulesDetailed && Array.isArray(rulesDetailed.lines)) {
+    for (const line of rulesDetailed.lines) {
+      if (!line || !line.label) continue;
+      const amt = Number(line.amountGbp) || 0;
+      if (!Number.isFinite(amt) || amt < 0) continue;
+      const notes = (() => {
+        const t = line.type ? String(line.type) : '';
+        if (t === PROFIT_RULE_TYPES.percentRevenue) {
+          const basis = line.revenue_basis === 'excl_tax' ? 'excl tax' : line.revenue_basis === 'excl_shipping' ? 'excl shipping' : 'incl tax';
+          return `${scopeLabelFromAppliesTo(line.appliesTo)} · ${basis} · £${Number(line.scopedRevenueGbp || 0).toFixed(2)} × ${Number(line.value || 0).toFixed(2).replace(/\.00$/, '')}% · ${Number(line.scopedOrders || 0)} orders`;
+        }
+        if (t === PROFIT_RULE_TYPES.fixedPerItem) {
+          return `${scopeLabelFromAppliesTo(line.appliesTo)} · ${Number(line.scopedItems || 0)} items × £${Number(line.value || 0).toFixed(2)}`;
+        }
+        if (t === PROFIT_RULE_TYPES.fixedPerOrder) {
+          return `${scopeLabelFromAppliesTo(line.appliesTo)} · ${Number(line.scopedOrders || 0)} orders × £${Number(line.value || 0).toFixed(2)}`;
+        }
+        return line.notes ? String(line.notes) : '';
+      })();
       ruleDetails.push({
-        key: 'rule_' + (rule.id ? String(rule.id).slice(0, 64) : String(ruleDetails.length + 1)),
+        key: 'rules_detail_' + (line.id ? String(line.id).slice(0, 64) : String(ruleDetails.length + 1)),
         parent_key: 'rules',
         is_detail: true,
-        label: rule.name ? String(rule.name) : 'Expense',
+        label: String(line.label),
         configured: true,
         active: rulesActive,
-        amount: round2(deduction) || 0,
+        amount: round2(amt) || 0,
         currency: 'GBP',
-        notes: scopeLabel + ' · ' + typeLabel + ' · ' + valueLabel,
+        notes,
       });
-      if (ruleDetails.length >= 100) break;
+      if (ruleDetails.length >= 150) break;
     }
   }
 
@@ -3384,7 +3775,9 @@ async function getCostBreakdown({ rangeKey, audit } = {}) {
     active: rulesActive,
     amount: rulesAmount,
     currency: 'GBP',
-    notes: rulesConfigured ? (enabledRulesCount > 0 ? (enabledRulesCount + ' rule(s) enabled') : 'No enabled rules') : 'No rules defined',
+    notes: rulesConfigured
+      ? (`Per-order rules £${Number(rulesDetailed && rulesDetailed.perOrderTotal || 0).toFixed(2)} · Overheads £${Number(rulesDetailed && rulesDetailed.overheadTotal || 0).toFixed(2)}` + (enabledRulesCount > 0 ? ` · ${enabledRulesCount} enabled` : ' · none enabled'))
+      : 'No rules defined',
   });
   ruleDetails.forEach((d) => items.push(d));
 
@@ -3574,7 +3967,7 @@ async function getRevenueAndCostForGoogleAdsPostback(shop, startMs, endMs, deduc
       paymentFeesTotalGbp: 0, appBillsTotalGbp: 0,
     })) : { paymentFeesTotalGbp: 0, appBillsTotalGbp: 0 },
     shop ? readTruthCheckoutTaxTotalGbp(shop, startMs, endMs).catch(() => 0) : 0,
-    needsSummary && shop ? readOrderCountrySummary(shop, startMs, endMs).catch(() => null) : null,
+    needsSummary && shop ? readOrderCostSummary(shop, startMs, endMs, timeZone).catch(() => null) : null,
     readProfitRulesConfig().catch(() => null),
   ]);
 
@@ -3594,10 +3987,59 @@ async function getRevenueAndCostForGoogleAdsPostback(shop, startMs, endMs, deduc
   return { revenueGbp: rev, costGbp: round2(costGbp) || 0 };
 }
 
+/**
+ * Preview the impact of a single per-order rule draft over a range.
+ * Body: { profitRules, draftRule }
+ * Query: range=today|7d|30d
+ */
+async function previewPerOrderRuleImpact({ rangeKey, profitRules, draftRule } = {}) {
+  const timeZone = store.resolveAdminTimeZone();
+  const nowMs = Date.now();
+  const raw = rangeKey != null ? String(rangeKey).trim().toLowerCase() : '';
+  const safeRange = raw === 'today' || raw === '7d' || raw === '30d' ? raw : '7d';
+  const bounds = store.getRangeBounds(safeRange, nowMs, timeZone);
+  const startTs = bounds && bounds.start != null ? Number(bounds.start) : nowMs;
+  const endTs = bounds && bounds.end != null ? Number(bounds.end) : nowMs;
+
+  const shop = salesTruth.resolveShopForSales('');
+  if (!shop) return { ok: true, totalGbp: 0 };
+
+  const summary = await readOrderCostSummary(shop, startTs, endTs, timeZone).catch(() => null);
+  const normalized = normalizeProfitRulesConfigV1(profitRules);
+  const ce = normalized && normalized.cost_expenses && typeof normalized.cost_expenses === 'object'
+    ? normalized.cost_expenses
+    : { rule_mode: 'stack', per_order_rules: [], overheads: [] };
+
+  const draft = (() => {
+    if (!draftRule || typeof draftRule !== 'object') return null;
+    const id = draftRule.id != null ? String(draftRule.id).trim() : '';
+    if (!id) return null;
+    // Reuse normalizer by passing through config shape.
+    const tmp = normalizeProfitRulesConfigV1({ ...normalized, cost_expenses: { ...ce, per_order_rules: [draftRule], overheads: [] } });
+    const list = tmp && tmp.cost_expenses && Array.isArray(tmp.cost_expenses.per_order_rules) ? tmp.cost_expenses.per_order_rules : [];
+    return list[0] || null;
+  })();
+
+  if (draft) {
+    const next = Array.isArray(ce.per_order_rules) ? ce.per_order_rules.slice() : [];
+    const idx = next.findIndex((r) => r && String(r.id) === String(draft.id));
+    if (idx !== -1) next[idx] = draft;
+    else next.push(draft);
+    normalized.cost_expenses = { ...ce, per_order_rules: next, overheads: [] };
+  } else {
+    normalized.cost_expenses = { ...ce, overheads: [] };
+  }
+
+  const res = summary ? computeProfitDeductionsDetailed(summary, normalized) : { perOrderTotal: 0 };
+  const total = round2(Number(res && res.perOrderTotal) || 0) || 0;
+  return { ok: true, totalGbp: total };
+}
+
 module.exports = {
   getBusinessSnapshot,
   getCostBreakdown,
   getRevenueAndCostForGoogleAdsPostback,
+  previewPerOrderRuleImpact,
   resolveSnapshotWindows,
   readShopifyBalanceCostsGbp,
   // Exposed for unit tests / audits.

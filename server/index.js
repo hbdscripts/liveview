@@ -68,6 +68,7 @@ const dashboardSeries = require('./routes/dashboardSeries');
 const businessSnapshot = require('./routes/businessSnapshot');
 const costHealth = require('./routes/costHealth');
 const costBreakdown = require('./routes/costBreakdown');
+const costExpensesPreview = require('./routes/costExpensesPreview');
 const performance = require('./routes/performance');
 const dashboardAuth = require('./middleware/dashboardAuth');
 const requireMaster = require('./middleware/requireMaster');
@@ -258,6 +259,7 @@ app.get('/api/dashboard-series', dashboardSeries.getDashboardSeries);
 app.get('/api/business-snapshot', requireMaster.middleware, businessSnapshot.getBusinessSnapshot);
 app.get('/api/cost/health', requireMaster.middleware, costHealth.getCostHealth);
 app.get('/api/cost-breakdown', requireMaster.middleware, costBreakdown.getCostBreakdown);
+app.post('/api/cost-expenses/per-order-preview', requireMaster.middleware, costExpensesPreview.postPerOrderPreview);
 app.use('/api/performance', performance);
 // Ads feature area: mounted as a router to keep Ads endpoints self-contained.
 app.use('/api/ads', adsRouter);

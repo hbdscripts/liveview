@@ -4,6 +4,7 @@ const PROFIT_RULE_TYPES = Object.freeze({
   percentRevenue: 'percent_revenue',
   fixedPerOrder: 'fixed_per_order',
   fixedPerPeriod: 'fixed_per_period',
+  fixedPerItem: 'fixed_per_item',
 });
 
 const PROFIT_RULE_TYPE_SET = new Set(Object.values(PROFIT_RULE_TYPES));
@@ -58,6 +59,11 @@ function defaultProfitRulesConfigV1() {
       includePaymentFees: false,
       includeKlarnaFees: false,
       includeShopifyTaxes: false,
+    },
+    cost_expenses: {
+      rule_mode: 'stack', // stack | first_match
+      per_order_rules: [],
+      overheads: [],
     },
     rules: [],
     shipping: defaultShippingConfig(),
@@ -157,6 +163,77 @@ function normalizeRule(rawRule, idx) {
   };
 }
 
+function normalizeRuleMode(value) {
+  const raw = value == null ? '' : String(value).trim().toLowerCase();
+  if (raw === 'first_match' || raw === 'first-match' || raw === 'first') return 'first_match';
+  return 'stack';
+}
+
+function normalizeRevenueBasis(value) {
+  const raw = value == null ? '' : String(value).trim().toLowerCase();
+  if (raw === 'excl_tax' || raw === 'excl-tax') return 'excl_tax';
+  if (raw === 'excl_shipping' || raw === 'excl-shipping') return 'excl_shipping';
+  return 'incl_tax';
+}
+
+function normalizeYmd(value, fallback) {
+  const raw = value == null ? '' : String(value).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+  const fb = fallback == null ? '' : String(fallback).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(fb)) return fb;
+  return '';
+}
+
+function ymdTodayUtc() {
+  try { return new Date().toISOString().slice(0, 10); } catch (_) { return '2000-01-01'; }
+}
+
+function normalizePerOrderRule(rawRule, idx) {
+  const raw = rawRule && typeof rawRule === 'object' ? rawRule : {};
+  const type = (() => {
+    const t = raw.type == null ? '' : String(raw.type).trim().toLowerCase();
+    if (t === PROFIT_RULE_TYPES.fixedPerItem) return PROFIT_RULE_TYPES.fixedPerItem;
+    if (t === PROFIT_RULE_TYPES.fixedPerOrder) return PROFIT_RULE_TYPES.fixedPerOrder;
+    return PROFIT_RULE_TYPES.percentRevenue;
+  })();
+  return {
+    id: normalizeRuleId(raw.id, idx),
+    name: normalizeRuleName(raw.name, 'Expense'),
+    appliesTo: normalizeAppliesTo(raw.appliesTo),
+    type,
+    value: normalizeRuleValue(raw.value),
+    revenue_basis: normalizeRevenueBasis(raw.revenue_basis),
+    start_date: normalizeYmd(raw.start_date, '2000-01-01'),
+    end_date: normalizeYmd(raw.end_date, ''),
+    enabled: normalizeRuleEnabled(raw.enabled, true),
+    sort: normalizeRuleSort(raw.sort, idx + 1),
+    notes: normalizeRuleNotes(raw.notes),
+  };
+}
+
+function normalizeOverhead(rawOverhead, idx) {
+  const raw = rawOverhead && typeof rawOverhead === 'object' ? rawOverhead : {};
+  const kindRaw = raw.kind == null ? '' : String(raw.kind).trim().toLowerCase();
+  const kind = (kindRaw === 'one_off' || kindRaw === 'one-off') ? 'one_off' : 'recurring';
+  const freqRaw = raw.frequency == null ? '' : String(raw.frequency).trim().toLowerCase();
+  const frequency = (freqRaw === 'daily' || freqRaw === 'weekly' || freqRaw === 'monthly' || freqRaw === 'yearly') ? freqRaw : 'monthly';
+  const allocRaw = raw.monthly_allocation == null ? '' : String(raw.monthly_allocation).trim().toLowerCase();
+  const monthly_allocation = allocRaw === 'calendar' ? 'calendar' : 'prorate';
+  return {
+    id: normalizeRuleId(raw.id, idx).replace(/^rule_/, 'oh_'),
+    name: normalizeRuleName(raw.name, 'Overhead'),
+    kind,
+    amount: normalizeRuleValue(raw.amount),
+    date: normalizeYmd(raw.date || raw.start_date, ymdTodayUtc()),
+    end_date: normalizeYmd(raw.end_date, ''),
+    frequency,
+    monthly_allocation,
+    enabled: normalizeRuleEnabled(raw.enabled, true),
+    appliesTo: normalizeAppliesTo(raw.appliesTo),
+    notes: normalizeRuleNotes(raw.notes),
+  };
+}
+
 function normalizeProfitRulesConfigV1(raw) {
   const parsed = (() => {
     if (raw && typeof raw === 'object') return raw;
@@ -206,11 +283,82 @@ function normalizeProfitRulesConfigV1(raw) {
   });
   out.rules = normalized;
   out.shipping = normalizeShippingConfig(parsed.shipping);
+
+  // New model: cost_expenses.per_order_rules + cost_expenses.overheads (+ rule_mode).
+  const ce = parsed.cost_expenses && typeof parsed.cost_expenses === 'object' ? parsed.cost_expenses : null;
+  if (ce) {
+    const por = Array.isArray(ce.per_order_rules) ? ce.per_order_rules : [];
+    const oh = Array.isArray(ce.overheads) ? ce.overheads : [];
+    out.cost_expenses = {
+      rule_mode: normalizeRuleMode(ce.rule_mode),
+      per_order_rules: por.slice(0, 200).map((r, i) => normalizePerOrderRule(r, i)).sort((a, b) => {
+        const sa = Number(a.sort) || 0;
+        const sb = Number(b.sort) || 0;
+        if (sa !== sb) return sa - sb;
+        return String(a.id).localeCompare(String(b.id));
+      }),
+      overheads: oh.slice(0, 200).map((r, i) => normalizeOverhead(r, i)).sort((a, b) =>
+        String(a.name || '').localeCompare(String(b.name || ''))
+      ),
+    };
+  } else {
+    // Legacy migration: map fixed_per_period → overheads; keep existing rules always-on.
+    const per_order_rules = [];
+    const overheads = [];
+    for (let i = 0; i < normalized.length; i += 1) {
+      const r = normalized[i];
+      if (!r) continue;
+      if (r.type === PROFIT_RULE_TYPES.fixedPerPeriod) {
+        overheads.push(normalizeOverhead({
+          id: r.id,
+          name: r.name,
+          kind: 'recurring',
+          amount: r.value,
+          frequency: 'monthly',
+          monthly_allocation: 'prorate',
+          date: ymdTodayUtc(),
+          end_date: '',
+          enabled: r.enabled !== false,
+          appliesTo: r.appliesTo,
+          notes: (r.notes ? String(r.notes).trim() + ' ' : '') + 'Migrated from legacy fixed per period rule. Review dates/frequency.',
+        }, i));
+      } else {
+        per_order_rules.push(normalizePerOrderRule({
+          id: r.id,
+          name: r.name,
+          appliesTo: r.appliesTo,
+          type: r.type,
+          value: r.value,
+          revenue_basis: 'incl_tax',
+          start_date: '2000-01-01',
+          end_date: '',
+          enabled: r.enabled !== false,
+          sort: r.sort,
+          notes: r.notes,
+        }, i));
+      }
+    }
+    out.cost_expenses = {
+      rule_mode: 'stack',
+      per_order_rules: per_order_rules.sort((a, b) => {
+        const sa = Number(a.sort) || 0;
+        const sb = Number(b.sort) || 0;
+        if (sa !== sb) return sa - sb;
+        return String(a.id).localeCompare(String(b.id));
+      }),
+      overheads: overheads.sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''))),
+    };
+  }
   return out;
 }
 
 function hasEnabledProfitRules(config) {
   if (!config || typeof config !== 'object' || config.enabled !== true) return false;
+  const ce = config.cost_expenses && typeof config.cost_expenses === 'object' ? config.cost_expenses : null;
+  const perOrder = ce && Array.isArray(ce.per_order_rules) ? ce.per_order_rules : [];
+  const overheads = ce && Array.isArray(ce.overheads) ? ce.overheads : [];
+  if (perOrder.some((r) => r && r.enabled === true)) return true;
+  if (overheads.some((o) => o && o.enabled === true)) return true;
   const rules = Array.isArray(config.rules) ? config.rules : [];
   return rules.some((rule) => rule && rule.enabled === true);
 }

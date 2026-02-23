@@ -39,6 +39,7 @@ When adding a route, re-run this script so the doc stays in sync.
 | PUT | `/api/chart-settings/:chartKey` | server/routes/settings.js (putChartSettings) |
 | GET | `/api/config-status` | server/routes/configStatus.js |
 | GET | `/api/cost-breakdown` | (+ requireMaster) |
+| POST | `/api/cost-expenses/per-order-preview` | (+ requireMaster) |
 | GET | `/api/cost/health` | (+ requireMaster) |
 | GET | `/api/dashboard-series` | server/routes/dashboardSeries.js (getDashboardSeries) |
 | GET | `/api/devices/observed` | server/routes/devices.js (getObservedDevices) |

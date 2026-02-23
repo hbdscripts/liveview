@@ -760,63 +760,208 @@
             </div>
             <div id="settings-cost-expenses-panel-rules" class="settings-cost-expenses-panel" role="tabpanel" aria-labelledby="settings-cost-expenses-tab-rules">
               <div id="cost-expenses-rules-excluded-hint" class="text-muted small mb-2 is-hidden">Rules are currently excluded from Cost sources.</div>
-              <div class="d-flex align-items-center justify-content-between mb-2">
-                <h6 class="m-0" title="Custom cost rules (e.g. % of revenue or fixed per order) applied per order. Enable &quot;Include custom rules in cost&quot; under Cost sources for these to affect profit.">Rules <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></h6>
-                <button type="button" class="btn btn-sm btn-primary" id="cost-expenses-rules-add-btn">Add rule</button>
-              </div>
-              <div class="text-muted small mb-2">Rules run in priority order. Scope can be All countries or specific ISO country codes.</div>
-              <div id="cost-expenses-rules-msg" class="is-hidden"></div>
-              <div class="table-responsive">
-                <table class="table table-sm">
-                  <thead>
-                    <tr>
-                      <th><span title="Short name for this rule (e.g. Payment fees), shown in the list and in Cost Breakdown.">Rule <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></span></th>
-                      <th><span title="How the cost is applied: % of revenue, fixed per order, or fixed per period.">Type <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></span></th>
-                      <th class="text-end"><span title="Numeric value: percentage, or fixed amount in GBP depending on rule type.">Value <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></span></th>
-                      <th class="text-center"><span title="Scope: ALL for every order, or comma-separated ISO2 country codes (e.g. GB, IE, FR).">Country <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></span></th>
-                      <th class="text-center"><span title="When on, this rule is included in cost calculations; when off, it is skipped but kept in the list.">Enabled <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></span></th>
-                      <th class="text-end">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody id="cost-expenses-rules-table-body"></tbody>
-                </table>
-              </div>
-              <div class="card mt-3 is-hidden" id="cost-expenses-rules-form-wrap">
+              <div class="text-muted small mb-3">Per-order rules apply to each order; overheads apply across time ranges.</div>
+
+              <div class="card card-sm mb-3" id="cost-expenses-per-order-card">
                 <div class="card-body">
-                  <input type="hidden" id="cost-expenses-rule-id" />
-                  <div class="row g-2">
-                    <div class="col-12 col-md-4">
-                      <label class="form-label" for="cost-expenses-rule-name" title="A short label for this rule (e.g. Payment fees) so you can identify it in the list and in Cost Breakdown.">Name <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>
-                      <input type="text" id="cost-expenses-rule-name" class="form-control" placeholder="e.g. Payment fees" />
-                    </div>
-                    <div class="col-12 col-md-3">
-                      <label class="form-label" for="cost-expenses-rule-type" title="How the cost is applied: % of revenue, a fixed amount per order, or a fixed amount per period.">Type <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>
-                      <select id="cost-expenses-rule-type" class="form-select">
-                        <option value="percent_revenue">% of revenue</option>
-                        <option value="fixed_per_order">Fixed per order</option>
-                        <option value="fixed_per_period">Fixed per period</option>
+                  <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
+                    <h5 class="mb-0">Per-order rules</h5>
+                    <button type="button" class="btn btn-sm btn-primary" id="cost-expenses-per-order-add-btn">Add per-order rule</button>
+                  </div>
+                  <div class="text-muted small mb-3">Use these for fees, packaging, and other costs that scale with orders, items, or revenue.</div>
+
+                  <div class="row g-2 align-items-end mb-3">
+                    <div class="col-12 col-md-6 col-lg-5">
+                      <label class="form-label" for="cost-expenses-rule-mode" title="Stack applies every matching rule. First match applies only the first matching rule by sort order.">Rule matching <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>
+                      <select id="cost-expenses-rule-mode" class="form-select">
+                        <option value="stack">Stack matching rules (recommended)</option>
+                        <option value="first_match">First match wins (by sort order)</option>
                       </select>
-                    </div>
-                    <div class="col-12 col-md-2">
-                      <label class="form-label" for="cost-expenses-rule-value" title="The numeric value: percentage (e.g. 2.9), or fixed amount in GBP depending on the rule type.">Value <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>
-                      <input type="number" id="cost-expenses-rule-value" class="form-control" min="0" step="0.01" placeholder="e.g. 2.9" />
-                    </div>
-                    <div class="col-12 col-md-2">
-                      <label class="form-label" for="cost-expenses-rule-country" title="Scope: ALL to apply to every order, or comma-separated ISO2 country codes (e.g. GB, IE, FR) to apply only to those countries.">Country <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>
-                      <input type="text" id="cost-expenses-rule-country" class="form-control" placeholder="ALL or GB,IE,FR" title="ALL or comma-separated ISO codes" />
-                    </div>
-                    <div class="col-12 col-md-1">
-                      <label class="form-label" for="cost-expenses-rule-sort" title="Lower numbers run first. Use this to control priority when multiple rules could apply to the same order.">Sort <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>
-                      <input type="number" id="cost-expenses-rule-sort" class="form-control" min="1" step="1" placeholder="e.g. 10" />
+                      <div class="form-hint">Sort still controls order. Country and effective dates define what matches.</div>
                     </div>
                   </div>
-                  <label class="form-check mt-2">
-                    <input class="form-check-input" type="checkbox" id="cost-expenses-rule-enabled" checked />
-                    <span class="form-check-label" title="When checked, this rule is included in cost calculations. When unchecked, it is excluded but kept in the list.">Rule enabled <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></span>
-                  </label>
-                  <div class="d-flex gap-2 mt-3">
-                    <button type="button" class="btn btn-primary btn-md" id="cost-expenses-rule-save-btn">Save Settings</button>
-                    <button type="button" class="btn btn-md" id="cost-expenses-rule-cancel-btn">Cancel</button>
+
+                  <div id="cost-expenses-per-order-msg" class="is-hidden"></div>
+                  <div class="table-responsive">
+                    <table class="table table-sm align-middle">
+                      <thead>
+                        <tr>
+                          <th><span title="Short name for this rule (e.g. Payment fees).">Rule <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></span></th>
+                          <th><span title="How this rule is applied: % of revenue, fixed per order, or fixed per item.">Type <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></span></th>
+                          <th class="text-end"><span title="Numeric value: percentage, or fixed amount in GBP depending on rule type.">Value <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></span></th>
+                          <th><span title="For % rules only: which revenue base the percentage applies to.">Revenue basis <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></span></th>
+                          <th><span title="First day this rule applies (inclusive).">Start <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></span></th>
+                          <th><span title="Last day this rule applies (inclusive). Blank = no end date.">End <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></span></th>
+                          <th><span title="Scope: ALL, or specific ISO2 country codes (e.g. GB, IE, FR).">Country <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></span></th>
+                          <th class="text-center"><span title="When on, this rule is included in cost calculations; when off, it is skipped but kept in the list.">Enabled <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></span></th>
+                          <th class="text-end">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody id="cost-expenses-per-order-table-body"></tbody>
+                    </table>
+                  </div>
+
+                  <div class="card mt-3 is-hidden" id="cost-expenses-per-order-form-wrap">
+                    <div class="card-body">
+                      <input type="hidden" id="cost-expenses-per-order-id" />
+                      <div class="row g-2">
+                        <div class="col-12 col-md-4">
+                          <label class="form-label" for="cost-expenses-per-order-name" title="A short label for this rule (e.g. Payment fees) so you can identify it in the list and in Cost Breakdown.">Name <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>
+                          <input type="text" id="cost-expenses-per-order-name" class="form-control" placeholder="e.g. Payment fees" />
+                        </div>
+                        <div class="col-12 col-md-3">
+                          <label class="form-label" for="cost-expenses-per-order-type" title="Choose how the cost scales: % of revenue, fixed per order, or fixed per item (quantity-based).">Type <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>
+                          <select id="cost-expenses-per-order-type" class="form-select">
+                            <option value="percent_revenue">% of revenue</option>
+                            <option value="fixed_per_order">Fixed per order</option>
+                            <option value="fixed_per_item">Fixed per item</option>
+                          </select>
+                        </div>
+                        <div class="col-12 col-md-2">
+                          <label class="form-label" for="cost-expenses-per-order-value" title="The numeric value: percentage (e.g. 2.9), or fixed amount in GBP depending on the rule type.">Value <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>
+                          <input type="number" id="cost-expenses-per-order-value" class="form-control" min="0" step="0.01" placeholder="e.g. 2.9" />
+                        </div>
+                        <div class="col-12 col-md-3">
+                          <label class="form-label" for="cost-expenses-per-order-revenue-basis" title="For % rules only. Defaults to the revenue used by KPIs today (order total incl tax).">Revenue basis <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>
+                          <select id="cost-expenses-per-order-revenue-basis" class="form-select">
+                            <option value="incl_tax">Order total incl tax</option>
+                            <option value="excl_tax">Order total excl tax</option>
+                            <option value="excl_shipping">Order total excl shipping</option>
+                          </select>
+                        </div>
+                        <div class="col-12 col-md-3">
+                          <label class="form-label" for="cost-expenses-per-order-start" title="Required. Rule applies from this date onwards (inclusive).">Start date <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>
+                          <input type="date" id="cost-expenses-per-order-start" class="form-control" />
+                        </div>
+                        <div class="col-12 col-md-3">
+                          <label class="form-label" for="cost-expenses-per-order-end" title="Optional. If set, the rule stops applying after this date (inclusive).">End date <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>
+                          <input type="date" id="cost-expenses-per-order-end" class="form-control" />
+                        </div>
+                        <div class="col-12 col-md-3">
+                          <label class="form-label" for="cost-expenses-per-order-country" title="Scope: leave blank for ALL, or enter comma-separated ISO2 country codes.">Country <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>
+                          <input type="text" id="cost-expenses-per-order-country" class="form-control" placeholder="ALL or GB,IE,FR" title="ALL or comma-separated ISO codes" />
+                        </div>
+                        <div class="col-12 col-md-3">
+                          <label class="form-label" for="cost-expenses-per-order-sort" title="Lower numbers run first. Used for evaluation order and first-match mode.">Sort <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>
+                          <input type="number" id="cost-expenses-per-order-sort" class="form-control" min="1" step="1" placeholder="e.g. 10" />
+                        </div>
+                      </div>
+                      <label class="form-check mt-2">
+                        <input class="form-check-input" type="checkbox" id="cost-expenses-per-order-enabled" checked />
+                        <span class="form-check-label" title="When checked, this rule is included in cost calculations. When unchecked, it is excluded but kept in the list.">Rule enabled <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></span>
+                      </label>
+
+                      <div class="mt-3">
+                        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
+                          <div class="fw-semibold">Preview</div>
+                          <div class="btn-group" role="group" aria-label="Per-order rules preview range">
+                            <button type="button" class="btn btn-sm btn-ghost-secondary" data-ce-per-order-preview-range="today">Today</button>
+                            <button type="button" class="btn btn-sm btn-ghost-secondary" data-ce-per-order-preview-range="7d">7 Days</button>
+                            <button type="button" class="btn btn-sm btn-ghost-secondary" data-ce-per-order-preview-range="30d">30 Days</button>
+                          </div>
+                        </div>
+                        <div id="cost-expenses-per-order-preview" class="form-hint text-muted">Estimated impact will appear here.</div>
+                      </div>
+
+                      <div class="d-flex gap-2 mt-3">
+                        <button type="button" class="btn btn-primary btn-md" id="cost-expenses-per-order-save-btn">Save rule</button>
+                        <button type="button" class="btn btn-md" id="cost-expenses-per-order-cancel-btn">Cancel</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="card card-sm" id="cost-expenses-overheads-card">
+                <div class="card-body">
+                  <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
+                    <h5 class="mb-0">Overheads</h5>
+                    <button type="button" class="btn btn-sm btn-primary" id="cost-expenses-overheads-add-btn">Add overhead</button>
+                  </div>
+                  <div class="text-muted small mb-3">Overheads are time-based expenses (e.g. rent, wages, software) allocated into date ranges.</div>
+
+                  <div id="cost-expenses-overheads-msg" class="is-hidden"></div>
+                  <div class="table-responsive">
+                    <table class="table table-sm align-middle">
+                      <thead>
+                        <tr>
+                          <th><span title="Short name for this overhead (e.g. Rent).">Overhead <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></span></th>
+                          <th><span title="One-off is a single dated expense. Recurring repeats by frequency across time.">Type <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></span></th>
+                          <th class="text-end"><span title="Amount in GBP for the overhead (one-off amount, or recurring amount per frequency).">Amount <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></span></th>
+                          <th><span title="For one-off: the expense date. For recurring: the start date (inclusive).">Date / start <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></span></th>
+                          <th><span title="Optional end date (inclusive). Blank = no end date.">End <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></span></th>
+                          <th><span title="For recurring overheads: daily, weekly, monthly, or yearly.">Frequency <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></span></th>
+                          <th><span title="Optional country scope. Leave blank for ALL.">Country <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></span></th>
+                          <th class="text-center"><span title="When on, this overhead is included in cost calculations; when off, it is skipped but kept in the list.">Enabled <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></span></th>
+                          <th class="text-end">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody id="cost-expenses-overheads-table-body"></tbody>
+                    </table>
+                  </div>
+
+                  <div class="card mt-3 is-hidden" id="cost-expenses-overheads-form-wrap">
+                    <div class="card-body">
+                      <input type="hidden" id="cost-expenses-overhead-id" />
+                      <div class="row g-2">
+                        <div class="col-12 col-md-4">
+                          <label class="form-label" for="cost-expenses-overhead-name" title="A short label for this overhead (e.g. Rent). Shown in Cost Breakdown notes.">Name <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>
+                          <input type="text" id="cost-expenses-overhead-name" class="form-control" placeholder="e.g. Rent" />
+                        </div>
+                        <div class="col-12 col-md-3">
+                          <label class="form-label" for="cost-expenses-overhead-kind" title="Choose whether this is a one-off expense on a date, or a recurring expense by frequency.">Type <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>
+                          <select id="cost-expenses-overhead-kind" class="form-select">
+                            <option value="one_off">One-off expense</option>
+                            <option value="recurring">Recurring expense</option>
+                          </select>
+                        </div>
+                        <div class="col-12 col-md-2">
+                          <label class="form-label" for="cost-expenses-overhead-amount" title="Amount in GBP (one-off amount, or recurring amount per frequency).">Amount (GBP) <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>
+                          <input type="number" id="cost-expenses-overhead-amount" class="form-control" min="0" step="0.01" placeholder="e.g. 1200" />
+                        </div>
+                        <div class="col-12 col-md-3">
+                          <label class="form-label" for="cost-expenses-overhead-date" title="For one-off: the expense date. For recurring: the start date (inclusive).">Date / start <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>
+                          <input type="date" id="cost-expenses-overhead-date" class="form-control" />
+                        </div>
+                        <div class="col-12 col-md-3">
+                          <label class="form-label" for="cost-expenses-overhead-end" title="Optional end date (inclusive). Blank = no end date.">End date <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>
+                          <input type="date" id="cost-expenses-overhead-end" class="form-control" />
+                        </div>
+                        <div class="col-12 col-md-3">
+                          <label class="form-label" for="cost-expenses-overhead-frequency" title="Frequency for recurring overheads. Ignored for one-off overheads.">Frequency <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>
+                          <select id="cost-expenses-overhead-frequency" class="form-select">
+                            <option value="daily">Daily</option>
+                            <option value="weekly">Weekly</option>
+                            <option value="monthly">Monthly</option>
+                            <option value="yearly">Yearly</option>
+                          </select>
+                          <div class="form-hint">Default allocation is prorated by day for selected ranges.</div>
+                        </div>
+                        <div class="col-12 col-md-3">
+                          <label class="form-label" for="cost-expenses-overhead-monthly-allocation" title="For monthly overheads only. Calendar monthly counts monthly occurrences; prorate spreads by day for smoother ranges.">Monthly allocation <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>
+                          <select id="cost-expenses-overhead-monthly-allocation" class="form-select">
+                            <option value="prorate">Prorate by day (recommended)</option>
+                            <option value="calendar">Calendar monthly</option>
+                          </select>
+                        </div>
+                        <div class="col-12 col-md-3">
+                          <label class="form-label" for="cost-expenses-overhead-country" title="Optional. Leave blank for ALL, or enter comma-separated ISO2 country codes if you need country-scoped overheads.">Country <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>
+                          <input type="text" id="cost-expenses-overhead-country" class="form-control" placeholder="ALL or GB,IE,FR" title="ALL or comma-separated ISO codes" />
+                        </div>
+                        <div class="col-12">
+                          <label class="form-label" for="cost-expenses-overhead-notes" title="Internal notes only. Shown in Cost Breakdown notes to explain how this was allocated.">Notes <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>
+                          <input type="text" id="cost-expenses-overhead-notes" class="form-control" placeholder="e.g. Warehouse rent (migrated)" />
+                        </div>
+                      </div>
+                      <label class="form-check mt-2">
+                        <input class="form-check-input" type="checkbox" id="cost-expenses-overhead-enabled" checked />
+                        <span class="form-check-label" title="When checked, this overhead is included in cost calculations. When unchecked, it is excluded but kept in the list.">Overhead enabled <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></span>
+                      </label>
+                      <div class="d-flex gap-2 mt-3">
+                        <button type="button" class="btn btn-primary btn-md" id="cost-expenses-overhead-save-btn">Save overhead</button>
+                        <button type="button" class="btn btn-md" id="cost-expenses-overhead-cancel-btn">Cancel</button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -861,6 +1006,14 @@
                     </div>
                   </div>
                 </div>
+              </div>
+            </div>
+
+            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mt-3">
+              <div id="cost-expenses-msg" class="form-hint m-0 text-muted"></div>
+              <div class="d-flex align-items-center gap-2">
+                <button type="button" class="btn btn-primary btn-md" id="cost-expenses-save-btn">Save Settings</button>
+                <button type="button" class="btn btn-md" id="cost-expenses-reload-btn">Cancel</button>
               </div>
             </div>
             </div>

@@ -14,9 +14,12 @@
   var API = (typeof window !== 'undefined' && window.API) ? String(window.API || '') : '';
   var state = {
     config: null,
-    editingRuleId: '',
+    editingPerOrderId: '',
+    editingOverheadId: '',
     uiBound: false,
     loadInFlight: null,
+    previewRange: '7d',
+    previewReqId: 0,
   };
 
   function fetchJson(url, opts) {
@@ -49,6 +52,16 @@
     return raw === 'UK' ? 'GB' : raw;
   }
 
+  function ymdTodayLocal() {
+    try { return new Date().toLocaleDateString('en-CA'); } catch (_) {}
+    try { return new Date().toISOString().slice(0, 10); } catch (_) {}
+    return '';
+  }
+
+  function defaultCostExpensesModel() {
+    return { rule_mode: 'stack', per_order_rules: [], overheads: [] };
+  }
+
   function defaultConfig() {
     return {
       enabled: false,
@@ -60,8 +73,85 @@
         includeKlarnaFees: false,
         includeShopifyTaxes: false,
       },
-      rules: [],
+      cost_expenses: defaultCostExpensesModel(),
+      rules: [], // legacy (kept for backwards compatibility)
       shipping: { enabled: false, worldwideDefaultGbp: 0, overrides: [] },
+    };
+  }
+
+  function normalizeYmd(value, fallback) {
+    var raw = value == null ? '' : String(value).trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+    return fallback == null ? '' : String(fallback);
+  }
+
+  function normalizeAppliesTo(raw) {
+    var r = raw && typeof raw === 'object' ? raw : {};
+    if (r.mode === 'countries' && Array.isArray(r.countries)) {
+      var seen = {};
+      var countries = [];
+      for (var i = 0; i < r.countries.length && countries.length < 64; i++) {
+        var code = normalizeCountryCode(r.countries[i]);
+        if (code && !seen[code]) { seen[code] = true; countries.push(code); }
+      }
+      if (countries.length) return { mode: 'countries', countries: countries };
+    }
+    return { mode: 'all', countries: [] };
+  }
+
+  function normalizePerOrderRule(rawRule, idx, defaults) {
+    var raw = rawRule && typeof rawRule === 'object' ? rawRule : {};
+    var d = defaults && typeof defaults === 'object' ? defaults : {};
+    var id = (raw.id && String(raw.id).trim()) || (d.id && String(d.id).trim()) || ('por_' + String(idx + 1));
+    var name = (raw.name && String(raw.name).trim()) || (d.name && String(d.name).trim()) || 'Expense';
+    var type = (raw.type && String(raw.type).trim()) || (d.type && String(d.type).trim()) || 'percent_revenue';
+    if (['percent_revenue', 'fixed_per_order', 'fixed_per_item'].indexOf(type) === -1) type = 'percent_revenue';
+    var revenueBasis = (raw.revenue_basis && String(raw.revenue_basis).trim()) || (d.revenue_basis && String(d.revenue_basis).trim()) || 'incl_tax';
+    if (['incl_tax', 'excl_tax', 'excl_shipping'].indexOf(revenueBasis) === -1) revenueBasis = 'incl_tax';
+    var startDate = normalizeYmd(raw.start_date, d.start_date || '2000-01-01');
+    var endDate = normalizeYmd(raw.end_date, d.end_date || '');
+    var enabled = raw.enabled !== false;
+    var sort = Math.max(1, Math.trunc(Number(raw.sort) || Number(d.sort) || (idx + 1)));
+    return {
+      id: id.slice(0, 64),
+      name: name.slice(0, 80),
+      type: type,
+      value: Math.max(0, Number(raw.value) || 0),
+      revenue_basis: revenueBasis,
+      start_date: startDate,
+      end_date: endDate,
+      enabled: enabled,
+      sort: sort,
+      appliesTo: normalizeAppliesTo(raw.appliesTo || d.appliesTo),
+    };
+  }
+
+  function normalizeOverhead(rawOverhead, idx, defaults) {
+    var raw = rawOverhead && typeof rawOverhead === 'object' ? rawOverhead : {};
+    var d = defaults && typeof defaults === 'object' ? defaults : {};
+    var id = (raw.id && String(raw.id).trim()) || (d.id && String(d.id).trim()) || ('oh_' + String(idx + 1));
+    var name = (raw.name && String(raw.name).trim()) || (d.name && String(d.name).trim()) || 'Overhead';
+    var kind = (raw.kind && String(raw.kind).trim()) || (d.kind && String(d.kind).trim()) || 'recurring';
+    if (kind !== 'one_off' && kind !== 'recurring') kind = 'recurring';
+    var freq = (raw.frequency && String(raw.frequency).trim()) || (d.frequency && String(d.frequency).trim()) || 'monthly';
+    if (['daily', 'weekly', 'monthly', 'yearly'].indexOf(freq) === -1) freq = 'monthly';
+    var monthlyAllocation = (raw.monthly_allocation && String(raw.monthly_allocation).trim()) || (d.monthly_allocation && String(d.monthly_allocation).trim()) || 'prorate';
+    if (monthlyAllocation !== 'calendar' && monthlyAllocation !== 'prorate') monthlyAllocation = 'prorate';
+    var dateOrStart = normalizeYmd(raw.date || raw.start_date, d.date || d.start_date || '2000-01-01');
+    var endDate = normalizeYmd(raw.end_date, d.end_date || '');
+    var enabled = raw.enabled !== false;
+    return {
+      id: id.slice(0, 64),
+      name: name.slice(0, 80),
+      kind: kind,
+      amount: Math.max(0, Number(raw.amount) || 0),
+      date: dateOrStart,
+      end_date: endDate,
+      frequency: freq,
+      monthly_allocation: monthlyAllocation,
+      notes: (raw.notes && String(raw.notes).trim().slice(0, 400)) || '',
+      enabled: enabled,
+      appliesTo: normalizeAppliesTo(raw.appliesTo || d.appliesTo),
     };
   }
 
@@ -79,23 +169,68 @@
         includeShopifyTaxes: raw.integrations.includeShopifyTaxes === true,
       };
     }
-    if (Array.isArray(raw.rules)) {
-      c.rules = raw.rules.slice(0, 200).map(function (r, i) {
-        var rule = r && typeof r === 'object' ? r : {};
-        return {
-          id: (rule.id && String(rule.id).trim()) || 'rule_' + (i + 1),
-          name: (rule.name && String(rule.name).trim()) || 'Expense',
-          type: ['percent_revenue', 'fixed_per_order', 'fixed_per_period'].indexOf(rule.type) !== -1 ? rule.type : 'percent_revenue',
-          value: Math.max(0, Number(rule.value) || 0),
-          enabled: rule.enabled !== false,
-          sort: Math.max(1, Math.trunc(Number(rule.sort) || (i + 1))),
-          appliesTo: (rule.appliesTo && rule.appliesTo.mode === 'countries' && Array.isArray(rule.appliesTo.countries))
-            ? { mode: 'countries', countries: rule.appliesTo.countries.slice(0, 64) }
-            : { mode: 'all', countries: [] },
-        };
+    var ce = raw.cost_expenses && typeof raw.cost_expenses === 'object' ? raw.cost_expenses : null;
+    if (ce) {
+      c.cost_expenses.rule_mode = ce.rule_mode === 'first_match' ? 'first_match' : 'stack';
+      c.cost_expenses.per_order_rules = (Array.isArray(ce.per_order_rules) ? ce.per_order_rules : []).slice(0, 200).map(function (r, i) {
+        return normalizePerOrderRule(r, i);
       });
-      c.rules.sort(function (a, b) { return (a.sort || 0) - (b.sort || 0); });
+      c.cost_expenses.per_order_rules.sort(function (a, b) { return (a.sort || 0) - (b.sort || 0); });
+      c.cost_expenses.overheads = (Array.isArray(ce.overheads) ? ce.overheads : []).slice(0, 200).map(function (o, i) {
+        return normalizeOverhead(o, i);
+      });
+      c.cost_expenses.overheads.sort(function (a, b) { return String(a.name || '').localeCompare(String(b.name || '')); });
+    } else if (Array.isArray(raw.rules)) {
+      // Legacy fallback: map old rules into the new model.
+      var legacy = raw.rules.slice(0, 200);
+      c.cost_expenses.rule_mode = 'stack';
+      legacy.forEach(function (r, i) {
+        var rule = r && typeof r === 'object' ? r : {};
+        var type = ['percent_revenue', 'fixed_per_order', 'fixed_per_period'].indexOf(rule.type) !== -1 ? rule.type : 'percent_revenue';
+        if (type === 'fixed_per_period') {
+          c.cost_expenses.overheads.push(normalizeOverhead({
+            id: rule.id,
+            name: rule.name,
+            kind: 'recurring',
+            amount: rule.value,
+            frequency: 'monthly',
+            monthly_allocation: 'prorate',
+            date: '2000-01-01',
+            end_date: '',
+            enabled: rule.enabled !== false,
+            appliesTo: rule.appliesTo,
+            notes: 'Migrated from legacy fixed per period rule. Review dates/frequency.',
+          }, i));
+        } else {
+          c.cost_expenses.per_order_rules.push(normalizePerOrderRule({
+            id: rule.id,
+            name: rule.name,
+            type: type,
+            value: rule.value,
+            revenue_basis: 'incl_tax',
+            start_date: '2000-01-01',
+            end_date: '',
+            enabled: rule.enabled !== false,
+            sort: rule.sort,
+            appliesTo: rule.appliesTo,
+          }, i));
+        }
+      });
+      c.cost_expenses.per_order_rules.sort(function (a, b) { return (a.sort || 0) - (b.sort || 0); });
     }
+
+    // Keep a legacy view for any older UI consumers.
+    c.rules = (c.cost_expenses.per_order_rules || []).map(function (r) {
+      return {
+        id: r.id,
+        name: r.name,
+        type: r.type === 'fixed_per_item' ? 'fixed_per_order' : r.type,
+        value: r.value,
+        enabled: r.enabled !== false,
+        sort: r.sort,
+        appliesTo: r.appliesTo,
+      };
+    });
     if (raw.shipping && typeof raw.shipping === 'object') {
       c.shipping = {
         enabled: raw.shipping.enabled === true,
@@ -212,43 +347,109 @@
     return { enabled: enabled, worldwideDefaultGbp: Math.max(0, worldwide), overrides: overrides };
   }
 
-  function ruleTypeLabel(type) {
-    if (type === 'fixed_per_order') return 'Fixed per order';
-    if (type === 'fixed_per_period') return 'Fixed per period';
-    return 'Percent of revenue';
+  function formatMoneyGbp(amount) {
+    var n = Number(amount);
+    if (!Number.isFinite(n)) return '—';
+    try { if (typeof window.formatRevenue === 'function') return window.formatRevenue(n) || ('£' + n.toFixed(2)); } catch (_) {}
+    return '£' + n.toFixed(2);
   }
 
-  function ruleValueLabel(rule) {
+  function perOrderTypeLabel(type) {
+    if (type === 'fixed_per_order') return 'Fixed per order';
+    if (type === 'fixed_per_item') return 'Fixed per item';
+    return '% of revenue';
+  }
+
+  function revenueBasisLabel(basis) {
+    if (basis === 'excl_tax') return 'Excl tax';
+    if (basis === 'excl_shipping') return 'Excl shipping';
+    return 'Incl tax';
+  }
+
+  function perOrderValueLabel(rule) {
     if (!rule) return '—';
     var v = Number(rule.value);
     if (!Number.isFinite(v)) return '—';
     if (rule.type === 'percent_revenue') return v.toFixed(2).replace(/\.00$/, '') + '%';
-    return '£' + v.toFixed(2);
+    return formatMoneyGbp(v);
   }
 
-  function renderRulesTable() {
-    var tbody = document.getElementById('cost-expenses-rules-table-body');
+  function scopeLabel(appliesTo) {
+    var a = appliesTo && typeof appliesTo === 'object' ? appliesTo : {};
+    if (a.mode === 'countries' && Array.isArray(a.countries) && a.countries.length) return a.countries.join(', ');
+    return 'ALL';
+  }
+
+  function renderPerOrderRulesTable() {
+    var tbody = document.getElementById('cost-expenses-per-order-table-body');
     if (!tbody) return;
-    var rules = (state.config && state.config.rules) ? state.config.rules : [];
-    if (!rules.length) {
-      tbody.innerHTML = '<tr><td colspan="6" class="text-muted">No rules yet.</td></tr>';
+    var list = state.config && state.config.cost_expenses && Array.isArray(state.config.cost_expenses.per_order_rules)
+      ? state.config.cost_expenses.per_order_rules
+      : [];
+    if (!list.length) {
+      tbody.innerHTML = '<tr><td colspan="9" class="text-muted">No per-order rules yet.</td></tr>';
       return;
     }
     var html = '';
-    rules.forEach(function (rule, idx) {
-      var countryLabel = (rule.appliesTo && rule.appliesTo.mode === 'countries' && rule.appliesTo.countries && rule.appliesTo.countries.length)
-        ? rule.appliesTo.countries.join(', ')
-        : 'ALL';
-      html += '<tr data-rule-id="' + esc(rule.id) + '">' +
+    list.forEach(function (rule) {
+      var basis = rule && rule.type === 'percent_revenue' ? revenueBasisLabel(rule.revenue_basis) : '—';
+      html += '<tr data-per-order-id="' + esc(rule.id) + '">' +
         '<td>' + esc(rule.name || 'Expense') + '</td>' +
-        '<td>' + esc(ruleTypeLabel(rule.type)) + '</td>' +
-        '<td class="text-end">' + esc(ruleValueLabel(rule)) + '</td>' +
-        '<td class="text-center">' + esc(countryLabel) + '</td>' +
-        '<td class="text-center"><input type="checkbox" data-rule-enabled data-rule-id="' + esc(rule.id) + '" ' + (rule.enabled ? 'checked' : '') + ' /></td>' +
+        '<td>' + esc(perOrderTypeLabel(rule.type)) + '</td>' +
+        '<td class="text-end">' + esc(perOrderValueLabel(rule)) + '</td>' +
+        '<td>' + esc(basis) + '</td>' +
+        '<td>' + esc(rule.start_date || '—') + '</td>' +
+        '<td>' + esc(rule.end_date || '—') + '</td>' +
+        '<td>' + esc(scopeLabel(rule.appliesTo)) + '</td>' +
+        '<td class="text-center"><input type="checkbox" data-per-order-enabled data-per-order-id="' + esc(rule.id) + '" ' + (rule.enabled ? 'checked' : '') + ' /></td>' +
         '<td class="text-end">' +
-        '<button type="button" class="btn btn-sm btn-ghost-secondary" data-rule-edit data-rule-id="' + esc(rule.id) + '">Edit</button> ' +
-        '<button type="button" class="btn btn-sm btn-ghost-danger" data-rule-delete data-rule-id="' + esc(rule.id) + '">Delete</button>' +
-        '</td></tr>';
+          '<button type="button" class="btn btn-sm btn-ghost-secondary" data-per-order-edit data-per-order-id="' + esc(rule.id) + '">Edit</button> ' +
+          '<button type="button" class="btn btn-sm btn-ghost-danger" data-per-order-delete data-per-order-id="' + esc(rule.id) + '">Delete</button>' +
+        '</td>' +
+      '</tr>';
+    });
+    tbody.innerHTML = html;
+  }
+
+  function overheadTypeLabel(kind) {
+    return kind === 'one_off' ? 'One-off' : 'Recurring';
+  }
+
+  function overheadFrequencyLabel(o) {
+    if (!o || o.kind !== 'recurring') return '—';
+    var f = o.frequency || 'monthly';
+    if (f === 'daily') return 'Daily';
+    if (f === 'weekly') return 'Weekly';
+    if (f === 'yearly') return 'Yearly';
+    return 'Monthly';
+  }
+
+  function renderOverheadsTable() {
+    var tbody = document.getElementById('cost-expenses-overheads-table-body');
+    if (!tbody) return;
+    var list = state.config && state.config.cost_expenses && Array.isArray(state.config.cost_expenses.overheads)
+      ? state.config.cost_expenses.overheads
+      : [];
+    if (!list.length) {
+      tbody.innerHTML = '<tr><td colspan="9" class="text-muted">No overheads yet.</td></tr>';
+      return;
+    }
+    var html = '';
+    list.forEach(function (o) {
+      html += '<tr data-overhead-id="' + esc(o.id) + '">' +
+        '<td>' + esc(o.name || 'Overhead') + '</td>' +
+        '<td>' + esc(overheadTypeLabel(o.kind)) + '</td>' +
+        '<td class="text-end">' + esc(formatMoneyGbp(o.amount)) + '</td>' +
+        '<td>' + esc(o.date || '—') + '</td>' +
+        '<td>' + esc(o.end_date || '—') + '</td>' +
+        '<td>' + esc(overheadFrequencyLabel(o)) + '</td>' +
+        '<td>' + esc(scopeLabel(o.appliesTo)) + '</td>' +
+        '<td class="text-center"><input type="checkbox" data-overhead-enabled data-overhead-id="' + esc(o.id) + '" ' + (o.enabled ? 'checked' : '') + ' /></td>' +
+        '<td class="text-end">' +
+          '<button type="button" class="btn btn-sm btn-ghost-secondary" data-overhead-edit data-overhead-id="' + esc(o.id) + '">Edit</button> ' +
+          '<button type="button" class="btn btn-sm btn-ghost-danger" data-overhead-delete data-overhead-id="' + esc(o.id) + '">Delete</button>' +
+        '</td>' +
+      '</tr>';
     });
     tbody.innerHTML = html;
   }
@@ -271,6 +472,8 @@
     var shippingEnabledEl = document.getElementById('cost-expenses-shipping-enabled');
     if (worldwideEl) worldwideEl.value = (cfg.shipping && cfg.shipping.worldwideDefaultGbp != null) ? cfg.shipping.worldwideDefaultGbp : 0;
     if (shippingEnabledEl) shippingEnabledEl.checked = !!(cfg.shipping && cfg.shipping.enabled);
+    var modeEl = document.getElementById('cost-expenses-rule-mode');
+    if (modeEl) modeEl.value = (cfg.cost_expenses && cfg.cost_expenses.rule_mode === 'first_match') ? 'first_match' : 'stack';
     syncExcludedHints();
   }
 
@@ -304,79 +507,298 @@
     } catch (_) {}
   }
 
-  function getRuleById(id) {
-    var rules = (state.config && state.config.rules) ? state.config.rules : [];
-    for (var i = 0; i < rules.length; i++) {
-      if (String(rules[i].id) === String(id)) return rules[i];
+  function setSectionMsg(elId, text, ok) {
+    var el = document.getElementById(elId);
+    if (!el) return;
+    el.textContent = text || '';
+    el.classList.remove('is-hidden', 'text-success', 'text-danger', 'text-muted');
+    el.classList.add('form-hint', 'mb-2');
+    if (!text) { el.classList.add('is-hidden'); return; }
+    if (ok === true) el.classList.add('text-success');
+    else if (ok === false) el.classList.add('text-danger');
+    else el.classList.add('text-muted');
+  }
+
+  function getPerOrderRuleById(id) {
+    var list = state.config && state.config.cost_expenses && Array.isArray(state.config.cost_expenses.per_order_rules)
+      ? state.config.cost_expenses.per_order_rules
+      : [];
+    for (var i = 0; i < list.length; i++) {
+      if (String(list[i].id) === String(id)) return list[i];
     }
     return null;
   }
 
-  function showRuleForm(rule) {
-    state.editingRuleId = rule ? rule.id : '';
-    var wrap = document.getElementById('cost-expenses-rules-form-wrap');
-    if (wrap) wrap.classList.remove('is-hidden');
-    document.getElementById('cost-expenses-rule-id').value = state.editingRuleId;
-    document.getElementById('cost-expenses-rule-name').value = rule ? (rule.name || '') : '';
-    document.getElementById('cost-expenses-rule-type').value = rule ? (rule.type || 'percent_revenue') : 'percent_revenue';
-    document.getElementById('cost-expenses-rule-value').value = rule && rule.value != null ? rule.value : '';
-    document.getElementById('cost-expenses-rule-country').value = (rule && rule.appliesTo && rule.appliesTo.mode === 'countries' && rule.appliesTo.countries)
-      ? rule.appliesTo.countries.join(',')
-      : '';
-    document.getElementById('cost-expenses-rule-sort').value = rule && rule.sort != null ? rule.sort : (state.config.rules.length + 1);
-    document.getElementById('cost-expenses-rule-enabled').checked = rule ? (rule.enabled !== false) : true;
+  function getOverheadById(id) {
+    var list = state.config && state.config.cost_expenses && Array.isArray(state.config.cost_expenses.overheads)
+      ? state.config.cost_expenses.overheads
+      : [];
+    for (var i = 0; i < list.length; i++) {
+      if (String(list[i].id) === String(id)) return list[i];
+    }
+    return null;
   }
 
-  function hideRuleForm() {
-    state.editingRuleId = '';
-    var wrap = document.getElementById('cost-expenses-rules-form-wrap');
+  function syncPerOrderRevenueBasisEnabled() {
+    var typeEl = document.getElementById('cost-expenses-per-order-type');
+    var basisEl = document.getElementById('cost-expenses-per-order-revenue-basis');
+    if (!typeEl || !basisEl) return;
+    var type = String(typeEl.value || '').trim();
+    var enable = type === 'percent_revenue';
+    basisEl.disabled = !enable;
+  }
+
+  function setPerOrderPreviewRangeUi(rangeKey) {
+    state.previewRange = rangeKey;
+    root.querySelectorAll('[data-ce-per-order-preview-range]').forEach(function (btn) {
+      var r = String(btn.getAttribute('data-ce-per-order-preview-range') || '').trim().toLowerCase();
+      var isActive = r === rangeKey;
+      btn.classList.toggle('active', isActive);
+      btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+    });
+  }
+
+  function setPerOrderPreviewText(text) {
+    var el = document.getElementById('cost-expenses-per-order-preview');
+    if (!el) return;
+    el.textContent = text || '';
+  }
+
+  function showPerOrderForm(rule) {
+    state.editingPerOrderId = rule ? String(rule.id) : '';
+    var wrap = document.getElementById('cost-expenses-per-order-form-wrap');
+    if (wrap) wrap.classList.remove('is-hidden');
+
+    document.getElementById('cost-expenses-per-order-id').value = state.editingPerOrderId;
+    document.getElementById('cost-expenses-per-order-name').value = rule ? (rule.name || '') : '';
+    document.getElementById('cost-expenses-per-order-type').value = rule ? (rule.type || 'percent_revenue') : 'percent_revenue';
+    document.getElementById('cost-expenses-per-order-value').value = rule && rule.value != null ? rule.value : '';
+    document.getElementById('cost-expenses-per-order-revenue-basis').value = rule ? (rule.revenue_basis || 'incl_tax') : 'incl_tax';
+    document.getElementById('cost-expenses-per-order-start').value = rule ? (rule.start_date || '') : (ymdTodayLocal() || '');
+    document.getElementById('cost-expenses-per-order-end').value = rule ? (rule.end_date || '') : '';
+    document.getElementById('cost-expenses-per-order-country').value = (rule && rule.appliesTo && rule.appliesTo.mode === 'countries' && rule.appliesTo.countries)
+      ? rule.appliesTo.countries.join(',')
+      : '';
+    var list = state.config && state.config.cost_expenses && Array.isArray(state.config.cost_expenses.per_order_rules)
+      ? state.config.cost_expenses.per_order_rules
+      : [];
+    document.getElementById('cost-expenses-per-order-sort').value = rule && rule.sort != null ? rule.sort : (list.length + 1);
+    document.getElementById('cost-expenses-per-order-enabled').checked = rule ? (rule.enabled !== false) : true;
+
+    syncPerOrderRevenueBasisEnabled();
+    setPerOrderPreviewRangeUi('7d');
+    setPerOrderPreviewText('Estimated impact will appear here.');
+    setSectionMsg('cost-expenses-per-order-msg', '', null);
+  }
+
+  function hidePerOrderForm() {
+    state.editingPerOrderId = '';
+    var wrap = document.getElementById('cost-expenses-per-order-form-wrap');
     if (wrap) wrap.classList.add('is-hidden');
   }
 
-  function readRuleForm() {
-    var name = (document.getElementById('cost-expenses-rule-name').value || '').trim();
+  function readPerOrderForm() {
+    var name = (document.getElementById('cost-expenses-per-order-name').value || '').trim();
     if (!name) return { ok: false, error: 'Name required' };
-    var type = document.getElementById('cost-expenses-rule-type').value || 'percent_revenue';
-    var value = parseFloat(document.getElementById('cost-expenses-rule-value').value, 10);
+    var startYmd = (document.getElementById('cost-expenses-per-order-start').value || '').trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(startYmd)) return { ok: false, error: 'Start date required' };
+    var endYmd = (document.getElementById('cost-expenses-per-order-end').value || '').trim();
+    if (endYmd && !/^\d{4}-\d{2}-\d{2}$/.test(endYmd)) return { ok: false, error: 'End date must be a date' };
+    if (endYmd && endYmd < startYmd) return { ok: false, error: 'End date must be after start date' };
+
+    var type = String(document.getElementById('cost-expenses-per-order-type').value || 'percent_revenue').trim();
+    if (['percent_revenue', 'fixed_per_order', 'fixed_per_item'].indexOf(type) === -1) type = 'percent_revenue';
+    var revenueBasis = String(document.getElementById('cost-expenses-per-order-revenue-basis').value || 'incl_tax').trim();
+    if (['incl_tax', 'excl_tax', 'excl_shipping'].indexOf(revenueBasis) === -1) revenueBasis = 'incl_tax';
+
+    var value = parseFloat(document.getElementById('cost-expenses-per-order-value').value, 10);
     if (!Number.isFinite(value) || value < 0) return { ok: false, error: 'Value must be ≥ 0' };
-    var sort = Math.max(1, parseInt(document.getElementById('cost-expenses-rule-sort').value, 10) || 1);
-    var countryRaw = (document.getElementById('cost-expenses-rule-country').value || '').trim();
+    var sort = Math.max(1, parseInt(document.getElementById('cost-expenses-per-order-sort').value, 10) || 1);
+    var countryRaw = (document.getElementById('cost-expenses-per-order-country').value || '').trim();
     var appliesTo = { mode: 'all', countries: [] };
-    if (countryRaw) {
+    if (countryRaw && countryRaw.toUpperCase() !== 'ALL') {
       var codes = countryRaw.split(/[\s,]+/).map(normalizeCountryCode).filter(Boolean);
       if (codes.length) appliesTo = { mode: 'countries', countries: codes.slice(0, 64) };
     }
-    var id = state.editingRuleId || ('rule_' + Date.now());
+    var id = state.editingPerOrderId || ('por_' + Date.now());
     return {
       ok: true,
-      rule: {
+      rule: normalizePerOrderRule({
         id: id,
-        name: name.slice(0, 80),
+        name: name,
         type: type,
         value: value,
-        enabled: document.getElementById('cost-expenses-rule-enabled').checked,
+        revenue_basis: revenueBasis,
+        start_date: startYmd,
+        end_date: endYmd,
+        enabled: document.getElementById('cost-expenses-per-order-enabled').checked,
         sort: sort,
         appliesTo: appliesTo,
-      },
+      }, 0),
     };
   }
 
-  function saveRuleFromForm() {
-    var parsed = readRuleForm();
+  function savePerOrderFromForm() {
+    state.config = state.config || defaultConfig();
+    if (!state.config.cost_expenses) state.config.cost_expenses = defaultCostExpensesModel();
+    if (!Array.isArray(state.config.cost_expenses.per_order_rules)) state.config.cost_expenses.per_order_rules = [];
+
+    var parsed = readPerOrderForm();
     if (!parsed.ok) {
-      var msgEl = document.getElementById('cost-expenses-rules-msg');
-      if (msgEl) { msgEl.textContent = parsed.error; msgEl.classList.remove('is-hidden'); }
+      setSectionMsg('cost-expenses-per-order-msg', parsed.error, false);
       return;
     }
-    if (!state.config.rules) state.config.rules = [];
-    var idx = state.config.rules.findIndex(function (r) { return String(r.id) === String(parsed.rule.id); });
-    if (idx !== -1) state.config.rules[idx] = parsed.rule;
-    else state.config.rules.push(parsed.rule);
-    state.config.rules.sort(function (a, b) { return (a.sort || 0) - (b.sort || 0); });
-    renderRulesTable();
-    hideRuleForm();
-    var msgEl = document.getElementById('cost-expenses-rules-msg');
-    if (msgEl) { msgEl.textContent = 'Rule saved in draft.'; msgEl.classList.remove('is-hidden'); }
+    var list = state.config.cost_expenses.per_order_rules;
+    var idx = list.findIndex(function (r) { return String(r.id) === String(parsed.rule.id); });
+    if (idx !== -1) list[idx] = parsed.rule;
+    else list.push(parsed.rule);
+    list.sort(function (a, b) { return (a.sort || 0) - (b.sort || 0); });
+    renderPerOrderRulesTable();
+    hidePerOrderForm();
+    setSectionMsg('cost-expenses-per-order-msg', 'Rule saved in draft.', true);
+  }
+
+  function syncOverheadFormUi() {
+    var kindEl = document.getElementById('cost-expenses-overhead-kind');
+    var freqEl = document.getElementById('cost-expenses-overhead-frequency');
+    var allocEl = document.getElementById('cost-expenses-overhead-monthly-allocation');
+    if (!kindEl || !freqEl || !allocEl) return;
+    var kind = String(kindEl.value || '').trim();
+    var recurring = kind === 'recurring';
+    freqEl.disabled = !recurring;
+    allocEl.disabled = !recurring || String(freqEl.value || '') !== 'monthly';
+  }
+
+  function showOverheadForm(overhead) {
+    state.editingOverheadId = overhead ? String(overhead.id) : '';
+    var wrap = document.getElementById('cost-expenses-overheads-form-wrap');
+    if (wrap) wrap.classList.remove('is-hidden');
+
+    document.getElementById('cost-expenses-overhead-id').value = state.editingOverheadId;
+    document.getElementById('cost-expenses-overhead-name').value = overhead ? (overhead.name || '') : '';
+    document.getElementById('cost-expenses-overhead-kind').value = overhead ? (overhead.kind || 'recurring') : 'recurring';
+    document.getElementById('cost-expenses-overhead-amount').value = overhead && overhead.amount != null ? overhead.amount : '';
+    document.getElementById('cost-expenses-overhead-date').value = overhead ? (overhead.date || '') : (ymdTodayLocal() || '');
+    document.getElementById('cost-expenses-overhead-end').value = overhead ? (overhead.end_date || '') : '';
+    document.getElementById('cost-expenses-overhead-frequency').value = overhead ? (overhead.frequency || 'monthly') : 'monthly';
+    document.getElementById('cost-expenses-overhead-monthly-allocation').value = overhead ? (overhead.monthly_allocation || 'prorate') : 'prorate';
+    document.getElementById('cost-expenses-overhead-country').value = (overhead && overhead.appliesTo && overhead.appliesTo.mode === 'countries' && overhead.appliesTo.countries)
+      ? overhead.appliesTo.countries.join(',')
+      : '';
+    document.getElementById('cost-expenses-overhead-notes').value = overhead ? (overhead.notes || '') : '';
+    document.getElementById('cost-expenses-overhead-enabled').checked = overhead ? (overhead.enabled !== false) : true;
+
+    syncOverheadFormUi();
+    setSectionMsg('cost-expenses-overheads-msg', '', null);
+  }
+
+  function hideOverheadForm() {
+    state.editingOverheadId = '';
+    var wrap = document.getElementById('cost-expenses-overheads-form-wrap');
+    if (wrap) wrap.classList.add('is-hidden');
+  }
+
+  function readOverheadForm() {
+    var name = (document.getElementById('cost-expenses-overhead-name').value || '').trim();
+    if (!name) return { ok: false, error: 'Name required' };
+    var amount = parseFloat(document.getElementById('cost-expenses-overhead-amount').value, 10);
+    if (!Number.isFinite(amount) || amount < 0) return { ok: false, error: 'Amount must be ≥ 0' };
+    var kind = String(document.getElementById('cost-expenses-overhead-kind').value || 'recurring').trim();
+    if (kind !== 'one_off' && kind !== 'recurring') kind = 'recurring';
+
+    var date = (document.getElementById('cost-expenses-overhead-date').value || '').trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return { ok: false, error: 'Date / start is required' };
+    var endYmd = (document.getElementById('cost-expenses-overhead-end').value || '').trim();
+    if (endYmd && !/^\d{4}-\d{2}-\d{2}$/.test(endYmd)) return { ok: false, error: 'End date must be a date' };
+    if (endYmd && endYmd < date) return { ok: false, error: 'End date must be after start date' };
+
+    var freq = String(document.getElementById('cost-expenses-overhead-frequency').value || 'monthly').trim();
+    if (['daily', 'weekly', 'monthly', 'yearly'].indexOf(freq) === -1) freq = 'monthly';
+    var alloc = String(document.getElementById('cost-expenses-overhead-monthly-allocation').value || 'prorate').trim();
+    if (alloc !== 'calendar' && alloc !== 'prorate') alloc = 'prorate';
+
+    var countryRaw = (document.getElementById('cost-expenses-overhead-country').value || '').trim();
+    var appliesTo = { mode: 'all', countries: [] };
+    if (countryRaw && countryRaw.toUpperCase() !== 'ALL') {
+      var codes = countryRaw.split(/[\s,]+/).map(normalizeCountryCode).filter(Boolean);
+      if (codes.length) appliesTo = { mode: 'countries', countries: codes.slice(0, 64) };
+    }
+
+    var id = state.editingOverheadId || ('oh_' + Date.now());
+    return {
+      ok: true,
+      overhead: normalizeOverhead({
+        id: id,
+        name: name,
+        kind: kind,
+        amount: amount,
+        date: date,
+        end_date: endYmd,
+        frequency: freq,
+        monthly_allocation: alloc,
+        notes: (document.getElementById('cost-expenses-overhead-notes').value || '').trim(),
+        enabled: document.getElementById('cost-expenses-overhead-enabled').checked,
+        appliesTo: appliesTo,
+      }, 0),
+    };
+  }
+
+  function saveOverheadFromForm() {
+    state.config = state.config || defaultConfig();
+    if (!state.config.cost_expenses) state.config.cost_expenses = defaultCostExpensesModel();
+    if (!Array.isArray(state.config.cost_expenses.overheads)) state.config.cost_expenses.overheads = [];
+
+    var parsed = readOverheadForm();
+    if (!parsed.ok) {
+      setSectionMsg('cost-expenses-overheads-msg', parsed.error, false);
+      return;
+    }
+    var list = state.config.cost_expenses.overheads;
+    var idx = list.findIndex(function (o) { return String(o.id) === String(parsed.overhead.id); });
+    if (idx !== -1) list[idx] = parsed.overhead;
+    else list.push(parsed.overhead);
+    list.sort(function (a, b) { return String(a.name || '').localeCompare(String(b.name || '')); });
+    renderOverheadsTable();
+    hideOverheadForm();
+    setSectionMsg('cost-expenses-overheads-msg', 'Overhead saved in draft.', true);
+  }
+
+  function runPerOrderPreview(rangeKey) {
+    var r = String(rangeKey || '').trim().toLowerCase();
+    if (r !== 'today' && r !== '7d' && r !== '30d') r = '7d';
+    setPerOrderPreviewRangeUi(r);
+
+    var parsed = readPerOrderForm();
+    if (!parsed.ok) {
+      setPerOrderPreviewText(parsed.error);
+      return;
+    }
+
+    var reqId = ++state.previewReqId;
+    setPerOrderPreviewText('Loading…');
+    fetchJson(API + '/api/cost-expenses/per-order-preview?range=' + encodeURIComponent(r), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        profitRules: state.config,
+        draftRule: parsed.rule,
+      }),
+    }).then(function (payload) {
+      if (reqId !== state.previewReqId) return;
+      if (!payload || payload.ok !== true) {
+        setPerOrderPreviewText('Preview unavailable.');
+        return;
+      }
+      var amt = payload && payload.totalGbp != null ? Number(payload.totalGbp) : NaN;
+      if (!Number.isFinite(amt)) {
+        setPerOrderPreviewText('Preview unavailable.');
+        return;
+      }
+      setPerOrderPreviewText('Estimated per-order rules impact: ' + formatMoneyGbp(amt) + ' (' + (r === '7d' ? '7 days' : r === '30d' ? '30 days' : 'today') + ').');
+    }).catch(function () {
+      if (reqId !== state.previewReqId) return;
+      setPerOrderPreviewText('Preview unavailable.');
+    });
   }
 
   function bindUi() {
@@ -392,6 +814,9 @@
         state.config.integrations.includeShopifyAppBills = document.getElementById('cost-expenses-app-bills').checked;
         state.config.integrations.includeShopifyTaxes = document.getElementById('cost-expenses-tax').checked;
         state.config.enabled = document.getElementById('cost-expenses-rules-enabled').checked;
+        if (!state.config.cost_expenses) state.config.cost_expenses = defaultCostExpensesModel();
+        var modeEl = document.getElementById('cost-expenses-rule-mode');
+        state.config.cost_expenses.rule_mode = (modeEl && String(modeEl.value) === 'first_match') ? 'first_match' : 'stack';
         state.config.shipping = readShippingFromUi();
         setMsg('Saving...', true);
         fetchJson(API + '/api/settings/profit-rules', {
@@ -402,11 +827,25 @@
           state.config = normalizeConfig(payload && payload.profitRules);
           setMsg('Saved.', true);
           renderShippingOverrides();
-          renderRulesTable();
+          renderPerOrderRulesTable();
+          renderOverheadsTable();
+          hidePerOrderForm();
+          hideOverheadForm();
           syncExcludedHints();
         }).catch(function () {
           setMsg('Failed to save.', false);
         });
+      });
+    }
+
+    var reloadBtn = document.getElementById('cost-expenses-reload-btn');
+    if (reloadBtn) {
+      reloadBtn.addEventListener('click', function () {
+        setMsg('Reloading…', true);
+        try { hidePerOrderForm(); } catch (_) {}
+        try { hideOverheadForm(); } catch (_) {}
+        state.loadInFlight = null;
+        load();
       });
     }
 
@@ -424,15 +863,50 @@
       renderShippingOverrides();
     });
 
+    var addPerOrderBtn = document.getElementById('cost-expenses-per-order-add-btn');
+    var savePerOrderBtn = document.getElementById('cost-expenses-per-order-save-btn');
+    var cancelPerOrderBtn = document.getElementById('cost-expenses-per-order-cancel-btn');
+    if (addPerOrderBtn) addPerOrderBtn.addEventListener('click', function () { showPerOrderForm(null); });
+    if (savePerOrderBtn) savePerOrderBtn.addEventListener('click', savePerOrderFromForm);
+    if (cancelPerOrderBtn) cancelPerOrderBtn.addEventListener('click', hidePerOrderForm);
+
+    var addOverheadBtn = document.getElementById('cost-expenses-overheads-add-btn');
+    var saveOverheadBtn = document.getElementById('cost-expenses-overhead-save-btn');
+    var cancelOverheadBtn = document.getElementById('cost-expenses-overhead-cancel-btn');
+    if (addOverheadBtn) addOverheadBtn.addEventListener('click', function () { showOverheadForm(null); });
+    if (saveOverheadBtn) saveOverheadBtn.addEventListener('click', saveOverheadFromForm);
+    if (cancelOverheadBtn) cancelOverheadBtn.addEventListener('click', hideOverheadForm);
+
     root.addEventListener('change', function (e) {
       var target = e.target;
       if (target && (target.id === 'cost-expenses-shipping-enabled' || target.id === 'cost-expenses-rules-enabled')) {
         syncExcludedHints();
       }
+      if (target && target.id === 'cost-expenses-rule-mode') {
+        state.config = state.config || defaultConfig();
+        if (!state.config.cost_expenses) state.config.cost_expenses = defaultCostExpensesModel();
+        state.config.cost_expenses.rule_mode = String(target.value) === 'first_match' ? 'first_match' : 'stack';
+      }
+      if (target && target.id === 'cost-expenses-per-order-type') {
+        syncPerOrderRevenueBasisEnabled();
+      }
+      if (target && (target.id === 'cost-expenses-overhead-kind' || target.id === 'cost-expenses-overhead-frequency')) {
+        syncOverheadFormUi();
+      }
       if (target && (target.getAttribute('data-override-priority') !== null || target.getAttribute('data-override-enabled') !== null || target.getAttribute('data-override-price') !== null || target.getAttribute('data-override-countries') !== null)) {
         state.config = state.config || defaultConfig();
         state.config.shipping = readShippingFromUi();
         renderShippingOverrides();
+      }
+      if (target && target.getAttribute('data-per-order-enabled') !== null) {
+        var id = target.getAttribute('data-per-order-id');
+        var rule = getPerOrderRuleById(id);
+        if (rule) rule.enabled = target.checked === true;
+      }
+      if (target && target.getAttribute('data-overhead-enabled') !== null) {
+        var id2 = target.getAttribute('data-overhead-id');
+        var oh = getOverheadById(id2);
+        if (oh) oh.enabled = target.checked === true;
       }
     });
     root.addEventListener('click', function (e) {
@@ -451,29 +925,35 @@
           renderShippingOverrides();
         }
       }
-      if (t.getAttribute('data-rule-edit') !== null) {
-        var id = t.getAttribute('data-rule-id');
-        showRuleForm(getRuleById(id));
+      if (t.getAttribute('data-per-order-edit') !== null) {
+        var id = t.getAttribute('data-per-order-id');
+        showPerOrderForm(getPerOrderRuleById(id));
       }
-      if (t.getAttribute('data-rule-delete') !== null) {
-        var id = t.getAttribute('data-rule-id');
-        state.config.rules = state.config.rules.filter(function (r) { return String(r.id) !== String(id); });
-        renderRulesTable();
-        hideRuleForm();
+      if (t.getAttribute('data-per-order-delete') !== null) {
+        var id = t.getAttribute('data-per-order-id');
+        state.config = state.config || defaultConfig();
+        if (!state.config.cost_expenses) state.config.cost_expenses = defaultCostExpensesModel();
+        state.config.cost_expenses.per_order_rules = (state.config.cost_expenses.per_order_rules || []).filter(function (r) { return String(r.id) !== String(id); });
+        renderPerOrderRulesTable();
+        hidePerOrderForm();
       }
-      if (t.getAttribute('data-rule-enabled') !== null) {
-        var id = t.getAttribute('data-rule-id');
-        var rule = getRuleById(id);
-        if (rule) rule.enabled = t.checked;
+      if (t.getAttribute('data-overhead-edit') !== null) {
+        var id = t.getAttribute('data-overhead-id');
+        showOverheadForm(getOverheadById(id));
+      }
+      if (t.getAttribute('data-overhead-delete') !== null) {
+        var id = t.getAttribute('data-overhead-id');
+        state.config = state.config || defaultConfig();
+        if (!state.config.cost_expenses) state.config.cost_expenses = defaultCostExpensesModel();
+        state.config.cost_expenses.overheads = (state.config.cost_expenses.overheads || []).filter(function (o) { return String(o.id) !== String(id); });
+        renderOverheadsTable();
+        hideOverheadForm();
+      }
+      if (t.getAttribute('data-ce-per-order-preview-range') !== null) {
+        var r = t.getAttribute('data-ce-per-order-preview-range');
+        runPerOrderPreview(r);
       }
     });
-
-    var addRuleBtn = document.getElementById('cost-expenses-rules-add-btn');
-    var saveRuleBtn = document.getElementById('cost-expenses-rule-save-btn');
-    var cancelRuleBtn = document.getElementById('cost-expenses-rule-cancel-btn');
-    if (addRuleBtn) addRuleBtn.addEventListener('click', function () { showRuleForm(null); });
-    if (saveRuleBtn) saveRuleBtn.addEventListener('click', saveRuleFromForm);
-    if (cancelRuleBtn) cancelRuleBtn.addEventListener('click', hideRuleForm);
 
     document.querySelectorAll('[data-settings-cost-expenses-tab]').forEach(function (btn) {
       btn.addEventListener('click', function () {
@@ -505,7 +985,8 @@
       state.config = normalizeConfig(configPayload && configPayload.profitRules);
       applyConfigToInputs();
       renderShippingOverrides();
-      renderRulesTable();
+      renderPerOrderRulesTable();
+      renderOverheadsTable();
       bindUi();
       try {
         if (typeof window.initKexoTooltips === 'function') window.initKexoTooltips(root);
@@ -515,7 +996,8 @@
       state.config = defaultConfig();
       applyConfigToInputs();
       renderShippingOverrides();
-      renderRulesTable();
+      renderPerOrderRulesTable();
+      renderOverheadsTable();
       bindUi();
     }).finally(function () {
       state.loadInFlight = null;
