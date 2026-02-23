@@ -2144,7 +2144,7 @@
           primaryRgb: primaryRgb,
           border: border,
           muted: muted,
-          showTooltip: mapStyle.mapShowTooltip !== false,
+          showTooltip: true,
           draggable: false,
           zoomButtons: false,
           mapFit: 'contain',
