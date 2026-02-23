@@ -19,8 +19,6 @@
     lastPayload: null,
   };
 
-  var DEFAULT_VARIANTS_TABLE_ICON = 'fa-solid fa-grid-round';
-
   function dismissGlobalPageLoader() {
     try {
       var overlay = document.getElementById('page-body-loader');
@@ -91,7 +89,6 @@
     var paginationId = 'variants-pagination-' + safeId;
     var cardId = 'stats-variants-' + safeId;
     var title = table.name || table.id || 'Variant Table';
-    var iconClass = String((table && table.icon ? table.icon : '') || '').trim().replace(/\s+/g, ' ') || DEFAULT_VARIANTS_TABLE_ICON;
     var diag = table && table.diagnostics ? table.diagnostics : null;
     var unmappedCount = diag && Number(diag.unmappedCount) ? Number(diag.unmappedCount) : 0;
     var ambiguousCount = diag && Number(diag.ambiguousCount) ? Number(diag.ambiguousCount) : 0;
@@ -119,7 +116,7 @@
       '<div class="stats-card card" id="' + escapeHtml(cardId) + '" data-table-class="product" data-table-zone="variants-' + escapeHtml(safeId) + '" data-table-id="' + escapeHtml(tableId) + '">' +
         '<div class="card-header d-flex align-items-center flex-wrap gap-2">' +
           '<div class="d-flex align-items-center flex-wrap gap-2 variants-card-heading">' +
-            '<h3 class="card-title mb-0"><i class="' + escapeHtml(iconClass) + ' me-2 text-secondary variants-table-icon" aria-hidden="true"></i>' + escapeHtml(title) + '</h3>' +
+            '<h3 class="card-title mb-0">' + escapeHtml(title) + '</h3>' +
             (hasWarnings
               ? '<button type="button" class="badge bg-dark-lt border-0 variants-issues-trigger" data-table-safe-id="' + escapeHtml(safeId) + '" title="' + escapeHtml(warningText) + '">' + escapeHtml(String(unmappedCount + ambiguousCount)) + ' mapping issues</button>'
               : '') +
