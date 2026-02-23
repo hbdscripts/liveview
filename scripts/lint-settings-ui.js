@@ -3,6 +3,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
+const { JSDOM } = require('jsdom');
 
 function readText(rel) {
   const p = path.join(__dirname, '..', rel);
@@ -46,6 +47,30 @@ function main() {
   if (!fs.existsSync(normaliserPath)) fail('Missing `server/public/ui/settings-normaliser.js`.');
   if (!fs.existsSync(builderPath)) fail('Missing `server/public/ui/settings-ui.js`.');
   if (!fs.existsSync(cssPath)) fail('Missing `server/public/settings-ui.css`.');
+
+  // 5) Top-level Settings panels must be siblings under #settings-main-content.
+  // If a panel isn't closed in the HTML, subsequent panels become nested and appear blank when tabs switch.
+  try {
+    const dom = new JSDOM(settingsHtml);
+    const doc = dom.window.document;
+    const main = doc.getElementById('settings-main-content');
+    if (!main) fail('settings.html must contain `#settings-main-content`.');
+    const allPanels = Array.from(doc.querySelectorAll('.settings-panel'));
+    const directPanels = Array.from(doc.querySelectorAll('#settings-main-content > .settings-panel'));
+    if (allPanels.length !== directPanels.length) {
+      const offenders = allPanels
+        .filter((p) => p && p.parentElement !== main)
+        .map((p) => {
+          const id = p && p.id ? p.id : '(no id)';
+          const parent = p && p.parentElement ? (p.parentElement.id ? `#${p.parentElement.id}` : p.parentElement.tagName) : '(no parent)';
+          return `${id} parent=${parent}`;
+        })
+        .slice(0, 20);
+      fail(`Settings panels must be direct children of #settings-main-content. Nested panels found: ${offenders.join(', ')}`);
+    }
+  } catch (e) {
+    fail(`Failed to parse settings.html for panel structure: ${e && e.message ? e.message : String(e)}`);
+  }
 
   if (!process.exitCode) ok('OK');
 }
