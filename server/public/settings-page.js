@@ -2081,11 +2081,13 @@
     }
 
     function apiGet(path) {
-      return fetchJson((API || '') + path, { method: 'GET' }, 25000);
+      return fetchJson((API || '') + path, { method: 'GET', credentials: 'same-origin', cache: 'no-store' }, 25000);
     }
     function apiPost(path, body) {
       return fetchJson((API || '') + path, {
         method: 'POST',
+        credentials: 'same-origin',
+        cache: 'no-store',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body || {}),
       }, 35000);
