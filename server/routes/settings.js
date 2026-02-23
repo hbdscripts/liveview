@@ -159,11 +159,11 @@ const SETTINGS_FIELD_PERMISSION = Object.freeze({
   insightsVariantsConfig: 'settings.insights.variants',
   notificationsPreferencesV1: 'page.settings',
   pageLoaderEnabled: 'settings.kexo.general',
-  googleAdsProfitConfig: 'settings.integrations.google_ads',
-  googleAdsProfitDeductions: 'settings.integrations.google_ads',
-  googleAdsAddToCartValue: 'settings.integrations.google_ads',
-  googleAdsPostbackGoals: 'settings.integrations.google_ads',
-  googleAdsPostbackEnabled: 'settings.integrations.google_ads',
+  googleAdsProfitConfig: 'admin.only.google_ads_settings',
+  googleAdsProfitDeductions: 'admin.only.google_ads_settings',
+  googleAdsAddToCartValue: 'admin.only.google_ads_settings',
+  googleAdsPostbackGoals: 'admin.only.google_ads_settings',
+  googleAdsPostbackEnabled: 'admin.only.google_ads_settings',
 });
 
 const OVERVIEW_WIDGET_KEYS = ['finishes', 'devices', 'browsers', 'abandoned', 'attribution', 'payment_methods'];

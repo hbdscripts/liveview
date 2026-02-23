@@ -24,8 +24,6 @@ const ALL_PERMISSION_KEYS = Object.freeze([
   'page.acquisition.attribution',
   'page.acquisition.browsers',
   'page.acquisition.devices',
-  // Integrations
-  'page.integrations.google_ads',
   // Tools
   'page.tools.compare_conversion_rate',
   'page.tools.shipping_cr',
@@ -47,7 +45,6 @@ const ALL_PERMISSION_KEYS = Object.freeze([
   'settings.kexo.colours',
   'settings.kexo.layout_styling',
   'settings.integrations.shopify',
-  'settings.integrations.google_ads',
   'settings.layout.tables',
   'settings.layout.kpis',
   'settings.layout.date_ranges',
@@ -132,7 +129,7 @@ function getRequiredPermissionsForRequest(req) {
     ['/settings/kexo/theme-display', 'settings.kexo.colours'],
     ['/settings/kexo/layout-styling', 'settings.kexo.layout_styling'],
     ['/settings/integrations/shopify', 'settings.integrations.shopify'],
-    ['/settings/integrations/googleads', 'settings.integrations.google_ads'],
+    ['/settings/admin/googleads', 'admin.only.google_ads_settings'],
     ['/settings/layout/tables', 'settings.layout.tables'],
     ['/settings/layout/kpis', 'settings.layout.kpis'],
     ['/settings/layout/date-ranges', 'settings.layout.date_ranges'],
@@ -170,7 +167,8 @@ function getRequiredPermissionsForRequest(req) {
     ['/acquisition/attribution', 'page.acquisition.attribution'],
     ['/acquisition/browsers', 'page.acquisition.browsers'],
     ['/acquisition/devices', 'page.acquisition.devices'],
-    ['/integrations/google-ads', 'page.integrations.google_ads'],
+    ['/admin/google-ads', 'admin.only.google_ads'],
+    ['/integrations/google-ads', 'admin.only.google_ads'],
     ['/tools/compare-conversion-rate', 'page.tools.compare_conversion_rate'],
     ['/tools/shipping-cr', 'page.tools.shipping_cr'],
     ['/tools/click-order-lookup', 'page.tools.click_order_lookup'],
@@ -198,7 +196,7 @@ function getRequiredPermissionsForRequest(req) {
     ['/channels', 'page.acquisition.attribution'],
     ['/type', 'page.acquisition.devices'],
     ['/browsers', 'page.acquisition.browsers'],
-    ['/ads', 'page.integrations.google_ads'],
+    ['/ads', 'admin.only.google_ads'],
     ['/compare-conversion-rate', 'page.tools.compare_conversion_rate'],
     ['/shipping-cr', 'page.tools.shipping_cr'],
     ['/click-order-lookup', 'page.tools.click_order_lookup'],
@@ -219,7 +217,7 @@ function getRequiredPermissionsForRequest(req) {
     if (pathname.startsWith('/api/sessions') || pathname === '/api/stream' || pathname === '/api/latest-sales') {
       apiPerms.push('page.dashboard.live');
     }
-    if (pathname === '/api/shopify-sales' || pathname === '/api/latest-sale') {
+    if (pathname === '/api/shopify-sales' || pathname === '/api/latest-sale' || pathname === '/api/truth-orders') {
       apiPerms.push('page.dashboard.sales');
     }
     if (pathname.startsWith('/api/shopify-') && pathname !== '/api/shopify-sessions' && pathname !== '/api/shopify-sales') {
@@ -250,7 +248,7 @@ function getRequiredPermissionsForRequest(req) {
       apiPerms.push('page.acquisition.devices');
     }
     if (pathname.startsWith('/api/ads') || pathname.startsWith('/api/integrations/google-ads')) {
-      apiPerms.push('page.integrations.google_ads');
+      apiPerms.push('admin.only.google_ads');
     }
     if (pathname.startsWith('/api/tools')) {
       apiPerms.push('page.tools.compare_conversion_rate', 'page.tools.shipping_cr', 'page.tools.click_order_lookup', 'page.tools.change_pins', 'page.tools.time_of_day');

@@ -46,6 +46,7 @@ const insightsVariantsSuggestions = require('./routes/insightsVariantsSuggestion
 const worstProducts = require('./routes/worstProducts');
 const productInsights = require('./routes/productInsights');
 const pageInsights = require('./routes/pageInsights');
+const truthOrders = require('./routes/truthOrders');
 const devicesRouter = require('./routes/devices');
 const attributionRouter = require('./routes/attribution');
 const abandonedCarts = require('./routes/abandonedCarts');
@@ -219,6 +220,7 @@ app.get('/api/kpis-expanded-extra', kpisExpandedExtra.getKpisExpandedExtra);
 app.get('/api/kexo-score', withDbTransaction(kexoScoreRouter.getKexoScore));
 app.get('/api/kexo-score-summary', kexoScoreSummaryRouter.getKexoScoreSummary);
 app.get('/api/sales-diagnostics', salesDiagnostics.getSalesDiagnostics);
+app.get('/api/truth-orders', truthOrders.getTruthOrders);
 app.get('/api/reconcile-sales', requireMaster.middleware, reconcileSales.reconcileSales);
 app.post('/api/reconcile-sales', requireMaster.middleware, reconcileSales.reconcileSales);
 app.get('/api/verify-sales', verifySales.verifySales);
@@ -511,12 +513,12 @@ function stripAdminMarkupFromSettings(html) {
 /** Canonical settings path: tab -> default subtab and allowed subtabs. */
 const SETTINGS_TAB_DEFAULTS = {
   kexo: { default: 'general', allowed: new Set(['general', 'assets', 'icons', 'colours', 'layout-styling']) },
-  integrations: { default: 'shopify', allowed: new Set(['shopify', 'googleads']) },
+  integrations: { default: 'shopify', allowed: new Set(['shopify']) },
   layout: { default: 'tables', allowed: new Set(['tables', 'kpis', 'date-ranges']) },
   attribution: { default: 'mapping', allowed: new Set(['mapping', 'tree']) },
   insights: { default: 'variants', allowed: new Set(['variants']) },
   'cost-expenses': { default: 'cost-sources', allowed: new Set(['cost-sources', 'shipping', 'rules', 'breakdown']) },
-  admin: { default: 'users', allowed: new Set(['users', 'diagnostics', 'controls', 'role-permissions']) },
+  admin: { default: 'users', allowed: new Set(['users', 'diagnostics', 'controls', 'role-permissions', 'googleads']) },
 };
 
 /** Preserve only non-routing query params when building canonical settings URL. */
@@ -670,8 +672,8 @@ acquisitionPagesRouter.get('/attribution', (req, res) => sendPage(res, 'acquisit
 acquisitionPagesRouter.get('/browsers', (req, res) => sendPage(res, 'acquisition/browsers.html'));
 acquisitionPagesRouter.get('/devices', (req, res) => sendPage(res, 'acquisition/devices.html'));
 
-const integrationsPagesRouter = express.Router();
-integrationsPagesRouter.get('/google-ads', (req, res) => sendPage(res, 'integrations/google-ads.html'));
+const adminPagesRouter = express.Router();
+adminPagesRouter.get('/google-ads', (req, res) => sendPage(res, 'integrations/google-ads.html'));
 
 const toolsPagesRouter = express.Router();
 toolsPagesRouter.get('/compare-conversion-rate', (req, res) => sendPage(res, 'tools/compare-conversion-rate.html'));
@@ -692,18 +694,20 @@ app.get('/traffic/channels', redirectWithQuery(301, '/acquisition/attribution'))
 app.get('/traffic/channels/', redirectWithQuery(301, '/acquisition/attribution'));
 app.get('/traffic/device', redirectWithQuery(301, '/acquisition/devices'));
 app.get('/traffic/device/', redirectWithQuery(301, '/acquisition/devices'));
-app.get('/integrations', redirectWithQuery(301, '/integrations/google-ads'));
-app.get('/integrations/', redirectWithQuery(301, '/integrations/google-ads'));
+app.get('/integrations', redirectWithQuery(301, '/admin/google-ads'));
+app.get('/integrations/', redirectWithQuery(301, '/admin/google-ads'));
+app.get('/integrations/google-ads', redirectWithQuery(301, '/admin/google-ads'));
+app.get('/integrations/google-ads/', redirectWithQuery(301, '/admin/google-ads'));
 app.get('/tools', redirectWithQuery(301, '/tools/compare-conversion-rate'));
 app.get('/tools/', redirectWithQuery(301, '/tools/compare-conversion-rate'));
 
 app.use('/dashboard', dashboardPagesRouter);
 app.use('/insights', insightsPagesRouter);
 app.use('/acquisition', acquisitionPagesRouter);
-app.use('/integrations', integrationsPagesRouter);
+app.use('/admin', adminPagesRouter);
 app.use('/tools', toolsPagesRouter);
-app.get('/tools/ads', redirectWithQuery(301, '/integrations/google-ads'));
-app.get('/tools/ads/', redirectWithQuery(301, '/integrations/google-ads'));
+app.get('/tools/ads', redirectWithQuery(301, '/admin/google-ads'));
+app.get('/tools/ads/', redirectWithQuery(301, '/admin/google-ads'));
 
 // Legacy/flat dashboard URLs -> canonical folder routes.
 app.get('/app/dashboard', redirectWithQuery(301, '/dashboard/overview'));
@@ -721,7 +725,7 @@ app.get('/checkout-funnel', redirectWithQuery(301, '/insights/checkout-funnel'))
 app.get('/channels', redirectWithQuery(301, '/acquisition/attribution'));
 app.get('/type', redirectWithQuery(301, '/acquisition/devices'));
 app.get('/browsers', redirectWithQuery(301, '/acquisition/browsers'));
-app.get('/ads', redirectWithQuery(301, '/integrations/google-ads'));
+app.get('/ads', redirectWithQuery(301, '/admin/google-ads'));
 app.get('/compare-conversion-rate', redirectWithQuery(301, '/tools/compare-conversion-rate'));
 app.get('/shipping-cr', redirectWithQuery(301, '/tools/shipping-cr'));
 app.get('/time-of-day', redirectWithQuery(301, '/tools/time-of-day'));
@@ -758,6 +762,9 @@ async function settingsPageHandler(req, res, next) {
 
     const tab = (req.params.tab || '').toLowerCase();
     const subtab = (req.params.subtab || '').toLowerCase();
+    if (tab === 'integrations' && subtab === 'googleads') {
+      return res.redirect(301, '/settings/admin/googleads' + qs);
+    }
     const pathInfo = parseSettingsPath('/settings/' + tab + '/' + subtab);
     if (!pathInfo || (pathInfo.tab === 'admin' && !hasAdminNav) || (pathInfo.tab === 'cost-expenses' && !hasCostExpensesNav)) {
       return res.redirect(301, '/settings/kexo/general' + qs);

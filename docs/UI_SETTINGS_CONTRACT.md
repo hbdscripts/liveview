@@ -62,6 +62,35 @@ Files:
 - `server/public/ui/settings-normaliser.js` (single source of truth)
 - `server/public/settings-ui.css` (Settings-only styling)
 
+### Mutation-loop prevention (required)
+
+The normaliser’s `MutationObserver` reacts to DOM changes (e.g. `setHtml`/`setText` when data loads). If `normaliseSettingsPanel` **always** mutates the DOM (wrap, strip header, etc.), those mutations retrigger the observer → panel queued again → normalise again → **infinite loop** and visible flashing.
+
+To prevent this:
+
+- **`normaliseSettingsPanel` must return immediately** when the panel already has `data-settings-ui-normalised="1"`. The normaliser sets this attribute at the end of a full run; any observer-triggered re-run must no-op so no further mutations occur.
+- Do **not** remove or bypass this “already normalised” check. The lint guardrail `npm run ui:check` enforces that the normaliser file contains this guard.
+
+### Audit: coverage (zero flashing)
+
+The fix is **live on every Settings/Admin panel** because:
+
+1. **Single pipeline:** One `MutationObserver` observes the Settings container (`#settings-main-content` or `.col-lg-9` / `.page-body` / `body`). Any `childList` mutation (e.g. `innerHTML` / `setHtml`) that adds nodes causes the observer to find the closest panel via `SETTINGS_PANEL_SELECTOR` and queue it; the debounced flush calls `normaliseSettingsPanel(panel)` once per panel. The “already normalised” early return ensures the second and subsequent runs for that panel no-op, so no further DOM mutations and no loop.
+
+2. **All panels use the same normaliser:** Every sub-panel root ID matches `SETTINGS_PANEL_SELECTOR` (`[id^="settings-"][id*="-panel-"]:not([id^="settings-panel-"]), [id^="admin-panel-"]`). Panels covered:
+
+   - **Kexo:** `settings-kexo-panel-general`, `settings-kexo-panel-assets`, `settings-kexo-panel-icons`, `settings-kexo-panel-colours`, `settings-kexo-panel-layout-styling`
+   - **Integrations:** `settings-integrations-panel-shopify`
+   - **Layout:** `settings-layout-panel-tables`, `settings-layout-panel-kpis`, `settings-layout-panel-date-ranges`
+   - **Attribution:** `settings-attribution-panel-mapping`, `settings-attribution-panel-tree`
+   - **Insights:** `settings-insights-layout-panel-variants`
+   - **Cost & profit:** `settings-cost-expenses-panel-cost-sources`, `settings-cost-expenses-panel-shipping`, `settings-cost-expenses-panel-rules`, `settings-cost-expenses-panel-breakdown`
+   - **Admin:** `admin-panel-controls`, `admin-panel-diagnostics`, `admin-panel-users`, `admin-panel-role-permissions`, `admin-panel-googleads`
+
+3. **No other loops:** The only `setInterval` on the Settings page is the Insights “Suggest mappings” elapsed timer (updates a single `textContent` every 500ms). The observer only reacts to **addedNodes**; it does not react to `textContent`/`characterData` changes. No other polling or repeated full-panel DOM replacement exists.
+
+Conclusion: **Zero flashing** on every settings page, provided the “already normalised” guard remains in place and `ui:check` passes.
+
 ## Forms, buttons, and actions
 
 Use Tabler conventions:
@@ -119,6 +148,7 @@ Use consistent states:
 ### Don’t
 
 - Don’t use nested `.settings-panel-wrap` or inject `.settings-panel-wrap` in renderers.
+- Don’t remove or weaken the “already normalised” early return in `normaliseSettingsPanel` (see **Mutation-loop prevention** under Runtime guardrails); doing so reintroduces observer → normalise → mutate → observer loops and flashing.
 - Don’t use `btn-outline-*` button classes anywhere in Settings/Admin UI.
 - Don’t use Bootstrap `.row`/`.d-grid` for tile grids; use `.settings-responsive-grid`.
 - Don’t use grids for one-off controls or mixed content.

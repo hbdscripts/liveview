@@ -1664,6 +1664,18 @@ body[data-page="live"] #latest-sales-table .latest-sales-fraud-slot .fraud-alert
   height: auto;
   font-size: .8rem;
 }
+/* Latest sales table: flag 30x23px; body text 12px (flag cell, last seen, sale amount) */
+body[data-page="live"] #latest-sales-table .latest-sales-flag-cell .flag,
+body[data-page="live"] #latest-sales-table .latest-sales-flag-cell .kexo-flag-fallback {
+  width: 30px !important;
+  height: 23px !important;
+  min-width: 30px;
+  min-height: 23px;
+  border-radius: 3px;
+}
+body[data-page="live"] #latest-sales-table tbody td {
+  font-size: 12px;
+}
 /* Table header row: surface-secondary background (all THs) */
 body:not([data-page="settings"]) .table-scroll-wrap .grid-row--header .grid-cell,
 body:not([data-page="settings"]) .country-table-wrap .grid-row--header .grid-cell,
@@ -5458,10 +5470,10 @@ body[data-page="dashboard"] .kexo-overview-widget-card .kexo-widget-head-right {
   .kexo-desktop-nav-left::-webkit-scrollbar {
     display: none;
   }
-  /* Mobile: grid layout 20% each (5 nav items) */
+  /* Mobile: responsive columns (4 items for non-admin, 5 for admin) */
   .kexo-desktop-nav-list {
     display: grid !important;
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
     width: 100%;
     min-width: 0;
     justify-content: stretch;
