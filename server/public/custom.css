@@ -642,6 +642,13 @@ body[data-page="countries"] .card[data-kexo-chart-key="countries-map-chart"] .ke
   padding: 0;
 }
 
+/* Countries map: center fixed-height map within tall card. */
+body[data-page="countries"] .card[data-kexo-chart-key="countries-map-chart"] .kexo-widget-body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 /* Countries map: remove redundant overlay title (page title already says Countries). */
 body[data-page="countries"] .card[data-kexo-chart-key="countries-map-chart"] .kexo-widget-title {
   display: none;

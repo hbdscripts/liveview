@@ -1830,6 +1830,34 @@
       try { container.addEventListener('touchend', hideMapTooltips, { passive: true }); } catch (_) {}
     }
 
+    // Back-compat for older map builds + helps prevent "stuck" tooltips on iOS.
+    function bindJvmTooltipAutoHideOnce(container) {
+      if (!container || container.__kexoJvmTooltipAutoHideBound) return;
+      container.__kexoJvmTooltipAutoHideBound = true;
+      hideMapTooltipOnLeave(container);
+      bindGlobalMapTooltipDismiss();
+      var hideNow = hideMapTooltips;
+      var hideSoon = typeof kexoThrottle === 'function' ? kexoThrottle(hideNow, 60) : hideNow;
+      function isRegionNode(node) {
+        if (!node) return false;
+        try {
+          if (node.classList && node.classList.contains('jvm-region')) return true;
+        } catch (_) {}
+        try {
+          if (node.closest && node.closest('.jvm-region')) return true;
+        } catch (_) {}
+        return false;
+      }
+      function maybeHide(e) {
+        if (isRegionNode(e && e.target)) return;
+        hideSoon();
+      }
+      try { container.addEventListener('pointermove', maybeHide, { passive: true }); } catch (_) {}
+      try { container.addEventListener('mousemove', maybeHide, { passive: true }); } catch (_) {}
+      try { container.addEventListener('touchmove', maybeHide, { passive: true }); } catch (_) {}
+    }
+    try { window.bindJvmTooltipAutoHideOnce = bindJvmTooltipAutoHideOnce; } catch (_) {}
+
     function setVectorMapTooltipContent(tooltip, html, text) {
       if (!tooltip) return;
       var htmlContent = html == null ? '' : String(html);
@@ -1897,6 +1925,7 @@
       // Tooltip system was refactored; keep map render path using current helpers.
       bindGlobalMapTooltipDismiss();
       hideMapTooltips();
+      bindJvmTooltipAutoHideOnce(el);
       var setState = typeof opts.setState === 'function' ? opts.setState : setCountriesMapState;
       var mapHeight = Math.max(80, Number(opts.mapHeight) || 220);
       if (typeof jsVectorMap === 'undefined') {
@@ -2067,7 +2096,7 @@
           }, 160);
         } catch (_) {}
       }
-      hideMapTooltipOnLeave(el);
+      bindJvmTooltipAutoHideOnce(el);
       if (typeof opts.afterMapCreated === 'function') opts.afterMapCreated(instance, el);
       return instance;
     }
