@@ -184,6 +184,23 @@
     return fallback || 'line';
   }
 
+  /** Return hex color 50% lighter (mix with white). Input #rrggbb or rrggbb. */
+  function lightenHex50(hex) {
+    if (hex == null) return '#b8d9d6';
+    var h = String(hex).trim().replace(/^#/, '');
+    if (h.length !== 6 || !/^[0-9a-f]{6}$/i.test(h)) return hex;
+    var r = parseInt(h.slice(0, 2), 16);
+    var g = parseInt(h.slice(2, 4), 16);
+    var b = parseInt(h.slice(4, 6), 16);
+    r = Math.round(0.5 * r + 127.5);
+    g = Math.round(0.5 * g + 127.5);
+    b = Math.round(0.5 * b + 127.5);
+    r = Math.max(0, Math.min(255, r));
+    g = Math.max(0, Math.min(255, g));
+    b = Math.max(0, Math.min(255, b));
+    return '#' + [r, g, b].map(function (n) { return ('0' + n.toString(16)).slice(-2); }).join('');
+  }
+
   function isPlainObject(value) {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
     var proto = Object.getPrototypeOf(value);
@@ -257,7 +274,7 @@
       };
       out.markers = { size: type === 'line' ? s.markerSize : 0, hover: { size: Math.max(4, s.markerSize + 2) } };
       if (type === 'area') {
-        out.fill = { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: s.fillOpacity, opacityTo: Math.max(0, s.fillOpacity * 0.35), stops: [0, 100] } };
+        out.fill = { type: 'solid', opacity: s.fillOpacity > 0 ? s.fillOpacity : 1 };
       } else if (type === 'bar') {
         out.fill = { type: 'solid', opacity: s.fillOpacity > 0 ? s.fillOpacity : 1 };
       }
@@ -313,10 +330,10 @@
       : function (v) { return v != null ? Number(v).toLocaleString() : '—'; };
 
     // ApexCharts 4.x can zero out stroke alpha when fill opacity is 0 for line charts.
-    // Keep opacity at 1; line charts still render without an area fill.
+    // Area Line: solid fill 50% lighter than line color (no gradient).
     var fillConfig = chartType === 'line' ? { type: 'solid', opacity: 1 }
       : chartType === 'bar' ? { type: 'solid', opacity: 1 }
-      : { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.15, opacityTo: 0.02, stops: [0, 100] } };
+      : { type: 'solid', opacity: 1, colors: colors.map(lightenHex50) };
 
     var apexOpts = {
       chart: {
@@ -370,6 +387,10 @@
     }
     if (advancedApexOverride && Object.keys(advancedApexOverride).length) {
       deepMergeInto(apexOpts, advancedApexOverride);
+    }
+    if (chartType === 'area') {
+      var fillOpacity = (chartStyle && Number.isFinite(Number(chartStyle.fillOpacity))) ? Math.max(0, Math.min(1, Number(chartStyle.fillOpacity))) : 1;
+      apexOpts.fill = { type: 'solid', opacity: fillOpacity > 0 ? fillOpacity : 1, colors: colors.map(lightenHex50) };
     }
 
     var instance = null;

@@ -234,7 +234,7 @@ const CHART_KPI_BUNDLE_KEYS = ['dashboardCards', 'headerStrip', 'yearlySnapshot'
 const CHART_KPI_BUNDLE_KEY_SET = new Set(CHART_KPI_BUNDLE_KEYS);
 
 const CHART_ALLOWED_MODES = Object.freeze({
-  'dash-chart-overview-30d': ['line', 'area', 'bar', 'stacked-bar'],
+  'dash-chart-overview-30d': ['line', 'area'],
   'dash-chart-finishes-30d': ['radialbar', 'bar-horizontal'],
   'dash-chart-devices-30d': ['bar-horizontal', 'radialbar'],
   'dash-chart-countries-30d': ['bar-horizontal', 'bar', 'bar-distributed', 'radialbar', 'pie', 'donut', 'line', 'area', 'multi-line-labels'],
@@ -253,7 +253,7 @@ const CHART_ALLOWED_MODES = Object.freeze({
 });
 
 // One-time migrations for chart defaults that should never override user choices after the first run.
-const CHARTS_UI_DEFAULTS_VERSION = 3;
+const CHARTS_UI_DEFAULTS_VERSION = 4;
 
 function defaultChartStyleConfig() {
   return {
@@ -394,7 +394,7 @@ function defaultChartsUiConfigV1() {
     charts: [
       withStyle(
         { key: 'dash-chart-overview-30d', label: 'Dashboard · 7 Day Overview', enabled: true, mode: 'area', sizePercent: 80, colors: ['#3eb3ab', '#ef4444'], advancedApexOverride: {} },
-        { animations: false, bucketMode: 'all', dataLabels: 'off', barColumnWidth: 60, strokeWidth: 2.6 }
+        { animations: false, bucketMode: 'all', dataLabels: 'off', barColumnWidth: 60, strokeWidth: 2.6, fillOpacity: 1 }
       ),
       withStyle(
         { key: 'dash-chart-finishes-30d', label: 'Dashboard · Finishes (7 Days)', enabled: true, mode: 'radialbar', sizePercent: 100, colors: ['#f59e34', '#94a3b8', '#8b5cf6', '#4b94e4', '#3eb3ab'], advancedApexOverride: {} },
@@ -409,8 +409,8 @@ function defaultChartsUiConfigV1() {
         { animations: false, icons: true, bottomLabels: true, pieDonut: true, pieDonutSize: 64, pieLabelPosition: 'outside', pieLabelContent: 'label', pieLabelOffset: 18 }
       ),
       withStyle({ key: 'live-online-chart', label: 'Dashboard · Live Online', enabled: true, mode: 'map-animated', colors: ['#16a34a'], advancedApexOverride: {} }),
-      withStyle({ key: 'sales-overview-chart', label: 'Dashboard · Sales Trend', enabled: true, mode: 'area', colors: ['#0d9488'], advancedApexOverride: {} }),
-      withStyle({ key: 'date-overview-chart', label: 'Dashboard · Sessions & Orders Trend', enabled: true, mode: 'area', colors: ['#4b94e4', '#f59e34'], advancedApexOverride: {} }),
+      withStyle({ key: 'sales-overview-chart', label: 'Dashboard · Sales Trend', enabled: true, mode: 'area', colors: ['#0d9488'], advancedApexOverride: {} }, { fillOpacity: 1 }),
+      withStyle({ key: 'date-overview-chart', label: 'Dashboard · Sessions & Orders Trend', enabled: true, mode: 'area', colors: ['#4b94e4', '#f59e34'], advancedApexOverride: {} }, { fillOpacity: 1 }),
       withStyle({ key: 'ads-overview-chart', label: 'Integrations · Google Ads Overview', enabled: true, mode: 'bar', colors: ['#3eb3ab', '#ef4444', '#4b94e4'], advancedApexOverride: {} }),
       withStyle({ key: 'attribution-chart', label: 'Acquisition · Attribution', enabled: true, mode: 'line', colors: ['#4b94e4', '#f59e34', '#3eb3ab', '#8b5cf6', '#ef4444', '#22c55e'], pieMetric: 'sessions', advancedApexOverride: {} }),
       withStyle({ key: 'devices-chart', label: 'Acquisition · Devices', enabled: true, mode: 'line', colors: ['#4b94e4', '#f59e34', '#3eb3ab', '#8b5cf6', '#ef4444', '#22c55e'], pieMetric: 'sessions', advancedApexOverride: {} }),
@@ -1049,6 +1049,7 @@ function normalizeChartsList(rawList, defaults, options) {
   const opts = options && typeof options === 'object' ? options : {};
   const migrateDashboardOverview = !!opts.migrateDashboardOverview;
   const migrateMapZoomButtons = !!opts.migrateMapZoomButtons;
+  const migrateAreaFillOpacity = !!opts.migrateAreaFillOpacity;
   const byKey = {};
   for (const d of defaults) byKey[d.key] = d;
   const out = [];
@@ -1059,7 +1060,7 @@ function normalizeChartsList(rawList, defaults, options) {
     if (key === 'dash-chart-finishes-30d' && mode === 'pie') return 'radialbar';
     if (key === 'dash-chart-countries-30d' && mode === 'pie') return 'bar-horizontal';
     if (key === 'dash-chart-attribution-30d' && mode === 'pie') return 'donut';
-    if (key === 'dash-chart-overview-30d' && mode === 'bar') return 'area';
+    if (key === 'dash-chart-overview-30d' && (mode === 'bar' || mode === 'stacked-bar')) return 'area';
     return mode;
   }
   if (Array.isArray(rawList)) {
@@ -1084,6 +1085,12 @@ function normalizeChartsList(rawList, defaults, options) {
       if (migrateMapZoomButtons && (key === 'live-online-chart' || key === 'countries-map-chart')) {
         // Migration: zoom buttons should be visible by default for maps.
         normalized.style = { ...(normalized.style || {}), mapZoomButtons: true };
+      }
+      if (migrateAreaFillOpacity && (mode === 'area' || mode === 'stacked-area')) {
+        const current = normalized.style && typeof normalized.style.fillOpacity === 'number' ? normalized.style.fillOpacity : null;
+        if (current == null || (current > 0 && current < 0.25)) {
+          normalized.style = { ...(normalized.style || {}), fillOpacity: 1 };
+        }
       }
       if (key === 'dash-chart-devices-30d') {
         normalized.dimension = normalizeDashboardBreakdownDimension(item.dimension, def.dimension || 'device');
@@ -1293,11 +1300,12 @@ function normalizeChartsUiConfigV1(raw) {
   const defaultsVersion = Number.isFinite(rawDefaultsVersion) && rawDefaultsVersion >= 0 ? rawDefaultsVersion : 0;
   const shouldMigrateDashboardOverview = defaultsVersion < 2;
   const shouldMigrateMapZoomButtons = defaultsVersion < 3;
+  const shouldMigrateAreaFillOpacity = defaultsVersion < 4;
   return {
     v: 1,
     defaultsVersion: Math.max(defaultsVersion, CHARTS_UI_DEFAULTS_VERSION),
     hideOnMobile: normalizeBool(obj.hideOnMobile, def.hideOnMobile),
-    charts: normalizeChartsList(obj.charts, def.charts, { migrateDashboardOverview: shouldMigrateDashboardOverview, migrateMapZoomButtons: shouldMigrateMapZoomButtons }),
+    charts: normalizeChartsList(obj.charts, def.charts, { migrateDashboardOverview: shouldMigrateDashboardOverview, migrateMapZoomButtons: shouldMigrateMapZoomButtons, migrateAreaFillOpacity: shouldMigrateAreaFillOpacity }),
     kpiBundles: normalizeChartsKpiBundles(obj.kpiBundles, def.kpiBundles),
   };
 }

@@ -7,7 +7,7 @@
 
   var CHART_MODE_LABEL = {
     'map-animated': 'Map (animated)',
-    area: 'Area',
+    area: 'Area Line',
     line: 'Line',
     bar: 'Vertical Bar',
     'bar-horizontal': 'Horizontal Bar',
@@ -23,7 +23,7 @@
 
   window.KEXO_CHART_DEFS = {
     'dash-chart-overview-30d': {
-      modes: ['line', 'area', 'bar', 'stacked-bar'],
+      modes: ['line', 'area'],
       series: ['Revenue', 'Cost', 'Profit'],
       defaultMode: 'area',
       height: 420,
@@ -61,17 +61,6 @@
             step: 0.1,
             modes: ['line', 'area'],
             default: 2.6
-          },
-          {
-            type: 'range',
-            field: 'barColumnWidth',
-            label: 'Bar column width',
-            unit: '%',
-            min: 20,
-            max: 95,
-            step: 1,
-            modes: ['bar', 'stacked-bar'],
-            default: 60
           },
           {
             type: 'range',

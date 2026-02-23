@@ -228,7 +228,10 @@
           ? Math.max(0, Math.min(1, Number(s.style.fillOpacity)))
           : 0.18;
         var fillOpacityPct = Math.round(fillOpacityRaw * 100);
-        var fillOpacityVisible = (String(mode || '').trim().toLowerCase() !== 'map');
+        var fillOpacityVisible = (function () {
+          var m = String(mode || '').trim().toLowerCase();
+          return (m === 'area' || m === 'stacked-area');
+        })();
 
         var body = '';
         body += '<div class="row g-3">';
@@ -466,7 +469,7 @@
 
         function modeSupportsFillOpacity(modeVal) {
           var m = String(modeVal || '').trim().toLowerCase();
-          return (m !== 'map');
+          return (m === 'area' || m === 'stacked-area');
         }
 
         function fillOpacityLabelForMode(modeVal) {
@@ -638,10 +641,13 @@
               styleBase.pieLabelOffset = po;
             }
           }
-          var fillEl = bodyEl.querySelector('[data-cs-field="fillOpacity"]');
-          if (fillEl) {
-            var raw = parseInt(String(fillEl.value || ''), 10);
-            if (Number.isFinite(raw)) styleBase.fillOpacity = Math.max(0, Math.min(1, raw / 100));
+          var currentMode = (modeEl && modeEl.value) ? String(modeEl.value).trim().toLowerCase() : mode;
+          if (modeSupportsFillOpacity(currentMode)) {
+            var fillEl = bodyEl.querySelector('[data-cs-field="fillOpacity"]');
+            if (fillEl) {
+              var raw = parseInt(String(fillEl.value || ''), 10);
+              if (Number.isFinite(raw)) styleBase.fillOpacity = Math.max(0, Math.min(1, raw / 100));
+            }
           }
           try {
             (capControls || []).forEach(function (c) {

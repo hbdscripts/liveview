@@ -5064,15 +5064,7 @@
           hover: { size: Math.max(4, style.markerSize + 2) }
         };
         if (mode === 'area') {
-          out.fill = {
-            type: 'gradient',
-            gradient: {
-              shadeIntensity: 1,
-              opacityFrom: style.fillOpacity,
-              opacityTo: Math.max(0, style.fillOpacity * 0.35),
-              stops: [0, 100]
-            }
-          };
+          out.fill = { type: 'solid', opacity: style.fillOpacity > 0 ? style.fillOpacity : 1 };
         } else if (mode === 'bar') {
           out.fill = { type: 'solid', opacity: style.fillOpacity > 0 ? style.fillOpacity : 1 };
         }

@@ -625,6 +625,22 @@
         return chart;
       }
 
+      function lightenHex50(hex) {
+        if (hex == null) return '#b8d9d6';
+        var h = String(hex).trim().replace(/^#/, '');
+        if (h.length !== 6 || !/^[0-9a-f]{6}$/i.test(h)) return hex;
+        var r = parseInt(h.slice(0, 2), 16);
+        var g = parseInt(h.slice(2, 4), 16);
+        var b = parseInt(h.slice(4, 6), 16);
+        r = Math.round(0.5 * r + 127.5);
+        g = Math.round(0.5 * g + 127.5);
+        b = Math.round(0.5 * b + 127.5);
+        r = Math.max(0, Math.min(255, r));
+        g = Math.max(0, Math.min(255, g));
+        b = Math.max(0, Math.min(255, b));
+        return '#' + [r, g, b].map(function(n) { return ('0' + n.toString(16)).slice(-2); }).join('');
+      }
+
       function makeChart(chartId, labels, datasets, opts) {
         if (typeof ApexCharts === 'undefined') {
           waitForApexCharts(function() { makeChart(chartId, labels, datasets, opts); });
@@ -791,11 +807,9 @@
           if (customTooltip) tooltipConfig.custom = customTooltip;
 
           var baseOpacity = fillOpacityVal != null ? fillOpacityVal : 1;
-          var areaFrom = fillOpacityVal != null ? fillOpacityVal * areaOpacityFrom : areaOpacityFrom;
-          var areaTo = fillOpacityVal != null ? fillOpacityVal * areaOpacityTo : areaOpacityTo;
           var fillConfig = chartType === 'line' ? { type: 'solid', opacity: baseOpacity }
             : chartType === 'bar' ? { type: 'solid', opacity: baseOpacity }
-            : { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: areaFrom, opacityTo: areaTo, stops: [0, 100] } };
+            : { type: 'solid', opacity: baseOpacity, colors: colors.map(lightenHex50) };
           var animationsEnabled = !!(uiStyle && uiStyle.animations === true);
 
           var markerSize = (opts && Number.isFinite(Number(opts.markerSize)))
