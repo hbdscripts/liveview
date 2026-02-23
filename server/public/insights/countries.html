@@ -34,9 +34,10 @@
               </div>
             </div>
           </div>
-  <div class="row g-3 mb-3">
-    <div class="col-12">
-      <div class="card kexo-widget-card kexo-map-widget-card" data-kexo-chart-key="countries-map-chart">
+<div id="tab-panel-stats" class="main-tab-panel" role="tabpanel" aria-labelledby="nav-tab-stats">
+  <div class="kexo-countries-top-grid mb-3" aria-label="Countries map and table">
+    <div class="kexo-countries-top-grid-map">
+      <div class="card h-100 kexo-widget-card kexo-map-widget-card" data-kexo-chart-key="countries-map-chart">
         <div class="card-body kexo-widget-card-body">
           <div class="kexo-widget-head">
             <div class="kexo-widget-title">Countries</div>
@@ -48,28 +49,18 @@
         </div>
       </div>
     </div>
+    <div class="kexo-countries-top-grid-table">
+      <div class="stats-card card h-100" id="stats-country" data-table-class="live" data-table-zone="countries-main" data-table-id="country-table">
+        <div class="card-header">
+          <h3 class="card-title" data-kexo-table-title="1">Country</h3>
+        </div>
+        <div id="country-table-mount" data-kexo-table="country-table"></div>
+        <div class="card-footer d-flex align-items-center justify-content-center is-hidden" id="country-pagination" aria-label="Country pagination"></div>
+      </div>
+    </div>
   </div>
 </div>
-<div id="tab-panel-stats" class="main-tab-panel" role="tabpanel" aria-labelledby="nav-tab-stats">
-  <div class="stats-row-wrap">
-  <div class="stats-row breakdown-row">
-    <div class="stats-card card" id="stats-country" data-table-class="live" data-table-zone="countries-main" data-table-id="country-table">
-      <div class="card-header">
-        <h3 class="card-title" data-kexo-table-title="1">Country</h3>
-      </div>
-      <div id="country-table-mount" data-kexo-table="country-table"></div>
-      <div class="card-footer d-flex align-items-center justify-content-center is-hidden" id="country-pagination" aria-label="Country pagination"></div>
-    </div>
-    <div class="stats-card card" id="stats-best-geo-products" data-table-class="live" data-table-zone="countries-products" data-table-id="best-geo-products-table">
-      <div class="card-header">
-        <h3 class="card-title" data-kexo-table-title="1">Country + Product</h3>
-      </div>
-      <div id="best-geo-products-mount" data-kexo-table="best-geo-products-table"></div>
-      <div class="card-footer d-flex align-items-center justify-content-center is-hidden" id="best-geo-products-pagination" aria-label="Country + Product pagination"></div>
-    </div>
-  </div>
-  </div>
-  </div>
+</div>
     <!--#include partials/page-body-end.html-->
       <!--#include partials/footer.html-->
   <div class="config-modal" id="kpi-compare-modal" aria-hidden="true">

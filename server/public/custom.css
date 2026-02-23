@@ -6516,8 +6516,37 @@ body[data-page="countries"] .page-header {
   margin-bottom: 0;
   background: linear-gradient(to bottom, var(--tblr-body-bg, #f5f7fb) 60%, transparent);
 }
-.kexo-map-hero .row.g-3 {
+.kexo-map-hero .row.g-3,
+.kexo-map-hero .kexo-countries-top-grid {
   padding-top: 56px;
+}
+
+/* Countries layout: map left, table right; wrap to single column on smaller screens. */
+.kexo-countries-top-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 1rem;
+  align-items: stretch;
+}
+.kexo-countries-top-grid > * {
+  min-width: 0;
+}
+@media (max-width: 991.98px) {
+  .kexo-countries-top-grid {
+    grid-template-columns: 1fr;
+  }
+}
+/* Match table card height to the map; keep pagination at bottom. */
+.kexo-countries-top-grid #stats-country {
+  display: flex;
+  flex-direction: column;
+}
+.kexo-countries-top-grid #country-table-mount {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.kexo-countries-top-grid #country-pagination {
+  flex: 0 0 auto;
 }
 
 /* Small icon size helper (replaces inline font-size). */

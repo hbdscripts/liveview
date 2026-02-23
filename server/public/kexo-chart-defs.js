@@ -244,7 +244,7 @@
       modes: ['map-animated'],
       series: ['Online now'],
       defaultMode: 'map-animated',
-      height: 320,
+      height: 640,
       capabilities: {
         controls: [
           { type: 'toggle', field: 'mapShowTooltip', label: 'Tooltips on hover', default: true },
