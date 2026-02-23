@@ -55,6 +55,7 @@
   var activeTab = 'controls';
   var usersLoadedOnce = false;
   var controlsLoadedOnce = false;
+  var diagnosticsLoadedOnce = false;
   var rolePermissionsLoadedOnce = false;
 
   function isSettingsPage() {
@@ -155,6 +156,8 @@
         loadControlsPanel();
       }
     } else if (t === 'diagnostics') {
+      if (diagnosticsLoadedOnce) return;
+      diagnosticsLoadedOnce = true;
       try {
         var msg = document.getElementById('config-action-msg');
         if (msg) { msg.textContent = 'Loading diagnostics…'; msg.className = 'form-hint text-secondary'; }
@@ -202,35 +205,46 @@
       } catch (_) {}
     }
     if (controlsEl) {
-      controlsEl.addEventListener('shown.bs.collapse', function () {
+      controlsEl.addEventListener('shown.bs.collapse', function (e) {
+        // Avoid nested accordion "shown" events bubbling up (e.g. Controls inner accordions).
+        if (e && e.target && e.target !== controlsEl) return;
         activeTab = 'controls';
         updateUrlFromTab('controls');
         runLazyLoadForAdminTab('controls');
       });
     }
     if (diagnosticsEl) {
-      diagnosticsEl.addEventListener('shown.bs.collapse', function () {
+      diagnosticsEl.addEventListener('shown.bs.collapse', function (e) {
+        // IMPORTANT: Diagnostics content contains its own accordion; inner shown events bubble.
+        // Only treat the *Admin Diagnostics* accordion as "shown" when it is the event target.
+        if (e && e.target && e.target !== diagnosticsEl) return;
         activeTab = 'diagnostics';
         updateUrlFromTab('diagnostics');
         runLazyLoadForAdminTab('diagnostics');
       });
     }
     if (usersEl) {
-      usersEl.addEventListener('shown.bs.collapse', function () {
+      usersEl.addEventListener('shown.bs.collapse', function (e) {
+        // Avoid nested "shown" bubbling from content inside Users.
+        if (e && e.target && e.target !== usersEl) return;
         activeTab = 'users';
         updateUrlFromTab('users');
         runLazyLoadForAdminTab('users');
       });
     }
     if (rolePermsEl) {
-      rolePermsEl.addEventListener('shown.bs.collapse', function () {
+      rolePermsEl.addEventListener('shown.bs.collapse', function (e) {
+        // Avoid nested "shown" bubbling from content inside Role permissions.
+        if (e && e.target && e.target !== rolePermsEl) return;
         activeTab = 'role-permissions';
         updateUrlFromTab('role-permissions');
         loadRolePermissionsPanel();
       });
     }
     if (googleAdsEl) {
-      googleAdsEl.addEventListener('shown.bs.collapse', function () {
+      googleAdsEl.addEventListener('shown.bs.collapse', function (e) {
+        // Avoid nested "shown" bubbling from content inside Google Ads panel.
+        if (e && e.target && e.target !== googleAdsEl) return;
         activeTab = 'googleads';
         updateUrlFromTab('googleads');
         runLazyLoadForAdminTab('googleads');
@@ -408,8 +422,8 @@
           html +=       '<div class="text-secondary small">Changes auto-save.</div>';
           html +=     '</div>';
           html +=     '<div class="btn-group btn-group-sm" role="group" aria-label="Bulk role permission actions">';
-          html +=       '<button type="button" class="btn btn-outline-secondary" data-role-perm-bulk="all" data-tier="' + escapeHtml(tier) + '">All</button>';
-          html +=       '<button type="button" class="btn btn-outline-secondary" data-role-perm-bulk="none" data-tier="' + escapeHtml(tier) + '">None</button>';
+          html +=       '<button type="button" class="btn btn-ghost-secondary btn-md" data-role-perm-bulk="all" data-tier="' + escapeHtml(tier) + '">All</button>';
+          html +=       '<button type="button" class="btn btn-ghost-secondary btn-md" data-role-perm-bulk="none" data-tier="' + escapeHtml(tier) + '">None</button>';
           html +=     '</div>';
           html +=   '</div>';
           html +=   '<div class="card-body">';

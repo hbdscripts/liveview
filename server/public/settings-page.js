@@ -790,6 +790,16 @@
     });
   }
 
+  var _settingsGlobalFooterSyncTimer = 0;
+  function scheduleSyncGlobalFooter() {
+    if (_settingsGlobalFooterSyncTimer) return;
+    _settingsGlobalFooterSyncTimer = setTimeout(function () {
+      _settingsGlobalFooterSyncTimer = 0;
+      try { syncGlobalFooter(); } catch (_) {}
+    }, 60);
+  }
+
+  var _settingsGlobalFooterUiState = null;
   function syncGlobalFooter() {
     var ctxKey = getGlobalFooterContextKey();
     if (_settingsGlobalFooterLastTab != null && _settingsGlobalFooterLastTab !== ctxKey) {
@@ -814,6 +824,47 @@
     var footerRight = (globalSave && globalSave.closest) ? globalSave.closest('.settings-footer-right') : null;
 
     var showSaved = usesGlobalDraft && !tabDirty && _settingsGlobalFooterSavedTab === ctxKey;
+    var hasLeftActions = !!(footerLeft && footerLeft.children && footerLeft.children.length);
+    var showFooterRight = !!(usesGlobalDraft && (tabDirty || showSaved));
+    var showFooter = !!(hasLeftActions || (usesGlobalDraft && (tabDirty || showSaved)));
+    var saveEnabled = !!(usesGlobalDraft && tabDirty);
+
+    // Bind footer handlers once (avoid re-assigning on every sync).
+    if (globalSave && globalSave.getAttribute('data-settings-footer-bound') !== '1') {
+      globalSave.setAttribute('data-settings-footer-bound', '1');
+      globalSave.onclick = function () {
+        settingsDraftSaveAll().then(function (results) {
+          var allOk = Array.isArray(results) && results.length > 0 && results.every(function (r) { return !!(r && r.ok); });
+          if (allOk) _settingsGlobalFooterSavedTab = getGlobalFooterContextKey() || null;
+          try { syncGlobalFooter(); } catch (_) {}
+        }).catch(function () {});
+      };
+    }
+    if (globalRevert && globalRevert.getAttribute('data-settings-footer-bound') !== '1') {
+      globalRevert.setAttribute('data-settings-footer-bound', '1');
+      globalRevert.onclick = function () {
+        clearGlobalFooterSavedIndicator();
+        settingsDraftRevertAll();
+      };
+    }
+
+    // If nothing materially changed, avoid touching the DOM (reduces flicker/reflow).
+    var nextState = {
+      ctxKey: ctxKey || '',
+      usesGlobalDraft: !!usesGlobalDraft,
+      tabDirty: !!tabDirty,
+      showSaved: !!showSaved,
+      hasLeftActions: !!hasLeftActions,
+    };
+    var prev = _settingsGlobalFooterUiState;
+    var same =
+      prev &&
+      prev.ctxKey === nextState.ctxKey &&
+      prev.usesGlobalDraft === nextState.usesGlobalDraft &&
+      prev.tabDirty === nextState.tabDirty &&
+      prev.showSaved === nextState.showSaved &&
+      prev.hasLeftActions === nextState.hasLeftActions;
+    _settingsGlobalFooterUiState = nextState;
 
     if (footerRight && !document.getElementById('settings-global-save-status')) {
       var savedEl = document.createElement('div');
@@ -826,27 +877,14 @@
     var savedStatusEl = document.getElementById('settings-global-save-status');
     if (savedStatusEl) savedStatusEl.hidden = !showSaved;
 
-    if (footerRight) footerRight.style.display = (usesGlobalDraft && (tabDirty || showSaved)) ? '' : 'none';
-    var hasLeftActions = !!(footerLeft && footerLeft.children && footerLeft.children.length);
-    if (footer) footer.hidden = !(hasLeftActions || (usesGlobalDraft && (tabDirty || showSaved)));
-    if (globalSave) globalSave.disabled = !(usesGlobalDraft && tabDirty);
-    if (globalRevert) globalRevert.disabled = !(usesGlobalDraft && tabDirty);
-    if (globalSave) globalSave.hidden = !!showSaved;
-    if (globalRevert) globalRevert.hidden = !!showSaved;
-    if (globalSave) {
-      globalSave.onclick = function () {
-        settingsDraftSaveAll().then(function (results) {
-          var allOk = Array.isArray(results) && results.length > 0 && results.every(function (r) { return !!(r && r.ok); });
-          if (allOk) _settingsGlobalFooterSavedTab = getGlobalFooterContextKey() || null;
-          try { syncGlobalFooter(); } catch (_) {}
-        }).catch(function () {});
-      };
-    }
-    if (globalRevert) {
-      globalRevert.onclick = function () {
-        clearGlobalFooterSavedIndicator();
-        settingsDraftRevertAll();
-      };
+    if (!same) {
+      if (footerRight) footerRight.style.display = showFooterRight ? '' : 'none';
+      if (footer) footer.hidden = !showFooter;
+      if (globalSave) globalSave.disabled = !saveEnabled;
+      if (globalRevert) globalRevert.disabled = !saveEnabled;
+      if (globalSave) globalSave.hidden = !!showSaved;
+      if (globalRevert) globalRevert.hidden = !!showSaved;
+      if (savedStatusEl) savedStatusEl.hidden = !showSaved;
     }
   }
 
@@ -1680,24 +1718,33 @@
     var mappingEl = document.getElementById('settings-attribution-accordion-mapping');
     var treeEl = document.getElementById('settings-attribution-accordion-tree');
     if (mappingEl) {
-      mappingEl.addEventListener('shown.bs.collapse', function () {
+      mappingEl.addEventListener('shown.bs.collapse', function (e) {
+        // Avoid nested accordion "shown" events bubbling up from inside the mapping panel.
+        if (e && e.target && e.target !== mappingEl) return;
         try { if (typeof window.initAttributionMappingSettings === 'function') window.initAttributionMappingSettings({ rootId: 'settings-attribution-mapping-root' }); } catch (_) {}
       });
     }
     if (treeEl) {
-      treeEl.addEventListener('shown.bs.collapse', function () {
+      treeEl.addEventListener('shown.bs.collapse', function (e) {
+        // Avoid nested accordion "shown" events bubbling up from inside the channel tree panel.
+        if (e && e.target && e.target !== treeEl) return;
         try { if (typeof window.initAttributionTreeView === 'function') window.initAttributionTreeView({ rootId: 'settings-attribution-tree-root' }); } catch (_) {}
       });
     }
     var tablesEl = document.getElementById('settings-layout-accordion-tables');
     if (tablesEl) {
-      tablesEl.addEventListener('shown.bs.collapse', function () {
+      tablesEl.addEventListener('shown.bs.collapse', function (e) {
+        // IMPORTANT: Layout → Tables renders its own accordion; inner shown events bubble.
+        // Only trigger table rendering when the *outer* Tables accordion is shown.
+        if (e && e.target && e.target !== tablesEl) return;
         try { renderTablesWhenVisible(); } catch (_) {}
       });
     }
     var variantsEl = document.getElementById('settings-insights-accordion-variants');
     if (variantsEl) {
-      variantsEl.addEventListener('shown.bs.collapse', function () {
+      variantsEl.addEventListener('shown.bs.collapse', function (e) {
+        // Avoid nested accordion "shown" events bubbling up from within the variants panel.
+        if (e && e.target && e.target !== variantsEl) return;
         try {
           if (!insightsVariantsDraft) {
             renderInsightsVariantsPanel(insightsVariantsConfigCache || defaultInsightsVariantsConfigV1());
@@ -6794,8 +6841,8 @@
     });
     var settingsMain = document.getElementById('settings-main-content') || document.querySelector('.settings-panel-wrap') || document.body;
     if (settingsMain) {
-      settingsMain.addEventListener('input', function () { try { clearGlobalFooterSavedIndicator(); syncGlobalFooter(); } catch (_) {} });
-      settingsMain.addEventListener('change', function () { try { clearGlobalFooterSavedIndicator(); syncGlobalFooter(); } catch (_) {} });
+      settingsMain.addEventListener('input', function () { try { clearGlobalFooterSavedIndicator(); scheduleSyncGlobalFooter(); } catch (_) {} });
+      settingsMain.addEventListener('change', function () { try { clearGlobalFooterSavedIndicator(); scheduleSyncGlobalFooter(); } catch (_) {} });
     }
 
     var loaderEnabled = isSettingsPageLoaderEnabled();
