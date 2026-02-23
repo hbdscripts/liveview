@@ -65,13 +65,12 @@ function pickClickId(gclidLike) {
   return { id: null, kind: null };
 }
 
-function looksLikeGoogleAds({ bsSource, utmSource, gclidLike } = {}) {
-  if (gclidLike && (gclidLike.gclid || gclidLike.gbraid || gclidLike.wbraid)) return true;
-  const a = (bsSource || '').toLowerCase();
-  const b = (utmSource || '').toLowerCase();
-  const s = a || b;
-  if (!s) return false;
-  return s.includes('google') || s.includes('adwords') || s.includes('googleads');
+/**
+ * Only treat as Google Ads when a click-id exists (gclid/gbraid/wbraid).
+ * Prevents tinkered URLs (utm_source=google, bs_campaign_id, etc.) from creating fake Google Ads attribution.
+ */
+function looksLikeGoogleAds({ gclidLike } = {}) {
+  return !!(gclidLike && (gclidLike.gclid || gclidLike.gbraid || gclidLike.wbraid));
 }
 
 function chunk(arr, size) {
@@ -253,10 +252,10 @@ async function syncAttributedOrdersToAdsDb(options = {}) {
     const gbraid = gclidLike && gclidLike.gbraid ? String(gclidLike.gbraid).trim() : null;
     const wbraid = gclidLike && gclidLike.wbraid ? String(gclidLike.wbraid).trim() : null;
     let attributionMethod = urlAttrib && urlAttrib.attributionMethod ? String(urlAttrib.attributionMethod) : null;
-    let isGoogleAds = looksLikeGoogleAds({ bsSource: sourceHint, utmSource, gclidLike });
+    let isGoogleAds = looksLikeGoogleAds({ gclidLike });
 
-    // If URL had a gclid but no explicit campaign, try cache mapping.
-    if (!campaignId && gclid) {
+    // When click-id exists, prefer gclid_campaign_cache over URL-provided campaign (guard against tampered bs_campaign_id/utm_id).
+    if (gclid) {
       const mapping = await getGclidMappingCached(adsDb, gclidCache, gclid);
       if (mapping && mapping.campaignId) {
         campaignId = mapping.campaignId;
@@ -437,9 +436,8 @@ async function syncAttributedOrdersToAdsDb(options = {}) {
       const entryUrl = row.entry_url != null ? String(row.entry_url).trim() : '';
       const params = safeUrlParams(entryUrl);
       const gl = extractGclidLike(params);
-      if (!looksLikeGoogleAds({ bsSource, utmSource, gclidLike: gl }) && !looksLikeGoogleAdsSource(bsSource) && !looksLikeGoogleAdsSource(utmSource)) {
-        return null;
-      }
+      // Require click-id on session for last-click carryover (guard against tinkered bs_campaign_id).
+      if (!looksLikeGoogleAds({ gclidLike: gl })) return null;
       const visitorCountryCode =
         normalizeCountryCode(row && row.country_code != null ? row.country_code : null) ||
         normalizeCountryCode(row && row.cf_country != null ? row.cf_country : null) ||
@@ -486,23 +484,26 @@ async function syncAttributedOrdersToAdsDb(options = {}) {
     if (o.campaignId && o.source) continue;
 
     if (!o.source) {
-      const sessSource = sess && sess.bsSource ? String(sess.bsSource) : '';
       const evAttrib = ev && ev.pageUrl ? deriveAttributionFromUrl(ev.pageUrl) : null;
-      const evUtmSource = evAttrib && evAttrib.bsSource ? String(evAttrib.bsSource) : '';
       const gclidLike = evAttrib && evAttrib.gclidLike ? evAttrib.gclidLike : null;
-      if (looksLikeGoogleAds({ bsSource: sessSource, utmSource: evUtmSource, gclidLike })) {
+      if (looksLikeGoogleAds({ gclidLike })) {
         o.source = source;
         if (!o.attributionMethod) o.attributionMethod = 'purchase_events.source';
       }
     }
 
-    if (sess && sess.bsCampaignId && !o.campaignId) {
-      o.campaignId = sess.bsCampaignId;
-      o.adgroupId = sess.bsAdgroupId || '_all_';
-      o.adId = sess.bsAdId || null;
-      o.attributionMethod = 'purchase_events.session.bs_campaign_id';
-      attributed++;
-      continue;
+    // Only copy session bs_campaign_id when session has a click-id (guard against tinkered URLs).
+    if (sess && sess.bsCampaignId && !o.campaignId && sess.entryUrl) {
+      const sessParams = safeUrlParams(sess.entryUrl);
+      const sessGclidLike = sessParams ? extractGclidLike(sessParams) : null;
+      if (looksLikeGoogleAds({ gclidLike: sessGclidLike })) {
+        o.campaignId = sess.bsCampaignId;
+        o.adgroupId = sess.bsAdgroupId || '_all_';
+        o.adId = sess.bsAdId || null;
+        o.attributionMethod = 'purchase_events.session.bs_campaign_id';
+        attributed++;
+        continue;
+      }
     }
 
     // If session has click ids in entry_url (gclid/gbraid/wbraid) but bs_campaign_id wasn't filled, use cache.
@@ -550,11 +551,12 @@ async function syncAttributedOrdersToAdsDb(options = {}) {
       }
     }
 
-    // Fallback: parse page_url for tracking params.
+    // Fallback: parse page_url for tracking params. Only use URL campaignId when page has click-id (guard against tinkered params).
     const pageUrl = ev && ev.pageUrl ? ev.pageUrl : null;
     if (pageUrl) {
       const urlAttrib = deriveAttributionFromUrl(pageUrl);
-      if (urlAttrib && urlAttrib.campaignId) {
+      const gl = urlAttrib && urlAttrib.gclidLike ? urlAttrib.gclidLike : null;
+      if (urlAttrib && urlAttrib.campaignId && looksLikeGoogleAds({ gclidLike: gl })) {
         o.campaignId = urlAttrib.campaignId;
         o.adgroupId = urlAttrib.adgroupId || '_all_';
         o.adId = urlAttrib.adId || null;
@@ -562,7 +564,6 @@ async function syncAttributedOrdersToAdsDb(options = {}) {
         attributed++;
         continue;
       }
-      const gl = urlAttrib && urlAttrib.gclidLike ? urlAttrib.gclidLike : null;
       const picked = pickClickId(gl);
       const gclid = gl && gl.gclid ? String(gl.gclid).trim() : (urlAttrib && urlAttrib.gclid ? String(urlAttrib.gclid).trim() : null);
       const gbraid = gl && gl.gbraid ? String(gl.gbraid).trim() : null;
@@ -593,7 +594,7 @@ async function syncAttributedOrdersToAdsDb(options = {}) {
   const now = Date.now();
   let upserts = 0;
   for (const o of parsed) {
-    if (!o || !o.source) continue; // only persist this provider’s attributed universe
+    if (!o) continue; // only persist this provider’s attributed universe
     await adsDb.run(
       `
         INSERT INTO ads_orders_attributed
@@ -605,22 +606,22 @@ async function syncAttributedOrdersToAdsDb(options = {}) {
           currency = EXCLUDED.currency,
           total_price = EXCLUDED.total_price,
           revenue_gbp = EXCLUDED.revenue_gbp,
-          source = COALESCE(NULLIF(EXCLUDED.source, ''), ads_orders_attributed.source),
-          campaign_id = COALESCE(NULLIF(EXCLUDED.campaign_id, ''), ads_orders_attributed.campaign_id),
-          adgroup_id = COALESCE(NULLIF(EXCLUDED.adgroup_id, ''), ads_orders_attributed.adgroup_id),
-          ad_id = COALESCE(NULLIF(EXCLUDED.ad_id, ''), ads_orders_attributed.ad_id),
-          gclid = COALESCE(NULLIF(EXCLUDED.gclid, ''), ads_orders_attributed.gclid),
-          gbraid = COALESCE(NULLIF(EXCLUDED.gbraid, ''), ads_orders_attributed.gbraid),
-          wbraid = COALESCE(NULLIF(EXCLUDED.wbraid, ''), ads_orders_attributed.wbraid),
-          click_id_type = COALESCE(NULLIF(EXCLUDED.click_id_type, ''), ads_orders_attributed.click_id_type),
-          click_id_value = COALESCE(NULLIF(EXCLUDED.click_id_value, ''), ads_orders_attributed.click_id_value),
-          country_code = COALESCE(NULLIF(EXCLUDED.country_code, ''), ads_orders_attributed.country_code),
-          session_id = COALESCE(NULLIF(EXCLUDED.session_id, ''), ads_orders_attributed.session_id),
-          visitor_country_code = COALESCE(NULLIF(EXCLUDED.visitor_country_code, ''), ads_orders_attributed.visitor_country_code),
-          visitor_device_type = COALESCE(NULLIF(EXCLUDED.visitor_device_type, ''), ads_orders_attributed.visitor_device_type),
-          visitor_network = COALESCE(NULLIF(EXCLUDED.visitor_network, ''), ads_orders_attributed.visitor_network),
-          attribution_method = COALESCE(NULLIF(EXCLUDED.attribution_method, ''), ads_orders_attributed.attribution_method),
-          landing_site = COALESCE(NULLIF(EXCLUDED.landing_site, ''), ads_orders_attributed.landing_site),
+          source = EXCLUDED.source,
+          campaign_id = EXCLUDED.campaign_id,
+          adgroup_id = EXCLUDED.adgroup_id,
+          ad_id = EXCLUDED.ad_id,
+          gclid = EXCLUDED.gclid,
+          gbraid = EXCLUDED.gbraid,
+          wbraid = EXCLUDED.wbraid,
+          click_id_type = EXCLUDED.click_id_type,
+          click_id_value = EXCLUDED.click_id_value,
+          country_code = EXCLUDED.country_code,
+          session_id = EXCLUDED.session_id,
+          visitor_country_code = EXCLUDED.visitor_country_code,
+          visitor_device_type = EXCLUDED.visitor_device_type,
+          visitor_network = EXCLUDED.visitor_network,
+          attribution_method = EXCLUDED.attribution_method,
+          landing_site = EXCLUDED.landing_site,
           updated_at = EXCLUDED.updated_at
       `,
       [

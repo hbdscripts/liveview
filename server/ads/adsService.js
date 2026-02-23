@@ -372,15 +372,21 @@ async function getSummary(options = {}) {
     console.warn('[ads.summary] campaign API name hydrate failed (non-fatal):', e && e.message ? e.message : e);
   }
 
-  // Finalize
+  // Finalize: hide unverified campaigns (no resolved name — likely tinkered URLs / unrelated UTMs).
   let totalsRevenue = 0;
   let totalsSpend = 0;
   let totalsClicks = 0;
   let totalsImpressions = 0;
   let totalsOrders = 0;
+  let hiddenUnverifiedCount = 0;
 
   const campaigns = [];
   for (const c of campaignMap.values()) {
+    const hasName = c.campaignName && String(c.campaignName).trim() !== '';
+    if (!hasName) {
+      hiddenUnverifiedCount++;
+      continue;
+    }
     c.profit = c.revenue - c.spend;
     c.roas = c.spend > 0 ? (c.revenue / c.spend) : null;
     totalsRevenue += c.revenue;
@@ -424,6 +430,7 @@ async function getSummary(options = {}) {
     rangeStartTs: bounds.start,
     rangeEndTs: bounds.end,
     currency: 'GBP',
+    hiddenUnverifiedCampaignIdsCount: hiddenUnverifiedCount,
     totals: {
       spend: Math.round(totalsSpend * 100) / 100,
       impressions: Math.floor(totalsImpressions || 0),
