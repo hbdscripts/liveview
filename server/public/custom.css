@@ -44,11 +44,6 @@ html, body {
   align-items: center;
   gap: 0.45rem;
 }
-.card-header .card-title .kexo-card-title-icon {
-  flex: 0 0 auto;
-  font-size: 0.95em;
-  opacity: 0.9;
-}
 
 /* Platform-wide kexo tooltip/help popover (same as Settings). */
 .kexo-help-popover {
@@ -599,22 +594,41 @@ body[data-page="dashboard"] .kexo-widget-card[data-kexo-chart-key="live-online-c
   padding: 0;
 }
 
-/* Countries map: use Overview-style widget head layout. */
+/* Map cards: header overlays the map (does not push SVG down). */
+body[data-page="live"] .card[data-kexo-chart-key="live-online-chart"] .kexo-widget-card-body,
+body[data-page="countries"] .card[data-kexo-chart-key="countries-map-chart"] .kexo-widget-card-body {
+  position: relative;
+  padding: 0 !important;
+}
+body[data-page="live"] .card[data-kexo-chart-key="live-online-chart"] .kexo-widget-head,
 body[data-page="countries"] .card[data-kexo-chart-key="countries-map-chart"] .kexo-widget-head {
-  padding: 10px 20px 0 20px;
-  height: auto;
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  right: 10px;
+  z-index: 7;
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.55rem;
+  border-radius: 0.75rem;
+  background: color-mix(in srgb, var(--tblr-bg-surface, #fff) 88%, transparent);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.10);
 }
+body[data-page="live"] .card[data-kexo-chart-key="live-online-chart"] .kexo-widget-title,
 body[data-page="countries"] .card[data-kexo-chart-key="countries-map-chart"] .kexo-widget-title {
   grid-column: 2;
   justify-self: center;
 }
+body[data-page="live"] .card[data-kexo-chart-key="live-online-chart"] .kexo-widget-head-right,
 body[data-page="countries"] .card[data-kexo-chart-key="countries-map-chart"] .kexo-widget-head-right {
   grid-column: 3;
   justify-self: end;
 }
+body[data-page="live"] .card[data-kexo-chart-key="live-online-chart"] .kexo-widget-body,
 body[data-page="countries"] .card[data-kexo-chart-key="countries-map-chart"] .kexo-widget-body {
   flex: 1;
   padding: 0;
@@ -665,6 +679,16 @@ body[data-page="dashboard"] .kexo-widget-card[data-kexo-chart-key="live-online-c
 #live-online-chart .jvm-zoom-btn.jvm-zoomout {
   top: 34px;
   left: 12px;
+}
+
+/* When map header overlays the SVG, move zoom buttons down. */
+body[data-page="live"] #live-online-chart .jvm-zoom-btn.jvm-zoomin,
+body[data-page="countries"] #countries-map-chart .jvm-zoom-btn.jvm-zoomin {
+  top: 62px;
+}
+body[data-page="live"] #live-online-chart .jvm-zoom-btn.jvm-zoomout,
+body[data-page="countries"] #countries-map-chart .jvm-zoom-btn.jvm-zoomout {
+  top: 84px;
 }
 @media (max-width: 575.98px) {
   #countries-map-chart .kexo-live-activity-legend,
