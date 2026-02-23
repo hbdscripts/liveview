@@ -1611,6 +1611,12 @@
         el = document.getElementById('countries-map-chart');
         chartKey = 'countries-map-chart';
       }
+      if (el && chartKey === 'live-online-chart') {
+        try {
+          var pageKey = document && document.body ? String(document.body.getAttribute('data-page') || '').trim().toLowerCase() : '';
+          if (pageKey === 'dashboard') chartKey = 'overview-live-online-chart';
+        } catch (_) {}
+      }
       if (!el) return;
       var setState = (chartKey === 'countries-map-chart' && typeof setCountriesMapState === 'function') ? setCountriesMapState : setLiveOnlineMapState;
       var meta = typeof window.kexoChartMeta === 'function' ? window.kexoChartMeta(chartKey) : null;

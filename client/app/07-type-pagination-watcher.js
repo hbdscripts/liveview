@@ -1768,11 +1768,9 @@
       return out;
     }
 
-    var mapTooltipScrollBound;
-    function hideMapTooltipOnLeave(container) {
-      if (!container || container.__kexoMapTooltipCleanup) return;
-      container.__kexoMapTooltipCleanup = true;
-      function hideTooltips() {
+    var jvmTooltipAutoHideBound = false;
+    function hideAllJvmTooltips() {
+      try {
         document.querySelectorAll('.jvm-tooltip').forEach(function(t) {
           try { t.classList.remove('active'); } catch (_) {}
           try {
@@ -1783,10 +1781,44 @@
             }
           } catch (_) {}
         });
-      }
-      container.addEventListener('mouseleave', hideTooltips, { passive: true });
-      // Don't hide on scroll: in embedded contexts, scroll events can fire unexpectedly and
-      // make tooltips appear "broken" (hidden while still hovering).
+      } catch (_) {}
+    }
+    function bindJvmTooltipAutoHideOnce() {
+      if (jvmTooltipAutoHideBound) return;
+      jvmTooltipAutoHideBound = true;
+      try {
+        var root = document && document.documentElement ? document.documentElement : null;
+        if (root && root.getAttribute('data-kexo-jvm-tooltip-autohide') === '1') return;
+        if (root) root.setAttribute('data-kexo-jvm-tooltip-autohide', '1');
+      } catch (_) {}
+      function hideNow() { hideAllJvmTooltips(); }
+      var hideSoon = typeof kexoThrottle === 'function' ? kexoThrottle(hideNow, 80) : hideNow;
+      try { window.addEventListener('scroll', hideSoon, { passive: true, capture: true }); } catch (_) {}
+      try { window.addEventListener('resize', hideSoon, { passive: true }); } catch (_) {}
+      try { window.addEventListener('blur', hideNow); } catch (_) {}
+      try {
+        document.addEventListener('visibilitychange', function() {
+          try { if (document.hidden) hideNow(); } catch (_) {}
+        }, { passive: true });
+      } catch (_) {}
+      try {
+        document.addEventListener('keydown', function(e) {
+          if (!e || e.key !== 'Escape') return;
+          hideNow();
+        }, true);
+      } catch (_) {}
+      try {
+        document.addEventListener('pointerdown', function(e) {
+          if (!e || !e.target) return;
+          hideNow();
+        }, true);
+      } catch (_) {}
+    }
+    function hideMapTooltipOnLeave(container) {
+      if (!container || container.__kexoMapTooltipCleanup) return;
+      container.__kexoMapTooltipCleanup = true;
+      bindJvmTooltipAutoHideOnce();
+      container.addEventListener('mouseleave', hideAllJvmTooltips, { passive: true });
     }
 
     function setVectorMapTooltipContent(tooltip, html, text) {
@@ -1853,6 +1885,8 @@
       opts = opts || {};
       var el = document.getElementById(containerId);
       if (!el) return null;
+      bindJvmTooltipAutoHideOnce();
+      hideAllJvmTooltips();
       var setState = typeof opts.setState === 'function' ? opts.setState : setCountriesMapState;
       var mapHeight = Math.max(80, Number(opts.mapHeight) || 220);
       if (typeof jsVectorMap === 'undefined') {
@@ -1989,6 +2023,20 @@
             try { regions[code].element.setStyle('fill', opts.regionFillByIso2[code]); } catch (_) {}
           }
         }
+      }
+      if (instance && opts.recenterOnCreate) {
+        try {
+          requestAnimationFrame(function() {
+            try { if (typeof instance.updateSize === 'function') instance.updateSize(); } catch (_) {}
+            try { if (typeof instance.reset === 'function') instance.reset(); } catch (_) {}
+          });
+        } catch (_) {}
+        try {
+          setTimeout(function() {
+            try { if (typeof instance.updateSize === 'function') instance.updateSize(); } catch (_) {}
+            try { if (typeof instance.reset === 'function') instance.reset(); } catch (_) {}
+          }, 160);
+        } catch (_) {}
       }
       hideMapTooltipOnLeave(el);
       if (typeof opts.afterMapCreated === 'function') opts.afterMapCreated(instance, el);
@@ -2174,6 +2222,7 @@
           zoomButtons: false,
           mapFit: 'contain',
           initialZoomMax: 1.6,
+          recenterOnCreate: true,
           retry: function() { renderCountriesMapChart(data, opts); },
           onRegionTooltipShow: function(event, tooltip, code) {
             const iso = (code || '').toString().trim().toUpperCase();
