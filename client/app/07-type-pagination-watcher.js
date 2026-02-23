@@ -198,15 +198,18 @@
         const handle = (v && v.handle) ? String(v.handle).trim().toLowerCase() : '';
         const productId = (v && v.product_id) ? String(v.product_id).replace(/^gid:\/\/shopify\/Product\//i, '').trim() : '';
         const productUrl = (mainBase && handle) ? (mainBase + '/products/' + encodeURIComponent(String(handle))) : '#';
+        const numericId = (productId && /^\d+$/.test(productId)) ? productId : '';
+        const linkHref = numericId ? ('/insights/products/' + numericId) : productUrl;
+        const targetAttr = linkHref.indexOf('/insights/') === 0 ? '' : ' target="_blank" rel="noopener"';
         const title = (v && v.title) ? String(v.title).trim() : '';
 
         const nameText = displayVariantName(v);
-        const canOpen = handle || (productId && /^\d+$/.test(productId));
+        const canOpen = handle || numericId;
         const nameInner = canOpen
           ? (
-              '<a class="kexo-product-link js-product-modal-link" href="' + escapeHtml(productUrl) + '" target="_blank" rel="noopener"' +
+              '<a class="kexo-product-link js-product-modal-link" href="' + escapeHtml(linkHref) + '"' + targetAttr +
                 (handle ? (' data-product-handle="' + escapeHtml(handle) + '"') : '') +
-                (productId && /^\d+$/.test(productId) ? (' data-product-id="' + escapeHtml(productId) + '"') : '') +
+                (numericId ? (' data-product-id="' + escapeHtml(numericId) + '"') : '') +
                 (title ? (' data-product-title="' + escapeHtml(title) + '"') : '') +
               '>' + escapeHtml(nameText) + '</a>'
             )
@@ -552,13 +555,16 @@
         const handle = (p && p.handle) ? String(p.handle).trim().toLowerCase() : '';
         const productId = (p && p.product_id) ? String(p.product_id).replace(/^gid:\/\/shopify\/Product\//i, '').trim() : '';
         const productUrl = (mainBase && handle) ? (mainBase + '/products/' + encodeURIComponent(String(handle))) : '#';
+        const numericId = (productId && /^\d+$/.test(productId)) ? productId : '';
+        const linkHref = numericId ? ('/insights/products/' + numericId) : productUrl;
+        const targetAttr = linkHref.indexOf('/insights/') === 0 ? '' : ' target="_blank" rel="noopener"';
         const title = (p && p.title) ? String(p.title).trim() : '';
-        const canOpen = handle || (productId && /^\d+$/.test(productId));
+        const canOpen = handle || numericId;
         const nameInner = canOpen
           ? (
-              '<a class="kexo-product-link js-product-modal-link" href="' + escapeHtml(productUrl) + '" target="_blank" rel="noopener"' +
+              '<a class="kexo-product-link js-product-modal-link" href="' + escapeHtml(linkHref) + '"' + targetAttr +
                 (handle ? (' data-product-handle="' + escapeHtml(handle) + '"') : '') +
-                (productId && /^\d+$/.test(productId) ? (' data-product-id="' + escapeHtml(productId) + '"') : '') +
+                (numericId ? (' data-product-id="' + escapeHtml(numericId) + '"') : '') +
                 (title ? (' data-product-title="' + escapeHtml(title) + '"') : '') +
               '>' + escapeHtml(title) + '</a>'
             )
@@ -946,13 +952,16 @@
         const value = formatMoneyCompact(Number.isFinite(rev) ? rev : 0, 'GBP') || '\u00A30';
         const cr = row && row.cr != null ? pct(row.cr) : '\u2014';
         const productUrl = (mainBase && handle) ? (mainBase + '/products/' + encodeURIComponent(handle)) : '#';
+        const numericId = (productId && /^\d+$/.test(productId)) ? productId : '';
+        const linkHref = numericId ? ('/insights/products/' + numericId) : productUrl;
+        const targetAttr = linkHref.indexOf('/insights/') === 0 ? '' : ' target="_blank" rel="noopener"';
         const placeholderSvg = '<i class="fa-light fa-image" data-icon-key="breakdown-placeholder-image" aria-hidden="true"></i>';
         const normalizedHandle = handle ? String(handle).trim().toLowerCase() : '';
-        const canOpen = normalizedHandle || (productId && /^\d+$/.test(productId));
+        const canOpen = normalizedHandle || numericId;
         const titleLink = canOpen
-          ? '<a class="kexo-product-link js-product-modal-link" href="' + escapeHtml(productUrl) + '" target="_blank" rel="noopener"' +
+          ? '<a class="kexo-product-link js-product-modal-link" href="' + escapeHtml(linkHref) + '"' + targetAttr +
               (normalizedHandle ? (' data-product-handle="' + escapeHtml(normalizedHandle) + '"') : '') +
-              (productId && /^\d+$/.test(productId) ? (' data-product-id="' + escapeHtml(productId) + '"') : '') +
+              (numericId ? (' data-product-id="' + escapeHtml(numericId) + '"') : '') +
               (title ? (' data-product-title="' + escapeHtml(title) + '"') : '') +
             '>' + escapeHtml(title) + '</a>'
           : escapeHtml(title);
@@ -2252,6 +2261,9 @@
         const productId = (r && r.product_id) ? String(r.product_id).replace(/^gid:\/\/shopify\/Product\//i, '').trim() : '';
         const mainBase = getMainBaseUrl();
         const productUrl = (mainBase && productHandle) ? (mainBase + '/products/' + encodeURIComponent(productHandle)) : '#';
+        const numericId = (productId && /^\d+$/.test(productId)) ? productId : '';
+        const linkHref = numericId ? ('/insights/products/' + numericId) : productUrl;
+        const targetAttr = linkHref.indexOf('/insights/') === 0 ? '' : ' target="_blank" rel="noopener"';
         const conversion = pct(r.conversion);
         const salesCount = r.converted != null ? Number(r.converted) : 0;
         const clicks = r.total != null ? formatSessions(r.total) : '\u2014';
@@ -2260,11 +2272,11 @@
         const vpv = vpvNum != null ? formatRevenue(vpvNum) : '\u2014';
         const flag = flagImg(iso, label);
         const normalizedHandle = productHandle ? String(productHandle).trim().toLowerCase() : '';
-        const canOpen = normalizedHandle || (productId && /^\d+$/.test(productId));
+        const canOpen = normalizedHandle || numericId;
         const titleLink = canOpen
-          ? '<a class="kexo-product-link js-product-modal-link" href="' + escapeHtml(productUrl) + '" target="_blank" rel="noopener"' +
+          ? '<a class="kexo-product-link js-product-modal-link" href="' + escapeHtml(linkHref) + '"' + targetAttr +
               (normalizedHandle ? (' data-product-handle="' + escapeHtml(normalizedHandle) + '"') : '') +
-              (productId && /^\d+$/.test(productId) ? (' data-product-id="' + escapeHtml(productId) + '"') : '') +
+              (numericId ? (' data-product-id="' + escapeHtml(numericId) + '"') : '') +
               (productTitle ? (' data-product-title="' + escapeHtml(productTitle) + '"') : '') +
             '>' + escapeHtml(productTitle) + '</a>'
           : escapeHtml(productTitle);

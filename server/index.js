@@ -246,6 +246,7 @@ app.post('/api/insights-variants-suggestions/apply', insightsVariantsSuggestions
 app.get('/api/worst-products', worstProducts.getWorstProducts);
 app.get('/api/product-insights', productInsights.getProductInsights);
 app.get('/api/page-insights', pageInsights.getPageInsights);
+app.get('/api/page-meta', pageInsights.getPageMeta);
 // Abandoned carts insights (cart vs checkout modes)
 app.use('/api/abandoned-carts', abandonedCarts);
 app.use('/api/insights/checkout-funnel', checkoutFunnel);
@@ -655,6 +656,8 @@ const insightsPagesRouter = express.Router();
 insightsPagesRouter.get('/snapshot', (req, res) => sendPage(res, 'insights/snapshot.html'));
 insightsPagesRouter.get('/countries', (req, res) => sendPage(res, 'insights/countries.html'));
 insightsPagesRouter.get('/products', (req, res) => sendPage(res, 'insights/products.html'));
+insightsPagesRouter.get('/products/:productId', (req, res) => sendPage(res, 'insights/product.html'));
+insightsPagesRouter.get('/pages/:pageId', (req, res) => sendPage(res, 'insights/page.html'));
 insightsPagesRouter.get('/variants', (req, res) => sendPage(res, 'insights/variants.html'));
 insightsPagesRouter.get('/payment-types', (req, res) => sendPage(res, 'insights/payment-types.html'));
 // Alias: keep /payment-types working but allow canonical naming in UI/links.

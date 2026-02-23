@@ -4213,12 +4213,15 @@
             var handle = (p && p.handle) ? String(p.handle).trim().toLowerCase() : '';
             var productId = (p && p.product_id) ? String(p.product_id).replace(/^gid:\/\/shopify\/Product\//i, '').trim() : '';
             var productUrl = (mainBase && handle) ? (mainBase + '/products/' + encodeURIComponent(handle)) : '#';
-            var canOpen = handle || (productId && /^\d+$/.test(productId));
+            var numericId = (productId && /^\d+$/.test(productId)) ? productId : '';
+            var linkHref = numericId ? ('/insights/products/' + numericId) : productUrl;
+            var targetAttr = linkHref.indexOf('/insights/') === 0 ? '' : ' target="_blank" rel="noopener"';
+            var canOpen = handle || numericId;
             var titleHtml = canOpen
               ? (
-                  '<a class="kexo-product-link js-product-modal-link" href="' + escapeHtml(productUrl) + '" target="_blank" rel="noopener"' +
+                  '<a class="kexo-product-link js-product-modal-link" href="' + escapeHtml(linkHref) + '"' + targetAttr +
                     (handle ? (' data-product-handle="' + escapeHtml(handle) + '"') : '') +
-                    (productId && /^\d+$/.test(productId) ? (' data-product-id="' + escapeHtml(productId) + '"') : '') +
+                    (numericId ? (' data-product-id="' + escapeHtml(numericId) + '"') : '') +
                     (title ? (' data-product-title="' + escapeHtml(title) + '"') : '') +
                   '>' + escapeHtml(title) + '</a>'
                 )
@@ -5833,11 +5836,14 @@
           if (r.thumbUrl) {
             var thumbImg = '<img src="' + escapeHtml(String(r.thumbUrl)) + '" alt="" width="40" height="40" class="kexo-dash-top-thumb" loading="lazy">';
             var canOpen = (r.productHandle && String(r.productHandle)) || (r.productId && String(r.productId));
+            var numericId = (r.productId && /^\d+$/.test(String(r.productId))) ? String(r.productId).trim() : '';
             var productUrl = (r.productUrl != null && String(r.productUrl) !== '' && String(r.productUrl) !== '#') ? String(r.productUrl) : '#';
+            var linkHref = numericId ? ('/insights/products/' + numericId) : productUrl;
+            var targetAttr = linkHref.indexOf('/insights/') === 0 ? '' : ' target="_blank" rel="noopener"';
             if (canOpen) {
-              iconHtml = '<a class="kexo-product-link kexo-dash-top-thumb-link js-product-modal-link" href="' + escapeHtml(productUrl) + '" target="_blank" rel="noopener"' +
+              iconHtml = '<a class="kexo-product-link kexo-dash-top-thumb-link js-product-modal-link" href="' + escapeHtml(linkHref) + '"' + targetAttr +
                 (r.productHandle ? (' data-product-handle="' + escapeHtml(String(r.productHandle)) + '"') : '') +
-                (r.productId ? (' data-product-id="' + escapeHtml(String(r.productId)) + '"') : '') +
+                (numericId ? (' data-product-id="' + escapeHtml(numericId) + '"') : '') +
                 (r.productTitle != null ? (' data-product-title="' + escapeHtml(String(r.productTitle)) + '"') : '') +
                 '>' + thumbImg + '</a>';
             } else {

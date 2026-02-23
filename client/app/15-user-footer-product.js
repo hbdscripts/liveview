@@ -931,20 +931,27 @@
         load();
       }
 
-      // Delegate clicks from product links (tables, breakdowns, etc.)
+      // Delegate clicks from product links: navigate to Kexo product page when we have numeric product ID (preserve query).
       document.addEventListener('click', function(e) {
         var a = e && e.target && e.target.closest ? e.target.closest('a.js-product-modal-link') : null;
         if (!a) return;
         if (isModifiedClick(e)) return;
+        var pid = (a.getAttribute('data-product-id') || '').trim();
+        var numericId = (pid && /^\d+$/.test(pid)) ? pid : null;
+        if (numericId) {
+          e.preventDefault();
+          var path = '/insights/products/' + numericId;
+          var q = (window.location && window.location.search) ? window.location.search : '';
+          window.location.assign(path + (q || ''));
+          return;
+        }
         var h = normalizeHandle(a.getAttribute('data-product-handle') || '');
         if (!h) h = parseHandleFromHref(a.getAttribute('href') || '');
-        var pid = (a.getAttribute('data-product-id') || '').trim();
-        if (!h && !pid) return;
+        if (!h) return;
         e.preventDefault();
-        openProduct(h || pid, {
+        openProduct(h, {
           title: a.getAttribute('data-product-title') || '',
           productUrl: a.getAttribute('href') || '',
-          productId: pid || undefined,
         });
       });
 

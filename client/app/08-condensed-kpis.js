@@ -2678,8 +2678,12 @@
         var label = countryLabel(iso);
         var productTitle = (r && r.product_title != null) ? String(r.product_title).trim() : '\u2014';
         var productHandle = (r && r.product_handle != null) ? String(r.product_handle).trim().toLowerCase() : '';
+        var productId = (r && r.product_id) ? String(r.product_id).replace(/^gid:\/\/shopify\/Product\//i, '').trim() : '';
         var mainBase = getMainBaseUrl();
         var productUrl = (mainBase && productHandle) ? (mainBase + '/products/' + encodeURIComponent(productHandle)) : '#';
+        var numericId = (productId && /^\d+$/.test(productId)) ? productId : '';
+        var linkHref = numericId ? ('/insights/products/' + numericId) : productUrl;
+        var targetAttr = linkHref.indexOf('/insights/') === 0 ? '' : ' target="_blank" rel="noopener"';
 
         var abandoned = r && r.abandoned != null ? Math.max(0, Math.trunc(Number(r.abandoned) || 0)) : 0;
         var checkout = r && r.checkout_sessions != null ? Math.max(0, Math.trunc(Number(r.checkout_sessions) || 0)) : 0;
@@ -2688,10 +2692,11 @@
         var value = (valueGbp != null && Number.isFinite(valueGbp)) ? formatRevenueTableHtml(valueGbp) : '\u2014';
         var flag = flagImg(iso, label);
 
-        var canOpen = !!productHandle;
+        var canOpen = !!productHandle || !!numericId;
         var titleLink = canOpen
-          ? '<a class="kexo-product-link js-product-modal-link" href="' + escapeHtml(productUrl) + '" target="_blank" rel="noopener"' +
+          ? '<a class="kexo-product-link js-product-modal-link" href="' + escapeHtml(linkHref) + '"' + targetAttr +
               (productHandle ? (' data-product-handle="' + escapeHtml(productHandle) + '"') : '') +
+              (numericId ? (' data-product-id="' + escapeHtml(numericId) + '"') : '') +
               (productTitle ? (' data-product-title="' + escapeHtml(productTitle) + '"') : '') +
             '>' + escapeHtml(productTitle) + '</a>'
           : escapeHtml(productTitle);

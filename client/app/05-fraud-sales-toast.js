@@ -479,12 +479,15 @@
         const explicitTitle = (s && s.product_title != null) ? String(s.product_title).trim() : '';
         const title = explicitTitle || (handle ? (titleCaseFromHandle(handle) || '') : '') || 'Unknown product';
         const productUrl = (mainBase && handle) ? (mainBase + '/products/' + encodeURIComponent(handle)) : '#';
-        const canOpen = !!(handle || pid);
+        const numericId = (pid && /^\d+$/.test(String(pid))) ? String(pid).trim() : '';
+        const linkHref = numericId ? ('/insights/products/' + numericId) : (productUrl || '#');
+        const targetAttr = linkHref.indexOf('/insights/') === 0 ? '' : ' target="_blank" rel="noopener"';
+        const canOpen = !!(handle || numericId);
         const titleHtml = canOpen
           ? (
-              '<a class="kexo-product-link js-product-modal-link" href="' + escapeHtml(productUrl || '#') + '" target="_blank" rel="noopener"' +
+              '<a class="kexo-product-link js-product-modal-link" href="' + escapeHtml(linkHref) + '"' + targetAttr +
                 (handle ? (' data-product-handle="' + escapeHtml(handle) + '"') : '') +
-                (pid ? (' data-product-id="' + escapeHtml(pid) + '"') : '') +
+                (numericId ? (' data-product-id="' + escapeHtml(numericId) + '"') : '') +
                 (title ? (' data-product-title="' + escapeHtml(title) + '"') : '') +
               '>' + escapeHtml(title) + '</a>'
             )

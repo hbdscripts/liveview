@@ -138,27 +138,32 @@ async function shopifyGraphql(shop, token, query, variables) {
 async function catalogSearch({ shop, q, limit = 10 } = {}) {
   const safeShop = salesTruth.resolveShopForSales(shop || '');
   const token = safeShop ? await salesTruth.getAccessToken(safeShop) : '';
-  if (!safeShop || !token) return { ok: false, error: 'missing_shop_or_token', products: [], collections: [] };
+  if (!safeShop || !token) return { ok: false, error: 'missing_shop_or_token', products: [], collections: [], pages: [] };
   const term = safeStr(q, 80);
-  if (!term) return { ok: true, products: [], collections: [] };
+  if (!term) return { ok: true, products: [], collections: [], pages: [] };
   const n = clampInt(limit, 10, 1, 15);
 
-  const query = `query($qp: String!, $qc: String!, $n: Int!) {
+  const query = `query($qp: String!, $qc: String!, $qpage: String!, $n: Int!) {
     products(first: $n, query: $qp) {
       nodes { id legacyResourceId title handle createdAt }
     }
     collections(first: $n, query: $qc) {
       nodes { id legacyResourceId title handle updatedAt }
     }
+    pages(first: $n, query: $qpage) {
+      nodes { id legacyResourceId title handle updatedAt }
+    }
   }`;
 
   const qp = `title:*${term}*`;
   const qc = `title:*${term}*`;
-  const gql = await shopifyGraphql(safeShop, token, query, { qp, qc, n });
-  if (!gql.ok) return { ok: false, error: gql.error || 'search_failed', products: [], collections: [] };
+  const qpage = `title:*${term}*`;
+  const gql = await shopifyGraphql(safeShop, token, query, { qp, qc, qpage, n });
+  if (!gql.ok) return { ok: false, error: gql.error || 'search_failed', products: [], collections: [], pages: [] };
 
   const products = (gql.data && gql.data.products && Array.isArray(gql.data.products.nodes)) ? gql.data.products.nodes : [];
   const collections = (gql.data && gql.data.collections && Array.isArray(gql.data.collections.nodes)) ? gql.data.collections.nodes : [];
+  const pages = (gql.data && gql.data.pages && Array.isArray(gql.data.pages.nodes)) ? gql.data.pages.nodes : [];
 
   return {
     ok: true,
@@ -182,6 +187,16 @@ async function catalogSearch({ shop, q, limit = 10 } = {}) {
       handle: normalizeHandle(c && c.handle) || null,
       updated_at: c && c.updatedAt ? String(c.updatedAt) : null,
     })).filter((c) => !!c.collection_id),
+    pages: pages.map((pg) => ({
+      page_id: (
+        pg && pg.legacyResourceId != null
+          ? String(pg.legacyResourceId)
+          : extractGidId(pg && pg.id, 'Page')
+      ) || '',
+      title: safeStr(pg && pg.title, 160) || 'Untitled',
+      handle: normalizeHandle(pg && pg.handle) || null,
+      updated_at: pg && pg.updatedAt ? String(pg.updatedAt) : null,
+    })).filter((pg) => !!pg.page_id),
   };
 }
 
