@@ -2097,8 +2097,8 @@
               '</div>' +
               '<div class="modal-body" id="fraud-detail-body"></div>' +
               '<div class="modal-footer">' +
-                '<button type="button" class="btn btn-secondary" data-fraud-open-session="1" style="display:none">Open session</button>' +
-                '<a class="btn btn-secondary" data-fraud-shopify-order="1" target="_blank" rel="noopener" style="display:none">Open order (Shopify)</a>' +
+                '<button type="button" class="btn btn-md" data-fraud-open-session="1" style="display:none">Open session</button>' +
+                '<a class="btn btn-md" data-fraud-shopify-order="1" target="_blank" rel="noopener" style="display:none">Open order (Shopify)</a>' +
                 '<button type="button" class="btn btn-primary" data-fraud-close="1">Close</button>' +
               '</div>' +
             '</div>' +
@@ -2261,7 +2261,7 @@
         '<hr class="my-3" />' +
         '<div class="mb-2 d-flex align-items-center justify-content-between">' +
           '<div style="font-weight:500">Evidence (safe snapshot)</div>' +
-          '<button type="button" class="btn btn-sm btn-secondary" data-fraud-copy-evidence="1">Copy</button>' +
+          '<button type="button" class="btn btn-sm btn-md" data-fraud-copy-evidence="1">Copy</button>' +
         '</div>' +
         '<pre class="fraud-evidence-pre" data-fraud-evidence-pre="1">' + escapeHtml(evidenceJson || '{}') + '</pre>'
       );

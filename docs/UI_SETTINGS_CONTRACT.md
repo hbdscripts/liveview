@@ -67,7 +67,7 @@ Files:
 Use Tabler conventions:
 
 - **Primary action** (Save/Apply/Update): `btn btn-primary btn-md`
-- **Secondary**: `btn btn-secondary btn-md`
+- **Secondary / default**: `btn btn-md` (do not use `btn-secondary`).
 - **Danger**: `btn btn-danger btn-md`
 - **Action row**: `d-flex align-items-center gap-2 flex-wrap` (buttons grouped, consistent spacing)
 - **Form spacing**: prefer `mb-3` group spacing, `form-label`, `form-hint`
@@ -77,12 +77,13 @@ Avoid bespoke layout wrappers when Tabler provides a standard utility/class.
 ### Button variants (absolute)
 
 - **Do not use any `btn-outline-*` classes** in Settings/Admin UI.
-- Use solid variants instead (`btn-primary`, `btn-secondary`, `btn-danger`, etc.).
+- Use solid variants instead (`btn-primary`, `btn-danger`, etc.). Do **not** use `btn-secondary`; use `btn btn-md` for secondary/default buttons.
 
 Migration mapping:
 
 - `btn btn-outline-primary …` → `btn btn-primary …`
-- `btn btn-outline-secondary …` → `btn btn-secondary …`
+- `btn btn-outline-secondary …` → `btn btn-md …`
+- `btn btn-secondary …` → `btn btn-md …`
 - `btn btn-outline-danger …` → `btn btn-danger …`
 - `btn btn-outline-success …` → `btn btn-success …`
 

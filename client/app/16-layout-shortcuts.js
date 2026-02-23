@@ -154,7 +154,7 @@
             '<div class="modal-body" id="' + MODAL_ID + '-body"></div>' +
             '<div class="modal-footer">' +
               '<span id="' + MODAL_ID + '-msg" class="form-hint me-auto"></span>' +
-              '<button type="button" class="btn btn-secondary" data-kexo-layout-modal-close>Cancel</button>' +
+              '<button type="button" class="btn btn-md" data-kexo-layout-modal-close>Cancel</button>' +
               '<button type="button" class="btn btn-primary" id="' + MODAL_ID + '-save-btn">Save</button>' +
             '</div>' +
           '</div>' +

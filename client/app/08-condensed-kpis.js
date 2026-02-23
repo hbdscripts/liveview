@@ -3171,7 +3171,7 @@
           '<div class="side-panel-detail-row side-panel-lookup-id-row">' +
             '<span class="side-panel-label">' + escapeHtml(label) + '</span>' +
             '<span class="side-panel-value"><code>' + escapeHtml(v) + '</code>' +
-              '<button type="button" class="btn btn-sm btn-secondary ms-2 side-panel-copy-btn" data-side-copy="' + escapeHtml(v) + '">Copy</button>' +
+              '<button type="button" class="btn btn-sm btn-md ms-2 side-panel-copy-btn" data-side-copy="' + escapeHtml(v) + '">Copy</button>' +
             '</span>' +
           '</div>';
       }

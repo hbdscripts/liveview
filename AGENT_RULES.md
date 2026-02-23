@@ -10,7 +10,7 @@
   - `git ls-remote --heads origin $(git branch --show-current)`  
   (remote ref must match HEAD.)
 - Do **not** edit `server/public/app.js` directly; edit `client/app/**` and run `npm run build:app`.
-- **No inline styles;** Tabler-first; follow [docs/UI_CONTRACT.md](docs/UI_CONTRACT.md).
+- **No inline styles;** Tabler-first; follow [docs/UI_CONTRACT.md](docs/UI_CONTRACT.md). Do **not** use `btn-secondary`; use `btn btn-md` for secondary/default buttons.
 - **Memory-safety:** single-init guards, cleanup timers/listeners/observers, avoid piling intervals, prefer `updateOptions`/`updateSeries` over destroy/recreate.
 - No dead code; remove unused routes/files when replacing systems.
 - No console spam in production (keep only logs that are clearly needed).

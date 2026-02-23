@@ -12,8 +12,8 @@ No code changes were made; this report is for decision-making before any standar
 | **Header** (partials/header.html) | Nav | `btn btn-ghost-secondary btn-icon` (notifications), `btn btn-sm btn-ghost-secondary` / `btn btn-icon btn-ghost-secondary` (Kexo Score modal) |
 | **Settings** (settings.html, settings-page.js) | Settings UI | `btn btn-md btn-icon`, `btn btn-ghost-secondary btn-sm`, `btn btn-ghost-secondary btn-md`, `btn-close`; Cost breakdown: `btn btn-sm btn-ghost-secondary`. Contract forbids `btn-outline-*` in Settings — **none found in Settings HTML** |
 | **Admin** (admin-page.js) | Admin UI | **`btn btn-outline-secondary`** used for role-perm bulk "All" / "None" (outside Settings layout) |
-| **Performance** (performance.html) | Report | `btn btn-secondary btn-md` (range dropdown) |
-| **Tools** (shipping-cr, time-of-day, etc.) | Tools | `btn btn-primary` (Go); some `btn btn-secondary` |
+| **Performance** (performance.html) | Report | `btn btn-md` (range dropdown) |
+| **Tools** (shipping-cr, time-of-day, etc.) | Tools | `btn btn-primary` (Go); some `btn btn-md` |
 | **Insights / countries** (countries.html) | Map controls | `btn-group btn-group-sm` with `btn btn-primary` (Live / By period) |
 | **Snapshot** (insights/snapshot.html) | Snapshot | `btn btn-sm btn-ghost-secondary` (Revenue & Cost settings) |
 | **Dashboard / app.js** (client) | Modals, cards | `btn btn-sm btn-primary`, `btn-close`, chart settings/layout shortcuts use various btn classes |
@@ -30,7 +30,7 @@ No code changes were made; this report is for decision-making before any standar
 
 ### 2.2 Tone / variant
 - **Primary**: `btn-primary` (Go buttons, Live/By period active state).
-- **Secondary**: `btn-secondary` (Performance range, some tools).
+- **Secondary / default**: `btn btn-md` (Performance range, tools, modals). Do not use `btn-secondary`.
 - **Ghost**: `btn-ghost-secondary` (header notifications, Kexo Score, Settings GA/cost breakdown, Insights variants).
 - **Outline**: `btn-outline-secondary` only in **admin-page.js** (role-perm bulk All/None). Contract says no `btn-outline-*` in Settings/Admin UI — this is in Admin but not in the Settings normaliser path; worth aligning to solid variant if you extend the contract to all admin surfaces.
 - **Danger**: used sparingly (e.g. retry/danger alerts).
@@ -45,9 +45,9 @@ No code changes were made; this report is for decision-making before any standar
 
 ## 3. Summary
 
-- **btn-outline-***: Only in **admin-page.js** (role-perm bulk All/None). Consider replacing with `btn btn-secondary` (or ghost) to match contract.
-- **Sizes**: Mix of none, `btn-sm`, `btn-md`; no `btn-lg` in scan. Recommend defaulting to `btn-md` for primary/secondary and reserving `btn-sm` for compact areas.
-- **Ghost vs secondary**: Ghost used in header and Settings for low emphasis; secondary used for Performance and some tools. Consistent.
+- **btn-outline-***: Only in **admin-page.js** (role-perm bulk All/None). Consider replacing with `btn btn-md` (or ghost) to match contract.
+- **Sizes**: Mix of none, `btn-sm`, `btn-md`; no `btn-lg` in scan. Standard is `btn-md` for primary/secondary; `btn-sm` for compact areas.
+- **Ghost vs btn-md**: Ghost used in header and Settings for low emphasis; `btn btn-md` used for Performance, tools, and modals. Do not use `btn-secondary`.
 - **Settings/Admin contract**: No `btn-outline-*` in Settings HTML; Admin role-perm panel uses outline — clarify if contract applies to all admin UI and, if so, change to solid/ghost.
 
 No mass changes were applied; choose a standard (sizes + variants + icon pattern) and then apply across pages/areas.

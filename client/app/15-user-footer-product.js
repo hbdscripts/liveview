@@ -318,7 +318,7 @@
               '</div>' +
               '<div class="modal-footer d-flex align-items-center justify-content-end gap-2 p-4">' +
                 '<a class="btn btn-primary" id="product-insights-open-admin" href="#" target="_blank" rel="noopener" style="display:none">Edit on Shopify</a>' +
-                '<a class="btn btn-secondary" id="product-insights-open-store" href="#" target="_blank" rel="noopener">View on Website</a>' +
+                '<a class="btn btn-md" id="product-insights-open-store" href="#" target="_blank" rel="noopener">View on Website</a>' +
               '</div>' +
             '</div>' +
           '</div>';

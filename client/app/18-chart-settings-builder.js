@@ -42,7 +42,7 @@
             '<div class="modal-body" id="' + MODAL_ID + '-body"></div>' +
             '<div class="modal-footer">' +
               '<span id="' + MODAL_ID + '-msg" class="form-hint me-auto"></span>' +
-              '<button type="button" class="btn btn-secondary" data-kexo-chart-settings-close>Cancel</button>' +
+              '<button type="button" class="btn btn-md" data-kexo-chart-settings-close>Cancel</button>' +
               '<button type="button" class="btn btn-primary" id="' + MODAL_ID + '-save">Save</button>' +
             '</div>' +
           '</div>' +
@@ -403,7 +403,7 @@
           body += '</div></div>';
 
           body += '<div class="col-12">';
-          body += '<a class="btn btn-sm btn-secondary" href="/settings/cost-expenses/rules">Open cost settings</a>';
+          body += '<a class="btn btn-sm btn-md" href="/settings/cost-expenses/rules">Open cost settings</a>';
           body += '<div class="form-hint">Manage cost sources, shipping, and profit rules.</div>';
           body += '</div>';
         }
