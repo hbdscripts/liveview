@@ -769,7 +769,6 @@ async function settingsPageHandler(req, res, next) {
 app.get('/settings/:tab/:subtab', settingsPageHandler);
 app.get('/settings/:tab', settingsPageHandler);
 app.get('/settings', settingsPageHandler);
-app.get('/performance', (req, res) => sendPage(res, 'performance.html'));
 app.get('/upgrade', (req, res) => sendPage(res, 'upgrade.html'));
 app.get('/ui-kit', (req, res) => sendPage(res, 'ui-kit.html'));
 app.get('/admin', async (req, res, next) => {

@@ -3086,11 +3086,19 @@ async function getBusinessSnapshot(options = {}) {
   };
 }
 
+const COST_BREAKDOWN_RANGE_SET = new Set(['today', 'yesterday', '7d', '14d', '30d']);
+function isCostBreakdownRangeKey(raw) {
+  if (!raw || typeof raw !== 'string') return false;
+  const s = raw.trim().toLowerCase();
+  if (COST_BREAKDOWN_RANGE_SET.has(s)) return true;
+  return /^r:\d{4}-\d{2}-\d{2}:\d{4}-\d{2}-\d{2}$/.test(s);
+}
+
 async function getCostBreakdown({ rangeKey, audit } = {}) {
   const nowMs = Date.now();
   const timeZone = store.resolveAdminTimeZone();
   const rawRange = rangeKey != null ? String(rangeKey).trim().toLowerCase() : '';
-  const safeRange = (rawRange === 'today' || rawRange === 'yesterday' || rawRange === '7d' || rawRange === '30d') ? rawRange : '7d';
+  const safeRange = isCostBreakdownRangeKey(rawRange) ? rawRange : '7d';
   const bounds = store.getRangeBounds(safeRange, nowMs, timeZone);
   const startTs = bounds && bounds.start != null ? Number(bounds.start) : nowMs;
   const endTs = bounds && bounds.end != null ? Number(bounds.end) : nowMs;

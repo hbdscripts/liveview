@@ -143,7 +143,6 @@ When adding a route, re-run this script so the doc stays in sync.
 | GET | `/overview` | (inline) |
 | GET | `/payment-methods` | (inline) |
 | GET | `/payment-types` | (inline) |
-| GET | `/performance` | (inline) |
 | GET | `/products` | (inline) |
 | GET | `/robots.txt` | (inline) |
 | GET | `/sales` | (inline) |
@@ -195,4 +194,3 @@ When adding a route, re-run this script so the doc stays in sync.
 | `/tools/time-of-day` | `server/public/tools/time-of-day.html` |
 | `/ui-kit` | `server/public/ui-kit.html` |
 | `/upgrade` | `server/public/upgrade.html` |
-| (see index.js) | `server/public/performance.html` |
