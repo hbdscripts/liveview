@@ -2138,6 +2138,20 @@ body:not([data-page="settings"]) .table-responsive table thead th {
   align-items: center;
   flex-wrap: nowrap;
 }
+/* Section cards: consistent header height and vertical alignment */
+#product-insights-modal .card .card-header {
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+}
+#product-insights-modal .card .card-header .card-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
 #product-insights-modal .modal-header .modal-title {
   min-width: 0;
   overflow: hidden;
@@ -2148,6 +2162,7 @@ body:not([data-page="settings"]) .table-responsive table thead th {
   padding: 1rem 1.25rem;
   background: var(--tblr-bg-surface-secondary, #f3f4f6);
   border-top: 1px solid var(--tblr-border-color);
+  justify-content: center;
 }
 .modal-backdrop.product-insights-backdrop.show {
   opacity: 0.72;
@@ -2223,12 +2238,23 @@ body:not([data-page="settings"]) .table-responsive table thead th {
   opacity: 0.35;
 }
 
-/* Sticky first column: 100px in modal so values are not pushed too far right */
-#product-insights-modal .table-responsive,
-#product-insights-modal #product-insights-metrics-table-wrap {
-  --kexo-sticky-col-width: 100px;
-  --kexo-sticky-col-min-width: 72px;
-  --kexo-sticky-col-max-width: 200px;
+/* Product insights modal: no sticky first column or resize handle (drag does not work here) */
+#product-insights-modal .table-responsive .kexo-product-insights-metrics thead th:first-child,
+#product-insights-modal .table-responsive .kexo-product-insights-metrics tbody td:first-child {
+  position: static !important;
+  left: auto !important;
+  z-index: auto !important;
+  width: 58% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  padding-right: 0.75rem !important;
+  box-shadow: none !important;
+}
+#product-insights-modal .kexo-sticky-resize-handle {
+  display: none !important;
+}
+#product-insights-modal .table-responsive.kexo-sticky-wrap {
+  overflow-x: visible;
 }
 
 #product-insights-modal .kexo-product-insights-metrics td:first-child {
