@@ -8,6 +8,8 @@
   var MODAL_ID = 'kexo-global-search-modal';
   var DEBOUNCE_MS = 220;
   var MIN_QUERY_LEN = 1;
+  var inputDebounceTimer = null;
+  var fallbackBackdropEl = null;
 
   function getShop() {
     try {
@@ -58,27 +60,94 @@
   var debounceTimer = null;
   var lastAbort = null;
 
+  function isBootstrapModalAvailable() {
+    try { return !!(window.bootstrap && window.bootstrap.Modal); } catch (_) { return false; }
+  }
+
+  function removeFallbackBackdrop() {
+    if (!fallbackBackdropEl) return;
+    try {
+      if (fallbackBackdropEl.parentNode) fallbackBackdropEl.parentNode.removeChild(fallbackBackdropEl);
+    } catch (_) {}
+    fallbackBackdropEl = null;
+  }
+
+  function closeModal(modal) {
+    if (!modal) modal = document.getElementById(MODAL_ID);
+    if (!modal) return;
+    try { if (lastAbort) lastAbort.abort(); } catch (_) {}
+    try { lastAbort = null; } catch (_) {}
+    try { if (debounceTimer) clearTimeout(debounceTimer); } catch (_) {}
+    try { debounceTimer = null; } catch (_) {}
+    try { if (inputDebounceTimer) clearTimeout(inputDebounceTimer); } catch (_) {}
+    try { inputDebounceTimer = null; } catch (_) {}
+
+    if (isBootstrapModalAvailable()) {
+      try {
+        window.bootstrap.Modal.getOrCreateInstance(modal).hide();
+        return;
+      } catch (_) {}
+    }
+
+    // Fallback (no Bootstrap JS): manual hide + dark backdrop.
+    try { modal.style.display = 'none'; } catch (_) {}
+    try { modal.classList.remove('show'); } catch (_) {}
+    try { modal.setAttribute('aria-hidden', 'true'); } catch (_) {}
+    try { document.body.classList.remove('modal-open'); } catch (_) {}
+    removeFallbackBackdrop();
+  }
+
+  function ensureFallbackBackdrop(modal) {
+    if (fallbackBackdropEl && fallbackBackdropEl.parentNode) return;
+    var el = document.createElement('div');
+    el.className = 'modal-backdrop fade show';
+    el.addEventListener('click', function () { closeModal(modal); });
+    document.body.appendChild(el);
+    fallbackBackdropEl = el;
+  }
+
   function ensureModal() {
     var existing = document.getElementById(MODAL_ID);
     if (existing) return existing;
     var wrap = document.createElement('div');
     wrap.innerHTML =
-      '<div class="modal modal-blur fade" id="' + MODAL_ID + '" tabindex="-1" role="dialog" aria-labelledby="' + MODAL_ID + '-title" aria-hidden="true">' +
+      '<div class="modal fade" id="' + MODAL_ID + '" tabindex="-1" role="dialog" aria-labelledby="' + MODAL_ID + '-title" aria-hidden="true">' +
       '<div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" role="document">' +
       '<div class="modal-content">' +
       '<div class="modal-header">' +
       '<h5 class="modal-title" id="' + MODAL_ID + '-title">Search</h5>' +
-      '<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>' +
+      '<button type="button" class="btn-close" aria-label="Close"></button>' +
       '</div>' +
       '<div class="modal-body">' +
       '<input type="text" class="form-control mb-3" id="' + MODAL_ID + '-input" placeholder="Products, pages, settings…" autocomplete="off" aria-label="Search query">' +
       '<div id="' + MODAL_ID + '-results" class="kexo-global-search-results"></div>' +
-      '<div id="' + MODAL_ID + '-empty" class="text-muted small" style="display:none;">Type to search products, pages, or settings.</div>' +
+      '<div id="' + MODAL_ID + '-empty" class="text-muted small" aria-live="polite" style="display:none;"></div>' +
       '</div>' +
       '</div></div></div>';
     var first = wrap.firstElementChild;
     if (first) document.body.appendChild(first);
-    return document.getElementById(MODAL_ID);
+    var modal = document.getElementById(MODAL_ID);
+    if (modal && modal.getAttribute('data-kexo-global-search-bound') !== '1') {
+      modal.setAttribute('data-kexo-global-search-bound', '1');
+      var closeBtn = modal.querySelector('.btn-close');
+      if (closeBtn) {
+        closeBtn.addEventListener('click', function (e) {
+          if (e && typeof e.preventDefault === 'function') e.preventDefault();
+          closeModal(modal);
+        });
+      }
+      // Fallback: clicking the shaded area closes.
+      modal.addEventListener('click', function (e) {
+        if (e && e.target === modal && !isBootstrapModalAvailable()) closeModal(modal);
+      });
+      // Fallback: escape closes.
+      document.addEventListener('keydown', function (e) {
+        if (!e || e.key !== 'Escape') return;
+        if (!modal.classList.contains('show')) return;
+        if (!isBootstrapModalAvailable()) closeModal(modal);
+      });
+    }
+    return modal;
   }
 
   function navigateTo(url, newTab) {
@@ -96,7 +165,20 @@
     var products = (data && data.products && Array.isArray(data.products)) ? data.products : [];
     var pages = (data && data.pages && Array.isArray(data.pages)) ? data.pages : [];
     var hasAny = products.length > 0 || pages.length > 0 || (settingsHits && settingsHits.length > 0);
-    if (emptyEl) emptyEl.style.display = hasAny ? 'none' : 'block';
+    var q = (query || '').trim();
+    var queryActive = q.length >= MIN_QUERY_LEN;
+    if (emptyEl) {
+      if (hasAny) {
+        emptyEl.style.display = 'none';
+        emptyEl.textContent = '';
+      } else {
+        emptyEl.style.display = 'block';
+        var err = (data && data.ok === false && data.error) ? String(data.error) : '';
+        if (queryActive && err === 'missing_shop_or_token') emptyEl.textContent = 'Select a shop to search products/pages.';
+        else if (queryActive && err) emptyEl.textContent = 'Search failed.';
+        else emptyEl.textContent = queryActive ? ('No results for “' + q + '”.') : 'Type to search products, pages, or settings.';
+      }
+    }
     var html = '';
     if (products.length > 0) {
       html += '<div class="mb-2"><span class="text-muted small text-uppercase fw-semibold">Products</span></div><ul class="list-unstyled mb-3">';
@@ -157,6 +239,13 @@
       renderResults(null, settingsHits, q);
       return;
     }
+    var container = document.getElementById(MODAL_ID + '-results');
+    var emptyEl = document.getElementById(MODAL_ID + '-empty');
+    if (container) container.innerHTML = '';
+    if (emptyEl) {
+      emptyEl.style.display = 'block';
+      emptyEl.textContent = 'Searching…';
+    }
     var shop = getShop();
     var url = API + '/api/tools/catalog-search?q=' + encodeURIComponent(q) + '&limit=10';
     if (shop) url += '&shop=' + encodeURIComponent(shop);
@@ -173,7 +262,12 @@
       .catch(function (err) {
         if (err && err.name === 'AbortError') return;
         lastAbort = null;
-        renderResults({ products: [], pages: [] }, settingsHits, q);
+        var emptyEl2 = document.getElementById(MODAL_ID + '-empty');
+        if (emptyEl2) {
+          emptyEl2.style.display = 'block';
+          emptyEl2.textContent = 'Search failed.';
+        }
+        renderResults({ ok: false, error: 'search_failed', products: [], pages: [] }, settingsHits, q);
       });
   }
 
@@ -181,29 +275,36 @@
     var modal = ensureModal();
     var input = document.getElementById(MODAL_ID + '-input');
     if (!input) return;
-    runSearch('');
     input.value = '';
-    input.focus();
-    if (window.bootstrap && window.bootstrap.Modal) {
-      window.bootstrap.Modal.getOrCreateInstance(modal, { backdrop: true, keyboard: true }).show();
+    renderResults(null, [], '');
+
+    if (isBootstrapModalAvailable()) {
+      try { window.bootstrap.Modal.getOrCreateInstance(modal, { backdrop: true, keyboard: true }).show(); } catch (_) {}
     } else {
       modal.style.display = 'block';
       modal.classList.add('show');
       modal.setAttribute('aria-hidden', 'false');
       document.body.classList.add('modal-open');
+      ensureFallbackBackdrop(modal);
     }
-    var boundRun = function () { runSearch(input.value); };
-    var t;
-    input.addEventListener('input', function () {
-      if (t) clearTimeout(t);
-      t = setTimeout(boundRun, DEBOUNCE_MS);
-    });
-    input.addEventListener('keydown', function (e) {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        boundRun();
-      }
-    });
+
+    setTimeout(function () { try { input.focus(); } catch (_) {} }, 0);
+
+    if (input.getAttribute('data-kexo-global-search-input-bound') !== '1') {
+      input.setAttribute('data-kexo-global-search-input-bound', '1');
+      input.addEventListener('input', function () {
+        if (inputDebounceTimer) clearTimeout(inputDebounceTimer);
+        inputDebounceTimer = setTimeout(function () {
+          inputDebounceTimer = null;
+          runSearch(input.value);
+        }, DEBOUNCE_MS);
+      });
+      input.addEventListener('keydown', function (e) {
+        if (!e || e.key !== 'Enter') return;
+        if (e && typeof e.preventDefault === 'function') e.preventDefault();
+        runSearch(input.value);
+      });
+    }
   }
 
   var btn = document.getElementById('kexo-global-search-btn-header');
