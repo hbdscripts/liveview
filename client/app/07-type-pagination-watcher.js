@@ -3243,7 +3243,7 @@
           try { fetchSessions(); } catch (_) {}
         }
         // Pull the authoritative timestamp (truth/evidence) so the footer is accurate.
-        try { refreshConfigStatus(); } catch (_) {}
+        try { refreshConfigStatus({ silent: true }); } catch (_) {}
       }
       lastConvertedCountToday = conv.today;
       hasSeenConvertedCountToday = true;

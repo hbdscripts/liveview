@@ -168,7 +168,8 @@
       const compareOpen = !!(compareModalEl && compareModalEl.classList.contains('open'));
       let diagnosticsStepEl = null;
       let compareStepEl = null;
-      const preserveView = !!(options && options.preserveView);
+      const silent = !!(options && options.silent);
+      const preserveView = silent || !!(options && options.preserveView);
       let prevOpenKey = '';
       try {
         if (preserveView && configStatusEl) {
@@ -196,8 +197,11 @@
         if (compareStepEl) compareStepEl.textContent = 'Loading KPI sources';
       }
 
-      if (refreshBtn) refreshBtn.classList.add('spinning');
-      if (compareOpen && compareRefreshBtn) compareRefreshBtn.classList.add('spinning');
+      // Silent refreshes must not touch the UI (no spinners / no DOM).
+      if (!silent) {
+        if (refreshBtn) refreshBtn.classList.add('spinning');
+        if (compareOpen && compareRefreshBtn) compareRefreshBtn.classList.add('spinning');
+      }
       var url = getConfigStatusUrl({ force: !!options.force });
       const p = (!!options.force
         ? fetch(url, { credentials: 'same-origin', cache: 'no-store' }).then(function(r) {
@@ -291,6 +295,17 @@
             ? String(appSettings.pixelSessionMode).trim().toLowerCase()
             : 'legacy';
           const sharedSessionFixEnabled = pixelSessionMode === 'shared_ttl';
+
+          // "Silent" refreshes are triggered from global UI (e.g. sale toast watchers) just to
+          // keep last-sale timestamps accurate. They must NOT re-render the Diagnostics UI.
+          if (silent) {
+            try {
+              if (typeof evidenceToday !== 'undefined' && typeof evidenceToday.lastOccurredAt === 'number') {
+                setLastSaleAt(evidenceToday.lastOccurredAt);
+              }
+            } catch (_) {}
+            return c;
+          }
 
           const truthOrders = (typeof truthToday.orderCount === 'number') ? truthToday.orderCount : null;
           const truthRevenue = (typeof truthToday.revenueGbp === 'number') ? truthToday.revenueGbp : null;
@@ -1442,9 +1457,11 @@
           return c;
         })
         .catch(() => {
-          const errEl = document.getElementById('diagnostics-content');
-          if (errEl) {
-            errEl.innerHTML = '<div class="alert alert-danger mb-0">Could not load diagnostics.</div>';
+          if (!silent) {
+            const errEl = document.getElementById('diagnostics-content');
+            if (errEl) {
+              errEl.innerHTML = '<div class="alert alert-danger mb-0">Could not load diagnostics.</div>';
+            }
           }
           try {
             const compareIsOpenNow = !!(compareModalEl && compareModalEl.classList.contains('open'));
