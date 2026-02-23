@@ -660,7 +660,7 @@ insightsPagesRouter.get('/payment-types', (req, res) => sendPage(res, 'insights/
 // Alias: keep /payment-types working but allow canonical naming in UI/links.
 insightsPagesRouter.get('/payment-methods', (req, res) => sendPage(res, 'insights/payment-types.html'));
 insightsPagesRouter.get('/abandoned-carts', (req, res) => sendPage(res, 'insights/abandoned-carts.html'));
-insightsPagesRouter.get('/checkout-funnel', (req, res) => sendPage(res, 'insights/checkout-funnel.html'));
+insightsPagesRouter.get('/checkout-funnel', (req, res) => res.status(404).send('Not found'));
 
 const acquisitionPagesRouter = express.Router();
 acquisitionPagesRouter.get('/attribution', (req, res) => sendPage(res, 'acquisition/attribution.html'));

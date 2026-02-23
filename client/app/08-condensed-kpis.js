@@ -2698,7 +2698,6 @@
 
         var labelHtml =
           '<span class="country-product-stack">' +
-            '<span class="country-label">' + escapeHtml(label) + '</span>' +
             '<span class="country-product-label">' + titleLink + '</span>' +
           '</span>';
 
@@ -2766,11 +2765,12 @@
         refreshAbandonedCartsChart(options),
         refreshAbandonedCartsTopTables(options),
         fetchSessions(),
+        refreshCheckoutFunnel(options),
       ]);
     }
 
     function refreshCheckoutFunnel(options) {
-      if (PAGE !== 'checkout-funnel') return Promise.resolve(null);
+      if (PAGE !== 'checkout-funnel' && PAGE !== 'abandoned-carts') return Promise.resolve(null);
       options = options || {};
       var rk = typeof dateRange !== 'undefined' ? dateRange : 'today';
       var rangeKey = typeof normalizeRangeKeyForApi === 'function' ? normalizeRangeKeyForApi(rk) : rk;

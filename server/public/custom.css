@@ -10,9 +10,12 @@ html, body {
   padding: 0;
   overflow-x: hidden;
 }
+/* Keep main content at top; footer at bottom (no vertical centering). */
 .page {
   min-height: 100%;
   width: 100%;
+  display: flex !important;
+  flex-direction: column !important;
   align-items: stretch !important;
   justify-content: flex-start !important;
   overflow: visible !important;
@@ -24,6 +27,11 @@ html, body {
   margin: 0 !important;
   align-self: stretch !important;
   overflow: visible !important;
+  flex: 1 0 auto !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: flex-start !important;
+  align-items: stretch !important;
 }
 
 .kexo-nav-svg {
@@ -6693,6 +6701,45 @@ html[data-bs-theme="dark"] .kexo-sale-banner .tblr-banner-close { color: #fff; }
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* Abandoned carts: Country + Product table first cell (flag + product only) stays inline height with Countries table */
+#tab-panel-abandoned-carts .breakdown-row .country-table-wrap .grid-cell:first-child .country-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 0;
+}
+
+/* Abandoned carts: top grid (chart + funnel) and tables section */
+#tab-panel-abandoned-carts .kexo-abandoned-top-grid {
+  align-items: stretch;
+}
+#tab-panel-abandoned-carts .kexo-abandoned-top-grid .card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+#tab-panel-abandoned-carts .kexo-abandoned-top-grid .card .card-body {
+  flex: 1;
+  min-height: 0;
+}
+#tab-panel-abandoned-carts .stats-row-wrap {
+  margin-top: 0.5rem;
+}
+#tab-panel-abandoned-carts .stats-row.breakdown-row {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+  align-items: stretch;
+}
+#tab-panel-abandoned-carts .stats-row.breakdown-row > .stats-card {
+  min-width: 0;
+}
+@media (max-width: 991.98px) {
+  #tab-panel-abandoned-carts .stats-row.breakdown-row {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* KPI compare inline button */

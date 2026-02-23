@@ -743,8 +743,8 @@ const TRACKER_TABLE_DEFINITIONS = [
   },
   {
     id: 'insights_checkout_funnel',
-    page: 'Checkout Funnel',
-    name: 'Checkout funnel (sessions → cart → checkout → purchase)',
+    page: 'Abandoned Carts',
+    name: 'Checkout funnel (sessions → cart → checkout → purchase), embedded on Abandoned Carts page',
     ui: { elementIds: ['checkout-funnel-card', 'checkout-funnel-mount'] },
     endpoint: {
       method: 'GET',

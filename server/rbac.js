@@ -20,7 +20,6 @@ const ALL_PERMISSION_KEYS = Object.freeze([
   'page.insights.variants',
   'page.insights.payment_methods',
   'page.insights.abandoned_carts',
-  'page.insights.checkout_funnel',
   // Acquisition pages
   'page.acquisition.attribution',
   'page.acquisition.browsers',
@@ -168,7 +167,6 @@ function getRequiredPermissionsForRequest(req) {
     ['/insights/payment-types', 'page.insights.payment_methods'],
     ['/insights/payment-methods', 'page.insights.payment_methods'],
     ['/insights/abandoned-carts', 'page.insights.abandoned_carts'],
-    ['/insights/checkout-funnel', 'page.insights.checkout_funnel'],
     ['/acquisition/attribution', 'page.acquisition.attribution'],
     ['/acquisition/browsers', 'page.acquisition.browsers'],
     ['/acquisition/devices', 'page.acquisition.devices'],
@@ -197,7 +195,6 @@ function getRequiredPermissionsForRequest(req) {
     ['/payment-types', 'page.insights.payment_methods'],
     ['/payment-methods', 'page.insights.payment_methods'],
     ['/abandoned-carts', 'page.insights.abandoned_carts'],
-    ['/checkout-funnel', 'page.insights.checkout_funnel'],
     ['/channels', 'page.acquisition.attribution'],
     ['/type', 'page.acquisition.devices'],
     ['/browsers', 'page.acquisition.browsers'],
@@ -238,7 +235,7 @@ function getRequiredPermissionsForRequest(req) {
       apiPerms.push('page.insights.abandoned_carts');
     }
     if (pathname.startsWith('/api/insights/checkout-funnel')) {
-      apiPerms.push('page.insights.checkout_funnel');
+      apiPerms.push('page.insights.abandoned_carts');
     }
     if (pathname === '/api/product-insights' || pathname === '/api/page-insights' || pathname === '/api/worst-products') {
       apiPerms.push('page.insights.products');

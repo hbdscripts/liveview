@@ -180,7 +180,6 @@ When adding a route, re-run this script so the doc stays in sync.
 | `/dashboard/sales` | `server/public/dashboard/sales.html` |
 | `/dashboard/table` | `server/public/dashboard/table.html` |
 | `/insights/abandoned-carts` | `server/public/insights/abandoned-carts.html` |
-| `/insights/checkout-funnel` | `server/public/insights/checkout-funnel.html` |
 | `/insights/countries` | `server/public/insights/countries.html` |
 | `/insights/payment-methods` | `server/public/insights/payment-types.html` |
 | `/insights/products` | `server/public/insights/products.html` |

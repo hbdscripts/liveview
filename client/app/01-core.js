@@ -44,7 +44,6 @@ const API = '';
           products: true,
           variants: true,
           'abandoned-carts': true,
-          'checkout-funnel': true,
           attribution: true,
           devices: true,
           ads: true,

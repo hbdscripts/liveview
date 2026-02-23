@@ -2949,11 +2949,10 @@
         else if (activeMainTab === 'variants') {
           try { tabPromise = typeof window.__refreshVariantsInsights === 'function' ? window.__refreshVariantsInsights({ force: true }) : null; } catch (_) {}
         } else if (activeMainTab === 'abandoned-carts') { try { tabPromise = refreshAbandonedCarts({ force: true }); } catch (_) {} }
-        else if (activeMainTab === 'checkout-funnel') { try { tabPromise = refreshCheckoutFunnel({ force: true }); } catch (_) {} }
         if (tabPromise && typeof tabPromise.then === 'function') promises.push(tabPromise);
         if (activeMainTab === 'dashboard') { try { if (typeof refreshDashboard === 'function') refreshDashboard({ force: false }); } catch (_) {} }
         if (activeMainTab === 'ads' || PAGE === 'ads') { try { if (window.__adsRefresh) window.__adsRefresh({ force: false }); } catch (_) {} }
-        if (activeMainTab !== 'dashboard' && activeMainTab !== 'stats' && activeMainTab !== 'products' && activeMainTab !== 'attribution' && activeMainTab !== 'devices' && activeMainTab !== 'variants' && activeMainTab !== 'abandoned-carts' && activeMainTab !== 'checkout-funnel') {
+        if (activeMainTab !== 'dashboard' && activeMainTab !== 'stats' && activeMainTab !== 'products' && activeMainTab !== 'attribution' && activeMainTab !== 'devices' && activeMainTab !== 'variants' && activeMainTab !== 'abandoned-carts') {
           updateKpis();
           try { fetchSessions(); } catch (_) {}
         }
@@ -3022,8 +3021,6 @@
         try { if (typeof window.__refreshVariantsInsights === 'function') window.__refreshVariantsInsights({ force: true }); } catch (_) {}
       } else if (activeMainTab === 'abandoned-carts') {
         try { refreshAbandonedCarts({ force: true }); } catch (_) { fetchSessions(); }
-      } else if (activeMainTab === 'checkout-funnel') {
-        try { refreshCheckoutFunnel({ force: true }); } catch (_) {}
       } else if (activeMainTab === 'ads' || PAGE === 'ads') {
         try { if (window.__adsRefresh) window.__adsRefresh({ force: false }); } catch (_) {}
       } else {

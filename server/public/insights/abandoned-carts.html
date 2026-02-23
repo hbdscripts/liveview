@@ -41,14 +41,45 @@
             </div>
           </div>
 <div id="tab-panel-abandoned-carts" class="main-tab-panel" role="tabpanel" aria-labelledby="nav-tab-abandoned-carts">
-  <div class="row g-3 mb-3">
-    <div class="col-12">
+  <div class="row g-3 mb-3 kexo-abandoned-top-grid">
+    <div class="col-12 col-lg-7">
       <div class="card" data-kexo-chart-key="abandoned-carts-chart">
         <div class="card-header">
           <h3 class="card-title"><span id="abandoned-carts-chart-title">&pound;&mdash;</span></h3>
         </div>
         <div class="card-body">
           <div class="dash-chart-wrap kexo-chart-wrap-min-280" id="abandoned-carts-chart"></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-lg-5">
+      <div class="card" id="checkout-funnel-card">
+        <div class="card-header">
+          <h3 class="card-title">Checkout funnel</h3>
+        </div>
+        <div class="card-body" id="checkout-funnel-mount">
+          <div class="kexo-funnel-steps" aria-label="Checkout funnel steps">
+            <div class="kexo-funnel-step" data-step="sessions">
+              <span class="kexo-funnel-step-label">Sessions</span>
+              <span class="kexo-funnel-step-count" id="funnel-step-sessions-count">&mdash;</span>
+              <span class="kexo-funnel-step-pct" id="funnel-step-sessions-pct" aria-hidden="true"></span>
+            </div>
+            <div class="kexo-funnel-step" data-step="cart">
+              <span class="kexo-funnel-step-label">Added to cart</span>
+              <span class="kexo-funnel-step-count" id="funnel-step-cart-count">&mdash;</span>
+              <span class="kexo-funnel-step-pct" id="funnel-step-cart-pct" aria-hidden="true"></span>
+            </div>
+            <div class="kexo-funnel-step" data-step="checkout_started">
+              <span class="kexo-funnel-step-label">Checkout started</span>
+              <span class="kexo-funnel-step-count" id="funnel-step-checkout-count">&mdash;</span>
+              <span class="kexo-funnel-step-pct" id="funnel-step-checkout-pct" aria-hidden="true"></span>
+            </div>
+            <div class="kexo-funnel-step" data-step="purchased">
+              <span class="kexo-funnel-step-label">Purchased</span>
+              <span class="kexo-funnel-step-count" id="funnel-step-purchased-count">&mdash;</span>
+              <span class="kexo-funnel-step-pct" id="funnel-step-purchased-pct" aria-hidden="true"></span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
