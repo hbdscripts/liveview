@@ -16,6 +16,7 @@
     config: null,
     editingPerOrderId: '',
     editingOverheadId: '',
+    editingFixedCostId: '',
     uiBound: false,
     loadInFlight: null,
     previewRange: '7d',
@@ -59,7 +60,19 @@
   }
 
   function defaultCostExpensesModel() {
-    return { rule_mode: 'stack', per_order_rules: [], overheads: [] };
+    return { rule_mode: 'stack', per_order_rules: [], overheads: [], fixed_costs: [] };
+  }
+
+  function normalizeFixedCost(raw, idx) {
+    var r = raw && typeof raw === 'object' ? raw : {};
+    var id = (r.id && String(r.id).trim()) || ('fc_' + String(idx + 1));
+    var name = (r.name && String(r.name).trim()) || 'Fixed cost';
+    return {
+      id: id.slice(0, 64),
+      name: name.slice(0, 80),
+      amount_per_day: Math.max(0, Number(r.amount_per_day) || 0),
+      enabled: r.enabled !== false,
+    };
   }
 
   function defaultConfig() {
@@ -180,6 +193,10 @@
         return normalizeOverhead(o, i);
       });
       c.cost_expenses.overheads.sort(function (a, b) { return String(a.name || '').localeCompare(String(b.name || '')); });
+      c.cost_expenses.fixed_costs = (Array.isArray(ce.fixed_costs) ? ce.fixed_costs : []).slice(0, 200).map(function (f, i) {
+        return normalizeFixedCost(f, i);
+      });
+      c.cost_expenses.fixed_costs.sort(function (a, b) { return String(a.name || '').localeCompare(String(b.name || '')); });
     } else if (Array.isArray(raw.rules)) {
       // Legacy fallback: map old rules into the new model.
       var legacy = raw.rules.slice(0, 200);
@@ -254,6 +271,7 @@
       };
       c.shipping.overrides.sort(function (a, b) { return (a.priority || 0) - (b.priority || 0); });
     }
+    if (!c.cost_expenses.fixed_costs) c.cost_expenses.fixed_costs = [];
     return c;
   }
 
@@ -454,6 +472,51 @@
     tbody.innerHTML = html;
   }
 
+  function renderFixedCostsTable() {
+    var tbody = document.getElementById('cost-expenses-fixed-costs-table-body');
+    if (!tbody) return;
+    var list = state.config && state.config.cost_expenses && Array.isArray(state.config.cost_expenses.fixed_costs)
+      ? state.config.cost_expenses.fixed_costs
+      : [];
+    if (!list.length) {
+      tbody.innerHTML = '<tr><td colspan="4" class="text-muted">No fixed costs yet.</td></tr>';
+      return;
+    }
+    var html = '';
+    list.forEach(function (f) {
+      html += '<tr data-fixed-cost-id="' + esc(f.id) + '">' +
+        '<td>' + esc(f.name || 'Fixed cost') + '</td>' +
+        '<td class="text-end">' + esc(formatMoneyGbp(f.amount_per_day)) + '/day</td>' +
+        '<td class="text-center"><input type="checkbox" data-fixed-cost-enabled data-fixed-cost-id="' + esc(f.id) + '" ' + (f.enabled ? 'checked' : '') + ' /></td>' +
+        '<td class="text-end">' +
+          '<button type="button" class="btn btn-sm btn-ghost-secondary" data-fixed-cost-edit data-fixed-cost-id="' + esc(f.id) + '">Edit</button> ' +
+          '<button type="button" class="btn btn-sm btn-ghost-danger" data-fixed-cost-delete data-fixed-cost-id="' + esc(f.id) + '">Delete</button>' +
+        '</td>' +
+      '</tr>';
+    });
+    tbody.innerHTML = html;
+  }
+
+  function buildConfigFromDom() {
+    var cfg = state.config ? JSON.parse(JSON.stringify(state.config)) : defaultConfig();
+    cfg.integrations = cfg.integrations || {};
+    var ga = document.getElementById('cost-expenses-google-ads');
+    var pf = document.getElementById('cost-expenses-payment-fees');
+    var ab = document.getElementById('cost-expenses-app-bills');
+    var tax = document.getElementById('cost-expenses-tax');
+    var rules = document.getElementById('cost-expenses-rules-enabled');
+    cfg.integrations.includeGoogleAdsSpend = !!(ga && ga.checked);
+    cfg.integrations.includePaymentFees = !!(pf && pf.checked);
+    cfg.integrations.includeShopifyAppBills = !!(ab && ab.checked);
+    cfg.integrations.includeShopifyTaxes = !!(tax && tax.checked);
+    cfg.enabled = !!(rules && rules.checked);
+    cfg.shipping = readShippingFromUi();
+    if (!cfg.cost_expenses) cfg.cost_expenses = defaultCostExpensesModel();
+    var modeEl = document.getElementById('cost-expenses-rule-mode');
+    cfg.cost_expenses.rule_mode = (modeEl && String(modeEl.value) === 'first_match') ? 'first_match' : 'stack';
+    return cfg;
+  }
+
   function applyConfigToInputs() {
     if (!state.config) return;
     var cfg = state.config;
@@ -532,6 +595,16 @@
   function getOverheadById(id) {
     var list = state.config && state.config.cost_expenses && Array.isArray(state.config.cost_expenses.overheads)
       ? state.config.cost_expenses.overheads
+      : [];
+    for (var i = 0; i < list.length; i++) {
+      if (String(list[i].id) === String(id)) return list[i];
+    }
+    return null;
+  }
+
+  function getFixedCostById(id) {
+    var list = state.config && state.config.cost_expenses && Array.isArray(state.config.cost_expenses.fixed_costs)
+      ? state.config.cost_expenses.fixed_costs
       : [];
     for (var i = 0; i < list.length; i++) {
       if (String(list[i].id) === String(id)) return list[i];
@@ -763,6 +836,57 @@
     setSectionMsg('cost-expenses-overheads-msg', 'Overhead saved in draft.', true);
   }
 
+  function showFixedCostForm(fc) {
+    state.editingFixedCostId = fc ? String(fc.id) : '';
+    var wrap = document.getElementById('cost-expenses-fixed-cost-form-wrap');
+    if (wrap) wrap.classList.remove('is-hidden');
+
+    document.getElementById('cost-expenses-fixed-cost-id').value = state.editingFixedCostId;
+    document.getElementById('cost-expenses-fixed-cost-name').value = fc ? (fc.name || '') : '';
+    document.getElementById('cost-expenses-fixed-cost-amount').value = fc && fc.amount_per_day != null ? fc.amount_per_day : '';
+    document.getElementById('cost-expenses-fixed-cost-enabled').checked = fc ? (fc.enabled !== false) : true;
+    setSectionMsg('cost-expenses-fixed-costs-msg', '', null);
+  }
+
+  function hideFixedCostForm() {
+    state.editingFixedCostId = '';
+    var wrap = document.getElementById('cost-expenses-fixed-cost-form-wrap');
+    if (wrap) wrap.classList.add('is-hidden');
+  }
+
+  function saveFixedCostFromForm() {
+    state.config = state.config || defaultConfig();
+    if (!state.config.cost_expenses) state.config.cost_expenses = defaultCostExpensesModel();
+    if (!Array.isArray(state.config.cost_expenses.fixed_costs)) state.config.cost_expenses.fixed_costs = [];
+
+    var name = (document.getElementById('cost-expenses-fixed-cost-name').value || '').trim();
+    if (!name) {
+      setSectionMsg('cost-expenses-fixed-costs-msg', 'Name required', false);
+      return;
+    }
+    var amount = parseFloat(document.getElementById('cost-expenses-fixed-cost-amount').value, 10);
+    if (!Number.isFinite(amount) || amount < 0) {
+      setSectionMsg('cost-expenses-fixed-costs-msg', 'Amount per day must be ≥ 0', false);
+      return;
+    }
+    var id = state.editingFixedCostId || ('fc_' + Date.now());
+    var fixedCost = normalizeFixedCost({
+      id: id,
+      name: name,
+      amount_per_day: amount,
+      enabled: document.getElementById('cost-expenses-fixed-cost-enabled').checked,
+    }, 0);
+
+    var list = state.config.cost_expenses.fixed_costs;
+    var idx = list.findIndex(function (f) { return String(f.id) === String(fixedCost.id); });
+    if (idx !== -1) list[idx] = fixedCost;
+    else list.push(fixedCost);
+    list.sort(function (a, b) { return String(a.name || '').localeCompare(String(b.name || '')); });
+    renderFixedCostsTable();
+    hideFixedCostForm();
+    setSectionMsg('cost-expenses-fixed-costs-msg', 'Fixed cost saved in draft.', true);
+  }
+
   function runPerOrderPreview(rangeKey) {
     var r = String(rangeKey || '').trim().toLowerCase();
     if (r !== 'today' && r !== '7d' && r !== '30d') r = '7d';
@@ -808,42 +932,16 @@
     var saveBtn = document.getElementById('cost-expenses-save-btn');
     if (saveBtn) {
       saveBtn.addEventListener('click', function () {
-        state.config = state.config || defaultConfig();
-        state.config.integrations.includeGoogleAdsSpend = document.getElementById('cost-expenses-google-ads').checked;
-        state.config.integrations.includePaymentFees = document.getElementById('cost-expenses-payment-fees').checked;
-        state.config.integrations.includeShopifyAppBills = document.getElementById('cost-expenses-app-bills').checked;
-        state.config.integrations.includeShopifyTaxes = document.getElementById('cost-expenses-tax').checked;
-        state.config.enabled = document.getElementById('cost-expenses-rules-enabled').checked;
-        if (!state.config.cost_expenses) state.config.cost_expenses = defaultCostExpensesModel();
-        var modeEl = document.getElementById('cost-expenses-rule-mode');
-        state.config.cost_expenses.rule_mode = (modeEl && String(modeEl.value) === 'first_match') ? 'first_match' : 'stack';
-        state.config.shipping = readShippingFromUi();
-        setMsg('Saving...', true);
-        fetchJson(API + '/api/settings/profit-rules', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ profitRules: state.config }),
-        }).then(function (payload) {
-          state.config = normalizeConfig(payload && payload.profitRules);
-          setMsg('Saved.', true);
-          renderShippingOverrides();
-          renderPerOrderRulesTable();
-          renderOverheadsTable();
-          hidePerOrderForm();
-          hideOverheadForm();
-          syncExcludedHints();
-        }).catch(function () {
-          setMsg('Failed to save.', false);
-        });
+        saveCostExpensesToApi();
       });
     }
 
     var reloadBtn = document.getElementById('cost-expenses-reload-btn');
     if (reloadBtn) {
       reloadBtn.addEventListener('click', function () {
-        setMsg('Reloading…', true);
         try { hidePerOrderForm(); } catch (_) {}
         try { hideOverheadForm(); } catch (_) {}
+        try { hideFixedCostForm(); } catch (_) {}
         state.loadInFlight = null;
         load();
       });
@@ -877,6 +975,13 @@
     if (saveOverheadBtn) saveOverheadBtn.addEventListener('click', saveOverheadFromForm);
     if (cancelOverheadBtn) cancelOverheadBtn.addEventListener('click', hideOverheadForm);
 
+    var addFixedCostBtn = document.getElementById('cost-expenses-fixed-cost-add-btn');
+    var saveFixedCostBtn = document.getElementById('cost-expenses-fixed-cost-save-btn');
+    var cancelFixedCostBtn = document.getElementById('cost-expenses-fixed-cost-cancel-btn');
+    if (addFixedCostBtn) addFixedCostBtn.addEventListener('click', function () { showFixedCostForm(null); });
+    if (saveFixedCostBtn) saveFixedCostBtn.addEventListener('click', saveFixedCostFromForm);
+    if (cancelFixedCostBtn) cancelFixedCostBtn.addEventListener('click', hideFixedCostForm);
+
     root.addEventListener('change', function (e) {
       var target = e.target;
       if (target && (target.id === 'cost-expenses-shipping-enabled' || target.id === 'cost-expenses-rules-enabled')) {
@@ -907,6 +1012,11 @@
         var id2 = target.getAttribute('data-overhead-id');
         var oh = getOverheadById(id2);
         if (oh) oh.enabled = target.checked === true;
+      }
+      if (target && target.getAttribute('data-fixed-cost-enabled') !== null) {
+        var id3 = target.getAttribute('data-fixed-cost-id');
+        var fc = getFixedCostById(id3);
+        if (fc) fc.enabled = target.checked === true;
       }
     });
     root.addEventListener('click', function (e) {
@@ -949,6 +1059,18 @@
         renderOverheadsTable();
         hideOverheadForm();
       }
+      if (t.getAttribute('data-fixed-cost-edit') !== null) {
+        var id = t.getAttribute('data-fixed-cost-id');
+        showFixedCostForm(getFixedCostById(id));
+      }
+      if (t.getAttribute('data-fixed-cost-delete') !== null) {
+        var id = t.getAttribute('data-fixed-cost-id');
+        state.config = state.config || defaultConfig();
+        if (!state.config.cost_expenses) state.config.cost_expenses = defaultCostExpensesModel();
+        state.config.cost_expenses.fixed_costs = (state.config.cost_expenses.fixed_costs || []).filter(function (f) { return String(f.id) !== String(id); });
+        renderFixedCostsTable();
+        hideFixedCostForm();
+      }
       if (t.getAttribute('data-ce-per-order-preview-range') !== null) {
         var r = t.getAttribute('data-ce-per-order-preview-range');
         runPerOrderPreview(r);
@@ -979,6 +1101,30 @@
     } catch (_) {}
   }
 
+  function saveCostExpensesToApi() {
+    var config = buildConfigFromDom();
+    return fetchJson(API + '/api/settings/profit-rules', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ profitRules: config }),
+    }).then(function (payload) {
+      state.config = normalizeConfig(payload && payload.profitRules);
+      applyConfigToInputs();
+      renderShippingOverrides();
+      renderPerOrderRulesTable();
+      renderOverheadsTable();
+      renderFixedCostsTable();
+      hidePerOrderForm();
+      hideOverheadForm();
+      hideFixedCostForm();
+      syncExcludedHints();
+      if (typeof window.__kexoSetSettingsDraftBaseline === 'function') window.__kexoSetSettingsDraftBaseline('cost-expenses', buildConfigFromDom());
+      return { ok: true };
+    }).catch(function () {
+      return { ok: false };
+    });
+  }
+
   function load() {
     if (state.loadInFlight) return state.loadInFlight;
     state.loadInFlight = fetchJson(API + '/api/settings/profit-rules').then(function (configPayload) {
@@ -987,7 +1133,9 @@
       renderShippingOverrides();
       renderPerOrderRulesTable();
       renderOverheadsTable();
+      renderFixedCostsTable();
       bindUi();
+      if (typeof window.__kexoSetSettingsDraftBaseline === 'function') window.__kexoSetSettingsDraftBaseline('cost-expenses', buildConfigFromDom());
       try {
         if (typeof window.migrateTitleToHelpPopover === 'function') window.migrateTitleToHelpPopover(root);
         if (typeof window.initKexoHelpPopovers === 'function') window.initKexoHelpPopovers(root);
@@ -999,6 +1147,7 @@
       renderShippingOverrides();
       renderPerOrderRulesTable();
       renderOverheadsTable();
+      renderFixedCostsTable();
       bindUi();
       try {
         if (typeof window.migrateTitleToHelpPopover === 'function') window.migrateTitleToHelpPopover(root);
@@ -1014,6 +1163,16 @@
     load();
   };
   try { window.__kexoCostExpensesSetActiveSubTab = setActiveSubTab; } catch (_) {}
+  window.__kexoCostExpensesReadDom = buildConfigFromDom;
+  window.__kexoCostExpensesApply = function (config) {
+    state.config = normalizeConfig(config);
+    applyConfigToInputs();
+    renderShippingOverrides();
+    renderPerOrderRulesTable();
+    renderOverheadsTable();
+    renderFixedCostsTable();
+  };
+  window.__kexoCostExpensesSave = saveCostExpensesToApi;
 
   // Always bind the UI once so buttons/tabs work even if Settings init is cached/broken.
   try { bindUi(); } catch (_) {}

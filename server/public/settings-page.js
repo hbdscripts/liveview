@@ -644,6 +644,7 @@
       return [];
     }
     if (tab === 'insights') return ['insights-variants'];
+    if (tab === 'cost-expenses') return ['cost-expenses'];
     return [];
   }
 
@@ -698,6 +699,7 @@
   function setSettingsDraftBaseline(id, state) {
     if (SETTINGS_DRAFT_REGISTRY[id]) SETTINGS_DRAFT_REGISTRY[id].baseline = state;
   }
+  try { window.__kexoSetSettingsDraftBaseline = setSettingsDraftBaseline; } catch (_) {}
 
   // Theme settings (Icons/Colours/Layout & Styling) load via defer scripts and may fire
   // "baseline ready" before Settings draft sections register on DOMContentLoaded.
@@ -1064,6 +1066,20 @@
           if (r2 && !r2.ok) return r2;
           return r1 || r2;
         });
+      },
+    });
+    registerSettingsSection({
+      id: 'cost-expenses',
+      read: function () {
+        return typeof window.__kexoCostExpensesReadDom === 'function' ? window.__kexoCostExpensesReadDom() : null;
+      },
+      apply: function (state) {
+        if (state && typeof window.__kexoCostExpensesApply === 'function') window.__kexoCostExpensesApply(state);
+      },
+      save: function () {
+        return typeof window.__kexoCostExpensesSave === 'function'
+          ? window.__kexoCostExpensesSave()
+          : Promise.resolve({ ok: false });
       },
     });
     if (_pendingThemeDefaultsBaseline != null) {
@@ -5808,7 +5824,7 @@
             '</div>' +
             '<span class="badge bg-secondary-lt">Custom</span>' +
           '</div>' +
-          '<div class="d-flex align-items-center gap-2">' +
+          '<div class="settings-variants-header-actions">' +
             '<label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-field="table-enabled" data-table-idx="' + String(tableIdx) + '"' + (table.enabled !== false ? ' checked' : '') + '><span class="form-check-label small ms-2">Enabled</span></label>' +
             '<button type="button" class="btn btn-md" data-action="remove-table" data-table-idx="' + String(tableIdx) + '">Delete</button>' +
           '</div>' +

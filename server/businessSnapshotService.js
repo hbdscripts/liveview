@@ -1935,8 +1935,10 @@ function computeProfitDeductionsDetailed(summary, config) {
   const ce = normalized && normalized.cost_expenses && typeof normalized.cost_expenses === 'object' ? normalized.cost_expenses : null;
   const perOrderAll = ce && Array.isArray(ce.per_order_rules) ? ce.per_order_rules : [];
   const overheadAll = ce && Array.isArray(ce.overheads) ? ce.overheads : [];
+  const fixedCostAll = ce && Array.isArray(ce.fixed_costs) ? ce.fixed_costs : [];
   const perOrderRules = perOrderAll.filter((r) => r && r.enabled === true);
   const overheads = overheadAll.filter((o) => o && o.enabled === true);
+  const fixedCosts = fixedCostAll.filter((f) => f && f.enabled === true);
 
   const segments = summary && Array.isArray(summary.segments) ? summary.segments : [];
   const mode = ce && ce.rule_mode === 'first_match' ? 'first_match' : 'stack';
@@ -1944,6 +1946,7 @@ function computeProfitDeductionsDetailed(summary, config) {
 
   let perOrderTotal = 0;
   let overheadTotal = 0;
+  let fixedCostTotal = 0;
   const lines = [];
 
   for (const rule of perOrderRules) {
@@ -2004,8 +2007,25 @@ function computeProfitDeductionsDetailed(summary, config) {
     });
   }
 
-  const total = round2(perOrderTotal + overheadTotal) || 0;
-  return { total, lines, perOrderTotal: round2(perOrderTotal) || 0, overheadTotal: round2(overheadTotal) || 0 };
+  const daysInRange = summary && summary.startYmd && summary.endYmd
+    ? ymdDaysInclusive(summary.startYmd, summary.endYmd)
+    : 0;
+  for (const f of fixedCosts) {
+    if (!f || f.enabled !== true) continue;
+    const amt = round2((Number(f.amount_per_day) || 0) * daysInRange) || 0;
+    fixedCostTotal += amt;
+    lines.push({
+      id: f.id ? String(f.id) : '',
+      label: 'Fixed: ' + (f.name ? String(f.name) : 'Fixed cost'),
+      type: 'fixed_cost',
+      value: Number(f.amount_per_day) || 0,
+      amountGbp: amt,
+      notes: `£${(Number(f.amount_per_day) || 0).toFixed(2)}/day × ${daysInRange} days`,
+    });
+  }
+
+  const total = round2(perOrderTotal + overheadTotal + fixedCostTotal) || 0;
+  return { total, lines, perOrderTotal: round2(perOrderTotal) || 0, overheadTotal: round2(overheadTotal) || 0, fixedCostTotal: round2(fixedCostTotal) || 0 };
 }
 
 function computeProfitDeductionsAudit(summary, config) {
@@ -2013,8 +2033,10 @@ function computeProfitDeductionsAudit(summary, config) {
   const ce = normalized && normalized.cost_expenses && typeof normalized.cost_expenses === 'object' ? normalized.cost_expenses : null;
   const perOrderAll = ce && Array.isArray(ce.per_order_rules) ? ce.per_order_rules : [];
   const overheadAll = ce && Array.isArray(ce.overheads) ? ce.overheads : [];
+  const fixedCostAll = ce && Array.isArray(ce.fixed_costs) ? ce.fixed_costs : [];
   const perOrderRules = perOrderAll.filter((r) => r && r.enabled === true);
   const overheads = overheadAll.filter((o) => o && o.enabled === true);
+  const fixedCosts = fixedCostAll.filter((f) => f && f.enabled === true);
 
   const segments = summary && Array.isArray(summary.segments) ? summary.segments : [];
   const mode = ce && ce.rule_mode === 'first_match' ? 'first_match' : 'stack';
@@ -2083,6 +2105,29 @@ function computeProfitDeductionsAudit(summary, config) {
       scoped_orders: 0,
       computed_deduction_gbp: rounded,
       notes: alloc && alloc.notes ? String(alloc.notes) : '',
+    });
+  }
+  const daysInRange = summary && summary.startYmd && summary.endYmd
+    ? ymdDaysInclusive(summary.startYmd, summary.endYmd)
+    : 0;
+  for (const f of fixedCosts) {
+    if (!f || f.enabled !== true) continue;
+    const amt = round2((Number(f.amount_per_day) || 0) * daysInRange) || 0;
+    if (amt <= 0) continue;
+    total += amt;
+    lines.push({
+      id: f.id ? String(f.id) : '',
+      label: f.name ? String(f.name) : 'Fixed cost',
+      enabled: true,
+      applies_to: 'ALL',
+      type: 'fixed_cost',
+      value: Number(f.amount_per_day) || 0,
+      start_date: '',
+      end_date: '',
+      scoped_revenue_gbp: 0,
+      scoped_orders: 0,
+      computed_deduction_gbp: amt,
+      notes: `£${(Number(f.amount_per_day) || 0).toFixed(2)}/day × ${daysInRange} days`,
     });
   }
   return { totalGbp: round2(total) || 0, lines };
@@ -3504,10 +3549,12 @@ async function getCostBreakdown({ rangeKey, audit } = {}) {
   const ce = profitRules && profitRules.cost_expenses && typeof profitRules.cost_expenses === 'object' ? profitRules.cost_expenses : null;
   const perOrderList = ce && Array.isArray(ce.per_order_rules) ? ce.per_order_rules : [];
   const overheadList = ce && Array.isArray(ce.overheads) ? ce.overheads : [];
+  const fixedCostList = ce && Array.isArray(ce.fixed_costs) ? ce.fixed_costs : [];
   const enabledRulesCount =
     perOrderList.filter((r) => r && r.enabled === true).length +
-    overheadList.filter((o) => o && o.enabled === true).length;
-  const rulesConfigured = (perOrderList.length + overheadList.length) > 0;
+    overheadList.filter((o) => o && o.enabled === true).length +
+    fixedCostList.filter((f) => f && f.enabled === true).length;
+  const rulesConfigured = (perOrderList.length + overheadList.length + fixedCostList.length) > 0;
   const rulesWouldApply = enabledRulesCount > 0;
 
   const shippingCfg = profitRules && profitRules.shipping && typeof profitRules.shipping === 'object'
@@ -3597,6 +3644,37 @@ async function getCostBreakdown({ rangeKey, audit } = {}) {
 
   const rulesDetailed = (summary && rulesConfigured) ? computeProfitDeductionsDetailed(summary, profitRules) : { total: 0, lines: [] };
   const rulesAmount = round2(Number(rulesDetailed && rulesDetailed.total) || 0) || 0;
+
+  const daysInRange = (() => {
+    try {
+      const s = new Date(startYmd);
+      const e = new Date(endYmd);
+      if (isNaN(s.getTime()) || isNaN(e.getTime())) return 0;
+      const days = Math.round((e - s) / (24 * 60 * 60 * 1000)) + 1;
+      return Math.max(0, days);
+    } catch (_) {
+      return 0;
+    }
+  })();
+  let fixedCostsAmount = 0;
+  const fixedCostDetails = [];
+  for (const f of fixedCostList) {
+    if (!f || f.enabled !== true) continue;
+    const amt = round2((Number(f.amount_per_day) || 0) * daysInRange) || 0;
+    fixedCostsAmount += amt;
+    fixedCostDetails.push({
+      key: 'rules_detail_fixed_' + (f.id ? String(f.id).slice(0, 64) : String(fixedCostDetails.length + 1)),
+      parent_key: 'rules',
+      is_detail: true,
+      label: String(f.name || 'Fixed cost'),
+      configured: true,
+      active: rulesActive,
+      amount: amt,
+      currency: 'GBP',
+      notes: `£${(Number(f.amount_per_day) || 0).toFixed(2)}/day × ${daysInRange} days`,
+    });
+    if (fixedCostDetails.length >= 100) break;
+  }
 
   const shippingAmount = (summary && shippingConfigured)
     ? computeShippingCostFromSummary(summary, { ...shippingCfg, enabled: true })
@@ -3706,6 +3784,7 @@ async function getCostBreakdown({ rangeKey, audit } = {}) {
       if (ruleDetails.length >= 150) break;
     }
   }
+  fixedCostDetails.forEach((d) => ruleDetails.push(d));
 
   const shopifyBalanceAvailable = !!(shopifyCosts && shopifyCosts.available === true);
   const shopifyNote = shopifyBalanceAvailable ? '' : (shopifyCosts && shopifyCosts.error ? String(shopifyCosts.error) : 'Unavailable');
@@ -3776,7 +3855,7 @@ async function getCostBreakdown({ rangeKey, audit } = {}) {
     amount: rulesAmount,
     currency: 'GBP',
     notes: rulesConfigured
-      ? (`Per-order rules £${Number(rulesDetailed && rulesDetailed.perOrderTotal || 0).toFixed(2)} · Overheads £${Number(rulesDetailed && rulesDetailed.overheadTotal || 0).toFixed(2)}` + (enabledRulesCount > 0 ? ` · ${enabledRulesCount} enabled` : ' · none enabled'))
+      ? (`Per-order £${Number(rulesDetailed && rulesDetailed.perOrderTotal || 0).toFixed(2)} · Overheads £${Number(rulesDetailed && rulesDetailed.overheadTotal || 0).toFixed(2)} · Fixed costs £${fixedCostsAmount.toFixed(2)}` + (enabledRulesCount > 0 ? ` · ${enabledRulesCount} enabled` : ' · none enabled'))
       : 'No rules defined',
   });
   ruleDetails.forEach((d) => items.push(d));

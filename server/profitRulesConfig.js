@@ -64,6 +64,7 @@ function defaultProfitRulesConfigV1() {
       rule_mode: 'stack', // stack | first_match
       per_order_rules: [],
       overheads: [],
+      fixed_costs: [],
     },
     rules: [],
     shipping: defaultShippingConfig(),
@@ -234,6 +235,17 @@ function normalizeOverhead(rawOverhead, idx) {
   };
 }
 
+function normalizeFixedCost(raw, idx) {
+  const r = raw && typeof raw === 'object' ? raw : {};
+  const id = normalizeRuleId(r.id, idx).replace(/^rule_/, 'fc_');
+  return {
+    id: id.slice(0, 64),
+    name: normalizeRuleName(r.name, 'Fixed cost'),
+    amount_per_day: Math.max(0, Number(r.amount_per_day) || 0),
+    enabled: normalizeRuleEnabled(r.enabled, true),
+  };
+}
+
 function normalizeProfitRulesConfigV1(raw) {
   const parsed = (() => {
     if (raw && typeof raw === 'object') return raw;
@@ -289,6 +301,7 @@ function normalizeProfitRulesConfigV1(raw) {
   if (ce) {
     const por = Array.isArray(ce.per_order_rules) ? ce.per_order_rules : [];
     const oh = Array.isArray(ce.overheads) ? ce.overheads : [];
+    const fc = Array.isArray(ce.fixed_costs) ? ce.fixed_costs : [];
     out.cost_expenses = {
       rule_mode: normalizeRuleMode(ce.rule_mode),
       per_order_rules: por.slice(0, 200).map((r, i) => normalizePerOrderRule(r, i)).sort((a, b) => {
@@ -298,6 +311,9 @@ function normalizeProfitRulesConfigV1(raw) {
         return String(a.id).localeCompare(String(b.id));
       }),
       overheads: oh.slice(0, 200).map((r, i) => normalizeOverhead(r, i)).sort((a, b) =>
+        String(a.name || '').localeCompare(String(b.name || ''))
+      ),
+      fixed_costs: fc.slice(0, 200).map((r, i) => normalizeFixedCost(r, i)).sort((a, b) =>
         String(a.name || '').localeCompare(String(b.name || ''))
       ),
     };
@@ -347,6 +363,7 @@ function normalizeProfitRulesConfigV1(raw) {
         return String(a.id).localeCompare(String(b.id));
       }),
       overheads: overheads.sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''))),
+      fixed_costs: [],
     };
   }
   return out;
@@ -357,8 +374,10 @@ function hasEnabledProfitRules(config) {
   const ce = config.cost_expenses && typeof config.cost_expenses === 'object' ? config.cost_expenses : null;
   const perOrder = ce && Array.isArray(ce.per_order_rules) ? ce.per_order_rules : [];
   const overheads = ce && Array.isArray(ce.overheads) ? ce.overheads : [];
+  const fixedCosts = ce && Array.isArray(ce.fixed_costs) ? ce.fixed_costs : [];
   if (perOrder.some((r) => r && r.enabled === true)) return true;
   if (overheads.some((o) => o && o.enabled === true)) return true;
+  if (fixedCosts.some((f) => f && f.enabled === true)) return true;
   const rules = Array.isArray(config.rules) ? config.rules : [];
   return rules.some((rule) => rule && rule.enabled === true);
 }

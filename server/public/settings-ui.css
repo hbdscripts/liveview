@@ -253,6 +253,15 @@ body[data-page="settings"] #settings-global-footer .settings-global-save-status 
 .settings-ui-w-5rem { width: 5rem; }
 .settings-ui-cursor-pointer { cursor: pointer; }
 
+/* Variants card header: stable width for Enabled switch + Delete so layout doesn't shift when table loads. */
+body[data-page="settings"] .settings-variants-header-actions {
+  min-width: 8rem;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 /* Responsive tile grid used in Settings → Icons & Color Scheme.
    Avoids Bootstrap .row/.col-* so the Settings normaliser doesn't collapse it. */
 body[data-page="settings"] .settings-responsive-grid {

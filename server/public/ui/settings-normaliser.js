@@ -479,6 +479,7 @@
 
   function normaliseSettingsPanel(panelEl) {
     if (!isElement(panelEl)) return;
+    if (panelEl.getAttribute(SETTINGS_PANEL_NORMALISE_ATTR) === '1') return;
     var wrap = ensurePanelWrap(panelEl);
     if (wrap) flattenNestedPanelWraps(wrap);
     normaliseGridLayouts(panelEl);
