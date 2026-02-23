@@ -600,16 +600,68 @@ async function syncAttributedOrdersToAdsDb(options = {}) {
     for (const o of parsed) {
       if (!o || o.source) continue;
       const cid = o.campaignId != null ? String(o.campaignId).trim() : '';
-      if (!cid || !/^\d+$/.test(cid)) continue;
-      candidateIds.add(cid);
+      if (cid && /^\d+$/.test(cid)) candidateIds.add(cid);
+
+      // Also consider the linked session’s bs_campaign_id (common when order.landing_site loses params).
+      const sid = o.sessionId != null ? String(o.sessionId).trim() : '';
+      const sess = sid ? sessionMap.get(sid) : null;
+      const scid = sess && sess.bsCampaignId != null ? String(sess.bsCampaignId).trim() : '';
+      if (scid && /^\d+$/.test(scid)) candidateIds.add(scid);
     }
 
     if (candidateIds.size) {
       const ids = Array.from(candidateIds);
       const verified = new Set();
 
-      for (const idChunk of chunk(ids, 50)) {
-        const safeIds = (idChunk || []).filter((v) => /^\d+$/.test(String(v)));
+      const normShop = String(shop || '').trim().toLowerCase();
+      const providerKey = 'google_ads';
+
+      // 1) Fast local verification (Ads DB): campaign cache + spend history.
+      for (const idChunk of chunk(ids, 200)) {
+        const safeIds = (idChunk || []).map((v) => String(v).trim()).filter((v) => /^\d+$/.test(v));
+        if (!safeIds.length) continue;
+        const placeholders = safeIds.map(() => '?').join(', ');
+
+        // Cache table (if present)
+        try {
+          const rows = await adsDb.all(
+            `
+              SELECT campaign_id
+              FROM google_ads_campaign_cache
+              WHERE shop = ? AND provider = ? AND campaign_id IN (${placeholders})
+                AND campaign_name IS NOT NULL AND TRIM(campaign_name) != ''
+            `,
+            [normShop, providerKey, ...safeIds]
+          );
+          for (const r of rows || []) {
+            const id = r && r.campaign_id != null ? String(r.campaign_id).trim() : '';
+            if (id) verified.add(id);
+          }
+        } catch (_) {}
+
+        // Spend history table
+        try {
+          const rows = await adsDb.all(
+            `
+              SELECT campaign_id
+              FROM google_ads_spend_hourly
+              WHERE provider = ? AND campaign_id IN (${placeholders})
+                AND campaign_name IS NOT NULL AND TRIM(campaign_name) != ''
+              GROUP BY campaign_id
+            `,
+            [providerKey, ...safeIds]
+          );
+          for (const r of rows || []) {
+            const id = r && r.campaign_id != null ? String(r.campaign_id).trim() : '';
+            if (id) verified.add(id);
+          }
+        } catch (_) {}
+      }
+
+      // 2) API verification for any remaining IDs (best-effort)
+      const unresolved = ids.filter((id) => !verified.has(String(id)));
+      for (const idChunk of chunk(unresolved, 50)) {
+        const safeIds = (idChunk || []).map((v) => String(v).trim()).filter((v) => /^\d+$/.test(v));
         if (!safeIds.length) continue;
         const q = `SELECT campaign.id FROM campaign WHERE campaign.id IN (${safeIds.join(', ')}) AND campaign.status != 'REMOVED'`;
         const out = await googleAdsClient.search(shop, q);
@@ -622,11 +674,18 @@ async function syncAttributedOrdersToAdsDb(options = {}) {
 
       for (const o of parsed) {
         if (!o || o.source) continue;
-        const cid = o.campaignId != null ? String(o.campaignId).trim() : '';
+        let cid = o.campaignId != null ? String(o.campaignId).trim() : '';
+        if (!cid || !/^\d+$/.test(cid)) {
+          const sid = o.sessionId != null ? String(o.sessionId).trim() : '';
+          const sess = sid ? sessionMap.get(sid) : null;
+          const scid = sess && sess.bsCampaignId != null ? String(sess.bsCampaignId).trim() : '';
+          if (scid && /^\d+$/.test(scid)) cid = scid;
+        }
         if (!cid || !verified.has(cid)) continue;
         o.source = source;
+        if (!o.campaignId) o.campaignId = cid;
         if (!o.adgroupId) o.adgroupId = '_all_';
-        o.attributionMethod = o.attributionMethod || 'campaign_id.verified_no_click_id';
+        o.attributionMethod = o.attributionMethod || 'campaign_id.verified';
       }
     }
   } catch (e) {
