@@ -4667,7 +4667,7 @@
       tabSelector: '#settings-admin-main-tabs [data-settings-admin-tab]',
       tabAttr: 'data-settings-admin-tab',
       panelIdPrefix: 'admin-panel-',
-      keys: ['users', 'diagnostics', 'controls', 'role-permissions'],
+      keys: ['users', 'diagnostics', 'controls', 'role-permissions', 'googleads'],
       initialKey: initialKey || initialAdminSubTab || 'users',
       onActivate: function (key) {
         activeAdminSubTab = key;

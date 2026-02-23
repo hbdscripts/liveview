@@ -71,18 +71,18 @@
         var pm = /^\/settings\/admin\/([^/?#]+)/.exec(pathname);
         if (pm && pm[1]) {
           var pt = String(pm[1]).trim().toLowerCase();
-          if (pt === 'users' || pt === 'diagnostics' || pt === 'controls' || pt === 'role-permissions') return pt;
+          if (pt === 'users' || pt === 'diagnostics' || pt === 'controls' || pt === 'role-permissions' || pt === 'googleads') return pt;
         }
         var m = /[?&]adminTab=([^&]+)/.exec(search);
         var raw = m && m[1] ? String(m[1]) : '';
         var t = raw.trim().toLowerCase();
-        if (t === 'users' || t === 'diagnostics' || t === 'controls' || t === 'role-permissions') return t;
+        if (t === 'users' || t === 'diagnostics' || t === 'controls' || t === 'role-permissions' || t === 'googleads') return t;
         return 'controls';
       }
       var m = /[?&]tab=([^&]+)/.exec(search);
       var raw = m && m[1] ? String(m[1]) : '';
       var t = raw.trim().toLowerCase();
-      if (t === 'users' || t === 'diagnostics' || t === 'controls' || t === 'role-permissions') return t;
+      if (t === 'users' || t === 'diagnostics' || t === 'controls' || t === 'role-permissions' || t === 'googleads') return t;
     } catch (_) {}
     return '';
   }
@@ -104,7 +104,7 @@
 
   function setActiveTab(next, opts) {
     var t = (next || '').trim().toLowerCase();
-    if (t !== 'users' && t !== 'diagnostics' && t !== 'controls' && t !== 'role-permissions') t = 'controls';
+    if (t !== 'users' && t !== 'diagnostics' && t !== 'controls' && t !== 'role-permissions' && t !== 'googleads') t = 'controls';
     activeTab = t;
 
     if (!isSettingsPage()) {
@@ -135,7 +135,7 @@
   function kexoAdminSetActiveTab(tab, opts) {
     if (!isSettingsPage()) return;
     var t = (tab || '').trim().toLowerCase();
-    if (t !== 'users' && t !== 'diagnostics' && t !== 'controls' && t !== 'role-permissions') t = 'controls';
+    if (t !== 'users' && t !== 'diagnostics' && t !== 'controls' && t !== 'role-permissions' && t !== 'googleads') t = 'controls';
     setActiveTab(t, opts);
   }
 
@@ -162,6 +162,8 @@
       try { if (typeof window.refreshConfigStatus === 'function') window.refreshConfigStatus({ force: true, preserveView: false }); } catch (_) {}
     } else if (t === 'role-permissions') {
       if (!rolePermissionsLoadedOnce) loadRolePermissionsPanel();
+    } else if (t === 'googleads') {
+      // Google Ads Settings UI is wired by settings-page.js; no lazy-load needed here.
     }
   }
 
@@ -193,6 +195,7 @@
     var diagnosticsEl = document.getElementById('settings-admin-accordion-diagnostics');
     var usersEl = document.getElementById('settings-admin-accordion-users');
     var rolePermsEl = document.getElementById('settings-admin-accordion-role-permissions');
+    var googleAdsEl = document.getElementById('settings-admin-accordion-googleads');
     function updateUrlFromTab(t) {
       try {
         history.replaceState(null, '', '/settings/admin/' + encodeURIComponent(t) + preservedSettingsQuery());
@@ -224,6 +227,13 @@
         activeTab = 'role-permissions';
         updateUrlFromTab('role-permissions');
         loadRolePermissionsPanel();
+      });
+    }
+    if (googleAdsEl) {
+      googleAdsEl.addEventListener('shown.bs.collapse', function () {
+        activeTab = 'googleads';
+        updateUrlFromTab('googleads');
+        runLazyLoadForAdminTab('googleads');
       });
     }
   }

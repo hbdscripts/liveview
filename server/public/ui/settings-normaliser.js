@@ -10,6 +10,7 @@
   var SETTINGS_PANEL_NORMALISE_ATTR = 'data-settings-ui-normalised';
   var SETTINGS_PANEL_HEADER_STRIPPED_ATTR = 'data-settings-ui-first-header-stripped';
   var SETTINGS_PANEL_OBSERVER_ATTR = 'data-settings-ui-observer';
+  var SETTINGS_PANEL_HELP_BOUND_ATTR = 'data-settings-ui-help-bound';
 
   function isElement(node) {
     return !!(node && node.nodeType === 1 && node.querySelector);
@@ -552,10 +553,16 @@
           try {
             if (!isInActiveCategory(p)) return;
             normaliseSettingsPanel(p);
-            // Help cues/tooltips can be injected dynamically; keep them migrated/bound.
-            try { if (typeof window.migrateTitleToHelpPopover === 'function') window.migrateTitleToHelpPopover(p); } catch (_) {}
-            try { if (typeof window.initKexoHelpPopovers === 'function') window.initKexoHelpPopovers(p); } catch (_) {}
-            try { if (typeof window.initKexoTooltips === 'function') window.initKexoTooltips(p); } catch (_) {}
+            // Help cues/tooltips can be injected dynamically, but migrating titles is expensive.
+            // Bind at most once per root to avoid MutationObserver → migrate → mutations → observer loops.
+            try {
+              if (p && p.getAttribute && p.getAttribute(SETTINGS_PANEL_HELP_BOUND_ATTR) !== '1') {
+                p.setAttribute(SETTINGS_PANEL_HELP_BOUND_ATTR, '1');
+                try { if (typeof window.migrateTitleToHelpPopover === 'function') window.migrateTitleToHelpPopover(p); } catch (_) {}
+                try { if (typeof window.initKexoHelpPopovers === 'function') window.initKexoHelpPopovers(p); } catch (_) {}
+                try { if (typeof window.initKexoTooltips === 'function') window.initKexoTooltips(p); } catch (_) {}
+              }
+            } catch (_) {}
           } catch (e) {
             reportNormaliserError('observer.normaliseSettingsPanel', e, { panelId: (p && p.id) ? String(p.id) : '' });
           }
@@ -599,9 +606,14 @@
           try { modalRoot = safeMatches(n, '.modal, .offcanvas') ? n : (n.closest ? n.closest('.modal, .offcanvas') : null); } catch (_) { modalRoot = null; }
           if (modalRoot) {
             try { normaliseButtonsAndForms(modalRoot); } catch (e) { reportNormaliserError('observer.normaliseButtonsAndForms', e, { rootId: (modalRoot && modalRoot.id) ? String(modalRoot.id) : '' }); }
-            try { if (typeof window.migrateTitleToHelpPopover === 'function') window.migrateTitleToHelpPopover(modalRoot); } catch (_) {}
-            try { if (typeof window.initKexoHelpPopovers === 'function') window.initKexoHelpPopovers(modalRoot); } catch (_) {}
-            try { if (typeof window.initKexoTooltips === 'function') window.initKexoTooltips(modalRoot); } catch (_) {}
+            try {
+              if (modalRoot.getAttribute && modalRoot.getAttribute(SETTINGS_PANEL_HELP_BOUND_ATTR) !== '1') {
+                modalRoot.setAttribute(SETTINGS_PANEL_HELP_BOUND_ATTR, '1');
+                try { if (typeof window.migrateTitleToHelpPopover === 'function') window.migrateTitleToHelpPopover(modalRoot); } catch (_) {}
+                try { if (typeof window.initKexoHelpPopovers === 'function') window.initKexoHelpPopovers(modalRoot); } catch (_) {}
+                try { if (typeof window.initKexoTooltips === 'function') window.initKexoTooltips(modalRoot); } catch (_) {}
+              }
+            } catch (_) {}
           }
         });
       });
