@@ -1707,9 +1707,7 @@
       var keys = Object.keys(countsByIso2);
       var hasNoLiveActivity = !keys.length;
 
-      // Unify: countries page should use the same map color palette as the live map.
-      var paletteKey = (chartKey === 'countries-map-chart') ? 'live-online-chart' : chartKey;
-      var palette = chartColorsFromUiConfig(paletteKey, ['#16a34a']);
+      var palette = chartColorsFromUiConfig(chartKey, ['#16a34a']);
       var accent = (palette && palette[0]) ? String(palette[0]).trim() : '#16a34a';
       var mapStyleEarly = chartStyleFromUiConfig(chartKey);
       var showEmptyCaption = mapStyleEarly.mapShowEmptyCaption !== false;

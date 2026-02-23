@@ -1775,9 +1775,9 @@
           try { t.classList.remove('active'); } catch (_) {}
           try {
             if (t && t.style) {
-              t.style.display = '';
-              t.style.visibility = '';
-              t.style.opacity = '';
+              t.style.display = 'none';
+              t.style.visibility = 'hidden';
+              t.style.opacity = '0';
             }
           } catch (_) {}
         });
@@ -1803,9 +1803,12 @@
       } catch (_) {}
       try {
         document.addEventListener('keydown', function(e) {
-          if (!e || e.key !== 'Escape') return;
-          hideNow();
+          if (!e) return;
+          if (e.key === 'Escape' || e.key === 'Tab') hideNow();
         }, true);
+      } catch (_) {}
+      try {
+        document.addEventListener('focusin', function() { hideNow(); }, true);
       } catch (_) {}
       try {
         document.addEventListener('pointerdown', function(e) {
@@ -1985,19 +1988,21 @@
           instance.params.zoomMin = zoomMin;
         }
       } catch (_) {}
-      // Fit mode: cover should fill both dimensions (crop edges), even in tall containers.
-      if (instance && mapFit === 'cover') {
+      // Fit mode: keep the SVG centered within the container (especially important for tall cards).
+      if (instance) {
         try {
           var w = Number(instance._width);
           var h = Number(instance._height);
           var dw = Number(instance._defaultWidth);
           var dh = Number(instance._defaultHeight);
           if (Number.isFinite(w) && Number.isFinite(h) && Number.isFinite(dw) && Number.isFinite(dh) && w > 0 && h > 0 && dw > 0 && dh > 0) {
-            var coverScale = Math.max(w / dw, h / dh);
-            instance._baseScale = coverScale;
-            instance._baseTransX = Math.abs(w - dw * coverScale) / (2 * coverScale);
-            instance._baseTransY = Math.abs(h - dh * coverScale) / (2 * coverScale);
-            if (typeof instance.reset === 'function') instance.reset();
+            var fitScale = mapFit === 'cover' ? Math.max(w / dw, h / dh) : Math.min(w / dw, h / dh);
+            if (Number.isFinite(fitScale) && fitScale > 0) {
+              instance._baseScale = fitScale;
+              instance._baseTransX = Math.abs(w - dw * fitScale) / (2 * fitScale);
+              instance._baseTransY = Math.abs(h - dh * fitScale) / (2 * fitScale);
+              if (typeof instance.reset === 'function') instance.reset();
+            }
           }
         } catch (_) {}
       }

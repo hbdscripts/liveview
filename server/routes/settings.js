@@ -2931,33 +2931,6 @@ async function getThemeVarsCss(req, res) {
 
 const CHART_SETTINGS_BODY_LIMIT = 80000;
 
-function isOnlineMapChartKey(key) {
-  const k = String(key || '').trim().toLowerCase();
-  return k === 'live-online-chart' || k === 'countries-map-chart';
-}
-
-function pickSharedOnlineMapStyleFields(style) {
-  const s = style && typeof style === 'object' ? style : {};
-  const out = {};
-  [
-    'fillOpacity',
-    'mapShowTooltip',
-    'mapDraggable',
-    'mapZoomButtons',
-    'mapShowEmptyCaption',
-    'mapFit',
-    'mapInactiveOpacity',
-    'mapInactiveColor',
-    'mapStageBrowseColor',
-    'mapStageCartColor',
-    'mapStageCheckoutColor',
-    'mapStagePurchaseColor',
-  ].forEach((k) => {
-    if (Object.prototype.hasOwnProperty.call(s, k)) out[k] = s[k];
-  });
-  return out;
-}
-
 async function getChartSettings(req, res) {
   try {
     const chartKey = (req.params.chartKey || '').trim().toLowerCase();
@@ -2981,17 +2954,7 @@ async function getChartSettings(req, res) {
       style: defaultChartStyleConfig(),
       advancedApexOverride: {},
     };
-    let settings = entry || defaultEntry;
-    // Online map settings are shared across /live, /overview, /countries.
-    if (isOnlineMapChartKey(chartKey)) {
-      const liveKey = 'live-online-chart';
-      const liveEntry = (cfg.charts || []).find((c) => c && c.key === liveKey) || (def.charts || []).find((c) => c && c.key === liveKey) || null;
-      const src = liveEntry || settings;
-      const sharedStyle = pickSharedOnlineMapStyleFields(src && src.style);
-      const mergedStyle = { ...(settings.style || defaultChartStyleConfig()), ...sharedStyle };
-      const mergedColors = Array.isArray(src && src.colors) && src.colors.length ? src.colors : settings.colors;
-      settings = { ...settings, colors: mergedColors, style: mergedStyle };
-    }
+    const settings = entry || defaultEntry;
     return res.json({ ok: true, chartKey, settings });
   } catch (e) {
     return res.status(500).json({ ok: false, error: e && e.message ? String(e.message) : 'Failed to load chart settings' });
@@ -3024,27 +2987,6 @@ async function putChartSettings(req, res) {
     const nextCharts = [...(cfg.charts || [])];
     if (existingIdx >= 0) nextCharts[existingIdx] = normalizedOne;
     else nextCharts.push(normalizedOne);
-
-    // Keep Online map settings shared between live-online-chart and countries-map-chart.
-    if (isOnlineMapChartKey(chartKey)) {
-      const siblingKey = chartKey === 'live-online-chart' ? 'countries-map-chart' : 'live-online-chart';
-      const siblingIdx = nextCharts.findIndex((c) => c && c.key === siblingKey);
-      const siblingDef = (def.charts || []).find((c) => c && c.key === siblingKey) || null;
-      const siblingBase = siblingIdx >= 0 ? nextCharts[siblingIdx] : siblingDef;
-      if (siblingBase) {
-        const sharedStyle = pickSharedOnlineMapStyleFields(normalizedOne.style);
-        const siblingMerged = {
-          ...siblingBase,
-          colors: Array.isArray(normalizedOne.colors) ? normalizedOne.colors.slice() : siblingBase.colors,
-          style: { ...(siblingBase.style || defaultChartStyleConfig()), ...sharedStyle },
-        };
-        const sibNormalized = normalizeChartsList([siblingMerged], def.charts || [], {})[0];
-        if (sibNormalized && sibNormalized.key === siblingKey) {
-          if (siblingIdx >= 0) nextCharts[siblingIdx] = sibNormalized;
-          else nextCharts.push(sibNormalized);
-        }
-      }
-    }
 
     const nextCfg = { ...cfg, charts: nextCharts };
     const json = JSON.stringify(nextCfg);
