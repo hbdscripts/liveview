@@ -746,10 +746,10 @@
                 <table class="table table-sm align-middle">
                   <thead>
                     <tr>
-                      <th><span title="Lower number = higher priority. Overrides are evaluated in priority order; first match wins.">Priority <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></span></th>
-                      <th class="text-center"><span title="Disable to ignore this override without deleting it.">On <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></span></th>
-                      <th><span title="Per-order shipping cost in GBP for matching countries.">Price (GBP) <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></span></th>
-                      <th><span title="Comma-separated ISO2 country codes. Example: GB, IE, FR">Countries <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></span></th>
+                      <th>Priority</th>
+                      <th class="text-center">On</th>
+                      <th>Price (GBP)</th>
+                      <th>Countries</th>
                       <th class="text-end">Actions</th>
                     </tr>
                   </thead>
@@ -786,14 +786,14 @@
                     <table class="table table-sm align-middle">
                       <thead>
                         <tr>
-                          <th><span title="Short name for this rule (e.g. Payment fees).">Rule <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></span></th>
-                          <th><span title="How this rule is applied: % of revenue, fixed per order, or fixed per item.">Type <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></span></th>
-                          <th class="text-end"><span title="Numeric value: percentage, or fixed amount in GBP depending on rule type.">Value <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></span></th>
-                          <th><span title="For % rules only: which revenue base the percentage applies to.">Revenue basis <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></span></th>
-                          <th><span title="First day this rule applies (inclusive).">Start <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></span></th>
-                          <th><span title="Last day this rule applies (inclusive). Blank = no end date.">End <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></span></th>
-                          <th><span title="Scope: ALL, or specific ISO2 country codes (e.g. GB, IE, FR).">Country <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></span></th>
-                          <th class="text-center"><span title="When on, this rule is included in cost calculations; when off, it is skipped but kept in the list.">Enabled <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></span></th>
+                          <th>Rule</th>
+                          <th>Type</th>
+                          <th class="text-end">Value</th>
+                          <th>Revenue basis</th>
+                          <th>Start</th>
+                          <th>End</th>
+                          <th>Country</th>
+                          <th class="text-center">Enabled</th>
                           <th class="text-end">Actions</th>
                         </tr>
                       </thead>
@@ -839,7 +839,7 @@
                         </div>
                         <div class="col-12 col-md-3">
                           <label class="form-label" for="cost-expenses-per-order-country" title="Scope: leave blank for ALL, or enter comma-separated ISO2 country codes.">Country <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>
-                          <input type="text" id="cost-expenses-per-order-country" class="form-control" placeholder="ALL or GB,IE,FR" title="ALL or comma-separated ISO codes" />
+                          <input type="text" id="cost-expenses-per-order-country" class="form-control" placeholder="ALL or GB,IE,FR" />
                         </div>
                         <div class="col-12 col-md-3">
                           <label class="form-label" for="cost-expenses-per-order-sort" title="Lower numbers run first. Used for evaluation order and first-match mode.">Sort <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>
@@ -885,14 +885,14 @@
                     <table class="table table-sm align-middle">
                       <thead>
                         <tr>
-                          <th><span title="Short name for this overhead (e.g. Rent).">Overhead <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></span></th>
-                          <th><span title="One-off is a single dated expense. Recurring repeats by frequency across time.">Type <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></span></th>
-                          <th class="text-end"><span title="Amount in GBP for the overhead (one-off amount, or recurring amount per frequency).">Amount <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></span></th>
-                          <th><span title="For one-off: the expense date. For recurring: the start date (inclusive).">Date / start <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></span></th>
-                          <th><span title="Optional end date (inclusive). Blank = no end date.">End <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></span></th>
-                          <th><span title="For recurring overheads: daily, weekly, monthly, or yearly.">Frequency <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></span></th>
-                          <th><span title="Optional country scope. Leave blank for ALL.">Country <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></span></th>
-                          <th class="text-center"><span title="When on, this overhead is included in cost calculations; when off, it is skipped but kept in the list.">Enabled <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></span></th>
+                          <th>Overhead</th>
+                          <th>Type</th>
+                          <th class="text-end">Amount</th>
+                          <th>Date / start</th>
+                          <th>End</th>
+                          <th>Frequency</th>
+                          <th>Country</th>
+                          <th class="text-center">Enabled</th>
                           <th class="text-end">Actions</th>
                         </tr>
                       </thead>
@@ -946,7 +946,7 @@
                         </div>
                         <div class="col-12 col-md-3">
                           <label class="form-label" for="cost-expenses-overhead-country" title="Optional. Leave blank for ALL, or enter comma-separated ISO2 country codes if you need country-scoped overheads.">Country <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>
-                          <input type="text" id="cost-expenses-overhead-country" class="form-control" placeholder="ALL or GB,IE,FR" title="ALL or comma-separated ISO codes" />
+                          <input type="text" id="cost-expenses-overhead-country" class="form-control" placeholder="ALL or GB,IE,FR" />
                         </div>
                         <div class="col-12">
                           <label class="form-label" for="cost-expenses-overhead-notes" title="Internal notes only. Shown in Cost Breakdown notes to explain how this was allocated.">Notes <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>

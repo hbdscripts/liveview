@@ -317,7 +317,7 @@
           '<input type="number" class="form-control form-control-sm kexo-ce-override-price" min="0" step="0.01" value="' + (ov.priceGbp != null ? ov.priceGbp : 0) + '" data-override-price placeholder="e.g. 4.99" aria-label="Price (GBP)" />' +
         '</td>' +
         '<td>' +
-          '<input type="text" class="form-control form-control-sm kexo-ce-override-countries" value="' + esc(countriesStr) + '" data-override-countries placeholder="e.g. GB, IE, FR" title="Comma-separated ISO2 country codes" aria-label="Countries" />' +
+          '<input type="text" class="form-control form-control-sm kexo-ce-override-countries" value="' + esc(countriesStr) + '" data-override-countries placeholder="e.g. GB, IE, FR" aria-label="Countries" />' +
         '</td>' +
         '<td class="text-end">' +
           '<button type="button" class="btn btn-sm btn-ghost-danger" data-override-remove>Remove</button>' +
@@ -989,7 +989,8 @@
       renderOverheadsTable();
       bindUi();
       try {
-        if (typeof window.initKexoTooltips === 'function') window.initKexoTooltips(root);
+        if (typeof window.migrateTitleToHelpPopover === 'function') window.migrateTitleToHelpPopover(root);
+        if (typeof window.initKexoHelpPopovers === 'function') window.initKexoHelpPopovers(root);
       } catch (_) {}
     }).catch(function () {
       setMsg('Failed to load.', false);
@@ -999,6 +1000,10 @@
       renderPerOrderRulesTable();
       renderOverheadsTable();
       bindUi();
+      try {
+        if (typeof window.migrateTitleToHelpPopover === 'function') window.migrateTitleToHelpPopover(root);
+        if (typeof window.initKexoHelpPopovers === 'function') window.initKexoHelpPopovers(root);
+      } catch (_) {}
     }).finally(function () {
       state.loadInFlight = null;
     });
