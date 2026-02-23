@@ -2420,12 +2420,6 @@ body:not([data-page="settings"]) .table-responsive table thead th {
   border-color: #86ad3f;
   color: #fff !important;
 }
-#product-insights-modal #product-insights-open-store,
-#product-insights-modal #product-insights-open-store:hover,
-#product-insights-modal #product-insights-open-store:focus-visible {
-  color: #fff !important;
-}
-
 /* Product-name links (open Product Insights modal) */
 .kexo-product-link {
   display: inline-block;
