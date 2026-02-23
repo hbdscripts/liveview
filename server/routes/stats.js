@@ -50,13 +50,14 @@ function getStats(req, res, next) {
   Sentry.addBreadcrumb({ category: 'api', message: 'stats.get', data: { range: req?.query?.range, force: !!req?.query?.force } });
   const trafficParam = req && req.query && typeof req.query.traffic === 'string' ? req.query.traffic.trim().toLowerCase() : '';
   const trafficMode = trafficParam === 'safe' ? 'human_safe' : 'human_only';
-  // Stats refresh cadence: manual or every 15 minutes (client). Match with 15 min private cache.
-  res.setHeader('Cache-Control', 'private, max-age=900');
-  res.setHeader('Vary', 'Cookie');
 
   const rangeKeyRaw = req && req.query && typeof req.query.range === 'string' ? req.query.range : '';
   const rangeKey = normalizeRangeKey(rangeKeyRaw, { defaultKey: 'today' });
   const force = !!(req && req.query && (req.query.force === '1' || req.query.force === 'true' || req.query._));
+  // Stats refresh cadence: manual or every 15 minutes (client). Match with 15 min private cache.
+  // When `force` is used, prevent iOS/Safari from reusing earlier cached responses.
+  res.setHeader('Cache-Control', force ? 'no-store, no-cache, must-revalidate' : 'private, max-age=900');
+  res.setHeader('Vary', 'Cookie');
   const timing = !!(req && req.query && (req.query.timing === '1' || req.query.timing === 'true'));
   const now = Date.now();
   maybePruneStatsMemo(now);

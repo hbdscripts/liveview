@@ -41,6 +41,7 @@
       bindDelegate('dash-top-products', function(pg) { dashTopProductsPage = pg; rerenderDashboardFromCache(); });
       bindDelegate('dash-top-countries', function(pg) { dashTopCountriesPage = pg; rerenderDashboardFromCache(); });
       bindDelegate('dash-trending', function(pg) { dashTrendingPage = pg; rerenderDashboardFromCache(); });
+      bindDelegate('truth-orders', function(pg) { truthOrdersPage = pg; fetchTruthOrders({ force: true }); });
       bindDelegate('breakdown-aov', function(pg) { breakdownAovPage = pg; renderAov(statsCache); });
       bindDelegate('breakdown-title', function(pg) { breakdownTitlePage = pg; renderBreakdownTitles(leaderboardCache); });
       bindDelegate('breakdown-finish', function(pg) { breakdownFinishPage = pg; renderBreakdownFinishes(finishesCache); });

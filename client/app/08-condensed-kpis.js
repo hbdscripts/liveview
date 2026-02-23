@@ -448,7 +448,7 @@
     function fetchKpisData(options = {}) {
       const force = !!options.force;
       let url = API + '/api/kpis?range=' + encodeURIComponent(getStatsRange()) + getTrafficQuerySuffix();
-      if (force) url += (url.indexOf('?') >= 0 ? '&' : '?') + 'force=1';
+      if (force) url += (url.indexOf('?') >= 0 ? '&' : '?') + 'force=1&_=' + Date.now();
       return fetchWithTimeout(url, { credentials: 'same-origin', cache: force ? 'no-store' : 'default' }, 25000)
         .then(function(r) {
           if (!r.ok) throw new Error('KPIs HTTP ' + r.status);
@@ -2653,17 +2653,17 @@
       tbody.innerHTML = rows.slice(0, 5).map(function(r) {
         var code = (r && r.country != null ? String(r.country) : 'XX').toUpperCase().slice(0, 2);
         var label = countryLabel(code);
-        var abandoned = r && r.abandoned != null ? Math.max(0, Math.trunc(Number(r.abandoned) || 0)) : 0;
-        var checkout = r && r.checkout_sessions != null ? Math.max(0, Math.trunc(Number(r.checkout_sessions) || 0)) : 0;
-        var pctVal = (r && r.abandoned_pct != null) ? pct(Number(r.abandoned_pct)) : '\u2014';
-        var valueGbp = (r && r.abandoned_value_gbp != null) ? Number(r.abandoned_value_gbp) : null;
+        var started = r && r.checkoutStarted != null ? Math.max(0, Math.trunc(Number(r.checkoutStarted) || 0)) : 0;
+        var purchased = r && r.purchased != null ? Math.max(0, Math.trunc(Number(r.purchased) || 0)) : 0;
+        var pctVal = (r && r.checkoutAbandonmentRate != null) ? pct(Number(r.checkoutAbandonmentRate)) : '\u2014';
+        var valueGbp = (r && r.valueAtRiskGbp != null) ? Number(r.valueAtRiskGbp) : null;
         var value = (valueGbp != null && Number.isFinite(valueGbp)) ? formatRevenueTableHtml(valueGbp) : '\u2014';
         var flag = flagImg(code, label);
         var labelHtml = '<span class="country-label">' + escapeHtml(label) + '</span>';
         return '<div class="grid-row" role="row">' +
           '<div class="grid-cell" role="cell"><span class="country-cell">' + flag + labelHtml + '</span></div>' +
-          '<div class="grid-cell" role="cell">' + escapeHtml(formatSessions(abandoned)) + '</div>' +
-          '<div class="grid-cell" role="cell">' + escapeHtml(formatSessions(checkout)) + '</div>' +
+          '<div class="grid-cell" role="cell">' + escapeHtml(formatSessions(started)) + '</div>' +
+          '<div class="grid-cell" role="cell">' + escapeHtml(formatSessions(purchased)) + '</div>' +
           '<div class="grid-cell" role="cell">' + escapeHtml(pctVal) + '</div>' +
           '<div class="grid-cell" role="cell">' + value + '</div>' +
         '</div>';
@@ -2679,43 +2679,50 @@
         return;
       }
       clearGridTableBodyMessageState(tbody);
+      var mainBase = getMainBaseUrl();
       tbody.innerHTML = rows.slice(0, 5).map(function(r) {
-        var iso = (r && r.country != null ? String(r.country) : 'XX').toUpperCase().slice(0, 2);
-        var label = countryLabel(iso);
-        var productTitle = (r && r.product_title != null) ? String(r.product_title).trim() : '\u2014';
         var productHandle = (r && r.product_handle != null) ? String(r.product_handle).trim().toLowerCase() : '';
-        var productId = (r && r.product_id) ? String(r.product_id).replace(/^gid:\/\/shopify\/Product\//i, '').trim() : '';
-        var mainBase = getMainBaseUrl();
-        var productUrl = (mainBase && productHandle) ? (mainBase + '/products/' + encodeURIComponent(productHandle)) : '#';
-        var numericId = (productId && /^\d+$/.test(productId)) ? productId : '';
-        var linkHref = numericId ? ('/insights/products/' + numericId) : productUrl;
-        var targetAttr = linkHref.indexOf('/insights/') === 0 ? '' : ' target="_blank" rel="noopener"';
-
-        var abandoned = r && r.abandoned != null ? Math.max(0, Math.trunc(Number(r.abandoned) || 0)) : 0;
-        var checkout = r && r.checkout_sessions != null ? Math.max(0, Math.trunc(Number(r.checkout_sessions) || 0)) : 0;
-        var pctVal = (r && r.abandoned_pct != null) ? pct(Number(r.abandoned_pct)) : '\u2014';
-        var valueGbp = (r && r.abandoned_value_gbp != null) ? Number(r.abandoned_value_gbp) : null;
+        var productLabel = productHandle || (r && r.product_handle === '(none)' ? '(none)' : '\u2014');
+        var productUrl = (mainBase && productHandle && productHandle !== '(none)') ? (mainBase + '/products/' + encodeURIComponent(productHandle)) : '#';
+        var started = r && r.checkoutStarted != null ? Math.max(0, Math.trunc(Number(r.checkoutStarted) || 0)) : 0;
+        var purchased = r && r.purchased != null ? Math.max(0, Math.trunc(Number(r.purchased) || 0)) : 0;
+        var pctVal = (r && r.checkoutAbandonmentRate != null) ? pct(Number(r.checkoutAbandonmentRate)) : '\u2014';
+        var valueGbp = (r && r.valueAtRiskGbp != null) ? Number(r.valueAtRiskGbp) : null;
         var value = (valueGbp != null && Number.isFinite(valueGbp)) ? formatRevenueTableHtml(valueGbp) : '\u2014';
-        var flag = flagImg(iso, label);
-
-        var canOpen = !!productHandle || !!numericId;
-        var titleLink = canOpen
-          ? '<a class="kexo-product-link js-product-modal-link" href="' + escapeHtml(linkHref) + '"' + targetAttr +
-              (productHandle ? (' data-product-handle="' + escapeHtml(productHandle) + '"') : '') +
-              (numericId ? (' data-product-id="' + escapeHtml(numericId) + '"') : '') +
-              (productTitle ? (' data-product-title="' + escapeHtml(productTitle) + '"') : '') +
-            '>' + escapeHtml(productTitle) + '</a>'
-          : escapeHtml(productTitle);
-
-        var labelHtml =
-          '<span class="country-product-stack">' +
-            '<span class="country-product-label">' + titleLink + '</span>' +
-          '</span>';
-
+        var titleLink = (productHandle && productHandle !== '(none)')
+          ? '<a class="kexo-product-link js-product-modal-link" href="' + escapeHtml(productUrl) + '" target="_blank" rel="noopener" data-product-handle="' + escapeHtml(productHandle) + '">' + escapeHtml(productLabel) + '</a>'
+          : escapeHtml(productLabel);
+        var labelHtml = '<span class="country-product-stack"><span class="country-product-label">' + titleLink + '</span></span>';
         return '<div class="grid-row" role="row">' +
-          '<div class="grid-cell" role="cell"><span class="country-cell">' + flag + labelHtml + '</span></div>' +
-          '<div class="grid-cell" role="cell">' + escapeHtml(formatSessions(abandoned)) + '</div>' +
-          '<div class="grid-cell" role="cell">' + escapeHtml(formatSessions(checkout)) + '</div>' +
+          '<div class="grid-cell" role="cell"><span class="country-cell">' + labelHtml + '</span></div>' +
+          '<div class="grid-cell" role="cell">' + escapeHtml(formatSessions(started)) + '</div>' +
+          '<div class="grid-cell" role="cell">' + escapeHtml(formatSessions(purchased)) + '</div>' +
+          '<div class="grid-cell" role="cell">' + escapeHtml(pctVal) + '</div>' +
+          '<div class="grid-cell" role="cell">' + value + '</div>' +
+        '</div>';
+      }).join('');
+    }
+
+    function renderAbandonedCartsDevice(payload) {
+      var tbody = document.getElementById('abandoned-carts-device-body');
+      if (!tbody) return;
+      var rows = payload && Array.isArray(payload.rows) ? payload.rows : [];
+      if (!rows.length) {
+        setGridTableBodyMessage(tbody, 'No data', { useBlock: true });
+        return;
+      }
+      clearGridTableBodyMessageState(tbody);
+      tbody.innerHTML = rows.slice(0, 5).map(function(r) {
+        var device = (r && r.device != null) ? String(r.device).trim() : '\u2014';
+        var started = r && r.checkoutStarted != null ? Math.max(0, Math.trunc(Number(r.checkoutStarted) || 0)) : 0;
+        var purchased = r && r.purchased != null ? Math.max(0, Math.trunc(Number(r.purchased) || 0)) : 0;
+        var pctVal = (r && r.checkoutAbandonmentRate != null) ? pct(Number(r.checkoutAbandonmentRate)) : '\u2014';
+        var valueGbp = (r && r.valueAtRiskGbp != null) ? Number(r.valueAtRiskGbp) : null;
+        var value = (valueGbp != null && Number.isFinite(valueGbp)) ? formatRevenueTableHtml(valueGbp) : '\u2014';
+        return '<div class="grid-row" role="row">' +
+          '<div class="grid-cell" role="cell">' + escapeHtml(device) + '</div>' +
+          '<div class="grid-cell" role="cell">' + escapeHtml(formatSessions(started)) + '</div>' +
+          '<div class="grid-cell" role="cell">' + escapeHtml(formatSessions(purchased)) + '</div>' +
           '<div class="grid-cell" role="cell">' + escapeHtml(pctVal) + '</div>' +
           '<div class="grid-cell" role="cell">' + value + '</div>' +
         '</div>';
@@ -2727,41 +2734,44 @@
       options = options || {};
       var force = !!options.force;
       var rangeKey = normalizeRangeKeyForApi(dateRange);
-      var cacheKey = rangeKey + '|' + String(normalizeAbandonedMode(abandonedMode));
-      if (!force && abandonedCartsTopCacheKey === cacheKey && abandonedCartsTopCountriesCache && abandonedCartsTopCountryProductsCache) {
+      var cacheKey = rangeKey;
+      if (!force && abandonedCartsTopCacheKey === cacheKey && abandonedCartsTopCountriesCache && abandonedCartsTopCountryProductsCache && abandonedCartsTopDeviceCache) {
         renderAbandonedCartsTopCountries(abandonedCartsTopCountriesCache);
         renderAbandonedCartsTopCountryProducts(abandonedCartsTopCountryProductsCache);
+        renderAbandonedCartsDevice(abandonedCartsTopDeviceCache);
         return Promise.resolve(null);
       }
       if (abandonedCartsTopInFlight) return abandonedCartsTopInFlight;
 
       var countriesBody = document.getElementById('abandoned-carts-countries-body');
       var productsBody = document.getElementById('abandoned-carts-country-products-body');
-      setGridTableBodyMessage(countriesBody, 'Loading\u2026');
-      setGridTableBodyMessage(productsBody, 'Loading\u2026');
+      var deviceBody = document.getElementById('abandoned-carts-device-body');
+      if (countriesBody) setGridTableBodyMessage(countriesBody, 'Loading\u2026');
+      if (productsBody) setGridTableBodyMessage(productsBody, 'Loading\u2026');
+      if (deviceBody) setGridTableBodyMessage(deviceBody, 'Loading\u2026');
 
-      var qs =
-        'range=' + encodeURIComponent(rangeKey) +
-        '&timezone=' + encodeURIComponent(tz) +
-        '&mode=' + encodeURIComponent(normalizeAbandonedMode(abandonedMode)) +
-        '&limit=5&_=' + Date.now();
-
-      var urlCountries = API + '/api/abandoned-carts/top-countries?' + qs;
-      var urlCountryProducts = API + '/api/abandoned-carts/top-country-products?' + qs;
+      var qs = 'range=' + encodeURIComponent(rangeKey) + '&timezone=' + encodeURIComponent(tz) + '&limit=10&_=' + Date.now();
+      var urlCountry = API + '/api/insights/checkout-abandonment/breakdown?dimension=country&' + qs;
+      var urlProduct = API + '/api/insights/checkout-abandonment/breakdown?dimension=product&' + qs;
+      var urlDevice = API + '/api/insights/checkout-abandonment/breakdown?dimension=device&' + qs;
 
       abandonedCartsTopInFlight = Promise.all([
-        fetchWithTimeout(urlCountries, { credentials: 'same-origin', cache: 'no-store' }, 20000).then(function(r) { return (r && r.ok) ? r.json() : null; }).catch(function() { return null; }),
-        fetchWithTimeout(urlCountryProducts, { credentials: 'same-origin', cache: 'no-store' }, 20000).then(function(r) { return (r && r.ok) ? r.json() : null; }).catch(function() { return null; }),
+        fetchWithTimeout(urlCountry, { credentials: 'same-origin', cache: 'no-store' }, 20000).then(function(r) { return (r && r.ok) ? r.json() : null; }).catch(function() { return null; }),
+        fetchWithTimeout(urlProduct, { credentials: 'same-origin', cache: 'no-store' }, 20000).then(function(r) { return (r && r.ok) ? r.json() : null; }).catch(function() { return null; }),
+        fetchWithTimeout(urlDevice, { credentials: 'same-origin', cache: 'no-store' }, 20000).then(function(r) { return (r && r.ok) ? r.json() : null; }).catch(function() { return null; }),
       ])
         .then(function(arr) {
           var a = arr && arr[0] ? arr[0] : { rows: [] };
           var b = arr && arr[1] ? arr[1] : { rows: [] };
+          var c = arr && arr[2] ? arr[2] : { rows: [] };
           abandonedCartsTopCacheKey = cacheKey;
           abandonedCartsTopCountriesCache = a;
           abandonedCartsTopCountryProductsCache = b;
+          abandonedCartsTopDeviceCache = c;
           renderAbandonedCartsTopCountries(a);
           renderAbandonedCartsTopCountryProducts(b);
-          return { countries: a, countryProducts: b };
+          renderAbandonedCartsDevice(c);
+          return { countries: a, countryProducts: b, device: c };
         })
         .finally(function() { abandonedCartsTopInFlight = null; });
 
@@ -2786,7 +2796,10 @@
       var rk = typeof dateRange !== 'undefined' ? dateRange : 'today';
       var rangeKey = typeof normalizeRangeKeyForApi === 'function' ? normalizeRangeKeyForApi(rk) : rk;
       var tzStr = typeof tz !== 'undefined' ? tz : '';
-      var url = (typeof API !== 'undefined' ? API : '') + '/api/insights/checkout-funnel?range=' + encodeURIComponent(rangeKey) + '&timezone=' + encodeURIComponent(tzStr) + (options.force ? ('&_=' + Date.now()) : '');
+      var useAbandonmentApi = PAGE === 'abandoned-carts';
+      var url = (typeof API !== 'undefined' ? API : '') + (useAbandonmentApi
+        ? '/api/insights/checkout-abandonment?range=' + encodeURIComponent(rangeKey) + '&timezone=' + encodeURIComponent(tzStr)
+        : '/api/insights/checkout-funnel?range=' + encodeURIComponent(rangeKey) + '&timezone=' + encodeURIComponent(tzStr)) + (options.force ? ('&_=' + Date.now()) : '');
       return fetch(url, { credentials: 'same-origin', cache: 'no-store' })
         .then(function(r) {
           if (!r.ok) return null;
@@ -2794,7 +2807,6 @@
         })
         .then(function(data) {
           if (data == null) return;
-          var steps = data.steps || [];
           var setCount = function(idSuffix, value) {
             var el = document.getElementById('funnel-step-' + idSuffix + '-count');
             if (el) el.textContent = typeof value === 'number' ? String(value) : '—';
@@ -2811,12 +2823,19 @@
           setPct('checkout', data.conversionToCheckout);
           setCount('purchased', data.purchased);
           setPct('purchased', data.conversionToPurchase);
-          var totalAbandoned = (typeof data.cart === 'number' && typeof data.purchased === 'number') ? data.cart - data.purchased : null;
-          var conversionRate = (typeof data.sessions === 'number' && data.sessions > 0 && typeof data.purchased === 'number') ? Math.round((data.purchased / data.sessions) * 100) : null;
-          var abandonedEl = document.getElementById('funnel-total-abandoned');
-          if (abandonedEl) abandonedEl.textContent = totalAbandoned != null ? String(totalAbandoned) : '—';
-          var rateEl = document.getElementById('funnel-conversion-rate');
-          if (rateEl) rateEl.textContent = conversionRate != null ? conversionRate + '%' : '—';
+          if (useAbandonmentApi) {
+            var notPurchasedEl = document.getElementById('funnel-checkouts-not-purchased');
+            if (notPurchasedEl) notPurchasedEl.textContent = data.checkoutsNotPurchased != null && typeof data.checkoutsNotPurchased === 'number' ? String(data.checkoutsNotPurchased) : '—';
+            var abandonRateEl = document.getElementById('funnel-checkout-abandonment-rate');
+            if (abandonRateEl) abandonRateEl.textContent = data.checkoutAbandonmentRate != null && typeof data.checkoutAbandonmentRate === 'number' ? data.checkoutAbandonmentRate + '%' : '—';
+          } else {
+            var totalAbandoned = (typeof data.cart === 'number' && typeof data.purchased === 'number') ? data.cart - data.purchased : null;
+            var conversionRate = (typeof data.sessions === 'number' && data.sessions > 0 && typeof data.purchased === 'number') ? Math.round((data.purchased / data.sessions) * 100) : null;
+            var abandonedEl = document.getElementById('funnel-total-abandoned');
+            if (abandonedEl) abandonedEl.textContent = totalAbandoned != null ? String(totalAbandoned) : '—';
+            var rateEl = document.getElementById('funnel-conversion-rate');
+            if (rateEl) rateEl.textContent = conversionRate != null ? conversionRate + '%' : '—';
+          }
         })
         .catch(function() {
           var setCount = function(idSuffix) {
@@ -2827,10 +2846,17 @@
           setCount('cart');
           setCount('checkout');
           setCount('purchased');
-          var abandonedEl = document.getElementById('funnel-total-abandoned');
-          if (abandonedEl) abandonedEl.textContent = '—';
-          var rateEl = document.getElementById('funnel-conversion-rate');
-          if (rateEl) rateEl.textContent = '—';
+          if (useAbandonmentApi) {
+            var notPurchasedEl = document.getElementById('funnel-checkouts-not-purchased');
+            if (notPurchasedEl) notPurchasedEl.textContent = '—';
+            var abandonRateEl = document.getElementById('funnel-checkout-abandonment-rate');
+            if (abandonRateEl) abandonRateEl.textContent = '—';
+          } else {
+            var abandonedEl = document.getElementById('funnel-total-abandoned');
+            if (abandonedEl) abandonedEl.textContent = '—';
+            var rateEl = document.getElementById('funnel-conversion-rate');
+            if (rateEl) rateEl.textContent = '—';
+          }
         });
     }
 
@@ -2907,6 +2933,7 @@
           updateServerTimeDisplay();
           build.step('Building sessions table');
           renderTable();
+          try { if (PAGE === 'sales') fetchTruthOrders({ force: false }); } catch (_) {}
           updateKpis();
           try { refreshSessionPageCharts({ force: isLive }); } catch (_) {}
           return sessions;
@@ -2939,6 +2966,54 @@
           build.finish();
         });
       return liveRefreshInFlight;
+    }
+
+    // Shopify truth orders (Sales page) — use /api/truth-orders so we can show 100% of paid orders.
+    var truthOrdersInFlight = null;
+    var truthOrdersLastFetchedAt = 0;
+    function fetchTruthOrders(options) {
+      if (PAGE !== 'sales') return Promise.resolve(null);
+      options = options || {};
+      var ttlMs = 30 * 1000;
+      var fresh = truthOrdersLastFetchedAt && (Date.now() - truthOrdersLastFetchedAt) < ttlMs;
+      if (fresh) {
+        try { renderTruthOrdersTable(); } catch (_) {}
+        return Promise.resolve(truthOrders);
+      }
+      if (truthOrdersInFlight) return truthOrdersInFlight;
+      var offset = (truthOrdersPage - 1) * TRUTH_ORDERS_PAGE_SIZE;
+      var url = API + '/api/truth-orders?range=today&limit=' + TRUTH_ORDERS_PAGE_SIZE + '&offset=' + offset + '&_=' + Date.now();
+      truthOrdersInFlight = fetch(url, { credentials: 'same-origin', cache: 'no-store' })
+        .then(function(r) { return r && r.ok ? r.json() : null; })
+        .then(function(json) {
+          if (!json || json.ok !== true) {
+            truthOrdersLoadError = (json && json.error) ? String(json.error) : 'Could not load Shopify truth orders.';
+            truthOrders = [];
+            truthOrdersTotal = null;
+            truthOrdersLastFetchedAt = Date.now();
+            try { renderTruthOrdersTable(); } catch (_) {}
+            return null;
+          }
+          truthOrdersLoadError = null;
+          truthOrders = Array.isArray(json.orders) ? json.orders : [];
+          truthOrdersTotal = typeof json.total === 'number' ? json.total : truthOrders.length;
+          truthOrdersLastFetchedAt = Date.now();
+          try { renderTruthOrdersTable(); } catch (_) {}
+          return truthOrders;
+        })
+        .catch(function(err) {
+          try { if (typeof window.kexoCaptureError === 'function') window.kexoCaptureError(err, { context: 'truthOrdersFetch', page: PAGE }); } catch (_) {}
+          truthOrdersLoadError = 'Could not load Shopify truth orders.';
+          truthOrders = [];
+          truthOrdersTotal = null;
+          truthOrdersLastFetchedAt = Date.now();
+          try { renderTruthOrdersTable(); } catch (_) {}
+          return null;
+        })
+        .finally(function() {
+          truthOrdersInFlight = null;
+        });
+      return truthOrdersInFlight;
     }
 
     function scheduleOnlineCountPoll(ms) {
@@ -3067,6 +3142,9 @@
     // Visibility gate for online count polling (avoids timer bursts on tab resume).
     var onlineCountPollPendingMs = null;
     var onlineCountVisibilityBound = false;
+    var _kexoResumeRefreshBound = false;
+    var _kexoResumeRefreshLastPerfAt = 0;
+    var _kexoHasBeenHidden = false;
     function isDocVisible() {
       try { return !document || !document.visibilityState || document.visibilityState === 'visible'; } catch (_) { return true; }
     }
@@ -3102,6 +3180,79 @@
         });
       } catch (_) {}
     }
+
+    function kexoResumeRefresh(reason) {
+      if (!isDocVisible()) return;
+
+      // Throttle using performance.now(): on iOS/Safari resume Date.now() can be stale.
+      var pn = 0;
+      try { pn = (typeof performance !== 'undefined' && performance && typeof performance.now === 'function') ? performance.now() : 0; } catch (_) { pn = 0; }
+      if (pn > 0) {
+        if ((pn - _kexoResumeRefreshLastPerfAt) < 1000) return;
+        _kexoResumeRefreshLastPerfAt = pn;
+      }
+
+      // Always force-refresh visible, user-facing metrics on resume.
+      try { if (typeof refreshKpis === 'function') refreshKpis({ force: true }); } catch (_) {}
+      try {
+        if (typeof fetchStatsData === 'function' && (document.getElementById('country-table') || document.getElementById('by-country-body') || document.getElementById('stats-loading-overlay'))) {
+          fetchStatsData({ force: true });
+        }
+      } catch (_) {}
+      try {
+        if (typeof fetchAttributionData === 'function' && (document.getElementById('attribution-body') || document.getElementById('attribution-chart'))) {
+          fetchAttributionData({ force: true });
+        }
+      } catch (_) {}
+      try {
+        if (typeof fetchDevicesData === 'function' && (document.getElementById('devices-body') || document.getElementById('devices-chart'))) {
+          fetchDevicesData({ force: true });
+        }
+      } catch (_) {}
+      try {
+        if (typeof fetchBrowsersData === 'function' && (document.getElementById('browsers-body') || document.getElementById('browsers-chart'))) {
+          fetchBrowsersData({ force: true });
+        }
+      } catch (_) {}
+      try { if (typeof fetchCondensedSeries === 'function') fetchCondensedSeries({ force: true }); } catch (_) {}
+      try { if (PAGE === 'sales' && typeof fetchTruthOrders === 'function') fetchTruthOrders({ force: true }); } catch (_) {}
+      try {
+        if (PAGE === 'abandoned-carts' && typeof refreshAbandonedCarts === 'function') refreshAbandonedCarts({ force: true });
+      } catch (_) {}
+    }
+
+    function bindResumeForceRefresh() {
+      if (_kexoResumeRefreshBound) return;
+      _kexoResumeRefreshBound = true;
+      try {
+        document.addEventListener('visibilitychange', function() {
+          if (!isDocVisible()) {
+            _kexoHasBeenHidden = true;
+            try { window.__kexoLastHiddenAt = Date.now(); } catch (_) {}
+            return;
+          }
+          kexoResumeRefresh('visibility');
+        });
+      } catch (_) {}
+      try {
+        window.addEventListener('pageshow', function(ev) {
+          if (ev && ev.persisted) kexoResumeRefresh('pageshow');
+        });
+      } catch (_) {}
+      try {
+        window.addEventListener('pagehide', function() {
+          _kexoHasBeenHidden = true;
+          try { window.__kexoLastHiddenAt = Date.now(); } catch (_) {}
+        });
+      } catch (_) {}
+      try {
+        window.addEventListener('focus', function() {
+          if (!_kexoHasBeenHidden) return;
+          kexoResumeRefresh('focus');
+        });
+      } catch (_) {}
+    }
+    try { bindResumeForceRefresh(); } catch (_) {}
 
     function cfSection(title, value) {
       const v = value != null && String(value).trim() !== '' ? String(value).trim() : null;

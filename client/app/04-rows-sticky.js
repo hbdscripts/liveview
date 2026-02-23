@@ -1956,6 +1956,178 @@
       try { refreshComplianceMarkersForSessionsTable(); } catch (_) {}
     }
 
+    // Shopify truth orders table (Sales page)
+    function truthOrderSig(o) {
+      try {
+        if (!o) return '';
+        const ev = o.evidence && typeof o.evidence === 'object' ? o.evidence : {};
+        return [
+          o.orderId != null ? String(o.orderId) : '',
+          o.saleAt != null ? String(o.saleAt) : '',
+          o.totalGbp != null ? String(o.totalGbp) : '',
+          o.totalPrice != null ? String(o.totalPrice) : '',
+          o.currency != null ? String(o.currency) : '',
+          ev && ev.status ? String(ev.status) : '',
+          ev && ev.sessionId ? String(ev.sessionId) : '',
+        ].join('|');
+      } catch (_) {
+        return '';
+      }
+    }
+
+    function truthOrderStatusBadge(order) {
+      try {
+        const ev = order && order.evidence && typeof order.evidence === 'object' ? order.evidence : null;
+        const status = ev && ev.status ? String(ev.status) : '';
+        if (status === 'linked') return '<span class="badge bg-success-lt">Tracked</span>';
+        if (status === 'evidence_unlinked') return '<span class="badge bg-warning-lt">Evidence (unlinked)</span>';
+        if (status === 'non_checkout_channel') return '<span class="badge bg-secondary-lt">Non-checkout</span>';
+        if (status === 'no_evidence') return '<span class="badge bg-danger-lt">Untracked</span>';
+        return '<span class="badge bg-secondary-lt">Unknown</span>';
+      } catch (_) {
+        return '<span class="badge bg-secondary-lt">Unknown</span>';
+      }
+    }
+
+    function truthOrderLookupHref(orderId) {
+      const oid = orderId != null ? String(orderId).trim() : '';
+      if (!oid) return '/tools/click-order-lookup';
+      return '/tools/click-order-lookup?q=' + encodeURIComponent('order:' + oid);
+    }
+
+    function renderTruthOrderRow(o) {
+      const orderName = o && o.orderName ? String(o.orderName) : '';
+      const orderId = o && o.orderId != null ? String(o.orderId) : '';
+      const cc = o && o.countryCode ? String(o.countryCode).toUpperCase().slice(0, 2) : 'XX';
+      const top = o && o.topProductTitle ? String(o.topProductTitle) : '';
+      const saleAt = o && o.saleAt != null ? Number(o.saleAt) : null;
+      const money = (o && typeof o.totalGbp === 'number')
+        ? (formatMoney(o.totalGbp, 'GBP') || '\u2014')
+        : (o && o.totalPrice != null) ? (formatMoney(o.totalPrice, o.currency) || '\u2014') : '\u2014';
+      const badge = truthOrderStatusBadge(o);
+      const ev = o && o.evidence && typeof o.evidence === 'object' ? o.evidence : null;
+      const sessionId = ev && ev.sessionId ? String(ev.sessionId) : '';
+      const statusDetail = sessionId ? ('<span class="text-muted ms-2"><code>' + escapeHtml(sessionId.slice(0, 8)) + '</code></span>') : '';
+
+      const orderCell =
+        '<div class="d-flex flex-column">' +
+          '<a href="' + escapeHtml(truthOrderLookupHref(orderId)) + '" target="_blank" rel="noopener" class="fw-semibold">' +
+            escapeHtml(orderName || (orderId ? ('Order ' + orderId) : 'Order')) +
+          '</a>' +
+          (orderId ? ('<span class="text-muted small">#' + escapeHtml(orderId) + '</span>') : '') +
+        '</div>';
+
+      const paidCell = saleAt != null && Number.isFinite(saleAt)
+        ? ('<span data-last-seen="' + escapeHtml(String(saleAt)) + '">' + escapeHtml(arrivedAgo(saleAt)) + '</span>')
+        : '\u2014';
+
+      return (
+        '<div class="grid-row" role="row" data-order-id="' + escapeHtml(orderId) + '" data-kexo-sig="' + escapeHtml(truthOrderSig(o)) + '">' +
+          '<div class="grid-cell" role="cell">' + orderCell + '</div>' +
+          '<div class="grid-cell flag-cell" role="cell">' + flagImg(cc || 'XX') + '</div>' +
+          '<div class="grid-cell" role="cell">' + escapeHtml(top || '\u2014') + '</div>' +
+          '<div class="grid-cell" role="cell">' + paidCell + '</div>' +
+          '<div class="grid-cell" role="cell">' + escapeHtml(money) + '</div>' +
+          '<div class="grid-cell" role="cell">' + badge + statusDetail + '</div>' +
+        '</div>'
+      );
+    }
+
+    function patchTruthOrdersTableBody(tbody, list) {
+      if (!tbody) return;
+      const rows = Array.isArray(list) ? list : [];
+      if (!rows.length) return;
+      const existing = new Map();
+      Array.from(tbody.querySelectorAll('.grid-row[data-order-id]')).forEach(function(row) {
+        const oid = row && row.getAttribute ? (row.getAttribute('data-order-id') || '') : '';
+        if (oid) existing.set(String(oid), row);
+      });
+      const desired = [];
+      rows.forEach(function(o) {
+        const oid = o && o.orderId != null ? String(o.orderId) : '';
+        if (!oid) return;
+        const sig = truthOrderSig(o);
+        const cur = existing.get(oid);
+        if (cur && cur.getAttribute('data-kexo-sig') === sig) {
+          existing.delete(oid);
+          desired.push(cur);
+          return;
+        }
+        const next = rowElFromHtml(renderTruthOrderRow(o));
+        if (!next) return;
+        try { next.setAttribute('data-kexo-sig', sig); } catch (_) {}
+        existing.delete(oid);
+        desired.push(next);
+      });
+
+      var cursor = tbody.firstElementChild;
+      desired.forEach(function(row) {
+        if (!row) return;
+        if (row === cursor) {
+          cursor = cursor.nextElementSibling;
+          return;
+        }
+        try { tbody.insertBefore(row, cursor); } catch (_) {}
+      });
+      existing.forEach(function(row) { try { row.remove(); } catch (_) {} });
+      try {
+        Array.from(tbody.querySelectorAll('.grid-row:not([data-order-id])')).forEach(function(row) { row.remove(); });
+      } catch (_) {}
+    }
+
+    function renderTruthOrdersTable() {
+      const tbody = document.getElementById('truth-orders-body');
+      if (!tbody) return;
+      const list = Array.isArray(truthOrders) ? truthOrders : [];
+      const total = (typeof truthOrdersTotal === 'number') ? truthOrdersTotal : list.length;
+
+      // Meta: "Showing X–Y of Z"
+      try {
+        const meta = document.getElementById('truth-orders-meta');
+        if (meta) {
+          var counts = { linked: 0, evidence_unlinked: 0, no_evidence: 0, non_checkout_channel: 0, other: 0 };
+          try {
+            list.forEach(function(o) {
+              var ev = o && o.evidence && typeof o.evidence === 'object' ? o.evidence : null;
+              var st = ev && ev.status ? String(ev.status) : '';
+              if (st && Object.prototype.hasOwnProperty.call(counts, st)) counts[st] += 1;
+              else if (st) counts.other += 1;
+            });
+          } catch (_) {}
+          if (!list.length && truthOrdersLoadError) {
+            meta.textContent = truthOrdersLoadError;
+          } else if (!list.length) {
+            meta.textContent = total ? ('0 of ' + String(total)) : '';
+          } else {
+            const start = (truthOrdersPage - 1) * TRUTH_ORDERS_PAGE_SIZE + 1;
+            const end = start + list.length - 1;
+            var bits = [];
+            bits.push(start + '\u2013' + end + ' of ' + String(total));
+            if (counts.linked) bits.push('Tracked: ' + String(counts.linked));
+            if (counts.no_evidence) bits.push('Untracked: ' + String(counts.no_evidence));
+            if (counts.non_checkout_channel) bits.push('Non-checkout: ' + String(counts.non_checkout_channel));
+            if (counts.evidence_unlinked) bits.push('Evidence-unlinked: ' + String(counts.evidence_unlinked));
+            meta.textContent = bits.join(' \u00B7 ');
+          }
+        }
+      } catch (_) {}
+
+      if (!list.length) {
+        var emptyMsg = truthOrdersLoadError ? truthOrdersLoadError : 'No paid orders in this view.';
+        tbody.innerHTML = '<div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">' + escapeHtml(emptyMsg) + '</div></div>';
+      } else {
+        patchTruthOrdersTableBody(tbody, list);
+      }
+
+      var paginWrap = document.getElementById('truth-orders-pagination');
+      if (paginWrap) {
+        const pages = Math.max(1, Math.ceil((total || list.length || 0) / TRUTH_ORDERS_PAGE_SIZE));
+        paginWrap.classList.toggle('is-hidden', pages <= 1);
+        if (pages > 1) paginWrap.innerHTML = buildPaginationHtml(truthOrdersPage, pages);
+        try { paginWrap.dataset.pages = String(pages); } catch (_) {}
+      }
+    }
+
     // Fraud markers + modal (fail-open; markers fetched in batches).
     var fraudUiBound = false;
     var fraudMarkersFetchInFlight = null; // { key, p }

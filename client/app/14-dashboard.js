@@ -6664,6 +6664,7 @@
         var pageShowBound = false;
         var mainTabBound = false;
         var lastResumeAt = 0;
+        var lastResumePerfAt = 0;
         var POLL_MS = 120000;
         function isDashboardActive() {
           try {
@@ -6703,17 +6704,18 @@
           if (!isVisible()) return;
           pollTimer = setInterval(pollTick, POLL_MS);
         }
-        var VISIBILITY_REFRESH_MIN_IDLE_MS = 30 * 1000; // Skip full refresh if tab was hidden < 30s
         function refreshOnceAndResume(reason) {
-          var now = Date.now();
-          if (now - lastResumeAt < 1000) return;
-          var lastHidden = (typeof window.__kexoLastHiddenAt === 'number') ? window.__kexoLastHiddenAt : 0;
-          var idleMs = lastHidden ? (now - lastHidden) : 0;
-          if (idleMs > 0 && idleMs < VISIBILITY_REFRESH_MIN_IDLE_MS) {
-            startPolling();
-            return;
+          // Use performance.now() for throttling: on iOS/Safari bfcache resume Date.now() can be stale.
+          var pn = 0;
+          try { pn = (typeof performance !== 'undefined' && performance && typeof performance.now === 'function') ? performance.now() : 0; } catch (_) { pn = 0; }
+          if (pn > 0) {
+            if (pn - lastResumePerfAt < 1000) return;
+            lastResumePerfAt = pn;
+          } else {
+            var now = Date.now();
+            if (now - lastResumeAt < 1000) return;
+            lastResumeAt = now;
           }
-          lastResumeAt = now;
           try { if (typeof window.refreshDashboard === 'function') window.refreshDashboard({ force: true, silent: true, reason: reason || 'resume' }); } catch (_) {}
           try { if (typeof refreshKpis === 'function') refreshKpis({ force: true }); } catch (_) {}
           startPolling();
