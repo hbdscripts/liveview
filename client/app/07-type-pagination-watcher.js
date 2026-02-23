@@ -3249,8 +3249,10 @@
       if (!Number.isFinite(cur) || !Number.isFinite(base)) return null;
       const diff = cur - base;
       if (diff === 0) return 0;
-      if (base <= 0) return diff > 0 ? 1 : -1;
-      return diff / base;
+      const denom = Math.abs(base);
+      // Avoid divide-by-zero: when baseline is effectively 0, treat any non-zero as ±100%.
+      if (denom < 1e-9) return diff > 0 ? 1 : -1;
+      return diff / denom;
     }
 
     // Treat small changes as "stable" (blue/flat) instead of flipping colors.
