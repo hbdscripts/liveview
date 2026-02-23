@@ -388,16 +388,16 @@ router.get('/summary', async (req, res) => {
   res.setHeader('Vary', 'Cookie');
   try {
     const rangeKey = req && req.query ? req.query.range : '';
+    const shop = (req && req.query && req.query.shop != null) ? String(req.query.shop).trim() : salesTruth.resolveShopForSales('');
     // Kick off Shopify truth reconcile in the background (summary should return fast).
     // Fresh orders will appear once the scheduled jobs run / next refresh happens.
     try {
       const rangeNorm = adsService.normalizeRangeKey(rangeKey);
       const timeZone = store.resolveAdminTimeZone();
       const bounds = store.getRangeBounds(rangeNorm, Date.now(), timeZone);
-      const shop = salesTruth.resolveShopForSales('');
       if (shop) salesTruth.ensureReconciled(shop, bounds.start, bounds.end, rangeNorm).catch(() => {});
     } catch (_) {}
-    const out = await adsService.getSummary({ rangeKey });
+    const out = await adsService.getSummary({ rangeKey, shop });
     res.json(out);
   } catch (err) {
     Sentry.captureException(err, { extra: { route: 'ads.summary', rangeKey } });

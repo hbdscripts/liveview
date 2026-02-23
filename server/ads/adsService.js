@@ -3,6 +3,7 @@ const config = require('../config');
 const { getDb } = require('../db');
 const { getAdsDb } = require('./adsDb');
 const { getGoogleAdsConfig, getResolvedCustomerIds } = require('./adsStore');
+const googleAdsClient = require('./googleAdsClient');
 
 const ALLOWED_RANGE = new Set(['today', 'yesterday', '3d', '7d', '14d', '30d', 'month']);
 
@@ -77,6 +78,8 @@ async function getSummary(options = {}) {
 
   const source = options.source != null ? String(options.source).trim().toLowerCase() : 'googleads';
   const provider = options.provider != null ? String(options.provider).trim().toLowerCase() : 'google_ads';
+  const shop = options.shop != null ? String(options.shop).trim() : '';
+  const normShop = shop ? shop.toLowerCase() : '';
 
   const adsDb = getAdsDb();
   if (!adsDb) {
@@ -277,6 +280,96 @@ async function getSummary(options = {}) {
   } catch (e) {
     // Non-fatal: campaign rows still render; UI will fall back to campaignId if needed.
     console.warn('[ads.summary] failed to hydrate campaign names from history (non-fatal):', e && e.message ? e.message : e);
+  }
+
+  // If still missing (e.g. campaign has revenue but never had spend synced in Ads DB),
+  // attempt to hydrate via a lightweight campaign meta cache, then fall back to Google Ads API.
+  try {
+    const missing = [];
+    for (const c of campaignMap.values()) {
+      if (!c || !c.campaignId) continue;
+      if (c.campaignName) continue;
+      // Only attempt API lookup for numeric IDs (GAQL campaign.id IN (...)).
+      if (!/^\d+$/.test(String(c.campaignId))) continue;
+      missing.push(String(c.campaignId));
+    }
+
+    function chunk(arr, size) {
+      const out = [];
+      for (let i = 0; i < (arr || []).length; i += size) out.push(arr.slice(i, i + size));
+      return out;
+    }
+
+    // 1) Cache lookup (fast, no external calls)
+    if (normShop && missing.length) {
+      const unresolved = new Set(missing);
+      for (const ids of chunk(missing, 200)) {
+        const placeholders = ids.map(() => '?').join(', ');
+        const rows = await adsDb.all(
+          `
+            SELECT campaign_id, campaign_name, campaign_status
+            FROM google_ads_campaign_cache
+            WHERE shop = ? AND provider = ? AND campaign_id IN (${placeholders})
+          `,
+          [normShop, provider, ...ids]
+        );
+        for (const r of rows || []) {
+          const id = r && r.campaign_id != null ? String(r.campaign_id).trim() : '';
+          if (!id) continue;
+          const camp = campaignMap.get(id);
+          if (!camp) continue;
+          if (r.campaign_name && !camp.campaignName) camp.campaignName = String(r.campaign_name);
+          if (r.campaign_status && !camp.campaignStatus) camp.campaignStatus = String(r.campaign_status);
+          unresolved.delete(id);
+        }
+      }
+
+      // 2) API lookup for remaining (best-effort), then upsert into cache
+      const apiMissing = Array.from(unresolved);
+      for (const ids of chunk(apiMissing, 50)) {
+        const safeIds = (ids || []).filter((v) => /^\d+$/.test(String(v)));
+        if (!safeIds.length) continue;
+        const q = `SELECT campaign.id, campaign.name, campaign.status FROM campaign WHERE campaign.id IN (${safeIds.join(', ')}) AND campaign.status != 'REMOVED'`;
+        const out = await googleAdsClient.search(normShop, q);
+        if (!out || !out.ok) continue;
+
+        const nowMs = Date.now();
+        const upserts = [];
+        for (const row of out.results || []) {
+          const camp = row && row.campaign ? row.campaign : null;
+          const id = camp && camp.id != null ? String(camp.id).trim() : '';
+          if (!id) continue;
+          const name = camp && camp.name != null ? String(camp.name) : '';
+          const status = camp && camp.status != null ? String(camp.status) : '';
+          upserts.push([normShop, provider, id, name, status, nowMs]);
+
+          const target = campaignMap.get(id);
+          if (target) {
+            if (name && !target.campaignName) target.campaignName = name;
+            if (status && !target.campaignStatus) target.campaignStatus = status;
+          }
+        }
+
+        if (upserts.length) {
+          const valuesSql = upserts.map(() => '(?, ?, ?, ?, ?, ?)').join(', ');
+          const params = [];
+          for (const v of upserts) params.push(...v);
+          await adsDb.run(
+            `
+              INSERT INTO google_ads_campaign_cache (shop, provider, campaign_id, campaign_name, campaign_status, fetched_at)
+              VALUES ${valuesSql}
+              ON CONFLICT (shop, provider, campaign_id) DO UPDATE SET
+                campaign_name = EXCLUDED.campaign_name,
+                campaign_status = EXCLUDED.campaign_status,
+                fetched_at = EXCLUDED.fetched_at
+            `,
+            params
+          );
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('[ads.summary] campaign API name hydrate failed (non-fatal):', e && e.message ? e.message : e);
   }
 
   // Finalize

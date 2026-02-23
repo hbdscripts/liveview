@@ -360,6 +360,25 @@ async function runAdsMigrations() {
         ).catch(() => null);
       },
     },
+    {
+      id: '019_google_ads_campaign_cache',
+      up: async () => {
+        await db.exec(`
+          CREATE TABLE IF NOT EXISTS google_ads_campaign_cache (
+            shop TEXT NOT NULL,
+            provider TEXT NOT NULL,
+            customer_id TEXT,
+            campaign_id TEXT NOT NULL,
+            campaign_name TEXT,
+            campaign_status TEXT,
+            fetched_at BIGINT NOT NULL,
+            PRIMARY KEY (shop, provider, campaign_id)
+          )
+        `);
+        await db.exec('CREATE INDEX IF NOT EXISTS idx_gacc_campaign ON google_ads_campaign_cache(campaign_id)');
+        await db.exec('CREATE INDEX IF NOT EXISTS idx_gacc_fetched_at ON google_ads_campaign_cache(fetched_at)');
+      },
+    },
   ];
 
   let applied = 0;
