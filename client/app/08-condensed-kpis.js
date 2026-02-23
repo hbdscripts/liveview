@@ -1900,7 +1900,7 @@
           showTooltip: showTooltip,
           draggable: draggable,
           zoomButtons: zoomButtons,
-          initialZoomMax: 2.1,
+          initialZoomMax: 1.6,
           focusOn: focusOnLive,
           retry: function() { renderLiveOnlineMapChartFromSessions(sessionList); },
           onRegionTooltipShow: function(event, tooltip, code2) {

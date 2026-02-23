@@ -1868,7 +1868,7 @@
       var zoomMax = Number.isFinite(Number(opts.zoomMax)) ? Number(opts.zoomMax) : 12;
       // Clamp initial focus zoom so small countries don't over-zoom/crop the view.
       var initialZoomMax = Number.isFinite(Number(opts.initialZoomMax)) ? Number(opts.initialZoomMax) : (
-        rect && rect.width && rect.width < 420 ? 1.9 : 2.8
+        rect && rect.width && rect.width < 420 ? 1.5 : 2.2
       );
       var mapFit = 'contain';
       var fillOpacity = 0.18;
@@ -2197,7 +2197,7 @@
           showTooltip: mapStyle.mapShowTooltip !== false,
           draggable: mapStyle.mapDraggable !== false,
           zoomButtons: !!mapStyle.mapZoomButtons,
-          initialZoomMax: 2.1,
+          initialZoomMax: 1.6,
           focusOn: focusOn,
           retry: function() { renderCountriesMapChart(data, opts); },
           onRegionTooltipShow: function(event, tooltip, code) {

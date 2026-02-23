@@ -6328,6 +6328,31 @@ body[data-page="snapshot"] .snapshot-date-input {
   max-width: 8rem;
 }
 
+/* Overview-style page header: no border on dashboard, live, sales, countries. */
+body[data-page="dashboard"] .page-header,
+body[data-page="live"] .page-header,
+body[data-page="sales"] .page-header,
+body[data-page="countries"] .page-header {
+  border-bottom: none !important;
+}
+
+/* Map hero: header overlaps the map on live and countries. */
+.kexo-map-hero {
+  position: relative;
+}
+.kexo-map-hero .page-header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  margin-bottom: 0;
+  background: linear-gradient(to bottom, var(--tblr-body-bg, #f5f7fb) 60%, transparent);
+}
+.kexo-map-hero .row.g-3 {
+  padding-top: 56px;
+}
+
 /* Small icon size helper (replaces inline font-size). */
 .kexo-icon-085 {
   font-size: 0.85em;
