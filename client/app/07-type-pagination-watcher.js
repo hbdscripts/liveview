@@ -1988,6 +1988,14 @@
           instance.params.zoomMin = zoomMin;
         }
       } catch (_) {}
+      // Ensure the SVG itself centers within tall containers.
+      // Some jsVectorMap builds end up with a top-aligned preserveAspectRatio.
+      try {
+        var svg = el && el.querySelector ? el.querySelector('svg') : null;
+        if (svg && svg.setAttribute) {
+          svg.setAttribute('preserveAspectRatio', mapFit === 'cover' ? 'xMidYMid slice' : 'xMidYMid meet');
+        }
+      } catch (_) {}
       // Fit mode: keep the SVG centered within the container (especially important for tall cards).
       if (instance) {
         try {
