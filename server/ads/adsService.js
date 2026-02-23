@@ -232,6 +232,53 @@ async function getSummary(options = {}) {
     ag.impressions += im;
   }
 
+  // If a campaign has attributed orders but no spend rows in the selected range,
+  // it won't have a name/status populated. Hydrate from the latest known spend row
+  // (outside the range) so UI doesn't fall back to numeric IDs.
+  try {
+    const missing = [];
+    for (const c of campaignMap.values()) {
+      if (!c || !c.campaignId) continue;
+      if (!c.campaignName) missing.push(String(c.campaignId));
+    }
+
+    function chunk(arr, size) {
+      const out = [];
+      for (let i = 0; i < (arr || []).length; i += size) out.push(arr.slice(i, i + size));
+      return out;
+    }
+
+    for (const ids of chunk(missing, 200)) {
+      if (!ids || !ids.length) continue;
+      const placeholders = ids.map(() => '?').join(', ');
+      const providerSql = provider ? 'provider = ? AND ' : '';
+      const params = provider ? [provider, ...ids] : [...ids];
+      const rows = await adsDb.all(
+        `
+          SELECT
+            campaign_id,
+            (ARRAY_AGG(campaign_name ORDER BY updated_at DESC NULLS LAST) FILTER (WHERE campaign_name IS NOT NULL AND TRIM(campaign_name) != ''))[1] AS campaign_name,
+            (ARRAY_AGG(campaign_status ORDER BY updated_at DESC NULLS LAST) FILTER (WHERE campaign_status IS NOT NULL AND TRIM(campaign_status) != ''))[1] AS campaign_status
+          FROM google_ads_spend_hourly
+          WHERE ${providerSql} campaign_id IN (${placeholders})
+          GROUP BY campaign_id
+        `,
+        params
+      );
+      for (const r of rows || []) {
+        const id = r && r.campaign_id != null ? String(r.campaign_id) : '';
+        if (!id) continue;
+        const camp = campaignMap.get(id);
+        if (!camp) continue;
+        if (r.campaign_name && !camp.campaignName) camp.campaignName = String(r.campaign_name);
+        if (r.campaign_status && !camp.campaignStatus) camp.campaignStatus = String(r.campaign_status);
+      }
+    }
+  } catch (e) {
+    // Non-fatal: campaign rows still render; UI will fall back to campaignId if needed.
+    console.warn('[ads.summary] failed to hydrate campaign names from history (non-fatal):', e && e.message ? e.message : e);
+  }
+
   // Finalize
   let totalsRevenue = 0;
   let totalsSpend = 0;
