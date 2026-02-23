@@ -41,12 +41,12 @@ async function getKpis(req, res) {
   Sentry.addBreadcrumb({ category: 'api', message: 'kpis.get', data: { range: req?.query?.range } });
   const trafficParam = req && req.query && typeof req.query.traffic === 'string' ? req.query.traffic.trim().toLowerCase() : '';
   const trafficMode = trafficParam === 'safe' ? 'human_safe' : 'human_only';
-  // Polled frequently; keep it cheap and cacheable.
-  res.setHeader('Cache-Control', 'private, max-age=120');
-  res.setHeader('Vary', 'Cookie');
-
   const rangeKey = normalizeRangeKey(req && req.query ? req.query.range : '', { defaultKey: 'today' });
   const force = !!(req && req.query && (req.query.force === '1' || req.query.force === 'true' || req.query._));
+  // Polled frequently; keep it cheap and cacheable.
+  // When `force` is used, prevent iOS/Safari from reusing earlier cached responses.
+  res.setHeader('Cache-Control', force ? 'no-store, no-cache, must-revalidate' : 'private, max-age=120');
+  res.setHeader('Vary', 'Cookie');
   const timing = !!(req && req.query && (req.query.timing === '1' || req.query.timing === 'true'));
 
   const now = Date.now();

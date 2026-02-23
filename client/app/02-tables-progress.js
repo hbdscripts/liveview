@@ -570,6 +570,12 @@
     let rowsPerPage = loadRowsPerPage();
     let sessions = [];
     let sessionsLoadError = null;
+    // Shopify truth orders table (Sales page): paid orders from orders_shopify (processed_at) with evidence status.
+    let truthOrders = [];
+    let truthOrdersTotal = null;
+    let truthOrdersLoadError = null;
+    let truthOrdersPage = 1;
+    const TRUTH_ORDERS_PAGE_SIZE = 25;
     let statsCache = {};
     let attributionCache = null;
     let devicesCache = null;

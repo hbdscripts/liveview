@@ -1768,16 +1768,68 @@
       return out;
     }
 
-    var mapTooltipScrollBound;
+    var mapTooltipBoundContainers = [];
+    var mapTooltipGlobalDismissBound = false;
+    function hideMapTooltips() {
+      try {
+        document.querySelectorAll('.jvm-tooltip').forEach(function(t) {
+          if (!t || !t.style) return;
+          t.style.display = 'none';
+          t.style.visibility = 'hidden';
+          t.style.opacity = '0';
+        });
+      } catch (_) {}
+    }
+    function isNodeInAnyBoundMapContainer(node) {
+      if (!node) return false;
+      for (var i = 0; i < mapTooltipBoundContainers.length; i++) {
+        var c = mapTooltipBoundContainers[i];
+        try { if (c && c.contains && c.contains(node)) return true; } catch (_) {}
+      }
+      return false;
+    }
+    function bindGlobalMapTooltipDismiss() {
+      if (mapTooltipGlobalDismissBound) return;
+      mapTooltipGlobalDismissBound = true;
+      try {
+        document.addEventListener('pointerdown', function(e) {
+          // Clicking anywhere should dismiss any visible map tooltip (prevents "stuck" fixed tooltips).
+          hideMapTooltips();
+        }, true);
+      } catch (_) {}
+      try {
+        document.addEventListener('focusin', function(e) {
+          // If focus moves away from the map SVG, dismiss tooltips.
+          if (!isNodeInAnyBoundMapContainer(e && e.target)) hideMapTooltips();
+        }, true);
+      } catch (_) {}
+      try {
+        window.addEventListener('blur', function() { hideMapTooltips(); }, { passive: true });
+      } catch (_) {}
+      try {
+        document.addEventListener('visibilitychange', function() {
+          try { if (document.hidden) hideMapTooltips(); } catch (_) {}
+        }, { passive: true });
+      } catch (_) {}
+      try {
+        window.addEventListener('scroll', function() { hideMapTooltips(); }, { passive: true, capture: true });
+      } catch (_) {}
+      try {
+        document.addEventListener('keydown', function(e) {
+          if (!e) return;
+          if (e.key === 'Escape' || e.key === 'Tab') hideMapTooltips();
+        }, true);
+      } catch (_) {}
+    }
     function hideMapTooltipOnLeave(container) {
       if (!container || container.__kexoMapTooltipCleanup) return;
       container.__kexoMapTooltipCleanup = true;
-      function hideTooltips() {
-        document.querySelectorAll('.jvm-tooltip').forEach(function(t) { t.style.display = 'none'; });
-      }
-      container.addEventListener('mouseleave', hideTooltips, { passive: true });
-      // Don't hide on scroll: in embedded contexts, scroll events can fire unexpectedly and
-      // make tooltips appear "broken" (hidden while still hovering).
+      mapTooltipBoundContainers.push(container);
+      bindGlobalMapTooltipDismiss();
+      try { container.addEventListener('mouseleave', hideMapTooltips, { passive: true }); } catch (_) {}
+      try { container.addEventListener('pointerleave', hideMapTooltips, { passive: true }); } catch (_) {}
+      try { container.addEventListener('pointercancel', hideMapTooltips, { passive: true }); } catch (_) {}
+      try { container.addEventListener('touchend', hideMapTooltips, { passive: true }); } catch (_) {}
     }
 
     function setVectorMapTooltipContent(tooltip, html, text) {
@@ -1935,19 +1987,21 @@
           instance.params.zoomMin = zoomMin;
         }
       } catch (_) {}
-      // Fit mode: cover should fill both dimensions (crop edges), even in tall containers.
-      if (instance && mapFit === 'cover') {
+      // Fit mode: keep the SVG centered within the container (especially important for tall cards).
+      if (instance) {
         try {
           var w = Number(instance._width);
           var h = Number(instance._height);
           var dw = Number(instance._defaultWidth);
           var dh = Number(instance._defaultHeight);
           if (Number.isFinite(w) && Number.isFinite(h) && Number.isFinite(dw) && Number.isFinite(dh) && w > 0 && h > 0 && dw > 0 && dh > 0) {
-            var coverScale = Math.max(w / dw, h / dh);
-            instance._baseScale = coverScale;
-            instance._baseTransX = Math.abs(w - dw * coverScale) / (2 * coverScale);
-            instance._baseTransY = Math.abs(h - dh * coverScale) / (2 * coverScale);
-            if (typeof instance.reset === 'function') instance.reset();
+            var fitScale = mapFit === 'cover' ? Math.max(w / dw, h / dh) : Math.min(w / dw, h / dh);
+            if (Number.isFinite(fitScale) && fitScale > 0) {
+              instance._baseScale = fitScale;
+              instance._baseTransX = Math.abs(w - dw * fitScale) / (2 * fitScale);
+              instance._baseTransY = Math.abs(h - dh * fitScale) / (2 * fitScale);
+              if (typeof instance.reset === 'function') instance.reset();
+            }
           }
         } catch (_) {}
       }
@@ -3548,15 +3602,19 @@
       });
     }
 
-    function fetchCondensedSeries() {
+    function fetchCondensedSeries(options) {
+      options = options && typeof options === 'object' ? options : {};
+      var force = !!options.force;
       var rangeKey = getStatsRange();
       if (!rangeKey) return;
-      var stale = !condensedSeriesFetchedAt || (Date.now() - condensedSeriesFetchedAt) > KPI_CACHE_TTL_MS;
+      var stale = force || !condensedSeriesFetchedAt || (Date.now() - condensedSeriesFetchedAt) > KPI_CACHE_TTL_MS;
       if (!stale && condensedSeriesCache && condensedSeriesRange === rangeKey) {
         renderCondensedSparklines(condensedSeriesCache);
         return;
       }
-      fetchWithTimeout(API + '/api/dashboard-series?range=' + encodeURIComponent(rangeKey) + (typeof window.kexoGetTrafficQuerySuffix === 'function' ? window.kexoGetTrafficQuerySuffix() : ''), { credentials: 'same-origin', cache: 'default' }, 15000)
+      var url = API + '/api/dashboard-series?range=' + encodeURIComponent(rangeKey) + (typeof window.kexoGetTrafficQuerySuffix === 'function' ? window.kexoGetTrafficQuerySuffix() : '');
+      if (force) url += '&force=1&_=' + Date.now();
+      fetchWithTimeout(url, { credentials: 'same-origin', cache: force ? 'no-store' : 'default' }, 15000)
         .then(function(r) { return r && r.ok ? r.json() : null; })
         .then(function(data) {
           var s = data && data.series ? data.series : null;

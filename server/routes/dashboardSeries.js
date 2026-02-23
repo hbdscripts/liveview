@@ -796,7 +796,7 @@ async function getDashboardSeries(req, res) {
   const trendingDaysRaw = parseInt(req.query.trendingDays, 10);
   const trendingDays = [3, 7, 14].indexOf(trendingDaysRaw) >= 0 ? trendingDaysRaw : null;
 
-  res.setHeader('Cache-Control', 'private, max-age=300');
+  res.setHeader('Cache-Control', force ? 'no-store, no-cache, must-revalidate' : 'private, max-age=300');
   res.setHeader('Vary', 'Cookie');
 
   const now = Date.now();

@@ -41,6 +41,7 @@
       bindDelegate('dash-top-products', function(pg) { dashTopProductsPage = pg; rerenderDashboardFromCache(); });
       bindDelegate('dash-top-countries', function(pg) { dashTopCountriesPage = pg; rerenderDashboardFromCache(); });
       bindDelegate('dash-trending', function(pg) { dashTrendingPage = pg; rerenderDashboardFromCache(); });
+      bindDelegate('truth-orders', function(pg) { truthOrdersPage = pg; fetchTruthOrders({ force: true }); });
       bindDelegate('breakdown-aov', function(pg) { breakdownAovPage = pg; renderAov(statsCache); });
       bindDelegate('breakdown-title', function(pg) { breakdownTitlePage = pg; renderBreakdownTitles(leaderboardCache); });
       bindDelegate('breakdown-finish', function(pg) { breakdownFinishPage = pg; renderBreakdownFinishes(finishesCache); });
@@ -169,6 +170,15 @@
       let diagnosticsStepEl = null;
       let compareStepEl = null;
       const preserveView = !!(options && options.preserveView);
+      let prevOpenKey = '';
+      try {
+        if (preserveView && configStatusEl) {
+          const open = configStatusEl.querySelector('#settings-diagnostics-accordion .accordion-collapse.show[id^="settings-diagnostics-collapse-"]');
+          if (open && open.id) {
+            prevOpenKey = String(open.id).replace(/^settings-diagnostics-collapse-/, '').trim().toLowerCase();
+          }
+        }
+      } catch (_) { prevOpenKey = ''; }
       const modalCardEl = null;
       const prevModalScrollTop = (preserveView && modalCardEl) ? (modalCardEl.scrollTop || 0) : 0;
       if (configStatusEl && !preserveView) {
@@ -1033,6 +1043,40 @@
           var targetEl = document.getElementById('diagnostics-content');
           if (diagnosticsStepEl) diagnosticsStepEl.textContent = 'Building diagnostics panel';
           if (targetEl) targetEl.innerHTML = html;
+
+          // Preserve the open accordion section when refreshing.
+          try {
+            if (targetEl) {
+              const keyToOpen = (prevOpenKey || activeDiagTabKey || '').trim().toLowerCase();
+              if (keyToOpen) {
+                const collapse = targetEl.querySelector('#settings-diagnostics-collapse-' + keyToOpen);
+                if (collapse) {
+                  if (window.bootstrap && window.bootstrap.Collapse) {
+                    window.bootstrap.Collapse.getOrCreateInstance(collapse, { toggle: false }).show();
+                  } else {
+                    collapse.classList.add('show');
+                    const btn = targetEl.querySelector('[data-bs-target="#settings-diagnostics-collapse-' + keyToOpen + '"]');
+                    if (btn) {
+                      btn.classList.remove('collapsed');
+                      btn.setAttribute('aria-expanded', 'true');
+                    }
+                  }
+                }
+              }
+              const acc = targetEl.querySelector('#settings-diagnostics-accordion');
+              if (acc && acc.getAttribute('data-diag-acc-bound') !== '1') {
+                acc.setAttribute('data-diag-acc-bound', '1');
+                acc.addEventListener('shown.bs.collapse', function (e) {
+                  try {
+                    const id = e && e.target && e.target.id ? String(e.target.id) : '';
+                    if (id.indexOf('settings-diagnostics-collapse-') === 0) {
+                      activeDiagTabKey = id.replace('settings-diagnostics-collapse-', '').trim().toLowerCase() || activeDiagTabKey;
+                    }
+                  } catch (_) {}
+                });
+              }
+            }
+          } catch (_) {}
 
           // Preserve scroll position when refreshing while the modal is already open.
           try {
