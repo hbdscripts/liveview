@@ -31,13 +31,16 @@
             </div>
           </div>
 <div id="tab-panel-spy" class="main-tab-panel" role="tabpanel" aria-labelledby="nav-tab-sales">
-  <div class="card mb-3" data-kexo-chart-key="sales-overview-chart">
-    <div class="card-header">
-      <h3 class="card-title">Sales Trend</h3>
-    </div>
-    <div class="card-body">
-      <div class="dash-chart-wrap kexo-chart-wrap-min-220" id="sessions-overview-chart"></div>
-      <div id="sessions-overview-bucket-label" class="text-muted small mt-1" aria-hidden="true"></div>
+  <div class="card mb-3 kexo-widget-card kexo-sales-trend-card" data-kexo-chart-key="sales-overview-chart">
+    <div class="card-body kexo-widget-card-body">
+      <div class="kexo-widget-head">
+        <div class="kexo-widget-title">Sales Trend</div>
+        <div class="kexo-widget-head-right"></div>
+      </div>
+      <div class="kexo-widget-body">
+        <div class="dash-chart-wrap kexo-chart-wrap-min-220" id="sessions-overview-chart"></div>
+        <div id="sessions-overview-bucket-label" class="text-muted small mt-1" aria-hidden="true"></div>
+      </div>
     </div>
   </div>
   <div class="card" data-table-class="live" data-table-zone="sales-sessions" data-table-id="sessions-table">

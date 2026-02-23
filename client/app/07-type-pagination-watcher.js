@@ -1976,14 +1976,14 @@
         countriesMapSource = 'live';
         liveBtn.classList.add('active');
         periodBtn.classList.remove('active');
-        renderCountriesMapChart(statsCache, { source: 'live' });
+        renderCountriesMapChart(statsCache, { source: 'live', force: true });
       });
       periodBtn.addEventListener('click', function() {
         if (countriesMapSource === 'period') return;
         countriesMapSource = 'period';
         periodBtn.classList.add('active');
         liveBtn.classList.remove('active');
-        renderCountriesMapChart(statsCache, { source: 'period' });
+        renderCountriesMapChart(statsCache, { source: 'period', force: true });
       });
     }
 
@@ -1991,6 +1991,7 @@
       const el = document.getElementById('countries-map-chart');
       if (!el) return;
       opts = (opts != null && typeof opts === 'object') ? opts : {};
+      var force = opts.force === true;
       var source = (opts.source === 'live' || opts.source === 'period') ? opts.source : countriesMapSource;
       setupCountriesMapSourceButtons();
       var liveBtn = document.getElementById('countries-map-source-live');
@@ -2019,7 +2020,10 @@
         countriesMapChartInstance = null;
         clearCountriesFlowOverlay(el);
         el.innerHTML = '';
-        fetchLiveOnlineMapSessions({ force: false })
+        try { el.__kexoLiveOnlineMapSig = ''; } catch (_) {}
+        try { el.__kexoLiveOnlineMapMode = ''; } catch (_) {}
+        try { el.__kexoLiveOnlineMapAccent = ''; } catch (_) {}
+        fetchLiveOnlineMapSessions({ force: force })
           .then(function(list) {
             try { renderLiveOnlineMapChartFromSessions(Array.isArray(list) ? list : []); } catch (_) {}
           })
@@ -4873,7 +4877,7 @@
         mapDraggable: true,
         mapZoomButtons: true,
         mapShowEmptyCaption: true,
-        mapFit: 'cover',
+        mapFit: 'contain',
         mapInactiveOpacity: 0.09,
         mapInactiveColor: '',
         mapStageBrowseColor: '',
