@@ -1764,7 +1764,16 @@
       if (!container || container.__kexoMapTooltipCleanup) return;
       container.__kexoMapTooltipCleanup = true;
       function hideTooltips() {
-        document.querySelectorAll('.jvm-tooltip').forEach(function(t) { t.style.display = 'none'; });
+        document.querySelectorAll('.jvm-tooltip').forEach(function(t) {
+          try { t.classList.remove('active'); } catch (_) {}
+          try {
+            if (t && t.style) {
+              t.style.display = '';
+              t.style.visibility = '';
+              t.style.opacity = '';
+            }
+          } catch (_) {}
+        });
       }
       container.addEventListener('mouseleave', hideTooltips, { passive: true });
       // Don't hide on scroll: in embedded contexts, scroll events can fire unexpectedly and
@@ -1777,7 +1786,9 @@
       var textContent = text == null ? '' : String(text);
       function unhide(t) {
         try {
-          var node = (t && t.element && t.element.nodeType === 1) ? t.element : (t && t.nodeType === 1 ? t : null);
+          var node = null;
+          if (t && typeof t.getElement === 'function') node = t.getElement();
+          else node = (t && t.element && t.element.nodeType === 1) ? t.element : (t && t.nodeType === 1 ? t : null);
           if (node && node.style) {
             node.style.display = '';
             node.style.visibility = 'visible';
@@ -1915,7 +1926,12 @@
         zoomMax: zoomMax,
         regionStyle: {
           initial: { fill: 'rgba(' + inactiveRgb + ',' + String(inactiveOpacity.toFixed(3)) + ')', stroke: border, strokeWidth: 0.7 },
-          hover: { fill: 'rgba(' + primaryRgb + ',' + String(a(0.46).toFixed(3)) + ')' },
+          hover: {
+            fill: 'rgba(' + primaryRgb + ',' + String(a(0.62).toFixed(3)) + ')',
+            stroke: 'rgba(' + primaryRgb + ',0.55)',
+            strokeWidth: 1.15,
+            cursor: 'pointer',
+          },
           selected: { fill: 'rgba(' + primaryRgb + ',' + String(a(0.78).toFixed(3)) + ')' },
         },
       };
