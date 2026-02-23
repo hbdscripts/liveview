@@ -3395,7 +3395,7 @@
         let dir = 'none';
 
         if (rawDelta != null) {
-          text = isNew ? 'new' : formatSignedPercentOneDecimalFromRatio(rawDelta);
+          text = isNew ? '+100%' : formatSignedPercentOneDecimalFromRatio(rawDelta);
           dir = isUp ? 'up' : (isDown ? 'down' : 'flat');
         }
 
@@ -3450,8 +3450,8 @@
         barEl.classList.add(barClass);
         barEl.setAttribute('aria-valuenow', String(widthPct));
         if (isNew) {
-          barEl.setAttribute('aria-label', 'New metric (baseline was 0)');
-          if (srText) srText.textContent = 'New metric (baseline was 0)';
+          barEl.setAttribute('aria-label', '100% change');
+          if (srText) srText.textContent = '100% change';
         } else if (deltaPctAbs != null) {
           barEl.setAttribute('aria-label', String(deltaPctAbs) + '% change');
           if (srText) srText.textContent = String(deltaPctAbs) + '% change';
@@ -4111,7 +4111,7 @@
         var dir = 'none';
         var text = '\u2014';
         if (rawDelta != null) {
-          text = isNew ? 'new' : formatSignedPercentOneDecimalFromRatio(rawDelta);
+          text = isNew ? '+100%' : formatSignedPercentOneDecimalFromRatio(rawDelta);
           dir = isUp ? 'up' : (isDown ? 'down' : 'flat');
         }
         var forceNeutralTone = DASHBOARD_NEUTRAL_DELTA_KEYS.has(String(key || '').toLowerCase());
