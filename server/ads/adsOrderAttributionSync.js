@@ -663,7 +663,7 @@ async function syncAttributedOrdersToAdsDb(options = {}) {
       for (const idChunk of chunk(unresolved, 50)) {
         const safeIds = (idChunk || []).map((v) => String(v).trim()).filter((v) => /^\d+$/.test(v));
         if (!safeIds.length) continue;
-        const q = `SELECT campaign.id FROM campaign WHERE campaign.id IN (${safeIds.join(', ')}) AND campaign.status != 'REMOVED'`;
+        const q = `SELECT campaign.id FROM campaign WHERE campaign.id IN (${safeIds.join(', ')})`;
         const out = await googleAdsClient.search(shop, q);
         if (!out || !out.ok) continue;
         for (const r of out.results || []) {

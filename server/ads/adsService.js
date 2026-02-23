@@ -329,7 +329,7 @@ async function getSummary(options = {}) {
       for (const ids of chunk(apiMissing, 50)) {
         const safeIds = (ids || []).filter((v) => /^\d+$/.test(String(v)));
         if (!safeIds.length) continue;
-        const q = `SELECT campaign.id, campaign.name, campaign.status FROM campaign WHERE campaign.id IN (${safeIds.join(', ')}) AND campaign.status != 'REMOVED'`;
+        const q = `SELECT campaign.id, campaign.name, campaign.status FROM campaign WHERE campaign.id IN (${safeIds.join(', ')})`;
         const out = await googleAdsClient.search(normShop, q);
         if (!out || !out.ok) continue;
 
