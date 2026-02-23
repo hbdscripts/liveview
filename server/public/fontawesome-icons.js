@@ -128,55 +128,6 @@
     'eye-off': 'fa-jelly fa-eye-slash'
   };
 
-  var CARD_TITLE_ICON_RULES = [
-    { key: 'card-title-online', test: /people online|online now|online trend/i, fa: 'fa-jelly-filled fa-users' },
-    { key: 'card-title-revenue', test: /\brevenue\b|\brev\b|sales total|sales trend/i, fa: 'fa-jelly-filled fa-sterling-sign' },
-    { key: 'card-title-orders', test: /\borders?\b|order trend|purchases?/i, fa: 'fa-jelly-filled fa-box-open' },
-    { key: 'card-title-conversion', test: /\bconversion\b|\bcr(?:%| rate)?\b/i, fa: 'fa-jelly-filled fa-percent' },
-    { key: 'card-title-sessions', test: /\bsessions?\b|session trend|visitors?/i, fa: 'fa-jelly-filled fa-users' },
-    { key: 'card-title-countries', test: /\bcountr(?:y|ies)\b|\bgeo\b/i, fa: 'fa-jelly-filled fa-globe' },
-    { key: 'card-title-products', test: /\bproducts?\b|\bvariants?\b|best sellers?/i, fa: 'fa-jelly-filled fa-box-open' },
-    { key: 'card-title-channels', test: /\bchannels?\b|\bsources?\b|\butm\b/i, fa: 'fa-jelly-filled fa-diagram-project' },
-    { key: 'card-title-type', test: /\btype\b|\bdevices?\b|\bbrowsers?\b|\bos\b/i, fa: 'fa-jelly-filled fa-table-cells' },
-    { key: 'card-title-ads', test: /\bads?\b|\bcampaigns?\b|google ads/i, fa: 'fa-brands fa-google' },
-    { key: 'card-title-tools', test: /\btools?\b|utilities?/i, fa: 'fa-jelly-filled fa-toolbox' },
-    { key: 'card-title-settings', test: /\bsettings?\b|configuration|diagnostics?|theme/i, fa: 'fa-jelly-filled fa-gear' },
-    { key: 'card-title-date', test: /\bdate\b|calendar|timeline|period/i, fa: 'fa-jelly-filled fa-calendar-days' },
-    { key: 'card-title-dashboard', test: /dashboard|overview|kpi/i, fa: 'fa-jelly-filled fa-gauge-high' },
-    { key: 'card-title-traffic', test: /\btraffic\b|\blive\b/i, fa: 'fa-jelly-filled fa-route' },
-    { key: 'card-title-trending-up', test: /\btrending\s+up\b/i, fa: 'fa-jelly-filled fa-arrow-trend-up' },
-    { key: 'card-title-trending-down', test: /\btrending\s+down\b/i, fa: 'fa-jelly-filled fa-arrow-trend-down' },
-    { key: 'card-title-chart', test: /\bchart\b|trend|sparkline/i, fa: 'fa-jelly-filled fa-chart-line' }
-  ];
-
-  function pageDefaultCardIcon() {
-    var page = '';
-    try { page = (document.body && document.body.getAttribute('data-page')) || ''; } catch (_) { page = ''; }
-    page = String(page || '').toLowerCase();
-    if (page === 'dashboard') return { key: 'card-title-dashboard', fa: 'fa-jelly-filled fa-gauge-high' };
-    if (page === 'live') return { key: 'card-title-traffic', fa: 'fa-jelly-filled fa-satellite-dish' };
-    if (page === 'sales') return { key: 'card-title-orders', fa: 'fa-jelly-filled fa-cart-shopping' };
-    if (page === 'date') return { key: 'card-title-date', fa: 'fa-jelly-filled fa-calendar-days' };
-    if (page === 'countries') return { key: 'card-title-countries', fa: 'fa-jelly-filled fa-globe' };
-    if (page === 'products') return { key: 'card-title-products', fa: 'fa-jelly-filled fa-box-open' };
-    if (page === 'channels') return { key: 'card-title-channels', fa: 'fa-jelly-filled fa-diagram-project' };
-    if (page === 'type') return { key: 'card-title-type', fa: 'fa-jelly-filled fa-table-cells' };
-    if (page === 'ads') return { key: 'card-title-ads', fa: 'fa-jelly-filled fa-rectangle-ad' };
-    if (page === 'tools') return { key: 'card-title-tools', fa: 'fa-jelly-filled fa-toolbox' };
-    if (page === 'settings') return { key: 'card-title-settings', fa: 'fa-jelly-filled fa-gear' };
-    return { key: 'card-title-chart', fa: 'fa-jelly-filled fa-circle-info' };
-  }
-
-  function resolveCardTitleIcon(cardTitleEl) {
-    if (!cardTitleEl) return pageDefaultCardIcon();
-    var text = (cardTitleEl.textContent || '').replace(/\s+/g, ' ').trim();
-    for (var i = 0; i < CARD_TITLE_ICON_RULES.length; i += 1) {
-      var rule = CARD_TITLE_ICON_RULES[i];
-      if (rule && rule.test && rule.test.test(text)) return { key: rule.key, fa: rule.fa };
-    }
-    return pageDefaultCardIcon();
-  }
-
   function applyFaSpec(el, spec) {
     if (!el || !el.classList) return;
     var parts = String(spec || '').trim().split(/\s+/).filter(Boolean);
@@ -213,33 +164,9 @@
     if (page === 'settings') return;
     var titles = (root || document).querySelectorAll('.card-header .card-title');
     titles.forEach(function (titleEl) {
-      if (!titleEl || !titleEl.classList) return;
-      if (titleEl.hasAttribute('data-no-title-icon')) return;
-      var card = titleEl.closest ? titleEl.closest('.card') : null;
-      var tableId = (card && card.dataset && card.dataset.tableId) ? String(card.dataset.tableId).trim() : '';
-      if (tableId) {
-        var iconEl = titleEl.querySelector('.kexo-card-title-icon');
-        if (iconEl && iconEl.parentNode) iconEl.parentNode.removeChild(iconEl);
-        return;
-      }
-      var desired = resolveCardTitleIcon(titleEl);
+      if (!titleEl || !titleEl.querySelector) return;
       var iconEl = titleEl.querySelector('.kexo-card-title-icon');
-      if (!iconEl) {
-        var firstIcon = null;
-        Array.prototype.forEach.call(titleEl.children || [], function (child) {
-          if (!firstIcon && child && child.tagName === 'I') firstIcon = child;
-        });
-        if (firstIcon && !firstIcon.classList.contains('kexo-card-title-icon')) return;
-        iconEl = document.createElement('i');
-        iconEl.className = 'kexo-card-title-icon';
-        iconEl.setAttribute('aria-hidden', 'true');
-        iconEl.setAttribute('data-icon-lib', 'font-awesome');
-        titleEl.insertBefore(iconEl, titleEl.firstChild);
-      }
-      try {
-        if (desired && desired.key) iconEl.setAttribute('data-icon-key', desired.key);
-      } catch (_) {}
-      applyFaSpec(iconEl, desired && desired.fa ? desired.fa : desired);
+      if (iconEl && iconEl.parentNode) iconEl.parentNode.removeChild(iconEl);
     });
   }
 

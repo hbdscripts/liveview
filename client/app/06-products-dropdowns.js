@@ -236,16 +236,19 @@
         const value = formatMoneyCompact(Number.isFinite(rev) ? rev : 0, 'GBP') || '\u00A30';
         const cr = crPillHtml(row && row.cr);
         const productUrl = (mainBase && handle) ? (mainBase + '/products/' + encodeURIComponent(handle)) : '#';
-        const canOpen = handle || (productId && /^\d+$/.test(productId));
+        const numericId = (productId && /^\d+$/.test(productId)) ? productId : '';
+        const linkHref = numericId ? ('/insights/products/' + numericId) : productUrl;
+        const targetAttr = linkHref.indexOf('/insights/') === 0 ? '' : ' target="_blank" rel="noopener"';
+        const canOpen = handle || numericId;
         const thumbInner = '<span class="thumb-wrap">' +
             (thumb
               ? '<img class="landing-thumb" src="' + escapeHtml(hotImgSquare(thumb) || thumb) + '" alt="" loading="lazy" onerror="this.remove()">'
               : '') +
           '</span>';
         const img = canOpen
-          ? '<a class="leaderboard-thumb-link js-product-modal-link" href="' + escapeHtml(productUrl) + '" target="_blank" rel="noopener" aria-label="Open product: ' + escapeHtml(title || 'Product') + '"' +
+          ? '<a class="leaderboard-thumb-link js-product-modal-link" href="' + escapeHtml(linkHref) + '"' + targetAttr + ' aria-label="Open product: ' + escapeHtml(title || 'Product') + '"' +
             (handle ? (' data-product-handle="' + escapeHtml(handle) + '"') : '') +
-            (productId && /^\d+$/.test(productId) ? (' data-product-id="' + escapeHtml(productId) + '"') : '') +
+            (numericId ? (' data-product-id="' + escapeHtml(numericId) + '"') : '') +
             (title ? (' data-product-title="' + escapeHtml(title) + '"') : '') +
             (thumb ? (' data-product-thumb="' + escapeHtml(thumb) + '"') : '') +
           '>' + thumbInner + '</a>'
@@ -331,12 +334,15 @@
         var handle = r && r.handle ? String(r.handle) : '';
         var productId = (r && r.product_id) ? String(r.product_id).replace(/^gid:\/\/shopify\/Product\//i, '').trim() : '';
         var productUrl = (mainBase && handle) ? (mainBase + '/products/' + encodeURIComponent(handle)) : '#';
-        var canOpen = handle || (productId && /^\d+$/.test(productId));
+        var numericId = (productId && /^\d+$/.test(productId)) ? productId : '';
+        var linkHref = numericId ? ('/insights/products/' + numericId) : productUrl;
+        var targetAttr = linkHref.indexOf('/insights/') === 0 ? '' : ' target="_blank" rel="noopener"';
+        var canOpen = handle || numericId;
         var nameInner = canOpen
           ? (
-              '<a class="kexo-product-link js-product-modal-link" href="' + escapeHtml(productUrl) + '" target="_blank" rel="noopener"' +
+              '<a class="kexo-product-link js-product-modal-link" href="' + escapeHtml(linkHref) + '"' + targetAttr +
                 (handle ? (' data-product-handle="' + escapeHtml(handle) + '"') : '') +
-                (productId && /^\d+$/.test(productId) ? (' data-product-id="' + escapeHtml(productId) + '"') : '') +
+                (numericId ? (' data-product-id="' + escapeHtml(numericId) + '"') : '') +
                 (title ? (' data-product-title="' + escapeHtml(title) + '"') : '') +
               '>' + escapeHtml(title) + '</a>'
             )

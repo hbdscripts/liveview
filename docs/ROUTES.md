@@ -67,6 +67,7 @@ When adding a route, re-run this script so the doc stays in sync.
 | PATCH | `/api/notifications/:id` | server/routes/notifications.js (patchOne) |
 | GET | `/api/og-thumb` | server/routes/ogThumb.js (handleOgThumb) |
 | GET | `/api/page-insights` | server/routes/pageInsights.js (getPageInsights) |
+| GET | `/api/page-meta` | server/routes/pageInsights.js (getPageMeta) |
 | GET | `/api/payment-methods/catalog` | server/routes/paymentMethods.js (getPaymentMethodsCatalog) |
 | GET | `/api/payment-methods/report` | server/routes/paymentMethods.js (getPaymentMethodsReport) |
 | GET | `/api/payment-types/series` | server/routes/paymentTypes.js (getPaymentTypesSeries) |
@@ -181,8 +182,10 @@ When adding a route, re-run this script so the doc stays in sync.
 | `/dashboard/table` | `server/public/dashboard/table.html` |
 | `/insights/abandoned-carts` | `server/public/insights/abandoned-carts.html` |
 | `/insights/countries` | `server/public/insights/countries.html` |
+| `/insights/pages/:pageId` | `server/public/insights/page.html` |
 | `/insights/payment-methods` | `server/public/insights/payment-types.html` |
 | `/insights/products` | `server/public/insights/products.html` |
+| `/insights/products/:productId` | `server/public/insights/product.html` |
 | `/insights/snapshot` | `server/public/insights/snapshot.html` |
 | `/insights/variants` | `server/public/insights/variants.html` |
 | `/integrations/google-ads` | `server/public/integrations/google-ads.html` |

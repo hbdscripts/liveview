@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <!--#include partials/head-theme.html-->
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="icon" type="image/webp" href="/assets/logos/new/kexo.webp" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.4.0/dist/css/tabler.min.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.4.0/dist/css/tabler-flags.min.css" />
+  <link rel="stylesheet" href="/tabler-theme.css" />
+  <link rel="stylesheet" href="/custom.css" />
+  <link rel="stylesheet" href="/diagnostics-modal.css" />
+  <title>Kexo · Product</title>
+  <script src="https://cdn.jsdelivr.net/npm/apexcharts@4.7.0/dist/apexcharts.min.js" defer></script>
+</head>
+<body class="" data-page="product-insights">
+  <!--#include partials/header.html-->
+  <!--#include partials/page-body-start.html-->
+  <div class="page-header mb-3">
+    <div class="row align-items-center">
+      <div class="col">
+        <div class="page-pretitle">Insights</div>
+        <h2 class="page-title" id="product-insights-page-title">Product</h2>
+      </div>
+      <div class="col-auto">
+        <div class="dropdown kexo-topbar-date">
+          <button type="button" class="kexo-date-btn" id="product-insights-range-btn" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Choose date range" aria-controls="product-insights-range-menu">
+            <span class="kexo-date-btn-label" id="product-insights-range-label">Today</span>
+            <i class="fa-jelly-filled fa-chevron-down kexo-date-btn-chevron" data-icon-key="topnav-date-chevron" aria-hidden="true"></i>
+          </button>
+          <div class="dropdown-menu dropdown-menu-end" id="product-insights-range-menu" aria-label="Date ranges">
+            <button class="dropdown-item" type="button" data-range="today">Today</button>
+            <button class="dropdown-item" type="button" data-range="yesterday">Yesterday</button>
+            <button class="dropdown-item" type="button" data-range="3d">Last 3 days</button>
+            <button class="dropdown-item" type="button" data-range="7d">Last 7 days</button>
+            <button class="dropdown-item" type="button" data-range="14d">Last 14 days</button>
+            <button class="dropdown-item" type="button" data-range="30d">Last 30 days</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="product-insights-page-root">
+    <div class="text-muted text-center py-5" id="product-insights-page-status" aria-live="polite">Loading…</div>
+  </div>
+
+  <!--#include partials/page-body-end.html-->
+  <!--#include partials/footer.html-->
+  <script src="https://cdn.jsdelivr.net/npm/@tabler/core@1.4.0/dist/js/tabler.min.js" defer></script>
+  <script src="/app.js" defer></script>
+  <script src="/theme-settings.js" defer></script>
+</body>
+</html>

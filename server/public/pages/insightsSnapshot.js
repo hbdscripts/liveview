@@ -11,9 +11,8 @@
     authorized: null,
     loading: false,
     requestId: 0,
-    productPerformanceRequestId: 0,
     data: null,
-    preset: 'last_7_days',
+    preset: 'today',
     since: '',
     until: '',
     rulesDraft: null,
@@ -24,6 +23,8 @@
   };
 
   const PRESETS = new Set([
+    'today',
+    'yesterday',
     'this_month',
     'last_month',
     'last_7_days',
@@ -119,6 +120,8 @@
   }
 
   function presetLabel(preset) {
+    if (preset === 'today') return 'Today';
+    if (preset === 'yesterday') return 'Yesterday';
     if (preset === 'this_month') return 'This month';
     if (preset === 'last_month') return 'Last month';
     if (preset === 'last_7_days') return 'Last 7 days';
@@ -132,6 +135,13 @@
 
   function computePresetRange(preset, nowYmd) {
     const today = parseYmd(nowYmd) ? nowYmd : getTodayYmd();
+    if (preset === 'today') {
+      return { since: today, until: today };
+    }
+    if (preset === 'yesterday') {
+      const yesterday = ymdAddDays(today, -1);
+      return { since: yesterday, until: yesterday };
+    }
     if (preset === 'this_month') {
       return { since: ymdMonthStart(today), until: today };
     }
@@ -282,8 +292,8 @@
       const clamped = clampRange(sinceRaw, untilRaw);
       return { preset: 'custom', since: clamped.since, until: clamped.until };
     }
-    const defaultRange = computePresetRange('last_7_days', getTodayYmd());
-    return { preset: 'last_7_days', since: defaultRange.since, until: defaultRange.until };
+    const defaultRange = computePresetRange('today', getTodayYmd());
+    return { preset: 'today', since: defaultRange.since, until: defaultRange.until };
   }
 
   function syncUrl() {
@@ -670,64 +680,6 @@
     return `${API}/api/business-snapshot?${params.toString()}`;
   }
 
-  function buildProductPerformanceApiUrl() {
-    const params = new URLSearchParams();
-    params.set('since', state.since);
-    params.set('until', state.until);
-    const shop = (typeof window !== 'undefined' && window.location && window.location.search) ? new URLSearchParams(window.location.search).get('shop') : '';
-    if (shop) params.set('shop', shop);
-    return `${API}/api/performance/gross-profit?${params.toString()}`;
-  }
-
-  function setProductPerformanceUi(mode) {
-    const section = document.getElementById('snapshot-product-performance-section');
-    const loading = document.getElementById('snapshot-product-performance-loading');
-    const error = document.getElementById('snapshot-product-performance-error');
-    const ready = document.getElementById('snapshot-product-performance-ready');
-    if (section) section.classList.toggle('is-hidden', mode === 'hidden');
-    if (loading) loading.classList.toggle('is-hidden', mode !== 'loading');
-    if (error) error.classList.toggle('is-hidden', mode !== 'error');
-    if (ready) ready.classList.toggle('is-hidden', mode !== 'ready');
-  }
-
-  function renderProductPerformanceTable(bodyId, rows) {
-    const tbody = document.getElementById(bodyId);
-    if (!tbody) return;
-    if (!Array.isArray(rows) || !rows.length) {
-      tbody.innerHTML = '<tr><td colspan="4" class="text-muted text-center">No data</td></tr>';
-      return;
-    }
-    let html = '';
-    for (let i = 0; i < rows.length; i++) {
-      const r = rows[i];
-      const title = (r && r.title != null) ? String(r.title) : (r && r.product_id != null ? r.product_id : '—');
-      const revenue = (r && r.revenue_gbp != null) ? Number(r.revenue_gbp) : 0;
-      const cost = (r && r.cost_gbp != null) ? Number(r.cost_gbp) : 0;
-      const profit = (r && r.gross_profit_gbp != null) ? Number(r.gross_profit_gbp) : (revenue - cost);
-      html += '<tr><td>' + esc(title) + '</td><td class="text-end">' + esc(fmtCurrency(revenue)) + '</td><td class="text-end">' + esc(fmtCurrency(cost)) + '</td><td class="text-end">' + esc(fmtCurrency(profit)) + '</td></tr>';
-    }
-    tbody.innerHTML = html;
-  }
-
-  async function fetchProductPerformance() {
-    const reqId = ++state.productPerformanceRequestId;
-    setProductPerformanceUi('loading');
-    try {
-      const data = await fetchJson(buildProductPerformanceApiUrl());
-      if (reqId !== state.productPerformanceRequestId) return;
-      setProductPerformanceUi('ready');
-      renderProductPerformanceTable('snapshot-product-performance-high-body', data.high || []);
-      renderProductPerformanceTable('snapshot-product-performance-low-body', data.low || []);
-    } catch (err) {
-      if (reqId !== state.productPerformanceRequestId) return;
-      if (err && err.status === 403) {
-        setProductPerformanceUi('hidden');
-        return;
-      }
-      setProductPerformanceUi('error');
-    }
-  }
-
   async function fetchJson(url, options) {
     const res = await fetch(url, Object.assign({ credentials: 'same-origin', cache: 'no-store' }, options || {}));
     if (res.status === 403) {
@@ -755,7 +707,6 @@
       const payload = await fetchJson(buildSnapshotApiUrl(force));
       if (reqId !== state.requestId) return;
       renderAll(payload);
-      fetchProductPerformance();
     } catch (err) {
       if (reqId !== state.requestId) return;
       if (err && err.status === 403) {
@@ -1226,7 +1177,6 @@
       document.getElementById('snapshot-performance-retry'),
       document.getElementById('snapshot-customers-retry'),
     ];
-    const productPerfRetry = document.getElementById('snapshot-product-performance-retry');
     const dateMenu = document.getElementById('snapshot-date-menu');
     if (dateMenu) {
       dateMenu.addEventListener('click', function onDateMenuClick(e) {
@@ -1250,9 +1200,6 @@
       if (!btn) return;
       btn.addEventListener('click', function onRetry() { fetchSnapshot(true); });
     });
-    if (productPerfRetry) {
-      productPerfRetry.addEventListener('click', function onProductPerfRetry() { fetchProductPerformance(); });
-    }
     bindProfitRulesUi();
   }
 

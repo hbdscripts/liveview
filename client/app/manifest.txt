@@ -21,3 +21,6 @@
 20-insights-payment-methods.js
 21-notifications-offcanvas.js
 22-kexo-tooltips-init.js
+23-insights-deep-pages.js
+24-global-search.js
+25-insights-products-page.js

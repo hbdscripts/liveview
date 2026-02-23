@@ -12,7 +12,10 @@
 const { getDb, isPostgres } = require('../db');
 const store = require('../store');
 const fx = require('../fx');
+const salesTruth = require('../salesTruth');
 const { normalizeRangeKey } = require('../rangeKey');
+
+const SHOPIFY_API_VERSION = '2025-01';
 
 function normalizeKind(raw) {
   const k = raw != null ? String(raw).trim().toLowerCase() : '';
@@ -260,5 +263,64 @@ async function getPageInsights(req, res) {
   });
 }
 
-module.exports = { getPageInsights };
+/**
+ * GET /api/page-meta?page_id=...&shop=...
+ * Resolves a Shopify page ID to { path, title } for use with /api/page-insights.
+ */
+async function getPageMeta(req, res) {
+  res.setHeader('Cache-Control', 'private, max-age=60');
+  res.setHeader('Vary', 'Cookie');
+  const rawId = req.query && req.query.page_id != null ? String(req.query.page_id).trim() : '';
+  const rawShop = (req.query && req.query.shop != null ? String(req.query.shop).trim() : '') || '';
+  const shop = salesTruth.resolveShopForSales(rawShop) || rawShop;
+  if (!shop || !/\.myshopify\.com$/i.test(shop)) {
+    return res.status(400).json({ ok: false, error: 'missing_shop' });
+  }
+  let pageId = rawId;
+  if (!/^gid:\/\//i.test(pageId) && /^\d+$/.test(pageId)) {
+    pageId = `gid://shopify/Page/${pageId}`;
+  }
+  if (!pageId) return res.status(400).json({ ok: false, error: 'missing_page_id' });
+
+  const token = await salesTruth.getAccessToken(shop).catch(() => null);
+  if (!token) return res.status(502).json({ ok: false, error: 'no_token' });
+
+  const safeShop = String(shop).trim().toLowerCase().replace(/^https?:\/\//, '').split('/')[0];
+const url = `https://${safeShop}/admin/api/${SHOPIFY_API_VERSION}/graphql.json`;
+  const query = `
+    query PageMeta($id: ID!) {
+      node(id: $id) {
+        ... on Page {
+          id
+          title
+          handle
+        }
+      }
+    }
+  `;
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Shopify-Access-Token': token,
+      },
+      body: JSON.stringify({ query, variables: { id: pageId } }),
+    });
+    const json = await response.json().catch(() => null);
+    const node = json && json.data && json.data.node ? json.data.node : null;
+    if (!node || !node.handle) {
+      return res.status(404).json({ ok: false, error: 'page_not_found' });
+    }
+    const handle = String(node.handle).trim().toLowerCase();
+    const path = '/pages/' + handle;
+    const title = node.title != null ? String(node.title).trim() : handle;
+    return res.json({ ok: true, path, title });
+  } catch (err) {
+    console.error('[page-meta]', err);
+    return res.status(500).json({ ok: false, error: 'fetch_failed' });
+  }
+}
+
+module.exports = { getPageInsights, getPageMeta };
 

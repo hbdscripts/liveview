@@ -5744,18 +5744,22 @@ img[data-kexo-logo-slot="footer"][data-kexo-logo-ready="1"] {
 }
 
 /* Notifications bell in the top strip: match Theme → Header strip text colour (don't use btn-ghost-secondary defaults). */
+#kexo-global-search-btn-header,
 #notifications-bell-btn-header {
   /* Prefer explicit header settings/icon colour; fall back to other header text vars if misconfigured. */
   color: var(--kexo-header-settings-text-color, var(--kexo-header-online-text-color, var(--kexo-top-menu-link-color, var(--kexo-header-top-text-color, #fff)))) !important;
   background: transparent !important;
   border-color: transparent !important;
 }
+#kexo-global-search-btn-header:hover,
+#kexo-global-search-btn-header:focus,
 #notifications-bell-btn-header:hover,
 #notifications-bell-btn-header:focus {
   color: var(--kexo-header-settings-text-color, var(--kexo-header-online-text-color, var(--kexo-top-menu-link-color, var(--kexo-header-top-text-color, #fff)))) !important;
   background: transparent !important;
   border-color: transparent !important;
 }
+#kexo-global-search-btn-header i[data-icon-key="nav-search"],
 #notifications-bell-btn-header i[data-icon-key="nav-notifications-bell"] {
   color: inherit !important;
 }
@@ -7020,6 +7024,16 @@ html[data-bs-theme="dark"] .landing-thumb {
   }
 }
 
+/* Insights Products page: embedded search dropdown */
+.kexo-products-page-search-dropdown-menu {
+  display: none;
+  max-height: 280px;
+  overflow-y: auto;
+}
+.kexo-products-page-search-dropdown-menu.is-open {
+  display: block;
+}
+
 /* Stacked entry/exit thumbnails (only when 2 images overlap) */
 .thumb-wrap.thumb-stack {
   display: inline-block;
@@ -7598,7 +7612,6 @@ body[data-page="settings"] .settings-mobile-children a.active { background: var(
 .kexo-cond-kpi-bar-init { width: 0%; }
 .kexo-footer-last-sale { font-size: .8125rem; }
 .kexo-footer-eye-hide { display: none; }
-.kexo-footer-diagnostics { display: none; }
 
 /* Chart/sparkline and layout utilities (no inline styles) */
 .kexo-dash-sparkline-height { height: 40px; }
