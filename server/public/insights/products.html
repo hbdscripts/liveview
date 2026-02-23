@@ -113,35 +113,20 @@
     </div>
   </div>
   </div>
-  <div class="card mb-3 mt-3" id="products-gross-profit-section">
-    <div class="card-header">
-      <h3 class="card-title">Product performance (gross profit)</h3>
-    </div>
-    <div class="card-body">
-      <div class="row">
-        <div class="col-md-6 mb-3 mb-md-0">
-          <h4 class="h6 text-muted mb-2">High gross profit</h4>
-          <div class="table-responsive">
-            <table class="table table-sm table-hover mb-0">
-              <thead><tr><th>Product</th><th class="text-end">Revenue</th><th class="text-end">Cost</th><th class="text-end">Profit</th></tr></thead>
-              <tbody id="products-gross-profit-high-body"></tbody>
-            </table>
-          </div>
-          <div class="d-flex align-items-center justify-content-center mt-2 is-hidden" id="products-gross-profit-high-pagination" aria-label="High gross profit pagination"></div>
-        </div>
-        <div class="col-md-6">
-          <h4 class="h6 text-muted mb-2">Low gross profit</h4>
-          <div class="table-responsive">
-            <table class="table table-sm table-hover mb-0">
-              <thead><tr><th>Product</th><th class="text-end">Revenue</th><th class="text-end">Cost</th><th class="text-end">Profit</th></tr></thead>
-              <tbody id="products-gross-profit-low-body"></tbody>
-            </table>
-          </div>
-          <div class="d-flex align-items-center justify-content-center mt-2 is-hidden" id="products-gross-profit-low-pagination" aria-label="Low gross profit pagination"></div>
-        </div>
+  <div class="stats-row mt-3" id="products-gross-profit-row" aria-label="Product performance (gross profit)">
+    <div class="stats-card card" id="stats-products-gross-profit-high" data-table-class="product" data-table-id="products-gross-profit-high-table">
+      <div class="card-header">
+        <h3 class="card-title" data-kexo-table-title="1">Gross profit (High)</h3>
       </div>
-      <div id="products-gross-profit-loading" class="text-muted small py-2"><span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>Loading…</div>
-      <div id="products-gross-profit-error" class="text-danger small py-2 is-hidden" role="alert"></div>
+      <div id="products-gross-profit-high-mount" data-kexo-table="products-gross-profit-high-table"></div>
+      <div class="card-footer d-flex align-items-center justify-content-center is-hidden" id="products-gross-profit-high-pagination" aria-label="High gross profit pagination"></div>
+    </div>
+    <div class="stats-card card" id="stats-products-gross-profit-low" data-table-class="product" data-table-id="products-gross-profit-low-table">
+      <div class="card-header">
+        <h3 class="card-title" data-kexo-table-title="1">Gross profit (Low)</h3>
+      </div>
+      <div id="products-gross-profit-low-mount" data-kexo-table="products-gross-profit-low-table"></div>
+      <div class="card-footer d-flex align-items-center justify-content-center is-hidden" id="products-gross-profit-low-pagination" aria-label="Low gross profit pagination"></div>
     </div>
   </div>
   <div class="text-muted small mt-3 text-center w-100 kexo-products-hidden-note" id="products-hidden-tables-note">Tables without sessions are hidden</div>

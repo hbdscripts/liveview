@@ -8,8 +8,36 @@
   if (!body || (body.getAttribute && body.getAttribute('data-page')) !== 'products') return;
 
   var API = (typeof window !== 'undefined' && window.API != null) ? String(window.API) : '';
-  var ROWS_PER_PAGE = 5;
   var SEARCH_DEBOUNCE_MS = 220;
+
+  function getPageSize(tableId) {
+    try {
+      if (typeof getTableRowsPerPage === 'function') return getTableRowsPerPage(tableId, 'product');
+    } catch (_) {}
+    return 5;
+  }
+
+  function buildPaginationHtml(page, totalPages) {
+    try {
+      if (typeof window.__kexoBuildPaginationHtml === 'function') return window.__kexoBuildPaginationHtml(page, totalPages);
+    } catch (_) {}
+    // Minimal fallback (should rarely be used).
+    return '<nav aria-label="Pagination"><ul class="pagination pagination-sm mb-0">' +
+      '<li class="page-item' + (page <= 1 ? ' disabled' : '') + '"><a class="page-link" href="#" data-page="' + (page - 1) + '">Prev</a></li>' +
+      '<li class="page-item disabled"><span class="page-link">' + page + ' / ' + totalPages + '</span></li>' +
+      '<li class="page-item' + (page >= totalPages ? ' disabled' : '') + '"><a class="page-link" href="#" data-page="' + (page + 1) + '">Next</a></li>' +
+      '</ul></nav>';
+  }
+
+  function setCardPagination(prefix, page, totalPages) {
+    var wrap = document.getElementById(prefix + '-pagination');
+    if (!wrap) return;
+    var pages = Math.max(1, Number(totalPages) || 1);
+    var p = Math.max(1, Math.min(Number(page) || 1, pages));
+    wrap.classList.toggle('is-hidden', pages <= 1);
+    if (pages <= 1) { wrap.innerHTML = ''; return; }
+    wrap.innerHTML = buildPaginationHtml(p, pages);
+  }
 
   function getShop() {
     try {
@@ -136,70 +164,84 @@
   var productsTrendingRange = '';
 
   function renderProductsTrendingTable(items) {
-    var mount = document.getElementById('products-trending-mount');
+    var tbody = document.getElementById('products-trending-body');
     var paginationEl = document.getElementById('products-trending-pagination');
-    if (!mount) return;
+    if (!tbody) return;
     var rows = Array.isArray(items) ? items : [];
-    var totalPages = Math.max(1, Math.ceil(rows.length / ROWS_PER_PAGE));
+    var pageSize = getPageSize('products-trending-table');
+    var totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
     productsTrendingPage = Math.max(1, Math.min(productsTrendingPage, totalPages));
-    var pageStart = (productsTrendingPage - 1) * ROWS_PER_PAGE;
-    var pageRows = rows.slice(pageStart, pageStart + ROWS_PER_PAGE);
+    var pageStart = (productsTrendingPage - 1) * pageSize;
+    var pageRows = rows.slice(pageStart, pageStart + pageSize);
 
-    var thead = '<thead><tr><th>Product</th><th class="text-end">Revenue</th><th class="text-end">Orders</th><th class="text-end">CR</th><th class="text-end">VPV</th></tr></thead>';
     function deltaText(r) {
       var d = (r && typeof r.deltaRevenue === 'number' && isFinite(r.deltaRevenue)) ? r.deltaRevenue : 0;
-      var cls = d >= 0 ? 'text-success' : 'text-danger';
+      var cls = d >= 0 ? 'text-green' : 'text-red';
       var pct = (r && typeof r.pctGrowth === 'number' && isFinite(r.pctGrowth)) ? r.pctGrowth : null;
       var pctStr = pct != null ? (pct >= 999 ? ' new' : ' (' + (pct >= 0 ? '+' : '') + pct + '%)') : '';
-      return '<span class="' + cls + '">' + escapeHtml(fmtSignedGbp(d) + pctStr) + '</span>';
+      return '<span class="dash-trend-delta ' + cls + '">' + escapeHtml(fmtSignedGbp(d) + pctStr) + '</span>';
     }
     function deltaOrdersText(r) {
       var d = (r && typeof r.deltaOrders === 'number' && isFinite(r.deltaOrders)) ? r.deltaOrders : 0;
       var sign = d >= 0 ? '+' : '';
-      var cls = d >= 0 ? 'text-success' : 'text-danger';
-      return '<span class="' + cls + '">' + sign + String(d) + '</span>';
+      var cls = d >= 0 ? 'text-green' : 'text-red';
+      return '<span class="dash-trend-delta ' + cls + '">' + sign + String(d) + '</span>';
     }
-    var tbodyHtml = !pageRows.length
-      ? '<tbody><tr><td colspan="5" class="text-muted text-center">No data</td></tr></tbody>'
-      : '<tbody>' + pageRows.map(function (p) {
-          var title = (p && p.title) ? String(p.title) : 'Unknown';
-          var productId = (p && p.product_id) ? String(p.product_id).replace(/^gid:\/\/shopify\/Product\//i, '').trim() : '';
-          var numericId = (productId && /^\d+$/.test(productId)) ? productId : '';
-          var qs = window.location.search || '';
-          var linkHref = numericId ? ('/insights/products/' + numericId + qs) : '#';
-          var titleHtml = numericId
-            ? ('<a class="js-product-modal-link" href="' + escapeHtml(linkHref) + '" data-product-id="' + escapeHtml(numericId) + '" data-product-title="' + escapeHtml(title) + '">' + escapeHtml(title) + '</a>')
-            : escapeHtml(title);
-          var revCell = deltaText(p);
-          var ordCell = deltaOrdersText(p);
-          var crCell = fmtPct(p && (typeof p.cr === 'number' ? p.cr : null));
-          var vpvVal = (p && typeof p.vpv === 'number' && isFinite(p.vpv)) ? p.vpv : null;
-          var vpvCell = vpvVal != null ? fmtGbp(vpvVal) : '—';
-          return '<tr><td>' + titleHtml + '</td><td class="text-end">' + revCell + '</td><td class="text-end">' + ordCell + '</td><td class="text-end">' + crCell + '</td><td class="text-end">' + vpvCell + '</td></tr>';
-        }).join('') + '</tbody>';
-    mount.innerHTML = '<div class="table-responsive"><table class="table table-sm table-hover mb-0"><colgroup><col><col class="text-end"><col class="text-end"><col class="text-end"><col class="text-end"></colgroup>' + thead + tbodyHtml + '</table></div>';
+
+    if (!pageRows.length) {
+      tbody.innerHTML = '<div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">No data</div></div>';
+    } else {
+      tbody.innerHTML = pageRows.map(function (p) {
+        var title = p && p.title ? String(p.title) : 'Unknown';
+        var handle = (p && p.handle) ? String(p.handle).trim().toLowerCase() : '';
+        var productId = (p && p.product_id) ? String(p.product_id).replace(/^gid:\/\/shopify\/Product\//i, '').trim() : '';
+        var numericId = (productId && /^\d+$/.test(productId)) ? productId : '';
+        var canOpen = !!numericId;
+        var qs = window.location.search || '';
+        var linkHref = numericId ? ('/insights/products/' + numericId) : '#';
+        var targetAttr = linkHref.indexOf('/insights/') === 0 ? '' : ' target="_blank" rel="noopener"';
+        var nameInner = canOpen
+          ? (
+              '<a class="kexo-product-link js-product-modal-link" href="' + escapeHtml(linkHref) + '"' + targetAttr +
+                (handle ? (' data-product-handle="' + escapeHtml(handle) + '"') : '') +
+                (numericId ? (' data-product-id="' + escapeHtml(numericId) + '"') : '') +
+                (title ? (' data-product-title="' + escapeHtml(title) + '"') : '') +
+              '>' + escapeHtml(title) + '</a>'
+            )
+          : escapeHtml(title);
+        var name = '<span class="bs-name" title="' + escapeHtml(title) + '">' + nameInner + '</span>';
+
+        var revCell = '<div>' + deltaText(p) + '</div>';
+        var ordCell = '<div>' + deltaOrdersText(p) + '</div>';
+        var crCell = fmtPct(p && (typeof p.cr === 'number' ? p.cr : null));
+        var vpvVal = (p && typeof p.vpv === 'number' && isFinite(p.vpv)) ? p.vpv : null;
+        var vpvCell = vpvVal != null ? fmtGbp(vpvVal) : '\u2014';
+
+        return '<div class="grid-row" role="row">' +
+          '<div class="grid-cell bs-product-col" role="cell"><div class="product-cell">' + name + '</div></div>' +
+          '<div class="grid-cell" role="cell">' + revCell + '</div>' +
+          '<div class="grid-cell" role="cell">' + ordCell + '</div>' +
+          '<div class="grid-cell" role="cell">' + escapeHtml(crCell) + '</div>' +
+          '<div class="grid-cell" role="cell">' + escapeHtml(vpvCell) + '</div>' +
+        '</div>';
+      }).join('');
+    }
 
     if (paginationEl) {
-      paginationEl.classList.toggle('is-hidden', totalPages <= 1);
-      if (totalPages > 1) {
-        var pg = productsTrendingPage;
-        var html = '<nav aria-label="Trending pagination"><ul class="pagination pagination-sm mb-0">';
-        html += '<li class="page-item' + (pg <= 1 ? ' disabled' : '') + '"><a class="page-link" href="#" data-page="' + (pg - 1) + '" aria-label="Previous">Prev</a></li>';
-        html += '<li class="page-item disabled"><span class="page-link">' + pg + ' / ' + totalPages + '</span></li>';
-        html += '<li class="page-item' + (pg >= totalPages ? ' disabled' : '') + '"><a class="page-link" href="#" data-page="' + (pg + 1) + '" aria-label="Next">Next</a></li>';
-        html += '</ul></nav>';
-        paginationEl.innerHTML = html;
-        paginationEl.querySelectorAll('a[data-page]').forEach(function (a) {
-          a.addEventListener('click', function (e) {
-            e.preventDefault();
-            var p = parseInt(a.getAttribute('data-page'), 10);
-            if (Number.isFinite(p) && p >= 1 && p <= totalPages) {
-              productsTrendingPage = p;
-              renderProductsTrendingTable(productsTrendingCache);
-            }
-          });
+      setCardPagination('products-trending', productsTrendingPage, totalPages);
+      paginationEl.querySelectorAll('a[data-page]').forEach(function (a) {
+        a.addEventListener('click', function (e) {
+          e.preventDefault();
+          var p = parseInt(a.getAttribute('data-page'), 10);
+          if (Number.isFinite(p) && p >= 1 && p <= totalPages) {
+            productsTrendingPage = p;
+            var list = productsTrendingMode === 'up'
+              ? (productsTrendingCache && productsTrendingCache.trendingUp) || []
+              : (productsTrendingCache && productsTrendingCache.trendingDown) || [];
+            renderProductsTrendingTable(list);
+          }
         });
-      }
+      });
     }
   }
 
@@ -247,19 +289,20 @@
   var grossProfitHighRows = [];
   var grossProfitLowRows = [];
 
-  function renderGrossProfitTable(bodyId, rows, pageKey) {
+  function renderGrossProfitTable(tableId, bodyId, rows, pageKey) {
     var tbody = document.getElementById(bodyId);
     var paginationEl = document.getElementById(bodyId.replace('-body', '-pagination'));
     if (!tbody) return;
     var page = (pageKey === 'high') ? grossProfitHighPage : grossProfitLowPage;
-    var totalPages = Math.max(1, Math.ceil(rows.length / ROWS_PER_PAGE));
+    var pageSize = getPageSize(tableId);
+    var totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
     page = Math.max(1, Math.min(page, totalPages));
     if (pageKey === 'high') grossProfitHighPage = page; else grossProfitLowPage = page;
-    var pageStart = (page - 1) * ROWS_PER_PAGE;
-    var pageRows = rows.slice(pageStart, pageStart + ROWS_PER_PAGE);
+    var pageStart = (page - 1) * pageSize;
+    var pageRows = rows.slice(pageStart, pageStart + pageSize);
 
     if (!pageRows.length) {
-      tbody.innerHTML = '<tr><td colspan="4" class="text-muted text-center">No data</td></tr>';
+      tbody.innerHTML = '<div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">No data</div></div>';
     } else {
       tbody.innerHTML = pageRows.map(function (r) {
         var title = (r && r.title != null) ? String(r.title) : (r && r.product_id != null ? r.product_id : '—');
@@ -269,41 +312,48 @@
         var cost = (r && r.cost_gbp != null) ? Number(r.cost_gbp) : 0;
         var profit = (r && r.gross_profit_gbp != null) ? Number(r.gross_profit_gbp) : (revenue - cost);
         var qs = window.location.search || '';
-        var titleCell = numericId
-          ? '<a class="js-product-modal-link" href="' + escapeHtml('/insights/products/' + numericId + qs) + '" data-product-id="' + escapeHtml(numericId) + '" data-product-title="' + escapeHtml(title) + '">' + escapeHtml(title) + '</a>'
+        var linkHref = numericId ? ('/insights/products/' + numericId) : '#';
+        var canOpen = !!numericId;
+        var nameInner = canOpen
+          ? (
+              '<a class="kexo-product-link js-product-modal-link" href="' + escapeHtml(linkHref) + '"' +
+                (numericId ? (' data-product-id="' + escapeHtml(numericId) + '"') : '') +
+                (title ? (' data-product-title="' + escapeHtml(title) + '"') : '') +
+              '>' + escapeHtml(title) + '</a>'
+            )
           : escapeHtml(title);
-        return '<tr><td>' + titleCell + '</td><td class="text-end">' + escapeHtml(fmtGbp(revenue)) + '</td><td class="text-end">' + escapeHtml(fmtGbp(cost)) + '</td><td class="text-end">' + escapeHtml(fmtGbp(profit)) + '</td></tr>';
+        var name = '<span class="bs-name" title="' + escapeHtml(title) + '">' + nameInner + '</span>';
+        return '<div class="grid-row" role="row">' +
+          '<div class="grid-cell bs-product-col" role="cell"><div class="product-cell">' + name + '</div></div>' +
+          '<div class="grid-cell" role="cell">' + escapeHtml(fmtGbp(revenue)) + '</div>' +
+          '<div class="grid-cell" role="cell">' + escapeHtml(fmtGbp(cost)) + '</div>' +
+          '<div class="grid-cell" role="cell">' + escapeHtml(fmtGbp(profit)) + '</div>' +
+        '</div>';
       }).join('');
     }
 
     if (paginationEl) {
-      paginationEl.classList.toggle('is-hidden', totalPages <= 1);
-      if (totalPages > 1) {
-        var html = '<nav aria-label="Pagination"><ul class="pagination pagination-sm mb-0">';
-        html += '<li class="page-item' + (page <= 1 ? ' disabled' : '') + '"><a class="page-link" href="#" data-gp-page="' + pageKey + '" data-page="' + (page - 1) + '">Prev</a></li>';
-        html += '<li class="page-item disabled"><span class="page-link">' + page + ' / ' + totalPages + '</span></li>';
-        html += '<li class="page-item' + (page >= totalPages ? ' disabled' : '') + '"><a class="page-link" href="#" data-gp-page="' + pageKey + '" data-page="' + (page + 1) + '">Next</a></li>';
-        html += '</ul></nav>';
-        paginationEl.innerHTML = html;
-        paginationEl.querySelectorAll('a[data-gp-page]').forEach(function (a) {
-          a.addEventListener('click', function (e) {
-            e.preventDefault();
-            var p = parseInt(a.getAttribute('data-page'), 10);
-            var key = a.getAttribute('data-gp-page');
-            if (key === 'high') grossProfitHighPage = p; else grossProfitLowPage = p;
-            renderGrossProfitTable(key === 'high' ? 'products-gross-profit-high-body' : 'products-gross-profit-low-body', key === 'high' ? grossProfitHighRows : grossProfitLowRows, key);
-          });
+      setCardPagination(bodyId.replace('-body', ''), page, totalPages);
+      paginationEl.querySelectorAll('a[data-page]').forEach(function (a) {
+        a.addEventListener('click', function (e) {
+          e.preventDefault();
+          var p = parseInt(a.getAttribute('data-page'), 10);
+          if (!Number.isFinite(p)) return;
+          if (pageKey === 'high') grossProfitHighPage = p; else grossProfitLowPage = p;
+          renderGrossProfitTable(
+            pageKey === 'high' ? 'products-gross-profit-high-table' : 'products-gross-profit-low-table',
+            pageKey === 'high' ? 'products-gross-profit-high-body' : 'products-gross-profit-low-body',
+            pageKey === 'high' ? grossProfitHighRows : grossProfitLowRows,
+            pageKey
+          );
         });
-      }
+      });
     }
   }
 
   function fetchGrossProfit() {
-    var loading = document.getElementById('products-gross-profit-loading');
-    var errorEl = document.getElementById('products-gross-profit-error');
-    var section = document.getElementById('products-gross-profit-section');
-    if (loading) loading.classList.remove('is-hidden');
-    if (errorEl) { errorEl.classList.add('is-hidden'); errorEl.textContent = ''; }
+    var highCard = document.getElementById('stats-products-gross-profit-high');
+    var lowCard = document.getElementById('stats-products-gross-profit-low');
     var rangeKey = getRange();
     var allowed = ['today', 'yesterday', '7d', '14d', '30d'];
     var range = allowed.indexOf(rangeKey) !== -1 ? rangeKey : '30d';
@@ -317,22 +367,26 @@
         return r.json();
       })
       .then(function (data) {
-        if (loading) loading.classList.add('is-hidden');
-        if (section) section.classList.remove('is-hidden');
+        if (highCard) highCard.classList.remove('is-hidden');
+        if (lowCard) lowCard.classList.remove('is-hidden');
         grossProfitHighRows = (data && data.high && Array.isArray(data.high)) ? data.high : [];
         grossProfitLowRows = (data && data.low && Array.isArray(data.low)) ? data.low : [];
         grossProfitHighPage = 1;
         grossProfitLowPage = 1;
-        renderGrossProfitTable('products-gross-profit-high-body', grossProfitHighRows, 'high');
-        renderGrossProfitTable('products-gross-profit-low-body', grossProfitLowRows, 'low');
+        renderGrossProfitTable('products-gross-profit-high-table', 'products-gross-profit-high-body', grossProfitHighRows, 'high');
+        renderGrossProfitTable('products-gross-profit-low-table', 'products-gross-profit-low-body', grossProfitLowRows, 'low');
       })
       .catch(function (err) {
-        if (loading) loading.classList.add('is-hidden');
-        if (err && err.status === 403 && section) section.classList.add('is-hidden');
-        else if (errorEl) {
-          errorEl.textContent = err && err.status === 403 ? 'Not authorized' : 'Failed to load gross profit data';
-          errorEl.classList.remove('is-hidden');
+        if (err && err.status === 403) {
+          if (highCard) highCard.classList.add('is-hidden');
+          if (lowCard) lowCard.classList.add('is-hidden');
+          return;
         }
+        var msg = 'Failed to load gross profit data';
+        var highBody = document.getElementById('products-gross-profit-high-body');
+        var lowBody = document.getElementById('products-gross-profit-low-body');
+        if (highBody) highBody.innerHTML = '<div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">' + escapeHtml(msg) + '</div></div>';
+        if (lowBody) lowBody.innerHTML = '<div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">' + escapeHtml(msg) + '</div></div>';
       });
   }
 

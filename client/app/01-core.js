@@ -394,7 +394,7 @@ const API = '';
 
     const TABLE_CLASS_CONFIG = Object.freeze({
       dashboard: Object.freeze({ defaultRows: 5, rowOptions: Object.freeze([5, 10]) }),
-      product: Object.freeze({ defaultRows: 5, rowOptions: Object.freeze([5, 10, 15, 20]) }),
+      product: Object.freeze({ defaultRows: 5, rowOptions: Object.freeze([5]) }),
       live: Object.freeze({ defaultRows: 20, rowOptions: Object.freeze([20, 30, 40, 50]) }),
     });
     const TABLE_ROWS_STORAGE_PREFIX = 'kexo:table-rows:v1';
@@ -405,6 +405,9 @@ const API = '';
       'dash-trending': 'dashboard',
       'best-sellers-table': 'product',
       'best-variants-table': 'product',
+      'products-trending-table': 'product',
+      'products-gross-profit-high-table': 'product',
+      'products-gross-profit-low-table': 'product',
       'type-necklaces-table': 'product',
       'type-bracelets-table': 'product',
       'type-earrings-table': 'product',

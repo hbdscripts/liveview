@@ -64,6 +64,43 @@
         { key: 'rev', label: 'Rev', iconKey: 'table-icon-revenue' }
       ]
     },
+    'products-trending-table': {
+      wrapClass: 'country-table-wrap',
+      tableClass: 'by-country-table products-trending-table',
+      ariaLabel: 'Trending products',
+      bodyId: 'products-trending-body',
+      columns: [
+        { key: 'title', label: 'Product', cellClass: 'bs-product-col', iconKey: 'table-short-product' },
+        { key: 'rev', label: 'Revenue', iconKey: 'table-icon-revenue' },
+        { key: 'orders', label: 'Orders', iconKey: 'table-icon-orders' },
+        { key: 'cr', label: 'CR%', iconKey: 'table-icon-cr' },
+        { key: 'vpv', label: 'VPV', iconKey: 'table-icon-vpv' }
+      ]
+    },
+    'products-gross-profit-high-table': {
+      wrapClass: 'country-table-wrap',
+      tableClass: 'by-country-table products-gross-profit-table',
+      ariaLabel: 'High gross profit products',
+      bodyId: 'products-gross-profit-high-body',
+      columns: [
+        { key: 'title', label: 'Product', cellClass: 'bs-product-col', iconKey: 'table-short-product' },
+        { key: 'rev', label: 'Revenue' },
+        { key: 'cost', label: 'Cost' },
+        { key: 'profit', label: 'Profit' }
+      ]
+    },
+    'products-gross-profit-low-table': {
+      wrapClass: 'country-table-wrap',
+      tableClass: 'by-country-table products-gross-profit-table',
+      ariaLabel: 'Low gross profit products',
+      bodyId: 'products-gross-profit-low-body',
+      columns: [
+        { key: 'title', label: 'Product', cellClass: 'bs-product-col', iconKey: 'table-short-product' },
+        { key: 'rev', label: 'Revenue' },
+        { key: 'cost', label: 'Cost' },
+        { key: 'profit', label: 'Profit' }
+      ]
+    },
     'type-necklaces-table': {
       wrapClass: 'country-table-wrap',
       tableClass: 'by-country-table type-products-table',
