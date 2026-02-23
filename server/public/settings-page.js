@@ -3624,6 +3624,7 @@
       { key: 'dash-chart-devices-30d', label: 'Dashboard · Devices (7 Days)', enabled: true, mode: 'bar-horizontal', colors: ['#4b94e4', '#3eb3ab', '#f59e34', '#8b5cf6', '#ef4444'], advancedApexOverride: {}, styleOverride: { animations: false } },
       { key: 'dash-chart-attribution-30d', label: 'Dashboard · Attribution (7 Days)', enabled: true, mode: 'donut', colors: ['#4b94e4', '#3eb3ab', '#f59e34', '#8b5cf6', '#ef4444'], advancedApexOverride: {}, styleOverride: { animations: false, pieDonut: true, pieDonutSize: 64, pieLabelPosition: 'outside', pieLabelContent: 'label', pieLabelOffset: 18 } },
       { key: 'live-online-chart', label: 'Dashboard · Live Online', enabled: true, mode: 'map-animated', colors: ['#16a34a'], advancedApexOverride: {} },
+      { key: 'overview-live-online-chart', label: 'Dashboard · Overview Online', enabled: true, mode: 'map-animated', colors: ['#16a34a'], advancedApexOverride: {} },
       { key: 'sales-overview-chart', label: 'Dashboard · Sales Trend', enabled: true, mode: 'area', colors: ['#0d9488'], advancedApexOverride: {} },
       { key: 'date-overview-chart', label: 'Dashboard · Sessions & Orders Trend', enabled: true, mode: 'area', colors: ['#4b94e4', '#f59e34'], advancedApexOverride: {} },
       { key: 'ads-overview-chart', label: 'Integrations · Google Ads Overview', enabled: true, mode: 'bar', colors: ['#22c55e', '#ef4444', '#4b94e4'], advancedApexOverride: {} },
@@ -3758,7 +3759,7 @@
   var CHART_MODE_LABEL = (typeof window.KEXO_CHART_MODE_LABEL === 'object' && window.KEXO_CHART_MODE_LABEL) || {};
 
   var CHARTS_GROUPS = [
-    { id: 'dashboard', label: 'Dashboard charts', keys: ['dash-chart-overview-30d', 'dash-chart-finishes-30d', 'dash-chart-devices-30d', 'dash-chart-attribution-30d', 'live-online-chart', 'sales-overview-chart', 'date-overview-chart'] },
+    { id: 'dashboard', label: 'Dashboard charts', keys: ['dash-chart-overview-30d', 'dash-chart-finishes-30d', 'dash-chart-devices-30d', 'dash-chart-attribution-30d', 'live-online-chart', 'overview-live-online-chart', 'sales-overview-chart', 'date-overview-chart'] },
     { id: 'acquisition', label: 'Acquisition charts', keys: ['attribution-chart', 'devices-chart'] },
     { id: 'insights', label: 'Insights charts', keys: ['products-chart', 'abandoned-carts-chart', 'countries-map-chart'] },
     { id: 'integrations', label: 'Integration charts', keys: ['ads-overview-chart'] },
@@ -4063,11 +4064,11 @@
       cardBodyContent = sharedRow.slice(0, sharedRow.length - 6) + previewHtml + '</div>';
     } else {
       var lockMode = (Array.isArray(modes) && modes.length === 1 && String(modes[0] || '').toLowerCase() === 'map-animated') ||
-        key === 'live-online-chart' || key === 'countries-map-chart';
+        key === 'live-online-chart' || key === 'overview-live-online-chart' || key === 'countries-map-chart';
       var modeFieldHtml = lockMode
         ? ('<input type="hidden" data-chart-field="mode" value="map-animated">')
         : ('<div class="col-12 col-md-6 col-xl-4"><label class="form-label mb-1">Chart type</label><select class="form-select form-select-sm" data-chart-field="mode">' + selectOptionsHtml(modes, mode) + '</select></div>');
-      var showAnimationsForMap = key !== 'live-online-chart' && key !== 'countries-map-chart';
+      var showAnimationsForMap = key !== 'live-online-chart' && key !== 'overview-live-online-chart' && key !== 'countries-map-chart';
 
       cardBodyContent = '<div class="row g-3">' +
         '<div class="col-12 col-lg-4"><label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-chart-field="enabled"' + (enabled ? ' checked' : '') + '><span class="form-check-label ms-2">Enabled</span></label></div>' +

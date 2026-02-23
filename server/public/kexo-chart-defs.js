@@ -233,6 +233,20 @@
         ],
       },
     },
+    'overview-live-online-chart': {
+      modes: ['map-animated'],
+      series: ['Online now'],
+      defaultMode: 'map-animated',
+      height: 220,
+      capabilities: {
+        controls: [
+          { type: 'toggle', field: 'mapShowTooltip', label: 'Tooltips on hover', default: true },
+          { type: 'toggle', field: 'mapDraggable', label: 'Drag/pan map', default: true },
+          { type: 'toggle', field: 'mapZoomButtons', label: 'Zoom buttons', default: true },
+          { type: 'toggle', field: 'mapShowEmptyCaption', label: "Show 'No live activity yet' caption", default: true },
+        ],
+      },
+    },
     'sales-overview-chart': { modes: ['area', 'line', 'bar', 'multi-line-labels'], series: ['Revenue'], defaultMode: 'area', height: 220 },
     'date-overview-chart': { modes: ['area', 'line', 'bar', 'multi-line-labels'], series: ['Sessions', 'Orders'], defaultMode: 'area', height: 220 },
     'ads-overview-chart': { modes: ['bar', 'combo', 'line', 'area', 'multi-line-labels'], series: ['Profit', 'Sales', 'Spend', 'ROAS'], defaultMode: 'bar', height: 240 },

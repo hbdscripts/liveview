@@ -579,29 +579,30 @@ a {
   position: relative;
 }
 .card[data-kexo-chart-key="live-online-chart"] > .card-body,
+.card[data-kexo-chart-key="overview-live-online-chart"] > .card-body,
 .card[data-kexo-chart-key="countries-map-chart"] > .card-body {
   padding: 0 !important; /* Full-bleed map: ignore card body padding */
 }
-body[data-page="dashboard"] .kexo-widget-card[data-kexo-chart-key="live-online-chart"] .kexo-widget-card-body {
+body[data-page="dashboard"] .kexo-widget-card[data-kexo-chart-key="overview-live-online-chart"] .kexo-widget-card-body {
   padding: 0 !important; /* Full-bleed map in Overview widget card */
 }
-body[data-page="dashboard"] .kexo-widget-card[data-kexo-chart-key="live-online-chart"] .kexo-widget-head {
+body[data-page="dashboard"] .kexo-widget-card[data-kexo-chart-key="overview-live-online-chart"] .kexo-widget-head {
   padding: 0 !important;
   height: auto;
 }
-body[data-page="dashboard"] .kexo-widget-card[data-kexo-chart-key="live-online-chart"] .kexo-widget-body {
+body[data-page="dashboard"] .kexo-widget-card[data-kexo-chart-key="overview-live-online-chart"] .kexo-widget-body {
   flex: 1;
   padding: 0;
 }
 
 /* Map cards: header overlays the map (does not push SVG down). */
-body[data-page="dashboard"] .card[data-kexo-chart-key="live-online-chart"] .kexo-widget-card-body,
+body[data-page="dashboard"] .card[data-kexo-chart-key="overview-live-online-chart"] .kexo-widget-card-body,
 body[data-page="live"] .card[data-kexo-chart-key="live-online-chart"] .kexo-widget-card-body,
 body[data-page="countries"] .card[data-kexo-chart-key="countries-map-chart"] .kexo-widget-card-body {
   position: relative;
   padding: 0 !important;
 }
-body[data-page="dashboard"] .card[data-kexo-chart-key="live-online-chart"] .kexo-widget-head,
+body[data-page="dashboard"] .card[data-kexo-chart-key="overview-live-online-chart"] .kexo-widget-head,
 body[data-page="live"] .card[data-kexo-chart-key="live-online-chart"] .kexo-widget-head,
 body[data-page="countries"] .card[data-kexo-chart-key="countries-map-chart"] .kexo-widget-head {
   position: absolute;
@@ -620,21 +621,21 @@ body[data-page="countries"] .card[data-kexo-chart-key="countries-map-chart"] .ke
   backdrop-filter: none;
   box-shadow: none;
 }
-body[data-page="dashboard"] .card[data-kexo-chart-key="live-online-chart"] .kexo-widget-title,
+body[data-page="dashboard"] .card[data-kexo-chart-key="overview-live-online-chart"] .kexo-widget-title,
 body[data-page="live"] .card[data-kexo-chart-key="live-online-chart"] .kexo-widget-title,
 body[data-page="countries"] .card[data-kexo-chart-key="countries-map-chart"] .kexo-widget-title {
   grid-column: 2;
   justify-self: center;
   text-shadow: 0 1px 2px rgba(15, 23, 42, 0.35);
 }
-body[data-page="dashboard"] .card[data-kexo-chart-key="live-online-chart"] .kexo-widget-head-right,
+body[data-page="dashboard"] .card[data-kexo-chart-key="overview-live-online-chart"] .kexo-widget-head-right,
 body[data-page="live"] .card[data-kexo-chart-key="live-online-chart"] .kexo-widget-head-right,
 body[data-page="countries"] .card[data-kexo-chart-key="countries-map-chart"] .kexo-widget-head-right {
   grid-column: 3;
   justify-self: end;
   filter: drop-shadow(0 1px 2px rgba(15, 23, 42, 0.35));
 }
-body[data-page="dashboard"] .card[data-kexo-chart-key="live-online-chart"] .kexo-widget-body,
+body[data-page="dashboard"] .card[data-kexo-chart-key="overview-live-online-chart"] .kexo-widget-body,
 body[data-page="live"] .card[data-kexo-chart-key="live-online-chart"] .kexo-widget-body,
 body[data-page="countries"] .card[data-kexo-chart-key="countries-map-chart"] .kexo-widget-body {
   flex: 1;
@@ -656,8 +657,9 @@ body[data-page="sales"] .kexo-sales-trend-card .kexo-widget-head-right {
   justify-self: end;
 }
 .card[data-kexo-chart-key="live-online-chart"] #live-online-chart,
+.card[data-kexo-chart-key="overview-live-online-chart"] #live-online-chart,
 .card[data-kexo-chart-key="countries-map-chart"] #countries-map-chart,
-body[data-page="dashboard"] .kexo-widget-card[data-kexo-chart-key="live-online-chart"] #live-online-chart {
+body[data-page="dashboard"] .kexo-widget-card[data-kexo-chart-key="overview-live-online-chart"] #live-online-chart {
   width: 100%;
 }
 .jvm-container { background: transparent !important; }
