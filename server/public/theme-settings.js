@@ -863,13 +863,12 @@
     var order = ['header-nav', 'footer', 'mobile-icons', 'tables', 'cards', 'runtime', 'admin', 'misc'];
     var accordionId = 'theme-icons-accordion';
     var html = '<div class="accordion settings-layout-accordion" id="' + accordionId + '">';
-    var itemIdx = 0;
     order.forEach(function (groupId) {
       var rows = groups[groupId] || [];
       if (!rows.length) return;
       var headingId = 'theme-icons-accordion-heading-' + groupId;
       var collapseId = 'theme-icons-accordion-collapse-' + groupId;
-      var isOpen = itemIdx === 0;
+      var isOpen = false;
       html += '' +
         '<div class="accordion-item">' +
           '<h2 class="accordion-header" id="' + headingId + '">' +
@@ -885,7 +884,6 @@
             '<div class="accordion-body"><div class="settings-responsive-grid" data-theme-icon-group-body="' + groupId + '">' + rows.join('') + '</div></div>' +
           '</div>' +
         '</div>';
-      itemIdx += 1;
     });
     html += '</div>';
     return html;
@@ -2184,9 +2182,6 @@
 
       '<div class="theme-subpanel" data-theme-subpanel="icons">' +
         glyphAccordion +
-        '<div class="d-flex align-items-center gap-2 mt-3">' +
-          '<button type="button" class="btn btn-md" id="theme-icons-refresh" title="Debounced preview updates after typing stops.">Refresh previews</button>' +
-        '</div>' +
       '</div>' +
 
       '<div class="theme-subpanel" data-theme-subpanel="header" hidden>' +
