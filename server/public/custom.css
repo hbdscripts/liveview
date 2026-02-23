@@ -2216,18 +2216,26 @@ body:not([data-page="settings"]) .table-responsive table thead th {
   flex-wrap: nowrap;
 }
 /* Section cards: consistent header height and vertical alignment */
+#product-insights-modal .card {
+  border-radius: var(--tblr-border-radius-lg, 0.5rem);
+  border: 1px solid var(--tblr-border-color, rgba(15, 23, 42, 0.08));
+  overflow: hidden;
+}
 #product-insights-modal .card .card-header {
   min-height: 48px;
   display: flex;
   align-items: center;
   padding-top: 0.75rem;
   padding-bottom: 0.75rem;
+  background: var(--tblr-bg-surface, #fff);
+  border-bottom: 1px solid var(--tblr-border-color, rgba(15, 23, 42, 0.08));
 }
 #product-insights-modal .card .card-header .card-title {
   margin: 0;
   font-size: 1rem;
   font-weight: 600;
   line-height: 1.35;
+  color: var(--tblr-body-color, #1e293b);
 }
 #product-insights-modal .modal-header .modal-title {
   min-width: 0;
@@ -2348,11 +2356,24 @@ body:not([data-page="settings"]) .table-responsive table thead th {
   height: 44px;
   vertical-align: middle;
 }
+/* Product insights modal: table always light, readable text (override any card-table dark header) */
+#product-insights-modal .kexo-product-insights-metrics {
+  margin-bottom: 0;
+}
+#product-insights-modal .kexo-product-insights-metrics tbody tr:not(.kexo-product-metrics-section):hover td {
+  background: var(--tblr-bg-surface-secondary, #f9fafb);
+}
 #product-insights-modal .kexo-product-insights-metrics thead th {
   font-size: 11px;
   letter-spacing: 0.03em;
   text-transform: uppercase;
-  color: var(--tblr-secondary);
+  background: var(--tblr-bg-surface-secondary, #f3f4f6) !important;
+  color: var(--tblr-body-color, #1e293b) !important;
+  border-bottom: 1px solid var(--tblr-border-color, rgba(0,0,0,0.08));
+  font-weight: 600;
+}
+#product-insights-modal .kexo-product-insights-metrics tbody td {
+  color: var(--tblr-body-color, #1e293b);
 }
 #product-insights-modal .kexo-product-insights-metrics tbody tr:last-child td {
   border-bottom: none !important;
@@ -2363,7 +2384,8 @@ body:not([data-page="settings"]) .table-responsive table thead th {
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--tblr-secondary);
+  background: var(--tblr-bg-surface-secondary, #f3f4f6) !important;
+  color: #475569 !important;
   padding-top: 0.75rem;
   padding-bottom: 0.25rem;
   border-top: 1px solid var(--tblr-border-color, rgba(0,0,0,0.08));
