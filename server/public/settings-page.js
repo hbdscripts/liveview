@@ -1950,12 +1950,13 @@
       tabSelector: '#settings-integrations-main-tabs [data-settings-integrations-tab]',
       tabAttr: 'data-settings-integrations-tab',
       panelIdPrefix: 'settings-integrations-panel-',
-      keys: ['shopify', 'googleads'],
-      initialKey: initialIntegrationsSubTab || 'shopify',
+      // Google Ads moved to Admin; Integrations is Shopify-only.
+      keys: ['shopify'],
+      initialKey: 'shopify',
       onActivate: function (key) {
-        activeIntegrationsSubTab = key;
+        activeIntegrationsSubTab = 'shopify';
         try {
-          var p = document.getElementById('settings-integrations-panel-' + String(key || '').trim().toLowerCase());
+          var p = document.getElementById('settings-integrations-panel-shopify');
           if (p) normaliseSettingsPanel(p);
         } catch (_) {}
         if (getActiveSettingsTab() === 'integrations') {
