@@ -697,8 +697,8 @@ body[data-page="countries"] #countries-map-chart .jvm-zoom-btn.jvm-zoomout {
   #live-online-chart .kexo-live-activity-legend {
     top: auto;
     bottom: 10px;
-    right: 10px;
-    left: auto;
+    left: 10px;
+    right: auto;
     min-width: 0;
     padding: .45rem .55rem;
   }
@@ -739,7 +739,8 @@ body[data-page="countries"] #countries-map-chart .jvm-zoom-btn.jvm-zoomout {
 .kexo-live-activity-legend {
   position: absolute;
   top: 10px;
-  right: 10px;
+  left: 10px;
+  right: auto;
   z-index: 5;
   pointer-events: none;
   background: var(--tblr-bg-surface, #fff);
@@ -789,7 +790,8 @@ body[data-page="countries"] #countries-map-chart .jvm-zoom-btn.jvm-zoomout {
 .kexo-countries-map-legend {
   position: absolute;
   top: 10px;
-  right: 10px;
+  left: 10px;
+  right: auto;
   z-index: 5;
   pointer-events: none;
   background: var(--tblr-bg-surface, #fff);
