@@ -2026,8 +2026,8 @@
       var chartKey = 'countries-map-chart';
       var meta = typeof window.kexoChartMeta === 'function' ? window.kexoChartMeta(chartKey) : null;
       var baseHeight = (meta && Number.isFinite(Number(meta.height))) ? Number(meta.height) : 320;
-      var pct = typeof chartSizePercentFromUiConfig === 'function' ? chartSizePercentFromUiConfig(chartKey, 100) : 100;
-      var mapHeight = Math.round(baseHeight * (pct / 100));
+      var sizePct = typeof chartSizePercentFromUiConfig === 'function' ? chartSizePercentFromUiConfig(chartKey, 100) : 100;
+      var mapHeight = Math.round(baseHeight * (sizePct / 100));
       if (mapHeight < 80) mapHeight = 80;
       // Period-only choropleth for the selected timeframe (no live mode / no animated overlays).
       if (typeof jsVectorMap === 'undefined') {
