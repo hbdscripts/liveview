@@ -23,7 +23,6 @@
 
       try { ensureCondensedKpiOverflowResizeObserver(); } catch (_) {}
       try { scheduleCondensedKpiOverflowUpdate(); } catch (_) {}
-      try { setTimeout(function() { ensureTrafficSafeToggle(); }, 100); } catch (_) {}
 
       try {
         if (typeof registerCleanup === 'function') {
@@ -323,57 +322,10 @@
       return { step: step, title: title, finish: finish };
     }
 
-    const KPI_TRAFFIC_SAFE_LS_KEY = 'kexo_traffic_safe';
-    function getTrafficSafe() {
-      try {
-        const v = localStorage.getItem(KPI_TRAFFIC_SAFE_LS_KEY);
-        return v === '1' || v === 'true';
-      } catch (_) { return false; }
-    }
-    function setTrafficSafe(on) {
-      try { localStorage.setItem(KPI_TRAFFIC_SAFE_LS_KEY, on ? '1' : '0'); } catch (_) {}
-      try { window.dispatchEvent(new CustomEvent('kexo:traffic-safe-changed', { detail: { trafficSafe: !!on } })); } catch (_) {}
-    }
     function getTrafficQuerySuffix() {
-      return getTrafficSafe() ? '&traffic=safe' : '';
+      return '';
     }
-    try {
-      window.kexoGetTrafficQuerySuffix = getTrafficQuerySuffix;
-      window.kexoGetTrafficSafe = getTrafficSafe;
-      window.kexoSetTrafficSafe = setTrafficSafe;
-    } catch (_) {}
-
-    function ensureTrafficSafeToggle() {
-      const row = document.getElementById('kexo-kpis-condensed-row');
-      if (!row) return;
-      let wrap = document.getElementById('kexo-traffic-safe-toggle-wrap');
-      if (wrap) {
-        const cb = wrap.querySelector('input[type="checkbox"]');
-        if (cb) cb.checked = getTrafficSafe();
-        return;
-      }
-      wrap = document.createElement('div');
-      wrap.id = 'kexo-traffic-safe-toggle-wrap';
-      wrap.className = 'kexo-traffic-safe-toggle d-flex align-items-center ms-2';
-      const label = document.createElement('label');
-      label.className = 'form-check form-check-inline mb-0 small text-secondary';
-      const cb = document.createElement('input');
-      cb.type = 'checkbox';
-      cb.className = 'form-check-input';
-      cb.checked = getTrafficSafe();
-      cb.setAttribute('aria-label', 'Exclude high-risk traffic from KPIs and charts');
-      label.appendChild(cb);
-      label.appendChild(document.createTextNode(' Exclude high-risk'));
-      wrap.appendChild(label);
-      row.appendChild(wrap);
-      cb.addEventListener('change', function() {
-        setTrafficSafe(cb.checked);
-        refreshKpis({ force: true }).catch(function() {});
-        fetchStatsData({ force: true }).catch(function() {});
-        if (typeof refreshSessionsOverviewChart === 'function') refreshSessionsOverviewChart({ force: true }).catch(function() {});
-        try { if (typeof window.refreshDashboard === 'function') window.refreshDashboard({ force: true, silent: true }); } catch (_) {}
-      });
-    }
+    try { window.kexoGetTrafficQuerySuffix = getTrafficQuerySuffix; } catch (_) {}
 
     function fetchStatsData(options = {}) {
       const force = !!options.force;
@@ -1707,7 +1659,7 @@
         if (!rect || !(rect.width > 20) || !(rect.height > 20)) {
           var sizeTries = (el.__kexoJvmSizeWaitTries || 0) + 1;
           el.__kexoJvmSizeWaitTries = sizeTries;
-          if (sizeTries <= 60) setTimeout(function() { renderLiveOnlineMapChartFromSessions(sessionList); }, 220);
+          if (sizeTries <= 25) setTimeout(function() { renderLiveOnlineMapChartFromSessions(sessionList); }, 200);
           else el.__kexoJvmSizeWaitTries = 0;
           return;
         }

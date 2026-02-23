@@ -1854,8 +1854,8 @@
       if (!rect || !(rect.width > 20) || !(rect.height > 20)) {
         var sizeTries = (el.__kexoJvmSizeWaitTries || 0) + 1;
         el.__kexoJvmSizeWaitTries = sizeTries;
-        if (sizeTries <= 60) {
-          setTimeout(function() { if (typeof opts.retry === 'function') opts.retry(); }, 220);
+        if (sizeTries <= 25) {
+          setTimeout(function() { if (typeof opts.retry === 'function') opts.retry(); }, 200);
         } else {
           el.__kexoJvmSizeWaitTries = 0;
         }
@@ -2054,12 +2054,6 @@
         return;
       }
 
-      if (countriesMapChartInstance) {
-        try { countriesMapChartInstance.destroy(); } catch (_) {}
-        countriesMapChartInstance = null;
-      }
-      clearCountriesFlowOverlay(el);
-
       const c = data && data.country ? data.country : {};
       const rows = c[getStatsRange()] || [];
       if (!rows.length) {
@@ -2158,6 +2152,36 @@
       } catch (_) {}
       var metricLabel = mapMetricChoice === 'revenue' ? 'Revenue' : mapMetricChoice === 'orders' ? 'Orders' : 'Metric';
 
+      // Stable signature for reuse: same range + metric + style + data => update in place instead of destroy/recreate.
+      var choroplethSorted = Object.keys(choroplethByIso2 || {}).sort().map(function(k) { return k + ':' + (choroplethByIso2[k]); });
+      var currentSignature = getStatsRange() + '|' + mapMetricChoice + '|' + accent + '|' + String(fillOpacity2) + '|' + String(inactiveOpacity2) + '|' + (inactiveRgb2 || '') + '|' + JSON.stringify(choroplethSorted);
+
+      if (countriesMapChartInstance && countriesMapChartInstance.regions && el.__kexoCountriesMapSig === currentSignature) {
+        try { el.__kexoCountriesMapSig = currentSignature; } catch (_) {}
+        var inactiveFill = 'rgba(' + (inactiveRgb2 || primaryRgb) + ',' + String(Number(inactiveOpacity2).toFixed(3)) + ')';
+        var regionsExisting = countriesMapChartInstance.regions;
+        for (var code in regionsExisting) {
+          if (regionsExisting[code] && regionsExisting[code].element && typeof regionsExisting[code].element.setStyle === 'function') {
+            try {
+              regionsExisting[code].element.setStyle('fill', regionFillByIso2[code] || inactiveFill);
+            } catch (_) {}
+          }
+        }
+        clearCountriesFlowOverlay(el);
+        setTimeout(function() {
+          try { renderCountriesFlowOverlay(el, rows, primaryRgb, pinItems[0] && pinItems[0].iso); } catch (_) {}
+          try { renderCountriesPinsOverlay(el, pinItems, { topN: 9, primaryRgb: primaryRgb, title: 'Top countries', subtitle: metricLabel }); } catch (_) {}
+        }, 140);
+        try { if (typeof countriesMapChartInstance.updateSize === 'function') countriesMapChartInstance.updateSize(); } catch (_) {}
+        return;
+      }
+
+      if (countriesMapChartInstance) {
+        try { countriesMapChartInstance.destroy(); } catch (_) {}
+        countriesMapChartInstance = null;
+      }
+      clearCountriesFlowOverlay(el);
+
       el.style.height = mapHeight + 'px';
       el.style.minHeight = mapHeight + 'px';
       el.innerHTML = '';
@@ -2204,12 +2228,14 @@
             );
           },
           afterMapCreated: function(instance, containerEl) {
+            try { containerEl.__kexoCountriesMapSig = currentSignature; } catch (_) {}
             setTimeout(function() {
-              try { renderCountriesFlowOverlay(containerEl, rows, primaryRgb); } catch (_) {}
+              try { renderCountriesFlowOverlay(containerEl, rows, primaryRgb, pinItems[0] && pinItems[0].iso); } catch (_) {}
               try { renderCountriesPinsOverlay(containerEl, pinItems, { topN: 9, primaryRgb: primaryRgb, title: 'Top countries', subtitle: metricLabel }); } catch (_) {}
             }, 140);
           },
         });
+        try { if (el && countriesMapChartInstance) el.__kexoCountriesMapSig = currentSignature; } catch (_) {}
       } catch (err) {
         captureChartError(err, 'countriesMapRender', { chartKey: 'countries-map-chart' });
         console.error('[countries-map] map render error:', err);
