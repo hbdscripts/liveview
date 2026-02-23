@@ -1605,10 +1605,12 @@
     }
 
     function renderLiveOnlineMapChartFromSessions(sessionList) {
-      var el = document.getElementById('live-online-chart');
+      var containerId = 'live-online-chart';
+      var el = document.getElementById(containerId);
       var chartKey = 'live-online-chart';
       if (!el) {
-        el = document.getElementById('countries-map-chart');
+        containerId = 'countries-map-chart';
+        el = document.getElementById(containerId);
         chartKey = 'countries-map-chart';
       }
       if (el && chartKey === 'live-online-chart') {
@@ -1894,7 +1896,7 @@
           } catch (_) {}
           return {};
         })();
-        liveOnlineMapChartInstance = typeof renderOnlineMapInto === 'function' && renderOnlineMapInto(chartKey, chartKey, {
+        liveOnlineMapChartInstance = typeof renderOnlineMapInto === 'function' && renderOnlineMapInto(containerId, chartKey, {
           setState: setState,
           mapHeight: mapHeight,
           regionFillByIso2: regionFillByIso2,
