@@ -57,7 +57,18 @@
         <div class="card-header">
           <h3 class="card-title">Checkout funnel</h3>
         </div>
-        <div class="card-body" id="checkout-funnel-mount">
+        <div class="card-body kexo-funnel-card-body" id="checkout-funnel-mount">
+          <div class="kexo-funnel-summary" aria-label="Funnel summary">
+            <div class="kexo-funnel-summary-item">
+              <span class="kexo-funnel-summary-label">Total abandoned</span>
+              <span class="kexo-funnel-summary-value" id="funnel-total-abandoned">&mdash;</span>
+            </div>
+            <div class="kexo-funnel-summary-item">
+              <span class="kexo-funnel-summary-label">Conversion rate</span>
+              <span class="kexo-funnel-summary-value" id="funnel-conversion-rate">&mdash;</span>
+            </div>
+          </div>
+          <div class="kexo-funnel-steps-wrap">
           <div class="kexo-funnel-steps" aria-label="Checkout funnel steps">
             <div class="kexo-funnel-step" data-step="sessions">
               <span class="kexo-funnel-step-label">Sessions</span>
@@ -79,6 +90,7 @@
               <span class="kexo-funnel-step-count" id="funnel-step-purchased-count">&mdash;</span>
               <span class="kexo-funnel-step-pct" id="funnel-step-purchased-pct" aria-hidden="true"></span>
             </div>
+          </div>
           </div>
         </div>
       </div>

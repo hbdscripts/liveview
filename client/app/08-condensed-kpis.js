@@ -2800,6 +2800,12 @@
           setPct('checkout', data.conversionToCheckout);
           setCount('purchased', data.purchased);
           setPct('purchased', data.conversionToPurchase);
+          var totalAbandoned = (typeof data.cart === 'number' && typeof data.purchased === 'number') ? data.cart - data.purchased : null;
+          var conversionRate = (typeof data.sessions === 'number' && data.sessions > 0 && typeof data.purchased === 'number') ? Math.round((data.purchased / data.sessions) * 100) : null;
+          var abandonedEl = document.getElementById('funnel-total-abandoned');
+          if (abandonedEl) abandonedEl.textContent = totalAbandoned != null ? String(totalAbandoned) : '—';
+          var rateEl = document.getElementById('funnel-conversion-rate');
+          if (rateEl) rateEl.textContent = conversionRate != null ? conversionRate + '%' : '—';
         })
         .catch(function() {
           var setCount = function(idSuffix) {
@@ -2810,6 +2816,10 @@
           setCount('cart');
           setCount('checkout');
           setCount('purchased');
+          var abandonedEl = document.getElementById('funnel-total-abandoned');
+          if (abandonedEl) abandonedEl.textContent = '—';
+          var rateEl = document.getElementById('funnel-conversion-rate');
+          if (rateEl) rateEl.textContent = '—';
         });
     }
 
