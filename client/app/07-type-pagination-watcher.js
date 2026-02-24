@@ -1838,18 +1838,56 @@
       bindGlobalMapTooltipDismiss();
       var hideNow = hideMapTooltips;
       var hideSoon = typeof kexoThrottle === 'function' ? kexoThrottle(hideNow, 60) : hideNow;
-      function isRegionNode(node) {
-        if (!node) return false;
-        try {
-          if (node.classList && node.classList.contains('jvm-region')) return true;
-        } catch (_) {}
-        try {
-          if (node.closest && node.closest('.jvm-region')) return true;
-        } catch (_) {}
+      function looksLikeJvmRegion(node) {
+        var cur = node;
+        for (var i = 0; i < 7 && cur; i++) {
+          try {
+            if (cur.classList && cur.classList.contains('jvm-region')) return true;
+          } catch (_) {}
+          try {
+            if (cur.getAttribute) {
+              var dc = cur.getAttribute('data-code');
+              if (dc) return true;
+              var cls = cur.getAttribute('class');
+              if (cls && String(cls).indexOf('jvm-region') >= 0) return true;
+            }
+          } catch (_) {}
+          cur = cur.parentNode;
+        }
         return false;
       }
+      function clientPointFromEvent(e) {
+        if (!e) return null;
+        var x = null;
+        var y = null;
+        try {
+          if (e.touches && e.touches[0]) {
+            x = e.touches[0].clientX;
+            y = e.touches[0].clientY;
+          } else if (e.changedTouches && e.changedTouches[0]) {
+            x = e.changedTouches[0].clientX;
+            y = e.changedTouches[0].clientY;
+          } else {
+            x = e.clientX;
+            y = e.clientY;
+          }
+        } catch (_) {}
+        if (!Number.isFinite(Number(x)) || !Number.isFinite(Number(y))) return null;
+        return { x: Number(x), y: Number(y) };
+      }
+      function isPointerOverJvmRegion(e) {
+        // Use elementFromPoint because SVG events can target <svg>/<g> in some browsers,
+        // which caused tooltips to vanish unless the pointer was near region edges.
+        var pt = clientPointFromEvent(e);
+        var node = null;
+        if (pt) {
+          try { node = document.elementFromPoint(pt.x, pt.y); } catch (_) { node = null; }
+          if (looksLikeJvmRegion(node)) return true;
+        }
+        return looksLikeJvmRegion(e && e.target);
+      }
       function maybeHide(e) {
-        if (isRegionNode(e && e.target)) return;
+        if (isPointerOverJvmRegion(e)) return;
         hideSoon();
       }
       try { container.addEventListener('pointermove', maybeHide, { passive: true }); } catch (_) {}
