@@ -288,6 +288,7 @@
       columns: [
         { key: 'campaign', label: 'Campaign', cellClass: '' },
         { key: 'clicks', label: 'Clicks', cellClass: ' text-center' },
+        { key: 'sessions', label: 'Sessions', cellClass: ' text-center' },
         { key: 'impr', label: 'Impr', cellClass: ' text-center' },
         { key: 'conv', label: 'Conv', cellClass: ' text-center' },
         { key: 'sales', label: 'Revenue', cellClass: ' text-center' },
