@@ -7669,6 +7669,8 @@ body[data-page="settings"] .settings-mobile-children a.active { background: var(
 .kexo-ads-card-hidden { display: none; }
 .kexo-products-hidden-note { display: none; }
 
+.ads-options-menu { min-width: 220px; }
+
 /* Settings → Integrations → Google Ads */
 .kexo-ga-signin-btn.text-white,
 .kexo-ga-signin-btn.text-white:hover,

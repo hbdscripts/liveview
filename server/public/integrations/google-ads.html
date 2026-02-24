@@ -38,18 +38,44 @@
     <div class="country-table-wrap" id="ads-root" aria-label="Ads campaigns"></div>
     <div class="text-muted small px-3 pb-2 kexo-ads-card-hidden" id="ads-note"></div>
     <div class="card-footer d-flex align-items-center justify-content-center is-hidden" id="ads-pagination" aria-label="Ads pagination"></div>
-    <div class="d-flex justify-content-center py-2 kexo-ads-card-hidden">
-      <label for="ads-attribution-select" class="visually-hidden">Attribution</label>
-      <select id="ads-attribution-select" class="form-select form-select-sm" aria-label="Attribution">
-        <option value="">All</option>
-        <option value="landing_site">Landing page</option>
-        <option value="session">Session (conversion)</option>
-        <option value="last_click">Last Google Ads click</option>
-        <option value="page_url">Page URL</option>
-        <option value="verified">Verified campaign ID</option>
-      </select>
+    <div class="border-top px-3 py-2 d-flex align-items-center justify-content-between kexo-ads-card-hidden">
+      <div class="dropdown">
+        <button type="button" class="btn btn-ghost-secondary btn-sm dropdown-toggle" id="ads-options-btn" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Options</button>
+        <div class="dropdown-menu p-3 ads-options-menu" id="ads-options-menu" aria-labelledby="ads-options-btn">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="ads-hide-paused" aria-describedby="ads-options-show-paused-hint">
+            <label class="form-check-label" for="ads-hide-paused" id="ads-options-show-paused-hint">Show paused</label>
+          </div>
+          <hr class="dropdown-divider">
+          <div class="small text-muted mb-1">Attribution</div>
+          <div class="form-check">
+            <input class="form-check-input" type="radio" name="ads-attribution" id="ads-attribution-all" value="">
+            <label class="form-check-label" for="ads-attribution-all">All</label>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="radio" name="ads-attribution" id="ads-attribution-landing" value="landing_site">
+            <label class="form-check-label" for="ads-attribution-landing">Landing page</label>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="radio" name="ads-attribution" id="ads-attribution-session" value="session">
+            <label class="form-check-label" for="ads-attribution-session">Session (conversion)</label>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="radio" name="ads-attribution" id="ads-attribution-last-click" value="last_click">
+            <label class="form-check-label" for="ads-attribution-last-click">Last Google Ads click</label>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="radio" name="ads-attribution" id="ads-attribution-page-url" value="page_url">
+            <label class="form-check-label" for="ads-attribution-page-url">Page URL</label>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="radio" name="ads-attribution" id="ads-attribution-verified" value="verified">
+            <label class="form-check-label" for="ads-attribution-verified">Verified campaign ID</label>
+          </div>
+        </div>
+      </div>
+      <div id="ads-actions" class="d-flex align-items-center gap-2"></div>
     </div>
-    <div class="border-top px-3 py-2 d-flex align-items-center justify-content-center gap-2 kexo-ads-card-hidden" id="ads-actions"></div>
   </div>
 </div>
     <!--#include partials/page-body-end.html-->

@@ -1982,11 +1982,6 @@
 
     actions.style.display = '';
     actions.innerHTML =
-      '<label class="form-check form-check-inline m-0" style="user-select:none;white-space:nowrap;" aria-label="Hide paused campaigns">' +
-        '<input class="form-check-input" type="checkbox" id="ads-hide-paused"' + (hidePaused ? ' checked' : '') + '>' +
-        '<span class="form-check-label">Hide paused</span>' +
-      '</label>' +
-      '<span class="ms-auto"></span>' +
       '<button type="button" class="btn btn-icon btn-ghost-danger" id="ads-errors-icon" style="display:' + (_lastErrors.length ? 'inline-flex' : 'none') + ';" title="Errors detected" aria-label="Errors detected">' +
         alertTriangleSvg() +
       '</button>' +
@@ -2019,16 +2014,16 @@
       });
     }
 
+    syncAdsOptionsState();
+  }
+
+  function syncAdsOptionsState() {
     var hcb = document.getElementById('ads-hide-paused');
-    if (hcb) {
-      hcb.addEventListener('change', function () {
-        var next = false;
-        try { next = !!hcb.checked; } catch (_) { next = false; }
-        setAdsHidePaused(next);
-        adsPage = 1;
-        var root = document.getElementById('ads-root');
-        if (root && _lastSummary) render(root, _lastStatus, _lastSummary, _lastRefreshResult);
-      });
+    if (hcb) hcb.checked = !getAdsHidePaused();
+    var attr = getAdsAttributionMethod();
+    var radios = document.querySelectorAll('input[name="ads-attribution"]');
+    for (var i = 0; i < radios.length; i++) {
+      if (radios[i]) radios[i].checked = (radios[i].value === attr);
     }
   }
 
@@ -2490,18 +2485,31 @@
 
   window.__adsRefresh = refresh;
 
-  (function bindAdsAttributionSelect() {
-    var sel = document.getElementById('ads-attribution-select');
-    if (!sel || sel.getAttribute('data-ads-attribution-bound') === '1') return;
-    sel.setAttribute('data-ads-attribution-bound', '1');
-    var stored = getAdsAttributionMethod();
-    if (stored) sel.value = stored;
-    sel.addEventListener('change', function () {
-      var next = sel.value != null ? String(sel.value).trim() : '';
-      setAdsAttributionMethod(next);
-      adsPage = 1;
-      try { if (typeof window.__adsRefresh === 'function') window.__adsRefresh({ force: false }); } catch (_) {}
-    });
+  (function bindAdsOptions() {
+    var wrap = document.getElementById('ads-options-menu');
+    if (!wrap || wrap.getAttribute('data-ads-options-bound') === '1') return;
+    wrap.setAttribute('data-ads-options-bound', '1');
+    syncAdsOptionsState();
+    var hcb = document.getElementById('ads-hide-paused');
+    if (hcb) {
+      hcb.addEventListener('change', function () {
+        setAdsHidePaused(!hcb.checked);
+        adsPage = 1;
+        var root = document.getElementById('ads-root');
+        if (root && _lastSummary) render(root, _lastStatus, _lastSummary, _lastRefreshResult);
+      });
+    }
+    var radios = document.querySelectorAll('input[name="ads-attribution"]');
+    for (var i = 0; i < radios.length; i++) {
+      if (!radios[i]) continue;
+      radios[i].addEventListener('change', function () {
+        var r = document.querySelector('input[name="ads-attribution"]:checked');
+        var next = r && r.value != null ? String(r.value).trim() : '';
+        setAdsAttributionMethod(next);
+        adsPage = 1;
+        try { if (typeof window.__adsRefresh === 'function') window.__adsRefresh({ force: false }); } catch (_) {}
+      });
+    }
   })();
 
   window.__adsInit = function () {
