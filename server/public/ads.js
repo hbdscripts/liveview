@@ -1808,6 +1808,8 @@
   var _otherRevenueDrilldownCache = {};
   var _otherRevenueLoading = {};
   var _lastOtherRevenueData = null;
+  var _lastOtherRevenueGoogleads = null;
+  var _lastOtherRevenueOther = null;
   var _lastOtherRevenueRangeKey = null;
 
   function renderLoading(root, title, step) {
@@ -2133,7 +2135,6 @@
   function renderOtherRevenue(rootEl, data, rangeKey) {
     if (!rootEl) return;
     rangeKey = rangeKey || _lastOtherRevenueRangeKey || 'today';
-    _lastOtherRevenueData = data;
     _lastOtherRevenueRangeKey = rangeKey;
     var rows = (data && data.ok && Array.isArray(data.rows)) ? data.rows : [];
     var currency = 'GBP';
@@ -2209,22 +2210,24 @@
         var rk = btn.getAttribute('data-range-key') || '';
         var us = btn.getAttribute('data-utm-source') || '';
         var key = rk + '|' + us;
+        var bucket = (rootEl.getAttribute && rootEl.getAttribute('data-other-revenue-bucket')) || 'other';
+        var bucketData = bucket === 'googleads' ? _lastOtherRevenueGoogleads : _lastOtherRevenueOther;
         if (_otherRevenueExpanded[key]) {
           _otherRevenueExpanded[key] = false;
-          renderOtherRevenue(rootEl, _lastOtherRevenueData, _lastOtherRevenueRangeKey);
+          if (bucketData) renderOtherRevenue(rootEl, bucketData, _lastOtherRevenueRangeKey);
           return;
         }
         _otherRevenueExpanded[key] = true;
         if (_otherRevenueDrilldownCache[key]) {
-          renderOtherRevenue(rootEl, _lastOtherRevenueData, _lastOtherRevenueRangeKey);
+          if (bucketData) renderOtherRevenue(rootEl, bucketData, _lastOtherRevenueRangeKey);
           return;
         }
         _otherRevenueLoading[key] = true;
-        renderOtherRevenue(rootEl, _lastOtherRevenueData, _lastOtherRevenueRangeKey);
+        if (bucketData) renderOtherRevenue(rootEl, bucketData, _lastOtherRevenueRangeKey);
         fetchOtherRevenueDrilldown(rk, us).then(function(drillRes) {
           _otherRevenueDrilldownCache[key] = drillRes;
           _otherRevenueLoading[key] = false;
-          if (rootEl && _lastOtherRevenueData) renderOtherRevenue(rootEl, _lastOtherRevenueData, _lastOtherRevenueRangeKey);
+          if (rootEl && bucketData) renderOtherRevenue(rootEl, bucketData, _lastOtherRevenueRangeKey);
         });
       });
     });
@@ -2609,21 +2612,36 @@
       }
 
       var rangeForOther = (nextSummary && nextSummary.rangeKey) ? nextSummary.rangeKey : _lastRangeKey || rangeKey;
-      var otherRoot = document.getElementById('ads-other-root');
-      if (otherRoot) {
+      var googleadsRoot = document.getElementById('ads-other-root-googleads');
+      var otherRoot = document.getElementById('ads-other-root-other');
+      if (googleadsRoot || otherRoot) {
         fetchOtherRevenue(rangeForOther)
           .then(function (res) {
-            var el = document.getElementById('ads-other-root');
-            if (!el) return;
-            if (res && res.ok && Array.isArray(res.rows)) {
-              renderOtherRevenue(el, res, rangeForOther);
-            } else {
-              el.innerHTML = '<div class="grid-row muted" role="row"><div class="grid-cell" role="cell" style="text-align:center;">Other revenue unavailable.</div></div>';
+            if (!res || !res.ok || !Array.isArray(res.rows)) {
+              var errHtml = '<div class="grid-row muted" role="row"><div class="grid-cell" role="cell" style="text-align:center;">Other revenue unavailable.</div></div>';
+              if (googleadsRoot) googleadsRoot.innerHTML = errHtml;
+              if (otherRoot) otherRoot.innerHTML = errHtml;
+              return;
+            }
+            var rows = res.rows;
+            var googleadsRows = rows.filter(function (r) { return String((r && r.utmSource) != null ? r.utmSource : '').trim().toLowerCase() === 'googleads'; });
+            var otherRows = rows.filter(function (r) { return String((r && r.utmSource) != null ? r.utmSource : '').trim().toLowerCase() !== 'googleads'; });
+            _lastOtherRevenueGoogleads = { ok: true, rows: googleadsRows };
+            _lastOtherRevenueOther = { ok: true, rows: otherRows };
+            _lastOtherRevenueRangeKey = rangeForOther;
+            if (googleadsRoot) {
+              googleadsRoot.setAttribute('data-other-revenue-bucket', 'googleads');
+              renderOtherRevenue(googleadsRoot, _lastOtherRevenueGoogleads, rangeForOther);
+            }
+            if (otherRoot) {
+              otherRoot.setAttribute('data-other-revenue-bucket', 'other');
+              renderOtherRevenue(otherRoot, _lastOtherRevenueOther, rangeForOther);
             }
           })
           .catch(function () {
-            var el = document.getElementById('ads-other-root');
-            if (el) el.innerHTML = '<div class="grid-row muted" role="row"><div class="grid-cell" role="cell" style="text-align:center;">Other revenue unavailable.</div></div>';
+            var errHtml = '<div class="grid-row muted" role="row"><div class="grid-cell" role="cell" style="text-align:center;">Other revenue unavailable.</div></div>';
+            if (googleadsRoot) googleadsRoot.innerHTML = errHtml;
+            if (otherRoot) otherRoot.innerHTML = errHtml;
           });
       }
 

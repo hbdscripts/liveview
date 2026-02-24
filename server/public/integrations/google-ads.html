@@ -65,11 +65,20 @@
       <div id="ads-actions" class="d-flex align-items-center gap-2"></div>
     </div>
   </div>
-  <div class="card mt-5" data-table-class="live" data-table-zone="ads-other" data-table-id="ads-other-root">
+  <div class="card mt-5" data-table-class="live" data-table-zone="ads-other" data-table-id="ads-other-root-googleads">
     <div class="card-header">
-      <h3 class="card-title">None Google / UTM</h3>
+      <h3 class="card-title">Google (UTM) – No Click ID</h3>
     </div>
-    <div id="ads-other-root" class="country-table-wrap" aria-label="Other revenue"></div>
+    <div class="card-body pt-0">
+      <p class="text-secondary small mb-2">Revenue with <code>utm_source=googleads</code> that could not be tied to a campaign (no gclid/gbraid/wbraid).</p>
+    </div>
+    <div id="ads-other-root-googleads" class="country-table-wrap" aria-label="Google UTM revenue without click ID"></div>
+  </div>
+  <div class="card mt-5" data-table-class="live" data-table-zone="ads-other" data-table-id="ads-other-root-other">
+    <div class="card-header">
+      <h3 class="card-title">Non-Google / UTM</h3>
+    </div>
+    <div id="ads-other-root-other" class="country-table-wrap" aria-label="Other revenue by UTM source"></div>
   </div>
 </div>
     <!--#include partials/page-body-end.html-->
