@@ -104,10 +104,35 @@ async function getSummary(options = {}) {
   }
 
   // Revenue — Shopify truth orders attributed into Ads DB (no main DB joins at query time).
+  // Optional filter by attribution_method (dropdown on integration table).
+  const attributionMethod = options.attributionMethod != null ? String(options.attributionMethod).trim().toLowerCase() : '';
+  let revAttributionSql = '';
+  const revAttributionParams = [];
+  if (attributionMethod && attributionMethod !== 'all') {
+    if (attributionMethod === 'landing_site') {
+      revAttributionSql = " AND (attribution_method LIKE ? OR attribution_method LIKE ?)";
+      revAttributionParams.push('landing_site%', 'url.%');
+    } else if (attributionMethod === 'session') {
+      revAttributionSql = " AND attribution_method LIKE ?";
+      revAttributionParams.push('purchase_events.session%');
+    } else if (attributionMethod === 'last_click') {
+      revAttributionSql = " AND attribution_method = ?";
+      revAttributionParams.push('visitor.last_ads_click');
+    } else if (attributionMethod === 'page_url') {
+      revAttributionSql = " AND attribution_method LIKE ?";
+      revAttributionParams.push('purchase_events.page_url%');
+    } else if (attributionMethod === 'verified') {
+      revAttributionSql = " AND attribution_method = ?";
+      revAttributionParams.push('campaign_id.verified');
+    }
+  }
+
   let revRows = [];
   try {
     const revFilterSql = source ? ' AND source = ?' : '';
-    const revParams = source ? [bounds.start, bounds.end, source] : [bounds.start, bounds.end];
+    const revParams = source
+      ? [bounds.start, bounds.end, source, ...revAttributionParams]
+      : [bounds.start, bounds.end, ...revAttributionParams];
     revRows = await adsDb.all(
       `
         SELECT
@@ -116,7 +141,7 @@ async function getSummary(options = {}) {
           COALESCE(SUM(revenue_gbp), 0) AS revenue_gbp,
           COUNT(*) AS orders
         FROM ads_orders_attributed
-        WHERE created_at_ms >= ? AND created_at_ms < ?${revFilterSql}
+        WHERE created_at_ms >= ? AND created_at_ms < ?${revFilterSql}${revAttributionSql}
           AND campaign_id IS NOT NULL AND TRIM(campaign_id) != ''
         GROUP BY campaign_id, COALESCE(NULLIF(TRIM(adgroup_id), ''), '_all_')
       `,

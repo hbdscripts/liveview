@@ -32,8 +32,19 @@
           </div>
 <div id="tab-panel-ads" class="main-tab-panel" role="tabpanel" aria-labelledby="nav-tab-ads">
   <div class="card" data-table-class="live" data-table-zone="ads-main" data-table-id="ads-root">
-    <div class="card-header">
-      <h3 class="card-title" data-kexo-table-title="1">Google Ads</h3>
+    <div class="card-header d-flex flex-wrap align-items-center gap-2">
+      <h3 class="card-title mb-0" data-kexo-table-title="1">Google Ads</h3>
+      <div class="ms-auto">
+        <label for="ads-attribution-select" class="visually-hidden">Attribution</label>
+        <select id="ads-attribution-select" class="form-select form-select-sm" aria-label="Attribution">
+          <option value="">All</option>
+          <option value="landing_site">Landing page</option>
+          <option value="session">Session (conversion)</option>
+          <option value="last_click">Last Google Ads click</option>
+          <option value="page_url">Page URL</option>
+          <option value="verified">Verified campaign ID</option>
+        </select>
+      </div>
     </div>
     <div class="country-table-wrap" id="ads-root" aria-label="Ads campaigns"></div>
     <div class="text-muted small px-3 pb-2 kexo-ads-card-hidden" id="ads-note"></div>

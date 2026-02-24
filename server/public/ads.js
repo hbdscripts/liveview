@@ -214,6 +214,25 @@
     return v;
   }
 
+  function getAdsAttributionStorageKey() {
+    return 'kexo:ads:attribution:v1';
+  }
+
+  function getAdsAttributionMethod() {
+    var raw = null;
+    try { raw = localStorage.getItem(getAdsAttributionStorageKey()); } catch (_) { raw = null; }
+    var s = raw != null ? String(raw).trim() : '';
+    if (!s) return '';
+    var allowed = ['landing_site', 'session', 'last_click', 'page_url', 'verified'];
+    return allowed.indexOf(s) >= 0 ? s : '';
+  }
+
+  function setAdsAttributionMethod(next) {
+    var v = next != null ? String(next).trim() : '';
+    try { localStorage.setItem(getAdsAttributionStorageKey(), v); } catch (_) {}
+    return v;
+  }
+
   function getAdsPageSize() {
     var raw = null;
     try { raw = localStorage.getItem(getAdsRowsStorageKey()); } catch (_) { raw = null; }
@@ -2300,7 +2319,9 @@
 
   function fetchSummary(rangeKey, cacheBust) {
     var bust = cacheBust ? ('&_=' + Date.now()) : '';
-    return fetchJson('/api/ads/summary?range=' + encodeURIComponent(rangeKey) + bust);
+    var attr = getAdsAttributionMethod();
+    var attrQ = attr ? ('&attributionMethod=' + encodeURIComponent(attr)) : '';
+    return fetchJson('/api/ads/summary?range=' + encodeURIComponent(rangeKey) + attrQ + bust);
   }
 
   function refreshAdsBackend(rangeKey) {
@@ -2460,6 +2481,21 @@
   } catch (_) {}
 
   window.__adsRefresh = refresh;
+
+  (function bindAdsAttributionSelect() {
+    var sel = document.getElementById('ads-attribution-select');
+    if (!sel || sel.getAttribute('data-ads-attribution-bound') === '1') return;
+    sel.setAttribute('data-ads-attribution-bound', '1');
+    var stored = getAdsAttributionMethod();
+    if (stored) sel.value = stored;
+    sel.addEventListener('change', function () {
+      var next = sel.value != null ? String(sel.value).trim() : '';
+      setAdsAttributionMethod(next);
+      adsPage = 1;
+      try { if (typeof window.__adsRefresh === 'function') window.__adsRefresh({ force: false }); } catch (_) {}
+    });
+  })();
+
   window.__adsInit = function () {
     return refresh({ force: false });
   };
