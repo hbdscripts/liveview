@@ -2320,9 +2320,8 @@
     }
 
     function loadGoalMapping() {
-      var body = document.getElementById('settings-ga-mapping-body');
-      if (!body) return Promise.resolve();
-      body.innerHTML = '<tr><td colspan="3" class="text-muted small">Loading…</td></tr>';
+      var grid = document.getElementById('settings-ga-goal-grid');
+      if (!grid) return Promise.resolve(false);
       var shop = getShopParam();
       var qs = shop ? ('?shop=' + encodeURIComponent(shop)) : '';
       return Promise.all([
@@ -2331,38 +2330,33 @@
       ]).then(function (arr) {
         var goals = Array.isArray(arr[0]) ? arr[0] : [];
         var actions = Array.isArray(arr[1]) ? arr[1] : [];
-        var goalTypes = [{ key: 'revenue', label: 'Revenue' }, { key: 'profit', label: 'Profit' }, { key: 'add_to_cart', label: 'Add to Cart' }, { key: 'begin_checkout', label: 'Begin Checkout' }];
+        var goalTypes = ['revenue', 'profit', 'add_to_cart', 'begin_checkout'];
         var optionsHtml = '<option value="">— Select action —</option>' + actions.map(function (a) {
           var rn = (a && a.resourceName) ? String(a.resourceName) : '';
           var name = (a && a.name) ? String(a.name) : rn || '—';
           return '<option value="' + escapeHtml(rn) + '" data-id="' + (a && a.id != null ? escapeHtml(String(a.id)) : '') + '">' + escapeHtml(name) + '</option>';
         }).join('');
-        body.innerHTML = goalTypes.map(function (gt) {
-          var g = goals.find(function (x) { return x.goal_type === gt.key; });
+
+        goalTypes.forEach(function (k) {
+          var g = goals.find(function (x) { return x && x.goal_type === k; }) || null;
           var currentRn = (g && (g.custom_goal_resource_name || g.conversion_action_resource_name)) ? String(g.custom_goal_resource_name || g.conversion_action_resource_name) : '';
-          var currentName = currentRn ? (actions.find(function (a) { return (a.resourceName || '') === currentRn; }) || {}).name || currentRn : '—';
-          var rowId = 'settings-ga-mapping-' + gt.key;
-          return '<tr data-ga-goal="' + escapeHtml(gt.key) + '">' +
-            '<td><span class="fw-medium">' + escapeHtml(gt.label) + '</span></td>' +
-            '<td><span class="text-muted small" id="' + rowId + '-current">' + escapeHtml(currentName) + '</span></td>' +
-            '<td class="text-end">' +
-            '<select class="form-select form-select-sm d-inline-block w-auto me-1" id="' + rowId + '-select" aria-label="Action for ' + escapeHtml(gt.label) + '">' + optionsHtml + '</select>' +
-            '<button type="button" class="btn btn-md me-1" data-ga-attach="' + escapeHtml(gt.key) + '">Attach</button>' +
-            '<button type="button" class="btn btn-md me-1" data-ga-clear="' + escapeHtml(gt.key) + '">Clear</button>' +
-            '<span class="ms-1"><input type="text" class="form-control form-control-sm d-inline-block" style="width:8rem" placeholder="New name" id="' + rowId + '-new-name" aria-label="New action name for ' + escapeHtml(gt.label) + '" />' +
-            ' <button type="button" class="btn btn-primary btn-md" data-ga-create="' + escapeHtml(gt.key) + '">Create &amp; attach</button></span>' +
-            '</td></tr>';
-        }).join('');
-        goalTypes.forEach(function (gt) {
-          var rowId = 'settings-ga-mapping-' + gt.key;
-          var g = goals.find(function (x) { return x.goal_type === gt.key; });
-          var currentRn = (g && (g.custom_goal_resource_name || g.conversion_action_resource_name)) ? String(g.custom_goal_resource_name || g.conversion_action_resource_name) : '';
-          var sel = document.getElementById(rowId + '-select');
-          if (sel && currentRn) sel.value = currentRn;
+          var currentName = currentRn ? (actions.find(function (a) { return a && String(a.resourceName || '') === currentRn; }) || {}).name || currentRn : 'Not provisioned';
+
+          var currentEl = document.getElementById('settings-ga-goal-' + k + '-current-action');
+          if (currentEl) currentEl.textContent = currentName;
+
+          var sel = document.getElementById('settings-ga-goal-' + k + '-action-select');
+          if (sel) {
+            sel.innerHTML = optionsHtml;
+            if (currentRn) sel.value = currentRn;
+          }
         });
         return true;
       }).catch(function () {
-        body.innerHTML = '<tr><td colspan="3" class="text-muted small">Failed to load mapping.</td></tr>';
+        ['revenue', 'profit', 'add_to_cart', 'begin_checkout'].forEach(function (k) {
+          var currentEl = document.getElementById('settings-ga-goal-' + k + '-current-action');
+          if (currentEl) currentEl.textContent = 'Failed to load';
+        });
         return false;
       });
     }
@@ -2451,17 +2445,21 @@
           var cov7 = r.json.coverage_7d || {};
           var rev7 = cov7.revenue || {};
           var prof7 = cov7.profit || {};
-          var success7 = (Number(rev7.success) || 0) + (Number(prof7.success) || 0);
-          var failure7 = (Number(rev7.failure) || 0) + (Number(prof7.failure) || 0);
-          var pending7 = (Number(rev7.pending) || 0) + (Number(prof7.pending) || 0);
+          var atc7 = cov7.add_to_cart || {};
+          var bco7 = cov7.begin_checkout || {};
+          var success7 = (Number(rev7.success) || 0) + (Number(prof7.success) || 0) + (Number(atc7.success) || 0) + (Number(bco7.success) || 0);
+          var failure7 = (Number(rev7.failure) || 0) + (Number(prof7.failure) || 0) + (Number(atc7.failure) || 0) + (Number(bco7.failure) || 0);
+          var pending7 = (Number(rev7.pending) || 0) + (Number(prof7.pending) || 0) + (Number(atc7.pending) || 0) + (Number(bco7.pending) || 0);
           var sr7 = computeSuccessRate({ success: success7, failure: failure7, pending: pending7 });
 
           var cov24 = r.json.coverage_24h || {};
           var rev24 = cov24.revenue || {};
           var prof24 = cov24.profit || {};
-          var success24 = (Number(rev24.success) || 0) + (Number(prof24.success) || 0);
-          var failure24 = (Number(rev24.failure) || 0) + (Number(prof24.failure) || 0);
-          var pending24 = (Number(rev24.pending) || 0) + (Number(prof24.pending) || 0);
+          var atc24 = cov24.add_to_cart || {};
+          var bco24 = cov24.begin_checkout || {};
+          var success24 = (Number(rev24.success) || 0) + (Number(prof24.success) || 0) + (Number(atc24.success) || 0) + (Number(bco24.success) || 0);
+          var failure24 = (Number(rev24.failure) || 0) + (Number(prof24.failure) || 0) + (Number(atc24.failure) || 0) + (Number(bco24.failure) || 0);
+          var pending24 = (Number(rev24.pending) || 0) + (Number(prof24.pending) || 0) + (Number(atc24.pending) || 0) + (Number(bco24.pending) || 0);
           var sr24 = computeSuccessRate({ success: success24, failure: failure24, pending: pending24 });
 
           if (statusEl) statusEl.innerHTML = '';
@@ -2651,16 +2649,8 @@
 
     if (provisionBtn) {
       provisionBtn.addEventListener('click', function () {
-        var goals = [];
-        if (document.getElementById('settings-ga-goal-revenue') && document.getElementById('settings-ga-goal-revenue').checked) goals.push('revenue');
-        if (document.getElementById('settings-ga-goal-profit') && document.getElementById('settings-ga-goal-profit').checked) goals.push('profit');
-        if (document.getElementById('settings-ga-goal-addtocart') && document.getElementById('settings-ga-goal-addtocart').checked) goals.push('add_to_cart');
-        if (document.getElementById('settings-ga-goal-begincheckout') && document.getElementById('settings-ga-goal-begincheckout').checked) goals.push('begin_checkout');
-        if (!goals.length) {
-          setHint(connMsgEl, 'Select at least one goal to provision.', false);
-          return;
-        }
-        setHint(connMsgEl, 'Provisioning conversion actions…', true);
+        var goals = ['revenue', 'profit', 'add_to_cart', 'begin_checkout'];
+        setHint(connMsgEl, 'Provisioning Kexo conversion actions…', true);
         var shop = getShopParam();
         apiPost('/api/ads/google/provision-goals', { shop: shop, goals: goals })
           .then(function (r) {
@@ -2764,50 +2754,114 @@
     loadPostbackHealth();
     loadIssues();
 
-    var mappingCard = document.getElementById('settings-ga-mapping-card');
-    if (mappingCard) {
-      mappingCard.addEventListener('click', function (e) {
+    function setGoalHint(goalType, text, ok) {
+      var el = document.getElementById('settings-ga-goal-' + goalType + '-msg');
+      if (!el) return;
+      el.textContent = text || '';
+      if (ok === true) el.className = 'form-hint text-success';
+      else if (ok === false) el.className = 'form-hint text-danger';
+      else el.className = 'form-hint';
+    }
+
+    function saveProfitDeductions() {
+      var draft = readProfitDeductionsDraft();
+      setGoalHint('profit', 'Saving…');
+      saveSettings({ googleAdsProfitDeductions: draft.deductions })
+        .then(function () { setGoalHint('profit', 'Saved.', true); })
+        .catch(function () { setGoalHint('profit', 'Save failed.', false); });
+    }
+    ['settings-ga-deduction-google-ads', 'settings-ga-deduction-payment-fees', 'settings-ga-deduction-tax', 'settings-ga-deduction-app-bills', 'settings-ga-deduction-shipping', 'settings-ga-deduction-rules']
+      .forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el) el.addEventListener('change', saveProfitDeductions);
+      });
+
+    var addToCartValueEl = document.getElementById('settings-ga-addtocart-value');
+    if (addToCartValueEl) {
+      addToCartValueEl.addEventListener('change', function () {
+        var draft = readProfitDeductionsDraft();
+        setGoalHint('add_to_cart', 'Saving…');
+        saveSettings({ googleAdsAddToCartValue: draft.googleAdsAddToCartValue })
+          .then(function () { setGoalHint('add_to_cart', 'Saved.', true); })
+          .catch(function () { setGoalHint('add_to_cart', 'Save failed.', false); });
+      });
+    }
+
+    var beginCheckoutValueEl = document.getElementById('settings-ga-begincheckout-value');
+    if (beginCheckoutValueEl) {
+      beginCheckoutValueEl.addEventListener('change', function () {
+        var draft = readProfitDeductionsDraft();
+        setGoalHint('begin_checkout', 'Saving…');
+        saveSettings({ googleAdsBeginCheckoutValue: draft.googleAdsBeginCheckoutValue })
+          .then(function () { setGoalHint('begin_checkout', 'Saved.', true); })
+          .catch(function () { setGoalHint('begin_checkout', 'Save failed.', false); });
+      });
+    }
+
+    var goalGrid = document.getElementById('settings-ga-goal-grid');
+    if (goalGrid) {
+      goalGrid.addEventListener('click', function (e) {
         var target = e && e.target ? e.target : null;
-        if (!target || target.getAttribute('data-ga-attach') == null && target.getAttribute('data-ga-clear') == null && target.getAttribute('data-ga-create') == null) return;
-        var goalType = target.getAttribute('data-ga-attach') || target.getAttribute('data-ga-clear') || target.getAttribute('data-ga-create');
+        if (!target) return;
+        var btn = target.closest ? target.closest('[data-ga-goal-attach],[data-ga-goal-clear],[data-ga-goal-create],[data-ga-goal-provision]') : null;
+        if (!btn) return;
+        var goalType = btn.getAttribute('data-ga-goal-attach') || btn.getAttribute('data-ga-goal-clear') || btn.getAttribute('data-ga-goal-create') || btn.getAttribute('data-ga-goal-provision');
+        if (!goalType) return;
         var shop = getShopParam();
-        if (target.getAttribute('data-ga-attach') !== null) {
-          var row = target.closest('tr');
-          var sel = row ? row.querySelector('select[id$="-select"]') : null;
+
+        if (btn.getAttribute('data-ga-goal-provision') != null) {
+          setGoalHint(goalType, 'Provisioning…');
+          apiPost('/api/ads/google/provision-goals', { shop: shop, goals: [goalType] })
+            .then(function (r) {
+              var ok = !!(r && r.ok && r.json && r.json.ok);
+              setGoalHint(goalType, ok ? 'Provisioned.' : ((r && r.json && r.json.error) ? String(r.json.error) : 'Provision failed.'), ok);
+              if (ok) { loadGoalMapping(); loadConversionActions(); loadPostbackHealth(); }
+            })
+            .catch(function () { setGoalHint(goalType, 'Provision failed.', false); });
+          return;
+        }
+
+        if (btn.getAttribute('data-ga-goal-attach') != null) {
+          var sel = document.getElementById('settings-ga-goal-' + goalType + '-action-select');
           var resourceName = sel ? sel.value : '';
           var opt = sel && sel.selectedIndex >= 0 ? sel.options[sel.selectedIndex] : null;
           var id = opt && opt.getAttribute('data-id') ? opt.getAttribute('data-id') : undefined;
-          if (!resourceName) { setHint(connMsgEl, 'Select an action first.', false); return; }
-          setHint(connMsgEl, 'Attaching…', true);
+          if (!resourceName) { setGoalHint(goalType, 'Select an action first.', false); return; }
+          setGoalHint(goalType, 'Attaching…');
           apiPost('/api/ads/google/attach-goal', { shop: shop, goal_type: goalType, resource_name: resourceName, id: id })
             .then(function (r) {
               var ok = !!(r && r.ok && r.json && r.json.ok);
-              setHint(connMsgEl, ok ? 'Attached.' : ((r && r.json && r.json.error) ? String(r.json.error) : 'Attach failed.'), ok);
+              setGoalHint(goalType, ok ? 'Attached.' : ((r && r.json && r.json.error) ? String(r.json.error) : 'Attach failed.'), ok);
               if (ok) { loadGoalMapping(); loadConversionActions(); }
             })
-            .catch(function () { setHint(connMsgEl, 'Attach failed.', false); });
-        } else if (target.getAttribute('data-ga-clear') !== null) {
-          setHint(connMsgEl, 'Clearing…', true);
+            .catch(function () { setGoalHint(goalType, 'Attach failed.', false); });
+          return;
+        }
+
+        if (btn.getAttribute('data-ga-goal-clear') != null) {
+          setGoalHint(goalType, 'Clearing…');
           apiPost('/api/ads/google/clear-goal', { shop: shop, goal_type: goalType })
             .then(function (r) {
               var ok = !!(r && r.ok && r.json && r.json.ok);
-              setHint(connMsgEl, ok ? 'Cleared.' : ((r && r.json && r.json.error) ? String(r.json.error) : 'Clear failed.'), ok);
+              setGoalHint(goalType, ok ? 'Cleared.' : ((r && r.json && r.json.error) ? String(r.json.error) : 'Clear failed.'), ok);
               if (ok) { loadGoalMapping(); loadConversionActions(); }
             })
-            .catch(function () { setHint(connMsgEl, 'Clear failed.', false); });
-        } else if (target.getAttribute('data-ga-create') !== null) {
-          var row = target.closest('tr');
-          var input = row ? document.getElementById('settings-ga-mapping-' + goalType + '-new-name') : null;
+            .catch(function () { setGoalHint(goalType, 'Clear failed.', false); });
+          return;
+        }
+
+        if (btn.getAttribute('data-ga-goal-create') != null) {
+          var input = document.getElementById('settings-ga-goal-' + goalType + '-create-name');
           var actionName = input ? String(input.value || '').trim() : '';
-          if (!actionName) { setHint(connMsgEl, 'Enter a name for the new action.', false); return; }
-          setHint(connMsgEl, 'Creating and attaching…', true);
+          if (!actionName) { setGoalHint(goalType, 'Enter a name for the new action.', false); return; }
+          setGoalHint(goalType, 'Creating and attaching…');
           apiPost('/api/ads/google/create-and-attach-goal', { shop: shop, goal_type: goalType, action_name: actionName })
             .then(function (r) {
               var ok = !!(r && r.ok && r.json && r.json.ok);
-              setHint(connMsgEl, ok ? 'Created and attached.' : ((r && r.json && r.json.error) ? String(r.json.error) : 'Create failed.'), ok);
+              setGoalHint(goalType, ok ? 'Created and attached.' : ((r && r.json && r.json.error) ? String(r.json.error) : 'Create failed.'), ok);
               if (ok) { if (input) input.value = ''; loadGoalMapping(); loadConversionActions(); loadPostbackHealth(); }
             })
-            .catch(function () { setHint(connMsgEl, 'Create failed.', false); });
+            .catch(function () { setGoalHint(goalType, 'Create failed.', false); });
         }
       });
     }

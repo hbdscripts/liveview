@@ -526,3 +526,82 @@ body[data-page="settings"] .kexo-settings-api-keys-list .kexo-settings-api-key-r
 body[data-page="settings"] .kexo-settings-api-keys-list .kexo-settings-api-key-row:last-child {
   border-bottom: 0;
 }
+
+/* Admin → Google Ads: goal tiles + responsive grids */
+body[data-page="settings"] #admin-panel-googleads .settings-ga-connection-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+@media (min-width: 992px) {
+  body[data-page="settings"] #admin-panel-googleads .settings-ga-connection-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (min-width: 1200px) {
+  body[data-page="settings"] #admin-panel-googleads .settings-ga-connection-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+body[data-page="settings"] #admin-panel-googleads .settings-ga-account-context-grid {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.5rem;
+}
+@media (min-width: 768px) {
+  body[data-page="settings"] #admin-panel-googleads .settings-ga-account-context-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (min-width: 992px) {
+  body[data-page="settings"] #admin-panel-googleads .settings-ga-account-context-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (min-width: 1200px) {
+  body[data-page="settings"] #admin-panel-googleads .settings-ga-account-context-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+body[data-page="settings"] #admin-panel-googleads .settings-ga-goal-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+@media (min-width: 768px) {
+  body[data-page="settings"] #admin-panel-googleads .settings-ga-goal-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (min-width: 1200px) {
+  body[data-page="settings"] #admin-panel-googleads .settings-ga-goal-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+body[data-page="settings"] #admin-panel-googleads .settings-ga-action-name-input {
+  flex: 1 1 12rem;
+  min-width: 10rem;
+}
+
+body[data-page="settings"] #admin-panel-googleads .settings-ga-profit-deductions-grid {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.5rem;
+}
+@media (min-width: 992px) {
+  body[data-page="settings"] #admin-panel-googleads .settings-ga-profit-deductions-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+body[data-page="settings"] #admin-panel-googleads .settings-ga-health-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+@media (min-width: 768px) {
+  body[data-page="settings"] #admin-panel-googleads .settings-ga-health-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (min-width: 1200px) {
+  body[data-page="settings"] #admin-panel-googleads .settings-ga-health-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
