@@ -142,13 +142,7 @@ async function configStatus(req, res, next) {
   if (!isMaster) {
     const shop = salesTruth.resolveShopForSales(req && req.query ? (req.query.shop || '') : '');
 
-    // --- Ingest config (non-sensitive) ---
-    const ingestBase = config.ingestPublicUrl && config.ingestPublicUrl.startsWith('http')
-      ? config.ingestPublicUrl.replace(/\/$/, '')
-      : (config.shopify.appUrl || '').replace(/\/$/, '');
-    const effectiveIngestUrl = ingestBase ? `${ingestBase}/api/ingest` : '';
-
-    // --- Shopify token (best-effort; used for pixel status) ---
+    // --- Shopify token (best-effort; used for pixel status only; not exposed to client) ---
     let token = '';
     if (shop) {
       try {
@@ -157,15 +151,16 @@ async function configStatus(req, res, next) {
       } catch (_) {}
     }
 
-    // --- Pixel status (Shopify web pixel settings for this app) ---
-    let pixel = { ok: false, installed: null, ingestUrl: null, message: '' };
+    // --- Pixel status: minimal for customer (no ingestUrl) ---
+    let pixelFull = { ok: false, installed: null, ingestUrl: null, message: '' };
     try {
-      if (shop && token) pixel = await fetchShopifyWebPixelIngestUrl(shop, token);
-      else if (shop && !token) pixel = { ok: false, installed: null, ingestUrl: null, message: 'No Shopify token stored for this shop yet' };
-      else pixel = { ok: false, installed: null, ingestUrl: null, message: 'No shop specified' };
+      if (shop && token) pixelFull = await fetchShopifyWebPixelIngestUrl(shop, token);
+      else if (shop && !token) pixelFull = { ok: false, installed: null, ingestUrl: null, message: 'No Shopify token stored for this shop yet' };
+      else pixelFull = { ok: false, installed: null, ingestUrl: null, message: 'No shop specified' };
     } catch (err) {
-      pixel = { ok: false, installed: null, ingestUrl: null, message: err && err.message ? String(err.message).slice(0, 180) : 'pixel_status_failed' };
+      pixelFull = { ok: false, installed: null, ingestUrl: null, message: err && err.message ? String(err.message).slice(0, 180) : 'pixel_status_failed' };
     }
+    const pixel = { ok: pixelFull.ok, installed: pixelFull.installed, message: pixelFull.message || '' };
 
     // --- Ads status (non-sensitive summary) ---
     let adsStatus = null;
@@ -181,17 +176,12 @@ async function configStatus(req, res, next) {
       googleAdsPostbackEnabled = raw === 'true' || raw === '1';
     } catch (_) {}
 
+    // --- configDisplay: customer-safe only; store domains per-shop ---
     const configDisplay = {
-      shopifyAppUrl: (config.shopify.appUrl || '').replace(/\/$/, ''),
       adminTimezone: timeZone,
-      shopDomain: config.shopDomain || config.allowedShopDomain || '',
-      shopDisplayDomain: config.shopDisplayDomain || '',
-      storeMainDomain: config.storeMainDomain || '',
-      ingestUrl: effectiveIngestUrl,
-      assetsBaseUrl: config.assetsBaseUrl || '',
-      trafficMode: config.trafficMode || 'all',
-      dbEngine,
-      apiKeyStatus: buildApiKeyStatus(config),
+      shopDomain: shop || config.shopDomain || config.allowedShopDomain || '',
+      shopDisplayDomain: shop || config.shopDisplayDomain || '',
+      storeMainDomain: shop || config.storeMainDomain || '',
     };
 
     res.setHeader('Cache-Control', 'no-store');
@@ -206,6 +196,7 @@ async function configStatus(req, res, next) {
       timeZone,
       configDisplay,
       pixel,
+      shopify: { shop: shop || '' },
       ads: {
         status: adsStatus,
         googleAdsApiVersion: config.googleAdsApiVersion || '',

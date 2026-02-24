@@ -149,7 +149,7 @@
       // admin
       var rawAdminTab = String(params.get('adminTab') || '').trim().toLowerCase();
       if (tab === 'admin') {
-        if (rawAdminTab === 'controls' || rawAdminTab === 'diagnostics' || rawAdminTab === 'users' || rawAdminTab === 'role-permissions' || rawAdminTab === 'googleads') setParam('adminTab', rawAdminTab);
+        if (rawAdminTab === 'infrastructure' || rawAdminTab === 'controls' || rawAdminTab === 'diagnostics' || rawAdminTab === 'users' || rawAdminTab === 'role-permissions' || rawAdminTab === 'googleads') setParam('adminTab', rawAdminTab);
         else delParam('adminTab');
       } else {
         delParam('adminTab');
@@ -612,7 +612,7 @@
 
   function getActiveAdminSubTab() {
     var key = activeAdminSubTab || initialAdminSubTab || 'users';
-    if (key === 'users' || key === 'diagnostics' || key === 'role-permissions' || key === 'googleads') return key;
+    if (key === 'infrastructure' || key === 'users' || key === 'diagnostics' || key === 'role-permissions' || key === 'googleads') return key;
     return 'controls';
   }
 
@@ -1721,6 +1721,7 @@
       navId: 'settings-admin-main-tabs',
       panelClass: 'admin-panel',
       tabs: [
+        { key: 'infrastructure', label: 'Infrastructure', panelId: 'admin-panel-infrastructure' },
         { key: 'users', label: 'Users & roles', panelId: 'admin-panel-users' },
         { key: 'diagnostics', label: 'Diagnostics', panelId: 'admin-panel-diagnostics' },
         { key: 'controls', label: 'Controls', panelId: 'admin-panel-controls' },
@@ -2691,25 +2692,33 @@
     var requiredList = requiredScopes ? requiredScopes.split(',').map(function (s) { return s.trim(); }).filter(Boolean) : [];
     var missing = requiredList.filter(function (s) { return storedList.indexOf(s) === -1; });
 
-    setText('settings-int-shopify-shop', shopify && shopify.shop ? shopify.shop : NA);
-    setHtml('settings-int-shopify-token', (c && c.shopify) ? (shopify && shopify.hasToken ? badge('Stored', 'ok') : badge('Missing', 'bad')) : badge('Not available', 'warn'));
-    setText('settings-int-shopify-scopes', storedScopes || ((c && c.shopify) ? 'None' : NA));
-    setHtml('settings-int-shopify-missing-scopes', requiredList.length ? (missing.length ? badge(missing.join(', '), 'bad') : badge('None', 'ok')) : badge('Not available', 'warn'));
+    var shopText = shopify && shopify.shop ? shopify.shop : NA;
+    setText('settings-int-shopify-shop', shopText);
+    setText('settings-int-shopify-shop-admin', shopText);
 
-    var staleSec = (health && typeof health.staleMs === 'number' && isFinite(health.staleMs)) ? Math.round(health.staleMs / 1000) : null;
-    setText('settings-int-shopify-sync-age', staleSec == null ? ((health && health.lastSuccessAt) ? 'N/A' : 'Not synced yet') : (staleSec + 's'));
-    setText('settings-int-shopify-last-sync', health && health.lastSuccessAt ? formatTs(health.lastSuccessAt) : 'Not synced yet');
-    setText('settings-int-shopify-last-error', health && health.lastError ? String(health.lastError).slice(0, 220) : 'None');
+    var hasFullShopifyPayload = c && c.shopify && typeof c.shopify.hasToken !== 'undefined';
+    if (hasFullShopifyPayload) {
+      setHtml('settings-int-shopify-token', shopify && shopify.hasToken ? badge('Stored', 'ok') : badge('Missing', 'bad'));
+      setText('settings-int-shopify-scopes', storedScopes || 'None');
+      setHtml('settings-int-shopify-missing-scopes', requiredList.length ? (missing.length ? badge(missing.join(', '), 'bad') : badge('None', 'ok')) : badge('Not available', 'warn'));
+      var staleSec = (health && typeof health.staleMs === 'number' && isFinite(health.staleMs)) ? Math.round(health.staleMs / 1000) : null;
+      setText('settings-int-shopify-sync-age', staleSec == null ? ((health && health.lastSuccessAt) ? 'N/A' : 'Not synced yet') : (staleSec + 's'));
+      setText('settings-int-shopify-last-sync', health && health.lastSuccessAt ? formatTs(health.lastSuccessAt) : 'Not synced yet');
+      setText('settings-int-shopify-last-error', health && health.lastError ? String(health.lastError).slice(0, 220) : 'None');
+    }
 
-    var pixelIngestUrl = pixel && pixel.ingestUrl != null ? String(pixel.ingestUrl) : '';
-    var expectedIngestUrl = ingest && ingest.effectiveIngestUrl != null ? String(ingest.effectiveIngestUrl) : '';
-    var match = pixelIngestUrl && expectedIngestUrl ? pixelIngestUrl === expectedIngestUrl : null;
     if (pixel && pixel.ok === false) setHtml('settings-int-pixel-installed', badge('Error', 'bad'));
     else setHtml('settings-int-pixel-installed', pixel && pixel.installed === true ? badge('Installed', 'ok') : badge('Not installed', 'warn'));
-    setText('settings-int-pixel-ingest', pixelIngestUrl || 'Not set');
-    setText('settings-int-expected-ingest', expectedIngestUrl || 'Not set');
-    setHtml('settings-int-pixel-match', match == null ? badge('Not available', 'warn') : (match ? badge('Match', 'ok') : badge('Mismatch', 'bad')));
-    setText('settings-int-session-mode', (settings && settings.pixelSessionMode === 'shared_ttl') ? 'shared_ttl (cross-tab)' : 'legacy');
+
+    if (c && c.ingest && (pixel && pixel.ingestUrl != null || ingest && ingest.effectiveIngestUrl != null)) {
+      var pixelIngestUrl = pixel && pixel.ingestUrl != null ? String(pixel.ingestUrl) : '';
+      var expectedIngestUrl = ingest && ingest.effectiveIngestUrl != null ? String(ingest.effectiveIngestUrl) : '';
+      var match = pixelIngestUrl && expectedIngestUrl ? pixelIngestUrl === expectedIngestUrl : null;
+      setText('settings-int-pixel-ingest', pixelIngestUrl || 'Not set');
+      setText('settings-int-expected-ingest', expectedIngestUrl || 'Not set');
+      setHtml('settings-int-pixel-match', match == null ? badge('Not available', 'warn') : (match ? badge('Match', 'ok') : badge('Mismatch', 'bad')));
+      setText('settings-int-session-mode', (settings && settings.pixelSessionMode === 'shared_ttl') ? 'shared_ttl (cross-tab)' : 'legacy');
+    }
 
     var connBadge = document.getElementById('settings-ga-connection-status');
     if (connBadge) {
@@ -2790,9 +2799,8 @@
         }
         var cd = c && c.configDisplay ? c.configDisplay : {};
         var notConfigured = 'Not configured';
-        document.querySelectorAll('#settings-general-app-url').forEach(function (el) {
-          el.value = cd.shopifyAppUrl || notConfigured;
-        });
+
+        // General (customer): timezone + per-shop store domains only
         document.querySelectorAll('#settings-general-timezone').forEach(function (el) {
           el.value = cd.adminTimezone || notConfigured;
         });
@@ -2806,46 +2814,62 @@
         document.querySelectorAll('#settings-general-store-main').forEach(function (el) {
           el.value = cd.storeMainDomain || notConfigured;
         });
-        document.querySelectorAll('#settings-general-ingest-url').forEach(function (el) {
-          el.value = cd.ingestUrl || notConfigured;
-        });
-        document.querySelectorAll('#settings-general-traffic-mode').forEach(function (el) {
-          el.value = (cd.trafficMode || 'all') + (cd.dbEngine ? ' \u00b7 ' + cd.dbEngine : '');
-        });
 
-        var apiKeyStatus = (cd.apiKeyStatus && typeof cd.apiKeyStatus === 'object') ? cd.apiKeyStatus : {};
-        var apiKeyLabels = [
-          { key: 'shopifyApiKey', label: 'Shopify API key' },
-          { key: 'shopifyApiSecret', label: 'Shopify API secret' },
-          { key: 'ingestSecret', label: 'Ingest secret' },
-          { key: 'openaiApiKey', label: 'OpenAI API key', note: 'Optional; for AI features' },
-          { key: 'googleClientId', label: 'Google OAuth client ID' },
-          { key: 'googleClientSecret', label: 'Google OAuth client secret' },
-          { key: 'googleAdsDeveloperToken', label: 'Google Ads developer token' },
-          { key: 'googleAdsCustomerId', label: 'Google Ads customer ID' },
-          { key: 'googleAdsRefreshToken', label: 'Google Ads refresh token' },
-          { key: 'r2AccountId', label: 'R2 account ID' },
-          { key: 'r2AccessKeyId', label: 'R2 access key ID' },
-          { key: 'r2SecretAccessKey', label: 'R2 secret access key' },
-          { key: 'dashboardSecret', label: 'Dashboard secret' },
-          { key: 'oauthCookieSecret', label: 'OAuth cookie secret' },
-          { key: 'fraudIpSalt', label: 'Fraud IP salt' },
-          { key: 'sentryDsn', label: 'Sentry DSN' },
-        ];
-        var apiKeysHtml = '';
-        apiKeyLabels.forEach(function (item) {
-          var configured = !!apiKeyStatus[item.key];
-          var badgeClass = configured ? 'bg-success-lt' : 'bg-secondary-lt';
-          var badgeText = configured ? 'Configured' : 'Missing';
-          var labelText = (item.label || item.key) + (item.note ? ' (' + item.note + ')' : '');
-          apiKeysHtml += '<div class="d-flex align-items-center justify-content-between gap-2 py-1 kexo-settings-api-key-row">';
-          apiKeysHtml += '<span class="text-body">' + escapeHtml(labelText) + '</span>';
-          apiKeysHtml += '<span class="badge ' + badgeClass + '">' + escapeHtml(badgeText) + '</span>';
-          apiKeysHtml += '</div>';
-        });
-        document.querySelectorAll('#settings-general-api-keys-list').forEach(function (el) {
-          el.innerHTML = apiKeysHtml || '—';
-        });
+        // Admin Infrastructure: only when full configDisplay is present (master response)
+        var hasFullConfig = !!(cd.shopifyAppUrl != null || (cd.apiKeyStatus && typeof cd.apiKeyStatus === 'object'));
+        if (hasFullConfig) {
+          document.querySelectorAll('#admin-infra-app-url').forEach(function (el) {
+            el.value = cd.shopifyAppUrl || notConfigured;
+          });
+          document.querySelectorAll('#admin-infra-shop-domain').forEach(function (el) {
+            el.value = cd.shopDomain || notConfigured;
+          });
+          document.querySelectorAll('#admin-infra-display-domain').forEach(function (el) {
+            el.value = cd.shopDisplayDomain || notConfigured;
+          });
+          document.querySelectorAll('#admin-infra-store-main').forEach(function (el) {
+            el.value = cd.storeMainDomain || notConfigured;
+          });
+          document.querySelectorAll('#admin-infra-ingest-url').forEach(function (el) {
+            el.value = cd.ingestUrl || notConfigured;
+          });
+          document.querySelectorAll('#admin-infra-traffic-mode').forEach(function (el) {
+            el.value = (cd.trafficMode || 'all') + (cd.dbEngine ? ' \u00b7 ' + cd.dbEngine : '');
+          });
+          var apiKeyStatus = (cd.apiKeyStatus && typeof cd.apiKeyStatus === 'object') ? cd.apiKeyStatus : {};
+          var apiKeyLabels = [
+            { key: 'shopifyApiKey', label: 'Shopify API key' },
+            { key: 'shopifyApiSecret', label: 'Shopify API secret' },
+            { key: 'ingestSecret', label: 'Ingest secret' },
+            { key: 'openaiApiKey', label: 'OpenAI API key', note: 'Optional; for AI features' },
+            { key: 'googleClientId', label: 'Google OAuth client ID' },
+            { key: 'googleClientSecret', label: 'Google OAuth client secret' },
+            { key: 'googleAdsDeveloperToken', label: 'Google Ads developer token' },
+            { key: 'googleAdsCustomerId', label: 'Google Ads customer ID' },
+            { key: 'googleAdsRefreshToken', label: 'Google Ads refresh token' },
+            { key: 'r2AccountId', label: 'R2 account ID' },
+            { key: 'r2AccessKeyId', label: 'R2 access key ID' },
+            { key: 'r2SecretAccessKey', label: 'R2 secret access key' },
+            { key: 'dashboardSecret', label: 'Dashboard secret' },
+            { key: 'oauthCookieSecret', label: 'OAuth cookie secret' },
+            { key: 'fraudIpSalt', label: 'Fraud IP salt' },
+            { key: 'sentryDsn', label: 'Sentry DSN' },
+          ];
+          var apiKeysHtml = '';
+          apiKeyLabels.forEach(function (item) {
+            var configured = !!apiKeyStatus[item.key];
+            var badgeClass = configured ? 'bg-success-lt' : 'bg-secondary-lt';
+            var badgeText = configured ? 'Configured' : 'Missing';
+            var labelText = (item.label || item.key) + (item.note ? ' (' + item.note + ')' : '');
+            apiKeysHtml += '<div class="d-flex align-items-center justify-content-between gap-2 py-1 kexo-settings-api-key-row">';
+            apiKeysHtml += '<span class="text-body">' + escapeHtml(labelText) + '</span>';
+            apiKeysHtml += '<span class="badge ' + badgeClass + '">' + escapeHtml(badgeText) + '</span>';
+            apiKeysHtml += '</div>';
+          });
+          document.querySelectorAll('#admin-infra-api-keys-list').forEach(function (el) {
+            el.innerHTML = apiKeysHtml || '—';
+          });
+        }
 
         renderIntegrationsFromConfig(c || {});
         return true;
@@ -4730,7 +4754,7 @@
       tabSelector: '#settings-admin-main-tabs [data-settings-admin-tab]',
       tabAttr: 'data-settings-admin-tab',
       panelIdPrefix: 'admin-panel-',
-      keys: ['users', 'diagnostics', 'controls', 'role-permissions', 'googleads'],
+      keys: ['infrastructure', 'users', 'diagnostics', 'controls', 'role-permissions', 'googleads'],
       initialKey: initialKey || initialAdminSubTab || 'users',
       onActivate: function (key) {
         activeAdminSubTab = key;
