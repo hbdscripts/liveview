@@ -485,7 +485,8 @@
       var end = String(r.effective_end || r.end_date || '').trim();
       var starts = start && start === (ymdTodayLocal() || '') ? 'starts now' : (start ? ('starts ' + formatYmdHuman(start)) : 'starts now');
       var ends = end ? ('ends ' + formatYmdHuman(end)) : '';
-      var summary = perOrderValueExpr(r) + ' · ' + scope + ' · ' + starts + (ends ? (' · ' + ends) : '');
+      var effect = String(r.direction || '').trim().toLowerCase() === 'subtract' ? 'Credit' : 'Deduct';
+      var summary = effect + ' ' + perOrderValueExpr(r) + ' · ' + scope + ' · ' + starts + (ends ? (' · ' + ends) : '');
       html += '<tr data-per-order-id="' + esc(rule.id) + '">' +
         '<td>' + esc(rule.name || 'Expense') + '</td>' +
         '<td>' + esc(category) + '</td>' +
@@ -795,10 +796,10 @@
       ? 'Percentage (%)'
       : (kind === 'fixed_per_item' ? 'Amount per item (£)' : 'Amount per order (£)');
     var helpText = isPercent
-      ? 'Calculates a percentage of the selected revenue basis.'
+      ? 'This percentage is applied to the selected revenue basis (use Effect to choose deduct vs credit).'
       : (kind === 'fixed_per_item'
-        ? 'Adds this amount for each item (legacy).'
-        : 'Adds this amount to every matched order.');
+        ? 'This amount is applied for each item (legacy). Use Effect to choose deduct vs credit.'
+        : 'This amount is applied to every matched order (use Effect to choose deduct vs credit).');
     valueEl.placeholder = isPercent ? '20' : (kind === 'fixed_per_item' ? '0.10' : '0.35');
 
     // Keep the Settings help popover trigger stable and update its content.
@@ -852,13 +853,11 @@
   function perOrderValueExpr(rule) {
     var r = rule && typeof rule === 'object' ? rule : {};
     var kind = String(r.kind || '').trim().toLowerCase();
-    var direction = String(r.direction || '').trim().toLowerCase() === 'subtract' ? 'subtract' : 'add';
     var v = Number(r.value);
     var amount = Number.isFinite(v) ? v : 0;
-    var sign = direction === 'subtract' ? '−' : '+';
-    if (kind === 'percent_of_revenue') return sign + perOrderFormatPercent(amount) + ' of ' + perOrderRevenueBasisLabel(r.revenue_basis);
-    if (kind === 'fixed_per_item') return (direction === 'subtract' ? '−' : '') + formatMoneyGbp(amount) + ' per item';
-    return (direction === 'subtract' ? '−' : '') + formatMoneyGbp(amount) + ' per order';
+    if (kind === 'percent_of_revenue') return perOrderFormatPercent(amount) + ' of ' + perOrderRevenueBasisLabel(r.revenue_basis);
+    if (kind === 'fixed_per_item') return formatMoneyGbp(amount) + ' per item';
+    return formatMoneyGbp(amount) + ' per order';
   }
 
   function perOrderScopeLabel(rule) {
@@ -889,8 +888,8 @@
     el.textContent =
       'Category: ' + perOrderCategoryLabel(r.category) +
       ' - ' +
-      (String(r.direction || '').trim().toLowerCase() === 'subtract' ? 'Subtracts ' : 'Adds ') +
-      perOrderValueExpr(r).replace(/^[+]/, '') +
+      (String(r.direction || '').trim().toLowerCase() === 'subtract' ? 'Credits ' : 'Deducts ') +
+      perOrderValueExpr(r) +
       ' (' + perOrderScopeLabel(r) + ', ' + perOrderDatesLabel(r) + ')';
   }
 
@@ -1440,9 +1439,12 @@
     });
     root.addEventListener('click', function (e) {
       var t = e.target;
-      if (!t || !t.getAttribute) return;
-      if (t.getAttribute('data-override-remove') !== null) {
-        var row = t.closest('[data-override-idx]');
+      if (t && t.nodeType !== 1) t = t.parentElement;
+      if (!t) return;
+
+      var overrideRemoveBtn = t.closest ? t.closest('[data-override-remove]') : null;
+      if (overrideRemoveBtn) {
+        var row = overrideRemoveBtn.closest('[data-override-idx]');
         if (row) {
           state.config = state.config || defaultConfig();
           var sh = readShippingFromUi();
@@ -1455,12 +1457,16 @@
           markDraftChanged();
         }
       }
-      if (t.getAttribute('data-per-order-edit') !== null) {
-        var id = t.getAttribute('data-per-order-id');
+
+      var perOrderEditBtn = t.closest ? t.closest('[data-per-order-edit]') : null;
+      if (perOrderEditBtn) {
+        var id = perOrderEditBtn.getAttribute('data-per-order-id');
         showPerOrderForm(getPerOrderRuleById(id));
       }
-      if (t.getAttribute('data-per-order-delete') !== null) {
-        var id = t.getAttribute('data-per-order-id');
+
+      var perOrderDeleteBtn = t.closest ? t.closest('[data-per-order-delete]') : null;
+      if (perOrderDeleteBtn) {
+        var id = perOrderDeleteBtn.getAttribute('data-per-order-id');
         state.config = state.config || defaultConfig();
         if (!state.config.cost_expenses) state.config.cost_expenses = defaultCostExpensesModel();
         state.config.cost_expenses.per_order_rules = (state.config.cost_expenses.per_order_rules || []).filter(function (r) { return String(r.id) !== String(id); });
@@ -1468,12 +1474,16 @@
         hidePerOrderForm();
         markDraftChanged();
       }
-      if (t.getAttribute('data-overhead-edit') !== null) {
-        var id = t.getAttribute('data-overhead-id');
+
+      var overheadEditBtn = t.closest ? t.closest('[data-overhead-edit]') : null;
+      if (overheadEditBtn) {
+        var id = overheadEditBtn.getAttribute('data-overhead-id');
         showOverheadForm(getOverheadById(id));
       }
-      if (t.getAttribute('data-overhead-delete') !== null) {
-        var id = t.getAttribute('data-overhead-id');
+
+      var overheadDeleteBtn = t.closest ? t.closest('[data-overhead-delete]') : null;
+      if (overheadDeleteBtn) {
+        var id = overheadDeleteBtn.getAttribute('data-overhead-id');
         state.config = state.config || defaultConfig();
         if (!state.config.cost_expenses) state.config.cost_expenses = defaultCostExpensesModel();
         state.config.cost_expenses.overheads = (state.config.cost_expenses.overheads || []).filter(function (o) { return String(o.id) !== String(id); });
@@ -1481,12 +1491,16 @@
         hideOverheadForm();
         markDraftChanged();
       }
-      if (t.getAttribute('data-fixed-cost-edit') !== null) {
-        var id = t.getAttribute('data-fixed-cost-id');
+
+      var fixedCostEditBtn = t.closest ? t.closest('[data-fixed-cost-edit]') : null;
+      if (fixedCostEditBtn) {
+        var id = fixedCostEditBtn.getAttribute('data-fixed-cost-id');
         showFixedCostForm(getFixedCostById(id));
       }
-      if (t.getAttribute('data-fixed-cost-delete') !== null) {
-        var id = t.getAttribute('data-fixed-cost-id');
+
+      var fixedCostDeleteBtn = t.closest ? t.closest('[data-fixed-cost-delete]') : null;
+      if (fixedCostDeleteBtn) {
+        var id = fixedCostDeleteBtn.getAttribute('data-fixed-cost-id');
         state.config = state.config || defaultConfig();
         if (!state.config.cost_expenses) state.config.cost_expenses = defaultCostExpensesModel();
         state.config.cost_expenses.fixed_costs = (state.config.cost_expenses.fixed_costs || []).filter(function (f) { return String(f.id) !== String(id); });
@@ -1494,13 +1508,16 @@
         hideFixedCostForm();
         markDraftChanged();
       }
-      if (t.getAttribute('data-ce-per-order-preview-range') !== null) {
-        var r = t.getAttribute('data-ce-per-order-preview-range');
+
+      var previewBtn = t.closest ? t.closest('[data-ce-per-order-preview-range]') : null;
+      if (previewBtn && previewBtn.getAttribute) {
+        var r = previewBtn.getAttribute('data-ce-per-order-preview-range');
         runPerOrderPreview(r);
       }
 
       // Country chips (add/remove)
-      if (t.id === 'cost-expenses-per-order-country-add-btn') {
+      var addCountryBtn = t.closest ? t.closest('#cost-expenses-per-order-country-add-btn') : null;
+      if (addCountryBtn) {
         var input = document.getElementById('cost-expenses-per-order-country-input');
         var raw = input ? String(input.value || '').trim() : '';
         var code = normalizeCountryCode(raw);

@@ -2371,6 +2371,13 @@
       else el.className = 'form-hint';
     }
 
+    function getSaveError(r, fallback) {
+      if (!r || typeof r !== 'object') return fallback || 'Save failed.';
+      var msg = (r.message != null ? r.message : null) || (r.error != null ? r.error : null) || (r.reason != null ? r.reason : null);
+      var out = msg != null ? String(msg).trim() : '';
+      return out || fallback || 'Save failed.';
+    }
+
     (function showOauthRedirectHint() {
       try {
         var params = new URLSearchParams(window.location.search || '');
@@ -2791,7 +2798,7 @@
           if (m && m[1]) ord = m[1];
         }
         if (!ord) ord = '—';
-        var ts = it && (it.last_seen_at || it.created_at || it.updated_at) ? fmtTs(it.last_seen_at || it.created_at || it.updated_at) : '—';
+        var ts = it && (it.last_seen_at || it.first_seen_at || it.created_at || it.updated_at) ? fmtTs(it.last_seen_at || it.first_seen_at || it.created_at || it.updated_at) : '—';
         var st = it && it.status ? String(it.status) : '—';
         return '<tr>' +
           '<td><span class="text-muted small">' + escapeHtml(typ) + '</span></td>' +
@@ -2944,11 +2951,24 @@
       postbackCb.addEventListener('change', function () {
         var checked = !!postbackCb.checked;
         saveSettings({ googleAdsPostbackEnabled: checked })
-          .then(function () {
-            setHint(connMsgEl, checked ? 'Conversion uploads enabled.' : 'Conversion uploads disabled.', true);
-            loadPostbackHealth();
+          .then(function (r) {
+            if (r && r.ok) {
+              setHint(connMsgEl, checked ? 'Conversion uploads enabled.' : 'Conversion uploads disabled.', true);
+              try {
+                if (window.__kexoSettingsPayload && typeof window.__kexoSettingsPayload === 'object') {
+                  window.__kexoSettingsPayload.googleAdsPostbackEnabled = !!r.googleAdsPostbackEnabled;
+                }
+              } catch (_) {}
+              loadPostbackHealth();
+            } else {
+              try { postbackCb.checked = !checked; } catch (_) {}
+              setHint(connMsgEl, getSaveError(r, 'Failed to save setting.'), false);
+            }
           })
-          .catch(function () { setHint(connMsgEl, 'Failed to save setting.', false); });
+          .catch(function () {
+            try { postbackCb.checked = !checked; } catch (_) {}
+            setHint(connMsgEl, 'Failed to save setting.', false);
+          });
       });
     }
 
@@ -2958,7 +2978,18 @@
     var uploadBeginCheckoutEl = document.getElementById('settings-ga-upload-begincheckout');
     function savePostbackGoals() {
       saveSettings({ googleAdsPostbackGoals: readPostbackGoalsDraft() })
-        .then(function () { setHint(connMsgEl, 'Upload goals saved.', true); })
+        .then(function (r) {
+          if (r && r.ok) {
+            try {
+              if (window.__kexoSettingsPayload && typeof window.__kexoSettingsPayload === 'object') {
+                window.__kexoSettingsPayload.googleAdsPostbackGoals = r.googleAdsPostbackGoals || window.__kexoSettingsPayload.googleAdsPostbackGoals;
+              }
+            } catch (_) {}
+            setHint(connMsgEl, 'Upload goals saved.', true);
+          } else {
+            setHint(connMsgEl, getSaveError(r, 'Failed to save upload goals.'), false);
+          }
+        })
         .catch(function () { setHint(connMsgEl, 'Failed to save upload goals.', false); });
     }
     if (uploadRevenueEl) uploadRevenueEl.addEventListener('change', savePostbackGoals);
@@ -3043,7 +3074,10 @@
       var draft = readProfitDeductionsDraft();
       setGoalHint('profit', 'Saving…');
       saveSettings({ googleAdsProfitDeductions: draft.deductions })
-        .then(function () { setGoalHint('profit', 'Saved.', true); })
+        .then(function (r) {
+          if (r && r.ok) setGoalHint('profit', 'Saved.', true);
+          else setGoalHint('profit', getSaveError(r, 'Save failed.'), false);
+        })
         .catch(function () { setGoalHint('profit', 'Save failed.', false); });
     }
     ['settings-ga-deduction-google-ads', 'settings-ga-deduction-payment-fees', 'settings-ga-deduction-tax', 'settings-ga-deduction-app-bills', 'settings-ga-deduction-shipping', 'settings-ga-deduction-rules']
@@ -3058,7 +3092,10 @@
         var draft = readProfitDeductionsDraft();
         setGoalHint('add_to_cart', 'Saving…');
         saveSettings({ googleAdsAddToCartValue: draft.googleAdsAddToCartValue })
-          .then(function () { setGoalHint('add_to_cart', 'Saved.', true); })
+          .then(function (r) {
+            if (r && r.ok) setGoalHint('add_to_cart', 'Saved.', true);
+            else setGoalHint('add_to_cart', getSaveError(r, 'Save failed.'), false);
+          })
           .catch(function () { setGoalHint('add_to_cart', 'Save failed.', false); });
       });
     }
@@ -3069,7 +3106,10 @@
         var draft = readProfitDeductionsDraft();
         setGoalHint('begin_checkout', 'Saving…');
         saveSettings({ googleAdsBeginCheckoutValue: draft.googleAdsBeginCheckoutValue })
-          .then(function () { setGoalHint('begin_checkout', 'Saved.', true); })
+          .then(function (r) {
+            if (r && r.ok) setGoalHint('begin_checkout', 'Saved.', true);
+            else setGoalHint('begin_checkout', getSaveError(r, 'Save failed.'), false);
+          })
           .catch(function () { setGoalHint('begin_checkout', 'Save failed.', false); });
       });
     }
@@ -3104,15 +3144,42 @@
         googleAdsCartDataFeedLanguage: (langEl && String(langEl.value || '').trim()) ? String(langEl.value).trim().toUpperCase().slice(0, 2) : 'EN',
       };
       setCartDataSaveHint('Saving…', null);
+      try { if (cartDataSaveBtn) cartDataSaveBtn.disabled = true; } catch (_) {}
       return saveSettings(patch)
-        .then(function () { setCartDataSaveHint('Saved.', true); })
-        .catch(function () { setCartDataSaveHint('Save failed.', false); });
+        .then(function (r) {
+          if (r && r.ok) {
+            setCartDataSaveHint('Saved.', true);
+            try {
+              if (window.__kexoSettingsPayload && typeof window.__kexoSettingsPayload === 'object') {
+                window.__kexoSettingsPayload.googleAdsCartDataMerchantId = r.googleAdsCartDataMerchantId != null ? String(r.googleAdsCartDataMerchantId) : '';
+                window.__kexoSettingsPayload.googleAdsCartDataFeedCountry = r.googleAdsCartDataFeedCountry != null ? String(r.googleAdsCartDataFeedCountry) : 'GB';
+                window.__kexoSettingsPayload.googleAdsCartDataFeedLanguage = r.googleAdsCartDataFeedLanguage != null ? String(r.googleAdsCartDataFeedLanguage) : 'EN';
+              }
+            } catch (_) {}
+            try { applyCartDataSettings(r); } catch (_) {}
+          } else {
+            setCartDataSaveHint(getSaveError(r, 'Save failed.'), false);
+          }
+        })
+        .catch(function () { setCartDataSaveHint('Save failed.', false); })
+        .finally(function () { try { if (cartDataSaveBtn) cartDataSaveBtn.disabled = false; } catch (_) {} });
     }
     function saveCartDataGoals(changedGoal) {
       var draft = readCartDataGoalsDraft();
       if (changedGoal) setGoalHint(changedGoal, 'Saving…');
       saveSettings({ googleAdsCartDataGoals: draft })
-        .then(function () { if (changedGoal) setGoalHint(changedGoal, 'Saved.', true); })
+        .then(function (r) {
+          if (r && r.ok) {
+            try {
+              if (window.__kexoSettingsPayload && typeof window.__kexoSettingsPayload === 'object') {
+                window.__kexoSettingsPayload.googleAdsCartDataGoals = r.googleAdsCartDataGoals || window.__kexoSettingsPayload.googleAdsCartDataGoals;
+              }
+            } catch (_) {}
+            if (changedGoal) setGoalHint(changedGoal, 'Saved.', true);
+          } else {
+            if (changedGoal) setGoalHint(changedGoal, getSaveError(r, 'Save failed.'), false);
+          }
+        })
         .catch(function () { if (changedGoal) setGoalHint(changedGoal, 'Save failed.', false); });
     }
     ['settings-ga-cart-data-merchant-id', 'settings-ga-cart-data-feed-country', 'settings-ga-cart-data-feed-language'].forEach(function (id) {

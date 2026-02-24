@@ -182,7 +182,22 @@
     var firstCard = null;
     try { firstCard = wrap.querySelector(':scope > .card'); } catch (_) { firstCard = null; }
     if (!firstCard) {
-      try { firstCard = wrap.querySelector('.card'); } catch (_) { firstCard = null; }
+      // Avoid stripping headers from tile cards inside Settings grids (e.g. goal tiles, swatches).
+      // When a panel has no top-level cards, its first descendant `.card` may live inside a
+      // `.settings-responsive-grid` and is not a "section header" duplicate.
+      var cards = [];
+      try { cards = Array.prototype.slice.call(wrap.querySelectorAll('.card')); } catch (_) { cards = []; }
+      for (var i = 0; i < cards.length; i++) {
+        var c = cards[i];
+        if (!c || !c.classList || !c.classList.contains('card')) continue;
+        try { if (c.closest && c.closest('.settings-responsive-grid')) continue; } catch (_) {}
+        firstCard = c;
+        break;
+      }
+      if (!firstCard) {
+        panelEl.setAttribute(SETTINGS_PANEL_HEADER_STRIPPED_ATTR, '1');
+        return false;
+      }
     }
     if (!firstCard || !firstCard.classList || !firstCard.classList.contains('card')) return false;
 
