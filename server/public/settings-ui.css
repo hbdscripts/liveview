@@ -135,6 +135,13 @@ body[data-page="settings"] #settings-cost-expenses-panel-breakdown .settings-cos
   transform: rotate(90deg);
 }
 
+/* Cost Breakdown: detail-row notes as Settings help popovers (right aligned). */
+body[data-page="settings"] #settings-cost-expenses-panel-breakdown .settings-cost-breakdown-notes-help {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+
 /* Flatten outer panel card so the only frame is .settings-tab-content-box (tabs "outside" the panel). */
 body[data-page="settings"] .settings-panel > .card {
   border: 0 !important;

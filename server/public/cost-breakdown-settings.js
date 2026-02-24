@@ -37,6 +37,14 @@
     div.textContent = str;
     return div.innerHTML;
   }
+  function escAttr(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
 
   function setMsg(text, tone) {
     var el = document.getElementById('cost-breakdown-msg');
@@ -272,6 +280,12 @@
         )
         : ('<span class="settings-cost-breakdown-amount-text">' + amountText + '</span>');
       var notes = it.notes != null ? String(it.notes) : '';
+      var notesTrim = notes.replace(/\s+/g, ' ').trim();
+      var notesHtml = isDetail
+        ? (notesTrim
+          ? ('<div class="settings-cost-breakdown-notes-help"><span class="am-tooltip-cue" aria-label="Notes" title="' + escAttr(notesTrim) + '"></span></div>')
+          : '')
+        : esc(notes);
       var rowCls = active ? '' : 'text-muted opacity-75';
       if (isDetail) rowCls = (rowCls ? rowCls + ' ' : '') + 'table-light d-none';
       rowCls = (rowCls ? rowCls + ' ' : '') + (isDetail ? 'settings-cost-breakdown-row-detail' : 'settings-cost-breakdown-row-parent');
@@ -299,7 +313,7 @@
         '<td>' + labelHtml + '</td>' +
         '<td><span class="badge ' + badgeCls + '">' + esc(statusLabel) + '</span></td>' +
         '<td class="text-end">' + amountHtml + '</td>' +
-        '<td class="text-muted small">' + esc(notes) + '</td>' +
+        '<td class="text-muted small">' + notesHtml + '</td>' +
       '</tr>';
 
       if (canDetail) {
@@ -317,6 +331,10 @@
     });
 
     tbody.innerHTML = html || '<tr><td colspan="4" class="text-muted small">No items returned.</td></tr>';
+    try {
+      if (typeof window.migrateTitleToHelpPopover === 'function') window.migrateTitleToHelpPopover(tbody);
+      if (typeof window.initKexoHelpPopovers === 'function') window.initKexoHelpPopovers(tbody);
+    } catch (_) {}
     if (totalActiveEl) totalActiveEl.textContent = formatAmount(totals.active_total, currency);
     if (totalInactiveEl) totalInactiveEl.textContent = formatAmount(totals.inactive_total, currency);
   }
