@@ -559,6 +559,7 @@
         overlayId: 'stats-loading-overlay',
         stepId: 'stats-build-step',
         title: 'Preparing country report',
+        showOverlay: !lastStatsFetchedAt,
       });
       build.step('Loading country performance data');
       statsRefreshInFlight = fetchStatsData({ force })
@@ -589,6 +590,7 @@
         overlayId: 'products-loading-overlay',
         stepId: 'products-build-step',
         title: 'Preparing product report',
+        showOverlay: !lastProductsFetchedAt,
       });
       let bestP = null;
       let variantsP = null;
@@ -998,7 +1000,7 @@
     function refreshAttribution(options = {}) {
       const force = !!options.force;
       if (attributionRefreshInFlight) return attributionRefreshInFlight;
-      const build = startReportBuild({ key: 'attribution', title: 'Preparing attribution report' });
+      const build = startReportBuild({ key: 'attribution', title: 'Preparing attribution report', showOverlay: !lastAttributionFetchedAt });
       build.step('Loading attribution performance');
       attributionRefreshInFlight = fetchAttributionData({ force })
         .finally(function() {
@@ -1266,7 +1268,7 @@
     function refreshDevices(options = {}) {
       const force = !!options.force;
       if (devicesRefreshInFlight) return devicesRefreshInFlight;
-      const build = startReportBuild({ key: 'devices', title: 'Preparing devices report' });
+      const build = startReportBuild({ key: 'devices', title: 'Preparing devices report', showOverlay: !lastDevicesFetchedAt });
       build.step('Loading device performance');
       devicesRefreshInFlight = fetchDevicesData({ force })
         .finally(function() {
@@ -1523,7 +1525,7 @@
     function refreshBrowsers(options = {}) {
       const force = !!options.force;
       if (browsersRefreshInFlight) return browsersRefreshInFlight;
-      const build = startReportBuild({ key: 'browsers', title: 'Preparing browsers report' });
+      const build = startReportBuild({ key: 'browsers', title: 'Preparing browsers report', showOverlay: !lastBrowsersFetchedAt });
       build.step('Loading browser performance');
       browsersRefreshInFlight = fetchBrowsersData({ force })
         .finally(function() {
@@ -2867,6 +2869,7 @@
         key: 'sessions',
         overlayId: 'sessions-loading-overlay',
         title: isLive ? 'Preparing live sessions' : 'Preparing sessions table',
+        showOverlay: !lastSessionsFetchedAt,
       });
       build.step(isLive ? 'Loading active visitors' : 'Loading selected date range');
       var url;

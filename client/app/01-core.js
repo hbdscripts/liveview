@@ -28,92 +28,129 @@ const API = '';
         window.kexoCaptureMessage(String(message || ''), payload, level || 'error');
       } catch (_) {}
     }
-    const PAGE_LOADER_ENABLED_LS_KEY = 'kexo:page-loader-enabled:v1';
+    const PAGE_LOADERS_UI_LS_KEY = 'kexo:page-loaders-ui:v1';
+    const PAGE_LOADER_ENABLED_LS_KEY_LEGACY = 'kexo:page-loader-enabled:v1';
 
-    function defaultPageLoaderEnabledV1() {
-      return {
-        v: 1,
-        pages: {
-          dashboard: true,
-          live: true,
-          sales: true,
-          date: true,
-          // Snapshot uses its own in-card loaders and never calls report-build finish().
-          snapshot: false,
-          countries: true,
-          products: true,
-          variants: true,
-          'abandoned-carts': true,
-          attribution: true,
-          devices: true,
-          ads: true,
-          'compare-conversion-rate': true,
-          'shipping-cr': true,
-          'click-order-lookup': true,
-          'change-pins': true,
-          'time-of-day': true,
-          // Settings must never show the page overlay loader.
-          settings: false,
-          // Upgrade page is static marketing (see docs/UPGRADE.md); never show the overlay loader there.
-          upgrade: false,
-          // Admin must never show the overlay loader.
-          admin: false,
-        },
-      };
+    var LOADER_PAGE_KEYS = [
+      'dashboard', 'live', 'sales', 'date', 'snapshot', 'countries', 'products', 'variants',
+      'abandoned-carts', 'attribution', 'devices', 'ads', 'compare-conversion-rate', 'shipping-cr',
+      'click-order-lookup', 'change-pins', 'time-of-day', 'settings', 'upgrade', 'admin'
+    ];
+
+    function defaultPageLoadersUiV1() {
+      var pages = {};
+      LOADER_PAGE_KEYS.forEach(function (key) {
+        var locked = key === 'settings' || key === 'upgrade' || key === 'admin';
+        pages[key] = {
+          overlay: locked ? false : key !== 'snapshot',
+          strip: locked ? false : true
+        };
+      });
+      return { v: 1, pages: pages };
     }
 
-    function normalizePageLoaderEnabledV1(cfg) {
-      const base = defaultPageLoaderEnabledV1();
-      const out = { v: 1, pages: Object.assign({}, base.pages) };
+    function normalizePageLoadersUiV1(cfg) {
+      var base = defaultPageLoadersUiV1();
+      var out = { v: 1, pages: {} };
+      LOADER_PAGE_KEYS.forEach(function (k) {
+        out.pages[k] = base.pages[k] ? { overlay: base.pages[k].overlay, strip: base.pages[k].strip } : { overlay: false, strip: false };
+      });
       if (!cfg || typeof cfg !== 'object') return out;
       if (Number(cfg.v) !== 1) return out;
-      const pages = cfg.pages && typeof cfg.pages === 'object' ? cfg.pages : null;
+      var pages = cfg.pages && typeof cfg.pages === 'object' ? cfg.pages : null;
       if (!pages) return out;
-      Object.keys(out.pages).forEach(function (key) {
-        if (!Object.prototype.hasOwnProperty.call(pages, key)) return;
-        out.pages[key] = pages[key] === false ? false : true;
+      LOADER_PAGE_KEYS.forEach(function (k) {
+        var p = pages[k];
+        if (!p || typeof p !== 'object') return;
+        if (k === 'settings' || k === 'upgrade' || k === 'admin') {
+          out.pages[k] = { overlay: false, strip: false };
+          return;
+        }
+        out.pages[k].overlay = p.overlay !== false;
+        out.pages[k].strip = p.strip !== false;
       });
-      // Backwards compatibility: legacy Traffic pages.
-      if (typeof out.pages.attribution !== 'boolean' && typeof pages.channels === 'boolean') out.pages.attribution = pages.channels !== false;
-      if (typeof out.pages.devices !== 'boolean' && typeof pages.type === 'boolean') out.pages.devices = pages.type !== false;
-      out.pages.settings = false;
-      out.pages.admin = false;
-      out.pages.snapshot = false;
       return out;
     }
 
-    var pageLoaderEnabledV1 = null;
+    function migrateLegacyPageLoaderToLoadersUi(legacy) {
+      if (!legacy || typeof legacy !== 'object' || Number(legacy.v) !== 1) return null;
+      var legacyPages = legacy.pages && typeof legacy.pages === 'object' ? legacy.pages : null;
+      if (!legacyPages) return null;
+      var out = defaultPageLoadersUiV1();
+      var keyMap = { channels: 'attribution', type: 'devices' };
+      LOADER_PAGE_KEYS.forEach(function (key) {
+        if (key === 'settings' || key === 'upgrade' || key === 'admin') return;
+        var legacyKey = keyMap[key] || key;
+        var enabled = legacyPages[legacyKey] !== false;
+        out.pages[key].overlay = enabled;
+        out.pages[key].strip = true;
+      });
+      return out;
+    }
+
+    var pageLoadersUiV1 = null;
     try {
-      var cachedLoaderCfg = safeReadLocalStorageJson(PAGE_LOADER_ENABLED_LS_KEY);
-      if (cachedLoaderCfg && cachedLoaderCfg.v === 1) {
-        pageLoaderEnabledV1 = normalizePageLoaderEnabledV1(cachedLoaderCfg);
+      var cached = safeReadLocalStorageJson(PAGE_LOADERS_UI_LS_KEY);
+      if (cached && cached.v === 1) {
+        pageLoadersUiV1 = normalizePageLoadersUiV1(cached);
       }
     } catch (_) {}
-    if (!pageLoaderEnabledV1) pageLoaderEnabledV1 = defaultPageLoaderEnabledV1();
+    if (!pageLoadersUiV1) {
+      try {
+        var legacy = safeReadLocalStorageJson(PAGE_LOADER_ENABLED_LS_KEY_LEGACY);
+        var migrated = migrateLegacyPageLoaderToLoadersUi(legacy);
+        if (migrated) {
+          pageLoadersUiV1 = migrated;
+          try { safeWriteLocalStorageJson(PAGE_LOADERS_UI_LS_KEY, migrated); } catch (_) {}
+        } else {
+          pageLoadersUiV1 = defaultPageLoadersUiV1();
+        }
+      } catch (_) {
+        pageLoadersUiV1 = defaultPageLoadersUiV1();
+      }
+    }
 
-    function applyPageLoaderEnabledV1(cfg) {
-      pageLoaderEnabledV1 = normalizePageLoaderEnabledV1(cfg);
-      try { window.__kexoPageLoaderEnabledV1 = pageLoaderEnabledV1; } catch (_) {}
-      try { safeWriteLocalStorageJson(PAGE_LOADER_ENABLED_LS_KEY, pageLoaderEnabledV1); } catch (_) {}
-      return pageLoaderEnabledV1;
+    function applyPageLoadersUiV1(cfg) {
+      pageLoadersUiV1 = normalizePageLoadersUiV1(cfg);
+      try { window.__kexoPageLoadersUiV1 = pageLoadersUiV1; } catch (_) {}
+      try { safeWriteLocalStorageJson(PAGE_LOADERS_UI_LS_KEY, pageLoadersUiV1); } catch (_) {}
+      return pageLoadersUiV1;
+    }
+
+    function resolvePageKey(pageKey) {
+      var k = String(pageKey == null ? '' : pageKey).trim().toLowerCase();
+      if (!k) k = String(PAGE || '').trim().toLowerCase();
+      return k;
+    }
+
+    function isPageOverlayLoaderEnabled(pageKey) {
+      var k = resolvePageKey(pageKey);
+      if (!k) return true;
+      if (k === 'settings' || k === 'admin' || k === 'snapshot') return false;
+      var cfg = pageLoadersUiV1;
+      var pages = cfg && cfg.pages && typeof cfg.pages === 'object' ? cfg.pages : null;
+      if (!pages || !Object.prototype.hasOwnProperty.call(pages, k)) return true;
+      return pages[k].overlay !== false;
+    }
+
+    function isPageTopStripLoaderEnabled(pageKey) {
+      var k = resolvePageKey(pageKey);
+      if (!k) return true;
+      if (k === 'settings' || k === 'admin') return false;
+      var cfg = pageLoadersUiV1;
+      var pages = cfg && cfg.pages && typeof cfg.pages === 'object' ? cfg.pages : null;
+      if (!pages || !Object.prototype.hasOwnProperty.call(pages, k)) return true;
+      return pages[k].strip !== false;
     }
 
     function isPageLoaderEnabled(pageKey) {
-      var k = String(pageKey == null ? '' : pageKey).trim().toLowerCase();
-      if (!k) k = String(PAGE || '').trim().toLowerCase();
-      if (!k) return true;
-      if (k === 'settings') return false;
-      if (k === 'admin') return false;
-      if (k === 'snapshot') return false;
-      var cfg = pageLoaderEnabledV1;
-      var pages = cfg && cfg.pages && typeof cfg.pages === 'object' ? cfg.pages : null;
-      if (!pages) return true;
-      if (!Object.prototype.hasOwnProperty.call(pages, k)) return true;
-      return pages[k] !== false;
+      return isPageOverlayLoaderEnabled(pageKey);
     }
 
     try { window.__kexoIsPageLoaderEnabled = isPageLoaderEnabled; } catch (_) {}
-    try { window.__kexoApplyPageLoaderEnabledV1 = applyPageLoaderEnabledV1; } catch (_) {}
+    try { window.__kexoIsPageOverlayLoaderEnabled = isPageOverlayLoaderEnabled; } catch (_) {}
+    try { window.__kexoIsPageTopStripLoaderEnabled = isPageTopStripLoaderEnabled; } catch (_) {}
+    try { window.__kexoApplyPageLoadersUiV1 = applyPageLoadersUiV1; } catch (_) {}
 
     var _silentOverlayDepth = 0;
     function kexoWithSilentOverlay(fn) {

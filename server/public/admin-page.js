@@ -982,89 +982,83 @@
     applyPreviewUi();
   }
 
-  function defaultPageLoaderEnabled() {
-    return {
-      v: 1,
-      pages: {
-        dashboard: true,
-        live: true,
-        sales: true,
-        date: true,
-        countries: true,
-        products: true,
-        variants: true,
-        'abandoned-carts': true,
-        channels: true,
-        type: true,
-        ads: true,
-        'compare-conversion-rate': true,
-        'shipping-cr': true,
-        'time-of-day': true,
-        // Settings loader is locked off.
-        settings: false,
-        upgrade: false,
-        admin: false,
-      },
-    };
+  var LOADER_PAGE_KEYS = [
+    'dashboard', 'live', 'sales', 'date', 'snapshot', 'countries', 'products', 'variants',
+    'abandoned-carts', 'attribution', 'devices', 'ads', 'compare-conversion-rate', 'shipping-cr',
+    'click-order-lookup', 'change-pins', 'time-of-day', 'settings', 'upgrade', 'admin'
+  ];
+
+  function defaultPageLoadersUi() {
+    var pages = {};
+    LOADER_PAGE_KEYS.forEach(function (key) {
+      var locked = key === 'settings' || key === 'upgrade' || key === 'admin';
+      pages[key] = {
+        overlay: locked ? false : key !== 'snapshot',
+        strip: locked ? false : true
+      };
+    });
+    return { v: 1, pages: pages };
   }
 
-  function normalizePageLoaderEnabled(cfg) {
-    var base = defaultPageLoaderEnabled();
-    var out = { v: 1, pages: Object.assign({}, base.pages) };
-    if (!cfg || typeof cfg !== 'object') return out;
-    var v = Number(cfg.v);
-    if (v !== 1) return out;
+  function normalizePageLoadersUi(cfg) {
+    var base = defaultPageLoadersUi();
+    var out = { v: 1, pages: {} };
+    LOADER_PAGE_KEYS.forEach(function (k) {
+      out.pages[k] = base.pages[k] ? { overlay: base.pages[k].overlay, strip: base.pages[k].strip } : { overlay: false, strip: false };
+    });
+    if (!cfg || typeof cfg !== 'object' || Number(cfg.v) !== 1) return out;
     var pages = cfg.pages && typeof cfg.pages === 'object' ? cfg.pages : null;
     if (!pages) return out;
-    Object.keys(out.pages).forEach(function (k) {
-      if (!Object.prototype.hasOwnProperty.call(pages, k)) return;
-      out.pages[k] = pages[k] === false ? false : true;
+    LOADER_PAGE_KEYS.forEach(function (k) {
+      var p = pages[k];
+      if (!p || typeof p !== 'object') return;
+      if (k === 'settings' || k === 'upgrade' || k === 'admin') {
+        out.pages[k] = { overlay: false, strip: false };
+        return;
+      }
+      out.pages[k].overlay = p.overlay !== false;
+      out.pages[k].strip = p.strip !== false;
     });
-    out.pages.settings = false;
-    out.pages.admin = false;
     return out;
   }
 
-  var pageLoaderEnabledDraft = null;
+  var pageLoadersUiDraft = null;
 
-  function getLoaderToggles() {
+  function getLoaderToggleEls() {
     try {
-      return Array.prototype.slice.call(document.querySelectorAll('[data-admin-loader-page]')) || [];
+      return Array.prototype.slice.call(document.querySelectorAll('[data-admin-loader-page][data-admin-loader-type]')) || [];
     } catch (_) {
       return [];
     }
   }
 
   function readLoaderTogglesIntoDraft() {
-    var cfg = pageLoaderEnabledDraft || defaultPageLoaderEnabled();
-    cfg = normalizePageLoaderEnabled(cfg);
-    var toggles = getLoaderToggles();
-    toggles.forEach(function (el) {
-      var key = el && el.getAttribute ? String(el.getAttribute('data-admin-loader-page') || '').trim().toLowerCase() : '';
-      if (!key) return;
-      if (key === 'admin') return;
-      if (key === 'settings') return;
-      cfg.pages[key] = !!el.checked;
+    var cfg = normalizePageLoadersUi(pageLoadersUiDraft || defaultPageLoadersUi());
+    getLoaderToggleEls().forEach(function (el) {
+      var key = el.getAttribute('data-admin-loader-page');
+      var type = el.getAttribute('data-admin-loader-type');
+      key = key ? String(key).trim().toLowerCase() : '';
+      type = type ? String(type).trim().toLowerCase() : '';
+      if (!key || (type !== 'overlay' && type !== 'strip')) return;
+      if (!cfg.pages[key]) return;
+      cfg.pages[key][type] = !!el.checked;
     });
-    cfg.pages.settings = false;
-    cfg.pages.admin = false;
-    pageLoaderEnabledDraft = cfg;
+    pageLoadersUiDraft = cfg;
     return cfg;
   }
 
   function applyLoaderDraftToUi(cfg) {
-    cfg = normalizePageLoaderEnabled(cfg);
-    pageLoaderEnabledDraft = cfg;
-    getLoaderToggles().forEach(function (el) {
-      var key = el && el.getAttribute ? String(el.getAttribute('data-admin-loader-page') || '').trim().toLowerCase() : '';
-      if (!key) return;
-      var val = cfg.pages && Object.prototype.hasOwnProperty.call(cfg.pages, key) ? cfg.pages[key] : true;
-      if (key === 'settings') {
-        el.checked = false;
-        el.disabled = true;
-        return;
-      }
-      el.checked = val !== false;
+    cfg = normalizePageLoadersUi(cfg);
+    pageLoadersUiDraft = cfg;
+    getLoaderToggleEls().forEach(function (el) {
+      var key = el.getAttribute('data-admin-loader-page');
+      var type = el.getAttribute('data-admin-loader-type');
+      key = key ? String(key).trim().toLowerCase() : '';
+      type = type ? String(type).trim().toLowerCase() : '';
+      if (!key || (type !== 'overlay' && type !== 'strip')) return;
+      var p = cfg.pages[key];
+      if (!p) return;
+      el.checked = p[type] !== false;
     });
   }
 
@@ -1084,7 +1078,7 @@
     kfetch('/api/admin/controls', {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ pageLoaderEnabled: cfg }),
+      body: JSON.stringify({ pageLoadersUi: cfg }),
     })
       .then(function (r) { return r && r.ok ? r.json().catch(function () { return { ok: true }; }) : null; })
       .then(function (d) {
@@ -1092,8 +1086,7 @@
           setHint('admin-loader-msg', (d && d.error) ? String(d.error) : 'Save failed', 'bad');
           return;
         }
-        // Also hydrate localStorage so prime loader can use it on next navigation.
-        try { localStorage.setItem('kexo:page-loader-enabled:v1', JSON.stringify(cfg)); } catch (_) {}
+        try { localStorage.setItem('kexo:page-loaders-ui:v1', JSON.stringify(cfg)); } catch (_) {}
         setHint('admin-loader-msg', 'Saved.', 'ok');
       })
       .catch(function (err) {
@@ -1103,10 +1096,8 @@
   }
 
   function bindLoaderToggles() {
-    getLoaderToggles().forEach(function (el) {
-      el.addEventListener('change', function () {
-        saveLoaderConfigDebounced();
-      });
+    getLoaderToggleEls().forEach(function (el) {
+      el.addEventListener('change', function () { saveLoaderConfigDebounced(); });
     });
   }
 
@@ -1156,25 +1147,23 @@
   }
 
   function loadControlsPanel() {
-    // Loader config
     setHint('admin-loader-msg', 'Loading…', 'muted');
     kfetch('/api/admin/controls', { method: 'GET' })
       .then(function (r) { return r && r.ok ? r.json().catch(function () { return null; }) : null; })
       .then(function (d) {
-        var cfg = d && d.pageLoaderEnabled ? d.pageLoaderEnabled : null;
-        cfg = normalizePageLoaderEnabled(cfg);
+        var cfg = d && d.pageLoadersUi ? d.pageLoadersUi : null;
+        cfg = normalizePageLoadersUi(cfg);
         applyLoaderDraftToUi(cfg);
         setHint('admin-loader-msg', 'Loaded.', 'muted');
       })
       .catch(function () {
-        // Fall back to localStorage/defaults
         try {
-          var raw = localStorage.getItem('kexo:page-loader-enabled:v1');
+          var raw = localStorage.getItem('kexo:page-loaders-ui:v1');
           var parsed = raw ? JSON.parse(raw) : null;
-          applyLoaderDraftToUi(normalizePageLoaderEnabled(parsed));
+          applyLoaderDraftToUi(normalizePageLoadersUi(parsed));
           setHint('admin-loader-msg', 'Loaded (local).', 'muted');
         } catch (_) {
-          applyLoaderDraftToUi(defaultPageLoaderEnabled());
+          applyLoaderDraftToUi(defaultPageLoadersUi());
           setHint('admin-loader-msg', 'Loaded (default).', 'muted');
         }
       });

@@ -5043,6 +5043,7 @@
           key: 'dashboard',
           title: 'Preparing dashboard overview',
           initialStep: 'Loading dashboard data',
+          showOverlay: !dashCache,
         });
         var buildFinishTimeout = null;
         if (!silent && typeof build.finish === 'function') {

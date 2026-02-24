@@ -154,7 +154,7 @@ const KPI_UI_CONFIG_V1_KEY = 'kpi_ui_config_v1'; // JSON object (KPIs + date ran
 const CHARTS_UI_CONFIG_V1_KEY = 'charts_ui_config_v1'; // JSON object (chart type/colors/visibility)
 const TABLES_UI_CONFIG_V1_KEY = 'tables_ui_config_v1'; // JSON object (table rows + layout + sticky column sizing)
 const SETTINGS_SCOPE_MODE_KEY = 'settings_scope_mode'; // global (shared) | user (disabled for now)
-const PAGE_LOADER_ENABLED_V1_KEY = 'page_loader_enabled_v1'; // JSON object (per-page loader overlay enable)
+const PAGE_LOADERS_UI_V1_KEY = 'page_loaders_ui_v1'; // JSON: per-page { overlay, strip } loaders (admin-only)
 const OVERVIEW_WIDGETS_UI_CONFIG_V1_KEY = 'overview_widgets_ui_config_v1'; // JSON object (Overview 6-widget grid UI prefs)
 const CSS_VAR_OVERRIDES_V1_KEY = 'css_var_overrides_v1'; // JSON object (:root CSS var overrides)
 
@@ -188,7 +188,6 @@ const SETTINGS_FIELD_PERMISSION = Object.freeze({
   assetOverrides: 'settings.kexo.assets',
   insightsVariantsConfig: 'settings.insights.variants',
   notificationsPreferencesV1: 'page.settings',
-  pageLoaderEnabled: 'settings.kexo.general',
   googleAdsProfitConfig: 'admin.only.google_ads_settings',
   googleAdsProfitDeductions: 'admin.only.google_ads_settings',
   googleAdsAddToCartValue: 'admin.only.google_ads_settings',
@@ -1477,36 +1476,29 @@ function normalizeSettingsScopeMode(v) {
   return 'global';
 }
 
-function defaultPageLoaderEnabledV1() {
-  return {
-    v: 1,
-    pages: {
-      dashboard: true,
-      live: true,
-      sales: true,
-      date: true,
-      snapshot: true,
-      countries: true,
-      products: true,
-      variants: true,
-      'abandoned-carts': true,
-      channels: true,
-      type: true,
-      ads: true,
-      'compare-conversion-rate': true,
-      'shipping-cr': true,
-      'time-of-day': true,
-      settings: true,
-      upgrade: false,
-      // Always disabled (admin should never show the overlay loader).
-      admin: false,
-    },
-  };
+const LOADER_PAGE_KEYS = [
+  'dashboard', 'live', 'sales', 'date', 'snapshot', 'countries', 'products', 'variants',
+  'abandoned-carts', 'attribution', 'devices', 'ads', 'compare-conversion-rate', 'shipping-cr',
+  'click-order-lookup', 'change-pins', 'time-of-day', 'settings', 'upgrade', 'admin',
+];
+
+function defaultPageLoadersUiV1() {
+  const pages = {};
+  for (const key of LOADER_PAGE_KEYS) {
+    const locked = key === 'settings' || key === 'upgrade' || key === 'admin';
+    const overlay = locked ? false : key !== 'snapshot';
+    const strip = locked ? false : true;
+    pages[key] = { overlay, strip };
+  }
+  return { v: 1, pages };
 }
 
-function normalizePageLoaderEnabledV1(raw) {
-  const base = defaultPageLoaderEnabledV1();
-  const out = { v: 1, pages: { ...base.pages } };
+function normalizePageLoadersUiV1(raw) {
+  const base = defaultPageLoadersUiV1();
+  const out = { v: 1, pages: {} };
+  for (const key of LOADER_PAGE_KEYS) {
+    out.pages[key] = { ...base.pages[key] };
+  }
   if (!raw) return out;
   let parsed = null;
   try {
@@ -1518,12 +1510,39 @@ function normalizePageLoaderEnabledV1(raw) {
   if (Number(parsed.v) !== 1) return out;
   const pages = parsed.pages && typeof parsed.pages === 'object' ? parsed.pages : null;
   if (!pages) return out;
-  for (const key of Object.keys(out.pages)) {
-    if (!Object.prototype.hasOwnProperty.call(pages, key)) continue;
-    out.pages[key] = pages[key] === false ? false : true;
+  for (const key of LOADER_PAGE_KEYS) {
+    const p = pages[key];
+    if (!p || typeof p !== 'object') continue;
+    if (key === 'settings' || key === 'upgrade' || key === 'admin') {
+      out.pages[key] = { overlay: false, strip: false };
+      continue;
+    }
+    out.pages[key].overlay = p.overlay === false ? false : true;
+    out.pages[key].strip = p.strip === false ? false : true;
   }
-  out.pages.settings = false;
-  out.pages.admin = false;
+  return out;
+}
+
+function migrateLegacyPageLoaderEnabledToLoadersUi(legacyRaw) {
+  if (!legacyRaw || typeof legacyRaw !== 'string') return null;
+  let legacy = null;
+  try {
+    legacy = JSON.parse(legacyRaw);
+  } catch (_) {
+    return null;
+  }
+  if (!legacy || typeof legacy !== 'object' || Number(legacy.v) !== 1) return null;
+  const legacyPages = legacy.pages && typeof legacy.pages === 'object' ? legacy.pages : null;
+  if (!legacyPages) return null;
+  const out = defaultPageLoadersUiV1();
+  const keyMap = { channels: 'attribution', type: 'devices' };
+  for (const key of LOADER_PAGE_KEYS) {
+    if (key === 'settings' || key === 'upgrade' || key === 'admin') continue;
+    const legacyKey = keyMap[key] || key;
+    const enabled = legacyPages[legacyKey] !== false;
+    out.pages[key].overlay = enabled;
+    out.pages[key].strip = true;
+  }
   return out;
 }
 
@@ -1730,16 +1749,18 @@ async function readSettingsPayload(req) {
   let googleAdsCartDataGoals = defaultGoogleAdsCartDataGoals();
   let insightsVariantsConfig = defaultVariantsConfigV1();
   let settingsScopeMode = 'global';
-  let pageLoaderEnabled = defaultPageLoaderEnabledV1();
+  let pageLoadersUi = defaultPageLoadersUiV1();
   let overviewWidgetsUiConfig = defaultOverviewWidgetsUiConfigV1();
   let cssVarOverridesV1 = defaultCssVarOverridesV1();
   let rawMap = {};
   const GOOGLE_ADS_POSTBACK_ENABLED_KEY = 'google_ads_postback_enabled';
+  const PAGE_LOADER_ENABLED_V1_KEY_LEGACY = 'page_loader_enabled_v1';
   try {
     rawMap = await readSettingsKeyMap([
       PIXEL_SESSION_MODE_KEY,
       SETTINGS_SCOPE_MODE_KEY,
-      PAGE_LOADER_ENABLED_V1_KEY,
+      PAGE_LOADERS_UI_V1_KEY,
+      PAGE_LOADER_ENABLED_V1_KEY_LEGACY,
       ASSET_OVERRIDES_KEY,
       KPI_UI_CONFIG_V1_KEY,
       CHARTS_UI_CONFIG_V1_KEY,
@@ -1873,9 +1894,15 @@ async function readSettingsPayload(req) {
     insightsVariantsConfig = normalizeVariantsConfigV1(raw);
   } catch (_) {}
   try {
-    const raw = rawMap[PAGE_LOADER_ENABLED_V1_KEY];
-    pageLoaderEnabled = normalizePageLoaderEnabledV1(raw);
-  } catch (_) { pageLoaderEnabled = defaultPageLoaderEnabledV1(); }
+    let raw = rawMap[PAGE_LOADERS_UI_V1_KEY];
+    if (!raw || String(raw).trim() === '') {
+      const migrated = migrateLegacyPageLoaderEnabledToLoadersUi(rawMap[PAGE_LOADER_ENABLED_V1_KEY_LEGACY]);
+      if (migrated) pageLoadersUi = migrated;
+      else pageLoadersUi = defaultPageLoadersUiV1();
+    } else {
+      pageLoadersUi = normalizePageLoadersUiV1(raw);
+    }
+  } catch (_) { pageLoadersUi = defaultPageLoadersUiV1(); }
   let googleAdsPostbackEnabled = false;
   try {
     const raw = rawMap[GOOGLE_ADS_POSTBACK_ENABLED_KEY];
@@ -1910,7 +1937,7 @@ async function readSettingsPayload(req) {
     googleAdsCartDataFeedLanguage,
     googleAdsCartDataGoals,
     insightsVariantsConfig,
-    pageLoaderEnabled,
+    pageLoadersUi,
     googleAdsPostbackEnabled,
     notificationsPreferencesV1,
   };

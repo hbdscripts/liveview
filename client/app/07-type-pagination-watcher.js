@@ -2992,6 +2992,8 @@
       updateNextUpdateUi();
 
       if (showTimeframeOverlay) {
+        var overlayEnabledForTimeframe = false;
+        try { if (typeof window.__kexoIsPageOverlayLoaderEnabled === 'function') overlayEnabledForTimeframe = window.__kexoIsPageOverlayLoaderEnabled(PAGE); } catch (_) {}
         timeframeOverlayToken += 1;
         var token = timeframeOverlayToken;
         var dateLabel = 'date range';
@@ -3004,24 +3006,26 @@
             dateLabel = fallback[String(dateRange || 'today')] || 'Today';
           }
         } catch (_) {}
-        var overlay = document.getElementById('page-body-loader');
-        var titleEl = overlay && overlay.querySelector ? overlay.querySelector('.report-build-title') : null;
-        var stepEl = document.getElementById('page-body-build-step');
-        var indeterminateWrap = overlay && overlay.querySelector ? overlay.querySelector('.page-loader-progress:not(.page-loader-progress--determinate)') : null;
-        var determinateWrap = document.getElementById('page-body-loader-determinate');
-        var determinateBar = document.getElementById('page-body-loader-determinate-bar');
-        if (titleEl) titleEl.textContent = 'Preparing ' + dateLabel + ' reports';
-        if (stepEl) stepEl.textContent = 'Loading…';
-        if (indeterminateWrap) indeterminateWrap.style.display = 'none';
-        if (determinateWrap) { determinateWrap.style.display = ''; }
-        if (determinateBar) { determinateBar.style.width = '0%'; determinateBar.setAttribute('aria-valuenow', 0); }
-        if (overlay) {
-          overlay.classList.remove('is-hidden');
-          overlay.classList.add('timeframe-overlay');
-        }
         var scope = document.querySelector('.page-body');
-        if (scope) try { scope.classList.add('report-building'); } catch (_) {}
-        try { document.body.classList.add('kexo-report-loading'); } catch (_) {}
+        if (overlayEnabledForTimeframe) {
+          var overlay = document.getElementById('page-body-loader');
+          var titleEl = overlay && overlay.querySelector ? overlay.querySelector('.report-build-title') : null;
+          var stepEl = document.getElementById('page-body-build-step');
+          var indeterminateWrap = overlay && overlay.querySelector ? overlay.querySelector('.page-loader-progress:not(.page-loader-progress--determinate)') : null;
+          var determinateWrap = document.getElementById('page-body-loader-determinate');
+          var determinateBar = document.getElementById('page-body-loader-determinate-bar');
+          if (titleEl) titleEl.textContent = 'Preparing ' + dateLabel + ' reports';
+          if (stepEl) stepEl.textContent = 'Loading…';
+          if (indeterminateWrap) indeterminateWrap.style.display = 'none';
+          if (determinateWrap) { determinateWrap.style.display = ''; }
+          if (determinateBar) { determinateBar.style.width = '0%'; determinateBar.setAttribute('aria-valuenow', 0); }
+          if (overlay) {
+            overlay.classList.remove('is-hidden');
+            overlay.classList.add('timeframe-overlay');
+          }
+          if (scope) try { scope.classList.add('report-building'); } catch (_) {}
+          try { document.body.classList.add('kexo-report-loading'); } catch (_) {}
+        }
 
         var promises = [];
         try { promises.push(refreshKpis({ force: true })); } catch (_) {}
@@ -5578,8 +5582,8 @@
           try { applyTablesUiConfigV1(uiSettingsCache.tablesUiConfig); } catch (_) {}
           try { scheduleTablesUiApply(); } catch (_) {}
         }
-        if (options.apply && uiSettingsCache.pageLoaderEnabled) {
-          try { applyPageLoaderEnabledV1(uiSettingsCache.pageLoaderEnabled); } catch (_) {}
+        if (options.apply && uiSettingsCache.pageLoadersUi) {
+          try { if (typeof window.__kexoApplyPageLoadersUiV1 === 'function') window.__kexoApplyPageLoadersUiV1(uiSettingsCache.pageLoadersUi); } catch (_) {}
         }
         if (options.apply && uiSettingsCache.assetOverrides) {
           var cachedUrl = (uiSettingsCache.assetOverrides.saleSound || uiSettingsCache.assetOverrides.sale_sound || '').trim();
@@ -5616,8 +5620,8 @@
             try { applyTablesUiConfigV1(uiSettingsCache.tablesUiConfig); } catch (_) {}
             try { scheduleTablesUiApply(); } catch (_) {}
           }
-          if (options.apply && uiSettingsCache && uiSettingsCache.pageLoaderEnabled) {
-            try { applyPageLoaderEnabledV1(uiSettingsCache.pageLoaderEnabled); } catch (_) {}
+          if (options.apply && uiSettingsCache && uiSettingsCache.pageLoadersUi) {
+            try { if (typeof window.__kexoApplyPageLoadersUiV1 === 'function') window.__kexoApplyPageLoadersUiV1(uiSettingsCache.pageLoadersUi); } catch (_) {}
           }
           if (options.apply && uiSettingsCache && uiSettingsCache.assetOverrides) {
             var url = (uiSettingsCache.assetOverrides.saleSound || uiSettingsCache.assetOverrides.sale_sound || '').trim();

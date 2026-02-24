@@ -482,9 +482,17 @@
       document.body.prepend(_progressEl);
       _progressBarEl = _progressEl.querySelector('.page-progress-bar');
     }
+    function _stripEnabledForPage() {
+      try {
+        if (typeof window.__kexoIsPageTopStripLoaderEnabled !== 'function') return true;
+        var page = (document.body && document.body.getAttribute('data-page')) || '';
+        return window.__kexoIsPageTopStripLoaderEnabled(page);
+      } catch (_) { return true; }
+    }
     function showPageProgress() {
       _ensureProgress();
       _progressActive += 1;
+      if (!_stripEnabledForPage()) return;
       try { document.body.classList.add('kexo-page-progress-active'); } catch (_) {}
       _progressEl.classList.add('active');
       if (_progressBarEl) {
@@ -503,6 +511,7 @@
         if (_progressActive === 0) try { document.body.classList.remove('kexo-page-progress-active'); } catch (_) {}
         return;
       }
+      if (!_stripEnabledForPage()) return;
       _progressBarEl.style.width = '100%';
       _progressHideTimer = setTimeout(function() {
         _progressHideTimer = null;

@@ -1083,70 +1083,44 @@
                   </h4>
                   <div id="settings-admin-accordion-loader" class="accordion-collapse collapse" data-bs-parent="#settings-admin-controls-accordion">
                     <div class="accordion-body">
-                      <div class="mb-2" title="Enable or disable the page loader overlay per page. Admin loader is always disabled.">Loader <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></div>
+                      <div class="mb-2" title="Per-page: On-page overlay (Google Ads-style) and top strip progress bar. Toggle independently.">Loaders <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></div>
                       <div id="admin-loader-toggles" class="settings-responsive-grid">
-                        <div class="form-check form-switch">
-                          <input class="form-check-input" type="checkbox" id="admin-loader-dashboard" data-admin-loader-page="dashboard" />
-                          <label class="form-check-label" for="admin-loader-dashboard">Enable loader on Overview</label>
-                        </div>
-                        <div class="form-check form-switch">
-                          <input class="form-check-input" type="checkbox" id="admin-loader-live" data-admin-loader-page="live" />
-                          <label class="form-check-label" for="admin-loader-live">Enable loader on Live View</label>
-                        </div>
-                        <div class="form-check form-switch">
-                          <input class="form-check-input" type="checkbox" id="admin-loader-sales" data-admin-loader-page="sales" />
-                          <label class="form-check-label" for="admin-loader-sales">Enable loader on Recent Sales</label>
-                        </div>
-                        <div class="form-check form-switch">
-                          <input class="form-check-input" type="checkbox" id="admin-loader-date" data-admin-loader-page="date" />
-                          <label class="form-check-label" for="admin-loader-date">Enable loader on Table View</label>
-                        </div>
-                        <div class="form-check form-switch">
-                          <input class="form-check-input" type="checkbox" id="admin-loader-countries" data-admin-loader-page="countries" />
-                          <label class="form-check-label" for="admin-loader-countries">Enable loader on Countries</label>
-                        </div>
-                        <div class="form-check form-switch">
-                          <input class="form-check-input" type="checkbox" id="admin-loader-products" data-admin-loader-page="products" />
-                          <label class="form-check-label" for="admin-loader-products">Enable loader on Products</label>
-                        </div>
-                        <div class="form-check form-switch">
-                          <input class="form-check-input" type="checkbox" id="admin-loader-variants" data-admin-loader-page="variants" />
-                          <label class="form-check-label" for="admin-loader-variants">Enable loader on Variants</label>
-                        </div>
-                        <div class="form-check form-switch">
-                          <input class="form-check-input" type="checkbox" id="admin-loader-abandoned-carts" data-admin-loader-page="abandoned-carts" />
-                          <label class="form-check-label" for="admin-loader-abandoned-carts">Enable loader on Abandoned Carts</label>
-                        </div>
-                        <div class="form-check form-switch">
-                          <input class="form-check-input" type="checkbox" id="admin-loader-channels" data-admin-loader-page="channels" />
-                          <label class="form-check-label" for="admin-loader-channels">Enable loader on Channels</label>
-                        </div>
-                        <div class="form-check form-switch">
-                          <input class="form-check-input" type="checkbox" id="admin-loader-type" data-admin-loader-page="type" />
-                          <label class="form-check-label" for="admin-loader-type">Enable loader on Device &amp; Platform</label>
-                        </div>
-                        <div class="form-check form-switch">
-                          <input class="form-check-input" type="checkbox" id="admin-loader-ads" data-admin-loader-page="ads" />
-                          <label class="form-check-label" for="admin-loader-ads">Enable loader on Google Ads</label>
-                        </div>
-                        <div class="form-check form-switch">
-                          <input class="form-check-input" type="checkbox" id="admin-loader-compare-conversion-rate" data-admin-loader-page="compare-conversion-rate" />
-                          <label class="form-check-label" for="admin-loader-compare-conversion-rate">Enable loader on Compare Conversion Rate</label>
-                        </div>
-                        <div class="form-check form-switch">
-                          <input class="form-check-input" type="checkbox" id="admin-loader-shipping-cr" data-admin-loader-page="shipping-cr" />
-                          <label class="form-check-label" for="admin-loader-shipping-cr">Enable loader on Shipping CR</label>
-                        </div>
-                        <div class="form-check form-switch">
-                          <input class="form-check-input" type="checkbox" id="admin-loader-time-of-day" data-admin-loader-page="time-of-day" />
-                          <label class="form-check-label" for="admin-loader-time-of-day">Enable loader on Time of Day</label>
-                        </div>
-                        <div class="d-flex align-items-center gap-2 text-secondary small">
-                          <i class="fa-thin fa-lock" aria-hidden="true"></i>
-                          <span>Settings loader is always off</span>
-                        </div>
+                        <div class="form-check form-switch" data-admin-loader-row="dashboard"><input class="form-check-input" type="checkbox" id="admin-loader-dashboard-overlay" data-admin-loader-page="dashboard" data-admin-loader-type="overlay" /><label class="form-check-label" for="admin-loader-dashboard-overlay">Overview: On-page overlay</label></div>
+                        <div class="form-check form-switch" data-admin-loader-row="dashboard"><input class="form-check-input" type="checkbox" id="admin-loader-dashboard-strip" data-admin-loader-page="dashboard" data-admin-loader-type="strip" /><label class="form-check-label" for="admin-loader-dashboard-strip">Overview: Top strip</label></div>
+                        <div class="form-check form-switch" data-admin-loader-row="live"><input class="form-check-input" type="checkbox" id="admin-loader-live-overlay" data-admin-loader-page="live" data-admin-loader-type="overlay" /><label class="form-check-label" for="admin-loader-live-overlay">Live View: On-page overlay</label></div>
+                        <div class="form-check form-switch" data-admin-loader-row="live"><input class="form-check-input" type="checkbox" id="admin-loader-live-strip" data-admin-loader-page="live" data-admin-loader-type="strip" /><label class="form-check-label" for="admin-loader-live-strip">Live View: Top strip</label></div>
+                        <div class="form-check form-switch" data-admin-loader-row="sales"><input class="form-check-input" type="checkbox" id="admin-loader-sales-overlay" data-admin-loader-page="sales" data-admin-loader-type="overlay" /><label class="form-check-label" for="admin-loader-sales-overlay">Recent Sales: On-page overlay</label></div>
+                        <div class="form-check form-switch" data-admin-loader-row="sales"><input class="form-check-input" type="checkbox" id="admin-loader-sales-strip" data-admin-loader-page="sales" data-admin-loader-type="strip" /><label class="form-check-label" for="admin-loader-sales-strip">Recent Sales: Top strip</label></div>
+                        <div class="form-check form-switch" data-admin-loader-row="date"><input class="form-check-input" type="checkbox" id="admin-loader-date-overlay" data-admin-loader-page="date" data-admin-loader-type="overlay" /><label class="form-check-label" for="admin-loader-date-overlay">Table View: On-page overlay</label></div>
+                        <div class="form-check form-switch" data-admin-loader-row="date"><input class="form-check-input" type="checkbox" id="admin-loader-date-strip" data-admin-loader-page="date" data-admin-loader-type="strip" /><label class="form-check-label" for="admin-loader-date-strip">Table View: Top strip</label></div>
+                        <div class="form-check form-switch" data-admin-loader-row="snapshot"><input class="form-check-input" type="checkbox" id="admin-loader-snapshot-overlay" data-admin-loader-page="snapshot" data-admin-loader-type="overlay" /><label class="form-check-label" for="admin-loader-snapshot-overlay">Snapshot: On-page overlay</label></div>
+                        <div class="form-check form-switch" data-admin-loader-row="snapshot"><input class="form-check-input" type="checkbox" id="admin-loader-snapshot-strip" data-admin-loader-page="snapshot" data-admin-loader-type="strip" /><label class="form-check-label" for="admin-loader-snapshot-strip">Snapshot: Top strip</label></div>
+                        <div class="form-check form-switch" data-admin-loader-row="countries"><input class="form-check-input" type="checkbox" id="admin-loader-countries-overlay" data-admin-loader-page="countries" data-admin-loader-type="overlay" /><label class="form-check-label" for="admin-loader-countries-overlay">Countries: On-page overlay</label></div>
+                        <div class="form-check form-switch" data-admin-loader-row="countries"><input class="form-check-input" type="checkbox" id="admin-loader-countries-strip" data-admin-loader-page="countries" data-admin-loader-type="strip" /><label class="form-check-label" for="admin-loader-countries-strip">Countries: Top strip</label></div>
+                        <div class="form-check form-switch" data-admin-loader-row="products"><input class="form-check-input" type="checkbox" id="admin-loader-products-overlay" data-admin-loader-page="products" data-admin-loader-type="overlay" /><label class="form-check-label" for="admin-loader-products-overlay">Products: On-page overlay</label></div>
+                        <div class="form-check form-switch" data-admin-loader-row="products"><input class="form-check-input" type="checkbox" id="admin-loader-products-strip" data-admin-loader-page="products" data-admin-loader-type="strip" /><label class="form-check-label" for="admin-loader-products-strip">Products: Top strip</label></div>
+                        <div class="form-check form-switch" data-admin-loader-row="variants"><input class="form-check-input" type="checkbox" id="admin-loader-variants-overlay" data-admin-loader-page="variants" data-admin-loader-type="overlay" /><label class="form-check-label" for="admin-loader-variants-overlay">Variants: On-page overlay</label></div>
+                        <div class="form-check form-switch" data-admin-loader-row="variants"><input class="form-check-input" type="checkbox" id="admin-loader-variants-strip" data-admin-loader-page="variants" data-admin-loader-type="strip" /><label class="form-check-label" for="admin-loader-variants-strip">Variants: Top strip</label></div>
+                        <div class="form-check form-switch" data-admin-loader-row="abandoned-carts"><input class="form-check-input" type="checkbox" id="admin-loader-abandoned-carts-overlay" data-admin-loader-page="abandoned-carts" data-admin-loader-type="overlay" /><label class="form-check-label" for="admin-loader-abandoned-carts-overlay">Abandoned Carts: On-page overlay</label></div>
+                        <div class="form-check form-switch" data-admin-loader-row="abandoned-carts"><input class="form-check-input" type="checkbox" id="admin-loader-abandoned-carts-strip" data-admin-loader-page="abandoned-carts" data-admin-loader-type="strip" /><label class="form-check-label" for="admin-loader-abandoned-carts-strip">Abandoned Carts: Top strip</label></div>
+                        <div class="form-check form-switch" data-admin-loader-row="attribution"><input class="form-check-input" type="checkbox" id="admin-loader-attribution-overlay" data-admin-loader-page="attribution" data-admin-loader-type="overlay" /><label class="form-check-label" for="admin-loader-attribution-overlay">Attribution: On-page overlay</label></div>
+                        <div class="form-check form-switch" data-admin-loader-row="attribution"><input class="form-check-input" type="checkbox" id="admin-loader-attribution-strip" data-admin-loader-page="attribution" data-admin-loader-type="strip" /><label class="form-check-label" for="admin-loader-attribution-strip">Attribution: Top strip</label></div>
+                        <div class="form-check form-switch" data-admin-loader-row="devices"><input class="form-check-input" type="checkbox" id="admin-loader-devices-overlay" data-admin-loader-page="devices" data-admin-loader-type="overlay" /><label class="form-check-label" for="admin-loader-devices-overlay">Devices: On-page overlay</label></div>
+                        <div class="form-check form-switch" data-admin-loader-row="devices"><input class="form-check-input" type="checkbox" id="admin-loader-devices-strip" data-admin-loader-page="devices" data-admin-loader-type="strip" /><label class="form-check-label" for="admin-loader-devices-strip">Devices: Top strip</label></div>
+                        <div class="form-check form-switch" data-admin-loader-row="ads"><input class="form-check-input" type="checkbox" id="admin-loader-ads-overlay" data-admin-loader-page="ads" data-admin-loader-type="overlay" /><label class="form-check-label" for="admin-loader-ads-overlay">Google Ads: On-page overlay</label></div>
+                        <div class="form-check form-switch" data-admin-loader-row="ads"><input class="form-check-input" type="checkbox" id="admin-loader-ads-strip" data-admin-loader-page="ads" data-admin-loader-type="strip" /><label class="form-check-label" for="admin-loader-ads-strip">Google Ads: Top strip</label></div>
+                        <div class="form-check form-switch" data-admin-loader-row="compare-conversion-rate"><input class="form-check-input" type="checkbox" id="admin-loader-compare-overlay" data-admin-loader-page="compare-conversion-rate" data-admin-loader-type="overlay" /><label class="form-check-label" for="admin-loader-compare-overlay">Compare CR: On-page overlay</label></div>
+                        <div class="form-check form-switch" data-admin-loader-row="compare-conversion-rate"><input class="form-check-input" type="checkbox" id="admin-loader-compare-strip" data-admin-loader-page="compare-conversion-rate" data-admin-loader-type="strip" /><label class="form-check-label" for="admin-loader-compare-strip">Compare CR: Top strip</label></div>
+                        <div class="form-check form-switch" data-admin-loader-row="shipping-cr"><input class="form-check-input" type="checkbox" id="admin-loader-shipping-cr-overlay" data-admin-loader-page="shipping-cr" data-admin-loader-type="overlay" /><label class="form-check-label" for="admin-loader-shipping-cr-overlay">Shipping CR: On-page overlay</label></div>
+                        <div class="form-check form-switch" data-admin-loader-row="shipping-cr"><input class="form-check-input" type="checkbox" id="admin-loader-shipping-cr-strip" data-admin-loader-page="shipping-cr" data-admin-loader-type="strip" /><label class="form-check-label" for="admin-loader-shipping-cr-strip">Shipping CR: Top strip</label></div>
+                        <div class="form-check form-switch" data-admin-loader-row="click-order-lookup"><input class="form-check-input" type="checkbox" id="admin-loader-click-order-lookup-overlay" data-admin-loader-page="click-order-lookup" data-admin-loader-type="overlay" /><label class="form-check-label" for="admin-loader-click-order-lookup-overlay">Click &amp; Order: On-page overlay</label></div>
+                        <div class="form-check form-switch" data-admin-loader-row="click-order-lookup"><input class="form-check-input" type="checkbox" id="admin-loader-click-order-lookup-strip" data-admin-loader-page="click-order-lookup" data-admin-loader-type="strip" /><label class="form-check-label" for="admin-loader-click-order-lookup-strip">Click &amp; Order: Top strip</label></div>
+                        <div class="form-check form-switch" data-admin-loader-row="change-pins"><input class="form-check-input" type="checkbox" id="admin-loader-change-pins-overlay" data-admin-loader-page="change-pins" data-admin-loader-type="overlay" /><label class="form-check-label" for="admin-loader-change-pins-overlay">Change Pins: On-page overlay</label></div>
+                        <div class="form-check form-switch" data-admin-loader-row="change-pins"><input class="form-check-input" type="checkbox" id="admin-loader-change-pins-strip" data-admin-loader-page="change-pins" data-admin-loader-type="strip" /><label class="form-check-label" for="admin-loader-change-pins-strip">Change Pins: Top strip</label></div>
+                        <div class="form-check form-switch" data-admin-loader-row="time-of-day"><input class="form-check-input" type="checkbox" id="admin-loader-time-of-day-overlay" data-admin-loader-page="time-of-day" data-admin-loader-type="overlay" /><label class="form-check-label" for="admin-loader-time-of-day-overlay">Time of Day: On-page overlay</label></div>
+                        <div class="form-check form-switch" data-admin-loader-row="time-of-day"><input class="form-check-input" type="checkbox" id="admin-loader-time-of-day-strip" data-admin-loader-page="time-of-day" data-admin-loader-type="strip" /><label class="form-check-label" for="admin-loader-time-of-day-strip">Time of Day: Top strip</label></div>
                       </div>
-                      <div class="form-hint mt-2">Admin and Settings loaders are always disabled.</div>
+                      <div class="form-hint mt-2">Settings, Upgrade and Admin loaders are always off.</div>
                       <div class="form-hint mt-1" id="admin-loader-msg"></div>
                     </div>
                   </div>

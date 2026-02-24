@@ -133,9 +133,19 @@
     return { panel: panel, overlay: overlay, titleEl: titleEl, stepEl: stepEl };
   }
 
+  function allowStripLoader() {
+    try {
+      if (typeof window.__kexoIsPageTopStripLoaderEnabled === 'function') return window.__kexoIsPageTopStripLoaderEnabled('ads');
+    } catch (_) {}
+    return true;
+  }
+
   function showPanelLoader(title, step) {
     var st = getPanelLoaderState();
     if (!st.panel || !st.overlay) return;
+    if (allowStripLoader()) {
+      try { if (typeof window.__kexoShowPageProgress === 'function') window.__kexoShowPageProgress(); } catch (_) {}
+    }
     if (!allowOverlayLoader()) {
       try { if (typeof window.__kexoBeginGlobalReportLoading === 'function') window.__kexoBeginGlobalReportLoading(); } catch (_) {}
       _panelLoaderActive = true;
@@ -160,6 +170,9 @@
   function hidePanelLoader() {
     var st = getPanelLoaderState();
     if (!st.panel || !st.overlay) return;
+    if (allowStripLoader()) {
+      try { if (typeof window.__kexoHidePageProgress === 'function') window.__kexoHidePageProgress(); } catch (_) {}
+    }
     if (_panelLoaderSilent) {
       try { if (typeof window.__kexoEndGlobalReportLoading === 'function') window.__kexoEndGlobalReportLoading(); } catch (_) {}
       _panelLoaderActive = false;
