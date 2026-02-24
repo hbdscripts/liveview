@@ -495,8 +495,14 @@
         '<td class="text-end">' + esc(String(rule.sort != null ? rule.sort : '—')) + '</td>' +
         '<td class="text-center"><input type="checkbox" data-per-order-enabled data-per-order-id="' + esc(rule.id) + '" ' + (rule.enabled ? 'checked' : '') + ' /></td>' +
         '<td class="text-end">' +
-          '<button type="button" class="btn btn-sm" data-per-order-edit data-per-order-id="' + esc(rule.id) + '">Edit</button> ' +
-          '<button type="button" class="btn btn-danger btn-sm" data-per-order-delete data-per-order-id="' + esc(rule.id) + '">Delete</button>' +
+          '<div class="d-inline-flex gap-1 flex-nowrap kexo-table-actions" aria-label="Rule actions">' +
+            '<button type="button" class="btn btn-sm kexo-icon-action-btn" data-per-order-edit data-per-order-id="' + esc(rule.id) + '" aria-label="Edit rule" title="Edit">' +
+              '<i data-icon-key="admin-tab-table-row-edit" aria-hidden="true"></i>' +
+            '</button>' +
+            '<button type="button" class="btn btn-danger btn-sm kexo-icon-action-btn" data-per-order-delete data-per-order-id="' + esc(rule.id) + '" aria-label="Delete rule" title="Delete">' +
+              '<i data-icon-key="admin-tab-table-row-delete" aria-hidden="true"></i>' +
+            '</button>' +
+          '</div>' +
         '</td>' +
       '</tr>';
     });
@@ -538,8 +544,14 @@
         '<td>' + esc(scopeLabel(o.appliesTo)) + '</td>' +
         '<td class="text-center"><input type="checkbox" data-overhead-enabled data-overhead-id="' + esc(o.id) + '" ' + (o.enabled ? 'checked' : '') + ' /></td>' +
         '<td class="text-end">' +
-          '<button type="button" class="btn btn-sm" data-overhead-edit data-overhead-id="' + esc(o.id) + '">Edit</button> ' +
-          '<button type="button" class="btn btn-danger btn-sm" data-overhead-delete data-overhead-id="' + esc(o.id) + '">Delete</button>' +
+          '<div class="d-inline-flex gap-1 flex-nowrap kexo-table-actions" aria-label="Overhead actions">' +
+            '<button type="button" class="btn btn-sm kexo-icon-action-btn" data-overhead-edit data-overhead-id="' + esc(o.id) + '" aria-label="Edit overhead" title="Edit">' +
+              '<i data-icon-key="admin-tab-table-row-edit" aria-hidden="true"></i>' +
+            '</button>' +
+            '<button type="button" class="btn btn-danger btn-sm kexo-icon-action-btn" data-overhead-delete data-overhead-id="' + esc(o.id) + '" aria-label="Delete overhead" title="Delete">' +
+              '<i data-icon-key="admin-tab-table-row-delete" aria-hidden="true"></i>' +
+            '</button>' +
+          '</div>' +
         '</td>' +
       '</tr>';
     });
@@ -563,8 +575,14 @@
         '<td class="text-end">' + esc(formatMoneyGbp(f.amount_per_day)) + '/day</td>' +
         '<td class="text-center"><input type="checkbox" data-fixed-cost-enabled data-fixed-cost-id="' + esc(f.id) + '" ' + (f.enabled ? 'checked' : '') + ' /></td>' +
         '<td class="text-end">' +
-          '<button type="button" class="btn btn-sm" data-fixed-cost-edit data-fixed-cost-id="' + esc(f.id) + '">Edit</button> ' +
-          '<button type="button" class="btn btn-danger btn-sm" data-fixed-cost-delete data-fixed-cost-id="' + esc(f.id) + '">Delete</button>' +
+          '<div class="d-inline-flex gap-1 flex-nowrap kexo-table-actions" aria-label="Fixed cost actions">' +
+            '<button type="button" class="btn btn-sm kexo-icon-action-btn" data-fixed-cost-edit data-fixed-cost-id="' + esc(f.id) + '" aria-label="Edit fixed cost" title="Edit">' +
+              '<i data-icon-key="admin-tab-table-row-edit" aria-hidden="true"></i>' +
+            '</button>' +
+            '<button type="button" class="btn btn-danger btn-sm kexo-icon-action-btn" data-fixed-cost-delete data-fixed-cost-id="' + esc(f.id) + '" aria-label="Delete fixed cost" title="Delete">' +
+              '<i data-icon-key="admin-tab-table-row-delete" aria-hidden="true"></i>' +
+            '</button>' +
+          '</div>' +
         '</td>' +
       '</tr>';
     });
@@ -727,6 +745,228 @@
     return '';
   }
 
+  function flagEmojiForCountryCode(code) {
+    var cc = normalizeCountryCode(code);
+    if (!cc || cc.length !== 2) return '';
+    // Regional indicator symbols: A=0x1F1E6
+    var a = cc.charCodeAt(0);
+    var b = cc.charCodeAt(1);
+    if (a < 65 || a > 90 || b < 65 || b > 90) return '';
+    try {
+      return String.fromCodePoint(0x1F1E6 + (a - 65), 0x1F1E6 + (b - 65));
+    } catch (_) {
+      return '';
+    }
+  }
+
+  var __kexoRegionDisplayNames = null;
+  function regionDisplayName(code) {
+    var cc = normalizeCountryCode(code);
+    if (!cc) return '';
+    try {
+      if (!__kexoRegionDisplayNames && typeof Intl !== 'undefined' && Intl.DisplayNames) {
+        __kexoRegionDisplayNames = new Intl.DisplayNames(['en'], { type: 'region' });
+      }
+      if (__kexoRegionDisplayNames && typeof __kexoRegionDisplayNames.of === 'function') {
+        var name = __kexoRegionDisplayNames.of(cc);
+        return name ? String(name) : '';
+      }
+    } catch (_) {}
+    if (cc === 'GB') return 'United Kingdom';
+    return '';
+  }
+
+  var __kexoRegionCodes = null;
+  function getRegionCodes() {
+    if (__kexoRegionCodes) return __kexoRegionCodes.slice();
+    var out = [];
+    try {
+      if (typeof Intl !== 'undefined' && typeof Intl.supportedValuesOf === 'function') {
+        out = Intl.supportedValuesOf('region') || [];
+      }
+    } catch (_) {
+      out = [];
+    }
+    if (!Array.isArray(out) || !out.length) {
+      out = [
+        'GB', 'IE', 'US', 'CA', 'AU', 'NZ',
+        'FR', 'DE', 'ES', 'IT', 'NL', 'BE', 'DK', 'SE', 'NO', 'FI',
+        'PL', 'AT', 'CH', 'PT', 'GR', 'CZ', 'HU', 'RO', 'BG', 'HR',
+      ];
+    }
+    var seen = {};
+    var cleaned = [];
+    out.forEach(function (c) {
+      var cc = normalizeCountryCode(c);
+      if (!cc || seen[cc]) return;
+      if (!/^[A-Z]{2}$/.test(cc)) return;
+      seen[cc] = true;
+      cleaned.push(cc);
+    });
+    cleaned.sort(function (a, b) { return a.localeCompare(b); });
+    __kexoRegionCodes = cleaned.slice();
+    return __kexoRegionCodes.slice();
+  }
+
+  function buildCountrySuggestions(query, limit) {
+    var qRaw = query == null ? '' : String(query);
+    var q = qRaw.trim().toLowerCase();
+    var max = Math.max(1, Math.min(50, parseInt(limit, 10) || 12));
+    var codes = getRegionCodes();
+    var scored = [];
+
+    // Alias: UK → GB (common user expectation)
+    if (q === 'uk') q = 'gb';
+
+    // Default suggestions when empty.
+    var preferred = ['GB', 'IE', 'US', 'CA', 'AU', 'NZ', 'FR', 'DE', 'ES', 'IT', 'NL'];
+    if (!q) {
+      preferred.forEach(function (cc) {
+        var name = regionDisplayName(cc) || '';
+        scored.push({ code: cc, name: name, score: 0 });
+      });
+    } else {
+      codes.forEach(function (cc) {
+        var name = regionDisplayName(cc) || '';
+        var codeLc = cc.toLowerCase();
+        var nameLc = name.toLowerCase();
+        var score = 9999;
+        if (codeLc === q) score = 0;
+        else if (codeLc.indexOf(q) === 0) score = 1;
+        else if (nameLc.indexOf(q) === 0) score = 2;
+        else if (nameLc.indexOf(q) >= 0) score = 3;
+        if (score < 9999) scored.push({ code: cc, name: name, score: score });
+      });
+    }
+
+    var seen = {};
+    var out = [];
+    scored.sort(function (a, b) {
+      if (a.score !== b.score) return a.score - b.score;
+      if (a.code !== b.code) return a.code.localeCompare(b.code);
+      return 0;
+    });
+    for (var i = 0; i < scored.length && out.length < max; i++) {
+      var item = scored[i];
+      if (!item || !item.code || seen[item.code]) continue;
+      seen[item.code] = true;
+      out.push({ code: item.code, name: item.name || '', flag: flagEmojiForCountryCode(item.code) });
+    }
+    return out;
+  }
+
+  function renderCountrySuggestList(query) {
+    var el = document.getElementById('cost-expenses-per-order-country-suggest');
+    if (!el) return;
+    var items = buildCountrySuggestions(query, 12);
+    // Hide already-selected countries from suggestions.
+    try {
+      var chips = document.getElementById('cost-expenses-per-order-country-chips');
+      if (chips) {
+        var selected = {};
+        chips.querySelectorAll('[data-country-code]').forEach(function (chip) {
+          var cc = normalizeCountryCode(chip.getAttribute('data-country-code'));
+          if (cc) selected[cc] = true;
+        });
+        items = items.filter(function (it) { return it && it.code && !selected[it.code]; });
+      }
+    } catch (_) {}
+    if (!items.length) {
+      el.innerHTML = '';
+      el.classList.add('is-hidden');
+      return;
+    }
+    var html = '';
+    items.forEach(function (it) {
+      var label = (it.code || '') + (it.name ? (' — ' + it.name) : '');
+      html +=
+        '<button type="button" class="kexo-country-suggest-item" role="option" data-ce-country-suggest-code="' + esc(it.code) + '" title="' + esc(label) + '">' +
+          (it.flag ? ('<span class="kexo-country-flag" aria-hidden="true">' + esc(it.flag) + '</span>') : '') +
+          '<span class="kexo-country-suggest-code">' + esc(it.code) + '</span>' +
+          (it.name ? ('<span class="kexo-country-suggest-name">' + esc(it.name) + '</span>') : '') +
+        '</button>';
+    });
+    el.innerHTML = html;
+    el.classList.remove('is-hidden');
+  }
+
+  function hideCountrySuggestList() {
+    var el = document.getElementById('cost-expenses-per-order-country-suggest');
+    if (!el) return;
+    el.innerHTML = '';
+    el.classList.add('is-hidden');
+  }
+
+  function readPerOrderCountryCodesFromChips() {
+    var chips = document.getElementById('cost-expenses-per-order-country-chips');
+    var out = [];
+    if (!chips) return out;
+    chips.querySelectorAll('[data-country-code]').forEach(function (el) {
+      var code = normalizeCountryCode(el.getAttribute('data-country-code'));
+      if (code && out.indexOf(code) === -1) out.push(code);
+    });
+    return out;
+  }
+
+  function setPerOrderCountryCodes(next) {
+    var list = Array.isArray(next) ? next : [];
+    var seen = {};
+    var codes = [];
+    list.forEach(function (c) {
+      var cc = normalizeCountryCode(c);
+      if (!cc || seen[cc]) return;
+      seen[cc] = true;
+      codes.push(cc);
+    });
+    codes.sort(function (a, b) { return String(a).localeCompare(String(b)); });
+    renderPerOrderCountryChips(codes);
+    var hidden = document.getElementById('cost-expenses-per-order-country');
+    if (hidden) hidden.value = codes.join(',');
+  }
+
+  function resolveCountryCodeFromFreeText(rawText) {
+    var raw = rawText == null ? '' : String(rawText).trim();
+    if (!raw) return '';
+    // If the user typed an ISO2 code (or a code prefix like "GB — United Kingdom"), use that.
+    if (/^[A-Za-z]{2}(\b|[^A-Za-z])/.test(raw)) {
+      var cc = normalizeCountryCode(raw);
+      var all = getRegionCodes();
+      if (cc && all.indexOf(cc) >= 0) return cc;
+      // Allow UK alias even if Intl list is missing GB for some reason.
+      if (cc === 'GB') return 'GB';
+    }
+    // Otherwise, treat as a name search and take the best match.
+    var best = buildCountrySuggestions(raw, 1);
+    return best && best[0] && best[0].code ? String(best[0].code) : '';
+  }
+
+  function maybeSuggestVatBreakdownLabel(countryCodes) {
+    try {
+      var catEl = document.getElementById('cost-expenses-per-order-category');
+      var blEl = document.getElementById('cost-expenses-per-order-breakdown-label');
+      var cat = catEl ? String(catEl.value || '').trim().toLowerCase() : '';
+      var cur = blEl ? String(blEl.value || '').trim() : '';
+      var list = Array.isArray(countryCodes) ? countryCodes : [];
+      if (cat === 'tax_vat' && blEl && (!cur || cur === 'VAT' || cur === 'UK VAT')) {
+        blEl.value = (list.length === 1 && list[0] === 'GB') ? 'UK VAT' : 'VAT';
+      }
+    } catch (_) {}
+  }
+
+  function addPerOrderCountryFromText(rawText) {
+    var code = resolveCountryCodeFromFreeText(rawText);
+    if (!code) {
+      return { ok: false, error: 'Pick a country from the list, or enter a valid ISO2 code (e.g. GB).' };
+    }
+    var existing = readPerOrderCountryCodesFromChips();
+    if (existing.indexOf(code) === -1) existing.push(code);
+    existing.sort(function (a, b) { return String(a).localeCompare(String(b)); });
+    setPerOrderCountryCodes(existing);
+    maybeSuggestVatBreakdownLabel(existing);
+    hideCountrySuggestList();
+    return { ok: true, codes: existing };
+  }
+
   function renderPerOrderCountryChips(codes) {
     var chips = document.getElementById('cost-expenses-per-order-country-chips');
     if (!chips) return;
@@ -737,9 +977,14 @@
       var code = normalizeCountryCode(c);
       if (!code || seen[code]) return;
       seen[code] = true;
+      var name = regionDisplayName(code) || '';
+      var flag = flagEmojiForCountryCode(code) || '';
+      var title = name ? (name + ' (' + code + ')') : code;
       html +=
-        '<span class="badge bg-secondary-lt text-secondary kexo-country-chip" data-country-code="' + esc(code) + '">' +
-          esc(code) +
+        '<span class="badge bg-secondary-lt text-secondary kexo-country-chip" data-country-code="' + esc(code) + '" title="' + esc(title) + '">' +
+          (flag ? ('<span class="kexo-country-flag" aria-hidden="true">' + esc(flag) + '</span>') : '') +
+          '<span class="kexo-country-chip-code">' + esc(code) + '</span>' +
+          (name ? ('<span class="kexo-country-chip-name d-none d-md-inline">' + esc(name) + '</span>') : '') +
           '<button type="button" class="btn-close ms-1 kexo-country-chip-remove" aria-label="Remove ' + esc(code) + '" data-country-remove="' + esc(code) + '"></button>' +
         '</span>';
     });
@@ -774,6 +1019,7 @@
     var mode = readCheckedRadioValue('cost-expenses-per-order-country-mode') || 'all';
     var wrap = document.getElementById('cost-expenses-per-order-country-selected-wrap');
     if (wrap) wrap.classList.toggle('is-hidden', mode !== 'countries');
+    if (mode !== 'countries') hideCountrySuggestList();
     var catEl = document.getElementById('cost-expenses-per-order-category');
     var nudgeEl = document.getElementById('cost-expenses-per-order-country-nudge');
     var cat = catEl ? String(catEl.value || '').trim().toLowerCase() : '';
@@ -1064,8 +1310,12 @@
     list.sort(function (a, b) { return (a.sort || 0) - (b.sort || 0); });
     renderPerOrderRulesTable();
     hidePerOrderForm();
-    setSectionMsg('cost-expenses-per-order-msg', 'Rule saved in draft. Press Save Settings below to apply.', true);
+    setSectionMsg('cost-expenses-per-order-msg', 'Saving…', null);
     markDraftChanged();
+    saveCostExpensesToApi().then(function (res) {
+      if (res && res.ok === true) setSectionMsg('cost-expenses-per-order-msg', 'Saved.', true);
+      else setSectionMsg('cost-expenses-per-order-msg', 'Save failed. Your rule is kept in draft; use Save Settings below to retry.', false);
+    });
   }
 
   function syncOverheadFormUi() {
@@ -1170,8 +1420,12 @@
     list.sort(function (a, b) { return String(a.name || '').localeCompare(String(b.name || '')); });
     renderOverheadsTable();
     hideOverheadForm();
-    setSectionMsg('cost-expenses-overheads-msg', 'Overhead saved in draft. Press Save Settings below to apply.', true);
+    setSectionMsg('cost-expenses-overheads-msg', 'Saving…', null);
     markDraftChanged();
+    saveCostExpensesToApi().then(function (res) {
+      if (res && res.ok === true) setSectionMsg('cost-expenses-overheads-msg', 'Saved.', true);
+      else setSectionMsg('cost-expenses-overheads-msg', 'Save failed. Your overhead is kept in draft; use Save Settings below to retry.', false);
+    });
   }
 
   function showFixedCostForm(fc) {
@@ -1222,8 +1476,12 @@
     list.sort(function (a, b) { return String(a.name || '').localeCompare(String(b.name || '')); });
     renderFixedCostsTable();
     hideFixedCostForm();
-    setSectionMsg('cost-expenses-fixed-costs-msg', 'Fixed cost saved in draft. Press Save Settings below to apply.', true);
+    setSectionMsg('cost-expenses-fixed-costs-msg', 'Saving…', null);
     markDraftChanged();
+    saveCostExpensesToApi().then(function (res) {
+      if (res && res.ok === true) setSectionMsg('cost-expenses-fixed-costs-msg', 'Saved.', true);
+      else setSectionMsg('cost-expenses-fixed-costs-msg', 'Save failed. Your fixed cost is kept in draft; use Save Settings below to retry.', false);
+    });
   }
 
   function runPerOrderPreview(rangeKey) {
@@ -1305,10 +1563,21 @@
     var countryInput = document.getElementById('cost-expenses-per-order-country-input');
     var countryAddBtn = document.getElementById('cost-expenses-per-order-country-add-btn');
     if (countryInput && countryAddBtn) {
+      countryInput.addEventListener('focus', function () {
+        try { renderCountrySuggestList(countryInput.value || ''); } catch (_) {}
+      });
+      countryInput.addEventListener('input', function () {
+        try { renderCountrySuggestList(countryInput.value || ''); } catch (_) {}
+      });
       countryInput.addEventListener('keydown', function (ev) {
         if (ev && (ev.key === 'Enter' || ev.keyCode === 13)) {
           try { ev.preventDefault(); } catch (_) {}
           try { countryAddBtn.click(); } catch (_) {}
+          return;
+        }
+        if (ev && (ev.key === 'Escape' || ev.keyCode === 27)) {
+          try { ev.preventDefault(); } catch (_) {}
+          hideCountrySuggestList();
         }
       });
     }
@@ -1442,6 +1711,12 @@
       if (t && t.nodeType !== 1) t = t.parentElement;
       if (!t) return;
 
+      // Country suggest list: click outside closes it.
+      try {
+        var countryWrap = document.getElementById('cost-expenses-per-order-country-selected-wrap');
+        if (countryWrap && !countryWrap.contains(t)) hideCountrySuggestList();
+      } catch (_) {}
+
       var overrideRemoveBtn = t.closest ? t.closest('[data-override-remove]') : null;
       if (overrideRemoveBtn) {
         var row = overrideRemoveBtn.closest('[data-override-idx]');
@@ -1516,65 +1791,41 @@
       }
 
       // Country chips (add/remove)
-      var addCountryBtn = t.closest ? t.closest('#cost-expenses-per-order-country-add-btn') : null;
-      if (addCountryBtn) {
+      var suggestCountryBtn = t.closest ? t.closest('[data-ce-country-suggest-code]') : null;
+      if (suggestCountryBtn) {
         var input = document.getElementById('cost-expenses-per-order-country-input');
-        var raw = input ? String(input.value || '').trim() : '';
-        var code = normalizeCountryCode(raw);
-        if (!code) {
-          setSectionMsg('cost-expenses-per-order-msg', 'Use a valid 2-letter ISO country code (e.g. GB).', false);
+        var pick = suggestCountryBtn.getAttribute('data-ce-country-suggest-code');
+        var res = addPerOrderCountryFromText(pick);
+        if (!res.ok) {
+          setSectionMsg('cost-expenses-per-order-msg', res.error, false);
           return;
         }
         setSectionMsg('cost-expenses-per-order-msg', '', null);
-        var chips = document.getElementById('cost-expenses-per-order-country-chips');
-        var existing = [];
-        if (chips) {
-          chips.querySelectorAll('[data-country-code]').forEach(function (el) {
-            var c = normalizeCountryCode(el.getAttribute('data-country-code'));
-            if (c && existing.indexOf(c) === -1) existing.push(c);
-          });
-        }
-        if (existing.indexOf(code) === -1) existing.push(code);
-        existing.sort(function (a, b) { return String(a).localeCompare(String(b)); });
-        renderPerOrderCountryChips(existing);
-        document.getElementById('cost-expenses-per-order-country').value = existing.join(',');
         if (input) input.value = '';
-        // VAT label suggestion: if user hasn't customised, prefer "UK VAT" when GB-only.
-        try {
-          var catEl = document.getElementById('cost-expenses-per-order-category');
-          var blEl = document.getElementById('cost-expenses-per-order-breakdown-label');
-          var cat = catEl ? String(catEl.value || '').trim().toLowerCase() : '';
-          var cur = blEl ? String(blEl.value || '').trim() : '';
-          if (cat === 'tax_vat' && blEl && (!cur || cur === 'VAT' || cur === 'UK VAT')) {
-            blEl.value = (existing.length === 1 && existing[0] === 'GB') ? 'UK VAT' : 'VAT';
-          }
-        } catch (_) {}
+        updatePerOrderLiveSummary();
+        return;
+      }
+      var addCountryBtn = t.closest ? t.closest('#cost-expenses-per-order-country-add-btn') : null;
+      if (addCountryBtn) {
+        var input = document.getElementById('cost-expenses-per-order-country-input');
+        var raw = input ? String(input.value || '') : '';
+        var res = addPerOrderCountryFromText(raw);
+        if (!res.ok) {
+          setSectionMsg('cost-expenses-per-order-msg', res.error, false);
+          return;
+        }
+        setSectionMsg('cost-expenses-per-order-msg', '', null);
+        if (input) input.value = '';
         updatePerOrderLiveSummary();
         return;
       }
       if (t.getAttribute('data-country-remove') !== null) {
         var removeCode = normalizeCountryCode(t.getAttribute('data-country-remove'));
-        var chips2 = document.getElementById('cost-expenses-per-order-country-chips');
-        if (chips2) {
-          var next = [];
-          chips2.querySelectorAll('[data-country-code]').forEach(function (el) {
-            var c2 = normalizeCountryCode(el.getAttribute('data-country-code'));
-            if (c2 && c2 !== removeCode && next.indexOf(c2) === -1) next.push(c2);
-          });
-          next.sort(function (a, b) { return String(a).localeCompare(String(b)); });
-          renderPerOrderCountryChips(next);
-          document.getElementById('cost-expenses-per-order-country').value = next.join(',');
-          try {
-            var catEl2 = document.getElementById('cost-expenses-per-order-category');
-            var blEl2 = document.getElementById('cost-expenses-per-order-breakdown-label');
-            var cat2 = catEl2 ? String(catEl2.value || '').trim().toLowerCase() : '';
-            var cur2 = blEl2 ? String(blEl2.value || '').trim() : '';
-            if (cat2 === 'tax_vat' && blEl2 && (!cur2 || cur2 === 'VAT' || cur2 === 'UK VAT')) {
-              blEl2.value = (next.length === 1 && next[0] === 'GB') ? 'UK VAT' : 'VAT';
-            }
-          } catch (_) {}
-          updatePerOrderLiveSummary();
-        }
+        var existing = readPerOrderCountryCodesFromChips();
+        var next = existing.filter(function (c2) { return c2 && c2 !== removeCode; });
+        setPerOrderCountryCodes(next);
+        maybeSuggestVatBreakdownLabel(next);
+        updatePerOrderLiveSummary();
         return;
       }
     });

@@ -160,8 +160,21 @@ body[data-page="settings"] #settings-cost-expenses-panel-breakdown .settings-cos
 body[data-page="settings"] #settings-panel-cost-expenses .kexo-country-chip {
   display: inline-flex;
   align-items: center;
-  gap: 2px;
+  gap: 6px;
   padding-right: 6px;
+}
+body[data-page="settings"] #settings-panel-cost-expenses .kexo-country-flag {
+  display: inline-block;
+  line-height: 1;
+  font-size: 14px;
+}
+body[data-page="settings"] #settings-panel-cost-expenses .kexo-country-chip-code {
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+body[data-page="settings"] #settings-panel-cost-expenses .kexo-country-chip-name {
+  opacity: 0.85;
+  font-weight: 500;
 }
 body[data-page="settings"] #settings-panel-cost-expenses .kexo-country-chip-remove {
   transform: scale(0.85);
@@ -169,6 +182,58 @@ body[data-page="settings"] #settings-panel-cost-expenses .kexo-country-chip-remo
 }
 body[data-page="settings"] #settings-panel-cost-expenses .kexo-country-chip-remove:hover {
   opacity: 0.9;
+}
+
+/* Cost & Expenses: country suggestions (searchable picker). */
+body[data-page="settings"] #settings-panel-cost-expenses .kexo-country-suggest {
+  margin-top: 8px;
+  border: 1px solid var(--tblr-border-color-translucent, rgba(0, 0, 0, 0.06));
+  border-radius: var(--tblr-border-radius, .375rem);
+  background: var(--tblr-bg-surface, #fff);
+  max-height: 180px;
+  overflow: auto;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+body[data-page="settings"] #settings-panel-cost-expenses .kexo-country-suggest-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: var(--tblr-border-radius, .375rem);
+  background: transparent;
+  cursor: pointer;
+}
+body[data-page="settings"] #settings-panel-cost-expenses .kexo-country-suggest-item:hover,
+body[data-page="settings"] #settings-panel-cost-expenses .kexo-country-suggest-item:focus {
+  background: rgba(0, 0, 0, 0.04);
+  outline: none;
+}
+body[data-page="settings"] #settings-panel-cost-expenses .kexo-country-suggest-code {
+  font-weight: 700;
+  min-width: 2.5ch;
+}
+body[data-page="settings"] #settings-panel-cost-expenses .kexo-country-suggest-name {
+  opacity: 0.85;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Cost & Expenses: icon-only row action buttons (no wrapping). */
+body[data-page="settings"] #settings-panel-cost-expenses .kexo-table-actions {
+  white-space: nowrap;
+}
+body[data-page="settings"] #settings-panel-cost-expenses .kexo-icon-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
 }
 
 /* Flatten outer panel card so the only frame is .settings-tab-content-box (tabs "outside" the panel). */

@@ -67,6 +67,8 @@
     'admin-tab-help-tooltip': { title: 'Admin - Help tooltip', help: 'Icon shown on the Icons & assets panel as the click-to-open help trigger at the end of each icon label row.' },
     'admin-tab-save-icon': { title: 'Admin - Save icon', help: 'Icon used for Save on icon cards (glyphs, payment, attribution, variants).' },
     'admin-tab-edit-icon': { title: 'Admin - Edit icon', help: 'Icon used for Edit on icon cards (glyphs, payment, attribution, variants).' },
+    'admin-tab-table-row-edit': { title: 'Admin - Table row edit', help: 'Edit icon used for row actions in Settings/Admin tables (e.g. Costs & Expenses rule lists).' },
+    'admin-tab-table-row-delete': { title: 'Admin - Table row delete', help: 'Delete icon used for row actions in Settings/Admin tables (e.g. Costs & Expenses rule lists).' },
   };
 
   function isLockedSettingsIconKey(name) {

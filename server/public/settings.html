@@ -630,7 +630,7 @@
                   </label>
                   <label class="form-check form-switch">
                     <input class="form-check-input" type="checkbox" id="cost-expenses-tax" />
-                    <span class="form-check-label" title="When on, treat taxes as a deduction so profit reflects net of tax.">Tax</span>
+                    <span class="form-check-label" title="When on, treat Shopify Taxes as a deduction so profit reflects net of tax.">Shopify Taxes</span>
                   </label>
                   <label class="form-check form-switch">
                     <input class="form-check-input" type="checkbox" id="cost-expenses-app-bills" />
@@ -694,12 +694,12 @@
                       <div class="text-muted small mb-3">Use these for fees, packaging, and other costs that scale with orders, items, or revenue.</div>
                       <div class="row g-2 align-items-end mb-3">
                         <div class="col-12 col-md-6 col-lg-5">
-                          <label class="form-label" for="cost-expenses-rule-mode" title="Stack applies every matching rule. First match applies only the first matching rule by sort order.">Rule matching <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>
+                          <label class="form-label" for="cost-expenses-rule-mode" title="Applies to Per-order rules only. Stack applies every matching rule; First match applies only the first matching rule by sort order.">Per-order rule matching <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>
                           <select id="cost-expenses-rule-mode" class="form-select">
                             <option value="stack">Stack matching rules (recommended)</option>
                             <option value="first_match">First match wins (by sort order)</option>
                           </select>
-                          <div class="form-hint">Sort still controls order. Country and effective dates define what matches.</div>
+                          <div class="form-hint">Sort still controls order. Country and effective dates define what matches. (Per-order rules only.)</div>
                         </div>
                       </div>
                       <div id="cost-expenses-per-order-msg" class="is-hidden"></div>
@@ -823,26 +823,14 @@
                             </div>
                             <div class="mt-2 is-hidden" id="cost-expenses-per-order-country-selected-wrap">
                               <div class="d-flex align-items-center gap-2 flex-wrap">
-                                <input type="text" id="cost-expenses-per-order-country-input" class="form-control form-control-sm flex-grow-1" placeholder="Type a country code (e.g. GB) and press Add" list="cost-expenses-country-codes-datalist" />
+                                <input type="text" id="cost-expenses-per-order-country-input" class="form-control form-control-sm flex-grow-1" placeholder="Search country (e.g. GB, UK, United Kingdom)" autocomplete="off" />
                                 <button type="button" class="btn btn-sm btn-primary" id="cost-expenses-per-order-country-add-btn">Add</button>
                               </div>
+                              <div id="cost-expenses-per-order-country-suggest" class="kexo-country-suggest is-hidden" role="listbox" aria-label="Country suggestions"></div>
                               <div id="cost-expenses-per-order-country-nudge" class="form-hint text-muted is-hidden">Tip: VAT rules usually apply to a specific country.</div>
                               <div class="d-flex gap-1 flex-wrap mt-2" id="cost-expenses-per-order-country-chips"></div>
                             </div>
                             <input type="hidden" id="cost-expenses-per-order-country" value="" />
-                            <datalist id="cost-expenses-country-codes-datalist">
-                              <option value="GB"></option>
-                              <option value="IE"></option>
-                              <option value="US"></option>
-                              <option value="CA"></option>
-                              <option value="AU"></option>
-                              <option value="NZ"></option>
-                              <option value="FR"></option>
-                              <option value="DE"></option>
-                              <option value="ES"></option>
-                              <option value="IT"></option>
-                              <option value="NL"></option>
-                            </datalist>
                           </div>
 
                           <div class="row g-2 mt-2 align-items-end">
@@ -1572,7 +1560,7 @@
                               </label>
                               <label class="form-check form-switch settings-ga-deduction-item">
                                 <input class="form-check-input" type="checkbox" id="settings-ga-deduction-tax" />
-                                <span class="form-check-label">Tax</span>
+                                <span class="form-check-label">Shopify Taxes</span>
                               </label>
                               <label class="form-check form-switch settings-ga-deduction-item">
                                 <input class="form-check-input" type="checkbox" id="settings-ga-deduction-app-bills" />
