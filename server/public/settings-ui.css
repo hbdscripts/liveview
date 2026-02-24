@@ -142,6 +142,35 @@ body[data-page="settings"] #settings-cost-expenses-panel-breakdown .settings-cos
   align-items: center;
 }
 
+/* Cost Breakdown: "View details" expansion box (rule contributions). */
+body[data-page="settings"] #settings-cost-expenses-panel-breakdown .settings-cost-breakdown-detail-box {
+  max-height: 240px;
+  overflow: auto;
+}
+body[data-page="settings"] #settings-cost-expenses-panel-breakdown .settings-cost-breakdown-detail-table th,
+body[data-page="settings"] #settings-cost-expenses-panel-breakdown .settings-cost-breakdown-detail-table td {
+  vertical-align: top;
+  white-space: nowrap;
+}
+body[data-page="settings"] #settings-cost-expenses-panel-breakdown .settings-cost-breakdown-detail-table td:last-child {
+  white-space: normal;
+}
+
+/* Cost & Expenses: country chips (Per-order rules). */
+body[data-page="settings"] #settings-panel-cost-expenses .kexo-country-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding-right: 6px;
+}
+body[data-page="settings"] #settings-panel-cost-expenses .kexo-country-chip-remove {
+  transform: scale(0.85);
+  opacity: 0.65;
+}
+body[data-page="settings"] #settings-panel-cost-expenses .kexo-country-chip-remove:hover {
+  opacity: 0.9;
+}
+
 /* Flatten outer panel card so the only frame is .settings-tab-content-box (tabs "outside" the panel). */
 body[data-page="settings"] .settings-panel > .card {
   border: 0 !important;

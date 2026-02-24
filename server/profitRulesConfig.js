@@ -9,6 +9,39 @@ const PROFIT_RULE_TYPES = Object.freeze({
 
 const PROFIT_RULE_TYPE_SET = new Set(Object.values(PROFIT_RULE_TYPES));
 
+// Per-order rule v2 fields (used by Settings → Costs & Expenses → Per Order).
+const PER_ORDER_RULE_CATEGORIES = Object.freeze({
+  taxVat: 'tax_vat',
+  paymentFees: 'payment_fees',
+  packaging: 'packaging',
+  handling: 'handling',
+  fulfilment: 'fulfilment',
+  insurance: 'insurance',
+  other: 'other',
+});
+const PER_ORDER_RULE_CATEGORY_SET = new Set(Object.values(PER_ORDER_RULE_CATEGORIES));
+
+const PER_ORDER_RULE_KINDS = Object.freeze({
+  fixedPerOrder: 'fixed_per_order',
+  percentOfRevenue: 'percent_of_revenue',
+  // Legacy/hidden for backwards compatibility (not offered by default in the UI).
+  fixedPerItemLegacy: 'fixed_per_item',
+});
+const PER_ORDER_RULE_KIND_SET = new Set(Object.values(PER_ORDER_RULE_KINDS));
+
+const PER_ORDER_RULE_DIRECTIONS = Object.freeze({
+  add: 'add',
+  subtract: 'subtract',
+});
+const PER_ORDER_RULE_DIRECTION_SET = new Set(Object.values(PER_ORDER_RULE_DIRECTIONS));
+
+const PER_ORDER_RULE_REVENUE_BASIS = Object.freeze({
+  orderTotalInclTax: 'order_total_incl_tax',
+  orderTotalExclTax: 'order_total_excl_tax',
+  subtotalExclShipping: 'subtotal_excl_shipping',
+});
+const PER_ORDER_RULE_REVENUE_BASIS_SET = new Set(Object.values(PER_ORDER_RULE_REVENUE_BASIS));
+
 function defaultShippingConfig() {
   return {
     enabled: false,
@@ -177,6 +210,129 @@ function normalizeRevenueBasis(value) {
   return 'incl_tax';
 }
 
+function normalizePerOrderCategory(value, fallback) {
+  const raw = value == null ? '' : String(value).trim().toLowerCase();
+  if (PER_ORDER_RULE_CATEGORY_SET.has(raw)) return raw;
+  if (PER_ORDER_RULE_CATEGORY_SET.has(fallback)) return fallback;
+  return PER_ORDER_RULE_CATEGORIES.other;
+}
+
+function normalizePerOrderDirection(value, fallback) {
+  const raw = value == null ? '' : String(value).trim().toLowerCase();
+  if (raw === 'minus' || raw === 'reduce') return PER_ORDER_RULE_DIRECTIONS.subtract;
+  if (PER_ORDER_RULE_DIRECTION_SET.has(raw)) return raw;
+  if (PER_ORDER_RULE_DIRECTION_SET.has(fallback)) return fallback;
+  return PER_ORDER_RULE_DIRECTIONS.add;
+}
+
+function normalizePerOrderKind(value, fallbackLegacyType) {
+  const raw = value == null ? '' : String(value).trim().toLowerCase();
+  if (PER_ORDER_RULE_KIND_SET.has(raw)) return raw;
+
+  // Back-compat: accept legacy `type` values.
+  const t = fallbackLegacyType == null ? '' : String(fallbackLegacyType).trim().toLowerCase();
+  if (t === PROFIT_RULE_TYPES.fixedPerItem) return PER_ORDER_RULE_KINDS.fixedPerItemLegacy;
+  if (t === PROFIT_RULE_TYPES.fixedPerOrder) return PER_ORDER_RULE_KINDS.fixedPerOrder;
+  if (t === PROFIT_RULE_TYPES.percentRevenue) return PER_ORDER_RULE_KINDS.percentOfRevenue;
+  return PER_ORDER_RULE_KINDS.percentOfRevenue;
+}
+
+function kindToLegacyType(kind) {
+  const k = kind == null ? '' : String(kind).trim().toLowerCase();
+  if (k === PER_ORDER_RULE_KINDS.fixedPerItemLegacy) return PROFIT_RULE_TYPES.fixedPerItem;
+  if (k === PER_ORDER_RULE_KINDS.fixedPerOrder) return PROFIT_RULE_TYPES.fixedPerOrder;
+  return PROFIT_RULE_TYPES.percentRevenue;
+}
+
+function normalizePerOrderRevenueBasis(value, fallback) {
+  const raw = value == null ? '' : String(value).trim().toLowerCase();
+  // New canonical values.
+  if (PER_ORDER_RULE_REVENUE_BASIS_SET.has(raw)) return raw;
+
+  // Back-compat: accept legacy values.
+  if (raw === 'incl_tax' || raw === 'incl-tax') return PER_ORDER_RULE_REVENUE_BASIS.orderTotalInclTax;
+  if (raw === 'excl_tax' || raw === 'excl-tax') return PER_ORDER_RULE_REVENUE_BASIS.orderTotalExclTax;
+  if (raw === 'excl_shipping' || raw === 'excl-shipping') return PER_ORDER_RULE_REVENUE_BASIS.subtotalExclShipping;
+
+  const fb = fallback == null ? '' : String(fallback).trim().toLowerCase();
+  if (PER_ORDER_RULE_REVENUE_BASIS_SET.has(fb)) return fb;
+  return PER_ORDER_RULE_REVENUE_BASIS.orderTotalInclTax;
+}
+
+function normalizeCountryScope(value, fallbackAppliesTo) {
+  const toAll = () => ({ country_scope: 'ALL', appliesTo: { mode: 'all', countries: [] } });
+  const fromCountries = (countries) => {
+    const seen = new Set();
+    const out = [];
+    for (const item of countries || []) {
+      const code = normalizeCountryCode(item);
+      if (!code || seen.has(code)) continue;
+      seen.add(code);
+      out.push(code);
+      if (out.length >= 64) break;
+    }
+    if (!out.length) return toAll();
+    return { country_scope: out, appliesTo: { mode: 'countries', countries: out } };
+  };
+
+  if (value === 'ALL') return toAll();
+  if (Array.isArray(value)) return fromCountries(value);
+  if (typeof value === 'string') {
+    const raw = value.trim().toUpperCase();
+    if (!raw || raw === 'ALL') return toAll();
+    // Allow comma/space separated strings as a convenience.
+    const parts = raw.split(/[\s,]+/).filter(Boolean);
+    return fromCountries(parts);
+  }
+  if (value && typeof value === 'object') {
+    // Allow appliesTo-style objects.
+    const mode = value.mode == null ? '' : String(value.mode).trim().toLowerCase();
+    if (mode === 'countries' && Array.isArray(value.countries)) return fromCountries(value.countries);
+    if (mode === 'all') return toAll();
+  }
+  if (fallbackAppliesTo && typeof fallbackAppliesTo === 'object') {
+    const fb = normalizeAppliesTo(fallbackAppliesTo);
+    if (fb.mode === 'countries') return fromCountries(fb.countries);
+    return toAll();
+  }
+  return toAll();
+}
+
+function categoryLabel(category) {
+  const c = String(category || '').trim().toLowerCase();
+  if (c === PER_ORDER_RULE_CATEGORIES.taxVat) return 'Tax / VAT';
+  if (c === PER_ORDER_RULE_CATEGORIES.paymentFees) return 'Payment fees';
+  if (c === PER_ORDER_RULE_CATEGORIES.packaging) return 'Packaging';
+  if (c === PER_ORDER_RULE_CATEGORIES.handling) return 'Handling';
+  if (c === PER_ORDER_RULE_CATEGORIES.fulfilment) return 'Fulfilment';
+  if (c === PER_ORDER_RULE_CATEGORIES.insurance) return 'Insurance';
+  return 'Other';
+}
+
+function defaultBreakdownLabel({ category, country_scope, name } = {}) {
+  const c = String(category || '').trim().toLowerCase();
+  const scope = country_scope === 'ALL' ? [] : (Array.isArray(country_scope) ? country_scope : []);
+  if (c === PER_ORDER_RULE_CATEGORIES.taxVat) {
+    if (scope.length === 1 && scope[0] === 'GB') return 'UK VAT';
+    return 'VAT';
+  }
+  if (c === PER_ORDER_RULE_CATEGORIES.paymentFees) return 'Payment fees';
+  if (c === PER_ORDER_RULE_CATEGORIES.packaging) return 'Packaging';
+  if (c === PER_ORDER_RULE_CATEGORIES.handling) return 'Handling';
+  if (c === PER_ORDER_RULE_CATEGORIES.fulfilment) return 'Fulfilment';
+  if (c === PER_ORDER_RULE_CATEGORIES.insurance) return 'Insurance';
+  const n = name == null ? '' : String(name).trim();
+  return n || categoryLabel(c);
+}
+
+function normalizeBreakdownLabel(value, fallback) {
+  const raw = value == null ? '' : String(value).trim();
+  if (raw) return raw.slice(0, 80);
+  const fb = fallback == null ? '' : String(fallback).trim();
+  if (fb) return fb.slice(0, 80);
+  return '';
+}
+
 function normalizeYmd(value, fallback) {
   const raw = value == null ? '' : String(value).trim();
   if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
@@ -191,21 +347,39 @@ function ymdTodayUtc() {
 
 function normalizePerOrderRule(rawRule, idx) {
   const raw = rawRule && typeof rawRule === 'object' ? rawRule : {};
-  const type = (() => {
-    const t = raw.type == null ? '' : String(raw.type).trim().toLowerCase();
-    if (t === PROFIT_RULE_TYPES.fixedPerItem) return PROFIT_RULE_TYPES.fixedPerItem;
-    if (t === PROFIT_RULE_TYPES.fixedPerOrder) return PROFIT_RULE_TYPES.fixedPerOrder;
-    return PROFIT_RULE_TYPES.percentRevenue;
-  })();
+  const category = normalizePerOrderCategory(raw.category, PER_ORDER_RULE_CATEGORIES.other);
+  const kind = normalizePerOrderKind(raw.kind, raw.type);
+  const direction = normalizePerOrderDirection(raw.direction, PER_ORDER_RULE_DIRECTIONS.add);
+  const countryScope = normalizeCountryScope(raw.country_scope != null ? raw.country_scope : raw.appliesTo, raw.appliesTo);
+  const effectiveStart = normalizeYmd(raw.effective_start != null ? raw.effective_start : raw.start_date, '2000-01-01');
+  const effectiveEnd = normalizeYmd(raw.effective_end != null ? raw.effective_end : raw.end_date, '');
+
+  const revenue_basis =
+    kind === PER_ORDER_RULE_KINDS.percentOfRevenue
+      ? normalizePerOrderRevenueBasis(raw.revenue_basis, PER_ORDER_RULE_REVENUE_BASIS.orderTotalInclTax)
+      : normalizePerOrderRevenueBasis(raw.revenue_basis, PER_ORDER_RULE_REVENUE_BASIS.orderTotalInclTax);
+
+  const name = normalizeRuleName(raw.name, 'Expense');
+  const breakdownFallback = defaultBreakdownLabel({ category, country_scope: countryScope.country_scope, name });
+  const breakdown_label = normalizeBreakdownLabel(raw.breakdown_label, breakdownFallback);
+
   return {
     id: normalizeRuleId(raw.id, idx),
-    name: normalizeRuleName(raw.name, 'Expense'),
-    appliesTo: normalizeAppliesTo(raw.appliesTo),
-    type,
+    name,
+    category,
+    breakdown_label,
+    kind,
+    direction,
     value: normalizeRuleValue(raw.value),
-    revenue_basis: normalizeRevenueBasis(raw.revenue_basis),
-    start_date: normalizeYmd(raw.start_date, '2000-01-01'),
-    end_date: normalizeYmd(raw.end_date, ''),
+    revenue_basis,
+    effective_start: effectiveStart,
+    effective_end: effectiveEnd || null,
+    country_scope: countryScope.country_scope,
+    // Legacy/engine fields (kept for compatibility).
+    appliesTo: countryScope.appliesTo,
+    type: kindToLegacyType(kind),
+    start_date: effectiveStart,
+    end_date: effectiveEnd,
     enabled: normalizeRuleEnabled(raw.enabled, true),
     sort: normalizeRuleSort(raw.sort, idx + 1),
     notes: normalizeRuleNotes(raw.notes),

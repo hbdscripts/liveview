@@ -304,11 +304,15 @@
         : (hasChildren
           ? ('<span class="settings-cost-breakdown-parent-label">' + toggleBtn + '<span>' + esc(label) + '</span></span>')
           : esc(label));
-      var canDetail = auditOn && !isDetail && key;
-      var btn = canDetail
-        ? (' <button type="button" class="btn btn-sm py-0 px-2 ms-2" data-cost-breakdown-detail-toggle="' + esc(key) + '" aria-expanded="false">Details</button>')
-        : '';
-      var labelHtml = baseLabel + btn;
+      var hasCustomDetails = !!(it.details && Array.isArray(it.details) && it.details.length && key);
+      var auditTxt = (auditOn && !isDetail && key) ? buildAuditDetailText(key) : '';
+      var canAuditDetail = !!auditTxt;
+      var btn = hasCustomDetails
+        ? (' <button type="button" class="btn btn-sm py-0 px-2 ms-2" data-cost-breakdown-detail-toggle="' + esc(key) + '" aria-expanded="false">View details</button>')
+        : (canAuditDetail
+          ? (' <button type="button" class="btn btn-sm py-0 px-2 ms-2" data-cost-breakdown-detail-toggle="' + esc(key) + '" aria-expanded="false">Details</button>')
+          : '');
+      var labelHtml = isDetail ? (baseLabel.replace('</div>', btn + '</div>')) : (baseLabel + btn);
       html += '<tr class="' + rowCls + '"' + (isDetail && parentKey ? (' data-cost-breakdown-parent="' + esc(parentKey) + '"') : '') + '>' +
         '<td>' + labelHtml + '</td>' +
         '<td><span class="badge ' + badgeCls + '">' + esc(statusLabel) + '</span></td>' +
@@ -316,13 +320,34 @@
         '<td class="text-muted small">' + notesHtml + '</td>' +
       '</tr>';
 
-      if (canDetail) {
-        var txt = buildAuditDetailText(key);
-        if (txt) {
+      if (hasCustomDetails) {
+        var rows = Array.isArray(it.details) ? it.details : [];
+        var inner = '';
+        inner += '<div class="small border rounded bg-light p-2 settings-cost-breakdown-detail-box">';
+        inner += '<div class="fw-semibold mb-2">Contributing rules</div>';
+        inner += '<div class="table-responsive">';
+        inner += '<table class="table table-sm table-vcenter mb-0 settings-cost-breakdown-detail-table">';
+        inner += '<thead><tr><th>Rule</th><th>Country</th><th>Dates</th><th>Value</th></tr></thead><tbody>';
+        rows.slice(0, 50).forEach(function (r) {
+          if (!r || typeof r !== 'object') return;
+          inner += '<tr>' +
+            '<td>' + esc(r.name != null ? String(r.name) : '') + '</td>' +
+            '<td>' + esc(r.country != null ? String(r.country) : '') + '</td>' +
+            '<td>' + esc(r.dates != null ? String(r.dates) : '') + '</td>' +
+            '<td>' + esc(r.value != null ? String(r.value) : '') + '</td>' +
+          '</tr>';
+        });
+        inner += '</tbody></table></div></div>';
+
+        html += '<tr class="d-none" data-cost-breakdown-detail-row="' + esc(key) + '">' +
+          '<td colspan="4">' + inner + '</td>' +
+        '</tr>';
+      } else if (canAuditDetail) {
+        if (auditTxt) {
           html += '<tr class="d-none" data-cost-breakdown-detail-row="' + esc(key) + '">' +
             '<td colspan="4">' +
-              '<div class="small border rounded bg-light p-2" style="max-height:220px; overflow:auto;">' +
-                '<pre class="m-0 small" style="white-space:pre; tab-size:2;">' + esc(txt) + '</pre>' +
+              '<div class="small border rounded bg-light p-2 settings-cost-breakdown-detail-box">' +
+                '<pre class="m-0 small" style="white-space:pre; tab-size:2;">' + esc(auditTxt) + '</pre>' +
               '</div>' +
             '</td>' +
           '</tr>';

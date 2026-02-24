@@ -133,25 +133,89 @@
     var d = defaults && typeof defaults === 'object' ? defaults : {};
     var id = (raw.id && String(raw.id).trim()) || (d.id && String(d.id).trim()) || ('por_' + String(idx + 1));
     var name = (raw.name && String(raw.name).trim()) || (d.name && String(d.name).trim()) || 'Expense';
-    var type = (raw.type && String(raw.type).trim()) || (d.type && String(d.type).trim()) || 'percent_revenue';
-    if (['percent_revenue', 'fixed_per_order', 'fixed_per_item'].indexOf(type) === -1) type = 'percent_revenue';
-    var revenueBasis = (raw.revenue_basis && String(raw.revenue_basis).trim()) || (d.revenue_basis && String(d.revenue_basis).trim()) || 'incl_tax';
-    if (['incl_tax', 'excl_tax', 'excl_shipping'].indexOf(revenueBasis) === -1) revenueBasis = 'incl_tax';
-    var startDate = normalizeYmd(raw.start_date, d.start_date || '2000-01-01');
-    var endDate = normalizeYmd(raw.end_date, d.end_date || '');
+    var category = (raw.category && String(raw.category).trim().toLowerCase()) || (d.category && String(d.category).trim().toLowerCase()) || 'other';
+    if (['tax_vat', 'payment_fees', 'packaging', 'handling', 'fulfilment', 'insurance', 'other'].indexOf(category) === -1) category = 'other';
+
+    var kindRaw = (raw.kind && String(raw.kind).trim().toLowerCase()) || '';
+    var legacyType = (raw.type && String(raw.type).trim()) || (d.type && String(d.type).trim()) || '';
+    var kind = kindRaw;
+    if (kind !== 'fixed_per_order' && kind !== 'percent_of_revenue' && kind !== 'fixed_per_item') {
+      var lt = String(legacyType || '').trim().toLowerCase();
+      if (lt === 'fixed_per_order') kind = 'fixed_per_order';
+      else if (lt === 'fixed_per_item') kind = 'fixed_per_item';
+      else kind = 'percent_of_revenue';
+    }
+
+    var direction = (raw.direction && String(raw.direction).trim().toLowerCase()) || (d.direction && String(d.direction).trim().toLowerCase()) || 'add';
+    if (direction !== 'add' && direction !== 'subtract') direction = 'add';
+
+    var revenueBasisRaw = (raw.revenue_basis && String(raw.revenue_basis).trim().toLowerCase()) || (d.revenue_basis && String(d.revenue_basis).trim().toLowerCase()) || '';
+    var revenueBasis = revenueBasisRaw;
+    if (revenueBasis === 'incl_tax') revenueBasis = 'order_total_incl_tax';
+    if (revenueBasis === 'excl_tax') revenueBasis = 'order_total_excl_tax';
+    if (revenueBasis === 'excl_shipping') revenueBasis = 'subtotal_excl_shipping';
+    if (['order_total_incl_tax', 'order_total_excl_tax', 'subtotal_excl_shipping'].indexOf(revenueBasis) === -1) revenueBasis = 'order_total_incl_tax';
+
+    var effectiveStart = normalizeYmd(raw.effective_start || raw.start_date, d.effective_start || d.start_date || '2000-01-01');
+    var effectiveEnd = normalizeYmd(raw.effective_end || raw.end_date, d.effective_end || d.end_date || '');
+
     var enabled = raw.enabled !== false;
     var sort = Math.max(1, Math.trunc(Number(raw.sort) || Number(d.sort) || (idx + 1)));
+
+    // Country scope: 'ALL' or list of codes.
+    var countryScope = raw.country_scope != null ? raw.country_scope : (d.country_scope != null ? d.country_scope : null);
+    var countries = [];
+    if (Array.isArray(countryScope)) {
+      var seen = {};
+      for (var i = 0; i < countryScope.length && countries.length < 64; i++) {
+        var cc = normalizeCountryCode(countryScope[i]);
+        if (cc && !seen[cc]) { seen[cc] = true; countries.push(cc); }
+      }
+    } else if (countryScope && String(countryScope).trim().toUpperCase() !== 'ALL') {
+      var parts = String(countryScope).split(/[\s,]+/).map(normalizeCountryCode).filter(Boolean);
+      var seen2 = {};
+      for (var j = 0; j < parts.length && countries.length < 64; j++) {
+        if (!seen2[parts[j]]) { seen2[parts[j]] = true; countries.push(parts[j]); }
+      }
+    } else if (raw.appliesTo || d.appliesTo) {
+      var a = normalizeAppliesTo(raw.appliesTo || d.appliesTo);
+      if (a.mode === 'countries' && Array.isArray(a.countries)) countries = a.countries.slice(0, 64);
+    }
+    var normalizedCountryScope = countries.length ? countries : 'ALL';
+    var appliesTo = countries.length ? { mode: 'countries', countries: countries } : { mode: 'all', countries: [] };
+
+    var breakdownLabelRaw = (raw.breakdown_label && String(raw.breakdown_label).trim()) || (d.breakdown_label && String(d.breakdown_label).trim()) || '';
+    var breakdown_label = breakdownLabelRaw;
+    if (!breakdown_label) {
+      if (category === 'tax_vat') breakdown_label = (countries.length === 1 && countries[0] === 'GB') ? 'UK VAT' : 'VAT';
+      else if (category === 'payment_fees') breakdown_label = 'Payment fees';
+      else if (category === 'packaging') breakdown_label = 'Packaging';
+      else if (category === 'handling') breakdown_label = 'Handling';
+      else if (category === 'fulfilment') breakdown_label = 'Fulfilment';
+      else if (category === 'insurance') breakdown_label = 'Insurance';
+      else breakdown_label = name;
+    }
+
+    // Legacy type mapping (engine/server still accepts this).
+    var type = kind === 'fixed_per_order' ? 'fixed_per_order' : kind === 'fixed_per_item' ? 'fixed_per_item' : 'percent_revenue';
     return {
       id: id.slice(0, 64),
       name: name.slice(0, 80),
+      category: category,
+      breakdown_label: breakdown_label.slice(0, 80),
+      kind: kind,
+      direction: direction,
       type: type,
       value: Math.max(0, Number(raw.value) || 0),
       revenue_basis: revenueBasis,
-      start_date: startDate,
-      end_date: endDate,
+      effective_start: effectiveStart,
+      effective_end: effectiveEnd || null,
+      country_scope: normalizedCountryScope,
+      start_date: effectiveStart,
+      end_date: effectiveEnd,
       enabled: enabled,
       sort: sort,
-      appliesTo: normalizeAppliesTo(raw.appliesTo || d.appliesTo),
+      appliesTo: appliesTo,
     };
   }
 
@@ -388,24 +452,11 @@
     return '£' + n.toFixed(2);
   }
 
-  function perOrderTypeLabel(type) {
-    if (type === 'fixed_per_order') return 'Fixed per order';
-    if (type === 'fixed_per_item') return 'Fixed per item';
-    return '% of revenue';
-  }
-
-  function revenueBasisLabel(basis) {
-    if (basis === 'excl_tax') return 'Excl tax';
-    if (basis === 'excl_shipping') return 'Excl shipping';
-    return 'Incl tax';
-  }
-
-  function perOrderValueLabel(rule) {
-    if (!rule) return '—';
-    var v = Number(rule.value);
-    if (!Number.isFinite(v)) return '—';
-    if (rule.type === 'percent_revenue') return v.toFixed(2).replace(/\.00$/, '') + '%';
-    return formatMoneyGbp(v);
+  function formatYmdHuman(ymd) {
+    var s = String(ymd || '').trim();
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+    if (!m) return s || '—';
+    return m[3] + '/' + m[2] + '/' + m[1];
   }
 
   function scopeLabel(appliesTo) {
@@ -421,20 +472,26 @@
       ? state.config.cost_expenses.per_order_rules
       : [];
     if (!list.length) {
-      tbody.innerHTML = '<tr><td colspan="9" class="text-muted">No per-order rules yet.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="7" class="text-muted">No per-order rules yet.</td></tr>';
       return;
     }
     var html = '';
     list.forEach(function (rule) {
-      var basis = rule && rule.type === 'percent_revenue' ? revenueBasisLabel(rule.revenue_basis) : '—';
+      var r = rule && typeof rule === 'object' ? rule : {};
+      var category = perOrderCategoryLabel(r.category);
+      var breakdown = (r.breakdown_label || '').trim() || '—';
+      var scope = (r.country_scope === 'ALL' || !Array.isArray(r.country_scope) || !r.country_scope.length) ? 'All' : r.country_scope.join(', ');
+      var start = String(r.effective_start || r.start_date || '').trim();
+      var end = String(r.effective_end || r.end_date || '').trim();
+      var starts = start && start === (ymdTodayLocal() || '') ? 'starts now' : (start ? ('starts ' + formatYmdHuman(start)) : 'starts now');
+      var ends = end ? ('ends ' + formatYmdHuman(end)) : '';
+      var summary = perOrderValueExpr(r) + ' · ' + scope + ' · ' + starts + (ends ? (' · ' + ends) : '');
       html += '<tr data-per-order-id="' + esc(rule.id) + '">' +
         '<td>' + esc(rule.name || 'Expense') + '</td>' +
-        '<td>' + esc(perOrderTypeLabel(rule.type)) + '</td>' +
-        '<td class="text-end">' + esc(perOrderValueLabel(rule)) + '</td>' +
-        '<td>' + esc(basis) + '</td>' +
-        '<td>' + esc(rule.start_date || '—') + '</td>' +
-        '<td>' + esc(rule.end_date || '—') + '</td>' +
-        '<td>' + esc(scopeLabel(rule.appliesTo)) + '</td>' +
+        '<td>' + esc(category) + '</td>' +
+        '<td>' + esc(breakdown) + '</td>' +
+        '<td class="text-muted small">' + esc(summary) + '</td>' +
+        '<td class="text-end">' + esc(String(rule.sort != null ? rule.sort : '—')) + '</td>' +
         '<td class="text-center"><input type="checkbox" data-per-order-enabled data-per-order-id="' + esc(rule.id) + '" ' + (rule.enabled ? 'checked' : '') + ' /></td>' +
         '<td class="text-end">' +
           '<button type="button" class="btn btn-sm" data-per-order-edit data-per-order-id="' + esc(rule.id) + '">Edit</button> ' +
@@ -634,13 +691,207 @@
     return null;
   }
 
-  function syncPerOrderRevenueBasisEnabled() {
-    var typeEl = document.getElementById('cost-expenses-per-order-type');
-    var basisEl = document.getElementById('cost-expenses-per-order-revenue-basis');
-    if (!typeEl || !basisEl) return;
-    var type = String(typeEl.value || '').trim();
-    var enable = type === 'percent_revenue';
-    basisEl.disabled = !enable;
+  function perOrderCategoryLabel(category) {
+    var c = String(category || '').trim().toLowerCase();
+    if (c === 'tax_vat') return 'Tax / VAT';
+    if (c === 'payment_fees') return 'Payment fees';
+    if (c === 'packaging') return 'Packaging';
+    if (c === 'handling') return 'Handling';
+    if (c === 'fulfilment') return 'Fulfilment';
+    if (c === 'insurance') return 'Insurance';
+    return 'Other';
+  }
+
+  function perOrderRevenueBasisLabel(basis) {
+    var b = String(basis || '').trim().toLowerCase();
+    if (b === 'order_total_excl_tax' || b === 'excl_tax') return 'Order total excl tax';
+    if (b === 'subtotal_excl_shipping' || b === 'excl_shipping') return 'Order total excl shipping';
+    return 'Order total incl tax';
+  }
+
+  function setRadioValue(name, value) {
+    var want = String(value || '');
+    var els = root.querySelectorAll('input[type="radio"][name="' + String(name).replace(/"/g, '\\"') + '"]');
+    for (var i = 0; i < els.length; i++) {
+      if (!els[i]) continue;
+      els[i].checked = String(els[i].value || '') === want;
+    }
+  }
+
+  function readCheckedRadioValue(name) {
+    var els = root.querySelectorAll('input[type="radio"][name="' + String(name).replace(/"/g, '\\"') + '"]');
+    for (var i = 0; i < els.length; i++) {
+      if (els[i] && els[i].checked === true) return String(els[i].value || '');
+    }
+    return '';
+  }
+
+  function renderPerOrderCountryChips(codes) {
+    var chips = document.getElementById('cost-expenses-per-order-country-chips');
+    if (!chips) return;
+    var list = Array.isArray(codes) ? codes : [];
+    var seen = {};
+    var html = '';
+    list.forEach(function (c) {
+      var code = normalizeCountryCode(c);
+      if (!code || seen[code]) return;
+      seen[code] = true;
+      html +=
+        '<span class="badge bg-secondary-lt text-secondary kexo-country-chip" data-country-code="' + esc(code) + '">' +
+          esc(code) +
+          '<button type="button" class="btn-close ms-1 kexo-country-chip-remove" aria-label="Remove ' + esc(code) + '" data-country-remove="' + esc(code) + '"></button>' +
+        '</span>';
+    });
+    chips.innerHTML = html || '<span class="text-muted small">No countries selected.</span>';
+  }
+
+  function readPerOrderCountryScopeFromUi() {
+    var mode = readCheckedRadioValue('cost-expenses-per-order-country-mode') || 'all';
+    if (mode !== 'countries') return { ok: true, scope: 'ALL', countries: [] };
+    var chips = document.getElementById('cost-expenses-per-order-country-chips');
+    var codes = [];
+    if (chips) {
+      chips.querySelectorAll('[data-country-code]').forEach(function (el) {
+        var code = normalizeCountryCode(el.getAttribute('data-country-code'));
+        if (code && codes.indexOf(code) === -1) codes.push(code);
+      });
+    }
+    if (!codes.length) return { ok: false, error: 'Select at least one country (or choose All countries).' };
+    return { ok: true, scope: codes.slice(0, 64), countries: codes.slice(0, 64) };
+  }
+
+  function syncPerOrderDatesUi() {
+    var startMode = readCheckedRadioValue('cost-expenses-per-order-start-mode') || 'now';
+    var endMode = readCheckedRadioValue('cost-expenses-per-order-end-mode') || 'never';
+    var startDate = document.getElementById('cost-expenses-per-order-start-date');
+    var endDate = document.getElementById('cost-expenses-per-order-end-date');
+    if (startDate) startDate.classList.toggle('is-hidden', startMode !== 'date');
+    if (endDate) endDate.classList.toggle('is-hidden', endMode !== 'date');
+  }
+
+  function syncPerOrderCountryUi() {
+    var mode = readCheckedRadioValue('cost-expenses-per-order-country-mode') || 'all';
+    var wrap = document.getElementById('cost-expenses-per-order-country-selected-wrap');
+    if (wrap) wrap.classList.toggle('is-hidden', mode !== 'countries');
+    var catEl = document.getElementById('cost-expenses-per-order-category');
+    var nudgeEl = document.getElementById('cost-expenses-per-order-country-nudge');
+    var cat = catEl ? String(catEl.value || '').trim().toLowerCase() : '';
+    if (nudgeEl) nudgeEl.classList.toggle('is-hidden', !(cat === 'tax_vat' && mode !== 'countries'));
+  }
+
+  function syncPerOrderKindUi() {
+    var kindEl = document.getElementById('cost-expenses-per-order-kind');
+    var basisWrap = document.getElementById('cost-expenses-per-order-revenue-basis-wrap');
+    var valueLabel = document.getElementById('cost-expenses-per-order-value-label');
+    var valueEl = document.getElementById('cost-expenses-per-order-value');
+    var warnEl = document.getElementById('cost-expenses-per-order-value-warn');
+    if (!kindEl || !basisWrap || !valueLabel || !valueEl) return;
+
+    var kind = String(kindEl.value || '').trim().toLowerCase();
+    var isPercent = kind === 'percent_of_revenue';
+    basisWrap.classList.toggle('is-hidden', !isPercent);
+
+    var labelText = isPercent
+      ? 'Percentage (%)'
+      : (kind === 'fixed_per_item' ? 'Amount per item (£)' : 'Amount per order (£)');
+    var helpText = isPercent
+      ? 'Calculates a percentage of the selected revenue basis.'
+      : (kind === 'fixed_per_item'
+        ? 'Adds this amount for each item (legacy).'
+        : 'Adds this amount to every matched order.');
+    valueEl.placeholder = isPercent ? '20' : (kind === 'fixed_per_item' ? '0.10' : '0.35');
+
+    // Keep the Settings help popover trigger stable and update its content.
+    var trigger = valueLabel.querySelector('.kexo-icon-help-trigger');
+    if (trigger) {
+      try {
+        Array.prototype.slice.call(valueLabel.childNodes || []).forEach(function (n) {
+          if (n !== trigger) valueLabel.removeChild(n);
+        });
+        valueLabel.insertBefore(document.createTextNode(labelText + ' '), trigger);
+      } catch (_) {}
+      try { trigger.setAttribute('data-kexo-help', helpText); } catch (_) {}
+      try { trigger.setAttribute('aria-label', 'Help: ' + labelText); } catch (_) {}
+      try {
+        var BootstrapRef = window.bootstrap || (window.tabler && window.tabler.bootstrap);
+        if (BootstrapRef && BootstrapRef.Popover && BootstrapRef.Popover.getInstance && BootstrapRef.Popover.getInstance(trigger)) {
+          BootstrapRef.Popover.getInstance(trigger).dispose();
+        }
+        trigger.removeAttribute('data-kexo-help-bound');
+        if (typeof window.initKexoHelpPopovers === 'function') window.initKexoHelpPopovers(valueLabel);
+      } catch (_) {}
+    } else {
+      // Fallback: rely on title → help popover migration.
+      try {
+        valueLabel.textContent = labelText + ' ';
+        valueLabel.setAttribute('title', helpText);
+        if (typeof window.migrateTitleToHelpPopover === 'function') window.migrateTitleToHelpPopover(valueLabel);
+        if (typeof window.initKexoHelpPopovers === 'function') window.initKexoHelpPopovers(valueLabel);
+      } catch (_) {}
+    }
+
+    if (warnEl) {
+      warnEl.classList.add('is-hidden');
+      warnEl.textContent = '';
+      if (isPercent) {
+        var v = parseFloat(valueEl.value, 10);
+        if (Number.isFinite(v) && v > 1000) {
+          warnEl.textContent = 'That’s an unusually high percentage. If this is intentional, you can still save it.';
+          warnEl.classList.remove('is-hidden');
+        }
+      }
+    }
+  }
+
+  function perOrderFormatPercent(value) {
+    var n = Number(value);
+    if (!Number.isFinite(n)) return '0%';
+    return n.toFixed(2).replace(/\.00$/, '') + '%';
+  }
+
+  function perOrderValueExpr(rule) {
+    var r = rule && typeof rule === 'object' ? rule : {};
+    var kind = String(r.kind || '').trim().toLowerCase();
+    var direction = String(r.direction || '').trim().toLowerCase() === 'subtract' ? 'subtract' : 'add';
+    var v = Number(r.value);
+    var amount = Number.isFinite(v) ? v : 0;
+    var sign = direction === 'subtract' ? '−' : '+';
+    if (kind === 'percent_of_revenue') return sign + perOrderFormatPercent(amount) + ' of ' + perOrderRevenueBasisLabel(r.revenue_basis);
+    if (kind === 'fixed_per_item') return (direction === 'subtract' ? '−' : '') + formatMoneyGbp(amount) + ' per item';
+    return (direction === 'subtract' ? '−' : '') + formatMoneyGbp(amount) + ' per order';
+  }
+
+  function perOrderScopeLabel(rule) {
+    var r = rule && typeof rule === 'object' ? rule : {};
+    if (r.country_scope === 'ALL' || !Array.isArray(r.country_scope) || !r.country_scope.length) return 'All';
+    return r.country_scope.join(', ');
+  }
+
+  function perOrderDatesLabel(rule) {
+    var r = rule && typeof rule === 'object' ? rule : {};
+    var now = ymdTodayLocal() || '';
+    var s = String(r.effective_start || r.start_date || '').trim();
+    var e = String(r.effective_end || r.end_date || '').trim();
+    var starts = (!s || (now && s === now)) ? 'starts now' : ('starts ' + s);
+    var ends = e ? ('ends ' + e) : 'never ends';
+    return starts + ', ' + ends;
+  }
+
+  function updatePerOrderLiveSummary() {
+    var el = document.getElementById('cost-expenses-per-order-live-summary');
+    if (!el) return;
+    var parsed = readPerOrderForm({ allowDraft: true });
+    if (!parsed.ok) {
+      el.textContent = parsed.error || 'Summary will appear here.';
+      return;
+    }
+    var r = parsed.rule;
+    el.textContent =
+      'Category: ' + perOrderCategoryLabel(r.category) +
+      ' - ' +
+      (String(r.direction || '').trim().toLowerCase() === 'subtract' ? 'Subtracts ' : 'Adds ') +
+      perOrderValueExpr(r).replace(/^[+]/, '') +
+      ' (' + perOrderScopeLabel(r) + ', ' + perOrderDatesLabel(r) + ')';
   }
 
   function setPerOrderPreviewRangeUi(rangeKey) {
@@ -665,24 +916,55 @@
     if (wrap) wrap.classList.remove('is-hidden');
 
     document.getElementById('cost-expenses-per-order-id').value = state.editingPerOrderId;
+    document.getElementById('cost-expenses-per-order-category').value = rule ? (rule.category || 'other') : 'other';
     document.getElementById('cost-expenses-per-order-name').value = rule ? (rule.name || '') : '';
-    document.getElementById('cost-expenses-per-order-type').value = rule ? (rule.type || 'percent_revenue') : 'percent_revenue';
+    document.getElementById('cost-expenses-per-order-breakdown-label').value = rule ? (rule.breakdown_label || '') : '';
+
+    var kindEl = document.getElementById('cost-expenses-per-order-kind');
+    var kind = rule ? (rule.kind || '') : '';
+    var k = String(kind || '').trim().toLowerCase();
+    if (!k && rule && rule.type) {
+      k = String(rule.type || '').trim().toLowerCase() === 'fixed_per_order' ? 'fixed_per_order'
+        : String(rule.type || '').trim().toLowerCase() === 'fixed_per_item' ? 'fixed_per_item'
+        : 'percent_of_revenue';
+    }
+    if (k === 'fixed_per_item' && kindEl && !kindEl.querySelector('option[value="fixed_per_item"]')) {
+      kindEl.insertAdjacentHTML('beforeend', '<option value="fixed_per_item">Fixed - per item (legacy)</option>');
+    }
+    if (kindEl) kindEl.value = (k === 'percent_of_revenue' || k === 'fixed_per_order' || k === 'fixed_per_item') ? k : 'fixed_per_order';
+
+    document.getElementById('cost-expenses-per-order-direction').value =
+      rule && String(rule.direction || '').trim().toLowerCase() === 'subtract' ? 'subtract' : 'add';
     document.getElementById('cost-expenses-per-order-value').value = rule && rule.value != null ? rule.value : '';
-    document.getElementById('cost-expenses-per-order-revenue-basis').value = rule ? (rule.revenue_basis || 'incl_tax') : 'incl_tax';
-    document.getElementById('cost-expenses-per-order-start').value = rule ? (rule.start_date || '') : (ymdTodayLocal() || '');
-    document.getElementById('cost-expenses-per-order-end').value = rule ? (rule.end_date || '') : '';
-    document.getElementById('cost-expenses-per-order-country').value = (rule && rule.appliesTo && rule.appliesTo.mode === 'countries' && rule.appliesTo.countries)
-      ? rule.appliesTo.countries.join(',')
-      : '';
+    document.getElementById('cost-expenses-per-order-revenue-basis').value = rule ? (rule.revenue_basis || 'order_total_incl_tax') : 'order_total_incl_tax';
+
+    var nowYmd = ymdTodayLocal() || '';
+    var start = rule ? (rule.effective_start || rule.start_date || '') : '';
+    var end = rule ? (rule.effective_end || rule.end_date || '') : '';
+    if (!start) start = nowYmd;
+    setRadioValue('cost-expenses-per-order-start-mode', start === nowYmd ? 'now' : 'date');
+    document.getElementById('cost-expenses-per-order-start-date').value = start || nowYmd;
+    setRadioValue('cost-expenses-per-order-end-mode', end ? 'date' : 'never');
+    document.getElementById('cost-expenses-per-order-end-date').value = end || '';
+
+    var codes = [];
+    if (rule && Array.isArray(rule.country_scope)) codes = rule.country_scope.slice(0, 64);
+    else if (rule && rule.appliesTo && rule.appliesTo.mode === 'countries' && Array.isArray(rule.appliesTo.countries)) codes = rule.appliesTo.countries.slice(0, 64);
+    setRadioValue('cost-expenses-per-order-country-mode', codes.length ? 'countries' : 'all');
+    renderPerOrderCountryChips(codes);
+    document.getElementById('cost-expenses-per-order-country').value = codes.length ? codes.join(',') : '';
     var list = state.config && state.config.cost_expenses && Array.isArray(state.config.cost_expenses.per_order_rules)
       ? state.config.cost_expenses.per_order_rules
       : [];
     document.getElementById('cost-expenses-per-order-sort').value = rule && rule.sort != null ? rule.sort : (list.length + 1);
     document.getElementById('cost-expenses-per-order-enabled').checked = rule ? (rule.enabled !== false) : true;
 
-    syncPerOrderRevenueBasisEnabled();
+    syncPerOrderDatesUi();
+    syncPerOrderCountryUi();
+    syncPerOrderKindUi();
     setPerOrderPreviewRangeUi('7d');
     setPerOrderPreviewText('Estimated impact will appear here.');
+    updatePerOrderLiveSummary();
     setSectionMsg('cost-expenses-per-order-msg', '', null);
   }
 
@@ -692,45 +974,78 @@
     if (wrap) wrap.classList.add('is-hidden');
   }
 
-  function readPerOrderForm() {
-    var name = (document.getElementById('cost-expenses-per-order-name').value || '').trim();
-    if (!name) return { ok: false, error: 'Name required' };
-    var startYmd = (document.getElementById('cost-expenses-per-order-start').value || '').trim();
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(startYmd)) return { ok: false, error: 'Start date required' };
-    var endYmd = (document.getElementById('cost-expenses-per-order-end').value || '').trim();
-    if (endYmd && !/^\d{4}-\d{2}-\d{2}$/.test(endYmd)) return { ok: false, error: 'End date must be a date' };
-    if (endYmd && endYmd < startYmd) return { ok: false, error: 'End date must be after start date' };
+  function readPerOrderForm(opts) {
+    var o = opts && typeof opts === 'object' ? opts : {};
+    var category = String(document.getElementById('cost-expenses-per-order-category').value || 'other').trim().toLowerCase();
+    if (['tax_vat', 'payment_fees', 'packaging', 'handling', 'fulfilment', 'insurance', 'other'].indexOf(category) === -1) category = 'other';
 
-    var type = String(document.getElementById('cost-expenses-per-order-type').value || 'percent_revenue').trim();
-    if (['percent_revenue', 'fixed_per_order', 'fixed_per_item'].indexOf(type) === -1) type = 'percent_revenue';
-    var revenueBasis = String(document.getElementById('cost-expenses-per-order-revenue-basis').value || 'incl_tax').trim();
-    if (['incl_tax', 'excl_tax', 'excl_shipping'].indexOf(revenueBasis) === -1) revenueBasis = 'incl_tax';
+    var name = (document.getElementById('cost-expenses-per-order-name').value || '').trim();
+    if (!name) return { ok: false, error: 'Rule name is required' };
+
+    var breakdownLabel = (document.getElementById('cost-expenses-per-order-breakdown-label').value || '').trim();
+
+    var kind = String(document.getElementById('cost-expenses-per-order-kind').value || 'fixed_per_order').trim().toLowerCase();
+    if (kind !== 'fixed_per_order' && kind !== 'percent_of_revenue' && kind !== 'fixed_per_item') kind = 'fixed_per_order';
+
+    var direction = String(document.getElementById('cost-expenses-per-order-direction').value || 'add').trim().toLowerCase();
+    if (direction !== 'add' && direction !== 'subtract') direction = 'add';
 
     var value = parseFloat(document.getElementById('cost-expenses-per-order-value').value, 10);
     if (!Number.isFinite(value) || value < 0) return { ok: false, error: 'Value must be ≥ 0' };
+
+    var revenueBasis = String(document.getElementById('cost-expenses-per-order-revenue-basis').value || 'order_total_incl_tax').trim();
+    if (['order_total_incl_tax', 'order_total_excl_tax', 'subtotal_excl_shipping'].indexOf(revenueBasis) === -1) revenueBasis = 'order_total_incl_tax';
+    if (kind === 'percent_of_revenue' && !revenueBasis) return { ok: false, error: 'Revenue basis is required for percent rules' };
+
+    var nowYmd = ymdTodayLocal() || '';
+    var startMode = readCheckedRadioValue('cost-expenses-per-order-start-mode') || 'now';
+    var startYmd = startMode === 'date'
+      ? String(document.getElementById('cost-expenses-per-order-start-date').value || '').trim()
+      : nowYmd;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(startYmd)) return { ok: false, error: 'Start date is required' };
+
+    var endMode = readCheckedRadioValue('cost-expenses-per-order-end-mode') || 'never';
+    var endYmd = endMode === 'date'
+      ? String(document.getElementById('cost-expenses-per-order-end-date').value || '').trim()
+      : '';
+    if (endYmd && !/^\d{4}-\d{2}-\d{2}$/.test(endYmd)) return { ok: false, error: 'End date must be a date' };
+    if (endYmd && endYmd < startYmd) return { ok: false, error: 'End date cannot be earlier than start date' };
+
+    var country = readPerOrderCountryScopeFromUi();
+    if (!country.ok) return { ok: false, error: country.error };
+
     var sort = Math.max(1, parseInt(document.getElementById('cost-expenses-per-order-sort').value, 10) || 1);
-    var countryRaw = (document.getElementById('cost-expenses-per-order-country').value || '').trim();
-    var appliesTo = { mode: 'all', countries: [] };
-    if (countryRaw && countryRaw.toUpperCase() !== 'ALL') {
-      var codes = countryRaw.split(/[\s,]+/).map(normalizeCountryCode).filter(Boolean);
-      if (codes.length) appliesTo = { mode: 'countries', countries: codes.slice(0, 64) };
+    var enabled = document.getElementById('cost-expenses-per-order-enabled').checked === true;
+
+    if (!breakdownLabel) {
+      if (category === 'tax_vat') breakdownLabel = (country.countries.length === 1 && country.countries[0] === 'GB') ? 'UK VAT' : 'VAT';
+      else if (category === 'payment_fees') breakdownLabel = 'Payment fees';
+      else if (category === 'packaging') breakdownLabel = 'Packaging';
+      else if (category === 'handling') breakdownLabel = 'Handling';
+      else if (category === 'fulfilment') breakdownLabel = 'Fulfilment';
+      else if (category === 'insurance') breakdownLabel = 'Insurance';
+      else breakdownLabel = name;
     }
+
     var id = state.editingPerOrderId || ('por_' + Date.now());
-    return {
-      ok: true,
-      rule: normalizePerOrderRule({
-        id: id,
-        name: name,
-        type: type,
-        value: value,
-        revenue_basis: revenueBasis,
-        start_date: startYmd,
-        end_date: endYmd,
-        enabled: document.getElementById('cost-expenses-per-order-enabled').checked,
-        sort: sort,
-        appliesTo: appliesTo,
-      }, 0),
+    var rawRule = {
+      id: id,
+      category: category,
+      name: name,
+      breakdown_label: breakdownLabel,
+      kind: kind,
+      direction: direction,
+      value: value,
+      revenue_basis: revenueBasis,
+      effective_start: startYmd,
+      effective_end: endYmd || null,
+      country_scope: country.scope,
+      enabled: enabled,
+      sort: sort,
     };
+    var normalized = normalizePerOrderRule(rawRule, 0);
+    if (o.allowDraft) return { ok: true, rule: normalized };
+    return { ok: true, rule: normalized };
   }
 
   function savePerOrderFromForm() {
@@ -988,6 +1303,16 @@
     if (addPerOrderBtn) addPerOrderBtn.addEventListener('click', function () { showPerOrderForm(null); });
     if (savePerOrderBtn) savePerOrderBtn.addEventListener('click', savePerOrderFromForm);
     if (cancelPerOrderBtn) cancelPerOrderBtn.addEventListener('click', hidePerOrderForm);
+    var countryInput = document.getElementById('cost-expenses-per-order-country-input');
+    var countryAddBtn = document.getElementById('cost-expenses-per-order-country-add-btn');
+    if (countryInput && countryAddBtn) {
+      countryInput.addEventListener('keydown', function (ev) {
+        if (ev && (ev.key === 'Enter' || ev.keyCode === 13)) {
+          try { ev.preventDefault(); } catch (_) {}
+          try { countryAddBtn.click(); } catch (_) {}
+        }
+      });
+    }
 
     var addOverheadBtn = document.getElementById('cost-expenses-overheads-add-btn');
     var saveOverheadBtn = document.getElementById('cost-expenses-overhead-save-btn');
@@ -1013,8 +1338,65 @@
         if (!state.config.cost_expenses) state.config.cost_expenses = defaultCostExpensesModel();
         state.config.cost_expenses.rule_mode = String(target.value) === 'first_match' ? 'first_match' : 'stack';
       }
-      if (target && target.id === 'cost-expenses-per-order-type') {
-        syncPerOrderRevenueBasisEnabled();
+      if (target && (
+        target.id === 'cost-expenses-per-order-category' ||
+        target.id === 'cost-expenses-per-order-name' ||
+        target.id === 'cost-expenses-per-order-breakdown-label' ||
+        target.id === 'cost-expenses-per-order-kind' ||
+        target.id === 'cost-expenses-per-order-direction' ||
+        target.id === 'cost-expenses-per-order-value' ||
+        target.id === 'cost-expenses-per-order-revenue-basis' ||
+        target.id === 'cost-expenses-per-order-start-date' ||
+        target.id === 'cost-expenses-per-order-end-date' ||
+        target.id === 'cost-expenses-per-order-sort' ||
+        target.id === 'cost-expenses-per-order-enabled' ||
+        (target.name === 'cost-expenses-per-order-start-mode') ||
+        (target.name === 'cost-expenses-per-order-end-mode') ||
+        (target.name === 'cost-expenses-per-order-country-mode')
+      )) {
+        if (target.id === 'cost-expenses-per-order-kind') syncPerOrderKindUi();
+        if (target.id === 'cost-expenses-per-order-value') syncPerOrderKindUi();
+        if (target.id === 'cost-expenses-per-order-category') {
+          // Apply lightweight preset defaults.
+          try {
+            var cat = String(target.value || '').trim().toLowerCase();
+            if (cat === 'tax_vat') {
+              document.getElementById('cost-expenses-per-order-kind').value = 'percent_of_revenue';
+              document.getElementById('cost-expenses-per-order-direction').value = 'add';
+              document.getElementById('cost-expenses-per-order-revenue-basis').value = 'order_total_excl_tax';
+            } else if (cat === 'payment_fees') {
+              document.getElementById('cost-expenses-per-order-kind').value = 'percent_of_revenue';
+              document.getElementById('cost-expenses-per-order-direction').value = 'add';
+              document.getElementById('cost-expenses-per-order-revenue-basis').value = 'order_total_incl_tax';
+            } else if (cat === 'packaging') {
+              document.getElementById('cost-expenses-per-order-kind').value = 'fixed_per_order';
+              document.getElementById('cost-expenses-per-order-direction').value = 'add';
+            }
+          } catch (_) {}
+          syncPerOrderKindUi();
+          syncPerOrderCountryUi();
+
+          // Suggest breakdown label only when blank (preset-style).
+          try {
+            var blEl = document.getElementById('cost-expenses-per-order-breakdown-label');
+            var cur = blEl ? String(blEl.value || '').trim() : '';
+            if (blEl && !cur) {
+              var country = readPerOrderCountryScopeFromUi();
+              var countries = (country && country.ok && Array.isArray(country.countries)) ? country.countries : [];
+              var nextLabel = '';
+              if (cat === 'tax_vat') nextLabel = (countries.length === 1 && countries[0] === 'GB') ? 'UK VAT' : 'VAT';
+              else if (cat === 'payment_fees') nextLabel = 'Payment fees';
+              else if (cat === 'packaging') nextLabel = 'Packaging';
+              else if (cat === 'handling') nextLabel = 'Handling';
+              else if (cat === 'fulfilment') nextLabel = 'Fulfilment';
+              else if (cat === 'insurance') nextLabel = 'Insurance';
+              if (nextLabel) blEl.value = nextLabel;
+            }
+          } catch (_) {}
+        }
+        if (target.name === 'cost-expenses-per-order-start-mode' || target.name === 'cost-expenses-per-order-end-mode') syncPerOrderDatesUi();
+        if (target.name === 'cost-expenses-per-order-country-mode') syncPerOrderCountryUi();
+        updatePerOrderLiveSummary();
       }
       if (target && (target.id === 'cost-expenses-overhead-kind' || target.id === 'cost-expenses-overhead-frequency')) {
         syncOverheadFormUi();
@@ -1038,6 +1420,22 @@
         var id3 = target.getAttribute('data-fixed-cost-id');
         var fc = getFixedCostById(id3);
         if (fc) fc.enabled = target.checked === true;
+      }
+    });
+
+    // Live preview summary should update as the user types.
+    root.addEventListener('input', function (e) {
+      var target = e && e.target ? e.target : null;
+      if (!target || !target.id) return;
+      if (
+        target.id === 'cost-expenses-per-order-name' ||
+        target.id === 'cost-expenses-per-order-breakdown-label' ||
+        target.id === 'cost-expenses-per-order-value' ||
+        target.id === 'cost-expenses-per-order-start-date' ||
+        target.id === 'cost-expenses-per-order-end-date'
+      ) {
+        if (target.id === 'cost-expenses-per-order-value') syncPerOrderKindUi();
+        updatePerOrderLiveSummary();
       }
     });
     root.addEventListener('click', function (e) {
@@ -1099,6 +1497,68 @@
       if (t.getAttribute('data-ce-per-order-preview-range') !== null) {
         var r = t.getAttribute('data-ce-per-order-preview-range');
         runPerOrderPreview(r);
+      }
+
+      // Country chips (add/remove)
+      if (t.id === 'cost-expenses-per-order-country-add-btn') {
+        var input = document.getElementById('cost-expenses-per-order-country-input');
+        var raw = input ? String(input.value || '').trim() : '';
+        var code = normalizeCountryCode(raw);
+        if (!code) {
+          setSectionMsg('cost-expenses-per-order-msg', 'Use a valid 2-letter ISO country code (e.g. GB).', false);
+          return;
+        }
+        setSectionMsg('cost-expenses-per-order-msg', '', null);
+        var chips = document.getElementById('cost-expenses-per-order-country-chips');
+        var existing = [];
+        if (chips) {
+          chips.querySelectorAll('[data-country-code]').forEach(function (el) {
+            var c = normalizeCountryCode(el.getAttribute('data-country-code'));
+            if (c && existing.indexOf(c) === -1) existing.push(c);
+          });
+        }
+        if (existing.indexOf(code) === -1) existing.push(code);
+        existing.sort(function (a, b) { return String(a).localeCompare(String(b)); });
+        renderPerOrderCountryChips(existing);
+        document.getElementById('cost-expenses-per-order-country').value = existing.join(',');
+        if (input) input.value = '';
+        // VAT label suggestion: if user hasn't customised, prefer "UK VAT" when GB-only.
+        try {
+          var catEl = document.getElementById('cost-expenses-per-order-category');
+          var blEl = document.getElementById('cost-expenses-per-order-breakdown-label');
+          var cat = catEl ? String(catEl.value || '').trim().toLowerCase() : '';
+          var cur = blEl ? String(blEl.value || '').trim() : '';
+          if (cat === 'tax_vat' && blEl && (!cur || cur === 'VAT' || cur === 'UK VAT')) {
+            blEl.value = (existing.length === 1 && existing[0] === 'GB') ? 'UK VAT' : 'VAT';
+          }
+        } catch (_) {}
+        updatePerOrderLiveSummary();
+        return;
+      }
+      if (t.getAttribute('data-country-remove') !== null) {
+        var removeCode = normalizeCountryCode(t.getAttribute('data-country-remove'));
+        var chips2 = document.getElementById('cost-expenses-per-order-country-chips');
+        if (chips2) {
+          var next = [];
+          chips2.querySelectorAll('[data-country-code]').forEach(function (el) {
+            var c2 = normalizeCountryCode(el.getAttribute('data-country-code'));
+            if (c2 && c2 !== removeCode && next.indexOf(c2) === -1) next.push(c2);
+          });
+          next.sort(function (a, b) { return String(a).localeCompare(String(b)); });
+          renderPerOrderCountryChips(next);
+          document.getElementById('cost-expenses-per-order-country').value = next.join(',');
+          try {
+            var catEl2 = document.getElementById('cost-expenses-per-order-category');
+            var blEl2 = document.getElementById('cost-expenses-per-order-breakdown-label');
+            var cat2 = catEl2 ? String(catEl2.value || '').trim().toLowerCase() : '';
+            var cur2 = blEl2 ? String(blEl2.value || '').trim() : '';
+            if (cat2 === 'tax_vat' && blEl2 && (!cur2 || cur2 === 'VAT' || cur2 === 'UK VAT')) {
+              blEl2.value = (next.length === 1 && next[0] === 'GB') ? 'UK VAT' : 'VAT';
+            }
+          } catch (_) {}
+          updatePerOrderLiveSummary();
+        }
+        return;
       }
     });
 
