@@ -64,6 +64,11 @@
     { key: '--kexo-header-online-border-color', label: 'Online badge border', tab: TABS.colors.id, accordion: COLOR_ACCORDIONS.headerNav.id },
     { key: '--kexo-notification-badge-bg', label: 'Notification badge background', tab: TABS.colors.id, accordion: COLOR_ACCORDIONS.headerNav.id, opaque: true },
     { key: '--kexo-notification-badge-text', label: 'Notification badge text', tab: TABS.colors.id, accordion: COLOR_ACCORDIONS.headerNav.id },
+    { key: '--kexo-header-settings-menu-bg', label: 'Settings panel background', tab: TABS.colors.id, accordion: COLOR_ACCORDIONS.headerNav.id, opaque: true },
+    { key: '--kexo-header-settings-menu-link-color', label: 'Settings panel link', tab: TABS.colors.id, accordion: COLOR_ACCORDIONS.headerNav.id },
+    { key: '--kexo-header-settings-menu-icon-color', label: 'Settings panel icon', tab: TABS.colors.id, accordion: COLOR_ACCORDIONS.headerNav.id },
+    { key: '--kexo-header-settings-menu-border-color', label: 'Settings panel border', tab: TABS.colors.id, accordion: COLOR_ACCORDIONS.headerNav.id },
+    { key: '--kexo-header-settings-menu-hover-bg', label: 'Settings panel hover background', tab: TABS.colors.id, accordion: COLOR_ACCORDIONS.headerNav.id, opaque: true },
 
     // KPIs (base palette)
     { key: '--kexo-kpi-delta-up', label: 'KPI Delta Up', tab: TABS.colors.id, accordion: COLOR_ACCORDIONS.kpis.id },

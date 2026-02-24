@@ -73,6 +73,7 @@ const ICON_GLYPH_DEFAULTS = Object.freeze({
   'nav-item-signout': 'fa-right-from-bracket',
   'nav-item-settings-menu-signout': 'fa-right-from-bracket',
   'nav-notifications-bell': 'fa-bell',
+  'nav-search': 'fa-magnifying-glass',
   // Notifications panel (bell offcanvas)
   'notifications-type-daily-report': 'fa-solid fa-chart-line',
   'notifications-type-sale': 'fa-solid fa-cart-shopping',

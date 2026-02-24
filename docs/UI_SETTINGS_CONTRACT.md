@@ -11,7 +11,8 @@ If you touch Settings/Admin UI, you must follow this contract and keep it passin
 
 ### Panel (Settings / Admin sub-panel)
 
-- **Tabs / accordion headers are the section headers.**
+- **Tabs / accordion headers are the section headers.** Use `<h4 class="accordion-header">` for accordion headers; do **not** use `<h2>` (to avoid document-outline pollution).
+- **Icons:** Any icon used in Settings/Admin UI must include a `data-icon-key` attribute and have a corresponding mapping entry in `server/shared/icon-registry.js` (and be represented in the theme icon metadata/picker when user-configurable).
 - Panels must have **exactly one** `.settings-panel-wrap` as the **direct** child of the sub-panel root (created/enforced by the normaliser). **No nested layout:** do not inject another `.settings-panel-wrap` inside panels; templates and renderers must not add this wrapper.
 - Default layout is single-column stacked (cards full-width).
 - **Grids:** Use `.settings-responsive-grid` for **tile-style repeated content**: 2+ like-for-like items (e.g. colour swatches, icon tiles, checkbox groups that are visually a set of options). Do **not** use Bootstrap `.row`/`.col-*` or `.d-grid` for those. Use `.row`/`.col-*` only for **form layout**: e.g. two unrelated fields side by side, or a small number of mixed controls in one row—not for repeated tiles. Do not grid single, unique controls or mixed feature groupings—those stay stacked.
@@ -154,9 +155,12 @@ Use consistent states:
 - Do use Tabler button/form classes; prefer solid variants and use `btn-md`.
 - Do make read-only fields clearly read-only with a hint (plaintext); avoid repetitive hint blocks.
 - Do put all Settings-only CSS in `server/public/settings-ui.css` (no inline styles in templates/renderers).
+- Do use `<h4 class="accordion-header">` for accordion headers in Settings/Admin UI.
+- Do use `data-icon-key` on icons and ensure each key is mapped in `server/shared/icon-registry.js`.
 
 ### Don’t
 
+- Don’t use `<h2>` in Settings/Admin accordion headers.
 - Don’t use nested `.settings-panel-wrap` or inject `.settings-panel-wrap` in renderers.
 - Don’t remove or weaken the “already normalised” early return in `normaliseSettingsPanel` (see **Mutation-loop prevention** under Runtime guardrails); doing so reintroduces observer → normalise → mutate → observer loops and flashing.
 - Don’t use `btn-outline-*` button classes anywhere in Settings/Admin UI.

@@ -29,28 +29,7 @@
               </button>
             </div>
             <div class="kexo-footer-right kexo-footer-actions-slot d-flex align-items-center gap-2">
-              <div class="dropdown dropup d-none d-lg-block">
-                <button type="button" class="kexo-footer-action btn btn-ghost-secondary" id="footer-settings-toggle" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" aria-haspopup="true" aria-label="Settings"><i class="fa-jelly-filled fa-gear" data-icon-key="footer-settings-toggle"></i></button>
-                <div class="dropdown-menu dropdown-menu-end kexo-footer-settings-menu" id="footer-settings-menu" aria-labelledby="footer-settings-toggle">
-                  <div class="dropdown-item-text kexo-settings-bubble-tier-row kexo-real-admin-only d-none" data-kexo-tier-row="1">
-                    <label class="form-label small mb-1" for="kexo-viewing-as-tier-footer">Viewing as Tier</label>
-                    <select class="form-select form-select-sm kexo-viewing-as-tier-select" id="kexo-viewing-as-tier-footer" aria-label="Viewing as Tier">
-                      <option value="">Off</option>
-                      <option value="starter">Starter</option>
-                      <option value="growth">Growth</option>
-                      <option value="scale">Scale</option>
-                      <option value="max">Max</option>
-                      <option value="admin">Admin</option>
-                    </select>
-                  </div>
-                  <div class="dropdown-divider kexo-settings-bubble-divider-tier d-none" data-kexo-divider-tier="1"></div>
-                  <div class="kexo-settings-mini-menu" id="kexo-settings-mini-menu-footer" data-kexo-mini-settings="1"></div>
-                  <div class="dropdown-divider"></div>
-                  <a href="/app/logout" class="dropdown-item kexo-top-strip-settings-item" aria-label="Sign out">
-                    <i class="fa-jelly fa-right-from-bracket kexo-top-strip-settings-item-icon" data-icon-key="nav-item-settings-menu-signout" aria-hidden="true"></i>Sign out
-                  </a>
-                </div>
-              </div>
+              <a class="kexo-footer-action btn btn-ghost-secondary d-none d-lg-flex" href="#settings-menu-offcanvas" role="button" id="footer-settings-toggle" data-bs-toggle="offcanvas" data-bs-target="#settings-menu-offcanvas" aria-controls="settings-menu-offcanvas" aria-label="Settings" title="Settings"><i class="fa-jelly-filled fa-gear" data-icon-key="footer-settings-toggle"></i></a>
               <button type="button" class="kexo-footer-action btn btn-ghost-secondary footer-cache-reload-btn d-flex" aria-label="Clear cache and reload" title="Reload app and bypass cache"><i class="fa-jelly-filled fa-arrows-rotate" data-icon-key="footer-cache-reload"></i></button>
               <button type="button" class="kexo-footer-action btn btn-ghost-secondary" id="back-to-top-btn" aria-label="Back to top"><i class="fa-jelly-filled fa-arrow-up" data-icon-key="footer-back-to-top"></i></button>
             </div>
@@ -81,3 +60,35 @@
           </div>
         </div>
       </div>
+      <div class="offcanvas offcanvas-end kexo-settings-menu-panel" tabindex="-1" id="settings-menu-offcanvas" aria-labelledby="settings-menu-offcanvas-label">
+        <div class="offcanvas-header border-bottom">
+          <h2 class="offcanvas-title" id="settings-menu-offcanvas-label">Menu</h2>
+          <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
+        <div class="offcanvas-body d-flex flex-column p-0" id="settings-menu-offcanvas-body">
+          <div class="p-3 border-bottom">
+            <button type="button" class="btn btn-ghost-secondary w-100 d-flex align-items-center gap-2 kexo-settings-menu-search-trigger" id="kexo-global-search-trigger-panel" data-kexo-global-search-open="1" aria-label="Search products, pages, settings" title="Search">
+              <i class="fa-jelly-filled fa-magnifying-glass kexo-settings-menu-search-icon" data-icon-key="nav-search" aria-hidden="true"></i>
+              <span>Search</span>
+            </button>
+          </div>
+          <div class="kexo-settings-mini-menu flex-grow-1 overflow-auto px-3 py-2" id="kexo-settings-mini-menu-panel" data-kexo-mini-settings="1"></div>
+          <div class="border-top p-3">
+            <a href="/app/logout" class="dropdown-item kexo-top-strip-settings-item d-flex align-items-center gap-2 py-2 px-0 text-decoration-none" aria-label="Sign out">
+              <i class="fa-jelly fa-right-from-bracket kexo-top-strip-settings-item-icon" data-icon-key="nav-item-settings-menu-signout" aria-hidden="true"></i>Sign out
+            </a>
+          </div>
+          <div class="kexo-settings-menu-tier-row border-top p-3 kexo-real-admin-only d-none" data-kexo-tier-row="1">
+            <label class="form-label small mb-1" for="kexo-viewing-as-tier-panel">Viewing as Tier</label>
+            <select class="form-select form-select-sm kexo-viewing-as-tier-select" id="kexo-viewing-as-tier-panel" aria-label="Viewing as Tier">
+              <option value="">Off</option>
+              <option value="starter">Starter</option>
+              <option value="growth">Growth</option>
+              <option value="scale">Scale</option>
+              <option value="max">Max</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
+        </div>
+      </div>
+</div>

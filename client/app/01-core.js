@@ -399,9 +399,8 @@ const API = '';
     function ensureMiniSettingsMenu() {
       if (_miniMenuBuilt) return;
       var template = document.getElementById('kexo-settings-nav-template');
-      var headerHost = document.getElementById('kexo-settings-mini-menu-header');
-      var footerHost = document.getElementById('kexo-settings-mini-menu-footer');
-      if (!template || !template.content || (!headerHost && !footerHost)) return;
+      var panelHost = document.getElementById('kexo-settings-mini-menu-panel');
+      if (!template || !template.content || !panelHost) return;
       var fragment = template.content.cloneNode(true);
       stripIds(fragment);
       function addToggleListeners(root) {
@@ -416,22 +415,13 @@ const API = '';
           });
         });
       }
-      if (headerHost) {
-        headerHost.appendChild(fragment.cloneNode(true));
-        addToggleListeners(headerHost);
-      }
-      if (footerHost) {
-        var frag2 = template.content.cloneNode(true);
-        stripIds(frag2);
-        footerHost.appendChild(frag2);
-        addToggleListeners(footerHost);
-      }
+      panelHost.appendChild(fragment);
+      addToggleListeners(panelHost);
       _miniMenuBuilt = true;
     }
     function ensureViewingAsTierRow(viewer) {
       ensureMiniSettingsMenu();
-      var headerSelect = document.getElementById('kexo-viewing-as-tier-header');
-      var footerSelect = document.getElementById('kexo-viewing-as-tier-footer');
+      var panelSelect = document.getElementById('kexo-viewing-as-tier-panel');
       var current = readPreviewConfig();
       var value = (current && current.tier) ? current.tier : '';
       function setSelect(sel) {
@@ -441,20 +431,15 @@ const API = '';
         }
         sel.value = value;
       }
-      setSelect(headerSelect);
-      setSelect(footerSelect);
+      setSelect(panelSelect);
       function onTierChange() {
         var v = (this && this.value) ? this.value : '';
         writePreviewConfig(v || null);
         applyEffectiveViewer();
       }
-      if (headerSelect && !headerSelect._kexoTierBound) {
-        headerSelect._kexoTierBound = true;
-        headerSelect.addEventListener('change', onTierChange);
-      }
-      if (footerSelect && !footerSelect._kexoTierBound) {
-        footerSelect._kexoTierBound = true;
-        footerSelect.addEventListener('change', onTierChange);
+      if (panelSelect && !panelSelect._kexoTierBound) {
+        panelSelect._kexoTierBound = true;
+        panelSelect.addEventListener('change', onTierChange);
       }
     }
     var _effectiveViewerCache = null;

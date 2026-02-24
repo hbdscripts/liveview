@@ -5948,6 +5948,49 @@ img[data-kexo-logo-slot="footer"][data-kexo-logo-ready="1"] {
   color: var(--kexo-notification-badge-text, #fff) !important;
 }
 
+/* Settings menu panel (offcanvas): themeable background, link, icon, border */
+.kexo-settings-menu-panel.offcanvas {
+  width: 100%;
+  max-width: 400px;
+  background: var(--kexo-header-settings-menu-bg, var(--tblr-bg-surface, #fff));
+  border-left: 1px solid var(--kexo-header-settings-menu-border-color, var(--tblr-border-color, #e6e7e9));
+}
+.kexo-settings-menu-panel .offcanvas-header {
+  border-bottom-color: var(--kexo-header-settings-menu-border-color, var(--tblr-border-color, #e6e7e9));
+  background: var(--kexo-header-settings-menu-bg, var(--tblr-bg-surface, #fff));
+}
+.kexo-settings-menu-panel .offcanvas-title {
+  color: var(--kexo-header-settings-menu-link-color, var(--tblr-body-color, #1f2937));
+}
+.kexo-settings-menu-panel .kexo-top-strip-settings-item,
+.kexo-settings-menu-panel .kexo-settings-menu-search-trigger {
+  color: var(--kexo-header-settings-menu-link-color, var(--tblr-body-color, #1f2937));
+}
+.kexo-settings-menu-panel .kexo-top-strip-settings-item:hover,
+.kexo-settings-menu-panel .kexo-settings-menu-search-trigger:hover {
+  background: var(--kexo-header-settings-menu-hover-bg, rgba(0, 0, 0, 0.06));
+  color: var(--kexo-header-settings-menu-link-color, var(--tblr-body-color, #1f2937));
+}
+.kexo-settings-menu-panel .kexo-top-strip-settings-item-icon,
+.kexo-settings-menu-panel .kexo-settings-menu-search-icon {
+  color: var(--kexo-header-settings-menu-icon-color, var(--kexo-header-settings-menu-link-color, var(--tblr-body-color, #1f2937)));
+}
+.kexo-settings-menu-panel .kexo-settings-mini-menu .list-group-item-action,
+.kexo-settings-menu-panel .kexo-settings-mini-menu .settings-nav-category > a {
+  color: var(--kexo-header-settings-menu-link-color, var(--tblr-body-color, #1f2937));
+}
+.kexo-settings-menu-panel .kexo-settings-mini-menu .list-group-item-action:hover,
+.kexo-settings-menu-panel .kexo-settings-mini-menu .settings-nav-category > a:hover {
+  background: var(--kexo-header-settings-menu-hover-bg, rgba(0, 0, 0, 0.06));
+  color: var(--kexo-header-settings-menu-link-color, var(--tblr-body-color, #1f2937));
+}
+.kexo-settings-menu-panel .kexo-settings-menu-tier-row .form-label {
+  color: var(--kexo-header-settings-menu-link-color, var(--tblr-body-color, #1f2937));
+}
+.kexo-settings-menu-panel .border-top {
+  border-color: var(--kexo-header-settings-menu-border-color, var(--tblr-border-color, #e6e7e9)) !important;
+}
+
 /* Notification panel: Tabler-style offcanvas, tabs, list items, detail actions */
 .kexo-notifications-panel.offcanvas {
   width: 100%;

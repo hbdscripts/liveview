@@ -45,6 +45,7 @@
     'nav-dropdown-arrow': { title: 'Nav Dropdown Arrow', help: 'Arrow icon shown next to each item in the top-nav dropdown menus (Dashboard, Insights, Acquisition, etc.).' },
     'nav-toggle-admin': { title: 'Admin menu (top nav)', help: 'Icon-only Admin dropdown in the top nav (admin-only). Links to Google Ads and other admin pages.' },
     'nav-notifications-bell': { title: 'Notifications (bell)', help: 'Bell icon in the header (top strip) next to Settings. Opens the notifications panel.' },
+    'nav-search': { title: 'Search', help: 'Search icon in the settings menu panel (offcanvas). Opens the global search modal.' },
     'notifications-type-daily-report': { title: 'Notifications - Daily report', help: 'Icon shown for daily report notifications in the notifications panel (bell offcanvas).' },
     'notifications-type-sale': { title: 'Notifications - Sale', help: 'Icon shown for sale notifications in the notifications panel (bell offcanvas).' },
     'notifications-type-sentry': { title: 'Notifications - Sentry', help: 'Icon shown for Sentry notifications in the notifications panel (bell offcanvas).' },
@@ -77,7 +78,7 @@
     if (!key) return 'fa-light';
     if (isLockedSettingsIconKey(key)) return 'fa-thin';
     if (key === 'nav-item-refresh' || key === 'nav-item-sound-on' || key === 'nav-item-sound-off' || key === 'nav-item-settings') return 'fa-thin';
-    if (key.indexOf('nav-toggle-') === 0 || key === 'topnav-date-chevron' || key === 'nav-notifications-bell') return 'fa-jelly-filled';
+    if (key.indexOf('nav-toggle-') === 0 || key === 'topnav-date-chevron' || key === 'nav-notifications-bell' || key === 'nav-search') return 'fa-jelly-filled';
     if (key.indexOf('header-') === 0) return 'fa-jelly-filled';
     if (key === 'nav-dropdown-arrow') return 'fa-solid';
     if (key.indexOf('nav-item-') === 0) return 'fa-jelly';
@@ -825,7 +826,7 @@
     var key = String(name || '').trim().toLowerCase();
     if (!key) return 'misc';
     if (key.indexOf('admin-tab-') === 0 || key === 'nav-item-admin' || key === 'nav-toggle-admin' || key.indexOf('nav-item-settings-menu-') === 0) return 'admin';
-    if (key.indexOf('nav-toggle-') === 0 || key.indexOf('nav-item-') === 0 || key === 'nav-notifications-bell' || key === 'topnav-date-chevron' || key === 'online-status-indicator' || key === 'nav-dropdown-arrow') return 'header-nav';
+    if (key.indexOf('nav-toggle-') === 0 || key.indexOf('nav-item-') === 0 || key === 'nav-notifications-bell' || key === 'nav-search' || key === 'topnav-date-chevron' || key === 'online-status-indicator' || key === 'nav-dropdown-arrow') return 'header-nav';
     if (key.indexOf('footer-') === 0) return 'footer';
     if (key.indexOf('table-icon-') === 0 || key.indexOf('table-short-') === 0) return 'mobile-icons';
     if (key === 'table-builder-icon' || key === 'table-sticky-resize-handle') return 'tables';
@@ -871,7 +872,7 @@
       var isOpen = false;
       html += '' +
         '<div class="accordion-item">' +
-          '<h2 class="accordion-header" id="' + headingId + '">' +
+          '<h4 class="accordion-header" id="' + headingId + '">' +
             '<button class="accordion-button' + (isOpen ? '' : ' collapsed') + '" type="button" data-bs-toggle="collapse" data-bs-target="#' + collapseId + '" aria-expanded="' + (isOpen ? 'true' : 'false') + '" aria-controls="' + collapseId + '">' +
               '<span class="d-flex align-items-center w-100 gap-2">' +
                 '<span class="kexo-settings-accordion-chevron" aria-hidden="true"><i class="fa-regular fa-chevron-down" aria-hidden="true"></i></span>' +
@@ -879,7 +880,7 @@
                 '<span class="text-muted small">' + String(rows.length) + ' icons</span>' +
               '</span>' +
             '</button>' +
-          '</h2>' +
+          '</h4>' +
           '<div id="' + collapseId + '" class="accordion-collapse collapse' + (isOpen ? ' show' : '') + '" aria-labelledby="' + headingId + '" data-bs-parent="#' + accordionId + '">' +
             '<div class="accordion-body"><div class="settings-responsive-grid" data-theme-icon-group-body="' + groupId + '">' + rows.join('') + '</div></div>' +
           '</div>' +
@@ -926,7 +927,7 @@
 
     var html = '' +
       '<div class="accordion-item" data-theme-icon-group="' + gid + '">' +
-        '<h2 class="accordion-header" id="' + headingId + '">' +
+        '<h4 class="accordion-header" id="' + headingId + '">' +
           '<button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#' + collapseId + '" aria-expanded="false" aria-controls="' + collapseId + '">' +
             '<span class="d-flex align-items-center w-100 gap-2">' +
               '<span class="kexo-settings-accordion-chevron" aria-hidden="true"><i class="fa-regular fa-chevron-down" aria-hidden="true"></i></span>' +
@@ -934,7 +935,7 @@
               '<span class="text-muted small" data-theme-icon-group-count="' + gid + '">0 icons</span>' +
             '</span>' +
           '</button>' +
-        '</h2>' +
+        '</h4>' +
         '<div id="' + collapseId + '" class="accordion-collapse collapse" aria-labelledby="' + headingId + '" data-bs-parent="#' + accordionId + '">' +
           '<div class="accordion-body"><div class="settings-responsive-grid" data-theme-icon-group-body="' + gid + '"></div></div>' +
         '</div>' +
@@ -1044,7 +1045,7 @@
     var collapseId = 'theme-icons-accordion-collapse-' + groupId;
     var html = '' +
       '<div class="accordion-item" data-theme-icon-group="' + groupId + '">' +
-        '<h2 class="accordion-header" id="' + headingId + '">' +
+        '<h4 class="accordion-header" id="' + headingId + '">' +
           '<button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#' + collapseId + '" aria-expanded="false" aria-controls="' + collapseId + '">' +
             '<span class="d-flex align-items-center w-100 gap-2">' +
               '<span class="kexo-settings-accordion-chevron" aria-hidden="true"><i class="fa-regular fa-chevron-down" aria-hidden="true"></i></span>' +
@@ -1052,7 +1053,7 @@
               '<span class="text-muted small" data-theme-icon-group-count="' + groupId + '">0 icons</span>' +
             '</span>' +
           '</button>' +
-        '</h2>' +
+        '</h4>' +
         '<div id="' + collapseId + '" class="accordion-collapse collapse" aria-labelledby="' + headingId + '" data-bs-parent="#' + accordionId + '">' +
           '<div class="accordion-body"><div class="settings-responsive-grid" data-theme-icon-group-body="' + groupId + '"></div></div>' +
         '</div>' +

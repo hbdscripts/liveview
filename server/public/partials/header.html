@@ -24,37 +24,13 @@
             </a>
           </div>
           <div class="kexo-desktop-top-strip-right d-flex align-items-center gap-1">
-            <button type="button" class="btn btn-ghost-secondary btn-icon kexo-global-search-btn-header" id="kexo-global-search-btn-header" aria-label="Search products, pages, settings" title="Search">
-              <i class="fa-jelly-filled fa-magnifying-glass" data-icon-key="nav-search" aria-hidden="true"></i>
-            </button>
             <a class="btn btn-ghost-secondary btn-icon position-relative" href="#notifications-offcanvas" role="button" data-bs-toggle="offcanvas" data-bs-target="#notifications-offcanvas" aria-controls="notifications-offcanvas" aria-label="Notifications" title="Notifications" id="notifications-bell-btn-header">
               <i class="fa-jelly-filled fa-bell" data-icon-key="nav-notifications-bell" aria-hidden="true"></i>
               <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger border border-light kexo-notifications-badge kexo-notifications-unread-badge is-hidden" id="notifications-unread-badge-header" aria-live="polite">0</span>
             </a>
-            <div class="dropdown">
-              <button type="button" class="kexo-top-strip-settings-toggle" id="kexo-top-strip-settings-btn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" aria-haspopup="true" aria-controls="navbar-settings-menu">
-                <i class="fa-jelly-filled fa-gear kexo-settings-icon" data-icon-key="nav-toggle-settings" aria-hidden="true"></i>
-              </button>
-              <div class="dropdown-menu kexo-top-strip-settings-menu kexo-strip-dropdown-align" id="navbar-settings-menu">
-                <div class="dropdown-item-text kexo-settings-bubble-tier-row kexo-real-admin-only d-none" data-kexo-tier-row="1">
-                  <label class="form-label small mb-1" for="kexo-viewing-as-tier-header">Viewing as Tier</label>
-                  <select class="form-select form-select-sm kexo-viewing-as-tier-select" id="kexo-viewing-as-tier-header" aria-label="Viewing as Tier">
-                    <option value="">Off</option>
-                    <option value="starter">Starter</option>
-                    <option value="growth">Growth</option>
-                    <option value="scale">Scale</option>
-                    <option value="max">Max</option>
-                    <option value="admin">Admin</option>
-                  </select>
-                </div>
-                <div class="dropdown-divider kexo-settings-bubble-divider-tier d-none" data-kexo-divider-tier="1"></div>
-                <div class="kexo-settings-mini-menu" id="kexo-settings-mini-menu-header" data-kexo-mini-settings="1"></div>
-                <div class="dropdown-divider"></div>
-                <a href="/app/logout" class="dropdown-item kexo-top-strip-settings-item" aria-label="Sign out">
-                  <i class="fa-jelly fa-right-from-bracket kexo-top-strip-settings-item-icon" data-icon-key="nav-item-settings-menu-signout" aria-hidden="true"></i>Sign out
-                </a>
-              </div>
-            </div>
+            <a class="btn btn-ghost-secondary btn-icon kexo-top-strip-settings-toggle" href="#settings-menu-offcanvas" role="button" id="kexo-top-strip-settings-btn" data-bs-toggle="offcanvas" data-bs-target="#settings-menu-offcanvas" aria-controls="settings-menu-offcanvas" aria-label="Settings" title="Settings">
+              <i class="fa-jelly-filled fa-gear kexo-settings-icon" data-icon-key="nav-toggle-settings" aria-hidden="true"></i>
+            </a>
             <template id="kexo-settings-nav-template">
               <!--#include partials/settings-nav-categories.html-->
             </template>

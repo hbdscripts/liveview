@@ -307,6 +307,19 @@
     }
   }
 
-  var btn = document.getElementById('kexo-global-search-btn-header');
-  if (btn) btn.addEventListener('click', function () { openSearchModal(); });
+  function bindSearchTriggers() {
+    var triggers = document.querySelectorAll('[data-kexo-global-search-open="1"], #kexo-global-search-btn-header');
+    triggers.forEach(function (el) {
+      if (el && el.getAttribute && el.getAttribute('data-kexo-global-search-bound') === '1') return;
+      if (el) {
+        el.setAttribute('data-kexo-global-search-bound', '1');
+        el.addEventListener('click', function (e) {
+          if (e && typeof e.preventDefault === 'function') e.preventDefault();
+          openSearchModal();
+        });
+      }
+    });
+  }
+  bindSearchTriggers();
+  document.addEventListener('DOMContentLoaded', bindSearchTriggers);
 })();

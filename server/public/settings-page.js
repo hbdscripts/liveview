@@ -4380,11 +4380,11 @@
     }
 
     return '<div class="accordion-item settings-charts-item" data-chart-config-key="' + escapeHtml(key) + '">' +
-      '<h2 class="accordion-header" id="' + escapeHtml(headingId) + '">' +
+      '<h4 class="accordion-header" id="' + escapeHtml(headingId) + '">' +
         '<button class="accordion-button' + (isOpen ? '' : ' collapsed') + '" type="button" data-bs-toggle="collapse" data-bs-target="#' + escapeHtml(collapseId) + '" aria-expanded="' + (isOpen ? 'true' : 'false') + '" aria-controls="' + escapeHtml(collapseId) + '">' +
           '<span class="d-flex align-items-center w-100 gap-2"><span class="kexo-settings-accordion-chevron" aria-hidden="true"><i class="fa-regular fa-chevron-down" aria-hidden="true"></i></span><span class="me-auto">' + escapeHtml(title) + '</span></span>' +
         '</button>' +
-      '</h2>' +
+      '</h4>' +
       '<div id="' + escapeHtml(collapseId) + '" class="accordion-collapse collapse' + (isOpen ? ' show' : '') + '" aria-labelledby="' + escapeHtml(headingId) + '" data-bs-parent="#' + escapeHtml(accordionId) + '">' +
         '<div class="accordion-body"><div class="settings-charts-card-body">' + cardBodyContent + '</div></div>' +
       '</div>' +
@@ -4400,11 +4400,11 @@
     var headingId = collapseId + '-heading';
     var isOpen = idx === 0;
     return '<div class="accordion-item settings-charts-item" data-kpi-bundle-key="' + escapeHtml(bundleKey) + '">' +
-      '<h2 class="accordion-header" id="' + escapeHtml(headingId) + '">' +
+      '<h4 class="accordion-header" id="' + escapeHtml(headingId) + '">' +
         '<button class="accordion-button' + (isOpen ? '' : ' collapsed') + '" type="button" data-bs-toggle="collapse" data-bs-target="#' + escapeHtml(collapseId) + '" aria-expanded="' + (isOpen ? 'true' : 'false') + '" aria-controls="' + escapeHtml(collapseId) + '">' +
           '<span class="d-flex align-items-center w-100 gap-2"><span class="kexo-settings-accordion-chevron" aria-hidden="true"><i class="fa-regular fa-chevron-down" aria-hidden="true"></i></span><span class="me-auto">' + escapeHtml(meta.label) + '</span></span>' +
         '</button>' +
-      '</h2>' +
+      '</h4>' +
       '<div id="' + escapeHtml(collapseId) + '" class="accordion-collapse collapse' + (isOpen ? ' show' : '') + '" aria-labelledby="' + escapeHtml(headingId) + '" data-bs-parent="#' + escapeHtml(accordionId) + '">' +
         '<div class="accordion-body"><div class="settings-charts-card-body"><div class="text-muted small mb-3">' + escapeHtml(meta.help || '') + '</div><div class="row g-3">' +
           '<div class="col-12 col-md-6 col-xl-3"><label class="form-label mb-1">Sparkline type</label><select class="form-select form-select-sm" data-bundle-field="sparkline.mode"><option value="line"' + (String(spark.mode) === 'line' ? ' selected' : '') + '>Line</option><option value="area"' + (String(spark.mode) === 'area' ? ' selected' : '') + '>Area</option><option value="bar"' + (String(spark.mode) === 'bar' ? ' selected' : '') + '>Bar</option></select></div>' +
@@ -4657,11 +4657,11 @@
       var groupHeadingId = groupCollapseId + '-heading';
       var isGroupOpen = groupIndex === 0;
       html += '<div class="accordion-item settings-charts-group-item">' +
-        '<h2 class="accordion-header" id="' + escapeHtml(groupHeadingId) + '">' +
+        '<h4 class="accordion-header" id="' + escapeHtml(groupHeadingId) + '">' +
           '<button class="accordion-button' + (isGroupOpen ? '' : ' collapsed') + '" type="button" data-bs-toggle="collapse" data-bs-target="#' + escapeHtml(groupCollapseId) + '" aria-expanded="' + (isGroupOpen ? 'true' : 'false') + '" aria-controls="' + escapeHtml(groupCollapseId) + '">' +
             '<span class="d-flex align-items-center w-100 gap-2"><span class="kexo-settings-accordion-chevron" aria-hidden="true"><i class="fa-regular fa-chevron-down" aria-hidden="true"></i></span><span class="me-auto">' + escapeHtml(groupLabel) + '</span></span>' +
           '</button>' +
-        '</h2>' +
+        '</h4>' +
         '<div id="' + escapeHtml(groupCollapseId) + '" class="accordion-collapse collapse' + (isGroupOpen ? ' show' : '') + '" aria-labelledby="' + escapeHtml(groupHeadingId) + '" data-bs-parent="#' + escapeHtml(accordionId) + '">' +
           '<div class="accordion-body">' +
             '<div class="accordion settings-layout-accordion settings-charts-inner-accordion" id="' + escapeHtml(innerAccordionId) + '">';
@@ -4675,11 +4675,11 @@
     var kpiGroupHeadingId = kpiGroupCollapseId + '-heading';
     var kpiInnerAccordionId = 'settings-charts-group-inner-kpi-bundles';
     html += '<div class="accordion-item settings-charts-group-item">' +
-      '<h2 class="accordion-header" id="' + escapeHtml(kpiGroupHeadingId) + '">' +
+      '<h4 class="accordion-header" id="' + escapeHtml(kpiGroupHeadingId) + '">' +
         '<button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#' + escapeHtml(kpiGroupCollapseId) + '" aria-expanded="false" aria-controls="' + escapeHtml(kpiGroupCollapseId) + '">' +
           '<span class="d-flex align-items-center w-100 gap-2"><span class="kexo-settings-accordion-chevron" aria-hidden="true"><i class="fa-regular fa-chevron-down" aria-hidden="true"></i></span><span class="me-auto">KPI bundles</span></span>' +
         '</button>' +
-      '</h2>' +
+      '</h4>' +
       '<div id="' + escapeHtml(kpiGroupCollapseId) + '" class="accordion-collapse collapse" aria-labelledby="' + escapeHtml(kpiGroupHeadingId) + '" data-bs-parent="#' + escapeHtml(accordionId) + '">' +
         '<div class="accordion-body">' +
           '<div class="accordion settings-layout-accordion settings-charts-inner-accordion" id="' + escapeHtml(kpiInnerAccordionId) + '">';
@@ -5102,7 +5102,7 @@
       var isOpen = pageIdx === 0;
       html += '' +
         '<div class="accordion-item" data-layout-page="' + escapeHtml(pageKey) + '">' +
-          '<h2 class="accordion-header" id="' + escapeHtml(headingId) + '">' +
+          '<h4 class="accordion-header" id="' + escapeHtml(headingId) + '">' +
             '<button class="accordion-button' + (isOpen ? '' : ' collapsed') + '" type="button" data-bs-toggle="collapse" data-bs-target="#' + escapeHtml(collapseId) + '" aria-expanded="' + (isOpen ? 'true' : 'false') + '" aria-controls="' + escapeHtml(collapseId) + '">' +
               '<span class="d-flex align-items-center w-100 gap-2">' +
                 '<span class="kexo-settings-accordion-chevron" aria-hidden="true">' +
@@ -5112,7 +5112,7 @@
                 '<span class="text-muted small"><code>' + escapeHtml(pageKey) + '</code></span>' +
               '</span>' +
             '</button>' +
-          '</h2>' +
+          '</h4>' +
           '<div id="' + escapeHtml(collapseId) + '" class="accordion-collapse collapse' + (isOpen ? ' show' : '') + '" aria-labelledby="' + escapeHtml(headingId) + '" data-bs-parent="#settings-layout-tables-accordion">' +
             '<div class="accordion-body">' +
               '<div data-layout-page-block="1" data-layout-page-key="' + escapeHtml(pageKey) + '">' +
