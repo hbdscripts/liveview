@@ -143,6 +143,8 @@ async function getOrComputeJson(
 }
 
 const DASHBOARD_SERIES_ENDPOINT = 'dashboard-series';
+const KPIS_ENDPOINT = 'kpis';
+const KPIS_PROFIT_ENDPOINT = 'kpis_profit';
 
 async function invalidateDashboardSeries() {
   if (!(await tableOk())) return;
@@ -158,11 +160,41 @@ async function invalidateDashboardSeries() {
   }
 }
 
+async function invalidateKpis() {
+  if (!(await tableOk())) return;
+  try {
+    const db = getDb();
+    if (isPostgres()) {
+      await db.run(`DELETE FROM report_cache WHERE endpoint = $1`, [KPIS_ENDPOINT]);
+    } else {
+      await db.run(`DELETE FROM report_cache WHERE endpoint = ?`, [KPIS_ENDPOINT]);
+    }
+  } catch (_) {
+    // fail-open: cache invalidation is best-effort
+  }
+}
+
+async function invalidateKpisProfit() {
+  if (!(await tableOk())) return;
+  try {
+    const db = getDb();
+    if (isPostgres()) {
+      await db.run(`DELETE FROM report_cache WHERE endpoint = $1`, [KPIS_PROFIT_ENDPOINT]);
+    } else {
+      await db.run(`DELETE FROM report_cache WHERE endpoint = ?`, [KPIS_PROFIT_ENDPOINT]);
+    }
+  } catch (_) {
+    // fail-open: cache invalidation is best-effort
+  }
+}
+
 module.exports = {
   stableStringify,
   hashParams,
   buildCacheKey,
   getOrComputeJson,
   invalidateDashboardSeries,
+  invalidateKpis,
+  invalidateKpisProfit,
 };
 

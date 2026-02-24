@@ -6806,7 +6806,9 @@
       // so the initial setTab call can't trigger it. Kick it off now if dashboard is active.
       var dashPanel = document.getElementById('tab-panel-dashboard');
       if (dashPanel && (dashPanel.classList.contains('active') || PAGE === 'dashboard')) {
-        fetchDashboardData(dashRangeKeyFromDateRange(), false);
+        var dashRangeKey = dashRangeKeyFromDateRange();
+        var forceInitial = dashRangeKey === 'today' || dashRangeKey === '1h';
+        fetchDashboardData(dashRangeKey, forceInitial);
       }
       try {
         if (window.dashboardController && typeof window.dashboardController.destroy === 'function') {

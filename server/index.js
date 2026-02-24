@@ -520,7 +520,7 @@ const SETTINGS_TAB_DEFAULTS = {
   attribution: { default: 'mapping', allowed: new Set(['mapping', 'tree']) },
   insights: { default: 'variants', allowed: new Set(['variants']) },
   'cost-expenses': { default: 'cost-sources', allowed: new Set(['cost-sources', 'shipping', 'rules', 'breakdown']) },
-  admin: { default: 'users', allowed: new Set(['users', 'diagnostics', 'controls', 'role-permissions', 'googleads']) },
+  admin: { default: 'users', allowed: new Set(['users', 'diagnostics', 'controls', 'role-permissions', 'googleads', 'infrastructure']) },
 };
 
 /** Preserve only non-routing query params when building canonical settings URL. */

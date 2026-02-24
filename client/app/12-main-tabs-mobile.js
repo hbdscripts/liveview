@@ -328,10 +328,20 @@
             return;
           }
           if (tab === 'dashboard') {
-            try { if (typeof window.refreshDashboard === 'function') window.refreshDashboard({ force: false }); } catch (_) {}
-            refreshKpis({ force: false }).then(function(data) {
-              if (data) renderDashboardKpisFromApi(data);
-            });
+            var rangeKey = '';
+            try { rangeKey = getStatsRange(); } catch (_) { rangeKey = ''; }
+            var isLiveRange = rangeKey === 'today' || rangeKey === '1h';
+            if (isLiveRange) {
+              try { if (typeof window.refreshDashboard === 'function') window.refreshDashboard({ force: true, silent: true, reason: 'visit' }); } catch (_) {}
+              refreshKpis({ force: true }).then(function(data) {
+                if (data) renderDashboardKpisFromApi(data);
+              });
+            } else {
+              try { if (typeof window.refreshDashboard === 'function') window.refreshDashboard({ force: false }); } catch (_) {}
+              refreshKpis({ force: false }).then(function(data) {
+                if (data) renderDashboardKpisFromApi(data);
+              });
+            }
           } else if (tab === 'stats') {
             refreshStats({ force: false });
             ensureKpis();

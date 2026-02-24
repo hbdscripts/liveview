@@ -449,7 +449,7 @@
     attribution: ['mapping', 'tree'],
     insights: ['variants'],
     'cost-expenses': ['cost-sources', 'shipping', 'rules', 'breakdown'],
-    admin: ['users', 'diagnostics', 'controls', 'role-permissions', 'googleads'],
+    admin: ['users', 'diagnostics', 'controls', 'role-permissions', 'googleads', 'infrastructure'],
   };
 
   function getTabFromPath() {
@@ -539,7 +539,7 @@
         var adm = /[?&]adminTab=([^&]+)/.exec(window.location.search || '');
         if (adm && adm[1]) {
           var adk = adm[1].toLowerCase().replace(/\s+/g, '-');
-          if (adk === 'controls' || adk === 'diagnostics' || adk === 'users' || adk === 'role-permissions' || adk === 'googleads') initialAdminSubTab = adk;
+          if (adk === 'infrastructure' || adk === 'controls' || adk === 'diagnostics' || adk === 'users' || adk === 'role-permissions' || adk === 'googleads') initialAdminSubTab = adk;
         }
       }
       if (t === 'cost-expenses') {

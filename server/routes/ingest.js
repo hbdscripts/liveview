@@ -8,6 +8,7 @@
 const Sentry = require('@sentry/node');
 const config = require('../config');
 const store = require('../store');
+const reportCache = require('../reportCache');
 const salesEvidence = require('../salesEvidence');
 const rateLimit = require('../rateLimit');
 const sse = require('../sse');
@@ -370,6 +371,9 @@ function ingestRouter(req, res, next) {
         .catch(() => null)
         .then(() => store.insertPurchase(payload, sessionId, payload.country_code || 'XX'))
         .then(() => {
+          // Invalidate KPI caches so next dashboard/KPI fetch is fresh.
+          reportCache.invalidateKpis().catch(() => null);
+          reportCache.invalidateKpisProfit().catch(() => null);
           // Fraud evaluation (fail-open; never blocks ingest response).
           fraudService.evaluateCheckoutCompleted({ sessionId, payload, receivedAtMs }).catch(() => null);
           return null;

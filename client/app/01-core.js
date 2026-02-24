@@ -262,6 +262,63 @@ const API = '';
         });
       } catch (_) {}
     }
+    function applyRealAdminOnlyVisibility(realIsAdmin) {
+      try {
+        var els = document.querySelectorAll ? document.querySelectorAll('.kexo-real-admin-only') : [];
+        if (!els || !els.length) return;
+        els.forEach(function (el) {
+          if (!el || !el.classList) return;
+          if (realIsAdmin) el.classList.remove('d-none');
+          else el.classList.add('d-none');
+        });
+        var dividers = document.querySelectorAll ? document.querySelectorAll('[data-kexo-divider-tier="1"]') : [];
+        if (dividers && dividers.length) {
+          dividers.forEach(function (el) {
+            if (!el || !el.classList) return;
+            if (realIsAdmin) el.classList.remove('d-none');
+            else el.classList.add('d-none');
+          });
+        }
+      } catch (_) {}
+    }
+    var _rolePermissionsByTierCache = null;
+    var _rolePermissionsCacheTs = 0;
+    var ROLE_PERMISSIONS_CACHE_MS = 120000;
+    function fetchRolePermissionsForPreview(tier, callback) {
+      if (typeof callback !== 'function') return;
+      if (_rolePermissionsByTierCache && (Date.now() - _rolePermissionsCacheTs) < ROLE_PERMISSIONS_CACHE_MS) {
+        var map = _rolePermissionsByTierCache[tier];
+        if (!map && (tier === 'max')) map = _rolePermissionsByTierCache.scale || {};
+        if (tier === 'admin') {
+          var allTrue = {};
+          var src = _rolePermissionsByTierCache.starter || _rolePermissionsByTierCache.scale || {};
+          for (var k in src) allTrue[k] = true;
+          map = allTrue;
+        }
+        callback(map || {});
+        return;
+      }
+      fetch(API + '/api/admin/role-permissions', { credentials: 'same-origin' })
+        .then(function (r) { return r.json ? r.json() : null; })
+        .then(function (d) {
+          if (d && d.ok && d.permissions) {
+            _rolePermissionsByTierCache = d.permissions;
+            _rolePermissionsCacheTs = Date.now();
+            var map = d.permissions[tier];
+            if (!map && (tier === 'max')) map = d.permissions.scale;
+            if (tier === 'admin') {
+              var allTrue = {};
+              var src = d.permissions.starter || d.permissions.scale || {};
+              for (var k in src) allTrue[k] = true;
+              map = allTrue;
+            }
+            callback(map || {});
+          } else {
+            callback({});
+          }
+        })
+        .catch(function () { callback({}); });
+    }
     function applyPermissionGating(permissions) {
       try {
         var els = document.querySelectorAll ? document.querySelectorAll('[data-kexo-perm]') : [];
@@ -332,44 +389,73 @@ const API = '';
         } catch (_) {}
       } catch (_) {}
     }
-    function ensurePreviewExitMenuItem(viewer) {
-      var menu = document.getElementById('navbar-settings-menu');
-      if (!menu) return;
-      var btn = menu.querySelector('[data-kexo-preview-exit="1"]');
-      var div = menu.querySelector('[data-kexo-preview-divider="1"]');
-      if (!btn) {
-        btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'dropdown-item kexo-top-strip-settings-item';
-        btn.setAttribute('data-kexo-preview-exit', '1');
-        btn.innerHTML = '<i class="fa-jelly fa-eye kexo-top-strip-settings-item-icon" aria-hidden="true"></i><span data-kexo-preview-exit-label>Preview</span>';
-        btn.addEventListener('click', function () {
-          try { clearPreviewConfig(); } catch (_) {}
-          try { window.location.reload(); } catch (_) {}
+    var _miniMenuBuilt = false;
+    function stripIds(node) {
+      if (!node) return;
+      if (node.id) node.removeAttribute('id');
+      var children = node.querySelectorAll ? node.querySelectorAll('*') : [];
+      if (children.length) children.forEach(stripIds);
+    }
+    function ensureMiniSettingsMenu() {
+      if (_miniMenuBuilt) return;
+      var template = document.getElementById('kexo-settings-nav-template');
+      var headerHost = document.getElementById('kexo-settings-mini-menu-header');
+      var footerHost = document.getElementById('kexo-settings-mini-menu-footer');
+      if (!template || !template.content || (!headerHost && !footerHost)) return;
+      var fragment = template.content.cloneNode(true);
+      stripIds(fragment);
+      function addToggleListeners(root) {
+        if (!root || !root.querySelectorAll) return;
+        var categories = root.querySelectorAll('.settings-nav-category');
+        categories.forEach(function (cat) {
+          var headerLink = cat.querySelector && cat.querySelector('a[data-settings-tab]:not(.settings-nav-child)');
+          if (!headerLink) return;
+          headerLink.addEventListener('click', function (e) {
+            e.preventDefault();
+            cat.classList.toggle('kexo-mini-menu-expanded');
+          });
         });
-        menu.insertBefore(btn, menu.firstChild);
       }
-      if (!div) {
-        div = document.createElement('div');
-        div.className = 'dropdown-divider';
-        div.setAttribute('data-kexo-preview-divider', '1');
-        if (btn.nextSibling) menu.insertBefore(div, btn.nextSibling);
-        else menu.appendChild(div);
+      if (headerHost) {
+        headerHost.appendChild(fragment.cloneNode(true));
+        addToggleListeners(headerHost);
       }
-
-      var enabled = !!(viewer && viewer.preview && viewer.preview.enabled);
-      if (!enabled) {
-        try { btn.classList.add('d-none'); } catch (_) {}
-        try { div.classList.add('d-none'); } catch (_) {}
-        return;
+      if (footerHost) {
+        var frag2 = template.content.cloneNode(true);
+        stripIds(frag2);
+        footerHost.appendChild(frag2);
+        addToggleListeners(footerHost);
       }
-      var label = previewTierLabel(viewer.preview.tier) || 'Preview';
-      var text = 'Preview: ' + label + ' (Exit)';
-      var span = btn.querySelector('[data-kexo-preview-exit-label]');
-      if (span) span.textContent = text;
-      else btn.textContent = text;
-      try { btn.classList.remove('d-none'); } catch (_) {}
-      try { div.classList.remove('d-none'); } catch (_) {}
+      _miniMenuBuilt = true;
+    }
+    function ensureViewingAsTierRow(viewer) {
+      ensureMiniSettingsMenu();
+      var headerSelect = document.getElementById('kexo-viewing-as-tier-header');
+      var footerSelect = document.getElementById('kexo-viewing-as-tier-footer');
+      var current = readPreviewConfig();
+      var value = (current && current.tier) ? current.tier : '';
+      function setSelect(sel) {
+        if (!sel || !sel.options) return;
+        for (var i = 0; i < sel.options.length; i++) {
+          if ((sel.options[i].value || '') === value) { sel.selectedIndex = i; return; }
+        }
+        sel.value = value;
+      }
+      setSelect(headerSelect);
+      setSelect(footerSelect);
+      function onTierChange() {
+        var v = (this && this.value) ? this.value : '';
+        writePreviewConfig(v || null);
+        applyEffectiveViewer();
+      }
+      if (headerSelect && !headerSelect._kexoTierBound) {
+        headerSelect._kexoTierBound = true;
+        headerSelect.addEventListener('change', onTierChange);
+      }
+      if (footerSelect && !footerSelect._kexoTierBound) {
+        footerSelect._kexoTierBound = true;
+        footerSelect.addEventListener('change', onTierChange);
+      }
     }
     var _effectiveViewerCache = null;
     function applyEffectiveViewer() {
@@ -378,8 +464,17 @@ const API = '';
       try { window.__kexoEffectiveViewer = v; } catch (_) {}
       try { window.__kexoEffectiveIsAdmin = !!v.isAdmin; } catch (_) {}
       try { applyAdminOnlyVisibility(!!v.isAdmin); } catch (_) {}
-      try { applyPermissionGating(v.permissions); } catch (_) {}
-      try { ensurePreviewExitMenuItem(v); } catch (_) {}
+      try { applyRealAdminOnlyVisibility(!!(v.real && v.real.isAdmin)); } catch (_) {}
+      if (v.preview && v.preview.enabled && v.preview.tier) {
+        try {
+          fetchRolePermissionsForPreview(v.preview.tier, function (tierPerms) {
+            try { applyPermissionGating(tierPerms); } catch (_) {}
+          });
+        } catch (_) {}
+      } else {
+        try { applyPermissionGating(v.permissions); } catch (_) {}
+      }
+      try { ensureViewingAsTierRow(v); } catch (_) {}
       try { window.dispatchEvent(new CustomEvent('kexo:viewer-changed', { detail: v })); } catch (_) {}
       return v;
     }
