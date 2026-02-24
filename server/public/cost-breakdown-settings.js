@@ -235,12 +235,25 @@
 
     var html = '';
     var childrenByParent = {};
+    var maxAmountLen = 0;
     items.forEach(function (it) {
       if (!it || typeof it !== 'object') return;
       var pk = it.parent_key != null ? String(it.parent_key) : '';
       if (!pk) return;
       childrenByParent[pk] = true;
     });
+    items.forEach(function (it) {
+      if (!it || typeof it !== 'object') return;
+      var amt = formatAmount(it.amount, it.currency || currency);
+      var s = amt != null ? String(amt) : '';
+      if (s && s.length > maxAmountLen) maxAmountLen = s.length;
+    });
+    // Keep the width tight so child arrows don't drift left.
+    var clampedLen = Math.max(6, Math.min(16, Number(maxAmountLen) || 0));
+    try {
+      for (var i = 6; i <= 16; i++) tbody.classList.remove('settings-cost-breakdown-amount-ch-' + i);
+      tbody.classList.add('settings-cost-breakdown-amount-ch-' + clampedLen);
+    } catch (_) {}
     items.forEach(function (it) {
       if (!it || typeof it !== 'object') return;
       var label = it.label != null ? String(it.label) : '';
@@ -252,12 +265,12 @@
       var amountText = esc(amount);
       var amountHtml = isDetail
         ? (
-          '<span class="settings-cost-breakdown-child-amount">' +
-            '<i class="fa-thin fa-arrow-turn-down-right" aria-hidden="true"></i>' +
-            '<span class="settings-cost-breakdown-child-amount-text">' + amountText + '</span>' +
+          '<span class="settings-cost-breakdown-amount-text settings-cost-breakdown-amount-text-child">' +
+            '<i class="fa-thin fa-arrow-turn-down-right settings-cost-breakdown-child-icon" aria-hidden="true"></i>' +
+            amountText +
           '</span>'
         )
-        : amountText;
+        : ('<span class="settings-cost-breakdown-amount-text">' + amountText + '</span>');
       var notes = it.notes != null ? String(it.notes) : '';
       var rowCls = active ? '' : 'text-muted opacity-75';
       if (isDetail) rowCls = (rowCls ? rowCls + ' ' : '') + 'table-light d-none';

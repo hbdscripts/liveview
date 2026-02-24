@@ -66,23 +66,37 @@ body[data-page="settings"] #settings-panel-cost-expenses .settings-tab-content-b
   background: transparent;
 }
 
-/* Cost Breakdown: child rows should read as a breakdown. */
-body[data-page="settings"] #settings-cost-expenses-panel-breakdown .settings-cost-breakdown-child-amount {
-  font-size: 12px;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+/* Cost Breakdown: amount column alignment + child breakdown arrow. */
+body[data-page="settings"] #settings-cost-expenses-panel-breakdown #cost-breakdown-table-body.settings-cost-breakdown-amount-ch-6 { --kexo-cost-breakdown-amount-ch: 6ch; }
+body[data-page="settings"] #settings-cost-expenses-panel-breakdown #cost-breakdown-table-body.settings-cost-breakdown-amount-ch-7 { --kexo-cost-breakdown-amount-ch: 7ch; }
+body[data-page="settings"] #settings-cost-expenses-panel-breakdown #cost-breakdown-table-body.settings-cost-breakdown-amount-ch-8 { --kexo-cost-breakdown-amount-ch: 8ch; }
+body[data-page="settings"] #settings-cost-expenses-panel-breakdown #cost-breakdown-table-body.settings-cost-breakdown-amount-ch-9 { --kexo-cost-breakdown-amount-ch: 9ch; }
+body[data-page="settings"] #settings-cost-expenses-panel-breakdown #cost-breakdown-table-body.settings-cost-breakdown-amount-ch-10 { --kexo-cost-breakdown-amount-ch: 10ch; }
+body[data-page="settings"] #settings-cost-expenses-panel-breakdown #cost-breakdown-table-body.settings-cost-breakdown-amount-ch-11 { --kexo-cost-breakdown-amount-ch: 11ch; }
+body[data-page="settings"] #settings-cost-expenses-panel-breakdown #cost-breakdown-table-body.settings-cost-breakdown-amount-ch-12 { --kexo-cost-breakdown-amount-ch: 12ch; }
+body[data-page="settings"] #settings-cost-expenses-panel-breakdown #cost-breakdown-table-body.settings-cost-breakdown-amount-ch-13 { --kexo-cost-breakdown-amount-ch: 13ch; }
+body[data-page="settings"] #settings-cost-expenses-panel-breakdown #cost-breakdown-table-body.settings-cost-breakdown-amount-ch-14 { --kexo-cost-breakdown-amount-ch: 14ch; }
+body[data-page="settings"] #settings-cost-expenses-panel-breakdown #cost-breakdown-table-body.settings-cost-breakdown-amount-ch-15 { --kexo-cost-breakdown-amount-ch: 15ch; }
+body[data-page="settings"] #settings-cost-expenses-panel-breakdown #cost-breakdown-table-body.settings-cost-breakdown-amount-ch-16 { --kexo-cost-breakdown-amount-ch: 16ch; }
+body[data-page="settings"] #settings-cost-expenses-panel-breakdown .settings-cost-breakdown-amount-text {
+  display: inline-block;
+  width: var(--kexo-cost-breakdown-amount-ch, 10ch);
+  text-align: right;
+  white-space: nowrap;
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum" 1;
 }
-body[data-page="settings"] #settings-cost-expenses-panel-breakdown .settings-cost-breakdown-child-amount i {
-  opacity: 0.7;
+body[data-page="settings"] #settings-cost-expenses-panel-breakdown .settings-cost-breakdown-amount-text-child {
+  font-size: 12px;
+  position: relative;
+  padding-left: 18px;
 }
-body[data-page="settings"] #settings-cost-expenses-panel-breakdown .settings-cost-breakdown-child-amount-text {
-  display: inline-block;
-  width: 14ch;
-  text-align: right;
-  white-space: nowrap;
+body[data-page="settings"] #settings-cost-expenses-panel-breakdown .settings-cost-breakdown-amount-text-child .settings-cost-breakdown-child-icon {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  opacity: 0.7;
 }
 
 /* Cost Breakdown: make parent rows slightly bolder than child rows. */
