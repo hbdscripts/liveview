@@ -6102,19 +6102,21 @@ img[data-kexo-logo-slot="footer"][data-kexo-logo-ready="1"] {
   color: var(--kexo-header-settings-menu-link-color, var(--tblr-body-color, #1f2937));
   text-decoration: none;
   transition: background 0.15s ease, color 0.15s ease;
+  border-left: 3px solid var(--kexo-accent, var(--kexo-accent-1, #4b94e4));
 }
 .kexo-settings-menu-panel .kexo-settings-menu-panel-nav .settings-nav-category > a:first-of-type:hover {
   background: var(--kexo-header-settings-menu-hover-bg, rgba(0, 0, 0, 0.06));
   color: var(--kexo-header-settings-menu-link-color, var(--tblr-body-color, #1f2937));
 }
 .kexo-settings-menu-panel .kexo-settings-menu-panel-nav .settings-nav-children {
-  padding-left: 1.25rem;
+  padding-left: 0;
   margin-left: 0;
 }
 .kexo-settings-menu-panel .kexo-settings-menu-panel-nav .settings-nav-children .list-group-item,
 .kexo-settings-menu-panel .kexo-settings-menu-panel-nav .settings-nav-children .list-group-item-action {
-  padding: 0.4rem 0.75rem 0.4rem 1rem;
+  padding: 5px 0 5px 37px;
   font-size: 0.875rem;
+  list-style: none;
   border: none;
   border-radius: var(--tblr-border-radius, 0.375rem);
   background: transparent;
@@ -6127,7 +6129,24 @@ img[data-kexo-logo-slot="footer"][data-kexo-logo-ready="1"] {
   color: var(--kexo-header-settings-menu-link-color, var(--tblr-body-color, #1f2937));
 }
 .kexo-settings-menu-panel .kexo-settings-menu-panel-nav .settings-nav-category > a:first-of-type::before {
-  color: var(--kexo-header-settings-menu-icon-color, var(--kexo-header-settings-menu-link-color, var(--tblr-body-color, #1f2937)));
+  content: none;
+  display: none;
+}
+
+.kexo-settings-menu-panel .kexo-settings-menu-panel-nav .settings-nav-child {
+  position: relative;
+}
+.kexo-settings-menu-panel .kexo-settings-menu-panel-nav .settings-nav-child::before {
+  content: '›';
+  position: absolute;
+  left: 13px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--kexo-settings-nav-chevron-color, var(--tblr-body-color, #64748b));
+  opacity: 0.5;
+  font-size: 0.9em;
+  pointer-events: none;
+  padding: 0;
 }
 
 /* Sign out (explicit color so never white-on-white); footer is inside panel-bottom, fixed at bottom */

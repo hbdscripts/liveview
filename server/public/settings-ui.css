@@ -100,13 +100,14 @@ body[data-page="settings"] .settings-panel > .card > .card-body {
 .settings-nav-child::before {
   content: '›';
   position: absolute;
-  left: 25px;
+  left: 13px;
   top: 50%;
   transform: translateY(-50%);
   color: var(--kexo-settings-nav-chevron-color, var(--tblr-body-color, #64748b));
   opacity: 0.5;
   font-size: 0.9em;
   pointer-events: none;
+  padding: 0;
 }
 .settings-nav-child.active {
   color: var(--kexo-settings-nav-active-color, var(--tblr-primary, #206bc4));
