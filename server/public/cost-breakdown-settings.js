@@ -249,6 +249,7 @@
       var notes = it.notes != null ? String(it.notes) : '';
       var rowCls = active ? '' : 'text-muted opacity-75';
       if (isDetail) rowCls = (rowCls ? rowCls + ' ' : '') + 'table-light';
+      rowCls = (rowCls ? rowCls + ' ' : '') + (isDetail ? 'settings-cost-breakdown-row-detail' : 'settings-cost-breakdown-row-parent');
       var baseLabel = isDetail ? ('<div class="ps-4">' + esc(label) + '</div>') : esc(label);
       var key = it.key != null ? String(it.key) : '';
       var canDetail = auditOn && !isDetail && key;

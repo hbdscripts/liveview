@@ -77,6 +77,14 @@ body[data-page="settings"] #settings-cost-expenses-panel-breakdown .settings-cos
   opacity: 0.7;
 }
 
+/* Cost Breakdown: make parent rows slightly bolder than child rows. */
+body[data-page="settings"] #settings-cost-expenses-panel-breakdown .settings-cost-breakdown-row-parent > td:first-child {
+  font-weight: 600;
+}
+body[data-page="settings"] #settings-cost-expenses-panel-breakdown .settings-cost-breakdown-row-detail > td:first-child {
+  font-weight: 400;
+}
+
 /* Flatten outer panel card so the only frame is .settings-tab-content-box (tabs "outside" the panel). */
 body[data-page="settings"] .settings-panel > .card {
   border: 0 !important;
