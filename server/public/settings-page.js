@@ -676,7 +676,6 @@
       return null;
     }
     if (tab === 'insights') return 'settings-insights-variants-save-btn';
-    if (tab === 'cost-expenses') return 'cost-expenses-save-btn';
     return null;
   }
 
@@ -687,8 +686,7 @@
     'settings-insights-variants-save-btn',
     'settings-layout-tables-save-btn',
     'settings-kpis-save-btn',
-    'settings-date-ranges-save-btn',
-    'cost-expenses-save-btn'
+    'settings-date-ranges-save-btn'
   ];
 
   var SETTINGS_DRAFT_REGISTRY = {};

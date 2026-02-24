@@ -14,7 +14,7 @@ If you touch Settings/Admin UI, you must follow this contract and keep it passin
 - **Tabs / accordion headers are the section headers.**
 - Panels must have **exactly one** `.settings-panel-wrap` as the **direct** child of the sub-panel root (created/enforced by the normaliser). **No nested layout:** do not inject another `.settings-panel-wrap` inside panels; templates and renderers must not add this wrapper.
 - Default layout is single-column stacked (cards full-width).
-- **Grids:** Use a **grid for 2+ repeated like-for-like items** (e.g. colors, icons, images, variant tiles). Use the class `.settings-responsive-grid`; do **not** use Bootstrap `.row`/`.col-*` or `.d-grid` for tile collections. Do not grid single, unique controls or mixed feature groupings—those stay stacked.
+- **Grids:** Use `.settings-responsive-grid` for **tile-style repeated content**: 2+ like-for-like items (e.g. colour swatches, icon tiles, checkbox groups that are visually a set of options). Do **not** use Bootstrap `.row`/`.col-*` or `.d-grid` for those. Use `.row`/`.col-*` only for **form layout**: e.g. two unrelated fields side by side, or a small number of mixed controls in one row—not for repeated tiles. Do not grid single, unique controls or mixed feature groupings—those stay stacked.
 
 Example (sub-panel root IDs are important for the normaliser/tests):
 
@@ -48,6 +48,12 @@ Inside every Settings/Admin sub-panel:
 - If the first header contains **controls/status/buttons**, those non-title controls must be preserved by moving them into the top of the card body inside `.settings-card-controls`, then remove the header container.
 
 This is enforced at runtime by the Settings UI normaliser.
+
+## Save model and footer
+
+- **Footer Save/Revert (draft):** Kexo (General, Assets, Icons, Colours, Layout & Styling), Layout (Tables, KPIs, Date ranges), Insights (Variants), Cost & profit. These tabs register in the draft registry; per-panel save buttons are hidden when the tab is active; the footer shows "Save Settings" / "Revert" when any registered section is dirty.
+- **Immediate / inline save (no footer):** Attribution (Mapping rules, Channel tree). Changes save on action (e.g. "Save config", "Create mapping", modal "Save"). A short hint on the panel must explain that changes save immediately.
+- **Read-only or per-action:** Integrations (Shopify display), Admin (Users, Diagnostics, Controls, Role permissions, Google Ads)—no global Save; each area has its own actions.
 
 ## Runtime guardrails
 
@@ -107,6 +113,9 @@ Avoid bespoke layout wrappers when Tabler provides a standard utility/class.
 
 - **Do not use any `btn-outline-*` classes** in Settings/Admin UI.
 - Use solid variants instead (`btn-primary`, `btn-danger`, etc.). Do **not** use `btn-secondary`; use `btn btn-md` for secondary/default buttons.
+- **Destructive actions** (Delete, Remove): use `btn btn-danger` (and `btn-sm` or `btn-md` as appropriate) in source. Do not rely on the normaliser to convert `btn-ghost-danger`; use solid danger in Settings/Admin source.
+- **Primary save actions** (Save, Apply, Save config, Create mapping, etc.): use `btn btn-primary btn-md` in source.
+- **Secondary/cancel:** use `btn btn-md` for secondary/default buttons. Source must use these classes so that the normaliser is not required to fix them.
 
 Migration mapping:
 
@@ -115,6 +124,7 @@ Migration mapping:
 - `btn btn-secondary …` → `btn btn-md …`
 - `btn btn-outline-danger …` → `btn btn-danger …`
 - `btn btn-outline-success …` → `btn btn-success …`
+- `btn-ghost-danger` (destructive) → `btn btn-danger` + size
 
 ## Read-only / environment-backed fields
 
@@ -129,9 +139,9 @@ Do not show bare `—` placeholders in Settings/Admin panels without context.
 
 Use consistent states:
 
-- **Loading**: spinner + “Loading…”
-- **Error**: “Failed to load” + Retry button (idempotent)
-- **Empty**: “Not connected” / “No data” / “Not available”
+- **Loading:** Use spinner + “Loading…”
+- **Error:** Always show a clear message (e.g. "Failed to load") and an **idempotent Retry** button; do not leave a bare "—" or empty area.
+- **Empty:** Use "No data", "Not connected", or "Not available" as appropriate; do not show bare "—" without context.
 
 ## Do / Don’t
 
@@ -150,7 +160,7 @@ Use consistent states:
 - Don’t use nested `.settings-panel-wrap` or inject `.settings-panel-wrap` in renderers.
 - Don’t remove or weaken the “already normalised” early return in `normaliseSettingsPanel` (see **Mutation-loop prevention** under Runtime guardrails); doing so reintroduces observer → normalise → mutate → observer loops and flashing.
 - Don’t use `btn-outline-*` button classes anywhere in Settings/Admin UI.
-- Don’t use Bootstrap `.row`/`.d-grid` for tile grids; use `.settings-responsive-grid`.
+- Don’t use Bootstrap `.row`/`.d-grid` for tile grids; use `.settings-responsive-grid`. (`.row` is allowed for form layout only.)
 - Don’t use grids for one-off controls or mixed content.
 - Don’t add Settings-only CSS to global stylesheets (use `server/public/settings-ui.css` only).
 - Don’t add inline styles in Settings templates/renderers.
