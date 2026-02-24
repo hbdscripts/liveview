@@ -242,6 +242,10 @@
       var statusLabel = active ? 'Active' : 'Inactive';
       var badgeCls = active ? 'bg-success-lt' : 'bg-secondary-lt';
       var amount = formatAmount(it.amount, it.currency || currency);
+      var amountText = esc(amount);
+      var amountHtml = isDetail
+        ? ('<span class="settings-cost-breakdown-child-amount"><i class="fa-thin fa-arrow-turn-down-right" aria-hidden="true"></i>' + amountText + '</span>')
+        : amountText;
       var notes = it.notes != null ? String(it.notes) : '';
       var rowCls = active ? '' : 'text-muted opacity-75';
       if (isDetail) rowCls = (rowCls ? rowCls + ' ' : '') + 'table-light';
@@ -255,7 +259,7 @@
       html += '<tr class="' + rowCls + '">' +
         '<td>' + labelHtml + '</td>' +
         '<td><span class="badge ' + badgeCls + '">' + esc(statusLabel) + '</span></td>' +
-        '<td class="text-end">' + esc(amount) + '</td>' +
+        '<td class="text-end">' + amountHtml + '</td>' +
         '<td class="text-muted small">' + esc(notes) + '</td>' +
       '</tr>';
 

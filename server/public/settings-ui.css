@@ -66,6 +66,17 @@ body[data-page="settings"] #settings-panel-cost-expenses .settings-tab-content-b
   background: transparent;
 }
 
+/* Cost Breakdown: child rows should read as a breakdown. */
+body[data-page="settings"] #settings-cost-expenses-panel-breakdown .settings-cost-breakdown-child-amount {
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+body[data-page="settings"] #settings-cost-expenses-panel-breakdown .settings-cost-breakdown-child-amount i {
+  opacity: 0.7;
+}
+
 /* Flatten outer panel card so the only frame is .settings-tab-content-box (tabs "outside" the panel). */
 body[data-page="settings"] .settings-panel > .card {
   border: 0 !important;
