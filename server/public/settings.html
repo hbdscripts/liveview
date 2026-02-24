@@ -1045,14 +1045,24 @@
               </div>
               <div class="card card-sm mt-3">
                 <div class="card-body">
-                  <div class="row g-2">
-                    <div class="col-12 col-md-6">
-                      <div class="text-muted small">Total Active Costs</div>
-                      <div class="h3 m-0 text-muted" id="cost-breakdown-total-active">Loading…</div>
+                  <div class="settings-responsive-grid settings-cost-breakdown-totals-grid" data-settings-ui-row="1" aria-label="Cost Breakdown totals">
+                    <div class="settings-cost-breakdown-total-tile" data-cost-breakdown-total-tile="active">
+                      <div class="settings-cost-breakdown-total-tile-icon" aria-hidden="true">
+                        <i data-icon-key="admin-tab-cost-breakdown-total-active" aria-hidden="true"></i>
+                      </div>
+                      <div class="settings-cost-breakdown-total-tile-body">
+                        <div class="text-muted small">Total Active Costs</div>
+                        <div class="h3 m-0" id="cost-breakdown-total-active">Loading…</div>
+                      </div>
                     </div>
-                    <div class="col-12 col-md-6">
-                      <div class="text-muted small">Total Inactive Costs</div>
-                      <div class="h3 m-0 text-muted" id="cost-breakdown-total-inactive">Loading…</div>
+                    <div class="settings-cost-breakdown-total-tile" data-cost-breakdown-total-tile="inactive">
+                      <div class="settings-cost-breakdown-total-tile-icon" aria-hidden="true">
+                        <i data-icon-key="admin-tab-cost-breakdown-total-inactive" aria-hidden="true"></i>
+                      </div>
+                      <div class="settings-cost-breakdown-total-tile-body">
+                        <div class="text-muted small">Total Inactive Costs</div>
+                        <div class="h3 m-0" id="cost-breakdown-total-inactive">Loading…</div>
+                      </div>
                     </div>
                   </div>
                 </div>

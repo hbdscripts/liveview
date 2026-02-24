@@ -69,6 +69,8 @@
     'admin-tab-edit-icon': { title: 'Admin - Edit icon', help: 'Icon used for Edit on icon cards (glyphs, payment, attribution, variants).' },
     'admin-tab-table-row-edit': { title: 'Admin - Table row edit', help: 'Edit icon used for row actions in Settings/Admin tables (e.g. Costs & Expenses rule lists).' },
     'admin-tab-table-row-delete': { title: 'Admin - Table row delete', help: 'Delete icon used for row actions in Settings/Admin tables (e.g. Costs & Expenses rule lists).' },
+    'admin-tab-cost-breakdown-total-active': { title: 'Admin - Cost Breakdown active total', help: 'Icon shown next to Total Active Costs in Settings → Costs & Expenses → Cost Breakdown.' },
+    'admin-tab-cost-breakdown-total-inactive': { title: 'Admin - Cost Breakdown inactive total', help: 'Icon shown next to Total Inactive Costs in Settings → Costs & Expenses → Cost Breakdown.' },
   };
 
   function isLockedSettingsIconKey(name) {
