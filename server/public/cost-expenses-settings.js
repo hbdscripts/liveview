@@ -750,7 +750,7 @@
     list.sort(function (a, b) { return (a.sort || 0) - (b.sort || 0); });
     renderPerOrderRulesTable();
     hidePerOrderForm();
-    setSectionMsg('cost-expenses-per-order-msg', 'Rule saved. Press Save Settings below to apply.', true);
+    setSectionMsg('cost-expenses-per-order-msg', 'Rule saved in draft. Press Save Settings below to apply.', true);
     markDraftChanged();
   }
 
@@ -856,7 +856,7 @@
     list.sort(function (a, b) { return String(a.name || '').localeCompare(String(b.name || '')); });
     renderOverheadsTable();
     hideOverheadForm();
-    setSectionMsg('cost-expenses-overheads-msg', 'Overhead saved. Press Save Settings below to apply.', true);
+    setSectionMsg('cost-expenses-overheads-msg', 'Overhead saved in draft. Press Save Settings below to apply.', true);
     markDraftChanged();
   }
 
@@ -908,7 +908,7 @@
     list.sort(function (a, b) { return String(a.name || '').localeCompare(String(b.name || '')); });
     renderFixedCostsTable();
     hideFixedCostForm();
-    setSectionMsg('cost-expenses-fixed-costs-msg', 'Fixed cost saved. Press Save Settings below to apply.', true);
+    setSectionMsg('cost-expenses-fixed-costs-msg', 'Fixed cost saved in draft. Press Save Settings below to apply.', true);
     markDraftChanged();
   }
 
