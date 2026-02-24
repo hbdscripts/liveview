@@ -80,6 +80,11 @@ body[data-page="settings"] .settings-panel > .card > .card-body {
   background: transparent !important;
 }
 
+/* Desktop sidebar column padding (Settings-only) */
+body[data-page="settings"] .settings-sidebar-col {
+  padding: 0 20px;
+}
+
 /* Left nav: category and child links (Settings-only).
    Keep this scoped to the Settings sidebar so other navs don’t inherit it. */
 body[data-page="settings"] #settings-category-tablist .settings-nav-category { margin: 0 0 2px 0; }
@@ -96,7 +101,7 @@ body[data-page="settings"] #settings-category-tablist .settings-nav-category > .
   border-left: 5px solid var(--kexo-accent, var(--kexo-accent-1, #4b94e4));
 }
 body[data-page="settings"] #settings-category-tablist .settings-nav-category > .list-group-item:first-child:hover {
-  background: rgba(var(--kexo-accent-1-rgb, 75, 148, 228), 0.1);
+  background: rgba(var(--kexo-accent-rgb, var(--kexo-accent-1-rgb, 75, 148, 228)), 0.1);
   background: color-mix(in srgb, var(--kexo-accent, var(--kexo-accent-1, #4b94e4)) 10%, transparent);
   border-radius: 0;
 }
@@ -112,7 +117,7 @@ body[data-page="settings"] #settings-category-tablist .settings-nav-child {
   color: var(--kexo-settings-nav-child-color, inherit);
 }
 body[data-page="settings"] #settings-category-tablist .settings-nav-child:hover {
-  background: rgba(var(--kexo-accent-1-rgb, 75, 148, 228), 0.1);
+  background: rgba(var(--kexo-accent-rgb, var(--kexo-accent-1-rgb, 75, 148, 228)), 0.1);
   background: color-mix(in srgb, var(--kexo-accent, var(--kexo-accent-1, #4b94e4)) 10%, transparent);
   border-radius: 0;
 }
