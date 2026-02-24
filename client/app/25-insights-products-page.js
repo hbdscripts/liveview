@@ -402,7 +402,32 @@
     fetchGrossProfit();
   }
 
+  function rerenderDynamicTables() {
+    try {
+      var items = productsTrendingMode === 'up'
+        ? (productsTrendingCache && productsTrendingCache.trendingUp) || []
+        : (productsTrendingCache && productsTrendingCache.trendingDown) || [];
+      if (productsTrendingCache) renderProductsTrendingTable(items);
+    } catch (_) {}
+    try {
+      renderGrossProfitTable('products-gross-profit-high-table', 'products-gross-profit-high-body', grossProfitHighRows, 'high');
+      renderGrossProfitTable('products-gross-profit-low-table', 'products-gross-profit-low-body', grossProfitLowRows, 'low');
+    } catch (_) {}
+  }
+
   init();
+  try {
+    window.addEventListener('kexo:tablesUiConfigApplied', function () {
+      rerenderDynamicTables();
+    });
+    window.addEventListener('kexo:table-rows-changed', function (e) {
+      var d = e && e.detail ? e.detail : null;
+      var tid = d && d.tableId ? String(d.tableId) : '';
+      if (tid === 'products-trending-table' || tid === 'products-gross-profit-high-table' || tid === 'products-gross-profit-low-table') {
+        rerenderDynamicTables();
+      }
+    });
+  } catch (_) {}
   try {
     if (typeof window.kexoRegisterCleanup === 'function') {
       window.kexoRegisterCleanup(function () {

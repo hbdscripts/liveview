@@ -137,6 +137,8 @@
       var page = '';
       try { page = (document.body && document.body.getAttribute('data-page')) || ''; } catch (_) { page = ''; }
       if (String(page || '').toLowerCase() === 'settings') return;
+      var pageKey = '';
+      try { pageKey = String(page || '').trim().toLowerCase(); } catch (_) { pageKey = ''; }
       var WRAP_SELECTOR = '.table-scroll-wrap, .country-table-wrap, .table-responsive, .tools-table-wrap';
       var ABS_MIN_WIDTH = 72;
       var ABS_MAX_WIDTH = 420;
@@ -192,21 +194,33 @@
         return count > 0 ? count : 1;
       }
 
+      function stickyWidthGroupKey(wrap) {
+        // Products page: keep sticky first-column widths identical across product tables
+        // so the "sticky rows" align visually.
+        try {
+          if (pageKey === 'products' && getWrapTableClass(wrap) === 'product') return 'products:product';
+        } catch (_) {}
+        return '';
+      }
+
       function getBounds(wrap) {
         var classKey = getWrapTableClass(wrap);
         var gridCount = getTableCardsInGroupCount(wrap);
-        var min = classKey === 'dashboard' ? 90 : ABS_MIN_WIDTH;
-        var max = classKey === 'dashboard' ? 180 : (classKey === 'product' ? 240 : 280);
-        var def = classKey === 'dashboard' ? 120 : 120;
+        var isProductsProduct = pageKey === 'products' && classKey === 'product';
+        var min = isProductsProduct ? 100 : (classKey === 'dashboard' ? 90 : ABS_MIN_WIDTH);
+        var max = isProductsProduct ? 240 : (classKey === 'dashboard' ? 180 : (classKey === 'product' ? 240 : 280));
+        var def = isProductsProduct ? 140 : (classKey === 'dashboard' ? 120 : 120);
 
         // Live-class tables (20/30/40/50 rows) can expand wider for sticky labels.
         if (classKey === 'live') max = Math.max(max, 400);
 
         // Site-wide sticky sizing rules by table-grid cardinality.
-        if (classKey !== 'live' && gridCount === 1) max = Math.min(max, 250);
-        // On mobile the cards stack; allow sticky labels to expand more naturally.
-        if (classKey !== 'live' && gridCount === 2 && getViewportBucket() !== 'mobile') max = Math.min(max, 150);
-        if (gridCount >= 3) min = Math.max(min, 100);
+        if (!isProductsProduct) {
+          if (classKey !== 'live' && gridCount === 1) max = Math.min(max, 250);
+          // On mobile the cards stack; allow sticky labels to expand more naturally.
+          if (classKey !== 'live' && gridCount === 2 && getViewportBucket() !== 'mobile') max = Math.min(max, 150);
+          if (gridCount >= 3) min = Math.max(min, 100);
+        }
 
         // Optional per-table overrides from Settings ??? Layout ??? Tables.
         try {
@@ -218,27 +232,29 @@
           }
         } catch (_) {}
 
-        var wrapW = wrap && wrap.clientWidth ? Number(wrap.clientWidth) : 0;
-        var colCount = 0;
-        try {
-          var headerRow = wrap && wrap.querySelector ? wrap.querySelector('.grid-row--header') : null;
-          if (headerRow && headerRow.querySelectorAll) {
-            colCount = headerRow.querySelectorAll('.grid-cell').length;
-          } else {
-            var tableHeadRow = wrap && wrap.querySelector ? wrap.querySelector('table thead tr') : null;
-            if (tableHeadRow && tableHeadRow.children) colCount = tableHeadRow.children.length || 0;
-          }
-        } catch (_) { colCount = 0; }
-        if (Number.isFinite(wrapW) && wrapW > 0) {
-          var isMobile = getViewportBucket() === 'mobile';
-          var fitRatio = isMobile ? 0.8 : 0.65;
-          var softMax = Math.max(min + 16, Math.round(wrapW * fitRatio));
-          max = Math.min(max, softMax);
-          if (colCount > 1) {
-            var minOtherColWidth = classKey === 'live' ? 72 : 64;
-            var byRemainingCols = wrapW - (minOtherColWidth * (colCount - 1));
-            var isScrollable = (wrap.scrollWidth || 0) > ((wrap.clientWidth || 0) + 1);
-            if (!isScrollable && byRemainingCols >= min + 16) max = Math.min(max, byRemainingCols);
+        if (!isProductsProduct) {
+          var wrapW = wrap && wrap.clientWidth ? Number(wrap.clientWidth) : 0;
+          var colCount = 0;
+          try {
+            var headerRow = wrap && wrap.querySelector ? wrap.querySelector('.grid-row--header') : null;
+            if (headerRow && headerRow.querySelectorAll) {
+              colCount = headerRow.querySelectorAll('.grid-cell').length;
+            } else {
+              var tableHeadRow = wrap && wrap.querySelector ? wrap.querySelector('table thead tr') : null;
+              if (tableHeadRow && tableHeadRow.children) colCount = tableHeadRow.children.length || 0;
+            }
+          } catch (_) { colCount = 0; }
+          if (Number.isFinite(wrapW) && wrapW > 0) {
+            var isMobile = getViewportBucket() === 'mobile';
+            var fitRatio = isMobile ? 0.8 : 0.65;
+            var softMax = Math.max(min + 16, Math.round(wrapW * fitRatio));
+            max = Math.min(max, softMax);
+            if (colCount > 1) {
+              var minOtherColWidth = classKey === 'live' ? 72 : 64;
+              var byRemainingCols = wrapW - (minOtherColWidth * (colCount - 1));
+              var isScrollable = (wrap.scrollWidth || 0) > ((wrap.clientWidth || 0) + 1);
+              if (!isScrollable && byRemainingCols >= min + 16) max = Math.min(max, byRemainingCols);
+            }
           }
         }
         min = Math.max(ABS_MIN_WIDTH, Math.min(min, ABS_MAX_WIDTH - 16));
@@ -268,6 +284,8 @@
       }
 
       function getStorageKey(wrap) {
+        var groupKey = stickyWidthGroupKey(wrap);
+        if (groupKey) return LS_KEY + ':' + groupKey + ':' + getViewportBucket();
         var suffix = 'default';
         try {
           var tableId = getWrapTableId(wrap);
@@ -317,6 +335,20 @@
 
       function applyWidthToGroup(wrap, width) {
         if (!wrap) return;
+        var gk = stickyWidthGroupKey(wrap);
+        if (gk) {
+          try {
+            document.querySelectorAll(WRAP_SELECTOR).forEach(function (w) {
+              if (!w) return;
+              if (stickyWidthGroupKey(w) !== gk) return;
+              applyWidthSingle(w, width);
+            });
+          } catch (_) {
+            applyWidthSingle(wrap, width);
+          }
+          return;
+        }
+
         applyWidthSingle(wrap, width);
         var applied = wrapWidth(wrap);
         if (wrap.id === 'ads-root' && Number.isFinite(applied)) {
