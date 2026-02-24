@@ -1746,15 +1746,16 @@
       '.ads-modal-box .table-responsive{--kexo-sticky-col-width:150px;--kexo-sticky-col-min-width:150px;}' +
       '.ads-modal-box .table-responsive table thead th:first-child,.ads-modal-box .table-responsive table tbody td:first-child{background:var(--tblr-bg-surface-secondary,#fafafa) !important;border-right:none !important;box-shadow:none !important;}' +
       '.ads-modal-sales-table,.ads-modal-countries-table,.ads-modal-devices-table,.ads-modal-networks-table,.ads-modal-dayparting-table,.ads-modal-attribution-evidence-table{width:100%;border-collapse:collapse;font-size:12px;}' +
-      '.ads-modal-sales-table thead th,.ads-modal-countries-table thead th,.ads-modal-devices-table thead th,.ads-modal-networks-table thead th,.ads-modal-dayparting-table thead th,.ads-modal-attribution-evidence-table thead th{text-align:left;padding:6px 10px;font-size:11px;text-transform:uppercase;letter-spacing:0.04em;color:var(--tblr-secondary, var(--muted,#555)) !important;border-bottom:1px solid var(--tblr-border-color, var(--border,#e5e5e5));background-color:var(--tblr-bg-surface-secondary,#f8f8f8) !important;}' +
-      '.ads-modal-sales-table tbody td,.ads-modal-countries-table tbody td,.ads-modal-devices-table tbody td,.ads-modal-networks-table tbody td,.ads-modal-dayparting-table tbody td,.ads-modal-attribution-evidence-table tbody td{padding:7px 10px;border-bottom:1px solid rgba(0,0,0,0.04);}' +
+      '.ads-modal-sales-table thead th,.ads-modal-countries-table thead th,.ads-modal-devices-table thead th,.ads-modal-networks-table thead th,.ads-modal-dayparting-table thead th,.ads-modal-attribution-evidence-table thead th{text-align:center;padding:6px 10px;font-size:11px;text-transform:uppercase;letter-spacing:0.04em;color:var(--tblr-secondary, var(--muted,#555)) !important;border-bottom:1px solid var(--tblr-border-color, var(--border,#e5e5e5));background-color:var(--tblr-bg-surface-secondary,#f8f8f8) !important;}' +
+      '.ads-modal-sales-table tbody td,.ads-modal-countries-table tbody td,.ads-modal-devices-table tbody td,.ads-modal-networks-table tbody td,.ads-modal-dayparting-table tbody td,.ads-modal-attribution-evidence-table tbody td{text-align:center;padding:7px 10px;border-bottom:1px solid rgba(0,0,0,0.04);}' +
       '.ads-modal-sales-table tr:last-child td,.ads-modal-countries-table tr:last-child td,.ads-modal-devices-table tr:last-child td,.ads-modal-networks-table tr:last-child td,.ads-modal-dayparting-table tr:last-child td,.ads-modal-attribution-evidence-table tr:last-child td{border-bottom:none;}' +
       '.ads-modal-sales-table th:not(:first-child),.ads-modal-sales-table td:not(:first-child){text-align:center;}' +
-      '.ads-modal-countries-table th:not(:first-child),.ads-modal-countries-table td:not(:first-child){text-align:right;}' +
-      '.ads-modal-devices-table th:not(:first-child),.ads-modal-devices-table td:not(:first-child){text-align:right;}' +
-      '.ads-modal-networks-table th:not(:first-child),.ads-modal-networks-table td:not(:first-child){text-align:right;}' +
-      '.ads-modal-dayparting-table th:not(:first-child),.ads-modal-dayparting-table td:not(:first-child){text-align:right;}' +
-      '.ads-modal-attribution-evidence-table th:not(:first-child),.ads-modal-attribution-evidence-table td:not(:first-child){text-align:right;}' +
+      '.ads-modal-countries-table th:not(:first-child),.ads-modal-countries-table td:not(:first-child){text-align:center;}' +
+      '.ads-modal-devices-table th:not(:first-child),.ads-modal-devices-table td:not(:first-child){text-align:center;}' +
+      '.ads-modal-networks-table th:not(:first-child),.ads-modal-networks-table td:not(:first-child){text-align:center;}' +
+      '.ads-modal-dayparting-table th:not(:first-child),.ads-modal-dayparting-table td:not(:first-child){text-align:center;}' +
+      '.ads-modal-attribution-evidence-table th:not(:first-child),.ads-modal-attribution-evidence-table td:not(:first-child){text-align:center;}' +
+      '.ads-modal-box .text-end{ text-align:center !important; }' +
       '.ads-profit-pos{color:#059669;font-weight:600;}' +
       '.ads-profit-neg{color:#dc2626;font-weight:600;}' +
       '.ads-campaign-row{cursor:pointer;transition:background .12s;}' +
