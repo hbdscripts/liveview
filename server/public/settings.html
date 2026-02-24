@@ -1371,48 +1371,52 @@
                 <div id="settings-admin-accordion-googleads" class="accordion-collapse collapse" data-bs-parent="#settings-admin-accordion">
                   <div class="accordion-body">
             <div id="admin-panel-googleads">
-              <div class="card card-sm mb-3" id="settings-ga-connection-card">
-                <div class="card-header d-flex align-items-center">
-                  <h4 class="card-title mb-0">Connection</h4>
-                  <span class="ms-auto text-muted" id="settings-ga-connection-status">Loading…</span>
-                </div>
-                <div class="card-body">
-                  <div class="settings-responsive-grid settings-ga-connection-grid">
-                    <div>
-                      <div class="mb-2"><strong>Customer ID</strong> <span id="settings-ga-customer-id" class="text-muted">Loading…</span></div>
-                      <div class="mb-2"><strong>Login Customer ID (MCC)</strong> <span id="settings-ga-login-customer-id" class="text-muted">Loading…</span></div>
-                      <div class="mb-2"><strong>Conversion customer ID</strong> <span id="settings-ga-conversion-customer-id" class="text-muted">Loading…</span></div>
-                      <div class="d-flex align-items-center gap-2 flex-wrap mb-2">
-                        <strong>Tokens</strong>
-                        <span id="settings-ga-devtoken-badge" class="text-muted">Loading…</span>
-                        <span id="settings-ga-refreshtoken-badge" class="text-muted">Loading…</span>
+              <div class="accordion settings-accordion-mb-tight" id="settings-ga-inner-accordion">
+                <div class="accordion-item">
+                  <h4 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#settings-ga-accordion-connection" aria-expanded="false" aria-controls="settings-ga-accordion-connection"><span class="d-flex align-items-center w-100 gap-2"><span class="kexo-settings-accordion-chevron" aria-hidden="true"><i class="fa-regular fa-chevron-down" aria-hidden="true"></i></span><span class="me-auto">Connection</span><span class="text-muted small" id="settings-ga-connection-status">Loading…</span></span></button>
+                  </h4>
+                  <div id="settings-ga-accordion-connection" class="accordion-collapse collapse" data-bs-parent="#settings-ga-inner-accordion">
+                    <div class="accordion-body">
+                      <div class="settings-responsive-grid settings-ga-connection-grid">
+                        <div>
+                          <div class="mb-2"><strong>Customer ID</strong> <span id="settings-ga-customer-id" class="text-muted">Loading…</span></div>
+                          <div class="mb-2"><strong>Login Customer ID (MCC)</strong> <span id="settings-ga-login-customer-id" class="text-muted">Loading…</span></div>
+                          <div class="mb-2"><strong>Conversion customer ID</strong> <span id="settings-ga-conversion-customer-id" class="text-muted">Loading…</span></div>
+                          <div class="d-flex align-items-center gap-2 flex-wrap mb-2">
+                            <strong>Tokens</strong>
+                            <span id="settings-ga-devtoken-badge" class="text-muted">Loading…</span>
+                            <span id="settings-ga-refreshtoken-badge" class="text-muted">Loading…</span>
+                          </div>
+                          <div class="text-muted small">
+                            Conversion uploads are sent to the customer that owns the conversion action (Conversion customer ID if set, otherwise Customer ID).
+                          </div>
+                        </div>
+                        <div>
+                          <div class="d-flex align-items-center gap-2 flex-wrap">
+                            <a class="btn btn-primary btn-md d-inline-flex align-items-center gap-2" id="settings-ga-signin-btn" href="/api/ads/google/connect?redirect=%2Fsettings%3Ftab%3Dadmin%26adminTab%3Dgoogleads"><i class="fa-brands fa-google" data-icon-key="settings-googleads-google" aria-hidden="true"></i> Sign in with Google</a>
+                            <a class="btn btn-md d-none" id="settings-ga-reconnect-btn" href="/api/ads/google/connect?redirect=%2Fsettings%3Ftab%3Dadmin%26adminTab%3Dgoogleads">Reconnect (re-authorize)</a>
+                            <button type="button" class="btn btn-md" id="settings-ga-test-connection-btn">Test connection</button>
+                            <button type="button" class="btn btn-md" id="settings-ga-disconnect-btn">Disconnect</button>
+                            <span id="settings-ga-connection-msg" class="form-hint"></span>
+                          </div>
+                          <div class="text-muted small mt-2">Use “Sign in with Google” to connect. Use “Reconnect” if you need to re-authorize the same account.</div>
+                        </div>
                       </div>
-                      <div class="text-muted small">
-                        Conversion uploads are sent to the customer that owns the conversion action (Conversion customer ID if set, otherwise Customer ID).
-                      </div>
-                    </div>
-                    <div>
-                      <div class="d-flex align-items-center gap-2 flex-wrap">
-                        <a class="btn btn-primary btn-md d-inline-flex align-items-center gap-2" id="settings-ga-signin-btn" href="/api/ads/google/connect?redirect=%2Fsettings%3Ftab%3Dadmin%26adminTab%3Dgoogleads"><i class="fa-brands fa-google" data-icon-key="settings-googleads-google" aria-hidden="true"></i> Sign in with Google</a>
-                        <a class="btn btn-sm d-none" id="settings-ga-reconnect-btn" href="/api/ads/google/connect?redirect=%2Fsettings%3Ftab%3Dadmin%26adminTab%3Dgoogleads">Reconnect (re-authorize)</a>
-                        <button type="button" class="btn btn-md" id="settings-ga-test-connection-btn">Test connection</button>
-                        <button type="button" class="btn btn-md" id="settings-ga-disconnect-btn">Disconnect</button>
-                        <span id="settings-ga-connection-msg" class="form-hint"></span>
-                      </div>
-                      <div class="text-muted small mt-2">Use “Sign in with Google” to connect. Use “Reconnect” if you need to re-authorize the same account.</div>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              <div class="accordion settings-accordion-mb-tight" id="settings-ga-inner-accordion">
                 <div class="accordion-item">
                   <h4 class="accordion-header">
                     <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#settings-ga-accordion-goals" aria-expanded="true" aria-controls="settings-ga-accordion-goals"><span class="d-flex align-items-center w-100 gap-2"><span class="kexo-settings-accordion-chevron" aria-hidden="true"><i class="fa-regular fa-chevron-down" aria-hidden="true"></i></span><span class="me-auto">Goals</span></span></button>
                   </h4>
                   <div id="settings-ga-accordion-goals" class="accordion-collapse collapse show" data-bs-parent="#settings-ga-inner-accordion">
                     <div class="accordion-body">
-                      <div class="text-muted small mb-2">Each goal can upload conversions to its own <strong>UPLOAD_CLICKS</strong> conversion action. Provision Kexo defaults, attach an existing action, or create a new one.</div>
+                      <div class="d-flex align-items-center gap-2 flex-wrap mb-2">
+                        <div class="text-muted small me-auto">Each goal uploads conversions to a <strong>UPLOAD_CLICKS</strong> conversion action. Attach an existing action, or create a new one.</div>
+                        <button type="button" class="btn btn-md" id="settings-ga-goals-refresh-btn" title="Refresh goals + action list">Refresh</button>
+                      </div>
                       <div class="settings-responsive-grid settings-ga-goal-grid" id="settings-ga-goal-grid" aria-label="Google Ads goals">
                         <div class="card card-sm settings-ga-goal-tile" data-ga-goal-tile="revenue">
                           <div class="card-header d-flex align-items-center">
@@ -1445,7 +1449,7 @@
                             <div class="d-flex align-items-center gap-2 flex-wrap mt-2">
                               <button type="button" class="btn btn-md" data-ga-goal-attach="revenue">Attach</button>
                               <button type="button" class="btn btn-md" data-ga-goal-clear="revenue">Clear</button>
-                              <button type="button" class="btn btn-md" data-ga-goal-provision="revenue">Provision default</button>
+                              <button type="button" class="btn btn-md" data-ga-goal-provision="revenue" title="Create the default Kexo action if missing, then use it">Use Kexo default</button>
                             </div>
                             <div class="d-flex align-items-center gap-2 flex-wrap mt-2">
                               <input type="text" class="form-control form-control-sm settings-ga-action-name-input" id="settings-ga-goal-revenue-create-name" placeholder="New action name" autocomplete="off" />
@@ -1512,7 +1516,7 @@
                             <div class="d-flex align-items-center gap-2 flex-wrap mt-2">
                               <button type="button" class="btn btn-md" data-ga-goal-attach="profit">Attach</button>
                               <button type="button" class="btn btn-md" data-ga-goal-clear="profit">Clear</button>
-                              <button type="button" class="btn btn-md" data-ga-goal-provision="profit">Provision default</button>
+                              <button type="button" class="btn btn-md" data-ga-goal-provision="profit" title="Create the default Kexo action if missing, then use it">Use Kexo default</button>
                             </div>
                             <div class="d-flex align-items-center gap-2 flex-wrap mt-2">
                               <input type="text" class="form-control form-control-sm settings-ga-action-name-input" id="settings-ga-goal-profit-create-name" placeholder="New action name" autocomplete="off" />
@@ -1554,7 +1558,7 @@
                             <div class="d-flex align-items-center gap-2 flex-wrap mt-2">
                               <button type="button" class="btn btn-md" data-ga-goal-attach="add_to_cart">Attach</button>
                               <button type="button" class="btn btn-md" data-ga-goal-clear="add_to_cart">Clear</button>
-                              <button type="button" class="btn btn-md" data-ga-goal-provision="add_to_cart">Provision default</button>
+                              <button type="button" class="btn btn-md" data-ga-goal-provision="add_to_cart" title="Create the default Kexo action if missing, then use it">Use Kexo default</button>
                             </div>
                             <div class="d-flex align-items-center gap-2 flex-wrap mt-2">
                               <input type="text" class="form-control form-control-sm settings-ga-action-name-input" id="settings-ga-goal-add_to_cart-create-name" placeholder="New action name" autocomplete="off" />
@@ -1596,7 +1600,7 @@
                             <div class="d-flex align-items-center gap-2 flex-wrap mt-2">
                               <button type="button" class="btn btn-md" data-ga-goal-attach="begin_checkout">Attach</button>
                               <button type="button" class="btn btn-md" data-ga-goal-clear="begin_checkout">Clear</button>
-                              <button type="button" class="btn btn-md" data-ga-goal-provision="begin_checkout">Provision default</button>
+                              <button type="button" class="btn btn-md" data-ga-goal-provision="begin_checkout" title="Create the default Kexo action if missing, then use it">Use Kexo default</button>
                             </div>
                             <div class="d-flex align-items-center gap-2 flex-wrap mt-2">
                               <input type="text" class="form-control form-control-sm settings-ga-action-name-input" id="settings-ga-goal-begin_checkout-create-name" placeholder="New action name" autocomplete="off" />
@@ -1673,8 +1677,9 @@
                   <div id="settings-ga-accordion-actions" class="accordion-collapse collapse" data-bs-parent="#settings-ga-inner-accordion">
                     <div class="accordion-body">
                       <div class="d-flex align-items-center gap-2 flex-wrap mb-2">
-                        <button type="button" class="btn btn-primary btn-md" id="settings-ga-provision-goals-btn">Provision Kexo actions</button>
-                        <span class="text-muted small">Creates the default Kexo actions if missing.</span>
+                        <button type="button" class="btn btn-primary btn-md" id="settings-ga-provision-goals-btn" title="Creates the default Kexo actions if missing (won’t create duplicates)">Create missing defaults</button>
+                        <button type="button" class="btn btn-md" id="settings-ga-actions-refresh-btn" title="Refresh conversion actions table">Refresh</button>
+                        <span class="text-muted small">Use this if you deleted/changed actions in Google Ads and want the UI to re-sync.</span>
                       </div>
                       <div class="table-responsive">
                         <table class="table table-sm table-vcenter mb-0" aria-label="Google Ads conversion actions">
@@ -1715,7 +1720,7 @@
                       </div>
                       <div class="mb-4">
                         <div class="form-label small">
-                          <span class="kexo-icon-help-trigger" data-kexo-help="Used when including cart data in Revenue/Profit uploads. Product IDs are sent as shopify_{country}_{product_id}_{variant_id}. Set Merchant Center ID if you use a product feed." aria-label="Show description"><i class="fa-thin fa-circle-info text-secondary ms-1" aria-hidden="true"></i></span>
+                          <span class="kexo-icon-help-trigger" data-kexo-help="Used when including cart data in Revenue/Profit uploads. Product IDs are sent as shopify_{country}_{product_id}_{variant_id}. No Merchant Center access is granted/required — these values are only included in conversion uploads for matching." aria-label="Show description"><i class="fa-thin fa-circle-info text-secondary ms-1" aria-hidden="true"></i></span>
                           Merchant Center (cart data)
                         </div>
                         <div class="settings-responsive-grid settings-ga-account-context-grid">
@@ -1732,6 +1737,11 @@
                             <input type="text" class="form-control form-control-sm" id="settings-ga-cart-data-feed-language" placeholder="Language (e.g. EN)" maxlength="2" autocomplete="off" />
                           </div>
                         </div>
+                        <div class="d-flex align-items-center gap-2 flex-wrap mt-2">
+                          <button type="button" class="btn btn-primary btn-md" id="settings-ga-cart-data-save-btn">Save</button>
+                          <span class="form-hint" id="settings-ga-cart-data-save-msg"></span>
+                        </div>
+                        <div class="text-muted small mt-2">Kexo does not connect to Merchant Center. These values are stored in Kexo settings and included in uploads only.</div>
                       </div>
                       <div class="d-flex align-items-center flex-wrap gap-2 mb-2">
                         <div class="btn-group btn-group-sm ms-auto" role="group" aria-label="Issue filter">

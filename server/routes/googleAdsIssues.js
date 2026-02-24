@@ -76,7 +76,7 @@ router.get('/', async (req, res) => {
       sql += ` AND status = ?`;
       params.push(status);
     }
-    sql += ` ORDER BY last_seen_at DESC LIMIT ?`;
+    sql += ` ORDER BY COALESCE(last_seen_at, created_at, updated_at) DESC LIMIT ?`;
     params.push(limit);
     const rows = await db.all(sql, params);
     const issues = (rows || []).map((r) => redactIssue(r));

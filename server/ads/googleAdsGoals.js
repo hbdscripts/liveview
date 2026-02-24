@@ -44,37 +44,62 @@ async function listUploadClickConversionActions(shop) {
  * @returns {Promise<{ ok: boolean, resourceName?: string, id?: number, error?: string }>}
  */
 async function ensureConversionAction(shop, goalType) {
-  const name = GOAL_DISPLAY_NAMES[goalType] || goalType;
+  const baseName = GOAL_DISPLAY_NAMES[goalType] || goalType;
   const category = GOAL_CATEGORIES[goalType] || 'PURCHASE';
   const list = await listUploadClickConversionActions(shop);
   if (!list.ok) return { ok: false, error: list.error };
   const existing = (list.actions || []).find(
-    (a) => a.name && a.name.toLowerCase() === name.toLowerCase()
+    (a) =>
+      a.name &&
+      a.name.toLowerCase() === String(baseName).toLowerCase() &&
+      String(a.status || '').toUpperCase() !== 'REMOVED'
   );
   if (existing && existing.resourceName) {
     return { ok: true, resourceName: existing.resourceName, id: existing.id };
   }
-  const operations = [
-    {
-      create: {
-        name,
-        type: 'UPLOAD_CLICKS',
-        category,
-        status: 'ENABLED',
-      },
-    },
-  ];
-  const mutate = await googleAdsClient.mutateConversionActions(shop, operations);
-  if (!mutate.ok) return { ok: false, error: mutate.error };
-  const result = (mutate.results && mutate.results[0]) || null;
-  const resourceName = result && result.resourceName ? String(result.resourceName) : null;
-  const id = result && result.resourceName
-    ? (result.resourceName.match(/\/(\d+)$/) && Number(RegExp.$1)) || null
-    : null;
-  if (resourceName) {
-    await googleAdsClient.setConversionActionPrimaryForGoal(shop, resourceName, false);
+
+  function isDuplicateNameError(err) {
+    const msg = err != null ? String(err) : '';
+    return /DUPLICATE_NAME/i.test(msg);
   }
-  return { ok: true, resourceName: resourceName || '', id };
+
+  async function createUploadClicksAction(actionName) {
+    const operations = [
+      {
+        create: {
+          name: actionName,
+          type: 'UPLOAD_CLICKS',
+          category,
+          status: 'ENABLED',
+        },
+      },
+    ];
+    const mutate = await googleAdsClient.mutateConversionActions(shop, operations);
+    if (!mutate.ok) return { ok: false, error: mutate.error || 'create failed' };
+    const result = (mutate.results && mutate.results[0]) || null;
+    const resourceName = result && result.resourceName ? String(result.resourceName) : null;
+    const id = result && result.resourceName
+      ? (result.resourceName.match(/\/(\d+)$/) && Number(RegExp.$1)) || null
+      : null;
+    if (resourceName) {
+      await googleAdsClient.setConversionActionPrimaryForGoal(shop, resourceName, false);
+    }
+    return { ok: true, resourceName: resourceName || '', id };
+  }
+
+  const first = await createUploadClicksAction(baseName);
+  if (first.ok) return first;
+  if (!isDuplicateNameError(first.error)) return first;
+
+  // If Google keeps a deleted action as REMOVED, the name can remain reserved.
+  // Retry with a suffix to avoid blocking uploads.
+  for (let n = 2; n <= 10; n++) {
+    const candidate = `${baseName} (${n})`;
+    const out = await createUploadClicksAction(candidate);
+    if (out.ok) return out;
+    if (!isDuplicateNameError(out.error)) return out;
+  }
+  return { ok: false, error: `Could not create a unique conversion action name for ${baseName}. Try a different name.` };
 }
 
 /**
@@ -164,6 +189,37 @@ async function getConversionGoals(shop) {
 }
 
 /**
+ * Ensure a goal is provisioned in google_ads_conversion_goals (fallback conversion action exists).
+ * This makes Attach/Clear/Create safe even if the user never clicked “Provision”.
+ * @param {string} shop
+ * @param {string} goalType
+ * @returns {Promise<{ ok: boolean, goal?: object, error?: string }>}
+ */
+async function ensureGoalProvisioned(shop, goalType) {
+  if (!shop || !goalType) return { ok: false, error: 'shop and goal_type required' };
+  const normShop = String(shop).trim().toLowerCase();
+  const g = String(goalType).trim().toLowerCase();
+  if (!GOAL_TYPES.includes(g)) return { ok: false, error: 'invalid goal_type' };
+  const existingGoals = await getConversionGoals(normShop);
+  const existing = (existingGoals || []).find((x) => x.goal_type === g);
+  if (existing && existing.conversion_action_resource_name) {
+    return { ok: true, goal: existing };
+  }
+  const out = await ensureConversionAction(normShop, g);
+  if (!out.ok) return { ok: false, error: out.error || 'ensure action failed' };
+  await upsertConversionGoal(normShop, {
+    goal_type: g,
+    conversion_action_id: out.id,
+    conversion_action_resource_name: out.resourceName || '',
+    custom_goal_id: null,
+    custom_goal_resource_name: null,
+  });
+  const goals = await getConversionGoals(normShop);
+  const goal = (goals || []).find((x) => x.goal_type === g) || null;
+  return goal ? { ok: true, goal } : { ok: true };
+}
+
+/**
  * Attach an existing UPLOAD_CLICKS conversion action to a goal (writes custom_goal_*).
  * @param {string} shop
  * @param {string} goalType - 'revenue' | 'profit' | 'add_to_cart' | 'begin_checkout'
@@ -177,9 +233,10 @@ async function attachGoalToConversionAction(shop, goalType, resourceName, id) {
   const normShop = String(shop).trim().toLowerCase();
   const g = String(goalType).trim().toLowerCase();
   if (!GOAL_TYPES.includes(g)) return { ok: false, error: 'invalid goal_type' };
-  const goals = await getConversionGoals(normShop);
-  const existing = (goals || []).find((x) => x.goal_type === g);
-  if (!existing) return { ok: false, error: 'goal not provisioned; provision conversion actions first' };
+  const ensured = await ensureGoalProvisioned(normShop, g);
+  if (!ensured.ok) return ensured;
+  const existing = ensured.goal || (await getConversionGoals(normShop)).find((x) => x.goal_type === g);
+  if (!existing) return { ok: false, error: 'goal not provisioned' };
   const customId = id != null && Number.isFinite(Number(id)) ? Number(id) : null;
   await upsertConversionGoal(normShop, {
     goal_type: g,
@@ -201,8 +258,9 @@ async function clearGoalAttachment(shop, goalType) {
   const normShop = String(shop).trim().toLowerCase();
   const g = String(goalType).trim().toLowerCase();
   if (!GOAL_TYPES.includes(g)) return { ok: false, error: 'invalid goal_type' };
-  const goals = await getConversionGoals(normShop);
-  const existing = (goals || []).find((x) => x.goal_type === g);
+  const ensured = await ensureGoalProvisioned(normShop, g);
+  if (!ensured.ok) return ensured;
+  const existing = ensured.goal || (await getConversionGoals(normShop)).find((x) => x.goal_type === g);
   if (!existing) return { ok: false, error: 'goal not provisioned' };
   await upsertConversionGoal(normShop, {
     goal_type: g,
@@ -231,7 +289,13 @@ async function createAndAttachGoalConversionAction(shop, goalType, actionName) {
   const name = String(actionName).trim().slice(0, 100);
   const operations = [{ create: { name, type: 'UPLOAD_CLICKS', category, status: 'ENABLED' } }];
   const mutate = await googleAdsClient.mutateConversionActions(normShop, operations);
-  if (!mutate.ok) return { ok: false, error: mutate.error || 'create failed' };
+  if (!mutate.ok) {
+    const msg = mutate.error != null ? String(mutate.error) : 'create failed';
+    if (/DUPLICATE_NAME/i.test(msg)) {
+      return { ok: false, error: 'That conversion action name already exists in Google Ads. Choose a unique name (e.g. add “(2)”).' };
+    }
+    return { ok: false, error: msg || 'create failed' };
+  }
   const result = (mutate.results && mutate.results[0]) || null;
   const resourceName = result && result.resourceName ? String(result.resourceName) : null;
   const id = resourceName && resourceName.match(/\/(\d+)$/) ? Number(RegExp.$1) : null;
@@ -243,6 +307,7 @@ async function createAndAttachGoalConversionAction(shop, goalType, actionName) {
 module.exports = {
   listUploadClickConversionActions,
   ensureConversionAction,
+  ensureGoalProvisioned,
   provisionGoals,
   getConversionGoals,
   attachGoalToConversionAction,

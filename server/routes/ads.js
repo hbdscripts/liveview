@@ -135,12 +135,15 @@ router.get('/google/upload-click-actions', async (req, res) => {
   res.setHeader('Cache-Control', 'private, max-age=60');
   try {
     const shop = (req.query && req.query.shop) != null ? String(req.query.shop).trim() : salesTruth.resolveShopForSales('');
+    const includeRemoved = req.query && req.query.include_removed === '1';
     const out = await listUploadClickConversionActions(shop);
     if (!out.ok) {
       res.status(400).json({ ok: false, error: out.error || 'list failed', actions: [] });
       return;
     }
-    res.json({ ok: true, actions: out.actions || [] });
+    const actions = Array.isArray(out.actions) ? out.actions : [];
+    const filtered = includeRemoved ? actions : actions.filter((a) => String(a && a.status || '').toUpperCase() !== 'REMOVED');
+    res.json({ ok: true, actions: filtered });
   } catch (err) {
     Sentry.captureException(err, { extra: { route: 'ads.google.upload-click-actions' } });
     console.error('[ads.google.upload-click-actions]', err);
