@@ -1235,14 +1235,6 @@
     if (!s) return Promise.resolve(false);
     if (_settingsScriptPromises[s]) return _settingsScriptPromises[s];
 
-    try {
-      var existing = document.querySelector('script[src="' + s + '"]');
-      if (existing && existing.getAttribute('data-kexo-script-ready') === '1') {
-        _settingsScriptPromises[s] = Promise.resolve(true);
-        return _settingsScriptPromises[s];
-      }
-    } catch (_) {}
-
     var versionQ = '';
     try {
       var settingsScript = document.querySelector('script[src*="settings-page.js"]');
@@ -1254,21 +1246,45 @@
     var loadSrc = s;
     if (versionQ && s.indexOf('?') === -1) loadSrc = s + versionQ;
 
+    try {
+      var existing = document.querySelector('script[data-kexo-script-src="' + s + '"]') ||
+        document.querySelector('script[src="' + loadSrc + '"]') ||
+        document.querySelector('script[src="' + s + '"]');
+      if (existing && existing.getAttribute('data-kexo-script-ready') === '1') {
+        _settingsScriptPromises[s] = Promise.resolve(true);
+        return _settingsScriptPromises[s];
+      }
+    } catch (_) {}
+
     _settingsScriptPromises[s] = new Promise(function (resolve) {
+      var el = null;
       try {
-        var el = document.createElement('script');
+        el = document.createElement('script');
         el.src = loadSrc;
+        // NOTE: dynamic scripts default to async; force ordered execution.
+        try { el.async = false; } catch (_) {}
         el.defer = true;
         el.setAttribute('data-kexo-script-ready', '0');
+        el.setAttribute('data-kexo-script-src', s);
         el.onload = function () {
           try { el.setAttribute('data-kexo-script-ready', '1'); } catch (_) {}
           resolve(true);
         };
-        el.onerror = function () { resolve(false); };
+        el.onerror = function () {
+          try { if (el && el.parentElement) el.parentElement.removeChild(el); } catch (_) {}
+          resolve(false);
+        };
         document.head.appendChild(el);
       } catch (_) {
+        try { if (el && el.parentElement) el.parentElement.removeChild(el); } catch (_) {}
         resolve(false);
       }
+    }).then(function (ok) {
+      if (!ok) {
+        // Allow retries after transient failures (timeouts, auth redirects, etc).
+        try { delete _settingsScriptPromises[s]; } catch (_) { _settingsScriptPromises[s] = null; }
+      }
+      return ok;
     });
     return _settingsScriptPromises[s];
   }
@@ -1286,7 +1302,10 @@
     if (!list.length) return Promise.resolve(true);
     // Load sequentially to preserve any implicit globals.
     return list.reduce(function (p, src) {
-      return p.then(function () { return ensureScriptLoaded(src); });
+      return p.then(function (ok) {
+        if (ok === false) return false;
+        return ensureScriptLoaded(src);
+      });
     }, Promise.resolve(true));
   }
 
@@ -1308,11 +1327,15 @@
 
     var token = ++_settingsTabReadyToken;
     _settingsTabReadyPromises[k] = ensureTabScriptsLoaded(k)
-      .then(function () {
+      .then(function (ok) {
         if (token !== _settingsTabReadyToken) return false;
+        if (ok === false) return false;
         if (k === 'attribution') {
           try {
-            if (typeof window.initAttributionMappingSettings === 'function') {
+            var sub = getActiveAttributionSubTab();
+            if (sub === 'tree' && typeof window.initAttributionTreeView === 'function') {
+              window.initAttributionTreeView({ rootId: 'settings-attribution-tree-root' });
+            } else if (typeof window.initAttributionMappingSettings === 'function') {
               window.initAttributionMappingSettings({ rootId: 'settings-attribution-mapping-root' });
             }
           } catch (_) {}
@@ -1344,7 +1367,12 @@
       })
       .catch(function () { return false; });
 
-    return _settingsTabReadyPromises[k];
+    return _settingsTabReadyPromises[k].then(function (ready) {
+      if (!ready) {
+        try { delete _settingsTabReadyPromises[k]; } catch (_) { _settingsTabReadyPromises[k] = null; }
+      }
+      return ready;
+    });
   }
 
   function activateTab(key) {
@@ -4104,14 +4132,17 @@
           key: 'products',
           label: 'Insights · Products',
           tables: [
-            { id: 'best-sellers-table', name: 'Best Sellers', tableClass: 'product', zone: 'products-best-sellers', order: 1, inGrid: true, rows: { default: 10, options: [10, 15, 20] }, sticky: { minWidth: null, maxWidth: null } },
-            { id: 'best-variants-table', name: 'Variant', tableClass: 'product', zone: 'products-best-variants', order: 2, inGrid: true, rows: { default: 10, options: [10, 15, 20] }, sticky: { minWidth: null, maxWidth: null } },
-            { id: 'type-necklaces-table', name: 'Necklaces', tableClass: 'product', zone: 'products-type-necklaces', order: 3, inGrid: true, rows: { default: 10, options: [10, 15, 20] }, sticky: { minWidth: null, maxWidth: null } },
-            { id: 'type-bracelets-table', name: 'Bracelets', tableClass: 'product', zone: 'products-type-bracelets', order: 4, inGrid: true, rows: { default: 10, options: [10, 15, 20] }, sticky: { minWidth: null, maxWidth: null } },
-            { id: 'type-earrings-table', name: 'Earrings', tableClass: 'product', zone: 'products-type-earrings', order: 5, inGrid: true, rows: { default: 10, options: [10, 15, 20] }, sticky: { minWidth: null, maxWidth: null } },
-            { id: 'type-sets-table', name: 'Jewelry Sets', tableClass: 'product', zone: 'products-type-sets', order: 6, inGrid: true, rows: { default: 10, options: [10, 15, 20] }, sticky: { minWidth: null, maxWidth: null } },
-            { id: 'type-charms-table', name: 'Charms', tableClass: 'product', zone: 'products-type-charms', order: 7, inGrid: true, rows: { default: 10, options: [10, 15, 20] }, sticky: { minWidth: null, maxWidth: null } },
-            { id: 'type-extras-table', name: 'Extras', tableClass: 'product', zone: 'products-type-extras', order: 8, inGrid: true, rows: { default: 10, options: [10, 15, 20] }, sticky: { minWidth: null, maxWidth: null } },
+            { id: 'best-sellers-table', name: 'Best Sellers', tableClass: 'product', zone: 'products-best-sellers', order: 1, inGrid: true, rows: { default: 5, options: [5, 10, 15, 20] }, sticky: { minWidth: null, maxWidth: null } },
+            { id: 'best-variants-table', name: 'Variant', tableClass: 'product', zone: 'products-best-variants', order: 2, inGrid: true, rows: { default: 5, options: [5, 10, 15, 20] }, sticky: { minWidth: null, maxWidth: null } },
+            { id: 'products-trending-table', name: 'Trending', tableClass: 'product', zone: '', order: 3, inGrid: true, rows: { default: 5, options: [5, 10, 15, 20] }, sticky: { minWidth: null, maxWidth: null } },
+            { id: 'type-necklaces-table', name: 'Necklaces', tableClass: 'product', zone: 'products-type-necklaces', order: 3, inGrid: true, rows: { default: 5, options: [5, 10, 15, 20] }, sticky: { minWidth: null, maxWidth: null } },
+            { id: 'type-bracelets-table', name: 'Bracelets', tableClass: 'product', zone: 'products-type-bracelets', order: 4, inGrid: true, rows: { default: 5, options: [5, 10, 15, 20] }, sticky: { minWidth: null, maxWidth: null } },
+            { id: 'type-earrings-table', name: 'Earrings', tableClass: 'product', zone: 'products-type-earrings', order: 5, inGrid: true, rows: { default: 5, options: [5, 10, 15, 20] }, sticky: { minWidth: null, maxWidth: null } },
+            { id: 'type-sets-table', name: 'Jewelry Sets', tableClass: 'product', zone: 'products-type-sets', order: 6, inGrid: true, rows: { default: 5, options: [5, 10, 15, 20] }, sticky: { minWidth: null, maxWidth: null } },
+            { id: 'type-charms-table', name: 'Charms', tableClass: 'product', zone: 'products-type-charms', order: 7, inGrid: true, rows: { default: 5, options: [5, 10, 15, 20] }, sticky: { minWidth: null, maxWidth: null } },
+            { id: 'type-extras-table', name: 'Extras', tableClass: 'product', zone: 'products-type-extras', order: 8, inGrid: true, rows: { default: 5, options: [5, 10, 15, 20] }, sticky: { minWidth: null, maxWidth: null } },
+            { id: 'products-gross-profit-high-table', name: 'Gross profit (High)', tableClass: 'product', zone: '', order: 1, inGrid: true, rows: { default: 5, options: [5, 10, 15, 20] }, sticky: { minWidth: null, maxWidth: null } },
+            { id: 'products-gross-profit-low-table', name: 'Gross profit (Low)', tableClass: 'product', zone: '', order: 2, inGrid: true, rows: { default: 5, options: [5, 10, 15, 20] }, sticky: { minWidth: null, maxWidth: null } },
           ],
         },
         {
@@ -5030,19 +5061,31 @@
           if (p) normaliseSettingsPanel(p);
         } catch (_) {}
         if (getActiveSettingsTab() === 'attribution') {
-          if (key === 'mapping') {
-            if (typeof window.initAttributionMappingSettings === 'function') {
-              try { window.initAttributionMappingSettings({ rootId: 'settings-attribution-mapping-root' }); } catch (_) {}
-            } else {
-              renderAttributionInitError('settings-attribution-mapping-root', 'Attribution mapping');
-            }
-          } else if (key === 'tree') {
-            if (typeof window.initAttributionTreeView === 'function') {
-              try { window.initAttributionTreeView({ rootId: 'settings-attribution-tree-root' }); } catch (_) {}
-            } else {
-              renderAttributionInitError('settings-attribution-tree-root', 'Channel tree');
-            }
-          }
+          try {
+            ensureTabReady('attribution').then(function (ready) {
+              if (!ready) {
+                if (key === 'tree') renderAttributionInitError('settings-attribution-tree-root', 'Channel tree');
+                else renderAttributionInitError('settings-attribution-mapping-root', 'Attribution mapping');
+                return;
+              }
+              // If the user navigated away while scripts loaded, do nothing.
+              if (getActiveSettingsTab() !== 'attribution') return;
+              if (getActiveAttributionSubTab() !== key) return;
+              if (key === 'mapping') {
+                if (typeof window.initAttributionMappingSettings === 'function') {
+                  try { window.initAttributionMappingSettings({ rootId: 'settings-attribution-mapping-root' }); } catch (_) {}
+                } else {
+                  renderAttributionInitError('settings-attribution-mapping-root', 'Attribution mapping');
+                }
+              } else if (key === 'tree') {
+                if (typeof window.initAttributionTreeView === 'function') {
+                  try { window.initAttributionTreeView({ rootId: 'settings-attribution-tree-root' }); } catch (_) {}
+                } else {
+                  renderAttributionInitError('settings-attribution-tree-root', 'Channel tree');
+                }
+              }
+            });
+          } catch (_) {}
           updateUrl('attribution');
           syncLeftNavActiveClasses('attribution');
         }
