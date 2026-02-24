@@ -2133,6 +2133,22 @@
     return out;
   }
 
+  function setStickyWidthDefault(el, px) {
+    if (!el || !el.style) return;
+    var cur = String(el.style.getPropertyValue('--kexo-sticky-col-width') || '').trim();
+    var curN = parseFloat(cur);
+    // Only override the very small default (e.g. 72px). Preserve user resize / stored width.
+    if (!cur || (Number.isFinite(curN) && curN <= 80)) {
+      el.style.setProperty('--kexo-sticky-col-width', String(Number(px) || 200) + 'px');
+    }
+  }
+
+  function applyAdsStickyDefaults() {
+    setStickyWidthDefault(document.getElementById('ads-root'), 200);
+    setStickyWidthDefault(document.getElementById('ads-other-root-googleads'), 200);
+    setStickyWidthDefault(document.getElementById('ads-other-root-other'), 200);
+  }
+
   function renderOtherRevenue(rootEl, data, rangeKey) {
     if (!rootEl) return;
     rangeKey = rangeKey || _lastOtherRevenueRangeKey || 'today';
@@ -2184,13 +2200,20 @@
       bodyHtml = '<div class="grid-row muted" role="row"><div class="grid-cell" role="cell" style="text-align:center;">No other revenue in this period.</div></div>';
     }
     var tableHtml;
-    if (typeof window.buildKexoGridTable === 'function' && window.KEXO_TABLE_DEFS && window.KEXO_TABLE_DEFS['ads-other-revenue-table']) {
-      var def = window.KEXO_TABLE_DEFS['ads-other-revenue-table'];
+    if (typeof window.buildKexoGridTable === 'function') {
+      var def = null;
+      try { def = window.KEXO_TABLE_DEFS && window.KEXO_TABLE_DEFS['ads-other-revenue-table'] ? window.KEXO_TABLE_DEFS['ads-other-revenue-table'] : null; } catch (_) { def = null; }
+      var cols = (def && Array.isArray(def.columns) && def.columns.length === 4) ? def.columns : [
+        { key: 'utmSource', label: 'UTM source', cellClass: '' },
+        { key: 'sessions', label: 'Sessions', cellClass: ' text-center' },
+        { key: 'orders', label: 'Orders', cellClass: ' text-center' },
+        { key: 'revenueGbp', label: 'Revenue', cellClass: ' text-center' }
+      ];
       tableHtml = window.buildKexoGridTable({
         innerOnly: true,
-        tableClass: def.tableClass || 'ads-other-revenue-table',
-        ariaLabel: def.ariaLabel || 'Other revenue',
-        columns: def.columns || [],
+        tableClass: (def && def.tableClass) || 'ads-other-revenue-table',
+        ariaLabel: (def && def.ariaLabel) || 'Other revenue',
+        columns: cols,
         bodyHtml: bodyHtml
       });
     } else {
@@ -2205,6 +2228,9 @@
         '<div class="grid-body" role="rowgroup">' + bodyHtml + '</div></div>';
     }
     rootEl.innerHTML = tableHtml;
+    try { if (typeof window.__kexoRunStickyColumnResize === 'function') window.__kexoRunStickyColumnResize(); } catch (_) {}
+    try { applyAdsStickyDefaults(); } catch (_) {}
+    try { if (typeof window.initKexoTooltips === 'function') window.initKexoTooltips(rootEl); } catch (_) {}
     rootEl.querySelectorAll('[data-other-revenue-expand]').forEach(function(btn) {
       btn.addEventListener('click', function(ev) {
         ev.preventDefault();
@@ -2372,22 +2398,37 @@
 
     var tableHtml;
     if (typeof window.buildKexoGridTable === 'function' && window.KEXO_TABLE_DEFS && window.KEXO_TABLE_DEFS['ads-campaigns-table']) {
-      var adsDef = window.KEXO_TABLE_DEFS['ads-campaigns-table'];
-      tableHtml = window.buildKexoGridTable({
-        innerOnly: true,
-        tableClass: adsDef.tableClass || 'ads-campaign-table',
-        ariaLabel: adsDef.ariaLabel || 'Ads campaigns',
-        columns: adsDef.columns || [],
-        bodyHtml: bodyHtml
-      });
+      // fall through (handled below)
     } else {
       var headerCells = COL_DEFS.map(function (d, idx) {
-        return { html: d.label, sortKey: d.key, cls: idx === 0 ? '' : ' text-end' };
+        return { html: d.label, sortKey: d.key, cls: idx === 0 ? '' : ' text-center' };
       });
       tableHtml = '<div class="grid-table ads-campaign-table" role="table" aria-label="Ads campaigns">' +
         '<div class="grid-header kexo-grid-header" role="rowgroup">' + gridRow(headerCells, true) + '</div>' +
         '<div class="grid-body" role="rowgroup">' + bodyHtml + '</div>' +
       '</div>';
+    }
+    if (!tableHtml && typeof window.buildKexoGridTable === 'function') {
+      var adsDef = null;
+      try { adsDef = window.KEXO_TABLE_DEFS && window.KEXO_TABLE_DEFS['ads-campaigns-table'] ? window.KEXO_TABLE_DEFS['ads-campaigns-table'] : null; } catch (_) { adsDef = null; }
+      var cols = (adsDef && Array.isArray(adsDef.columns) && adsDef.columns.length === 9) ? adsDef.columns : [
+        { key: 'campaign', label: 'Campaign', cellClass: '' },
+        { key: 'clicks', label: 'Clicks', cellClass: ' text-center' },
+        { key: 'sessions', label: 'Sessions', cellClass: ' text-center' },
+        { key: 'impr', label: 'Impr', cellClass: ' text-center' },
+        { key: 'conv', label: 'Conv', cellClass: ' text-center' },
+        { key: 'sales', label: 'Revenue', cellClass: ' text-center' },
+        { key: 'spend', label: 'Spend', cellClass: ' text-center' },
+        { key: 'roas', label: 'ROAS', cellClass: ' text-center' },
+        { key: 'profit', label: 'Gross', cellClass: ' text-center' },
+      ];
+      tableHtml = window.buildKexoGridTable({
+        innerOnly: true,
+        tableClass: (adsDef && adsDef.tableClass) || 'ads-campaign-table',
+        ariaLabel: (adsDef && adsDef.ariaLabel) || 'Ads campaigns',
+        columns: cols,
+        bodyHtml: bodyHtml
+      });
     }
     root.innerHTML = tableHtml;
 
@@ -2399,6 +2440,7 @@
 
     patchFooterAndNote(status, summary);
     try { if (typeof window.__kexoRunStickyColumnResize === 'function') window.__kexoRunStickyColumnResize(); } catch (_) {}
+    try { applyAdsStickyDefaults(); } catch (_) {}
     renderAdsOverviewChart(summary);
 
     // Bind sortable headers
@@ -2697,6 +2739,7 @@
     if (!wrap || wrap.getAttribute('data-ads-options-bound') === '1') return;
     wrap.setAttribute('data-ads-options-bound', '1');
     syncAdsOptionsState();
+    try { if (typeof window.initKexoTooltips === 'function') window.initKexoTooltips(document.body); } catch (_) {}
     var hcb = document.getElementById('ads-hide-paused');
     if (hcb) {
       hcb.addEventListener('change', function () {
