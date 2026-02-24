@@ -8,7 +8,7 @@ const ALLOWED_RANGE = new Set(['today', 'yesterday', '7d', '30d']);
 
 async function getCostBreakdown(req, res) {
   const raw = req && req.query && req.query.range != null ? String(req.query.range).trim().toLowerCase() : '';
-  const rangeKey = ALLOWED_RANGE.has(raw) ? raw : '7d';
+  const rangeKey = ALLOWED_RANGE.has(raw) ? raw : 'today';
   const auditRaw = req && req.query && req.query.audit != null ? String(req.query.audit).trim().toLowerCase() : '';
   const audit = auditRaw === '1' || auditRaw === 'true';
   try {

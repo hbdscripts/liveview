@@ -887,6 +887,24 @@
     var globalRevert = document.getElementById('settings-global-revert-btn');
     var footerRight = (globalSave && globalSave.closest) ? globalSave.closest('.settings-footer-right') : null;
 
+    // Keep the footer within the active settings panel so it always appears
+    // just before the panel closes (avoids sitting below hidden panels).
+    try {
+      if (footer && footer.parentElement) {
+        var activePanel =
+          document.querySelector('.settings-panel.active') ||
+          (function () {
+            var k = getActiveSettingsTab();
+            return k ? document.getElementById('settings-panel-' + k) : null;
+          })() ||
+          document.getElementById('settings-main-content') ||
+          footer.parentElement;
+        if (activePanel && activePanel.appendChild && footer.parentElement !== activePanel) {
+          activePanel.appendChild(footer);
+        }
+      }
+    } catch (_) {}
+
     var showSaved = usesGlobalDraft && !tabDirty && _settingsGlobalFooterSavedTab === ctxKey;
     var hasLeftActions = !!(footerLeft && footerLeft.children && footerLeft.children.length);
     // Footer should only appear when there is something actionable (dirty or just-saved).

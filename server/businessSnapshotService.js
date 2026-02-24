@@ -2151,6 +2151,14 @@ function computeCostBreakdownTotals(items) {
   return { activeTotal, inactiveTotal };
 }
 
+function shouldInjectFixedCostDetailsIntoCostBreakdown(rulesDetailed) {
+  const rd = rulesDetailed && typeof rulesDetailed === 'object' ? rulesDetailed : null;
+  const lines = rd && Array.isArray(rd.lines) ? rd.lines : [];
+  // If computeProfitDeductionsDetailed produced fixed-cost lines, injecting fixedCostDetails would duplicate them.
+  const hasFixed = lines.some((l) => l && String(l.type || '') === 'fixed_cost');
+  return !hasFixed;
+}
+
 function metric(value, previous) {
   return {
     value: toNumber(value),
@@ -3784,7 +3792,11 @@ async function getCostBreakdown({ rangeKey, audit } = {}) {
       if (ruleDetails.length >= 150) break;
     }
   }
-  fixedCostDetails.forEach((d) => ruleDetails.push(d));
+  // Fixed costs are already included in computeProfitDeductionsDetailed() as `type: 'fixed_cost'`.
+  // Keep a fallback injection only when no fixed-cost lines were produced (e.g. if the summary failed).
+  if (shouldInjectFixedCostDetailsIntoCostBreakdown(rulesDetailed)) {
+    fixedCostDetails.forEach((d) => ruleDetails.push(d));
+  }
 
   const shopifyBalanceAvailable = !!(shopifyCosts && shopifyCosts.available === true);
   const shopifyNote = shopifyBalanceAvailable ? '' : (shopifyCosts && shopifyCosts.error ? String(shopifyCosts.error) : 'Unavailable');
@@ -4124,4 +4136,5 @@ module.exports = {
   // Exposed for unit tests / audits.
   computeShippingCostFromSummary,
   computeCostBreakdownTotals,
+  shouldInjectFixedCostDetailsIntoCostBreakdown,
 };

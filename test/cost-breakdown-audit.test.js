@@ -4,6 +4,7 @@ const assert = require('node:assert/strict');
 const {
   computeShippingCostFromSummary,
   computeCostBreakdownTotals,
+  shouldInjectFixedCostDetailsIntoCostBreakdown,
 } = require('../server/businessSnapshotService');
 
 test('computeShippingCostFromSummary: override replaces default (not additive)', () => {
@@ -34,5 +35,21 @@ test('computeCostBreakdownTotals: excludes detail rows to prevent double countin
   ];
   const totals = computeCostBreakdownTotals(items);
   assert.deepEqual(totals, { activeTotal: 89.2, inactiveTotal: 0 });
+});
+
+test('Cost breakdown: do not inject fixedCostDetails when rulesDetailed already includes fixed_cost lines', () => {
+  const rulesDetailed = {
+    total: 10,
+    lines: [
+      { type: 'percent_revenue', label: 'Rule: X', amountGbp: 1 },
+      { type: 'fixed_cost', label: 'Fixed: Combined fixed costs', amountGbp: 9 },
+    ],
+  };
+  assert.equal(shouldInjectFixedCostDetailsIntoCostBreakdown(rulesDetailed), false);
+});
+
+test('Cost breakdown: inject fixedCostDetails when rulesDetailed has no fixed_cost lines', () => {
+  assert.equal(shouldInjectFixedCostDetailsIntoCostBreakdown({ total: 0, lines: [] }), true);
+  assert.equal(shouldInjectFixedCostDetailsIntoCostBreakdown(null), true);
 });
 

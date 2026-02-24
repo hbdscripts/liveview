@@ -14,7 +14,7 @@
 
   var state = {
     uiBound: false,
-    range: '7d',
+    range: 'today',
     controller: null,
     reqId: 0,
     active: false,
@@ -288,7 +288,7 @@
     var myId = state.reqId;
     setMsg('Loading…', 'muted');
 
-    var url = API + '/api/cost-breakdown?range=' + encodeURIComponent(state.range || '7d') + (state.audit ? '&audit=1' : '');
+    var url = API + '/api/cost-breakdown?range=' + encodeURIComponent(state.range || 'today') + (state.audit ? '&audit=1' : '');
     return fetch(url, {
       method: 'GET',
       credentials: 'same-origin',
