@@ -1460,6 +1460,11 @@
                 <div id="settings-admin-accordion-googleads" class="accordion-collapse collapse" data-bs-parent="#settings-admin-accordion">
                   <div class="accordion-body">
             <div id="admin-panel-googleads">
+              <div class="card card-sm">
+                <div class="card-body">
+                  <div class="text-muted small">Changes here save immediately; there is no global Save button on this tab.</div>
+                </div>
+              </div>
               <div class="accordion settings-accordion-mb-tight" id="settings-ga-inner-accordion">
                 <div class="accordion-item">
                   <h4 class="accordion-header">
@@ -1519,16 +1524,14 @@
                             <div class="text-muted small mb-2">Value uploaded: Shopify checkout total (incl shipping).</div>
                             <label class="form-check form-switch mb-2">
                               <input class="form-check-input" type="checkbox" id="settings-ga-cart-data-revenue" />
-                              <span class="form-check-label">Include cart data</span>
-                              <span class="kexo-icon-help-trigger ms-1" data-kexo-help="Send line-item product IDs and quantities with this goal's uploads. Requires Merchant Center (cart data) in Diagnostics." aria-label="Show description"><i class="fa-thin fa-circle-info text-secondary" aria-hidden="true"></i></span>
+                              <span class="form-check-label" title="Send line-item product IDs and quantities with this goal's uploads. Requires Merchant Center (cart data) in Diagnostics.">Include cart data <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></span>
                             </label>
                             <div class="mb-2">
-                              <label class="form-label small mb-0">Optimization</label>
+                              <label class="form-label small mb-0" title="Primary: used for bidding and in Conversions. Secondary: reporting only. Default Secondary.">Optimization <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>
                               <select class="form-select form-select-sm" id="settings-ga-optimization-revenue" aria-label="Revenue primary or secondary">
                                 <option value="secondary">Secondary</option>
                                 <option value="primary">Primary</option>
                               </select>
-                              <span class="kexo-icon-help-trigger ms-1" data-kexo-help="Primary: used for bidding and in Conversions. Secondary: reporting only. Default Secondary." aria-label="Show description"><i class="fa-thin fa-circle-info text-secondary" aria-hidden="true"></i></span>
                             </div>
                             <div class="mb-2">
                               <div class="text-muted small">Uploads to</div>
@@ -1586,16 +1589,14 @@
                             </div>
                             <label class="form-check form-switch mb-2">
                               <input class="form-check-input" type="checkbox" id="settings-ga-cart-data-profit" />
-                              <span class="form-check-label">Include cart data</span>
-                              <span class="kexo-icon-help-trigger ms-1" data-kexo-help="Send line-item product IDs and quantities with this goal's uploads. Requires Merchant Center (cart data) in Diagnostics." aria-label="Show description"><i class="fa-thin fa-circle-info text-secondary" aria-hidden="true"></i></span>
+                              <span class="form-check-label" title="Send line-item product IDs and quantities with this goal's uploads. Requires Merchant Center (cart data) in Diagnostics.">Include cart data <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></span>
                             </label>
                             <div class="mb-2">
-                              <label class="form-label small mb-0">Optimization</label>
+                              <label class="form-label small mb-0" title="Primary: used for bidding and in Conversions. Secondary: reporting only. Default Secondary.">Optimization <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>
                               <select class="form-select form-select-sm" id="settings-ga-optimization-profit" aria-label="Profit primary or secondary">
                                 <option value="secondary">Secondary</option>
                                 <option value="primary">Primary</option>
                               </select>
-                              <span class="kexo-icon-help-trigger ms-1" data-kexo-help="Primary: used for bidding and in Conversions. Secondary: reporting only. Default Secondary." aria-label="Show description"><i class="fa-thin fa-circle-info text-secondary" aria-hidden="true"></i></span>
                             </div>
                             <div class="mb-2">
                               <div class="text-muted small">Uploads to</div>
@@ -1626,8 +1627,7 @@
                           <div class="card-body">
                             <label class="form-check form-switch mb-2">
                               <input class="form-check-input" type="checkbox" id="settings-ga-cart-data-add_to_cart" disabled />
-                              <span class="form-check-label text-muted">Include cart data</span>
-                              <span class="kexo-icon-help-trigger ms-1" data-kexo-help="Cart data is only sent with purchase conversions (Revenue and Profit)." aria-label="Show description"><i class="fa-thin fa-circle-info text-secondary" aria-hidden="true"></i></span>
+                              <span class="form-check-label text-muted" title="Cart data is only sent with purchase conversions (Revenue and Profit).">Include cart data <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></span>
                             </label>
                             <label class="form-label small" for="settings-ga-addtocart-value">Conversion value</label>
                             <input type="number" class="form-control form-control-sm settings-ui-w-5rem" id="settings-ga-addtocart-value" min="0" step="0.01" value="1" />
@@ -1668,8 +1668,7 @@
                           <div class="card-body">
                             <label class="form-check form-switch mb-2">
                               <input class="form-check-input" type="checkbox" id="settings-ga-cart-data-begin_checkout" disabled />
-                              <span class="form-check-label text-muted">Include cart data</span>
-                              <span class="kexo-icon-help-trigger ms-1" data-kexo-help="Cart data is only sent with purchase conversions (Revenue and Profit)." aria-label="Show description"><i class="fa-thin fa-circle-info text-secondary" aria-hidden="true"></i></span>
+                              <span class="form-check-label text-muted" title="Cart data is only sent with purchase conversions (Revenue and Profit).">Include cart data <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></span>
                             </label>
                             <label class="form-label small" for="settings-ga-begincheckout-value">Conversion value</label>
                             <input type="number" class="form-control form-control-sm settings-ui-w-5rem" id="settings-ga-begincheckout-value" min="0" step="0.01" value="1" />
@@ -1797,10 +1796,7 @@
                   <div id="settings-ga-accordion-diagnostics" class="accordion-collapse collapse" data-bs-parent="#settings-ga-inner-accordion">
                     <div class="accordion-body">
                       <div class="mb-4">
-                        <label class="form-label small" for="settings-ga-account-customer-id">
-                          <span class="kexo-icon-help-trigger" data-kexo-help="Optional IDs to use when connecting. You can change these later." aria-label="Show description"><i class="fa-thin fa-circle-info text-secondary ms-1" aria-hidden="true"></i></span>
-                          Account context (optional)
-                        </label>
+                        <label class="form-label small" for="settings-ga-account-customer-id" title="Optional IDs to use when connecting. You can change these later.">Account context (optional) <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>
                         <div class="settings-responsive-grid settings-ga-account-context-grid">
                           <input type="text" class="form-control form-control-sm" id="settings-ga-account-customer-id" placeholder="Customer ID" inputmode="numeric" autocomplete="off" />
                           <input type="text" class="form-control form-control-sm" id="settings-ga-account-login-customer-id" placeholder="Login Customer ID" inputmode="numeric" autocomplete="off" />
@@ -1808,10 +1804,7 @@
                         </div>
                       </div>
                       <div class="mb-4">
-                        <div class="form-label small">
-                          <span class="kexo-icon-help-trigger" data-kexo-help="Used when including cart data in Revenue/Profit uploads. Product IDs are sent as shopify_{country}_{product_id}_{variant_id}. No Merchant Center access is granted/required — these values are only included in conversion uploads for matching." aria-label="Show description"><i class="fa-thin fa-circle-info text-secondary ms-1" aria-hidden="true"></i></span>
-                          Merchant Center (cart data)
-                        </div>
+                        <div class="form-label small" title="Used when including cart data in Revenue/Profit uploads. Product IDs are sent as shopify_{country}_{product_id}_{variant_id}. No Merchant Center access is granted/required — these values are only included in conversion uploads for matching.">Merchant Center (cart data) <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></div>
                         <div class="settings-responsive-grid settings-ga-account-context-grid">
                           <div>
                             <label class="form-label small visually-hidden" for="settings-ga-cart-data-merchant-id">Merchant ID</label>
@@ -1834,7 +1827,7 @@
                       </div>
                       <div class="d-flex align-items-center flex-wrap gap-2 mb-2">
                         <div class="btn-group btn-group-sm ms-auto" role="group" aria-label="Issue filter">
-                          <button type="button" class="btn active" data-settings-ga-issue-filter="open">Open</button>
+                          <button type="button" class="btn btn-sm active" data-settings-ga-issue-filter="open">Open</button>
                           <button type="button" class="btn btn-sm" data-settings-ga-issue-filter="resolved">Resolved</button>
                           <button type="button" class="btn btn-sm" data-settings-ga-issue-filter="all">All</button>
                         </div>
@@ -1858,7 +1851,7 @@
                       </div>
                     </div>
                   </div>
-                </div>
+                  </div>
               </div>
             </div>
 
