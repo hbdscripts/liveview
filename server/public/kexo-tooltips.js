@@ -45,7 +45,13 @@
 
   function findTitleTarget(root, el) {
     for (var n = el; n && n !== root; n = n.parentNode) {
-      if (n.getAttribute && n.getAttribute('title')) return n;
+      if (n.getAttribute && n.getAttribute('title')) {
+        // Avoid showing hover tooltips on table headers; use label-adjacent click help instead.
+        try { if (n.closest && n.closest('thead')) return null; } catch (_) {}
+        var tag = n.tagName ? String(n.tagName).toUpperCase() : '';
+        if (tag === 'TH' || tag === 'THEAD') return null;
+        return n;
+      }
     }
     return null;
   }
@@ -181,7 +187,6 @@
       'label[title]',
       'legend[title]',
       'summary[title]',
-      'th > span[title]',
       '.form-check-label[title]',
       '.form-label[title]',
       'h1[title], h2[title], h3[title], h4[title], h5[title], h6[title]',

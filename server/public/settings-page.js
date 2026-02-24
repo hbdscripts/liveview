@@ -263,6 +263,12 @@
     try { els.wrap.classList.add('d-none'); } catch (_) {}
   }
 
+  // Allow sub-panels to report save/load errors without bespoke message rows.
+  try {
+    window.__kexoSettingsShowError = function (message) { showSettingsGlobalBanner('error', message); };
+    window.__kexoSettingsHideBanner = function () { hideSettingsGlobalBanner(); };
+  } catch (_) {}
+
   function reportSettingsGlobalLoadError(message) {
     var msg = message != null ? String(message).trim() : '';
     if (!msg) msg = 'Some settings failed to load.';
@@ -801,6 +807,13 @@
     }, 60);
   }
 
+  // Some Settings edits update draft state via buttons (no input/change event).
+  // Expose a small hook so panels can trigger a footer re-sync immediately.
+  window.__kexoSettingsDraftChanged = function () {
+    try { clearGlobalFooterSavedIndicator(); } catch (_) {}
+    try { scheduleSyncGlobalFooter(); } catch (_) {}
+  };
+
   var _settingsGlobalFooterUiState = null;
   function syncGlobalFooter() {
     var ctxKey = getGlobalFooterContextKey();
@@ -827,8 +840,10 @@
 
     var showSaved = usesGlobalDraft && !tabDirty && _settingsGlobalFooterSavedTab === ctxKey;
     var hasLeftActions = !!(footerLeft && footerLeft.children && footerLeft.children.length);
-    var showFooterRight = !!(usesGlobalDraft && (tabDirty || showSaved));
-    var showFooter = !!(hasLeftActions || (usesGlobalDraft && (tabDirty || showSaved)));
+    // Keep the footer visible for all draft-based panels so Save is discoverable/consistent.
+    // Save/Revert are disabled when there are no unsaved changes.
+    var showFooterRight = !!usesGlobalDraft;
+    var showFooter = !!(hasLeftActions || usesGlobalDraft);
     var saveEnabled = !!(usesGlobalDraft && tabDirty);
 
     // Bind footer handlers once (avoid re-assigning on every sync).

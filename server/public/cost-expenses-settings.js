@@ -34,8 +34,24 @@
     }).then(function (r) {
       if (opts.raw) return r;
       var ct = r.headers.get('content-type') || '';
-      if (ct.indexOf('application/json') !== -1) return r.json();
-      return r.text().then(function (t) { throw new Error(t || r.status); });
+      if (ct.indexOf('application/json') !== -1) {
+        return r.json().then(function (j) {
+          if (!r.ok) {
+            var msg =
+              (j && (j.message || j.error)) ? String(j.message || j.error) :
+              (r.status ? ('HTTP ' + String(r.status)) : 'Request failed');
+            var err = new Error(msg);
+            err.status = r.status;
+            err.body = j;
+            throw err;
+          }
+          return j;
+        });
+      }
+      return r.text().then(function (t) {
+        if (!r.ok) throw new Error(t || r.status);
+        return t;
+      });
     });
   }
 
@@ -582,6 +598,12 @@
     else el.classList.add('text-muted');
   }
 
+  function markDraftChanged() {
+    try {
+      if (typeof window.__kexoSettingsDraftChanged === 'function') window.__kexoSettingsDraftChanged();
+    } catch (_) {}
+  }
+
   function getPerOrderRuleById(id) {
     var list = state.config && state.config.cost_expenses && Array.isArray(state.config.cost_expenses.per_order_rules)
       ? state.config.cost_expenses.per_order_rules
@@ -728,7 +750,8 @@
     list.sort(function (a, b) { return (a.sort || 0) - (b.sort || 0); });
     renderPerOrderRulesTable();
     hidePerOrderForm();
-    setSectionMsg('cost-expenses-per-order-msg', 'Rule saved in draft.', true);
+    setSectionMsg('cost-expenses-per-order-msg', 'Rule saved. Press Save Settings below to apply.', true);
+    markDraftChanged();
   }
 
   function syncOverheadFormUi() {
@@ -833,7 +856,8 @@
     list.sort(function (a, b) { return String(a.name || '').localeCompare(String(b.name || '')); });
     renderOverheadsTable();
     hideOverheadForm();
-    setSectionMsg('cost-expenses-overheads-msg', 'Overhead saved in draft.', true);
+    setSectionMsg('cost-expenses-overheads-msg', 'Overhead saved. Press Save Settings below to apply.', true);
+    markDraftChanged();
   }
 
   function showFixedCostForm(fc) {
@@ -884,7 +908,8 @@
     list.sort(function (a, b) { return String(a.name || '').localeCompare(String(b.name || '')); });
     renderFixedCostsTable();
     hideFixedCostForm();
-    setSectionMsg('cost-expenses-fixed-costs-msg', 'Fixed cost saved in draft.', true);
+    setSectionMsg('cost-expenses-fixed-costs-msg', 'Fixed cost saved. Press Save Settings below to apply.', true);
+    markDraftChanged();
   }
 
   function runPerOrderPreview(rangeKey) {
@@ -959,6 +984,7 @@
         countries: [],
       });
       renderShippingOverrides();
+      markDraftChanged();
     });
 
     var addPerOrderBtn = document.getElementById('cost-expenses-per-order-add-btn');
@@ -1033,6 +1059,7 @@
           }
           state.config.shipping = sh;
           renderShippingOverrides();
+          markDraftChanged();
         }
       }
       if (t.getAttribute('data-per-order-edit') !== null) {
@@ -1046,6 +1073,7 @@
         state.config.cost_expenses.per_order_rules = (state.config.cost_expenses.per_order_rules || []).filter(function (r) { return String(r.id) !== String(id); });
         renderPerOrderRulesTable();
         hidePerOrderForm();
+        markDraftChanged();
       }
       if (t.getAttribute('data-overhead-edit') !== null) {
         var id = t.getAttribute('data-overhead-id');
@@ -1058,6 +1086,7 @@
         state.config.cost_expenses.overheads = (state.config.cost_expenses.overheads || []).filter(function (o) { return String(o.id) !== String(id); });
         renderOverheadsTable();
         hideOverheadForm();
+        markDraftChanged();
       }
       if (t.getAttribute('data-fixed-cost-edit') !== null) {
         var id = t.getAttribute('data-fixed-cost-id');
@@ -1070,6 +1099,7 @@
         state.config.cost_expenses.fixed_costs = (state.config.cost_expenses.fixed_costs || []).filter(function (f) { return String(f.id) !== String(id); });
         renderFixedCostsTable();
         hideFixedCostForm();
+        markDraftChanged();
       }
       if (t.getAttribute('data-ce-per-order-preview-range') !== null) {
         var r = t.getAttribute('data-ce-per-order-preview-range');
@@ -1108,6 +1138,7 @@
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ profitRules: config }),
     }).then(function (payload) {
+      if (!payload || payload.ok !== true || !payload.profitRules) throw new Error('Save failed');
       state.config = normalizeConfig(payload && payload.profitRules);
       applyConfigToInputs();
       renderShippingOverrides();
@@ -1120,7 +1151,11 @@
       syncExcludedHints();
       if (typeof window.__kexoSetSettingsDraftBaseline === 'function') window.__kexoSetSettingsDraftBaseline('cost-expenses', buildConfigFromDom());
       return { ok: true };
-    }).catch(function () {
+    }).catch(function (err) {
+      try {
+        var msg = (err && err.message) ? String(err.message) : 'Save failed';
+        if (typeof window.__kexoSettingsShowError === 'function') window.__kexoSettingsShowError('Cost & Expenses save failed. ' + msg);
+      } catch (_) {}
       return { ok: false };
     });
   }
@@ -1128,6 +1163,7 @@
   function load() {
     if (state.loadInFlight) return state.loadInFlight;
     state.loadInFlight = fetchJson(API + '/api/settings/profit-rules').then(function (configPayload) {
+      if (!configPayload || configPayload.ok !== true || !configPayload.profitRules) throw new Error('Failed to load');
       state.config = normalizeConfig(configPayload && configPayload.profitRules);
       applyConfigToInputs();
       renderShippingOverrides();
@@ -1136,12 +1172,16 @@
       renderFixedCostsTable();
       bindUi();
       if (typeof window.__kexoSetSettingsDraftBaseline === 'function') window.__kexoSetSettingsDraftBaseline('cost-expenses', buildConfigFromDom());
+      markDraftChanged();
       try {
         if (typeof window.migrateTitleToHelpPopover === 'function') window.migrateTitleToHelpPopover(root);
         if (typeof window.initKexoHelpPopovers === 'function') window.initKexoHelpPopovers(root);
       } catch (_) {}
-    }).catch(function () {
-      setMsg('Failed to load.', false);
+    }).catch(function (err) {
+      try {
+        var msg = (err && err.message) ? String(err.message) : 'Failed to load';
+        if (typeof window.__kexoSettingsShowError === 'function') window.__kexoSettingsShowError('Cost & Expenses failed to load. ' + msg);
+      } catch (_) {}
       state.config = defaultConfig();
       applyConfigToInputs();
       renderShippingOverrides();
@@ -1149,6 +1189,8 @@
       renderOverheadsTable();
       renderFixedCostsTable();
       bindUi();
+      if (typeof window.__kexoSetSettingsDraftBaseline === 'function') window.__kexoSetSettingsDraftBaseline('cost-expenses', buildConfigFromDom());
+      markDraftChanged();
       try {
         if (typeof window.migrateTitleToHelpPopover === 'function') window.migrateTitleToHelpPopover(root);
         if (typeof window.initKexoHelpPopovers === 'function') window.initKexoHelpPopovers(root);
