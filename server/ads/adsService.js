@@ -665,11 +665,13 @@ async function getCampaignDetail(options = {}) {
   const bounds = store.getRangeBounds(rangeKey, now, timeZone);
   const currency = 'GBP';
   const source = options.source != null ? String(options.source).trim().toLowerCase() : 'googleads';
+  const attributionModel = options.attributionModel != null ? String(options.attributionModel).trim().toLowerCase() : '';
+  const revCampaignCol = attributionModel === 'first_click' ? 'campaign_id_first_click' : attributionModel === 'last_click' ? 'campaign_id_last_click' : 'campaign_id';
 
   const adsDb = getAdsDb();
   if (!adsDb) return { ok: false, error: 'ADS_DB_URL not set' };
 
-  // Hourly spend for this campaign
+  // Hourly spend for this campaign (spend is always by campaign_id from Google)
   const spendHourly = await adsDb.all(
     `SELECT
        EXTRACT(EPOCH FROM hour_ts)::bigint * 1000 AS ts,
@@ -694,7 +696,7 @@ async function getCampaignDetail(options = {}) {
        FROM ads_orders_attributed
        WHERE created_at_ms >= ? AND created_at_ms < ?
          AND source = ?
-         AND campaign_id = ?
+         AND ${revCampaignCol} = ?
        GROUP BY DATE_TRUNC('hour', TO_TIMESTAMP(created_at_ms/1000.0))
        ORDER BY ts ASC`,
       [bounds.start, bounds.end, source, campaignId]
@@ -718,7 +720,7 @@ async function getCampaignDetail(options = {}) {
        FROM ads_orders_attributed
        WHERE created_at_ms >= ? AND created_at_ms < ?
          AND source = ?
-         AND campaign_id = ?
+         AND ${revCampaignCol} = ?
        ORDER BY created_at_ms DESC
        LIMIT 30`,
       [bounds.start, bounds.end, source, campaignId]
@@ -1137,38 +1139,39 @@ async function getCampaignDetail(options = {}) {
     networks = { ok: false, error: e && e.message ? String(e.message).slice(0, 220) : 'networks_failed', rows: [], meta: { startYmd, endYmd } };
   }
 
-  // Day parting: group by hour-of-day in admin/store timezone.
+  // Day parting: group by hour-of-day in admin/store timezone; fallback to UTC if tz query fails.
   let dayParting = { ok: true, rows: [], meta: { timeZone, bestHour: null, bestRoas: null } };
+  const tzLiteral = timeZone && /^[A-Za-z0-9\/_+-]+$/.test(timeZone) ? timeZone : 'UTC';
   try {
     const spendRows = await adsDb.all(
       `
         SELECT
-          EXTRACT(HOUR FROM (hour_ts AT TIME ZONE ?))::int AS hour,
+          EXTRACT(HOUR FROM (hour_ts AT TIME ZONE ?::text))::int AS hour,
           COALESCE(SUM(spend_gbp), 0) AS spend_gbp,
           COALESCE(SUM(clicks), 0) AS clicks,
           COALESCE(SUM(impressions), 0) AS impressions
         FROM google_ads_spend_hourly
         WHERE hour_ts >= TO_TIMESTAMP(?/1000.0) AND hour_ts < TO_TIMESTAMP(?/1000.0)
           AND campaign_id = ?
-        GROUP BY EXTRACT(HOUR FROM (hour_ts AT TIME ZONE ?))
+        GROUP BY EXTRACT(HOUR FROM (hour_ts AT TIME ZONE ?::text))
         ORDER BY hour ASC
       `,
-      [timeZone, bounds.start, bounds.end, campaignId, timeZone]
+      [tzLiteral, bounds.start, bounds.end, campaignId, tzLiteral]
     );
     const revRows = await adsDb.all(
       `
         SELECT
-          EXTRACT(HOUR FROM (TO_TIMESTAMP(created_at_ms/1000.0) AT TIME ZONE ?))::int AS hour,
+          EXTRACT(HOUR FROM (TO_TIMESTAMP(created_at_ms/1000.0) AT TIME ZONE ?::text))::int AS hour,
           COALESCE(SUM(revenue_gbp), 0) AS revenue_gbp,
           COUNT(*) AS orders
         FROM ads_orders_attributed
         WHERE created_at_ms >= ? AND created_at_ms < ?
           AND source = ?
-          AND campaign_id = ?
-        GROUP BY EXTRACT(HOUR FROM (TO_TIMESTAMP(created_at_ms/1000.0) AT TIME ZONE ?))
+          AND ${revCampaignCol} = ?
+        GROUP BY EXTRACT(HOUR FROM (TO_TIMESTAMP(created_at_ms/1000.0) AT TIME ZONE ?::text))
         ORDER BY hour ASC
       `,
-      [timeZone, bounds.start, bounds.end, source, campaignId, timeZone]
+      [tzLiteral, bounds.start, bounds.end, source, campaignId, tzLiteral]
     );
 
     const byHour = new Map();
@@ -1225,7 +1228,111 @@ async function getCampaignDetail(options = {}) {
       meta: { timeZone, bestHour, bestRoas },
     };
   } catch (e) {
-    dayParting = { ok: false, error: e && e.message ? String(e.message).slice(0, 220) : 'day_parting_failed', rows: [], meta: { timeZone } };
+    try {
+      const spendRows = await adsDb.all(
+        `SELECT
+          EXTRACT(HOUR FROM hour_ts)::int AS hour,
+          COALESCE(SUM(spend_gbp), 0) AS spend_gbp,
+          COALESCE(SUM(clicks), 0) AS clicks,
+          COALESCE(SUM(impressions), 0) AS impressions
+        FROM google_ads_spend_hourly
+        WHERE hour_ts >= TO_TIMESTAMP(?/1000.0) AND hour_ts < TO_TIMESTAMP(?/1000.0)
+          AND campaign_id = ?
+        GROUP BY EXTRACT(HOUR FROM hour_ts)
+        ORDER BY hour ASC`,
+        [bounds.start, bounds.end, campaignId]
+      );
+      const revRows = await adsDb.all(
+        `SELECT
+          EXTRACT(HOUR FROM TO_TIMESTAMP(created_at_ms/1000.0))::int AS hour,
+          COALESCE(SUM(revenue_gbp), 0) AS revenue_gbp,
+          COUNT(*) AS orders
+        FROM ads_orders_attributed
+        WHERE created_at_ms >= ? AND created_at_ms < ?
+          AND source = ?
+          AND ${revCampaignCol} = ?
+        GROUP BY EXTRACT(HOUR FROM TO_TIMESTAMP(created_at_ms/1000.0))
+        ORDER BY hour ASC`,
+        [bounds.start, bounds.end, source, campaignId]
+      );
+      const byHour = new Map();
+      for (let h = 0; h < 24; h++) {
+        byHour.set(h, { hour: h, clicks: 0, impressions: 0, spend: 0, orders: 0, revenue: 0, cr: null, roas: null });
+      }
+      for (const r of spendRows || []) {
+        const h = r && r.hour != null ? Number(r.hour) : null;
+        if (h == null || !Number.isFinite(h) || h < 0 || h > 23) continue;
+        const it = byHour.get(h);
+        it.spend += r && r.spend_gbp != null ? Number(r.spend_gbp) || 0 : 0;
+        it.clicks += r && r.clicks != null ? Number(r.clicks) || 0 : 0;
+        it.impressions += r && r.impressions != null ? Number(r.impressions) || 0 : 0;
+      }
+      for (const r of revRows || []) {
+        const h = r && r.hour != null ? Number(r.hour) : null;
+        if (h == null || !Number.isFinite(h) || h < 0 || h > 23) continue;
+        const it = byHour.get(h);
+        it.revenue += r && r.revenue_gbp != null ? Number(r.revenue_gbp) || 0 : 0;
+        it.orders += r && r.orders != null ? Number(r.orders) || 0 : 0;
+      }
+      let bestHour = null;
+      let bestRoas = null;
+      const rows = Array.from(byHour.values()).map((it) => {
+        const clicks = Number(it.clicks) || 0;
+        const spend = Number(it.spend) || 0;
+        const orders = Number(it.orders) || 0;
+        const revenue = Number(it.revenue) || 0;
+        const cr = clicks > 0 ? (orders / clicks) : null;
+        const roas = spend > 0 ? (revenue / spend) : null;
+        if (roas != null) {
+          if (bestRoas == null || roas > bestRoas) {
+            bestRoas = roas;
+            bestHour = it.hour;
+          }
+        }
+        return {
+          hour: it.hour,
+          label: String(it.hour).padStart(2, '0') + ':00',
+          clicks: Math.floor(clicks),
+          impressions: Math.floor(Number(it.impressions) || 0),
+          spend: Math.round(spend * 100) / 100,
+          orders: Math.floor(orders),
+          revenue: Math.round(revenue * 100) / 100,
+          cr,
+          roas,
+        };
+      });
+      dayParting = { ok: true, rows, meta: { timeZone: 'UTC', bestHour, bestRoas } };
+    } catch (e2) {
+      dayParting = { ok: false, error: (e2 && e2.message ? String(e2.message).slice(0, 220) : 'day_parting_failed') + (e && e.message ? ' (tz: ' + String(e.message).slice(0, 80) + ')' : ''), rows: [], meta: { timeZone } };
+    }
+  }
+
+  // Attribution evidence: orders + revenue by attribution_method for this campaign (selected model).
+  let attributionEvidence = { ok: true, rows: [] };
+  try {
+    const aoaRows = await adsDb.all(
+      `SELECT
+         COALESCE(attribution_method, '') AS method,
+         COUNT(*) AS orders,
+         COALESCE(SUM(revenue_gbp), 0) AS revenue_gbp
+       FROM ads_orders_attributed
+       WHERE created_at_ms >= ? AND created_at_ms < ?
+         AND source = ?
+         AND ${revCampaignCol} = ?
+       GROUP BY COALESCE(attribution_method, '')
+       ORDER BY revenue_gbp DESC`,
+      [bounds.start, bounds.end, source, campaignId]
+    );
+    attributionEvidence = {
+      ok: true,
+      rows: (aoaRows || []).map((r) => ({
+        method: r && r.method != null ? String(r.method) : '',
+        orders: Number(r && r.orders != null ? r.orders : 0) || 0,
+        revenueGbp: Number(r && r.revenue_gbp != null ? r.revenue_gbp : 0) || 0,
+      })),
+    };
+  } catch (e) {
+    attributionEvidence = { ok: false, error: e && e.message ? String(e.message).slice(0, 220) : 'attribution_evidence_failed', rows: [] };
   }
 
   return {
@@ -1238,6 +1345,7 @@ async function getCampaignDetail(options = {}) {
     devices,
     networks,
     dayParting,
+    attributionEvidence,
     recentSales: recentSales.slice(0, 10),
   };
 }

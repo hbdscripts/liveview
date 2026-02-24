@@ -341,15 +341,15 @@
 
   function getModalRangeKey() {
     var sel = document.getElementById('ads-modal-range-select');
-    var v = sel && sel.value != null ? String(sel.value).trim() : 'page';
-    if (!v || v === 'page') return computeRangeKey();
-    if (v === 'custom') return _modalCustomRangeKey || parseModalCustomRangeKey() || computeRangeKey();
+    var v = sel && sel.value != null ? String(sel.value).trim() : 'today';
+    if (!v || v === 'page') return 'today';
+    if (v === 'custom') return _modalCustomRangeKey || parseModalCustomRangeKey() || 'today';
     return normalizeRangeKeyForApi(v);
   }
 
   function resetModalRangeUi() {
     var sel = document.getElementById('ads-modal-range-select');
-    if (sel) sel.value = 'page';
+    if (sel) sel.value = 'today';
     var inp = document.getElementById('ads-modal-range-custom');
     if (inp) { inp.value = ''; inp.style.display = 'none'; }
     _modalCustomRangeKey = null;
@@ -430,21 +430,14 @@
     var dayEl = document.getElementById('ads-modal-dayparting');
     if (dayEl) dayEl.innerHTML = '<div class="muted" style="padding:12px;text-align:center;">Loading…</div>';
 
-    var countryNoteEl = document.getElementById('ads-modal-country-note');
-    if (countryNoteEl) countryNoteEl.textContent = '';
-    var deviceNoteEl = document.getElementById('ads-modal-device-note');
-    if (deviceNoteEl) deviceNoteEl.textContent = '';
-    var networkNoteEl = document.getElementById('ads-modal-network-note');
-    if (networkNoteEl) networkNoteEl.textContent = '';
-    var dayNoteEl = document.getElementById('ads-modal-dayparting-note');
-    if (dayNoteEl) dayNoteEl.textContent = '';
-
     if (modalChart) { try { modalChart.destroy(); } catch (_) {} modalChart = null; }
 
     var rangeKey = getModalRangeKey();
     var reqId = ++_modalCampaignReqId;
     var campaignId = _modalCampaignId;
-    fetchJson('/api/ads/campaign-detail?range=' + encodeURIComponent(rangeKey) + '&campaignId=' + encodeURIComponent(campaignId))
+    var model = typeof getAdsAttributionMethod === 'function' ? getAdsAttributionMethod() : '';
+    var modelQ = (model && model !== 'default') ? ('&attributionModel=' + encodeURIComponent(model)) : '';
+    fetchJson('/api/ads/campaign-detail?range=' + encodeURIComponent(rangeKey) + '&campaignId=' + encodeURIComponent(campaignId) + modelQ)
       .then(function (data) {
         // If another request started, ignore stale results.
         if (reqId !== _modalCampaignReqId) return;
@@ -460,6 +453,8 @@
           if (devicesEl) devicesEl.innerHTML = '<div class="muted" style="padding:12px;text-align:center;">No data available.</div>';
           if (networksEl) networksEl.innerHTML = '<div class="muted" style="padding:12px;text-align:center;">No data available.</div>';
           if (dayEl) dayEl.innerHTML = '<div class="muted" style="padding:12px;text-align:center;">No data available.</div>';
+          var evEl = document.getElementById('ads-modal-attribution-evidence');
+          if (evEl) evEl.innerHTML = '<div class="muted" style="padding:12px;text-align:center;">Unavailable.</div>';
           return;
         }
 
@@ -480,7 +475,12 @@
         renderModalDevices(data.devices || null, currency);
         renderModalNetworks(data.networks || null, currency);
         renderModalDayParting(data.dayParting || null, currency);
+        renderModalAttributionEvidence(data.attributionEvidence || null, currency);
         renderModalSales(data.recentSales || [], currency);
+        try {
+          var modalForTooltips = document.getElementById('ads-campaign-modal');
+          if (modalForTooltips && typeof window.initKexoTooltips === 'function') window.initKexoTooltips(modalForTooltips);
+        } catch (_) {}
       });
   }
 
@@ -898,7 +898,6 @@
           '<div class="ads-modal-range-row">' +
             '<div class="ads-modal-range-label">Range</div>' +
             '<select id="ads-modal-range-select" class="form-select form-select-sm ads-modal-range-select" aria-label="Campaign range">' +
-              '<option value="page">Same as page</option>' +
               '<option value="today">Today</option>' +
               '<option value="yesterday">Yesterday</option>' +
               '<option value="7d">Last 7 days</option>' +
@@ -910,18 +909,16 @@
             '<input id="ads-modal-range-custom" class="form-control form-control-sm ads-modal-range-custom" placeholder="YYYY-MM-DD to YYYY-MM-DD" style="display:none" />' +
           '</div>' +
           '<div class="ads-modal-chart-wrap"><canvas id="ads-modal-chart" height="200"></canvas></div>' +
-          '<h4 style="margin:16px 0 8px;font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:0.04em;">Country performance</h4>' +
-          '<div class="text-muted small" id="ads-modal-country-note" style="margin:-4px 0 8px;"></div>' +
+          '<h4 id="ads-modal-country-title" class="ads-modal-section-title" style="margin:16px 0 8px;font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:0.04em;">Country performance</h4>' +
           '<div id="ads-modal-countries"></div>' +
-          '<h4 style="margin:16px 0 8px;font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:0.04em;">Device performance</h4>' +
-          '<div class="text-muted small" id="ads-modal-device-note" style="margin:-4px 0 8px;"></div>' +
+          '<h4 id="ads-modal-device-title" class="ads-modal-section-title" style="margin:16px 0 8px;font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:0.04em;">Device performance</h4>' +
           '<div id="ads-modal-devices"></div>' +
-          '<h4 style="margin:16px 0 8px;font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:0.04em;">Network</h4>' +
-          '<div class="text-muted small" id="ads-modal-network-note" style="margin:-4px 0 8px;"></div>' +
+          '<h4 id="ads-modal-network-title" class="ads-modal-section-title" style="margin:16px 0 8px;font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:0.04em;">Network</h4>' +
           '<div id="ads-modal-networks"></div>' +
-          '<h4 style="margin:16px 0 8px;font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:0.04em;">Day parting</h4>' +
-          '<div class="text-muted small" id="ads-modal-dayparting-note" style="margin:-4px 0 8px;"></div>' +
+          '<h4 id="ads-modal-dayparting-title" class="ads-modal-section-title" style="margin:16px 0 8px;font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:0.04em;">Day parting</h4>' +
           '<div id="ads-modal-dayparting"></div>' +
+          '<h4 id="ads-modal-attribution-evidence-title" class="ads-modal-section-title" style="margin:16px 0 8px;font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:0.04em;">Attribution evidence</h4>' +
+          '<div id="ads-modal-attribution-evidence"></div>' +
           '<h4 style="margin:16px 0 8px;font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:0.04em;">Recent sales</h4>' +
           '<div id="ads-modal-sales"></div>' +
         '</div>' +
@@ -1283,13 +1280,13 @@
   function renderModalCountries(payload, currency) {
     var el = document.getElementById('ads-modal-countries');
     if (!el) return;
-    var noteEl = document.getElementById('ads-modal-country-note');
+    var titleEl = document.getElementById('ads-modal-country-title');
 
     var data = (payload && typeof payload === 'object') ? payload : null;
     var rows = (data && Array.isArray(data.rows)) ? data.rows : [];
     var meta = (data && data.meta) ? data.meta : null;
 
-    if (noteEl) {
+    if (titleEl) {
       var parts = [];
       if (meta && meta.locationType) parts.push('Clicks/spend: ' + String(meta.locationType).replace(/_/g, ' ').toLowerCase());
       if (meta && meta.visitorCountryCoverage != null && meta.ordersTotal != null) {
@@ -1298,7 +1295,7 @@
         var total = meta.ordersTotal != null ? fmtNum(meta.ordersTotal) : '—';
         parts.push('Revenue country coverage: ' + cov + ' (' + known + '/' + total + ' orders)');
       }
-      noteEl.textContent = parts.join(' • ');
+      titleEl.title = parts.join(' • ');
     }
 
     if (!data) {
@@ -1378,13 +1375,13 @@
   function renderModalDevices(payload, currency) {
     var el = document.getElementById('ads-modal-devices');
     if (!el) return;
-    var noteEl = document.getElementById('ads-modal-device-note');
+    var titleEl = document.getElementById('ads-modal-device-title');
 
     var data = (payload && typeof payload === 'object') ? payload : null;
     var rows = (data && Array.isArray(data.rows)) ? data.rows : [];
     var meta = (data && data.meta) ? data.meta : null;
 
-    if (noteEl) {
+    if (titleEl) {
       var parts = [];
       if (meta && meta.visitorDeviceCoverage != null && meta.ordersTotal != null) {
         var cov = fmtPct(meta.visitorDeviceCoverage, 0);
@@ -1392,7 +1389,7 @@
         var total = meta.ordersTotal != null ? fmtNum(meta.ordersTotal) : '—';
         parts.push('Revenue device coverage: ' + cov + ' (' + known + '/' + total + ' orders)');
       }
-      noteEl.textContent = parts.join(' • ');
+      titleEl.title = parts.join(' • ');
     }
 
     if (!data) {
@@ -1468,13 +1465,13 @@
   function renderModalNetworks(payload, currency) {
     var el = document.getElementById('ads-modal-networks');
     if (!el) return;
-    var noteEl = document.getElementById('ads-modal-network-note');
+    var titleEl = document.getElementById('ads-modal-network-title');
 
     var data = (payload && typeof payload === 'object') ? payload : null;
     var rows = (data && Array.isArray(data.rows)) ? data.rows : [];
     var meta = (data && data.meta) ? data.meta : null;
 
-    if (noteEl) {
+    if (titleEl) {
       var parts = [];
       if (meta && meta.sessionNetworkCoverage != null && meta.sessionsTotal != null) {
         var covS = fmtPct(meta.sessionNetworkCoverage, 0);
@@ -1489,7 +1486,7 @@
         parts.push('Order network coverage: ' + covO + ' (' + knownO + '/' + totalO + ' orders)');
       }
       parts.push('Codes: g=search, s=partners, d=display, x=pmax, ytv=youtube');
-      noteEl.textContent = parts.join(' • ');
+      titleEl.title = parts.join(' • ');
     }
 
     if (!data) {
@@ -1564,20 +1561,21 @@
   function renderModalDayParting(payload, currency) {
     var el = document.getElementById('ads-modal-dayparting');
     if (!el) return;
-    var noteEl = document.getElementById('ads-modal-dayparting-note');
+    var titleEl = document.getElementById('ads-modal-dayparting-title');
 
     var data = (payload && typeof payload === 'object') ? payload : null;
     var rows = (data && Array.isArray(data.rows)) ? data.rows : [];
     var meta = (data && data.meta) ? data.meta : null;
 
-    if (noteEl) {
+    if (titleEl) {
       var parts = [];
       if (meta && meta.timeZone) parts.push('Timezone: ' + String(meta.timeZone));
       if (meta && meta.bestHour != null && meta.bestRoas != null) {
         var hh = String(meta.bestHour).padStart(2, '0') + ':00';
         parts.push('Best ROAS: ' + hh + ' (' + fmtRoas(meta.bestRoas) + ')');
       }
-      noteEl.textContent = parts.join(' • ');
+      if (data && data.ok === false && data.error) parts.push('Error: ' + String(data.error));
+      titleEl.title = parts.join(' • ');
     }
 
     if (!data) {
@@ -1650,6 +1648,31 @@
     el.innerHTML = tableHtml;
   }
 
+  function renderModalAttributionEvidence(payload, currency) {
+    var el = document.getElementById('ads-modal-attribution-evidence');
+    if (!el) return;
+    var titleEl = document.getElementById('ads-modal-attribution-evidence-title');
+    var data = (payload && typeof payload === 'object') ? payload : null;
+    var rows = (data && data.ok !== false && Array.isArray(data.rows)) ? data.rows : [];
+    if (titleEl && data && data.ok === false && data.error) titleEl.title = String(data.error);
+    else if (titleEl) titleEl.title = '';
+    if (!data || data.ok === false) {
+      el.innerHTML = '<div class="muted" style="padding:12px;text-align:center;">Unavailable.</div>';
+      return;
+    }
+    if (!rows.length) {
+      el.innerHTML = '<div class="muted" style="padding:12px;text-align:center;">No attribution evidence in this period.</div>';
+      return;
+    }
+    var tableHtml = '<table class="ads-modal-attribution-evidence-table"><thead><tr><th>Method</th><th class="text-end">Orders</th><th class="text-end">Revenue</th></tr></thead><tbody>';
+    for (var i = 0; i < rows.length; i++) {
+      var r = rows[i] || {};
+      tableHtml += '<tr><td>' + esc(r.method || '—') + '</td><td class="text-end">' + esc(fmtNum(r.orders != null ? r.orders : 0)) + '</td><td class="text-end">' + esc(fmtMoney(r.revenueGbp != null ? r.revenueGbp : 0, currency || 'GBP')) + '</td></tr>';
+    }
+    tableHtml += '</tbody></table>';
+    el.innerHTML = tableHtml;
+  }
+
   function renderModalSales(sales, currency) {
     var el = document.getElementById('ads-modal-sales');
     if (!el) return;
@@ -1695,7 +1718,7 @@
     style.textContent =
       '.ads-modal-overlay{display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.45);align-items:center;justify-content:center;}' +
       '.ads-modal-overlay.open{display:flex;}' +
-      '.ads-modal-box{background:var(--card,#fff);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.18);width:90%;max-width:620px;max-height:85vh;overflow:auto;animation:adsFadeIn .18s ease;}' +
+      '.ads-modal-box{background:var(--card,#fff);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.18);width:90%;max-width:1000px;max-height:92vh;overflow:auto;animation:adsFadeIn .18s ease;}' +
       '@keyframes adsFadeIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}' +
       '.ads-modal-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border,#e5e5e5);}' +
       '.ads-modal-title{margin:0;font-size:15px;font-weight:600;color:var(--text,#333);}' +
@@ -1707,15 +1730,18 @@
       '.ads-modal-range-select{min-width:170px;max-width:240px;}' +
       '.ads-modal-range-custom{min-width:210px;max-width:260px;}' +
       '.ads-modal-chart-wrap{position:relative;height:220px;margin-bottom:8px;}' +
-      '.ads-modal-sales-table,.ads-modal-countries-table,.ads-modal-devices-table,.ads-modal-networks-table,.ads-modal-dayparting-table{width:100%;border-collapse:collapse;font-size:12px;}' +
-      '.ads-modal-sales-table thead th,.ads-modal-countries-table thead th,.ads-modal-devices-table thead th,.ads-modal-networks-table thead th,.ads-modal-dayparting-table thead th{text-align:left;padding:6px 10px;font-size:11px;text-transform:uppercase;letter-spacing:0.04em;color:var(--tblr-secondary, var(--muted,#555)) !important;border-bottom:1px solid var(--tblr-border-color, var(--border,#e5e5e5));background-color:var(--tblr-bg-surface-secondary,#f8f8f8) !important;}' +
-      '.ads-modal-sales-table tbody td,.ads-modal-countries-table tbody td,.ads-modal-devices-table tbody td,.ads-modal-networks-table tbody td,.ads-modal-dayparting-table tbody td{padding:7px 10px;border-bottom:1px solid rgba(0,0,0,0.04);}' +
-      '.ads-modal-sales-table tr:last-child td,.ads-modal-countries-table tr:last-child td,.ads-modal-devices-table tr:last-child td,.ads-modal-networks-table tr:last-child td,.ads-modal-dayparting-table tr:last-child td{border-bottom:none;}' +
+      '.ads-modal-box .table-responsive{--kexo-sticky-col-width:150px;--kexo-sticky-col-min-width:150px;}' +
+      '.ads-modal-box .table-responsive table thead th:first-child,.ads-modal-box .table-responsive table tbody td:first-child{background:var(--tblr-bg-surface-secondary,#fafafa) !important;border-right:none !important;box-shadow:none !important;}' +
+      '.ads-modal-sales-table,.ads-modal-countries-table,.ads-modal-devices-table,.ads-modal-networks-table,.ads-modal-dayparting-table,.ads-modal-attribution-evidence-table{width:100%;border-collapse:collapse;font-size:12px;}' +
+      '.ads-modal-sales-table thead th,.ads-modal-countries-table thead th,.ads-modal-devices-table thead th,.ads-modal-networks-table thead th,.ads-modal-dayparting-table thead th,.ads-modal-attribution-evidence-table thead th{text-align:left;padding:6px 10px;font-size:11px;text-transform:uppercase;letter-spacing:0.04em;color:var(--tblr-secondary, var(--muted,#555)) !important;border-bottom:1px solid var(--tblr-border-color, var(--border,#e5e5e5));background-color:var(--tblr-bg-surface-secondary,#f8f8f8) !important;}' +
+      '.ads-modal-sales-table tbody td,.ads-modal-countries-table tbody td,.ads-modal-devices-table tbody td,.ads-modal-networks-table tbody td,.ads-modal-dayparting-table tbody td,.ads-modal-attribution-evidence-table tbody td{padding:7px 10px;border-bottom:1px solid rgba(0,0,0,0.04);}' +
+      '.ads-modal-sales-table tr:last-child td,.ads-modal-countries-table tr:last-child td,.ads-modal-devices-table tr:last-child td,.ads-modal-networks-table tr:last-child td,.ads-modal-dayparting-table tr:last-child td,.ads-modal-attribution-evidence-table tr:last-child td{border-bottom:none;}' +
       '.ads-modal-sales-table th:not(:first-child),.ads-modal-sales-table td:not(:first-child){text-align:center;}' +
       '.ads-modal-countries-table th:not(:first-child),.ads-modal-countries-table td:not(:first-child){text-align:right;}' +
       '.ads-modal-devices-table th:not(:first-child),.ads-modal-devices-table td:not(:first-child){text-align:right;}' +
       '.ads-modal-networks-table th:not(:first-child),.ads-modal-networks-table td:not(:first-child){text-align:right;}' +
       '.ads-modal-dayparting-table th:not(:first-child),.ads-modal-dayparting-table td:not(:first-child){text-align:right;}' +
+      '.ads-modal-attribution-evidence-table th:not(:first-child),.ads-modal-attribution-evidence-table td:not(:first-child){text-align:right;}' +
       '.ads-profit-pos{color:#059669;font-weight:600;}' +
       '.ads-profit-neg{color:#dc2626;font-weight:600;}' +
       '.ads-campaign-row{cursor:pointer;transition:background .12s;}' +

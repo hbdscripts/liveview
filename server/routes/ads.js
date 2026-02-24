@@ -615,7 +615,8 @@ router.get('/campaign-detail', async (req, res) => {
   try {
     const rangeKey = req && req.query ? req.query.range : '';
     const campaignId = req && req.query ? req.query.campaignId : '';
-    const out = await adsService.getCampaignDetail({ rangeKey, campaignId });
+    const attributionModel = req && req.query && req.query.attributionModel != null ? String(req.query.attributionModel).trim() : '';
+    const out = await adsService.getCampaignDetail({ rangeKey, campaignId, attributionModel });
     res.json(out);
   } catch (err) {
     Sentry.captureException(err, { extra: { route: 'ads.campaign-detail' } });
