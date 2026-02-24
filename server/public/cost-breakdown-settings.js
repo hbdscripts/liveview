@@ -234,6 +234,13 @@
     }
 
     var html = '';
+    var childrenByParent = {};
+    items.forEach(function (it) {
+      if (!it || typeof it !== 'object') return;
+      var pk = it.parent_key != null ? String(it.parent_key) : '';
+      if (!pk) return;
+      childrenByParent[pk] = true;
+    });
     items.forEach(function (it) {
       if (!it || typeof it !== 'object') return;
       var label = it.label != null ? String(it.label) : '';
@@ -253,16 +260,29 @@
         : amountText;
       var notes = it.notes != null ? String(it.notes) : '';
       var rowCls = active ? '' : 'text-muted opacity-75';
-      if (isDetail) rowCls = (rowCls ? rowCls + ' ' : '') + 'table-light';
+      if (isDetail) rowCls = (rowCls ? rowCls + ' ' : '') + 'table-light d-none';
       rowCls = (rowCls ? rowCls + ' ' : '') + (isDetail ? 'settings-cost-breakdown-row-detail' : 'settings-cost-breakdown-row-parent');
-      var baseLabel = isDetail ? ('<div class="ps-4">' + esc(label) + '</div>') : esc(label);
       var key = it.key != null ? String(it.key) : '';
+      var parentKey = it.parent_key != null ? String(it.parent_key) : '';
+      var hasChildren = !isDetail && key && childrenByParent[key] === true;
+      var toggleBtn = hasChildren
+        ? (
+          '<button type="button" class="settings-cost-breakdown-children-toggle" data-cost-breakdown-children-toggle="' + esc(key) + '" aria-expanded="false" aria-label="Toggle breakdown">' +
+            '<i class="fa-thin fa-chevron-right" aria-hidden="true"></i>' +
+          '</button>'
+        )
+        : '';
+      var baseLabel = isDetail
+        ? ('<div class="ps-4">' + esc(label) + '</div>')
+        : (hasChildren
+          ? ('<span class="settings-cost-breakdown-parent-label">' + toggleBtn + '<span>' + esc(label) + '</span></span>')
+          : esc(label));
       var canDetail = auditOn && !isDetail && key;
       var btn = canDetail
         ? (' <button type="button" class="btn btn-sm py-0 px-2 ms-2" data-cost-breakdown-detail-toggle="' + esc(key) + '" aria-expanded="false">Details</button>')
         : '';
       var labelHtml = baseLabel + btn;
-      html += '<tr class="' + rowCls + '">' +
+      html += '<tr class="' + rowCls + '"' + (isDetail && parentKey ? (' data-cost-breakdown-parent="' + esc(parentKey) + '"') : '') + '>' +
         '<td>' + labelHtml + '</td>' +
         '<td><span class="badge ' + badgeCls + '">' + esc(statusLabel) + '</span></td>' +
         '<td class="text-end">' + amountHtml + '</td>' +
@@ -362,15 +382,39 @@
     if (tbody) {
       tbody.addEventListener('click', function (e) {
         var t = e && e.target ? e.target : null;
-        if (!t || !t.getAttribute) return;
-        var k = t.getAttribute('data-cost-breakdown-detail-toggle');
+        if (!t) return;
+
+        // Child rows toggle (collapse/expand)
+        var toggleBtn = (t.closest && t.closest('[data-cost-breakdown-children-toggle]')) ? t.closest('[data-cost-breakdown-children-toggle]') : null;
+        if (toggleBtn && toggleBtn.getAttribute) {
+          var pk = toggleBtn.getAttribute('data-cost-breakdown-children-toggle');
+          if (pk) {
+            var safeParent = String(pk).replace(/"/g, '\\"');
+            var rows = tbody.querySelectorAll('tr[data-cost-breakdown-parent="' + safeParent + '"]');
+            if (rows && rows.length) {
+              var anyHidden = false;
+              try { anyHidden = rows[0].classList.contains('d-none'); } catch (_) { anyHidden = false; }
+              rows.forEach(function (r) {
+                if (!r || !r.classList) return;
+                r.classList.toggle('d-none', !anyHidden);
+              });
+              try { toggleBtn.setAttribute('aria-expanded', anyHidden ? 'true' : 'false'); } catch (_) {}
+            }
+          }
+          return;
+        }
+
+        // Audit details toggle
+        var detailBtn = (t.closest && t.closest('[data-cost-breakdown-detail-toggle]')) ? t.closest('[data-cost-breakdown-detail-toggle]') : null;
+        if (!detailBtn || !detailBtn.getAttribute) return;
+        var k = detailBtn.getAttribute('data-cost-breakdown-detail-toggle');
         if (!k) return;
         var safeKey = String(k).replace(/"/g, '\\"');
         var row = tbody.querySelector('tr[data-cost-breakdown-detail-row="' + safeKey + '"]');
         if (!row) return;
         var isHidden = row.classList.contains('d-none');
         row.classList.toggle('d-none', !isHidden);
-        try { t.setAttribute('aria-expanded', isHidden ? 'true' : 'false'); } catch (_) {}
+        try { detailBtn.setAttribute('aria-expanded', isHidden ? 'true' : 'false'); } catch (_) {}
       });
     }
   }

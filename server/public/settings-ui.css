@@ -93,6 +93,34 @@ body[data-page="settings"] #settings-cost-expenses-panel-breakdown .settings-cos
   font-weight: 400;
 }
 
+/* Cost Breakdown: parent chevron toggle for children. */
+body[data-page="settings"] #settings-cost-expenses-panel-breakdown .settings-cost-breakdown-parent-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+body[data-page="settings"] #settings-cost-expenses-panel-breakdown .settings-cost-breakdown-children-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  opacity: 0.8;
+  cursor: pointer;
+}
+body[data-page="settings"] #settings-cost-expenses-panel-breakdown .settings-cost-breakdown-children-toggle i {
+  transition: transform 120ms ease;
+  transform-origin: 50% 50%;
+}
+body[data-page="settings"] #settings-cost-expenses-panel-breakdown .settings-cost-breakdown-children-toggle[aria-expanded="true"] i {
+  transform: rotate(90deg);
+}
+
 /* Flatten outer panel card so the only frame is .settings-tab-content-box (tabs "outside" the panel). */
 body[data-page="settings"] .settings-panel > .card {
   border: 0 !important;
