@@ -1755,6 +1755,7 @@
   var _lastRefreshResult = null;
   var _lastRangeKey = null;
   var _lastFetchedAt = 0;
+  var _lastAttributionMethod = '';
   var _lastFetchError = null;
   var _isRefreshing = false;
   var _isForceRefreshing = false;
@@ -2034,6 +2035,9 @@
   function patchFooterAndNote(status, summary) {
     var noteEl = document.getElementById('ads-note');
     var note = (summary && summary.note) ? String(summary.note) : '';
+    if (getAdsAttributionMethod()) {
+      note = (note ? note + ' ' : '') + 'Revenue and orders filtered by attribution; spend and clicks from Google Ads.';
+    }
     if (noteEl) {
       if (note) {
         noteEl.style.display = '';
@@ -2081,6 +2085,7 @@
   function render(root, status, summary, refreshResult) {
     _lastStatus = status;
     _lastSummary = summary;
+    _lastAttributionMethod = getAdsAttributionMethod();
     if (refreshResult !== undefined) _lastRefreshResult = refreshResult;
     ensureModalCss();
 
@@ -2345,7 +2350,8 @@
     var now = Date.now();
 
     // Soft refresh should not spam requests (tab focus / theme refresh). Keep UX smooth.
-    if (!isForce && _lastSummary && _lastRangeKey === rangeKey && _lastFetchedAt && (now - _lastFetchedAt) < 15000) {
+    // Bypass cache when attribution method changed so dropdown change always refetches.
+    if (!isForce && _lastSummary && _lastRangeKey === rangeKey && _lastFetchedAt && (now - _lastFetchedAt) < 15000 && _lastAttributionMethod === getAdsAttributionMethod()) {
       // Ensure footer is visible (in case user navigated before first render)
       try {
         if (!root.innerHTML) render(root, _lastStatus, _lastSummary);
@@ -2419,7 +2425,8 @@
       if (showPageLoader) setLoadingStep(root, 'Analyzing spend');
 
       var didPatch = false;
-      if (nextSummary && _lastSummary) {
+      // Only patch when range and attribution unchanged; otherwise full render so table and footer stay in sync.
+      if (nextSummary && _lastSummary && _lastAttributionMethod === getAdsAttributionMethod()) {
         try {
           if (showPageLoader) setLoadingStep(root, 'Analyzing spend');
           didPatch = patchSpendProfitRoas(root, nextSummary);
@@ -2433,6 +2440,7 @@
       } else {
         _lastStatus = nextStatus;
         _lastSummary = nextSummary;
+        _lastAttributionMethod = getAdsAttributionMethod();
         try { renderAdsOverviewChart(nextSummary); } catch (_) {}
       }
 
