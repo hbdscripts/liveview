@@ -1462,6 +1462,134 @@
     }
   }
 
+  // Desktop left sidebar: make categories behave like the offcanvas mini menu
+  // (accordion expand/collapse, one open at a time, smooth height animation).
+  var SETTINGS_LEFTNAV_EXPANDED_CLASS = 'kexo-settings-leftnav-expanded';
+
+  function cleanupLeftNavChildrenStyles(children) {
+    if (!children) return;
+    try { children.style.willChange = ''; } catch (_) {}
+    try { children.style.transition = ''; } catch (_) {}
+    try { children.style.overflow = ''; } catch (_) {}
+    try { children.style.height = ''; } catch (_) {}
+    try { children.style.opacity = ''; } catch (_) {}
+  }
+
+  function setLeftNavCategoryExpanded(cat, expand, immediate) {
+    if (!cat || !cat.classList) return;
+    var children = cat.querySelector ? cat.querySelector('.settings-nav-children') : null;
+    if (!children) {
+      if (expand) cat.classList.add(SETTINGS_LEFTNAV_EXPANDED_CLASS);
+      else cat.classList.remove(SETTINGS_LEFTNAV_EXPANDED_CLASS);
+      return;
+    }
+
+    try {
+      if (children._kexoLeftNavAnimHandler) {
+        children.removeEventListener('transitionend', children._kexoLeftNavAnimHandler);
+        children._kexoLeftNavAnimHandler = null;
+      }
+    } catch (_) {}
+
+    if (immediate) {
+      if (expand) {
+        cat.classList.add(SETTINGS_LEFTNAV_EXPANDED_CLASS);
+        try { children.style.display = 'block'; } catch (_) {}
+      } else {
+        cat.classList.remove(SETTINGS_LEFTNAV_EXPANDED_CLASS);
+        try { children.style.display = 'none'; } catch (_) {}
+      }
+      cleanupLeftNavChildrenStyles(children);
+      return;
+    }
+
+    try { children.style.willChange = 'height, opacity'; } catch (_) {}
+    try { children.style.transition = 'height 220ms ease, opacity 180ms ease'; } catch (_) {}
+    try { children.style.overflow = 'hidden'; } catch (_) {}
+
+    if (expand) {
+      cat.classList.add(SETTINGS_LEFTNAV_EXPANDED_CLASS);
+      try { children.style.display = 'block'; } catch (_) {}
+      try { children.style.height = '0px'; } catch (_) {}
+      try { children.style.opacity = '0'; } catch (_) {}
+      try { children.offsetHeight; } catch (_) {}
+      var targetH = 0;
+      try { targetH = children.scrollHeight || 0; } catch (_) { targetH = 0; }
+      try { children.style.height = String(targetH) + 'px'; } catch (_) {}
+      try { children.style.opacity = '1'; } catch (_) {}
+      var onEndExpand = function (e) {
+        if (e && e.propertyName && e.propertyName !== 'height') return;
+        cleanupLeftNavChildrenStyles(children);
+        try { children.removeEventListener('transitionend', onEndExpand); } catch (_) {}
+        try { children._kexoLeftNavAnimHandler = null; } catch (_) {}
+      };
+      children._kexoLeftNavAnimHandler = onEndExpand;
+      children.addEventListener('transitionend', onEndExpand);
+      return;
+    }
+
+    // Collapse (keep expanded class until end so we can animate cleanly).
+    cat.classList.add(SETTINGS_LEFTNAV_EXPANDED_CLASS);
+    try { children.style.display = 'block'; } catch (_) {}
+    var startH = 0;
+    try { startH = children.scrollHeight || 0; } catch (_) { startH = 0; }
+    try { children.style.height = String(startH) + 'px'; } catch (_) {}
+    try { children.style.opacity = '1'; } catch (_) {}
+    try { children.offsetHeight; } catch (_) {}
+    try { children.style.height = '0px'; } catch (_) {}
+    try { children.style.opacity = '0'; } catch (_) {}
+    var onEndCollapse = function (e) {
+      if (e && e.propertyName && e.propertyName !== 'height') return;
+      try { cat.classList.remove(SETTINGS_LEFTNAV_EXPANDED_CLASS); } catch (_) {}
+      try { children.style.display = 'none'; } catch (_) {}
+      cleanupLeftNavChildrenStyles(children);
+      try { children.removeEventListener('transitionend', onEndCollapse); } catch (_) {}
+      try { children._kexoLeftNavAnimHandler = null; } catch (_) {}
+    };
+    children._kexoLeftNavAnimHandler = onEndCollapse;
+    children.addEventListener('transitionend', onEndCollapse);
+  }
+
+  function collapseOtherLeftNavCategories(tablist, exceptCat, immediate) {
+    if (!tablist || !tablist.querySelectorAll) return;
+    var cats = tablist.querySelectorAll('.settings-nav-category');
+    cats.forEach(function (c) {
+      if (!c || c === exceptCat) return;
+      if (c.classList && c.classList.contains(SETTINGS_LEFTNAV_EXPANDED_CLASS)) {
+        setLeftNavCategoryExpanded(c, false, !!immediate);
+      } else if (immediate) {
+        // Ensure collapsed categories don't show children when initializing.
+        setLeftNavCategoryExpanded(c, false, true);
+      }
+    });
+  }
+
+  function syncLeftNavExpandedToActive(immediate) {
+    var tablist = document.getElementById('settings-category-tablist');
+    if (!tablist) return;
+    var key = '';
+    try { key = String(getActiveSettingsTab() || '').trim().toLowerCase(); } catch (_) { key = ''; }
+    if (!key) key = 'kexo';
+    var header = null;
+    try { header = tablist.querySelector('a[data-settings-tab=\"' + key + '\"]:not(.settings-nav-child)'); } catch (_) { header = null; }
+    var cat = header && header.closest ? header.closest('.settings-nav-category') : null;
+    if (!cat) {
+      try { header = tablist.querySelector('a[data-settings-tab=\"kexo\"]:not(.settings-nav-child)'); } catch (_) { header = null; }
+      cat = header && header.closest ? header.closest('.settings-nav-category') : null;
+    }
+    collapseOtherLeftNavCategories(tablist, cat, true);
+    if (cat) setLeftNavCategoryExpanded(cat, true, !!immediate);
+  }
+
+  function initSettingsDesktopLeftNavAccordion() {
+    var tablist = document.getElementById('settings-category-tablist');
+    if (!tablist) return;
+    if (tablist.getAttribute('data-kexo-leftnav-accordion') === '1') return;
+    tablist.setAttribute('data-kexo-leftnav-accordion', '1');
+    // Start with only the active category expanded (Kexo fallback).
+    try { syncLeftNavExpandedToActive(true); } catch (_) {}
+  }
+
   function initSettingsMobileMenu() {
     var btn = document.getElementById('settings-mobile-menu-btn');
     var closeBtn = document.getElementById('settings-mobile-menu-close');
@@ -7214,11 +7342,30 @@
 
     var tablist = document.getElementById('settings-category-tablist');
     if (tablist) {
+      try { initSettingsDesktopLeftNavAccordion(); } catch (_) {}
       tablist.addEventListener('click', function (e) {
         var a = null;
         try { a = e && e.target && e.target.closest ? e.target.closest('a[data-settings-tab]') : null; } catch (_) {}
         if (!a || !tablist.contains(a)) return;
+        var cat = null;
+        try { cat = a.closest ? a.closest('.settings-nav-category') : null; } catch (_) { cat = null; }
+        if (!cat) return;
+        var isChild = !!(a.classList && a.classList.contains('settings-nav-child'));
         try { e.preventDefault(); } catch (_) {}
+
+        if (!isChild) {
+          var isExpanded = !!(cat.classList && cat.classList.contains(SETTINGS_LEFTNAV_EXPANDED_CLASS));
+          if (isExpanded) {
+            setLeftNavCategoryExpanded(cat, false, false);
+          } else {
+            collapseOtherLeftNavCategories(tablist, cat, false);
+            setLeftNavCategoryExpanded(cat, true, false);
+          }
+          return;
+        }
+
+        collapseOtherLeftNavCategories(tablist, cat, false);
+        if (!cat.classList.contains(SETTINGS_LEFTNAV_EXPANDED_CLASS)) setLeftNavCategoryExpanded(cat, true, false);
         activateFromSettingsNavAnchor(a, { scrollIntoView: isSettingsMobileViewport() });
       });
     }
@@ -7240,6 +7387,7 @@
 
     window.addEventListener('popstate', function () {
       syncFromUrl();
+      try { syncLeftNavExpandedToActive(true); } catch (_) {}
     });
     var settingsMain = document.getElementById('settings-main-content') || document.querySelector('.settings-panel-wrap') || document.body;
     if (settingsMain) {

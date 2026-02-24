@@ -80,22 +80,41 @@ body[data-page="settings"] .settings-panel > .card > .card-body {
   background: transparent !important;
 }
 
-/* Left nav: category and child links (Settings-only). */
-.settings-nav-category { margin-bottom: 0.15rem; margin-right: 10px; }
-.settings-nav-category > .list-group-item:first-child {
-  border-radius: var(--tblr-border-radius, .375rem);
-  padding: 0;
-  min-height: 30px;
-  line-height: 30px;
-  text-indent: 15px;
-  font-weight: 600;
+/* Left nav: category and child links (Settings-only).
+   Keep this scoped to the Settings sidebar so other navs don’t inherit it. */
+body[data-page="settings"] #settings-category-tablist .settings-nav-category { margin: 0 0 2px 0; }
+body[data-page="settings"] #settings-category-tablist .settings-nav-category > .list-group-item:first-child {
+  padding: 5px 10px 5px 12px;
+  margin-top: 5px;
+  border-radius: 0;
+  min-height: auto;
+  line-height: normal;
+  text-indent: 0;
+  font-weight: 500;
+  font-size: 0.9375rem;
   color: var(--kexo-settings-nav-category-color, var(--tblr-body-color, #1f2937)) !important;
+  border-left: 5px solid var(--kexo-accent, var(--kexo-accent-1, #4b94e4));
 }
-.settings-nav-children { padding-left: 0; }
-.settings-nav-child {
+body[data-page="settings"] #settings-category-tablist .settings-nav-category > .list-group-item:first-child:hover {
+  background: rgba(var(--kexo-accent-1-rgb, 75, 148, 228), 0.1);
+  background: color-mix(in srgb, var(--kexo-accent, var(--kexo-accent-1, #4b94e4)) 10%, transparent);
+  border-radius: 0;
+}
+body[data-page="settings"] #settings-category-tablist .settings-nav-category > .list-group-item:first-child.active {
+  background: transparent;
+}
+body[data-page="settings"] #settings-category-tablist .settings-nav-children { padding-left: 0; margin: 0; }
+body[data-page="settings"] #settings-category-tablist .settings-nav-child {
   position: relative;
-  padding: 7px 0 7px 40px;
+  padding: 5px 10px 5px 37px;
+  font-size: 0.875rem;
+  border-radius: 0;
   color: var(--kexo-settings-nav-child-color, inherit);
+}
+body[data-page="settings"] #settings-category-tablist .settings-nav-child:hover {
+  background: rgba(var(--kexo-accent-1-rgb, 75, 148, 228), 0.1);
+  background: color-mix(in srgb, var(--kexo-accent, var(--kexo-accent-1, #4b94e4)) 10%, transparent);
+  border-radius: 0;
 }
 .settings-nav-child::before {
   content: '›';
