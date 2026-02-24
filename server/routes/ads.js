@@ -509,6 +509,22 @@ router.get('/summary', async (req, res) => {
   }
 });
 
+router.get('/other-revenue/drilldown', async (req, res) => {
+  res.setHeader('Cache-Control', 'private, max-age=30');
+  res.setHeader('Vary', 'Cookie');
+  try {
+    const rangeKey = req && req.query ? req.query.range : '';
+    const shop = (req && req.query && req.query.shop != null) ? String(req.query.shop).trim() : salesTruth.resolveShopForSales('');
+    const utmSource = req && req.query && req.query.utmSource != null ? String(req.query.utmSource).trim() : '';
+    const out = await adsService.getOtherRevenueDrilldownByUtmSource({ rangeKey, shop, utmSource });
+    res.json(out);
+  } catch (err) {
+    Sentry.captureException(err, { extra: { route: 'ads.other-revenue.drilldown' } });
+    console.error('[ads.other-revenue.drilldown]', err);
+    res.status(500).json({ ok: false, error: 'Internal error' });
+  }
+});
+
 router.get('/other-revenue', async (req, res) => {
   res.setHeader('Cache-Control', 'private, max-age=30');
   res.setHeader('Vary', 'Cookie');

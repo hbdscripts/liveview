@@ -19,6 +19,27 @@
   var _settingsShopParamCache = '';
   var _settingsUrlNormalizeNotice = '';
 
+  // Capture attribution deep-link params before any URL normalisation can discard them.
+  (function () {
+    try {
+      var params = new URLSearchParams(window.location.search || '');
+      var tokenType = params.get('amTokenType');
+      var tokenValue = params.get('amTokenValue');
+      var open = params.get('amOpen');
+      var openVariant = params.get('amOpenVariant');
+      var shop = params.get('shop');
+      if (tokenType != null || tokenValue != null || open != null || openVariant != null) {
+        window.__kexoAttributionDeepLink = {
+          tokenType: tokenType != null ? String(tokenType).trim() : '',
+          tokenValue: tokenValue != null ? String(tokenValue).trim() : '',
+          open: open != null ? String(open).trim() : '',
+          openVariant: openVariant != null ? String(openVariant).trim() : '',
+          shop: shop != null ? String(shop).trim() : ''
+        };
+      }
+    } catch (_) {}
+  })();
+
   function fetchWithTimeout(url, options, timeoutMs) {
     var ms = typeof timeoutMs === 'number' ? timeoutMs : 25000;
     ms = Math.max(0, Number(ms) || 0);
@@ -1222,10 +1243,21 @@
       }
     } catch (_) {}
 
+    var versionQ = '';
+    try {
+      var settingsScript = document.querySelector('script[src*="settings-page.js"]');
+      if (settingsScript && settingsScript.getAttribute('src')) {
+        var match = /(\?v=[^&]*)/.exec(settingsScript.getAttribute('src'));
+        if (match) versionQ = match[1];
+      }
+    } catch (_) {}
+    var loadSrc = s;
+    if (versionQ && s.indexOf('?') === -1) loadSrc = s + versionQ;
+
     _settingsScriptPromises[s] = new Promise(function (resolve) {
       try {
         var el = document.createElement('script');
-        el.src = s;
+        el.src = loadSrc;
         el.defer = true;
         el.setAttribute('data-kexo-script-ready', '0');
         el.onload = function () {

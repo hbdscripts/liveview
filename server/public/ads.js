@@ -1765,6 +1765,11 @@
   var _isForceRefreshing = false;
   var _lastErrors = [];
   var _lastErrorsPayload = null;
+  var _otherRevenueExpanded = {};
+  var _otherRevenueDrilldownCache = {};
+  var _otherRevenueLoading = {};
+  var _lastOtherRevenueData = null;
+  var _lastOtherRevenueRangeKey = null;
 
   function renderLoading(root, title, step) {
     if (!root) return;
@@ -2086,20 +2091,53 @@
     return out;
   }
 
-  function renderOtherRevenue(rootEl, data) {
+  function renderOtherRevenue(rootEl, data, rangeKey) {
     if (!rootEl) return;
+    rangeKey = rangeKey || _lastOtherRevenueRangeKey || 'today';
+    _lastOtherRevenueData = data;
+    _lastOtherRevenueRangeKey = rangeKey;
     var rows = (data && data.ok && Array.isArray(data.rows)) ? data.rows : [];
     var currency = 'GBP';
+    var shop = getShopParam();
+    var shopQ = shop ? ('shop=' + encodeURIComponent(shop) + '&') : '';
     var bodyHtml = '';
     for (var i = 0; i < rows.length; i++) {
       var r = rows[i] || {};
       var utmSource = r.utmSource != null ? String(r.utmSource) : '—';
-      bodyHtml += '<div class="grid-row" role="row">' +
-        '<div class="grid-cell" role="cell">' + esc(utmSource) + '</div>' +
+      var expandKey = rangeKey + '|' + utmSource;
+      var isExpanded = !!_otherRevenueExpanded[expandKey];
+      var isLoading = !!_otherRevenueLoading[expandKey];
+      var drill = _otherRevenueDrilldownCache[expandKey];
+      var chevronChar = isExpanded ? '\u25BC' : '\u25B6';
+      var mappingHref = '/settings/attribution/mapping?' + shopQ + 'amTokenType=utm_source&amTokenValue=' + encodeURIComponent(utmSource);
+      var treeHref = '/settings/attribution/tree?' + shopQ + 'amTokenType=utm_source&amTokenValue=' + encodeURIComponent(utmSource) + '&amOpen=rule';
+      var firstCell = '<button type="button" class="btn btn-link btn-sm p-0 me-1 ads-other-revenue-chevron" data-other-revenue-expand data-range-key="' + esc(rangeKey) + '" data-utm-source="' + esc(utmSource) + '" aria-label="' + (isExpanded ? 'Collapse' : 'Expand') + '">' + chevronChar + '</button>' +
+        esc(utmSource) + ' <a href="' + mappingHref + '" class="ms-1">Mapping</a> <a href="' + treeHref + '">Tree</a>';
+      bodyHtml += '<div class="grid-row" role="row" data-other-revenue-row="' + esc(utmSource) + '">' +
+        '<div class="grid-cell" role="cell">' + firstCell + '</div>' +
         '<div class="grid-cell text-center" role="cell">' + esc(fmtNum(r.sessions)) + '</div>' +
         '<div class="grid-cell text-center" role="cell">' + esc(fmtNum(r.orders)) + '</div>' +
         '<div class="grid-cell text-center" role="cell">' + esc(fmtMoney(r.revenueGbp, currency)) + '</div>' +
       '</div>';
+      if (isExpanded) {
+        if (isLoading) {
+          bodyHtml += '<div class="grid-row ads-other-revenue-subrow muted" role="row"><div class="grid-cell" role="cell" style="padding-left:2rem;">Loading…</div><div class="grid-cell text-center" role="cell"></div><div class="grid-cell text-center" role="cell"></div><div class="grid-cell text-center" role="cell"></div></div>';
+        } else if (drill && drill.ok && Array.isArray(drill.rows) && drill.rows.length) {
+          for (var j = 0; j < drill.rows.length; j++) {
+            var v = drill.rows[j] || {};
+            var vLabel = (v.variantLabel != null ? String(v.variantLabel) : '') || (v.variantKey != null ? String(v.variantKey) : '—');
+            var variantHref = '/settings/attribution/tree?' + shopQ + 'amOpenVariant=' + encodeURIComponent(v.variantKey != null ? String(v.variantKey) : '');
+            bodyHtml += '<div class="grid-row ads-other-revenue-subrow" role="row">' +
+              '<div class="grid-cell" role="cell" style="padding-left:2rem;">' + esc(vLabel) + ' <a href="' + variantHref + '" class="ms-1">Edit variant</a></div>' +
+              '<div class="grid-cell text-center" role="cell">' + esc(fmtNum(v.sessions)) + '</div>' +
+              '<div class="grid-cell text-center" role="cell">' + esc(fmtNum(v.orders)) + '</div>' +
+              '<div class="grid-cell text-center" role="cell">' + esc(fmtMoney(v.revenueGbp, currency)) + '</div>' +
+            '</div>';
+          }
+        } else {
+          bodyHtml += '<div class="grid-row ads-other-revenue-subrow muted" role="row"><div class="grid-cell" role="cell" style="padding-left:2rem;">No variant breakdown.</div></div>';
+        }
+      }
     }
     if (!rows.length) {
       bodyHtml = '<div class="grid-row muted" role="row"><div class="grid-cell" role="cell" style="text-align:center;">No other revenue in this period.</div></div>';
@@ -2126,6 +2164,31 @@
         '<div class="grid-body" role="rowgroup">' + bodyHtml + '</div></div>';
     }
     rootEl.innerHTML = tableHtml;
+    rootEl.querySelectorAll('[data-other-revenue-expand]').forEach(function(btn) {
+      btn.addEventListener('click', function(ev) {
+        ev.preventDefault();
+        var rk = btn.getAttribute('data-range-key') || '';
+        var us = btn.getAttribute('data-utm-source') || '';
+        var key = rk + '|' + us;
+        if (_otherRevenueExpanded[key]) {
+          _otherRevenueExpanded[key] = false;
+          renderOtherRevenue(rootEl, _lastOtherRevenueData, _lastOtherRevenueRangeKey);
+          return;
+        }
+        _otherRevenueExpanded[key] = true;
+        if (_otherRevenueDrilldownCache[key]) {
+          renderOtherRevenue(rootEl, _lastOtherRevenueData, _lastOtherRevenueRangeKey);
+          return;
+        }
+        _otherRevenueLoading[key] = true;
+        renderOtherRevenue(rootEl, _lastOtherRevenueData, _lastOtherRevenueRangeKey);
+        fetchOtherRevenueDrilldown(rk, us).then(function(drillRes) {
+          _otherRevenueDrilldownCache[key] = drillRes;
+          _otherRevenueLoading[key] = false;
+          if (rootEl && _lastOtherRevenueData) renderOtherRevenue(rootEl, _lastOtherRevenueData, _lastOtherRevenueRangeKey);
+        });
+      });
+    });
   }
 
   function render(root, status, summary, refreshResult) {
@@ -2384,6 +2447,13 @@
     return fetchJson('/api/ads/other-revenue?' + q);
   }
 
+  function fetchOtherRevenueDrilldown(rangeKey, utmSource) {
+    var shop = getShopParam();
+    var q = 'range=' + encodeURIComponent(rangeKey || 'today') + '&utmSource=' + encodeURIComponent(utmSource || '');
+    if (shop) q += '&shop=' + encodeURIComponent(shop);
+    return fetchJson('/api/ads/other-revenue/drilldown?' + q);
+  }
+
   function refreshAdsBackend(rangeKey) {
     return fetchJson('/api/ads/refresh?range=' + encodeURIComponent(rangeKey), {
       method: 'POST',
@@ -2507,7 +2577,7 @@
             var el = document.getElementById('ads-other-root');
             if (!el) return;
             if (res && res.ok && Array.isArray(res.rows)) {
-              renderOtherRevenue(el, res);
+              renderOtherRevenue(el, res, rangeForOther);
             } else {
               el.innerHTML = '<div class="grid-row muted" role="row"><div class="grid-cell" role="cell" style="text-align:center;">Other revenue unavailable.</div></div>';
             }

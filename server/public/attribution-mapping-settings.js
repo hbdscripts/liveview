@@ -935,6 +935,16 @@
       .then(function () { return loadObservedAndRender(); })
       .finally(function () {
         renderSelected();
+        var dl = window.__kexoAttributionDeepLink;
+        if (dl && (dl.tokenType != null || dl.tokenValue != null)) {
+          _state.selected = {
+            token_type: (dl.tokenType != null ? String(dl.tokenType) : '') || 'utm_source',
+            token_value: (dl.tokenValue != null ? String(dl.tokenValue) : '') || ''
+          };
+          renderSelected();
+          scrollToMappingFields();
+          try { delete window.__kexoAttributionDeepLink; } catch (_) {}
+        }
       });
   }
 

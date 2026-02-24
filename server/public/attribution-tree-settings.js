@@ -1142,6 +1142,48 @@
       _state.treeModel = buildTreeModel(res.config);
       renderTree(root, _state.treeModel);
       wireTree(root);
+      var dl = window.__kexoAttributionDeepLink;
+      if (dl) {
+        var cfg = res.config || {};
+        var variants = Array.isArray(cfg.variants) ? cfg.variants : [];
+        var rules = Array.isArray(cfg.rules) ? cfg.rules : [];
+        if (dl.openVariant) {
+          var vKey = String(dl.openVariant || '').trim().toLowerCase();
+          for (var vi = 0; vi < variants.length; vi++) {
+            var v = variants[vi];
+            var vk = normalizeBaseVariantKey(v && (v.variant_key != null ? v.variant_key : ''));
+            if (vk === vKey) {
+              var lbl = (v && v.label) ? String(v.label) : vk;
+              var ch = trimLower(v && v.channel_key != null ? v.channel_key : '', 32) || '';
+              var icon = (v && v.icon_spec != null) ? String(v.icon_spec) : '';
+              (function (key, label, channelKey, iconSpec) {
+                setTimeout(function () { openChannelAssignModal({ kind: 'variant', key: key, label: label, currentChannelKey: channelKey, currentIconSpec: iconSpec }); }, 0);
+              })(vk, lbl, ch, icon);
+              break;
+            }
+          }
+        } else if (dl.open === 'rule' && (dl.tokenType || dl.tokenValue)) {
+          var tokenType = (dl.tokenType != null ? String(dl.tokenType) : '').trim().toLowerCase() || 'utm_source';
+          var tokenValue = (dl.tokenValue != null ? String(dl.tokenValue) : '').trim().toLowerCase();
+          for (var ri = 0; ri < rules.length; ri++) {
+            var rule = rules[ri];
+            var matchRaw = (rule && rule.match_json) ? rule.match_json : (rule && rule.match ? JSON.stringify(rule.match) : '{}');
+            var matchObj = typeof matchRaw === 'string' ? (function () { try { return JSON.parse(matchRaw); } catch (_) { return {}; } })() : matchRaw;
+            if (!matchObj || typeof matchObj !== 'object') continue;
+            var arr = matchObj[tokenType] && matchObj[tokenType].any;
+            if (Array.isArray(arr) && arr.indexOf(tokenValue) !== -1) {
+              var rid = (rule && rule.id) ? String(rule.id) : '';
+              var curVk = normalizeBaseVariantKey(rule && rule.variant_key);
+              var curTag = (rule && rule.tag_key != null) ? normalizeTagKey(String(rule.tag_key), 120) : '';
+              (function (ruleId, variantKey, tagKey) {
+                setTimeout(function () { openMoveModal(ruleId, variantKey, tagKey); }, 0);
+              })(rid, curVk, curTag);
+              break;
+            }
+          }
+        }
+        try { delete window.__kexoAttributionDeepLink; } catch (_) {}
+      }
     }).catch(function () {
       root.innerHTML = '<p class="text-secondary mb-0">Failed to load attribution config. <button type="button" class="btn btn-sm" data-am-tree-retry>Retry</button></p>';
     });
