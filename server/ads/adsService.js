@@ -103,47 +103,26 @@ async function getSummary(options = {}) {
     };
   }
 
-  // Revenue — Shopify truth orders attributed into Ads DB (no main DB joins at query time).
-  // Optional filter by attribution_method (dropdown on integration table).
-  const attributionMethod = options.attributionMethod != null ? String(options.attributionMethod).trim().toLowerCase() : '';
-  let revAttributionSql = '';
-  const revAttributionParams = [];
-  if (attributionMethod && attributionMethod !== 'all') {
-    if (attributionMethod === 'landing_site') {
-      revAttributionSql = " AND (attribution_method LIKE ? OR attribution_method LIKE ?)";
-      revAttributionParams.push('landing_site%', 'url.%');
-    } else if (attributionMethod === 'session') {
-      revAttributionSql = " AND attribution_method LIKE ?";
-      revAttributionParams.push('purchase_events.session%');
-    } else if (attributionMethod === 'last_click') {
-      revAttributionSql = " AND attribution_method = ?";
-      revAttributionParams.push('visitor.last_ads_click');
-    } else if (attributionMethod === 'page_url') {
-      revAttributionSql = " AND attribution_method LIKE ?";
-      revAttributionParams.push('purchase_events.page_url%');
-    } else if (attributionMethod === 'verified') {
-      revAttributionSql = " AND attribution_method = ?";
-      revAttributionParams.push('campaign_id.verified');
-    }
-  }
+  // Revenue — Shopify truth orders attributed into Ads DB. Attribution model selects which campaign columns to use.
+  const attributionModel = options.attributionModel != null ? String(options.attributionModel).trim().toLowerCase() : 'default';
+  const revCampaignCol = attributionModel === 'first_click' ? 'campaign_id_first_click' : attributionModel === 'last_click' ? 'campaign_id_last_click' : 'campaign_id';
+  const revAdgroupCol = attributionModel === 'first_click' ? 'adgroup_id_first_click' : attributionModel === 'last_click' ? 'adgroup_id_last_click' : 'adgroup_id';
+  const revCampaignNotNull = `AND ${revCampaignCol} IS NOT NULL AND TRIM(${revCampaignCol}) != ''`;
 
   let revRows = [];
   try {
     const revFilterSql = source ? ' AND source = ?' : '';
-    const revParams = source
-      ? [bounds.start, bounds.end, source, ...revAttributionParams]
-      : [bounds.start, bounds.end, ...revAttributionParams];
+    const revParams = source ? [bounds.start, bounds.end, source] : [bounds.start, bounds.end];
     revRows = await adsDb.all(
       `
         SELECT
-          campaign_id,
-          COALESCE(NULLIF(TRIM(adgroup_id), ''), '_all_') AS adgroup_id,
+          ${revCampaignCol} AS campaign_id,
+          COALESCE(NULLIF(TRIM(${revAdgroupCol}), ''), '_all_') AS adgroup_id,
           COALESCE(SUM(revenue_gbp), 0) AS revenue_gbp,
           COUNT(*) AS orders
         FROM ads_orders_attributed
-        WHERE created_at_ms >= ? AND created_at_ms < ?${revFilterSql}${revAttributionSql}
-          AND campaign_id IS NOT NULL AND TRIM(campaign_id) != ''
-        GROUP BY campaign_id, COALESCE(NULLIF(TRIM(adgroup_id), ''), '_all_')
+        WHERE created_at_ms >= ? AND created_at_ms < ?${revFilterSql} ${revCampaignNotNull}
+        GROUP BY ${revCampaignCol}, COALESCE(NULLIF(TRIM(${revAdgroupCol}), ''), '_all_')
       `,
       revParams
     );
@@ -189,6 +168,7 @@ async function getSummary(options = {}) {
         spend: 0,
         clicks: 0,
         impressions: 0,
+        sessions: 0,
         profit: 0,
         roas: null,
         adgroups: new Map(),
@@ -207,6 +187,7 @@ async function getSummary(options = {}) {
         spend: 0,
         clicks: 0,
         impressions: 0,
+        sessions: 0,
         profit: 0,
         roas: null,
       });
@@ -258,6 +239,42 @@ async function getSummary(options = {}) {
     ag.spend += sp;
     ag.clicks += cl;
     ag.impressions += im;
+  }
+
+  // Sessions (KEXO): main DB sessions with Google Ads click-id in entry_url, grouped by campaign/adgroup.
+  let sessionRows = [];
+  try {
+    const mainDb = getDb();
+    if (mainDb) {
+      sessionRows = await mainDb.all(
+        `
+          SELECT
+            COALESCE(NULLIF(TRIM(bs_campaign_id), ''), '_unknown_') AS campaign_id,
+            COALESCE(NULLIF(TRIM(bs_adgroup_id), ''), '_all_') AS adgroup_id,
+            COUNT(*) AS sessions
+          FROM sessions
+          WHERE started_at >= ? AND started_at < ?
+            AND (entry_url LIKE '%gclid=%' OR entry_url LIKE '%gbraid=%' OR entry_url LIKE '%wbraid=%')
+            AND (cf_known_bot IS NULL OR cf_known_bot = 0)
+            AND NULLIF(TRIM(bs_campaign_id), '') IS NOT NULL
+          GROUP BY COALESCE(NULLIF(TRIM(bs_campaign_id), ''), '_unknown_'), COALESCE(NULLIF(TRIM(bs_adgroup_id), ''), '_all_')
+        `,
+        [bounds.start, bounds.end]
+      );
+    }
+  } catch (e) {
+    console.warn('[ads.summary] sessions query failed (non-fatal):', e && e.message ? e.message : e);
+  }
+  for (const r of sessionRows || []) {
+    const campaignId = r && r.campaign_id != null ? String(r.campaign_id) : '';
+    const adgroupId = r && r.adgroup_id != null ? String(r.adgroup_id) : '_all_';
+    if (!campaignId || campaignId === '_unknown_') continue;
+    const camp = campaignMap.get(campaignId);
+    if (!camp) continue;
+    const s = r && r.sessions != null ? Number(r.sessions) || 0 : 0;
+    camp.sessions += s;
+    const ag = ensureAdgroup(camp, adgroupId);
+    ag.sessions += s;
   }
 
   // If a campaign has attributed orders but no spend rows in the selected range,
@@ -402,6 +419,7 @@ async function getSummary(options = {}) {
   let totalsSpend = 0;
   let totalsClicks = 0;
   let totalsImpressions = 0;
+  let totalsSessions = 0;
   let totalsOrders = 0;
   let hiddenUnverifiedCount = 0;
 
@@ -418,6 +436,7 @@ async function getSummary(options = {}) {
     totalsSpend += c.spend;
     totalsClicks += c.clicks;
     totalsImpressions += c.impressions;
+    totalsSessions += c.sessions || 0;
     totalsOrders += c.orders;
 
     const adgroups = Array.from(c.adgroups.values()).map((ag) => {
@@ -436,6 +455,7 @@ async function getSummary(options = {}) {
       spend: Math.round(c.spend * 100) / 100,
       clicks: Math.floor(c.clicks || 0),
       impressions: Math.floor(c.impressions || 0),
+      sessions: Math.floor(c.sessions || 0),
       profit: Math.round(c.profit * 100) / 100,
       roas: c.roas,
       adgroups,
@@ -460,6 +480,7 @@ async function getSummary(options = {}) {
       spend: Math.round(totalsSpend * 100) / 100,
       impressions: Math.floor(totalsImpressions || 0),
       clicks: Math.floor(totalsClicks || 0),
+      sessions: Math.floor(totalsSessions || 0),
       conversions: Math.floor(totalsOrders || 0),
       revenue: Math.round(totalsRevenue * 100) / 100,
       profit: Math.round((totalsRevenue - totalsSpend) * 100) / 100,

@@ -425,19 +425,19 @@ async function syncAttributedOrdersToAdsDb(options = {}) {
           FROM sessions
           WHERE visitor_id = ?
             AND started_at >= ? AND started_at < ?
-            AND NULLIF(TRIM(bs_campaign_id), '') IS NOT NULL
+            AND (
+              NULLIF(TRIM(bs_campaign_id), '') IS NOT NULL
+              OR (entry_url IS NOT NULL AND (entry_url LIKE '%gclid=%' OR entry_url LIKE '%gbraid=%' OR entry_url LIKE '%wbraid=%'))
+            )
           ORDER BY started_at DESC
           LIMIT 1
         `,
         [vid, minMs, before]
       );
-      if (!row || !row.bs_campaign_id) return null;
-      const bsSource = row.bs_source != null ? String(row.bs_source).trim().toLowerCase() : '';
-      const utmSource = row.utm_source != null ? String(row.utm_source).trim().toLowerCase() : '';
+      if (!row) return null;
       const entryUrl = row.entry_url != null ? String(row.entry_url).trim() : '';
       const params = safeUrlParams(entryUrl);
       const gl = extractGclidLike(params);
-      // Require click-id on session for last-click carryover (guard against tinkered bs_campaign_id).
       if (!looksLikeGoogleAds({ gclidLike: gl })) return null;
       const visitorCountryCode =
         normalizeCountryCode(row && row.country_code != null ? row.country_code : null) ||
@@ -451,6 +451,7 @@ async function syncAttributedOrdersToAdsDb(options = {}) {
         bsCampaignId: row.bs_campaign_id != null ? String(row.bs_campaign_id).trim() : null,
         bsAdgroupId: row.bs_adgroup_id != null ? String(row.bs_adgroup_id).trim() : null,
         bsAdId: row.bs_ad_id != null ? String(row.bs_ad_id).trim() : null,
+        entryUrl,
         visitorCountryCode,
         visitorDeviceType,
         visitorNetwork,
@@ -458,6 +459,92 @@ async function syncAttributedOrdersToAdsDb(options = {}) {
     } catch (_) {
       return null;
     }
+  }
+
+  async function findFirstGoogleAdsClickForVisitor(visitorId, beforeMs) {
+    const vid = visitorId != null ? String(visitorId).trim() : '';
+    const before = beforeMs != null ? Number(beforeMs) : null;
+    if (!vid || before == null || !Number.isFinite(before)) return null;
+
+    const WINDOW_DAYS = 30;
+    const minMs = before - WINDOW_DAYS * 24 * 60 * 60 * 1000;
+
+    try {
+      const row = await db.get(
+        `
+          SELECT
+            session_id,
+            started_at,
+            country_code,
+            cf_country,
+            ua_device_type,
+            bs_source,
+            utm_source,
+            bs_campaign_id,
+            bs_adgroup_id,
+            bs_ad_id,
+            bs_network,
+            entry_url
+          FROM sessions
+          WHERE visitor_id = ?
+            AND started_at >= ? AND started_at < ?
+            AND (
+              NULLIF(TRIM(bs_campaign_id), '') IS NOT NULL
+              OR (entry_url IS NOT NULL AND (entry_url LIKE '%gclid=%' OR entry_url LIKE '%gbraid=%' OR entry_url LIKE '%wbraid=%'))
+            )
+          ORDER BY started_at ASC
+          LIMIT 1
+        `,
+        [vid, minMs, before]
+      );
+      if (!row) return null;
+      const entryUrl = row.entry_url != null ? String(row.entry_url).trim() : '';
+      const params = safeUrlParams(entryUrl);
+      const gl = extractGclidLike(params);
+      if (!looksLikeGoogleAds({ gclidLike: gl })) return null;
+      const visitorCountryCode =
+        normalizeCountryCode(row && row.country_code != null ? row.country_code : null) ||
+        normalizeCountryCode(row && row.cf_country != null ? row.cf_country : null) ||
+        null;
+      const visitorDeviceType = (row && row.ua_device_type != null) ? String(row.ua_device_type).trim().toLowerCase() : null;
+      const visitorNetwork = (row && row.bs_network != null) ? String(row.bs_network).trim().toLowerCase() : null;
+      return {
+        sessionId: row && row.session_id != null ? String(row.session_id).trim() : null,
+        startedAt: row.started_at != null ? Number(row.started_at) : null,
+        bsCampaignId: row.bs_campaign_id != null ? String(row.bs_campaign_id).trim() : null,
+        bsAdgroupId: row.bs_adgroup_id != null ? String(row.bs_adgroup_id).trim() : null,
+        bsAdId: row.bs_ad_id != null ? String(row.bs_ad_id).trim() : null,
+        entryUrl,
+        visitorCountryCode,
+        visitorDeviceType,
+        visitorNetwork,
+      };
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /** Resolve campaign/adgroup from a first/last click result: prefer gclid_campaign_cache when entry_url has gclid. */
+  async function resolveCampaignFromClickResult(clickResult, adsDbRef, gclidCacheRef) {
+    if (!clickResult || !clickResult.entryUrl) {
+      return {
+        campaignId: clickResult && clickResult.bsCampaignId ? clickResult.bsCampaignId : null,
+        adgroupId: clickResult && clickResult.bsAdgroupId ? clickResult.bsAdgroupId : null,
+      };
+    }
+    const params = safeUrlParams(clickResult.entryUrl);
+    const gl = params ? extractGclidLike(params) : null;
+    const gclid = gl && gl.gclid ? String(gl.gclid).trim() : null;
+    if (gclid) {
+      const mapping = await getGclidMappingCached(adsDbRef, gclidCacheRef, gclid);
+      if (mapping && mapping.campaignId) {
+        return { campaignId: mapping.campaignId, adgroupId: mapping.adgroupId || null };
+      }
+    }
+    return {
+      campaignId: clickResult.bsCampaignId || null,
+      adgroupId: clickResult.bsAdgroupId || null,
+    };
   }
 
   // Apply evidence attribution (and establish source when landing_site didn't include it).
@@ -692,6 +779,32 @@ async function syncAttributedOrdersToAdsDb(options = {}) {
     console.warn('[ads.orders] campaign-id verification failed (non-fatal):', e && e.message ? e.message : e);
   }
 
+  // First/last click (30d) per order for attribution model switch: use visitor-linked session when available.
+  for (const o of parsed) {
+    if (!o) continue;
+    const ev = orderIdToEvidence.get(o.orderId);
+    const sess = ev && ev.sessionId ? sessionMap.get(ev.sessionId) : null;
+    if (sess && sess.visitorId) {
+      const first = await findFirstGoogleAdsClickForVisitor(sess.visitorId, o.createdAtMs);
+      const last = await findLastGoogleAdsClickForVisitor(sess.visitorId, o.createdAtMs);
+      const firstResolved = await resolveCampaignFromClickResult(first, adsDb, gclidCache);
+      const lastResolved = await resolveCampaignFromClickResult(last, adsDb, gclidCache);
+      o.campaignIdFirstClick = firstResolved.campaignId || null;
+      o.adgroupIdFirstClick = firstResolved.adgroupId || (firstResolved.campaignId ? '_all_' : null);
+      o.campaignIdLastClick = lastResolved.campaignId || null;
+      o.adgroupIdLastClick = lastResolved.adgroupId || (lastResolved.campaignId ? '_all_' : null);
+      o.attributionModelFirstMethod = first ? 'visitor.first_ads_click' : null;
+      o.attributionModelLastMethod = last ? 'visitor.last_ads_click' : null;
+    } else {
+      o.campaignIdFirstClick = o.campaignId || null;
+      o.adgroupIdFirstClick = o.adgroupId || null;
+      o.campaignIdLastClick = o.campaignId || null;
+      o.adgroupIdLastClick = o.adgroupId || null;
+      o.attributionModelFirstMethod = null;
+      o.attributionModelLastMethod = null;
+    }
+  }
+
   // 3) Upsert to Ads DB.
   const now = Date.now();
   let upserts = 0;
@@ -700,9 +813,9 @@ async function syncAttributedOrdersToAdsDb(options = {}) {
     await adsDb.run(
       `
         INSERT INTO ads_orders_attributed
-          (shop, order_id, created_at_ms, currency, total_price, revenue_gbp, source, campaign_id, adgroup_id, ad_id, gclid, gbraid, wbraid, click_id_type, click_id_value, country_code, attribution_method, landing_site, session_id, visitor_country_code, visitor_device_type, visitor_network, updated_at)
+          (shop, order_id, created_at_ms, currency, total_price, revenue_gbp, source, campaign_id, adgroup_id, ad_id, gclid, gbraid, wbraid, click_id_type, click_id_value, country_code, attribution_method, landing_site, session_id, visitor_country_code, visitor_device_type, visitor_network, campaign_id_first_click, adgroup_id_first_click, campaign_id_last_click, adgroup_id_last_click, attribution_model_first_method, attribution_model_last_method, updated_at)
         VALUES
-          (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT (shop, order_id) DO UPDATE SET
           created_at_ms = EXCLUDED.created_at_ms,
           currency = EXCLUDED.currency,
@@ -722,6 +835,12 @@ async function syncAttributedOrdersToAdsDb(options = {}) {
           visitor_country_code = EXCLUDED.visitor_country_code,
           visitor_device_type = EXCLUDED.visitor_device_type,
           visitor_network = EXCLUDED.visitor_network,
+          campaign_id_first_click = EXCLUDED.campaign_id_first_click,
+          adgroup_id_first_click = EXCLUDED.adgroup_id_first_click,
+          campaign_id_last_click = EXCLUDED.campaign_id_last_click,
+          adgroup_id_last_click = EXCLUDED.adgroup_id_last_click,
+          attribution_model_first_method = EXCLUDED.attribution_model_first_method,
+          attribution_model_last_method = EXCLUDED.attribution_model_last_method,
           attribution_method = EXCLUDED.attribution_method,
           landing_site = EXCLUDED.landing_site,
           updated_at = EXCLUDED.updated_at
@@ -749,6 +868,12 @@ async function syncAttributedOrdersToAdsDb(options = {}) {
         o.visitorCountryCode || null,
         o.visitorDeviceType || null,
         o.visitorNetwork || null,
+        o.campaignIdFirstClick || null,
+        o.adgroupIdFirstClick || null,
+        o.campaignIdLastClick || null,
+        o.adgroupIdLastClick || null,
+        o.attributionModelFirstMethod || null,
+        o.attributionModelLastMethod || null,
         now,
       ]
     );

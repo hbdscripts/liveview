@@ -175,10 +175,11 @@
   /* ── sort state ──────────────────────────────────────────── */
 
   // Column definitions: key, label, getter, format
-  // Order: Campaign, Clicks, Impr, Conv, Revenue, Spend, ROAS, Gross
+  // Order: Campaign, Clicks, Sessions, Impr, Conv, Revenue, Spend, ROAS, Gross
   var COL_DEFS = [
     { key: 'campaign', label: 'Campaign', get: function (c) { return (c.campaignName || c.campaignId || '').toLowerCase(); }, fmt: null },
     { key: 'clicks',   label: 'Clicks',   get: function (c) { return c.clicks || 0; },       fmt: function (v) { return fmtNum(v); } },
+    { key: 'sessions', label: 'Sessions', get: function (c) { return c.sessions || 0; },      fmt: function (v) { return fmtNum(v); } },
     { key: 'impr',     label: 'Impr',     get: function (c) { return c.impressions || 0; },  fmt: function (v) { return fmtNum(v); } },
     { key: 'conv',     label: 'Conv',     get: function (c) { return c.orders || 0; },       fmt: function (v) { return fmtNum(v); } },
     { key: 'sales',    label: 'Revenue',  get: function (c) { return c.revenue || 0; },      fmt: function (v, cur) { return fmtMoney(v, cur); } },
@@ -215,20 +216,22 @@
   }
 
   function getAdsAttributionStorageKey() {
-    return 'kexo:ads:attribution:v1';
+    return 'kexo:ads:attribution-model:v1';
   }
 
   function getAdsAttributionMethod() {
     var raw = null;
     try { raw = localStorage.getItem(getAdsAttributionStorageKey()); } catch (_) { raw = null; }
     var s = raw != null ? String(raw).trim() : '';
-    if (!s) return '';
-    var allowed = ['landing_site', 'session', 'last_click', 'page_url', 'verified'];
-    return allowed.indexOf(s) >= 0 ? s : '';
+    if (!s) return 'default';
+    var allowed = ['default', 'first_click', 'last_click'];
+    return allowed.indexOf(s) >= 0 ? s : 'default';
   }
 
   function setAdsAttributionMethod(next) {
-    var v = next != null ? String(next).trim() : '';
+    var v = next != null ? String(next).trim() : 'default';
+    var allowed = ['default', 'first_click', 'last_click'];
+    if (allowed.indexOf(v) < 0) v = 'default';
     try { localStorage.setItem(getAdsAttributionStorageKey(), v); } catch (_) {}
     return v;
   }
@@ -1728,12 +1731,13 @@
       '.ads-campaign-table{table-layout:fixed;min-width:640px;}' +
       '#ads-footer{overflow-x:auto;-webkit-overflow-scrolling:touch;}' +
       '.ads-campaign-table .grid-cell:nth-child(2){width:80px;}' +
-      '.ads-campaign-table .grid-cell:nth-child(3){width:90px;}' +
-      '.ads-campaign-table .grid-cell:nth-child(4){width:80px;}' +
-      '.ads-campaign-table .grid-cell:nth-child(5){width:110px;}' +
+      '.ads-campaign-table .grid-cell:nth-child(3){width:80px;}' +
+      '.ads-campaign-table .grid-cell:nth-child(4){width:90px;}' +
+      '.ads-campaign-table .grid-cell:nth-child(5){width:80px;}' +
       '.ads-campaign-table .grid-cell:nth-child(6){width:110px;}' +
-      '.ads-campaign-table .grid-cell:nth-child(7){width:80px;}' +
-      '.ads-campaign-table .grid-cell:nth-child(8){width:110px;}' +
+      '.ads-campaign-table .grid-cell:nth-child(7){width:110px;}' +
+      '.ads-campaign-table .grid-cell:nth-child(8){width:80px;}' +
+      '.ads-campaign-table .grid-cell:nth-child(9){width:110px;}' +
       '@media (max-width:768px){' +
         '.ads-campaign-table .grid-cell:first-child{position:sticky;left:0;z-index:2;min-width:var(--kexo-sticky-col-min-width,72px);width:var(--kexo-sticky-col-width,120px);max-width:var(--kexo-sticky-col-max-width,250px);}' +
         '.ads-campaign-table .grid-row--header .grid-cell:first-child{z-index:3;}' +
@@ -1755,7 +1759,7 @@
   var _lastRefreshResult = null;
   var _lastRangeKey = null;
   var _lastFetchedAt = 0;
-  var _lastAttributionMethod = '';
+  var _lastAttributionModel = '';
   var _lastFetchError = null;
   var _isRefreshing = false;
   var _isForceRefreshing = false;
@@ -1880,24 +1884,25 @@
       } catch (_) {}
 
       var cells = row.querySelectorAll('.grid-cell');
-      if (!cells || cells.length < 8) return false;
+      if (!cells || cells.length < 9) return false;
 
       patchText(cells[1], fmtNum(c2.clicks));
-      patchText(cells[2], fmtNum(c2.impressions));
-      patchText(cells[3], fmtNum(c2.orders));
-      patchText(cells[4], fmtMoney(c2.revenue, currency));
-      patchText(cells[5], fmtMoney(c2.spend, currency));
-      patchText(cells[6], fmtRoas(c2.roas));
+      patchText(cells[2], fmtNum(c2.sessions));
+      patchText(cells[3], fmtNum(c2.impressions));
+      patchText(cells[4], fmtNum(c2.orders));
+      patchText(cells[5], fmtMoney(c2.revenue, currency));
+      patchText(cells[6], fmtMoney(c2.spend, currency));
+      patchText(cells[7], fmtRoas(c2.roas));
 
       var pr = c2.profit != null ? Number(c2.profit) : 0;
-      patchText(cells[7], fmtMoney(pr, currency));
-      setProfitCellClass(cells[7], pr);
+      patchText(cells[8], fmtMoney(pr, currency));
+      setProfitCellClass(cells[8], pr);
     }
 
     var tRow = root.querySelector('.ads-totals-row');
     if (tRow) {
       // Totals are the sum of the currently-rendered campaign rows.
-      var totals = { clicks: 0, impressions: 0, orders: 0, revenue: 0, spend: 0, profit: 0, roas: null };
+      var totals = { clicks: 0, impressions: 0, sessions: 0, orders: 0, revenue: 0, spend: 0, profit: 0, roas: null };
       for (var ti = 0; ti < rows.length; ti++) {
         var r = rows[ti];
         if (!r) continue;
@@ -1907,6 +1912,7 @@
         if (!c3) return false;
         totals.clicks += Number(c3.clicks) || 0;
         totals.impressions += Number(c3.impressions) || 0;
+        totals.sessions += Number(c3.sessions) || 0;
         totals.orders += Number(c3.orders) || 0;
         totals.revenue += Number(c3.revenue) || 0;
         totals.spend += Number(c3.spend) || 0;
@@ -1917,16 +1923,17 @@
       totals.roas = totals.spend > 0 ? (totals.revenue / totals.spend) : null;
 
       var tCells = tRow.querySelectorAll('.grid-cell');
-      if (!tCells || tCells.length < 8) return false;
+      if (!tCells || tCells.length < 9) return false;
       patchText(tCells[1], fmtNum(totals.clicks));
-      patchText(tCells[2], fmtNum(totals.impressions));
-      patchText(tCells[3], fmtNum(totals.orders));
-      patchText(tCells[4], fmtMoney(totals.revenue, currency));
-      patchText(tCells[5], fmtMoney(totals.spend, currency));
-      patchText(tCells[6], fmtRoas(totals.roas));
+      patchText(tCells[2], fmtNum(totals.sessions));
+      patchText(tCells[3], fmtNum(totals.impressions));
+      patchText(tCells[4], fmtNum(totals.orders));
+      patchText(tCells[5], fmtMoney(totals.revenue, currency));
+      patchText(tCells[6], fmtMoney(totals.spend, currency));
+      patchText(tCells[7], fmtRoas(totals.roas));
       var tProfit = totals.profit != null ? Number(totals.profit) : 0;
-      patchText(tCells[7], fmtMoney(tProfit, currency));
-      setProfitCellClass(tCells[7], tProfit);
+      patchText(tCells[8], fmtMoney(tProfit, currency));
+      setProfitCellClass(tCells[8], tProfit);
     }
 
     return true;
@@ -2020,18 +2027,19 @@
   function syncAdsOptionsState() {
     var hcb = document.getElementById('ads-hide-paused');
     if (hcb) hcb.checked = !getAdsHidePaused();
-    var attr = getAdsAttributionMethod();
+    var model = getAdsAttributionMethod();
     var radios = document.querySelectorAll('input[name="ads-attribution"]');
     for (var i = 0; i < radios.length; i++) {
-      if (radios[i]) radios[i].checked = (radios[i].value === attr);
+      if (radios[i]) radios[i].checked = (radios[i].value === model);
     }
   }
 
   function patchFooterAndNote(status, summary) {
     var noteEl = document.getElementById('ads-note');
     var note = (summary && summary.note) ? String(summary.note) : '';
-    if (getAdsAttributionMethod()) {
-      note = (note ? note + ' ' : '') + 'Revenue and orders filtered by attribution; spend and clicks from Google Ads.';
+    var model = getAdsAttributionMethod();
+    if (model) {
+      note = (note ? note + ' ' : '') + 'Revenue and orders use the selected attribution model; Clicks, Impr and Spend are from Google Ads; Sessions are KEXO.';
     }
     if (noteEl) {
       if (note) {
@@ -2060,12 +2068,13 @@
 
   function computeCampaignTotals(campaigns) {
     var list = Array.isArray(campaigns) ? campaigns : [];
-    var out = { count: 0, clicks: 0, impressions: 0, orders: 0, revenue: 0, spend: 0, profit: 0 };
+    var out = { count: 0, clicks: 0, impressions: 0, sessions: 0, orders: 0, revenue: 0, spend: 0, profit: 0 };
     for (var i = 0; i < list.length; i++) {
       var c = list[i] || {};
       out.count += 1;
       out.clicks += Number(c.clicks) || 0;
       out.impressions += Number(c.impressions) || 0;
+      out.sessions += Number(c.sessions) || 0;
       out.orders += Number(c.orders) || 0;
       out.revenue += Number(c.revenue) || 0;
       out.spend += Number(c.spend) || 0;
@@ -2080,7 +2089,7 @@
   function render(root, status, summary, refreshResult) {
     _lastStatus = status;
     _lastSummary = summary;
-    _lastAttributionMethod = getAdsAttributionMethod();
+    _lastAttributionModel = getAdsAttributionMethod();
     if (refreshResult !== undefined) _lastRefreshResult = refreshResult;
     ensureModalCss();
 
@@ -2174,6 +2183,7 @@
       bodyHtml += gridRow([
         { html: '<span class="ads-campaign-name">' + esc(cName) + '</span>' },
         { html: esc(fmtNum(c.clicks)), cls: ' text-center' },
+        { html: esc(fmtNum(c.sessions)), cls: ' text-center' },
         { html: esc(fmtNum(c.impressions)), cls: ' text-center' },
         { html: esc(fmtNum(c.orders)), cls: ' text-center' },
         { html: esc(fmtMoney(c.revenue, currency)), cls: ' text-center' },
@@ -2190,6 +2200,7 @@
       bodyHtml += gridRow([
         { html: '<strong>Total</strong>' },
         { html: esc(fmtNum(tableTotals.clicks)), cls: ' text-center' },
+        { html: esc(fmtNum(tableTotals.sessions)), cls: ' text-center' },
         { html: esc(fmtNum(tableTotals.impressions)), cls: ' text-center' },
         { html: esc(fmtNum(tableTotals.orders)), cls: ' text-center' },
         { html: esc(fmtMoney(tableTotals.revenue, currency)), cls: ' text-center' },
@@ -2319,9 +2330,9 @@
 
   function fetchSummary(rangeKey, cacheBust) {
     var bust = cacheBust ? ('&_=' + Date.now()) : '';
-    var attr = getAdsAttributionMethod();
-    var attrQ = attr ? ('&attributionMethod=' + encodeURIComponent(attr)) : '';
-    return fetchJson('/api/ads/summary?range=' + encodeURIComponent(rangeKey) + attrQ + bust);
+    var model = getAdsAttributionMethod();
+    var modelQ = (model && model !== 'default') ? ('&attributionModel=' + encodeURIComponent(model)) : '';
+    return fetchJson('/api/ads/summary?range=' + encodeURIComponent(rangeKey) + modelQ + bust);
   }
 
   function refreshAdsBackend(rangeKey) {
@@ -2345,8 +2356,8 @@
     var now = Date.now();
 
     // Soft refresh should not spam requests (tab focus / theme refresh). Keep UX smooth.
-    // Bypass cache when attribution method changed so dropdown change always refetches.
-    if (!isForce && _lastSummary && _lastRangeKey === rangeKey && _lastFetchedAt && (now - _lastFetchedAt) < 15000 && _lastAttributionMethod === getAdsAttributionMethod()) {
+    // Bypass cache when attribution model changed so Options change always refetches.
+    if (!isForce && _lastSummary && _lastRangeKey === rangeKey && _lastFetchedAt && (now - _lastFetchedAt) < 15000 && _lastAttributionModel === getAdsAttributionMethod()) {
       // Ensure footer is visible (in case user navigated before first render)
       try {
         if (!root.innerHTML) render(root, _lastStatus, _lastSummary);
@@ -2421,7 +2432,7 @@
 
       var didPatch = false;
       // Only patch when range and attribution unchanged; otherwise full render so table and footer stay in sync.
-      if (nextSummary && _lastSummary && _lastAttributionMethod === getAdsAttributionMethod()) {
+      if (nextSummary && _lastSummary && _lastAttributionModel === getAdsAttributionMethod()) {
         try {
           if (showPageLoader) setLoadingStep(root, 'Analyzing spend');
           didPatch = patchSpendProfitRoas(root, nextSummary);
@@ -2435,7 +2446,7 @@
       } else {
         _lastStatus = nextStatus;
         _lastSummary = nextSummary;
-        _lastAttributionMethod = getAdsAttributionMethod();
+        _lastAttributionModel = getAdsAttributionMethod();
         try { renderAdsOverviewChart(nextSummary); } catch (_) {}
       }
 

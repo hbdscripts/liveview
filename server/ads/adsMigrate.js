@@ -379,6 +379,19 @@ async function runAdsMigrations() {
         await db.exec('CREATE INDEX IF NOT EXISTS idx_gacc_fetched_at ON google_ads_campaign_cache(fetched_at)');
       },
     },
+    {
+      id: '020_ads_orders_attributed_first_last_click',
+      up: async () => {
+        await db.exec(`ALTER TABLE ads_orders_attributed ADD COLUMN IF NOT EXISTS campaign_id_first_click TEXT`);
+        await db.exec(`ALTER TABLE ads_orders_attributed ADD COLUMN IF NOT EXISTS adgroup_id_first_click TEXT`);
+        await db.exec(`ALTER TABLE ads_orders_attributed ADD COLUMN IF NOT EXISTS campaign_id_last_click TEXT`);
+        await db.exec(`ALTER TABLE ads_orders_attributed ADD COLUMN IF NOT EXISTS adgroup_id_last_click TEXT`);
+        await db.exec(`ALTER TABLE ads_orders_attributed ADD COLUMN IF NOT EXISTS attribution_model_first_method TEXT`);
+        await db.exec(`ALTER TABLE ads_orders_attributed ADD COLUMN IF NOT EXISTS attribution_model_last_method TEXT`);
+        await db.exec('CREATE INDEX IF NOT EXISTS idx_aoa_source_campaign_first_created ON ads_orders_attributed(source, campaign_id_first_click, created_at_ms)').catch(() => null);
+        await db.exec('CREATE INDEX IF NOT EXISTS idx_aoa_source_campaign_last_created ON ads_orders_attributed(source, campaign_id_last_click, created_at_ms)').catch(() => null);
+      },
+    },
   ];
 
   let applied = 0;
