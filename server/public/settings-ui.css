@@ -236,6 +236,12 @@ body[data-page="settings"] #settings-panel-cost-expenses .kexo-icon-action-btn {
   gap: 0;
 }
 
+/* Cost & Expenses: accordion header spacing consistency.
+   Use CSS reset to prevent the first header looking taller due to heading margins. */
+body[data-page="settings"] #settings-panel-cost-expenses .settings-layout-accordion .accordion-header {
+  margin: 0;
+}
+
 /* Flatten outer panel card so the only frame is .settings-tab-content-box (tabs "outside" the panel). */
 body[data-page="settings"] .settings-panel > .card {
   border: 0 !important;
