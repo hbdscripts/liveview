@@ -2190,6 +2190,8 @@
     var provisionBtn = document.getElementById('settings-ga-provision-goals-btn');
     var postbackCb = document.getElementById('settings-ga-postback-enabled');
     var issuesRefreshBtn = document.getElementById('settings-ga-issues-refresh-btn');
+    var goalsRefreshBtn = document.getElementById('settings-ga-goals-refresh-btn');
+    var actionsRefreshBtn = document.getElementById('settings-ga-actions-refresh-btn');
 
     var profitSaveBtn = document.getElementById('settings-ga-profit-save-btn');
     var profitMsgEl = document.getElementById('settings-ga-profit-msg');
@@ -2198,7 +2200,7 @@
     var issueModalDismissBtn = document.getElementById('settings-ga-issue-modal-dismiss');
     var issueModalResolveBtn = document.getElementById('settings-ga-issue-modal-resolve');
 
-    if (!signinBtn && !reconnectBtn && !testConnBtn && !disconnectBtn && !provisionBtn && !postbackCb && !issuesRefreshBtn && !profitSaveBtn) return;
+    if (!signinBtn && !reconnectBtn && !testConnBtn && !disconnectBtn && !provisionBtn && !postbackCb && !issuesRefreshBtn && !goalsRefreshBtn && !actionsRefreshBtn && !profitSaveBtn) return;
 
     function setHint(el, text, ok) {
       if (!el) return;
@@ -2261,6 +2263,20 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body || {}),
       }, 35000);
+    }
+
+    function refreshGoogleAds(options) {
+      var o = options && typeof options === 'object' ? options : {};
+      var doGoals = o.goals !== false;
+      var doActions = o.actions !== false;
+      var doHealth = o.health !== false;
+      var doIssues = o.issues !== false;
+      var p = [];
+      if (doGoals) p.push(loadGoalMapping());
+      if (doActions) p.push(loadConversionActions());
+      if (doHealth) p.push(loadPostbackHealth());
+      if (doIssues) p.push(loadIssues());
+      return Promise.all(p);
     }
 
     function safeText(s) {
@@ -2386,7 +2402,7 @@
           }
           var actions = Array.isArray(r.json.actions) ? r.json.actions : [];
           if (!actions.length) {
-            body.innerHTML = '<tr><td colspan="5" class="text-muted small">No conversion actions found. Click “Provision conversion actions”.</td></tr>';
+            body.innerHTML = '<tr><td colspan="5" class="text-muted small">No conversion actions found yet. Click “Create missing defaults”.</td></tr>';
             return true;
           }
           body.innerHTML = actions.map(function (a) {
@@ -2433,7 +2449,7 @@
           var g = goals.find(function (x) { return x && x.goal_type === k; }) || null;
           var currentRn = (g && (g.custom_goal_resource_name || g.conversion_action_resource_name)) ? String(g.custom_goal_resource_name || g.conversion_action_resource_name) : '';
           var currentAction = currentRn ? actions.find(function (a) { return a && String(a.resourceName || '') === currentRn; }) : null;
-          var currentName = currentAction ? (currentAction.name || currentRn) : (currentRn ? currentRn : 'Not provisioned');
+          var currentName = currentAction ? (currentAction.name || currentRn) : (currentRn ? (currentRn + ' (missing/removed)') : 'Not set');
 
           var currentEl = document.getElementById('settings-ga-goal-' + k + '-current-action');
           if (currentEl) currentEl.textContent = currentName;
@@ -2445,6 +2461,10 @@
           }
           var optSel = document.getElementById('settings-ga-optimization-' + k);
           if (optSel) optSel.value = (currentAction && currentAction.primaryForGoal === true) ? 'primary' : 'secondary';
+
+          if (currentRn && !currentAction) {
+            setGoalHint(k, 'This action is missing/removed in Google Ads. Choose another action, or click “Use Kexo default”.', false);
+          }
         });
         return true;
       }).catch(function () {
@@ -2610,7 +2630,7 @@
           if (m && m[1]) ord = m[1];
         }
         if (!ord) ord = '—';
-        var ts = it && (it.last_seen_at || it.created_at) ? fmtTs(it.last_seen_at || it.created_at) : '—';
+        var ts = it && (it.last_seen_at || it.created_at || it.updated_at) ? fmtTs(it.last_seen_at || it.created_at || it.updated_at) : '—';
         var st = it && it.status ? String(it.status) : '—';
         return '<tr>' +
           '<td><span class="text-muted small">' + escapeHtml(typ) + '</span></td>' +
@@ -2745,20 +2765,17 @@
     if (provisionBtn) {
       provisionBtn.addEventListener('click', function () {
         var goals = ['revenue', 'profit', 'add_to_cart', 'begin_checkout'];
-        setHint(connMsgEl, 'Provisioning Kexo conversion actions…', true);
+        setHint(connMsgEl, 'Creating missing defaults…', true);
         var shop = getShopParam();
         apiPost('/api/ads/google/provision-goals', { shop: shop, goals: goals })
           .then(function (r) {
             var ok = !!(r && r.ok && r.json && r.json.ok);
-            setHint(connMsgEl, ok ? 'Provisioned.' : ((r && r.json && r.json.error) ? String(r.json.error) : 'Provision failed.'), ok);
+            setHint(connMsgEl, ok ? 'Defaults created.' : ((r && r.json && r.json.error) ? String(r.json.error) : 'Create defaults failed.'), ok);
             if (ok) {
-              loadConversionActions();
-              loadGoalMapping();
-              loadPostbackHealth();
-              loadIssues();
+              refreshGoogleAds({ goals: true, actions: true, health: true, issues: true });
             }
           })
-          .catch(function () { setHint(connMsgEl, 'Provision failed.', false); });
+          .catch(function () { setHint(connMsgEl, 'Create defaults failed.', false); });
       });
     }
 
@@ -2829,6 +2846,8 @@
     });
 
     if (issuesRefreshBtn) issuesRefreshBtn.addEventListener('click', function () { loadIssues(); });
+    if (goalsRefreshBtn) goalsRefreshBtn.addEventListener('click', function () { refreshGoogleAds({ goals: true, actions: false, health: false, issues: false }); });
+    if (actionsRefreshBtn) actionsRefreshBtn.addEventListener('click', function () { refreshGoogleAds({ goals: false, actions: true, health: false, issues: false }); });
 
     try {
       window.__kexoApplyGoogleAdsProfitDeductions = function (d, v, b) { applyProfitDeductions(d, v != null ? v : 1, b != null ? b : 1); };
@@ -2902,6 +2921,18 @@
         begin_checkout: false,
       };
     }
+    var cartDataSaveBtn = document.getElementById('settings-ga-cart-data-save-btn');
+    var cartDataSaveMsgEl = document.getElementById('settings-ga-cart-data-save-msg');
+    function setCartDataSaveHint(text, ok) {
+      if (!cartDataSaveMsgEl) return;
+      cartDataSaveMsgEl.textContent = text || '';
+      if (ok === true) cartDataSaveMsgEl.className = 'form-hint text-success';
+      else if (ok === false) cartDataSaveMsgEl.className = 'form-hint text-danger';
+      else cartDataSaveMsgEl.className = 'form-hint';
+    }
+    function markCartDataDirty() {
+      setCartDataSaveHint('Unsaved changes.', null);
+    }
     function saveCartDataSettings() {
       var merchantEl = document.getElementById('settings-ga-cart-data-merchant-id');
       var countryEl = document.getElementById('settings-ga-cart-data-feed-country');
@@ -2911,22 +2942,27 @@
         googleAdsCartDataFeedCountry: (countryEl && String(countryEl.value || '').trim()) ? String(countryEl.value).trim().toUpperCase().slice(0, 2) : 'GB',
         googleAdsCartDataFeedLanguage: (langEl && String(langEl.value || '').trim()) ? String(langEl.value).trim().toUpperCase().slice(0, 2) : 'EN',
       };
-      saveSettings(patch).then(function () { setHint(connMsgEl, 'Cart data settings saved.', true); }).catch(function () { setHint(connMsgEl, 'Failed to save.', false); });
+      setCartDataSaveHint('Saving…', null);
+      return saveSettings(patch)
+        .then(function () { setCartDataSaveHint('Saved.', true); })
+        .catch(function () { setCartDataSaveHint('Save failed.', false); });
     }
-    function saveCartDataGoals() {
+    function saveCartDataGoals(changedGoal) {
       var draft = readCartDataGoalsDraft();
+      if (changedGoal) setGoalHint(changedGoal, 'Saving…');
       saveSettings({ googleAdsCartDataGoals: draft })
-        .then(function () { setHint(connMsgEl, 'Cart data goals saved.', true); })
-        .catch(function () { setHint(connMsgEl, 'Failed to save.', false); });
+        .then(function () { if (changedGoal) setGoalHint(changedGoal, 'Saved.', true); })
+        .catch(function () { if (changedGoal) setGoalHint(changedGoal, 'Save failed.', false); });
     }
     ['settings-ga-cart-data-merchant-id', 'settings-ga-cart-data-feed-country', 'settings-ga-cart-data-feed-language'].forEach(function (id) {
       var el = document.getElementById(id);
-      if (el) el.addEventListener('change', saveCartDataSettings);
+      if (el) el.addEventListener('input', markCartDataDirty);
     });
-    ['settings-ga-cart-data-revenue', 'settings-ga-cart-data-profit'].forEach(function (id) {
-      var el = document.getElementById(id);
-      if (el) el.addEventListener('change', saveCartDataGoals);
-    });
+    if (cartDataSaveBtn) cartDataSaveBtn.addEventListener('click', function () { saveCartDataSettings(); });
+    var cartRevEl = document.getElementById('settings-ga-cart-data-revenue');
+    if (cartRevEl) cartRevEl.addEventListener('change', function () { saveCartDataGoals('revenue'); });
+    var cartProfitEl = document.getElementById('settings-ga-cart-data-profit');
+    if (cartProfitEl) cartProfitEl.addEventListener('change', function () { saveCartDataGoals('profit'); });
     ['revenue', 'profit', 'add_to_cart', 'begin_checkout'].forEach(function (goalType) {
       var optSel = document.getElementById('settings-ga-optimization-' + goalType);
       var actionSel = document.getElementById('settings-ga-goal-' + goalType + '-action-select');
@@ -3012,7 +3048,11 @@
           apiPost('/api/ads/google/create-and-attach-goal', { shop: shop, goal_type: goalType, action_name: actionName })
             .then(function (r) {
               var ok = !!(r && r.ok && r.json && r.json.ok);
-              setGoalHint(goalType, ok ? 'Created and attached.' : ((r && r.json && r.json.error) ? String(r.json.error) : 'Create failed.'), ok);
+              var errText = (r && r.json && r.json.error) ? String(r.json.error) : 'Create failed.';
+              if (!ok && /DUPLICATE_NAME/i.test(errText)) {
+                errText = 'That name already exists in Google Ads. Choose a unique name (e.g. add “(2)”).';
+              }
+              setGoalHint(goalType, ok ? 'Created and attached.' : errText, ok);
               if (ok) { if (input) input.value = ''; loadGoalMapping(); loadConversionActions(); loadPostbackHealth(); }
             })
             .catch(function () { setGoalHint(goalType, 'Create failed.', false); });

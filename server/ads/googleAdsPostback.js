@@ -577,22 +577,48 @@ async function enqueueBeginCheckoutEvents(shop, options = {}) {
 async function recordIssue(adsDb, shop, payload) {
   const now = Date.now();
   try {
+    const source = payload.source || 'postback';
+    const severity = payload.severity || 'error';
+    const affectedGoal = payload.affected_goal || null;
+    const errorCode = payload.error_code || null;
+    const errorMessage = payload.error_message || null;
+    const suggestedFix = payload.suggested_fix || null;
+    const firstSeenAt = payload.first_seen_at || now;
+    const lastSeenAt = payload.last_seen_at || now;
+
+    // Reduce spam: if an identical open issue already exists, bump last_seen_at/updated_at instead of inserting.
+    const existing = await adsDb.get(
+      `SELECT id, first_seen_at
+       FROM google_ads_issues
+       WHERE shop = ?
+         AND status = 'open'
+         AND COALESCE(error_code, '') = COALESCE(?, '')
+         AND COALESCE(affected_goal, '') = COALESCE(?, '')
+         AND COALESCE(error_message, '') = COALESCE(?, '')
+       LIMIT 1`,
+      [shop, errorCode, affectedGoal, errorMessage]
+    );
+    if (existing && existing.id != null) {
+      const persistedFirst = existing.first_seen_at != null ? Number(existing.first_seen_at) : null;
+      const nextFirst = Number.isFinite(persistedFirst) ? Math.min(persistedFirst, firstSeenAt) : firstSeenAt;
+      await adsDb.run(
+        `UPDATE google_ads_issues
+         SET source = ?,
+             severity = ?,
+             suggested_fix = COALESCE(?, suggested_fix),
+             first_seen_at = ?,
+             last_seen_at = ?,
+             updated_at = ?
+         WHERE id = ?`,
+        [source, severity, suggestedFix, nextFirst, lastSeenAt, now, existing.id]
+      );
+      return;
+    }
+
     await adsDb.run(
       `INSERT INTO google_ads_issues (shop, source, severity, status, affected_goal, error_code, error_message, suggested_fix, first_seen_at, last_seen_at, created_at, updated_at)
        VALUES (?, ?, ?, 'open', ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        shop,
-        payload.source || 'postback',
-        payload.severity || 'error',
-        payload.affected_goal || null,
-        payload.error_code || null,
-        payload.error_message || null,
-        payload.suggested_fix || null,
-        payload.first_seen_at || now,
-        payload.last_seen_at || now,
-        now,
-        now,
-      ]
+      [shop, source, severity, affectedGoal, errorCode, errorMessage, suggestedFix, firstSeenAt, lastSeenAt, now, now]
     );
   } catch (_) {}
 }
