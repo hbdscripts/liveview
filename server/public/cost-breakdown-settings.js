@@ -244,7 +244,12 @@
       var amount = formatAmount(it.amount, it.currency || currency);
       var amountText = esc(amount);
       var amountHtml = isDetail
-        ? ('<span class="settings-cost-breakdown-child-amount"><i class="fa-thin fa-arrow-turn-down-right" aria-hidden="true"></i>' + amountText + '</span>')
+        ? (
+          '<span class="settings-cost-breakdown-child-amount">' +
+            '<i class="fa-thin fa-arrow-turn-down-right" aria-hidden="true"></i>' +
+            '<span class="settings-cost-breakdown-child-amount-text">' + amountText + '</span>' +
+          '</span>'
+        )
         : amountText;
       var notes = it.notes != null ? String(it.notes) : '';
       var rowCls = active ? '' : 'text-muted opacity-75';

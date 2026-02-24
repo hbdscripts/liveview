@@ -72,9 +72,17 @@ body[data-page="settings"] #settings-cost-expenses-panel-breakdown .settings-cos
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
 }
 body[data-page="settings"] #settings-cost-expenses-panel-breakdown .settings-cost-breakdown-child-amount i {
   opacity: 0.7;
+}
+body[data-page="settings"] #settings-cost-expenses-panel-breakdown .settings-cost-breakdown-child-amount-text {
+  display: inline-block;
+  width: 14ch;
+  text-align: right;
+  white-space: nowrap;
 }
 
 /* Cost Breakdown: make parent rows slightly bolder than child rows. */
