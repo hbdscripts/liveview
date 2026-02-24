@@ -6107,8 +6107,8 @@ img[data-kexo-logo-slot="footer"][data-kexo-logo-ready="1"] {
   border-left: 5px solid var(--kexo-accent, var(--kexo-accent-1, #4b94e4));
 }
 .kexo-settings-menu-panel .kexo-settings-menu-panel-nav .settings-nav-category > a:first-of-type:hover {
-  background: rgba(75, 148, 228, 0.2);
-  background: color-mix(in srgb, var(--kexo-accent, var(--kexo-accent-1, #4b94e4)) 20%, transparent);
+  background: rgba(var(--kexo-accent-1-rgb, 75, 148, 228), 0.1);
+  background: color-mix(in srgb, var(--kexo-accent, var(--kexo-accent-1, #4b94e4)) 10%, transparent);
   color: var(--kexo-header-settings-menu-link-color, var(--tblr-body-color, #1f2937));
   border-radius: 0;
 }
@@ -6129,8 +6129,8 @@ img[data-kexo-logo-slot="footer"][data-kexo-logo-ready="1"] {
 }
 .kexo-settings-menu-panel .kexo-settings-menu-panel-nav .settings-nav-children .list-group-item:hover,
 .kexo-settings-menu-panel .kexo-settings-menu-panel-nav .settings-nav-children .list-group-item-action:hover {
-  background: rgba(75, 148, 228, 0.2);
-  background: color-mix(in srgb, var(--kexo-accent, var(--kexo-accent-1, #4b94e4)) 20%, transparent);
+  background: rgba(var(--kexo-accent-1-rgb, 75, 148, 228), 0.1);
+  background: color-mix(in srgb, var(--kexo-accent, var(--kexo-accent-1, #4b94e4)) 10%, transparent);
   color: var(--kexo-header-settings-menu-link-color, var(--tblr-body-color, #1f2937));
   border-radius: 0;
 }

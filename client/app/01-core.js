@@ -440,6 +440,87 @@ const API = '';
       if (!template || !template.content || !panelHost) return;
       var fragment = template.content.cloneNode(true);
       stripIds(fragment);
+      function setCategoryExpanded(cat, expand, immediate, categories) {
+        if (!cat || !cat.classList) return;
+        var children = cat.querySelector ? cat.querySelector('.settings-nav-children') : null;
+        if (!children) {
+          if (expand) cat.classList.add('kexo-mini-menu-expanded');
+          else cat.classList.remove('kexo-mini-menu-expanded');
+          return;
+        }
+        try {
+          if (children._kexoMiniAnimHandler) {
+            children.removeEventListener('transitionend', children._kexoMiniAnimHandler);
+            children._kexoMiniAnimHandler = null;
+          }
+        } catch (_) {}
+
+        function cleanupStyles() {
+          try { children.style.willChange = ''; } catch (_) {}
+          try { children.style.transition = ''; } catch (_) {}
+          try { children.style.overflow = ''; } catch (_) {}
+          try { children.style.height = ''; } catch (_) {}
+          try { children.style.opacity = ''; } catch (_) {}
+        }
+
+        if (immediate) {
+          if (expand) {
+            cat.classList.add('kexo-mini-menu-expanded');
+            try { children.style.display = 'block'; } catch (_) {}
+            cleanupStyles();
+          } else {
+            cat.classList.remove('kexo-mini-menu-expanded');
+            try { children.style.display = 'none'; } catch (_) {}
+            cleanupStyles();
+          }
+          return;
+        }
+
+        try { children.style.willChange = 'height, opacity'; } catch (_) {}
+        try { children.style.transition = 'height 220ms ease, opacity 180ms ease'; } catch (_) {}
+        try { children.style.overflow = 'hidden'; } catch (_) {}
+
+        if (expand) {
+          cat.classList.add('kexo-mini-menu-expanded');
+          try { children.style.display = 'block'; } catch (_) {}
+          try { children.style.height = '0px'; } catch (_) {}
+          try { children.style.opacity = '0'; } catch (_) {}
+          try { children.offsetHeight; } catch (_) {}
+          var targetH = 0;
+          try { targetH = children.scrollHeight || 0; } catch (_) { targetH = 0; }
+          try { children.style.height = String(targetH) + 'px'; } catch (_) {}
+          try { children.style.opacity = '1'; } catch (_) {}
+          var onEndExpand = function (e) {
+            if (e && e.propertyName && e.propertyName !== 'height') return;
+            cleanupStyles();
+            try { children.removeEventListener('transitionend', onEndExpand); } catch (_) {}
+            try { children._kexoMiniAnimHandler = null; } catch (_) {}
+          };
+          children._kexoMiniAnimHandler = onEndExpand;
+          children.addEventListener('transitionend', onEndExpand);
+        } else {
+          // Keep expanded class during collapse so CSS doesn't snap to display:none.
+          cat.classList.add('kexo-mini-menu-expanded');
+          try { children.style.display = 'block'; } catch (_) {}
+          var startH = 0;
+          try { startH = children.scrollHeight || 0; } catch (_) { startH = 0; }
+          try { children.style.height = String(startH) + 'px'; } catch (_) {}
+          try { children.style.opacity = '1'; } catch (_) {}
+          try { children.offsetHeight; } catch (_) {}
+          try { children.style.height = '0px'; } catch (_) {}
+          try { children.style.opacity = '0'; } catch (_) {}
+          var onEndCollapse = function (e) {
+            if (e && e.propertyName && e.propertyName !== 'height') return;
+            try { cat.classList.remove('kexo-mini-menu-expanded'); } catch (_) {}
+            try { children.style.display = 'none'; } catch (_) {}
+            cleanupStyles();
+            try { children.removeEventListener('transitionend', onEndCollapse); } catch (_) {}
+            try { children._kexoMiniAnimHandler = null; } catch (_) {}
+          };
+          children._kexoMiniAnimHandler = onEndCollapse;
+          children.addEventListener('transitionend', onEndCollapse);
+        }
+      }
       function addToggleListeners(root) {
         if (!root || !root.querySelectorAll) return;
         var categories = root.querySelectorAll('.settings-nav-category');
@@ -449,17 +530,15 @@ const API = '';
           headerLink.addEventListener('click', function (e) {
             e.preventDefault();
             var isExpanded = !!(cat.classList && cat.classList.contains('kexo-mini-menu-expanded'));
+            // Accordion: collapse others (smooth).
             try {
               categories.forEach(function (other) {
                 if (!other || !other.classList) return;
                 if (other === cat) return;
-                other.classList.remove('kexo-mini-menu-expanded');
+                if (other.classList.contains('kexo-mini-menu-expanded')) setCategoryExpanded(other, false, false, categories);
               });
             } catch (_) {}
-            if (cat.classList) {
-              if (isExpanded) cat.classList.remove('kexo-mini-menu-expanded');
-              else cat.classList.add('kexo-mini-menu-expanded');
-            }
+            setCategoryExpanded(cat, !isExpanded, false, categories);
           });
         });
       }
@@ -472,9 +551,9 @@ const API = '';
         if (kexoCat && kexoCat.classList) {
           try {
             var cats = panelHost.querySelectorAll ? panelHost.querySelectorAll('.settings-nav-category') : [];
-            if (cats && cats.length) cats.forEach(function (c) { if (c && c.classList) c.classList.remove('kexo-mini-menu-expanded'); });
+            if (cats && cats.length) cats.forEach(function (c) { if (c && c.classList) setCategoryExpanded(c, false, true, cats); });
           } catch (_) {}
-          kexoCat.classList.add('kexo-mini-menu-expanded');
+          setCategoryExpanded(kexoCat, true, true, null);
         }
       } catch (_) {}
       _miniMenuBuilt = true;
