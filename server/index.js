@@ -376,6 +376,8 @@ app.use(express.static(path.join(__dirname, 'public'), {
         'theme-settings.js',
         'settings-page.js',
         'admin-page.js',
+        'attribution-mapping-settings.js',
+        'attribution-tree-settings.js',
         'custom.css',
       ]);
       if (noStore.has(base)) {
