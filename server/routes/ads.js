@@ -11,6 +11,10 @@ const { setGoogleAdsConfig } = require('../ads/adsStore');
 const { provisionGoals, getConversionGoals, listUploadClickConversionActions, attachGoalToConversionAction, clearGoalAttachment, createAndAttachGoalConversionAction } = require('../ads/googleAdsGoals');
 const { fetchDiagnostics, getCachedDiagnostics } = require('../ads/googleAdsDiagnostics');
 const googleAdsClient = require('../ads/googleAdsClient');
+
+async function setActionOptimization(shop, resourceName, primaryForGoal) {
+  return googleAdsClient.setConversionActionPrimaryForGoal(shop, resourceName, primaryForGoal);
+}
 const { getAdsDb } = require('../ads/adsDb');
 
 const router = express.Router();
@@ -248,6 +252,25 @@ router.get('/google/conversion-actions', async (req, res) => {
     Sentry.captureException(err, { extra: { route: 'ads.google.conversion-actions' } });
     console.error('[ads.google.conversion-actions]', err);
     res.status(500).json({ ok: false, error: 'Internal error', actions: [] });
+  }
+});
+
+router.post('/google/set-action-optimization', async (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  try {
+    const shop = (req.body && req.body.shop != null ? String(req.body.shop).trim() : '') || salesTruth.resolveShopForSales('');
+    const resourceName = req.body && req.body.resource_name != null ? String(req.body.resource_name).trim() : '';
+    const primaryForGoal = req.body && req.body.primary_for_goal === true;
+    const out = await setActionOptimization(shop, resourceName, primaryForGoal);
+    if (!out.ok) {
+      res.status(400).json({ ok: false, error: out.error || 'set-action-optimization failed' });
+      return;
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    Sentry.captureException(err, { extra: { route: 'ads.google.set-action-optimization' } });
+    console.error('[ads.google.set-action-optimization]', err);
+    res.status(500).json({ ok: false, error: 'Internal error' });
   }
 });
 

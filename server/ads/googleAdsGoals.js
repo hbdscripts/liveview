@@ -13,11 +13,11 @@ const GOAL_CATEGORIES = { revenue: 'PURCHASE', profit: 'PURCHASE', add_to_cart: 
 /**
  * List existing UPLOAD_CLICKS conversion actions for the customer.
  * @param {string} [shop]
- * @returns {Promise<{ ok: boolean, actions?: Array<{ id, resourceName, name }>, error?: string }>}
+ * @returns {Promise<{ ok: boolean, actions?: Array<{ id, resourceName, name, primaryForGoal?, status?, category? }>, error?: string }>}
  */
 async function listUploadClickConversionActions(shop) {
   const query =
-    "SELECT conversion_action.id, conversion_action.resource_name, conversion_action.name " +
+    "SELECT conversion_action.id, conversion_action.resource_name, conversion_action.name, conversion_action.primary_for_goal, conversion_action.status, conversion_action.category " +
     "FROM conversion_action WHERE conversion_action.type = 'UPLOAD_CLICKS'";
   const out = await googleAdsClient.search(shop, query);
   if (!out || !out.ok) {
@@ -29,6 +29,9 @@ async function listUploadClickConversionActions(shop) {
       id: ca.id != null ? Number(ca.id) : null,
       resourceName: ca.resourceName != null ? String(ca.resourceName) : '',
       name: (ca.name != null ? String(ca.name) : '').trim(),
+      primaryForGoal: ca.primaryForGoal === true,
+      status: ca.status != null ? String(ca.status) : null,
+      category: ca.category != null ? String(ca.category) : null,
     };
   });
   return { ok: true, actions };
@@ -68,6 +71,9 @@ async function ensureConversionAction(shop, goalType) {
   const id = result && result.resourceName
     ? (result.resourceName.match(/\/(\d+)$/) && Number(RegExp.$1)) || null
     : null;
+  if (resourceName) {
+    await googleAdsClient.setConversionActionPrimaryForGoal(shop, resourceName, false);
+  }
   return { ok: true, resourceName: resourceName || '', id };
 }
 
@@ -230,6 +236,7 @@ async function createAndAttachGoalConversionAction(shop, goalType, actionName) {
   const resourceName = result && result.resourceName ? String(result.resourceName) : null;
   const id = resourceName && resourceName.match(/\/(\d+)$/) ? Number(RegExp.$1) : null;
   if (!resourceName) return { ok: false, error: 'create returned no resource_name' };
+  await googleAdsClient.setConversionActionPrimaryForGoal(normShop, resourceName, false);
   return attachGoalToConversionAction(normShop, g, resourceName, id);
 }
 

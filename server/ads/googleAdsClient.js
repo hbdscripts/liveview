@@ -76,8 +76,9 @@ async function search(shop, query, options = {}) {
 /**
  * Call Google Ads REST mutate for conversion actions.
  * POST .../v{N}/customers/{customer_id}/conversionActions:mutate
+ * Operations may be { create: object } or { updateMask: string, update: object }.
  * @param {string} [shop]
- * @param {Array<{ create: object }>} operations
+ * @param {Array<{ create?: object, updateMask?: string, update?: object }>} operations
  * @returns {Promise<{ ok: boolean, results?: object[], error?: string }>}
  */
 async function mutateConversionActions(shop, operations) {
@@ -120,9 +121,35 @@ async function mutateConversionActions(shop, operations) {
   return { ok: false, error: 'conversionActions:mutate not available for any API version' };
 }
 
+/**
+ * Set primary_for_goal on a conversion action (optimization: Primary vs Secondary).
+ * @param {string} [shop]
+ * @param {string} resourceName - e.g. customers/123/conversionActions/456
+ * @param {boolean} primaryForGoal
+ * @returns {Promise<{ ok: boolean, error?: string }>}
+ */
+async function setConversionActionPrimaryForGoal(shop, resourceName, primaryForGoal) {
+  if (!resourceName || typeof resourceName !== 'string' || !resourceName.trim()) {
+    return { ok: false, error: 'resource_name required' };
+  }
+  const operations = [
+    {
+      updateMask: 'primary_for_goal',
+      update: {
+        resourceName: String(resourceName).trim(),
+        primaryForGoal: Boolean(primaryForGoal),
+      },
+    },
+  ];
+  const out = await mutateConversionActions(shop, operations);
+  if (!out.ok) return { ok: false, error: out.error };
+  return { ok: true };
+}
+
 module.exports = {
   getCredentials,
   search,
   mutateConversionActions,
+  setConversionActionPrimaryForGoal,
   redactError,
 };

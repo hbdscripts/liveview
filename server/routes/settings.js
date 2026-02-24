@@ -62,6 +62,10 @@ const GOOGLE_ADS_PROFIT_DEDUCTIONS_V1_KEY = 'google_ads_profit_deductions_v1';
 const GOOGLE_ADS_ADD_TO_CART_VALUE_KEY = 'google_ads_add_to_cart_value';
 const GOOGLE_ADS_BEGIN_CHECKOUT_VALUE_KEY = 'google_ads_begin_checkout_value';
 const GOOGLE_ADS_POSTBACK_GOALS_KEY = 'google_ads_postback_goals';
+const GOOGLE_ADS_CART_DATA_MERCHANT_ID_KEY = 'google_ads_cart_data_merchant_id';
+const GOOGLE_ADS_CART_DATA_FEED_COUNTRY_KEY = 'google_ads_cart_data_feed_country';
+const GOOGLE_ADS_CART_DATA_FEED_LANGUAGE_KEY = 'google_ads_cart_data_feed_language';
+const GOOGLE_ADS_CART_DATA_GOALS_KEY = 'google_ads_cart_data_goals';
 
 function defaultGoogleAdsProfitDeductionsV1() {
   return {
@@ -120,6 +124,30 @@ function normalizeGoogleAdsPostbackGoals(raw) {
   return out;
 }
 
+function defaultGoogleAdsCartDataGoals() {
+  return { revenue: false, profit: false, add_to_cart: false, begin_checkout: false };
+}
+
+function normalizeGoogleAdsCartDataGoals(raw) {
+  const parsed = (() => {
+    if (raw && typeof raw === 'object') return raw;
+    if (!raw || typeof raw !== 'string') return null;
+    try {
+      const obj = JSON.parse(raw);
+      return obj && typeof obj === 'object' ? obj : null;
+    } catch (_) {
+      return null;
+    }
+  })();
+  const out = defaultGoogleAdsCartDataGoals();
+  if (!parsed) return out;
+  out.revenue = parsed.revenue === true;
+  out.profit = parsed.profit === true;
+  out.add_to_cart = parsed.add_to_cart === true;
+  out.begin_checkout = parsed.begin_checkout === true;
+  return out;
+}
+
 const PIXEL_SESSION_MODE_KEY = 'pixel_session_mode'; // legacy | shared_ttl
 const ASSET_OVERRIDES_KEY = 'asset_overrides'; // JSON object
 const KPI_UI_CONFIG_V1_KEY = 'kpi_ui_config_v1'; // JSON object (KPIs + date ranges + options)
@@ -167,6 +195,10 @@ const SETTINGS_FIELD_PERMISSION = Object.freeze({
   googleAdsBeginCheckoutValue: 'admin.only.google_ads_settings',
   googleAdsPostbackGoals: 'admin.only.google_ads_settings',
   googleAdsPostbackEnabled: 'admin.only.google_ads_settings',
+  googleAdsCartDataMerchantId: 'admin.only.google_ads_settings',
+  googleAdsCartDataFeedCountry: 'admin.only.google_ads_settings',
+  googleAdsCartDataFeedLanguage: 'admin.only.google_ads_settings',
+  googleAdsCartDataGoals: 'admin.only.google_ads_settings',
 });
 
 const OVERVIEW_WIDGET_KEYS = ['finishes', 'devices', 'browsers', 'abandoned', 'attribution', 'payment_methods'];
@@ -1692,6 +1724,10 @@ async function readSettingsPayload(req) {
   let googleAdsAddToCartValue = 1;
   let googleAdsBeginCheckoutValue = 1;
   let googleAdsPostbackGoals = defaultGoogleAdsPostbackGoals();
+  let googleAdsCartDataMerchantId = '';
+  let googleAdsCartDataFeedCountry = 'GB';
+  let googleAdsCartDataFeedLanguage = 'EN';
+  let googleAdsCartDataGoals = defaultGoogleAdsCartDataGoals();
   let insightsVariantsConfig = defaultVariantsConfigV1();
   let settingsScopeMode = 'global';
   let pageLoaderEnabled = defaultPageLoaderEnabledV1();
@@ -1716,6 +1752,10 @@ async function readSettingsPayload(req) {
       GOOGLE_ADS_ADD_TO_CART_VALUE_KEY,
       GOOGLE_ADS_BEGIN_CHECKOUT_VALUE_KEY,
       GOOGLE_ADS_POSTBACK_GOALS_KEY,
+      GOOGLE_ADS_CART_DATA_MERCHANT_ID_KEY,
+      GOOGLE_ADS_CART_DATA_FEED_COUNTRY_KEY,
+      GOOGLE_ADS_CART_DATA_FEED_LANGUAGE_KEY,
+      GOOGLE_ADS_CART_DATA_GOALS_KEY,
       VARIANTS_CONFIG_KEY,
       GOOGLE_ADS_POSTBACK_ENABLED_KEY,
     ]);
@@ -1813,6 +1853,22 @@ async function readSettingsPayload(req) {
     googleAdsPostbackGoals = normalizeGoogleAdsPostbackGoals(raw);
   } catch (_) {}
   try {
+    const raw = rawMap[GOOGLE_ADS_CART_DATA_MERCHANT_ID_KEY];
+    if (raw != null && String(raw).trim() !== '') googleAdsCartDataMerchantId = String(raw).trim().slice(0, 64);
+  } catch (_) {}
+  try {
+    const raw = rawMap[GOOGLE_ADS_CART_DATA_FEED_COUNTRY_KEY];
+    if (raw != null && String(raw).trim() !== '') googleAdsCartDataFeedCountry = String(raw).trim().toUpperCase().slice(0, 2) || 'GB';
+  } catch (_) {}
+  try {
+    const raw = rawMap[GOOGLE_ADS_CART_DATA_FEED_LANGUAGE_KEY];
+    if (raw != null && String(raw).trim() !== '') googleAdsCartDataFeedLanguage = String(raw).trim().toUpperCase().slice(0, 2) || 'EN';
+  } catch (_) {}
+  try {
+    const raw = rawMap[GOOGLE_ADS_CART_DATA_GOALS_KEY];
+    googleAdsCartDataGoals = normalizeGoogleAdsCartDataGoals(raw);
+  } catch (_) {}
+  try {
     const raw = rawMap[VARIANTS_CONFIG_KEY];
     insightsVariantsConfig = normalizeVariantsConfigV1(raw);
   } catch (_) {}
@@ -1849,6 +1905,10 @@ async function readSettingsPayload(req) {
     googleAdsAddToCartValue,
     googleAdsBeginCheckoutValue,
     googleAdsPostbackGoals,
+    googleAdsCartDataMerchantId,
+    googleAdsCartDataFeedCountry,
+    googleAdsCartDataFeedLanguage,
+    googleAdsCartDataGoals,
     insightsVariantsConfig,
     pageLoaderEnabled,
     googleAdsPostbackEnabled,
@@ -2112,6 +2172,56 @@ async function postSettings(req, res) {
       }
     } catch (err) {
       return res.status(500).json({ ok: false, error: err && err.message ? String(err.message) : 'Failed to save Google Ads postback goals' });
+    }
+  }
+
+  // Google Ads cart data – merchant id (optional)
+  if (Object.prototype.hasOwnProperty.call(body, 'googleAdsCartDataMerchantId')) {
+    if (!(await assertCanWriteSettingsField(req, 'googleAdsCartDataMerchantId', res))) return;
+    try {
+      const v = body.googleAdsCartDataMerchantId != null ? String(body.googleAdsCartDataMerchantId).trim().slice(0, 64) : '';
+      await store.setSetting(GOOGLE_ADS_CART_DATA_MERCHANT_ID_KEY, v);
+    } catch (err) {
+      return res.status(500).json({ ok: false, error: err && err.message ? String(err.message) : 'Failed to save Google Ads cart data merchant ID' });
+    }
+  }
+
+  // Google Ads cart data – feed country (default GB)
+  if (Object.prototype.hasOwnProperty.call(body, 'googleAdsCartDataFeedCountry')) {
+    if (!(await assertCanWriteSettingsField(req, 'googleAdsCartDataFeedCountry', res))) return;
+    try {
+      const v = body.googleAdsCartDataFeedCountry != null ? String(body.googleAdsCartDataFeedCountry).trim().toUpperCase().slice(0, 2) : 'GB';
+      await store.setSetting(GOOGLE_ADS_CART_DATA_FEED_COUNTRY_KEY, v || 'GB');
+    } catch (err) {
+      return res.status(500).json({ ok: false, error: err && err.message ? String(err.message) : 'Failed to save Google Ads cart data feed country' });
+    }
+  }
+
+  // Google Ads cart data – feed language (default EN)
+  if (Object.prototype.hasOwnProperty.call(body, 'googleAdsCartDataFeedLanguage')) {
+    if (!(await assertCanWriteSettingsField(req, 'googleAdsCartDataFeedLanguage', res))) return;
+    try {
+      const v = body.googleAdsCartDataFeedLanguage != null ? String(body.googleAdsCartDataFeedLanguage).trim().toUpperCase().slice(0, 2) : 'EN';
+      await store.setSetting(GOOGLE_ADS_CART_DATA_FEED_LANGUAGE_KEY, v || 'EN');
+    } catch (err) {
+      return res.status(500).json({ ok: false, error: err && err.message ? String(err.message) : 'Failed to save Google Ads cart data feed language' });
+    }
+  }
+
+  // Google Ads cart data – per-goal include cart data toggles
+  if (Object.prototype.hasOwnProperty.call(body, 'googleAdsCartDataGoals')) {
+    if (!(await assertCanWriteSettingsField(req, 'googleAdsCartDataGoals', res))) return;
+    try {
+      if (body.googleAdsCartDataGoals == null) {
+        await store.setSetting(GOOGLE_ADS_CART_DATA_GOALS_KEY, '');
+      } else {
+        const normalized = normalizeGoogleAdsCartDataGoals(body.googleAdsCartDataGoals);
+        const json = JSON.stringify(normalized);
+        if (json.length > 500) throw new Error('Google Ads cart data goals too large');
+        await store.setSetting(GOOGLE_ADS_CART_DATA_GOALS_KEY, json);
+      }
+    } catch (err) {
+      return res.status(500).json({ ok: false, error: err && err.message ? String(err.message) : 'Failed to save Google Ads cart data goals' });
     }
   }
 
@@ -3050,5 +3160,7 @@ module.exports = {
   getThemeVarsCss,
   THEME_KEYS,
   THEME_ICON_GLYPH_KEYS,
+  normalizeGoogleAdsCartDataGoals,
+  defaultGoogleAdsCartDataGoals,
 };
 

@@ -2269,6 +2269,23 @@
       setChk('settings-ga-upload-begincheckout', g.uploadBeginCheckout === true);
     }
 
+    function applyCartDataSettings(settings) {
+      if (!settings || typeof settings !== 'object') return;
+      var merchantEl = document.getElementById('settings-ga-cart-data-merchant-id');
+      var countryEl = document.getElementById('settings-ga-cart-data-feed-country');
+      var langEl = document.getElementById('settings-ga-cart-data-feed-language');
+      if (merchantEl) merchantEl.value = (settings.googleAdsCartDataMerchantId != null) ? String(settings.googleAdsCartDataMerchantId).trim() : '';
+      if (countryEl) countryEl.value = (settings.googleAdsCartDataFeedCountry != null) ? String(settings.googleAdsCartDataFeedCountry).trim().toUpperCase().slice(0, 2) : 'GB';
+      if (langEl) langEl.value = (settings.googleAdsCartDataFeedLanguage != null) ? String(settings.googleAdsCartDataFeedLanguage).trim().toUpperCase().slice(0, 2) : 'EN';
+      var goals = settings.googleAdsCartDataGoals && typeof settings.googleAdsCartDataGoals === 'object' ? settings.googleAdsCartDataGoals : {};
+      function setChk(id, val) {
+        var el = document.getElementById(id);
+        if (el) el.checked = !!val;
+      }
+      setChk('settings-ga-cart-data-revenue', goals.revenue === true);
+      setChk('settings-ga-cart-data-profit', goals.profit === true);
+    }
+
     function readPostbackGoalsDraft() {
       return {
         uploadRevenue: !!document.getElementById('settings-ga-upload-revenue') && document.getElementById('settings-ga-upload-revenue').checked,
@@ -2338,7 +2355,8 @@
         goalTypes.forEach(function (k) {
           var g = goals.find(function (x) { return x && x.goal_type === k; }) || null;
           var currentRn = (g && (g.custom_goal_resource_name || g.conversion_action_resource_name)) ? String(g.custom_goal_resource_name || g.conversion_action_resource_name) : '';
-          var currentName = currentRn ? (actions.find(function (a) { return a && String(a.resourceName || '') === currentRn; }) || {}).name || currentRn : 'Not provisioned';
+          var currentAction = currentRn ? actions.find(function (a) { return a && String(a.resourceName || '') === currentRn; }) : null;
+          var currentName = currentAction ? (currentAction.name || currentRn) : (currentRn ? currentRn : 'Not provisioned');
 
           var currentEl = document.getElementById('settings-ga-goal-' + k + '-current-action');
           if (currentEl) currentEl.textContent = currentName;
@@ -2348,6 +2366,8 @@
             sel.innerHTML = optionsHtml;
             if (currentRn) sel.value = currentRn;
           }
+          var optSel = document.getElementById('settings-ga-optimization-' + k);
+          if (optSel) optSel.value = (currentAction && currentAction.primaryForGoal === true) ? 'primary' : 'secondary';
         });
         return true;
       }).catch(function () {
@@ -2743,6 +2763,7 @@
       else applyProfitDeductions(null, 1, 1);
       if (payload && payload.googleAdsPostbackGoals) applyPostbackGoals(payload.googleAdsPostbackGoals);
       else applyPostbackGoals(null);
+      if (payload) applyCartDataSettings(payload);
     } catch (_) {
       applyProfitDeductions(null, 1, 1);
       applyPostbackGoals(null);
@@ -2795,6 +2816,64 @@
           .catch(function () { setGoalHint('begin_checkout', 'Save failed.', false); });
       });
     }
+
+    function readCartDataGoalsDraft() {
+      return {
+        revenue: !!(document.getElementById('settings-ga-cart-data-revenue') && document.getElementById('settings-ga-cart-data-revenue').checked),
+        profit: !!(document.getElementById('settings-ga-cart-data-profit') && document.getElementById('settings-ga-cart-data-profit').checked),
+        add_to_cart: false,
+        begin_checkout: false,
+      };
+    }
+    function saveCartDataSettings() {
+      var merchantEl = document.getElementById('settings-ga-cart-data-merchant-id');
+      var countryEl = document.getElementById('settings-ga-cart-data-feed-country');
+      var langEl = document.getElementById('settings-ga-cart-data-feed-language');
+      var patch = {
+        googleAdsCartDataMerchantId: merchantEl ? String(merchantEl.value || '').trim().slice(0, 64) : '',
+        googleAdsCartDataFeedCountry: (countryEl && String(countryEl.value || '').trim()) ? String(countryEl.value).trim().toUpperCase().slice(0, 2) : 'GB',
+        googleAdsCartDataFeedLanguage: (langEl && String(langEl.value || '').trim()) ? String(langEl.value).trim().toUpperCase().slice(0, 2) : 'EN',
+      };
+      saveSettings(patch).then(function () { setHint(connMsgEl, 'Cart data settings saved.', true); }).catch(function () { setHint(connMsgEl, 'Failed to save.', false); });
+    }
+    function saveCartDataGoals() {
+      var draft = readCartDataGoalsDraft();
+      saveSettings({ googleAdsCartDataGoals: draft })
+        .then(function () { setHint(connMsgEl, 'Cart data goals saved.', true); })
+        .catch(function () { setHint(connMsgEl, 'Failed to save.', false); });
+    }
+    ['settings-ga-cart-data-merchant-id', 'settings-ga-cart-data-feed-country', 'settings-ga-cart-data-feed-language'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) el.addEventListener('change', saveCartDataSettings);
+    });
+    ['settings-ga-cart-data-revenue', 'settings-ga-cart-data-profit'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) el.addEventListener('change', saveCartDataGoals);
+    });
+    ['revenue', 'profit', 'add_to_cart', 'begin_checkout'].forEach(function (goalType) {
+      var optSel = document.getElementById('settings-ga-optimization-' + goalType);
+      var actionSel = document.getElementById('settings-ga-goal-' + goalType + '-action-select');
+      if (!optSel || !actionSel) return;
+      optSel.addEventListener('change', function () {
+        var resourceName = (actionSel.value || '').trim();
+        if (!resourceName) {
+          setGoalHint(goalType, 'Select a conversion action first.', false);
+          return;
+        }
+        var primary = optSel.value === 'primary';
+        setGoalHint(goalType, 'Updating…');
+        apiPost('/api/ads/google/set-action-optimization', { shop: getShopParam(), resource_name: resourceName, primary_for_goal: primary })
+          .then(function (r) {
+            if (r && r.ok && r.json && r.json.ok) {
+              setGoalHint(goalType, primary ? 'Set to Primary.' : 'Set to Secondary.', true);
+              loadConversionActions();
+            } else {
+              setGoalHint(goalType, (r && r.json && r.json.error) ? String(r.json.error) : 'Update failed.', false);
+            }
+          })
+          .catch(function () { setGoalHint(goalType, 'Update failed.', false); });
+      });
+    });
 
     var goalGrid = document.getElementById('settings-ga-goal-grid');
     if (goalGrid) {

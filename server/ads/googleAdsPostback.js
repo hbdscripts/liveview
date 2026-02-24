@@ -17,6 +17,10 @@ const GOOGLE_ADS_ADD_TO_CART_VALUE_KEY = 'google_ads_add_to_cart_value';
 const GOOGLE_ADS_BEGIN_CHECKOUT_VALUE_KEY = 'google_ads_begin_checkout_value';
 const GOOGLE_ADS_POSTBACK_GOALS_KEY = 'google_ads_postback_goals';
 const GOOGLE_ADS_PROFIT_DEDUCTIONS_V1_KEY = 'google_ads_profit_deductions_v1';
+const GOOGLE_ADS_CART_DATA_MERCHANT_ID_KEY = 'google_ads_cart_data_merchant_id';
+const GOOGLE_ADS_CART_DATA_FEED_COUNTRY_KEY = 'google_ads_cart_data_feed_country';
+const GOOGLE_ADS_CART_DATA_FEED_LANGUAGE_KEY = 'google_ads_cart_data_feed_language';
+const GOOGLE_ADS_CART_DATA_GOALS_KEY = 'google_ads_cart_data_goals';
 
 const MAX_RETRIES = 5;
 const BATCH_SIZE = 1000;
@@ -98,6 +102,87 @@ function computeProfitForOrder(orderRevenueGbp, profitRulesV1) {
   return Math.max(0, Math.round((Number.isFinite(profit) ? profit : revenue) * 100) / 100);
 }
 
+/**
+ * Build Merchant Center product id for cart data: shopify_{feedCountry}_{product_id}_{variant_id}.
+ * @param {string} feedCountry - e.g. GB
+ * @param {string|number} productId
+ * @param {string|number} variantId
+ * @returns {string}
+ */
+function buildMerchantCenterProductId(feedCountry, productId, variantId) {
+  const country = (feedCountry != null && String(feedCountry).trim()) ? String(feedCountry).trim().toUpperCase().slice(0, 2) : 'GB';
+  const pid = (productId != null && String(productId).trim() !== '') ? String(productId).trim() : '';
+  const vid = (variantId != null && String(variantId).trim() !== '') ? String(variantId).trim() : '';
+  return `shopify_${country}_${pid}_${vid}`;
+}
+
+/**
+ * Build CartData for a Shopify order from orders_shopify + orders_shopify_line_items.
+ * @param {string} shop
+ * @param {string} orderId - Shopify order id (numeric or gid)
+ * @param {{ feedCountry: string, feedLanguage: string, merchantId: string }} opts
+ * @returns {Promise<{ cartData?: object, error?: string, reason?: string }>}
+ */
+async function buildCartDataForOrder(shop, orderId, opts = {}) {
+  const mainDb = getDb();
+  if (!mainDb) return { error: 'no_db', reason: 'Main DB not available' };
+  const feedCountry = (opts.feedCountry != null && String(opts.feedCountry).trim()) ? String(opts.feedCountry).trim().toUpperCase().slice(0, 2) : 'GB';
+  const feedLanguage = (opts.feedLanguage != null && String(opts.feedLanguage).trim()) ? String(opts.feedLanguage).trim().toUpperCase().slice(0, 2) : 'EN';
+  const merchantId = opts.merchantId != null ? String(opts.merchantId).trim() : '';
+  const normShop = String(shop || '').trim().toLowerCase();
+  if (!normShop || !orderId || typeof orderId !== 'string' || !orderId.trim()) {
+    return { error: 'invalid_args', reason: 'shop and order_id required' };
+  }
+  const orderIdTrim = orderId.trim();
+  const orderIdNum = orderIdTrim.replace(/^gid:\/\/shopify\/Order\/|\D/g, '') || orderIdTrim;
+  let orderRow;
+  try {
+    orderRow = await mainDb.get(
+      `SELECT order_id, currency, total_discounts FROM orders_shopify WHERE shop = ? AND (order_id = ? OR order_id = ?) AND financial_status IN ('paid', 'partially_refunded') AND cancelled_at IS NULL LIMIT 1`,
+      [normShop, orderIdTrim, orderIdNum]
+    );
+  } catch (e) {
+    return { error: 'db_error', reason: (e && e.message) || 'order lookup failed' };
+  }
+  if (!orderRow) return { error: 'order_not_found', reason: 'Order not found or not paid' };
+  const currency = orderRow.currency != null ? String(orderRow.currency).trim() : '';
+  if (!currency) return { error: 'no_currency', reason: 'Order has no currency' };
+  let lineRows;
+  try {
+    lineRows = await mainDb.all(
+      `SELECT product_id, variant_id, quantity, unit_price FROM orders_shopify_line_items WHERE shop = ? AND order_id IN (?, ?)`,
+      [normShop, orderRow.order_id, orderIdNum]
+    );
+  } catch (e) {
+    return { error: 'db_error', reason: (e && e.message) || 'line items lookup failed' };
+  }
+  if (!lineRows || !lineRows.length) return { error: 'no_line_items', reason: 'No line items for order' };
+  const items = [];
+  for (const row of lineRows) {
+    const productId = row.product_id != null ? String(row.product_id).trim() : '';
+    const variantId = row.variant_id != null ? String(row.variant_id).trim() : '';
+    if (!productId || !variantId) continue;
+    const quantity = Math.max(1, parseInt(row.quantity, 10) || 1);
+    const unitPrice = Number(row.unit_price);
+    if (!Number.isFinite(unitPrice) || unitPrice < 0) continue;
+    items.push({
+      product_id: buildMerchantCenterProductId(feedCountry, productId, variantId),
+      quantity,
+      unit_price: unitPrice,
+    });
+  }
+  if (!items.length) return { error: 'no_valid_items', reason: 'No valid line items with product_id and variant_id' };
+  const cartData = {
+    feed_country_code: feedCountry,
+    feed_language_code: feedLanguage,
+    local_transaction_cost: Number.isFinite(Number(orderRow.total_discounts)) && Number(orderRow.total_discounts) >= 0 ? Number(orderRow.total_discounts) : 0,
+    items,
+  };
+  const mid = parseInt(merchantId, 10);
+  if (Number.isFinite(mid) && mid > 0) cartData.merchant_id = mid;
+  return { cartData };
+}
+
 /** Format conversion_date_time for Google Ads: "yyyy-mm-dd hh:mm:ss+|-hh:mm" (account TZ). */
 function formatConversionDateTime(createdAtMs, accountTimeZone = 'UTC') {
   const d = new Date(Number(createdAtMs));
@@ -162,8 +247,8 @@ async function enqueueEligibleOrders(shop, options = {}) {
           severity: 'warning',
           affected_goal: null,
           error_code: 'MISSING_CONVERSION_ACTION',
-          error_message: 'No conversion actions are provisioned for Revenue/Profit uploads.',
-          suggested_fix: 'Go to Settings → Integrations → Google Ads and click “Provision conversion actions”.',
+          error_message: 'No conversion actions are provisioned for Revenue, Profit, Add to Cart, or Begin Checkout uploads.',
+          suggested_fix: 'Go to Settings → Admin → Google Ads, open Conversion actions, and click “Provision Kexo actions”.',
           first_seen_at: Date.now(),
           last_seen_at: Date.now(),
         });
@@ -546,7 +631,38 @@ async function processPostbackBatch(shop, options = {}) {
   const developerToken = (config.googleAdsDeveloperToken || '').trim();
   const versions = ['v17', 'v16', 'v15'];
   const jobId = Date.now();
-  const conversions = jobs.map((j) => {
+
+  let cartDataMerchantId = '';
+  let cartDataFeedCountry = 'GB';
+  let cartDataFeedLanguage = 'EN';
+  const cartDataGoals = { revenue: false, profit: false, add_to_cart: false, begin_checkout: false };
+  try {
+    const [rawMerchant, rawCountry, rawLang, rawGoals] = await Promise.all([
+      store.getSetting(GOOGLE_ADS_CART_DATA_MERCHANT_ID_KEY),
+      store.getSetting(GOOGLE_ADS_CART_DATA_FEED_COUNTRY_KEY),
+      store.getSetting(GOOGLE_ADS_CART_DATA_FEED_LANGUAGE_KEY),
+      store.getSetting(GOOGLE_ADS_CART_DATA_GOALS_KEY),
+    ]);
+    if (rawMerchant != null && String(rawMerchant).trim() !== '') cartDataMerchantId = String(rawMerchant).trim().slice(0, 64);
+    if (rawCountry != null && String(rawCountry).trim() !== '') cartDataFeedCountry = String(rawCountry).trim().toUpperCase().slice(0, 2) || 'GB';
+    if (rawLang != null && String(rawLang).trim() !== '') cartDataFeedLanguage = String(rawLang).trim().toUpperCase().slice(0, 2) || 'EN';
+    if (rawGoals != null && String(rawGoals).trim() !== '') {
+      try {
+        const parsed = JSON.parse(String(rawGoals));
+        if (parsed && typeof parsed === 'object') {
+          if (parsed.revenue === true) cartDataGoals.revenue = true;
+          if (parsed.profit === true) cartDataGoals.profit = true;
+          if (parsed.add_to_cart === true) cartDataGoals.add_to_cart = true;
+          if (parsed.begin_checkout === true) cartDataGoals.begin_checkout = true;
+        }
+      } catch (_) {}
+    }
+  } catch (_) {}
+
+  const conversions = [];
+  const cartDataOpts = { feedCountry: cartDataFeedCountry, feedLanguage: cartDataFeedLanguage, merchantId: cartDataMerchantId };
+  for (let i = 0; i < jobs.length; i++) {
+    const j = jobs[i];
     const c = {
       conversion_action: j.conversion_action_resource_name,
       conversion_date_time: j.conversion_date_time,
@@ -557,8 +673,28 @@ async function processPostbackBatch(shop, options = {}) {
     if (j.click_id_type === 'gclid') c.gclid = j.click_id_value;
     else if (j.click_id_type === 'gbraid') c.gbraid = j.click_id_value;
     else if (j.click_id_type === 'wbraid') c.wbraid = j.click_id_value;
-    return c;
-  });
+
+    const isPurchaseGoal = j.goal_type === 'revenue' || j.goal_type === 'profit';
+    const includeCartData = isPurchaseGoal && cartDataGoals[j.goal_type] === true && !String(j.order_id || '').startsWith('bco:');
+    if (includeCartData) {
+      const built = await buildCartDataForOrder(shop, j.order_id, cartDataOpts);
+      if (built.cartData) {
+        c.cart_data = built.cartData;
+      } else if (built.error) {
+        await recordIssue(adsDb, j.shop, {
+          source: 'postback',
+          severity: 'warning',
+          affected_goal: j.goal_type,
+          error_code: 'CART_DATA_SKIPPED',
+          error_message: built.reason || built.error || 'Cart data not attached',
+          suggested_fix: 'Check order and line items; cart data is optional.',
+          first_seen_at: Date.now(),
+          last_seen_at: Date.now(),
+        });
+      }
+    }
+    conversions.push(c);
+  }
 
   let lastErr = null;
   for (const ver of versions) {
@@ -702,4 +838,6 @@ module.exports = {
   resolveClickId,
   computeProfitForOrder,
   computeProfitForOrderAllocation,
+  buildMerchantCenterProductId,
+  buildCartDataForOrder,
 };

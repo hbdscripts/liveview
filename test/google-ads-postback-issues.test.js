@@ -34,6 +34,34 @@ test('resolveClickId: uses row columns first then entry_url', () => {
   assert.deepEqual(resolveClickId({ entry_url: '' }), { value: null, type: null });
 });
 
+test('buildMerchantCenterProductId: formats shopify_country_productId_variantId', () => {
+  const { buildMerchantCenterProductId } = googleAdsPostback;
+  assert.strictEqual(buildMerchantCenterProductId('GB', '123', '456'), 'shopify_GB_123_456');
+  assert.strictEqual(buildMerchantCenterProductId('gb', 'p1', 'v1'), 'shopify_GB_p1_v1');
+  assert.strictEqual(buildMerchantCenterProductId('', '1', '2'), 'shopify_GB_1_2');
+  assert.strictEqual(buildMerchantCenterProductId(null, 999, 888), 'shopify_GB_999_888');
+});
+
+test('normalizeGoogleAdsCartDataGoals: defaults all false, accepts object or JSON string', () => {
+  const { normalizeGoogleAdsCartDataGoals, defaultGoogleAdsCartDataGoals } = require('../server/routes/settings');
+  const def = defaultGoogleAdsCartDataGoals();
+  assert.strictEqual(def.revenue, false);
+  assert.strictEqual(def.profit, false);
+  assert.strictEqual(def.add_to_cart, false);
+  assert.strictEqual(def.begin_checkout, false);
+  assert.deepEqual(normalizeGoogleAdsCartDataGoals(null), def);
+  assert.deepEqual(normalizeGoogleAdsCartDataGoals(undefined), def);
+  assert.deepEqual(normalizeGoogleAdsCartDataGoals(''), def);
+  const withRevenue = normalizeGoogleAdsCartDataGoals({ revenue: true });
+  assert.strictEqual(withRevenue.revenue, true);
+  assert.strictEqual(withRevenue.profit, false);
+  const withAll = normalizeGoogleAdsCartDataGoals({ revenue: true, profit: true, add_to_cart: true, begin_checkout: true });
+  assert.strictEqual(withAll.revenue, true);
+  assert.strictEqual(withAll.profit, true);
+  assert.strictEqual(withAll.add_to_cart, true);
+  assert.strictEqual(withAll.begin_checkout, true);
+});
+
 test('computeProfitForOrder: no config or disabled returns revenue', () => {
   const { computeProfitForOrder } = googleAdsPostback;
   assert.strictEqual(computeProfitForOrder(100, null), 100);
