@@ -52,21 +52,65 @@
       return new Promise(function(resolve) { setTimeout(resolve, n); });
     }
 
+    function createTimeoutError(timeoutMs) {
+      var err = new Error('Request timed out');
+      try { err.name = 'TimeoutError'; } catch (_) {}
+      try { err.timeoutMs = timeoutMs; } catch (_) {}
+      return err;
+    }
+
     function fetchWithTimeout(url, options, timeoutMs) {
       const ms = Number(timeoutMs) || 0;
       const timeout = ms > 0 ? ms : 25000;
       if (typeof AbortController === 'undefined') {
-        return Promise.race([
-          fetch(url, options),
-          new Promise(function(_, reject) {
-            setTimeout(function() { reject(new Error('Request timed out')); }, timeout);
-          }),
-        ]);
+        return new Promise(function(resolve, reject) {
+          var settled = false;
+          var timer = setTimeout(function() {
+            if (settled) return;
+            settled = true;
+            reject(createTimeoutError(timeout));
+          }, timeout);
+          fetch(url, options).then(
+            function(r) {
+              if (settled) return;
+              settled = true;
+              try { clearTimeout(timer); } catch (_) {}
+              resolve(r);
+            },
+            function(err) {
+              if (settled) return;
+              settled = true;
+              try { clearTimeout(timer); } catch (_) {}
+              reject(err);
+            }
+          );
+        });
       }
       const controller = new AbortController();
-      const timer = setTimeout(function() { try { controller.abort(); } catch (_) {} }, timeout);
       const opts = Object.assign({}, options || {}, { signal: controller.signal });
-      return fetch(url, opts).finally(function() { clearTimeout(timer); });
+      return new Promise(function(resolve, reject) {
+        var settled = false;
+        var timer = setTimeout(function() {
+          if (settled) return;
+          settled = true;
+          try { controller.abort(); } catch (_) {}
+          reject(createTimeoutError(timeout));
+        }, timeout);
+        fetch(url, opts).then(
+          function(r) {
+            if (settled) return;
+            settled = true;
+            try { clearTimeout(timer); } catch (_) {}
+            resolve(r);
+          },
+          function(err) {
+            if (settled) return;
+            settled = true;
+            try { clearTimeout(timer); } catch (_) {}
+            reject(err);
+          }
+        );
+      });
     }
 
     function defaultReportBuildTitleForKey(key) {
@@ -256,11 +300,13 @@
           step: function() {},
           title: function() {},
           finish: function() {
-            if (reportBuildTokens[key] !== token) return;
             if (finished) return;
             finished = true;
+            var isCurrent = reportBuildTokens[key] === token;
             endGlobalReportLoading();
-            try { window.dispatchEvent(new CustomEvent('kexo:table-rows-changed')); } catch (_) {}
+            if (isCurrent) {
+              try { window.dispatchEvent(new CustomEvent('kexo:table-rows-changed')); } catch (_) {}
+            }
             hidePageProgress();
           }
         };
@@ -290,6 +336,7 @@
         else if (!String(stepEl.textContent || '').trim()) stepEl.textContent = 'Preparing application';
       }
       showPageProgress();
+      var finished = false;
 
       function title(text) {
         if (reportBuildTokens[key] !== token) return;
@@ -305,17 +352,23 @@
       }
 
       function finish() {
-        if (reportBuildTokens[key] !== token) return;
-        if (key === 'sessions' && scope) try { scope.classList.remove('report-building-sessions'); } catch (_) {}
-        if (overlay) overlay.classList.add('is-hidden');
-        if (overlay && overlayOrigin && overlayOrigin.parent) {
-          try {
-            if (overlayOrigin.next && overlayOrigin.next.parentNode === overlayOrigin.parent) overlayOrigin.parent.insertBefore(overlay, overlayOrigin.next);
-            else overlayOrigin.parent.appendChild(overlay);
-          } catch (_) {}
+        if (finished) return;
+        finished = true;
+        var isCurrent = reportBuildTokens[key] === token;
+        if (isCurrent) {
+          if (key === 'sessions' && scope) try { scope.classList.remove('report-building-sessions'); } catch (_) {}
+          if (overlay) overlay.classList.add('is-hidden');
+          if (overlay && overlayOrigin && overlayOrigin.parent) {
+            try {
+              if (overlayOrigin.next && overlayOrigin.next.parentNode === overlayOrigin.parent) overlayOrigin.parent.insertBefore(overlay, overlayOrigin.next);
+              else overlayOrigin.parent.appendChild(overlay);
+            } catch (_) {}
+          }
         }
         endReportBuildScope(scope);
-        try { window.dispatchEvent(new CustomEvent('kexo:table-rows-changed')); } catch (_) {}
+        if (isCurrent) {
+          try { window.dispatchEvent(new CustomEvent('kexo:table-rows-changed')); } catch (_) {}
+        }
         hidePageProgress();
       }
 

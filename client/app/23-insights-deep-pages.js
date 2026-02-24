@@ -87,10 +87,9 @@
     var statusEl = document.getElementById(statusId);
     var rootEl = document.getElementById(rootId);
     if (statusEl) statusEl.textContent = msg || '';
-    if (rootEl && rootEl.querySelector('.kexo-deeppage-body')) {
-      rootEl.querySelector('.kexo-deeppage-body').style.display = msg ? 'none' : '';
-      statusEl.style.display = msg ? 'block' : 'none';
-    } else if (statusEl) statusEl.style.display = msg ? 'block' : 'none';
+    var bodyEl = rootEl ? rootEl.querySelector('.kexo-deeppage-body') : null;
+    if (bodyEl) bodyEl.style.display = msg ? 'none' : '';
+    if (statusEl) statusEl.style.display = msg ? 'block' : 'none';
   }
 
   function destroyCharts() {
