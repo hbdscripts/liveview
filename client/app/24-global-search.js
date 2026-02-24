@@ -9,11 +9,14 @@
   var PANEL_INPUT_ID = 'kexo-global-search-panel-input';
   var PANEL_RESULTS_ID = 'kexo-global-search-panel-results';
   var PANEL_EMPTY_ID = 'kexo-global-search-panel-empty';
+  var PANEL_MENU_ID = 'kexo-settings-mini-menu-panel';
   var DEBOUNCE_MS = 220;
   var MIN_QUERY_LEN = 1;
   var inputDebounceTimer = null;
   var panelDebounceTimer = null;
   var fallbackBackdropEl = null;
+  var panelResultsHost = null;
+  var panelMenuEl = null;
 
   function getShop() {
     try {
@@ -247,6 +250,11 @@
     }
   }
 
+  function setPanelSearchMode(showResults) {
+    if (panelMenuEl) panelMenuEl.hidden = !!showResults;
+    if (panelResultsHost) panelResultsHost.hidden = !showResults;
+  }
+
   function runSearch(query, targetPanel) {
     var q = (query || '').trim();
     var settingsHits = filterSettings(q);
@@ -254,13 +262,15 @@
     var emptyEl = document.getElementById(targetPanel ? PANEL_EMPTY_ID : MODAL_ID + '-empty');
     if (q.length < MIN_QUERY_LEN) {
       if (targetPanel) {
-        if (container) container.hidden = true;
+        setPanelSearchMode(false);
+        if (container) { container.hidden = true; container.innerHTML = ''; }
         if (emptyEl) { emptyEl.hidden = true; emptyEl.textContent = ''; }
       } else {
         renderResults(null, settingsHits, q, false);
       }
       return;
     }
+    if (targetPanel) setPanelSearchMode(true);
     if (container) container.innerHTML = '';
     if (emptyEl) {
       emptyEl.style.display = 'block';
@@ -334,7 +344,18 @@
     var input = document.getElementById(PANEL_INPUT_ID);
     var resultsEl = document.getElementById(PANEL_RESULTS_ID);
     var emptyEl = document.getElementById(PANEL_EMPTY_ID);
+    var menuPanel = document.getElementById(PANEL_MENU_ID);
     if (!input || input.getAttribute('data-kexo-global-search-panel-bound') === '1') return;
+    if (menuPanel && resultsEl && emptyEl && !panelResultsHost) {
+      panelMenuEl = menuPanel;
+      panelResultsHost = document.createElement('div');
+      panelResultsHost.className = 'kexo-settings-menu-panel-results-host kexo-settings-menu-panel-nav';
+      panelResultsHost.setAttribute('id', 'kexo-global-search-panel-results-host');
+      panelResultsHost.hidden = true;
+      panelResultsHost.appendChild(resultsEl);
+      panelResultsHost.appendChild(emptyEl);
+      menuPanel.parentNode.insertBefore(panelResultsHost, menuPanel.nextSibling);
+    }
     input.setAttribute('data-kexo-global-search-panel-bound', '1');
     input.addEventListener('input', function () {
       if (panelDebounceTimer) clearTimeout(panelDebounceTimer);

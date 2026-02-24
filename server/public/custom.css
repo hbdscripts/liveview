@@ -5960,9 +5960,17 @@ img[data-kexo-logo-slot="footer"][data-kexo-logo-ready="1"] {
 .kexo-settings-menu-panel .kexo-settings-menu-panel-body {
   flex: 1 1 0%;
   min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 .kexo-settings-menu-panel .kexo-settings-menu-panel-bottom {
   flex-shrink: 0;
+  margin-top: auto;
+}
+/* Override generic mini-menu cap so middle area fills and bottom stays pinned */
+.kexo-settings-menu-panel .kexo-settings-mini-menu {
+  max-height: none;
 }
 
 /* Header */
@@ -6043,15 +6051,44 @@ img[data-kexo-logo-slot="footer"][data-kexo-logo-ready="1"] {
   background: var(--kexo-header-settings-menu-hover-bg, rgba(0, 0, 0, 0.08));
   color: var(--kexo-header-settings-menu-link-color, var(--tblr-body-color, #1f2937));
 }
+.kexo-settings-menu-panel .kexo-settings-menu-panel-search-results .kexo-global-search-item:focus-visible {
+  outline: 2px solid var(--tblr-primary, #206bc4);
+  outline-offset: 2px;
+}
 .kexo-settings-menu-panel .kexo-settings-menu-panel-search-empty {
   margin-top: 0.5rem;
   color: var(--kexo-header-settings-menu-icon-color, #6b7280);
+}
+
+/* Panel results host: replaces menu list when searching; same middle-area layout as nav */
+.kexo-settings-menu-panel .kexo-settings-menu-panel-results-host {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: 0.5rem 0.75rem 0.75rem;
+}
+.kexo-settings-menu-panel .kexo-settings-menu-panel-results-host .kexo-settings-menu-panel-search-results {
+  max-height: none;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  margin-top: 0;
+  padding: 0.25rem 0;
+}
+.kexo-settings-menu-panel .kexo-settings-menu-panel-results-host .kexo-settings-menu-panel-search-empty {
+  flex-shrink: 0;
+  padding: 0.5rem 0.75rem;
+  margin-top: 0;
 }
 
 /* Nav list (only when inside this panel); child items indented so they don't overlap chevrons */
 .kexo-settings-menu-panel .kexo-settings-menu-panel-nav {
   padding: 0.5rem 0.75rem 0.75rem;
   min-height: 0;
+  flex: 1 1 auto;
+  overflow-y: auto;
 }
 .kexo-settings-menu-panel .kexo-settings-menu-panel-nav .settings-nav-category {
   margin: 0 0 0.125rem 0;
