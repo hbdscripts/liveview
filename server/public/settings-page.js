@@ -711,18 +711,35 @@
   ];
 
   var SETTINGS_DRAFT_REGISTRY = {};
+  // Draft baselines can be set by lazy-loaded scripts (dynamic <script>) before
+  // Settings draft sections register on DOMContentLoaded. Buffer them so the
+  // global Save/Revert footer can still compute dirty state reliably.
+  var _pendingSettingsDraftBaselines = {};
   function registerSettingsSection(opts) {
     var id = opts && opts.id ? String(opts.id).trim() : '';
     if (!id) return;
+    var baseline = opts.baseline != null ? opts.baseline : null;
+    try {
+      if (Object.prototype.hasOwnProperty.call(_pendingSettingsDraftBaselines, id)) {
+        baseline = _pendingSettingsDraftBaselines[id];
+        delete _pendingSettingsDraftBaselines[id];
+        try { scheduleSyncGlobalFooter(); } catch (_) {}
+      }
+    } catch (_) {}
     SETTINGS_DRAFT_REGISTRY[id] = {
       read: typeof opts.read === 'function' ? opts.read : function () { return null; },
       apply: typeof opts.apply === 'function' ? opts.apply : function () {},
       save: typeof opts.save === 'function' ? opts.save : function () { return Promise.resolve({ ok: false }); },
-      baseline: opts.baseline != null ? opts.baseline : null,
+      baseline: baseline,
     };
   }
   function setSettingsDraftBaseline(id, state) {
-    if (SETTINGS_DRAFT_REGISTRY[id]) SETTINGS_DRAFT_REGISTRY[id].baseline = state;
+    var key = id != null ? String(id).trim() : '';
+    if (!key) return;
+    var cloned = deepClone(state);
+    if (SETTINGS_DRAFT_REGISTRY[key]) SETTINGS_DRAFT_REGISTRY[key].baseline = cloned;
+    else _pendingSettingsDraftBaselines[key] = cloned;
+    try { scheduleSyncGlobalFooter(); } catch (_) {}
   }
   try { window.__kexoSetSettingsDraftBaseline = setSettingsDraftBaseline; } catch (_) {}
 
