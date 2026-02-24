@@ -337,6 +337,8 @@
       }
       showPageProgress();
       var finished = false;
+      var hardFinishTimer = null;
+      var hardTimeoutMs = 0;
 
       function title(text) {
         if (reportBuildTokens[key] !== token) return;
@@ -354,6 +356,10 @@
       function finish() {
         if (finished) return;
         finished = true;
+        if (hardFinishTimer) {
+          try { clearTimeout(hardFinishTimer); } catch (_) {}
+          hardFinishTimer = null;
+        }
         var isCurrent = reportBuildTokens[key] === token;
         if (isCurrent) {
           if (key === 'sessions' && scope) try { scope.classList.remove('report-building-sessions'); } catch (_) {}
@@ -371,6 +377,35 @@
         }
         hidePageProgress();
       }
+
+      // Hard timeout safety: on some mobile OAuth/bfcache flows, fetch promises can hang
+      // and leave the page-body stuck in report-building (blank content). Always unwind.
+      try {
+        var isMobile = !!(typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(max-width: 991.98px)').matches);
+        if (isMobile) {
+          hardTimeoutMs = Number(opts.hardTimeoutMs);
+          if (!Number.isFinite(hardTimeoutMs) || hardTimeoutMs < 5000) {
+            hardTimeoutMs = (key === 'dashboard') ? 12000 : 45000;
+          }
+          hardFinishTimer = setTimeout(function () {
+            try {
+              if (finished) return;
+              try {
+                if (typeof window !== 'undefined' && typeof window.kexoCaptureMessage === 'function') {
+                  window.kexoCaptureMessage('kexo_report_build_hard_timeout', {
+                    key: key,
+                    page: (typeof PAGE !== 'undefined') ? PAGE : '',
+                    href: (window.location && window.location.href) ? String(window.location.href) : '',
+                    hardTimeoutMs: hardTimeoutMs,
+                    overlayHidden: overlay ? (overlay.classList && overlay.classList.contains('is-hidden')) : null,
+                  }, 'error');
+                }
+              } catch (_) {}
+              finish();
+            } catch (_) {}
+          }, hardTimeoutMs);
+        }
+      } catch (_) {}
 
       return { step: step, title: title, finish: finish };
     }
