@@ -2293,15 +2293,15 @@
             '<input type="url" class="form-control" id="settings-asset-sale-sound" placeholder="https://… or upload below" />' +
             '<div class="input-group mt-2">' +
               '<input type="file" class="form-control" id="settings-upload-sale-sound" accept="audio/mpeg,audio/mp3" />' +
-              '<button type="button" class="btn btn-md" data-kexo-asset-upload="1" data-kexo-slot="sale_sound" data-kexo-file="settings-upload-sale-sound" data-kexo-url="settings-asset-sale-sound">Upload</button>' +
+              '<button type="button" class="btn btn-sm" data-kexo-asset-upload="1" data-kexo-slot="sale_sound" data-kexo-file="settings-upload-sale-sound" data-kexo-url="settings-asset-sale-sound">Upload</button>' +
             '</div>' +
             '<div class="form-hint">MP3 only. Max 2MB.</div>' +
           '</div>' +
           '<div class="mb-3">' +
-            '<button type="button" class="btn btn-md" id="settings-sale-sound-preview">Preview</button>' +
+            '<button type="button" class="btn btn-sm" id="settings-sale-sound-preview">Preview</button>' +
           '</div>' +
           '<div class="mt-3">' +
-            '<button type="submit" class="btn btn-primary btn-md">Save</button>' +
+            '<button type="submit" class="btn btn-primary btn-sm">Save</button>' +
             '<span id="settings-sale-notification-msg" class="form-hint ms-2"></span>' +
           '</div>' +
         '</form>' +

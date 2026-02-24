@@ -371,6 +371,28 @@
     } catch (_) {}
   }
 
+  function unwrapAccordionH2(rootEl) {
+    var scope = isElement(rootEl) ? rootEl : null;
+    if (!scope || !scope.querySelectorAll) return;
+    var h2s = [];
+    try { h2s = Array.prototype.slice.call(scope.querySelectorAll('h2')); } catch (_) { h2s = []; }
+    h2s.forEach(function (h2) {
+      if (!h2 || !h2.parentNode) return;
+      var inAccordionItem = false;
+      try { inAccordionItem = !!(h2.closest && h2.closest('.accordion-item')); } catch (_) { inAccordionItem = false; }
+      if (!inAccordionItem) return;
+      try {
+        var parent = h2.parentNode;
+        var frag = document.createDocumentFragment();
+        while (h2.firstChild) frag.appendChild(h2.firstChild);
+        parent.insertBefore(frag, h2);
+        parent.removeChild(h2);
+      } catch (_) {
+        try { h2.parentNode && h2.parentNode.removeChild(h2); } catch (_) {}
+      }
+    });
+  }
+
   function normaliseButtonsAndForms(panelEl) {
     var wrap = getPanelWrap(panelEl) || panelEl;
     if (!wrap || !wrap.querySelectorAll) return;
@@ -399,6 +421,12 @@
       if (!btn || !btn.classList) return;
       if (btn.getAttribute('data-settings-ui-btn') === '1') return;
       btn.setAttribute('data-settings-ui-btn', '1');
+
+      // Keep the global footer Save/Revert button sizing intact.
+      if (btn && btn.id && (btn.id === 'settings-global-save-btn' || btn.id === 'settings-global-revert-btn')) return;
+
+      // Only normalise Tabler buttons (avoid touching .btn-close and other non-Tabler buttons).
+      if (!btn.classList.contains('btn')) return;
 
       if (btn.classList.contains('btn-ghost-danger')) {
         btn.classList.remove('btn-ghost-danger');
@@ -471,8 +499,13 @@
         btn.classList.remove('btn-danger', 'btn-ghost-danger', 'btn-outline-danger');
       }
 
+      // Settings/Admin: in-panel actions are btn-sm by default.
+      if (btn.classList.contains('btn-md')) {
+        btn.classList.remove('btn-md');
+        btn.classList.add('btn-sm');
+      }
       if (!btn.classList.contains('btn-sm') && !btn.classList.contains('btn-lg')) {
-        btn.classList.add('btn-md');
+        btn.classList.add('btn-sm');
       }
     });
   }
@@ -487,6 +520,7 @@
     flattenWrapperCards(panelEl);
     removeDeadCardHeaderChevrons(panelEl);
     removeCardCollapseToggles(panelEl);
+    unwrapAccordionH2(panelEl);
     normaliseHeadingsAndSpacing(panelEl);
     tightenAccordionEndingMb4(panelEl);
     normaliseButtonsAndForms(panelEl);
@@ -598,6 +632,19 @@
             queue(n);
             return;
           }
+
+          // Lightweight normalisation for dynamically injected subtrees.
+          // (Panels themselves are idempotently normalised once; this catches newly added buttons/headings.)
+          try {
+            var shouldLightNormalise = false;
+            if (safeMatches(n, 'h2, button, a.btn, input[readonly], textarea[readonly], select[disabled], input[disabled], textarea[disabled]')) shouldLightNormalise = true;
+            else if (n.querySelector && n.querySelector('h2, button, a.btn, input[readonly], textarea[readonly], select[disabled], input[disabled], textarea[disabled]')) shouldLightNormalise = true;
+            if (shouldLightNormalise) {
+              try { unwrapAccordionH2(n); } catch (e) { reportNormaliserError('observer.unwrapAccordionH2', e); }
+              try { normaliseButtonsAndForms(n); } catch (e) { reportNormaliserError('observer.normaliseButtonsAndForms.light', e); }
+            }
+          } catch (_) {}
+
           var parentPanel = null;
           try { parentPanel = n.closest(SETTINGS_PANEL_SELECTOR); } catch (_) { parentPanel = null; }
           if (parentPanel) queue(parentPanel);
@@ -606,6 +653,7 @@
           var modalRoot = null;
           try { modalRoot = safeMatches(n, '.modal, .offcanvas') ? n : (n.closest ? n.closest('.modal, .offcanvas') : null); } catch (_) { modalRoot = null; }
           if (modalRoot) {
+            try { unwrapAccordionH2(modalRoot); } catch (e) { reportNormaliserError('observer.unwrapAccordionH2.modal', e, { rootId: (modalRoot && modalRoot.id) ? String(modalRoot.id) : '' }); }
             try { normaliseButtonsAndForms(modalRoot); } catch (e) { reportNormaliserError('observer.normaliseButtonsAndForms', e, { rootId: (modalRoot && modalRoot.id) ? String(modalRoot.id) : '' }); }
             try {
               if (modalRoot.getAttribute && modalRoot.getAttribute(SETTINGS_PANEL_HELP_BOUND_ATTR) !== '1') {

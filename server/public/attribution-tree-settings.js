@@ -506,8 +506,8 @@
       '<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">' +
       '<p class="text-secondary small mb-0">Use <strong>Edit variant</strong> to change channel + icon. Use <strong>Edit rule</strong> to move rules between variants.</p>' +
       '<div class="btn-group btn-group-sm" role="group" aria-label="Tree display controls">' +
-      '<button type="button" class="btn btn-md" data-am-tree-action="expand-all">Expand all</button>' +
-      '<button type="button" class="btn btn-md" data-am-tree-action="collapse-all">Collapse all</button>' +
+      '<button type="button" class="btn btn-sm" data-am-tree-action="expand-all">Expand all</button>' +
+      '<button type="button" class="btn btn-sm" data-am-tree-action="collapse-all">Collapse all</button>' +
       '</div>' +
       '</div>' +
       model.map(function (ch) { return renderChannelRow(ch); }).join('') +
@@ -544,8 +544,8 @@
               '<div class="form-hint" id="am-move-msg"></div>' +
             '</div>' +
             '<div class="modal-footer">' +
-              '<button type="button" class="btn btn-md" data-am-move-close>Cancel</button>' +
-              '<button type="button" class="btn btn-primary btn-md" id="am-move-confirm">Save</button>' +
+              '<button type="button" class="btn btn-sm" data-am-move-close>Cancel</button>' +
+              '<button type="button" class="btn btn-primary btn-sm" id="am-move-confirm">Save</button>' +
             '</div>' +
           '</div>' +
         '</div>' +
@@ -748,8 +748,8 @@
               '<div class="form-hint" id="am-assign-msg"></div>' +
             '</div>' +
             '<div class="modal-footer">' +
-              '<button type="button" class="btn btn-md" data-am-assign-close>Cancel</button>' +
-              '<button type="button" class="btn btn-primary btn-md" id="am-assign-confirm">Save</button>' +
+              '<button type="button" class="btn btn-sm" data-am-assign-close>Cancel</button>' +
+              '<button type="button" class="btn btn-primary btn-sm" id="am-assign-confirm">Save</button>' +
             '</div>' +
           '</div>' +
         '</div>' +

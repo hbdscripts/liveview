@@ -422,8 +422,8 @@
           html +=       '<div class="text-secondary small">Changes auto-save.</div>';
           html +=     '</div>';
           html +=     '<div class="btn-group btn-group-sm" role="group" aria-label="Bulk role permission actions">';
-          html +=       '<button type="button" class="btn btn-md" data-role-perm-bulk="all" data-tier="' + escapeHtml(tier) + '">All</button>';
-          html +=       '<button type="button" class="btn btn-md" data-role-perm-bulk="none" data-tier="' + escapeHtml(tier) + '">None</button>';
+          html +=       '<button type="button" class="btn btn-sm" data-role-perm-bulk="all" data-tier="' + escapeHtml(tier) + '">All</button>';
+          html +=       '<button type="button" class="btn btn-sm" data-role-perm-bulk="none" data-tier="' + escapeHtml(tier) + '">None</button>';
           html +=     '</div>';
           html +=   '</div>';
           html +=   '<div class="card-body">';
@@ -597,8 +597,8 @@
         actions = makeBadge('Admin', 'primary');
       } else {
         actions =
-          '<button type="button" class="btn btn-md me-1" data-admin-action="edit" data-user-id="' + escapeHtml(row.id) + '" data-user-tier="' + escapeHtml(tier) + '">Edit</button>' +
-          '<button type="button" class="btn btn-md" data-admin-action="promote" data-user-id="' + escapeHtml(row.id) + '">Promote to admin</button>';
+          '<button type="button" class="btn btn-sm me-1" data-admin-action="edit" data-user-id="' + escapeHtml(row.id) + '" data-user-tier="' + escapeHtml(tier) + '">Edit</button>' +
+          '<button type="button" class="btn btn-sm" data-admin-action="promote" data-user-id="' + escapeHtml(row.id) + '">Promote to admin</button>';
       }
 
       if (status && status !== 'active') {
@@ -645,9 +645,9 @@
 
       var roleSelect = '<select class="form-select form-select-sm admin-pending-tier-select" data-user-id="' + escapeHtml(rowId) + '" aria-label="Assign role">' + tierOpts + '</select>';
       var actions =
-        '<button type="button" class="btn btn-md" data-admin-action="approve" data-user-id="' + escapeHtml(rowId) + '">Approve</button>' +
-        '<button type="button" class="btn btn-md" data-admin-action="deny" data-user-id="' + escapeHtml(rowId) + '">Deny</button>' +
-        '<button type="button" class="btn btn-md" data-admin-action="promote" data-user-id="' + escapeHtml(rowId) + '">Promote to admin</button>';
+        '<button type="button" class="btn btn-sm" data-admin-action="approve" data-user-id="' + escapeHtml(rowId) + '">Approve</button>' +
+        '<button type="button" class="btn btn-sm" data-admin-action="deny" data-user-id="' + escapeHtml(rowId) + '">Deny</button>' +
+        '<button type="button" class="btn btn-sm" data-admin-action="promote" data-user-id="' + escapeHtml(rowId) + '">Promote to admin</button>';
 
       h +=
         '<tr>' +

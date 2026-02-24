@@ -408,7 +408,7 @@
       '<div class="alert alert-danger mb-0">' +
         '<div class="fw-semibold mb-1">Theme settings failed to load.</div>' +
         '<div class="text-secondary small mb-2">Try reloading the page. If this keeps happening, check that <code>/theme-settings.js</code> is loading without errors.</div>' +
-        '<button type="button" class="btn btn-md" id="settings-theme-reload-btn">Reload</button>' +
+        '<button type="button" class="btn btn-sm" id="settings-theme-reload-btn">Reload</button>' +
       '</div>';
     try {
       var btn = panel.querySelector('#settings-theme-reload-btn');
@@ -424,7 +424,7 @@
       '<div class="alert alert-danger mb-0">' +
         '<div class="fw-semibold mb-1">' + escapeHtml(label) + ' failed to load.</div>' +
         '<div class="text-secondary small mb-2">Try reloading the page. If this keeps happening, check that the attribution settings scripts are loading without errors.</div>' +
-        '<button type="button" class="btn btn-md" data-kexo-attribution-retry="1">Retry</button>' +
+        '<button type="button" class="btn btn-sm" data-kexo-attribution-retry="1">Retry</button>' +
       '</div>';
     try {
       var btn = root.querySelector('[data-kexo-attribution-retry="1"]');
@@ -2679,7 +2679,7 @@
           msg.textContent = message || 'Failed to load postback health.';
           var btn = document.createElement('button');
           btn.type = 'button';
-          btn.className = 'btn btn-md';
+          btn.className = 'btn btn-sm';
           btn.textContent = 'Retry';
           btn.addEventListener('click', function () { loadPostbackHealth(); });
           statusEl.appendChild(msg);
@@ -2798,7 +2798,7 @@
           '<td><code class="small">' + escapeHtml(ord) + '</code></td>' +
           '<td><span class="text-muted small">' + escapeHtml(ts) + '</span></td>' +
           '<td><span class="text-muted small">' + escapeHtml(st) + '</span></td>' +
-          '<td class="text-end"><button type="button" class="btn btn-md" data-settings-ga-issue-view="1" data-issue-id="' + escapeHtml(id) + '">View details</button></td>' +
+          '<td class="text-end"><button type="button" class="btn btn-sm" data-settings-ga-issue-view="1" data-issue-id="' + escapeHtml(id) + '">View details</button></td>' +
           '</tr>';
       }).join('');
     }
@@ -4075,7 +4075,8 @@
         try { btn.textContent = 'Upgrade required'; } catch (_) {}
         try { btn.disabled = true; } catch (_) {}
         try {
-          btn.classList.add('btn-md');
+          btn.classList.remove('btn-md');
+          btn.classList.add('btn-sm');
         } catch (_) {}
       }
 
@@ -4113,7 +4114,8 @@
         } catch (_) { try { btn.textContent = 'Upload'; } catch (_) {} }
         try { btn.disabled = false; } catch (_) {}
         try {
-          btn.classList.add('btn-md');
+          btn.classList.remove('btn-md');
+          btn.classList.add('btn-sm');
         } catch (_) {}
       }
 
@@ -5394,7 +5396,7 @@
     var html = '' +
       '<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">' +
         '<div class="text-muted small">Each section is grouped by page so table settings are easier to scan and edit one row at a time.</div>' +
-        '<button type="button" class="btn btn-md" disabled title="Coming later">Add table\u2026</button>' +
+        '<button type="button" class="btn btn-sm" disabled title="Coming later">Add table\u2026</button>' +
       '</div>' +
       '<div class="accordion settings-layout-accordion" id="settings-layout-tables-accordion">';
 
@@ -5460,8 +5462,8 @@
               '</div>' +
               '<div class="d-flex align-items-center justify-content-end gap-2 flex-wrap">' +
                 '<div class="btn-group btn-group-sm" role="group" aria-label="Reorder">' +
-                  '<button type="button" class="btn btn-md" data-action="up" aria-label="Move up">\u2191</button>' +
-                  '<button type="button" class="btn btn-md" data-action="down" aria-label="Move down">\u2193</button>' +
+                  '<button type="button" class="btn btn-sm" data-action="up" aria-label="Move up">\u2191</button>' +
+                  '<button type="button" class="btn btn-sm" data-action="down" aria-label="Move down">\u2193</button>' +
                 '</div>' +
               '</div>' +
             '</div>' +
@@ -5685,7 +5687,8 @@
     var hasTables = tables.length > 0;
     var canReset = canResetInsightsVariantsNow();
     btn.textContent = 'Reset variants';
-    btn.classList.add('btn-md');
+    try { btn.classList.remove('btn-md'); } catch (_) {}
+    try { btn.classList.add('btn-sm'); } catch (_) {}
     if (!canReset) btn.setAttribute('title', 'Admins only. Resets variant mapping tables, rules, and ignored titles (does not delete database data).');
     else if (!hasTables) btn.setAttribute('title', 'Nothing to reset yet.');
     else btn.setAttribute('title', 'Reset ALL variant mapping tables, rules, and ignored titles (does not delete database data).');
@@ -5715,14 +5718,16 @@
       btn.disabled = false;
       btn.textContent = 'Warnings';
       btn.classList.remove('btn-danger');
-      btn.classList.add('btn-md');
+      try { btn.classList.remove('btn-md'); } catch (_) {}
+      try { btn.classList.add('btn-sm'); } catch (_) {}
       return;
     }
     var n = countCoverageWarningTables(insightsVariantsWarningsCache);
     btn.disabled = false;
     btn.textContent = n > 0 ? ('Warnings (' + String(n) + ')') : 'Warnings';
     btn.classList.remove('btn-danger');
-    btn.classList.add('btn-md');
+    try { btn.classList.remove('btn-md'); } catch (_) {}
+    try { btn.classList.add('btn-sm'); } catch (_) {}
   }
 
   function buildInsightsVariantsCoverageWarningsHtml(details) {
@@ -5908,7 +5913,7 @@
         return '<tr>' +
           '<td>' + escapeHtml(entry.tableName) + '<div class="text-secondary small"><code>' + escapeHtml(entry.tableId) + '</code></div></td>' +
           '<td>' + escapeHtml(entry.title) + '</td>' +
-          '<td class="text-end"><button type="button" class="btn btn-md" data-action="remove-ignore" data-table-idx="' + String(entry.tableIdx) + '" data-ignore-idx="' + String(entry.ignoreIdx) + '">Remove</button></td>' +
+          '<td class="text-end"><button type="button" class="btn btn-sm" data-action="remove-ignore" data-table-idx="' + String(entry.tableIdx) + '" data-ignore-idx="' + String(entry.ignoreIdx) + '">Remove</button></td>' +
         '</tr>';
       }
     });
@@ -6390,7 +6395,7 @@
       '<div class="mb-3 d-flex justify-content-between align-items-center flex-wrap gap-2">' +
         '<div class="text-muted small">Define table rows by aliases. Includes are required. Overlap is auto-managed (most-specific include wins; earlier rows win ties). Titles outside table scope (e.g. non-length titles for length tables) are skipped. <strong>Table aliases</strong> are synonyms for Shopify option labels (e.g. Size/Chain Length) and help Suggestions merge into the same table.</div>' +
         '<div class="d-flex align-items-center gap-2">' +
-          '<button type="button" class="btn btn-md" data-action="add-table">Add custom table</button>' +
+          '<button type="button" class="btn btn-sm" data-action="add-table">Add custom table</button>' +
         '</div>' +
       '</div>';
 
@@ -6413,7 +6418,7 @@
           '</div>' +
           '<div class="settings-variants-header-actions">' +
             '<label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-field="table-enabled" data-table-idx="' + String(tableIdx) + '"' + (table.enabled !== false ? ' checked' : '') + '><span class="form-check-label small ms-2">Enabled</span></label>' +
-            '<button type="button" class="btn btn-md" data-action="remove-table" data-table-idx="' + String(tableIdx) + '">Delete</button>' +
+            '<button type="button" class="btn btn-sm" data-action="remove-table" data-table-idx="' + String(tableIdx) + '">Delete</button>' +
           '</div>' +
         '</div>' +
         '<div class="card-body">' +
@@ -6437,7 +6442,7 @@
                 var rule = item.rule;
                 var ruleIdx = item.ruleIdx;
                 var mergeBtn = rules.length > 1
-                  ? ('<button type="button" class="btn btn-md" data-action="merge-rule" data-table-idx="' + String(tableIdx) + '" data-rule-idx="' + String(ruleIdx) + '">Merge</button>')
+                  ? ('<button type="button" class="btn btn-sm" data-action="merge-rule" data-table-idx="' + String(tableIdx) + '" data-rule-idx="' + String(ruleIdx) + '">Merge</button>')
                   : '';
                 return '<tr data-table-idx="' + String(tableIdx) + '" data-rule-idx="' + String(ruleIdx) + '">' +
                   '<td><input type="text" class="form-control form-control-sm" data-field="rule-label" data-table-idx="' + String(tableIdx) + '" data-rule-idx="' + String(ruleIdx) + '" value="' + escapeHtml(rule.label || '') + '"></td>' +
@@ -6445,7 +6450,7 @@
                   '<td class="text-end">' +
                     '<div class="d-inline-flex align-items-center gap-2">' +
                       mergeBtn +
-                      '<button type="button" class="btn btn-md" data-action="remove-rule" data-table-idx="' + String(tableIdx) + '" data-rule-idx="' + String(ruleIdx) + '">Remove</button>' +
+                      '<button type="button" class="btn btn-sm" data-action="remove-rule" data-table-idx="' + String(tableIdx) + '" data-rule-idx="' + String(ruleIdx) + '">Remove</button>' +
                     '</div>' +
                   '</td>' +
                 '</tr>';
@@ -6454,7 +6459,7 @@
           })() +
         '<div class="mt-2 d-flex justify-content-between align-items-center flex-wrap gap-2">' +
           '<div class="d-flex align-items-center gap-2 flex-wrap">' +
-            '<button type="button" class="btn btn-md" data-action="add-rule" data-table-idx="' + String(tableIdx) + '">Add row mapping</button>' +
+            '<button type="button" class="btn btn-sm" data-action="add-rule" data-table-idx="' + String(tableIdx) + '">Add row mapping</button>' +
             '<input type="text" class="form-control form-control-sm settings-ui-maxw-260" data-field="table-icon" data-table-idx="' + String(tableIdx) + '" value="' + escapeHtml(iconValue) + '" placeholder="Icon (e.g. fa-solid fa-grid-round)" aria-label="Table icon (Font Awesome classes)">' +
           '</div>' +
           '<span class="text-muted small">Rule count: ' + String(rules.length) + '</span>' +
@@ -7045,8 +7050,8 @@
             '<td><input type="text" class="form-control form-control-sm" data-field="label" value="' + escapeHtml(label) + '"></td>' +
             '<td class="text-muted small">' + escapeHtml(key) + '</td>' +
             '<td class="text-end"><div class="btn-group btn-group-sm" role="group" aria-label="Reorder">' +
-              '<button type="button" class="btn btn-md" data-action="up" aria-label="Move up">\u2191</button>' +
-              '<button type="button" class="btn btn-md" data-action="down" aria-label="Move down">\u2193</button>' +
+              '<button type="button" class="btn btn-sm" data-action="up" aria-label="Move up">\u2191</button>' +
+              '<button type="button" class="btn btn-sm" data-action="down" aria-label="Move down">\u2193</button>' +
             '</div></td>' +
           '</tr>';
         }
@@ -7068,8 +7073,8 @@
           '<td><input type="text" class="form-control form-control-sm" data-field="label" value="' + escapeHtml(label) + '"></td>' +
           '<td class="text-muted small">' + escapeHtml(key) + '</td>' +
           '<td class="text-end"><div class="btn-group btn-group-sm" role="group" aria-label="Reorder">' +
-            '<button type="button" class="btn btn-md" data-action="up" aria-label="Move up">\u2191</button>' +
-            '<button type="button" class="btn btn-md" data-action="down" aria-label="Move down">\u2193</button>' +
+            '<button type="button" class="btn btn-sm" data-action="up" aria-label="Move up">\u2191</button>' +
+            '<button type="button" class="btn btn-sm" data-action="down" aria-label="Move down">\u2193</button>' +
           '</div></td>' +
         '</tr>';
       });
@@ -7116,8 +7121,8 @@
             '<td><input type="text" class="form-control form-control-sm" data-field="label" value="' + escapeHtml(label) + '"></td>' +
             '<td class="text-muted small">' + escapeHtml(key) + '</td>' +
             '<td class="text-end"><div class="btn-group btn-group-sm" role="group" aria-label="Reorder">' +
-              '<button type="button" class="btn btn-md" data-action="up" aria-label="Move up">\u2191</button>' +
-              '<button type="button" class="btn btn-md" data-action="down" aria-label="Move down">\u2193</button>' +
+              '<button type="button" class="btn btn-sm" data-action="up" aria-label="Move up">\u2191</button>' +
+              '<button type="button" class="btn btn-sm" data-action="down" aria-label="Move down">\u2193</button>' +
             '</div></td>' +
           '</tr>';
         }
@@ -7138,8 +7143,8 @@
           '<td><input type="text" class="form-control form-control-sm" data-field="label" value="' + escapeHtml(label) + '"></td>' +
           '<td class="text-muted small">' + escapeHtml(key) + '</td>' +
           '<td class="text-end"><div class="btn-group btn-group-sm" role="group" aria-label="Reorder">' +
-            '<button type="button" class="btn btn-md" data-action="up" aria-label="Move up">\u2191</button>' +
-            '<button type="button" class="btn btn-md" data-action="down" aria-label="Move down">\u2193</button>' +
+            '<button type="button" class="btn btn-sm" data-action="up" aria-label="Move up">\u2191</button>' +
+            '<button type="button" class="btn btn-sm" data-action="down" aria-label="Move down">\u2193</button>' +
           '</div></td>' +
         '</tr>';
       });
