@@ -61,25 +61,26 @@
         </div>
       </div>
       <div class="offcanvas offcanvas-end kexo-settings-menu-panel" tabindex="-1" id="settings-menu-offcanvas" aria-labelledby="settings-menu-offcanvas-label">
-        <div class="offcanvas-header border-bottom">
-          <h2 class="offcanvas-title" id="settings-menu-offcanvas-label">Menu</h2>
-          <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        <div class="kexo-settings-menu-panel-header offcanvas-header">
+          <h2 class="offcanvas-title kexo-settings-menu-panel-title" id="settings-menu-offcanvas-label">Menu</h2>
+          <button type="button" class="btn-close kexo-settings-menu-panel-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
         </div>
-        <div class="offcanvas-body d-flex flex-column p-0" id="settings-menu-offcanvas-body">
-          <div class="p-3 border-bottom">
-            <button type="button" class="btn btn-ghost-secondary w-100 d-flex align-items-center gap-2 kexo-settings-menu-search-trigger" id="kexo-global-search-trigger-panel" data-kexo-global-search-open="1" aria-label="Search products, pages, settings" title="Search">
-              <i class="fa-jelly-filled fa-magnifying-glass kexo-settings-menu-search-icon" data-icon-key="nav-search" aria-hidden="true"></i>
-              <span>Search</span>
+        <div class="offcanvas-body kexo-settings-menu-panel-body d-flex flex-column p-0" id="settings-menu-offcanvas-body">
+          <div class="kexo-settings-menu-panel-search">
+            <button type="button" class="kexo-settings-menu-search-trigger" id="kexo-global-search-trigger-panel" data-kexo-global-search-open="1" aria-label="Search products, pages, settings" title="Search">
+              <i class="kexo-settings-menu-search-icon" data-icon-key="nav-search" aria-hidden="true"></i>
+              <span class="kexo-settings-menu-search-label">Search</span>
             </button>
           </div>
-          <div class="kexo-settings-mini-menu flex-grow-1 overflow-auto px-3 py-2" id="kexo-settings-mini-menu-panel" data-kexo-mini-settings="1"></div>
-          <div class="border-top p-3">
-            <a href="/app/logout" class="dropdown-item kexo-top-strip-settings-item d-flex align-items-center gap-2 py-2 px-0 text-decoration-none" aria-label="Sign out">
-              <i class="fa-jelly fa-right-from-bracket kexo-top-strip-settings-item-icon" data-icon-key="nav-item-settings-menu-signout" aria-hidden="true"></i>Sign out
+          <div class="kexo-settings-menu-panel-nav kexo-settings-mini-menu flex-grow-1 overflow-auto" id="kexo-settings-mini-menu-panel" data-kexo-mini-settings="1"></div>
+          <div class="kexo-settings-menu-panel-footer">
+            <a href="/app/logout" class="kexo-settings-menu-signout" aria-label="Sign out">
+              <i class="kexo-settings-menu-signout-icon" data-icon-key="nav-item-settings-menu-signout" aria-hidden="true"></i>
+              <span>Sign out</span>
             </a>
           </div>
-          <div class="kexo-settings-menu-tier-row border-top p-3 kexo-real-admin-only d-none" data-kexo-tier-row="1">
-            <label class="form-label small mb-1" for="kexo-viewing-as-tier-panel">Viewing as Tier</label>
+          <div class="kexo-settings-menu-panel-tier kexo-settings-menu-tier-row kexo-real-admin-only d-none" data-kexo-tier-row="1">
+            <label class="kexo-settings-menu-tier-label form-label small mb-1" for="kexo-viewing-as-tier-panel">Viewing as Tier</label>
             <select class="form-select form-select-sm kexo-viewing-as-tier-select" id="kexo-viewing-as-tier-panel" aria-label="Viewing as Tier">
               <option value="">Off</option>
               <option value="starter">Starter</option>
