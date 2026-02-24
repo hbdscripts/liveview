@@ -840,10 +840,9 @@
 
     var showSaved = usesGlobalDraft && !tabDirty && _settingsGlobalFooterSavedTab === ctxKey;
     var hasLeftActions = !!(footerLeft && footerLeft.children && footerLeft.children.length);
-    // Keep the footer visible for all draft-based panels so Save is discoverable/consistent.
-    // Save/Revert are disabled when there are no unsaved changes.
-    var showFooterRight = !!usesGlobalDraft;
-    var showFooter = !!(hasLeftActions || usesGlobalDraft);
+    // Footer should only appear when there is something actionable (dirty or just-saved).
+    var showFooterRight = !!(usesGlobalDraft && (tabDirty || showSaved));
+    var showFooter = !!(hasLeftActions || (usesGlobalDraft && (tabDirty || showSaved)));
     var saveEnabled = !!(usesGlobalDraft && tabDirty);
 
     // Bind footer handlers once (avoid re-assigning on every sync).
