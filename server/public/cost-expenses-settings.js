@@ -354,7 +354,7 @@
           '<input type="text" class="form-control form-control-sm kexo-ce-override-countries" value="' + esc(countriesStr) + '" data-override-countries placeholder="e.g. GB, IE, FR" aria-label="Countries" />' +
         '</td>' +
         '<td class="text-end">' +
-          '<button type="button" class="btn btn-sm btn-ghost-danger" data-override-remove>Remove</button>' +
+          '<button type="button" class="btn btn-danger btn-sm" data-override-remove>Remove</button>' +
         '</td>' +
         '</tr>';
     });
@@ -437,8 +437,8 @@
         '<td>' + esc(scopeLabel(rule.appliesTo)) + '</td>' +
         '<td class="text-center"><input type="checkbox" data-per-order-enabled data-per-order-id="' + esc(rule.id) + '" ' + (rule.enabled ? 'checked' : '') + ' /></td>' +
         '<td class="text-end">' +
-          '<button type="button" class="btn btn-sm btn-ghost-secondary" data-per-order-edit data-per-order-id="' + esc(rule.id) + '">Edit</button> ' +
-          '<button type="button" class="btn btn-sm btn-ghost-danger" data-per-order-delete data-per-order-id="' + esc(rule.id) + '">Delete</button>' +
+          '<button type="button" class="btn btn-sm" data-per-order-edit data-per-order-id="' + esc(rule.id) + '">Edit</button> ' +
+          '<button type="button" class="btn btn-danger btn-sm" data-per-order-delete data-per-order-id="' + esc(rule.id) + '">Delete</button>' +
         '</td>' +
       '</tr>';
     });
@@ -480,8 +480,8 @@
         '<td>' + esc(scopeLabel(o.appliesTo)) + '</td>' +
         '<td class="text-center"><input type="checkbox" data-overhead-enabled data-overhead-id="' + esc(o.id) + '" ' + (o.enabled ? 'checked' : '') + ' /></td>' +
         '<td class="text-end">' +
-          '<button type="button" class="btn btn-sm btn-ghost-secondary" data-overhead-edit data-overhead-id="' + esc(o.id) + '">Edit</button> ' +
-          '<button type="button" class="btn btn-sm btn-ghost-danger" data-overhead-delete data-overhead-id="' + esc(o.id) + '">Delete</button>' +
+          '<button type="button" class="btn btn-sm" data-overhead-edit data-overhead-id="' + esc(o.id) + '">Edit</button> ' +
+          '<button type="button" class="btn btn-danger btn-sm" data-overhead-delete data-overhead-id="' + esc(o.id) + '">Delete</button>' +
         '</td>' +
       '</tr>';
     });
@@ -505,8 +505,8 @@
         '<td class="text-end">' + esc(formatMoneyGbp(f.amount_per_day)) + '/day</td>' +
         '<td class="text-center"><input type="checkbox" data-fixed-cost-enabled data-fixed-cost-id="' + esc(f.id) + '" ' + (f.enabled ? 'checked' : '') + ' /></td>' +
         '<td class="text-end">' +
-          '<button type="button" class="btn btn-sm btn-ghost-secondary" data-fixed-cost-edit data-fixed-cost-id="' + esc(f.id) + '">Edit</button> ' +
-          '<button type="button" class="btn btn-sm btn-ghost-danger" data-fixed-cost-delete data-fixed-cost-id="' + esc(f.id) + '">Delete</button>' +
+          '<button type="button" class="btn btn-sm" data-fixed-cost-edit data-fixed-cost-id="' + esc(f.id) + '">Edit</button> ' +
+          '<button type="button" class="btn btn-danger btn-sm" data-fixed-cost-delete data-fixed-cost-id="' + esc(f.id) + '">Delete</button>' +
         '</td>' +
       '</tr>';
     });
@@ -954,12 +954,7 @@
     if (state.uiBound) return;
     state.uiBound = true;
 
-    var saveBtn = document.getElementById('cost-expenses-save-btn');
-    if (saveBtn) {
-      saveBtn.addEventListener('click', function () {
-        saveCostExpensesToApi();
-      });
-    }
+    // Saving is via the global footer Save only; no in-panel save button.
 
     var reloadBtn = document.getElementById('cost-expenses-reload-btn');
     if (reloadBtn) {
@@ -1162,6 +1157,23 @@
 
   function load() {
     if (state.loadInFlight) return state.loadInFlight;
+    var payload = typeof window !== 'undefined' && window.__kexoSettingsPayload;
+    if (payload && payload.profitRules != null && !state.config) {
+      state.config = normalizeConfig(payload.profitRules);
+      applyConfigToInputs();
+      renderShippingOverrides();
+      renderPerOrderRulesTable();
+      renderOverheadsTable();
+      renderFixedCostsTable();
+      bindUi();
+      if (typeof window.__kexoSetSettingsDraftBaseline === 'function') window.__kexoSetSettingsDraftBaseline('cost-expenses', buildConfigFromDom());
+      markDraftChanged();
+      try {
+        if (typeof window.migrateTitleToHelpPopover === 'function') window.migrateTitleToHelpPopover(root);
+        if (typeof window.initKexoHelpPopovers === 'function') window.initKexoHelpPopovers(root);
+      } catch (_) {}
+      return Promise.resolve();
+    }
     state.loadInFlight = fetchJson(API + '/api/settings/profit-rules').then(function (configPayload) {
       if (!configPayload || configPayload.ok !== true || !configPayload.profitRules) throw new Error('Failed to load');
       state.config = normalizeConfig(configPayload && configPayload.profitRules);

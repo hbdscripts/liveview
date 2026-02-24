@@ -41,11 +41,15 @@
   function setMsg(text, tone) {
     var el = document.getElementById('cost-breakdown-msg');
     if (!el) return;
-    el.textContent = text || '';
     el.classList.remove('text-success', 'text-danger', 'text-muted');
+    if (tone === 'err') {
+      el.classList.add('text-danger');
+      el.innerHTML = (text || 'Failed to load') + ' <button type="button" class="btn btn-sm" data-cost-breakdown-retry>Retry</button>';
+      return;
+    }
     if (tone === 'ok') el.classList.add('text-success');
-    else if (tone === 'err') el.classList.add('text-danger');
     else if (tone === 'muted') el.classList.add('text-muted');
+    el.textContent = text || '';
   }
 
   function formatAmount(amount, currency) {
@@ -245,7 +249,7 @@
       var key = it.key != null ? String(it.key) : '';
       var canDetail = auditOn && !isDetail && key;
       var btn = canDetail
-        ? (' <button type="button" class="btn btn-sm btn-ghost-secondary py-0 px-2 ms-2" data-cost-breakdown-detail-toggle="' + esc(key) + '" aria-expanded="false">Details</button>')
+        ? (' <button type="button" class="btn btn-sm py-0 px-2 ms-2" data-cost-breakdown-detail-toggle="' + esc(key) + '" aria-expanded="false">Details</button>')
         : '';
       var labelHtml = baseLabel + btn;
       html += '<tr class="' + rowCls + '">' +
@@ -325,6 +329,13 @@
         fetchBreakdown();
       });
     }
+
+    panel.addEventListener('click', function (e) {
+      var t = e.target;
+      if (t && t.getAttribute && t.getAttribute('data-cost-breakdown-retry') !== null) {
+        fetchBreakdown();
+      }
+    });
 
     window.addEventListener('kexo:costExpensesTabChanged', function (e) {
       var key = e && e.detail && e.detail.key != null ? String(e.detail.key).trim().toLowerCase() : '';

@@ -340,6 +340,7 @@
       <div id="settings-panel-attribution" class="settings-panel" role="tabpanel" aria-labelledby="settings-tab-attribution">
         <div class="card">
           <div class="card-body">
+            <p class="form-hint mb-2">Changes here save immediately; there is no global Save button on this tab.</p>
             <div class="accordion settings-layout-accordion" id="settings-attribution-accordion">
               <div class="accordion-item">
                 <h4 class="accordion-header">
@@ -390,10 +391,10 @@
               </div>
               <div class="mt-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
                 <div class="d-flex align-items-center gap-2 flex-wrap">
-                  <button type="button" class="btn btn-ghost-secondary btn-md" id="settings-insights-variants-suggest-btn">Suggest mappings</button>
-                  <button type="button" class="btn btn-ghost-secondary btn-md" id="settings-insights-variants-warnings-btn">Warnings</button>
-                  <button type="button" class="btn btn-ghost-secondary btn-md" id="settings-insights-variants-ignore-btn">Ignored List</button>
-                  <button type="button" class="btn btn-ghost-secondary btn-md" id="settings-insights-variants-reset-variants-btn" title="Admins only. Resets variant mapping tables, rules, and ignored titles (does not delete database data).">Reset variants</button>
+                  <button type="button" class="btn btn-md" id="settings-insights-variants-suggest-btn">Suggest mappings</button>
+                  <button type="button" class="btn btn-md" id="settings-insights-variants-warnings-btn">Warnings</button>
+                  <button type="button" class="btn btn-md" id="settings-insights-variants-ignore-btn">Ignored List</button>
+                  <button type="button" class="btn btn-md" id="settings-insights-variants-reset-variants-btn" title="Admins only. Resets variant mapping tables, rules, and ignored titles (does not delete database data).">Reset variants</button>
                 </div>
               </div>
               <div class="mt-2"><span id="settings-insights-variants-msg" class="form-hint"></span></div>
@@ -833,9 +834,9 @@
                             <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
                               <div class="fw-semibold">Preview</div>
                               <div class="btn-group" role="group" aria-label="Per-order rules preview range">
-                                <button type="button" class="btn btn-sm btn-ghost-secondary" data-ce-per-order-preview-range="today">Today</button>
-                                <button type="button" class="btn btn-sm btn-ghost-secondary" data-ce-per-order-preview-range="7d">7 Days</button>
-                                <button type="button" class="btn btn-sm btn-ghost-secondary" data-ce-per-order-preview-range="30d">30 Days</button>
+                                <button type="button" class="btn btn-sm" data-ce-per-order-preview-range="today">Today</button>
+                                <button type="button" class="btn btn-sm" data-ce-per-order-preview-range="7d">7 Days</button>
+                                <button type="button" class="btn btn-sm" data-ce-per-order-preview-range="30d">30 Days</button>
                               </div>
                             </div>
                             <div id="cost-expenses-per-order-preview" class="form-hint text-muted">Estimated impact will appear here.</div>
@@ -1002,10 +1003,10 @@
               <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
                 <h4 class="m-0">Cost Breakdown</h4>
                 <div class="btn-group" role="group" aria-label="Cost Breakdown date range" id="cost-breakdown-range-group">
-                  <button type="button" class="btn btn-sm btn-ghost-secondary" data-cost-breakdown-range="today">Today</button>
-                  <button type="button" class="btn btn-sm btn-ghost-secondary" data-cost-breakdown-range="yesterday">Yesterday</button>
-                  <button type="button" class="btn btn-sm btn-ghost-secondary" data-cost-breakdown-range="7d">7 Days</button>
-                  <button type="button" class="btn btn-sm btn-ghost-secondary" data-cost-breakdown-range="30d">30 Days</button>
+                  <button type="button" class="btn btn-sm" data-cost-breakdown-range="today">Today</button>
+                  <button type="button" class="btn btn-sm" data-cost-breakdown-range="yesterday">Yesterday</button>
+                  <button type="button" class="btn btn-sm" data-cost-breakdown-range="7d">7 Days</button>
+                  <button type="button" class="btn btn-sm" data-cost-breakdown-range="30d">30 Days</button>
                 </div>
               </div>
               <div class="text-muted small mb-2">Inactive rows are shown muted but amounts are still calculated for comparison.</div>
@@ -1143,7 +1144,7 @@
                   <div id="settings-admin-accordion-loader" class="accordion-collapse collapse" data-bs-parent="#settings-admin-controls-accordion">
                     <div class="accordion-body">
                       <div class="mb-2" title="Enable or disable the page loader overlay per page. Admin loader is always disabled.">Loader <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></div>
-                      <div id="admin-loader-toggles" class="d-grid gap-2">
+                      <div id="admin-loader-toggles" class="settings-responsive-grid">
                         <div class="form-check form-switch">
                           <input class="form-check-input" type="checkbox" id="admin-loader-dashboard" data-admin-loader-page="dashboard" />
                           <label class="form-check-label" for="admin-loader-dashboard">Enable loader on Overview</label>
@@ -1248,11 +1249,17 @@
                   </h4>
                   <div id="settings-admin-accordion-scope" class="accordion-collapse collapse" data-bs-parent="#settings-admin-controls-accordion">
                     <div class="accordion-body">
-                      <div class="text-secondary small mb-3">All settings currently apply globally (shared).</div>
-                      <div class="d-flex align-items-center gap-2 flex-wrap">
-                        <span class="badge bg-primary-lt">Global (shared)</span>
-                        <span class="text-secondary small">Per-user settings are coming later.</span>
+                      <div class="mb-2">
+                        <label class="form-check form-check-inline">
+                          <input type="radio" class="form-check-input" name="settings-scope-mode" id="admin-settings-scope-global" value="global" checked />
+                          <span class="form-check-label">Global (shared)</span>
+                        </label>
+                        <label class="form-check form-check-inline">
+                          <input type="radio" class="form-check-input" name="settings-scope-mode" id="admin-settings-scope-user" value="user" />
+                          <span class="form-check-label">Per-user</span>
+                        </label>
                       </div>
+                      <div class="form-hint">Per-user settings are coming later. Currently only Global is applied.</div>
                     </div>
                   </div>
                 </div>
@@ -1285,7 +1292,7 @@
                     <button type="button" class="btn btn-sm btn-primary" id="config-refresh-btn" aria-label="Refresh diagnostics">
                       <i class="fa-thin fa-rotate-right" data-icon-key="settings-diagnostics-refresh" aria-hidden="true"></i> Refresh
                     </button>
-                    <button type="button" class="btn btn-sm btn-ghost-secondary" id="config-reconcile-btn" aria-label="Reconcile sales">
+                    <button type="button" class="btn btn-sm" id="config-reconcile-btn" aria-label="Reconcile sales">
                       <i class="fa-thin fa-sliders" data-icon-key="settings-diagnostics-reconcile" aria-hidden="true"></i> Reconcile
                     </button>
                     <span id="config-action-msg" class="form-hint"></span>
@@ -1479,7 +1486,7 @@
                       </div>
                       <div class="d-flex align-items-center gap-2 flex-wrap mt-3">
                         <a class="btn btn-primary btn-md d-inline-flex align-items-center gap-2" id="settings-ga-signin-btn" href="/api/ads/google/connect?redirect=%2Fsettings%3Ftab%3Dadmin%26adminTab%3Dgoogleads"><i class="fa-brands fa-google" data-icon-key="settings-googleads-google" aria-hidden="true"></i> Sign in with Google</a>
-                        <a class="btn btn-ghost-secondary btn-sm d-none" id="settings-ga-reconnect-btn" href="/api/ads/google/connect?redirect=%2Fsettings%3Ftab%3Dadmin%26adminTab%3Dgoogleads">Reconnect (re-authorize)</a>
+                        <a class="btn btn-sm d-none" id="settings-ga-reconnect-btn" href="/api/ads/google/connect?redirect=%2Fsettings%3Ftab%3Dadmin%26adminTab%3Dgoogleads">Reconnect (re-authorize)</a>
                         <button type="button" class="btn btn-md" id="settings-ga-test-connection-btn">Test connection</button>
                         <button type="button" class="btn btn-md" id="settings-ga-disconnect-btn">Disconnect</button>
                         <span id="settings-ga-connection-msg" class="form-hint"></span>
@@ -1739,7 +1746,7 @@
                     <div class="accordion-body">
                       <div class="d-flex align-items-center flex-wrap gap-2 mb-2">
                         <div class="btn-group btn-group-sm ms-auto" role="group" aria-label="Issue filter">
-                          <button type="button" class="btn btn-ghost-secondary active" data-settings-ga-issue-filter="open">Open</button>
+                          <button type="button" class="btn active" data-settings-ga-issue-filter="open">Open</button>
                           <button type="button" class="btn btn-md" data-settings-ga-issue-filter="resolved">Resolved</button>
                           <button type="button" class="btn btn-md" data-settings-ga-issue-filter="all">All</button>
                         </div>
@@ -1806,7 +1813,7 @@
           <button type="button" class="btn btn-primary btn-md" id="settings-global-save-btn">Save Settings</button>
           <div id="settings-global-save-status" class="settings-global-save-status text-success" hidden>Saved.</div>
           <div class="flex-grow-1" aria-hidden="true"></div>
-          <button type="button" class="btn btn-ghost-secondary btn-md" id="settings-global-revert-btn">Revert</button>
+          <button type="button" class="btn btn-md" id="settings-global-revert-btn">Revert</button>
         </div>
       </footer>
 

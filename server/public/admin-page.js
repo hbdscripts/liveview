@@ -422,8 +422,8 @@
           html +=       '<div class="text-secondary small">Changes auto-save.</div>';
           html +=     '</div>';
           html +=     '<div class="btn-group btn-group-sm" role="group" aria-label="Bulk role permission actions">';
-          html +=       '<button type="button" class="btn btn-ghost-secondary btn-md" data-role-perm-bulk="all" data-tier="' + escapeHtml(tier) + '">All</button>';
-          html +=       '<button type="button" class="btn btn-ghost-secondary btn-md" data-role-perm-bulk="none" data-tier="' + escapeHtml(tier) + '">None</button>';
+          html +=       '<button type="button" class="btn btn-md" data-role-perm-bulk="all" data-tier="' + escapeHtml(tier) + '">All</button>';
+          html +=       '<button type="button" class="btn btn-md" data-role-perm-bulk="none" data-tier="' + escapeHtml(tier) + '">None</button>';
           html +=     '</div>';
           html +=   '</div>';
           html +=   '<div class="card-body">';
