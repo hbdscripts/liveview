@@ -187,10 +187,24 @@
   normalizeSettingsUrlQueryEarly();
 
   // Non-admin guard: if a non-admin lands on /settings/admin/*, redirect to a safe Settings page.
+  function isResolvedViewer(viewer) {
+    // `__kexoGetEffectiveViewer()` can return a "stub" viewer before `/api/me` resolves (email=null, real.* mostly null).
+    // Only enforce admin-only redirects once we can positively identify the current user.
+    try {
+      if (!viewer || typeof viewer !== 'object') return false;
+      if (viewer.email) return true;
+      if (viewer.real && (viewer.real.role || viewer.real.tier)) return true;
+      // Fallback for older viewer shapes: treat explicit flags as resolved.
+      if (viewer.isAdmin === true || viewer.isMaster === true) return true;
+    } catch (_) {}
+    return false;
+  }
+
   function redirectNonAdminFromAdminPath(viewer) {
     try {
       var pathname = String(window.location.pathname || '').replace(/\/+$/, '');
       if (pathname.indexOf('/settings/admin/') !== 0) return;
+      if (!isResolvedViewer(viewer)) return;
       var isAdmin = !!(viewer && (viewer.isAdmin === true || viewer.isMaster === true));
       if (isAdmin) return;
       var params = new URLSearchParams(window.location.search || '');
@@ -353,7 +367,8 @@
     } catch (_) {}
 
     // If a non-admin deep-links to Admin, bounce to Kexo so the page doesn't look broken.
-    if (!isAdmin) {
+    // IMPORTANT: only enforce the bounce once the viewer is resolved (avoid redirecting admins during /api/me race).
+    if (!isAdmin && isResolvedViewer(viewer)) {
       try {
         if (getActiveSettingsTab() === 'admin') {
           activateTab('kexo');

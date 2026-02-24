@@ -78,6 +78,10 @@ test('Settings/Admin panels satisfy UI contract after normalisation', () => {
       assert.equal(hasCol, false, `${panel.id}: col-* class found after normalisation (${classes.join(' ')})`);
     }
 
+    // Contract: no <h2> anywhere inside Settings/Admin accordions.
+    const h2InAccordions = wrap.querySelectorAll('.accordion h2');
+    assert.equal(h2InAccordions.length, 0, `${panel.id}: h2 found inside accordion (use <h4 class="accordion-header"> for accordion headers)`);
+
     // First card header is removed; later headers remain.
     const fc = firstCardInWrap(wrap);
     if (fc) {

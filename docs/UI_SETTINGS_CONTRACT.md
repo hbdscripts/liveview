@@ -160,7 +160,7 @@ Use consistent states:
 
 ### Don’t
 
-- Don’t use `<h2>` in Settings/Admin accordion headers.
+- Don’t use `<h2>` anywhere inside Settings/Admin accordions (header or body). Accordion headers must use `<h4 class="accordion-header">`.
 - Don’t use nested `.settings-panel-wrap` or inject `.settings-panel-wrap` in renderers.
 - Don’t remove or weaken the “already normalised” early return in `normaliseSettingsPanel` (see **Mutation-loop prevention** under Runtime guardrails); doing so reintroduces observer → normalise → mutate → observer loops and flashing.
 - Don’t use `btn-outline-*` button classes anywhere in Settings/Admin UI.
