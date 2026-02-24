@@ -815,7 +815,7 @@ async function syncAttributedOrdersToAdsDb(options = {}) {
         INSERT INTO ads_orders_attributed
           (shop, order_id, created_at_ms, currency, total_price, revenue_gbp, source, campaign_id, adgroup_id, ad_id, gclid, gbraid, wbraid, click_id_type, click_id_value, country_code, attribution_method, landing_site, session_id, visitor_country_code, visitor_device_type, visitor_network, campaign_id_first_click, adgroup_id_first_click, campaign_id_last_click, adgroup_id_last_click, attribution_model_first_method, attribution_model_last_method, updated_at)
         VALUES
-          (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT (shop, order_id) DO UPDATE SET
           created_at_ms = EXCLUDED.created_at_ms,
           currency = EXCLUDED.currency,

@@ -1925,7 +1925,8 @@
       // Tooltip system was refactored; keep map render path using current helpers.
       bindGlobalMapTooltipDismiss();
       hideMapTooltips();
-      bindJvmTooltipAutoHideOnce(el);
+      var bindJvm = typeof bindJvmTooltipAutoHideOnce === 'function' ? bindJvmTooltipAutoHideOnce : (window && window.bindJvmTooltipAutoHideOnce);
+      if (bindJvm) bindJvm(el);
       var setState = typeof opts.setState === 'function' ? opts.setState : setCountriesMapState;
       var mapHeight = Math.max(80, Number(opts.mapHeight) || 220);
       if (typeof jsVectorMap === 'undefined') {
@@ -2283,6 +2284,7 @@
           recenterOnCreate: true,
           retry: function() { renderCountriesMapChart(data, opts); },
           onRegionTooltipShow: function(event, tooltip, code) {
+            function pctRatio(n) { return n != null && Number.isFinite(n) ? (Number(n) * 100).toFixed(1) + '%' : '\u2014'; }
             const iso = (code || '').toString().trim().toUpperCase();
             const name = (countriesMapChartInstance && typeof countriesMapChartInstance.getRegionName === 'function')
               ? (countriesMapChartInstance.getRegionName(iso) || iso)
@@ -2294,7 +2296,7 @@
             const ordHtml = formatSessions(ord);
             const totHtml = formatSessions(tot);
             const cr = tot > 0 ? (ord / tot) : null;
-            const crHtml = cr != null ? pct(cr) : '\u2014';
+            const crHtml = cr != null ? pctRatio(cr) : '\u2014';
             const vpvNum = tot > 0 ? (rev / tot) : null;
             const vpvHtml = vpvNum != null ? formatRevenue(vpvNum) : '\u2014';
             const emptyNote = (!rev && !ord && !tot)
