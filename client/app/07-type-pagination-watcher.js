@@ -2238,12 +2238,36 @@
       // Period map should stay zoomed out (no auto-focus/zoom on top regions).
       var focusOn = null;
 
-      // Stable signature for reuse: same range + metric + style + data => update in place instead of destroy/recreate.
-      var choroplethSorted = Object.keys(choroplethByIso2 || {}).sort().map(function(k) { return k + ':' + (choroplethByIso2[k]); });
-      var currentSignature = getStatsRange() + '|' + mapMetricChoice + '|' + accent + '|' + String(fillOpacity2) + '|' + String(inactiveOpacity2) + '|' + (inactiveRgb2 || '') + '|' + JSON.stringify(choroplethSorted);
+      // Persist tooltip metrics for the already-mounted map instance.
+      // Avoid rebuilding the SVG on each stats refresh (it drops hover state and makes tooltips "blink").
+      try {
+        el.__kexoCountriesMapTooltipData = {
+          revenueByIso2: revenueByIso2,
+          ordersByIso2: ordersByIso2,
+          sessionsByIso2: sessionsByIso2,
+        };
+      } catch (_) {}
 
-      if (countriesMapChartInstance && countriesMapChartInstance.regions && el.__kexoCountriesMapSig === currentSignature) {
-        try { el.__kexoCountriesMapSig = currentSignature; } catch (_) {}
+      // Stable signature for reuse: config only (NOT live values).
+      var configSignature =
+        'metric:' + mapMetricChoice +
+        '|accent:' + accent +
+        '|fill:' + String(fillOpacity2) +
+        '|inactive:' + String(inactiveOpacity2) +
+        '|inactiveRgb:' + (inactiveRgb2 || '') +
+        '|h:' + String(mapHeight);
+
+      if (countriesMapChartInstance && countriesMapChartInstance.regions && el.__kexoCountriesMapSig === configSignature) {
+        try { el.__kexoCountriesMapSig = configSignature; } catch (_) {}
+        var prevH = null;
+        try { prevH = el.__kexoCountriesMapHeight; } catch (_) { prevH = null; }
+        try { el.__kexoCountriesMapHeight = mapHeight; } catch (_) {}
+        if (prevH !== mapHeight) {
+          try {
+            el.style.height = mapHeight + 'px';
+            el.style.minHeight = mapHeight + 'px';
+          } catch (_) {}
+        }
         var inactiveFill = 'rgba(' + (inactiveRgb2 || primaryRgb) + ',' + String(Number(inactiveOpacity2).toFixed(3)) + ')';
         var regionsExisting = countriesMapChartInstance.regions;
         for (var code in regionsExisting) {
@@ -2254,7 +2278,9 @@
           }
         }
         clearCountriesFlowOverlay(el);
-        try { if (typeof countriesMapChartInstance.updateSize === 'function') countriesMapChartInstance.updateSize(); } catch (_) {}
+        if (prevH !== mapHeight) {
+          try { if (typeof countriesMapChartInstance.updateSize === 'function') countriesMapChartInstance.updateSize(); } catch (_) {}
+        }
         return;
       }
 
@@ -2289,9 +2315,14 @@
             const name = (countriesMapChartInstance && typeof countriesMapChartInstance.getRegionName === 'function')
               ? (countriesMapChartInstance.getRegionName(iso) || iso)
               : iso;
-            const rev = Number.isFinite(Number(revenueByIso2[iso])) ? Number(revenueByIso2[iso]) : 0;
-            const ord = Number.isFinite(Number(ordersByIso2[iso])) ? Number(ordersByIso2[iso]) : 0;
-            const tot = Number.isFinite(Number(sessionsByIso2[iso])) ? Number(sessionsByIso2[iso]) : 0;
+            var d = null;
+            try { d = el && el.__kexoCountriesMapTooltipData ? el.__kexoCountriesMapTooltipData : null; } catch (_) { d = null; }
+            var revBy = (d && d.revenueByIso2) ? d.revenueByIso2 : {};
+            var ordBy = (d && d.ordersByIso2) ? d.ordersByIso2 : {};
+            var totBy = (d && d.sessionsByIso2) ? d.sessionsByIso2 : {};
+            const rev = Number.isFinite(Number(revBy[iso])) ? Number(revBy[iso]) : 0;
+            const ord = Number.isFinite(Number(ordBy[iso])) ? Number(ordBy[iso]) : 0;
+            const tot = Number.isFinite(Number(totBy[iso])) ? Number(totBy[iso]) : 0;
             const revHtml = formatRevenue(rev) || '\u2014';
             const ordHtml = formatSessions(ord);
             const totHtml = formatSessions(tot);
@@ -2317,11 +2348,12 @@
             );
           },
           afterMapCreated: function(instance, containerEl) {
-            try { containerEl.__kexoCountriesMapSig = currentSignature; } catch (_) {}
+            try { containerEl.__kexoCountriesMapSig = configSignature; } catch (_) {}
+            try { containerEl.__kexoCountriesMapHeight = mapHeight; } catch (_) {}
             clearCountriesFlowOverlay(containerEl);
           },
         });
-        try { if (el && countriesMapChartInstance) el.__kexoCountriesMapSig = currentSignature; } catch (_) {}
+        try { if (el && countriesMapChartInstance) el.__kexoCountriesMapSig = configSignature; } catch (_) {}
       } catch (err) {
         captureChartError(err, 'countriesMapRender', { chartKey: 'countries-map-chart' });
         console.error('[countries-map] map render error:', err);
