@@ -6096,7 +6096,7 @@ img[data-kexo-logo-slot="footer"][data-kexo-logo-ready="1"] {
   margin: 0 0 0.125rem 0;
 }
 .kexo-settings-menu-panel .kexo-settings-menu-panel-nav .settings-nav-category > a:first-of-type {
-  padding: 5px 0;
+  padding: 5px 10px 5px 12px;
   margin-top: 5px;
   border-radius: 0;
   font-size: 0.9375rem;
