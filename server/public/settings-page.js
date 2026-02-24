@@ -730,8 +730,21 @@
   // Global footer "Saved." indicator (per active top-level tab).
   var _settingsGlobalFooterSavedTab = null;
   var _settingsGlobalFooterLastTab = null;
+  var _settingsGlobalFooterSavedTimer = 0;
   function clearGlobalFooterSavedIndicator() {
     _settingsGlobalFooterSavedTab = null;
+    if (_settingsGlobalFooterSavedTimer) {
+      try { clearTimeout(_settingsGlobalFooterSavedTimer); } catch (_) {}
+      _settingsGlobalFooterSavedTimer = 0;
+    }
+  }
+  function scheduleClearGlobalFooterSavedIndicator() {
+    if (_settingsGlobalFooterSavedTimer) return;
+    _settingsGlobalFooterSavedTimer = setTimeout(function () {
+      _settingsGlobalFooterSavedTimer = 0;
+      clearGlobalFooterSavedIndicator();
+      try { syncGlobalFooter(); } catch (_) {}
+    }, 2200);
   }
   function getGlobalFooterContextKey() {
     var tab = getActiveSettingsTab();
@@ -851,7 +864,10 @@
       globalSave.onclick = function () {
         settingsDraftSaveAll().then(function (results) {
           var allOk = Array.isArray(results) && results.length > 0 && results.every(function (r) { return !!(r && r.ok); });
-          if (allOk) _settingsGlobalFooterSavedTab = getGlobalFooterContextKey() || null;
+          if (allOk) {
+            _settingsGlobalFooterSavedTab = getGlobalFooterContextKey() || null;
+            scheduleClearGlobalFooterSavedIndicator();
+          }
           try { syncGlobalFooter(); } catch (_) {}
         }).catch(function () {});
       };
