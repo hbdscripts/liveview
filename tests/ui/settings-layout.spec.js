@@ -130,3 +130,18 @@ test('Theme settings renderer has no per-item Revert or inline styles', () => {
   );
 });
 
+test('Base page layout is top-aligned (no vertical centering)', () => {
+  const css = readText('server/public/custom.css');
+
+  assert.ok(
+    /\.page\s*\{[\s\S]*?justify-content:\s*flex-start/i.test(css),
+    'custom.css must enforce .page justify-content:flex-start'
+  );
+
+  // Auth pages use Tabler's `.page-center`. Kexo intentionally overrides it.
+  assert.ok(
+    /\.page\.page-center\s*\{[\s\S]*?justify-content:\s*flex-start/i.test(css),
+    'custom.css must override .page.page-center to flex-start (top aligned)'
+  );
+});
+

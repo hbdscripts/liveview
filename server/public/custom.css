@@ -12,6 +12,7 @@ html, body {
 }
 /* Keep main content at top; footer at bottom (no vertical centering). */
 .page {
+  position: relative;
   min-height: 100%;
   width: 100%;
   display: flex !important;
@@ -19,6 +20,12 @@ html, body {
   align-items: stretch !important;
   justify-content: flex-start !important;
   overflow: visible !important;
+}
+
+/* Auth pages use Tabler's .page-center; we still want top-aligned layouts. */
+.page.page-center {
+  justify-content: flex-start !important;
+  align-items: stretch !important;
 }
 .page-wrapper {
   min-width: 0;
