@@ -136,7 +136,7 @@ async function listUsers({ status } = {}) {
   try {
     if (st) {
       return await db.all(
-        `SELECT id, email, status, role, tier, created_at, last_login_at, last_country, last_city, last_device_type, last_platform
+        `SELECT id, email, status, role, tier, created_at, last_login_at, last_country, last_city, last_device_type, last_platform, last_auth_provider
          FROM users
          WHERE status = ?
          ORDER BY COALESCE(last_login_at, created_at) DESC, id DESC`,
@@ -144,7 +144,7 @@ async function listUsers({ status } = {}) {
       );
     }
     return await db.all(
-      `SELECT id, email, status, role, tier, created_at, last_login_at, last_country, last_city, last_device_type, last_platform
+      `SELECT id, email, status, role, tier, created_at, last_login_at, last_country, last_city, last_device_type, last_platform, last_auth_provider
        FROM users
        ORDER BY COALESCE(last_login_at, created_at) DESC, id DESC`,
       []
@@ -232,6 +232,12 @@ async function promoteToMaster(id, actorEmail, { now = Date.now() } = {}) {
   return promoteToAdmin(id, actorEmail, { now });
 }
 
+function normalizeAuthProvider(raw) {
+  const s = raw != null ? String(raw).trim().toLowerCase() : '';
+  if (s === 'google' || s === 'shopify' || s === 'local') return s;
+  return null;
+}
+
 async function updateLoginMeta(email, meta = {}, { now = Date.now() } = {}) {
   const e = normalizeEmail(email);
   if (!e) return { ok: false, error: 'invalid_email' };
@@ -243,6 +249,7 @@ async function updateLoginMeta(email, meta = {}, { now = Date.now() } = {}) {
     const lastPlatform = meta.last_platform != null ? String(meta.last_platform).trim().toLowerCase().slice(0, 24) : null;
     const lastUserAgent = meta.last_user_agent != null ? String(meta.last_user_agent).trim().slice(0, 320) : null;
     const lastIp = meta.last_ip != null ? String(meta.last_ip).trim().slice(0, 64) : null;
+    const lastAuthProvider = normalizeAuthProvider(meta.last_auth_provider);
     await db.run(
       `
         UPDATE users SET
@@ -252,10 +259,11 @@ async function updateLoginMeta(email, meta = {}, { now = Date.now() } = {}) {
           last_device_type = COALESCE(?, last_device_type),
           last_platform = COALESCE(?, last_platform),
           last_user_agent = COALESCE(?, last_user_agent),
-          last_ip = COALESCE(?, last_ip)
+          last_ip = COALESCE(?, last_ip),
+          last_auth_provider = ?
         WHERE email = ?
       `,
-      [now, lastCountry, lastCity, lastDeviceType, lastPlatform, lastUserAgent, lastIp, e]
+      [now, lastCountry, lastCity, lastDeviceType, lastPlatform, lastUserAgent, lastIp, lastAuthProvider, e]
     );
     return { ok: true };
   } catch (_) {

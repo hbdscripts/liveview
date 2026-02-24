@@ -236,6 +236,7 @@ async function postLogin(req, res) {
   // Track login metadata for Admin -> Users.
   try {
     const meta = buildMetaFromRequest(req);
+    meta.last_auth_provider = 'local';
     await users.updateLoginMeta(e, meta, { now: Date.now() });
   } catch (_) {}
 

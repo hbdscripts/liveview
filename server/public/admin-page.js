@@ -564,11 +564,17 @@
     return TIER_LABELS[t] || (t || '—');
   }
 
+  var LOGIN_METHOD_LABELS = { google: 'Google', shopify: 'Shopify', local: 'Local' };
+  function loginMethodLabel(provider) {
+    var p = (provider || '').toString().trim().toLowerCase();
+    return LOGIN_METHOD_LABELS[p] || (p ? escapeHtml(p) : '—');
+  }
+
   function renderActive(rows) {
     var body = document.getElementById('admin-users-active-body');
     if (!body) return;
     if (!rows || !rows.length) {
-      body.innerHTML = '<tr><td colspan="7" class="text-secondary">No active users.</td></tr>';
+      body.innerHTML = '<tr><td colspan="8" class="text-secondary">No active users.</td></tr>';
       return;
     }
     var h = '';
@@ -576,7 +582,7 @@
       var email = row && row.email ? String(row.email) : '';
       var role = row && row.role ? String(row.role).trim().toLowerCase() : '';
       var tier = row && row.tier ? String(row.tier).trim().toLowerCase() : '';
-      var provider = row && row.auth_provider ? String(row.auth_provider).trim().toLowerCase() : '';
+      var provider = (row && (row.auth_provider || row.last_auth_provider)) ? String(row.auth_provider || row.last_auth_provider).trim().toLowerCase() : '';
       var status = row && row.status ? String(row.status).trim().toLowerCase() : '';
       var country = row && row.last_country ? String(row.last_country).trim() : '';
       var city = row && row.last_city ? String(row.last_city).trim() : '';
@@ -586,7 +592,7 @@
       var roleCell = isShopifySession ? '—' : (role === 'admin' || role === 'master' ? makeBadge('Admin', 'primary') : escapeHtml(tierLabel(tier)));
       var actions = '';
       if (isShopifySession) {
-        actions = makeBadge('Shopify session', 'secondary');
+        actions = '<span class="badge bg-secondary-lt admin-users-badge" title="Session-only; no role/permissions to edit" aria-label="Session-only; no role/permissions to edit">Shopify session</span>';
       } else if (role === 'admin' || role === 'master') {
         actions = makeBadge('Admin', 'primary');
       } else {
@@ -604,6 +610,7 @@
         : (flagSpan(country, country || '—') + ' <span class="ms-1 text-secondary small">' + escapeHtml(country || '—') + '</span>');
       var cityCell = isShopifySession ? '—' : (city || '—');
       var emailCell = email || '—';
+      var loginMethodCell = loginMethodLabel(provider);
 
       h +=
         '<tr>' +
@@ -612,6 +619,7 @@
           '<td>' + countryCell + '</td>' +
           '<td>' + escapeHtml(cityCell) + '</td>' +
           '<td>' + escapeHtml(deviceLabel(row)) + '</td>' +
+          '<td>' + loginMethodCell + '</td>' +
           '<td>' + escapeHtml(fmtTs(lastLogin)) + '</td>' +
           '<td class="text-end"><div class="admin-users-actions">' + actions + '</div></td>' +
         '</tr>';
@@ -659,7 +667,8 @@
     var id = which === 'pending' ? 'admin-users-pending-body' : 'admin-users-active-body';
     var body = document.getElementById(id);
     if (!body) return;
-    body.innerHTML = '<tr><td colspan="7" class="text-secondary">' + escapeHtml(text || 'Loading…') + '</td></tr>';
+    var cols = which === 'active' ? 8 : 7;
+    body.innerHTML = '<tr><td colspan="' + cols + '" class="text-secondary">' + escapeHtml(text || 'Loading…') + '</td></tr>';
   }
 
   function loadUsers(status) {

@@ -195,6 +195,7 @@ async function handleGoogleCallback(req, res) {
   try {
     const now = Date.now();
     const meta = buildMetaFromRequest(req);
+    meta.last_auth_provider = 'google';
     if (users.isBootstrapMasterEmail(email)) {
       await users.ensureBootstrapMaster(email, { now });
     }
@@ -300,10 +301,10 @@ async function handleShopifyLoginCallback(req, res) {
             const existing = await users.getUserByEmail(email);
             if (!existing) {
               await users.createPendingUser(email, null, {}, { now });
-            } else if ((existing.status || '').toString().trim().toLowerCase() === 'active') {
-              const meta = buildMetaFromRequest(req);
-              await users.updateLoginMeta(email, meta, { now });
             }
+            const meta = buildMetaFromRequest(req);
+            meta.last_auth_provider = 'shopify';
+            await users.updateLoginMeta(email, meta, { now });
             await getDb().run(
               'UPDATE shop_sessions SET last_oauth_email = ?, last_oauth_user_id = ?, last_oauth_at = ? WHERE shop = ?',
               [oauthEmail, oauthUserId, now, shopNorm]

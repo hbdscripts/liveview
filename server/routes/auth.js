@@ -192,6 +192,7 @@ async function handleCallback(req, res) {
                 if (ua) meta.last_user_agent = ua.slice(0, 320);
                 if (ip) meta.last_ip = String(ip).slice(0, 64);
               }
+              meta.last_auth_provider = 'shopify';
               await users.updateLoginMeta(email, meta, { now });
             }
             await db.run(
