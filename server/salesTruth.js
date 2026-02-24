@@ -554,10 +554,12 @@ async function upsertOrderLineItems(shop, order, orderRow) {
   const db = getDb();
   const CHUNK = 50; // keep under SQLite parameter limits
   let rows = 0;
+  const nowTs = Math.trunc(syncedAt);
   for (let i = 0; i < items.length; i += CHUNK) {
     const chunk = items.slice(i, i + CHUNK);
     const values = [];
     const params = [];
+    const catalogByPid = new Map(); // productId -> title (unique products in this chunk)
     for (const li of chunk) {
       const lineItemId = extractNumericId(li?.id);
       if (!lineItemId) continue;
@@ -572,6 +574,7 @@ async function upsertOrderLineItems(shop, order, orderRow) {
       const lineNet = Math.max(0, lineGross - lineDiscount);
       const title = normalizeTitle(li?.title);
       const variantTitle = normalizeVariantTitle(li?.variant_title);
+      if (productId) catalogByPid.set(String(productId), title);
 
       values.push('(' + cols.map(() => '?').join(',') + ')');
       params.push(
@@ -595,7 +598,7 @@ async function upsertOrderLineItems(shop, order, orderRow) {
         orderProcessedAt != null && Number.isFinite(orderProcessedAt) ? Math.trunc(orderProcessedAt) : null,
         title,
         variantTitle,
-        Math.trunc(syncedAt),
+        nowTs,
       );
       rows += 1;
     }
@@ -628,6 +631,35 @@ async function upsertOrderLineItems(shop, order, orderRow) {
       `,
       params
     );
+
+    // Upsert detected products into catalog_products (search index)
+    if (catalogByPid.size) {
+      try {
+        for (const [pid, title] of catalogByPid) {
+          if (isPostgres()) {
+            await db.run(
+              `INSERT INTO catalog_products (shop, product_id, title, handle, first_seen_at, last_seen_at)
+               VALUES (?, ?, ?, NULL, ?, ?)
+               ON CONFLICT (shop, product_id) DO UPDATE SET
+                 title = EXCLUDED.title,
+                 last_seen_at = GREATEST(catalog_products.last_seen_at, EXCLUDED.last_seen_at)`,
+              [safeShop, pid, title, nowTs, nowTs]
+            );
+          } else {
+            await db.run(
+              `INSERT INTO catalog_products (shop, product_id, title, handle, first_seen_at, last_seen_at)
+               VALUES (?, ?, ?, NULL, ?, ?)
+               ON CONFLICT (shop, product_id) DO UPDATE SET
+                 title = excluded.title,
+                 last_seen_at = MAX(catalog_products.last_seen_at, excluded.last_seen_at)`,
+              [safeShop, pid, title, nowTs, nowTs]
+            );
+          }
+        }
+      } catch (_) {
+        // catalog_products table may not exist yet (migration 068)
+      }
+    }
   }
 
   return { ok: true, rows };

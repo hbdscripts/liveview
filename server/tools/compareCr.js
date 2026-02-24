@@ -1,5 +1,5 @@
 const store = require('../store');
-const { getDb } = require('../db');
+const { getDb, isPostgres } = require('../db');
 const salesTruth = require('../salesTruth');
 const reportCache = require('../reportCache');
 const {
@@ -138,11 +138,58 @@ async function shopifyGraphql(shop, token, query, variables) {
 async function catalogSearch({ shop, q, limit = 10 } = {}) {
   const safeShop = salesTruth.resolveShopForSales(shop || '');
   const token = safeShop ? await salesTruth.getAccessToken(safeShop) : '';
-  if (!safeShop || !token) return { ok: false, error: 'missing_shop_or_token', products: [], collections: [], pages: [] };
   const term = safeStr(q, 80);
   if (!term) return { ok: true, products: [], collections: [], pages: [] };
   const n = clampInt(limit, 10, 1, 15);
 
+  // 1) DB-backed product search (no token required)
+  let dbProducts = [];
+  if (safeShop) {
+    try {
+      const db = getDb();
+      const likePattern = '%' + term.replace(/%/g, '\\%').replace(/_/g, '\\_') + '%';
+      const numericMatch = /^\d+$/.test(term) ? term : null;
+      if (isPostgres()) {
+        const rows = await db.all(
+          numericMatch
+            ? `SELECT product_id, title, handle FROM catalog_products WHERE shop = $1 AND (title ILIKE $2 OR product_id = $3) ORDER BY last_seen_at DESC LIMIT $4`
+            : `SELECT product_id, title, handle FROM catalog_products WHERE shop = $1 AND title ILIKE $2 ORDER BY last_seen_at DESC LIMIT $3`,
+          numericMatch ? [safeShop, likePattern, numericMatch, n] : [safeShop, likePattern, n]
+        );
+        dbProducts = (rows || []).map((r) => ({
+          product_id: String(r.product_id || '').trim(),
+          title: safeStr(r.title, 160) || 'Untitled',
+          handle: normalizeHandle(r.handle) || null,
+          created_at: null,
+        })).filter((p) => !!p.product_id);
+      } else {
+        const rows = await db.all(
+          `SELECT product_id, title, handle FROM catalog_products
+           WHERE shop = ? AND (title LIKE ? ESCAPE '\\'${numericMatch ? ' OR product_id = ?' : ''})
+           ORDER BY last_seen_at DESC LIMIT ?`,
+          numericMatch ? [safeShop, likePattern, numericMatch, n] : [safeShop, likePattern, n]
+        );
+        dbProducts = (rows || []).map((r) => ({
+          product_id: String(r.product_id || '').trim(),
+          title: safeStr(r.title, 160) || 'Untitled',
+          handle: normalizeHandle(r.handle) || null,
+          created_at: null,
+        })).filter((p) => !!p.product_id);
+      }
+    } catch (_) {
+      // catalog_products may not exist
+    }
+  }
+
+  // 2) If no shop/token, return DB products only (so UI is not broken)
+  if (!safeShop) {
+    return { ok: false, error: 'missing_shop_or_token', products: [], collections: [], pages: [] };
+  }
+  if (!token) {
+    return { ok: true, products: dbProducts.slice(0, n), collections: [], pages: [] };
+  }
+
+  // 3) Optionally augment with Shopify GraphQL (collections + pages; merge products)
   const query = `query($qp: String!, $qc: String!, $qpage: String!, $n: Int!) {
     products(first: $n, query: $qp) {
       nodes { id legacyResourceId title handle createdAt }
@@ -154,49 +201,51 @@ async function catalogSearch({ shop, q, limit = 10 } = {}) {
       nodes { id legacyResourceId title handle updatedAt }
     }
   }`;
-
   const qp = `title:*${term}*`;
   const qc = `title:*${term}*`;
   const qpage = `title:*${term}*`;
   const gql = await shopifyGraphql(safeShop, token, query, { qp, qc, qpage, n });
-  if (!gql.ok) return { ok: false, error: gql.error || 'search_failed', products: [], collections: [], pages: [] };
 
-  const products = (gql.data && gql.data.products && Array.isArray(gql.data.products.nodes)) ? gql.data.products.nodes : [];
-  const collections = (gql.data && gql.data.collections && Array.isArray(gql.data.collections.nodes)) ? gql.data.collections.nodes : [];
-  const pages = (gql.data && gql.data.pages && Array.isArray(gql.data.pages.nodes)) ? gql.data.pages.nodes : [];
+  const gqlProducts = (gql.ok && gql.data && gql.data.products && Array.isArray(gql.data.products.nodes))
+    ? gql.data.products.nodes.map((p) => ({
+        product_id: (p && p.legacyResourceId != null ? String(p.legacyResourceId) : extractGidId(p && p.id, 'Product')) || '',
+        title: safeStr(p && p.title, 160) || 'Untitled',
+        handle: normalizeHandle(p && p.handle) || null,
+        created_at: p && p.createdAt ? String(p.createdAt) : null,
+      })).filter((p) => !!p.product_id)
+    : [];
+  const collections = (gql.ok && gql.data && gql.data.collections && Array.isArray(gql.data.collections.nodes))
+    ? gql.data.collections.nodes.map((c) => ({
+        collection_id: (c && c.legacyResourceId != null ? String(c.legacyResourceId) : extractGidId(c && c.id, 'Collection')) || '',
+        title: safeStr(c && c.title, 160) || 'Untitled',
+        handle: normalizeHandle(c && c.handle) || null,
+        updated_at: c && c.updatedAt ? String(c.updatedAt) : null,
+      })).filter((c) => !!c.collection_id)
+    : [];
+  const pages = (gql.ok && gql.data && gql.data.pages && Array.isArray(gql.data.pages.nodes))
+    ? gql.data.pages.nodes.map((pg) => ({
+        page_id: (pg && pg.legacyResourceId != null ? String(pg.legacyResourceId) : extractGidId(pg && pg.id, 'Page')) || '',
+        title: safeStr(pg && pg.title, 160) || 'Untitled',
+        handle: normalizeHandle(pg && pg.handle) || null,
+        updated_at: pg && pg.updatedAt ? String(pg.updatedAt) : null,
+      })).filter((pg) => !!pg.page_id)
+    : [];
+
+  // Merge products: DB first, then GQL deduped by product_id
+  const seenIds = new Set(dbProducts.map((p) => p.product_id));
+  for (const p of gqlProducts) {
+    if (!seenIds.has(p.product_id)) {
+      seenIds.add(p.product_id);
+      dbProducts.push(p);
+    }
+  }
+  const products = dbProducts.slice(0, n);
 
   return {
     ok: true,
-    products: products.map((p) => ({
-      product_id: (
-        p && p.legacyResourceId != null
-          ? String(p.legacyResourceId)
-          : extractGidId(p && p.id, 'Product')
-      ) || '',
-      title: safeStr(p && p.title, 160) || 'Untitled',
-      handle: normalizeHandle(p && p.handle) || null,
-      created_at: p && p.createdAt ? String(p.createdAt) : null,
-    })).filter((p) => !!p.product_id),
-    collections: collections.map((c) => ({
-      collection_id: (
-        c && c.legacyResourceId != null
-          ? String(c.legacyResourceId)
-          : extractGidId(c && c.id, 'Collection')
-      ) || '',
-      title: safeStr(c && c.title, 160) || 'Untitled',
-      handle: normalizeHandle(c && c.handle) || null,
-      updated_at: c && c.updatedAt ? String(c.updatedAt) : null,
-    })).filter((c) => !!c.collection_id),
-    pages: pages.map((pg) => ({
-      page_id: (
-        pg && pg.legacyResourceId != null
-          ? String(pg.legacyResourceId)
-          : extractGidId(pg && pg.id, 'Page')
-      ) || '',
-      title: safeStr(pg && pg.title, 160) || 'Untitled',
-      handle: normalizeHandle(pg && pg.handle) || null,
-      updated_at: pg && pg.updatedAt ? String(pg.updatedAt) : null,
-    })).filter((pg) => !!pg.page_id),
+    products,
+    collections,
+    pages,
   };
 }
 

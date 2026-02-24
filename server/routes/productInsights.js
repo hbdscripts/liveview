@@ -7,7 +7,7 @@
  * - Landings ("clicks") from our sessions table (human-only).
  * - Product views / add-to-cart events from our events table (human-only).
  */
-const { getDb } = require('../db');
+const { getDb, isPostgres } = require('../db');
 const store = require('../store');
 const salesTruth = require('../salesTruth');
 const fx = require('../fx');
@@ -482,6 +482,52 @@ async function getProductInsights(req, res) {
     if (product && product.handle) handle = product.handle;
   }
   const productId = product && product.productId ? String(product.productId) : (productIdRaw ? toNumericProductId(productIdRaw) : null);
+  // Enrich catalog_products with handle (and title if we have meta) for search / "View on Website"
+  if (shop && productId) {
+    try {
+      const title = (product && product.title) ? String(product.title).trim() || 'Untitled' : 'Untitled';
+      const handleVal = handle ? String(handle).trim().toLowerCase().slice(0, 128) : null;
+      const nowTs = Math.trunc(Date.now());
+      if (isPostgres()) {
+        await db.run(
+          `INSERT INTO catalog_products (shop, product_id, title, handle, first_seen_at, last_seen_at)
+           VALUES (?, ?, ?, ?, ?, ?)
+           ON CONFLICT (shop, product_id) DO UPDATE SET
+             title = COALESCE(EXCLUDED.title, catalog_products.title),
+             handle = COALESCE(EXCLUDED.handle, catalog_products.handle),
+             last_seen_at = GREATEST(catalog_products.last_seen_at, EXCLUDED.last_seen_at)`,
+          [shop, productId, title, handleVal, nowTs, nowTs]
+        );
+      } else {
+        await db.run(
+          `INSERT INTO catalog_products (shop, product_id, title, handle, first_seen_at, last_seen_at)
+           VALUES (?, ?, ?, ?, ?, ?)
+           ON CONFLICT (shop, product_id) DO UPDATE SET
+             title = COALESCE(excluded.title, catalog_products.title),
+             handle = COALESCE(excluded.handle, catalog_products.handle),
+             last_seen_at = MAX(catalog_products.last_seen_at, excluded.last_seen_at)`,
+          [shop, productId, title, handleVal, nowTs, nowTs]
+        );
+      }
+    } catch (_) {
+      // catalog_products may not exist
+    }
+  }
+  // If Shopify meta fetch failed, use catalog_products for title/handle so the page still shows a name
+  if (!product && shop && productId) {
+    try {
+      const row = await db.get('SELECT title, handle FROM catalog_products WHERE shop = ? AND product_id = ?', [shop, productId]);
+      if (row) {
+        product = {
+          title: (row.title && String(row.title).trim()) || 'Product',
+          handle: (row.handle && String(row.handle).trim()) || null,
+          productId,
+          images: [],
+        };
+        if (product.handle) handle = product.handle;
+      }
+    } catch (_) {}
+  }
   let details = {
     inventoryUnits: product && product.inventoryUnits != null ? Number(product.inventoryUnits) : null,
     inStockVariants: product && product.inStockVariants != null ? Number(product.inStockVariants) : null,

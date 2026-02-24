@@ -17,6 +17,10 @@
 
   function getShop() {
     try {
+      if (typeof getShopForSales === 'function') {
+        var s = getShopForSales();
+        if (s) return s;
+      }
       if (typeof getShopParam === 'function') return getShopParam() || '';
       var q = window.location && window.location.search ? window.location.search : '';
       var p = q ? new URLSearchParams(q) : null;

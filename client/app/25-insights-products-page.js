@@ -41,6 +41,10 @@
 
   function getShop() {
     try {
+      if (typeof getShopForSales === 'function') {
+        var s = getShopForSales();
+        if (s) return s;
+      }
       if (typeof getShopParam === 'function') return getShopParam() || '';
       var q = window.location && window.location.search ? window.location.search : '';
       var p = q ? new URLSearchParams(q) : null;
@@ -115,9 +119,11 @@
           if (controller.signal && controller.signal.aborted) return;
           searchAbort = null;
           var products = (data && data.products && Array.isArray(data.products)) ? data.products : [];
+          var err = (data && data.ok === false && data.error) ? String(data.error) : '';
           var qs = window.location.search || '';
           if (!products.length) {
-            dropdown.innerHTML = '<div class="dropdown-item text-muted">No products found</div>';
+            var msg = (err === 'missing_shop_or_token') ? 'Select a shop to search products.' : 'No products found';
+            dropdown.innerHTML = '<div class="dropdown-item text-muted">' + escapeHtml(msg) + '</div>';
           } else {
             dropdown.innerHTML = products.map(function (p) {
               var id = (p && p.product_id) ? String(p.product_id) : '';
