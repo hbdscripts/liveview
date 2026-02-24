@@ -4,6 +4,7 @@ const { getDb } = require('../db');
 const { getAdsDb } = require('./adsDb');
 const { getGoogleAdsConfig, getResolvedCustomerIds } = require('./adsStore');
 const googleAdsClient = require('./googleAdsClient');
+const fx = require('../fx');
 
 const ALLOWED_RANGE = new Set(['today', 'yesterday', '3d', '7d', '14d', '30d', 'month']);
 
@@ -1241,10 +1242,109 @@ async function getCampaignDetail(options = {}) {
   };
 }
 
+async function getOtherRevenueByUtmSource(options = {}) {
+  const rangeKey = normalizeRangeKey(options.rangeKey);
+  const shop = options.shop != null ? String(options.shop).trim() : '';
+  const now = Date.now();
+  const timeZone = store.resolveAdminTimeZone();
+  const bounds = store.getRangeBounds(rangeKey, now, timeZone);
+  const { purchaseFilterExcludeDuplicateH, purchaseFilterExcludeTokenWhenOrderExists } = store;
+
+  let excludedOrderIds = new Set();
+  const adsDb = getAdsDb();
+  if (adsDb && shop) {
+    try {
+      const aoaRows = await adsDb.all(
+        `SELECT order_id FROM ads_orders_attributed
+         WHERE shop = ? AND created_at_ms >= ? AND created_at_ms < ? AND source = 'googleads'`,
+        [shop, bounds.start, bounds.end]
+      );
+      for (const r of aoaRows || []) {
+        const oid = r && r.order_id != null ? String(r.order_id).trim() : '';
+        if (oid) excludedOrderIds.add(oid);
+      }
+    } catch (e) {
+      console.warn('[ads.other-revenue] failed to read ads_orders_attributed (non-fatal):', e && e.message ? e.message : e);
+    }
+  }
+
+  const db = getDb();
+  const excludeClause = excludedOrderIds.size > 0
+    ? ` AND (p.order_id IS NULL OR TRIM(COALESCE(p.order_id,'')) = '' OR p.order_id NOT IN (${Array.from(excludedOrderIds).map(() => '?').join(',')}))`
+    : '';
+  const baseParams = [bounds.start, bounds.end];
+  const countParams = excludeClause ? [...baseParams, ...Array.from(excludedOrderIds)] : baseParams;
+  const revParams = excludeClause ? [...baseParams, ...Array.from(excludedOrderIds)] : baseParams;
+
+  const utmExpr = `COALESCE(NULLIF(TRIM(s.utm_source),''), 'direct')`;
+  const countSql = `
+    SELECT ${utmExpr} AS utm_source,
+           COUNT(DISTINCT p.session_id) AS sessions,
+           COUNT(DISTINCT p.purchase_key) AS orders
+    FROM purchases p
+    INNER JOIN sessions s ON s.session_id = p.session_id
+    WHERE p.purchased_at >= ? AND p.purchased_at < ?${excludeClause}
+    ${purchaseFilterExcludeDuplicateH('p')}
+    ${purchaseFilterExcludeTokenWhenOrderExists('p')}
+    GROUP BY ${utmExpr}
+  `;
+  const revSql = `
+    SELECT ${utmExpr} AS utm_source,
+           COALESCE(NULLIF(TRIM(p.order_currency),''), 'GBP') AS currency,
+           COALESCE(SUM(p.order_total), 0) AS revenue
+    FROM purchases p
+    INNER JOIN sessions s ON s.session_id = p.session_id
+    WHERE p.purchased_at >= ? AND p.purchased_at < ?${excludeClause}
+    ${purchaseFilterExcludeDuplicateH('p')}
+    ${purchaseFilterExcludeTokenWhenOrderExists('p')}
+    GROUP BY ${utmExpr}, COALESCE(NULLIF(TRIM(p.order_currency),''), 'GBP')
+  `;
+
+  const [countRows, revRows] = await Promise.all([
+    db.all(countSql, countParams),
+    db.all(revSql, revParams),
+  ]);
+
+  const ratesToGbp = await fx.getRatesToGbp();
+  const bySource = new Map();
+  for (const r of countRows || []) {
+    const utmSource = r && r.utm_source != null ? String(r.utm_source) : 'direct';
+    bySource.set(utmSource, {
+      utmSource,
+      sessions: Number(r.sessions) || 0,
+      orders: Number(r.orders) || 0,
+      revenueGbp: 0,
+    });
+  }
+  for (const r of revRows || []) {
+    const utmSource = r && r.utm_source != null ? String(r.utm_source) : 'direct';
+    const cur = fx.normalizeCurrency(r.currency) || 'GBP';
+    const rev = Number(r.revenue) || 0;
+    const gbp = fx.convertToGbp(rev, cur, ratesToGbp);
+    const row = bySource.get(utmSource);
+    if (row && typeof gbp === 'number' && Number.isFinite(gbp)) row.revenueGbp += gbp;
+    else if (!row) {
+      bySource.set(utmSource, {
+        utmSource,
+        sessions: 0,
+        orders: 0,
+        revenueGbp: typeof gbp === 'number' && Number.isFinite(gbp) ? gbp : 0,
+      });
+    }
+  }
+  const rows = Array.from(bySource.values()).map((row) => ({
+    ...row,
+    revenueGbp: Math.round((row.revenueGbp || 0) * 100) / 100,
+  }));
+
+  return { ok: true, rows };
+}
+
 module.exports = {
   normalizeRangeKey,
   getStatus,
   getSummary,
   getAudit,
   getCampaignDetail,
+  getOtherRevenueByUtmSource,
 };

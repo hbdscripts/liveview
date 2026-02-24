@@ -509,6 +509,21 @@ router.get('/summary', async (req, res) => {
   }
 });
 
+router.get('/other-revenue', async (req, res) => {
+  res.setHeader('Cache-Control', 'private, max-age=30');
+  res.setHeader('Vary', 'Cookie');
+  try {
+    const rangeKey = req && req.query ? req.query.range : '';
+    const shop = (req && req.query && req.query.shop != null) ? String(req.query.shop).trim() : salesTruth.resolveShopForSales('');
+    const out = await adsService.getOtherRevenueByUtmSource({ rangeKey, shop });
+    res.json(out);
+  } catch (err) {
+    Sentry.captureException(err, { extra: { route: 'ads.other-revenue' } });
+    console.error('[ads.other-revenue]', err);
+    res.status(500).json({ ok: false, error: 'Internal error' });
+  }
+});
+
 router.get('/audit', async (req, res) => {
   res.setHeader('Cache-Control', 'private, max-age=15');
   res.setHeader('Vary', 'Cookie');

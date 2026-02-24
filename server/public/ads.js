@@ -2086,6 +2086,48 @@
     return out;
   }
 
+  function renderOtherRevenue(rootEl, data) {
+    if (!rootEl) return;
+    var rows = (data && data.ok && Array.isArray(data.rows)) ? data.rows : [];
+    var currency = 'GBP';
+    var bodyHtml = '';
+    for (var i = 0; i < rows.length; i++) {
+      var r = rows[i] || {};
+      var utmSource = r.utmSource != null ? String(r.utmSource) : '—';
+      bodyHtml += '<div class="grid-row" role="row">' +
+        '<div class="grid-cell" role="cell">' + esc(utmSource) + '</div>' +
+        '<div class="grid-cell text-center" role="cell">' + esc(fmtNum(r.sessions)) + '</div>' +
+        '<div class="grid-cell text-center" role="cell">' + esc(fmtNum(r.orders)) + '</div>' +
+        '<div class="grid-cell text-center" role="cell">' + esc(fmtMoney(r.revenueGbp, currency)) + '</div>' +
+      '</div>';
+    }
+    if (!rows.length) {
+      bodyHtml = '<div class="grid-row muted" role="row"><div class="grid-cell" role="cell" style="text-align:center;">No other revenue in this period.</div></div>';
+    }
+    var tableHtml;
+    if (typeof window.buildKexoGridTable === 'function' && window.KEXO_TABLE_DEFS && window.KEXO_TABLE_DEFS['ads-other-revenue-table']) {
+      var def = window.KEXO_TABLE_DEFS['ads-other-revenue-table'];
+      tableHtml = window.buildKexoGridTable({
+        innerOnly: true,
+        tableClass: def.tableClass || 'ads-other-revenue-table',
+        ariaLabel: def.ariaLabel || 'Other revenue',
+        columns: def.columns || [],
+        bodyHtml: bodyHtml
+      });
+    } else {
+      tableHtml = '<div class="grid-table ads-other-revenue-table" role="table" aria-label="Other revenue">' +
+        '<div class="grid-header kexo-grid-header" role="rowgroup">' +
+        '<div class="grid-row grid-row--header" role="row">' +
+        '<div class="grid-cell" role="columnheader">UTM source</div>' +
+        '<div class="grid-cell text-center" role="columnheader">Sessions</div>' +
+        '<div class="grid-cell text-center" role="columnheader">Orders</div>' +
+        '<div class="grid-cell text-center" role="columnheader">Revenue</div>' +
+        '</div></div>' +
+        '<div class="grid-body" role="rowgroup">' + bodyHtml + '</div></div>';
+    }
+    rootEl.innerHTML = tableHtml;
+  }
+
   function render(root, status, summary, refreshResult) {
     _lastStatus = status;
     _lastSummary = summary;
@@ -2335,6 +2377,13 @@
     return fetchJson('/api/ads/summary?range=' + encodeURIComponent(rangeKey) + modelQ + bust);
   }
 
+  function fetchOtherRevenue(rangeKey) {
+    var shop = getShopParam();
+    var q = 'range=' + encodeURIComponent(rangeKey || 'today');
+    if (shop) q += '&shop=' + encodeURIComponent(shop);
+    return fetchJson('/api/ads/other-revenue?' + q);
+  }
+
   function refreshAdsBackend(rangeKey) {
     return fetchJson('/api/ads/refresh?range=' + encodeURIComponent(rangeKey), {
       method: 'POST',
@@ -2448,6 +2497,25 @@
         _lastSummary = nextSummary;
         _lastAttributionModel = getAdsAttributionMethod();
         try { renderAdsOverviewChart(nextSummary); } catch (_) {}
+      }
+
+      var rangeForOther = (nextSummary && nextSummary.rangeKey) ? nextSummary.rangeKey : _lastRangeKey || rangeKey;
+      var otherRoot = document.getElementById('ads-other-root');
+      if (otherRoot) {
+        fetchOtherRevenue(rangeForOther)
+          .then(function (res) {
+            var el = document.getElementById('ads-other-root');
+            if (!el) return;
+            if (res && res.ok && Array.isArray(res.rows)) {
+              renderOtherRevenue(el, res);
+            } else {
+              el.innerHTML = '<div class="grid-row muted" role="row"><div class="grid-cell" role="cell" style="text-align:center;">Other revenue unavailable.</div></div>';
+            }
+          })
+          .catch(function () {
+            var el = document.getElementById('ads-other-root');
+            if (el) el.innerHTML = '<div class="grid-row muted" role="row"><div class="grid-cell" role="cell" style="text-align:center;">Other revenue unavailable.</div></div>';
+          });
       }
 
       return { status: status, summary: summary };

@@ -296,6 +296,18 @@
         { key: 'roas', label: 'ROAS', cellClass: ' text-center' },
         { key: 'profit', label: 'Gross', cellClass: ' text-center' }
       ]
+    },
+    'ads-other-revenue-table': {
+      wrapClass: 'country-table-wrap',
+      tableClass: 'ads-other-revenue-table',
+      ariaLabel: 'Other revenue',
+      bodyId: 'ads-other-revenue-body',
+      columns: [
+        { key: 'utmSource', label: 'UTM source', cellClass: '' },
+        { key: 'sessions', label: 'Sessions', cellClass: ' text-center' },
+        { key: 'orders', label: 'Orders', cellClass: ' text-center' },
+        { key: 'revenueGbp', label: 'Revenue', cellClass: ' text-center' }
+      ]
     }
   };
 
