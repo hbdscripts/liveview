@@ -6,9 +6,13 @@
   'use strict';
   var API = (typeof window !== 'undefined' && window.API != null) ? String(window.API) : '';
   var MODAL_ID = 'kexo-global-search-modal';
+  var PANEL_INPUT_ID = 'kexo-global-search-panel-input';
+  var PANEL_RESULTS_ID = 'kexo-global-search-panel-results';
+  var PANEL_EMPTY_ID = 'kexo-global-search-panel-empty';
   var DEBOUNCE_MS = 220;
   var MIN_QUERY_LEN = 1;
   var inputDebounceTimer = null;
+  var panelDebounceTimer = null;
   var fallbackBackdropEl = null;
 
   function getShop() {
@@ -158,9 +162,9 @@
     window.location.assign(url);
   }
 
-  function renderResults(data, settingsHits, query) {
-    var container = document.getElementById(MODAL_ID + '-results');
-    var emptyEl = document.getElementById(MODAL_ID + '-empty');
+  function renderResults(data, settingsHits, query, targetPanel) {
+    var container = document.getElementById(targetPanel ? PANEL_RESULTS_ID : MODAL_ID + '-results');
+    var emptyEl = document.getElementById(targetPanel ? PANEL_EMPTY_ID : MODAL_ID + '-empty');
     if (!container) return;
     var products = (data && data.products && Array.isArray(data.products)) ? data.products : [];
     var pages = (data && data.pages && Array.isArray(data.pages)) ? data.pages : [];
@@ -230,22 +234,36 @@
         navigateTo(url, false);
       });
     });
+    if (targetPanel && emptyEl) {
+      var resultsEl = document.getElementById(PANEL_RESULTS_ID);
+      if (resultsEl) {
+        resultsEl.hidden = !(html && html.length > 0);
+      }
+      emptyEl.hidden = !!(html && html.length > 0);
+    }
   }
 
-  function runSearch(query) {
+  function runSearch(query, targetPanel) {
     var q = (query || '').trim();
     var settingsHits = filterSettings(q);
+    var container = document.getElementById(targetPanel ? PANEL_RESULTS_ID : MODAL_ID + '-results');
+    var emptyEl = document.getElementById(targetPanel ? PANEL_EMPTY_ID : MODAL_ID + '-empty');
     if (q.length < MIN_QUERY_LEN) {
-      renderResults(null, settingsHits, q);
+      if (targetPanel) {
+        if (container) container.hidden = true;
+        if (emptyEl) { emptyEl.hidden = true; emptyEl.textContent = ''; }
+      } else {
+        renderResults(null, settingsHits, q, false);
+      }
       return;
     }
-    var container = document.getElementById(MODAL_ID + '-results');
-    var emptyEl = document.getElementById(MODAL_ID + '-empty');
     if (container) container.innerHTML = '';
     if (emptyEl) {
       emptyEl.style.display = 'block';
       emptyEl.textContent = 'Searching…';
+      if (targetPanel) emptyEl.hidden = false;
     }
+    if (targetPanel && container) container.hidden = true;
     var shop = getShop();
     var url = API + '/api/tools/catalog-search?q=' + encodeURIComponent(q) + '&limit=10';
     if (shop) url += '&shop=' + encodeURIComponent(shop);
@@ -257,17 +275,18 @@
       .then(function (data) {
         if (controller.signal && controller.signal.aborted) return;
         lastAbort = null;
-        renderResults(data, settingsHits, q);
+        renderResults(data, settingsHits, q, targetPanel);
       })
       .catch(function (err) {
         if (err && err.name === 'AbortError') return;
         lastAbort = null;
-        var emptyEl2 = document.getElementById(MODAL_ID + '-empty');
+        var emptyEl2 = document.getElementById(targetPanel ? PANEL_EMPTY_ID : MODAL_ID + '-empty');
         if (emptyEl2) {
           emptyEl2.style.display = 'block';
           emptyEl2.textContent = 'Search failed.';
+          if (targetPanel) emptyEl2.hidden = false;
         }
-        renderResults({ ok: false, error: 'search_failed', products: [], pages: [] }, settingsHits, q);
+        renderResults({ ok: false, error: 'search_failed', products: [], pages: [] }, settingsHits, q, targetPanel);
       });
   }
 
@@ -307,6 +326,30 @@
     }
   }
 
+  function bindPanelSearch() {
+    var input = document.getElementById(PANEL_INPUT_ID);
+    var resultsEl = document.getElementById(PANEL_RESULTS_ID);
+    var emptyEl = document.getElementById(PANEL_EMPTY_ID);
+    if (!input || input.getAttribute('data-kexo-global-search-panel-bound') === '1') return;
+    input.setAttribute('data-kexo-global-search-panel-bound', '1');
+    input.addEventListener('input', function () {
+      if (panelDebounceTimer) clearTimeout(panelDebounceTimer);
+      panelDebounceTimer = setTimeout(function () {
+        panelDebounceTimer = null;
+        runSearch(input.value, true);
+      }, DEBOUNCE_MS);
+    });
+    input.addEventListener('keydown', function (e) {
+      if (e && e.key === 'Enter') {
+        if (e.preventDefault) e.preventDefault();
+        runSearch(input.value, true);
+      }
+    });
+    input.addEventListener('focus', function () {
+      if ((input.value || '').trim().length >= MIN_QUERY_LEN) runSearch(input.value, true);
+    });
+  }
+
   function bindSearchTriggers() {
     var triggers = document.querySelectorAll('[data-kexo-global-search-open="1"], #kexo-global-search-btn-header');
     triggers.forEach(function (el) {
@@ -319,6 +362,7 @@
         });
       }
     });
+    bindPanelSearch();
   }
   bindSearchTriggers();
   document.addEventListener('DOMContentLoaded', bindSearchTriggers);
