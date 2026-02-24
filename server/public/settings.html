@@ -1533,14 +1533,44 @@
                       </label>
                       <div class="text-muted small">KexoAddToCart (Engagement)</div>
                     </div>
+                    <div class="col-12 col-md-4">
+                      <label class="form-check">
+                        <input type="checkbox" class="form-check-input" id="settings-ga-goal-begincheckout" />
+                        <span class="form-check-label">Begin Checkout</span>
+                      </label>
+                      <div class="text-muted small">KexoBeginCheckout (Begin checkout)</div>
+                    </div>
                   </div>
                   <div class="text-muted small">Select which conversion actions to create, then click Provision. Existing actions are left unchanged.</div>
                 </div>
               </div>
 
+              <div class="card card-sm mb-3" id="settings-ga-mapping-card">
+                <div class="card-header">
+                  <h4 class="card-title mb-0">Conversion action mapping</h4>
+                </div>
+                <div class="card-body">
+                  <p class="text-muted small mb-2">Attach each goal to the conversion action used for uploads. Use the provisioned Kexo action or attach any existing <strong>UPLOAD_CLICKS</strong> action.</p>
+                  <div class="table-responsive">
+                    <table class="table table-sm table-vcenter card-table mb-0" aria-label="Goal to conversion action mapping">
+                      <thead>
+                        <tr>
+                          <th>Goal</th>
+                          <th>Action (for uploads)</th>
+                          <th class="text-end">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody id="settings-ga-mapping-body">
+                        <tr><td colspan="3" class="text-muted small">Loading…</td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
               <div class="card card-sm mb-3" id="settings-ga-profit-card">
                 <div class="card-header">
-                  <h4 class="card-title mb-0">Profit &amp; Add to Cart (for uploads)</h4>
+                  <h4 class="card-title mb-0">Profit, Add to Cart &amp; Begin Checkout (for uploads)</h4>
                 </div>
                 <div class="card-body">
                   <h5 class="mb-2">Profit upload value</h5>
@@ -1578,6 +1608,13 @@
                       <input type="number" class="form-control form-control-sm settings-ui-w-5rem" id="settings-ga-addtocart-value" min="0" step="0.01" value="1" />
                     </div>
                   </div>
+                  <h5 class="mb-2 mt-3">Begin Checkout conversion value</h5>
+                  <div class="text-muted small mb-2">Value sent for each Begin Checkout conversion (usually 1).</div>
+                  <div class="row g-2 align-items-center">
+                    <div class="col-auto">
+                      <input type="number" class="form-control form-control-sm settings-ui-w-5rem" id="settings-ga-begincheckout-value" min="0" step="0.01" value="1" />
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -1608,6 +1645,12 @@
                       <label class="form-check form-switch">
                         <input class="form-check-input" type="checkbox" id="settings-ga-upload-addtocart" />
                         <span class="form-check-label">Add to Cart</span>
+                      </label>
+                    </div>
+                    <div class="col-12 col-md-4">
+                      <label class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="settings-ga-upload-begincheckout" />
+                        <span class="form-check-label">Begin Checkout</span>
                       </label>
                     </div>
                   </div>

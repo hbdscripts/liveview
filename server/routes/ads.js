@@ -8,7 +8,7 @@ const { buildGoogleAdsConnectUrl, handleGoogleAdsCallback } = require('../ads/go
 const { syncGoogleAdsSpendHourly, syncGoogleAdsGeoDaily, syncGoogleAdsDeviceDaily, backfillCampaignIdsFromGclid, testGoogleAdsConnection } = require('../ads/googleAdsSpendSync');
 const { syncAttributedOrdersToAdsDb } = require('../ads/adsOrderAttributionSync');
 const { setGoogleAdsConfig } = require('../ads/adsStore');
-const { provisionGoals, getConversionGoals } = require('../ads/googleAdsGoals');
+const { provisionGoals, getConversionGoals, listUploadClickConversionActions, attachGoalToConversionAction, clearGoalAttachment, createAndAttachGoalConversionAction } = require('../ads/googleAdsGoals');
 const { fetchDiagnostics, getCachedDiagnostics } = require('../ads/googleAdsDiagnostics');
 const googleAdsClient = require('../ads/googleAdsClient');
 const { getAdsDb } = require('../ads/adsDb');
@@ -127,6 +127,83 @@ router.get('/google/goals', async (req, res) => {
   }
 });
 
+router.get('/google/upload-click-actions', async (req, res) => {
+  res.setHeader('Cache-Control', 'private, max-age=60');
+  try {
+    const shop = (req.query && req.query.shop) != null ? String(req.query.shop).trim() : salesTruth.resolveShopForSales('');
+    const out = await listUploadClickConversionActions(shop);
+    if (!out.ok) {
+      res.status(400).json({ ok: false, error: out.error || 'list failed', actions: [] });
+      return;
+    }
+    res.json({ ok: true, actions: out.actions || [] });
+  } catch (err) {
+    Sentry.captureException(err, { extra: { route: 'ads.google.upload-click-actions' } });
+    console.error('[ads.google.upload-click-actions]', err);
+    res.status(500).json({ ok: false, error: 'Internal error', actions: [] });
+  }
+});
+
+router.post('/google/attach-goal', async (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  try {
+    const shop = (req.body && req.body.shop != null ? String(req.body.shop).trim() : '') || salesTruth.resolveShopForSales('');
+    const goalType = req.body && req.body.goal_type != null ? String(req.body.goal_type).trim() : '';
+    const resourceName = req.body && req.body.resource_name != null ? String(req.body.resource_name).trim() : '';
+    const id = req.body && req.body.id != null ? Number(req.body.id) : undefined;
+    const out = await attachGoalToConversionAction(shop, goalType, resourceName, id);
+    if (!out.ok) {
+      res.status(400).json({ ok: false, error: out.error || 'attach failed' });
+      return;
+    }
+    const goals = await getConversionGoals(shop);
+    res.json({ ok: true, goals });
+  } catch (err) {
+    Sentry.captureException(err, { extra: { route: 'ads.google.attach-goal' } });
+    console.error('[ads.google.attach-goal]', err);
+    res.status(500).json({ ok: false, error: 'Internal error' });
+  }
+});
+
+router.post('/google/clear-goal', async (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  try {
+    const shop = (req.body && req.body.shop != null ? String(req.body.shop).trim() : '') || salesTruth.resolveShopForSales('');
+    const goalType = req.body && req.body.goal_type != null ? String(req.body.goal_type).trim() : '';
+    const out = await clearGoalAttachment(shop, goalType);
+    if (!out.ok) {
+      res.status(400).json({ ok: false, error: out.error || 'clear failed' });
+      return;
+    }
+    const goals = await getConversionGoals(shop);
+    res.json({ ok: true, goals });
+  } catch (err) {
+    Sentry.captureException(err, { extra: { route: 'ads.google.clear-goal' } });
+    console.error('[ads.google.clear-goal]', err);
+    res.status(500).json({ ok: false, error: 'Internal error' });
+  }
+});
+
+router.post('/google/create-and-attach-goal', async (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  try {
+    const shop = (req.body && req.body.shop != null ? String(req.body.shop).trim() : '') || salesTruth.resolveShopForSales('');
+    const goalType = req.body && req.body.goal_type != null ? String(req.body.goal_type).trim() : '';
+    const actionName = req.body && req.body.action_name != null ? String(req.body.action_name).trim() : '';
+    const out = await createAndAttachGoalConversionAction(shop, goalType, actionName);
+    if (!out.ok) {
+      res.status(400).json({ ok: false, error: out.error || 'create-and-attach failed' });
+      return;
+    }
+    const goals = await getConversionGoals(shop);
+    res.json({ ok: true, goals });
+  } catch (err) {
+    Sentry.captureException(err, { extra: { route: 'ads.google.create-and-attach-goal' } });
+    console.error('[ads.google.create-and-attach-goal]', err);
+    res.status(500).json({ ok: false, error: 'Internal error' });
+  }
+});
+
 router.get('/google/conversion-actions', async (req, res) => {
   res.setHeader('Cache-Control', 'private, max-age=60');
   try {
@@ -224,9 +301,11 @@ router.get('/google/goal-health', async (req, res) => {
     const normShop = String(shop || '').trim().toLowerCase();
     const db = getAdsDb();
     const goals = await getConversionGoals(shop);
-    const coverage24h = { revenue: { queued: 0, success: 0, failure: 0, pending: 0 }, profit: { queued: 0, success: 0, failure: 0, pending: 0 } };
-    const coverage7d = { revenue: { queued: 0, success: 0, failure: 0, pending: 0 }, profit: { queued: 0, success: 0, failure: 0, pending: 0 } };
-    const coverage30d = { revenue: { queued: 0, success: 0, failure: 0, pending: 0 }, profit: { queued: 0, success: 0, failure: 0, pending: 0 } };
+    const goalKeys = ['revenue', 'profit', 'add_to_cart', 'begin_checkout'];
+    const emptyCoverage = () => ({ queued: 0, success: 0, failure: 0, pending: 0 });
+    const coverage24h = Object.fromEntries(goalKeys.map((k) => [k, emptyCoverage()]));
+    const coverage7d = Object.fromEntries(goalKeys.map((k) => [k, emptyCoverage()]));
+    const coverage30d = Object.fromEntries(goalKeys.map((k) => [k, emptyCoverage()]));
     let missingClickIdCount = 0;
     let failedUploadCount = 0;
     let rejectedUploadCount = 0;
@@ -256,7 +335,7 @@ router.get('/google/goal-health', async (req, res) => {
             SUM(CASE WHEN created_at >= ? THEN 1 ELSE 0 END) AS c30
           FROM google_ads_postback_jobs
           WHERE shop = ?
-            AND goal_type IN ('revenue', 'profit')
+            AND goal_type IN ('revenue', 'profit', 'add_to_cart', 'begin_checkout')
             AND created_at >= ?
           GROUP BY goal_type, status
         `,

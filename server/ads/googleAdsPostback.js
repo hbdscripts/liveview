@@ -14,6 +14,7 @@ const config = require('../config');
 const businessSnapshotService = require('../businessSnapshotService');
 
 const GOOGLE_ADS_ADD_TO_CART_VALUE_KEY = 'google_ads_add_to_cart_value';
+const GOOGLE_ADS_BEGIN_CHECKOUT_VALUE_KEY = 'google_ads_begin_checkout_value';
 const GOOGLE_ADS_POSTBACK_GOALS_KEY = 'google_ads_postback_goals';
 const GOOGLE_ADS_PROFIT_DEDUCTIONS_V1_KEY = 'google_ads_profit_deductions_v1';
 
@@ -32,6 +33,31 @@ function pickClickIdFromAttribution(row) {
   const wbraid = row && row.wbraid ? String(row.wbraid).trim() : null;
   if (wbraid) return { value: wbraid, type: 'wbraid' };
   return { value: null, type: null };
+}
+
+/** Parse gclid/gbraid/wbraid from entry_url when session columns are empty. Precedence: gclid -> gbraid -> wbraid. */
+function parseClickIdsFromEntryUrl(entryUrl) {
+  if (!entryUrl || typeof entryUrl !== 'string' || !entryUrl.trim()) return { value: null, type: null };
+  let params;
+  try {
+    const url = entryUrl.trim();
+    if (/^https?:\/\//i.test(url)) params = new URL(url).searchParams;
+    else params = new URL(url, 'https://example.local').searchParams;
+  } catch (_) {
+    return { value: null, type: null };
+  }
+  const gclid = params.get('gclid'); if (gclid && String(gclid).trim()) return { value: String(gclid).trim(), type: 'gclid' };
+  const gbraid = params.get('gbraid'); if (gbraid && String(gbraid).trim()) return { value: String(gbraid).trim(), type: 'gbraid' };
+  const wbraid = params.get('wbraid'); if (wbraid && String(wbraid).trim()) return { value: String(wbraid).trim(), type: 'wbraid' };
+  return { value: null, type: null };
+}
+
+/** Resolve click ID from row: session columns first, then parse from entry_url if missing. */
+function resolveClickId(row) {
+  const fromCols = pickClickIdFromAttribution(row);
+  if (fromCols.value) return fromCols;
+  const entryUrl = row && row.entry_url != null ? String(row.entry_url).trim() : '';
+  return parseClickIdsFromEntryUrl(entryUrl);
 }
 
 /**
@@ -125,8 +151,8 @@ async function enqueueEligibleOrders(shop, options = {}) {
   const postbackGoals = normalizePostbackGoals(rawPostbackGoals);
 
   const goals = await getConversionGoals(shop);
-  const revenueGoal = (goals || []).find((g) => g.goal_type === 'revenue' && g.conversion_action_resource_name);
-  const profitGoal = (goals || []).find((g) => g.goal_type === 'profit' && g.conversion_action_resource_name);
+  const revenueGoal = (goals || []).find((g) => g.goal_type === 'revenue' && (g.custom_goal_resource_name || g.conversion_action_resource_name));
+  const profitGoal = (goals || []).find((g) => g.goal_type === 'profit' && (g.custom_goal_resource_name || g.conversion_action_resource_name));
   if (!revenueGoal && !profitGoal) {
     try {
       const normShop = String(shop || '').trim().toLowerCase();
@@ -222,12 +248,13 @@ async function enqueueEligibleOrders(shop, options = {}) {
 
     const conversionDateTime = formatConversionDateTime(createdAtMs) || `${new Date(createdAtMs).toISOString().slice(0, 19).replace('T', ' ')}+00:00`;
 
-    if (postbackGoals.uploadRevenue && revenueGoal && revenueGoal.conversion_action_resource_name) {
+    const revenueResource = (revenueGoal && (revenueGoal.custom_goal_resource_name || revenueGoal.conversion_action_resource_name) || '').trim();
+    if (postbackGoals.uploadRevenue && revenueResource) {
       const inserted = await insertJobIfNotExists(adsDb, {
         shop: shopNorm,
         order_id: orderId,
         goal_type: 'revenue',
-        conversion_action_resource_name: revenueGoal.conversion_action_resource_name,
+        conversion_action_resource_name: revenueResource,
         conversion_date_time: conversionDateTime,
         conversion_value: revenueGbp,
         currency_code: currency,
@@ -239,13 +266,14 @@ async function enqueueEligibleOrders(shop, options = {}) {
       if (inserted) enqueued++;
     }
 
-    if (postbackGoals.uploadProfit && profitGoal && profitGoal.conversion_action_resource_name) {
+    const profitResource = (profitGoal && (profitGoal.custom_goal_resource_name || profitGoal.conversion_action_resource_name) || '').trim();
+    if (postbackGoals.uploadProfit && profitResource) {
       const profitValue = computeProfitForOrderAllocation(revenueGbp, windowRevenueGbp, windowCostGbp);
       const inserted = await insertJobIfNotExists(adsDb, {
         shop: shopNorm,
         order_id: orderId,
         goal_type: 'profit',
-        conversion_action_resource_name: profitGoal.conversion_action_resource_name,
+        conversion_action_resource_name: profitResource,
         conversion_date_time: conversionDateTime,
         conversion_value: profitValue,
         currency_code: currency,
@@ -301,6 +329,7 @@ function normalizePostbackGoals(raw) {
     uploadRevenue: parsed && parsed.uploadRevenue !== false,
     uploadProfit: parsed && parsed.uploadProfit === true,
     uploadAddToCart: parsed && parsed.uploadAddToCart === true,
+    uploadBeginCheckout: parsed && parsed.uploadBeginCheckout === true,
   };
 }
 
@@ -312,7 +341,7 @@ async function enqueueAddToCartEvents(shop, options = {}) {
   const adsDb = getAdsDb();
   if (!adsDb) return { ok: false, error: 'ADS_DB_URL not set', enqueued: 0 };
   const goals = await getConversionGoals(shop);
-  const addToCartGoal = (goals || []).find((g) => g.goal_type === 'add_to_cart' && g.conversion_action_resource_name);
+  const addToCartGoal = (goals || []).find((g) => g.goal_type === 'add_to_cart' && (g.custom_goal_resource_name || g.conversion_action_resource_name));
   if (!addToCartGoal) return { ok: true, enqueued: 0, message: 'No add_to_cart goal provisioned' };
 
   let rawGoals = null;
@@ -338,17 +367,21 @@ async function enqueueAddToCartEvents(shop, options = {}) {
   if (!shopNorm) return { ok: true, enqueued: 0 };
 
   const rows = await db.all(
-    `SELECT e.id AS event_id, e.ts, s.gclid, s.gbraid, s.wbraid
+    `SELECT e.id AS event_id, e.ts, s.gclid, s.gbraid, s.wbraid, s.entry_url
      FROM events e
      INNER JOIN sessions s ON s.session_id = e.session_id
      WHERE e.type = 'product_added_to_cart'
        AND ((s.gclid IS NOT NULL AND s.gclid != '')
          OR (s.gbraid IS NOT NULL AND s.gbraid != '')
-         OR (s.wbraid IS NOT NULL AND s.wbraid != ''))
+         OR (s.wbraid IS NOT NULL AND s.wbraid != '')
+         OR (s.entry_url IS NOT NULL AND s.entry_url != ''))
      ORDER BY e.ts DESC
      LIMIT ?`,
     [limit]
   );
+
+  const addToCartResource = (addToCartGoal.custom_goal_resource_name || addToCartGoal.conversion_action_resource_name || '').trim();
+  if (!addToCartResource) return { ok: true, enqueued: 0, message: 'No conversion action for add_to_cart' };
 
   const now = Date.now();
   let enqueued = 0;
@@ -356,7 +389,7 @@ async function enqueueAddToCartEvents(shop, options = {}) {
     const eventId = row && row.event_id != null ? row.event_id : null;
     const ts = row && row.ts != null ? Number(row.ts) : null;
     if (eventId == null || !ts) continue;
-    const click = pickClickIdFromAttribution(row);
+    const click = resolveClickId(row);
     if (!click.value) continue;
     const conversionDateTime = formatConversionDateTime(ts) || `${new Date(ts).toISOString().slice(0, 19).replace('T', ' ')}+00:00`;
     const orderId = `atc:${eventId}`;
@@ -364,9 +397,87 @@ async function enqueueAddToCartEvents(shop, options = {}) {
       shop: shopNorm,
       order_id: orderId,
       goal_type: 'add_to_cart',
-      conversion_action_resource_name: addToCartGoal.conversion_action_resource_name,
+      conversion_action_resource_name: addToCartResource,
       conversion_date_time: conversionDateTime,
       conversion_value: addToCartValue,
+      currency_code: 'GBP',
+      click_id_type: click.type,
+      click_id_value: click.value,
+      created_at: now,
+      updated_at: now,
+    });
+    if (inserted) enqueued++;
+  }
+  return { ok: true, enqueued };
+}
+
+/**
+ * Enqueue begin_checkout jobs from main DB events (checkout_started) joined to sessions for click ID.
+ * Synthetic order_id = bco:${event_id}. Value from google_ads_begin_checkout_value (default 1).
+ */
+async function enqueueBeginCheckoutEvents(shop, options = {}) {
+  const adsDb = getAdsDb();
+  if (!adsDb) return { ok: false, error: 'ADS_DB_URL not set', enqueued: 0 };
+  const goals = await getConversionGoals(shop);
+  const beginCheckoutGoal = (goals || []).find((g) => g.goal_type === 'begin_checkout' && (g.custom_goal_resource_name || g.conversion_action_resource_name));
+  if (!beginCheckoutGoal) return { ok: true, enqueued: 0, message: 'No begin_checkout goal provisioned' };
+
+  let rawGoals = null;
+  try {
+    rawGoals = await store.getSetting(GOOGLE_ADS_POSTBACK_GOALS_KEY);
+  } catch (_) {}
+  const postbackGoals = normalizePostbackGoals(rawGoals);
+  if (!postbackGoals.uploadBeginCheckout) return { ok: true, enqueued: 0, message: 'Begin Checkout upload disabled' };
+
+  let beginCheckoutValue = 1;
+  try {
+    const v = await store.getSetting(GOOGLE_ADS_BEGIN_CHECKOUT_VALUE_KEY);
+    if (v != null && v !== '') {
+      const n = Number(v);
+      if (Number.isFinite(n) && n >= 0) beginCheckoutValue = n;
+    }
+  } catch (_) {}
+
+  const db = getDb();
+  if (!db) return { ok: false, error: 'Main DB not available', enqueued: 0 };
+  const limit = Math.min(Number(options.limit) || 500, 2000);
+  const shopNorm = String(shop || '').trim().toLowerCase();
+  if (!shopNorm) return { ok: true, enqueued: 0 };
+
+  const rows = await db.all(
+    `SELECT e.id AS event_id, e.ts, s.gclid, s.gbraid, s.wbraid, s.entry_url
+     FROM events e
+     INNER JOIN sessions s ON s.session_id = e.session_id
+     WHERE e.type = 'checkout_started'
+       AND ((s.gclid IS NOT NULL AND s.gclid != '')
+         OR (s.gbraid IS NOT NULL AND s.gbraid != '')
+         OR (s.wbraid IS NOT NULL AND s.wbraid != '')
+         OR (s.entry_url IS NOT NULL AND s.entry_url != ''))
+     ORDER BY e.ts DESC
+     LIMIT ?`,
+    [limit]
+  );
+
+  const resourceName = (beginCheckoutGoal.custom_goal_resource_name || beginCheckoutGoal.conversion_action_resource_name || '').trim();
+  if (!resourceName) return { ok: true, enqueued: 0, message: 'No conversion action for begin_checkout' };
+
+  const now = Date.now();
+  let enqueued = 0;
+  for (const row of rows || []) {
+    const eventId = row && row.event_id != null ? row.event_id : null;
+    const ts = row && row.ts != null ? Number(row.ts) : null;
+    if (eventId == null || !ts) continue;
+    const click = resolveClickId(row);
+    if (!click.value) continue;
+    const conversionDateTime = formatConversionDateTime(ts) || `${new Date(ts).toISOString().slice(0, 19).replace('T', ' ')}+00:00`;
+    const orderId = `bco:${eventId}`;
+    const inserted = await insertJobIfNotExists(adsDb, {
+      shop: shopNorm,
+      order_id: orderId,
+      goal_type: 'begin_checkout',
+      conversion_action_resource_name: resourceName,
+      conversion_date_time: conversionDateTime,
+      conversion_value: beginCheckoutValue,
       currency_code: 'GBP',
       click_id_type: click.type,
       click_id_value: click.value,
@@ -559,7 +670,7 @@ async function processPostbackBatch(shop, options = {}) {
 }
 
 /**
- * Run postback processor once for a shop (enqueue orders + enqueue add-to-cart + process batch). Call from scheduler.
+ * Run postback processor once for a shop (enqueue orders + add-to-cart + begin-checkout + process batch). Call from scheduler.
  */
 async function runPostbackCycle(shop, options = {}) {
   if (!shop || typeof shop !== 'string' || !shop.trim()) return { ok: false, error: 'shop required' };
@@ -568,7 +679,8 @@ async function runPostbackCycle(shop, options = {}) {
   const enqueueOut = await enqueueEligibleOrders(shop, { limit: options.enqueueLimit || 500 });
   if (!enqueueOut.ok) return enqueueOut;
   const atcOut = await enqueueAddToCartEvents(shop, { limit: options.enqueueLimit || 500 });
-  const totalEnqueued = (enqueueOut.enqueued || 0) + (atcOut.enqueued || 0);
+  const bcoOut = await enqueueBeginCheckoutEvents(shop, { limit: options.enqueueLimit || 500 });
+  const totalEnqueued = (enqueueOut.enqueued || 0) + (atcOut.enqueued || 0) + (bcoOut.enqueued || 0);
   const processOut = await processPostbackBatch(shop, { batchSize: options.batchSize || BATCH_SIZE, validateOnly: options.validateOnly });
   return {
     ok: processOut.ok,
@@ -582,9 +694,12 @@ async function runPostbackCycle(shop, options = {}) {
 module.exports = {
   enqueueEligibleOrders,
   enqueueAddToCartEvents,
+  enqueueBeginCheckoutEvents,
   processPostbackBatch,
   runPostbackCycle,
   pickClickIdFromAttribution,
+  parseClickIdsFromEntryUrl,
+  resolveClickId,
   computeProfitForOrder,
   computeProfitForOrderAllocation,
 };

@@ -93,6 +93,35 @@ async function sessionsHasBsNetworkColumn(db) {
   return _sessionsHasBsNetworkColumnInFlight;
 }
 
+let _sessionsHasClickIdColumns = null;
+let _sessionsHasClickIdColumnsInFlight = null;
+
+async function sessionsHasClickIdColumns(db) {
+  if (_sessionsHasClickIdColumns === true) return true;
+  if (_sessionsHasClickIdColumns === false) return false;
+  if (_sessionsHasClickIdColumnsInFlight) return _sessionsHasClickIdColumnsInFlight;
+
+  _sessionsHasClickIdColumnsInFlight = Promise.resolve()
+    .then(() => db.get('SELECT gclid FROM sessions LIMIT 1'))
+    .then(() => {
+      _sessionsHasClickIdColumns = true;
+      return true;
+    })
+    .catch((err) => {
+      const msg = String(err && err.message ? err.message : err);
+      if (/gclid/i.test(msg) && /(does not exist|no such column|has no column)/i.test(msg)) {
+        _sessionsHasClickIdColumns = false;
+        return false;
+      }
+      throw err;
+    })
+    .finally(() => {
+      _sessionsHasClickIdColumnsInFlight = null;
+    });
+
+  return _sessionsHasClickIdColumnsInFlight;
+}
+
 let _sessionsHasAcquisitionColumns = null;
 let _sessionsHasAcquisitionColumnsInFlight = null;
 
@@ -261,6 +290,27 @@ function extractBsAdsIdsFromEntryUrl(entryUrl) {
     bsAdgroupId: trimParam('bs_adgroup_id', 64),
     bsAdId: trimParam('bs_ad_id', 64),
     bsNetwork,
+  };
+}
+
+/** Parse gclid, gbraid, wbraid from entry_url for Google Ads postback. Max length 256 per value. */
+function extractGoogleClickIdsFromEntryUrl(entryUrl) {
+  const params = safeUrlParams(entryUrl || '');
+  function trimParam(key, maxLen) {
+    try {
+      const v = params ? params.get(key) : null;
+      if (v == null) return null;
+      const s = String(v).trim();
+      if (!s) return null;
+      return s.length > maxLen ? s.slice(0, maxLen) : s;
+    } catch (_) {
+      return null;
+    }
+  }
+  return {
+    gclid: trimParam('gclid', 256),
+    gbraid: trimParam('gbraid', 256),
+    wbraid: trimParam('wbraid', 256),
   };
 }
 
@@ -689,6 +739,15 @@ async function upsertSession(payload, visitorIsReturning, cfContext) {
   const cfAsn = cf.cfAsn;
   const isReturningSession = visitorIsReturning ? 1 : 0;
   const supportsBsNetwork = await sessionsHasBsNetworkColumn(db);
+  const supportsClickId = await sessionsHasClickIdColumns(db);
+  const urlForClickIds = !existing ? (entryUrl || '') : (updateEntryUrl || '');
+  const clickIds = supportsClickId && urlForClickIds
+    ? extractGoogleClickIdsFromEntryUrl(urlForClickIds)
+    : { gclid: null, gbraid: null, wbraid: null };
+  const clickIdCols = supportsClickId ? ', gclid, gbraid, wbraid' : '';
+  const clickIdPlaces = supportsClickId ? ', ?, ?, ?' : '';
+  const clickIdSet = supportsClickId ? ', gclid = COALESCE(EXCLUDED.gclid, sessions.gclid), gbraid = COALESCE(EXCLUDED.gbraid, sessions.gbraid), wbraid = COALESCE(EXCLUDED.wbraid, sessions.wbraid)' : '';
+  const clickIdParams = supportsClickId ? [clickIds.gclid, clickIds.gbraid, clickIds.wbraid] : [];
 
   if (!existing) {
     if (config.dbUrl) {
@@ -708,7 +767,7 @@ async function upsertSession(payload, visitorIsReturning, cfContext) {
             cf_known_bot, cf_verified_bot_category, cf_country, cf_colo, cf_asn, cf_city, city,
             is_returning,
             ua_device_type, ua_platform, ua_model, ua_browser, ua_browser_version,
-            bs_source, bs_campaign_id, bs_adgroup_id, bs_ad_id, bs_network
+            bs_source, bs_campaign_id, bs_adgroup_id, bs_ad_id, bs_network${clickIdCols}
           )
           VALUES (
             ?, ?, ?, ?,
@@ -724,7 +783,7 @@ async function upsertSession(payload, visitorIsReturning, cfContext) {
             ?, ?, ?, ?, ?, ?, ?,
             ?,
             ?, ?, ?, ?, ?,
-            ?, ?, ?, ?, ?
+            ?, ?, ?, ?, ?${clickIdPlaces}
           )
           ON CONFLICT (session_id) DO UPDATE SET
             visitor_id = EXCLUDED.visitor_id,
@@ -772,7 +831,7 @@ async function upsertSession(payload, visitorIsReturning, cfContext) {
             bs_campaign_id = COALESCE(EXCLUDED.bs_campaign_id, sessions.bs_campaign_id),
             bs_adgroup_id = COALESCE(EXCLUDED.bs_adgroup_id, sessions.bs_adgroup_id),
             bs_ad_id = COALESCE(EXCLUDED.bs_ad_id, sessions.bs_ad_id),
-            bs_network = COALESCE(EXCLUDED.bs_network, sessions.bs_network)
+            bs_network = COALESCE(EXCLUDED.bs_network, sessions.bs_network)${clickIdSet}
         `, [
           payload.session_id,
           payload.visitor_id,
@@ -817,6 +876,7 @@ async function upsertSession(payload, visitorIsReturning, cfContext) {
           bsAdgroupId,
           bsAdId,
           bsNetwork,
+          ...clickIdParams,
         ]);
       } else {
         await db.run(`
@@ -834,7 +894,7 @@ async function upsertSession(payload, visitorIsReturning, cfContext) {
             cf_known_bot, cf_verified_bot_category, cf_country, cf_colo, cf_asn, cf_city, city,
             is_returning,
             ua_device_type, ua_platform, ua_model, ua_browser, ua_browser_version,
-            bs_source, bs_campaign_id, bs_adgroup_id, bs_ad_id
+            bs_source, bs_campaign_id, bs_adgroup_id, bs_ad_id${clickIdCols}
           )
           VALUES (
             ?, ?, ?, ?,
@@ -850,7 +910,7 @@ async function upsertSession(payload, visitorIsReturning, cfContext) {
             ?, ?, ?, ?, ?, ?, ?,
             ?,
             ?, ?, ?, ?, ?,
-            ?, ?, ?, ?
+            ?, ?, ?, ?${clickIdPlaces}
           )
           ON CONFLICT (session_id) DO UPDATE SET
             visitor_id = EXCLUDED.visitor_id,
@@ -897,7 +957,7 @@ async function upsertSession(payload, visitorIsReturning, cfContext) {
             bs_source = COALESCE(EXCLUDED.bs_source, sessions.bs_source),
             bs_campaign_id = COALESCE(EXCLUDED.bs_campaign_id, sessions.bs_campaign_id),
             bs_adgroup_id = COALESCE(EXCLUDED.bs_adgroup_id, sessions.bs_adgroup_id),
-            bs_ad_id = COALESCE(EXCLUDED.bs_ad_id, sessions.bs_ad_id)
+            bs_ad_id = COALESCE(EXCLUDED.bs_ad_id, sessions.bs_ad_id)${clickIdSet}
         `, [
           payload.session_id,
           payload.visitor_id,
@@ -941,19 +1001,20 @@ async function upsertSession(payload, visitorIsReturning, cfContext) {
           bsCampaignId,
           bsAdgroupId,
           bsAdId,
+          ...clickIdParams,
         ]);
       }
     } else {
       if (supportsBsNetwork) {
         await db.run(`
-          INSERT INTO sessions (session_id, visitor_id, started_at, last_seen, last_path, last_product_handle, first_path, first_product_handle, cart_qty, cart_value, cart_currency, order_total, order_currency, country_code, utm_campaign, utm_source, utm_medium, utm_content, utm_term, referrer, entry_url, is_checking_out, checkout_started_at, has_purchased, purchased_at, is_abandoned, abandoned_at, recovered_at, cf_known_bot, cf_verified_bot_category, cf_country, cf_colo, cf_asn, cf_city, city, is_returning, ua_device_type, ua_platform, ua_model, ua_browser, ua_browser_version, bs_source, bs_campaign_id, bs_adgroup_id, bs_ad_id, bs_network)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `, [payload.session_id, payload.visitor_id, now, now, lastPath, lastProductHandle, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, normalizedCountry, utmCampaign, utmSource, utmMedium, utmContent, utmTerm, referrer, entryUrl, isCheckingOut, checkoutStartedAt, hasPurchased, purchasedAt, cfKnownBot, cfVerifiedBotCategory, cfCountry, cfColo, cfAsn, cfCity, city, isReturningSession, uaDeviceType, uaPlatform, uaModel, uaBrowser, uaBrowserVersion, bsSource, bsCampaignId, bsAdgroupId, bsAdId, bsNetwork]);
+          INSERT INTO sessions (session_id, visitor_id, started_at, last_seen, last_path, last_product_handle, first_path, first_product_handle, cart_qty, cart_value, cart_currency, order_total, order_currency, country_code, utm_campaign, utm_source, utm_medium, utm_content, utm_term, referrer, entry_url, is_checking_out, checkout_started_at, has_purchased, purchased_at, is_abandoned, abandoned_at, recovered_at, cf_known_bot, cf_verified_bot_category, cf_country, cf_colo, cf_asn, cf_city, city, is_returning, ua_device_type, ua_platform, ua_model, ua_browser, ua_browser_version, bs_source, bs_campaign_id, bs_adgroup_id, bs_ad_id, bs_network${clickIdCols})
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?${clickIdPlaces})
+        `, [payload.session_id, payload.visitor_id, now, now, lastPath, lastProductHandle, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, normalizedCountry, utmCampaign, utmSource, utmMedium, utmContent, utmTerm, referrer, entryUrl, isCheckingOut, checkoutStartedAt, hasPurchased, purchasedAt, cfKnownBot, cfVerifiedBotCategory, cfCountry, cfColo, cfAsn, cfCity, city, isReturningSession, uaDeviceType, uaPlatform, uaModel, uaBrowser, uaBrowserVersion, bsSource, bsCampaignId, bsAdgroupId, bsAdId, bsNetwork, ...clickIdParams]);
       } else {
         await db.run(`
-          INSERT INTO sessions (session_id, visitor_id, started_at, last_seen, last_path, last_product_handle, first_path, first_product_handle, cart_qty, cart_value, cart_currency, order_total, order_currency, country_code, utm_campaign, utm_source, utm_medium, utm_content, utm_term, referrer, entry_url, is_checking_out, checkout_started_at, has_purchased, purchased_at, is_abandoned, abandoned_at, recovered_at, cf_known_bot, cf_verified_bot_category, cf_country, cf_colo, cf_asn, cf_city, city, is_returning, ua_device_type, ua_platform, ua_model, ua_browser, ua_browser_version, bs_source, bs_campaign_id, bs_adgroup_id, bs_ad_id)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `, [payload.session_id, payload.visitor_id, now, now, lastPath, lastProductHandle, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, normalizedCountry, utmCampaign, utmSource, utmMedium, utmContent, utmTerm, referrer, entryUrl, isCheckingOut, checkoutStartedAt, hasPurchased, purchasedAt, cfKnownBot, cfVerifiedBotCategory, cfCountry, cfColo, cfAsn, cfCity, city, isReturningSession, uaDeviceType, uaPlatform, uaModel, uaBrowser, uaBrowserVersion, bsSource, bsCampaignId, bsAdgroupId, bsAdId]);
+          INSERT INTO sessions (session_id, visitor_id, started_at, last_seen, last_path, last_product_handle, first_path, first_product_handle, cart_qty, cart_value, cart_currency, order_total, order_currency, country_code, utm_campaign, utm_source, utm_medium, utm_content, utm_term, referrer, entry_url, is_checking_out, checkout_started_at, has_purchased, purchased_at, is_abandoned, abandoned_at, recovered_at, cf_known_bot, cf_verified_bot_category, cf_country, cf_colo, cf_asn, cf_city, city, is_returning, ua_device_type, ua_platform, ua_model, ua_browser, ua_browser_version, bs_source, bs_campaign_id, bs_adgroup_id, bs_ad_id${clickIdCols})
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?${clickIdPlaces})
+        `, [payload.session_id, payload.visitor_id, now, now, lastPath, lastProductHandle, lastPath, lastProductHandle, cartQty, cartValue, cartCurrency, orderTotal, orderCurrency, normalizedCountry, utmCampaign, utmSource, utmMedium, utmContent, utmTerm, referrer, entryUrl, isCheckingOut, checkoutStartedAt, hasPurchased, purchasedAt, cfKnownBot, cfVerifiedBotCategory, cfCountry, cfColo, cfAsn, cfCity, city, isReturningSession, uaDeviceType, uaPlatform, uaModel, uaBrowser, uaBrowserVersion, bsSource, bsCampaignId, bsAdgroupId, bsAdId, ...clickIdParams]);
       }
     }
   } else {
@@ -1025,6 +1086,10 @@ async function upsertSession(payload, visitorIsReturning, cfContext) {
     if (supportsBsNetwork) {
       setParts.push('bs_network = COALESCE(?, bs_network)');
       params.push(updateBsNetwork);
+    }
+    if (supportsClickId && updateEntryUrl) {
+      setParts.push('gclid = COALESCE(?, gclid)', 'gbraid = COALESCE(?, gbraid)', 'wbraid = COALESCE(?, wbraid)');
+      params.push(clickIds.gclid, clickIds.gbraid, clickIds.wbraid);
     }
 
     if (cfKnownBot != null) {

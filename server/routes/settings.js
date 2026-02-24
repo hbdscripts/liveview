@@ -60,6 +60,7 @@ function normalizeNotificationsPreferencesV1(raw) {
 
 const GOOGLE_ADS_PROFIT_DEDUCTIONS_V1_KEY = 'google_ads_profit_deductions_v1';
 const GOOGLE_ADS_ADD_TO_CART_VALUE_KEY = 'google_ads_add_to_cart_value';
+const GOOGLE_ADS_BEGIN_CHECKOUT_VALUE_KEY = 'google_ads_begin_checkout_value';
 const GOOGLE_ADS_POSTBACK_GOALS_KEY = 'google_ads_postback_goals';
 
 function defaultGoogleAdsProfitDeductionsV1() {
@@ -96,7 +97,7 @@ function normalizeGoogleAdsProfitDeductionsV1(raw) {
 }
 
 function defaultGoogleAdsPostbackGoals() {
-  return { uploadRevenue: true, uploadProfit: false, uploadAddToCart: false };
+  return { uploadRevenue: true, uploadProfit: false, uploadAddToCart: false, uploadBeginCheckout: false };
 }
 
 function normalizeGoogleAdsPostbackGoals(raw) {
@@ -115,6 +116,7 @@ function normalizeGoogleAdsPostbackGoals(raw) {
   out.uploadRevenue = parsed.uploadRevenue !== false;
   out.uploadProfit = parsed.uploadProfit === true;
   out.uploadAddToCart = parsed.uploadAddToCart === true;
+  out.uploadBeginCheckout = parsed.uploadBeginCheckout === true;
   return out;
 }
 
@@ -162,6 +164,7 @@ const SETTINGS_FIELD_PERMISSION = Object.freeze({
   googleAdsProfitConfig: 'admin.only.google_ads_settings',
   googleAdsProfitDeductions: 'admin.only.google_ads_settings',
   googleAdsAddToCartValue: 'admin.only.google_ads_settings',
+  googleAdsBeginCheckoutValue: 'admin.only.google_ads_settings',
   googleAdsPostbackGoals: 'admin.only.google_ads_settings',
   googleAdsPostbackEnabled: 'admin.only.google_ads_settings',
 });
@@ -1687,6 +1690,7 @@ async function readSettingsPayload(req) {
   let googleAdsProfitConfig = defaultGoogleAdsProfitConfigV1();
   let googleAdsProfitDeductions = defaultGoogleAdsProfitDeductionsV1();
   let googleAdsAddToCartValue = 1;
+  let googleAdsBeginCheckoutValue = 1;
   let googleAdsPostbackGoals = defaultGoogleAdsPostbackGoals();
   let insightsVariantsConfig = defaultVariantsConfigV1();
   let settingsScopeMode = 'global';
@@ -1710,6 +1714,7 @@ async function readSettingsPayload(req) {
       GOOGLE_ADS_PROFIT_CONFIG_V1_KEY,
       GOOGLE_ADS_PROFIT_DEDUCTIONS_V1_KEY,
       GOOGLE_ADS_ADD_TO_CART_VALUE_KEY,
+      GOOGLE_ADS_BEGIN_CHECKOUT_VALUE_KEY,
       GOOGLE_ADS_POSTBACK_GOALS_KEY,
       VARIANTS_CONFIG_KEY,
       GOOGLE_ADS_POSTBACK_ENABLED_KEY,
@@ -1797,6 +1802,13 @@ async function readSettingsPayload(req) {
     }
   } catch (_) {}
   try {
+    const raw = rawMap[GOOGLE_ADS_BEGIN_CHECKOUT_VALUE_KEY];
+    if (raw != null && raw !== '') {
+      const n = Number(raw);
+      googleAdsBeginCheckoutValue = Number.isFinite(n) && n >= 0 ? n : 1;
+    }
+  } catch (_) {}
+  try {
     const raw = rawMap[GOOGLE_ADS_POSTBACK_GOALS_KEY];
     googleAdsPostbackGoals = normalizeGoogleAdsPostbackGoals(raw);
   } catch (_) {}
@@ -1835,6 +1847,7 @@ async function readSettingsPayload(req) {
     googleAdsProfitConfig,
     googleAdsProfitDeductions,
     googleAdsAddToCartValue,
+    googleAdsBeginCheckoutValue,
     googleAdsPostbackGoals,
     insightsVariantsConfig,
     pageLoaderEnabled,
@@ -2069,6 +2082,19 @@ async function postSettings(req, res) {
       await store.setSetting(GOOGLE_ADS_ADD_TO_CART_VALUE_KEY, String(val));
     } catch (err) {
       return res.status(500).json({ ok: false, error: err && err.message ? String(err.message) : 'Failed to save Add to Cart value' });
+    }
+  }
+
+  // Google Ads Begin Checkout conversion value
+  if (Object.prototype.hasOwnProperty.call(body, 'googleAdsBeginCheckoutValue')) {
+    if (!(await assertCanWriteSettingsField(req, 'googleAdsBeginCheckoutValue', res))) return;
+    try {
+      const v = body.googleAdsBeginCheckoutValue;
+      const n = v != null && v !== '' ? Number(v) : 1;
+      const val = Number.isFinite(n) && n >= 0 ? Math.min(1000000, n) : 1;
+      await store.setSetting(GOOGLE_ADS_BEGIN_CHECKOUT_VALUE_KEY, String(val));
+    } catch (err) {
+      return res.status(500).json({ ok: false, error: err && err.message ? String(err.message) : 'Failed to save Begin Checkout value' });
     }
   }
 

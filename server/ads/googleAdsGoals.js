@@ -5,10 +5,10 @@
 const { getAdsDb } = require('./adsDb');
 const googleAdsClient = require('./googleAdsClient');
 
-const GOAL_TYPES = ['revenue', 'profit', 'add_to_cart'];
-const GOAL_DISPLAY_NAMES = { revenue: 'KexoRevenue', profit: 'KexoProfit', add_to_cart: 'KexoAddToCart' };
-/** Category for Google Ads: PURCHASE for revenue/profit, ADD_TO_CART for add_to_cart */
-const GOAL_CATEGORIES = { revenue: 'PURCHASE', profit: 'PURCHASE', add_to_cart: 'ADD_TO_CART' };
+const GOAL_TYPES = ['revenue', 'profit', 'add_to_cart', 'begin_checkout'];
+const GOAL_DISPLAY_NAMES = { revenue: 'KexoRevenue', profit: 'KexoProfit', add_to_cart: 'KexoAddToCart', begin_checkout: 'KexoBeginCheckout' };
+/** Category for Google Ads: PURCHASE for revenue/profit, ADD_TO_CART for add_to_cart, BEGIN_CHECKOUT for begin_checkout */
+const GOAL_CATEGORIES = { revenue: 'PURCHASE', profit: 'PURCHASE', add_to_cart: 'ADD_TO_CART', begin_checkout: 'BEGIN_CHECKOUT' };
 
 /**
  * List existing UPLOAD_CLICKS conversion actions for the customer.
@@ -135,7 +135,7 @@ async function provisionGoals(shop, goalTypes) {
 /**
  * Get persisted conversion goals for a shop.
  * @param {string} shop
- * @returns {Promise<Array<{ goal_type, conversion_action_id, conversion_action_resource_name, last_provisioned_at }>>}
+ * @returns {Promise<Array<{ goal_type, conversion_action_id, conversion_action_resource_name, custom_goal_id, custom_goal_resource_name, last_provisioned_at }>>}
  */
 async function getConversionGoals(shop) {
   const db = getAdsDb();
@@ -157,11 +157,90 @@ async function getConversionGoals(shop) {
   }));
 }
 
+/**
+ * Attach an existing UPLOAD_CLICKS conversion action to a goal (writes custom_goal_*).
+ * @param {string} shop
+ * @param {string} goalType - 'revenue' | 'profit' | 'add_to_cart' | 'begin_checkout'
+ * @param {string} resourceName - conversion action resource_name
+ * @param {number} [id] - conversion action id (optional)
+ */
+async function attachGoalToConversionAction(shop, goalType, resourceName, id) {
+  if (!shop || !goalType || !resourceName || typeof resourceName !== 'string' || !resourceName.trim()) {
+    return { ok: false, error: 'shop, goal_type and resource_name required' };
+  }
+  const normShop = String(shop).trim().toLowerCase();
+  const g = String(goalType).trim().toLowerCase();
+  if (!GOAL_TYPES.includes(g)) return { ok: false, error: 'invalid goal_type' };
+  const goals = await getConversionGoals(normShop);
+  const existing = (goals || []).find((x) => x.goal_type === g);
+  if (!existing) return { ok: false, error: 'goal not provisioned; provision conversion actions first' };
+  const customId = id != null && Number.isFinite(Number(id)) ? Number(id) : null;
+  await upsertConversionGoal(normShop, {
+    goal_type: g,
+    conversion_action_id: existing.conversion_action_id,
+    conversion_action_resource_name: existing.conversion_action_resource_name,
+    custom_goal_id: customId,
+    custom_goal_resource_name: String(resourceName).trim(),
+  });
+  return { ok: true };
+}
+
+/**
+ * Clear custom attachment for a goal (revert to Kexo-provisioned action).
+ * @param {string} shop
+ * @param {string} goalType
+ */
+async function clearGoalAttachment(shop, goalType) {
+  if (!shop || !goalType) return { ok: false, error: 'shop and goal_type required' };
+  const normShop = String(shop).trim().toLowerCase();
+  const g = String(goalType).trim().toLowerCase();
+  if (!GOAL_TYPES.includes(g)) return { ok: false, error: 'invalid goal_type' };
+  const goals = await getConversionGoals(normShop);
+  const existing = (goals || []).find((x) => x.goal_type === g);
+  if (!existing) return { ok: false, error: 'goal not provisioned' };
+  await upsertConversionGoal(normShop, {
+    goal_type: g,
+    conversion_action_id: existing.conversion_action_id,
+    conversion_action_resource_name: existing.conversion_action_resource_name,
+    custom_goal_id: null,
+    custom_goal_resource_name: null,
+  });
+  return { ok: true };
+}
+
+/**
+ * Create a new UPLOAD_CLICKS conversion action with the given name and attach it to the goal.
+ * @param {string} shop
+ * @param {string} goalType
+ * @param {string} actionName - display name for the new action
+ */
+async function createAndAttachGoalConversionAction(shop, goalType, actionName) {
+  if (!shop || !goalType || !actionName || typeof actionName !== 'string' || !actionName.trim()) {
+    return { ok: false, error: 'shop, goal_type and action_name required' };
+  }
+  const normShop = String(shop).trim().toLowerCase();
+  const g = String(goalType).trim().toLowerCase();
+  if (!GOAL_TYPES.includes(g)) return { ok: false, error: 'invalid goal_type' };
+  const category = GOAL_CATEGORIES[g] || 'PURCHASE';
+  const name = String(actionName).trim().slice(0, 100);
+  const operations = [{ create: { name, type: 'UPLOAD_CLICKS', category, status: 'ENABLED' } }];
+  const mutate = await googleAdsClient.mutateConversionActions(normShop, operations);
+  if (!mutate.ok) return { ok: false, error: mutate.error || 'create failed' };
+  const result = (mutate.results && mutate.results[0]) || null;
+  const resourceName = result && result.resourceName ? String(result.resourceName) : null;
+  const id = resourceName && resourceName.match(/\/(\d+)$/) ? Number(RegExp.$1) : null;
+  if (!resourceName) return { ok: false, error: 'create returned no resource_name' };
+  return attachGoalToConversionAction(normShop, g, resourceName, id);
+}
+
 module.exports = {
   listUploadClickConversionActions,
   ensureConversionAction,
   provisionGoals,
   getConversionGoals,
+  attachGoalToConversionAction,
+  clearGoalAttachment,
+  createAndAttachGoalConversionAction,
   GOAL_TYPES,
   GOAL_DISPLAY_NAMES,
 };

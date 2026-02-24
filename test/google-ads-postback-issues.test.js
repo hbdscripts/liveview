@@ -15,6 +15,25 @@ test('pickClickIdFromAttribution: prefers gclid over gbraid over wbraid', () => 
   assert.deepEqual(pickClickIdFromAttribution({ gclid: '  g1  ' }), { value: 'g1', type: 'gclid' });
 });
 
+test('parseClickIdsFromEntryUrl: extracts gclid then gbraid then wbraid', () => {
+  const { parseClickIdsFromEntryUrl } = googleAdsPostback;
+  assert.deepEqual(parseClickIdsFromEntryUrl('https://example.com/?gclid=abc'), { value: 'abc', type: 'gclid' });
+  assert.deepEqual(parseClickIdsFromEntryUrl('https://example.com/?gbraid=gb123'), { value: 'gb123', type: 'gbraid' });
+  assert.deepEqual(parseClickIdsFromEntryUrl('https://example.com/?wbraid=wb456'), { value: 'wb456', type: 'wbraid' });
+  assert.deepEqual(parseClickIdsFromEntryUrl('https://example.com/?gclid=x&gbraid=y'), { value: 'x', type: 'gclid' });
+  assert.deepEqual(parseClickIdsFromEntryUrl('/?gclid=rel'), { value: 'rel', type: 'gclid' });
+  assert.deepEqual(parseClickIdsFromEntryUrl(''), { value: null, type: null });
+  assert.deepEqual(parseClickIdsFromEntryUrl('https://example.com/'), { value: null, type: null });
+});
+
+test('resolveClickId: uses row columns first then entry_url', () => {
+  const { resolveClickId } = googleAdsPostback;
+  assert.deepEqual(resolveClickId({ gclid: 'g1' }), { value: 'g1', type: 'gclid' });
+  assert.deepEqual(resolveClickId({ entry_url: 'https://x.com/?gclid=fromUrl' }), { value: 'fromUrl', type: 'gclid' });
+  assert.deepEqual(resolveClickId({ gbraid: 'gb1', entry_url: 'https://x.com/?gclid=ignored' }), { value: 'gb1', type: 'gbraid' });
+  assert.deepEqual(resolveClickId({ entry_url: '' }), { value: null, type: null });
+});
+
 test('computeProfitForOrder: no config or disabled returns revenue', () => {
   const { computeProfitForOrder } = googleAdsPostback;
   assert.strictEqual(computeProfitForOrder(100, null), 100);

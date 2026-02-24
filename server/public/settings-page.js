@@ -2235,10 +2235,13 @@
       var addToCartEl = document.getElementById('settings-ga-addtocart-value');
       var addToCartValue = addToCartEl ? (Number(addToCartEl.value) || 0) : 1;
       if (!Number.isFinite(addToCartValue) || addToCartValue < 0) addToCartValue = 1;
-      return { deductions: deductions, googleAdsAddToCartValue: addToCartValue };
+      var beginCheckoutEl = document.getElementById('settings-ga-begincheckout-value');
+      var beginCheckoutValue = beginCheckoutEl ? (Number(beginCheckoutEl.value) || 0) : 1;
+      if (!Number.isFinite(beginCheckoutValue) || beginCheckoutValue < 0) beginCheckoutValue = 1;
+      return { deductions: deductions, googleAdsAddToCartValue: addToCartValue, googleAdsBeginCheckoutValue: beginCheckoutValue };
     }
 
-    function applyProfitDeductions(deductions, addToCartValue) {
+    function applyProfitDeductions(deductions, addToCartValue, beginCheckoutValue) {
       var d = deductions && typeof deductions === 'object' ? deductions : {};
       function setChk(id, val) {
         var el = document.getElementById(id);
@@ -2252,6 +2255,8 @@
       setChk('settings-ga-deduction-rules', d.includeRules);
       var addToCartEl = document.getElementById('settings-ga-addtocart-value');
       if (addToCartEl) addToCartEl.value = (addToCartValue != null && Number.isFinite(Number(addToCartValue)) && Number(addToCartValue) >= 0) ? String(Number(addToCartValue)) : '1';
+      var beginCheckoutEl = document.getElementById('settings-ga-begincheckout-value');
+      if (beginCheckoutEl) beginCheckoutEl.value = (beginCheckoutValue != null && Number.isFinite(Number(beginCheckoutValue)) && Number(beginCheckoutValue) >= 0) ? String(Number(beginCheckoutValue)) : '1';
     }
 
     function applyPostbackGoals(goals) {
@@ -2263,6 +2268,7 @@
       setChk('settings-ga-upload-revenue', g.uploadRevenue !== false);
       setChk('settings-ga-upload-profit', g.uploadProfit === true);
       setChk('settings-ga-upload-addtocart', g.uploadAddToCart === true);
+      setChk('settings-ga-upload-begincheckout', g.uploadBeginCheckout === true);
     }
 
     function readPostbackGoalsDraft() {
@@ -2270,6 +2276,7 @@
         uploadRevenue: !!document.getElementById('settings-ga-upload-revenue') && document.getElementById('settings-ga-upload-revenue').checked,
         uploadProfit: !!document.getElementById('settings-ga-upload-profit') && document.getElementById('settings-ga-upload-profit').checked,
         uploadAddToCart: !!document.getElementById('settings-ga-upload-addtocart') && document.getElementById('settings-ga-upload-addtocart').checked,
+        uploadBeginCheckout: !!document.getElementById('settings-ga-upload-begincheckout') && document.getElementById('settings-ga-upload-begincheckout').checked,
       };
     }
 
@@ -2310,6 +2317,54 @@
           body.innerHTML = '<tr><td colspan="5" class="text-muted small">Failed to load conversion actions.</td></tr>';
           return false;
         });
+    }
+
+    function loadGoalMapping() {
+      var body = document.getElementById('settings-ga-mapping-body');
+      if (!body) return Promise.resolve();
+      body.innerHTML = '<tr><td colspan="3" class="text-muted small">Loading…</td></tr>';
+      var shop = getShopParam();
+      var qs = shop ? ('?shop=' + encodeURIComponent(shop)) : '';
+      return Promise.all([
+        apiGet('/api/ads/google/goals' + qs).then(function (r) { return r && r.ok && r.json && r.json.goals ? r.json.goals : []; }),
+        apiGet('/api/ads/google/upload-click-actions' + qs).then(function (r) { return r && r.ok && r.json && r.json.actions ? r.json.actions : []; })
+      ]).then(function (arr) {
+        var goals = Array.isArray(arr[0]) ? arr[0] : [];
+        var actions = Array.isArray(arr[1]) ? arr[1] : [];
+        var goalTypes = [{ key: 'revenue', label: 'Revenue' }, { key: 'profit', label: 'Profit' }, { key: 'add_to_cart', label: 'Add to Cart' }, { key: 'begin_checkout', label: 'Begin Checkout' }];
+        var optionsHtml = '<option value="">— Select action —</option>' + actions.map(function (a) {
+          var rn = (a && a.resourceName) ? String(a.resourceName) : '';
+          var name = (a && a.name) ? String(a.name) : rn || '—';
+          return '<option value="' + escapeHtml(rn) + '" data-id="' + (a && a.id != null ? escapeHtml(String(a.id)) : '') + '">' + escapeHtml(name) + '</option>';
+        }).join('');
+        body.innerHTML = goalTypes.map(function (gt) {
+          var g = goals.find(function (x) { return x.goal_type === gt.key; });
+          var currentRn = (g && (g.custom_goal_resource_name || g.conversion_action_resource_name)) ? String(g.custom_goal_resource_name || g.conversion_action_resource_name) : '';
+          var currentName = currentRn ? (actions.find(function (a) { return (a.resourceName || '') === currentRn; }) || {}).name || currentRn : '—';
+          var rowId = 'settings-ga-mapping-' + gt.key;
+          return '<tr data-ga-goal="' + escapeHtml(gt.key) + '">' +
+            '<td><span class="fw-medium">' + escapeHtml(gt.label) + '</span></td>' +
+            '<td><span class="text-muted small" id="' + rowId + '-current">' + escapeHtml(currentName) + '</span></td>' +
+            '<td class="text-end">' +
+            '<select class="form-select form-select-sm d-inline-block w-auto me-1" id="' + rowId + '-select" aria-label="Action for ' + escapeHtml(gt.label) + '">' + optionsHtml + '</select>' +
+            '<button type="button" class="btn btn-md me-1" data-ga-attach="' + escapeHtml(gt.key) + '">Attach</button>' +
+            '<button type="button" class="btn btn-md me-1" data-ga-clear="' + escapeHtml(gt.key) + '">Clear</button>' +
+            '<span class="ms-1"><input type="text" class="form-control form-control-sm d-inline-block" style="width:8rem" placeholder="New name" id="' + rowId + '-new-name" aria-label="New action name for ' + escapeHtml(gt.label) + '" />' +
+            ' <button type="button" class="btn btn-primary btn-md" data-ga-create="' + escapeHtml(gt.key) + '">Create &amp; attach</button></span>' +
+            '</td></tr>';
+        }).join('');
+        goalTypes.forEach(function (gt) {
+          var rowId = 'settings-ga-mapping-' + gt.key;
+          var g = goals.find(function (x) { return x.goal_type === gt.key; });
+          var currentRn = (g && (g.custom_goal_resource_name || g.conversion_action_resource_name)) ? String(g.custom_goal_resource_name || g.conversion_action_resource_name) : '';
+          var sel = document.getElementById(rowId + '-select');
+          if (sel && currentRn) sel.value = currentRn;
+        });
+        return true;
+      }).catch(function () {
+        body.innerHTML = '<tr><td colspan="3" class="text-muted small">Failed to load mapping.</td></tr>';
+        return false;
+      });
     }
 
     function loadPostbackHealth() {
@@ -2600,6 +2655,7 @@
         if (document.getElementById('settings-ga-goal-revenue') && document.getElementById('settings-ga-goal-revenue').checked) goals.push('revenue');
         if (document.getElementById('settings-ga-goal-profit') && document.getElementById('settings-ga-goal-profit').checked) goals.push('profit');
         if (document.getElementById('settings-ga-goal-addtocart') && document.getElementById('settings-ga-goal-addtocart').checked) goals.push('add_to_cart');
+        if (document.getElementById('settings-ga-goal-begincheckout') && document.getElementById('settings-ga-goal-begincheckout').checked) goals.push('begin_checkout');
         if (!goals.length) {
           setHint(connMsgEl, 'Select at least one goal to provision.', false);
           return;
@@ -2612,6 +2668,7 @@
             setHint(connMsgEl, ok ? 'Provisioned.' : ((r && r.json && r.json.error) ? String(r.json.error) : 'Provision failed.'), ok);
             if (ok) {
               loadConversionActions();
+              loadGoalMapping();
               loadPostbackHealth();
               loadIssues();
             }
@@ -2635,6 +2692,7 @@
     var uploadRevenueEl = document.getElementById('settings-ga-upload-revenue');
     var uploadProfitEl = document.getElementById('settings-ga-upload-profit');
     var uploadAddToCartEl = document.getElementById('settings-ga-upload-addtocart');
+    var uploadBeginCheckoutEl = document.getElementById('settings-ga-upload-begincheckout');
     function savePostbackGoals() {
       saveSettings({ googleAdsPostbackGoals: readPostbackGoalsDraft() })
         .then(function () { setHint(connMsgEl, 'Upload goals saved.', true); })
@@ -2643,6 +2701,7 @@
     if (uploadRevenueEl) uploadRevenueEl.addEventListener('change', savePostbackGoals);
     if (uploadProfitEl) uploadProfitEl.addEventListener('change', savePostbackGoals);
     if (uploadAddToCartEl) uploadAddToCartEl.addEventListener('change', savePostbackGoals);
+    if (uploadBeginCheckoutEl) uploadBeginCheckoutEl.addEventListener('change', savePostbackGoals);
 
     if (profitSaveBtn) {
       profitSaveBtn.addEventListener('click', function () {
@@ -2651,6 +2710,7 @@
         saveSettings({
           googleAdsProfitDeductions: draft.deductions,
           googleAdsAddToCartValue: draft.googleAdsAddToCartValue,
+          googleAdsBeginCheckoutValue: draft.googleAdsBeginCheckoutValue,
         })
           .then(function (r) {
             if (r && r.ok) setHint(profitMsgEl, 'Saved.', true);
@@ -2686,22 +2746,71 @@
     if (issuesRefreshBtn) issuesRefreshBtn.addEventListener('click', function () { loadIssues(); });
 
     try {
-      window.__kexoApplyGoogleAdsProfitDeductions = function (d, v) { applyProfitDeductions(d, v != null ? v : 1); };
+      window.__kexoApplyGoogleAdsProfitDeductions = function (d, v, b) { applyProfitDeductions(d, v != null ? v : 1, b != null ? b : 1); };
       window.__kexoApplyPostbackGoals = function (g) { applyPostbackGoals(g); };
     } catch (_) {}
     try {
       var payload = window.__kexoSettingsPayload;
-      if (payload && payload.googleAdsProfitDeductions) applyProfitDeductions(payload.googleAdsProfitDeductions, payload.googleAdsAddToCartValue);
-      else applyProfitDeductions(null, 1);
+      if (payload && payload.googleAdsProfitDeductions) applyProfitDeductions(payload.googleAdsProfitDeductions, payload.googleAdsAddToCartValue, payload.googleAdsBeginCheckoutValue);
+      else applyProfitDeductions(null, 1, 1);
       if (payload && payload.googleAdsPostbackGoals) applyPostbackGoals(payload.googleAdsPostbackGoals);
       else applyPostbackGoals(null);
     } catch (_) {
-      applyProfitDeductions(null, 1);
+      applyProfitDeductions(null, 1, 1);
       applyPostbackGoals(null);
     }
     loadConversionActions();
+    loadGoalMapping();
     loadPostbackHealth();
     loadIssues();
+
+    var mappingCard = document.getElementById('settings-ga-mapping-card');
+    if (mappingCard) {
+      mappingCard.addEventListener('click', function (e) {
+        var target = e && e.target ? e.target : null;
+        if (!target || target.getAttribute('data-ga-attach') == null && target.getAttribute('data-ga-clear') == null && target.getAttribute('data-ga-create') == null) return;
+        var goalType = target.getAttribute('data-ga-attach') || target.getAttribute('data-ga-clear') || target.getAttribute('data-ga-create');
+        var shop = getShopParam();
+        if (target.getAttribute('data-ga-attach') !== null) {
+          var row = target.closest('tr');
+          var sel = row ? row.querySelector('select[id$="-select"]') : null;
+          var resourceName = sel ? sel.value : '';
+          var opt = sel && sel.selectedIndex >= 0 ? sel.options[sel.selectedIndex] : null;
+          var id = opt && opt.getAttribute('data-id') ? opt.getAttribute('data-id') : undefined;
+          if (!resourceName) { setHint(connMsgEl, 'Select an action first.', false); return; }
+          setHint(connMsgEl, 'Attaching…', true);
+          apiPost('/api/ads/google/attach-goal', { shop: shop, goal_type: goalType, resource_name: resourceName, id: id })
+            .then(function (r) {
+              var ok = !!(r && r.ok && r.json && r.json.ok);
+              setHint(connMsgEl, ok ? 'Attached.' : ((r && r.json && r.json.error) ? String(r.json.error) : 'Attach failed.'), ok);
+              if (ok) { loadGoalMapping(); loadConversionActions(); }
+            })
+            .catch(function () { setHint(connMsgEl, 'Attach failed.', false); });
+        } else if (target.getAttribute('data-ga-clear') !== null) {
+          setHint(connMsgEl, 'Clearing…', true);
+          apiPost('/api/ads/google/clear-goal', { shop: shop, goal_type: goalType })
+            .then(function (r) {
+              var ok = !!(r && r.ok && r.json && r.json.ok);
+              setHint(connMsgEl, ok ? 'Cleared.' : ((r && r.json && r.json.error) ? String(r.json.error) : 'Clear failed.'), ok);
+              if (ok) { loadGoalMapping(); loadConversionActions(); }
+            })
+            .catch(function () { setHint(connMsgEl, 'Clear failed.', false); });
+        } else if (target.getAttribute('data-ga-create') !== null) {
+          var row = target.closest('tr');
+          var input = row ? document.getElementById('settings-ga-mapping-' + goalType + '-new-name') : null;
+          var actionName = input ? String(input.value || '').trim() : '';
+          if (!actionName) { setHint(connMsgEl, 'Enter a name for the new action.', false); return; }
+          setHint(connMsgEl, 'Creating and attaching…', true);
+          apiPost('/api/ads/google/create-and-attach-goal', { shop: shop, goal_type: goalType, action_name: actionName })
+            .then(function (r) {
+              var ok = !!(r && r.ok && r.json && r.json.ok);
+              setHint(connMsgEl, ok ? 'Created and attached.' : ((r && r.json && r.json.error) ? String(r.json.error) : 'Create failed.'), ok);
+              if (ok) { if (input) input.value = ''; loadGoalMapping(); loadConversionActions(); loadPostbackHealth(); }
+            })
+            .catch(function () { setHint(connMsgEl, 'Create failed.', false); });
+        }
+      });
+    }
   }
 
   function renderIntegrationsFromConfig(c) {
@@ -2939,7 +3048,7 @@
         } catch (_) {}
         try {
           if (typeof window.__kexoApplyGoogleAdsProfitDeductions === 'function') {
-            window.__kexoApplyGoogleAdsProfitDeductions(data.googleAdsProfitDeductions || null, data.googleAdsAddToCartValue != null ? data.googleAdsAddToCartValue : 1);
+            window.__kexoApplyGoogleAdsProfitDeductions(data.googleAdsProfitDeductions || null, data.googleAdsAddToCartValue != null ? data.googleAdsAddToCartValue : 1, data.googleAdsBeginCheckoutValue != null ? data.googleAdsBeginCheckoutValue : 1);
           }
           if (typeof window.__kexoApplyPostbackGoals === 'function') {
             window.__kexoApplyPostbackGoals(data.googleAdsPostbackGoals || null);
