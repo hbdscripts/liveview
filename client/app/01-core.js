@@ -411,12 +411,35 @@ const API = '';
           if (!headerLink) return;
           headerLink.addEventListener('click', function (e) {
             e.preventDefault();
-            cat.classList.toggle('kexo-mini-menu-expanded');
+            var isExpanded = !!(cat.classList && cat.classList.contains('kexo-mini-menu-expanded'));
+            try {
+              categories.forEach(function (other) {
+                if (!other || !other.classList) return;
+                if (other === cat) return;
+                other.classList.remove('kexo-mini-menu-expanded');
+              });
+            } catch (_) {}
+            if (cat.classList) {
+              if (isExpanded) cat.classList.remove('kexo-mini-menu-expanded');
+              else cat.classList.add('kexo-mini-menu-expanded');
+            }
           });
         });
       }
       panelHost.appendChild(fragment);
       addToggleListeners(panelHost);
+      // Default open: Kexo (and ensure other categories are collapsed).
+      try {
+        var kexoHeader = panelHost.querySelector('a[data-settings-tab="kexo"]:not(.settings-nav-child)');
+        var kexoCat = kexoHeader && kexoHeader.closest ? kexoHeader.closest('.settings-nav-category') : null;
+        if (kexoCat && kexoCat.classList) {
+          try {
+            var cats = panelHost.querySelectorAll ? panelHost.querySelectorAll('.settings-nav-category') : [];
+            if (cats && cats.length) cats.forEach(function (c) { if (c && c.classList) c.classList.remove('kexo-mini-menu-expanded'); });
+          } catch (_) {}
+          kexoCat.classList.add('kexo-mini-menu-expanded');
+        }
+      } catch (_) {}
       _miniMenuBuilt = true;
     }
     function ensureViewingAsTierRow(viewer) {

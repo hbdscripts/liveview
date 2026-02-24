@@ -69,6 +69,7 @@
     { key: '--kexo-header-settings-menu-icon-color', label: 'Settings panel icon', tab: TABS.colors.id, accordion: COLOR_ACCORDIONS.headerNav.id },
     { key: '--kexo-header-settings-menu-border-color', label: 'Settings panel border', tab: TABS.colors.id, accordion: COLOR_ACCORDIONS.headerNav.id },
     { key: '--kexo-header-settings-menu-hover-bg', label: 'Settings panel hover background', tab: TABS.colors.id, accordion: COLOR_ACCORDIONS.headerNav.id, opaque: true },
+    { key: '--kexo-header-settings-menu-search-focus-color', label: 'Settings panel search focus', tab: TABS.colors.id, accordion: COLOR_ACCORDIONS.headerNav.id },
 
     // KPIs (base palette)
     { key: '--kexo-kpi-delta-up', label: 'KPI Delta Up', tab: TABS.colors.id, accordion: COLOR_ACCORDIONS.kpis.id },
