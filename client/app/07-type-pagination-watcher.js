@@ -3868,8 +3868,10 @@
       if (condOrdersEl) condOrdersEl.textContent = orderCountVal != null ? formatSessions(orderCountVal) : '\u2014';
       if (condRevenueEl) condRevenueEl.textContent = revenueVal != null ? formatRevenue(revenueVal) : '\u2014';
       if (condProfitEl) condProfitEl.textContent = profitVal != null ? formatRevenue(profitVal) : '\u2014';
+      var profitNegative = typeof profitVal === 'number' && Number.isFinite(profitVal) && profitVal < 0;
       var profitChip = condProfitEl && condProfitEl.closest ? condProfitEl.closest('.kexo-kpi-chip') : null;
-      if (profitChip) profitChip.classList.toggle('is-negative', typeof profitVal === 'number' && Number.isFinite(profitVal) && profitVal < 0);
+      if (profitChip) profitChip.classList.toggle('is-negative', profitNegative);
+      if (condProfitEl) condProfitEl.classList.toggle('is-negative', profitNegative);
       if (condSessionsEl) condSessionsEl.textContent = sessionsVal != null ? formatSessions(sessionsVal) : '\u2014';
       if (condConvEl) condConvEl.textContent = convVal != null ? pct(convVal) : '\u2014';
       if (condVpvEl) condVpvEl.textContent = vpvVal != null ? formatRevenue(vpvVal) : '\u2014';
