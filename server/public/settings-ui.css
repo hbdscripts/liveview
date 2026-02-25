@@ -285,12 +285,7 @@ body[data-page="settings"] #settings-panel-cost-expenses .kexo-flag-stack {
   height: var(--kexo-flag-h);
   width: var(--kexo-flag-w);
   flex-shrink: 0;
-}
-body[data-page="settings"] #settings-panel-cost-expenses .kexo-flag-stack--2 {
-  width: calc(var(--kexo-flag-w) + var(--kexo-flag-offset));
-}
-body[data-page="settings"] #settings-panel-cost-expenses .kexo-flag-stack--3 {
-  width: calc(var(--kexo-flag-w) + (2 * var(--kexo-flag-offset)));
+  overflow: visible;
 }
 body[data-page="settings"] #settings-panel-cost-expenses .kexo-flag-stack-item {
   position: absolute;
@@ -313,22 +308,13 @@ body[data-page="settings"] #settings-panel-cost-expenses .kexo-flag-stack-item.i
   left: 0;
   z-index: 3;
 }
-body[data-page="settings"] #settings-panel-cost-expenses .kexo-flag-stack--2 .kexo-flag-stack-item.is-1 {
-  left: var(--kexo-flag-offset);
-}
-body[data-page="settings"] #settings-panel-cost-expenses .kexo-flag-stack--3 .kexo-flag-stack-item.is-1 {
-  left: calc(2 * var(--kexo-flag-offset));
-}
 body[data-page="settings"] #settings-panel-cost-expenses .kexo-flag-stack-item.is-2 {
-  left: 0;
+  left: calc(-1 * var(--kexo-flag-offset));
   z-index: 2;
   transform: rotate(-7deg);
 }
-body[data-page="settings"] #settings-panel-cost-expenses .kexo-flag-stack--3 .kexo-flag-stack-item.is-2 {
-  left: var(--kexo-flag-offset);
-}
 body[data-page="settings"] #settings-panel-cost-expenses .kexo-flag-stack-item.is-3 {
-  left: 0;
+  left: calc(-2 * var(--kexo-flag-offset));
   z-index: 1;
   transform: rotate(7deg);
   opacity: 0.95;
@@ -357,19 +343,49 @@ body[data-page="settings"] #settings-panel-cost-expenses .kexo-flags-popover .ke
 body[data-page="settings"] #settings-panel-cost-expenses .kexo-ce-override-countries-wrap {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 6px;
 }
 body[data-page="settings"] #settings-panel-cost-expenses .kexo-ce-override-priority {
-  width: 76px;
-  max-width: 76px;
+  width: 30px;
+  max-width: 30px;
+  padding-left: 2px;
+  padding-right: 2px;
+  text-align: center;
 }
 body[data-page="settings"] #settings-panel-cost-expenses .kexo-ce-override-price {
-  width: 120px;
-  max-width: 120px;
+  width: 90px;
+  max-width: 90px;
 }
 body[data-page="settings"] #settings-panel-cost-expenses .kexo-ce-override-label {
-  width: 180px;
-  max-width: 260px;
+  width: 140px;
+  max-width: 180px;
+}
+
+/* Cost & Expenses: Shipping "worldwide default" should not look like a card. */
+body[data-page="settings"] #settings-panel-cost-expenses #settings-cost-expenses-panel-shipping > .card {
+  border: 0;
+  box-shadow: none;
+  background: transparent;
+}
+body[data-page="settings"] #settings-panel-cost-expenses #settings-cost-expenses-panel-shipping > .card > .card-body {
+  padding: 0;
+}
+body[data-page="settings"] #settings-panel-cost-expenses #cost-expenses-shipping-worldwide {
+  width: 100px;
+  max-width: 100px;
+}
+
+/* Cost & Expenses: place "Add…" buttons under section titles. */
+body[data-page="settings"] #settings-panel-cost-expenses .accordion-body > .d-flex.align-items-center.justify-content-end {
+  justify-content: flex-start !important;
+}
+body[data-page="settings"] #settings-panel-cost-expenses #settings-cost-expenses-panel-shipping > .d-flex.align-items-center.justify-content-between.mb-2 {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+body[data-page="settings"] #settings-panel-cost-expenses #settings-cost-expenses-panel-shipping > .d-flex.align-items-center.justify-content-between.mb-2 > h5 {
+  margin-bottom: 0;
 }
 
 /* Cost & Expenses: Per-order modal inputs are too wide on desktop. */

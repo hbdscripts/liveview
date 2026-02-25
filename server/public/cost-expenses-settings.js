@@ -472,6 +472,7 @@
     var wrap = document.getElementById('cost-expenses-shipping-overrides-wrap');
     var dupWarn = document.getElementById('cost-expenses-shipping-dup-warn');
     if (!wrap) return;
+    ensureShippingOverridesHeader(wrap);
     var overrides = (state.config && state.config.shipping && state.config.shipping.overrides) ? state.config.shipping.overrides : [];
     var countryToFirst = {};
     var dupCountries = [];
@@ -527,6 +528,23 @@
     });
     wrap.innerHTML = html || '<tr><td colspan="6" class="text-muted small">No overrides yet.</td></tr>';
     bindFlagStackHoverTooltips(wrap);
+  }
+
+  function ensureShippingOverridesHeader(bodyWrap) {
+    try {
+      var table = bodyWrap && bodyWrap.closest ? bodyWrap.closest('table') : null;
+      var tr = table ? table.querySelector('thead tr') : null;
+      if (!tr) return;
+      var ths = Array.prototype.slice.call(tr.querySelectorAll('th') || []);
+      var hasLabel = ths.some(function (th) { return String(th.textContent || '').trim().toLowerCase() === 'label'; });
+      if (hasLabel) return;
+      var onTh = ths.find ? ths.find(function (th) { return String(th.textContent || '').trim().toLowerCase() === 'on'; }) : null;
+      var ref = onTh ? onTh.nextElementSibling : (ths[2] || null);
+      var th = document.createElement('th');
+      th.textContent = 'Label';
+      if (ref) tr.insertBefore(th, ref);
+      else tr.appendChild(th);
+    } catch (_) {}
   }
 
   function readShippingFromUi() {
@@ -1496,9 +1514,10 @@
     if (perOrderModalApi) return perOrderModalApi;
     var el = document.getElementById('cost-expenses-per-order-modal');
     if (!el) return null;
-    if (!(window.bootstrap && window.bootstrap.Modal)) return null;
+    var Bootstrap = window.bootstrap || (window.tabler && window.tabler.bootstrap);
+    if (!(Bootstrap && Bootstrap.Modal)) return null;
     try {
-      perOrderModalApi = window.bootstrap.Modal.getOrCreateInstance(el, { backdrop: true, focus: true, keyboard: true });
+      perOrderModalApi = Bootstrap.Modal.getOrCreateInstance(el, { backdrop: true, focus: true, keyboard: true });
     } catch (_) {
       perOrderModalApi = null;
     }
@@ -1512,6 +1531,126 @@
       } catch (_) {}
     }
     return perOrderModalApi;
+  }
+
+  var overheadModalApi = null;
+  var overheadModalWired = false;
+  function ensureOverheadModal() {
+    if (overheadModalApi) return overheadModalApi;
+    var Bootstrap = window.bootstrap || (window.tabler && window.tabler.bootstrap);
+    if (!(Bootstrap && Bootstrap.Modal)) return null;
+    var el = document.getElementById('cost-expenses-overhead-modal');
+    if (!el) {
+      try {
+        el = document.createElement('div');
+        el.className = 'modal modal-blur fade';
+        el.id = 'cost-expenses-overhead-modal';
+        el.tabIndex = -1;
+        el.setAttribute('role', 'dialog');
+        el.setAttribute('aria-hidden', 'true');
+        el.innerHTML =
+          '<div class="modal-dialog modal-lg modal-dialog-centered" role="dialog">' +
+            '<div class="modal-content">' +
+              '<div class="modal-header">' +
+                '<h5 class="modal-title" id="cost-expenses-overhead-modal-title">Overhead</h5>' +
+                '<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>' +
+              '</div>' +
+              '<div class="modal-body" id="cost-expenses-overheads-modal-body"></div>' +
+            '</div>' +
+          '</div>';
+        document.body.appendChild(el);
+      } catch (_) {
+        el = null;
+      }
+      try {
+        var body = el ? el.querySelector('#cost-expenses-overheads-modal-body') : null;
+        var msg = document.getElementById('cost-expenses-overheads-msg');
+        var form = document.getElementById('cost-expenses-overheads-form-wrap');
+        if (msg && body) body.appendChild(msg);
+        if (form && body) body.appendChild(form);
+        if (form) form.classList.remove('is-hidden');
+      } catch (_) {}
+    }
+    if (!el) return null;
+    try {
+      overheadModalApi = Bootstrap.Modal.getOrCreateInstance(el, { backdrop: true, focus: true, keyboard: true });
+    } catch (_) {
+      overheadModalApi = null;
+    }
+    if (overheadModalApi && !overheadModalWired) {
+      overheadModalWired = true;
+      try {
+        el.addEventListener('hidden.bs.modal', function () {
+          try { state.editingOverheadId = ''; } catch (_) {}
+          try { setSectionMsg('cost-expenses-overheads-msg', '', null); } catch (_) {}
+          try {
+            var form = document.getElementById('cost-expenses-overheads-form-wrap');
+            if (form) form.classList.add('is-hidden');
+          } catch (_) {}
+        });
+      } catch (_) {}
+    }
+    return overheadModalApi;
+  }
+
+  var fixedCostModalApi = null;
+  var fixedCostModalWired = false;
+  function ensureFixedCostModal() {
+    if (fixedCostModalApi) return fixedCostModalApi;
+    var Bootstrap = window.bootstrap || (window.tabler && window.tabler.bootstrap);
+    if (!(Bootstrap && Bootstrap.Modal)) return null;
+    var el = document.getElementById('cost-expenses-fixed-cost-modal');
+    if (!el) {
+      try {
+        el = document.createElement('div');
+        el.className = 'modal modal-blur fade';
+        el.id = 'cost-expenses-fixed-cost-modal';
+        el.tabIndex = -1;
+        el.setAttribute('role', 'dialog');
+        el.setAttribute('aria-hidden', 'true');
+        el.innerHTML =
+          '<div class="modal-dialog modal-lg modal-dialog-centered" role="dialog">' +
+            '<div class="modal-content">' +
+              '<div class="modal-header">' +
+                '<h5 class="modal-title" id="cost-expenses-fixed-cost-modal-title">Fixed cost</h5>' +
+                '<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>' +
+              '</div>' +
+              '<div class="modal-body" id="cost-expenses-fixed-costs-modal-body"></div>' +
+            '</div>' +
+          '</div>';
+        document.body.appendChild(el);
+      } catch (_) {
+        el = null;
+      }
+      try {
+        var body = el ? el.querySelector('#cost-expenses-fixed-costs-modal-body') : null;
+        var msg = document.getElementById('cost-expenses-fixed-costs-msg');
+        var form = document.getElementById('cost-expenses-fixed-cost-form-wrap');
+        if (msg && body) body.appendChild(msg);
+        if (form && body) body.appendChild(form);
+        if (form) form.classList.remove('is-hidden');
+      } catch (_) {}
+    }
+    if (!el) return null;
+    try {
+      fixedCostModalApi = Bootstrap.Modal.getOrCreateInstance(el, { backdrop: true, focus: true, keyboard: true });
+    } catch (_) {
+      fixedCostModalApi = null;
+    }
+    if (fixedCostModalApi && !fixedCostModalWired) {
+      fixedCostModalWired = true;
+      try {
+        el.addEventListener('hidden.bs.modal', function () {
+          try { state.editingFixedCostId = ''; } catch (_) {}
+          try { setSectionMsg('cost-expenses-fixed-costs-msg', '', null); } catch (_) {}
+          try {
+            var form = document.getElementById('cost-expenses-fixed-cost-form-wrap');
+            if (form) form.classList.add('is-hidden');
+          } catch (_) {}
+        });
+      } catch (_) {}
+    }
+    return fixedCostModalApi;
   }
 
   function showPerOrderForm(rule) {
@@ -1698,8 +1837,13 @@
 
   function showOverheadForm(overhead) {
     state.editingOverheadId = overhead ? String(overhead.id) : '';
-    var wrap = document.getElementById('cost-expenses-overheads-form-wrap');
-    if (wrap) wrap.classList.remove('is-hidden');
+    var modal = ensureOverheadModal();
+    var titleEl = document.getElementById('cost-expenses-overhead-modal-title');
+    if (titleEl) titleEl.textContent = overhead ? 'Edit overhead' : 'Add overhead';
+    try {
+      var wrap = document.getElementById('cost-expenses-overheads-form-wrap');
+      if (wrap) wrap.classList.remove('is-hidden');
+    } catch (_) {}
 
     document.getElementById('cost-expenses-overhead-id').value = state.editingOverheadId;
     document.getElementById('cost-expenses-overhead-name').value = overhead ? (overhead.name || '') : '';
@@ -1717,12 +1861,19 @@
 
     syncOverheadFormUi();
     setSectionMsg('cost-expenses-overheads-msg', '', null);
+
+    if (modal) {
+      try { modal.show(); } catch (_) {}
+    }
   }
 
   function hideOverheadForm() {
     state.editingOverheadId = '';
-    var wrap = document.getElementById('cost-expenses-overheads-form-wrap');
-    if (wrap) wrap.classList.add('is-hidden');
+    setSectionMsg('cost-expenses-overheads-msg', '', null);
+    var modal = ensureOverheadModal();
+    if (modal) {
+      try { modal.hide(); } catch (_) {}
+    }
   }
 
   function readOverheadForm() {
@@ -1797,8 +1948,13 @@
 
   function showFixedCostForm(fc) {
     state.editingFixedCostId = fc ? String(fc.id) : '';
-    var wrap = document.getElementById('cost-expenses-fixed-cost-form-wrap');
-    if (wrap) wrap.classList.remove('is-hidden');
+    var modal = ensureFixedCostModal();
+    var titleEl = document.getElementById('cost-expenses-fixed-cost-modal-title');
+    if (titleEl) titleEl.textContent = fc ? 'Edit fixed cost' : 'Add fixed cost';
+    try {
+      var wrap = document.getElementById('cost-expenses-fixed-cost-form-wrap');
+      if (wrap) wrap.classList.remove('is-hidden');
+    } catch (_) {}
 
     document.getElementById('cost-expenses-fixed-cost-id').value = state.editingFixedCostId;
     document.getElementById('cost-expenses-fixed-cost-name').value = fc ? (fc.name || '') : '';
@@ -1811,12 +1967,19 @@
     } catch (_) {}
     document.getElementById('cost-expenses-fixed-cost-enabled').checked = fc ? (fc.enabled !== false) : true;
     setSectionMsg('cost-expenses-fixed-costs-msg', '', null);
+
+    if (modal) {
+      try { modal.show(); } catch (_) {}
+    }
   }
 
   function hideFixedCostForm() {
     state.editingFixedCostId = '';
-    var wrap = document.getElementById('cost-expenses-fixed-cost-form-wrap');
-    if (wrap) wrap.classList.add('is-hidden');
+    setSectionMsg('cost-expenses-fixed-costs-msg', '', null);
+    var modal = ensureFixedCostModal();
+    if (modal) {
+      try { modal.hide(); } catch (_) {}
+    }
   }
 
   function saveFixedCostFromForm() {
