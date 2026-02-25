@@ -66,39 +66,41 @@
 
           // Dashboard Overview: Tabler tab switches + per-panel date ranges.
           if (typeof isDashboardOverviewPage === 'function' && isDashboardOverviewPage()) {
-            // Close any open fallback dropdown menus when clicking elsewhere.
+            // Overview-only dropdowns: close any open menus when clicking elsewhere.
             try {
-              if (!(window.bootstrap && window.bootstrap.Dropdown)) {
-                var insideMenu = !!(t.closest && (t.closest('.dropdown-menu') || t.closest('button[data-ovw-panel-range-btn]')));
-                if (!insideMenu) {
-                  document.querySelectorAll('.dropdown-menu.show').forEach(function (m) { try { m.classList.remove('show'); } catch (_) {} });
-                  document.querySelectorAll('button.dropdown-toggle.show').forEach(function (b) { try { b.classList.remove('show'); } catch (_) {} });
-                }
+              var insideOvwMenu = !!(t.closest && (t.closest('.kexo-ovw-dropdown-menu') || t.closest('button[data-ovw-panel-range-btn]')));
+              if (!insideOvwMenu) {
+                document.querySelectorAll('.kexo-ovw-dropdown-menu.show').forEach(function (m) { try { m.classList.remove('show'); } catch (_) {} });
+                document.querySelectorAll('button[data-ovw-panel-range-btn].show').forEach(function (b) {
+                  try { b.classList.remove('show'); } catch (_) {}
+                  try { b.setAttribute('aria-expanded', 'false'); } catch (_) {}
+                });
               }
             } catch (_) {}
 
-            // If Bootstrap dropdown JS isn't available (or is blocked), fall back to a minimal dropdown toggle.
+            // Overview-only dropdown toggle (deliberately not relying on Bootstrap JS).
             var rangeToggleBtn = t.closest('button[data-ovw-panel-range-btn]');
             if (rangeToggleBtn) {
-              try {
-                if (window.bootstrap && window.bootstrap.Dropdown) return;
-              } catch (_) {}
               e.preventDefault();
               try {
                 var btn = rangeToggleBtn;
-                var menu = btn && btn.parentElement ? btn.parentElement.querySelector('.dropdown-menu') : null;
+                var menu = btn && btn.parentElement ? (btn.parentElement.querySelector('.kexo-ovw-dropdown-menu') || btn.parentElement.querySelector('.dropdown-menu')) : null;
                 if (!menu) return;
                 var open = menu.classList.contains('show');
                 // Close all open menus first.
-                document.querySelectorAll('.dropdown-menu.show').forEach(function (m) {
+                document.querySelectorAll('.kexo-ovw-dropdown-menu.show').forEach(function (m) {
                   try { m.classList.remove('show'); } catch (_) {}
                 });
-                document.querySelectorAll('button.dropdown-toggle.show').forEach(function (b) {
+                document.querySelectorAll('button[data-ovw-panel-range-btn].show').forEach(function (b) {
                   try { b.classList.remove('show'); } catch (_) {}
+                  try { b.setAttribute('aria-expanded', 'false'); } catch (_) {}
                 });
                 if (!open) {
                   menu.classList.add('show');
                   btn.classList.add('show');
+                  try { btn.setAttribute('aria-expanded', 'true'); } catch (_) {}
+                } else {
+                  try { btn.setAttribute('aria-expanded', 'false'); } catch (_) {}
                 }
               } catch (_) {}
               return;
@@ -155,8 +157,11 @@
                 }
               } catch (_) {}
               try {
-                document.querySelectorAll('.dropdown-menu.show').forEach(function (m) { try { m.classList.remove('show'); } catch (_) {} });
-                document.querySelectorAll('button.dropdown-toggle.show').forEach(function (b) { try { b.classList.remove('show'); } catch (_) {} });
+                document.querySelectorAll('.kexo-ovw-dropdown-menu.show').forEach(function (m) { try { m.classList.remove('show'); } catch (_) {} });
+                document.querySelectorAll('button[data-ovw-panel-range-btn].show').forEach(function (b) {
+                  try { b.classList.remove('show'); } catch (_) {}
+                  try { b.setAttribute('aria-expanded', 'false'); } catch (_) {}
+                });
               } catch (_) {}
 
               if (panel === 'main') {
