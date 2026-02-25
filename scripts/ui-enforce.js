@@ -32,6 +32,18 @@ function checkFile(filePath) {
   return violations.length ? { rel, violations } : null;
 }
 
+function checkCustomCssContract() {
+  const filePath = path.join(serverPublic, 'custom.css');
+  if (!fs.existsSync(filePath)) return null;
+  const rel = path.relative(root, filePath);
+  const content = fs.readFileSync(filePath, 'utf8');
+  const violations = [];
+  if (/^\s*\.page\s*\{/m.test(content)) {
+    violations.push('forbidden: bare `.page { ... }` rule in custom.css');
+  }
+  return violations.length ? { rel, violations } : null;
+}
+
 function main() {
   const results = [];
   for (const f of walkHtml(serverPublic, true)) {
@@ -42,11 +54,13 @@ function main() {
     const r = checkFile(f);
     if (r) results.push(r);
   }
+  const cssContract = checkCustomCssContract();
+  if (cssContract) results.push(cssContract);
   if (results.length === 0) {
-    console.log('[ui-enforce] OK: no inline styles or <style> in HTML.');
+    console.log('[ui-enforce] OK: no inline styles or <style> in HTML, and custom.css contract holds.');
     process.exit(0);
   }
-  console.error('[ui-enforce] FAIL: inline styles or <style> found:');
+  console.error('[ui-enforce] FAIL: UI contract violations found:');
   results.forEach(({ rel, violations }) => {
     console.error('  ' + rel + ': ' + violations.join(', '));
   });

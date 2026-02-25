@@ -9,7 +9,7 @@ Strict rules for UI in this repo. Follow them so new pages and features stay con
 - **Always use Tabler/Bootstrap** markup for page layout, cards, tables, forms, alerts, modals.
 - **New pages** must start from the provided templates (see [server/public/partials/ui/](server/public/partials/ui/)).
 - Do not invent random structures; use existing Tabler classes and patterns.
-- **No vertical page centering:** pages must start at the top of the viewport. We intentionally override Tabler’s `.page-center` so auth pages are also top-aligned (see `server/public/custom.css`).
+- **No vertical page centering:** pages must start at the top of the viewport. We intentionally override Tabler’s `.page-center` so auth pages are also top-aligned (see `server/public/custom.css`). Do **not** add a bare `.page { ... }` override in `custom.css`; rely on Tabler’s default `.page` (from `server/public/tabler-theme.css`).
 
 ---
 
