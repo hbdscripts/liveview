@@ -3639,6 +3639,7 @@ async function getCostBreakdown({ rangeKey, audit } = {}) {
   const shippingConfigured = (Number(shippingCfg.worldwideDefaultGbp) || 0) > 0 || overrides.length > 0;
 
   const includeGoogleAdsSpend = !!(profitRules && profitRules.integrations && profitRules.integrations.includeGoogleAdsSpend === true);
+  const includeCostOfGoods = !!(profitRules && profitRules.integrations && profitRules.integrations.includeCostOfGoods === true);
   const includePaymentFees = !!(profitRules && profitRules.integrations && profitRules.integrations.includePaymentFees === true);
   const includeShopifyAppBills = !!(profitRules && profitRules.integrations && profitRules.integrations.includeShopifyAppBills === true);
   const includeShopifyTaxes = !!(profitRules && profitRules.integrations && profitRules.integrations.includeShopifyTaxes === true);

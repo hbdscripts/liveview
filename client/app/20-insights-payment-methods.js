@@ -94,12 +94,12 @@
     const spec = iconSpec != null ? String(iconSpec).trim() : '';
     const url = iconSrc != null ? String(iconSrc).trim() : '';
     if (spec) {
-      if (/^<svg[\s>]/i.test(spec)) return '<span class="kexo-payment-method-icon kexo-payment-method-icon--fill" aria-hidden="true">' + spec + '</span>';
-      if (/^(https?:\/\/|\/\/|\/)/i.test(spec)) return '<img class="kexo-payment-method-icon kexo-payment-method-icon--fill" src="' + escapeHtml(spec) + '" alt="' + escapeHtml(safeAlt) + '" loading="lazy" />';
+      if (/^<svg[\s>]/i.test(spec)) return '<span class="kexo-payment-method-icon" aria-hidden="true">' + spec + '</span>';
+      if (/^(https?:\/\/|\/\/|\/)/i.test(spec)) return '<img class="kexo-payment-method-icon" src="' + escapeHtml(spec) + '" alt="' + escapeHtml(safeAlt) + '" loading="lazy" />';
       return '<i class="' + escapeHtml(spec) + ' kexo-payment-method-fallback-icon" aria-hidden="true"></i>';
     }
     return url
-      ? '<img class="kexo-payment-method-icon kexo-payment-method-icon--fill" src="' + escapeHtml(url) + '" alt="' + escapeHtml(safeAlt) + '" loading="lazy" />'
+      ? '<img class="kexo-payment-method-icon" src="' + escapeHtml(url) + '" alt="' + escapeHtml(safeAlt) + '" loading="lazy" />'
       : '<i class="fa-light fa-credit-card text-secondary kexo-payment-method-fallback-icon" aria-hidden="true"></i>';
   }
 
