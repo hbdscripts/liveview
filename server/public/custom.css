@@ -8220,6 +8220,9 @@ body[data-page="snapshot"] #kexo-date-display { display: none !important; }
 #tab-panel-products .stats-row + .stats-row { margin-top: 1rem; }
 
 /* Payment methods (Insights) */
+#payment-types-table {
+  --grid-cols: minmax(180px, 1.4fr) 64px repeat(7, minmax(64px, 0.65fr));
+}
 .payment-lg {
   height: 1.5rem;
 }
@@ -8237,8 +8240,11 @@ body[data-page="snapshot"] #kexo-date-display { display: none !important; }
 .kexo-payment-method-icon-cell {
   padding-top: 0 !important;
   padding-bottom: 0 !important;
-  height: 44px;
+  min-height: 44px;
   text-align: center !important;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
 }
 .kexo-payment-method-icon--fill {
   width: 100% !important;

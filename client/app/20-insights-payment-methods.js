@@ -100,7 +100,7 @@
     }
     return url
       ? '<img class="kexo-payment-method-icon kexo-payment-method-icon--fill" src="' + escapeHtml(url) + '" alt="' + escapeHtml(safeAlt) + '" loading="lazy" />'
-      : '<i class="fa-light fa-circle-question text-secondary kexo-payment-method-fallback-icon" aria-hidden="true"></i>';
+      : '<i class="fa-light fa-credit-card text-secondary kexo-payment-method-fallback-icon" aria-hidden="true"></i>';
   }
 
   function renderPaymentCell(iconSpec, iconSrc, iconAlt, label) {
@@ -197,7 +197,7 @@
       const iconSrc = r && r.iconSrc ? String(r.iconSrc) : '';
       const iconAlt = r && r.iconAlt ? String(r.iconAlt) : label;
       const payCell = renderPaymentCell(iconSpec, iconSrc, iconAlt, label);
-      const iconCell = '<span class="d-flex align-items-center justify-content-center w-100 h-100">' + renderPaymentIconOnly(iconSpec, iconSrc, iconAlt, label) + '</span>';
+      const iconCell = renderPaymentIconOnly(iconSpec, iconSrc, iconAlt, label);
       return '' +
         '<div class="grid-row" role="row">' +
           '<div class="grid-cell" role="cell">' + payCell + '</div>' +
