@@ -1400,6 +1400,7 @@
         var points = [];
         var pinMeta = [];
         var pinsByX = {};
+        var pinsByIndex = {};
         byIndex.forEach(function (pinsAtIndex, atIndex) {
           var xLabel = labels[atIndex] != null ? String(labels[atIndex]) : '';
           if (!xLabel) return;
@@ -1424,6 +1425,8 @@
             var title = (p.title && String(p.title).trim()) || 'Pin';
             if (!pinsByX[xLabel]) pinsByX[xLabel] = [];
             pinsByX[xLabel].push(title);
+            if (!pinsByIndex[atIndex]) pinsByIndex[atIndex] = [];
+            pinsByIndex[atIndex].push(title);
             var pinId = (p.id != null && Number.isFinite(Number(p.id))) ? Math.trunc(Number(p.id)) : null;
             var uniq = pinId != null ? ('pin-' + String(pinId)) : ('pin-x' + String(atIndex) + '-' + String(n));
             var cls = 'kexo-pin-annotation--' + uniq;
@@ -1459,7 +1462,7 @@
             pinMeta.push({ cls: cls, title: title });
           }
         });
-        return { xaxis: [], points: points, pinMeta: pinMeta, pinsByX: pinsByX };
+        return { xaxis: [], points: points, pinMeta: pinMeta, pinsByX: pinsByX, pinsByIndex: pinsByIndex };
       }
 
       function setPinAnnotationTooltips(chart, pinMeta) {
@@ -1539,6 +1542,7 @@
         var points = result && result.points ? result.points : [];
         var pinMeta = result && result.pinMeta ? result.pinMeta : [];
         try { chart.__kexoPinsByX = (result && result.pinsByX) ? result.pinsByX : {}; } catch (_) {}
+        try { chart.__kexoPinsByIndex = (result && result.pinsByIndex) ? result.pinsByIndex : {}; } catch (_) {}
         if (points && points.length) {
           mergeAnnotations(points, pinMeta);
           return;
@@ -1551,6 +1555,7 @@
             var nextPoints = nextResult && nextResult.points ? nextResult.points : [];
             var nextPinMeta = nextResult && nextResult.pinMeta ? nextResult.pinMeta : [];
             try { chart.__kexoPinsByX = (nextResult && nextResult.pinsByX) ? nextResult.pinsByX : {}; } catch (_) {}
+            try { chart.__kexoPinsByIndex = (nextResult && nextResult.pinsByIndex) ? nextResult.pinsByIndex : {}; } catch (_) {}
             if (!nextPoints || !nextPoints.length) return;
             mergeAnnotations(nextPoints, nextPinMeta);
           });
@@ -3710,7 +3715,8 @@
           } catch (_) { return ''; }
         }
         for (var i = 0; i < len; i++) {
-          var ymd = labelsYmd[i] != null ? String(labelsYmd[i]) : '';
+          var ymd = labelsYmd[i] != null ? String(labelsYmd[i]).trim() : '';
+          if (/^\d+$/.test(ymd)) ymd = '';
           var fallbackYmd = ymd ? '' : fallbackLabelForIndex(i);
           labels.push(ymd || fallbackYmd ? formatOverviewBucketLabel(ymd || fallbackYmd, granularity) : String(i + 1));
           var revRaw = normalizeOverviewMetric(revenueGbp[i]);
@@ -3814,7 +3820,7 @@
             var series = (tip && Array.isArray(tip.series)) ? tip.series : [];
 
             var html = '<div class="kexo-tooltip-card p-2">';
-            if (xLabel) html += '<div class="fw-semibold mb-1">' + escapeHtml(xLabel) + '</div>';
+            if (xLabel && !/^\d+$/.test(String(xLabel).trim())) html += '<div class="fw-semibold mb-1">' + escapeHtml(xLabel) + '</div>';
 
             for (var si = 0; si < seriesNames.length; si++) {
               var name = seriesNames[si] != null ? String(seriesNames[si]) : '';
@@ -3834,7 +3840,9 @@
             try {
               var chart = (dashCharts && dashCharts[chartId]) ? dashCharts[chartId] : null;
               var pinsByX = chart && chart.__kexoPinsByX ? chart.__kexoPinsByX : null;
+              var pinsByIndex = chart && chart.__kexoPinsByIndex ? chart.__kexoPinsByIndex : null;
               var pins = (pinsByX && xLabel && Array.isArray(pinsByX[xLabel])) ? pinsByX[xLabel] : null;
+              if (!pins && pinsByIndex && di >= 0 && Array.isArray(pinsByIndex[di])) pins = pinsByIndex[di];
               if (pins && pins.length) {
                 var seen = new Set();
                 var uniq = [];
@@ -7852,9 +7860,9 @@
               return startPolling();
             }
           } catch (_) {}
-          // Non-overview dashboard: only force-refresh for dynamic ranges (today/1h).
-          if (!isDynamicRange()) return startPolling();
-          refreshOnceAndResume((ctx && ctx.source) ? ctx.source : 'resume', true);
+          // Do NOT refresh dashboard on tab return - cards (Trending, Top countries, Attribution)
+          // should only update on new sale. Just resume polling.
+          return startPolling();
         }
         function onMainTabChanged(ev) {
           var next = ev && ev.detail && ev.detail.tab != null ? String(ev.detail.tab).trim().toLowerCase() : '';

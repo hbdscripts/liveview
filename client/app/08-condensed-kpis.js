@@ -555,6 +555,7 @@
 
     function refreshKpis(options = {}) {
       const force = !!options.force;
+      const skipDashboardRefresh = !!options.skipDashboardRefresh;
       const rangeKey = getStatsRange();
       if (!rangeKey) return Promise.resolve(null);
 
@@ -571,7 +572,7 @@
       if (!force && !stale && trustedKpiCache) {
         try { renderLiveKpis(getKpiData()); } catch (_) {}
         try { if (typeof renderDashboardKpisFromApi === 'function') renderDashboardKpisFromApi(getKpiData()); } catch (_) {}
-        try { if (PAGE === 'dashboard' && typeof window.refreshDashboard === 'function') window.refreshDashboard({ force: false }); } catch (_) {}
+        if (!skipDashboardRefresh) { try { if (PAGE === 'dashboard' && typeof window.refreshDashboard === 'function') window.refreshDashboard({ force: false }); } catch (_) {} }
         try { refreshKpiExtrasSoft(); } catch (_) {}
         try { fetchCondensedSeries(); } catch (_) {}
         return Promise.resolve(kpiCache);
@@ -584,7 +585,7 @@
         if (cacheMatchesRange) {
           renderLiveKpis(getKpiData());
           if (typeof renderDashboardKpisFromApi === 'function') renderDashboardKpisFromApi(getKpiData());
-          try { if (PAGE === 'dashboard' && typeof window.refreshDashboard === 'function') window.refreshDashboard({ force: false }); } catch (_) {}
+          if (!skipDashboardRefresh) { try { if (PAGE === 'dashboard' && typeof window.refreshDashboard === 'function') window.refreshDashboard({ force: false }); } catch (_) {} }
           fetchCondensedSeries();
         }
       } catch (_) {}
@@ -613,7 +614,7 @@
           }
           renderLiveKpis(getKpiData());
           try { if (typeof renderDashboardKpisFromApi === 'function') renderDashboardKpisFromApi(getKpiData()); } catch (_) {}
-          try { if (PAGE === 'dashboard' && typeof window.refreshDashboard === 'function') window.refreshDashboard({ force: false }); } catch (_) {}
+          if (!skipDashboardRefresh) { try { if (PAGE === 'dashboard' && typeof window.refreshDashboard === 'function') window.refreshDashboard({ force: false }); } catch (_) {} }
           try { refreshKpiExtrasSoft(); } catch (_) {}
           try { fetchCondensedSeries(); } catch (_) {}
           return data;
@@ -623,7 +624,7 @@
           console.error(err);
           renderLiveKpis(getKpiData());
           try { if (typeof renderDashboardKpisFromApi === 'function') renderDashboardKpisFromApi(getKpiData()); } catch (_) {}
-          try { if (PAGE === 'dashboard' && typeof window.refreshDashboard === 'function') window.refreshDashboard({ force: false }); } catch (_) {}
+          if (!skipDashboardRefresh) { try { if (PAGE === 'dashboard' && typeof window.refreshDashboard === 'function') window.refreshDashboard({ force: false }); } catch (_) {} }
           try { refreshKpiExtrasSoft(); } catch (_) {}
           return null;
         });
@@ -3374,8 +3375,9 @@
       try { idleMs = ctx && ctx.idleMs != null ? Number(ctx.idleMs) : 0; } catch (_) { idleMs = 0; }
       if (!Number.isFinite(idleMs)) idleMs = 0;
 
-      // Light refresh: always revalidate top KPIs quickly on resume.
-      try { if (typeof refreshKpis === 'function') refreshKpis({ force: true }); } catch (_) {}
+      // Light refresh: revalidate KPIs on resume but do NOT refresh dashboard cards
+      // (Trending, Top countries, Attribution) - those should only update on new sale.
+      try { if (typeof refreshKpis === 'function') refreshKpis({ force: true, skipDashboardRefresh: true }); } catch (_) {}
 
       // Heavy refresh: only after meaningful idle, and deduped.
       if (idleMs < 30000) return;
