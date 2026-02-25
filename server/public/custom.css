@@ -4033,14 +4033,10 @@ body[data-page="dashboard"] #dash-trending-down .dash-trend-delta.text-red {
   color: #dc2626;
 }
 .kexo-overview-running-total.is-profit .kexo-overview-running-total-value {
-  color: #16a34a;
+  /* Keep profit value text neutral; tone is conveyed elsewhere (series/dots). */
 }
 .kexo-overview-running-total.is-profit.is-negative .kexo-overview-running-total-value {
-  color: var(--kexo-kpi-delta-down, var(--kexo-accent-4, #e4644b));
-}
-/* Dashboard KPI grid: profit value uses KPI delta-down (negative) color */
-#dash-kpi-profit.is-negative {
-  color: var(--kexo-dashboard-kpi-down, var(--kexo-kpi-delta-down, var(--kexo-accent-4, #e4644b)));
+  /* Keep profit value text neutral even when negative. */
 }
 .kexo-overview-running-totals--main {
   margin-top: 0;
@@ -5423,12 +5419,12 @@ body[data-page="dashboard"] .kexo-overview-widget-card .kexo-widget-head-right {
   color: #333;
   white-space: nowrap;
 }
-/* Profit KPI: negative uses KPI color settings (delta-down / header down) */
-#cond-kpi-profit.is-negative {
-  color: var(--kexo-header-kpi-down, var(--kexo-kpi-delta-down, var(--kexo-accent-4, #e4644b)));
+/* Profit KPI: text stays neutral; use progress bar + delta tone when profit is negative. */
+.kexo-kpi-chip[data-cond-sparkline="profit"].is-negative #cond-kpi-profit-bar {
+  background-color: var(--kexo-header-kpi-down, var(--kexo-kpi-delta-down, var(--kexo-accent-4, #e4644b))) !important;
 }
-.kexo-kpi-chip[data-cond-sparkline="profit"].is-negative .kexo-kpi-chip-value {
-  color: var(--kexo-header-kpi-down, var(--kexo-kpi-delta-down, var(--kexo-accent-4, #e4644b)));
+.kexo-kpi-chip[data-cond-sparkline="profit"].is-negative #cond-kpi-profit-delta {
+  color: var(--kexo-header-kpi-down, var(--kexo-kpi-delta-down, var(--kexo-accent-4, #e4644b))) !important;
 }
 /* COGS is neutral (no good/bad tone); keep default/teal styling. */
 .kexo-kpi-chip-delta {
