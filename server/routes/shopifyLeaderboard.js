@@ -101,7 +101,6 @@ async function fetchProductMetaBatch(shop, token, productIds, { concurrency = 8 
   const c = clampInt(concurrency, 8, 1, 12);
   for (let i = 0; i < ids.length; i += c) {
     const slice = ids.slice(i, i + c);
-    // eslint-disable-next-line no-await-in-loop
     await Promise.all(
       slice.map(async (pid) => {
         try {

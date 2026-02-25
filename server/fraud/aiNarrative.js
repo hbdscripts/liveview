@@ -55,7 +55,6 @@ function getOpenAiClient(apiKey) {
   if (_client && _clientKey === key) return _client;
   try {
     // Official OpenAI Node SDK (CommonJS).
-    // eslint-disable-next-line global-require
     _OpenAI = _OpenAI || require('openai');
   } catch (_) {
     _OpenAI = null;

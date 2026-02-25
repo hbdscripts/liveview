@@ -206,7 +206,13 @@
       if (resp && resp.ok) {
         if (typeof onSuccess === 'function') onSuccess();
       } else {
-        alert((resp && resp.error) ? String(resp.error) : 'Delete failed');
+        var msg = (resp && resp.error) ? String(resp.error) : 'Delete failed';
+        showNotice('danger', msg);
+        try {
+          if (window.kexoSentry && typeof window.kexoSentry.captureException === 'function') {
+            window.kexoSentry.captureException(new Error('Attribution rule delete failed: ' + msg), { context: 'attributionTree.deleteRule', ruleId: id }, 'warning');
+          }
+        } catch (_) {}
       }
     });
   }
@@ -361,10 +367,57 @@
   var _state = {
     rootId: '',
     rootEl: null,
+    noticeEl: null,
     config: null,
     treeModel: null,
     expanded: {}, // 'c:key' -> true, 'v:key' -> true
   };
+
+  var _noticeTimerId = null;
+  function ensureNoticeEl() {
+    try {
+      if (_state.noticeEl && _state.noticeEl.parentNode) return _state.noticeEl;
+    } catch (_) {}
+    var root = null;
+    try { root = _state.rootEl || (_state.rootId ? document.getElementById(_state.rootId) : null); } catch (_) { root = null; }
+    if (!root || !root.parentNode) return null;
+    var wrap = document.createElement('div');
+    wrap.className = 'am-tree-notice-wrap mb-2';
+    wrap.setAttribute('aria-live', 'polite');
+    root.parentNode.insertBefore(wrap, root);
+    _state.noticeEl = wrap;
+    return wrap;
+  }
+
+  function showNotice(kind, message, opts) {
+    var el = ensureNoticeEl();
+    if (!el) return;
+    var k = String(kind || '').trim().toLowerCase();
+    var cls = (k === 'success' || k === 'warning' || k === 'info') ? k : 'danger';
+    var msg = String(message == null ? '' : message).trim() || 'Something went wrong.';
+    el.innerHTML = '' +
+      '<div class="alert alert-' + cls + ' alert-dismissible" role="alert">' +
+        '<div class="d-flex align-items-start gap-2">' +
+          '<div class="flex-grow-1">' + escapeHtml(msg) + '</div>' +
+          '<button type="button" class="btn-close" aria-label="Close"></button>' +
+        '</div>' +
+      '</div>';
+    try {
+      var btn = el.querySelector('.btn-close');
+      if (btn) btn.addEventListener('click', function () { try { el.innerHTML = ''; } catch (_) {} }, { passive: true });
+    } catch (_) {}
+    try {
+      if (_noticeTimerId) clearTimeout(_noticeTimerId);
+      _noticeTimerId = null;
+      var ttl = (opts && Number.isFinite(Number(opts.ttlMs))) ? Number(opts.ttlMs) : 7000;
+      if (ttl > 0) {
+        _noticeTimerId = setTimeout(function () {
+          _noticeTimerId = null;
+          try { if (el) el.innerHTML = ''; } catch (_) {}
+        }, ttl);
+      }
+    } catch (_) {}
+  }
 
   function toggleExpanded(k) {
     _state.expanded[k] = !_state.expanded[k];

@@ -81,6 +81,8 @@ const config = {
   maxEventPayloadBytes: getInt('MAX_EVENT_PAYLOAD_BYTES', 8192),
   rateLimitEventsPerMinute: getInt('RATE_LIMIT_EVENTS_PER_MINUTE', 120),
   sentryDsn: getEnv('SENTRY_DSN', ''),
+  /** Directory for runtime data when using SQLite (db + backups). Defaults to ~/.kexo */
+  dataDir: (getEnv('KEXO_DATA_DIR', '') || '').trim(),
   /** Fraud: used to HMAC-hash IP/UA (never store raw IP). */
   fraudIpSalt: (getEnv('FRAUD_IP_SALT', '') || '').trim(),
   /** Fraud: enable optional AI narrative generation (never blocks UI). */

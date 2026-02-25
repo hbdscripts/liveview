@@ -6,6 +6,7 @@
 const config = require('./config');
 const path = require('path');
 const { AsyncLocalStorage } = require('async_hooks');
+const dataPaths = require('./dataPaths');
 
 let db;
 let _pgPool = null;
@@ -70,10 +71,7 @@ function getDb() {
     return db;
   }
   const Database = require('better-sqlite3');
-  const rawPath = (config.sqliteDbPath || '').trim();
-  const dbPath = rawPath
-    ? (rawPath === ':memory:' ? rawPath : (path.isAbsolute(rawPath) ? rawPath : path.join(process.cwd(), rawPath)))
-    : path.join(process.cwd(), 'live_visitors.sqlite');
+  const dbPath = dataPaths.resolveSqliteDbPath();
   const sqlite = new Database(dbPath);
   // Performance: WAL mode for concurrent reads/writes, larger cache, mmap I/O
   sqlite.pragma('journal_mode = WAL');

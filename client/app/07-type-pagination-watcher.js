@@ -1769,7 +1769,11 @@
     }
 
     var mapTooltipBoundContainers = [];
-    var mapTooltipGlobalDismissBound = false;
+    var mapTooltipDismissAbort = null;
+    var mapTooltipDismissFallbackListeners = [];
+    var mapTooltipDismissHiddenUnsub = null;
+    var mapTooltipDismissResumeUnsub = null;
+    var mapTooltipDismissCleanupRegistered = false;
     function hideMapTooltips() {
       try {
         document.querySelectorAll('.jvm-tooltip').forEach(function(t) {
@@ -1791,32 +1795,113 @@
       }
       return false;
     }
+
+    function addDismissListener(target, type, handler, opts) {
+      try {
+        if (mapTooltipDismissAbort && mapTooltipDismissAbort.signal) {
+          var o = Object.assign({}, (opts && typeof opts === 'object') ? opts : {}, { signal: mapTooltipDismissAbort.signal });
+          target.addEventListener(type, handler, o);
+          return;
+        }
+      } catch (_) {}
+      try {
+        target.addEventListener(type, handler, opts || false);
+        mapTooltipDismissFallbackListeners.push({ target: target, type: type, handler: handler, opts: opts || false });
+      } catch (_) {}
+    }
+
+    function teardownGlobalMapTooltipDismiss() {
+      try { hideMapTooltips(); } catch (_) {}
+      try {
+        if (mapTooltipDismissAbort) {
+          mapTooltipDismissAbort.abort();
+          mapTooltipDismissAbort = null;
+        }
+      } catch (_) {
+        mapTooltipDismissAbort = null;
+      }
+      try {
+        for (var i = 0; i < mapTooltipDismissFallbackListeners.length; i++) {
+          var row = mapTooltipDismissFallbackListeners[i];
+          try { row.target.removeEventListener(row.type, row.handler, row.opts); } catch (_) {}
+        }
+      } catch (_) {}
+      mapTooltipDismissFallbackListeners = [];
+      try {
+        if (mapTooltipDismissHiddenUnsub) {
+          mapTooltipDismissHiddenUnsub();
+          mapTooltipDismissHiddenUnsub = null;
+        }
+      } catch (_) {
+        mapTooltipDismissHiddenUnsub = null;
+      }
+    }
+
     function bindGlobalMapTooltipDismiss() {
-      if (mapTooltipGlobalDismissBound) return;
-      mapTooltipGlobalDismissBound = true;
+      if (mapTooltipDismissAbort || mapTooltipDismissFallbackListeners.length) return;
+      if (!mapTooltipBoundContainers || mapTooltipBoundContainers.length === 0) return;
       var hideNow = hideMapTooltips;
       var hideSoon = typeof kexoThrottle === 'function' ? kexoThrottle(hideNow, 80) : hideNow;
+      try { mapTooltipDismissAbort = (typeof AbortController !== 'undefined') ? new AbortController() : null; } catch (_) { mapTooltipDismissAbort = null; }
       try {
-        document.addEventListener('pointerdown', function() { hideNow(); }, true);
+        function onPointerDown() { hideNow(); }
+        addDismissListener(document, 'pointerdown', onPointerDown, { capture: true });
       } catch (_) {}
       try {
-        document.addEventListener('focusin', function(e) {
+        function onFocusIn(e) {
           if (!isNodeInAnyBoundMapContainer(e && e.target)) hideNow();
-        }, true);
+        }
+        addDismissListener(document, 'focusin', onFocusIn, { capture: true });
       } catch (_) {}
-      try { window.addEventListener('blur', function() { hideNow(); }, { passive: true }); } catch (_) {}
       try {
-        document.addEventListener('visibilitychange', function() {
-          try { if (document.hidden) hideNow(); } catch (_) {}
-        }, { passive: true });
+        function onBlur() { hideNow(); }
+        addDismissListener(window, 'blur', onBlur, { passive: true });
       } catch (_) {}
-      try { window.addEventListener('scroll', function() { hideSoon(); }, { passive: true, capture: true }); } catch (_) {}
-      try { window.addEventListener('resize', function() { hideSoon(); }, { passive: true }); } catch (_) {}
       try {
-        document.addEventListener('keydown', function(e) {
+        function onScroll() { hideSoon(); }
+        addDismissListener(window, 'scroll', onScroll, { passive: true, capture: true });
+      } catch (_) {}
+      try {
+        function onResize() { hideSoon(); }
+        addDismissListener(window, 'resize', onResize, { passive: true });
+      } catch (_) {}
+      try {
+        function onKeyDown(e) {
           if (!e) return;
           if (e.key === 'Escape' || e.key === 'Tab') hideNow();
-        }, true);
+        }
+        addDismissListener(document, 'keydown', onKeyDown, { capture: true });
+      } catch (_) {}
+
+      // Hide tooltips when the document is hidden (single global visibilitychange lives in kexoLifecycle).
+      try {
+        if (!mapTooltipDismissHiddenUnsub && window.kexoLifecycle && typeof window.kexoLifecycle.onHidden === 'function') {
+          mapTooltipDismissHiddenUnsub = window.kexoLifecycle.onHidden(function () { hideNow(); }, { key: 'map-tooltips:hidden', priority: 50 });
+        }
+      } catch (_) {}
+
+      // bfcache restore: registerCleanup tears down global listeners on pagehide; rebind on resume when map UI exists.
+      try {
+        if (!mapTooltipDismissResumeUnsub && window.kexoLifecycle && typeof window.kexoLifecycle.onResume === 'function') {
+          mapTooltipDismissResumeUnsub = window.kexoLifecycle.onResume(function () {
+            try {
+              if (!mapTooltipBoundContainers || mapTooltipBoundContainers.length === 0) {
+                try { if (mapTooltipDismissResumeUnsub) mapTooltipDismissResumeUnsub(); } catch (_) {}
+                mapTooltipDismissResumeUnsub = null;
+                return;
+              }
+              bindGlobalMapTooltipDismiss();
+            } catch (_) {}
+          }, { key: 'map-tooltips:resume', priority: 10, minIntervalMs: 1000 });
+        }
+      } catch (_) {}
+
+      // Teardown on pagehide/beforeunload; bfcache restore will rebind via container re-init.
+      try {
+        if (!mapTooltipDismissCleanupRegistered && typeof registerCleanup === 'function') {
+          mapTooltipDismissCleanupRegistered = true;
+          registerCleanup(teardownGlobalMapTooltipDismiss);
+        }
       } catch (_) {}
     }
     function hideMapTooltipOnLeave(container) {

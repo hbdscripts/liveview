@@ -58,7 +58,6 @@
     // or broken JS/CSS if a deploy happened while the tab was backgrounded. We expose an
     // assetVersion signal via /api/version; if it changes while hidden, hard-reload on resume.
     var _bootVersionSig = null;
-    var _lastHiddenAt = 0;
     var _versionCheckInFlight = null;
     var RESUME_RELOAD_IDLE_MS = 10 * 60 * 1000;
 
@@ -104,66 +103,42 @@
       try { if (typeof window.__kexoInitStickyDocObserver === 'function') window.__kexoInitStickyDocObserver(); } catch (_) {}
       try { if (typeof window.__kexoInitGridDocObserver === 'function') window.__kexoInitGridDocObserver(); } catch (_) {}
     }
-    window.addEventListener('pageshow', function(ev) {
-      if (!ev.persisted) return;
-      reinitLiveStreamsAndPollers();
-      kexoWithSilentOverlay(function() {
-        if (PAGE === 'dashboard') {
-          try {
-            if (window.dashboardController && typeof window.dashboardController.onVisibleResume === 'function') window.dashboardController.onVisibleResume('pageshow');
-            else if (typeof window.refreshDashboard === 'function') window.refreshDashboard({ force: true, silent: true });
-          } catch (_) {}
-        }
-        try { refreshKpis({ force: true }); } catch (_) {}
-      });
-    });
 
     var VISIBILITY_REFRESH_MIN_IDLE_MS = 30 * 1000; // Skip full refresh if tab was hidden < 30s (avoids lag on brief tab switch)
-    document.addEventListener('visibilitychange', function() {
-      if (document.visibilityState !== 'visible') {
-        _lastHiddenAt = Date.now();
-        try { window.__kexoLastHiddenAt = _lastHiddenAt; } catch (_) {}
-        return;
-      }
+    function onLifecycleResume(ctx) {
+      var idleMs = 0;
+      try { idleMs = ctx && ctx.idleMs != null ? Number(ctx.idleMs) : 0; } catch (_) { idleMs = 0; }
+      if (!Number.isFinite(idleMs)) idleMs = 0;
 
-      var idleMs = _lastHiddenAt ? (Date.now() - _lastHiddenAt) : 0;
-      // Skip refresh for brief hides (< 30s) to avoid CPU/memory spike when returning to tab.
-      if (idleMs < VISIBILITY_REFRESH_MIN_IDLE_MS) {
-        return onBecameVisible();
-      }
-      // Dashboard has its own visibility listener (dashboardController); delegate to avoid duplicate refresh.
-      // When on dashboard, dashboardController handles refresh + KPIs. When on other pages, refresh KPIs only.
-      if (idleMs < 2 * 60 * 1000 && PAGE === 'dashboard') {
-        kexoWithSilentOverlay(function() {
-          try {
-            if (window.dashboardController && typeof window.dashboardController.onVisibleResume === 'function') window.dashboardController.onVisibleResume('visibility');
-            else {
-              if (typeof window.refreshDashboard === 'function') window.refreshDashboard({ force: true, silent: true });
-              try { refreshKpis({ force: true }); } catch (_) {}
-            }
-          } catch (_) {}
-        });
-      } else if (idleMs < 2 * 60 * 1000 && PAGE !== 'dashboard') {
-        kexoWithSilentOverlay(function() {
-          try { refreshKpis({ force: true }); } catch (_) {}
-        });
-      }
-      if (idleMs < RESUME_RELOAD_IDLE_MS) return onBecameVisible();
+      try {
+        if (ctx && ctx.source === 'pageshow' && ctx.persisted) {
+          reinitLiveStreamsAndPollers();
+        }
+      } catch (_) {}
+
+      // Always update lightweight UI signals on resume.
+      try { onBecameVisible(); } catch (_) {}
+
+      // Skip heavier network checks for brief hides (< 30s) to avoid CPU/memory spikes on quick tab switches.
+      if (idleMs < VISIBILITY_REFRESH_MIN_IDLE_MS) return;
+      if (idleMs < RESUME_RELOAD_IDLE_MS) return;
 
       fetchVersionSig()
         .then(function(sig) {
           if (_bootVersionSig && sig && sig !== _bootVersionSig) {
             try { setUpdateAvailable(true, { reason: 'New deploy detected.' }); } catch (_) {}
             try { _bootVersionSig = sig; } catch (_) {}
-            return onBecameVisible();
+            return;
           }
           if (!_bootVersionSig && sig) _bootVersionSig = sig;
-          onBecameVisible();
         })
-        .catch(function() {
-          onBecameVisible();
-        });
-    });
+        .catch(function() {});
+    }
+    try {
+      if (window.kexoLifecycle && typeof window.kexoLifecycle.onResume === 'function') {
+        window.kexoLifecycle.onResume(onLifecycleResume, { key: 'core:resume', priority: 60, minIntervalMs: 1000 });
+      }
+    } catch (_) {}
 
     var _newSaleRefreshTimer = null;
     function scheduleNewSaleDashboardRefresh() {

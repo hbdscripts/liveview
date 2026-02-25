@@ -1,7 +1,7 @@
 /**
  * Backup helper (required before schema changes / reconciliation).
  *
- * SQLite: copy DB file to server/backups/ with timestamp.
+ * SQLite: copy DB file to KEXO_DATA_DIR/backups/ with timestamp.
  * Postgres: create backup tables via CREATE TABLE ... AS SELECT * ...
  *
  * NOTE: This module does NOT log to console; callers should record to audit_log.
@@ -10,6 +10,7 @@ const fs = require('fs');
 const path = require('path');
 const config = require('./config');
 const { getDb, isPostgres } = require('./db');
+const dataPaths = require('./dataPaths');
 
 function pad2(n) {
   return String(n).padStart(2, '0');
@@ -43,13 +44,14 @@ async function exists(filePath) {
 
 function sqliteDbPath() {
   // Must match server/db.js (SQLite default).
-  return path.join(process.cwd(), 'live_visitors.sqlite');
+  return dataPaths.resolveSqliteDbPath();
 }
 
 async function copySqliteDb(label) {
   const src = sqliteDbPath();
+  if (!src || src === ':memory:') return null;
   if (!(await exists(src))) return null;
-  const backupsDir = path.join(__dirname, 'backups');
+  const backupsDir = dataPaths.resolveSqliteBackupsDir();
   await ensureDir(backupsDir);
   const ts = timestampUtc();
   const safeLabel = (label && String(label).trim()) ? String(label).trim().replace(/[^a-z0-9_-]+/gi, '-').slice(0, 32) : 'backup';
@@ -98,7 +100,7 @@ async function createPostgresBackupTable(tableName, label) {
 }
 
 async function pruneSqliteBackups({ label, keep = 7 } = {}) {
-  const backupsDir = path.join(__dirname, 'backups');
+  const backupsDir = dataPaths.resolveSqliteBackupsDir();
   const safeLabel = safeLabelForSqlite(label);
   const prefix = `live_visitors_${safeLabel}_`;
   let files = [];
