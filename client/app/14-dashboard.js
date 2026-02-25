@@ -66,6 +66,17 @@
 
           // Dashboard Overview: Tabler tab switches + per-panel date ranges.
           if (typeof isDashboardOverviewPage === 'function' && isDashboardOverviewPage()) {
+            // Close any open fallback dropdown menus when clicking elsewhere.
+            try {
+              if (!(window.bootstrap && window.bootstrap.Dropdown)) {
+                var insideMenu = !!(t.closest && (t.closest('.dropdown-menu') || t.closest('button[data-ovw-panel-range-btn]')));
+                if (!insideMenu) {
+                  document.querySelectorAll('.dropdown-menu.show').forEach(function (m) { try { m.classList.remove('show'); } catch (_) {} });
+                  document.querySelectorAll('button.dropdown-toggle.show').forEach(function (b) { try { b.classList.remove('show'); } catch (_) {} });
+                }
+              }
+            } catch (_) {}
+
             // If Bootstrap dropdown JS isn't available (or is blocked), fall back to a minimal dropdown toggle.
             var rangeToggleBtn = t.closest('button[data-ovw-panel-range-btn]');
             if (rangeToggleBtn) {
@@ -136,6 +147,17 @@
               var nextRk = normalizeOverviewPanelRangeKey(rangeKey2, OVW_PANEL_DEFAULT_RANGE);
               setOverviewPanelRange(panel, nextRk);
               syncOverviewPanelRangeUi(panel);
+              // Close dropdown menu (Bootstrap or fallback).
+              try {
+                var btnToHide = document.querySelector('button[data-ovw-panel-range-btn=\"' + panel + '\"]');
+                if (btnToHide && window.bootstrap && window.bootstrap.Dropdown) {
+                  window.bootstrap.Dropdown.getOrCreateInstance(btnToHide).hide();
+                }
+              } catch (_) {}
+              try {
+                document.querySelectorAll('.dropdown-menu.show').forEach(function (m) { try { m.classList.remove('show'); } catch (_) {} });
+                document.querySelectorAll('button.dropdown-toggle.show').forEach(function (b) { try { b.classList.remove('show'); } catch (_) {} });
+              } catch (_) {}
 
               if (panel === 'main') {
                 setOvwPanelLoading('main', true);
@@ -374,7 +396,7 @@
 
       function syncAllOverviewPanelRangeUi() {
         if (!isDashboardOverviewPage()) return;
-        ['main', 'online', 'kpis', 'toplists', 'trending', 'variant', 'traffic', 'abandoned'].forEach(function (k) {
+        ['main', 'kpis', 'toplists', 'trending', 'variant', 'traffic', 'abandoned'].forEach(function (k) {
           try { syncOverviewPanelRangeUi(k); } catch (_) {}
         });
       }

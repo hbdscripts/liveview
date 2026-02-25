@@ -32,20 +32,19 @@
       <div class="col-12 col-md-12 col-xl-8">
         <div class="card h-100 kexo-overview-main-card" data-kexo-chart-key="dash-chart-overview-30d">
           <div class="card-body kexo-overview-main-card-body">
-            <div class="kexo-ovw-tabs-row">
-              <div class="btn-group" role="group" aria-label="Overview main range" data-ovw-tabs="main">
-                <button type="button" class="btn btn-sm active" data-ovw-panel="main" data-ovw-tab="main" aria-pressed="true">Overview</button>
-                <button type="button" class="btn btn-sm kexo-ovw-date-tab dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" data-ovw-panel-range-btn="main">7 Days</button>
-                <div class="dropdown-menu">
-                  <button class="dropdown-item" type="button" data-ovw-panel-range="main" data-ovw-range="today">Today</button>
-                  <button class="dropdown-item" type="button" data-ovw-panel-range="main" data-ovw-range="yesterday">Yesterday</button>
-                  <button class="dropdown-item" type="button" data-ovw-panel-range="main" data-ovw-range="7d">7 Days</button>
-                  <button class="dropdown-item" type="button" data-ovw-panel-range="main" data-ovw-range="14d">14 Days</button>
-                  <button class="dropdown-item" type="button" data-ovw-panel-range="main" data-ovw-range="30d">30 Days</button>
+            <div class="kexo-overview-card-head">
+              <div class="kexo-ovw-main-head-left">
+                <div class="dropdown">
+                  <button type="button" class="btn btn-sm kexo-ovw-date-tab dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" data-ovw-panel-range-btn="main">7 Days</button>
+                  <div class="dropdown-menu">
+                    <button class="dropdown-item" type="button" data-ovw-panel-range="main" data-ovw-range="today">Today</button>
+                    <button class="dropdown-item" type="button" data-ovw-panel-range="main" data-ovw-range="yesterday">Yesterday</button>
+                    <button class="dropdown-item" type="button" data-ovw-panel-range="main" data-ovw-range="7d">7 Days</button>
+                    <button class="dropdown-item" type="button" data-ovw-panel-range="main" data-ovw-range="14d">14 Days</button>
+                    <button class="dropdown-item" type="button" data-ovw-panel-range="main" data-ovw-range="30d">30 Days</button>
+                  </div>
                 </div>
               </div>
-            </div>
-            <div class="kexo-overview-card-head">
               <div class="kexo-overview-card-head-left">
                 <div class="kexo-overview-running-totals kexo-overview-running-totals--main" id="dash-overview-running-totals" aria-label="Sales Overview totals">
                   <span class="kexo-overview-running-total is-revenue">
@@ -77,13 +76,7 @@
         <div class="card h-100 kexo-widget-card kexo-overview-widget-card" data-kexo-chart-key="overview-live-online-chart">
           <div class="card-body kexo-widget-card-body">
             <div class="kexo-widget-head">
-              <div class="kexo-widget-title kexo-online-header">
-                <div class="kexo-ovw-tabs-row">
-                  <div class="btn-group" role="group" aria-label="Online" data-ovw-tabs="online">
-                    <button type="button" class="btn btn-sm active" data-ovw-panel="online" data-ovw-tab="online" aria-pressed="true">Online <span class="kexo-online-count" id="live-online-now-count">0</span></button>
-                  </div>
-                </div>
-              </div>
+              <div class="kexo-widget-title kexo-online-header">Online <span class="kexo-online-count" id="live-online-now-count">0</span></div>
               <div class="kexo-widget-head-right"></div>
             </div>
             <div class="kexo-widget-body">
@@ -106,13 +99,15 @@
                   <div class="btn-group" role="group" aria-label="KPI sets" data-ovw-tabs="kpis">
                     <button type="button" class="btn btn-sm active" data-ovw-panel="kpis" data-ovw-tab="set1" aria-pressed="true">KPI Set 1</button>
                     <button type="button" class="btn btn-sm" data-ovw-panel="kpis" data-ovw-tab="set2" aria-pressed="false">KPI Set 2</button>
-                    <button type="button" class="btn btn-sm kexo-ovw-date-tab dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" data-ovw-panel-range-btn="kpis">7 Days</button>
-                    <div class="dropdown-menu">
-                      <button class="dropdown-item" type="button" data-ovw-panel-range="kpis" data-ovw-range="today">Today</button>
-                      <button class="dropdown-item" type="button" data-ovw-panel-range="kpis" data-ovw-range="yesterday">Yesterday</button>
-                      <button class="dropdown-item" type="button" data-ovw-panel-range="kpis" data-ovw-range="7d">7 Days</button>
-                      <button class="dropdown-item" type="button" data-ovw-panel-range="kpis" data-ovw-range="14d">14 Days</button>
-                      <button class="dropdown-item" type="button" data-ovw-panel-range="kpis" data-ovw-range="30d">30 Days</button>
+                    <div class="btn-group" role="group">
+                      <button type="button" class="btn btn-sm kexo-ovw-date-tab dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" data-ovw-panel-range-btn="kpis">7 Days</button>
+                      <div class="dropdown-menu dropdown-menu-end">
+                        <button class="dropdown-item" type="button" data-ovw-panel-range="kpis" data-ovw-range="today">Today</button>
+                        <button class="dropdown-item" type="button" data-ovw-panel-range="kpis" data-ovw-range="yesterday">Yesterday</button>
+                        <button class="dropdown-item" type="button" data-ovw-panel-range="kpis" data-ovw-range="7d">7 Days</button>
+                        <button class="dropdown-item" type="button" data-ovw-panel-range="kpis" data-ovw-range="14d">14 Days</button>
+                        <button class="dropdown-item" type="button" data-ovw-panel-range="kpis" data-ovw-range="30d">30 Days</button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -235,13 +230,15 @@
                   <div class="btn-group" role="group" aria-label="Top lists" data-ovw-tabs="toplists">
                     <button type="button" class="btn btn-sm active" data-ovw-panel="toplists" data-ovw-tab="countries" aria-pressed="true">Top Countries</button>
                     <button type="button" class="btn btn-sm" data-ovw-panel="toplists" data-ovw-tab="products" aria-pressed="false">Top Products</button>
-                    <button type="button" class="btn btn-sm kexo-ovw-date-tab dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" data-ovw-panel-range-btn="toplists">7 Days</button>
-                    <div class="dropdown-menu">
-                      <button class="dropdown-item" type="button" data-ovw-panel-range="toplists" data-ovw-range="today">Today</button>
-                      <button class="dropdown-item" type="button" data-ovw-panel-range="toplists" data-ovw-range="yesterday">Yesterday</button>
-                      <button class="dropdown-item" type="button" data-ovw-panel-range="toplists" data-ovw-range="7d">7 Days</button>
-                      <button class="dropdown-item" type="button" data-ovw-panel-range="toplists" data-ovw-range="14d">14 Days</button>
-                      <button class="dropdown-item" type="button" data-ovw-panel-range="toplists" data-ovw-range="30d">30 Days</button>
+                    <div class="btn-group" role="group">
+                      <button type="button" class="btn btn-sm kexo-ovw-date-tab dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" data-ovw-panel-range-btn="toplists">7 Days</button>
+                      <div class="dropdown-menu dropdown-menu-end">
+                        <button class="dropdown-item" type="button" data-ovw-panel-range="toplists" data-ovw-range="today">Today</button>
+                        <button class="dropdown-item" type="button" data-ovw-panel-range="toplists" data-ovw-range="yesterday">Yesterday</button>
+                        <button class="dropdown-item" type="button" data-ovw-panel-range="toplists" data-ovw-range="7d">7 Days</button>
+                        <button class="dropdown-item" type="button" data-ovw-panel-range="toplists" data-ovw-range="14d">14 Days</button>
+                        <button class="dropdown-item" type="button" data-ovw-panel-range="toplists" data-ovw-range="30d">30 Days</button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -277,13 +274,15 @@
                   <div class="btn-group" role="group" aria-label="Trending" data-ovw-tabs="trending">
                     <button type="button" class="btn btn-sm active" data-ovw-panel="trending" data-ovw-tab="up" aria-pressed="true">Trending Up</button>
                     <button type="button" class="btn btn-sm" data-ovw-panel="trending" data-ovw-tab="down" aria-pressed="false">Trending Down</button>
-                    <button type="button" class="btn btn-sm kexo-ovw-date-tab dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" data-ovw-panel-range-btn="trending">7 Days</button>
-                    <div class="dropdown-menu">
-                      <button class="dropdown-item" type="button" data-ovw-panel-range="trending" data-ovw-range="today">Today</button>
-                      <button class="dropdown-item" type="button" data-ovw-panel-range="trending" data-ovw-range="yesterday">Yesterday</button>
-                      <button class="dropdown-item" type="button" data-ovw-panel-range="trending" data-ovw-range="7d">7 Days</button>
-                      <button class="dropdown-item" type="button" data-ovw-panel-range="trending" data-ovw-range="14d">14 Days</button>
-                      <button class="dropdown-item" type="button" data-ovw-panel-range="trending" data-ovw-range="30d">30 Days</button>
+                    <div class="btn-group" role="group">
+                      <button type="button" class="btn btn-sm kexo-ovw-date-tab dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" data-ovw-panel-range-btn="trending">7 Days</button>
+                      <div class="dropdown-menu dropdown-menu-end">
+                        <button class="dropdown-item" type="button" data-ovw-panel-range="trending" data-ovw-range="today">Today</button>
+                        <button class="dropdown-item" type="button" data-ovw-panel-range="trending" data-ovw-range="yesterday">Yesterday</button>
+                        <button class="dropdown-item" type="button" data-ovw-panel-range="trending" data-ovw-range="7d">7 Days</button>
+                        <button class="dropdown-item" type="button" data-ovw-panel-range="trending" data-ovw-range="14d">14 Days</button>
+                        <button class="dropdown-item" type="button" data-ovw-panel-range="trending" data-ovw-range="30d">30 Days</button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -313,13 +312,15 @@
                   <div class="btn-group" role="group" aria-label="Variant tabs" data-ovw-tabs="variant">
                     <button type="button" class="btn btn-sm active" data-ovw-panel="variant" data-ovw-tab="variant" aria-pressed="true">Variant</button>
                     <button type="button" class="btn btn-sm" data-ovw-panel="variant" data-ovw-tab="styles" aria-pressed="false">Styles</button>
-                    <button type="button" class="btn btn-sm kexo-ovw-date-tab dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" data-ovw-panel-range-btn="variant">7 Days</button>
-                    <div class="dropdown-menu">
-                      <button class="dropdown-item" type="button" data-ovw-panel-range="variant" data-ovw-range="today">Today</button>
-                      <button class="dropdown-item" type="button" data-ovw-panel-range="variant" data-ovw-range="yesterday">Yesterday</button>
-                      <button class="dropdown-item" type="button" data-ovw-panel-range="variant" data-ovw-range="7d">7 Days</button>
-                      <button class="dropdown-item" type="button" data-ovw-panel-range="variant" data-ovw-range="14d">14 Days</button>
-                      <button class="dropdown-item" type="button" data-ovw-panel-range="variant" data-ovw-range="30d">30 Days</button>
+                    <div class="btn-group" role="group">
+                      <button type="button" class="btn btn-sm kexo-ovw-date-tab dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" data-ovw-panel-range-btn="variant">7 Days</button>
+                      <div class="dropdown-menu dropdown-menu-end">
+                        <button class="dropdown-item" type="button" data-ovw-panel-range="variant" data-ovw-range="today">Today</button>
+                        <button class="dropdown-item" type="button" data-ovw-panel-range="variant" data-ovw-range="yesterday">Yesterday</button>
+                        <button class="dropdown-item" type="button" data-ovw-panel-range="variant" data-ovw-range="7d">7 Days</button>
+                        <button class="dropdown-item" type="button" data-ovw-panel-range="variant" data-ovw-range="14d">14 Days</button>
+                        <button class="dropdown-item" type="button" data-ovw-panel-range="variant" data-ovw-range="30d">30 Days</button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -345,13 +346,15 @@
                     <button type="button" class="btn btn-sm active" data-ovw-panel="traffic" data-ovw-tab="attribution" aria-pressed="true">Attribution</button>
                     <button type="button" class="btn btn-sm" data-ovw-panel="traffic" data-ovw-tab="devices" aria-pressed="false">Devices</button>
                     <button type="button" class="btn btn-sm" data-ovw-panel="traffic" data-ovw-tab="browsers" aria-pressed="false">Browsers</button>
-                    <button type="button" class="btn btn-sm kexo-ovw-date-tab dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" data-ovw-panel-range-btn="traffic">7 Days</button>
-                    <div class="dropdown-menu">
-                      <button class="dropdown-item" type="button" data-ovw-panel-range="traffic" data-ovw-range="today">Today</button>
-                      <button class="dropdown-item" type="button" data-ovw-panel-range="traffic" data-ovw-range="yesterday">Yesterday</button>
-                      <button class="dropdown-item" type="button" data-ovw-panel-range="traffic" data-ovw-range="7d">7 Days</button>
-                      <button class="dropdown-item" type="button" data-ovw-panel-range="traffic" data-ovw-range="14d">14 Days</button>
-                      <button class="dropdown-item" type="button" data-ovw-panel-range="traffic" data-ovw-range="30d">30 Days</button>
+                    <div class="btn-group" role="group">
+                      <button type="button" class="btn btn-sm kexo-ovw-date-tab dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" data-ovw-panel-range-btn="traffic">7 Days</button>
+                      <div class="dropdown-menu dropdown-menu-end">
+                        <button class="dropdown-item" type="button" data-ovw-panel-range="traffic" data-ovw-range="today">Today</button>
+                        <button class="dropdown-item" type="button" data-ovw-panel-range="traffic" data-ovw-range="yesterday">Yesterday</button>
+                        <button class="dropdown-item" type="button" data-ovw-panel-range="traffic" data-ovw-range="7d">7 Days</button>
+                        <button class="dropdown-item" type="button" data-ovw-panel-range="traffic" data-ovw-range="14d">14 Days</button>
+                        <button class="dropdown-item" type="button" data-ovw-panel-range="traffic" data-ovw-range="30d">30 Days</button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -387,13 +390,15 @@
                 <div class="kexo-ovw-tabs-row">
                   <div class="btn-group" role="group" aria-label="Abandoned carts tabs" data-ovw-tabs="abandoned">
                     <button type="button" class="btn btn-sm active" data-ovw-panel="abandoned" data-ovw-tab="abandoned" aria-pressed="true">Abandoned Carts</button>
-                    <button type="button" class="btn btn-sm kexo-ovw-date-tab dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" data-ovw-panel-range-btn="abandoned">7 Days</button>
-                    <div class="dropdown-menu">
-                      <button class="dropdown-item" type="button" data-ovw-panel-range="abandoned" data-ovw-range="today">Today</button>
-                      <button class="dropdown-item" type="button" data-ovw-panel-range="abandoned" data-ovw-range="yesterday">Yesterday</button>
-                      <button class="dropdown-item" type="button" data-ovw-panel-range="abandoned" data-ovw-range="7d">7 Days</button>
-                      <button class="dropdown-item" type="button" data-ovw-panel-range="abandoned" data-ovw-range="14d">14 Days</button>
-                      <button class="dropdown-item" type="button" data-ovw-panel-range="abandoned" data-ovw-range="30d">30 Days</button>
+                    <div class="btn-group" role="group">
+                      <button type="button" class="btn btn-sm kexo-ovw-date-tab dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" data-ovw-panel-range-btn="abandoned">7 Days</button>
+                      <div class="dropdown-menu dropdown-menu-end">
+                        <button class="dropdown-item" type="button" data-ovw-panel-range="abandoned" data-ovw-range="today">Today</button>
+                        <button class="dropdown-item" type="button" data-ovw-panel-range="abandoned" data-ovw-range="yesterday">Yesterday</button>
+                        <button class="dropdown-item" type="button" data-ovw-panel-range="abandoned" data-ovw-range="7d">7 Days</button>
+                        <button class="dropdown-item" type="button" data-ovw-panel-range="abandoned" data-ovw-range="14d">14 Days</button>
+                        <button class="dropdown-item" type="button" data-ovw-panel-range="abandoned" data-ovw-range="30d">30 Days</button>
+                      </div>
                     </div>
                   </div>
                 </div>

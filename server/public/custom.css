@@ -3990,6 +3990,29 @@ body[data-dashboard-view="overview"] .kexo-ovw-tabs-row .dropdown-menu {
   z-index: 2000;
 }
 
+/* Main chart header: date (left) + totals (center) + cog (right) on one line */
+body[data-dashboard-view="overview"] .kexo-overview-main-card .kexo-overview-card-head {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.75rem;
+}
+body[data-dashboard-view="overview"] .kexo-overview-main-card .kexo-ovw-main-head-left {
+  grid-column: 1;
+  justify-self: start;
+}
+body[data-dashboard-view="overview"] .kexo-overview-main-card .kexo-overview-card-head-left {
+  grid-column: 2;
+  justify-self: center;
+  align-items: center;
+  text-align: center;
+}
+body[data-dashboard-view="overview"] .kexo-overview-main-card .kexo-overview-card-actions {
+  grid-column: 3;
+  justify-self: end;
+  margin-left: 0;
+}
+
 body[data-dashboard-view="overview"] .kexo-ovw-card-loader {
   position: absolute;
   inset: 0;
@@ -4024,16 +4047,25 @@ body[data-dashboard-view="overview"] .kexo-ovw-kpi-row {
   padding: .15rem 0;
 }
 body[data-dashboard-view="overview"] .kexo-ovw-kpi-row-top {
-  display: flex;
-  align-items: baseline;
-  gap: .55rem;
+  display: grid;
+  grid-template-columns: 40px 1fr auto auto;
+  align-items: center;
+  gap: 0.5rem;
   min-width: 0;
 }
 body[data-dashboard-view="overview"] .kexo-ovw-kpi-icon {
-  width: 18px;
   display: inline-flex;
+  align-items: center;
   justify-content: center;
-  opacity: 0.85;
+  width: 40px;
+  height: 40px;
+  border-radius: 6px;
+  background: rgba(15, 23, 42, 0.06);
+  color: var(--tblr-secondary);
+}
+body[data-dashboard-view="overview"] .kexo-ovw-kpi-icon i,
+body[data-dashboard-view="overview"] .kexo-ovw-kpi-icon svg {
+  font-size: 18px;
 }
 body[data-dashboard-view="overview"] .kexo-ovw-kpi-label {
   flex: 1 1 auto;
@@ -4063,7 +4095,15 @@ body[data-dashboard-view="overview"] .kexo-ovw-kpi-delta.is-down {
   color: var(--kexo-accent-4, #e4644b);
 }
 body[data-dashboard-view="overview"] .kexo-ovw-kpi-progress {
-  margin-left: 26px;
+  margin-left: 0;
+}
+body[data-dashboard-view="overview"] .kexo-ovw-kpi-progress {
+  grid-column: 1 / -1;
+  margin-top: 0.1rem;
+  background: rgba(15, 23, 42, 0.08);
+}
+body[data-dashboard-view="overview"] .kexo-ovw-kpi-progress .progress-bar {
+  transition: width 520ms cubic-bezier(.2,.9,.2,1);
 }
 body[data-dashboard-view="overview"] .kexo-ovw-panel-pagination {
   margin-top: .5rem;
