@@ -448,6 +448,77 @@ router.post('/google/provision-goals', async (req, res) => {
   }
 });
 
+router.get('/google/profit-preview-samples', async (req, res) => {
+  res.setHeader('Cache-Control', 'private, max-age=30');
+  try {
+    const shop = (req.query && req.query.shop != null ? String(req.query.shop).trim() : '') || salesTruth.resolveShopForSales('');
+    if (!shop) {
+      res.status(400).json({ ok: false, error: 'Missing shop', samples: [] });
+      return;
+    }
+    const adsDb = getAdsDb();
+    if (!adsDb) {
+      res.status(500).json({ ok: false, error: 'ADS_DB_URL not set', samples: [] });
+      return;
+    }
+    const rows = await adsDb.all(
+      `
+        SELECT
+          order_id,
+          created_at_ms,
+          currency,
+          total_price,
+          country_code,
+          visitor_country_code,
+          visitor_device_type,
+          click_id_type,
+          click_id_value,
+          gclid,
+          gbraid,
+          wbraid
+        FROM ads_orders_attributed
+        WHERE shop = ?
+          AND created_at_ms IS NOT NULL
+          AND (
+            click_id_value IS NOT NULL
+            OR gclid IS NOT NULL
+            OR gbraid IS NOT NULL
+            OR wbraid IS NOT NULL
+          )
+        ORDER BY created_at_ms DESC
+        LIMIT 50
+      `,
+      [shop]
+    ).catch(() => []);
+    const out = [];
+    const seen = new Set();
+    for (const r of rows || []) {
+      const click = pickClickIdFromAttribution(r);
+      if (!click || !click.value) continue;
+      const key = String(click.type || '') + ':' + String(click.value || '');
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push({
+        order_id: r && r.order_id != null ? String(r.order_id) : null,
+        created_at_ms: r && r.created_at_ms != null ? Number(r.created_at_ms) : null,
+        currency: r && r.currency != null ? String(r.currency) : null,
+        total_price: r && r.total_price != null ? Number(r.total_price) : null,
+        country_code: r && r.country_code != null ? String(r.country_code) : null,
+        visitor_country_code: r && r.visitor_country_code != null ? String(r.visitor_country_code) : null,
+        visitor_device_type: r && r.visitor_device_type != null ? String(r.visitor_device_type) : null,
+        click_id_type: click.type ? String(click.type) : null,
+        click_id_value: click.value ? String(click.value) : null,
+      });
+      if (out.length >= 5) break;
+    }
+    res.json({ ok: true, samples: out });
+  } catch (err) {
+    Sentry.captureException(err, { extra: { route: 'ads.google.profit-preview-samples' } });
+    console.error('[ads.google.profit-preview-samples]', err);
+    res.status(500).json({ ok: false, error: 'Internal error', samples: [] });
+  }
+});
+
 router.post('/google/profit-preview', async (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
   try {

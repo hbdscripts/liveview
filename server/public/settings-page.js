@@ -2406,6 +2406,8 @@
     var profitPreviewBtn = document.getElementById('settings-ga-profit-preview-btn');
     var profitPreviewMsgEl = document.getElementById('settings-ga-profit-preview-msg');
     var profitPreviewOutputEl = document.getElementById('settings-ga-profit-preview-output');
+    var profitPreviewSamplesEl = document.getElementById('settings-ga-profit-preview-samples');
+    var profitPreviewSamplesMsgEl = document.getElementById('settings-ga-profit-preview-samples-msg');
 
     var profitSaveBtn = document.getElementById('settings-ga-profit-save-btn');
     var profitMsgEl = document.getElementById('settings-ga-profit-msg');
@@ -2585,6 +2587,9 @@
     function setProfitPreviewHint(text, ok) {
       setHint(profitPreviewMsgEl, text, ok);
     }
+    function setProfitPreviewSamplesHint(text, ok) {
+      setHint(profitPreviewSamplesMsgEl, text, ok);
+    }
 
     function describeRule(kind, item) {
       var r = item && typeof item === 'object' ? item : {};
@@ -2615,7 +2620,7 @@
       var s = profitDeductionsState || normalizeProfitDeductions(null);
       var parts = [];
       if (s.includeGoogleAdsSpend) parts.push('Ads spend');
-      if (s.includePaymentFees) parts.push('Transaction fees');
+      if (s.includePaymentFees) parts.push('Fees');
       if (s.includeShopifyTaxes) parts.push('Taxes');
       if (s.includeShopifyAppBills) parts.push('App bills');
       if (s.includeShipping) parts.push('Shipping');
@@ -3361,10 +3366,74 @@
         if (el) el.addEventListener('change', saveProfitDeductions);
       });
 
+    function formatCurrencyAmount(amount, currency) {
+      var n = Number(amount);
+      if (!Number.isFinite(n)) return '—';
+      var c = currency != null ? String(currency).trim().toUpperCase() : '';
+      var sym = c === 'GBP' ? '£' : (c === 'USD' ? '$' : (c === 'EUR' ? '€' : (c ? (c + ' ') : '')));
+      return sym + String(Math.round(n * 100) / 100);
+    }
+
+    function formatCountryLabel(code) {
+      var c = code != null ? String(code).trim().toUpperCase().slice(0, 3) : '';
+      if (c === 'GB') return 'UK';
+      if (c === 'US') return 'USA';
+      return c || '—';
+    }
+
+    function formatDeviceLabel(raw) {
+      var s = raw != null ? String(raw).trim().toLowerCase() : '';
+      if (s === 'mobile') return 'Mobile';
+      if (s === 'desktop') return 'Desktop';
+      if (s === 'tablet') return 'Tablet';
+      if (!s) return '—';
+      return s.charAt(0).toUpperCase() + s.slice(1);
+    }
+
+    function renderProfitPreviewSamples(samples) {
+      if (!profitPreviewSamplesEl) return;
+      var list = Array.isArray(samples) ? samples : [];
+      if (!list.length) {
+        profitPreviewSamplesEl.innerHTML = '';
+        setProfitPreviewSamplesHint('No recent click IDs found yet.', null);
+        return;
+      }
+      setProfitPreviewSamplesHint('Pick one to preview, or paste a specific click ID below.', null);
+      profitPreviewSamplesEl.innerHTML = list.slice(0, 10).map(function (s) {
+        var clickId = s && s.click_id_value != null ? String(s.click_id_value).trim() : '';
+        if (!clickId) return '';
+        var cc = s && (s.country_code || s.visitor_country_code) ? String(s.country_code || s.visitor_country_code) : '';
+        var device = s && s.visitor_device_type != null ? String(s.visitor_device_type) : '';
+        var amount = s && s.total_price != null ? Number(s.total_price) : null;
+        var currency = s && s.currency != null ? String(s.currency) : '';
+        var label = formatCountryLabel(cc) + ' · ' + formatDeviceLabel(device) + ' · ' + formatCurrencyAmount(amount, currency);
+        return '<button type="button" class="btn btn-sm" data-ga-profit-preview-sample="1" data-click-id="' + escapeHtml(clickId) + '">' + escapeHtml(label) + '</button>';
+      }).join('');
+    }
+
+    function loadProfitPreviewSamples() {
+      if (!profitPreviewSamplesEl && !profitPreviewSamplesMsgEl) return;
+      try { if (profitPreviewSamplesEl) profitPreviewSamplesEl.innerHTML = ''; } catch (_) {}
+      setProfitPreviewSamplesHint('Loading…', null);
+      var shop = getShopParam();
+      var qs = shop ? ('?shop=' + encodeURIComponent(shop)) : '';
+      apiGet('/api/ads/google/profit-preview-samples' + qs)
+        .then(function (r) {
+          var ok = !!(r && r.ok && r.json && r.json.ok);
+          if (!ok) {
+            setProfitPreviewSamplesHint((r && r.json && (r.json.error || r.json.message)) ? String(r.json.error || r.json.message) : 'Failed to load quick look.', false);
+            return;
+          }
+          renderProfitPreviewSamples(r.json.samples || []);
+        })
+        .catch(function () { setProfitPreviewSamplesHint('Failed to load quick look.', false); });
+    }
+
     if (profitDeductionsOpenBtn) {
       profitDeductionsOpenBtn.addEventListener('click', function () {
         try { setProfitDeductionsModalHint('', null); } catch (_) {}
         try { renderProfitDeductionsUi(); } catch (_) {}
+        try { loadProfitPreviewSamples(); } catch (_) {}
         openGaProfitDeductionsModal();
       });
     }
@@ -3396,6 +3465,18 @@
         .catch(function () { setProfitPreviewHint('Preview failed.', false); });
     }
     if (profitPreviewBtn) profitPreviewBtn.addEventListener('click', runProfitPreview);
+    if (profitPreviewSamplesEl) {
+      profitPreviewSamplesEl.addEventListener('click', function (e) {
+        var t = e && e.target ? e.target : null;
+        if (!t) return;
+        var btn = t.closest ? t.closest('[data-ga-profit-preview-sample="1"]') : null;
+        if (!btn) return;
+        var clickId = btn.getAttribute('data-click-id') || '';
+        if (!clickId) return;
+        try { if (profitPreviewClickIdEl) profitPreviewClickIdEl.value = clickId; } catch (_) {}
+        runProfitPreview();
+      });
+    }
     if (profitPreviewClickIdEl) {
       profitPreviewClickIdEl.addEventListener('keydown', function (e) {
         if (e && (e.key === 'Enter' || e.keyCode === 13)) {

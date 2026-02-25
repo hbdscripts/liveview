@@ -1868,7 +1868,7 @@
             </div>
 
             <div class="modal modal-blur kexo-modal-hidden" id="settings-ga-profit-deductions-modal" tabindex="-1" aria-hidden="true">
-              <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" role="dialog">
+              <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable" role="dialog">
                 <div class="modal-content">
                   <div class="modal-header">
                     <h5 class="modal-title">Profit cost deductions</h5>
@@ -1882,23 +1882,23 @@
                     <div class="settings-responsive-grid settings-ga-profit-deductions-grid mb-4">
                       <label class="form-check form-switch settings-ga-deduction-item">
                         <input class="form-check-input" type="checkbox" id="settings-ga-deduction-google-ads" />
-                        <span class="form-check-label">Google Ads spend</span>
+                        <span class="form-check-label" title="Deduct allocated Google Ads spend from Profit uploads.">Ads spend <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></span>
                       </label>
                       <label class="form-check form-switch settings-ga-deduction-item">
                         <input class="form-check-input" type="checkbox" id="settings-ga-deduction-payment-fees" />
-                        <span class="form-check-label">Transaction Fees</span>
+                        <span class="form-check-label" title="Deduct payment / transaction fees when available.">Fees <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></span>
                       </label>
                       <label class="form-check form-switch settings-ga-deduction-item">
                         <input class="form-check-input" type="checkbox" id="settings-ga-deduction-tax" />
-                        <span class="form-check-label">Shopify Taxes</span>
+                        <span class="form-check-label" title="Deduct Shopify taxes so Profit reflects net-of-tax value.">Taxes <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></span>
                       </label>
                       <label class="form-check form-switch settings-ga-deduction-item">
                         <input class="form-check-input" type="checkbox" id="settings-ga-deduction-app-bills" />
-                        <span class="form-check-label">Shopify app bills</span>
+                        <span class="form-check-label" title="Deduct Shopify app bills when available.">App bills <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></span>
                       </label>
                       <label class="form-check form-switch settings-ga-deduction-item">
                         <input class="form-check-input" type="checkbox" id="settings-ga-deduction-shipping" />
-                        <span class="form-check-label">Include shipping in cost</span>
+                        <span class="form-check-label" title="Deduct configured shipping cost estimate (from Cost settings).">Shipping <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></span>
                       </label>
                     </div>
 
@@ -1943,6 +1943,11 @@
                         <div class="mt-2" id="settings-ga-deduction-fixed-costs-list"></div>
                       </div>
                     </div>
+
+                    <div class="fw-semibold mb-2">Quick look</div>
+                    <div class="text-muted small mb-2">Recent sales with click IDs. Click one to preview the Profit value and upload payload.</div>
+                    <div class="d-flex align-items-center gap-2 flex-wrap mb-2" id="settings-ga-profit-preview-samples"></div>
+                    <div class="form-hint mb-4" id="settings-ga-profit-preview-samples-msg"></div>
 
                     <div class="fw-semibold mb-2">Click ID preview</div>
                     <div class="text-muted small mb-2">Enter a gclid/gbraid/wbraid to preview the Profit value and payload that would be uploaded with the current toggles.</div>
