@@ -1229,6 +1229,27 @@ function isPaidOrderWhereClause(alias) {
     AND ${p}financial_status = 'paid'`;
 }
 
+// Sales-time contract (must match KPI "sales" semantics):
+// - Use processed_at when available (sale/paid time), otherwise created_at.
+// - Include all paid orders (do NOT restrict to checkout_token).
+function orderSaleAtExpr(alias) {
+  const p = alias ? String(alias).trim() + '.' : '';
+  return `COALESCE(${p}processed_at, ${p}created_at)`;
+}
+
+function orderSaleInBoundsWhereClause(alias) {
+  const p = alias ? String(alias).trim() + '.' : '';
+  // Avoid COALESCE(...) in WHERE so indexes on processed_at/created_at can be used.
+  return `((${p}processed_at IS NOT NULL AND ${p}processed_at >= ? AND ${p}processed_at < ?)
+    OR (${p}processed_at IS NULL AND ${p}created_at >= ? AND ${p}created_at < ?))`;
+}
+
+function orderSaleBeforeWhereClause(alias) {
+  const p = alias ? String(alias).trim() + '.' : '';
+  return `((${p}processed_at IS NOT NULL AND ${p}processed_at < ?)
+    OR (${p}processed_at IS NULL AND ${p}created_at < ?))`;
+}
+
 async function readProfitRulesConfig() {
   try {
     const raw = await store.getSetting(PROFIT_RULES_V1_KEY);
@@ -1246,14 +1267,12 @@ async function readDistinctCustomerCount(shop, startMs, endMs) {
       SELECT COUNT(DISTINCT customer_id) AS n
       FROM orders_shopify
       WHERE shop = ?
-        AND created_at >= ? AND created_at < ?
+        AND ${orderSaleInBoundsWhereClause('')}
         AND ${isPaidOrderWhereClause('')}
-        AND checkout_token IS NOT NULL
-        AND TRIM(checkout_token) != ''
         AND customer_id IS NOT NULL
         AND TRIM(customer_id) != ''
     `,
-    [shop, startMs, endMs]
+    [shop, startMs, endMs, startMs, endMs]
   );
   return row && row.n != null ? Number(row.n) || 0 : 0;
 }
@@ -1266,10 +1285,8 @@ async function readReturningCustomerCountBeforeStart(shop, startMs, endMs) {
       SELECT COUNT(DISTINCT o.customer_id) AS n
       FROM orders_shopify o
       WHERE o.shop = ?
-        AND o.created_at >= ? AND o.created_at < ?
+        AND ${orderSaleInBoundsWhereClause('o')}
         AND ${isPaidOrderWhereClause('o')}
-        AND o.checkout_token IS NOT NULL
-        AND TRIM(o.checkout_token) != ''
         AND o.customer_id IS NOT NULL
         AND TRIM(o.customer_id) != ''
         AND EXISTS (
@@ -1278,12 +1295,10 @@ async function readReturningCustomerCountBeforeStart(shop, startMs, endMs) {
           WHERE p.shop = o.shop
             AND p.customer_id = o.customer_id
             AND ${isPaidOrderWhereClause('p')}
-            AND p.checkout_token IS NOT NULL
-            AND TRIM(p.checkout_token) != ''
-            AND p.created_at < ?
+            AND ${orderSaleBeforeWhereClause('p')}
         )
     `,
-    [shop, startMs, endMs, startMs]
+    [shop, startMs, endMs, startMs, endMs, startMs, startMs]
   );
   return row && row.n != null ? Number(row.n) || 0 : 0;
 }
@@ -1298,18 +1313,16 @@ async function readReturningCustomerCountByEnd(shop, startMs, endMs) {
         SELECT customer_id
         FROM orders_shopify
         WHERE shop = ?
-          AND created_at < ?
+          AND ${orderSaleBeforeWhereClause('')}
           AND ${isPaidOrderWhereClause('')}
-          AND checkout_token IS NOT NULL
-          AND TRIM(checkout_token) != ''
           AND customer_id IS NOT NULL
           AND TRIM(customer_id) != ''
         GROUP BY customer_id
         HAVING COUNT(*) >= 2
-          AND SUM(CASE WHEN created_at >= ? AND created_at < ? THEN 1 ELSE 0 END) >= 1
+          AND SUM(CASE WHEN ${orderSaleAtExpr('')} >= ? AND ${orderSaleAtExpr('')} < ? THEN 1 ELSE 0 END) >= 1
       ) t
     `,
-    [shop, endMs, startMs, endMs]
+    [shop, endMs, endMs, startMs, endMs]
   );
   return row && row.n != null ? Number(row.n) || 0 : 0;
 }
@@ -1324,17 +1337,15 @@ async function readRepeatCustomerCountInRange(shop, startMs, endMs) {
         SELECT o.customer_id
         FROM orders_shopify o
         WHERE o.shop = ?
-          AND o.created_at >= ? AND o.created_at < ?
+          AND ${orderSaleInBoundsWhereClause('o')}
           AND ${isPaidOrderWhereClause('o')}
-          AND o.checkout_token IS NOT NULL
-          AND TRIM(o.checkout_token) != ''
           AND o.customer_id IS NOT NULL
           AND TRIM(o.customer_id) != ''
         GROUP BY o.customer_id
         HAVING COUNT(*) >= 2
       ) t
     `,
-    [shop, startMs, endMs]
+    [shop, startMs, endMs, startMs, endMs]
   );
   return row && row.n != null ? Number(row.n) || 0 : 0;
 }
@@ -1354,11 +1365,11 @@ async function readConvertedSessionCount(shop, startMs, endMs, { trafficMode = '
           ${trafficSql}
           AND pe.event_type IN ('checkout_completed', 'checkout_started')
           AND pe.occurred_at >= ? AND pe.occurred_at < ?
-          AND o.created_at >= ? AND o.created_at < ?
+          AND ${orderSaleInBoundsWhereClause('o')}
           AND ${isPaidOrderWhereClause('o')}
       ) t
     `,
-    [shop, startMs, endMs, startMs, endMs, startMs, endMs]
+    [shop, startMs, endMs, startMs, endMs, startMs, endMs, startMs, endMs]
   );
   return row && row.n != null ? Number(row.n) || 0 : 0;
 }
@@ -1371,13 +1382,11 @@ async function readRevenueRowsByCurrency(shop, startMs, endMs) {
       SELECT COALESCE(NULLIF(TRIM(currency), ''), 'GBP') AS currency, COALESCE(SUM(total_price), 0) AS total
       FROM orders_shopify
       WHERE shop = ?
-        AND created_at >= ? AND created_at < ?
+        AND ${orderSaleInBoundsWhereClause('')}
         AND ${isPaidOrderWhereClause('')}
-        AND checkout_token IS NOT NULL
-        AND TRIM(checkout_token) != ''
       GROUP BY COALESCE(NULLIF(TRIM(currency), ''), 'GBP')
     `,
-    [shop, startMs, endMs]
+    [shop, startMs, endMs, startMs, endMs]
   );
 }
 
@@ -1404,8 +1413,6 @@ async function readLtvAllTime(shop) {
         FROM orders_shopify
         WHERE shop = ?
           AND ${isPaidOrderWhereClause('')}
-          AND checkout_token IS NOT NULL
-          AND TRIM(checkout_token) != ''
           AND customer_id IS NOT NULL
           AND TRIM(customer_id) != ''
         GROUP BY COALESCE(NULLIF(TRIM(currency), ''), 'GBP')
@@ -1418,8 +1425,6 @@ async function readLtvAllTime(shop) {
         FROM orders_shopify
         WHERE shop = ?
           AND ${isPaidOrderWhereClause('')}
-          AND checkout_token IS NOT NULL
-          AND TRIM(checkout_token) != ''
           AND customer_id IS NOT NULL
           AND TRIM(customer_id) != ''
       `,
@@ -1442,12 +1447,10 @@ async function readLtvForCohortRange(shop, startUtc, endUtc) {
       `
         SELECT COUNT(*) AS n
         FROM (
-          SELECT customer_id, MIN(created_at) AS first_paid_at
+          SELECT customer_id, MIN(${orderSaleAtExpr('')}) AS first_paid_at
           FROM orders_shopify
           WHERE shop = ?
             AND ${isPaidOrderWhereClause('')}
-            AND checkout_token IS NOT NULL
-            AND TRIM(checkout_token) != ''
             AND customer_id IS NOT NULL
             AND TRIM(customer_id) != ''
           GROUP BY customer_id
@@ -1461,20 +1464,16 @@ async function readLtvForCohortRange(shop, startUtc, endUtc) {
         SELECT COALESCE(NULLIF(TRIM(o.currency), ''), 'GBP') AS currency, COALESCE(SUM(o.total_price), 0) AS total
         FROM orders_shopify o
         JOIN (
-          SELECT customer_id, MIN(created_at) AS first_paid_at
+          SELECT customer_id, MIN(${orderSaleAtExpr('')}) AS first_paid_at
           FROM orders_shopify
           WHERE shop = ?
             AND ${isPaidOrderWhereClause('')}
-            AND checkout_token IS NOT NULL
-            AND TRIM(checkout_token) != ''
             AND customer_id IS NOT NULL
             AND TRIM(customer_id) != ''
           GROUP BY customer_id
         ) c ON c.customer_id = o.customer_id
         WHERE o.shop = ?
           AND ${isPaidOrderWhereClause('o')}
-          AND o.checkout_token IS NOT NULL
-          AND TRIM(o.checkout_token) != ''
           AND c.first_paid_at >= ?
           AND c.first_paid_at < ?
         GROUP BY COALESCE(NULLIF(TRIM(o.currency), ''), 'GBP')
@@ -1511,13 +1510,11 @@ async function readOrderCountrySummary(shop, startMs, endMs) {
       SELECT COALESCE(NULLIF(TRIM(currency), ''), 'GBP') AS currency, total_price, raw_json
       FROM orders_shopify
       WHERE shop = ?
-        AND created_at >= ? AND created_at < ?
+        AND ${orderSaleInBoundsWhereClause('')}
         AND ${isPaidOrderWhereClause('')}
-        AND checkout_token IS NOT NULL
-        AND TRIM(checkout_token) != ''
         AND total_price IS NOT NULL
     `,
-    [shop, startMs, endMs]
+    [shop, startMs, endMs, startMs, endMs]
   );
   if (!rows || !rows.length) return out;
 
@@ -1624,23 +1621,21 @@ async function readOrderCostSummary(shop, startMs, endMs, timeZone) {
   const db = getDb();
   const rows = await db.all(
     `
-      SELECT created_at, COALESCE(NULLIF(TRIM(currency), ''), 'GBP') AS currency, total_price, raw_json
+      SELECT ${orderSaleAtExpr('')} AS sale_at, COALESCE(NULLIF(TRIM(currency), ''), 'GBP') AS currency, total_price, raw_json
       FROM orders_shopify
       WHERE shop = ?
-        AND created_at >= ? AND created_at < ?
+        AND ${orderSaleInBoundsWhereClause('')}
         AND ${isPaidOrderWhereClause('')}
-        AND checkout_token IS NOT NULL
-        AND TRIM(checkout_token) != ''
         AND total_price IS NOT NULL
     `,
-    [shop, startMs, endMs]
+    [shop, startMs, endMs, startMs, endMs]
   );
   if (!rows || !rows.length) return out;
 
   const ratesToGbp = await fx.getRatesToGbp();
   const segMap = new Map();
   for (const row of rows) {
-    const createdAt = row && row.created_at != null ? Number(row.created_at) : NaN;
+    const saleAt = row && row.sale_at != null ? Number(row.sale_at) : NaN;
     const amount = row && row.total_price != null ? Number(row.total_price) : NaN;
     if (!Number.isFinite(amount)) continue;
     const currency = fx.normalizeCurrency(row && row.currency != null ? String(row.currency) : '') || 'GBP';
@@ -1660,7 +1655,7 @@ async function readOrderCostSummary(shop, startMs, endMs, timeZone) {
     const exclShipGbp = fx.convertToGbp(exclShipping, currency, ratesToGbp);
     if (!Number.isFinite(inclGbp) || !Number.isFinite(exclTaxGbp) || !Number.isFinite(exclShipGbp)) continue;
 
-    const ymd = ymdInTimeZone(createdAt, tz) || new Date(createdAt).toISOString().slice(0, 10);
+    const ymd = ymdInTimeZone(saleAt, tz) || new Date(saleAt).toISOString().slice(0, 10);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(ymd)) continue;
 
     out.revenueGbp += inclGbp;
@@ -2213,19 +2208,17 @@ function fromMap(container, key) {
   return toNumber(container[key]);
 }
 
-async function readCheckoutOrderBounds(shop, timeZone) {
+async function readTruthOrderBounds(shop, timeZone) {
   if (!shop) return { minYear: SNAPSHOT_MIN_YEAR, maxYear: SNAPSHOT_MIN_YEAR, maxYmd: null };
   try {
     const db = getDb();
     const row = await db.get(
       `
-        SELECT MIN(created_at) AS min_ts, MAX(created_at) AS max_ts
+        SELECT MIN(${orderSaleAtExpr('')}) AS min_ts, MAX(${orderSaleAtExpr('')}) AS max_ts
         FROM orders_shopify
         WHERE shop = ?
-          AND created_at IS NOT NULL
+          AND ${orderSaleAtExpr('')} IS NOT NULL
           AND ${isPaidOrderWhereClause('')}
-          AND checkout_token IS NOT NULL
-          AND TRIM(checkout_token) != ''
       `,
       [shop]
     );
@@ -2405,27 +2398,25 @@ function downsampleWeekly({ labelsYmd, revenueGbp, costGbp, orders, sessions, co
   };
 }
 
-async function readCheckoutOrdersTimeseries(shop, startMs, endMs, timeZone) {
+async function readTruthOrdersTimeseries(shop, startMs, endMs, timeZone) {
   const out = new Map(); // ymd -> { orders, revenueGbp, taxGbp }
   if (!shop) return out;
   const db = getDb();
   const rows = await db.all(
     `
-      SELECT created_at, COALESCE(NULLIF(TRIM(currency), ''), 'GBP') AS currency, total_price, total_tax
+      SELECT ${orderSaleAtExpr('')} AS sale_at, COALESCE(NULLIF(TRIM(currency), ''), 'GBP') AS currency, total_price, total_tax
       FROM orders_shopify
       WHERE shop = ?
-        AND created_at >= ? AND created_at < ?
+        AND ${orderSaleInBoundsWhereClause('')}
         AND ${isPaidOrderWhereClause('')}
-        AND checkout_token IS NOT NULL
-        AND TRIM(checkout_token) != ''
         AND total_price IS NOT NULL
     `,
-    [shop, startMs, endMs]
+    [shop, startMs, endMs, startMs, endMs]
   );
   if (!rows || !rows.length) return out;
   const ratesToGbp = await fx.getRatesToGbp();
   for (const row of rows) {
-    const ts = row && row.created_at != null ? Number(row.created_at) : NaN;
+    const ts = row && row.sale_at != null ? Number(row.sale_at) : NaN;
     if (!Number.isFinite(ts)) continue;
     const ymd = ymdInTimeZone(ts, timeZone);
     if (!ymd) continue;
@@ -2447,7 +2438,7 @@ async function readCheckoutOrdersTimeseries(shop, startMs, endMs, timeZone) {
   return out;
 }
 
-async function readTruthCheckoutTaxTotalGbp(shop, startMs, endMs) {
+async function readTruthTaxTotalGbp(shop, startMs, endMs) {
   if (!shop) return 0;
   const db = getDb();
   const rows = await db.all(
@@ -2455,13 +2446,11 @@ async function readTruthCheckoutTaxTotalGbp(shop, startMs, endMs) {
       SELECT COALESCE(NULLIF(TRIM(currency), ''), 'GBP') AS currency, total_tax
       FROM orders_shopify
       WHERE shop = ?
-        AND created_at >= ? AND created_at < ?
+        AND ${orderSaleInBoundsWhereClause('')}
         AND ${isPaidOrderWhereClause('')}
-        AND checkout_token IS NOT NULL
-        AND TRIM(checkout_token) != ''
         AND total_tax IS NOT NULL
     `,
-    [shop, startMs, endMs]
+    [shop, startMs, endMs, startMs, endMs]
   );
   if (!rows || !rows.length) return 0;
   const ratesToGbp = await fx.getRatesToGbp();
@@ -2477,21 +2466,19 @@ async function readTruthCheckoutTaxTotalGbp(shop, startMs, endMs) {
   return round2(total) || 0;
 }
 
-async function readTruthCheckoutTaxAuditGbp(shop, startMs, endMs) {
+async function readTruthTaxAuditGbp(shop, startMs, endMs) {
   if (!shop) return { totalGbp: 0, rows: [] };
   const db = getDb();
   const rows = await db.all(
     `
-      SELECT order_id, created_at, COALESCE(NULLIF(TRIM(currency), ''), 'GBP') AS currency, total_tax
+      SELECT order_id, ${orderSaleAtExpr('')} AS sale_at, COALESCE(NULLIF(TRIM(currency), ''), 'GBP') AS currency, total_tax
       FROM orders_shopify
       WHERE shop = ?
-        AND created_at >= ? AND created_at < ?
+        AND ${orderSaleInBoundsWhereClause('')}
         AND ${isPaidOrderWhereClause('')}
-        AND checkout_token IS NOT NULL
-        AND TRIM(checkout_token) != ''
         AND total_tax IS NOT NULL
     `,
-    [shop, startMs, endMs]
+    [shop, startMs, endMs, startMs, endMs]
   );
   if (!rows || !rows.length) return { totalGbp: 0, rows: [] };
   const ratesToGbp = await fx.getRatesToGbp();
@@ -2499,7 +2486,7 @@ async function readTruthCheckoutTaxAuditGbp(shop, startMs, endMs) {
   let total = 0;
   for (const row of rows) {
     const orderId = row && row.order_id != null ? String(row.order_id) : '';
-    const ts = row && row.created_at != null ? Number(row.created_at) : null;
+    const ts = row && row.sale_at != null ? Number(row.sale_at) : null;
     const amount = row && row.total_tax != null ? Number(row.total_tax) : NaN;
     const currency = fx.normalizeCurrency(row && row.currency != null ? String(row.currency) : '') || 'GBP';
     const fxRate = currency === 'GBP' ? 1 : (ratesToGbp && typeof ratesToGbp === 'object' ? ratesToGbp[currency] : null);
@@ -2540,7 +2527,7 @@ function listHourKeysForBounds(startMs, endMs, timeZone) {
   return out;
 }
 
-async function readCheckoutOrdersHourlyTimeseries(shop, startMs, endMs, timeZone) {
+async function readTruthOrdersHourlyTimeseries(shop, startMs, endMs, timeZone) {
   const labelsHour = listHourKeysForBounds(startMs, endMs, timeZone);
   const byHour = new Map();
   for (const key of labelsHour) byHour.set(key, { orders: 0, revenueGbp: 0 });
@@ -2548,21 +2535,19 @@ async function readCheckoutOrdersHourlyTimeseries(shop, startMs, endMs, timeZone
   const db = getDb();
   const rows = await db.all(
     `
-      SELECT created_at, COALESCE(NULLIF(TRIM(currency), ''), 'GBP') AS currency, total_price
+      SELECT ${orderSaleAtExpr('')} AS sale_at, COALESCE(NULLIF(TRIM(currency), ''), 'GBP') AS currency, total_price
       FROM orders_shopify
       WHERE shop = ?
-        AND created_at >= ? AND created_at < ?
+        AND ${orderSaleInBoundsWhereClause('')}
         AND ${isPaidOrderWhereClause('')}
-        AND checkout_token IS NOT NULL
-        AND TRIM(checkout_token) != ''
         AND total_price IS NOT NULL
     `,
-    [shop, startMs, endMs]
+    [shop, startMs, endMs, startMs, endMs]
   );
   if (!rows || !rows.length) return { labelsHour, byHour };
   const ratesToGbp = await fx.getRatesToGbp();
   for (const row of rows) {
-    const ts = row && row.created_at != null ? Number(row.created_at) : NaN;
+    const ts = row && row.sale_at != null ? Number(row.sale_at) : NaN;
     if (!Number.isFinite(ts)) continue;
     const key = hourKeyInTimeZone(ts, timeZone);
     if (!key) continue;
@@ -2638,31 +2623,32 @@ async function readCustomerTypeTimeseries(shop, startMs, endMs, timeZone) {
     rows = await db.all(
       `
         WITH paid AS (
-          SELECT customer_id, created_at, COALESCE(NULLIF(TRIM(order_id), ''), CAST(created_at AS TEXT)) AS order_key
+          SELECT
+            customer_id,
+            ${orderSaleAtExpr('')} AS sale_at,
+            COALESCE(NULLIF(TRIM(order_id), ''), CAST(${orderSaleAtExpr('')} AS TEXT)) AS order_key
           FROM orders_shopify
           WHERE shop = ?
-            AND created_at < ?
+            AND ${orderSaleBeforeWhereClause('')}
             AND ${isPaidOrderWhereClause('')}
-            AND checkout_token IS NOT NULL
-            AND TRIM(checkout_token) != ''
             AND customer_id IS NOT NULL
             AND TRIM(customer_id) != ''
         ),
         ranked AS (
           SELECT
             customer_id,
-            created_at,
+            sale_at,
             ROW_NUMBER() OVER (
               PARTITION BY customer_id
-              ORDER BY created_at ASC, order_key ASC
+              ORDER BY sale_at ASC, order_key ASC
             ) AS order_seq
           FROM paid
         )
-        SELECT customer_id, created_at, order_seq
+        SELECT customer_id, sale_at, order_seq
         FROM ranked
-        WHERE created_at >= ? AND created_at < ?
+        WHERE sale_at >= ? AND sale_at < ?
       `,
-      [shop, end, start, end]
+      [shop, end, end, start, end]
     );
   } catch (_) {
     return out;
@@ -2671,7 +2657,7 @@ async function readCustomerTypeTimeseries(shop, startMs, endMs, timeZone) {
 
   const daySets = new Map(); // ymd -> { newCustomers:Set, returningCustomers:Set }
   for (const row of rows) {
-    const ts = row && row.created_at != null ? Number(row.created_at) : NaN;
+    const ts = row && row.sale_at != null ? Number(row.sale_at) : NaN;
     const customerId = row && row.customer_id != null ? String(row.customer_id).trim() : '';
     const orderSeq = row && row.order_seq != null ? Number(row.order_seq) : NaN;
     if (!Number.isFinite(ts) || !customerId || !Number.isFinite(orderSeq)) continue;
@@ -2701,8 +2687,8 @@ async function getBusinessSnapshot(options = {}) {
   const nowYmd = ymdInTimeZone(nowMs, timeZone) || `${new Date(nowMs).getUTCFullYear()}-01-01`;
   const nowParts = parseYmdParts(nowYmd) || { year: SNAPSHOT_MIN_YEAR, month: 1, day: 1 };
 
-  const checkoutBounds = await readCheckoutOrderBounds(shop, timeZone);
-  const availableYears = buildAvailableYears(nowParts.year, checkoutBounds.minYear);
+  const truthBounds = await readTruthOrderBounds(shop, timeZone);
+  const availableYears = buildAvailableYears(nowParts.year, truthBounds.minYear);
   const availableMonths = buildAvailableMonths(nowParts.year, nowParts.month);
   const availableMonthOptions = availableMonths.map((value) => ({ value, label: monthLabel(value) }));
 
@@ -2969,12 +2955,12 @@ async function getBusinessSnapshot(options = {}) {
   ] = await Promise.all([
     shopifySessionsTimeseriesForBounds(bounds),
     shopifySessionsTimeseriesForBounds(compareBounds),
-    shop ? salesTruth.getTruthCheckoutSalesTotalGbp(shop, bounds.start, bounds.end) : Promise.resolve(0),
-    shop ? salesTruth.getTruthCheckoutOrderCount(shop, bounds.start, bounds.end) : Promise.resolve(0),
-    shop ? salesTruth.getTruthCheckoutSalesTotalGbp(shop, compareBounds.start, compareBounds.end) : Promise.resolve(null),
-    shop ? salesTruth.getTruthCheckoutOrderCount(shop, compareBounds.start, compareBounds.end) : Promise.resolve(null),
-    readCheckoutOrdersTimeseries(shop, bounds.start, bounds.end, timeZone).catch(() => new Map()),
-    readCheckoutOrdersTimeseries(shop, compareBounds.start, compareBounds.end, timeZone).catch(() => new Map()),
+    shop ? salesTruth.getTruthSalesTotalGbp(shop, bounds.start, bounds.end) : Promise.resolve(0),
+    shop ? salesTruth.getTruthOrderCount(shop, bounds.start, bounds.end) : Promise.resolve(0),
+    shop ? salesTruth.getTruthSalesTotalGbp(shop, compareBounds.start, compareBounds.end) : Promise.resolve(null),
+    shop ? salesTruth.getTruthOrderCount(shop, compareBounds.start, compareBounds.end) : Promise.resolve(null),
+    readTruthOrdersTimeseries(shop, bounds.start, bounds.end, timeZone).catch(() => new Map()),
+    readTruthOrdersTimeseries(shop, compareBounds.start, compareBounds.end, timeZone).catch(() => new Map()),
     readCustomerTypeTimeseries(shop, bounds.start, bounds.end, timeZone).catch(() => new Map()),
     readCustomerTypeTimeseries(shop, compareBounds.start, compareBounds.end, timeZone).catch(() => new Map()),
     readShopName(shop, token).catch(() => null),
@@ -3316,11 +3302,11 @@ async function getBusinessSnapshot(options = {}) {
 
   if (useHourlySeries) {
     const [hourlyNowRaw, hourlyPrevRaw] = await Promise.all([
-      readCheckoutOrdersHourlyTimeseries(shop, bounds.start, bounds.end, timeZone).catch(() => ({
+      readTruthOrdersHourlyTimeseries(shop, bounds.start, bounds.end, timeZone).catch(() => ({
         labelsHour: listHourKeysForBounds(bounds.start, bounds.end, timeZone),
         byHour: new Map(),
       })),
-      readCheckoutOrdersHourlyTimeseries(shop, compareBounds.start, compareBounds.end, timeZone).catch(() => ({
+      readTruthOrdersHourlyTimeseries(shop, compareBounds.start, compareBounds.end, timeZone).catch(() => ({
         labelsHour: listHourKeysForBounds(compareBounds.start, compareBounds.end, timeZone),
         byHour: new Map(),
       })),
@@ -3710,8 +3696,8 @@ async function getCostBreakdown({ rangeKey, audit } = {}) {
 
   const taxPromise = shop
     ? (auditEnabled
-      ? readTruthCheckoutTaxAuditGbp(shop, startTs, endTs).catch(() => ({ totalGbp: 0, rows: [] }))
-      : readTruthCheckoutTaxTotalGbp(shop, startTs, endTs).catch(() => 0))
+      ? readTruthTaxAuditGbp(shop, startTs, endTs).catch(() => ({ totalGbp: 0, rows: [] }))
+      : readTruthTaxTotalGbp(shop, startTs, endTs).catch(() => 0))
     : Promise.resolve(auditEnabled ? { totalGbp: 0, rows: [] } : 0);
 
   const [summary, cogsRaw, ads, shopifyCosts, taxAmountRaw] = await Promise.all([
@@ -4254,12 +4240,12 @@ async function getRevenueAndCostForGoogleAdsPostback(shop, startMs, endMs, deduc
 
   const needsSummary = !!(toggles.includeShipping || toggles.includeRules);
   const [revenueGbp, ads, shopifyCosts, taxGbp, summary, profitRules] = await Promise.all([
-    shop ? salesTruth.getTruthCheckoutSalesTotalGbp(shop, startMs, endMs) : 0,
+    shop ? salesTruth.getTruthSalesTotalGbp(shop, startMs, endMs) : 0,
     readGoogleAdsSpendDailyGbp(startMs, endMs, timeZone).catch(() => ({ totalGbp: 0 })),
     (shop && token) ? readShopifyBalanceCostsGbp(shop, token, startYmd, endYmd, timeZone).catch(() => ({
       paymentFeesTotalGbp: 0, appBillsTotalGbp: 0,
     })) : { paymentFeesTotalGbp: 0, appBillsTotalGbp: 0 },
-    shop ? readTruthCheckoutTaxTotalGbp(shop, startMs, endMs).catch(() => 0) : 0,
+    shop ? readTruthTaxTotalGbp(shop, startMs, endMs).catch(() => 0) : 0,
     needsSummary && shop ? readOrderCostSummary(shop, startMs, endMs, timeZone).catch(() => null) : null,
     readProfitRulesConfig().catch(() => null),
   ]);
