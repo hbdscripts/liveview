@@ -909,6 +909,7 @@ const { up: up065 } = require('./migrations/065_user_permission_overrides');
 const { up: up066 } = require('./migrations/066_shop_oauth_identities');
 const { up: up067 } = require('./migrations/067_affiliate_attribution_ip_prefix');
 const { up: up068 } = require('./migrations/068_catalog_products');
+const { up: up069 } = require('./migrations/069_daily_rollups');
 const backup = require('./backup');
 const dataPaths = require('./dataPaths');
 const { writeAudit } = require('./audit');
@@ -983,6 +984,7 @@ const APP_MIGRATIONS = [
   ['066_shop_oauth_identities', up066],
   ['067_affiliate_attribution_ip_prefix', up067],
   ['068_catalog_products', up068],
+  ['069_daily_rollups', up069],
 ];
 
 async function ensureAppMigrationsTable(db) {
@@ -1119,6 +1121,8 @@ async function migrateAndStart() {
     // Daily backups (fail-open). Retain last 7.
     (function scheduleDailyBackups() {
       if (config.disableScheduledBackups) return;
+      // Postgres backup tables are disabled by default (Railway volumes can fill quickly).
+      if (config.dbUrl && !config.enablePostgresBackupTables) return;
       const DAY_MS = 24 * 60 * 60 * 1000;
       const TABLES = ['orders_shopify', 'purchases', 'purchase_events', 'sessions'];
       async function runOnce() {

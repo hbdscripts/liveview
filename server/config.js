@@ -192,6 +192,8 @@ const config = {
   disableScheduledBackups: getBool('DISABLE_SCHEDULED_BACKUPS', false),
   disableScheduledAdsSync: getBool('DISABLE_SCHEDULED_ADS_SYNC', false),
   disableScheduledPostback: getBool('DISABLE_SCHEDULED_POSTBACK', false),
+  /** Postgres-only: when true, allow in-DB "backup tables" (CREATE TABLE ... AS SELECT). Default OFF to prevent volume growth on Railway. */
+  enablePostgresBackupTables: getBool('ENABLE_POSTGRES_BACKUP_TABLES', false),
   /** Sales truth reconcile cadence for "today" (seconds). 60–120 recommended. */
   salesTruthReconcileMinIntervalSeconds: getInt('SALES_TRUTH_RECONCILE_MIN_INTERVAL_SECONDS', 90),
   /** Debug perf: when 1, dashboard-series can send timing to external ingest. */

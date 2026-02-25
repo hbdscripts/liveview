@@ -160,6 +160,12 @@ async function prunePostgresBackupTables({ tables, label, keep = 7 } = {}) {
  */
 async function backup({ label = 'pre', tables = null, retention = null } = {}) {
   if (isPostgres()) {
+    if (!config.enablePostgresBackupTables) {
+      // Default OFF (Railway): backup tables grow disk usage quickly.
+      // Callers should treat this as "no backup available" and fail-open.
+      const requested = Array.isArray(tables) && tables.length ? tables : ['purchases', 'sessions', 'events', 'shop_sessions'];
+      return { engine: 'postgres', label, backups: [], pruned: null, ts: timestampUtc(), skipped: true, reason: 'disabled', tables: requested };
+    }
     const requested = Array.isArray(tables) && tables.length ? tables : ['purchases', 'sessions', 'events', 'shop_sessions'];
     const out = [];
     for (const t of requested) {

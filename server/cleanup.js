@@ -7,6 +7,9 @@ const { getDb } = require('./db');
 const config = require('./config');
 const backup = require('./backup');
 const { writeAudit } = require('./audit');
+const retentionPolicy = require('./retentionPolicy');
+const dailyRollupsService = require('./dailyRollupsService');
+const store = require('./store');
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const GROWTH_RETENTION_SETTING_KEY = 'growth_retention_last_run';
@@ -208,14 +211,64 @@ async function run() {
 async function runOnce() {
   const db = getDb();
   const now = Date.now();
-  const retentionMs = config.sessionRetentionDays * 24 * 60 * 60 * 1000;
-  const retentionCutoff = now - retentionMs;
+  const effectiveTier = await retentionPolicy.getEffectiveRetentionTier(config);
+  const limits = retentionPolicy.getTierLimits(effectiveTier);
+  const drilldownRetentionMs = limits.drilldownRetentionDays * DAY_MS;
+  const chartsRetentionMs = limits.chartsRetentionDays * DAY_MS;
+  const drilldownCutoff = now - drilldownRetentionMs;
+  const chartsCutoff = now - chartsRetentionMs;
+  let safeDeleteCutoff = drilldownCutoff;
   const abandonedRetentionMs = config.abandonedRetentionHours * 60 * 60 * 1000;
   const abandonedCutoff = now - abandonedRetentionMs;
 
   // Mark abandonment (fail-open; cleanup must keep running).
   try {
     await markAbandonedSessions(db, now);
+  } catch (_) {}
+
+  // Ensure rollups exist for days that are about to lose raw drilldowns but must remain chartable.
+  // Fail-safe: if rollups are incomplete, do NOT delete within the charts retention window.
+  try {
+    if (limits.chartsRetentionDays > limits.drilldownRetentionDays) {
+      const timeZone = store.resolveAdminTimeZone();
+      const rollupBounds = { start: Math.max(0, chartsCutoff), end: Math.max(0, drilldownCutoff) };
+      if (Number.isFinite(rollupBounds.start) && Number.isFinite(rollupBounds.end) && rollupBounds.end > rollupBounds.start) {
+        const trafficModes = ['human_only', 'human_safe'];
+        for (const tm of trafficModes) {
+          // Backfill oldest missing first in small chunks so we never stall cleanup for long.
+          await dailyRollupsService.ensureDailyRollupsForBounds(rollupBounds, tm, {
+            timeZone,
+            maxDays: 30,
+            onlyMissing: true,
+            direction: 'oldest',
+          });
+        }
+
+        // Gating: only prune down to drilldownCutoff once rollups cover the whole window.
+        let ymds = [];
+        try { ymds = store.listYmdsInBounds(rollupBounds, timeZone); } catch (_) { ymds = []; }
+        if (!Array.isArray(ymds) || ymds.length === 0) {
+          // Fail-safe: if we can't determine the required day set, do not prune into the charts window.
+          safeDeleteCutoff = chartsCutoff;
+        } else {
+          const expectedDays = ymds.length;
+          const ymdStart = ymds[0];
+          const ymdEnd = ymds[expectedDays - 1];
+          let complete = true;
+          for (const tm of trafficModes) {
+            const row = await db.get(
+              'SELECT COUNT(*) AS n FROM daily_rollups WHERE traffic_mode = ? AND ymd >= ? AND ymd <= ?',
+              [tm, ymdStart, ymdEnd]
+            );
+            const have = row && row.n != null ? Number(row.n) || 0 : 0;
+            if (have < expectedDays) { complete = false; break; }
+          }
+          if (!complete) {
+            safeDeleteCutoff = chartsCutoff;
+          }
+        }
+      }
+    }
   } catch (_) {}
 
   // Delete only when BOTH last_seen and started_at are older than retention; except abandoned within retention
@@ -226,12 +279,12 @@ async function runOnce() {
         WHERE last_seen < $1 AND started_at < $1
         AND (is_abandoned = 0 OR abandoned_at IS NULL OR abandoned_at < $2)
       )
-    `, [retentionCutoff, abandonedCutoff]);
+    `, [safeDeleteCutoff, abandonedCutoff]);
     await db.run(`
       DELETE FROM sessions
       WHERE last_seen < $1 AND started_at < $1
       AND (is_abandoned = 0 OR abandoned_at IS NULL OR abandoned_at < $2)
-    `, [retentionCutoff, abandonedCutoff]);
+    `, [safeDeleteCutoff, abandonedCutoff]);
   } else {
     await db.run(`
       DELETE FROM events WHERE session_id IN (
@@ -239,12 +292,12 @@ async function runOnce() {
         WHERE last_seen < ? AND started_at < ?
         AND (is_abandoned = 0 OR abandoned_at IS NULL OR abandoned_at < ?)
       )
-    `, [retentionCutoff, retentionCutoff, abandonedCutoff]);
+    `, [safeDeleteCutoff, safeDeleteCutoff, abandonedCutoff]);
     await db.run(`
       DELETE FROM sessions
       WHERE last_seen < ? AND started_at < ?
       AND (is_abandoned = 0 OR abandoned_at IS NULL OR abandoned_at < ?)
-    `, [retentionCutoff, retentionCutoff, abandonedCutoff]);
+    `, [safeDeleteCutoff, safeDeleteCutoff, abandonedCutoff]);
   }
 
   const maxEvents = parseInt(String(config.maxEventsPerSession), 10);
@@ -282,6 +335,15 @@ async function runOnce() {
 
   try {
     await pruneGrowthTables(db, now);
+  } catch (_) {}
+
+  // Prune rollups beyond charts retention (rollups are the long-term store for charts/KPIs).
+  try {
+    const timeZone = store.resolveAdminTimeZone();
+    const cutoffYmd = dailyRollupsService.ymdInTimeZone(Math.max(0, chartsCutoff), timeZone);
+    if (cutoffYmd) {
+      await db.run('DELETE FROM daily_rollups WHERE ymd < ?', [cutoffYmd]);
+    }
   } catch (_) {}
 }
 

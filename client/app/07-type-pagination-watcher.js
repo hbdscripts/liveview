@@ -2928,6 +2928,19 @@
 
       // Apply user-configured labels/visibility for the standard date ranges.
       try { applyDateRangeUiConfigToSelect(sel); } catch (_) {}
+      // Apply plan retention limits (disable/hide ranges beyond charts retention).
+      try { applyRetentionLimitsToDateSelect(); } catch (_) {}
+
+      // If we somehow landed on a now-disabled option, snap back to Today.
+      try {
+        const opt = sel.options && sel.selectedIndex >= 0 ? sel.options[sel.selectedIndex] : null;
+        if (opt && opt.disabled) {
+          dateRange = 'today';
+          customRangeStartYmd = null;
+          customRangeEndYmd = null;
+          sel.value = 'today';
+        }
+      } catch (_) {}
 
       updateLiveViewTitle();
       updateRowsPerPageVisibility();
@@ -2966,11 +2979,53 @@
       syncHeaderDateMenuAvailability();
     }
 
-    // Custom date calendar (last 30 days, disabled if no data)
+    // Custom date calendar (plan-capped, disabled if no data)
     let availableDaysMemo = null;
     let availableDaysMemoAt = 0;
     let availableDaysInflight = null;
     const AVAILABLE_DAYS_MEMO_TTL_MS = 60 * 1000;
+    let customRetentionLimits = { chartsRetentionDays: 30, drilldownRetentionDays: 30, tier: null };
+
+    function applyRetentionLimitsToDateSelect() {
+      const sel = document.getElementById('global-date-select');
+      if (!sel) return;
+      const maxDays = (customRetentionLimits && typeof customRetentionLimits.chartsRetentionDays === 'number')
+        ? customRetentionLimits.chartsRetentionDays
+        : 30;
+      const ranges = [
+        { key: '7days', days: 7 },
+        { key: '14days', days: 14 },
+        { key: '30days', days: 30 },
+        { key: 'month', days: 30 }, // approx
+      ];
+      ranges.forEach(function(r) {
+        const opt = sel.querySelector('option[value="' + r.key + '"]');
+        if (!opt) return;
+        const ok = maxDays >= r.days;
+        opt.disabled = !ok;
+        try { opt.hidden = !ok; } catch (_) {}
+      });
+    }
+
+    function hydrateRetentionLimitsFromMe() {
+      try {
+        const me = window.__kexoMe || null;
+        const ret = me && me.retention && typeof me.retention === 'object' ? me.retention : null;
+        if (ret) {
+          const cd = parseInt(String(ret.chartsRetentionDays), 10);
+          const dd = parseInt(String(ret.drilldownRetentionDays), 10);
+          if (Number.isFinite(cd) && cd > 0) customRetentionLimits.chartsRetentionDays = cd;
+          if (Number.isFinite(dd) && dd > 0) customRetentionLimits.drilldownRetentionDays = dd;
+          if (ret.tier != null) customRetentionLimits.tier = String(ret.tier);
+        }
+      } catch (_) {}
+      try { applyRetentionLimitsToDateSelect(); } catch (_) {}
+      try { syncHeaderDateMenuAvailability(); } catch (_) {}
+    }
+    try {
+      if (window.__kexoMe && window.__kexoMe.retention) hydrateRetentionLimitsFromMe();
+      window.addEventListener('kexo:me-loaded', hydrateRetentionLimitsFromMe);
+    } catch (_) {}
 
     function fetchAvailableDays(days, opts = {}) {
       const force = !!opts.force;
@@ -2979,13 +3034,23 @@
         return Promise.resolve(availableDaysMemo);
       }
       if (!force && availableDaysInflight) return availableDaysInflight;
-      const url = API + '/api/available-days?days=' + encodeURIComponent(String(days || 30)) + (force ? ('&_=' + now) : '');
+      const mode = (opts && typeof opts.mode === 'string' && String(opts.mode).trim().toLowerCase() === 'drilldown') ? 'drilldown' : 'charts';
+      const url = API + '/api/available-days?mode=' + encodeURIComponent(mode) + '&days=' + encodeURIComponent(String(days || 30)) + (force ? ('&_=' + now) : '');
       const p = fetchWithTimeout(url, { credentials: 'same-origin', cache: force ? 'no-store' : 'default' }, 20000)
         .then((r) => (r && r.ok) ? r.json() : null)
         .then((data) => {
           if (data && data.ok) {
             availableDaysMemo = data;
             availableDaysMemoAt = Date.now();
+            if (data.limits && typeof data.limits === 'object') {
+              const cd = parseInt(String(data.limits.chartsRetentionDays), 10);
+              const dd = parseInt(String(data.limits.drilldownRetentionDays), 10);
+              if (Number.isFinite(cd) && cd > 0) customRetentionLimits.chartsRetentionDays = cd;
+              if (Number.isFinite(dd) && dd > 0) customRetentionLimits.drilldownRetentionDays = dd;
+              if (data.limits.tier != null) customRetentionLimits.tier = String(data.limits.tier);
+            }
+            try { applyRetentionLimitsToDateSelect(); } catch (_) {}
+            try { syncHeaderDateMenuAvailability(); } catch (_) {}
           }
           return data;
         })
@@ -3017,6 +3082,9 @@
 
       // Parse available days from API
       const data = payload && payload.ok ? payload : null;
+      const maxChartDays = customRetentionLimits && typeof customRetentionLimits.chartsRetentionDays === 'number'
+        ? customRetentionLimits.chartsRetentionDays
+        : 30;
       if (data && Array.isArray(data.days)) {
         availableDatesSet = new Set(
           data.days
@@ -3032,11 +3100,17 @@
       }
 
       // Initialize flatpickr
+      let minDate = MIN_YMD || '2025-02-01';
+      try {
+        if (data && Array.isArray(data.days) && data.days.length && data.days[data.days.length - 1] && data.days[data.days.length - 1].date) {
+          minDate = String(data.days[data.days.length - 1].date);
+        }
+      } catch (_) {}
       flatpickrInstance = flatpickr(input, {
         mode: 'range',
         dateFormat: 'Y-m-d',
         maxDate: 'today',
-        minDate: MIN_YMD || '2025-02-01',
+        minDate: minDate,
         disable: [
           function(date) {
             const y = date.getFullYear();
@@ -3067,17 +3141,18 @@
             const ymd1 = d1.getFullYear() + '-' + pad2(d1.getMonth() + 1) + '-' + pad2(d1.getDate());
             const ymd2 = d2.getFullYear() + '-' + pad2(d2.getMonth() + 1) + '-' + pad2(d2.getDate());
 
-            // Check 30-day limit
+            // Check plan chart retention limit (inclusive days)
             const diffMs = Math.abs(d2 - d1);
             const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-            if (diffDays > 30) {
+            const maxDiffDays = Math.max(0, maxChartDays - 1);
+            if (diffDays > maxDiffDays) {
               // Exceeded limit - reset
               flatpickrInstance.clear();
               pendingCustomRangeStartYmd = null;
               pendingCustomRangeEndYmd = null;
               updateCustomDateFooter();
               const summaryEl = document.getElementById('date-custom-summary');
-              if (summaryEl) summaryEl.textContent = 'Range exceeds 30 days. Please select a shorter period.';
+              if (summaryEl) summaryEl.textContent = 'Range exceeds ' + maxChartDays + ' days for your plan. Please select a shorter period.';
               return;
             }
 
@@ -3304,7 +3379,7 @@
       updateCustomDateFooter();
       input.placeholder = 'Loading...';
       input.disabled = true;
-      fetchAvailableDays(30).then((payload) => {
+      fetchAvailableDays(3650, { mode: 'charts' }).then((payload) => {
         customCalendarLastPayload = payload;
         initFlatpickrDatePicker(payload);
         input.placeholder = 'Select dates...';
@@ -3322,23 +3397,29 @@
       const clearBtn = document.getElementById('date-custom-clear');
       const applyBtn = document.getElementById('date-custom-apply');
       if (!summaryEl) return;
+      const hint = (function () {
+        const dd = customRetentionLimits && typeof customRetentionLimits.drilldownRetentionDays === 'number' ? customRetentionLimits.drilldownRetentionDays : null;
+        const cd = customRetentionLimits && typeof customRetentionLimits.chartsRetentionDays === 'number' ? customRetentionLimits.chartsRetentionDays : null;
+        if (!dd || !cd) return '';
+        return ' (Drilldowns limited to ' + dd + ' days · Charts up to ' + cd + ' days)';
+      })();
       const a = pendingCustomRangeStartYmd;
       const b = pendingCustomRangeEndYmd;
       if (!a) {
-        summaryEl.textContent = 'Select a start date.';
+        summaryEl.textContent = 'Select a start date.' + hint;
         if (clearBtn) clearBtn.disabled = true;
         if (applyBtn) applyBtn.disabled = true;
         return;
       }
       if (!b) {
-        summaryEl.textContent = 'Start: ' + formatYmdLabel(a) + '. Select an end date.';
+        summaryEl.textContent = 'Start: ' + formatYmdLabel(a) + '. Select an end date.' + hint;
         if (clearBtn) clearBtn.disabled = false;
         if (applyBtn) applyBtn.disabled = true;
         return;
       }
       const startYmd = a <= b ? a : b;
       const endYmd = a <= b ? b : a;
-      summaryEl.textContent = 'Selected: ' + (formatYmdRangeLabel(startYmd, endYmd) || (startYmd + ' \u2013 ' + endYmd));
+      summaryEl.textContent = 'Selected: ' + (formatYmdRangeLabel(startYmd, endYmd) || (startYmd + ' \u2013 ' + endYmd)) + hint;
       if (clearBtn) clearBtn.disabled = false;
       if (applyBtn) applyBtn.disabled = false;
     }

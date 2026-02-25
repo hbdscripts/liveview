@@ -1312,8 +1312,9 @@ async function reconcileRange(shop, startMs, endMs, scope = 'range') {
   // on large datasets, especially right after deploy restarts.
   try {
     const now = Date.now();
+    const backupsAllowed = !config.dbUrl || config.enablePostgresBackupTables;
     const due = !lastPreReconcileBackupAt || (now - lastPreReconcileBackupAt) > PRE_RECONCILE_BACKUP_TTL_MS;
-    if (due && !_preReconcileBackupInFlight) {
+    if (due && !_preReconcileBackupInFlight && backupsAllowed) {
       // Set at scheduling time so concurrent requests don't stampede.
       lastPreReconcileBackupAt = now;
       _preReconcileBackupInFlight = Promise.resolve()
@@ -1328,6 +1329,8 @@ async function reconcileRange(shop, startMs, endMs, scope = 'range') {
           _preReconcileBackupInFlight = null;
         });
     }
+    // If backups are disabled, still throttle this block so we don't re-check on every reconcile.
+    if (due && !backupsAllowed) lastPreReconcileBackupAt = now;
   } catch (_) {}
 
   const startIso = new Date(startMs).toISOString();

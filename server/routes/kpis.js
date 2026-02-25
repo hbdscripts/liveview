@@ -7,6 +7,8 @@ const store = require('../store');
 const reportCache = require('../reportCache');
 const { normalizeRangeKey } = require('../rangeKey');
 const businessSnapshotService = require('../businessSnapshotService');
+const config = require('../config');
+const retentionPolicy = require('../retentionPolicy');
 
 function ymdInTimeZone(ts, timeZone) {
   try {
@@ -54,6 +56,8 @@ async function getKpis(req, res) {
   const bounds = store.getRangeBounds(rangeKey, now, timeZone);
 
   try {
+    const effectiveTier = await retentionPolicy.getEffectiveRetentionTier(config);
+    const limits = retentionPolicy.getTierLimits(effectiveTier);
     const t0 = Date.now();
     const cached = await reportCache.getOrComputeJson(
       {
@@ -62,11 +66,11 @@ async function getKpis(req, res) {
         rangeKey,
         rangeStartTs: bounds.start,
         rangeEndTs: bounds.end,
-        params: { trafficMode, rangeKey },
+        params: { trafficMode, rangeKey, drilldownRetentionDays: limits.drilldownRetentionDays },
         ttlMs: 120 * 1000,
         force,
       },
-      async () => store.getKpis({ trafficMode, rangeKey, force })
+      async () => store.getKpis({ trafficMode, rangeKey, force, drilldownRetentionDays: limits.drilldownRetentionDays })
     );
     const totalMs = Date.now() - t0;
     if (timing || totalMs > 1200) {
