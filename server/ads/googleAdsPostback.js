@@ -347,7 +347,7 @@ async function enqueueEligibleOrders(shop, options = {}) {
           affected_goal: null,
           error_code: 'MISSING_CONVERSION_ACTION',
           error_message: 'No conversion actions are provisioned for Revenue, Profit, Add to Cart, or Begin Checkout uploads.',
-          suggested_fix: 'Go to Settings → Admin → Google Ads, open Conversion actions, and click “Provision Kexo actions”.',
+          suggested_fix: 'Go to Settings → Admin → Google Ads → Conversion actions, then create/provision the missing Kexo actions.',
           first_seen_at: Date.now(),
           last_seen_at: Date.now(),
         });
