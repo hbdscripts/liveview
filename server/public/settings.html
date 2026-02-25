@@ -1486,10 +1486,8 @@
                 <div id="settings-admin-accordion-googleads" class="accordion-collapse collapse" data-bs-parent="#settings-admin-accordion">
                   <div class="accordion-body">
             <div id="admin-panel-googleads">
-              <div class="card card-sm">
-                <div class="card-body">
-                  <div class="text-muted small">Changes here save immediately; there is no global Save button on this tab.</div>
-                </div>
+              <div class="card card-sm border-0 bg-transparent">
+                <div class="card-body p-0"></div>
               </div>
               <div class="accordion settings-accordion-mb-tight" id="settings-ga-inner-accordion">
                 <div class="accordion-item">
@@ -1587,31 +1585,9 @@
                           </div>
                           <div class="card-body">
                             <div class="text-muted small mb-2">Value uploaded: revenue minus selected costs.</div>
-                            <div class="settings-responsive-grid settings-ga-profit-deductions-grid mb-3">
-                              <label class="form-check form-switch settings-ga-deduction-item">
-                                <input class="form-check-input" type="checkbox" id="settings-ga-deduction-google-ads" />
-                                <span class="form-check-label">Google Ads spend</span>
-                              </label>
-                              <label class="form-check form-switch settings-ga-deduction-item">
-                                <input class="form-check-input" type="checkbox" id="settings-ga-deduction-payment-fees" />
-                                <span class="form-check-label">Transaction Fees</span>
-                              </label>
-                              <label class="form-check form-switch settings-ga-deduction-item">
-                                <input class="form-check-input" type="checkbox" id="settings-ga-deduction-tax" />
-                                <span class="form-check-label">Shopify Taxes</span>
-                              </label>
-                              <label class="form-check form-switch settings-ga-deduction-item">
-                                <input class="form-check-input" type="checkbox" id="settings-ga-deduction-app-bills" />
-                                <span class="form-check-label">Shopify app bills</span>
-                              </label>
-                              <label class="form-check form-switch settings-ga-deduction-item">
-                                <input class="form-check-input" type="checkbox" id="settings-ga-deduction-shipping" />
-                                <span class="form-check-label">Include shipping in cost</span>
-                              </label>
-                              <label class="form-check form-switch settings-ga-deduction-item">
-                                <input class="form-check-input" type="checkbox" id="settings-ga-deduction-rules" />
-                                <span class="form-check-label">Include custom rules in cost</span>
-                              </label>
+                            <div class="d-flex align-items-center gap-2 flex-wrap mb-3">
+                              <button type="button" class="btn btn-sm" id="settings-ga-profit-deductions-open">Configure cost deductions</button>
+                              <span class="text-muted small" id="settings-ga-profit-deductions-summary">Loading…</span>
                             </div>
                             <label class="form-check form-switch mb-2">
                               <input class="form-check-input" type="checkbox" id="settings-ga-cart-data-profit" />
@@ -1894,6 +1870,99 @@
                   <div class="modal-footer">
                     <button type="button" class="btn btn-sm" id="settings-ga-issue-modal-dismiss">Close</button>
                     <button type="button" class="btn btn-primary btn-sm" id="settings-ga-issue-modal-resolve">Resolve</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="modal modal-blur kexo-modal-hidden" id="settings-ga-profit-deductions-modal" tabindex="-1" aria-hidden="true">
+              <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" role="dialog">
+                <div class="modal-content">
+                  <div class="modal-header">
+                    <h5 class="modal-title">Profit cost deductions</h5>
+                    <button type="button" class="btn-close" id="settings-ga-profit-deductions-modal-close" aria-label="Close"></button>
+                  </div>
+                  <div class="modal-body">
+                    <div class="text-muted small mb-2">Controls which costs are subtracted from Revenue when uploading Profit conversions.</div>
+                    <div class="form-hint mb-3" id="settings-ga-profit-deductions-modal-msg"></div>
+
+                    <div class="fw-semibold mb-2">Cost sources</div>
+                    <div class="settings-responsive-grid settings-ga-profit-deductions-grid mb-4">
+                      <label class="form-check form-switch settings-ga-deduction-item">
+                        <input class="form-check-input" type="checkbox" id="settings-ga-deduction-google-ads" />
+                        <span class="form-check-label">Google Ads spend</span>
+                      </label>
+                      <label class="form-check form-switch settings-ga-deduction-item">
+                        <input class="form-check-input" type="checkbox" id="settings-ga-deduction-payment-fees" />
+                        <span class="form-check-label">Transaction Fees</span>
+                      </label>
+                      <label class="form-check form-switch settings-ga-deduction-item">
+                        <input class="form-check-input" type="checkbox" id="settings-ga-deduction-tax" />
+                        <span class="form-check-label">Shopify Taxes</span>
+                      </label>
+                      <label class="form-check form-switch settings-ga-deduction-item">
+                        <input class="form-check-input" type="checkbox" id="settings-ga-deduction-app-bills" />
+                        <span class="form-check-label">Shopify app bills</span>
+                      </label>
+                      <label class="form-check form-switch settings-ga-deduction-item">
+                        <input class="form-check-input" type="checkbox" id="settings-ga-deduction-shipping" />
+                        <span class="form-check-label">Include shipping in cost</span>
+                      </label>
+                    </div>
+
+                    <div class="fw-semibold mb-2">Rule-based costs</div>
+                    <div class="text-muted small mb-2">Lists auto-populate from Cost settings. These toggles only affect Google Ads Profit uploads.</div>
+
+                    <div class="card card-sm mb-2">
+                      <div class="card-body">
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                          <label class="form-check form-switch mb-0">
+                            <input class="form-check-input" type="checkbox" id="settings-ga-deduction-per-order-rules-enabled" />
+                            <span class="form-check-label">Per-order rules</span>
+                          </label>
+                          <span class="text-muted small" id="settings-ga-deduction-per-order-rules-count">Loading…</span>
+                        </div>
+                        <div class="mt-2" id="settings-ga-deduction-per-order-rules-list"></div>
+                      </div>
+                    </div>
+
+                    <div class="card card-sm mb-2">
+                      <div class="card-body">
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                          <label class="form-check form-switch mb-0">
+                            <input class="form-check-input" type="checkbox" id="settings-ga-deduction-overheads-enabled" />
+                            <span class="form-check-label">Overheads</span>
+                          </label>
+                          <span class="text-muted small" id="settings-ga-deduction-overheads-count">Loading…</span>
+                        </div>
+                        <div class="mt-2" id="settings-ga-deduction-overheads-list"></div>
+                      </div>
+                    </div>
+
+                    <div class="card card-sm mb-4">
+                      <div class="card-body">
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                          <label class="form-check form-switch mb-0">
+                            <input class="form-check-input" type="checkbox" id="settings-ga-deduction-fixed-costs-enabled" />
+                            <span class="form-check-label">Fixed costs</span>
+                          </label>
+                          <span class="text-muted small" id="settings-ga-deduction-fixed-costs-count">Loading…</span>
+                        </div>
+                        <div class="mt-2" id="settings-ga-deduction-fixed-costs-list"></div>
+                      </div>
+                    </div>
+
+                    <div class="fw-semibold mb-2">Click ID preview</div>
+                    <div class="text-muted small mb-2">Enter a gclid/gbraid/wbraid to preview the Profit value and payload that would be uploaded with the current toggles.</div>
+                    <div class="d-flex align-items-center gap-2 flex-wrap mb-2">
+                      <input type="text" class="form-control form-control-sm" id="settings-ga-profit-preview-clickid" placeholder="gclid / gbraid / wbraid" autocomplete="off" />
+                      <button type="button" class="btn btn-primary btn-sm" id="settings-ga-profit-preview-btn">Preview</button>
+                    </div>
+                    <div class="form-hint mb-2" id="settings-ga-profit-preview-msg"></div>
+                    <pre class="dm-json-pre small mb-0 text-muted d-none" id="settings-ga-profit-preview-output"></pre>
+                  </div>
+                  <div class="modal-footer">
+                    <button type="button" class="btn btn-sm" id="settings-ga-profit-deductions-modal-dismiss">Close</button>
                   </div>
                 </div>
               </div>

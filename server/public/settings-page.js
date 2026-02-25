@@ -2338,6 +2338,40 @@
     try { document.body.classList.add('modal-open'); } catch (_) {}
   }
 
+  var gaProfitDeductionsModalBackdropEl = null;
+  function ensureGaProfitDeductionsModalBackdrop() {
+    if (gaProfitDeductionsModalBackdropEl && gaProfitDeductionsModalBackdropEl.parentNode) return;
+    var el = document.createElement('div');
+    el.className = 'modal-backdrop fade show';
+    document.body.appendChild(el);
+    gaProfitDeductionsModalBackdropEl = el;
+  }
+
+  function closeGaProfitDeductionsModal() {
+    var modal = document.getElementById('settings-ga-profit-deductions-modal');
+    if (!modal) return;
+    modal.classList.remove('show');
+    modal.classList.add('kexo-modal-hidden');
+    modal.style.display = 'none';
+    modal.setAttribute('aria-hidden', 'true');
+    try { document.body.classList.remove('modal-open'); } catch (_) {}
+    if (gaProfitDeductionsModalBackdropEl && gaProfitDeductionsModalBackdropEl.parentNode) {
+      gaProfitDeductionsModalBackdropEl.parentNode.removeChild(gaProfitDeductionsModalBackdropEl);
+    }
+    gaProfitDeductionsModalBackdropEl = null;
+  }
+
+  function openGaProfitDeductionsModal() {
+    var modal = document.getElementById('settings-ga-profit-deductions-modal');
+    if (!modal) return;
+    ensureGaProfitDeductionsModalBackdrop();
+    modal.style.display = 'block';
+    modal.classList.remove('kexo-modal-hidden');
+    modal.classList.add('show');
+    modal.setAttribute('aria-hidden', 'false');
+    try { document.body.classList.add('modal-open'); } catch (_) {}
+  }
+
   function wireGoogleAdsSettingsUi() {
     var root = document.documentElement;
     if (root && root.getAttribute('data-kexo-ga-settings-wired') === '1') return;
@@ -2353,6 +2387,25 @@
     var issuesRefreshBtn = document.getElementById('settings-ga-issues-refresh-btn');
     var goalsRefreshBtn = document.getElementById('settings-ga-goals-refresh-btn');
     var actionsRefreshBtn = document.getElementById('settings-ga-actions-refresh-btn');
+
+    var profitDeductionsOpenBtn = document.getElementById('settings-ga-profit-deductions-open');
+    var profitDeductionsSummaryEl = document.getElementById('settings-ga-profit-deductions-summary');
+    var profitDeductionsModalMsgEl = document.getElementById('settings-ga-profit-deductions-modal-msg');
+    var profitDeductionsModalCloseBtn = document.getElementById('settings-ga-profit-deductions-modal-close');
+    var profitDeductionsModalDismissBtn = document.getElementById('settings-ga-profit-deductions-modal-dismiss');
+    var perOrderRulesEnabledEl = document.getElementById('settings-ga-deduction-per-order-rules-enabled');
+    var overheadsEnabledEl = document.getElementById('settings-ga-deduction-overheads-enabled');
+    var fixedCostsEnabledEl = document.getElementById('settings-ga-deduction-fixed-costs-enabled');
+    var perOrderRulesListEl = document.getElementById('settings-ga-deduction-per-order-rules-list');
+    var overheadsListEl = document.getElementById('settings-ga-deduction-overheads-list');
+    var fixedCostsListEl = document.getElementById('settings-ga-deduction-fixed-costs-list');
+    var perOrderRulesCountEl = document.getElementById('settings-ga-deduction-per-order-rules-count');
+    var overheadsCountEl = document.getElementById('settings-ga-deduction-overheads-count');
+    var fixedCostsCountEl = document.getElementById('settings-ga-deduction-fixed-costs-count');
+    var profitPreviewClickIdEl = document.getElementById('settings-ga-profit-preview-clickid');
+    var profitPreviewBtn = document.getElementById('settings-ga-profit-preview-btn');
+    var profitPreviewMsgEl = document.getElementById('settings-ga-profit-preview-msg');
+    var profitPreviewOutputEl = document.getElementById('settings-ga-profit-preview-output');
 
     var profitSaveBtn = document.getElementById('settings-ga-profit-save-btn');
     var profitMsgEl = document.getElementById('settings-ga-profit-msg');
@@ -2482,15 +2535,172 @@
       return (success / denom) * 100;
     }
 
-    function readProfitDeductionsDraft() {
-      var deductions = {
-        includeGoogleAdsSpend: !!document.getElementById('settings-ga-deduction-google-ads') && document.getElementById('settings-ga-deduction-google-ads').checked,
-        includePaymentFees: !!document.getElementById('settings-ga-deduction-payment-fees') && document.getElementById('settings-ga-deduction-payment-fees').checked,
-        includeShopifyTaxes: !!document.getElementById('settings-ga-deduction-tax') && document.getElementById('settings-ga-deduction-tax').checked,
-        includeShopifyAppBills: !!document.getElementById('settings-ga-deduction-app-bills') && document.getElementById('settings-ga-deduction-app-bills').checked,
-        includeShipping: !!document.getElementById('settings-ga-deduction-shipping') && document.getElementById('settings-ga-deduction-shipping').checked,
-        includeRules: !!document.getElementById('settings-ga-deduction-rules') && document.getElementById('settings-ga-deduction-rules').checked,
+    function normIdList(raw) {
+      var list = Array.isArray(raw) ? raw : [];
+      var out = [];
+      var seen = {};
+      for (var i = 0; i < list.length; i += 1) {
+        var v = list[i] != null ? String(list[i]).trim() : '';
+        if (!v) continue;
+        if (v.length > 64) v = v.slice(0, 64);
+        if (seen[v]) continue;
+        seen[v] = true;
+        out.push(v);
+        if (out.length >= 500) break;
+      }
+      return out;
+    }
+
+    function normalizeProfitDeductions(raw) {
+      var d = raw && typeof raw === 'object' ? raw : {};
+      var hasNew =
+        typeof d.includePerOrderRules === 'boolean' ||
+        typeof d.includeOverheads === 'boolean' ||
+        typeof d.includeFixedCosts === 'boolean' ||
+        Array.isArray(d.excludedPerOrderRuleIds) ||
+        Array.isArray(d.excludedOverheadIds) ||
+        Array.isArray(d.excludedFixedCostIds);
+      var legacyRules = d.includeRules === true;
+      return {
+        includeGoogleAdsSpend: d.includeGoogleAdsSpend === true,
+        includePaymentFees: d.includePaymentFees === true,
+        includeShopifyTaxes: d.includeShopifyTaxes === true,
+        includeShopifyAppBills: d.includeShopifyAppBills === true,
+        includeShipping: d.includeShipping === true,
+        includePerOrderRules: d.includePerOrderRules === true || (!hasNew && legacyRules),
+        includeOverheads: d.includeOverheads === true || (!hasNew && legacyRules),
+        includeFixedCosts: d.includeFixedCosts === true || (!hasNew && legacyRules),
+        excludedPerOrderRuleIds: normIdList(d.excludedPerOrderRuleIds || d.perOrderRuleExclusions),
+        excludedOverheadIds: normIdList(d.excludedOverheadIds || d.overheadExclusions),
+        excludedFixedCostIds: normIdList(d.excludedFixedCostIds || d.fixedCostExclusions),
       };
+    }
+
+    var profitDeductionsState = normalizeProfitDeductions(null);
+    var profitDeductionsStats = { per_order_rules: null, overheads: null, fixed_costs: null };
+
+    function setProfitDeductionsModalHint(text, ok) {
+      setHint(profitDeductionsModalMsgEl, text, ok);
+    }
+    function setProfitPreviewHint(text, ok) {
+      setHint(profitPreviewMsgEl, text, ok);
+    }
+
+    function describeRule(kind, item) {
+      var r = item && typeof item === 'object' ? item : {};
+      if (kind === 'per_order_rule') {
+        var k = r.kind != null ? String(r.kind) : (r.type != null ? String(r.type) : '');
+        var v = (r.value != null && isFinite(Number(r.value))) ? String(Number(r.value)) : '';
+        if (k && v) return k + ' (' + v + ')';
+        if (k) return k;
+        return '';
+      }
+      if (kind === 'overhead') {
+        var amt = (r.amount != null && isFinite(Number(r.amount))) ? String(Number(r.amount)) : '';
+        var freq = r.frequency != null ? String(r.frequency) : '';
+        if (amt && freq) return amt + ' / ' + freq;
+        if (amt) return amt;
+        return '';
+      }
+      if (kind === 'fixed_cost') {
+        var perDay = (r.amount_per_day != null && isFinite(Number(r.amount_per_day))) ? String(Math.round(Number(r.amount_per_day) * 100) / 100) : '';
+        if (perDay) return perDay + ' / day';
+        return '';
+      }
+      return '';
+    }
+
+    function renderProfitDeductionsSummary() {
+      if (!profitDeductionsSummaryEl) return;
+      var s = profitDeductionsState || normalizeProfitDeductions(null);
+      var parts = [];
+      if (s.includeGoogleAdsSpend) parts.push('Ads spend');
+      if (s.includePaymentFees) parts.push('Transaction fees');
+      if (s.includeShopifyTaxes) parts.push('Taxes');
+      if (s.includeShopifyAppBills) parts.push('App bills');
+      if (s.includeShipping) parts.push('Shipping');
+      if (s.includePerOrderRules || s.includeOverheads || s.includeFixedCosts) parts.push('Rule-based costs');
+      profitDeductionsSummaryEl.textContent = parts.length ? parts.join(', ') : 'No deductions selected';
+    }
+
+    function renderProfitDeductionsList(kind, items, excludedIds, enabled, listEl, countEl) {
+      if (!listEl) return;
+      var list = Array.isArray(items) ? items : [];
+      var ex = {};
+      (excludedIds || []).forEach(function (id) { ex[String(id)] = true; });
+      var total = 0;
+      var disabled = 0;
+      var included = 0;
+      var html = '';
+      if (!list.length) {
+        html = '<div class="text-muted small">No items found.</div>';
+      } else {
+        html = '<div class="settings-responsive-grid settings-ga-profit-deductions-grid">';
+        list.slice(0, 200).forEach(function (it) {
+          if (!it) return;
+          total += 1;
+          var id = it.id != null ? String(it.id).trim() : '';
+          if (!id) return;
+          var name = it.name != null ? String(it.name).trim() : id;
+          var isEnabled = it.enabled !== false;
+          if (!isEnabled) disabled += 1;
+          var excluded = !!ex[id];
+          var checked = isEnabled && !excluded;
+          if (checked) included += 1;
+          var details = describeRule(kind, it);
+          html +=
+            '<label class="form-check form-switch settings-ga-deduction-item">' +
+            '<input class="form-check-input" type="checkbox" data-ga-deduction-kind="' + escapeHtml(kind) + '" data-ga-deduction-id="' + escapeHtml(id) + '"' +
+            (checked ? ' checked' : '') +
+            (!isEnabled ? ' disabled' : '') +
+            ' />' +
+            '<span class="form-check-label">' + escapeHtml(name) +
+            (details ? (' <span class="text-muted small">(' + escapeHtml(details) + ')</span>') : '') +
+            (!isEnabled ? ' <span class="text-muted small">(disabled)</span>' : '') +
+            '</span>' +
+            '</label>';
+        });
+        html += '</div>';
+      }
+      listEl.innerHTML = html;
+      if (countEl) {
+        if (!enabled) countEl.textContent = 'Not included (toggle on to include)';
+        else if (total) countEl.textContent = 'Included ' + String(included) + ' / ' + String(total) + (disabled ? (' (' + String(disabled) + ' disabled)') : '');
+        else countEl.textContent = 'None';
+      }
+      profitDeductionsStats[kind === 'per_order_rule' ? 'per_order_rules' : (kind === 'overhead' ? 'overheads' : 'fixed_costs')] = { total: total, included: included, disabled: disabled };
+    }
+
+    function renderProfitDeductionsUi() {
+      renderProfitDeductionsSummary();
+      var payload = window.__kexoSettingsPayload && typeof window.__kexoSettingsPayload === 'object' ? window.__kexoSettingsPayload : {};
+      var pr = payload && payload.profitRules && typeof payload.profitRules === 'object' ? payload.profitRules : null;
+      var ce = pr && pr.cost_expenses && typeof pr.cost_expenses === 'object' ? pr.cost_expenses : {};
+      var perOrder = Array.isArray(ce.per_order_rules) ? ce.per_order_rules : [];
+      var overheads = Array.isArray(ce.overheads) ? ce.overheads : [];
+      var fixedCosts = Array.isArray(ce.fixed_costs) ? ce.fixed_costs : [];
+      var s = profitDeductionsState || normalizeProfitDeductions(null);
+      renderProfitDeductionsList('per_order_rule', perOrder, s.excludedPerOrderRuleIds, s.includePerOrderRules, perOrderRulesListEl, perOrderRulesCountEl);
+      renderProfitDeductionsList('overhead', overheads, s.excludedOverheadIds, s.includeOverheads, overheadsListEl, overheadsCountEl);
+      renderProfitDeductionsList('fixed_cost', fixedCosts, s.excludedFixedCostIds, s.includeFixedCosts, fixedCostsListEl, fixedCostsCountEl);
+    }
+
+    function readProfitDeductionsDraft() {
+      var s = profitDeductionsState || normalizeProfitDeductions(null);
+      var deductions = {
+        includeGoogleAdsSpend: !!(document.getElementById('settings-ga-deduction-google-ads') && document.getElementById('settings-ga-deduction-google-ads').checked),
+        includePaymentFees: !!(document.getElementById('settings-ga-deduction-payment-fees') && document.getElementById('settings-ga-deduction-payment-fees').checked),
+        includeShopifyTaxes: !!(document.getElementById('settings-ga-deduction-tax') && document.getElementById('settings-ga-deduction-tax').checked),
+        includeShopifyAppBills: !!(document.getElementById('settings-ga-deduction-app-bills') && document.getElementById('settings-ga-deduction-app-bills').checked),
+        includeShipping: !!(document.getElementById('settings-ga-deduction-shipping') && document.getElementById('settings-ga-deduction-shipping').checked),
+        includePerOrderRules: !!(perOrderRulesEnabledEl && perOrderRulesEnabledEl.checked),
+        includeOverheads: !!(overheadsEnabledEl && overheadsEnabledEl.checked),
+        includeFixedCosts: !!(fixedCostsEnabledEl && fixedCostsEnabledEl.checked),
+        excludedPerOrderRuleIds: Array.isArray(s.excludedPerOrderRuleIds) ? s.excludedPerOrderRuleIds.slice(0) : [],
+        excludedOverheadIds: Array.isArray(s.excludedOverheadIds) ? s.excludedOverheadIds.slice(0) : [],
+        excludedFixedCostIds: Array.isArray(s.excludedFixedCostIds) ? s.excludedFixedCostIds.slice(0) : [],
+      };
+      deductions.includeRules = deductions.includePerOrderRules || deductions.includeOverheads || deductions.includeFixedCosts;
       var addToCartEl = document.getElementById('settings-ga-addtocart-value');
       var addToCartValue = addToCartEl ? (Number(addToCartEl.value) || 0) : 1;
       if (!Number.isFinite(addToCartValue) || addToCartValue < 0) addToCartValue = 1;
@@ -2501,7 +2711,8 @@
     }
 
     function applyProfitDeductions(deductions, addToCartValue, beginCheckoutValue) {
-      var d = deductions && typeof deductions === 'object' ? deductions : {};
+      profitDeductionsState = normalizeProfitDeductions(deductions);
+      var d = profitDeductionsState;
       function setChk(id, val) {
         var el = document.getElementById(id);
         if (el) el.checked = !!val;
@@ -2511,11 +2722,14 @@
       setChk('settings-ga-deduction-tax', d.includeShopifyTaxes);
       setChk('settings-ga-deduction-app-bills', d.includeShopifyAppBills);
       setChk('settings-ga-deduction-shipping', d.includeShipping);
-      setChk('settings-ga-deduction-rules', d.includeRules);
+      if (perOrderRulesEnabledEl) perOrderRulesEnabledEl.checked = !!d.includePerOrderRules;
+      if (overheadsEnabledEl) overheadsEnabledEl.checked = !!d.includeOverheads;
+      if (fixedCostsEnabledEl) fixedCostsEnabledEl.checked = !!d.includeFixedCosts;
       var addToCartEl = document.getElementById('settings-ga-addtocart-value');
       if (addToCartEl) addToCartEl.value = (addToCartValue != null && Number.isFinite(Number(addToCartValue)) && Number(addToCartValue) >= 0) ? String(Number(addToCartValue)) : '1';
       var beginCheckoutEl = document.getElementById('settings-ga-begincheckout-value');
       if (beginCheckoutEl) beginCheckoutEl.value = (beginCheckoutValue != null && Number.isFinite(Number(beginCheckoutValue)) && Number(beginCheckoutValue) >= 0) ? String(Number(beginCheckoutValue)) : '1';
+      try { renderProfitDeductionsUi(); } catch (_) {}
     }
 
     function applyPostbackGoals(goals) {
@@ -3072,19 +3286,124 @@
 
     function saveProfitDeductions() {
       var draft = readProfitDeductionsDraft();
+      profitDeductionsState = normalizeProfitDeductions(draft.deductions);
+      try { renderProfitDeductionsUi(); } catch (_) {}
+      var toSave = {
+        includeGoogleAdsSpend: profitDeductionsState.includeGoogleAdsSpend,
+        includePaymentFees: profitDeductionsState.includePaymentFees,
+        includeShopifyTaxes: profitDeductionsState.includeShopifyTaxes,
+        includeShopifyAppBills: profitDeductionsState.includeShopifyAppBills,
+        includeShipping: profitDeductionsState.includeShipping,
+        includeRules: !!(profitDeductionsState.includePerOrderRules || profitDeductionsState.includeOverheads || profitDeductionsState.includeFixedCosts),
+        includePerOrderRules: profitDeductionsState.includePerOrderRules,
+        includeOverheads: profitDeductionsState.includeOverheads,
+        includeFixedCosts: profitDeductionsState.includeFixedCosts,
+        excludedPerOrderRuleIds: profitDeductionsState.excludedPerOrderRuleIds,
+        excludedOverheadIds: profitDeductionsState.excludedOverheadIds,
+        excludedFixedCostIds: profitDeductionsState.excludedFixedCostIds,
+      };
       setGoalHint('profit', 'Saving…');
-      saveSettings({ googleAdsProfitDeductions: draft.deductions })
+      setProfitDeductionsModalHint('Saving…');
+      saveSettings({ googleAdsProfitDeductions: toSave })
         .then(function (r) {
-          if (r && r.ok) setGoalHint('profit', 'Saved.', true);
-          else setGoalHint('profit', getSaveError(r, 'Save failed.'), false);
+          if (r && r.ok) {
+            setGoalHint('profit', 'Saved.', true);
+            setProfitDeductionsModalHint('Saved.', true);
+            try {
+              if (window.__kexoSettingsPayload && typeof window.__kexoSettingsPayload === 'object') {
+                window.__kexoSettingsPayload.googleAdsProfitDeductions = r.googleAdsProfitDeductions || toSave;
+              }
+            } catch (_) {}
+          } else {
+            var err = getSaveError(r, 'Save failed.');
+            setGoalHint('profit', err, false);
+            setProfitDeductionsModalHint(err, false);
+          }
         })
-        .catch(function () { setGoalHint('profit', 'Save failed.', false); });
+        .catch(function () {
+          setGoalHint('profit', 'Save failed.', false);
+          setProfitDeductionsModalHint('Save failed.', false);
+        });
     }
-    ['settings-ga-deduction-google-ads', 'settings-ga-deduction-payment-fees', 'settings-ga-deduction-tax', 'settings-ga-deduction-app-bills', 'settings-ga-deduction-shipping', 'settings-ga-deduction-rules']
+    function setDeductionExcluded(kind, id, exclude) {
+      var k = kind === 'per_order_rule' ? 'excludedPerOrderRuleIds' : (kind === 'overhead' ? 'excludedOverheadIds' : (kind === 'fixed_cost' ? 'excludedFixedCostIds' : ''));
+      if (!k) return;
+      var v = id != null ? String(id).trim() : '';
+      if (!v) return;
+      if (v.length > 64) v = v.slice(0, 64);
+      var list = Array.isArray(profitDeductionsState && profitDeductionsState[k]) ? profitDeductionsState[k] : [];
+      var idx = list.indexOf(v);
+      if (exclude) {
+        if (idx === -1) list.push(v);
+      } else {
+        if (idx >= 0) list.splice(idx, 1);
+      }
+      if (!profitDeductionsState || typeof profitDeductionsState !== 'object') profitDeductionsState = normalizeProfitDeductions(null);
+      profitDeductionsState[k] = normIdList(list);
+    }
+
+    var profitModalEl = document.getElementById('settings-ga-profit-deductions-modal');
+    if (profitModalEl) {
+      profitModalEl.addEventListener('change', function (e) {
+        var t = e && e.target ? e.target : null;
+        if (!t || !t.getAttribute) return;
+        var kind = t.getAttribute('data-ga-deduction-kind') || '';
+        var id = t.getAttribute('data-ga-deduction-id') || '';
+        if (!kind || !id) return;
+        setDeductionExcluded(kind, id, !t.checked);
+        saveProfitDeductions();
+      });
+    }
+
+    ['settings-ga-deduction-google-ads', 'settings-ga-deduction-payment-fees', 'settings-ga-deduction-tax', 'settings-ga-deduction-app-bills', 'settings-ga-deduction-shipping', 'settings-ga-deduction-per-order-rules-enabled', 'settings-ga-deduction-overheads-enabled', 'settings-ga-deduction-fixed-costs-enabled']
       .forEach(function (id) {
         var el = document.getElementById(id);
         if (el) el.addEventListener('change', saveProfitDeductions);
       });
+
+    if (profitDeductionsOpenBtn) {
+      profitDeductionsOpenBtn.addEventListener('click', function () {
+        try { setProfitDeductionsModalHint('', null); } catch (_) {}
+        try { renderProfitDeductionsUi(); } catch (_) {}
+        openGaProfitDeductionsModal();
+      });
+    }
+    if (profitDeductionsModalCloseBtn) profitDeductionsModalCloseBtn.addEventListener('click', closeGaProfitDeductionsModal);
+    if (profitDeductionsModalDismissBtn) profitDeductionsModalDismissBtn.addEventListener('click', closeGaProfitDeductionsModal);
+
+    function runProfitPreview() {
+      var clickId = profitPreviewClickIdEl ? String(profitPreviewClickIdEl.value || '').trim() : '';
+      if (!clickId) {
+        setProfitPreviewHint('Enter a click ID first.', false);
+        return;
+      }
+      setProfitPreviewHint('Loading…', null);
+      try { if (profitPreviewOutputEl) profitPreviewOutputEl.classList.add('d-none'); } catch (_) {}
+      var shop = getShopParam();
+      var draft = readProfitDeductionsDraft();
+      apiPost('/api/ads/google/profit-preview', { shop: shop, click_id: clickId, deductions: draft.deductions })
+        .then(function (r) {
+          if (!r || !r.ok || !r.json || !r.json.ok) {
+            setProfitPreviewHint((r && r.json && (r.json.error || r.json.message)) ? String(r.json.error || r.json.message) : 'Preview failed.', false);
+            return;
+          }
+          setProfitPreviewHint('Preview ready.', true);
+          if (profitPreviewOutputEl) {
+            profitPreviewOutputEl.textContent = JSON.stringify(r.json, null, 2);
+            profitPreviewOutputEl.classList.remove('d-none');
+          }
+        })
+        .catch(function () { setProfitPreviewHint('Preview failed.', false); });
+    }
+    if (profitPreviewBtn) profitPreviewBtn.addEventListener('click', runProfitPreview);
+    if (profitPreviewClickIdEl) {
+      profitPreviewClickIdEl.addEventListener('keydown', function (e) {
+        if (e && (e.key === 'Enter' || e.keyCode === 13)) {
+          try { e.preventDefault(); } catch (_) {}
+          runProfitPreview();
+        }
+      });
+    }
 
     var addToCartValueEl = document.getElementById('settings-ga-addtocart-value');
     if (addToCartValueEl) {

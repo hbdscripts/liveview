@@ -80,6 +80,14 @@ function defaultGoogleAdsProfitDeductionsV1() {
     includeShopifyAppBills: false,
     includeShipping: false,
     includeRules: false,
+    // Rule-based cost groups (drill-down toggles; independent of Cost settings UI)
+    includePerOrderRules: false,
+    includeOverheads: false,
+    includeFixedCosts: false,
+    // Exclusion lists (ids from profit_rules_v1 normalization)
+    excludedPerOrderRuleIds: [],
+    excludedOverheadIds: [],
+    excludedFixedCostIds: [],
   };
 }
 
@@ -102,6 +110,37 @@ function normalizeGoogleAdsProfitDeductionsV1(raw) {
   out.includeShopifyAppBills = parsed.includeShopifyAppBills === true;
   out.includeShipping = parsed.includeShipping === true;
   out.includeRules = parsed.includeRules === true;
+  const hasNew =
+    Object.prototype.hasOwnProperty.call(parsed, 'includePerOrderRules') ||
+    Object.prototype.hasOwnProperty.call(parsed, 'includeOverheads') ||
+    Object.prototype.hasOwnProperty.call(parsed, 'includeFixedCosts') ||
+    Object.prototype.hasOwnProperty.call(parsed, 'excludedPerOrderRuleIds') ||
+    Object.prototype.hasOwnProperty.call(parsed, 'excludedOverheadIds') ||
+    Object.prototype.hasOwnProperty.call(parsed, 'excludedFixedCostIds') ||
+    Object.prototype.hasOwnProperty.call(parsed, 'perOrderRuleExclusions') ||
+    Object.prototype.hasOwnProperty.call(parsed, 'overheadExclusions') ||
+    Object.prototype.hasOwnProperty.call(parsed, 'fixedCostExclusions');
+  out.includePerOrderRules = parsed.includePerOrderRules === true || (!hasNew && out.includeRules);
+  out.includeOverheads = parsed.includeOverheads === true || (!hasNew && out.includeRules);
+  out.includeFixedCosts = parsed.includeFixedCosts === true || (!hasNew && out.includeRules);
+
+  function normalizeIdList(list) {
+    const arr = Array.isArray(list) ? list : [];
+    const seen = new Set();
+    const out = [];
+    for (const rawId of arr) {
+      const v = rawId != null ? String(rawId).trim().slice(0, 64) : '';
+      if (!v) continue;
+      if (seen.has(v)) continue;
+      seen.add(v);
+      out.push(v);
+      if (out.length >= 500) break;
+    }
+    return out;
+  }
+  out.excludedPerOrderRuleIds = normalizeIdList(parsed.excludedPerOrderRuleIds || parsed.perOrderRuleExclusions);
+  out.excludedOverheadIds = normalizeIdList(parsed.excludedOverheadIds || parsed.overheadExclusions);
+  out.excludedFixedCostIds = normalizeIdList(parsed.excludedFixedCostIds || parsed.fixedCostExclusions);
   return out;
 }
 
@@ -2299,7 +2338,7 @@ async function postSettings(req, res) {
       } else {
         const normalized = normalizeGoogleAdsProfitDeductionsV1(body.googleAdsProfitDeductions);
         const json = JSON.stringify(normalized);
-        if (json.length > 2000) throw new Error('Google Ads profit deductions too large');
+        if (json.length > 20000) throw new Error('Google Ads profit deductions too large');
         await store.setSetting(GOOGLE_ADS_PROFIT_DEDUCTIONS_V1_KEY, json);
       }
     } catch (err) {

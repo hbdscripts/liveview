@@ -499,13 +499,53 @@ async function syncAttributedOrdersToAdsDb(options = {}) {
       if (o && typeof o === 'object') profitDeductions = o;
     }
   } catch (_) {}
+  function normalizeIdList(rawList) {
+    const arr = Array.isArray(rawList) ? rawList : [];
+    const seen = new Set();
+    const out = [];
+    for (const rawId of arr) {
+      const v = rawId != null ? String(rawId).trim().slice(0, 64) : '';
+      if (!v) continue;
+      if (seen.has(v)) continue;
+      seen.add(v);
+      out.push(v);
+      if (out.length >= 500) break;
+    }
+    return out;
+  }
+  const hasNewProfitDeductions =
+    !!(profitDeductions && typeof profitDeductions === 'object' && (
+      Object.prototype.hasOwnProperty.call(profitDeductions, 'includePerOrderRules') ||
+      Object.prototype.hasOwnProperty.call(profitDeductions, 'includeOverheads') ||
+      Object.prototype.hasOwnProperty.call(profitDeductions, 'includeFixedCosts') ||
+      Object.prototype.hasOwnProperty.call(profitDeductions, 'excludedPerOrderRuleIds') ||
+      Object.prototype.hasOwnProperty.call(profitDeductions, 'excludedOverheadIds') ||
+      Object.prototype.hasOwnProperty.call(profitDeductions, 'excludedFixedCostIds') ||
+      Object.prototype.hasOwnProperty.call(profitDeductions, 'perOrderRuleExclusions') ||
+      Object.prototype.hasOwnProperty.call(profitDeductions, 'overheadExclusions') ||
+      Object.prototype.hasOwnProperty.call(profitDeductions, 'fixedCostExclusions')
+    ));
+  const legacyIncludeRules = !!(profitDeductions && typeof profitDeductions === 'object' && profitDeductions.includeRules === true);
+  const excludedPerOrderRuleIds = profitDeductions && typeof profitDeductions === 'object'
+    ? normalizeIdList(profitDeductions.excludedPerOrderRuleIds || profitDeductions.perOrderRuleExclusions)
+    : [];
+  const excludedOverheadIds = profitDeductions && typeof profitDeductions === 'object'
+    ? normalizeIdList(profitDeductions.excludedOverheadIds || profitDeductions.overheadExclusions)
+    : [];
+  const excludedFixedCostIds = profitDeductions && typeof profitDeductions === 'object'
+    ? normalizeIdList(profitDeductions.excludedFixedCostIds || profitDeductions.fixedCostExclusions)
+    : [];
   const deductionToggles = profitDeductions && typeof profitDeductions === 'object' ? {
     includeGoogleAdsSpend: profitDeductions.includeGoogleAdsSpend === true,
     includePaymentFees: profitDeductions.includePaymentFees === true,
     includeShopifyTaxes: profitDeductions.includeShopifyTaxes === true,
     includeShopifyAppBills: profitDeductions.includeShopifyAppBills === true,
     includeShipping: profitDeductions.includeShipping === true,
-    includeRules: profitDeductions.includeRules === true,
+    includePerOrderRules: profitDeductions.includePerOrderRules === true || (!hasNewProfitDeductions && legacyIncludeRules),
+    includeOverheads: profitDeductions.includeOverheads === true || (!hasNewProfitDeductions && legacyIncludeRules),
+    includeFixedCosts: profitDeductions.includeFixedCosts === true || (!hasNewProfitDeductions && legacyIncludeRules),
+    // Legacy convenience flag (used in older profit_components; keep for compatibility)
+    includeRules: profitDeductions.includeRules === true || (!hasNewProfitDeductions && legacyIncludeRules),
   } : {};
 
   let profitRules = null;
@@ -521,9 +561,18 @@ async function syncAttributedOrdersToAdsDb(options = {}) {
   const ce = profitRules && profitRules.cost_expenses && typeof profitRules.cost_expenses === 'object'
     ? profitRules.cost_expenses
     : { rule_mode: 'stack', per_order_rules: [], overheads: [], fixed_costs: [] };
-  const perOrderRules = Array.isArray(ce.per_order_rules) ? ce.per_order_rules.filter((r) => r && r.enabled === true) : [];
-  const overheads = Array.isArray(ce.overheads) ? ce.overheads.filter((o) => o && o.enabled === true) : [];
-  const fixedCosts = Array.isArray(ce.fixed_costs) ? ce.fixed_costs.filter((f) => f && f.enabled === true) : [];
+  const perOrderExclude = new Set(excludedPerOrderRuleIds);
+  const overheadExclude = new Set(excludedOverheadIds);
+  const fixedExclude = new Set(excludedFixedCostIds);
+  const perOrderRules = Array.isArray(ce.per_order_rules)
+    ? ce.per_order_rules.filter((r) => r && r.enabled === true && !perOrderExclude.has(String(r.id)))
+    : [];
+  const overheads = Array.isArray(ce.overheads)
+    ? ce.overheads.filter((o) => o && o.enabled === true && !overheadExclude.has(String(o.id)))
+    : [];
+  const fixedCosts = Array.isArray(ce.fixed_costs)
+    ? ce.fixed_costs.filter((f) => f && f.enabled === true && !fixedExclude.has(String(f.id)))
+    : [];
 
   const parsed = [];
   const needEvidence = [];
@@ -756,7 +805,7 @@ async function syncAttributedOrdersToAdsDb(options = {}) {
       : new Map();
 
     const overheadByYmd = new Map();
-    if (deductionToggles.includeRules && overheads.length) {
+    if (deductionToggles.includeOverheads && overheads.length) {
       for (const ymd of dayKeys.values()) {
         let total = 0;
         for (const oh of overheads) total += overheadDailyAmountGbp(oh, ymd);
@@ -765,7 +814,7 @@ async function syncAttributedOrdersToAdsDb(options = {}) {
     }
 
     const fixedByYmd = new Map();
-    if (deductionToggles.includeRules && fixedCosts.length) {
+    if (deductionToggles.includeFixedCosts && fixedCosts.length) {
       for (const ymd of dayKeys.values()) {
         let total = 0;
         for (const f of fixedCosts) {
@@ -830,16 +879,22 @@ async function syncAttributedOrdersToAdsDb(options = {}) {
         components.shipping_cost_gbp = round2(ship) || 0;
         cost += Number(components.shipping_cost_gbp) || 0;
       }
-      if (deductionToggles.includeRules) {
+      if (deductionToggles.includePerOrderRules) {
         const rulesAdj = computePerOrderRulesAdjustmentGbp(o, perOrderRules, ce && ce.rule_mode);
+        components.rules_per_order_gbp = rulesAdj;
+        cost += (Number(rulesAdj) || 0);
+      }
+      if (deductionToggles.includeOverheads) {
         const overheadDay = Number(overheadByYmd.get(ymd)) || 0;
         const overheadAlloc = round2(overheadDay * share) || 0;
+        components.overhead_alloc_gbp = overheadAlloc;
+        cost += (Number(overheadAlloc) || 0);
+      }
+      if (deductionToggles.includeFixedCosts) {
         const fixedDay = Number(fixedByYmd.get(ymd)) || 0;
         const fixedAlloc = round2(fixedDay * share) || 0;
-        components.rules_per_order_gbp = rulesAdj;
-        components.overhead_alloc_gbp = overheadAlloc;
         components.fixed_costs_alloc_gbp = fixedAlloc;
-        cost += (Number(rulesAdj) || 0) + (Number(overheadAlloc) || 0) + (Number(fixedAlloc) || 0);
+        cost += (Number(fixedAlloc) || 0);
       }
 
       const profit = round2(rev - cost) || 0;

@@ -2,15 +2,20 @@ const Sentry = require('@sentry/node');
 const express = require('express');
 const adsService = require('../ads/adsService');
 const store = require('../store');
+const fx = require('../fx');
 const salesTruth = require('../salesTruth');
 const config = require('../config');
 const { buildGoogleAdsConnectUrl, handleGoogleAdsCallback } = require('../ads/googleAdsOAuth');
 const { syncGoogleAdsSpendHourly, syncGoogleAdsGeoDaily, syncGoogleAdsDeviceDaily, backfillCampaignIdsFromGclid, testGoogleAdsConnection } = require('../ads/googleAdsSpendSync');
 const { syncAttributedOrdersToAdsDb } = require('../ads/adsOrderAttributionSync');
-const { setGoogleAdsConfig } = require('../ads/adsStore');
+const { setGoogleAdsConfig, getGoogleAdsConfig } = require('../ads/adsStore');
 const { provisionGoals, getConversionGoals, listUploadClickConversionActions, attachGoalToConversionAction, clearGoalAttachment, createAndAttachGoalConversionAction } = require('../ads/googleAdsGoals');
 const { fetchDiagnostics, getCachedDiagnostics } = require('../ads/googleAdsDiagnostics');
 const googleAdsClient = require('../ads/googleAdsClient');
+const { getDb } = require('../db');
+const businessSnapshotService = require('../businessSnapshotService');
+const { normalizeProfitRulesConfigV1 } = require('../profitRulesConfig');
+const { pickClickIdFromAttribution, formatConversionDateTime } = require('../ads/googleAdsPostback');
 
 async function setActionOptimization(shop, resourceName, primaryForGoal) {
   return googleAdsClient.setConversionActionPrimaryForGoal(shop, resourceName, primaryForGoal);
@@ -18,6 +23,153 @@ async function setActionOptimization(shop, resourceName, primaryForGoal) {
 const { getAdsDb } = require('../ads/adsDb');
 
 const router = express.Router();
+
+function round2(n) {
+  return Math.round((Number(n) || 0) * 100) / 100;
+}
+
+function ymdInTimeZone(ts, timeZone) {
+  try {
+    const fmt = new Intl.DateTimeFormat('en-CA', { timeZone: timeZone || 'UTC', year: 'numeric', month: '2-digit', day: '2-digit' });
+    const ymd = fmt.format(new Date(Number(ts) || Date.now()));
+    if (/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return ymd;
+  } catch (_) {}
+  try {
+    return new Date(Number(ts) || Date.now()).toISOString().slice(0, 10);
+  } catch (_) {
+    return null;
+  }
+}
+
+function computeShippingCostForOrder(countryCode, shippingConfig) {
+  const cfg = shippingConfig && typeof shippingConfig === 'object' ? shippingConfig : {};
+  const overrides = Array.isArray(cfg.overrides) ? cfg.overrides : [];
+  const code = countryCode != null ? String(countryCode).trim().toUpperCase().slice(0, 2) : '';
+  for (const o of overrides) {
+    if (!o || o.enabled === false) continue;
+    const countries = Array.isArray(o.countries) ? o.countries : [];
+    if (code && countries.includes(code)) return Math.max(0, Number(o.priceGbp) || 0);
+  }
+  return Math.max(0, Number(cfg.worldwideDefaultGbp) || 0);
+}
+
+function parseYmdParts(ymd) {
+  const s = ymd != null ? String(ymd).trim() : '';
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return null;
+  const year = Number(m[1]);
+  const month = Number(m[2]);
+  const day = Number(m[3]);
+  if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) return null;
+  return { year, month, day };
+}
+
+function daysInMonth(year, month) {
+  const y = Number(year);
+  const m = Number(month);
+  if (!Number.isFinite(y) || !Number.isFinite(m)) return 30;
+  return new Date(Date.UTC(y, m, 0)).getUTCDate();
+}
+
+function isLeapYear(year) {
+  const y = Number(year);
+  if (!Number.isFinite(y)) return false;
+  if (y % 400 === 0) return true;
+  if (y % 100 === 0) return false;
+  return y % 4 === 0;
+}
+
+function overheadDailyAmountGbp(overhead, dayYmd) {
+  const o = overhead && typeof overhead === 'object' ? overhead : {};
+  if (o.enabled === false) return 0;
+  const amount = Math.max(0, Number(o.amount) || 0);
+  if (!Number.isFinite(amount) || amount <= 0) return 0;
+  const ymd = dayYmd != null ? String(dayYmd).trim() : '';
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return 0;
+
+  const start = o.date != null ? String(o.date).trim() : '';
+  const end = o.end_date != null ? String(o.end_date).trim() : '';
+  if (!start || ymd < start) return 0;
+  if (end && ymd > end) return 0;
+
+  const kind = o.kind === 'one_off' ? 'one_off' : 'recurring';
+  if (kind === 'one_off') return ymd === start ? round2(amount) : 0;
+
+  const freq = o.frequency === 'daily' || o.frequency === 'weekly' || o.frequency === 'monthly' || o.frequency === 'yearly'
+    ? o.frequency
+    : 'monthly';
+  if (freq === 'daily') return round2(amount);
+  if (freq === 'weekly') return round2(amount / 7);
+  if (freq === 'yearly') {
+    const p = parseYmdParts(ymd);
+    if (!p) return 0;
+    const diy = isLeapYear(p.year) ? 366 : 365;
+    return round2(amount / diy);
+  }
+  // monthly
+  const monthlyAllocation = o.monthly_allocation === 'calendar' ? 'calendar' : 'prorate';
+  const p = parseYmdParts(ymd);
+  const sp = parseYmdParts(start);
+  if (!p || !sp) return 0;
+  if (monthlyAllocation === 'calendar') {
+    const billDay = sp.day || 1;
+    const maxDay = daysInMonth(p.year, p.month);
+    const occDay = Math.min(Math.max(1, billDay), maxDay);
+    return p.day === occDay ? round2(amount) : 0;
+  }
+  const dim = daysInMonth(p.year, p.month);
+  return dim > 0 ? round2(amount / dim) : 0;
+}
+
+function orderMatchesAppliesTo(appliesTo, countryCode) {
+  const a = appliesTo && typeof appliesTo === 'object' ? appliesTo : {};
+  const mode = a.mode != null ? String(a.mode).trim().toLowerCase() : 'all';
+  if (mode !== 'countries') return true;
+  const list = Array.isArray(a.countries) ? a.countries : [];
+  const code = countryCode != null ? String(countryCode).trim().toUpperCase().slice(0, 2) : '';
+  if (!code) return false;
+  return list.includes(code);
+}
+
+function orderRevenueForBasis(order, basis) {
+  const b = basis != null ? String(basis).trim().toLowerCase() : '';
+  const incl = Number(order && order.revenueGbp) || 0;
+  const tax = Number(order && order.taxGbp) || 0;
+  const exclTax = round2(incl - tax) || 0;
+  const subtotal = Number(order && order.subtotalGbp);
+  const exclShipping = Number.isFinite(subtotal) ? (round2(subtotal) || 0) : exclTax;
+  if (b === 'order_total_excl_tax' || b === 'excl_tax') return exclTax;
+  if (b === 'subtotal_excl_shipping' || b === 'excl_shipping') return exclShipping;
+  return incl;
+}
+
+function computePerOrderRulesAdjustmentGbp(order, rules, mode) {
+  const list = Array.isArray(rules) ? rules : [];
+  const matchMode = mode === 'first_match' ? 'first_match' : 'stack';
+  const dayYmd = order && order.orderYmd ? String(order.orderYmd) : '';
+  let total = 0;
+  for (const rule of list) {
+    if (!rule || rule.enabled !== true) continue;
+    const start = rule.effective_start || rule.start_date || '';
+    const end = rule.effective_end || rule.end_date || '';
+    if (start && dayYmd && String(dayYmd) < String(start)) continue;
+    if (end && dayYmd && String(dayYmd) > String(end)) continue;
+    if (!orderMatchesAppliesTo(rule.appliesTo, order && order.countryCode)) continue;
+    const value = Number(rule.value) || 0;
+    let amt = 0;
+    if (rule.type === 'percent_revenue') amt = orderRevenueForBasis(order, rule.revenue_basis) * (value / 100);
+    else if (rule.type === 'fixed_per_order') amt = value;
+    else if (rule.type === 'fixed_per_item') amt = (Number(order && order.itemsCount) || 0) * value;
+    if (!Number.isFinite(amt) || amt === 0) continue;
+    const direction = rule.direction != null ? String(rule.direction).trim().toLowerCase() : 'add';
+    if (direction === 'subtract') amt *= -1;
+    const rounded = round2(amt) || 0;
+    if (rounded === 0) continue;
+    total += rounded;
+    if (matchMode === 'first_match') break;
+  }
+  return round2(total) || 0;
+}
 
 router.get('/google/connect', async (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
@@ -292,6 +444,375 @@ router.post('/google/provision-goals', async (req, res) => {
   } catch (err) {
     Sentry.captureException(err, { extra: { route: 'ads.google.provision-goals' } });
     console.error('[ads.google.provision-goals]', err);
+    res.status(500).json({ ok: false, error: 'Internal error' });
+  }
+});
+
+router.post('/google/profit-preview', async (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  try {
+    function normalizeIdList(list) {
+      const arr = Array.isArray(list) ? list : [];
+      const out = [];
+      const seen = new Set();
+      for (const raw of arr) {
+        const v = raw != null ? String(raw).trim().slice(0, 64) : '';
+        if (!v) continue;
+        if (seen.has(v)) continue;
+        seen.add(v);
+        out.push(v);
+        if (out.length >= 500) break;
+      }
+      return out;
+    }
+
+    function normalizeDeductions(raw) {
+      const d = raw && typeof raw === 'object' ? raw : {};
+      const hasNew =
+        Object.prototype.hasOwnProperty.call(d, 'includePerOrderRules') ||
+        Object.prototype.hasOwnProperty.call(d, 'includeOverheads') ||
+        Object.prototype.hasOwnProperty.call(d, 'includeFixedCosts') ||
+        Object.prototype.hasOwnProperty.call(d, 'excludedPerOrderRuleIds') ||
+        Object.prototype.hasOwnProperty.call(d, 'excludedOverheadIds') ||
+        Object.prototype.hasOwnProperty.call(d, 'excludedFixedCostIds') ||
+        Object.prototype.hasOwnProperty.call(d, 'perOrderRuleExclusions') ||
+        Object.prototype.hasOwnProperty.call(d, 'overheadExclusions') ||
+        Object.prototype.hasOwnProperty.call(d, 'fixedCostExclusions');
+      const legacyRules = d.includeRules === true;
+      return {
+        includeGoogleAdsSpend: d.includeGoogleAdsSpend === true,
+        includePaymentFees: d.includePaymentFees === true,
+        includeShopifyTaxes: d.includeShopifyTaxes === true,
+        includeShopifyAppBills: d.includeShopifyAppBills === true,
+        includeShipping: d.includeShipping === true,
+        includePerOrderRules: d.includePerOrderRules === true || (!hasNew && legacyRules),
+        includeOverheads: d.includeOverheads === true || (!hasNew && legacyRules),
+        includeFixedCosts: d.includeFixedCosts === true || (!hasNew && legacyRules),
+        excludedPerOrderRuleIds: normalizeIdList(d.excludedPerOrderRuleIds || d.perOrderRuleExclusions),
+        excludedOverheadIds: normalizeIdList(d.excludedOverheadIds || d.overheadExclusions),
+        excludedFixedCostIds: normalizeIdList(d.excludedFixedCostIds || d.fixedCostExclusions),
+      };
+    }
+
+    async function readAdsSpendByYmd(adsDb, startMs, endMs, tz) {
+      const byYmd = new Map();
+      let rows = [];
+      try {
+        rows = await adsDb.all(
+          `
+            SELECT
+              (EXTRACT(EPOCH FROM DATE_TRUNC('day', hour_ts)) * 1000)::BIGINT AS day_ms,
+              COALESCE(SUM(spend_gbp), 0) AS spend_gbp
+            FROM google_ads_spend_hourly
+            WHERE provider = 'google_ads'
+              AND hour_ts >= TO_TIMESTAMP(?/1000.0) AND hour_ts < TO_TIMESTAMP(?/1000.0)
+            GROUP BY day_ms
+            ORDER BY day_ms ASC
+          `,
+          [Number(startMs), Number(endMs)]
+        );
+      } catch (_) {
+        return byYmd;
+      }
+      for (const r of rows || []) {
+        const ms = r && r.day_ms != null ? Number(r.day_ms) : NaN;
+        const spend = r && r.spend_gbp != null ? Number(r.spend_gbp) : 0;
+        if (!Number.isFinite(ms)) continue;
+        const ymd = ymdInTimeZone(ms, tz) || null;
+        if (!ymd) continue;
+        byYmd.set(ymd, (Number(byYmd.get(ymd)) || 0) + (Number.isFinite(spend) ? spend : 0));
+      }
+      return byYmd;
+    }
+
+    const shop = (req.body && req.body.shop != null ? String(req.body.shop).trim() : '') || (req.query && req.query.shop != null ? String(req.query.shop).trim() : '') || salesTruth.resolveShopForSales('');
+    const clickId = req.body && req.body.click_id != null ? String(req.body.click_id).trim() : '';
+    if (!shop) return res.status(400).json({ ok: false, error: 'Missing shop' });
+    if (!clickId) return res.status(400).json({ ok: false, error: 'Missing click_id' });
+    if (clickId.length > 256) return res.status(400).json({ ok: false, error: 'click_id too long' });
+
+    const adsDb = getAdsDb();
+    if (!adsDb) return res.status(500).json({ ok: false, error: 'ADS_DB_URL not set' });
+    const db = getDb();
+    if (!db) return res.status(500).json({ ok: false, error: 'Main DB not available' });
+
+    const deductions = normalizeDeductions(req.body && req.body.deductions ? req.body.deductions : null);
+    const timeZone = store.resolveAdminTimeZone();
+
+    const orderRow = await adsDb.get(
+      `
+        SELECT *
+        FROM ads_orders_attributed
+        WHERE shop = ?
+          AND (
+            click_id_value = ?
+            OR gclid = ?
+            OR gbraid = ?
+            OR wbraid = ?
+          )
+        ORDER BY created_at_ms DESC
+        LIMIT 1
+      `,
+      [shop, clickId, clickId, clickId, clickId]
+    );
+    if (!orderRow) {
+      return res.json({ ok: true, found: false, error: 'No matching attributed order found for that click ID.' });
+    }
+
+    const orderId = orderRow && orderRow.order_id != null ? String(orderRow.order_id).trim() : '';
+    const createdAtMs = orderRow && orderRow.created_at_ms != null ? Number(orderRow.created_at_ms) : null;
+    const revenueGbp = orderRow && orderRow.revenue_gbp != null ? Number(orderRow.revenue_gbp) : null;
+    const currency = fx.normalizeCurrency(orderRow && orderRow.currency != null ? String(orderRow.currency) : '') || 'GBP';
+    if (!orderId || createdAtMs == null || !Number.isFinite(createdAtMs)) {
+      return res.json({ ok: true, found: false, error: 'Matched order row is missing order_id/created_at_ms.' });
+    }
+
+    let shopifyOrder = null;
+    try {
+      shopifyOrder = await db.get(
+        `SELECT raw_json, currency, total_price
+         FROM orders_shopify
+         WHERE shop = ? AND order_id = ?
+         LIMIT 1`,
+        [shop, orderId]
+      );
+    } catch (_) {
+      shopifyOrder = null;
+    }
+
+    const ratesToGbp = await fx.getRatesToGbp();
+    let orderJson = null;
+    try { orderJson = shopifyOrder && typeof shopifyOrder.raw_json === 'string' ? JSON.parse(shopifyOrder.raw_json) : null; } catch (_) { orderJson = null; }
+
+    const totalTaxRaw =
+      (orderJson && (orderJson.total_tax != null ? orderJson.total_tax : (orderJson.totalTax != null ? orderJson.totalTax : (orderJson.current_total_tax != null ? orderJson.current_total_tax : orderJson.currentTotalTax)))) != null
+        ? Number(orderJson.total_tax != null ? orderJson.total_tax : (orderJson.totalTax != null ? orderJson.totalTax : (orderJson.current_total_tax != null ? orderJson.current_total_tax : orderJson.currentTotalTax)))
+        : 0;
+    const taxGbpRaw = fx.convertToGbp(Number.isFinite(totalTaxRaw) ? totalTaxRaw : 0, currency, ratesToGbp);
+    const taxGbp = (typeof taxGbpRaw === 'number' && Number.isFinite(taxGbpRaw)) ? round2(taxGbpRaw) : 0;
+    const subtotalRaw =
+      (orderJson && (orderJson.subtotal_price != null ? orderJson.subtotal_price : (orderJson.subtotalPrice != null ? orderJson.subtotalPrice : (orderJson.current_subtotal_price != null ? orderJson.current_subtotal_price : orderJson.currentSubtotalPrice)))) != null
+        ? Number(orderJson.subtotal_price != null ? orderJson.subtotal_price : (orderJson.subtotalPrice != null ? orderJson.subtotalPrice : (orderJson.current_subtotal_price != null ? orderJson.current_subtotal_price : orderJson.currentSubtotalPrice)))
+        : null;
+    const subtotalGbpRaw = subtotalRaw != null ? fx.convertToGbp(Number.isFinite(subtotalRaw) ? subtotalRaw : 0, currency, ratesToGbp) : null;
+    const subtotalGbp = (typeof subtotalGbpRaw === 'number' && Number.isFinite(subtotalGbpRaw)) ? round2(subtotalGbpRaw) : null;
+    const itemsCount = (() => {
+      const items = orderJson && Array.isArray(orderJson.line_items) ? orderJson.line_items : [];
+      let count = 0;
+      for (const it of items) {
+        const q = parseInt(it && it.quantity != null ? it.quantity : 0, 10);
+        if (!Number.isFinite(q) || q <= 0) continue;
+        count += q;
+        if (count > 500000) break;
+      }
+      return count;
+    })();
+    const cc =
+      (orderJson && orderJson.shipping_address && orderJson.shipping_address.country_code != null ? String(orderJson.shipping_address.country_code) : '') ||
+      (orderJson && orderJson.billing_address && orderJson.billing_address.country_code != null ? String(orderJson.billing_address.country_code) : '') ||
+      (orderRow && orderRow.country_code != null ? String(orderRow.country_code) : '');
+    const countryCode = cc ? String(cc).trim().toUpperCase().slice(0, 2) : null;
+
+    const orderYmd = ymdInTimeZone(createdAtMs, timeZone) || new Date(createdAtMs).toISOString().slice(0, 10);
+    const rev = Number.isFinite(revenueGbp) ? round2(revenueGbp) : (shopifyOrder && Number.isFinite(Number(shopifyOrder.total_price)) ? round2(fx.convertToGbp(Number(shopifyOrder.total_price), currency, ratesToGbp) || 0) : 0);
+
+    // Revenue share for the admin-local day (best-effort; queries a 72h window and groups in JS).
+    const windowStart = createdAtMs - 36 * 60 * 60 * 1000;
+    const windowEnd = createdAtMs + 36 * 60 * 60 * 1000;
+    let dayRev = 0;
+    try {
+      const rows = await adsDb.all(
+        `SELECT created_at_ms, revenue_gbp
+         FROM ads_orders_attributed
+         WHERE shop = ?
+           AND created_at_ms >= ? AND created_at_ms < ?
+         LIMIT 50000`,
+        [shop, windowStart, windowEnd]
+      );
+      for (const r of rows || []) {
+        const ms = r && r.created_at_ms != null ? Number(r.created_at_ms) : NaN;
+        if (!Number.isFinite(ms)) continue;
+        const ymd = ymdInTimeZone(ms, timeZone);
+        if (ymd !== orderYmd) continue;
+        const rg = r && r.revenue_gbp != null ? Number(r.revenue_gbp) : 0;
+        if (Number.isFinite(rg)) dayRev += rg;
+      }
+    } catch (_) {}
+    dayRev = round2(dayRev) || 0;
+    const share = dayRev > 0 && Number.isFinite(rev) ? (rev / dayRev) : 0;
+
+    let profitRules = null;
+    try {
+      const raw = await store.getSetting('profit_rules_v1');
+      profitRules = normalizeProfitRulesConfigV1(raw);
+    } catch (_) {
+      profitRules = normalizeProfitRulesConfigV1(null);
+    }
+    const shippingConfig = profitRules && profitRules.shipping && typeof profitRules.shipping === 'object'
+      ? profitRules.shipping
+      : { enabled: false, worldwideDefaultGbp: 0, overrides: [] };
+    const ce = profitRules && profitRules.cost_expenses && typeof profitRules.cost_expenses === 'object'
+      ? profitRules.cost_expenses
+      : { rule_mode: 'stack', per_order_rules: [], overheads: [], fixed_costs: [] };
+
+    const perOrderExclude = new Set(deductions.excludedPerOrderRuleIds || []);
+    const overheadExclude = new Set(deductions.excludedOverheadIds || []);
+    const fixedExclude = new Set(deductions.excludedFixedCostIds || []);
+    const perOrderRules = Array.isArray(ce.per_order_rules)
+      ? ce.per_order_rules.filter((r) => r && r.enabled === true && !perOrderExclude.has(String(r.id)))
+      : [];
+    const overheads = Array.isArray(ce.overheads)
+      ? ce.overheads.filter((o) => o && o.enabled === true && !overheadExclude.has(String(o.id)))
+      : [];
+    const fixedCosts = Array.isArray(ce.fixed_costs)
+      ? ce.fixed_costs.filter((f) => f && f.enabled === true && !fixedExclude.has(String(f.id)))
+      : [];
+
+    const components = {};
+    let cost = 0;
+
+    if (deductions.includeGoogleAdsSpend) {
+      const adsSpendByYmd = await readAdsSpendByYmd(adsDb, windowStart, windowEnd, timeZone);
+      const daySpend = Number(adsSpendByYmd.get(orderYmd)) || 0;
+      const alloc = round2(daySpend * share) || 0;
+      components.google_ads_spend_alloc_gbp = alloc;
+      cost += alloc;
+    }
+
+    const needShopifyCosts = !!(deductions.includePaymentFees || deductions.includeShopifyAppBills);
+    let shopifyCosts = { available: !needShopifyCosts, paymentFeesByYmd: new Map(), appBillsByYmd: new Map(), error: '' };
+    if (needShopifyCosts) {
+      const token = await salesTruth.getAccessToken(shop).catch(() => '');
+      shopifyCosts = await businessSnapshotService.readShopifyBalanceCostsGbp(shop, token, orderYmd, orderYmd, timeZone).catch(() => ({
+        available: false,
+        error: 'shopify_cost_lookup_failed',
+        paymentFeesByYmd: new Map(),
+        appBillsByYmd: new Map(),
+      }));
+    }
+
+    const missing = [];
+    if (deductions.includePaymentFees) {
+      if (!shopifyCosts || shopifyCosts.available !== true) missing.push('payment_fees');
+      else {
+        const dayFees = Number(shopifyCosts.paymentFeesByYmd && shopifyCosts.paymentFeesByYmd.get ? shopifyCosts.paymentFeesByYmd.get(orderYmd) : 0) || 0;
+        const alloc = round2(dayFees * share) || 0;
+        components.payment_fees_alloc_gbp = alloc;
+        cost += alloc;
+      }
+    }
+    if (deductions.includeShopifyAppBills) {
+      if (!shopifyCosts || shopifyCosts.available !== true) missing.push('shopify_app_bills');
+      else {
+        const dayBills = Number(shopifyCosts.appBillsByYmd && shopifyCosts.appBillsByYmd.get ? shopifyCosts.appBillsByYmd.get(orderYmd) : 0) || 0;
+        const alloc = round2(dayBills * share) || 0;
+        components.shopify_app_bills_alloc_gbp = alloc;
+        cost += alloc;
+      }
+    }
+
+    if (deductions.includeShopifyTaxes) {
+      components.shopify_tax_gbp = round2(taxGbp) || 0;
+      cost += Number(components.shopify_tax_gbp) || 0;
+    }
+    if (deductions.includeShipping) {
+      const ship = computeShippingCostForOrder(countryCode, shippingConfig);
+      components.shipping_cost_gbp = round2(ship) || 0;
+      cost += Number(components.shipping_cost_gbp) || 0;
+    }
+    const orderForRules = { revenueGbp: rev, taxGbp, subtotalGbp, itemsCount, countryCode, orderYmd };
+    if (deductions.includePerOrderRules) {
+      const rulesAdj = computePerOrderRulesAdjustmentGbp(orderForRules, perOrderRules, ce && ce.rule_mode);
+      components.rules_per_order_gbp = rulesAdj;
+      cost += (Number(rulesAdj) || 0);
+    }
+    if (deductions.includeOverheads) {
+      let overheadDay = 0;
+      for (const oh of overheads) overheadDay += overheadDailyAmountGbp(oh, orderYmd);
+      const overheadAlloc = round2(overheadDay * share) || 0;
+      components.overhead_alloc_gbp = overheadAlloc;
+      cost += (Number(overheadAlloc) || 0);
+    }
+    if (deductions.includeFixedCosts) {
+      let fixedDay = 0;
+      for (const f of fixedCosts) {
+        const start = (f && (f.effective_start || f.start_date)) ? String(f.effective_start || f.start_date) : '';
+        if (start && String(orderYmd) < start) continue;
+        fixedDay += (Number(f && f.amount_per_day) || 0);
+      }
+      const fixedAlloc = round2(fixedDay * share) || 0;
+      components.fixed_costs_alloc_gbp = fixedAlloc;
+      cost += (Number(fixedAlloc) || 0);
+    }
+
+    const preview = (() => {
+      if (missing.length) {
+        return {
+          ok: false,
+          missing,
+          revenue_gbp: round2(rev) || 0,
+          cost_gbp: null,
+          profit_gbp: null,
+          day_revenue_gbp: dayRev,
+          revenue_share: Number.isFinite(share) ? share : null,
+          components,
+        };
+      }
+      const costGbp = round2(cost) || 0;
+      const profit = round2((Number(rev) || 0) - costGbp) || 0;
+      return {
+        ok: true,
+        revenue_gbp: round2(rev) || 0,
+        cost_gbp: costGbp,
+        profit_gbp: Math.max(0, Number.isFinite(profit) ? profit : 0),
+        day_revenue_gbp: dayRev,
+        revenue_share: Number.isFinite(share) ? share : null,
+        components,
+      };
+    })();
+
+    const goals = await getConversionGoals(shop).catch(() => []);
+    const profitGoal = Array.isArray(goals) ? goals.find((g) => g && String(g.goal_type || '') === 'profit') : null;
+    const profitResource = profitGoal && (profitGoal.custom_goal_resource_name || profitGoal.conversion_action_resource_name)
+      ? String(profitGoal.custom_goal_resource_name || profitGoal.conversion_action_resource_name).trim()
+      : null;
+
+    const gaCfg = await getGoogleAdsConfig(shop).catch(() => null);
+    const customerTimeZone = gaCfg && gaCfg.customer_time_zone ? String(gaCfg.customer_time_zone).trim() : 'UTC';
+    const conversionDateTime = formatConversionDateTime(createdAtMs, customerTimeZone) || `${new Date(createdAtMs).toISOString().slice(0, 19).replace('T', ' ')}+00:00`;
+    const click = pickClickIdFromAttribution(orderRow);
+
+    res.json({
+      ok: true,
+      found: true,
+      shop,
+      click_id: clickId,
+      order: {
+        order_id: orderId,
+        created_at_ms: createdAtMs,
+        currency,
+        country_code: countryCode,
+        attribution_confidence: orderRow && orderRow.attribution_confidence != null ? String(orderRow.attribution_confidence) : null,
+        attribution_source: orderRow && orderRow.attribution_source != null ? String(orderRow.attribution_source) : null,
+        click_id_type: click && click.type ? String(click.type) : null,
+        click_id_value: click && click.value ? String(click.value) : null,
+      },
+      deductions,
+      preview,
+      google_ads_payload: {
+        goal_type: 'profit',
+        conversion_action_resource_name: profitResource,
+        conversion_date_time: conversionDateTime,
+        conversion_value: preview && preview.ok ? preview.profit_gbp : null,
+        currency_code: currency,
+        click_id_type: click && click.type ? String(click.type) : null,
+        click_id_value: click && click.value ? String(click.value) : null,
+        customer_time_zone: customerTimeZone,
+      },
+    });
+  } catch (err) {
+    Sentry.captureException(err, { extra: { route: 'ads.google.profit-preview' } });
+    console.error('[ads.google.profit-preview]', err);
     res.status(500).json({ ok: false, error: 'Internal error' });
   }
 });
