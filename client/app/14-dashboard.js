@@ -7,6 +7,7 @@
       var dashCompareFetchedAt = 0;
       var dashCompareSeriesInFlight = null;
       var dashPayloadSignature = '';
+      var dashLastRefreshAt = 0;
       var dashCharts = {};
       var dashSparkCharts = {};
       var dashController = null;
@@ -3689,9 +3690,29 @@
         var revenueTotal = 0;
         var costTotal = 0;
         var profitTotal = 0;
+        function fallbackLabelForIndex(idx) {
+          if (granularity !== 'day' && granularity !== 'week') return '';
+          try {
+            var today = (typeof ymdNowInTz === 'function') ? ymdNowInTz() : null;
+            if (!today || !/^\d{4}-\d{2}-\d{2}$/.test(today)) return '';
+            var parts = today.split('-');
+            var y = parseInt(parts[0], 10);
+            var m = parseInt(parts[1], 10) - 1;
+            var d = parseInt(parts[2], 10);
+            if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) return '';
+            var date = new Date(y, m, d);
+            var daysBack = granularity === 'week' ? (len - 1 - idx) * 7 : (len - 1 - idx);
+            date.setDate(date.getDate() - daysBack);
+            var oy = date.getFullYear();
+            var om = String(date.getMonth() + 1).padStart(2, '0');
+            var od = String(date.getDate()).padStart(2, '0');
+            return oy + '-' + om + '-' + od;
+          } catch (_) { return ''; }
+        }
         for (var i = 0; i < len; i++) {
           var ymd = labelsYmd[i] != null ? String(labelsYmd[i]) : '';
-          labels.push(ymd ? formatOverviewBucketLabel(ymd, granularity) : String(i + 1));
+          var fallbackYmd = ymd ? '' : fallbackLabelForIndex(i);
+          labels.push(ymd || fallbackYmd ? formatOverviewBucketLabel(ymd || fallbackYmd, granularity) : String(i + 1));
           var revRaw = normalizeOverviewMetric(revenueGbp[i]);
           var cstRaw = normalizeOverviewMetric(costGbp[i]);
           if (!Number.isFinite(revRaw)) revRaw = 0;
@@ -7705,15 +7726,20 @@
       }
 
       window.refreshDashboard = function(opts) {
-        try {
-          if (typeof isDashboardOverviewPage === 'function' && isDashboardOverviewPage()) {
-            return refreshDashboardOverviewPage(opts || {});
-          }
-        } catch (_) {}
         var force = opts && opts.force;
         var silent = !!(opts && opts.silent);
         var rerender = !!(opts && opts.rerender);
         var reason = opts && opts.reason != null ? String(opts.reason) : '';
+        var RESUME_REFRESH_MIN_INTERVAL_MS = 600;
+        if ((reason === 'resume' || reason === 'new-sale') && dashLastRefreshAt && (Date.now() - dashLastRefreshAt) < RESUME_REFRESH_MIN_INTERVAL_MS) {
+          return;
+        }
+        try {
+          if (typeof isDashboardOverviewPage === 'function' && isDashboardOverviewPage()) {
+            dashLastRefreshAt = Date.now();
+            return refreshDashboardOverviewPage(opts || {});
+          }
+        } catch (_) {}
         var rk = dashRangeKeyFromDateRange();
         try {
           var curYmd = (typeof ymdNowInTz === 'function') ? ymdNowInTz() : null;
@@ -7733,6 +7759,7 @@
           requestDashboardWidgetsRefresh({ force: false, rangeKey: rk });
           return;
         }
+        dashLastRefreshAt = Date.now();
         fetchDashboardData(rk, force, { silent: silent, rerender: rerender, reason: reason });
       };
 
