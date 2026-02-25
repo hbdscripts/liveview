@@ -2084,8 +2084,45 @@
     function fetchLiveOnlineMapSessions(options) {
       options = options || {};
       var force = !!options.force;
+      var rangeRaw = options.rangeKey != null ? String(options.rangeKey) : '';
+      var rangeKey = (rangeRaw == null ? '' : String(rangeRaw)).trim().toLowerCase();
+      if (rangeKey === '7days') rangeKey = '7d';
+      if (rangeKey === '14days') rangeKey = '14d';
+      if (rangeKey === '30days') rangeKey = '30d';
       var now = Date.now();
       var ttlMs = typeof ONLINE_COUNT_POLL_MS === 'number' ? ONLINE_COUNT_POLL_MS : 15000;
+
+      // Overview card supports historical ranges via /api/sessions?range=...
+      // Note: this returns a sessions list for the period (not "active now"), so do NOT apply the
+      // active-window filter used by normalizeLiveOnlineSessionList().
+      if (rangeKey && rangeKey !== 'today' && rangeKey !== 'active') {
+        var rangeTtl = 2 * 60 * 1000;
+        var cache = fetchLiveOnlineMapSessions.__rangeCache || (fetchLiveOnlineMapSessions.__rangeCache = {});
+        var fetchedAt = fetchLiveOnlineMapSessions.__rangeFetchedAt || (fetchLiveOnlineMapSessions.__rangeFetchedAt = {});
+        var inFlight = fetchLiveOnlineMapSessions.__rangeInFlight || (fetchLiveOnlineMapSessions.__rangeInFlight = {});
+        var cachedList = cache[rangeKey];
+        var cachedAt = fetchedAt[rangeKey] ? Number(fetchedAt[rangeKey]) : 0;
+        if (!force && Array.isArray(cachedList) && cachedAt && (now - cachedAt) < rangeTtl) {
+          return Promise.resolve(cachedList);
+        }
+        if (inFlight[rangeKey] && !force) return inFlight[rangeKey];
+        var urlRange = API + '/api/sessions?range=' + encodeURIComponent(rangeKey) + '&limit=2000&offset=0&_=' + Date.now();
+        inFlight[rangeKey] = fetchWithTimeout(urlRange, { credentials: 'same-origin', cache: 'no-store' }, 20000)
+          .then(function (r) { return (r && r.ok) ? r.json() : null; })
+          .then(function (data) {
+            var list = data && Array.isArray(data.sessions) ? data.sessions : [];
+            cache[rangeKey] = list;
+            fetchedAt[rangeKey] = Date.now();
+            return list;
+          })
+          .catch(function (err) {
+            try { if (typeof window.kexoCaptureError === 'function') window.kexoCaptureError(err, { context: 'liveOnlineMapSessionsByRange', page: PAGE, rangeKey: rangeKey }); } catch (_) {}
+            return Array.isArray(cachedList) ? cachedList : [];
+          })
+          .finally(function () { try { inFlight[rangeKey] = null; } catch (_) {} });
+        return inFlight[rangeKey];
+      }
+
       if (!force) {
         if (lastSessionsMode === 'live' && Array.isArray(sessions) && sessions.length && lastSessionsFetchedAt && (now - lastSessionsFetchedAt) < ttlMs) {
           liveOnlineMapSessions = normalizeLiveOnlineSessionList(sessions);
@@ -2307,6 +2344,11 @@
     function refreshLiveOnlineChart(options) {
       // Live online container always uses jsVectorMap (map-animated). No Apex trend chart in this container.
       return fetchLiveOnlineMapSessions(options || {}).then(function(list) {
+        try {
+          var n = Array.isArray(list) ? list.length : 0;
+          var countEl = document.getElementById('live-online-now-count');
+          if (countEl) countEl.textContent = String(n);
+        } catch (_) {}
         try { renderLiveOnlineMapChartFromSessions(Array.isArray(list) ? list : []); } catch (_) {}
         return list || null;
       });

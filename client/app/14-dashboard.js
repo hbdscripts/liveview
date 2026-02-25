@@ -64,6 +64,88 @@
             return;
           }
 
+          // Dashboard Overview: Tabler tab switches + per-panel date ranges.
+          if (typeof isDashboardOverviewPage === 'function' && isDashboardOverviewPage()) {
+            var tabBtn = t.closest('button[data-ovw-panel][data-ovw-tab]');
+            if (tabBtn) {
+              e.preventDefault();
+              var p = String(tabBtn.getAttribute('data-ovw-panel') || '').trim().toLowerCase();
+              var tab = String(tabBtn.getAttribute('data-ovw-tab') || '').trim().toLowerCase();
+              if (!p || !tab) return;
+              initDashboardOverviewUiOnce();
+              setOverviewPanelActiveTab(p, tab);
+              // Rerender panels that change data selection.
+              if (p === 'trending') {
+                var rkT = getOverviewPanelRange('trending', OVW_PANEL_DEFAULT_RANGE);
+                fetchOvwDashboardSeries(rkT, false).then(function (data) {
+                  renderOverviewTrendingFromSeries(data, getOverviewPanelActiveTab('trending', 'up'));
+                }).catch(function () {});
+              } else if (p === 'variant') {
+                var variantRk = getOverviewPanelRange('variant', OVW_PANEL_DEFAULT_RANGE);
+                var trafficRk = getOverviewPanelRange('traffic', OVW_PANEL_DEFAULT_RANGE);
+                var abandonedRk = getOverviewPanelRange('abandoned', OVW_PANEL_DEFAULT_RANGE);
+                var variantMode = getOverviewPanelActiveTab('variant', 'variant');
+                var finishesTableId = (variantMode === 'styles') ? 'styles' : 'finishes';
+                try {
+                  refreshDashboardWidgetsNow({
+                    force: false,
+                    ranges: { finishes: variantRk, attribution: trafficRk, devices: trafficRk, browsers: trafficRk, abandoned: abandonedRk },
+                    tableIdOverrides: { finishes: finishesTableId },
+                  });
+                } catch (_) {}
+              }
+              return;
+            }
+
+            var rangeItem = t.closest('button[data-ovw-panel-range][data-ovw-range]');
+            if (rangeItem) {
+              e.preventDefault();
+              var panel = String(rangeItem.getAttribute('data-ovw-panel-range') || '').trim().toLowerCase();
+              var rangeKey2 = String(rangeItem.getAttribute('data-ovw-range') || '').trim().toLowerCase();
+              if (!panel || !rangeKey2) return;
+              initDashboardOverviewUiOnce();
+              var nextRk = normalizeOverviewPanelRangeKey(rangeKey2, OVW_PANEL_DEFAULT_RANGE);
+              setOverviewPanelRange(panel, nextRk);
+              syncOverviewPanelRangeUi(panel);
+
+              if (panel === 'main') {
+                fetchOverviewCardData('dash-chart-overview-30d', { force: true, rangeKey: nextRk, renderIfFresh: true });
+              } else if (panel === 'online') {
+                if (typeof window.refreshLiveOnlineChart === 'function') {
+                  try { window.refreshLiveOnlineChart({ force: true, rangeKey: nextRk, pageKey: 'dashboard' }); } catch (_) {}
+                }
+              } else if (panel === 'kpis') {
+                fetchOvwKpis(nextRk, true).then(function (kpiPayload) {
+                  renderOverviewKpiCard(kpiPayload, nextRk, null);
+                  return fetchOvwKpiExtras(nextRk, false).then(function (extras) {
+                    renderOverviewKpiCard(kpiPayload, nextRk, extras);
+                    return extras;
+                  });
+                }).catch(function () {});
+              } else if (panel === 'toplists') {
+                fetchOvwDashboardSeries(nextRk, true).then(function (data) { renderOverviewTopListsFromSeries(data); }).catch(function () {});
+              } else if (panel === 'trending') {
+                fetchOvwDashboardSeries(nextRk, true).then(function (data) {
+                  renderOverviewTrendingFromSeries(data, getOverviewPanelActiveTab('trending', 'up'));
+                }).catch(function () {});
+              } else if (panel === 'variant' || panel === 'traffic' || panel === 'abandoned') {
+                var variantRk2 = getOverviewPanelRange('variant', OVW_PANEL_DEFAULT_RANGE);
+                var trafficRk2 = getOverviewPanelRange('traffic', OVW_PANEL_DEFAULT_RANGE);
+                var abandonedRk2 = getOverviewPanelRange('abandoned', OVW_PANEL_DEFAULT_RANGE);
+                var variantMode2 = getOverviewPanelActiveTab('variant', 'variant');
+                var finishesTableId2 = (variantMode2 === 'styles') ? 'styles' : 'finishes';
+                try {
+                  refreshDashboardWidgetsNow({
+                    force: true,
+                    ranges: { finishes: variantRk2, attribution: trafficRk2, devices: trafficRk2, browsers: trafficRk2, abandoned: abandonedRk2 },
+                    tableIdOverrides: { finishes: finishesTableId2 },
+                  });
+                } catch (_) {}
+              }
+              return;
+            }
+          }
+
           // Overview card range controls.
           var rangeBtn = t.closest('[data-overview-range][data-overview-chart]');
           if (rangeBtn) {
@@ -159,14 +241,13 @@
       var DASH_PURPLE_LIGHT = 'rgba(139,92,246,0.10)';
 
       var OVERVIEW_WIDGETS_UI_CFG_LS_KEY = 'kexo:overview_widgets_ui_config:v1';
-      var OVERVIEW_WIDGET_KEYS = ['finishes', 'devices', 'browsers', 'abandoned', 'attribution', 'payment_methods'];
+      var OVERVIEW_WIDGET_KEYS = ['finishes', 'devices', 'browsers', 'abandoned', 'attribution'];
       var OVERVIEW_WIDGET_TITLES = {
-        finishes: 'Finishes',
+        finishes: 'Variant',
         devices: 'Devices',
         browsers: 'Browsers',
         abandoned: 'Abandoned Carts',
         attribution: 'Attribution',
-        payment_methods: 'Payment Methods',
       };
       var OVERVIEW_WIDGET_SUPPORTS = {
         finishes: { revenue: true, clicks: true, ctr: true },
@@ -174,8 +255,525 @@
         browsers: { revenue: true, clicks: true, ctr: true },
         abandoned: { revenue: true, clicks: true, ctr: false },
         attribution: { revenue: true, clicks: true, ctr: true },
-        payment_methods: { revenue: true, clicks: true, ctr: true },
       };
+
+      // Dashboard → Overview: per-card independent date ranges (sessionStorage) + Tabler tabs.
+      var OVW_PANEL_RANGE_SS_PREFIX = 'kexo:overview-panel-range:v1:';
+      var OVW_PANEL_DEFAULT_RANGE = '7d';
+      var OVW_ALLOWED_PANEL_RANGES = { today: true, yesterday: true, '7d': true, '14d': true, '30d': true };
+      var ovwUiInitialized = false;
+      var ovwTabState = {
+        main: 'main',
+        online: 'online',
+        kpis: 'set1',
+        toplists: 'countries',
+        trending: 'up',
+        variant: 'variant',
+        traffic: 'attribution',
+        abandoned: 'abandoned'
+      };
+
+      function isDashboardOverviewPage() {
+        try {
+          return !!(document && document.body && String(document.body.getAttribute('data-dashboard-view') || '').trim().toLowerCase() === 'overview');
+        } catch (_) {
+          return false;
+        }
+      }
+
+      function normalizeOverviewPanelRangeKey(raw, fallback) {
+        var fb = (fallback == null ? '' : String(fallback)).trim().toLowerCase() || OVW_PANEL_DEFAULT_RANGE;
+        var s = (raw == null ? '' : String(raw)).trim().toLowerCase();
+        if (s === '7days') s = '7d';
+        if (s === '14days') s = '14d';
+        if (s === '30days') s = '30d';
+        if (!s) s = fb;
+        if (OVW_ALLOWED_PANEL_RANGES[s]) return s;
+        return fb;
+      }
+
+      function ovwPanelRangeStorageKey(panelId) {
+        var id = (panelId == null ? '' : String(panelId)).trim().toLowerCase();
+        return OVW_PANEL_RANGE_SS_PREFIX + id;
+      }
+
+      function getOverviewPanelRange(panelId, fallback) {
+        var fb = normalizeOverviewPanelRangeKey(fallback, OVW_PANEL_DEFAULT_RANGE);
+        var raw = '';
+        try { raw = sessionStorage.getItem(ovwPanelRangeStorageKey(panelId)) || ''; } catch (_) { raw = ''; }
+        return normalizeOverviewPanelRangeKey(raw, fb);
+      }
+
+      function setOverviewPanelRange(panelId, rangeKey) {
+        var id = (panelId == null ? '' : String(panelId)).trim().toLowerCase();
+        if (!id) return;
+        var rk = normalizeOverviewPanelRangeKey(rangeKey, OVW_PANEL_DEFAULT_RANGE);
+        try { sessionStorage.setItem(ovwPanelRangeStorageKey(id), String(rk)); } catch (_) {}
+      }
+
+      function ovwRangeLabel(rangeKey) {
+        var rk = normalizeOverviewPanelRangeKey(rangeKey, OVW_PANEL_DEFAULT_RANGE);
+        if (rk === 'today') return 'Today';
+        if (rk === 'yesterday') return 'Yesterday';
+        if (rk === '7d') return '7 Days';
+        if (rk === '14d') return '14 Days';
+        if (rk === '30d') return '30 Days';
+        return '7 Days';
+      }
+
+      function syncOverviewPanelRangeUi(panelId) {
+        var id = (panelId == null ? '' : String(panelId)).trim().toLowerCase();
+        if (!id) return;
+        var btn = null;
+        try { btn = document.querySelector('[data-ovw-panel-range-btn=\"' + id + '\"]'); } catch (_) { btn = null; }
+        if (!btn) return;
+        var rk = getOverviewPanelRange(id, OVW_PANEL_DEFAULT_RANGE);
+        btn.textContent = ovwRangeLabel(rk);
+      }
+
+      function syncAllOverviewPanelRangeUi() {
+        if (!isDashboardOverviewPage()) return;
+        ['main', 'online', 'kpis', 'toplists', 'trending', 'variant', 'traffic', 'abandoned'].forEach(function (k) {
+          try { syncOverviewPanelRangeUi(k); } catch (_) {}
+        });
+      }
+
+      function getOverviewPanelActiveTab(panelId, fallback) {
+        var key = (panelId == null ? '' : String(panelId)).trim().toLowerCase();
+        var fb = fallback == null ? '' : String(fallback);
+        return (ovwTabState && ovwTabState[key]) ? String(ovwTabState[key]) : fb;
+      }
+
+      function setOverviewPanelActiveTab(panelId, tabId) {
+        var key = (panelId == null ? '' : String(panelId)).trim().toLowerCase();
+        var tab = (tabId == null ? '' : String(tabId)).trim().toLowerCase();
+        if (!key || !tab) return;
+        if (!ovwTabState) ovwTabState = {};
+        ovwTabState[key] = tab;
+        syncOverviewPanelTabUi(key);
+      }
+
+      function syncOverviewPanelTabUi(panelId) {
+        var key = (panelId == null ? '' : String(panelId)).trim().toLowerCase();
+        if (!key) return;
+        var activeTab = getOverviewPanelActiveTab(key, '');
+
+        try {
+          var group = document.querySelector('[data-ovw-tabs=\"' + key + '\"]');
+          if (group) {
+            group.querySelectorAll('button[data-ovw-panel][data-ovw-tab]').forEach(function (btn) {
+              if (!btn) return;
+              var bPanel = String(btn.getAttribute('data-ovw-panel') || '').trim().toLowerCase();
+              if (bPanel !== key) return;
+              var bTab = String(btn.getAttribute('data-ovw-tab') || '').trim().toLowerCase();
+              var isActive = !!(bTab && activeTab && bTab === activeTab);
+              btn.classList.toggle('active', isActive);
+              try { btn.setAttribute('aria-pressed', isActive ? 'true' : 'false'); } catch (_) {}
+            });
+          }
+        } catch (_) {}
+
+        try {
+          var panelsWrap = document.querySelector('[data-ovw-panel-panels=\"' + key + '\"]');
+          if (panelsWrap) {
+            panelsWrap.querySelectorAll('[data-ovw-panel][data-ovw-tab-panel]').forEach(function (p) {
+              if (!p || !p.getAttribute) return;
+              var pPanel = String(p.getAttribute('data-ovw-panel') || '').trim().toLowerCase();
+              if (pPanel !== key) return;
+              var pTab = String(p.getAttribute('data-ovw-tab-panel') || '').trim().toLowerCase();
+              var show = !!(pTab && activeTab && pTab === activeTab);
+              p.classList.toggle('is-hidden', !show);
+            });
+          }
+        } catch (_) {}
+      }
+
+      function initDashboardOverviewUiOnce() {
+        if (ovwUiInitialized) return;
+        if (!isDashboardOverviewPage()) return;
+        ovwUiInitialized = true;
+
+        ['kpis', 'toplists', 'trending', 'variant', 'traffic'].forEach(function (key) {
+          try {
+            var group = document.querySelector('[data-ovw-tabs=\"' + key + '\"]');
+            if (!group) return;
+            var activeBtn = group.querySelector('button.active[data-ovw-panel][data-ovw-tab]');
+            if (!activeBtn) return;
+            var tab = String(activeBtn.getAttribute('data-ovw-tab') || '').trim().toLowerCase();
+            if (tab) ovwTabState[key] = tab;
+          } catch (_) {}
+        });
+
+        try { syncAllOverviewPanelRangeUi(); } catch (_) {}
+        try {
+          Object.keys(ovwTabState || {}).forEach(function (k) { try { syncOverviewPanelTabUi(k); } catch (_) {} });
+        } catch (_) {}
+      }
+
+      // Lightweight caches for Overview independent panels.
+      var ovwSeriesCache = {};
+      var ovwSeriesFetchedAt = {};
+      var ovwSeriesInFlight = {};
+      var OVW_SERIES_TTL_MS = 2 * 60 * 1000;
+
+      function fetchOvwDashboardSeries(rangeKey, force) {
+        var rk = normalizeOverviewPanelRangeKey(rangeKey, OVW_PANEL_DEFAULT_RANGE);
+        var now = Date.now();
+        var entry = ovwSeriesCache && ovwSeriesCache[rk] ? ovwSeriesCache[rk] : null;
+        var at = ovwSeriesFetchedAt && ovwSeriesFetchedAt[rk] ? Number(ovwSeriesFetchedAt[rk]) : 0;
+        var fresh = !force && entry && at && (now - at) < OVW_SERIES_TTL_MS;
+        if (fresh) return Promise.resolve(entry);
+        if (ovwSeriesInFlight && ovwSeriesInFlight[rk] && !force) return ovwSeriesInFlight[rk];
+        var url = API + '/api/dashboard-series?range=' + encodeURIComponent(rk) + (typeof window.kexoGetTrafficQuerySuffix === 'function' ? window.kexoGetTrafficQuerySuffix() : '');
+        if (force) url += '&force=1&_=' + now;
+        ovwSeriesInFlight[rk] = fetchWithTimeout(url, { credentials: 'same-origin', cache: force ? 'no-store' : 'default' }, 25000)
+          .then(function (r) { return (r && r.ok) ? r.json() : null; })
+          .then(function (data) {
+            if (data) {
+              ovwSeriesCache[rk] = data;
+              ovwSeriesFetchedAt[rk] = Date.now();
+            }
+            return data;
+          })
+          .catch(function () { return entry || null; })
+          .finally(function () { try { if (ovwSeriesInFlight) ovwSeriesInFlight[rk] = null; } catch (_) {} });
+        return ovwSeriesInFlight[rk];
+      }
+
+      var ovwKpisCache = {};
+      var ovwKpisFetchedAt = {};
+      var ovwKpisInFlight = {};
+      var OVW_KPIS_TTL_MS = 2 * 60 * 1000;
+
+      function fetchOvwKpis(rangeKey, force) {
+        var rk = normalizeOverviewPanelRangeKey(rangeKey, OVW_PANEL_DEFAULT_RANGE);
+        var now = Date.now();
+        var entry = ovwKpisCache && ovwKpisCache[rk] ? ovwKpisCache[rk] : null;
+        var at = ovwKpisFetchedAt && ovwKpisFetchedAt[rk] ? Number(ovwKpisFetchedAt[rk]) : 0;
+        var fresh = !force && entry && at && (now - at) < OVW_KPIS_TTL_MS;
+        if (fresh) return Promise.resolve(entry);
+        if (ovwKpisInFlight && ovwKpisInFlight[rk] && !force) return ovwKpisInFlight[rk];
+        var suffix = (typeof window.kexoGetTrafficQuerySuffix === 'function')
+          ? window.kexoGetTrafficQuerySuffix()
+          : (typeof getTrafficQuerySuffix === 'function' ? getTrafficQuerySuffix() : '');
+        var url = API + '/api/kpis?range=' + encodeURIComponent(rk) + suffix;
+        if (force) url += (url.indexOf('?') >= 0 ? '&' : '?') + 'force=1&_=' + now;
+        ovwKpisInFlight[rk] = fetchWithTimeout(url, { credentials: 'same-origin', cache: force ? 'no-store' : 'default' }, 25000)
+          .then(function (r) { return (r && r.ok) ? r.json() : null; })
+          .then(function (data) {
+            if (data) {
+              ovwKpisCache[rk] = data;
+              ovwKpisFetchedAt[rk] = Date.now();
+            }
+            return data;
+          })
+          .catch(function () { return entry || null; })
+          .finally(function () { try { if (ovwKpisInFlight) ovwKpisInFlight[rk] = null; } catch (_) {} });
+        return ovwKpisInFlight[rk];
+      }
+
+      var ovwKpiExtrasCache = {};
+      var ovwKpiExtrasFetchedAt = {};
+      var ovwKpiExtrasInFlight = {};
+      var OVW_KPI_EXTRAS_TTL_MS = 30 * 60 * 1000;
+
+      function fetchOvwKpiExtras(rangeKey, force) {
+        var rk = normalizeOverviewPanelRangeKey(rangeKey, OVW_PANEL_DEFAULT_RANGE);
+        var now = Date.now();
+        var entry = ovwKpiExtrasCache && ovwKpiExtrasCache[rk] ? ovwKpiExtrasCache[rk] : null;
+        var at = ovwKpiExtrasFetchedAt && ovwKpiExtrasFetchedAt[rk] ? Number(ovwKpiExtrasFetchedAt[rk]) : 0;
+        var fresh = !force && entry && at && (now - at) < OVW_KPI_EXTRAS_TTL_MS;
+        if (fresh) return Promise.resolve(entry);
+        if (ovwKpiExtrasInFlight && ovwKpiExtrasInFlight[rk] && !force) return ovwKpiExtrasInFlight[rk];
+        var url = API + '/api/kpis-expanded-extra?range=' + encodeURIComponent(rk);
+        try {
+          var shop = getShopForSales();
+          if (shop) url += '&shop=' + encodeURIComponent(String(shop));
+        } catch (_) {}
+        if (force) url += (url.indexOf('?') >= 0 ? '&' : '?') + '_=' + now;
+        ovwKpiExtrasInFlight[rk] = fetchWithTimeout(url, { credentials: 'same-origin', cache: force ? 'no-store' : 'default' }, 60000)
+          .then(function (r) { return (r && r.ok) ? r.json() : null; })
+          .then(function (data) {
+            if (data) {
+              ovwKpiExtrasCache[rk] = data;
+              ovwKpiExtrasFetchedAt[rk] = Date.now();
+            }
+            return data;
+          })
+          .catch(function () { return entry || null; })
+          .finally(function () { try { if (ovwKpiExtrasInFlight) ovwKpiExtrasInFlight[rk] = null; } catch (_) {} });
+        return ovwKpiExtrasInFlight[rk];
+      }
+
+      function setTextById(id, text) {
+        var el = document.getElementById(id);
+        if (el) el.textContent = text != null ? String(text) : '\u2014';
+      }
+
+      function fmtPct1(v) {
+        var n = (typeof v === 'number') ? v : Number(v);
+        if (!Number.isFinite(n)) return '\u2014';
+        return (Math.round(n * 10) / 10).toFixed(1).replace(/\\.0$/, '') + '%';
+      }
+
+      function fmtCurrencySigned(v) {
+        var n = (typeof v === 'number') ? v : Number(v);
+        if (!Number.isFinite(n)) return '\u2014';
+        if (typeof formatNegativeCurrencyOrZero === 'function') return formatNegativeCurrencyOrZero(n, false);
+        var abs = Math.abs(n);
+        var s = (typeof formatRevenue2 === 'function') ? (formatRevenue2(abs) || '\u2014') : fmtGbp2(abs);
+        if (n < 0) return '-' + String(s).replace(/^-/, '');
+        return s;
+      }
+
+      function renderOverviewKpiCard(payload, rangeKey, extras) {
+        var rk = normalizeOverviewPanelRangeKey(rangeKey, OVW_PANEL_DEFAULT_RANGE);
+        var safe = payload && typeof payload === 'object' ? payload : {};
+        function pick(obj) {
+          try { return obj && typeof obj === 'object' ? obj[rk] : null; } catch (_) { return null; }
+        }
+        var revenue = pick(safe.sales);
+        var profit = pick(safe.profit);
+        var conv = pick(safe.conversion);
+        var vpv = pick(safe.vpv);
+        var returningCustomers = pick(safe.returningCustomerCount);
+
+        var tb = pick(safe.trafficBreakdown);
+        var sessions = tb && typeof tb === 'object'
+          ? (typeof tb.human_sessions === 'number' ? tb.human_sessions : (typeof tb.sessions === 'number' ? tb.sessions : null))
+          : null;
+        var orders = pick(safe.convertedCount);
+        var aov = pick(safe.aov);
+        var bounce = pick(safe.bounce);
+
+        var returnsAmount = extras && typeof extras.returns === 'number' ? extras.returns : null;
+
+        setTextById('ovw-kpi-revenue', revenue != null ? fmtGbp2(revenue) : '\u2014');
+        setTextById('ovw-kpi-profit', profit != null ? fmtGbp2(profit) : '\u2014');
+        setTextById('ovw-kpi-conv', conv != null ? fmtPct1(conv) : '\u2014');
+        setTextById('ovw-kpi-vpv', vpv != null ? fmtGbp2(vpv) : '\u2014');
+        setTextById('ovw-kpi-returning', returningCustomers != null ? fmtNum(Math.trunc(Number(returningCustomers) || 0)) : '\u2014');
+
+        setTextById('ovw-kpi-sessions', sessions != null ? fmtNum(Math.trunc(Number(sessions) || 0)) : '\u2014');
+        setTextById('ovw-kpi-orders', orders != null ? fmtNum(Math.trunc(Number(orders) || 0)) : '\u2014');
+        setTextById('ovw-kpi-aov', aov != null ? fmtGbp2(aov) : '\u2014');
+        setTextById('ovw-kpi-bounce', bounce != null ? fmtPct1(bounce) : '\u2014');
+        setTextById('ovw-kpi-returns', returnsAmount != null ? fmtCurrencySigned(returnsAmount) : '\u2014');
+      }
+
+      function renderOverviewTopListsFromSeries(data) {
+        if (!data) return;
+        // These are Tabler grid tables; the table builder creates `*-body` mounts.
+        try {
+          var products = data.topProducts || [];
+          var prodBody = document.getElementById('dash-top-products-body');
+          if (prodBody) {
+            var prodPageSize = getTableRowsPerPage('dash-top-products', 'dashboard');
+            var prodPages = Math.max(1, Math.ceil(products.length / prodPageSize));
+            dashTopProductsPage = clampPage(dashTopProductsPage, prodPages);
+            updateCardPagination('dash-top-products', dashTopProductsPage, prodPages);
+            var prodStart = (dashTopProductsPage - 1) * prodPageSize;
+            var productsPageRows = products.slice(prodStart, prodStart + prodPageSize);
+            var prodTotal = productsPageRows.reduce(function (acc, p) { return acc + (Number(p && p.revenue) || 0); }, 0) || 0;
+            var mainBase = getMainBaseUrl && getMainBaseUrl();
+            var prodRows = productsPageRows.map(function (p) {
+              var rev = Number(p && p.revenue) || 0;
+              var pct = prodTotal > 0 ? (rev / prodTotal) * 100 : 0;
+              var crVal = (p && typeof p.cr === 'number' && isFinite(p.cr)) ? p.cr : null;
+              var label = p && p.title ? String(p.title) : 'Unknown';
+              var handle = (p && p.handle) ? String(p.handle).trim().toLowerCase() : '';
+              var productId = (p && p.product_id) ? String(p.product_id).replace(/^gid:\/\/shopify\/Product\//i, '').trim() : '';
+              var productUrl = (mainBase && handle) ? (mainBase + '/products/' + encodeURIComponent(handle)) : '#';
+              return {
+                label: label,
+                thumbUrl: p && p.thumb_url ? String(p.thumb_url) : null,
+                valueGbp: rev,
+                cr: crVal,
+                pct: pct,
+                productHandle: handle || null,
+                productId: productId && /^\\d+$/.test(productId) ? productId : null,
+                productTitle: label,
+                productUrl: productUrl
+              };
+            });
+            renderDashTopList('dash-top-products-body', prodRows, { accentCss: 'background: var(--kexo-accent-2);' });
+          }
+        } catch (_) {}
+
+        try {
+          var countries = data.topCountries || [];
+          var countryBody = document.getElementById('dash-top-countries-body');
+          if (countryBody) {
+            var countryPageSize = getTableRowsPerPage('dash-top-countries', 'dashboard');
+            var countryPages = Math.max(1, Math.ceil(countries.length / countryPageSize));
+            dashTopCountriesPage = clampPage(dashTopCountriesPage, countryPages);
+            updateCardPagination('dash-top-countries', dashTopCountriesPage, countryPages);
+            var countryStart = (dashTopCountriesPage - 1) * countryPageSize;
+            var countriesPageRows = countries.slice(countryStart, countryStart + countryPageSize);
+            var countryTotal = countriesPageRows.reduce(function (acc, c) { return acc + (Number(c && c.revenue) || 0); }, 0) || 0;
+            var countryRows = countriesPageRows.map(function (c) {
+              var cc = ((c && (c.country_code || c.country)) || 'XX').toUpperCase();
+              if (cc === 'UK') cc = 'GB';
+              var name = (typeof countryLabelFull === 'function') ? countryLabelFull(cc) : cc;
+              var rev = Number(c && c.revenue) || 0;
+              var pct = countryTotal > 0 ? (rev / countryTotal) * 100 : 0;
+              var crVal = (c && typeof c.cr === 'number' && isFinite(c.cr)) ? c.cr : null;
+              var flagEl = (typeof flagImg === 'function') ? flagImg(cc, name) : '';
+              return {
+                label: name,
+                iconHtml: '<span class=\"kexo-dash-top-flag-wrap\">' + flagEl + '</span>',
+                valueGbp: rev,
+                cr: crVal,
+                pct: pct
+              };
+            });
+            renderDashTopList('dash-top-countries-body', countryRows, { accentCss: 'background: var(--kexo-accent-1);' });
+          }
+        } catch (_) {}
+      }
+
+      function ovwFmtSignedGbp(v) {
+        var d = normalizeZeroNumber(v, 0.005);
+        if (d == null) d = 0;
+        var abs = Math.abs(d);
+        var s = fmtGbp(abs);
+        if (d > 0) return '+' + s;
+        if (d < 0) return '-' + s;
+        return s;
+      }
+
+      function renderOverviewTrendingFromSeries(data, mode) {
+        var isUp = String(mode || 'up').trim().toLowerCase() !== 'down';
+        var items = isUp ? (data && data.trendingUp ? data.trendingUp : []) : (data && data.trendingDown ? data.trendingDown : []);
+        var bodyEl = document.getElementById('dash-trending-body');
+        if (!bodyEl) return;
+        var list = Array.isArray(items) ? items.slice() : [];
+        list.sort(function (a, b) {
+          var ad = a && Number.isFinite(Number(a.deltaRevenue)) ? Number(a.deltaRevenue) : 0;
+          var bd = b && Number.isFinite(Number(b.deltaRevenue)) ? Number(b.deltaRevenue) : 0;
+          var byDelta = isUp ? (bd - ad) : (ad - bd);
+          if (byDelta !== 0) return byDelta;
+          var ar = a && Number.isFinite(Number(a.revenueNow)) ? Number(a.revenueNow) : 0;
+          var br = b && Number.isFinite(Number(b.revenueNow)) ? Number(b.revenueNow) : 0;
+          var byRev = br - ar;
+          if (byRev !== 0) return byRev;
+          var at = a && a.title != null ? String(a.title) : '';
+          var bt = b && b.title != null ? String(b.title) : '';
+          if (at !== bt) return at < bt ? -1 : 1;
+          return 0;
+        });
+        var pageSize = getTableRowsPerPage('dash-trending', 'dashboard');
+        var pages = Math.max(1, Math.ceil(list.length / pageSize));
+        dashTrendingPage = clampPage(dashTrendingPage, pages);
+        updateCardPagination('dash-trending', dashTrendingPage, pages);
+        var start = (dashTrendingPage - 1) * pageSize;
+        var pageRows = list.slice(start, start + pageSize);
+        var totalAbs = pageRows.reduce(function (acc, p) { return acc + Math.abs(Number(p && p.deltaRevenue) || 0); }, 0) || 0;
+        var mainBaseTr = getMainBaseUrl && getMainBaseUrl();
+        var out = pageRows.map(function (p) {
+          var d = (p && typeof p.deltaRevenue === 'number' && isFinite(p.deltaRevenue)) ? p.deltaRevenue : 0;
+          var absD = Math.abs(d);
+          var pct = totalAbs > 0 ? (absD / totalAbs) * 100 : 0;
+          var crVal = (p && typeof p.cr === 'number' && isFinite(p.cr)) ? p.cr : null;
+          var label = p && p.title ? String(p.title) : 'Unknown';
+          var handle = (p && p.handle) ? String(p.handle).trim().toLowerCase() : '';
+          var productId = (p && p.product_id) ? String(p.product_id).replace(/^gid:\/\/shopify\/Product\//i, '').trim() : '';
+          var productUrl = (mainBaseTr && handle) ? (mainBaseTr + '/products/' + encodeURIComponent(handle)) : '#';
+          var valueClass = d < 0 ? 'text-red' : 'text-green';
+          return {
+            label: label,
+            thumbUrl: p && p.thumb_url ? String(p.thumb_url) : null,
+            valueDisplay: ovwFmtSignedGbp(d),
+            valueClass: valueClass,
+            valueGbp: d,
+            cr: crVal,
+            pct: pct,
+            productHandle: handle || null,
+            productId: productId && /^\\d+$/.test(productId) ? productId : null,
+            productTitle: label,
+            productUrl: productUrl
+          };
+        });
+        renderDashTopList('dash-trending-body', out, { accentCss: 'background: var(--kexo-accent-3);' });
+      }
+
+      function refreshDashboardOverviewPage(opts) {
+        if (!isDashboardOverviewPage()) return Promise.resolve(null);
+        initDashboardOverviewUiOnce();
+        var options = opts && typeof opts === 'object' ? opts : {};
+        var force = !!options.force;
+
+        var mainRk = getOverviewPanelRange('main', OVW_PANEL_DEFAULT_RANGE);
+        var onlineRk = getOverviewPanelRange('online', OVW_PANEL_DEFAULT_RANGE);
+        var kpisRk = getOverviewPanelRange('kpis', OVW_PANEL_DEFAULT_RANGE);
+        var topRk = getOverviewPanelRange('toplists', OVW_PANEL_DEFAULT_RANGE);
+        var trendingRk = getOverviewPanelRange('trending', OVW_PANEL_DEFAULT_RANGE);
+        var variantRk = getOverviewPanelRange('variant', OVW_PANEL_DEFAULT_RANGE);
+        var trafficRk = getOverviewPanelRange('traffic', OVW_PANEL_DEFAULT_RANGE);
+        var abandonedRk = getOverviewPanelRange('abandoned', OVW_PANEL_DEFAULT_RANGE);
+
+        var trendingMode = getOverviewPanelActiveTab('trending', 'up');
+        var variantMode = getOverviewPanelActiveTab('variant', 'variant');
+        var finishesTableId = (variantMode === 'styles') ? 'styles' : 'finishes';
+
+        var tasks = [];
+
+        // Main overview chart card.
+        tasks.push(Promise.resolve()
+          .then(function () { return fetchOverviewCardData('dash-chart-overview-30d', { force: force, rangeKey: mainRk, renderIfFresh: true }); })
+          .catch(function () { return null; })
+        );
+
+        // Online map card.
+        tasks.push(Promise.resolve()
+          .then(function () {
+            if (typeof window.refreshLiveOnlineChart !== 'function') return null;
+            return window.refreshLiveOnlineChart({ force: force, rangeKey: onlineRk, pageKey: 'dashboard' });
+          })
+          .catch(function () { return null; })
+        );
+
+        // KPI card.
+        tasks.push(fetchOvwKpis(kpisRk, force).then(function (kpiPayload) {
+          renderOverviewKpiCard(kpiPayload, kpisRk, null);
+          return fetchOvwKpiExtras(kpisRk, false).then(function (extras) {
+            renderOverviewKpiCard(kpiPayload, kpisRk, extras);
+            return extras;
+          }).catch(function () { return null; });
+        }).catch(function () { return null; }));
+
+        // Top lists card.
+        tasks.push(fetchOvwDashboardSeries(topRk, force).then(function (data) {
+          renderOverviewTopListsFromSeries(data);
+          return data;
+        }).catch(function () { return null; }));
+
+        // Trending card.
+        tasks.push(fetchOvwDashboardSeries(trendingRk, force).then(function (data) {
+          renderOverviewTrendingFromSeries(data, trendingMode);
+          return data;
+        }).catch(function () { return null; }));
+
+        // Bottom widgets: use per-widget ranges.
+        tasks.push(Promise.resolve().then(function () {
+          refreshDashboardWidgetsNow({
+            force: force,
+            ranges: {
+              finishes: variantRk,
+              attribution: trafficRk,
+              devices: trafficRk,
+              browsers: trafficRk,
+              abandoned: abandonedRk,
+            },
+            tableIdOverrides: {
+              finishes: finishesTableId,
+            },
+          });
+          return null;
+        }).catch(function () { return null; }));
+
+        return Promise.all(tasks);
+      }
 
       var dashWidgetsBound = false;
       var dashWidgetCache = {}; // cacheKey -> { fetchedAt, sig, data }
@@ -5178,7 +5776,17 @@
       }
 
       function widgetPresent() {
-        try { return !!document.getElementById('dash-overview-widgets-grid'); } catch (_) { return false; }
+        try {
+          return !!(
+            document.getElementById('dash-ovw-finishes-list') ||
+            document.getElementById('dash-ovw-attribution-list') ||
+            document.getElementById('dash-ovw-devices-list') ||
+            document.getElementById('dash-ovw-browsers-list') ||
+            document.getElementById('dash-ovw-abandoned-list')
+          );
+        } catch (_) {
+          return false;
+        }
       }
 
       function defaultOverviewWidgetsUiConfigV1() {
@@ -5596,7 +6204,7 @@
           var gbHint = document.getElementById('kexo-ovw-finishes-groupby-hint');
           var selected = (cfg.widgets && cfg.widgets.finishes && cfg.widgets.finishes.groupBy) ? String(cfg.widgets.finishes.groupBy) : 'finishes';
           if (gbEl) {
-            gbEl.innerHTML = '<option value="finishes">Finishes</option>';
+              gbEl.innerHTML = '<option value="finishes">Variant</option>';
             gbEl.value = selected || 'finishes';
           }
           if (gbHint) gbHint.textContent = 'Loading tables…';
@@ -5617,7 +6225,7 @@
                 if (!id) return;
                 html += '<option value="' + escapeHtml(id) + '">' + escapeHtml(name || id) + '</option>';
               });
-              if (!html) html = '<option value="finishes">Finishes</option>';
+              if (!html) html = '<option value="finishes">Variant</option>';
               gbEl.innerHTML = html;
               var next = (selected || 'finishes');
               var found = false;
@@ -6207,8 +6815,16 @@
         bindDashWidgetsOnce();
         var options = opts && typeof opts === 'object' ? opts : {};
         var force = !!options.force;
-        var rk = options.rangeKey != null ? String(options.rangeKey) : dashRangeKeyFromDateRange();
-        rk = (rk == null ? '' : String(rk)).trim().toLowerCase() || 'today';
+        var defaultRk = options.rangeKey != null ? String(options.rangeKey) : dashRangeKeyFromDateRange();
+        defaultRk = (defaultRk == null ? '' : String(defaultRk)).trim().toLowerCase() || 'today';
+        var ranges = (options.ranges && typeof options.ranges === 'object') ? options.ranges : null;
+        var tableIdOverrides = (options.tableIdOverrides && typeof options.tableIdOverrides === 'object') ? options.tableIdOverrides : null;
+        function rkForWidget(widgetKey) {
+          var key = String(widgetKey || '').trim().toLowerCase();
+          var raw = (ranges && Object.prototype.hasOwnProperty.call(ranges, key)) ? ranges[key] : defaultRk;
+          var rk = (raw == null ? '' : String(raw)).trim().toLowerCase() || 'today';
+          return rk;
+        }
         var cfg = normalizeOverviewWidgetsUiConfigV1(readOverviewWidgetsUiConfigV1());
         try { applyOverviewWidgetsLayoutAndColors(cfg); } catch (_) {}
 
@@ -6231,15 +6847,19 @@
           .catch(function (err) {
             try { if (typeof window.kexoCaptureError === 'function') window.kexoCaptureError(err, { context: 'assetOverrides.fetch', page: 'dashboard' }); } catch (_) {}
           });
-
-        var urls = {
-          finishes: base + '/api/insights-variants?range=' + encodeURIComponent(rk) + (shopKey ? ('&shop=' + encodeURIComponent(shopKey)) : '') + (force ? ('&force=1&_=' + Date.now()) : ''),
-          devices: base + '/api/devices/report?range=' + encodeURIComponent(rk) + (force ? ('&force=1&_=' + Date.now()) : ''),
-          browsers: base + '/api/browsers/table?range=' + encodeURIComponent(rk) + (force ? ('&force=1&_=' + Date.now()) : ''),
-          attribution: base + '/api/attribution/report?range=' + encodeURIComponent(rk) + (force ? ('&force=1&_=' + Date.now()) : ''),
-          payment_methods: base + '/api/payment-methods/report?range=' + encodeURIComponent(rk) + (force ? ('&force=1&_=' + Date.now()) : ''),
-          abandoned: base + '/api/abandoned-carts/top-countries?range=' + encodeURIComponent(rk) + (force ? ('&force=1&_=' + Date.now()) : ''),
-        };
+        function urlForWidget(widgetKey) {
+          var key = String(widgetKey || '').trim().toLowerCase();
+          var rk = rkForWidget(key);
+          var stamp = Date.now();
+          if (key === 'finishes') {
+            return base + '/api/insights-variants?range=' + encodeURIComponent(rk) + (shopKey ? ('&shop=' + encodeURIComponent(shopKey)) : '') + (force ? ('&force=1&_=' + stamp) : '');
+          }
+          if (key === 'devices') return base + '/api/devices/report?range=' + encodeURIComponent(rk) + (force ? ('&force=1&_=' + stamp) : '');
+          if (key === 'browsers') return base + '/api/browsers/table?range=' + encodeURIComponent(rk) + (force ? ('&force=1&_=' + stamp) : '');
+          if (key === 'attribution') return base + '/api/attribution/report?range=' + encodeURIComponent(rk) + (force ? ('&force=1&_=' + stamp) : '');
+          if (key === 'abandoned') return base + '/api/abandoned-carts/top-countries?range=' + encodeURIComponent(rk) + (force ? ('&force=1&_=' + stamp) : '');
+          return '';
+        }
 
         var TOP_N = 4;
 
@@ -6440,8 +7060,9 @@
           if (!payload || typeof payload !== 'object') return [];
           if (key === 'finishes') {
             var tables = Array.isArray(payload.tables) ? payload.tables : [];
-            var tableId = cfg && cfg.widgets && cfg.widgets.finishes && cfg.widgets.finishes.groupBy ? String(cfg.widgets.finishes.groupBy) : '';
-            tableId = tableId.trim().toLowerCase();
+            var overrideId = (tableIdOverrides && tableIdOverrides.finishes != null) ? String(tableIdOverrides.finishes) : '';
+            var tableId = overrideId ? overrideId : (cfg && cfg.widgets && cfg.widgets.finishes && cfg.widgets.finishes.groupBy ? String(cfg.widgets.finishes.groupBy) : '');
+            tableId = String(tableId || '').trim().toLowerCase();
             var table = (tableId ? tables.find(function (t) { return t && String(t.id || '').trim().toLowerCase() === tableId; }) : null) || tables[0] || null;
             var rows = table && Array.isArray(table.rows) ? table.rows : [];
             return rows.map(function (r) {
@@ -6560,29 +7181,6 @@
               return { label: a.label || k, revenue: a.revenue || 0, clicks: a.sessions || 0, ctr: ctr, iconHtml: iconHtml };
             });
           }
-          if (key === 'payment_methods') {
-            var payRows = Array.isArray(payload.rows) ? payload.rows : [];
-            var payFallback = (ovwAssetOverrides && ovwAssetOverrides.overview_widget_payment_methods) ? String(ovwAssetOverrides.overview_widget_payment_methods).trim() : '';
-            return payRows.map(function (r) {
-              var label = r && r.label != null ? String(r.label) : '—';
-              var key2 = r && r.key != null ? String(r.key).trim().toLowerCase() : 'other';
-              var iconSpec = r && r.iconSpec != null ? String(r.iconSpec).trim() : '';
-              var iconSrc = r && r.iconSrc ? String(r.iconSrc) : '';
-              var iconAlt = r && r.iconAlt ? String(r.iconAlt) : label;
-              var iconHtml = iconSpec
-                ? attributionIconSpecToHtml(iconSpec, iconAlt)
-                : (payFallback ? attributionIconSpecToHtml(payFallback, iconAlt) : (iconSrc
-                ? ('<img src="' + escapeHtml(iconSrc) + '" alt="' + escapeHtml(iconAlt) + '" width="18" height="18" data-icon-key="payment-method-' + escapeHtml(key2 || 'other') + '">')
-                : '<i class="fa-light fa-credit-card" data-icon-key="payment-method-' + escapeHtml(key2 || 'other') + '" aria-hidden="true"></i>'));
-              return {
-                label: label,
-                revenue: Number(r && (r.revenue != null ? r.revenue : r.revenue_gbp)) || 0,
-                clicks: Number(r && r.sessions) || 0,
-                ctr: (r && r.cr != null) ? Number(r.cr) : null,
-                iconHtml: iconHtml,
-              };
-            });
-          }
           return [];
         }
 
@@ -6593,20 +7191,12 @@
           if (!widgetSupportsSortBy(key, sortBy)) sortBy = 'revenue';
           var rows = extractRows(key, data);
           var top = sortTop(rows, sortBy, TOP_N);
-          if (key === 'finishes') {
-            var payload = (data && data.ok && data.payload) ? data.payload : data;
-            var tables = Array.isArray(payload && payload.tables) ? payload.tables : [];
-            var gb = cfg && cfg.widgets && cfg.widgets.finishes && cfg.widgets.finishes.groupBy ? String(cfg.widgets.finishes.groupBy).trim().toLowerCase() : 'finishes';
-            var table = (gb ? tables.find(function (t) { return t && String(t.id || '').trim().toLowerCase() === gb; }) : null) || tables[0] || null;
-            var titleText = table && table.name ? String(table.name) : 'Finishes';
-            var titleEl = document.querySelector('[data-kexo-overview-widget="finishes"] .kexo-widget-title');
-            if (titleEl) titleEl.textContent = titleText;
-          }
           if (!top || !top.length) {
             try { document.getElementById('dash-ovw-' + key + '-chart').innerHTML = ''; } catch (_) {}
             try { document.getElementById('dash-ovw-' + key + '-list').innerHTML = '<div class="kexo-widget-empty">No data</div>'; } catch (_) {}
             return;
           }
+          var rk = rkForWidget(key);
           var sig = widgetSig({
             key: key,
             rk: rk,
@@ -6629,8 +7219,9 @@
 
         var order = cfg && Array.isArray(cfg.order) ? cfg.order.slice() : OVERVIEW_WIDGET_KEYS.slice();
         var tasks = order.map(function (key) {
-          var url = urls[key];
+          var url = urlForWidget(key);
           if (!url) return Promise.resolve(null);
+          var rk = rkForWidget(key);
           var cacheKey = key + '|' + rk + ((key === 'finishes') ? ('|' + shopKey) : '');
           var timeout = key === 'finishes' ? 30000 : 25000;
           return fetchWidgetJson(cacheKey, url, force, timeout).then(function (data) {
@@ -6647,6 +7238,11 @@
       }
 
       window.refreshDashboard = function(opts) {
+        try {
+          if (typeof isDashboardOverviewPage === 'function' && isDashboardOverviewPage()) {
+            return refreshDashboardOverviewPage(opts || {});
+          }
+        } catch (_) {}
         var force = opts && opts.force;
         var silent = !!(opts && opts.silent);
         var rerender = !!(opts && opts.rerender);
@@ -6698,6 +7294,9 @@
           }
         }
         function isDynamicRange() {
+          try {
+            if (typeof isDashboardOverviewPage === 'function' && isDashboardOverviewPage()) return false;
+          } catch (_) {}
           var rk = dashRangeKeyFromDateRange();
           return rk === 'today' || rk === '1h';
         }
@@ -6807,9 +7406,14 @@
       // so the initial setTab call can't trigger it. Kick it off now if dashboard is active.
       var dashPanel = document.getElementById('tab-panel-dashboard');
       if (dashPanel && (dashPanel.classList.contains('active') || PAGE === 'dashboard')) {
-        var dashRangeKey = dashRangeKeyFromDateRange();
-        var forceInitial = dashRangeKey === 'today' || dashRangeKey === '1h';
-        fetchDashboardData(dashRangeKey, forceInitial);
+        if (typeof isDashboardOverviewPage === 'function' && isDashboardOverviewPage()) {
+          try { initDashboardOverviewUiOnce(); } catch (_) {}
+          try { refreshDashboardOverviewPage({ force: false }); } catch (_) {}
+        } else {
+          var dashRangeKey = dashRangeKeyFromDateRange();
+          var forceInitial = dashRangeKey === 'today' || dashRangeKey === '1h';
+          fetchDashboardData(dashRangeKey, forceInitial);
+        }
       }
       try {
         if (window.dashboardController && typeof window.dashboardController.destroy === 'function') {
@@ -6832,6 +7436,12 @@
               var isDash = (PAGE === 'dashboard') || (p.classList && p.classList.contains('active')) || (typeof activeMainTab === 'string' && activeMainTab === 'dashboard');
               if (!isDash) return;
             } catch (_) {}
+            try {
+              if (typeof isDashboardOverviewPage === 'function' && isDashboardOverviewPage()) {
+                refreshDashboardOverviewPage({ force: true });
+                return;
+              }
+            } catch (_) {}
             try { fetchOverviewCardData('dash-chart-overview-30d', { force: true, renderIfFresh: true }); } catch (_) {}
             try { requestDashboardWidgetsRefresh({ force: true, rangeKey: dashRangeKeyFromDateRange() }); } catch (_) {}
           };
@@ -6845,7 +7455,7 @@
       // Failsafe: on some post-login flows (mobile app switching, bfcache restores),
       // the first dashboard fetch can be skipped or run while hidden. If we still have
       // no cache shortly after load, trigger ONE silent refresh.
-      if (PAGE === 'dashboard') {
+      if (PAGE === 'dashboard' && !(typeof isDashboardOverviewPage === 'function' && isDashboardOverviewPage())) {
         setTimeout(function() {
           try {
             if (dashCache) return;

@@ -3955,6 +3955,54 @@ body[data-page="dashboard"] #dash-trending-down .dash-trend-delta.text-red {
   pointer-events: auto;
   cursor: pointer;
 }
+
+/* Overview page: independent per-card tab headers + hide global date selector */
+body[data-dashboard-view="overview"] .kexo-nav-date-slot {
+  display: none !important;
+}
+body[data-dashboard-view="overview"] .kexo-ovw-tabs-row {
+  display: flex;
+  align-items: center;
+}
+body[data-dashboard-view="overview"] .kexo-ovw-tabs-row .btn-group {
+  flex-wrap: nowrap;
+}
+body[data-dashboard-view="overview"] .kexo-ovw-date-tab {
+  font-weight: 500;
+}
+body[data-dashboard-view="overview"] .kexo-ovw-kpi-list {
+  display: flex;
+  flex-direction: column;
+  gap: .55rem;
+}
+body[data-dashboard-view="overview"] .kexo-ovw-kpi-row {
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+  min-width: 0;
+}
+body[data-dashboard-view="overview"] .kexo-ovw-kpi-icon {
+  width: 18px;
+  display: inline-flex;
+  justify-content: center;
+  opacity: 0.85;
+}
+body[data-dashboard-view="overview"] .kexo-ovw-kpi-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 500;
+}
+body[data-dashboard-view="overview"] .kexo-ovw-kpi-value {
+  flex: 0 0 auto;
+  margin-left: auto;
+  font-weight: 600;
+}
+body[data-dashboard-view="overview"] .kexo-ovw-panel-pagination {
+  margin-top: .5rem;
+}
 .kexo-overview-card-head {
   display: flex;
   align-items: center;

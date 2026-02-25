@@ -22,17 +22,9 @@
   <script src="https://cdn.jsdelivr.net/npm/jsvectormap@1.6.0/dist/jsvectormap.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/jsvectormap@1.6.0/dist/maps/world.js" defer></script>
 </head>
-<body class="" data-page="dashboard">
+<body class="" data-page="dashboard" data-dashboard-view="overview">
     <!--#include partials/header.html-->
     <!--#include partials/page-body-start.html-->
-<div class="page-header mb-3">
-  <div class="row align-items-center">
-    <div class="col">
-      <div class="page-pretitle">Dashboard</div>
-      <h2 class="page-title">Overview</h2>
-    </div>
-  </div>
-</div>
 <div id="tab-panel-dashboard" class="main-tab-panel active" role="tabpanel" aria-labelledby="nav-tab-dashboard">
 
     <!-- Row 1: Graph (2/3) | Online (1/3) -->
@@ -40,6 +32,19 @@
       <div class="col-12 col-md-12 col-xl-8">
         <div class="card h-100 kexo-overview-main-card" data-kexo-chart-key="dash-chart-overview-30d">
           <div class="card-body kexo-overview-main-card-body">
+            <div class="kexo-ovw-tabs-row">
+              <div class="btn-group" role="group" aria-label="Overview main range" data-ovw-tabs="main">
+                <button type="button" class="btn btn-sm active" data-ovw-panel="main" data-ovw-tab="main" aria-pressed="true">Overview</button>
+                <button type="button" class="btn btn-sm kexo-ovw-date-tab dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" data-ovw-panel-range-btn="main">7 Days</button>
+                <div class="dropdown-menu">
+                  <button class="dropdown-item" type="button" data-ovw-panel-range="main" data-ovw-range="today">Today</button>
+                  <button class="dropdown-item" type="button" data-ovw-panel-range="main" data-ovw-range="yesterday">Yesterday</button>
+                  <button class="dropdown-item" type="button" data-ovw-panel-range="main" data-ovw-range="7d">7 Days</button>
+                  <button class="dropdown-item" type="button" data-ovw-panel-range="main" data-ovw-range="14d">14 Days</button>
+                  <button class="dropdown-item" type="button" data-ovw-panel-range="main" data-ovw-range="30d">30 Days</button>
+                </div>
+              </div>
+            </div>
             <div class="kexo-overview-card-head">
               <div class="kexo-overview-card-head-left">
                 <div class="kexo-overview-running-totals kexo-overview-running-totals--main" id="dash-overview-running-totals" aria-label="Sales Overview totals">
@@ -71,7 +76,21 @@
         <div class="card h-100 kexo-widget-card kexo-overview-widget-card" data-kexo-chart-key="overview-live-online-chart">
           <div class="card-body kexo-widget-card-body">
             <div class="kexo-widget-head">
-              <div class="kexo-widget-title kexo-online-header">Online <span class="kexo-online-count" id="live-online-now-count">0</span></div>
+              <div class="kexo-widget-title kexo-online-header">
+                <div class="kexo-ovw-tabs-row">
+                  <div class="btn-group" role="group" aria-label="Online range" data-ovw-tabs="online">
+                    <button type="button" class="btn btn-sm active" data-ovw-panel="online" data-ovw-tab="online" aria-pressed="true">Online <span class="kexo-online-count" id="live-online-now-count">0</span></button>
+                    <button type="button" class="btn btn-sm kexo-ovw-date-tab dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" data-ovw-panel-range-btn="online">7 Days</button>
+                    <div class="dropdown-menu">
+                      <button class="dropdown-item" type="button" data-ovw-panel-range="online" data-ovw-range="today">Today</button>
+                      <button class="dropdown-item" type="button" data-ovw-panel-range="online" data-ovw-range="yesterday">Yesterday</button>
+                      <button class="dropdown-item" type="button" data-ovw-panel-range="online" data-ovw-range="7d">7 Days</button>
+                      <button class="dropdown-item" type="button" data-ovw-panel-range="online" data-ovw-range="14d">14 Days</button>
+                      <button class="dropdown-item" type="button" data-ovw-panel-range="online" data-ovw-range="30d">30 Days</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
               <div class="kexo-widget-head-right"></div>
             </div>
             <div class="kexo-widget-body">
@@ -82,64 +101,153 @@
       </div>
     </div>
 
-    <!-- Row 2: Top Countries (1/3) + Top Products (1/3) + Trending (1/3) -->
+    <!-- Row 2: KPI (1/3) + Top Countries/Products (1/3) + Trending (1/3) -->
     <div class="row g-3 mb-3">
       <div class="col-12 col-md-6 col-xl-4 order-1">
-        <div class="card h-100 kexo-widget-card kexo-overview-widget-card kexo-accent-1" data-table-class="dashboard" data-table-zone="dashboard-top-countries" data-table-id="dash-top-countries">
+        <div class="card h-100 kexo-widget-card kexo-overview-widget-card kexo-accent-1" data-ovw-kpi-card="1">
           <div class="card-body kexo-widget-card-body">
             <div class="kexo-widget-head">
-              <div class="kexo-widget-title" data-kexo-table-title="1">Top Countries</div>
+              <div class="kexo-widget-title" data-kexo-table-title="1">
+                <div class="kexo-ovw-tabs-row">
+                  <div class="btn-group" role="group" aria-label="KPI sets" data-ovw-tabs="kpis">
+                    <button type="button" class="btn btn-sm active" data-ovw-panel="kpis" data-ovw-tab="set1" aria-pressed="true">KPI Set 1</button>
+                    <button type="button" class="btn btn-sm" data-ovw-panel="kpis" data-ovw-tab="set2" aria-pressed="false">KPI Set 2</button>
+                    <button type="button" class="btn btn-sm kexo-ovw-date-tab dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" data-ovw-panel-range-btn="kpis">7 Days</button>
+                    <div class="dropdown-menu">
+                      <button class="dropdown-item" type="button" data-ovw-panel-range="kpis" data-ovw-range="today">Today</button>
+                      <button class="dropdown-item" type="button" data-ovw-panel-range="kpis" data-ovw-range="yesterday">Yesterday</button>
+                      <button class="dropdown-item" type="button" data-ovw-panel-range="kpis" data-ovw-range="7d">7 Days</button>
+                      <button class="dropdown-item" type="button" data-ovw-panel-range="kpis" data-ovw-range="14d">14 Days</button>
+                      <button class="dropdown-item" type="button" data-ovw-panel-range="kpis" data-ovw-range="30d">30 Days</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
               <div class="kexo-widget-head-right"></div>
             </div>
             <div class="kexo-widget-body">
-              <div id="dash-top-countries-mount" data-kexo-table="dash-top-countries"></div>
+              <div class="kexo-ovw-tab-panels" data-ovw-panel-panels="kpis">
+                <div class="kexo-ovw-tab-panel" data-ovw-panel="kpis" data-ovw-tab-panel="set1">
+                  <div class="kexo-ovw-kpi-list" aria-label="KPI Set 1">
+                    <div class="kexo-ovw-kpi-row"><span class="kexo-ovw-kpi-icon"><i class="fa-light fa-sterling-sign" data-icon-key="dashboard-kpi-revenue" aria-hidden="true"></i></span><span class="kexo-ovw-kpi-label">Revenue</span><span class="kexo-ovw-kpi-value" id="ovw-kpi-revenue">&mdash;</span></div>
+                    <div class="kexo-ovw-kpi-row"><span class="kexo-ovw-kpi-icon"><i class="fa-light fa-chart-line" data-icon-key="dashboard-kpi-profit" aria-hidden="true"></i></span><span class="kexo-ovw-kpi-label">Profit</span><span class="kexo-ovw-kpi-value" id="ovw-kpi-profit">&mdash;</span></div>
+                    <div class="kexo-ovw-kpi-row"><span class="kexo-ovw-kpi-icon"><i class="fa-light fa-percent" data-icon-key="dashboard-kpi-conversion-rate" aria-hidden="true"></i></span><span class="kexo-ovw-kpi-label">Conversion Rate</span><span class="kexo-ovw-kpi-value" id="ovw-kpi-conv">&mdash;</span></div>
+                    <div class="kexo-ovw-kpi-row"><span class="kexo-ovw-kpi-icon"><i class="fa-light fa-sack-dollar" data-icon-key="dashboard-kpi-value-per-visit" aria-hidden="true"></i></span><span class="kexo-ovw-kpi-label">Value per Visit</span><span class="kexo-ovw-kpi-value" id="ovw-kpi-vpv">&mdash;</span></div>
+                    <div class="kexo-ovw-kpi-row"><span class="kexo-ovw-kpi-icon"><i class="fa-light fa-user-check" data-icon-key="dashboard-kpi-returning-customers" aria-hidden="true"></i></span><span class="kexo-ovw-kpi-label">Returning Customers</span><span class="kexo-ovw-kpi-value" id="ovw-kpi-returning">&mdash;</span></div>
+                  </div>
+                </div>
+                <div class="kexo-ovw-tab-panel is-hidden" data-ovw-panel="kpis" data-ovw-tab-panel="set2">
+                  <div class="kexo-ovw-kpi-list" aria-label="KPI Set 2">
+                    <div class="kexo-ovw-kpi-row"><span class="kexo-ovw-kpi-icon"><i class="fa-light fa-users" data-icon-key="dashboard-kpi-sessions" aria-hidden="true"></i></span><span class="kexo-ovw-kpi-label">Sessions</span><span class="kexo-ovw-kpi-value" id="ovw-kpi-sessions">&mdash;</span></div>
+                    <div class="kexo-ovw-kpi-row"><span class="kexo-ovw-kpi-icon"><i class="fa-light fa-cart-shopping" data-icon-key="dashboard-kpi-orders" aria-hidden="true"></i></span><span class="kexo-ovw-kpi-label">Orders</span><span class="kexo-ovw-kpi-value" id="ovw-kpi-orders">&mdash;</span></div>
+                    <div class="kexo-ovw-kpi-row"><span class="kexo-ovw-kpi-icon"><i class="fa-light fa-basket-shopping" data-icon-key="dashboard-kpi-aov" aria-hidden="true"></i></span><span class="kexo-ovw-kpi-label">AOV</span><span class="kexo-ovw-kpi-value" id="ovw-kpi-aov">&mdash;</span></div>
+                    <div class="kexo-ovw-kpi-row"><span class="kexo-ovw-kpi-icon"><i class="fa-light fa-person-walking-arrow-right" data-icon-key="dashboard-kpi-bounce-rate" aria-hidden="true"></i></span><span class="kexo-ovw-kpi-label">Bounce Rate</span><span class="kexo-ovw-kpi-value" id="ovw-kpi-bounce">&mdash;</span></div>
+                    <div class="kexo-ovw-kpi-row"><span class="kexo-ovw-kpi-icon"><i class="fa-light fa-rotate-left" data-icon-key="dashboard-kpi-returns" aria-hidden="true"></i></span><span class="kexo-ovw-kpi-label">Returns</span><span class="kexo-ovw-kpi-value" id="ovw-kpi-returns">&mdash;</span></div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-          <div class="card-footer d-flex align-items-center justify-content-center is-hidden" id="dash-top-countries-pagination" aria-label="Top countries pagination"></div>
         </div>
       </div>
+
       <div class="col-12 col-md-12 col-xl-4 order-md-3 order-xl-2">
-        <div class="card h-100 kexo-widget-card kexo-overview-widget-card kexo-accent-2" data-table-class="dashboard" data-table-zone="dashboard-top-products" data-table-id="dash-top-products">
+        <div class="card h-100 kexo-widget-card kexo-overview-widget-card kexo-accent-2" data-ovw-toplists-card="1">
           <div class="card-body kexo-widget-card-body">
             <div class="kexo-widget-head">
-              <div class="kexo-widget-title" data-kexo-table-title="1">Top Products</div>
+              <div class="kexo-widget-title" data-kexo-table-title="1">
+                <div class="kexo-ovw-tabs-row">
+                  <div class="btn-group" role="group" aria-label="Top lists" data-ovw-tabs="toplists">
+                    <button type="button" class="btn btn-sm active" data-ovw-panel="toplists" data-ovw-tab="countries" aria-pressed="true">Top Countries</button>
+                    <button type="button" class="btn btn-sm" data-ovw-panel="toplists" data-ovw-tab="products" aria-pressed="false">Top Products</button>
+                    <button type="button" class="btn btn-sm kexo-ovw-date-tab dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" data-ovw-panel-range-btn="toplists">7 Days</button>
+                    <div class="dropdown-menu">
+                      <button class="dropdown-item" type="button" data-ovw-panel-range="toplists" data-ovw-range="today">Today</button>
+                      <button class="dropdown-item" type="button" data-ovw-panel-range="toplists" data-ovw-range="yesterday">Yesterday</button>
+                      <button class="dropdown-item" type="button" data-ovw-panel-range="toplists" data-ovw-range="7d">7 Days</button>
+                      <button class="dropdown-item" type="button" data-ovw-panel-range="toplists" data-ovw-range="14d">14 Days</button>
+                      <button class="dropdown-item" type="button" data-ovw-panel-range="toplists" data-ovw-range="30d">30 Days</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
               <div class="kexo-widget-head-right"></div>
             </div>
             <div class="kexo-widget-body">
-              <div id="dash-top-products-mount" data-kexo-table="dash-top-products"></div>
+              <div class="kexo-ovw-tab-panels" data-ovw-panel-panels="toplists">
+                <div class="kexo-ovw-tab-panel" data-ovw-panel="toplists" data-ovw-tab-panel="countries">
+                  <div data-table-class="dashboard" data-table-zone="dashboard-top-countries" data-table-id="dash-top-countries">
+                    <div id="dash-top-countries-mount" data-kexo-table="dash-top-countries"></div>
+                    <div class="d-flex align-items-center justify-content-center is-hidden kexo-ovw-panel-pagination" id="dash-top-countries-pagination" aria-label="Top countries pagination"></div>
+                  </div>
+                </div>
+                <div class="kexo-ovw-tab-panel is-hidden" data-ovw-panel="toplists" data-ovw-tab-panel="products">
+                  <div data-table-class="dashboard" data-table-zone="dashboard-top-products" data-table-id="dash-top-products">
+                    <div id="dash-top-products-mount" data-kexo-table="dash-top-products"></div>
+                    <div class="d-flex align-items-center justify-content-center is-hidden kexo-ovw-panel-pagination" id="dash-top-products-pagination" aria-label="Top products pagination"></div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-          <div class="card-footer d-flex align-items-center justify-content-center is-hidden" id="dash-top-products-pagination" aria-label="Top products pagination"></div>
         </div>
       </div>
       <div class="col-12 col-md-6 col-xl-4 order-md-2 order-xl-3">
-        <div class="card h-100 kexo-widget-card kexo-overview-widget-card kexo-accent-3" data-table-class="dashboard" data-table-zone="dashboard-trending" data-table-id="dash-trending">
+        <div class="card h-100 kexo-widget-card kexo-overview-widget-card kexo-accent-3" data-ovw-trending-card="1">
           <div class="card-body kexo-widget-card-body">
             <div class="kexo-widget-head">
-              <div class="kexo-widget-title"><span data-kexo-table-title="1">Trending</span> <span id="dash-trending-toggle" role="button" tabindex="0" class="kexo-trending-toggle" aria-label="Switch to Trending Down"><span id="dash-trending-title">Up</span> <i class="fa-solid fa-angle-down kexo-trending-chevron" id="dash-trending-chevron-icon" aria-hidden="true"></i></span></div>
+              <div class="kexo-widget-title">
+                <div class="kexo-ovw-tabs-row">
+                  <div class="btn-group" role="group" aria-label="Trending" data-ovw-tabs="trending">
+                    <button type="button" class="btn btn-sm active" data-ovw-panel="trending" data-ovw-tab="up" aria-pressed="true">Trending Up</button>
+                    <button type="button" class="btn btn-sm" data-ovw-panel="trending" data-ovw-tab="down" aria-pressed="false">Trending Down</button>
+                    <button type="button" class="btn btn-sm kexo-ovw-date-tab dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" data-ovw-panel-range-btn="trending">7 Days</button>
+                    <div class="dropdown-menu">
+                      <button class="dropdown-item" type="button" data-ovw-panel-range="trending" data-ovw-range="today">Today</button>
+                      <button class="dropdown-item" type="button" data-ovw-panel-range="trending" data-ovw-range="yesterday">Yesterday</button>
+                      <button class="dropdown-item" type="button" data-ovw-panel-range="trending" data-ovw-range="7d">7 Days</button>
+                      <button class="dropdown-item" type="button" data-ovw-panel-range="trending" data-ovw-range="14d">14 Days</button>
+                      <button class="dropdown-item" type="button" data-ovw-panel-range="trending" data-ovw-range="30d">30 Days</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
               <div class="kexo-widget-head-right"></div>
             </div>
             <div class="kexo-widget-body">
-              <div id="dash-trending-mount" data-kexo-table="dash-trending"></div>
+              <div data-table-class="dashboard" data-table-zone="dashboard-trending" data-table-id="dash-trending">
+                <div id="dash-trending-mount" data-kexo-table="dash-trending"></div>
+                <div class="d-flex align-items-center justify-content-center is-hidden kexo-ovw-panel-pagination" id="dash-trending-pagination" aria-label="Trending pagination"></div>
+              </div>
             </div>
           </div>
-          <div class="card-footer d-flex align-items-center justify-content-center is-hidden" id="dash-trending-pagination" aria-label="Trending pagination"></div>
         </div>
       </div>
     </div>
 
-    <!-- Overview widgets (6) -->
-    <div class="row g-3 mb-3 kexo-10color-offset-3" id="dash-overview-widgets-grid" aria-label="Overview widgets">
-      <div class="col-12 col-md-6 col-xl-4" data-kexo-overview-widget-col="finishes">
-        <div class="card h-100 kexo-widget-card kexo-overview-widget-card" data-kexo-overview-widget="finishes">
+    <!-- Row 3: Variant/Styles + Attribution/Devices/Browsers + Abandoned Carts -->
+    <div class="row g-3 mb-3" aria-label="Overview widgets">
+      <div class="col-12 col-md-6 col-xl-4">
+        <div class="card h-100 kexo-widget-card kexo-overview-widget-card" data-ovw-variant-card="1">
           <div class="card-body kexo-widget-card-body">
             <div class="kexo-widget-head">
-              <div class="kexo-widget-title">Finishes</div>
-              <div class="kexo-widget-head-right">
-                <button type="button" class="btn btn-icon btn-ghost-secondary kexo-widget-settings-btn" data-kexo-overview-widget-settings aria-label="Widget settings" title="Widget settings">
-                  <i class="fa-light fa-gear" aria-hidden="true"></i>
-                </button>
+              <div class="kexo-widget-title">
+                <div class="kexo-ovw-tabs-row">
+                  <div class="btn-group" role="group" aria-label="Variant tabs" data-ovw-tabs="variant">
+                    <button type="button" class="btn btn-sm active" data-ovw-panel="variant" data-ovw-tab="variant" aria-pressed="true">Variant</button>
+                    <button type="button" class="btn btn-sm" data-ovw-panel="variant" data-ovw-tab="styles" aria-pressed="false">Styles</button>
+                    <button type="button" class="btn btn-sm kexo-ovw-date-tab dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" data-ovw-panel-range-btn="variant">7 Days</button>
+                    <div class="dropdown-menu">
+                      <button class="dropdown-item" type="button" data-ovw-panel-range="variant" data-ovw-range="today">Today</button>
+                      <button class="dropdown-item" type="button" data-ovw-panel-range="variant" data-ovw-range="yesterday">Yesterday</button>
+                      <button class="dropdown-item" type="button" data-ovw-panel-range="variant" data-ovw-range="7d">7 Days</button>
+                      <button class="dropdown-item" type="button" data-ovw-panel-range="variant" data-ovw-range="14d">14 Days</button>
+                      <button class="dropdown-item" type="button" data-ovw-panel-range="variant" data-ovw-range="30d">30 Days</button>
+                    </div>
+                  </div>
+                </div>
               </div>
+              <div class="kexo-widget-head-right"></div>
             </div>
             <div class="kexo-widget-body">
               <div class="kexo-overview-widget-chart" id="dash-ovw-finishes-chart" aria-hidden="true"></div>
@@ -149,96 +257,73 @@
         </div>
       </div>
 
-      <div class="col-12 col-md-6 col-xl-4" data-kexo-overview-widget-col="devices">
-        <div class="card h-100 kexo-widget-card kexo-overview-widget-card" data-kexo-overview-widget="devices">
+      <div class="col-12 col-md-6 col-xl-4">
+        <div class="card h-100 kexo-widget-card kexo-overview-widget-card" data-ovw-traffic-card="1">
           <div class="card-body kexo-widget-card-body">
             <div class="kexo-widget-head">
-              <div class="kexo-widget-title">Devices</div>
-              <div class="kexo-widget-head-right">
-                <button type="button" class="btn btn-icon btn-ghost-secondary kexo-widget-settings-btn" data-kexo-overview-widget-settings aria-label="Widget settings" title="Widget settings">
-                  <i class="fa-light fa-gear" aria-hidden="true"></i>
-                </button>
+              <div class="kexo-widget-title">
+                <div class="kexo-ovw-tabs-row">
+                  <div class="btn-group" role="group" aria-label="Traffic tabs" data-ovw-tabs="traffic">
+                    <button type="button" class="btn btn-sm active" data-ovw-panel="traffic" data-ovw-tab="attribution" aria-pressed="true">Attribution</button>
+                    <button type="button" class="btn btn-sm" data-ovw-panel="traffic" data-ovw-tab="devices" aria-pressed="false">Devices</button>
+                    <button type="button" class="btn btn-sm" data-ovw-panel="traffic" data-ovw-tab="browsers" aria-pressed="false">Browsers</button>
+                    <button type="button" class="btn btn-sm kexo-ovw-date-tab dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" data-ovw-panel-range-btn="traffic">7 Days</button>
+                    <div class="dropdown-menu">
+                      <button class="dropdown-item" type="button" data-ovw-panel-range="traffic" data-ovw-range="today">Today</button>
+                      <button class="dropdown-item" type="button" data-ovw-panel-range="traffic" data-ovw-range="yesterday">Yesterday</button>
+                      <button class="dropdown-item" type="button" data-ovw-panel-range="traffic" data-ovw-range="7d">7 Days</button>
+                      <button class="dropdown-item" type="button" data-ovw-panel-range="traffic" data-ovw-range="14d">14 Days</button>
+                      <button class="dropdown-item" type="button" data-ovw-panel-range="traffic" data-ovw-range="30d">30 Days</button>
+                    </div>
+                  </div>
+                </div>
               </div>
+              <div class="kexo-widget-head-right"></div>
             </div>
             <div class="kexo-widget-body">
-              <div class="kexo-overview-widget-chart" id="dash-ovw-devices-chart" aria-hidden="true"></div>
-              <div id="dash-ovw-devices-list" class="kexo-widget-mount" aria-live="polite"></div>
+              <div class="kexo-ovw-tab-panels" data-ovw-panel-panels="traffic">
+                <div class="kexo-ovw-tab-panel" data-ovw-panel="traffic" data-ovw-tab-panel="attribution">
+                  <div class="kexo-overview-widget-chart" id="dash-ovw-attribution-chart" aria-hidden="true"></div>
+                  <div id="dash-ovw-attribution-list" class="kexo-widget-mount" aria-live="polite"></div>
+                </div>
+                <div class="kexo-ovw-tab-panel is-hidden" data-ovw-panel="traffic" data-ovw-tab-panel="devices">
+                  <div class="kexo-overview-widget-chart" id="dash-ovw-devices-chart" aria-hidden="true"></div>
+                  <div id="dash-ovw-devices-list" class="kexo-widget-mount" aria-live="polite"></div>
+                </div>
+                <div class="kexo-ovw-tab-panel is-hidden" data-ovw-panel="traffic" data-ovw-tab-panel="browsers">
+                  <div class="kexo-overview-widget-chart" id="dash-ovw-browsers-chart" aria-hidden="true"></div>
+                  <div id="dash-ovw-browsers-list" class="kexo-widget-mount" aria-live="polite"></div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      <div class="col-12 col-md-6 col-xl-4" data-kexo-overview-widget-col="browsers">
-        <div class="card h-100 kexo-widget-card kexo-overview-widget-card" data-kexo-overview-widget="browsers">
+      <div class="col-12 col-md-6 col-xl-4">
+        <div class="card h-100 kexo-widget-card kexo-overview-widget-card" data-ovw-abandoned-card="1">
           <div class="card-body kexo-widget-card-body">
             <div class="kexo-widget-head">
-              <div class="kexo-widget-title">Browsers</div>
-              <div class="kexo-widget-head-right">
-                <button type="button" class="btn btn-icon btn-ghost-secondary kexo-widget-settings-btn" data-kexo-overview-widget-settings aria-label="Widget settings" title="Widget settings">
-                  <i class="fa-light fa-gear" aria-hidden="true"></i>
-                </button>
+              <div class="kexo-widget-title">
+                <div class="kexo-ovw-tabs-row">
+                  <div class="btn-group" role="group" aria-label="Abandoned carts tabs" data-ovw-tabs="abandoned">
+                    <button type="button" class="btn btn-sm active" data-ovw-panel="abandoned" data-ovw-tab="abandoned" aria-pressed="true">Abandoned Carts</button>
+                    <button type="button" class="btn btn-sm kexo-ovw-date-tab dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" data-ovw-panel-range-btn="abandoned">7 Days</button>
+                    <div class="dropdown-menu">
+                      <button class="dropdown-item" type="button" data-ovw-panel-range="abandoned" data-ovw-range="today">Today</button>
+                      <button class="dropdown-item" type="button" data-ovw-panel-range="abandoned" data-ovw-range="yesterday">Yesterday</button>
+                      <button class="dropdown-item" type="button" data-ovw-panel-range="abandoned" data-ovw-range="7d">7 Days</button>
+                      <button class="dropdown-item" type="button" data-ovw-panel-range="abandoned" data-ovw-range="14d">14 Days</button>
+                      <button class="dropdown-item" type="button" data-ovw-panel-range="abandoned" data-ovw-range="30d">30 Days</button>
+                    </div>
+                  </div>
+                </div>
               </div>
-            </div>
-            <div class="kexo-widget-body">
-              <div class="kexo-overview-widget-chart" id="dash-ovw-browsers-chart" aria-hidden="true"></div>
-              <div id="dash-ovw-browsers-list" class="kexo-widget-mount" aria-live="polite"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="col-12 col-md-6 col-xl-4" data-kexo-overview-widget-col="abandoned">
-        <div class="card h-100 kexo-widget-card kexo-overview-widget-card" data-kexo-overview-widget="abandoned">
-          <div class="card-body kexo-widget-card-body">
-            <div class="kexo-widget-head">
-              <div class="kexo-widget-title">Abandoned Carts</div>
-              <div class="kexo-widget-head-right">
-                <button type="button" class="btn btn-icon btn-ghost-secondary kexo-widget-settings-btn" data-kexo-overview-widget-settings aria-label="Widget settings" title="Widget settings">
-                  <i class="fa-light fa-gear" aria-hidden="true"></i>
-                </button>
-              </div>
+              <div class="kexo-widget-head-right"></div>
             </div>
             <div class="kexo-widget-body">
               <div class="kexo-overview-widget-chart" id="dash-ovw-abandoned-chart" aria-hidden="true"></div>
               <div id="dash-ovw-abandoned-list" class="kexo-widget-mount" aria-live="polite"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="col-12 col-md-6 col-xl-4" data-kexo-overview-widget-col="attribution">
-        <div class="card h-100 kexo-widget-card kexo-overview-widget-card" data-kexo-overview-widget="attribution">
-          <div class="card-body kexo-widget-card-body">
-            <div class="kexo-widget-head">
-              <div class="kexo-widget-title">Attribution</div>
-              <div class="kexo-widget-head-right">
-                <button type="button" class="btn btn-icon btn-ghost-secondary kexo-widget-settings-btn" data-kexo-overview-widget-settings aria-label="Widget settings" title="Widget settings">
-                  <i class="fa-light fa-gear" aria-hidden="true"></i>
-                </button>
-              </div>
-            </div>
-            <div class="kexo-widget-body">
-              <div class="kexo-overview-widget-chart" id="dash-ovw-attribution-chart" aria-hidden="true"></div>
-              <div id="dash-ovw-attribution-list" class="kexo-widget-mount" aria-live="polite"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="col-12 col-md-6 col-xl-4" data-kexo-overview-widget-col="payment_methods">
-        <div class="card h-100 kexo-widget-card kexo-overview-widget-card" data-kexo-overview-widget="payment_methods">
-          <div class="card-body kexo-widget-card-body">
-            <div class="kexo-widget-head">
-              <div class="kexo-widget-title">Payment Methods</div>
-              <div class="kexo-widget-head-right">
-                <button type="button" class="btn btn-icon btn-ghost-secondary kexo-widget-settings-btn" data-kexo-overview-widget-settings aria-label="Widget settings" title="Widget settings">
-                  <i class="fa-light fa-gear" aria-hidden="true"></i>
-                </button>
-              </div>
-            </div>
-            <div class="kexo-widget-body">
-              <div class="kexo-overview-widget-chart" id="dash-ovw-payment_methods-chart" aria-hidden="true"></div>
-              <div id="dash-ovw-payment_methods-list" class="kexo-widget-mount" aria-live="polite"></div>
             </div>
           </div>
         </div>
