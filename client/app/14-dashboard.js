@@ -1320,7 +1320,7 @@
       function buildPinAnnotationsForCategories(categoryLabels, pins, ySeries) {
         var labels = Array.isArray(categoryLabels) ? categoryLabels : [];
         var list = Array.isArray(pins) ? pins : [];
-        if (!labels.length || !list.length) return { xaxis: [], points: [], pinMeta: [] };
+        if (!labels.length || !list.length) return { xaxis: [], points: [], pinMeta: [], pinsByX: {} };
         var hasHourLabels = false;
         for (var t = 0; t < labels.length; t++) {
           var raw = labels[t] != null ? String(labels[t]).trim() : '';
@@ -1374,6 +1374,7 @@
         }
         var points = [];
         var pinMeta = [];
+        var pinsByX = {};
         byIndex.forEach(function (pinsAtIndex, atIndex) {
           var xLabel = labels[atIndex] != null ? String(labels[atIndex]) : '';
           if (!xLabel) return;
@@ -1396,6 +1397,8 @@
           for (var n = 0; n < bucket.length; n++) {
             var p = bucket[n] || {};
             var title = (p.title && String(p.title).trim()) || 'Pin';
+            if (!pinsByX[xLabel]) pinsByX[xLabel] = [];
+            pinsByX[xLabel].push(title);
             var pinId = (p.id != null && Number.isFinite(Number(p.id))) ? Math.trunc(Number(p.id)) : null;
             var uniq = pinId != null ? ('pin-' + String(pinId)) : ('pin-x' + String(atIndex) + '-' + String(n));
             var cls = 'kexo-pin-annotation--' + uniq;
@@ -1431,7 +1434,7 @@
             pinMeta.push({ cls: cls, title: title });
           }
         });
-        return { xaxis: [], points: points, pinMeta: pinMeta };
+        return { xaxis: [], points: points, pinMeta: pinMeta, pinsByX: pinsByX };
       }
 
       function setPinAnnotationTooltips(chart, pinMeta) {
@@ -1510,6 +1513,7 @@
         var result = buildPinAnnotationsForCategories(categoryLabels, cached, ySeries);
         var points = result && result.points ? result.points : [];
         var pinMeta = result && result.pinMeta ? result.pinMeta : [];
+        try { chart.__kexoPinsByX = (result && result.pinsByX) ? result.pinsByX : {}; } catch (_) {}
         if (points && points.length) {
           mergeAnnotations(points, pinMeta);
           return;
@@ -1521,6 +1525,7 @@
             var nextResult = buildPinAnnotationsForCategories(categoryLabels, pins, ySeries);
             var nextPoints = nextResult && nextResult.points ? nextResult.points : [];
             var nextPinMeta = nextResult && nextResult.pinMeta ? nextResult.pinMeta : [];
+            try { chart.__kexoPinsByX = (nextResult && nextResult.pinsByX) ? nextResult.pinsByX : {}; } catch (_) {}
             if (!nextPoints || !nextPoints.length) return;
             mergeAnnotations(nextPoints, nextPinMeta);
           });
@@ -3733,6 +3738,65 @@
           legendPosition: 'bottom',
           showLegend: false,
           forceTooltip: true,
+          tooltipCustom: function (tip) {
+            var w = tip && tip.w ? tip.w : null;
+            var di = tip && tip.dataPointIndex != null ? Number(tip.dataPointIndex) : -1;
+            if (!Number.isFinite(di) || di < 0) di = -1;
+            var xLabel = '';
+            try {
+              if (w && w.globals) {
+                if (Array.isArray(w.globals.labels) && di >= 0 && di < w.globals.labels.length) xLabel = String(w.globals.labels[di] || '');
+                else if (Array.isArray(w.globals.categoryLabels) && di >= 0 && di < w.globals.categoryLabels.length) xLabel = String(w.globals.categoryLabels[di] || '');
+              }
+            } catch (_) { xLabel = ''; }
+
+            var seriesNames = (w && w.globals && Array.isArray(w.globals.seriesNames)) ? w.globals.seriesNames : [];
+            var seriesColors = (w && w.globals && Array.isArray(w.globals.colors)) ? w.globals.colors : [];
+            var series = (tip && Array.isArray(tip.series)) ? tip.series : [];
+
+            var html = '<div class="kexo-tooltip-card p-2">';
+            if (xLabel) html += '<div class="fw-semibold mb-1">' + escapeHtml(xLabel) + '</div>';
+
+            for (var si = 0; si < seriesNames.length; si++) {
+              var name = seriesNames[si] != null ? String(seriesNames[si]) : '';
+              var color = seriesColors[si] != null ? String(seriesColors[si]) : '#94a3b8';
+              var val = null;
+              try {
+                val = (di >= 0 && series[si] && di < series[si].length) ? series[si][di] : null;
+              } catch (_) { val = null; }
+              var valText = fmtGbp(normalizeOverviewMetric(val)) || '\u2014';
+              html += '<div class="d-flex align-items-center gap-2">'
+                + '<span aria-hidden="true" style="display:inline-block;width:10px;height:10px;border-radius:999px;background:' + escapeHtml(color) + '"></span>'
+                + '<span>' + escapeHtml(name || '') + '</span>'
+                + '<span class="ms-auto">' + escapeHtml(valText) + '</span>'
+                + '</div>';
+            }
+
+            try {
+              var chart = (dashCharts && dashCharts[chartId]) ? dashCharts[chartId] : null;
+              var pinsByX = chart && chart.__kexoPinsByX ? chart.__kexoPinsByX : null;
+              var pins = (pinsByX && xLabel && Array.isArray(pinsByX[xLabel])) ? pinsByX[xLabel] : null;
+              if (pins && pins.length) {
+                var seen = new Set();
+                var uniq = [];
+                for (var pi = 0; pi < pins.length; pi++) {
+                  var t = pins[pi] != null ? String(pins[pi]).trim() : '';
+                  if (!t) continue;
+                  if (seen.has(t)) continue;
+                  seen.add(t);
+                  uniq.push(t);
+                  if (uniq.length >= 8) break;
+                }
+                if (uniq.length) {
+                  html += '<div class="mt-2 pt-2 border-top"><div class="fw-semibold">Pins</div>'
+                    + '<div class="small">' + uniq.map(function (t) { return escapeHtml(t); }).join('<br>') + '</div></div>';
+                }
+              }
+            } catch (_) {}
+
+            html += '</div>';
+            return html;
+          },
           tooltipShared: true,
           tooltipIntersect: false,
           tooltipFollowCursor: true,
