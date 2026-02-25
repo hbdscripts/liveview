@@ -2192,9 +2192,9 @@
       var token = String(a || '');
       if (!token) return '';
       return '' +
-        '<span class="item badge bg-secondary-lt kexo-alias-chip" data-ts-item data-value="' + escapeHtml(token) + '">' +
+        '<span class="badge bg-blue-lt text-blue-fg kexo-alias-chip" data-ts-item data-value="' + escapeHtml(token) + '">' +
           '<span class="kexo-alias-chip-text">' + escapeHtml(token) + '</span>' +
-          '<button type="button" class="kexo-alias-chip-remove" aria-label="Remove alias" data-action="remove-table-alias" data-table-idx="' + String(tableIdx) + '" data-alias="' + escapeHtml(token) + '">×</button>' +
+          '<button type="button" class="kexo-alias-chip-remove kexo-icon-action-btn" aria-label="Remove alias" data-action="remove-table-alias" data-table-idx="' + String(tableIdx) + '" data-alias="' + escapeHtml(token) + '"><i class="fa-light fa-xmark" data-icon-key="kpi-compare-close" aria-hidden="true"></i></button>' +
         '</span>';
     }).join('');
   }
@@ -3263,6 +3263,7 @@
     try {
       window.__kexoApplyGoogleAdsProfitDeductions = function (d, v, b) { applyProfitDeductions(d, v != null ? v : 1, b != null ? b : 1); };
       window.__kexoApplyPostbackGoals = function (g) { applyPostbackGoals(g); };
+      window.__kexoApplyGoogleAdsCartDataSettings = function (s) { applyCartDataSettings(s); };
     } catch (_) {}
     try {
       var payload = window.__kexoSettingsPayload;
@@ -3928,6 +3929,9 @@
           }
           if (typeof window.__kexoApplyPostbackGoals === 'function') {
             window.__kexoApplyPostbackGoals(data.googleAdsPostbackGoals || null);
+          }
+          if (typeof window.__kexoApplyGoogleAdsCartDataSettings === 'function') {
+            window.__kexoApplyGoogleAdsCartDataSettings(data);
           }
         } catch (_) {}
         var reporting = data.reporting || {};
@@ -6859,12 +6863,15 @@
     var tables = Array.isArray(insightsVariantsDraft.tables) ? insightsVariantsDraft.tables : [];
     var html = '' +
       '<div id="settings-insights-variants-errors"></div>' +
-      '<div class="mb-3 d-flex justify-content-between align-items-center flex-wrap gap-2">' +
+      '<div class="mb-3 d-flex justify-content-between align-items-start flex-wrap gap-2">' +
         '<div class="text-muted small">Define table rows by aliases. Includes are required. Overlap is auto-managed (most-specific include wins; earlier rows win ties). Titles outside table scope (e.g. non-length titles for length tables) are skipped. <strong>Table aliases</strong> are synonyms for Shopify option labels (e.g. Size/Chain Length) and help Suggestions merge into the same table.</div>' +
         '<div class="d-flex align-items-center gap-2">' +
           '<button type="button" class="btn btn-sm" data-action="add-table">Add custom table</button>' +
         '</div>' +
       '</div>';
+
+    var accordionId = 'settings-insights-variants-accordion';
+    html += '<div class="accordion settings-insights-variants-accordion settings-layout-accordion" id="' + accordionId + '">';
 
     tables.forEach(function (table, tableIdx) {
       if (!table) return;
@@ -6873,71 +6880,114 @@
       var aliasValue = aliasList.join(', ');
       var aliasChips = buildTableAliasChipsHtml(aliasList, tableIdx);
       var iconValue = String((table.icon || '').trim() || DEFAULT_VARIANTS_TABLE_ICON);
-      html += '<div class="card card-sm mb-3" data-table-idx="' + String(tableIdx) + '">' +
-        '<div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">' +
-          '<div class="d-flex align-items-center gap-2 flex-grow-1 flex-wrap">' +
-            '<input type="text" class="form-control form-control-sm settings-ui-maxw-280" data-field="table-name" data-table-idx="' + String(tableIdx) + '" value="' + escapeHtml(table.name || '') + '">' +
-            '<div class="kexo-alias-chipbox ts-wrapper multi form-control form-control-sm settings-ui-maxw-360" data-alias-chipbox data-table-idx="' + String(tableIdx) + '" title="Type and press Enter or comma to add. These are Shopify option-name synonyms to merge Suggestions into the same table.">' +
-              '<input type="hidden" data-field="table-aliases" data-table-idx="' + String(tableIdx) + '" value="' + escapeHtml(aliasValue) + '">' +
-              '<div class="kexo-alias-chipbox-chips ts-control" data-alias-chips data-table-idx="' + String(tableIdx) + '">' + aliasChips + '<input type="text" class="kexo-alias-chipbox-input" data-alias-input data-table-idx="' + String(tableIdx) + '" placeholder="Aliases (Enter or comma)"></div>' +
+      var collapseId = 'settings-insights-variants-collapse-' + String(tableIdx);
+      var tableName = escapeHtml(table.name || 'Table ' + String(tableIdx + 1));
+
+      html += '<div class="accordion-item" data-table-idx="' + String(tableIdx) + '">' +
+        '<h4 class="accordion-header">' +
+          '<button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#' + collapseId + '" aria-expanded="false" aria-controls="' + collapseId + '" data-bs-parent="#' + accordionId + '">' +
+            '<span class="d-flex align-items-center w-100 gap-2">' +
+              '<span class="kexo-settings-accordion-chevron" aria-hidden="true"><i class="fa-regular fa-chevron-down" aria-hidden="true"></i></span>' +
+              '<span class="me-auto settings-variants-accordion-title" data-variant-title>' + tableName + '</span>' +
+              '<span class="badge bg-blue-lt text-blue-fg">Custom</span>' +
+              '<label class="form-check form-switch m-0" onclick="event.stopPropagation()"><input class="form-check-input" type="checkbox" data-field="table-enabled" data-table-idx="' + String(tableIdx) + '"' + (table.enabled !== false ? ' checked' : '') + '><span class="form-check-label small ms-2">Enabled</span></label>' +
+              '<div class="settings-variants-header-actions" onclick="event.stopPropagation()">' +
+                '<button type="button" class="btn btn-danger btn-sm kexo-icon-action-btn" data-action="remove-table" data-table-idx="' + String(tableIdx) + '" aria-label="Delete table" title="Delete table">' +
+                  '<i data-icon-key="admin-tab-table-row-delete" aria-hidden="true"></i>' +
+                '</button>' +
+              '</div>' +
+            '</span>' +
+          '</button>' +
+        '</h4>' +
+        '<div id="' + collapseId + '" class="accordion-collapse collapse" data-bs-parent="#' + accordionId + '">' +
+          '<div class="accordion-body">' +
+            '<div class="row g-2 mb-3 align-items-end">' +
+              '<div class="col-12 col-md-4">' +
+                '<label class="form-label mb-1">Table name</label>' +
+                '<input type="text" class="form-control form-control-sm" data-field="table-name" data-table-idx="' + String(tableIdx) + '" value="' + escapeHtml(table.name || '') + '" placeholder="e.g. Length">' +
+              '</div>' +
+              '<div class="col-12 col-md-6">' +
+                '<label class="form-label mb-1">Table aliases</label>' +
+                '<div class="kexo-alias-chipbox settings-variants-chipbox" data-alias-chipbox data-table-idx="' + String(tableIdx) + '" title="Type and press Enter or comma to add. These are Shopify option-name synonyms to merge Suggestions into the same table.">' +
+                  '<input type="hidden" data-field="table-aliases" data-table-idx="' + String(tableIdx) + '" value="' + escapeHtml(aliasValue) + '">' +
+                  '<div class="kexo-alias-chipbox-chips" data-alias-chips data-table-idx="' + String(tableIdx) + '">' + aliasChips + '<input type="text" class="kexo-alias-chipbox-input" data-alias-input data-table-idx="' + String(tableIdx) + '" placeholder="Aliases (Enter or comma)"></div>' +
+                '</div>' +
+              '</div>' +
             '</div>' +
-            '<span class="badge bg-secondary-lt">Custom</span>' +
-          '</div>' +
-          '<div class="settings-variants-header-actions">' +
-            '<label class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" data-field="table-enabled" data-table-idx="' + String(tableIdx) + '"' + (table.enabled !== false ? ' checked' : '') + '><span class="form-check-label small ms-2">Enabled</span></label>' +
-            '<button type="button" class="btn btn-sm" data-action="remove-table" data-table-idx="' + String(tableIdx) + '">Delete</button>' +
-          '</div>' +
-        '</div>' +
-        '<div class="card-body">' +
-          '<div class="text-muted small mb-2">Key: <code>' + escapeHtml(table.id || '') + '</code></div>' +
-          (function () {
-            var def = (window.KEXO_SETTINGS_MODAL_TABLE_DEFS && window.KEXO_SETTINGS_MODAL_TABLE_DEFS['settings-merge-rules-table']) || {};
-            var cols = (def.columns || []).length ? def.columns : [
-              { header: 'Output', headerClass: '' },
-              { header: 'Include aliases', headerClass: '' },
-              { header: 'Actions', headerClass: 'text-end w-1' }
-            ];
-            var rowsData = rules.length ? rules.map(function (r, i) { return { rule: r, ruleIdx: i }; }) : [{ _empty: true }];
-            return buildKexoSettingsTable({
-              tableClass: 'table table-sm table-vcenter mb-0',
-              columns: cols,
-              rows: rowsData,
-              renderRow: function (item) {
-                if (item && item._empty) {
-                  return '<tr><td colspan="3" class="text-secondary small">No rules yet.</td></tr>';
+            '<div class="text-muted small mb-2">Key: <code>' + escapeHtml(table.id || '') + '</code></div>' +
+            (function () {
+              var def = (window.KEXO_SETTINGS_MODAL_TABLE_DEFS && window.KEXO_SETTINGS_MODAL_TABLE_DEFS['settings-merge-rules-table']) || {};
+              var cols = (def.columns || []).length ? def.columns : [
+                { header: 'Output', headerClass: '' },
+                { header: 'Include aliases', headerClass: '' },
+                { header: 'Actions', headerClass: 'text-end w-1' }
+              ];
+              var rowsData = rules.length ? rules.map(function (r, i) { return { rule: r, ruleIdx: i }; }) : [{ _empty: true }];
+              return buildKexoSettingsTable({
+                tableClass: 'table table-sm table-vcenter mb-0',
+                columns: cols,
+                rows: rowsData,
+                renderRow: function (item) {
+                  if (item && item._empty) {
+                    return '<tr><td colspan="3" class="text-secondary small py-3">No rules yet.</td></tr>';
+                  }
+                  var rule = item.rule;
+                  var ruleIdx = item.ruleIdx;
+                  var mergeBtn = rules.length > 1
+                    ? ('<button type="button" class="btn btn-sm kexo-icon-action-btn" data-action="merge-rule" data-table-idx="' + String(tableIdx) + '" data-rule-idx="' + String(ruleIdx) + '" aria-label="Merge rule" title="Merge">' +
+                        '<i data-icon-key="admin-tab-table-row-merge" aria-hidden="true"></i></button>')
+                    : '';
+                  return '<tr data-table-idx="' + String(tableIdx) + '" data-rule-idx="' + String(ruleIdx) + '">' +
+                    '<td><input type="text" class="form-control form-control-sm" data-field="rule-label" data-table-idx="' + String(tableIdx) + '" data-rule-idx="' + String(ruleIdx) + '" value="' + escapeHtml(rule.label || '') + '"></td>' +
+                    '<td><textarea class="form-control form-control-sm settings-variants-rule-include" rows="2" placeholder="One per line (or comma-separated)" data-field="rule-include" data-table-idx="' + String(tableIdx) + '" data-rule-idx="' + String(ruleIdx) + '">' + escapeHtml((rule.include || []).join('\n')) + '</textarea></td>' +
+                    '<td class="text-end">' +
+                      '<div class="d-inline-flex align-items-center gap-1 kexo-table-actions">' +
+                        mergeBtn +
+                        '<button type="button" class="btn btn-danger btn-sm kexo-icon-action-btn" data-action="remove-rule" data-table-idx="' + String(tableIdx) + '" data-rule-idx="' + String(ruleIdx) + '" aria-label="Remove rule" title="Remove">' +
+                          '<i data-icon-key="admin-tab-table-row-delete" aria-hidden="true"></i></button>' +
+                      '</div>' +
+                    '</td>' +
+                  '</tr>';
                 }
-                var rule = item.rule;
-                var ruleIdx = item.ruleIdx;
-                var mergeBtn = rules.length > 1
-                  ? ('<button type="button" class="btn btn-sm" data-action="merge-rule" data-table-idx="' + String(tableIdx) + '" data-rule-idx="' + String(ruleIdx) + '">Merge</button>')
-                  : '';
-                return '<tr data-table-idx="' + String(tableIdx) + '" data-rule-idx="' + String(ruleIdx) + '">' +
-                  '<td><input type="text" class="form-control form-control-sm" data-field="rule-label" data-table-idx="' + String(tableIdx) + '" data-rule-idx="' + String(ruleIdx) + '" value="' + escapeHtml(rule.label || '') + '"></td>' +
-                  '<td><textarea class="form-control form-control-sm" rows="2" placeholder="One per line (or comma-separated)" data-field="rule-include" data-table-idx="' + String(tableIdx) + '" data-rule-idx="' + String(ruleIdx) + '">' + escapeHtml((rule.include || []).join('\n')) + '</textarea></td>' +
-                  '<td class="text-end">' +
-                    '<div class="d-inline-flex align-items-center gap-2">' +
-                      mergeBtn +
-                      '<button type="button" class="btn btn-sm" data-action="remove-rule" data-table-idx="' + String(tableIdx) + '" data-rule-idx="' + String(ruleIdx) + '">Remove</button>' +
-                    '</div>' +
-                  '</td>' +
-                '</tr>';
-              }
-            });
-          })() +
-        '<div class="mt-2 d-flex justify-content-between align-items-center flex-wrap gap-2">' +
-          '<div class="d-flex align-items-center gap-2 flex-wrap">' +
-            '<button type="button" class="btn btn-sm" data-action="add-rule" data-table-idx="' + String(tableIdx) + '">Add row mapping</button>' +
-            '<input type="text" class="form-control form-control-sm settings-ui-maxw-260" data-field="table-icon" data-table-idx="' + String(tableIdx) + '" value="' + escapeHtml(iconValue) + '" placeholder="Icon (e.g. fa-solid fa-grid-round)" aria-label="Table icon (Font Awesome classes)">' +
+              });
+            })() +
+            '<div class="mt-3 d-flex justify-content-between align-items-center flex-wrap gap-2">' +
+              '<div class="d-flex align-items-center gap-2 flex-wrap">' +
+                '<button type="button" class="btn btn-sm" data-action="add-rule" data-table-idx="' + String(tableIdx) + '">Add row mapping</button>' +
+                '<div class="d-flex align-items-center gap-2">' +
+                  '<label class="form-label mb-0 small text-muted">Icon</label>' +
+                  '<input type="text" class="form-control form-control-sm settings-ui-maxw-260" data-field="table-icon" data-table-idx="' + String(tableIdx) + '" value="' + escapeHtml(iconValue) + '" placeholder="fa-solid fa-grid-round" aria-label="Table icon (Font Awesome classes)">' +
+                '</div>' +
+              '</div>' +
+              '<span class="text-muted small">Rule count: ' + String(rules.length) + '</span>' +
+            '</div>' +
           '</div>' +
-          '<span class="text-muted small">Rule count: ' + String(rules.length) + '</span>' +
-        '</div>' +
         '</div>' +
       '</div>';
     });
 
+    html += '</div>';
+
     root.innerHTML = html;
+    wireInsightsVariantsTitleSync();
     renderInsightsVariantsErrors(null);
     setInsightsVariantsResetVariantsVisibility(insightsVariantsDraft);
+  }
+
+  function wireInsightsVariantsTitleSync() {
+    var root = document.getElementById('settings-insights-variants-root');
+    if (!root) return;
+    root.querySelectorAll('input[data-field="table-name"]').forEach(function (input) {
+      var tableIdx = input.getAttribute('data-table-idx');
+      var titleEl = root.querySelector('.accordion-item[data-table-idx="' + tableIdx + '"] [data-variant-title]');
+      if (!titleEl) return;
+      function updateTitle() {
+        var v = (input.value || '').trim().replace(/\s+/g, ' ').slice(0, 80);
+        titleEl.textContent = v || ('Table ' + (parseInt(tableIdx, 10) + 1));
+      }
+      input.addEventListener('input', updateTitle);
+      input.addEventListener('change', updateTitle);
+    });
   }
 
   function updateDraftValue(tableIdx, ruleIdx, field, rawValue, checked) {
@@ -6992,19 +7042,19 @@
       : normalizeInsightsVariantsConfig(insightsVariantsConfigCache || defaultInsightsVariantsConfigV1());
     insightsVariantsDraft = draft;
 
-    root.querySelectorAll('.card[data-table-idx]').forEach(function (card) {
-      if (!card) return;
-      var tIdx = card.getAttribute('data-table-idx');
-      var nameEl = card.querySelector('input[data-field="table-name"][data-table-idx="' + String(tIdx) + '"]');
-      var aliasesEl = card.querySelector('input[data-field="table-aliases"][data-table-idx="' + String(tIdx) + '"]');
-      var iconEl = card.querySelector('input[data-field="table-icon"][data-table-idx="' + String(tIdx) + '"]');
-      var enabledEl = card.querySelector('input[data-field="table-enabled"][data-table-idx="' + String(tIdx) + '"]');
+    root.querySelectorAll('.accordion-item[data-table-idx]').forEach(function (item) {
+      if (!item) return;
+      var tIdx = item.getAttribute('data-table-idx');
+      var nameEl = item.querySelector('input[data-field="table-name"][data-table-idx="' + String(tIdx) + '"]');
+      var aliasesEl = item.querySelector('input[data-field="table-aliases"][data-table-idx="' + String(tIdx) + '"]');
+      var iconEl = item.querySelector('input[data-field="table-icon"][data-table-idx="' + String(tIdx) + '"]');
+      var enabledEl = item.querySelector('input[data-field="table-enabled"][data-table-idx="' + String(tIdx) + '"]');
       if (nameEl) updateDraftValue(tIdx, null, 'table-name', nameEl.value, false);
       if (aliasesEl) updateDraftValue(tIdx, null, 'table-aliases', aliasesEl.value, false);
       if (iconEl) updateDraftValue(tIdx, null, 'table-icon', iconEl.value, false);
       if (enabledEl) updateDraftValue(tIdx, null, 'table-enabled', '', !!enabledEl.checked);
 
-      card.querySelectorAll('tr[data-rule-idx]').forEach(function (tr) {
+      item.querySelectorAll('tr[data-rule-idx]').forEach(function (tr) {
         if (!tr) return;
         var rIdx = tr.getAttribute('data-rule-idx');
         var labelEl = tr.querySelector('input[data-field="rule-label"]');
