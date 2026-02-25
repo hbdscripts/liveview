@@ -641,8 +641,16 @@
                     <span class="form-check-label" title="When on, apply Shipping costs settings as a per-order cost deduction.">Shipping</span>
                   </label>
                   <label class="form-check form-switch">
-                    <input class="form-check-input" type="checkbox" id="cost-expenses-rules-enabled" />
-                    <span class="form-check-label" title="When on, include your Per-order rules, Overheads, and Fixed costs as deductions.">Custom Rules</span>
+                    <input class="form-check-input" type="checkbox" id="cost-expenses-rules-per-order-enabled" />
+                    <span class="form-check-label" title="When on, include your Per Order rules in cost deductions.">Cost Rules: Per Order</span>
+                  </label>
+                  <label class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="cost-expenses-rules-overheads-enabled" />
+                    <span class="form-check-label" title="When on, include your Overheads in cost deductions.">Cost Rules: Overheads</span>
+                  </label>
+                  <label class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="cost-expenses-rules-fixed-enabled" />
+                    <span class="form-check-label" title="When on, include your Fixed costs in cost deductions.">Cost Rules: Fixed</span>
                   </label>
                 </div>
               </div>
@@ -687,8 +695,7 @@
                   </h4>
                   <div id="settings-cost-expenses-rules-per-order" class="accordion-collapse collapse" data-bs-parent="#settings-cost-expenses-rules-accordion">
                     <div class="accordion-body">
-                      <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
-                        <span class="fw-semibold">Per-order rules</span>
+                      <div class="d-flex align-items-center justify-content-end flex-wrap gap-2 mb-2">
                         <button type="button" class="btn btn-sm btn-primary" id="cost-expenses-per-order-add-btn">Add per-order rule</button>
                       </div>
                       <div class="text-muted small mb-3">Use these for fees, packaging, and other costs that scale with orders, items, or revenue.</div>
@@ -873,8 +880,7 @@
                   </h4>
                   <div id="settings-cost-expenses-rules-overheads" class="accordion-collapse collapse" data-bs-parent="#settings-cost-expenses-rules-accordion">
                     <div class="accordion-body">
-                      <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
-                        <span class="fw-semibold">Overheads</span>
+                      <div class="d-flex align-items-center justify-content-end flex-wrap gap-2 mb-2">
                         <button type="button" class="btn btn-sm btn-primary" id="cost-expenses-overheads-add-btn">Add overhead</button>
                       </div>
                       <div class="text-muted small mb-3">Overheads are time-based expenses (e.g. rent, wages, software) allocated into date ranges.</div>
@@ -969,8 +975,7 @@
                   </h4>
                   <div id="settings-cost-expenses-rules-fixed-costs" class="accordion-collapse collapse" data-bs-parent="#settings-cost-expenses-rules-accordion">
                     <div class="accordion-body">
-                      <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
-                        <span class="fw-semibold">Fixed costs</span>
+                      <div class="d-flex align-items-center justify-content-end flex-wrap gap-2 mb-2">
                         <button type="button" class="btn btn-sm btn-primary" id="cost-expenses-fixed-cost-add-btn">Add fixed cost</button>
                       </div>
                       <div class="text-muted small mb-3">Recurring fixed costs (e.g. rent, utilities). Choose the frequency; allocation is converted to an average per-day rate over the selected date range.</div>
@@ -992,11 +997,11 @@
                         <div class="card-body">
                           <input type="hidden" id="cost-expenses-fixed-cost-id" />
                           <div class="row g-2">
-                            <div class="col-12 col-md-6">
+                            <div class="col-12 col-md-4">
                               <label class="form-label" for="cost-expenses-fixed-cost-name" title="A short label for this fixed cost (e.g. Rent).">Name <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>
                               <input type="text" id="cost-expenses-fixed-cost-name" class="form-control" placeholder="e.g. Rent" />
                             </div>
-                            <div class="col-12 col-md-4">
+                            <div class="col-12 col-md-3">
                               <label class="form-label" for="cost-expenses-fixed-cost-amount" title="Amount in GBP for the chosen frequency (per day/week/month/year).">Amount (GBP) <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>
                               <input type="number" id="cost-expenses-fixed-cost-amount" class="form-control" min="0" step="0.01" placeholder="e.g. 40" />
                             </div>
@@ -1008,6 +1013,10 @@
                                 <option value="monthly">Month</option>
                                 <option value="yearly">Year</option>
                               </select>
+                            </div>
+                            <div class="col-12 col-md-3">
+                              <label class="form-label" for="cost-expenses-fixed-cost-start" title="Optional. If set, this fixed cost applies from this date onward (inclusive). Leave blank to apply to all dates.">Starts <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>
+                              <input type="date" id="cost-expenses-fixed-cost-start" class="form-control" />
                             </div>
                           </div>
                           <label class="form-check mt-2">
@@ -1028,14 +1037,48 @@
             <div id="settings-cost-expenses-panel-breakdown" class="settings-cost-expenses-panel" role="tabpanel" aria-labelledby="settings-cost-expenses-tab-breakdown">
               <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
                 <h4 class="m-0">Cost Breakdown</h4>
-                <div class="btn-group" role="group" aria-label="Cost Breakdown date range" id="cost-breakdown-range-group">
-                  <button type="button" class="btn btn-sm" data-cost-breakdown-range="today">Today</button>
-                  <button type="button" class="btn btn-sm" data-cost-breakdown-range="yesterday">Yesterday</button>
-                  <button type="button" class="btn btn-sm" data-cost-breakdown-range="7d">7 Days</button>
-                  <button type="button" class="btn btn-sm" data-cost-breakdown-range="30d">30 Days</button>
+              </div>
+              <div class="accordion settings-layout-accordion mb-3" id="cost-breakdown-summary-accordion">
+                <div class="accordion-item">
+                  <h4 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#cost-breakdown-summary-collapse" aria-expanded="false" aria-controls="cost-breakdown-summary-collapse"><span class="d-flex align-items-center w-100 gap-2"><span class="kexo-settings-accordion-chevron" aria-hidden="true"><i class="fa-regular fa-chevron-down" aria-hidden="true"></i></span><span class="me-auto">Cost Summary</span></span></button>
+                  </h4>
+                  <div id="cost-breakdown-summary-collapse" class="accordion-collapse collapse" data-bs-parent="#cost-breakdown-summary-accordion">
+                    <div class="accordion-body">
+                      <div class="btn-group mb-3" role="group" aria-label="Cost Breakdown date range" id="cost-breakdown-range-group">
+                        <button type="button" class="btn btn-sm" data-cost-breakdown-range="today">Today</button>
+                        <button type="button" class="btn btn-sm" data-cost-breakdown-range="yesterday">Yesterday</button>
+                        <button type="button" class="btn btn-sm" data-cost-breakdown-range="7d">7 Days</button>
+                        <button type="button" class="btn btn-sm" data-cost-breakdown-range="30d">30 Days</button>
+                      </div>
+                      <div class="settings-responsive-grid settings-cost-breakdown-totals-grid" data-settings-ui-row="1" aria-label="Cost Breakdown totals">
+                        <div class="settings-cost-breakdown-total-tile" data-cost-breakdown-total-tile="active">
+                          <div class="settings-cost-breakdown-total-tile-icon" aria-hidden="true">
+                            <i data-icon-key="admin-tab-cost-breakdown-total-active" aria-hidden="true"></i>
+                          </div>
+                          <div class="settings-cost-breakdown-total-tile-body">
+                            <div class="text-muted small">Total Active Costs</div>
+                            <div class="h3 m-0" id="cost-breakdown-total-active">Loading…</div>
+                          </div>
+                        </div>
+                        <div class="settings-cost-breakdown-total-tile" data-cost-breakdown-total-tile="inactive">
+                          <div class="settings-cost-breakdown-total-tile-icon" aria-hidden="true">
+                            <i data-icon-key="admin-tab-cost-breakdown-total-inactive" aria-hidden="true"></i>
+                          </div>
+                          <div class="settings-cost-breakdown-total-tile-body">
+                            <div class="text-muted small">Total Inactive Costs</div>
+                            <div class="h3 m-0" id="cost-breakdown-total-inactive">Loading…</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div class="text-muted small mb-2">Inactive rows are shown muted but amounts are still calculated for comparison.</div>
+              <label class="form-check form-switch mb-2">
+                <input class="form-check-input" type="checkbox" id="cost-breakdown-hide-inactive" checked />
+                <span class="form-check-label" title="When on, hide inactive rows from the table (summary totals still include inactive).">Hide inactive</span>
+              </label>
               <div id="cost-breakdown-msg" class="form-hint mb-2"></div>
               <div class="table-responsive">
                 <table class="table table-sm align-middle">
@@ -1051,30 +1094,6 @@
                     <tr><td colspan="4" class="text-muted small">Select a date range to load a breakdown.</td></tr>
                   </tbody>
                 </table>
-              </div>
-              <div class="card card-sm mt-3">
-                <div class="card-body">
-                  <div class="settings-responsive-grid settings-cost-breakdown-totals-grid" data-settings-ui-row="1" aria-label="Cost Breakdown totals">
-                    <div class="settings-cost-breakdown-total-tile" data-cost-breakdown-total-tile="active">
-                      <div class="settings-cost-breakdown-total-tile-icon" aria-hidden="true">
-                        <i data-icon-key="admin-tab-cost-breakdown-total-active" aria-hidden="true"></i>
-                      </div>
-                      <div class="settings-cost-breakdown-total-tile-body">
-                        <div class="text-muted small">Total Active Costs</div>
-                        <div class="h3 m-0" id="cost-breakdown-total-active">Loading…</div>
-                      </div>
-                    </div>
-                    <div class="settings-cost-breakdown-total-tile" data-cost-breakdown-total-tile="inactive">
-                      <div class="settings-cost-breakdown-total-tile-icon" aria-hidden="true">
-                        <i data-icon-key="admin-tab-cost-breakdown-total-inactive" aria-hidden="true"></i>
-                      </div>
-                      <div class="settings-cost-breakdown-total-tile-body">
-                        <div class="text-muted small">Total Inactive Costs</div>
-                        <div class="h3 m-0" id="cost-breakdown-total-inactive">Loading…</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
               </div>
             </div>
             </div>

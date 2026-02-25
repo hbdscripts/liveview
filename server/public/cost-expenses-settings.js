@@ -76,7 +76,16 @@
   }
 
   function defaultCostExpensesModel() {
-    return { rule_mode: 'stack', per_order_rules: [], overheads: [], fixed_costs: [] };
+    return {
+      rule_mode: 'stack',
+      // These toggles control which groups are included in profit calculations (app-only).
+      include_per_order_rules: true,
+      include_overheads: true,
+      include_fixed_costs: true,
+      per_order_rules: [],
+      overheads: [],
+      fixed_costs: [],
+    };
   }
 
   function normalizeFixedCost(raw, idx) {
@@ -97,12 +106,15 @@
       if (frequency === 'yearly') return amount / DAYS_PER_YEAR;
       return amount; // daily
     })();
+    var effectiveStart = normalizeYmd(r.effective_start || r.start_date, '');
     return {
       id: id.slice(0, 64),
       name: name.slice(0, 80),
       amount: amount,
       frequency: frequency,
       amount_per_day: Math.max(0, Number(amount_per_day) || 0),
+      effective_start: effectiveStart || null,
+      start_date: effectiveStart || '',
       enabled: r.enabled !== false,
     };
   }
@@ -281,6 +293,10 @@
     var ce = raw.cost_expenses && typeof raw.cost_expenses === 'object' ? raw.cost_expenses : null;
     if (ce) {
       c.cost_expenses.rule_mode = ce.rule_mode === 'first_match' ? 'first_match' : 'stack';
+      // New: per-group include flags (default on if missing).
+      c.cost_expenses.include_per_order_rules = ce.include_per_order_rules !== false;
+      c.cost_expenses.include_overheads = ce.include_overheads !== false;
+      c.cost_expenses.include_fixed_costs = ce.include_fixed_costs !== false;
       c.cost_expenses.per_order_rules = (Array.isArray(ce.per_order_rules) ? ce.per_order_rules : []).slice(0, 200).map(function (r, i) {
         return normalizePerOrderRule(r, i);
       });
@@ -297,6 +313,9 @@
       // Legacy fallback: map old rules into the new model.
       var legacy = raw.rules.slice(0, 200);
       c.cost_expenses.rule_mode = 'stack';
+      c.cost_expenses.include_per_order_rules = true;
+      c.cost_expenses.include_overheads = true;
+      c.cost_expenses.include_fixed_costs = true;
       legacy.forEach(function (r, i) {
         var rule = r && typeof r === 'object' ? r : {};
         var type = ['percent_revenue', 'fixed_per_order', 'fixed_per_period'].indexOf(rule.type) !== -1 ? rule.type : 'percent_revenue';
@@ -382,15 +401,36 @@
 
   function syncExcludedHints() {
     var shippingToggle = document.getElementById('cost-expenses-shipping-enabled');
-    var rulesToggle = document.getElementById('cost-expenses-rules-enabled');
+    var perOrderToggle = document.getElementById('cost-expenses-rules-per-order-enabled');
+    var overheadsToggle = document.getElementById('cost-expenses-rules-overheads-enabled');
+    var fixedToggle = document.getElementById('cost-expenses-rules-fixed-enabled');
     var shippingHint = document.getElementById('cost-expenses-shipping-excluded-hint');
     var rulesHint = document.getElementById('cost-expenses-rules-excluded-hint');
 
     var shippingIncluded = !!(shippingToggle && shippingToggle.checked === true);
-    var rulesIncluded = !!(rulesToggle && rulesToggle.checked === true);
+    var perOrderIncluded = !!(perOrderToggle && perOrderToggle.checked === true);
+    var overheadsIncluded = !!(overheadsToggle && overheadsToggle.checked === true);
+    var fixedIncluded = !!(fixedToggle && fixedToggle.checked === true);
 
     if (shippingHint) shippingHint.classList.toggle('is-hidden', !shippingToggle || shippingIncluded);
-    if (rulesHint) rulesHint.classList.toggle('is-hidden', !rulesToggle || rulesIncluded);
+    if (rulesHint) {
+      if (!perOrderToggle || !overheadsToggle || !fixedToggle) {
+        rulesHint.textContent = 'Rules are currently excluded from Cost sources.';
+        rulesHint.classList.toggle('is-hidden', true);
+      } else {
+        var excluded = [];
+        if (!perOrderIncluded) excluded.push('Per Order');
+        if (!overheadsIncluded) excluded.push('Overheads');
+        if (!fixedIncluded) excluded.push('Fixed');
+        if (!excluded.length) {
+          rulesHint.textContent = 'Rules are currently excluded from Cost sources.';
+          rulesHint.classList.add('is-hidden');
+        } else {
+          rulesHint.textContent = 'Some cost rules are excluded from Cost sources: ' + excluded.join(', ') + '.';
+          rulesHint.classList.remove('is-hidden');
+        }
+      }
+    }
   }
 
   function renderShippingOverrides() {
@@ -434,7 +474,11 @@
           '<input type="text" class="form-control form-control-sm kexo-ce-override-countries" value="' + esc(countriesStr) + '" data-override-countries placeholder="e.g. GB, IE, FR" aria-label="Countries" />' +
         '</td>' +
         '<td class="text-end">' +
-          '<button type="button" class="btn btn-danger btn-sm" data-override-remove>Remove</button>' +
+          '<div class="d-inline-flex gap-1 flex-nowrap kexo-table-actions" aria-label="Override actions">' +
+            '<button type="button" class="btn btn-danger btn-sm kexo-icon-action-btn" data-override-remove aria-label="Remove override" title="Remove">' +
+              '<i data-icon-key="admin-tab-table-row-delete" aria-hidden="true"></i>' +
+            '</button>' +
+          '</div>' +
         '</td>' +
         '</tr>';
     });
@@ -622,16 +666,32 @@
     var pf = document.getElementById('cost-expenses-payment-fees');
     var ab = document.getElementById('cost-expenses-app-bills');
     var tax = document.getElementById('cost-expenses-tax');
-    var rules = document.getElementById('cost-expenses-rules-enabled');
     cfg.integrations.includeGoogleAdsSpend = !!(ga && ga.checked);
     cfg.integrations.includePaymentFees = !!(pf && pf.checked);
     cfg.integrations.includeShopifyAppBills = !!(ab && ab.checked);
     cfg.integrations.includeShopifyTaxes = !!(tax && tax.checked);
-    cfg.enabled = !!(rules && rules.checked);
-    cfg.shipping = readShippingFromUi();
     if (!cfg.cost_expenses) cfg.cost_expenses = defaultCostExpensesModel();
+    var perOrder = document.getElementById('cost-expenses-rules-per-order-enabled');
+    var overheads = document.getElementById('cost-expenses-rules-overheads-enabled');
+    var fixed = document.getElementById('cost-expenses-rules-fixed-enabled');
+    cfg.cost_expenses.include_per_order_rules = !!(perOrder && perOrder.checked);
+    cfg.cost_expenses.include_overheads = !!(overheads && overheads.checked);
+    cfg.cost_expenses.include_fixed_costs = !!(fixed && fixed.checked);
+    cfg.shipping = readShippingFromUi();
     var modeEl = document.getElementById('cost-expenses-rule-mode');
     cfg.cost_expenses.rule_mode = (modeEl && String(modeEl.value) === 'first_match') ? 'first_match' : 'stack';
+    // Global enable: if any cost source is toggled on, profit KPIs can be computed.
+    // (Historically this was coupled to a single "Custom Rules" toggle; we now derive it.)
+    cfg.enabled = !!(
+      cfg.integrations.includeGoogleAdsSpend ||
+      cfg.integrations.includePaymentFees ||
+      cfg.integrations.includeShopifyAppBills ||
+      cfg.integrations.includeShopifyTaxes ||
+      (cfg.shipping && cfg.shipping.enabled === true) ||
+      (cfg.cost_expenses && cfg.cost_expenses.include_per_order_rules) ||
+      (cfg.cost_expenses && cfg.cost_expenses.include_overheads) ||
+      (cfg.cost_expenses && cfg.cost_expenses.include_fixed_costs)
+    );
     return cfg;
   }
 
@@ -642,12 +702,16 @@
     var paymentFees = document.getElementById('cost-expenses-payment-fees');
     var appBills = document.getElementById('cost-expenses-app-bills');
     var taxEl = document.getElementById('cost-expenses-tax');
-    var rulesEnabledEl = document.getElementById('cost-expenses-rules-enabled');
     if (googleAds) googleAds.checked = !!(cfg.integrations && cfg.integrations.includeGoogleAdsSpend);
     if (paymentFees) paymentFees.checked = !!(cfg.integrations && cfg.integrations.includePaymentFees);
     if (appBills) appBills.checked = !!(cfg.integrations && cfg.integrations.includeShopifyAppBills);
     if (taxEl) taxEl.checked = !!(cfg.integrations && cfg.integrations.includeShopifyTaxes);
-    if (rulesEnabledEl) rulesEnabledEl.checked = cfg.enabled === true;
+    var perOrderEl = document.getElementById('cost-expenses-rules-per-order-enabled');
+    var overheadsEl = document.getElementById('cost-expenses-rules-overheads-enabled');
+    var fixedEl = document.getElementById('cost-expenses-rules-fixed-enabled');
+    if (perOrderEl) perOrderEl.checked = !!(cfg.cost_expenses && cfg.cost_expenses.include_per_order_rules);
+    if (overheadsEl) overheadsEl.checked = !!(cfg.cost_expenses && cfg.cost_expenses.include_overheads);
+    if (fixedEl) fixedEl.checked = !!(cfg.cost_expenses && cfg.cost_expenses.include_fixed_costs);
 
     var worldwideEl = document.getElementById('cost-expenses-shipping-worldwide');
     var shippingEnabledEl = document.getElementById('cost-expenses-shipping-enabled');
@@ -813,13 +877,43 @@
     } catch (_) {
       out = [];
     }
-    if (!Array.isArray(out) || !out.length) {
-      out = [
-        'GB', 'IE', 'US', 'CA', 'AU', 'NZ',
-        'FR', 'DE', 'ES', 'IT', 'NL', 'BE', 'DK', 'SE', 'NO', 'FI',
-        'PL', 'AT', 'CH', 'PT', 'GR', 'CZ', 'HU', 'RO', 'BG', 'HR',
-      ];
-    }
+    // Robust fallback: some browsers/environments lack Intl.supportedValuesOf('region').
+    // Use a complete ISO-3166 alpha-2 list so all countries are selectable.
+    var ISO3166_ALPHA2_FALLBACK = [
+      'AD','AE','AF','AG','AI','AL','AM','AO','AQ','AR','AS','AT','AU','AW','AX','AZ',
+      'BA','BB','BD','BE','BF','BG','BH','BI','BJ','BL','BM','BN','BO','BQ','BR','BS','BT','BV','BW','BY','BZ',
+      'CA','CC','CD','CF','CG','CH','CI','CK','CL','CM','CN','CO','CR','CU','CV','CW','CX','CY','CZ',
+      'DE','DJ','DK','DM','DO','DZ',
+      'EC','EE','EG','EH','ER','ES','ET',
+      'FI','FJ','FK','FM','FO','FR',
+      'GA','GB','GD','GE','GF','GG','GH','GI','GL','GM','GN','GP','GQ','GR','GS','GT','GU','GW','GY',
+      'HK','HM','HN','HR','HT','HU',
+      'ID','IE','IL','IM','IN','IO','IQ','IR','IS','IT','JE','JM','JO','JP',
+      'KE','KG','KH','KI','KM','KN','KP','KR','KW','KY','KZ',
+      'LA','LB','LC','LI','LK','LR','LS','LT','LU','LV','LY',
+      'MA','MC','MD','ME','MF','MG','MH','MK','ML','MM','MN','MO','MP','MQ','MR','MS','MT','MU','MV','MW','MX','MY','MZ',
+      'NA','NC','NE','NF','NG','NI','NL','NO','NP','NR','NU','NZ',
+      'OM',
+      'PA','PE','PF','PG','PH','PK','PL','PM','PN','PR','PS','PT','PW','PY',
+      'QA',
+      'RE','RO','RS','RU','RW',
+      'SA','SB','SC','SD','SE','SG','SH','SI','SJ','SK','SL','SM','SN','SO','SR','SS','ST','SV','SX','SY','SZ',
+      'TC','TD','TF','TG','TH','TJ','TK','TL','TM','TN','TO','TR','TT','TV','TW','TZ',
+      'UA','UG','UM','US','UY','UZ',
+      'VA','VC','VE','VG','VI','VN','VU',
+      'WF','WS',
+      'YE','YT',
+      'ZA','ZM','ZW',
+    ];
+    if (!Array.isArray(out) || !out.length) out = ISO3166_ALPHA2_FALLBACK.slice();
+    // Merge in fallback to guard against partial Intl lists (rare).
+    try {
+      if (Array.isArray(out) && out.length) {
+        var merged = out.slice();
+        ISO3166_ALPHA2_FALLBACK.forEach(function (cc) { merged.push(cc); });
+        out = merged;
+      }
+    } catch (_) {}
     var seen = {};
     var cleaned = [];
     out.forEach(function (c) {
@@ -1463,6 +1557,11 @@
     document.getElementById('cost-expenses-fixed-cost-name').value = fc ? (fc.name || '') : '';
     document.getElementById('cost-expenses-fixed-cost-amount').value = fc && (fc.amount != null) ? fc.amount : (fc && fc.amount_per_day != null ? fc.amount_per_day : '');
     try { document.getElementById('cost-expenses-fixed-cost-frequency').value = fc && fc.frequency ? String(fc.frequency) : 'daily'; } catch (_) {}
+    try {
+      var startRaw = fc ? (fc.effective_start || fc.start_date || '') : '';
+      var nowYmd = ymdTodayLocal() || '';
+      document.getElementById('cost-expenses-fixed-cost-start').value = fc ? String(startRaw || '') : (nowYmd || '');
+    } catch (_) {}
     document.getElementById('cost-expenses-fixed-cost-enabled').checked = fc ? (fc.enabled !== false) : true;
     setSectionMsg('cost-expenses-fixed-costs-msg', '', null);
   }
@@ -1491,12 +1590,20 @@
     var freqRaw = '';
     try { freqRaw = String(document.getElementById('cost-expenses-fixed-cost-frequency').value || '').trim().toLowerCase(); } catch (_) { freqRaw = ''; }
     var frequency = (freqRaw === 'daily' || freqRaw === 'weekly' || freqRaw === 'monthly' || freqRaw === 'yearly') ? freqRaw : 'daily';
+    var startYmd = '';
+    try { startYmd = String(document.getElementById('cost-expenses-fixed-cost-start').value || '').trim(); } catch (_) { startYmd = ''; }
+    if (startYmd && !/^\d{4}-\d{2}-\d{2}$/.test(startYmd)) {
+      setSectionMsg('cost-expenses-fixed-costs-msg', 'Start date must be a date', false);
+      return;
+    }
     var id = state.editingFixedCostId || ('fc_' + Date.now());
     var fixedCost = normalizeFixedCost({
       id: id,
       name: name,
       amount: amount,
       frequency: frequency,
+      effective_start: startYmd || null,
+      start_date: startYmd || '',
       enabled: document.getElementById('cost-expenses-fixed-cost-enabled').checked,
     }, 0);
 
@@ -1629,7 +1736,12 @@
 
     root.addEventListener('change', function (e) {
       var target = e.target;
-      if (target && (target.id === 'cost-expenses-shipping-enabled' || target.id === 'cost-expenses-rules-enabled')) {
+      if (target && (
+        target.id === 'cost-expenses-shipping-enabled' ||
+        target.id === 'cost-expenses-rules-per-order-enabled' ||
+        target.id === 'cost-expenses-rules-overheads-enabled' ||
+        target.id === 'cost-expenses-rules-fixed-enabled'
+      )) {
         syncExcludedHints();
       }
       if (target && target.id === 'cost-expenses-rule-mode') {

@@ -2032,7 +2032,12 @@ function computeProfitDeductionsDetailed(summary, config) {
     : 0;
   for (const f of fixedCosts) {
     if (!f || f.enabled !== true) continue;
-    const amt = round2((Number(f.amount_per_day) || 0) * daysInRange) || 0;
+    const start = normalizeYmd(f.effective_start || f.start_date, '');
+    const rangeStart = summary && summary.startYmd ? String(summary.startYmd) : '';
+    const rangeEnd = summary && summary.endYmd ? String(summary.endYmd) : '';
+    const effectiveStart = start && rangeStart ? (start > rangeStart ? start : rangeStart) : (start || rangeStart);
+    const effectiveDays = (effectiveStart && rangeEnd) ? ymdDaysInclusive(effectiveStart, rangeEnd) : daysInRange;
+    const amt = round2((Number(f.amount_per_day) || 0) * Math.max(0, Number(effectiveDays) || 0)) || 0;
     fixedCostTotal += amt;
     lines.push({
       id: f.id ? String(f.id) : '',
@@ -2040,7 +2045,7 @@ function computeProfitDeductionsDetailed(summary, config) {
       type: 'fixed_cost',
       value: Number(f.amount_per_day) || 0,
       amountGbp: amt,
-      notes: `£${(Number(f.amount_per_day) || 0).toFixed(2)}/day × ${daysInRange} days`,
+      notes: `£${(Number(f.amount_per_day) || 0).toFixed(2)}/day × ${Math.max(0, Number(effectiveDays) || 0)} days`,
     });
   }
 
@@ -2144,7 +2149,12 @@ function computeProfitDeductionsAudit(summary, config) {
     : 0;
   for (const f of fixedCosts) {
     if (!f || f.enabled !== true) continue;
-    const amt = round2((Number(f.amount_per_day) || 0) * daysInRange) || 0;
+    const start = normalizeYmd(f.effective_start || f.start_date, '');
+    const rangeStart = summary && summary.startYmd ? String(summary.startYmd) : '';
+    const rangeEnd = summary && summary.endYmd ? String(summary.endYmd) : '';
+    const effectiveStart = start && rangeStart ? (start > rangeStart ? start : rangeStart) : (start || rangeStart);
+    const effectiveDays = (effectiveStart && rangeEnd && effectiveStart <= rangeEnd) ? ymdDaysInclusive(effectiveStart, rangeEnd) : daysInRange;
+    const amt = round2((Number(f.amount_per_day) || 0) * Math.max(0, Number(effectiveDays) || 0)) || 0;
     if (amt <= 0) continue;
     total += amt;
     lines.push({
@@ -2154,12 +2164,12 @@ function computeProfitDeductionsAudit(summary, config) {
       applies_to: 'ALL',
       type: 'fixed_cost',
       value: Number(f.amount_per_day) || 0,
-      start_date: '',
+      start_date: start || '',
       end_date: '',
       scoped_revenue_gbp: 0,
       scoped_orders: 0,
       computed_deduction_gbp: amt,
-      notes: `£${(Number(f.amount_per_day) || 0).toFixed(2)}/day × ${daysInRange} days`,
+      notes: `£${(Number(f.amount_per_day) || 0).toFixed(2)}/day × ${Math.max(0, Number(effectiveDays) || 0)} days`,
     });
   }
   return { totalGbp: round2(total) || 0, lines };
@@ -2922,6 +2932,10 @@ async function getBusinessSnapshot(options = {}) {
   }
 
   const profitRules = await readProfitRulesConfig();
+  const ceToggles = profitRules && profitRules.cost_expenses && typeof profitRules.cost_expenses === 'object' ? profitRules.cost_expenses : null;
+  const includePerOrderRules = ceToggles ? (ceToggles.include_per_order_rules !== false) : true;
+  const includeOverheads = ceToggles ? (ceToggles.include_overheads !== false) : true;
+  const includeFixedCosts = ceToggles ? (ceToggles.include_fixed_costs !== false) : true;
   const rulesEnabled = hasEnabledProfitRules(profitRules);
   const includeGoogleAdsSpend = !!(profitRules && profitRules.integrations && profitRules.integrations.includeGoogleAdsSpend === true);
   const includeShopifyAppBills = !!(profitRules && profitRules.integrations && profitRules.integrations.includeShopifyAppBills === true);
@@ -3112,8 +3126,12 @@ async function getBusinessSnapshot(options = {}) {
     adsPrevClicksByYmd
   );
 
-  const deductionsNowDetailed = (rulesEnabled && summaryNow) ? computeProfitDeductionsDetailed(summaryNow, profitRules) : { total: 0, lines: [] };
-  const deductionsPrevDetailed = (rulesEnabled && summaryPrev) ? computeProfitDeductionsDetailed(summaryPrev, profitRules) : { total: 0, lines: [] };
+  const deductionsNowDetailed = (rulesEnabled && summaryNow)
+    ? computeProfitDeductionsDetailed(summaryNow, profitRules)
+    : { total: 0, lines: [], perOrderTotal: 0, overheadTotal: 0, fixedCostTotal: 0 };
+  const deductionsPrevDetailed = (rulesEnabled && summaryPrev)
+    ? computeProfitDeductionsDetailed(summaryPrev, profitRules)
+    : { total: 0, lines: [], perOrderTotal: 0, overheadTotal: 0, fixedCostTotal: 0 };
 
   const cogsNow = toNumber(cogsNowRaw);
   const cogsPrev = toNumber(cogsPrevRaw);
@@ -3151,8 +3169,38 @@ async function getBusinessSnapshot(options = {}) {
     : new Map();
   const adsClicksNow = Math.max(0, Math.round(Number(adsNow && adsNow.totalClicks) || 0));
   const adsClicksPrev = Math.max(0, Math.round(Number(adsPrev && adsPrev.totalClicks) || 0));
-  const customExpensesNow = rulesEnabled ? (Number(deductionsNowDetailed.total) || 0) : 0;
-  const customExpensesPrev = rulesEnabled ? (Number(deductionsPrevDetailed.total) || 0) : 0;
+  const customExpensesNow = rulesEnabled
+    ? (
+      (includePerOrderRules ? (Number(deductionsNowDetailed.perOrderTotal) || 0) : 0)
+      + (includeOverheads ? (Number(deductionsNowDetailed.overheadTotal) || 0) : 0)
+      + (includeFixedCosts ? (Number(deductionsNowDetailed.fixedCostTotal) || 0) : 0)
+    )
+    : 0;
+  const customExpensesPrev = rulesEnabled
+    ? (
+      (includePerOrderRules ? (Number(deductionsPrevDetailed.perOrderTotal) || 0) : 0)
+      + (includeOverheads ? (Number(deductionsPrevDetailed.overheadTotal) || 0) : 0)
+      + (includeFixedCosts ? (Number(deductionsPrevDetailed.fixedCostTotal) || 0) : 0)
+    )
+    : 0;
+
+  const includeDeductionLine = (line) => {
+    if (!line || !line.type) return true;
+    const t = String(line.type);
+    const isPerOrder = t === PROFIT_RULE_TYPES.percentRevenue || t === PROFIT_RULE_TYPES.fixedPerOrder || t === PROFIT_RULE_TYPES.fixedPerItem;
+    const isOverhead = t === PROFIT_RULE_TYPES.fixedPerPeriod;
+    const isFixed = t === 'fixed_cost';
+    if (isPerOrder && !includePerOrderRules) return false;
+    if (isOverhead && !includeOverheads) return false;
+    if (isFixed && !includeFixedCosts) return false;
+    return true;
+  };
+  const filteredDeductionLinesNow = rulesEnabled && deductionsNowDetailed && Array.isArray(deductionsNowDetailed.lines)
+    ? deductionsNowDetailed.lines.filter(includeDeductionLine)
+    : [];
+  const filteredDeductionLinesPrev = rulesEnabled && deductionsPrevDetailed && Array.isArray(deductionsPrevDetailed.lines)
+    ? deductionsPrevDetailed.lines.filter(includeDeductionLine)
+    : [];
   const adsSpendNowCost = includeGoogleAdsSpend ? adsSpendNowAll : 0;
   const adsSpendPrevCost = includeGoogleAdsSpend ? adsSpendPrevAll : 0;
   const appBillsNowCost = includeShopifyAppBills ? appBillsNowAll : 0;
@@ -3177,7 +3225,7 @@ async function getBusinessSnapshot(options = {}) {
   const costBreakdownNow = [];
   if (cogsNow != null) costBreakdownNow.push({ label: 'Cost of Goods', amountGbp: round2(cogsNow) || 0 });
   if (rulesEnabled) {
-    for (const line of (deductionsNowDetailed.lines || [])) {
+    for (const line of (filteredDeductionLinesNow || [])) {
       if (!line || !line.label) continue;
       const amt = Number(line.amountGbp) || 0;
       if (amt <= 0) continue;
@@ -3194,7 +3242,7 @@ async function getBusinessSnapshot(options = {}) {
   const costBreakdownPrevious = [];
   if (cogsPrev != null) costBreakdownPrevious.push({ label: 'Cost of Goods', amountGbp: round2(cogsPrev) || 0 });
   if (rulesEnabled) {
-    for (const line of (deductionsPrevDetailed.lines || [])) {
+    for (const line of (filteredDeductionLinesPrev || [])) {
       if (!line || !line.label) continue;
       const amt = Number(line.amountGbp) || 0;
       if (amt <= 0) continue;
@@ -3214,7 +3262,7 @@ async function getBusinessSnapshot(options = {}) {
     ordersDaily: dailyNow.orders,
     taxDaily: dailyNow.taxGbp,
     cogsTotal: cogsNow,
-    deductionsDetailed: rulesEnabled ? deductionsNowDetailed : { lines: [] },
+    deductionsDetailed: rulesEnabled ? { ...deductionsNowDetailed, lines: filteredDeductionLinesNow } : { lines: [] },
     adsByYmd: adsNowByYmd,
     appBillsByYmd: appBillsNowByYmd,
     paymentFeesByYmd: paymentFeesNowByYmd,
@@ -3233,7 +3281,7 @@ async function getBusinessSnapshot(options = {}) {
     ordersDaily: dailyPrev.orders,
     taxDaily: dailyPrev.taxGbp,
     cogsTotal: cogsPrev,
-    deductionsDetailed: rulesEnabled ? deductionsPrevDetailed : { lines: [] },
+    deductionsDetailed: rulesEnabled ? { ...deductionsPrevDetailed, lines: filteredDeductionLinesPrev } : { lines: [] },
     adsByYmd: adsPrevByYmd,
     appBillsByYmd: appBillsPrevByYmd,
     paymentFeesByYmd: paymentFeesPrevByYmd,
@@ -3388,14 +3436,14 @@ async function getBusinessSnapshot(options = {}) {
     profitSection.hasEnabledRules = rulesEnabled;
     profitSection.hasEnabledIntegration = anyCostSourceEnabled;
     if (profitConfigured) {
-      const deductionsNow = (rulesEnabled ? (Number(deductionsNowDetailed.total) || 0) : 0)
+      const deductionsNow = (rulesEnabled ? (Number(customExpensesNow) || 0) : 0)
         + (includeGoogleAdsSpend ? adsSpendNowAll : 0)
         + (includeShopifyAppBills ? appBillsNowAll : 0)
         + (includePaymentFees ? paymentFeesNowAll : 0)
         + (includeKlarnaFees ? shopifyFeesNowAll : 0)
         + (includeShopifyTaxes ? taxesNowAll : 0)
         + (shippingEnabled ? shippingNowCost : 0);
-      const deductionsPrev = (rulesEnabled ? (Number(deductionsPrevDetailed.total) || 0) : 0)
+      const deductionsPrev = (rulesEnabled ? (Number(customExpensesPrev) || 0) : 0)
         + (includeGoogleAdsSpend ? adsSpendPrevAll : 0)
         + (includeShopifyAppBills ? appBillsPrevAll : 0)
         + (includePaymentFees ? paymentFeesPrevAll : 0)
@@ -3608,7 +3656,9 @@ async function getCostBreakdown({ rangeKey, audit } = {}) {
   const includeShopifyAppBills = !!(profitRules && profitRules.integrations && profitRules.integrations.includeShopifyAppBills === true);
   const includeShopifyTaxes = !!(profitRules && profitRules.integrations && profitRules.integrations.includeShopifyTaxes === true);
   const shippingActive = !!(shippingCfg && shippingCfg.enabled === true);
-  const rulesActive = !!(profitRules && profitRules.enabled === true);
+  const perOrderActive = ce ? (ce.include_per_order_rules !== false) : true;
+  const overheadActive = ce ? (ce.include_overheads !== false) : true;
+  const fixedActive = ce ? (ce.include_fixed_costs !== false) : true;
 
   const needsOrderSummary = !!shop && (rulesWouldApply || shippingConfigured);
   const summaryPromise = needsOrderSummary
@@ -3700,7 +3750,12 @@ async function getCostBreakdown({ rangeKey, audit } = {}) {
   const fixedCostDetails = [];
   for (const f of fixedCostList) {
     if (!f || f.enabled !== true) continue;
-    const amt = round2((Number(f.amount_per_day) || 0) * daysInRange) || 0;
+    const start = normalizeYmd(f.effective_start || f.start_date, '');
+    const rangeStart = startYmd || '';
+    const rangeEnd = endYmd || '';
+    const effectiveStart = start && rangeStart ? (start > rangeStart ? start : rangeStart) : (start || rangeStart);
+    const effectiveDays = (effectiveStart && rangeEnd && effectiveStart <= rangeEnd) ? ymdDaysInclusive(effectiveStart, rangeEnd) : 0;
+    const amt = round2((Number(f.amount_per_day) || 0) * Math.max(0, Number(effectiveDays) || 0)) || 0;
     fixedCostsAmount += amt;
     fixedCostDetails.push({
       key: 'fixed_costs_detail_' + (f.id ? String(f.id).slice(0, 64) : String(fixedCostDetails.length + 1)),
@@ -3708,10 +3763,10 @@ async function getCostBreakdown({ rangeKey, audit } = {}) {
       is_detail: true,
       label: String(f.name || 'Fixed cost'),
       configured: true,
-      active: rulesActive,
+      active: fixedActive,
       amount: amt,
       currency: 'GBP',
-      notes: `£${(Number(f.amount_per_day) || 0).toFixed(2)}/day × ${daysInRange} days`,
+      notes: `£${(Number(f.amount_per_day) || 0).toFixed(2)}/day × ${Math.max(0, Number(effectiveDays) || 0)} days`,
     });
     if (fixedCostDetails.length >= 100) break;
   }
@@ -3887,7 +3942,7 @@ async function getCostBreakdown({ rangeKey, audit } = {}) {
       key: categoryKey,
       label: categoryLabel(cat),
       configured: true,
-      active: rulesActive,
+      active: perOrderActive,
       amount: round2(catTotal) || 0,
       currency: 'GBP',
       notes: `${lineItemCount} line item(s)`,
@@ -3903,7 +3958,7 @@ async function getCostBreakdown({ rangeKey, audit } = {}) {
         is_detail: true,
         label: String(lbl),
         configured: true,
-        active: rulesActive,
+        active: perOrderActive,
         amount: groupAmt,
         currency: 'GBP',
         notes: '',
@@ -3918,7 +3973,7 @@ async function getCostBreakdown({ rangeKey, audit } = {}) {
       key: 'overheads',
       label: 'Overheads',
       configured: overheadList.length > 0,
-      active: rulesActive,
+      active: overheadActive,
       amount: round2(Number(rulesDetailed && rulesDetailed.overheadTotal || 0) || 0) || 0,
       currency: 'GBP',
       notes: overheadList.length ? `${overheadList.length} configured` : 'Not configured',
@@ -3934,7 +3989,7 @@ async function getCostBreakdown({ rangeKey, audit } = {}) {
         is_detail: true,
         label,
         configured: true,
-        active: rulesActive,
+        active: overheadActive,
         amount: amt,
         currency: 'GBP',
         notes: line && line.notes ? String(line.notes) : '',
@@ -3948,7 +4003,7 @@ async function getCostBreakdown({ rangeKey, audit } = {}) {
       key: 'fixed_costs',
       label: 'Fixed costs',
       configured: fixedCostList.length > 0,
-      active: rulesActive,
+      active: fixedActive,
       amount: round2(Number(fixedCostsAmount) || 0) || 0,
       currency: 'GBP',
       notes: fixedCostList.length ? `${fixedCostList.length} configured` : 'Not configured',
@@ -4218,7 +4273,8 @@ async function getRevenueAndCostForGoogleAdsPostback(shop, startMs, endMs, deduc
   if (toggles.includeShipping && summary && profitRules && profitRules.shipping) {
     costGbp += round2(computeShippingCostFromSummary(summary, { ...profitRules.shipping, enabled: true }) || 0) || 0;
   }
-  if (toggles.includeRules && summary && profitRules && hasEnabledProfitRules(profitRules)) {
+  if (toggles.includeRules && summary && profitRules) {
+    // Admin/Google Ads uploads should be controlled by the Admin toggles, not Settings app-only group toggles.
     const rulesDetailed = computeProfitDeductionsDetailed(summary, profitRules);
     costGbp += round2(Number(rulesDetailed && rulesDetailed.total) || 0) || 0;
   }

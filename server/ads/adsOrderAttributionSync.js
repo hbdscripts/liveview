@@ -524,7 +524,6 @@ async function syncAttributedOrdersToAdsDb(options = {}) {
   const perOrderRules = Array.isArray(ce.per_order_rules) ? ce.per_order_rules.filter((r) => r && r.enabled === true) : [];
   const overheads = Array.isArray(ce.overheads) ? ce.overheads.filter((o) => o && o.enabled === true) : [];
   const fixedCosts = Array.isArray(ce.fixed_costs) ? ce.fixed_costs.filter((f) => f && f.enabled === true) : [];
-  const fixedPerDay = fixedCosts.reduce((acc, f) => acc + (Number(f && f.amount_per_day) || 0), 0);
 
   const parsed = [];
   const needEvidence = [];
@@ -765,6 +764,19 @@ async function syncAttributedOrdersToAdsDb(options = {}) {
       }
     }
 
+    const fixedByYmd = new Map();
+    if (deductionToggles.includeRules && fixedCosts.length) {
+      for (const ymd of dayKeys.values()) {
+        let total = 0;
+        for (const f of fixedCosts) {
+          const start = (f && (f.effective_start || f.start_date)) ? String(f.effective_start || f.start_date) : '';
+          if (start && String(ymd) < start) continue;
+          total += (Number(f && f.amount_per_day) || 0);
+        }
+        fixedByYmd.set(String(ymd), round2(total) || 0);
+      }
+    }
+
     for (const o of parsed) {
       if (!o) continue;
       const ymd = o.orderYmd != null ? String(o.orderYmd) : '';
@@ -822,7 +834,8 @@ async function syncAttributedOrdersToAdsDb(options = {}) {
         const rulesAdj = computePerOrderRulesAdjustmentGbp(o, perOrderRules, ce && ce.rule_mode);
         const overheadDay = Number(overheadByYmd.get(ymd)) || 0;
         const overheadAlloc = round2(overheadDay * share) || 0;
-        const fixedAlloc = round2(Number(fixedPerDay || 0) * share) || 0;
+        const fixedDay = Number(fixedByYmd.get(ymd)) || 0;
+        const fixedAlloc = round2(fixedDay * share) || 0;
         components.rules_per_order_gbp = rulesAdj;
         components.overhead_alloc_gbp = overheadAlloc;
         components.fixed_costs_alloc_gbp = fixedAlloc;
