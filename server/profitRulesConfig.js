@@ -412,10 +412,26 @@ function normalizeOverhead(rawOverhead, idx) {
 function normalizeFixedCost(raw, idx) {
   const r = raw && typeof raw === 'object' ? raw : {};
   const id = normalizeRuleId(r.id, idx).replace(/^rule_/, 'fc_');
+  const freqRaw = r.frequency == null ? '' : String(r.frequency).trim().toLowerCase();
+  const frequency = (freqRaw === 'daily' || freqRaw === 'weekly' || freqRaw === 'monthly' || freqRaw === 'yearly') ? freqRaw : 'daily';
+  const rawAmount = r.amount != null ? r.amount : r.amount_per_day;
+  const amount = Math.max(0, Number(rawAmount) || 0);
+  const DAYS_PER_YEAR = 365.25;
+  const DAYS_PER_MONTH = DAYS_PER_YEAR / 12;
+  const amount_per_day = (() => {
+    // Back-compat: if config only has amount_per_day and no explicit frequency, keep as-is.
+    if ((r.amount == null) && (r.frequency == null) && (r.amount_per_day != null)) return Math.max(0, Number(r.amount_per_day) || 0);
+    if (frequency === 'weekly') return amount / 7;
+    if (frequency === 'monthly') return amount / DAYS_PER_MONTH;
+    if (frequency === 'yearly') return amount / DAYS_PER_YEAR;
+    return amount; // daily
+  })();
   return {
     id: id.slice(0, 64),
     name: normalizeRuleName(r.name, 'Fixed cost'),
-    amount_per_day: Math.max(0, Number(r.amount_per_day) || 0),
+    amount,
+    frequency,
+    amount_per_day: Math.max(0, Number(amount_per_day) || 0),
     enabled: normalizeRuleEnabled(r.enabled, true),
   };
 }

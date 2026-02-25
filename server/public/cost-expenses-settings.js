@@ -83,10 +83,26 @@
     var r = raw && typeof raw === 'object' ? raw : {};
     var id = (r.id && String(r.id).trim()) || ('fc_' + String(idx + 1));
     var name = (r.name && String(r.name).trim()) || 'Fixed cost';
+    var freqRaw = r.frequency == null ? '' : String(r.frequency).trim().toLowerCase();
+    var frequency = (freqRaw === 'daily' || freqRaw === 'weekly' || freqRaw === 'monthly' || freqRaw === 'yearly') ? freqRaw : 'daily';
+    var rawAmount = (r.amount != null) ? r.amount : r.amount_per_day;
+    var amount = Math.max(0, Number(rawAmount) || 0);
+    var DAYS_PER_YEAR = 365.25;
+    var DAYS_PER_MONTH = DAYS_PER_YEAR / 12;
+    var amount_per_day = (function () {
+      // Back-compat: config may only have amount_per_day (daily) and no explicit frequency.
+      if ((r.amount == null) && (r.frequency == null) && (r.amount_per_day != null)) return Math.max(0, Number(r.amount_per_day) || 0);
+      if (frequency === 'weekly') return amount / 7;
+      if (frequency === 'monthly') return amount / DAYS_PER_MONTH;
+      if (frequency === 'yearly') return amount / DAYS_PER_YEAR;
+      return amount; // daily
+    })();
     return {
       id: id.slice(0, 64),
       name: name.slice(0, 80),
-      amount_per_day: Math.max(0, Number(r.amount_per_day) || 0),
+      amount: amount,
+      frequency: frequency,
+      amount_per_day: Math.max(0, Number(amount_per_day) || 0),
       enabled: r.enabled !== false,
     };
   }
@@ -452,6 +468,14 @@
     return '£' + n.toFixed(2);
   }
 
+  function fixedCostUnitLabel(freq) {
+    var f = String(freq || '').trim().toLowerCase();
+    if (f === 'weekly') return 'week';
+    if (f === 'monthly') return 'month';
+    if (f === 'yearly') return 'year';
+    return 'day';
+  }
+
   function formatYmdHuman(ymd) {
     var s = String(ymd || '').trim();
     var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
@@ -570,9 +594,11 @@
     }
     var html = '';
     list.forEach(function (f) {
+      var unit = fixedCostUnitLabel(f && f.frequency);
+      var amt = (f && f.amount != null) ? f.amount : (f && f.amount_per_day != null ? f.amount_per_day : 0);
       html += '<tr data-fixed-cost-id="' + esc(f.id) + '">' +
         '<td>' + esc(f.name || 'Fixed cost') + '</td>' +
-        '<td class="text-end">' + esc(formatMoneyGbp(f.amount_per_day)) + '/day</td>' +
+        '<td class="text-end">' + esc(formatMoneyGbp(amt)) + '/' + esc(unit) + '</td>' +
         '<td class="text-center"><input type="checkbox" data-fixed-cost-enabled data-fixed-cost-id="' + esc(f.id) + '" ' + (f.enabled ? 'checked' : '') + ' /></td>' +
         '<td class="text-end">' +
           '<div class="d-inline-flex gap-1 flex-nowrap kexo-table-actions" aria-label="Fixed cost actions">' +
@@ -1435,7 +1461,8 @@
 
     document.getElementById('cost-expenses-fixed-cost-id').value = state.editingFixedCostId;
     document.getElementById('cost-expenses-fixed-cost-name').value = fc ? (fc.name || '') : '';
-    document.getElementById('cost-expenses-fixed-cost-amount').value = fc && fc.amount_per_day != null ? fc.amount_per_day : '';
+    document.getElementById('cost-expenses-fixed-cost-amount').value = fc && (fc.amount != null) ? fc.amount : (fc && fc.amount_per_day != null ? fc.amount_per_day : '');
+    try { document.getElementById('cost-expenses-fixed-cost-frequency').value = fc && fc.frequency ? String(fc.frequency) : 'daily'; } catch (_) {}
     document.getElementById('cost-expenses-fixed-cost-enabled').checked = fc ? (fc.enabled !== false) : true;
     setSectionMsg('cost-expenses-fixed-costs-msg', '', null);
   }
@@ -1458,14 +1485,18 @@
     }
     var amount = parseFloat(document.getElementById('cost-expenses-fixed-cost-amount').value, 10);
     if (!Number.isFinite(amount) || amount < 0) {
-      setSectionMsg('cost-expenses-fixed-costs-msg', 'Amount per day must be ≥ 0', false);
+      setSectionMsg('cost-expenses-fixed-costs-msg', 'Amount must be ≥ 0', false);
       return;
     }
+    var freqRaw = '';
+    try { freqRaw = String(document.getElementById('cost-expenses-fixed-cost-frequency').value || '').trim().toLowerCase(); } catch (_) { freqRaw = ''; }
+    var frequency = (freqRaw === 'daily' || freqRaw === 'weekly' || freqRaw === 'monthly' || freqRaw === 'yearly') ? freqRaw : 'daily';
     var id = state.editingFixedCostId || ('fc_' + Date.now());
     var fixedCost = normalizeFixedCost({
       id: id,
       name: name,
-      amount_per_day: amount,
+      amount: amount,
+      frequency: frequency,
       enabled: document.getElementById('cost-expenses-fixed-cost-enabled').checked,
     }, 0);
 

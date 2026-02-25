@@ -707,9 +707,9 @@
                         <table class="table table-sm align-middle">
                           <thead>
                             <tr>
-                              <th>Rule name <span class="am-tooltip-cue" title="Internal label for managing rules (e.g. ‘Stripe fees 2026’, ‘VAT GB’)." aria-label="Help: Rule name"></span></th>
+                              <th>Name <span class="am-tooltip-cue" title="Internal label for managing rules (e.g. ‘Stripe fees 2026’, ‘VAT GB’)." aria-label="Help: Name"></span></th>
                               <th>Category <span class="am-tooltip-cue" title="Preset grouping for rules. This is also used to group items on Cost Breakdown." aria-label="Help: Category"></span></th>
-                              <th>Breakdown label <span class="am-tooltip-cue" title="This exact label appears on the Cost Breakdown page." aria-label="Help: Breakdown label"></span></th>
+                              <th>Label <span class="am-tooltip-cue" title="This exact label appears on the Cost Breakdown page." aria-label="Help: Label"></span></th>
                               <th>Summary <span class="am-tooltip-cue" title="Human-readable summary so you don’t have to interpret multiple fields." aria-label="Help: Summary"></span></th>
                               <th class="text-end">Priority <span class="am-tooltip-cue" title="Lower numbers run first. When multiple rules match, they apply in this order." aria-label="Help: Priority"></span></th>
                               <th class="text-center">Enabled <span class="am-tooltip-cue" title="When off, the rule is excluded from calculations but kept in the list." aria-label="Help: Enabled"></span></th>
@@ -973,14 +973,14 @@
                         <span class="fw-semibold">Fixed costs</span>
                         <button type="button" class="btn btn-sm btn-primary" id="cost-expenses-fixed-cost-add-btn">Add fixed cost</button>
                       </div>
-                      <div class="text-muted small mb-3">Daily fixed costs (e.g. rent, utilities). Enter amount per day (GBP); cost over a period is daily &times; days.</div>
+                      <div class="text-muted small mb-3">Recurring fixed costs (e.g. rent, utilities). Choose the frequency; allocation is converted to an average per-day rate over the selected date range.</div>
                       <div id="cost-expenses-fixed-costs-msg" class="is-hidden"></div>
                       <div class="table-responsive">
                         <table class="table table-sm align-middle">
                           <thead>
                             <tr>
                               <th>Name</th>
-                              <th class="text-end">Amount per day (GBP)</th>
+                              <th class="text-end">Amount</th>
                               <th class="text-center">Enabled</th>
                               <th class="text-end">Actions</th>
                             </tr>
@@ -997,8 +997,17 @@
                               <input type="text" id="cost-expenses-fixed-cost-name" class="form-control" placeholder="e.g. Rent" />
                             </div>
                             <div class="col-12 col-md-4">
-                              <label class="form-label" for="cost-expenses-fixed-cost-amount" title="Daily amount in GBP. Cost over a range = daily &times; number of days.">Amount per day (GBP) <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>
+                              <label class="form-label" for="cost-expenses-fixed-cost-amount" title="Amount in GBP for the chosen frequency (per day/week/month/year).">Amount (GBP) <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>
                               <input type="number" id="cost-expenses-fixed-cost-amount" class="form-control" min="0" step="0.01" placeholder="e.g. 40" />
+                            </div>
+                            <div class="col-12 col-md-2">
+                              <label class="form-label" for="cost-expenses-fixed-cost-frequency" title="How often this cost recurs. We convert it to an average per-day rate for allocation over date ranges.">Per <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>
+                              <select id="cost-expenses-fixed-cost-frequency" class="form-select">
+                                <option value="daily">Day</option>
+                                <option value="weekly">Week</option>
+                                <option value="monthly">Month</option>
+                                <option value="yearly">Year</option>
+                              </select>
                             </div>
                           </div>
                           <label class="form-check mt-2">
