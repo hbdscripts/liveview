@@ -406,6 +406,23 @@
         });
       }
 
+      function syncOverviewVariantTabLabelsFromTables(tables) {
+        if (!isDashboardOverviewPage()) return;
+        var list = Array.isArray(tables) ? tables : [];
+        var variantLabel = (list[0] && list[0].name != null) ? String(list[0].name) : 'Variant';
+        var stylesLabel = (list[1] && list[1].name != null) ? String(list[1].name) : 'Styles';
+        variantLabel = variantLabel.trim() || 'Variant';
+        stylesLabel = stylesLabel.trim() || 'Styles';
+        try {
+          var group = document.querySelector('[data-ovw-tabs="variant"]');
+          if (!group) return;
+          var btnVariant = group.querySelector('button[data-ovw-panel="variant"][data-ovw-tab="variant"]');
+          var btnStyles = group.querySelector('button[data-ovw-panel="variant"][data-ovw-tab="styles"]');
+          if (btnVariant) btnVariant.textContent = variantLabel;
+          if (btnStyles) btnStyles.textContent = stylesLabel;
+        } catch (_) {}
+      }
+
       function getOverviewPanelActiveTab(panelId, fallback) {
         var key = (panelId == null ? '' : String(panelId)).trim().toLowerCase();
         var fb = fallback == null ? '' : String(fallback);
@@ -867,6 +884,13 @@
         var finishesTableId = (variantMode === 'styles') ? 'idx:1' : 'idx:0';
 
         var tasks = [];
+
+        // Variant/Styles widget labels should reflect the actual configured Variant tables (e.g. "Finishes").
+        tasks.push(Promise.resolve()
+          .then(function () { return getOvwFinishesTablesMeta(variantRk, false); })
+          .then(function (tables) { syncOverviewVariantTabLabelsFromTables(tables); return tables; })
+          .catch(function () { return null; })
+        );
 
         // Main overview chart card.
         tasks.push(Promise.resolve()
@@ -7761,7 +7785,7 @@
           if (!isVisible()) return;
           pollTimer = setInterval(pollTick, POLL_MS);
         }
-        function refreshOnceAndResume(reason) {
+        function refreshOnceAndResume(reason, forceRefresh) {
           // Use performance.now() for throttling: on iOS/Safari bfcache resume Date.now() can be stale.
           var pn = 0;
           try { pn = (typeof performance !== 'undefined' && performance && typeof performance.now === 'function') ? performance.now() : 0; } catch (_) { pn = 0; }
@@ -7773,7 +7797,8 @@
             if (now - lastResumeAt < 1000) return;
             lastResumeAt = now;
           }
-          try { if (typeof window.refreshDashboard === 'function') window.refreshDashboard({ force: true, silent: true, reason: reason || 'resume' }); } catch (_) {}
+          var force = (forceRefresh == null) ? true : !!forceRefresh;
+          try { if (typeof window.refreshDashboard === 'function') window.refreshDashboard({ force: force, silent: true, reason: reason || 'resume' }); } catch (_) {}
           startPolling();
         }
         function onLifecycleHidden() {
@@ -7788,7 +7813,21 @@
           try { idleMs = ctx && ctx.idleMs != null ? Number(ctx.idleMs) : 0; } catch (_) { idleMs = 0; }
           if (!Number.isFinite(idleMs)) idleMs = 0;
           if (idleMs < 30000) return startPolling();
-          refreshOnceAndResume((ctx && ctx.source) ? ctx.source : 'resume');
+          // Overview page: keep cards stable on resume (avoid heavy rerenders/animations),
+          // but refresh the live Online map so it stays current.
+          try {
+            if (typeof isDashboardOverviewPage === 'function' && isDashboardOverviewPage()) {
+              try {
+                if (typeof window.refreshLiveOnlineChart === 'function') {
+                  window.refreshLiveOnlineChart({ force: true, pageKey: 'dashboard' });
+                }
+              } catch (_) {}
+              return startPolling();
+            }
+          } catch (_) {}
+          // Non-overview dashboard: only force-refresh for dynamic ranges (today/1h).
+          if (!isDynamicRange()) return startPolling();
+          refreshOnceAndResume((ctx && ctx.source) ? ctx.source : 'resume', true);
         }
         function onMainTabChanged(ev) {
           var next = ev && ev.detail && ev.detail.tab != null ? String(ev.detail.tab).trim().toLowerCase() : '';

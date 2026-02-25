@@ -709,7 +709,6 @@
                           <div class="form-hint">Sort still controls order. Country and effective dates define what matches. (Per-order rules only.)</div>
                         </div>
                       </div>
-                      <div id="cost-expenses-per-order-msg" class="is-hidden"></div>
                       <div class="table-responsive">
                         <table class="table table-sm align-middle">
                           <thead>
@@ -726,8 +725,15 @@
                           <tbody id="cost-expenses-per-order-table-body"></tbody>
                         </table>
                       </div>
-                      <div class="card mt-3 is-hidden" id="cost-expenses-per-order-form-wrap">
-                        <div class="card-body">
+                      <div class="modal modal-blur fade" id="cost-expenses-per-order-modal" tabindex="-1" role="dialog" aria-hidden="true">
+                        <div class="modal-dialog modal-lg modal-dialog-centered" role="dialog">
+                          <div class="modal-content">
+                            <div class="modal-header">
+                              <h5 class="modal-title" id="cost-expenses-per-order-modal-title">Per-order rule</h5>
+                              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body" id="cost-expenses-per-order-form-wrap">
+                              <div id="cost-expenses-per-order-msg" class="is-hidden"></div>
                           <input type="hidden" id="cost-expenses-per-order-id" />
                           <div class="row g-2">
                             <div class="col-12 col-md-4">
@@ -868,6 +874,8 @@
                           <div class="d-flex gap-2 mt-3">
                           <button type="button" class="btn btn-primary btn-sm" id="cost-expenses-per-order-save-btn">Save rule</button>
                           <button type="button" class="btn btn-sm" id="cost-expenses-per-order-cancel-btn">Cancel</button>
+                          </div>
+                            </div>
                           </div>
                         </div>
                       </div>

@@ -65,6 +65,11 @@ function handleExpr(alias) {
   return `LOWER(TRIM(${a}.first_product_handle))`;
 }
 
+function deviceExpr(alias) {
+  const a = alias ? String(alias).trim() : 's';
+  return `LOWER(TRIM(COALESCE(NULLIF(TRIM(${a}.ua_device_type), ''), 'unknown')))`;
+}
+
 function buildOrPairsWhere(pairs, leftSql, rightSql) {
   // Returns: { sql: "(left=? AND right=?) OR ...", params: [..] } but leaves placeholdering to DB adapter.
   const list = Array.isArray(pairs) ? pairs : [];
@@ -472,6 +477,131 @@ router.get('/top-country-products', async (req, res) => {
   }
 });
 
+router.get('/top-devices', async (req, res) => {
+  res.setHeader('Cache-Control', 'private, max-age=30');
+  res.setHeader('Vary', 'Cookie');
+  const mode = normalizeMode(req && req.query ? req.query.mode : '');
+  const limit = clampInt(req && req.query ? req.query.limit : null, 5, 1, 20);
+  const { rangeKey, start, end } = resolveBoundsFromReq(req);
+  Sentry.addBreadcrumb({ category: 'api', message: 'abandonedCarts.topDevices', data: { rangeKey, mode, limit } });
+
+  try {
+    const db = getDb();
+    const devSql = deviceExpr('s');
+
+    const top = await db.all(
+      `
+        SELECT ${devSql} AS device, COUNT(*) AS abandoned
+        FROM sessions s
+        WHERE s.abandoned_at >= ? AND s.abandoned_at < ?
+          AND s.has_purchased = 0
+          AND s.is_abandoned = 1
+          ${abandonedModeSql(mode)}
+        GROUP BY ${devSql}
+        ORDER BY abandoned DESC
+        LIMIT ?
+      `,
+      [start, end, limit]
+    );
+
+    const devices = (top || [])
+      .map((r) => (r && r.device != null ? String(r.device).trim().toLowerCase().slice(0, 20) : ''))
+      .filter(Boolean);
+    if (!devices.length) {
+      return res.json({ rangeKey, mode, rows: [] });
+    }
+
+    const inPh = new Array(devices.length).fill('?').join(', ');
+    const baseParams = [start, end, ...devices];
+
+    // Abandoned value (by currency) for the top devices.
+    const valRows = await db.all(
+      `
+        SELECT ${devSql} AS device,
+               COALESCE(NULLIF(TRIM(s.cart_currency), ''), ?) AS currency,
+               COALESCE(SUM(COALESCE(s.cart_value, 0)), 0) AS value_sum
+        FROM sessions s
+        WHERE s.abandoned_at >= ? AND s.abandoned_at < ?
+          AND s.has_purchased = 0
+          AND s.is_abandoned = 1
+          ${abandonedModeSql(mode)}
+          AND ${devSql} IN (${inPh})
+        GROUP BY ${devSql}, currency
+      `,
+      [fx.BASE, ...baseParams]
+    );
+
+    // Checkout starts in range (context metric).
+    const checkoutRows = await db.all(
+      `
+        SELECT ${devSql} AS device, COUNT(*) AS checkout_sessions
+        FROM sessions s
+        WHERE s.checkout_started_at IS NOT NULL
+          AND s.checkout_started_at >= ? AND s.checkout_started_at < ?
+          AND ${devSql} IN (${inPh})
+        GROUP BY ${devSql}
+      `,
+      [start, end, ...devices]
+    );
+
+    // Denominator for % abandoned:
+    // - cart mode: sessions with carts started in range (started_at bounds)
+    // - checkout mode: checkout sessions (above)
+    let denomByDevice = new Map();
+    if (mode === 'cart') {
+      const cartRows = await db.all(
+        `
+          SELECT ${devSql} AS device, COUNT(*) AS cart_sessions
+          FROM sessions s
+          WHERE s.started_at >= ? AND s.started_at < ?
+            AND COALESCE(s.cart_qty, 0) > 0
+            AND ${devSql} IN (${inPh})
+          GROUP BY ${devSql}
+        `,
+        [start, end, ...devices]
+      );
+      denomByDevice = new Map((cartRows || []).map((r) => [String(r.device || '').trim().toLowerCase(), Number(r.cart_sessions) || 0]));
+    } else {
+      denomByDevice = new Map((checkoutRows || []).map((r) => [String(r.device || '').trim().toLowerCase(), Number(r.checkout_sessions) || 0]));
+    }
+
+    const checkoutByDevice = new Map((checkoutRows || []).map((r) => [String(r.device || '').trim().toLowerCase(), Number(r.checkout_sessions) || 0]));
+
+    const ratesToGbp = await fx.getRatesToGbp().catch(() => null);
+    const valueByDevice = new Map(); // device -> gbp sum
+    for (const r of valRows || []) {
+      const dev = r && r.device != null ? String(r.device).trim().toLowerCase() : '';
+      if (!dev) continue;
+      const cur = normalizeCurrency(r && r.currency != null ? String(r.currency) : fx.BASE);
+      const sum = r && r.value_sum != null ? Number(r.value_sum) : 0;
+      const gbp = sumToGbp(Number.isFinite(sum) ? sum : 0, cur, ratesToGbp);
+      valueByDevice.set(dev, (valueByDevice.get(dev) || 0) + gbp);
+    }
+
+    const rows = (top || []).map((r) => {
+      const dev = r && r.device != null ? String(r.device).trim().toLowerCase().slice(0, 20) : 'unknown';
+      const abandoned = r && r.abandoned != null ? Math.max(0, Math.trunc(Number(r.abandoned) || 0)) : 0;
+      const checkoutSessions = checkoutByDevice.get(dev) || 0;
+      const denom = denomByDevice.get(dev) || 0;
+      const pct = percentOrNull(abandoned, denom, { decimals: 1 });
+      const value = roundTo(valueByDevice.get(dev) || 0, 2) || 0;
+      return {
+        device: dev || 'unknown',
+        abandoned,
+        abandoned_pct: pct,
+        checkout_sessions: Math.max(0, Math.trunc(checkoutSessions)),
+        abandoned_value_gbp: value,
+      };
+    });
+
+    res.json({ rangeKey, mode, rows });
+  } catch (err) {
+    Sentry.captureException(err, { extra: { route: 'abandonedCarts.topDevices', rangeKey, mode } });
+    console.error('[abandoned-carts.top-devices]', err);
+    res.status(500).json({ error: 'Internal error' });
+  }
+});
+
 router.get('/sessions', async (req, res) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
   const mode = normalizeMode(req && req.query ? req.query.mode : '');
@@ -532,6 +662,11 @@ router.get('/sessions', async (req, res) => {
       return out;
     });
 
+    try {
+      if (store && typeof store.attachSessionActionStats === 'function') {
+        await store.attachSessionActionStats(sessions);
+      }
+    } catch (_) {}
     await shopifyLandingMeta.enrichSessionsWithLandingTitles(sessions);
     res.json({ sessions, total });
   } catch (err) {

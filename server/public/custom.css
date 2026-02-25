@@ -5165,6 +5165,15 @@ body[data-page="dashboard"] .kexo-overview-widget-card .kexo-widget-head-right {
   }
 }
 @media (max-width: 767.98px) {
+  body[data-dashboard-view="overview"] .kexo-overview-main-card,
+  body[data-dashboard-view="overview"] .card[data-kexo-chart-key="overview-live-online-chart"] {
+    display: none !important;
+  }
+
+  body[data-dashboard-view="overview"] .kexo-widget-title .kexo-ovw-tabs-row {
+    margin-bottom: 10px;
+  }
+
   .kexo-overview-mini-chart {
     height: 240px;
   }
@@ -7406,12 +7415,17 @@ html[data-bs-theme="dark"] .kexo-sale-banner .tblr-banner-close { color: #fff; }
 }
 #tab-panel-abandoned-carts .stats-row.breakdown-row {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 1rem;
   align-items: stretch;
 }
 #tab-panel-abandoned-carts .stats-row.breakdown-row > .stats-card {
   min-width: 0;
+}
+@media (max-width: 1199.98px) {
+  #tab-panel-abandoned-carts .stats-row.breakdown-row {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 @media (max-width: 991.98px) {
   #tab-panel-abandoned-carts .stats-row.breakdown-row {

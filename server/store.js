@@ -4920,6 +4920,7 @@ module.exports = {
   insertEvent,
   listSessions,
   listSessionsByRange,
+  attachSessionActionStats,
   listLatestSales,
   getActiveSessionCount,
   getActiveSessionSeries,

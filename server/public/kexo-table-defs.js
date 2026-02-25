@@ -203,6 +203,19 @@
         { key: 'rev', label: 'Value', sortable: false, cellClass: 'text-center', iconKey: 'table-icon-revenue' }
       ]
     },
+    'abandoned-carts-device-table': {
+      wrapClass: 'country-table-wrap',
+      tableClass: 'by-country-table abandoned-carts-device-table',
+      ariaLabel: 'Abandoned carts by device',
+      bodyId: 'abandoned-carts-device-body',
+      columns: [
+        { key: 'device', label: 'Device', sortable: false, iconKey: 'table-short-device' },
+        { key: 'abandoned', label: 'Abandoned', sortable: false, cellClass: 'text-center', iconKey: 'table-icon-sessions' },
+        { key: 'checkout', label: 'Checkout', sortable: false, cellClass: 'text-center', iconKey: 'table-icon-orders' },
+        { key: 'pct', label: '% Abandoned', sortable: false, cellClass: 'text-center', iconKey: 'table-icon-cr' },
+        { key: 'rev', label: 'Value', sortable: false, cellClass: 'text-center', iconKey: 'table-icon-revenue' }
+      ]
+    },
     'attribution-table': {
       wrapClass: 'country-table-wrap',
       tableClass: 'by-country-table',
