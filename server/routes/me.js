@@ -10,6 +10,8 @@ const users = require('../usersService');
 const rolePermissions = require('../rolePermissionsService');
 const userPermissionOverrides = require('../userPermissionOverridesService');
 const rbac = require('../rbac');
+const config = require('../config');
+const retentionPolicy = require('../retentionPolicy');
 
 const OAUTH_COOKIE_NAME = 'oauth_session';
 
@@ -80,12 +82,16 @@ async function me(req, res) {
     permissions = userPermissionOverrides.getEffectivePermissions(tierPerms, overrides);
   }
 
+  const retentionTier = retentionPolicy.normalizeRetentionTier(tier) || await retentionPolicy.getEffectiveRetentionTier(config);
+  const retention = retentionPolicy.getTierLimits(retentionTier);
+
   res.json({
     email: email || null,
     initial: email ? email[0].toUpperCase() : 'K',
     status,
     role,
     tier,
+    retention,
     isMaster,
     isAdmin,
     permissions,

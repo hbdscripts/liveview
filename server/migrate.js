@@ -71,6 +71,7 @@ const { up: up065 } = require('./migrations/065_user_permission_overrides');
 const { up: up066 } = require('./migrations/066_shop_oauth_identities');
 const { up: up067 } = require('./migrations/067_affiliate_attribution_ip_prefix');
 const { up: up068 } = require('./migrations/068_catalog_products');
+const { up: up069 } = require('./migrations/069_daily_rollups');
 const { runAdsMigrations } = require('./ads/adsMigrate');
 
 const APP_MIGRATIONS = [
@@ -142,6 +143,7 @@ const APP_MIGRATIONS = [
   ['066_shop_oauth_identities', up066],
   ['067_affiliate_attribution_ip_prefix', up067],
   ['068_catalog_products', up068],
+  ['069_daily_rollups', up069],
 ];
 
 async function ensureAppMigrationsTable(db) {

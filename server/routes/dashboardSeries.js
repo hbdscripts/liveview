@@ -13,6 +13,7 @@ const fx = require('../fx');
 const reportCache = require('../reportCache');
 const productMetaCache = require('../shopifyProductMetaCache');
 const { warnOnReject } = require('../shared/warnReject');
+const retentionPolicy = require('../retentionPolicy');
 
 const DASHBOARD_TOP_TABLE_MAX_ROWS = 5;
 const DASHBOARD_TRENDING_MAX_ROWS = 5;
@@ -723,6 +724,69 @@ async function fetchSessionsAndBouncesByDayBounds(db, dayBounds, overallStart, o
   return { sessionsPerDay, bouncePerDay };
 }
 
+async function fetchSessionsAndBouncesHybrid(db, dayBounds, overallStart, overallEnd, filter, timeZone, trafficMode, limits, nowMs) {
+  const sessionsPerDay = {};
+  const bouncePerDay = {};
+  for (const d of Array.isArray(dayBounds) ? dayBounds : []) {
+    sessionsPerDay[d.label] = 0;
+    bouncePerDay[d.label] = 0;
+  }
+  if (!dayBounds || !dayBounds.length) return { sessionsPerDay, bouncePerDay };
+
+  const dd = limits && limits.drilldownRetentionDays != null ? Number(limits.drilldownRetentionDays) : NaN;
+  const cutoffYmd = (Number.isFinite(dd) && dd > 0 && Number.isFinite(Number(nowMs)))
+    ? ymdFromMsInTz(Number(nowMs) - dd * 24 * 60 * 60 * 1000, timeZone)
+    : null;
+
+  // If we can't compute a cutoff, fall back to raw (existing behavior).
+  if (!cutoffYmd || !/^\d{4}-\d{2}-\d{2}$/.test(String(cutoffYmd))) {
+    return fetchSessionsAndBouncesByDayBounds(db, dayBounds, overallStart, overallEnd, filter);
+  }
+
+  const oldDays = dayBounds.filter((d) => d && d.label && d.label < cutoffYmd);
+  const recentDays = dayBounds.filter((d) => d && d.label && d.label >= cutoffYmd);
+
+  // Old days: prefer rollups (raw events may have been pruned).
+  if (oldDays.length) {
+    try {
+      const ymdStart = oldDays[0].label;
+      const ymdEnd = oldDays[oldDays.length - 1].label;
+      const rows = await db.all(
+        `
+          SELECT ymd, human_sessions, single_page_sessions
+          FROM daily_rollups
+          WHERE traffic_mode = ?
+            AND ymd >= ?
+            AND ymd <= ?
+          ORDER BY ymd ASC
+        `,
+        [trafficMode, ymdStart, ymdEnd]
+      );
+      for (const r of rows || []) {
+        const ymd = r && r.ymd != null ? String(r.ymd) : '';
+        if (!ymd || sessionsPerDay[ymd] == null) continue;
+        sessionsPerDay[ymd] = Math.max(0, Math.trunc(Number(r.human_sessions) || 0));
+        bouncePerDay[ymd] = Math.max(0, Math.trunc(Number(r.single_page_sessions) || 0));
+      }
+    } catch (_) {}
+  }
+
+  // Recent days: raw is available and more precise (partial-day windows).
+  if (recentDays.length) {
+    const recentStart = recentDays[0].start;
+    const recentEnd = recentDays[recentDays.length - 1].end;
+    const sb = await fetchSessionsAndBouncesByDayBounds(db, recentDays, recentStart, recentEnd, filter);
+    const spd = sb.sessionsPerDay || {};
+    const bpd = sb.bouncePerDay || {};
+    for (const d of recentDays) {
+      sessionsPerDay[d.label] = Number(spd[d.label]) || 0;
+      bouncePerDay[d.label] = Number(bpd[d.label]) || 0;
+    }
+  }
+
+  return { sessionsPerDay, bouncePerDay };
+}
+
 async function fetchUnitsSoldByDayBounds(db, shop, dayBounds, overallStart, overallEnd) {
   const unitsPerDay = {};
   for (const d of Array.isArray(dayBounds) ? dayBounds : []) {
@@ -786,8 +850,12 @@ async function getDashboardSeries(req, res) {
     bucketHint = isSingleDay ? 'hour' : 'day';
   }
 
+  const effectiveTier = await retentionPolicy.getEffectiveRetentionTier(config);
+  const limits = retentionPolicy.getTierLimits(effectiveTier);
+
   const daysRaw = parseInt(req.query.days, 10);
-  const days = Number.isFinite(daysRaw) && daysRaw > 0 && daysRaw <= 90 ? daysRaw : 7;
+  const daysMax = Math.max(7, Math.min(3650, Number(limits && limits.chartsRetentionDays) || 90));
+  const days = Number.isFinite(daysRaw) && daysRaw > 0 && daysRaw <= daysMax ? daysRaw : 7;
   const force = !!(req.query.force === '1' || req.query.force === 'true' || req.query._);
   const trafficParam = typeof req.query.traffic === 'string' ? req.query.traffic.trim().toLowerCase() : '';
   const trafficMode = trafficParam === 'safe' ? 'human_safe' : 'human_only';
@@ -849,14 +917,14 @@ async function getDashboardSeries(req, res) {
         rangeStartTs: rangeKey ? bounds.start : todayBounds.start,
         rangeEndTs: rangeEnd,
         params: rangeKey
-          ? { trafficMode, rangeKey, bucket: bucketHint, rangeEndTs: rangeEndForCache, trendingPreset: trendingPreset || undefined, trendingDays: trendingDays != null ? trendingDays : undefined }
-          : { trafficMode, days, bucket: 'day' },
+          ? { trafficMode, rangeKey, bucket: bucketHint, rangeEndTs: rangeEndForCache, trendingPreset: trendingPreset || undefined, trendingDays: trendingDays != null ? trendingDays : undefined, retentionTier: limits.tier, drilldownRetentionDays: limits.drilldownRetentionDays }
+          : { trafficMode, days, bucket: 'day', retentionTier: limits.tier, drilldownRetentionDays: limits.drilldownRetentionDays },
         ttlMs,
         force,
       },
       () => rangeKey
-        ? computeDashboardSeriesForBounds(bounds, now, timeZone, trafficMode, bucketHint, rangeKey, trendingPreset || trendingDays)
-        : computeDashboardSeries(days, now, timeZone, trafficMode)
+        ? computeDashboardSeriesForBounds(bounds, now, timeZone, trafficMode, bucketHint, rangeKey, trendingPreset || trendingDays, limits)
+        : computeDashboardSeries(days, now, timeZone, trafficMode, limits)
     );
     if (_dbgOn) {
       const ms = Math.max(0, Date.now() - (_t0 || 0));
@@ -1288,7 +1356,7 @@ async function fallbackTopProductsFromOrdersRawJson(db, shop, startMs, endMs, ra
   }
 }
 
-async function computeDashboardSeries(days, nowMs, timeZone, trafficMode) {
+async function computeDashboardSeries(days, nowMs, timeZone, trafficMode, limits) {
   const db = getDb();
   const shop = await resolveDashboardShop(db);
   const filter = sessionFilterForTraffic(trafficMode);
@@ -1340,8 +1408,8 @@ async function computeDashboardSeries(days, nowMs, timeZone, trafficMode) {
     } catch (_) {}
   }
 
-  // Fetch sessions + bounces across all days in one pass (avoid per-day loops).
-  const sb = await fetchSessionsAndBouncesByDayBounds(db, dayBounds, overallStart, overallEnd, filter);
+  // Fetch sessions + bounces (hybrid: rollups for older days, raw for recent).
+  const sb = await fetchSessionsAndBouncesHybrid(db, dayBounds, overallStart, overallEnd, filter, timeZone, trafficMode, limits, nowMs);
   const sessionsPerDay = sb.sessionsPerDay || {};
   const bouncePerDay = sb.bouncePerDay || {};
 
@@ -1763,7 +1831,7 @@ function hourMinuteLabelFromParts(parts, hour, minute) {
   return `${ymd} ${hh}:${mm}`;
 }
 
-async function computeDashboardSeriesForBounds(bounds, nowMs, timeZone, trafficMode, bucketHint, rangeKey, trendingPresetOrDays) {
+async function computeDashboardSeriesForBounds(bounds, nowMs, timeZone, trafficMode, bucketHint, rangeKey, trendingPresetOrDays, limits) {
   const db = getDb();
   const shop = await resolveDashboardShop(db);
   const filter = sessionFilterForTraffic(trafficMode);
@@ -1873,9 +1941,43 @@ async function computeDashboardSeriesForBounds(bounds, nowMs, timeZone, trafficM
     } catch (_) {}
   }
 
-  const sb = await fetchSessionsAndBouncesByDayBounds(db, bucketBounds, overallStart, overallEnd, filter);
-  const sessionsPerDay = sb.sessionsPerDay || {};
-  const bouncePerDay = sb.bouncePerDay || {};
+  let sessionsPerDay = {};
+  let bouncePerDay = {};
+  if (bucket === 'hour') {
+    // Hour/minute buckets are always inside the drilldown window; keep raw behavior.
+    const sb = await fetchSessionsAndBouncesByDayBounds(db, bucketBounds, overallStart, overallEnd, filter);
+    sessionsPerDay = sb.sessionsPerDay || {};
+    bouncePerDay = sb.bouncePerDay || {};
+  } else {
+    const daySb = await fetchSessionsAndBouncesHybrid(db, dayBounds, overallStart, overallEnd, filter, timeZone, trafficMode, limits, nowMs);
+    if (bucket === 'day') {
+      sessionsPerDay = daySb.sessionsPerDay || {};
+      bouncePerDay = daySb.bouncePerDay || {};
+    } else {
+      // Week buckets: sum day rollups/raw day counts into each bucket window.
+      sessionsPerDay = {};
+      bouncePerDay = {};
+      for (const b of bucketBounds) {
+        sessionsPerDay[b.label] = 0;
+        bouncePerDay[b.label] = 0;
+      }
+      let di = 0;
+      for (const b of bucketBounds) {
+        let s = 0;
+        let bo = 0;
+        while (di < dayBounds.length && dayBounds[di].start < b.end) {
+          const d = dayBounds[di];
+          if (d.end <= b.start) { di += 1; continue; }
+          const lbl = d.label;
+          s += Number(daySb.sessionsPerDay && daySb.sessionsPerDay[lbl] != null ? daySb.sessionsPerDay[lbl] : 0) || 0;
+          bo += Number(daySb.bouncePerDay && daySb.bouncePerDay[lbl] != null ? daySb.bouncePerDay[lbl] : 0) || 0;
+          di += 1;
+        }
+        sessionsPerDay[b.label] = Math.max(0, Math.trunc(s));
+        bouncePerDay[b.label] = Math.max(0, Math.trunc(bo));
+      }
+    }
+  }
   const unitsPerDay = shop ? await fetchUnitsSoldByDayBounds(db, shop, bucketBounds, overallStart, overallEnd) : {};
 
   // Fetch orders + revenue per day from Shopify truth (Total sales: bucket by processed_at, subtract refunds)

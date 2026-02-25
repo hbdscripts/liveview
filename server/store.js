@@ -1920,7 +1920,8 @@ function listYmdsInBounds(startMs, endMs, timeZone) {
   let cur = { year: startParts.year, month: startParts.month, day: startParts.day };
   const last = { year: endParts.year, month: endParts.month, day: endParts.day };
   const out = [];
-  for (let guard = 0; guard < 400; guard++) {
+  // Guardrail: allow up to ~5.5 years of daily keys (Phase 1 needs 3-year ranges).
+  for (let guard = 0; guard < 2000; guard++) {
     const ymd = ymdFromParts(cur);
     if (ymd) out.push(ymd);
     if (cur.year === last.year && cur.month === last.month && cur.day === last.day) break;
@@ -3663,6 +3664,43 @@ async function getSessionCounts(start, end, options = {}) {
   return { total_sessions: null, human_sessions: null, known_bot_sessions: null };
 }
 
+async function getSessionCountsFromDailyRollups(start, end, options = {}) {
+  const db = getDb();
+  const trafficMode = options.trafficMode || config.trafficMode || 'all';
+  const timeZone = options.timeZone || resolveAdminTimeZone();
+  const mode = trafficMode === 'human_safe' ? 'human_safe' : (trafficMode === 'human_only' ? 'human_only' : null);
+  if (!mode) return null;
+  const s = Number(start);
+  const e = Number(end);
+  if (!Number.isFinite(s) || !Number.isFinite(e) || !(e > s)) return null;
+  const ymdStart = ymdFromMs(s, timeZone);
+  const ymdEnd = ymdFromMs(Math.max(s, e - 1), timeZone);
+  if (!ymdStart || !ymdEnd) return null;
+  try {
+    const row = await db.get(
+      `
+        SELECT
+          COALESCE(SUM(total_sessions), 0) AS total_sessions,
+          COALESCE(SUM(human_sessions), 0) AS human_sessions,
+          COALESCE(SUM(known_bot_sessions), 0) AS known_bot_sessions
+        FROM daily_rollups
+        WHERE traffic_mode = ?
+          AND ymd >= ?
+          AND ymd <= ?
+      `,
+      [mode, ymdStart, ymdEnd]
+    );
+    if (!row) return null;
+    return {
+      total_sessions: row.total_sessions != null ? Number(row.total_sessions) || 0 : 0,
+      human_sessions: row.human_sessions != null ? Number(row.human_sessions) || 0 : 0,
+      known_bot_sessions: row.known_bot_sessions != null ? Number(row.known_bot_sessions) || 0 : 0,
+    };
+  } catch (_) {
+    return null;
+  }
+}
+
 async function getConvertedCount(start, end, options = {}) {
   // Guardrail: report order counts from Shopify truth only (never exceed Shopify).
   const shop = salesTruth.resolveShopForSales('');
@@ -3812,6 +3850,41 @@ async function getBounceRate(start, end, options = {}) {
   return Math.round((singlePage / total) * 1000) / 10;
 }
 
+async function getBounceRateFromDailyRollups(start, end, options = {}) {
+  const db = getDb();
+  const trafficMode = options.trafficMode || config.trafficMode || 'all';
+  const timeZone = options.timeZone || resolveAdminTimeZone();
+  const mode = trafficMode === 'human_safe' ? 'human_safe' : (trafficMode === 'human_only' ? 'human_only' : null);
+  if (!mode) return null;
+  const s = Number(start);
+  const e = Number(end);
+  if (!Number.isFinite(s) || !Number.isFinite(e) || !(e > s)) return null;
+  const ymdStart = ymdFromMs(s, timeZone);
+  const ymdEnd = ymdFromMs(Math.max(s, e - 1), timeZone);
+  if (!ymdStart || !ymdEnd) return null;
+  try {
+    const row = await db.get(
+      `
+        SELECT
+          COALESCE(SUM(single_page_sessions), 0) AS single_page_sessions,
+          COALESCE(SUM(human_sessions), 0) AS human_sessions
+        FROM daily_rollups
+        WHERE traffic_mode = ?
+          AND ymd >= ?
+          AND ymd <= ?
+      `,
+      [mode, ymdStart, ymdEnd]
+    );
+    if (!row) return null;
+    const singlePage = row.single_page_sessions != null ? Number(row.single_page_sessions) || 0 : 0;
+    const human = row.human_sessions != null ? Number(row.human_sessions) || 0 : 0;
+    if (human <= 0) return null;
+    return Math.round((singlePage / human) * 1000) / 10;
+  } catch (_) {
+    return null;
+  }
+}
+
 async function getStats(options = {}) {
   const trafficMode = options.trafficMode === 'human_only' ? 'human_only' : (config.trafficMode || 'all');
   const now = Date.now();
@@ -3941,7 +4014,9 @@ async function getStats(options = {}) {
  * Returns a stats-shaped object but only for a single range key.
  */
 async function getKpis(options = {}) {
-  const trafficMode = options.trafficMode === 'human_only' ? 'human_only' : (config.trafficMode || 'all');
+  const trafficMode =
+    options.trafficMode === 'human_safe' ? 'human_safe' :
+      (options.trafficMode === 'human_only' ? 'human_only' : (config.trafficMode || 'all'));
   const force = !!options.force;
   const now = Date.now();
   const timeZone = resolveAdminTimeZone();
@@ -4060,6 +4135,36 @@ async function getKpis(options = {}) {
   }
 
   const yesterdayBounds = getRangeBounds('yesterday', now, timeZone);
+
+  const drilldownRetentionDays = (() => {
+    const raw = options && options.drilldownRetentionDays != null ? parseInt(String(options.drilldownRetentionDays), 10) : NaN;
+    if (!Number.isFinite(raw) || raw <= 0) return null;
+    return Math.min(3650, Math.max(1, raw));
+  })();
+  const drilldownRetentionMs = drilldownRetentionDays != null ? (drilldownRetentionDays * 24 * 60 * 60 * 1000) : null;
+  function needsRollupsForRange(startMs) {
+    if (drilldownRetentionMs == null) return false;
+    const s = Number(startMs);
+    if (!Number.isFinite(s)) return false;
+    return s < (now - drilldownRetentionMs);
+  }
+  async function sessionCountsSmart(startMs, endMs, rk) {
+    const useRollups = needsRollupsForRange(startMs);
+    if (useRollups) {
+      const roll = await getSessionCountsFromDailyRollups(startMs, endMs, opts);
+      if (roll) return roll;
+    }
+    return getSessionCounts(startMs, endMs, { ...opts, rangeKey: rk });
+  }
+  async function bounceRateSmart(startMs, endMs, rk) {
+    const useRollups = needsRollupsForRange(startMs);
+    if (useRollups) {
+      const roll = await getBounceRateFromDailyRollups(startMs, endMs, opts);
+      if (roll != null) return roll;
+    }
+    return getBounceRate(startMs, endMs, { ...opts, rangeKey: rk });
+  }
+
   const [
     salesVal,
     returningRevenueVal,
@@ -4083,13 +4188,13 @@ async function getKpis(options = {}) {
       () => getReturningCustomerCount(bounds.start, bounds.end, { ...opts, rangeKey })
     ),
     getConvertedCount(bounds.start, bounds.end, { ...opts, rangeKey }),
-    getSessionCounts(bounds.start, bounds.end, { ...opts, rangeKey }),
+    sessionCountsSmart(bounds.start, bounds.end, rangeKey),
     cacheSlowMetric(
       'bounce',
       bounds.start,
       bounds.end,
       rangeKey,
-      () => getBounceRate(bounds.start, bounds.end, { ...opts, rangeKey })
+      () => bounceRateSmart(bounds.start, bounds.end, rangeKey)
     ),
     cacheSlowMetric(
       'adSpend',
@@ -4145,13 +4250,13 @@ async function getKpis(options = {}) {
           () => getReturningCustomerCount(compareStart, compareEnd, compareOpts)
         ),
         getConvertedCount(compareStart, compareEnd, compareOpts),
-        getSessionCounts(compareStart, compareEnd, compareOpts),
+        sessionCountsSmart(compareStart, compareEnd, compareOpts.rangeKey),
         cacheSlowMetric(
           'bounce',
           compareStart,
           compareEnd,
           compareOpts.rangeKey,
-          () => getBounceRate(compareStart, compareEnd, compareOpts)
+          () => bounceRateSmart(compareStart, compareEnd, compareOpts.rangeKey)
         ),
         cacheSlowMetric(
           'adSpend',
