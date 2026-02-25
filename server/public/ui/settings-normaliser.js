@@ -310,9 +310,12 @@
       if (firstTitle.getAttribute('data-settings-ui-heading') === '1') return;
       firstTitle.setAttribute('data-settings-ui-heading', '1');
       firstTitle.classList.add('settings-panel-heading');
-      firstTitle.classList.remove('mb-0', 'mb-1');
-      if (!firstTitle.classList.contains('mb-2')) firstTitle.classList.add('mb-2');
+      firstTitle.classList.remove('mb-0', 'mb-1', 'mb-2');
     }
+    // Keep accordion headers even: no mb-2 on any accordion tab
+    wrap.querySelectorAll('.accordion-header').forEach(function (el) {
+      if (el && el.classList) el.classList.remove('mb-2');
+    });
   }
 
   function tightenAccordionEndingMb4(panelEl) {
