@@ -69,6 +69,7 @@
               </div>
             </div>
             <div id="dash-chart-overview-30d" class="kexo-overview-main-chart"></div>
+            <div class="kexo-ovw-card-loader" data-ovw-loader="main" aria-hidden="true"><span class="kpi-mini-spinner" aria-hidden="true"></span></div>
           </div>
         </div>
       </div>
@@ -78,16 +79,8 @@
             <div class="kexo-widget-head">
               <div class="kexo-widget-title kexo-online-header">
                 <div class="kexo-ovw-tabs-row">
-                  <div class="btn-group" role="group" aria-label="Online range" data-ovw-tabs="online">
+                  <div class="btn-group" role="group" aria-label="Online" data-ovw-tabs="online">
                     <button type="button" class="btn btn-sm active" data-ovw-panel="online" data-ovw-tab="online" aria-pressed="true">Online <span class="kexo-online-count" id="live-online-now-count">0</span></button>
-                    <button type="button" class="btn btn-sm kexo-ovw-date-tab dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" data-ovw-panel-range-btn="online">7 Days</button>
-                    <div class="dropdown-menu">
-                      <button class="dropdown-item" type="button" data-ovw-panel-range="online" data-ovw-range="today">Today</button>
-                      <button class="dropdown-item" type="button" data-ovw-panel-range="online" data-ovw-range="yesterday">Yesterday</button>
-                      <button class="dropdown-item" type="button" data-ovw-panel-range="online" data-ovw-range="7d">7 Days</button>
-                      <button class="dropdown-item" type="button" data-ovw-panel-range="online" data-ovw-range="14d">14 Days</button>
-                      <button class="dropdown-item" type="button" data-ovw-panel-range="online" data-ovw-range="30d">30 Days</button>
-                    </div>
                   </div>
                 </div>
               </div>
@@ -96,6 +89,7 @@
             <div class="kexo-widget-body">
               <div class="dash-chart-wrap kexo-chart-wrap-min-220" id="live-online-chart"></div>
             </div>
+            <div class="kexo-ovw-card-loader" data-ovw-loader="online" aria-hidden="true"><span class="kpi-mini-spinner" aria-hidden="true"></span></div>
           </div>
         </div>
       </div>
@@ -129,24 +123,105 @@
               <div class="kexo-ovw-tab-panels" data-ovw-panel-panels="kpis">
                 <div class="kexo-ovw-tab-panel" data-ovw-panel="kpis" data-ovw-tab-panel="set1">
                   <div class="kexo-ovw-kpi-list" aria-label="KPI Set 1">
-                    <div class="kexo-ovw-kpi-row"><span class="kexo-ovw-kpi-icon"><i class="fa-light fa-sterling-sign" data-icon-key="dashboard-kpi-revenue" aria-hidden="true"></i></span><span class="kexo-ovw-kpi-label">Revenue</span><span class="kexo-ovw-kpi-value" id="ovw-kpi-revenue">&mdash;</span></div>
-                    <div class="kexo-ovw-kpi-row"><span class="kexo-ovw-kpi-icon"><i class="fa-light fa-chart-line" data-icon-key="dashboard-kpi-profit" aria-hidden="true"></i></span><span class="kexo-ovw-kpi-label">Profit</span><span class="kexo-ovw-kpi-value" id="ovw-kpi-profit">&mdash;</span></div>
-                    <div class="kexo-ovw-kpi-row"><span class="kexo-ovw-kpi-icon"><i class="fa-light fa-percent" data-icon-key="dashboard-kpi-conversion-rate" aria-hidden="true"></i></span><span class="kexo-ovw-kpi-label">Conversion Rate</span><span class="kexo-ovw-kpi-value" id="ovw-kpi-conv">&mdash;</span></div>
-                    <div class="kexo-ovw-kpi-row"><span class="kexo-ovw-kpi-icon"><i class="fa-light fa-sack-dollar" data-icon-key="dashboard-kpi-value-per-visit" aria-hidden="true"></i></span><span class="kexo-ovw-kpi-label">Value per Visit</span><span class="kexo-ovw-kpi-value" id="ovw-kpi-vpv">&mdash;</span></div>
-                    <div class="kexo-ovw-kpi-row"><span class="kexo-ovw-kpi-icon"><i class="fa-light fa-user-check" data-icon-key="dashboard-kpi-returning-customers" aria-hidden="true"></i></span><span class="kexo-ovw-kpi-label">Returning Customers</span><span class="kexo-ovw-kpi-value" id="ovw-kpi-returning">&mdash;</span></div>
+                    <div class="kexo-ovw-kpi-row" data-ovw-kpi-row="revenue">
+                      <div class="kexo-ovw-kpi-row-top">
+                        <span class="kexo-ovw-kpi-icon"><i class="fa-light fa-sterling-sign" data-icon-key="dashboard-kpi-revenue" aria-hidden="true"></i></span>
+                        <span class="kexo-ovw-kpi-label">Revenue</span>
+                        <span class="kexo-ovw-kpi-value" id="ovw-kpi-revenue">&mdash;</span>
+                        <span class="kexo-ovw-kpi-delta" id="ovw-kpi-revenue-delta">&mdash;</span>
+                      </div>
+                      <div class="progress progress-sm kexo-ovw-kpi-progress"><div class="progress-bar bg-secondary" id="ovw-kpi-revenue-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="0% complete"><span class="visually-hidden">0% complete</span></div></div>
+                    </div>
+                    <div class="kexo-ovw-kpi-row" data-ovw-kpi-row="profit">
+                      <div class="kexo-ovw-kpi-row-top">
+                        <span class="kexo-ovw-kpi-icon"><i class="fa-light fa-chart-line" data-icon-key="dashboard-kpi-profit" aria-hidden="true"></i></span>
+                        <span class="kexo-ovw-kpi-label">Profit</span>
+                        <span class="kexo-ovw-kpi-value" id="ovw-kpi-profit">&mdash;</span>
+                        <span class="kexo-ovw-kpi-delta" id="ovw-kpi-profit-delta">&mdash;</span>
+                      </div>
+                      <div class="progress progress-sm kexo-ovw-kpi-progress"><div class="progress-bar bg-secondary" id="ovw-kpi-profit-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="0% complete"><span class="visually-hidden">0% complete</span></div></div>
+                    </div>
+                    <div class="kexo-ovw-kpi-row" data-ovw-kpi-row="conv">
+                      <div class="kexo-ovw-kpi-row-top">
+                        <span class="kexo-ovw-kpi-icon"><i class="fa-light fa-percent" data-icon-key="dashboard-kpi-conversion-rate" aria-hidden="true"></i></span>
+                        <span class="kexo-ovw-kpi-label">Conversion Rate</span>
+                        <span class="kexo-ovw-kpi-value" id="ovw-kpi-conv">&mdash;</span>
+                        <span class="kexo-ovw-kpi-delta" id="ovw-kpi-conv-delta">&mdash;</span>
+                      </div>
+                      <div class="progress progress-sm kexo-ovw-kpi-progress"><div class="progress-bar bg-secondary" id="ovw-kpi-conv-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="0% complete"><span class="visually-hidden">0% complete</span></div></div>
+                    </div>
+                    <div class="kexo-ovw-kpi-row" data-ovw-kpi-row="vpv">
+                      <div class="kexo-ovw-kpi-row-top">
+                        <span class="kexo-ovw-kpi-icon"><i class="fa-light fa-sack-dollar" data-icon-key="dashboard-kpi-value-per-visit" aria-hidden="true"></i></span>
+                        <span class="kexo-ovw-kpi-label">Value per Visit</span>
+                        <span class="kexo-ovw-kpi-value" id="ovw-kpi-vpv">&mdash;</span>
+                        <span class="kexo-ovw-kpi-delta" id="ovw-kpi-vpv-delta">&mdash;</span>
+                      </div>
+                      <div class="progress progress-sm kexo-ovw-kpi-progress"><div class="progress-bar bg-secondary" id="ovw-kpi-vpv-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="0% complete"><span class="visually-hidden">0% complete</span></div></div>
+                    </div>
+                    <div class="kexo-ovw-kpi-row" data-ovw-kpi-row="returning">
+                      <div class="kexo-ovw-kpi-row-top">
+                        <span class="kexo-ovw-kpi-icon"><i class="fa-light fa-user-check" data-icon-key="dashboard-kpi-returning-customers" aria-hidden="true"></i></span>
+                        <span class="kexo-ovw-kpi-label">Returning Customers</span>
+                        <span class="kexo-ovw-kpi-value" id="ovw-kpi-returning">&mdash;</span>
+                        <span class="kexo-ovw-kpi-delta" id="ovw-kpi-returning-delta">&mdash;</span>
+                      </div>
+                      <div class="progress progress-sm kexo-ovw-kpi-progress"><div class="progress-bar bg-secondary" id="ovw-kpi-returning-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="0% complete"><span class="visually-hidden">0% complete</span></div></div>
+                    </div>
                   </div>
                 </div>
                 <div class="kexo-ovw-tab-panel is-hidden" data-ovw-panel="kpis" data-ovw-tab-panel="set2">
                   <div class="kexo-ovw-kpi-list" aria-label="KPI Set 2">
-                    <div class="kexo-ovw-kpi-row"><span class="kexo-ovw-kpi-icon"><i class="fa-light fa-users" data-icon-key="dashboard-kpi-sessions" aria-hidden="true"></i></span><span class="kexo-ovw-kpi-label">Sessions</span><span class="kexo-ovw-kpi-value" id="ovw-kpi-sessions">&mdash;</span></div>
-                    <div class="kexo-ovw-kpi-row"><span class="kexo-ovw-kpi-icon"><i class="fa-light fa-cart-shopping" data-icon-key="dashboard-kpi-orders" aria-hidden="true"></i></span><span class="kexo-ovw-kpi-label">Orders</span><span class="kexo-ovw-kpi-value" id="ovw-kpi-orders">&mdash;</span></div>
-                    <div class="kexo-ovw-kpi-row"><span class="kexo-ovw-kpi-icon"><i class="fa-light fa-basket-shopping" data-icon-key="dashboard-kpi-aov" aria-hidden="true"></i></span><span class="kexo-ovw-kpi-label">AOV</span><span class="kexo-ovw-kpi-value" id="ovw-kpi-aov">&mdash;</span></div>
-                    <div class="kexo-ovw-kpi-row"><span class="kexo-ovw-kpi-icon"><i class="fa-light fa-person-walking-arrow-right" data-icon-key="dashboard-kpi-bounce-rate" aria-hidden="true"></i></span><span class="kexo-ovw-kpi-label">Bounce Rate</span><span class="kexo-ovw-kpi-value" id="ovw-kpi-bounce">&mdash;</span></div>
-                    <div class="kexo-ovw-kpi-row"><span class="kexo-ovw-kpi-icon"><i class="fa-light fa-rotate-left" data-icon-key="dashboard-kpi-returns" aria-hidden="true"></i></span><span class="kexo-ovw-kpi-label">Returns</span><span class="kexo-ovw-kpi-value" id="ovw-kpi-returns">&mdash;</span></div>
+                    <div class="kexo-ovw-kpi-row" data-ovw-kpi-row="sessions">
+                      <div class="kexo-ovw-kpi-row-top">
+                        <span class="kexo-ovw-kpi-icon"><i class="fa-light fa-users" data-icon-key="dashboard-kpi-sessions" aria-hidden="true"></i></span>
+                        <span class="kexo-ovw-kpi-label">Sessions</span>
+                        <span class="kexo-ovw-kpi-value" id="ovw-kpi-sessions">&mdash;</span>
+                        <span class="kexo-ovw-kpi-delta" id="ovw-kpi-sessions-delta">&mdash;</span>
+                      </div>
+                      <div class="progress progress-sm kexo-ovw-kpi-progress"><div class="progress-bar bg-secondary" id="ovw-kpi-sessions-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="0% complete"><span class="visually-hidden">0% complete</span></div></div>
+                    </div>
+                    <div class="kexo-ovw-kpi-row" data-ovw-kpi-row="orders">
+                      <div class="kexo-ovw-kpi-row-top">
+                        <span class="kexo-ovw-kpi-icon"><i class="fa-light fa-cart-shopping" data-icon-key="dashboard-kpi-orders" aria-hidden="true"></i></span>
+                        <span class="kexo-ovw-kpi-label">Orders</span>
+                        <span class="kexo-ovw-kpi-value" id="ovw-kpi-orders">&mdash;</span>
+                        <span class="kexo-ovw-kpi-delta" id="ovw-kpi-orders-delta">&mdash;</span>
+                      </div>
+                      <div class="progress progress-sm kexo-ovw-kpi-progress"><div class="progress-bar bg-secondary" id="ovw-kpi-orders-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="0% complete"><span class="visually-hidden">0% complete</span></div></div>
+                    </div>
+                    <div class="kexo-ovw-kpi-row" data-ovw-kpi-row="aov">
+                      <div class="kexo-ovw-kpi-row-top">
+                        <span class="kexo-ovw-kpi-icon"><i class="fa-light fa-basket-shopping" data-icon-key="dashboard-kpi-aov" aria-hidden="true"></i></span>
+                        <span class="kexo-ovw-kpi-label">AOV</span>
+                        <span class="kexo-ovw-kpi-value" id="ovw-kpi-aov">&mdash;</span>
+                        <span class="kexo-ovw-kpi-delta" id="ovw-kpi-aov-delta">&mdash;</span>
+                      </div>
+                      <div class="progress progress-sm kexo-ovw-kpi-progress"><div class="progress-bar bg-secondary" id="ovw-kpi-aov-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="0% complete"><span class="visually-hidden">0% complete</span></div></div>
+                    </div>
+                    <div class="kexo-ovw-kpi-row" data-ovw-kpi-row="bounce">
+                      <div class="kexo-ovw-kpi-row-top">
+                        <span class="kexo-ovw-kpi-icon"><i class="fa-light fa-person-walking-arrow-right" data-icon-key="dashboard-kpi-bounce-rate" aria-hidden="true"></i></span>
+                        <span class="kexo-ovw-kpi-label">Bounce Rate</span>
+                        <span class="kexo-ovw-kpi-value" id="ovw-kpi-bounce">&mdash;</span>
+                        <span class="kexo-ovw-kpi-delta" id="ovw-kpi-bounce-delta">&mdash;</span>
+                      </div>
+                      <div class="progress progress-sm kexo-ovw-kpi-progress"><div class="progress-bar bg-secondary" id="ovw-kpi-bounce-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="0% complete"><span class="visually-hidden">0% complete</span></div></div>
+                    </div>
+                    <div class="kexo-ovw-kpi-row" data-ovw-kpi-row="returns">
+                      <div class="kexo-ovw-kpi-row-top">
+                        <span class="kexo-ovw-kpi-icon"><i class="fa-light fa-rotate-left" data-icon-key="dashboard-kpi-returns" aria-hidden="true"></i></span>
+                        <span class="kexo-ovw-kpi-label">Returns</span>
+                        <span class="kexo-ovw-kpi-value" id="ovw-kpi-returns">&mdash;</span>
+                        <span class="kexo-ovw-kpi-delta" id="ovw-kpi-returns-delta">&mdash;</span>
+                      </div>
+                      <div class="progress progress-sm kexo-ovw-kpi-progress"><div class="progress-bar bg-secondary" id="ovw-kpi-returns-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="0% complete"><span class="visually-hidden">0% complete</span></div></div>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
+            <div class="kexo-ovw-card-loader" data-ovw-loader="kpis" aria-hidden="true"><span class="kpi-mini-spinner" aria-hidden="true"></span></div>
           </div>
         </div>
       </div>
@@ -189,6 +264,7 @@
                 </div>
               </div>
             </div>
+            <div class="kexo-ovw-card-loader" data-ovw-loader="toplists" aria-hidden="true"><span class="kpi-mini-spinner" aria-hidden="true"></span></div>
           </div>
         </div>
       </div>
@@ -220,6 +296,7 @@
                 <div class="d-flex align-items-center justify-content-center is-hidden kexo-ovw-panel-pagination" id="dash-trending-pagination" aria-label="Trending pagination"></div>
               </div>
             </div>
+            <div class="kexo-ovw-card-loader" data-ovw-loader="trending" aria-hidden="true"><span class="kpi-mini-spinner" aria-hidden="true"></span></div>
           </div>
         </div>
       </div>
@@ -253,6 +330,7 @@
               <div class="kexo-overview-widget-chart" id="dash-ovw-finishes-chart" aria-hidden="true"></div>
               <div id="dash-ovw-finishes-list" class="kexo-widget-mount" aria-live="polite"></div>
             </div>
+            <div class="kexo-ovw-card-loader" data-ovw-loader="variant" aria-hidden="true"><span class="kpi-mini-spinner" aria-hidden="true"></span></div>
           </div>
         </div>
       </div>
@@ -296,6 +374,7 @@
                 </div>
               </div>
             </div>
+            <div class="kexo-ovw-card-loader" data-ovw-loader="traffic" aria-hidden="true"><span class="kpi-mini-spinner" aria-hidden="true"></span></div>
           </div>
         </div>
       </div>
@@ -325,6 +404,7 @@
               <div class="kexo-overview-widget-chart" id="dash-ovw-abandoned-chart" aria-hidden="true"></div>
               <div id="dash-ovw-abandoned-list" class="kexo-widget-mount" aria-live="polite"></div>
             </div>
+            <div class="kexo-ovw-card-loader" data-ovw-loader="abandoned" aria-hidden="true"><span class="kpi-mini-spinner" aria-hidden="true"></span></div>
           </div>
         </div>
       </div>
