@@ -246,7 +246,7 @@ async function runOnce() {
 
         // Gating: only prune down to drilldownCutoff once rollups cover the whole window.
         let ymds = [];
-        try { ymds = store.listYmdsInBounds(rollupBounds, timeZone); } catch (_) { ymds = []; }
+        try { ymds = store.listYmdsInBounds(rollupBounds.start, rollupBounds.end, timeZone); } catch (_) { ymds = []; }
         if (!Array.isArray(ymds) || ymds.length === 0) {
           // Fail-safe: if we can't determine the required day set, do not prune into the charts window.
           safeDeleteCutoff = chartsCutoff;

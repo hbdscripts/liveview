@@ -146,7 +146,7 @@ async function ensureDailyRollupsForBounds(bounds, trafficMode, options = {}) {
   // Iterate by day using store helpers (timezone-aware). Guarded in store, plus our own maxDays cap.
   let ymds = [];
   try {
-    ymds = store.listYmdsInBounds({ start, end }, timeZone);
+    ymds = store.listYmdsInBounds(start, end, timeZone);
   } catch (_) {
     ymds = [];
   }
