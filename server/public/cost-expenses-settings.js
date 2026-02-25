@@ -1339,10 +1339,34 @@
     el.textContent = text || '';
   }
 
+  var perOrderModalApi = null;
+  var perOrderModalWired = false;
+  function ensurePerOrderModal() {
+    if (perOrderModalApi) return perOrderModalApi;
+    var el = document.getElementById('cost-expenses-per-order-modal');
+    if (!el) return null;
+    if (!(window.bootstrap && window.bootstrap.Modal)) return null;
+    try {
+      perOrderModalApi = window.bootstrap.Modal.getOrCreateInstance(el, { backdrop: true, focus: true, keyboard: true });
+    } catch (_) {
+      perOrderModalApi = null;
+    }
+    if (perOrderModalApi && !perOrderModalWired) {
+      perOrderModalWired = true;
+      try {
+        el.addEventListener('hidden.bs.modal', function () {
+          try { state.editingPerOrderId = ''; } catch (_) {}
+          try { setSectionMsg('cost-expenses-per-order-msg', '', null); } catch (_) {}
+        });
+      } catch (_) {}
+    }
+    return perOrderModalApi;
+  }
+
   function showPerOrderForm(rule) {
     state.editingPerOrderId = rule ? String(rule.id) : '';
-    var wrap = document.getElementById('cost-expenses-per-order-form-wrap');
-    if (wrap) wrap.classList.remove('is-hidden');
+    var titleEl = document.getElementById('cost-expenses-per-order-modal-title');
+    if (titleEl) titleEl.textContent = rule ? 'Edit per-order rule' : 'Add per-order rule';
 
     document.getElementById('cost-expenses-per-order-id').value = state.editingPerOrderId;
     document.getElementById('cost-expenses-per-order-category').value = rule ? (rule.category || 'other') : 'other';
@@ -1395,12 +1419,20 @@
     setPerOrderPreviewText('Estimated impact will appear here.');
     updatePerOrderLiveSummary();
     setSectionMsg('cost-expenses-per-order-msg', '', null);
+
+    var modal = ensurePerOrderModal();
+    if (modal) {
+      try { modal.show(); } catch (_) {}
+    }
   }
 
   function hidePerOrderForm() {
     state.editingPerOrderId = '';
-    var wrap = document.getElementById('cost-expenses-per-order-form-wrap');
-    if (wrap) wrap.classList.add('is-hidden');
+    setSectionMsg('cost-expenses-per-order-msg', '', null);
+    var modal = ensurePerOrderModal();
+    if (modal) {
+      try { modal.hide(); } catch (_) {}
+    }
   }
 
   function readPerOrderForm(opts) {

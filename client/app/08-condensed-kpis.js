@@ -2785,17 +2785,17 @@
       tbody.innerHTML = rows.slice(0, 5).map(function(r) {
         var code = (r && r.country != null ? String(r.country) : 'XX').toUpperCase().slice(0, 2);
         var label = countryLabel(code);
-        var started = r && r.checkoutStarted != null ? Math.max(0, Math.trunc(Number(r.checkoutStarted) || 0)) : 0;
-        var purchased = r && r.purchased != null ? Math.max(0, Math.trunc(Number(r.purchased) || 0)) : 0;
-        var pctVal = (r && r.checkoutAbandonmentRate != null) ? pct(Number(r.checkoutAbandonmentRate)) : '\u2014';
-        var valueGbp = (r && r.valueAtRiskGbp != null) ? Number(r.valueAtRiskGbp) : null;
+        var abandoned = r && r.abandoned != null ? Math.max(0, Math.trunc(Number(r.abandoned) || 0)) : (r && r.checkoutStarted != null ? Math.max(0, Math.trunc(Number(r.checkoutStarted) || 0)) : 0);
+        var checkout = r && r.checkout_sessions != null ? Math.max(0, Math.trunc(Number(r.checkout_sessions) || 0)) : (r && r.purchased != null ? Math.max(0, Math.trunc(Number(r.purchased) || 0)) : 0);
+        var pctVal = (r && (r.abandoned_pct != null || r.checkoutAbandonmentRate != null)) ? pct(Number((r.abandoned_pct != null ? r.abandoned_pct : r.checkoutAbandonmentRate))) : '\u2014';
+        var valueGbp = (r && (r.abandoned_value_gbp != null || r.valueAtRiskGbp != null)) ? Number((r.abandoned_value_gbp != null ? r.abandoned_value_gbp : r.valueAtRiskGbp)) : null;
         var value = (valueGbp != null && Number.isFinite(valueGbp)) ? formatRevenueTableHtml(valueGbp) : '\u2014';
         var flag = flagImg(code, label);
         var labelHtml = '<span class="country-label">' + escapeHtml(label) + '</span>';
         return '<div class="grid-row" role="row">' +
           '<div class="grid-cell" role="cell"><span class="country-cell">' + flag + labelHtml + '</span></div>' +
-          '<div class="grid-cell" role="cell">' + escapeHtml(formatSessions(started)) + '</div>' +
-          '<div class="grid-cell" role="cell">' + escapeHtml(formatSessions(purchased)) + '</div>' +
+          '<div class="grid-cell" role="cell">' + escapeHtml(formatSessions(abandoned)) + '</div>' +
+          '<div class="grid-cell" role="cell">' + escapeHtml(formatSessions(checkout)) + '</div>' +
           '<div class="grid-cell" role="cell">' + escapeHtml(pctVal) + '</div>' +
           '<div class="grid-cell" role="cell">' + value + '</div>' +
         '</div>';
@@ -2814,12 +2814,13 @@
       var mainBase = getMainBaseUrl();
       tbody.innerHTML = rows.slice(0, 5).map(function(r) {
         var productHandle = (r && r.product_handle != null) ? String(r.product_handle).trim().toLowerCase() : '';
-        var productLabel = productHandle || (r && r.product_handle === '(none)' ? '(none)' : '\u2014');
+        var productTitle = (r && r.product_title != null) ? String(r.product_title).trim() : '';
+        var productLabel = productTitle || productHandle || (r && r.product_handle === '(none)' ? '(none)' : '\u2014');
         var productUrl = (mainBase && productHandle && productHandle !== '(none)') ? (mainBase + '/products/' + encodeURIComponent(productHandle)) : '#';
-        var started = r && r.checkoutStarted != null ? Math.max(0, Math.trunc(Number(r.checkoutStarted) || 0)) : 0;
-        var purchased = r && r.purchased != null ? Math.max(0, Math.trunc(Number(r.purchased) || 0)) : 0;
-        var pctVal = (r && r.checkoutAbandonmentRate != null) ? pct(Number(r.checkoutAbandonmentRate)) : '\u2014';
-        var valueGbp = (r && r.valueAtRiskGbp != null) ? Number(r.valueAtRiskGbp) : null;
+        var abandoned = r && r.abandoned != null ? Math.max(0, Math.trunc(Number(r.abandoned) || 0)) : (r && r.checkoutStarted != null ? Math.max(0, Math.trunc(Number(r.checkoutStarted) || 0)) : 0);
+        var checkout = r && r.checkout_sessions != null ? Math.max(0, Math.trunc(Number(r.checkout_sessions) || 0)) : (r && r.purchased != null ? Math.max(0, Math.trunc(Number(r.purchased) || 0)) : 0);
+        var pctVal = (r && (r.abandoned_pct != null || r.checkoutAbandonmentRate != null)) ? pct(Number((r.abandoned_pct != null ? r.abandoned_pct : r.checkoutAbandonmentRate))) : '\u2014';
+        var valueGbp = (r && (r.abandoned_value_gbp != null || r.valueAtRiskGbp != null)) ? Number((r.abandoned_value_gbp != null ? r.abandoned_value_gbp : r.valueAtRiskGbp)) : null;
         var value = (valueGbp != null && Number.isFinite(valueGbp)) ? formatRevenueTableHtml(valueGbp) : '\u2014';
         var titleLink = (productHandle && productHandle !== '(none)')
           ? '<a class="kexo-product-link js-product-modal-link" href="' + escapeHtml(productUrl) + '" target="_blank" rel="noopener" data-product-handle="' + escapeHtml(productHandle) + '">' + escapeHtml(productLabel) + '</a>'
@@ -2827,8 +2828,8 @@
         var labelHtml = '<span class="country-product-stack"><span class="country-product-label">' + titleLink + '</span></span>';
         return '<div class="grid-row" role="row">' +
           '<div class="grid-cell" role="cell"><span class="country-cell">' + labelHtml + '</span></div>' +
-          '<div class="grid-cell" role="cell">' + escapeHtml(formatSessions(started)) + '</div>' +
-          '<div class="grid-cell" role="cell">' + escapeHtml(formatSessions(purchased)) + '</div>' +
+          '<div class="grid-cell" role="cell">' + escapeHtml(formatSessions(abandoned)) + '</div>' +
+          '<div class="grid-cell" role="cell">' + escapeHtml(formatSessions(checkout)) + '</div>' +
           '<div class="grid-cell" role="cell">' + escapeHtml(pctVal) + '</div>' +
           '<div class="grid-cell" role="cell">' + value + '</div>' +
         '</div>';
@@ -2846,15 +2847,18 @@
       clearGridTableBodyMessageState(tbody);
       tbody.innerHTML = rows.slice(0, 5).map(function(r) {
         var device = (r && r.device != null) ? String(r.device).trim() : '\u2014';
-        var started = r && r.checkoutStarted != null ? Math.max(0, Math.trunc(Number(r.checkoutStarted) || 0)) : 0;
-        var purchased = r && r.purchased != null ? Math.max(0, Math.trunc(Number(r.purchased) || 0)) : 0;
-        var pctVal = (r && r.checkoutAbandonmentRate != null) ? pct(Number(r.checkoutAbandonmentRate)) : '\u2014';
-        var valueGbp = (r && r.valueAtRiskGbp != null) ? Number(r.valueAtRiskGbp) : null;
+        var prettyDevice = device && device !== '\u2014'
+          ? (device.charAt(0).toUpperCase() + device.slice(1))
+          : device;
+        var abandoned = r && r.abandoned != null ? Math.max(0, Math.trunc(Number(r.abandoned) || 0)) : (r && r.checkoutStarted != null ? Math.max(0, Math.trunc(Number(r.checkoutStarted) || 0)) : 0);
+        var checkout = r && r.checkout_sessions != null ? Math.max(0, Math.trunc(Number(r.checkout_sessions) || 0)) : (r && r.purchased != null ? Math.max(0, Math.trunc(Number(r.purchased) || 0)) : 0);
+        var pctVal = (r && (r.abandoned_pct != null || r.checkoutAbandonmentRate != null)) ? pct(Number((r.abandoned_pct != null ? r.abandoned_pct : r.checkoutAbandonmentRate))) : '\u2014';
+        var valueGbp = (r && (r.abandoned_value_gbp != null || r.valueAtRiskGbp != null)) ? Number((r.abandoned_value_gbp != null ? r.abandoned_value_gbp : r.valueAtRiskGbp)) : null;
         var value = (valueGbp != null && Number.isFinite(valueGbp)) ? formatRevenueTableHtml(valueGbp) : '\u2014';
         return '<div class="grid-row" role="row">' +
-          '<div class="grid-cell" role="cell">' + escapeHtml(device) + '</div>' +
-          '<div class="grid-cell" role="cell">' + escapeHtml(formatSessions(started)) + '</div>' +
-          '<div class="grid-cell" role="cell">' + escapeHtml(formatSessions(purchased)) + '</div>' +
+          '<div class="grid-cell" role="cell">' + escapeHtml(prettyDevice) + '</div>' +
+          '<div class="grid-cell" role="cell">' + escapeHtml(formatSessions(abandoned)) + '</div>' +
+          '<div class="grid-cell" role="cell">' + escapeHtml(formatSessions(checkout)) + '</div>' +
           '<div class="grid-cell" role="cell">' + escapeHtml(pctVal) + '</div>' +
           '<div class="grid-cell" role="cell">' + value + '</div>' +
         '</div>';
@@ -2866,7 +2870,8 @@
       options = options || {};
       var force = !!options.force;
       var rangeKey = normalizeRangeKeyForApi(dateRange);
-      var cacheKey = rangeKey;
+      var modeKey = normalizeAbandonedMode(abandonedMode);
+      var cacheKey = rangeKey + '|' + modeKey;
       if (!force && abandonedCartsTopCacheKey === cacheKey && abandonedCartsTopCountriesCache && abandonedCartsTopCountryProductsCache && abandonedCartsTopDeviceCache) {
         renderAbandonedCartsTopCountries(abandonedCartsTopCountriesCache);
         renderAbandonedCartsTopCountryProducts(abandonedCartsTopCountryProductsCache);
@@ -2882,10 +2887,13 @@
       if (productsBody) setGridTableBodyMessage(productsBody, 'Loading\u2026');
       if (deviceBody) setGridTableBodyMessage(deviceBody, 'Loading\u2026');
 
-      var qs = 'range=' + encodeURIComponent(rangeKey) + '&timezone=' + encodeURIComponent(tz) + '&limit=10&_=' + Date.now();
-      var urlCountry = API + '/api/insights/checkout-abandonment/breakdown?dimension=country&' + qs;
-      var urlProduct = API + '/api/insights/checkout-abandonment/breakdown?dimension=product&' + qs;
-      var urlDevice = API + '/api/insights/checkout-abandonment/breakdown?dimension=device&' + qs;
+      var qs = 'range=' + encodeURIComponent(rangeKey) +
+        '&timezone=' + encodeURIComponent(tz) +
+        '&mode=' + encodeURIComponent(modeKey) +
+        '&limit=10&_=' + Date.now();
+      var urlCountry = API + '/api/abandoned-carts/top-countries?' + qs;
+      var urlProduct = API + '/api/abandoned-carts/top-country-products?' + qs;
+      var urlDevice = API + '/api/abandoned-carts/top-devices?' + qs;
 
       abandonedCartsTopInFlight = Promise.all([
         fetchWithTimeout(urlCountry, { credentials: 'same-origin', cache: 'no-store' }, 20000).then(function(r) { return (r && r.ok) ? r.json() : null; }).catch(function() { return null; }),

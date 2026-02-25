@@ -556,6 +556,23 @@ const API = '';
           setCategoryExpanded(kexoCat, true, true, null);
         }
       } catch (_) {}
+
+      // Important: the mini menu is cloned from a <template>, so it won't have admin/perm gating
+      // applied yet (querySelectorAll won't traverse template content). Re-apply gating now so
+      // Admin sections appear for admins and hidden items stay hidden.
+      try {
+        var v = _effectiveViewerCache || getEffectiveViewer(window.__kexoMe);
+        try { applyAdminOnlyVisibility(!!(v && v.isAdmin)); } catch (_) {}
+        try { applyRealAdminOnlyVisibility(!!(v && v.real && v.real.isAdmin)); } catch (_) {}
+        if (v && v.preview && v.preview.enabled && v.preview.tier) {
+          fetchRolePermissionsForPreview(v.preview.tier, function (tierPerms) {
+            try { applyPermissionGating(tierPerms); } catch (_) {}
+          });
+        } else {
+          try { applyPermissionGating(v && v.permissions); } catch (_) {}
+        }
+      } catch (_) {}
+
       _miniMenuBuilt = true;
     }
     function ensureViewingAsTierRow(viewer) {
