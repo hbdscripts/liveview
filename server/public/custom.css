@@ -2690,6 +2690,7 @@ body:not([data-page="settings"]) .table-responsive table thead th {
 }
 .flag-xs {
   height: 1rem;
+  width: 1.33333rem;
   border-radius: 3px;
 }
 .settings-charts-color-grid {

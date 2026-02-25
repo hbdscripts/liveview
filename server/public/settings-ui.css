@@ -205,10 +205,11 @@ body[data-page="settings"] #settings-panel-cost-expenses .kexo-country-chip {
   gap: 6px;
   padding-right: 6px;
 }
-body[data-page="settings"] #settings-panel-cost-expenses .kexo-country-flag {
-  display: inline-block;
-  line-height: 1;
-  font-size: 14px;
+body[data-page="settings"] #settings-panel-cost-expenses .kexo-country-chip .flag {
+  flex-shrink: 0;
+}
+body[data-page="settings"] #settings-panel-cost-expenses .kexo-country-chip .kexo-flag-img {
+  flex-shrink: 0;
 }
 body[data-page="settings"] #settings-panel-cost-expenses .kexo-country-chip-code {
   font-weight: 600;
@@ -250,6 +251,22 @@ body[data-page="settings"] #settings-panel-cost-expenses .kexo-country-suggest-i
   border-radius: var(--tblr-border-radius, .375rem);
   background: transparent;
   cursor: pointer;
+}
+body[data-page="settings"] #settings-panel-cost-expenses .kexo-country-suggest-item .flag {
+  flex-shrink: 0;
+}
+body[data-page="settings"] #settings-panel-cost-expenses .kexo-country-suggest-item .kexo-flag-img {
+  flex-shrink: 0;
+}
+
+/* Fallback when tabler-flags CSS isn't available (render <img> flags). */
+body[data-page="settings"] #settings-panel-cost-expenses .kexo-flag-img {
+  display: inline-block;
+  height: 1rem;
+  width: 1.33333rem;
+  border-radius: 3px;
+  vertical-align: middle;
+  object-fit: cover;
 }
 body[data-page="settings"] #settings-panel-cost-expenses .kexo-country-suggest-item:hover,
 body[data-page="settings"] #settings-panel-cost-expenses .kexo-country-suggest-item:focus {

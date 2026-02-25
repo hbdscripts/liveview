@@ -62,11 +62,43 @@
     div.textContent = str;
     return div.innerHTML;
   }
+  function escAttr(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
 
   function normalizeCountryCode(v) {
     var raw = (v == null ? '' : String(v).trim()).toUpperCase().slice(0, 2);
     if (!raw) return '';
     return raw === 'UK' ? 'GB' : raw;
+  }
+
+  function detectTablerFlagsCssOnce() {
+    try {
+      if (!document || !document.documentElement) return;
+      if (document.documentElement.getAttribute('data-kexo-flags-css') != null) return;
+      var t = document.createElement('span');
+      t.className = 'flag flag-xs flag-country-gb visually-hidden';
+      t.setAttribute('aria-hidden', 'true');
+      (document.body || document.documentElement).appendChild(t);
+      var bg = '';
+      try { bg = (window.getComputedStyle && window.getComputedStyle(t) ? window.getComputedStyle(t).backgroundImage : '') || ''; } catch (_) {}
+      try { if (t.parentElement) t.parentElement.removeChild(t); } catch (_) {}
+      document.documentElement.setAttribute('data-kexo-flags-css', (bg && bg !== 'none') ? '1' : '0');
+    } catch (_) {}
+  }
+  detectTablerFlagsCssOnce();
+
+  function hasTablerFlagsCss() {
+    try {
+      return !!(document && document.documentElement && document.documentElement.getAttribute('data-kexo-flags-css') === '1');
+    } catch (_) {
+      return false;
+    }
   }
 
   function ymdTodayLocal() {
@@ -533,6 +565,36 @@
     return 'ALL';
   }
 
+  function scopeFlagsHtml(appliesTo) {
+    var a = appliesTo && typeof appliesTo === 'object' ? appliesTo : {};
+    if (a.mode === 'countries' && Array.isArray(a.countries) && a.countries.length) {
+      var out = '';
+      a.countries.slice(0, 12).forEach(function (cc) {
+        var code = normalizeCountryCode(cc);
+        if (!code) return;
+        var name = regionDisplayName(code) || '';
+        out += countryCodeToFlagHtml(code, name || code);
+      });
+      return out;
+    }
+    return '<span class="kexo-flag-fallback" aria-hidden="true"><i class="fa-light fa-globe"></i></span>';
+  }
+
+  function perOrderScopeFlagsHtml(ruleLike) {
+    var r = ruleLike && typeof ruleLike === 'object' ? ruleLike : {};
+    if (r.country_scope === 'ALL' || !Array.isArray(r.country_scope) || !r.country_scope.length) {
+      return '<span class="kexo-flag-fallback" aria-hidden="true"><i class="fa-light fa-globe"></i></span>';
+    }
+    var out = '';
+    r.country_scope.slice(0, 12).forEach(function (cc) {
+      var code = normalizeCountryCode(cc);
+      if (!code) return;
+      var name = regionDisplayName(code) || '';
+      out += countryCodeToFlagHtml(code, name || code);
+    });
+    return out;
+  }
+
   function renderPerOrderRulesTable() {
     var tbody = document.getElementById('cost-expenses-per-order-table-body');
     if (!tbody) return;
@@ -549,6 +611,7 @@
       var category = perOrderCategoryLabel(r.category);
       var breakdown = (r.breakdown_label || '').trim() || '—';
       var scope = (r.country_scope === 'ALL' || !Array.isArray(r.country_scope) || !r.country_scope.length) ? 'All' : r.country_scope.join(', ');
+      var scopeFlags = perOrderScopeFlagsHtml(r);
       var start = String(r.effective_start || r.start_date || '').trim();
       var end = String(r.effective_end || r.end_date || '').trim();
       var starts = start && start === (ymdTodayLocal() || '') ? 'starts now' : (start ? ('starts ' + formatYmdHuman(start)) : 'starts now');
@@ -559,7 +622,7 @@
         '<td>' + esc(rule.name || 'Expense') + '</td>' +
         '<td>' + esc(category) + '</td>' +
         '<td>' + esc(breakdown) + '</td>' +
-        '<td class="text-muted small">' + esc(summary) + '</td>' +
+        '<td class="text-muted small">' + scopeFlags + esc(summary) + '</td>' +
         '<td class="text-end">' + esc(String(rule.sort != null ? rule.sort : '—')) + '</td>' +
         '<td class="text-center"><input type="checkbox" data-per-order-enabled data-per-order-id="' + esc(rule.id) + '" ' + (rule.enabled ? 'checked' : '') + ' /></td>' +
         '<td class="text-end">' +
@@ -609,7 +672,7 @@
         '<td>' + esc(o.date || '—') + '</td>' +
         '<td>' + esc(o.end_date || '—') + '</td>' +
         '<td>' + esc(overheadFrequencyLabel(o)) + '</td>' +
-        '<td>' + esc(scopeLabel(o.appliesTo)) + '</td>' +
+        '<td>' + scopeFlagsHtml(o.appliesTo) + esc(scopeLabel(o.appliesTo)) + '</td>' +
         '<td class="text-center"><input type="checkbox" data-overhead-enabled data-overhead-id="' + esc(o.id) + '" ' + (o.enabled ? 'checked' : '') + ' /></td>' +
         '<td class="text-end">' +
           '<div class="d-inline-flex gap-1 flex-nowrap kexo-table-actions" aria-label="Overhead actions">' +
@@ -835,18 +898,19 @@
     return '';
   }
 
-  function flagEmojiForCountryCode(code) {
+  function countryCodeToFlagHtml(code, label) {
     var cc = normalizeCountryCode(code);
-    if (!cc || cc.length !== 2) return '';
-    // Regional indicator symbols: A=0x1F1E6
-    var a = cc.charCodeAt(0);
-    var b = cc.charCodeAt(1);
-    if (a < 65 || a > 90 || b < 65 || b > 90) return '';
-    try {
-      return String.fromCodePoint(0x1F1E6 + (a - 65), 0x1F1E6 + (b - 65));
-    } catch (_) {
-      return '';
+    var raw = cc ? String(cc).toLowerCase() : '';
+    if (!raw || raw === 'xx' || !/^[a-z]{2}$/.test(raw)) {
+      return '<span class="kexo-flag-fallback" aria-hidden="true"><i class="fa-light fa-globe"></i></span>';
     }
+    var safeLabel = label != null ? escAttr(String(label)) : '';
+    var titleAttr = safeLabel ? (' title="' + safeLabel + '"') : '';
+    if (hasTablerFlagsCss()) {
+      return '<span class="flag flag-xs kexo-flag-inline flag-country-' + escAttr(raw) + '"' + titleAttr + ' aria-hidden="true"></span>';
+    }
+    var cdn = 'https://cdn.jsdelivr.net/npm/@tabler/core@1.4.0/dist/img/flags/' + raw + '.svg';
+    return '<img class="kexo-flag-img kexo-flag-inline" src="' + escAttr(cdn) + '" alt="" loading="lazy" decoding="async"' + titleAttr + ' aria-hidden="true" />';
   }
 
   var __kexoRegionDisplayNames = null;
@@ -970,7 +1034,7 @@
       var item = scored[i];
       if (!item || !item.code || seen[item.code]) continue;
       seen[item.code] = true;
-      out.push({ code: item.code, name: item.name || '', flag: flagEmojiForCountryCode(item.code) });
+      out.push({ code: item.code, name: item.name || '' });
     }
     return out;
   }
@@ -999,9 +1063,10 @@
     var html = '';
     items.forEach(function (it) {
       var label = (it.code || '') + (it.name ? (' — ' + it.name) : '');
+      var flagHtml = countryCodeToFlagHtml(it.code, it.name || it.code);
       html +=
         '<button type="button" class="kexo-country-suggest-item" role="option" data-ce-country-suggest-code="' + esc(it.code) + '" title="' + esc(label) + '">' +
-          (it.flag ? ('<span class="kexo-country-flag" aria-hidden="true">' + esc(it.flag) + '</span>') : '') +
+          flagHtml +
           '<span class="kexo-country-suggest-code">' + esc(it.code) + '</span>' +
           (it.name ? ('<span class="kexo-country-suggest-name">' + esc(it.name) + '</span>') : '') +
         '</button>';
@@ -1098,11 +1163,10 @@
       if (!code || seen[code]) return;
       seen[code] = true;
       var name = regionDisplayName(code) || '';
-      var flag = flagEmojiForCountryCode(code) || '';
       var title = name ? (name + ' (' + code + ')') : code;
       html +=
         '<span class="badge bg-secondary-lt text-secondary kexo-country-chip" data-country-code="' + esc(code) + '" title="' + esc(title) + '">' +
-          (flag ? ('<span class="kexo-country-flag" aria-hidden="true">' + esc(flag) + '</span>') : '') +
+          countryCodeToFlagHtml(code, name || code) +
           '<span class="kexo-country-chip-code">' + esc(code) + '</span>' +
           (name ? ('<span class="kexo-country-chip-name d-none d-md-inline">' + esc(name) + '</span>') : '') +
           '<button type="button" class="btn-close ms-1 kexo-country-chip-remove" aria-label="Remove ' + esc(code) + '" data-country-remove="' + esc(code) + '"></button>' +
