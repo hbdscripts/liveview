@@ -19,6 +19,8 @@
     reqId: 0,
     active: false,
     audit: false,
+    hideInactive: true,
+    lastPayload: null,
   };
 
   function isAuditEnabled() {
@@ -94,7 +96,11 @@
     var totalInactiveEl = document.getElementById('cost-breakdown-total-inactive');
     if (!tbody) return;
 
-    var items = payload && Array.isArray(payload.items) ? payload.items : [];
+    var itemsAll = payload && Array.isArray(payload.items) ? payload.items : [];
+    var items = itemsAll;
+    if (state.hideInactive === true) {
+      items = itemsAll.filter(function (it) { return !!(it && it.active === true); });
+    }
     var totals = payload && payload.totals && typeof payload.totals === 'object' ? payload.totals : {};
     var currency = totals && totals.currency ? String(totals.currency) : 'GBP';
     var auditDebug = payload && payload.audit_debug && typeof payload.audit_debug === 'object' ? payload.audit_debug : null;
@@ -388,6 +394,7 @@
       if (myId !== state.reqId) return;
       if (!payload || payload.ok !== true) throw new Error('bad_payload');
       setMsg('', 'muted');
+      state.lastPayload = payload;
       render(payload);
     }).catch(function (err) {
       if (myId !== state.reqId) return;
@@ -401,6 +408,15 @@
   function bindUi() {
     if (state.uiBound) return;
     state.uiBound = true;
+
+    var hideInactiveToggle = document.getElementById('cost-breakdown-hide-inactive');
+    if (hideInactiveToggle) {
+      state.hideInactive = hideInactiveToggle.checked === true;
+      hideInactiveToggle.addEventListener('change', function () {
+        state.hideInactive = hideInactiveToggle.checked === true;
+        if (state.lastPayload) render(state.lastPayload);
+      });
+    }
 
     var group = document.getElementById('cost-breakdown-range-group');
     if (group) {

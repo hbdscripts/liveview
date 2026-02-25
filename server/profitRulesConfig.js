@@ -95,6 +95,9 @@ function defaultProfitRulesConfigV1() {
     },
     cost_expenses: {
       rule_mode: 'stack', // stack | first_match
+      include_per_order_rules: true,
+      include_overheads: true,
+      include_fixed_costs: true,
       per_order_rules: [],
       overheads: [],
       fixed_costs: [],
@@ -416,6 +419,7 @@ function normalizeFixedCost(raw, idx) {
   const frequency = (freqRaw === 'daily' || freqRaw === 'weekly' || freqRaw === 'monthly' || freqRaw === 'yearly') ? freqRaw : 'daily';
   const rawAmount = r.amount != null ? r.amount : r.amount_per_day;
   const amount = Math.max(0, Number(rawAmount) || 0);
+  const effective_start = normalizeYmd(r.effective_start || r.start_date, '');
   const DAYS_PER_YEAR = 365.25;
   const DAYS_PER_MONTH = DAYS_PER_YEAR / 12;
   const amount_per_day = (() => {
@@ -432,6 +436,8 @@ function normalizeFixedCost(raw, idx) {
     amount,
     frequency,
     amount_per_day: Math.max(0, Number(amount_per_day) || 0),
+    effective_start: effective_start || null,
+    start_date: effective_start || '',
     enabled: normalizeRuleEnabled(r.enabled, true),
   };
 }
@@ -494,6 +500,9 @@ function normalizeProfitRulesConfigV1(raw) {
     const fc = Array.isArray(ce.fixed_costs) ? ce.fixed_costs : [];
     out.cost_expenses = {
       rule_mode: normalizeRuleMode(ce.rule_mode),
+      include_per_order_rules: ce.include_per_order_rules !== false,
+      include_overheads: ce.include_overheads !== false,
+      include_fixed_costs: ce.include_fixed_costs !== false,
       per_order_rules: por.slice(0, 200).map((r, i) => normalizePerOrderRule(r, i)).sort((a, b) => {
         const sa = Number(a.sort) || 0;
         const sb = Number(b.sort) || 0;
@@ -546,6 +555,9 @@ function normalizeProfitRulesConfigV1(raw) {
     }
     out.cost_expenses = {
       rule_mode: 'stack',
+      include_per_order_rules: true,
+      include_overheads: true,
+      include_fixed_costs: true,
       per_order_rules: per_order_rules.sort((a, b) => {
         const sa = Number(a.sort) || 0;
         const sb = Number(b.sort) || 0;
@@ -562,14 +574,18 @@ function normalizeProfitRulesConfigV1(raw) {
 function hasEnabledProfitRules(config) {
   if (!config || typeof config !== 'object' || config.enabled !== true) return false;
   const ce = config.cost_expenses && typeof config.cost_expenses === 'object' ? config.cost_expenses : null;
+  const includePerOrder = ce ? (ce.include_per_order_rules !== false) : true;
+  const includeOverheads = ce ? (ce.include_overheads !== false) : true;
+  const includeFixedCosts = ce ? (ce.include_fixed_costs !== false) : true;
+  if (!includePerOrder && !includeOverheads && !includeFixedCosts) return false;
   const perOrder = ce && Array.isArray(ce.per_order_rules) ? ce.per_order_rules : [];
   const overheads = ce && Array.isArray(ce.overheads) ? ce.overheads : [];
   const fixedCosts = ce && Array.isArray(ce.fixed_costs) ? ce.fixed_costs : [];
-  if (perOrder.some((r) => r && r.enabled === true)) return true;
-  if (overheads.some((o) => o && o.enabled === true)) return true;
-  if (fixedCosts.some((f) => f && f.enabled === true)) return true;
+  if (includePerOrder && perOrder.some((r) => r && r.enabled === true)) return true;
+  if (includeOverheads && overheads.some((o) => o && o.enabled === true)) return true;
+  if (includeFixedCosts && fixedCosts.some((f) => f && f.enabled === true)) return true;
   const rules = Array.isArray(config.rules) ? config.rules : [];
-  return rules.some((rule) => rule && rule.enabled === true);
+  return includePerOrder && rules.some((rule) => rule && rule.enabled === true);
 }
 
 module.exports = {
