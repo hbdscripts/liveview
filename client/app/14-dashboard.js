@@ -7474,8 +7474,8 @@
 
       function createDashboardController() {
         var pollTimer = null;
-        var visibilityBound = false;
-        var pageShowBound = false;
+        var lifecycleResumeUnsub = null;
+        var lifecycleHiddenUnsub = null;
         var mainTabBound = false;
         var lastResumeAt = 0;
         var lastResumePerfAt = 0;
@@ -7534,21 +7534,21 @@
             lastResumeAt = now;
           }
           try { if (typeof window.refreshDashboard === 'function') window.refreshDashboard({ force: true, silent: true, reason: reason || 'resume' }); } catch (_) {}
-          try { if (typeof refreshKpis === 'function') refreshKpis({ force: true }); } catch (_) {}
           startPolling();
         }
-        function onVisibilityChange() {
-          if (!isVisible()) {
-            stopPolling();
-            try { window.__kexoLastHiddenAt = Date.now(); } catch (_) {}
-            try { if (typeof pauseOverviewResizeObservers === 'function') pauseOverviewResizeObservers(); } catch (_) {}
-            return;
-          }
-          try { if (typeof resumeOverviewResizeObservers === 'function') resumeOverviewResizeObservers(); } catch (_) {}
-          refreshOnceAndResume('visibility');
+        function onLifecycleHidden() {
+          stopPolling();
+          try { if (typeof pauseOverviewResizeObservers === 'function') pauseOverviewResizeObservers(); } catch (_) {}
         }
-        function onPageShow(ev) {
-          if (ev && ev.persisted) refreshOnceAndResume('pageshow');
+        function onLifecycleResume(ctx) {
+          if (!isVisible()) return;
+          if (!isDashboardActive()) return;
+          try { if (typeof resumeOverviewResizeObservers === 'function') resumeOverviewResizeObservers(); } catch (_) {}
+          var idleMs = 0;
+          try { idleMs = ctx && ctx.idleMs != null ? Number(ctx.idleMs) : 0; } catch (_) { idleMs = 0; }
+          if (!Number.isFinite(idleMs)) idleMs = 0;
+          if (idleMs < 30000) return startPolling();
+          refreshOnceAndResume((ctx && ctx.source) ? ctx.source : 'resume');
         }
         function onMainTabChanged(ev) {
           var next = ev && ev.detail && ev.detail.tab != null ? String(ev.detail.tab).trim().toLowerCase() : '';
@@ -7560,13 +7560,19 @@
         }
         function init() {
           startPolling();
-          if (!visibilityBound) {
-            document.addEventListener('visibilitychange', onVisibilityChange);
-            visibilityBound = true;
+          if (!lifecycleResumeUnsub) {
+            try {
+              if (window.kexoLifecycle && typeof window.kexoLifecycle.onResume === 'function') {
+                lifecycleResumeUnsub = window.kexoLifecycle.onResume(onLifecycleResume, { key: 'dashboard:resume', priority: 40, minIntervalMs: 1000 });
+              }
+            } catch (_) {}
           }
-          if (!pageShowBound) {
-            window.addEventListener('pageshow', onPageShow);
-            pageShowBound = true;
+          if (!lifecycleHiddenUnsub) {
+            try {
+              if (window.kexoLifecycle && typeof window.kexoLifecycle.onHidden === 'function') {
+                lifecycleHiddenUnsub = window.kexoLifecycle.onHidden(onLifecycleHidden, { key: 'dashboard:hidden', priority: 40 });
+              }
+            } catch (_) {}
           }
           if (!mainTabBound) {
             window.addEventListener('kexo:main-tab-changed', onMainTabChanged);
@@ -7575,13 +7581,13 @@
         }
         function destroy() {
           stopPolling();
-          if (visibilityBound) {
-            try { document.removeEventListener('visibilitychange', onVisibilityChange); } catch (_) {}
-            visibilityBound = false;
+          if (lifecycleResumeUnsub) {
+            try { lifecycleResumeUnsub(); } catch (_) {}
+            lifecycleResumeUnsub = null;
           }
-          if (pageShowBound) {
-            try { window.removeEventListener('pageshow', onPageShow); } catch (_) {}
-            pageShowBound = false;
+          if (lifecycleHiddenUnsub) {
+            try { lifecycleHiddenUnsub(); } catch (_) {}
+            lifecycleHiddenUnsub = null;
           }
           if (mainTabBound) {
             try { window.removeEventListener('kexo:main-tab-changed', onMainTabChanged); } catch (_) {}

@@ -3274,10 +3274,10 @@
 
     // Visibility gate for online count polling (avoids timer bursts on tab resume).
     var onlineCountPollPendingMs = null;
-    var onlineCountVisibilityBound = false;
-    var _kexoResumeRefreshBound = false;
-    var _kexoResumeRefreshLastPerfAt = 0;
-    var _kexoHasBeenHidden = false;
+    var _kexoLifecycleBound = false;
+    var _kexoResumeHeavyTimer = null;
+    var _kexoResumeHeavyLastAt = 0;
+    var _kexoResumeHeavyInFlight = null;
     function isDocVisible() {
       try { return !document || !document.visibilityState || document.visibilityState === 'visible'; } catch (_) { return true; }
     }
@@ -3289,103 +3289,125 @@
       try { if (_fetchAbortControllers && _fetchAbortControllers.onlineCount) _fetchAbortControllers.onlineCount.abort(); } catch (_) {}
     }
     function bindOnlineCountVisibilityGate() {
-      if (onlineCountVisibilityBound) return;
-      onlineCountVisibilityBound = true;
-      try {
-        document.addEventListener('visibilitychange', function() {
-          if (!isDocVisible()) {
-            onlineCountPollPendingMs = ONLINE_COUNT_POLL_MS;
-            pauseOnlineCountPolling();
-            return;
-          }
-          var pending = onlineCountPollPendingMs;
-          onlineCountPollPendingMs = null;
-          if (onlineCountAuthBlocked) return;
-          scheduleOnlineCountPoll(typeof pending === 'number' ? pending : 0);
-        });
-      } catch (_) {}
-      try {
-        window.addEventListener('pageshow', function(ev) {
-          if (ev && ev.persisted) {
-            if (onlineCountAuthBlocked) return;
-            scheduleOnlineCountPoll(0);
-          }
-        });
-      } catch (_) {}
+      // Legacy call sites expect this to exist; bind the shared lifecycle coordinator instead.
+      try { bindKexoLifecycleOnce(); } catch (_) {}
+    }
+    function runResumeHeavyRefresh() {
+      if (_kexoResumeHeavyInFlight) return _kexoResumeHeavyInFlight;
+      _kexoResumeHeavyLastAt = Date.now();
+
+      _kexoResumeHeavyInFlight = Promise.resolve()
+        .then(function () {
+          var ps = [];
+          try {
+            if (typeof fetchStatsData === 'function' && (document.getElementById('country-table') || document.getElementById('by-country-body') || document.getElementById('stats-loading-overlay'))) {
+              var p1 = fetchStatsData({ force: true });
+              if (p1 && typeof p1.then === 'function') ps.push(p1);
+            }
+          } catch (_) {}
+          try {
+            if (typeof fetchAttributionData === 'function' && (document.getElementById('attribution-body') || document.getElementById('attribution-chart'))) {
+              var p2 = fetchAttributionData({ force: true });
+              if (p2 && typeof p2.then === 'function') ps.push(p2);
+            }
+          } catch (_) {}
+          try {
+            if (typeof fetchDevicesData === 'function' && (document.getElementById('devices-body') || document.getElementById('devices-chart'))) {
+              var p3 = fetchDevicesData({ force: true });
+              if (p3 && typeof p3.then === 'function') ps.push(p3);
+            }
+          } catch (_) {}
+          try {
+            if (typeof fetchBrowsersData === 'function' && (document.getElementById('browsers-body') || document.getElementById('browsers-chart'))) {
+              var p4 = fetchBrowsersData({ force: true });
+              if (p4 && typeof p4.then === 'function') ps.push(p4);
+            }
+          } catch (_) {}
+          try {
+            if (typeof fetchCondensedSeries === 'function') {
+              var p5 = fetchCondensedSeries({ force: true });
+              if (p5 && typeof p5.then === 'function') ps.push(p5);
+            }
+          } catch (_) {}
+          try {
+            if (PAGE === 'sales' && typeof fetchTruthOrders === 'function') {
+              var p6 = fetchTruthOrders({ force: true });
+              if (p6 && typeof p6.then === 'function') ps.push(p6);
+            }
+          } catch (_) {}
+          try {
+            if (PAGE === 'abandoned-carts' && typeof refreshAbandonedCarts === 'function') {
+              var p7 = refreshAbandonedCarts({ force: true });
+              if (p7 && typeof p7.then === 'function') ps.push(p7);
+            }
+          } catch (_) {}
+          return ps.length ? Promise.all(ps) : null;
+        })
+        .then(
+          function () { _kexoResumeHeavyInFlight = null; },
+          function () { _kexoResumeHeavyInFlight = null; }
+        );
+
+      return _kexoResumeHeavyInFlight;
     }
 
-    function kexoResumeRefresh(reason) {
-      if (!isDocVisible()) return;
+    function scheduleResumeHeavyRefresh() {
+      if (_kexoResumeHeavyTimer) return;
+      _kexoResumeHeavyTimer = setTimeout(function () {
+        _kexoResumeHeavyTimer = null;
+        if (!isDocVisible()) return;
+        runResumeHeavyRefresh();
+      }, 250);
+    }
 
-      // Throttle using performance.now(): on iOS/Safari resume Date.now() can be stale.
-      var pn = 0;
-      try { pn = (typeof performance !== 'undefined' && performance && typeof performance.now === 'function') ? performance.now() : 0; } catch (_) { pn = 0; }
-      if (pn > 0) {
-        if ((pn - _kexoResumeRefreshLastPerfAt) < 1000) return;
-        _kexoResumeRefreshLastPerfAt = pn;
+    function kexoResumeRefresh(ctx) {
+      if (!isDocVisible()) return;
+      var idleMs = 0;
+      try { idleMs = ctx && ctx.idleMs != null ? Number(ctx.idleMs) : 0; } catch (_) { idleMs = 0; }
+      if (!Number.isFinite(idleMs)) idleMs = 0;
+
+      // Light refresh: always revalidate top KPIs quickly on resume.
+      try { if (typeof refreshKpis === 'function') refreshKpis({ force: true }); } catch (_) {}
+
+      // Heavy refresh: only after meaningful idle, and deduped.
+      if (idleMs < 30000) return;
+      if (_kexoResumeHeavyLastAt && (Date.now() - _kexoResumeHeavyLastAt) < 60000) return;
+      scheduleResumeHeavyRefresh();
+    }
+
+    function bindKexoLifecycleOnce() {
+      if (_kexoLifecycleBound) return;
+      if (!(window.kexoLifecycle && typeof window.kexoLifecycle.onResume === 'function')) return;
+      _kexoLifecycleBound = true;
+
+      function onHidden() {
+        onlineCountPollPendingMs = ONLINE_COUNT_POLL_MS;
+        pauseOnlineCountPolling();
       }
 
-      // Always force-refresh visible, user-facing metrics on resume.
-      try { if (typeof refreshKpis === 'function') refreshKpis({ force: true }); } catch (_) {}
-      try {
-        if (typeof fetchStatsData === 'function' && (document.getElementById('country-table') || document.getElementById('by-country-body') || document.getElementById('stats-loading-overlay'))) {
-          fetchStatsData({ force: true });
-        }
-      } catch (_) {}
-      try {
-        if (typeof fetchAttributionData === 'function' && (document.getElementById('attribution-body') || document.getElementById('attribution-chart'))) {
-          fetchAttributionData({ force: true });
-        }
-      } catch (_) {}
-      try {
-        if (typeof fetchDevicesData === 'function' && (document.getElementById('devices-body') || document.getElementById('devices-chart'))) {
-          fetchDevicesData({ force: true });
-        }
-      } catch (_) {}
-      try {
-        if (typeof fetchBrowsersData === 'function' && (document.getElementById('browsers-body') || document.getElementById('browsers-chart'))) {
-          fetchBrowsersData({ force: true });
-        }
-      } catch (_) {}
-      try { if (typeof fetchCondensedSeries === 'function') fetchCondensedSeries({ force: true }); } catch (_) {}
-      try { if (PAGE === 'sales' && typeof fetchTruthOrders === 'function') fetchTruthOrders({ force: true }); } catch (_) {}
-      try {
-        if (PAGE === 'abandoned-carts' && typeof refreshAbandonedCarts === 'function') refreshAbandonedCarts({ force: true });
-      } catch (_) {}
+      function onResume(ctx) {
+        if (!isDocVisible()) return;
+
+        // Resume polling only if data is stale or we paused while hidden.
+        try {
+          var pending = onlineCountPollPendingMs;
+          onlineCountPollPendingMs = null;
+          if (!onlineCountAuthBlocked) {
+            var now = Date.now();
+            var isFresh = onlineCountLastFetchedAt > 0 && (now - onlineCountLastFetchedAt) < ONLINE_COUNT_POLL_MS;
+            if (typeof pending === 'number') scheduleOnlineCountPoll(pending);
+            else if (!isFresh) scheduleOnlineCountPoll(0);
+          }
+        } catch (_) {}
+
+        kexoResumeRefresh(ctx);
+      }
+
+      try { if (typeof window.kexoLifecycle.onHidden === 'function') window.kexoLifecycle.onHidden(onHidden, { key: 'condensed:hidden', priority: 30 }); } catch (_) {}
+      try { window.kexoLifecycle.onResume(onResume, { key: 'condensed:resume', priority: 30, minIntervalMs: 1000 }); } catch (_) {}
     }
 
-    function bindResumeForceRefresh() {
-      if (_kexoResumeRefreshBound) return;
-      _kexoResumeRefreshBound = true;
-      try {
-        document.addEventListener('visibilitychange', function() {
-          if (!isDocVisible()) {
-            _kexoHasBeenHidden = true;
-            try { window.__kexoLastHiddenAt = Date.now(); } catch (_) {}
-            return;
-          }
-          kexoResumeRefresh('visibility');
-        });
-      } catch (_) {}
-      try {
-        window.addEventListener('pageshow', function(ev) {
-          if (ev && ev.persisted) kexoResumeRefresh('pageshow');
-        });
-      } catch (_) {}
-      try {
-        window.addEventListener('pagehide', function() {
-          _kexoHasBeenHidden = true;
-          try { window.__kexoLastHiddenAt = Date.now(); } catch (_) {}
-        });
-      } catch (_) {}
-      try {
-        window.addEventListener('focus', function() {
-          if (!_kexoHasBeenHidden) return;
-          kexoResumeRefresh('focus');
-        });
-      } catch (_) {}
-    }
-    try { bindResumeForceRefresh(); } catch (_) {}
+    try { bindKexoLifecycleOnce(); } catch (_) {}
 
     function cfSection(title, value) {
       const v = value != null && String(value).trim() !== '' ? String(value).trim() : null;

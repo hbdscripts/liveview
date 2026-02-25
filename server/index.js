@@ -910,6 +910,7 @@ const { up: up066 } = require('./migrations/066_shop_oauth_identities');
 const { up: up067 } = require('./migrations/067_affiliate_attribution_ip_prefix');
 const { up: up068 } = require('./migrations/068_catalog_products');
 const backup = require('./backup');
+const dataPaths = require('./dataPaths');
 const { writeAudit } = require('./audit');
 const { runAdsMigrations } = require('./ads/adsMigrate');
 
@@ -1019,6 +1020,11 @@ async function runAppMigrations(db) {
 async function migrateAndStart() {
   // Open DB early so backups can inspect/operate.
   const db = getDb();
+  try {
+    if (!config.dbUrl || String(config.dbUrl).trim() === '') {
+      console.log('[data] dir:', dataPaths.resolveDataDir());
+    }
+  } catch (_) {}
 
   // Required: backup before introducing the Sales Truth schema (first deploy only).
   const preBackup = await backup.backupBeforeTruthSchemaCreate();

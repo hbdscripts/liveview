@@ -53,7 +53,7 @@
             </ul>
           </div>
           <div class="card-footer text-center">
-            <button class="btn btn-md w-100" type="button" data-upgrade-plan="pro">Choose Pro</button>
+            <a class="btn btn-primary btn-md w-100" href="#billing-info">How to upgrade</a>
           </div>
         </div>
       </div>
@@ -71,39 +71,30 @@
             </ul>
           </div>
           <div class="card-footer text-center">
-            <button class="btn btn-primary w-100" type="button" data-upgrade-plan="business">Choose Business</button>
+            <a class="btn btn-primary btn-md w-100" href="#billing-info">How to upgrade</a>
           </div>
         </div>
       </div>
     </div>
 
-    <div class="text-secondary small mt-4">
-      <!--
-        TODO(billing/plans):
-        - Replace these static cards with real plan pricing + feature matrix.
-        - Wire "Choose" buttons to Stripe Checkout (or Shopify Billing) and persist the selected tier
-          into the user record (e.g. users.tier = 'pro'|'business').
-        - Once tiers exist, replace the current "master vs normal" gating with true plan-based gating.
-      -->
-      Pricing is a placeholder for now. Selecting a plan does not yet start billing.
+    <div class="mt-4" id="billing-info">
+      <div class="alert alert-info" role="alert">
+        <div class="fw-bold mb-1">Billing is not enabled in this build</div>
+        <div class="text-secondary">
+          Choosing a plan here will not start billing. To upgrade, manage your subscription in Shopify Admin
+          (Apps and sales channels → Kexo), or contact your Kexo account owner/admin to enable billing.
+        </div>
+      </div>
+      <div class="text-secondary small">
+        Pricing is shown for reference only and may change.
+      </div>
     </div>
   </div>
 
   <!--#include partials/page-body-end.html-->
   <!--#include partials/footer.html-->
-  <script src="https://cdn.jsdelivr.net/npm/@tabler/core@1.4.0/dist/js/tabler.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tabler/core@1.4.0/dist/js/tabler.min.js" integrity="sha384-pku3birjgGovaJ9ngF7SaxKkF/eYUvBjiMJ+jTtWbNesIj2Rud2K63+4JD7EF4gk" crossorigin="anonymous" defer></script>
   <script src="/app.js" defer></script>
-  <script>
-    // TODO(billing/plans): replace this with real checkout routing.
-    document.addEventListener('click', function (e) {
-      var btn = e && e.target && e.target.closest ? e.target.closest('[data-upgrade-plan]') : null;
-      if (!btn) return;
-      e.preventDefault();
-      var plan = btn.getAttribute('data-upgrade-plan') || '';
-      try { console.log('[upgrade] plan selected (TODO):', plan); } catch (_) {}
-      alert('TODO: Billing is not implemented yet. Selected plan: ' + plan);
-    });
-  </script>
 </body>
 </html>
 

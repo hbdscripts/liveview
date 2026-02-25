@@ -386,10 +386,22 @@
     }
   }
   startBadgePoll();
-  document.addEventListener('visibilitychange', function () {
-    if (document.visibilityState === 'visible') startBadgePoll();
-    else stopBadgePoll();
-  });
+  function onNotificationsHidden() {
+    stopBadgePoll();
+  }
+  function onNotificationsResume() {
+    startBadgePoll();
+  }
+  try {
+    if (window.kexoLifecycle && typeof window.kexoLifecycle.onHidden === 'function') {
+      window.kexoLifecycle.onHidden(onNotificationsHidden, { key: 'notifications:badge:hidden', priority: 5 });
+    }
+  } catch (_) {}
+  try {
+    if (window.kexoLifecycle && typeof window.kexoLifecycle.onResume === 'function') {
+      window.kexoLifecycle.onResume(onNotificationsResume, { key: 'notifications:badge:resume', priority: 5, minIntervalMs: 1000 });
+    }
+  } catch (_) {}
 
   try {
     if (typeof registerCleanup === 'function') {

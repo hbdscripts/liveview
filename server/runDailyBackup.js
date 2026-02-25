@@ -23,12 +23,10 @@ async function main() {
     await writeAudit('system', 'backup', { when: 'manual_daily_backup', ...meta });
   } catch (_) {}
 
-  // eslint-disable-next-line no-console
   console.log(JSON.stringify({ ok: true, meta }, null, 2));
 }
 
 main().catch((err) => {
-  // eslint-disable-next-line no-console
   console.error(err);
   process.exit(1);
 });

@@ -1,3 +1,4 @@
+00-lifecycle.js
 00-utils.js
 01-core.js
 02-tables-progress.js
