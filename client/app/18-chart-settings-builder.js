@@ -232,6 +232,14 @@
           var m = String(mode || '').trim().toLowerCase();
           return (m === 'area' || m === 'stacked-area');
         })();
+        var lineOpacityRaw = (s && s.style && Number.isFinite(Number(s.style.lineOpacity)))
+          ? Math.max(0, Math.min(1, Number(s.style.lineOpacity)))
+          : 1;
+        var lineOpacityPct = Math.round(lineOpacityRaw * 100);
+        var lineOpacityVisible = (function () {
+          var m = String(mode || '').trim().toLowerCase();
+          return (m === 'line' || m === 'multi-line-labels');
+        })();
 
         var body = '';
         body += '<div class="row g-3">';
@@ -338,6 +346,14 @@
         body += '<input type="range" class="form-range" min="0" max="100" step="1" value="' + fillOpacityPct + '" data-cs-field="fillOpacity">';
         body += '<div class="form-hint">Lower values make chart fills more transparent.</div>';
         body += '</div>';
+        body += '<div class="col-12' + (lineOpacityVisible ? '' : ' d-none') + '" data-cs-mode-group="line-opacity">';
+        body += '<label class="form-label d-flex align-items-center justify-content-between">';
+        body += '<span>Line opacity</span>';
+        body += '<span class="text-muted small" data-cs-line-opacity-value>' + lineOpacityPct + '%</span>';
+        body += '</label>';
+        body += '<input type="range" class="form-range" min="0" max="100" step="1" value="' + lineOpacityPct + '" data-cs-field="lineOpacity">';
+        body += '<div class="form-hint">Lower values make line strokes more transparent.</div>';
+        body += '</div>';
         if (isMapChart) {
           var mapAccent = (colors && colors[0]) ? String(colors[0]).trim() : '#16a34a';
           var styleIn = (s && s.style && typeof s.style === 'object') ? s.style : {};
@@ -407,7 +423,6 @@
 
           body += '<div class="col-12">';
           body += '<a class="btn btn-sm btn-md" href="/settings/cost-expenses/rules">Open cost settings</a>';
-          body += '<div class="form-hint">Manage cost sources, shipping, and profit rules.</div>';
           body += '</div>';
         }
         body += '</div>';
@@ -472,6 +487,11 @@
           return (m === 'area' || m === 'stacked-area');
         }
 
+        function modeSupportsLineOpacity(modeVal) {
+          var m = String(modeVal || '').trim().toLowerCase();
+          return (m === 'line' || m === 'multi-line-labels');
+        }
+
         function fillOpacityLabelForMode(modeVal) {
           var m = String(modeVal || '').trim().toLowerCase();
           if (m.indexOf('map') === 0) return 'Map region opacity';
@@ -492,6 +512,22 @@
           function sync() {
             var raw = parseInt(String(input.value || ''), 10);
             if (!Number.isFinite(raw)) raw = fillOpacityPct;
+            raw = Math.max(0, Math.min(100, raw));
+            try { input.value = String(raw); } catch (_) {}
+            if (valueEl) valueEl.textContent = raw + '%';
+          }
+          try { input.addEventListener('input', sync); } catch (_) {}
+          try { input.addEventListener('change', sync); } catch (_) {}
+          sync();
+        }
+
+        function bindLineOpacityControls() {
+          var input = bodyEl.querySelector('[data-cs-field="lineOpacity"]');
+          var valueEl = bodyEl.querySelector('[data-cs-line-opacity-value]');
+          if (!input) return;
+          function sync() {
+            var raw = parseInt(String(input.value || ''), 10);
+            if (!Number.isFinite(raw)) raw = lineOpacityPct;
             raw = Math.max(0, Math.min(100, raw));
             try { input.value = String(raw); } catch (_) {}
             if (valueEl) valueEl.textContent = raw + '%';
@@ -577,6 +613,11 @@
             var labelEl = fillWrap.querySelector('[data-cs-fill-opacity-label]');
             if (labelEl) labelEl.textContent = fillOpacityLabelForMode(m);
           }
+          var lineWrap = bodyEl.querySelector('[data-cs-mode-group="line-opacity"]');
+          if (lineWrap) {
+            if (modeSupportsLineOpacity(m)) lineWrap.classList.remove('d-none');
+            else lineWrap.classList.add('d-none');
+          }
           var pieWrap = bodyEl.querySelector('[data-cs-mode-group="pie-labels"]');
           if (pieWrap) {
             if (supportsPieLabels && (m === 'pie' || m === 'donut')) pieWrap.classList.remove('d-none');
@@ -602,6 +643,7 @@
         }
 
         bindFillOpacityControls();
+        bindLineOpacityControls();
         bindInactiveOpacityControls();
         bindPieLabelControls();
         bindCapabilityRangeControls();
@@ -642,12 +684,16 @@
             }
           }
           var currentMode = (modeEl && modeEl.value) ? String(modeEl.value).trim().toLowerCase() : mode;
-          if (modeSupportsFillOpacity(currentMode)) {
-            var fillEl = bodyEl.querySelector('[data-cs-field="fillOpacity"]');
-            if (fillEl) {
-              var raw = parseInt(String(fillEl.value || ''), 10);
-              if (Number.isFinite(raw)) styleBase.fillOpacity = Math.max(0, Math.min(1, raw / 100));
-            }
+          // Always keep both values up to date so switching modes preserves each setting.
+          var fillEl = bodyEl.querySelector('[data-cs-field="fillOpacity"]');
+          if (fillEl) {
+            var rawFill = parseInt(String(fillEl.value || ''), 10);
+            if (Number.isFinite(rawFill)) styleBase.fillOpacity = Math.max(0, Math.min(1, rawFill / 100));
+          }
+          var lineOpEl = bodyEl.querySelector('[data-cs-field="lineOpacity"]');
+          if (lineOpEl) {
+            var rawLine = parseInt(String(lineOpEl.value || ''), 10);
+            if (Number.isFinite(rawLine)) styleBase.lineOpacity = Math.max(0, Math.min(1, rawLine / 100));
           }
           try {
             (capControls || []).forEach(function (c) {
