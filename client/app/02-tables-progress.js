@@ -236,8 +236,9 @@
     function syncPageBodyLoaderOffset(scope) {
       try {
         if (!scope || !scope.classList || !scope.classList.contains('page-body')) return;
+        var trimPx = 20;
         var rect = scope.getBoundingClientRect ? scope.getBoundingClientRect() : null;
-        var top = rect && Number.isFinite(rect.top) ? Math.max(0, Math.round(rect.top)) : 0;
+        var top = rect && Number.isFinite(rect.top) ? Math.max(0, Math.round(rect.top) - trimPx) : 0;
         scope.style.setProperty('--kexo-loader-page-top', String(top) + 'px');
       } catch (_) {}
     }
