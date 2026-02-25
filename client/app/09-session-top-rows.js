@@ -781,7 +781,7 @@
             var collapseId = 'settings-diagnostics-collapse-' + safeKey;
             return (
               '<div class="accordion-item">' +
-                '<h4 class="accordion-header settings-panel-heading mb-2" data-settings-ui-heading="1" id="' + escapeHtml(headingId) + '">' +
+                '<h4 class="accordion-header settings-panel-heading" data-settings-ui-heading="1" id="' + escapeHtml(headingId) + '">' +
                   '<button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#' + escapeHtml(collapseId) + '" aria-expanded="false" aria-controls="' + escapeHtml(collapseId) + '">' +
                     '<span class="kexo-settings-accordion-chevron"><i class="fa-regular fa-chevron-down" aria-hidden="true"></i></span>' +
                     '<span class="fw-semibold">' + escapeHtml(title || '') + '</span>' +
