@@ -268,6 +268,117 @@ body[data-page="settings"] #settings-panel-cost-expenses .kexo-flag-img {
   vertical-align: middle;
   object-fit: cover;
 }
+
+/* Cost & Expenses: stacked flag preview + hover tooltip (Shipping + Rules). */
+body[data-page="settings"] #settings-panel-cost-expenses .kexo-scope-flags {
+  display: inline-flex;
+  align-items: center;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+body[data-page="settings"] #settings-panel-cost-expenses .kexo-flag-stack {
+  --kexo-flag-w: 1.33333rem;
+  --kexo-flag-h: 1rem;
+  --kexo-flag-offset: 0.45rem;
+  position: relative;
+  display: inline-block;
+  height: var(--kexo-flag-h);
+  width: var(--kexo-flag-w);
+  flex-shrink: 0;
+}
+body[data-page="settings"] #settings-panel-cost-expenses .kexo-flag-stack--2 {
+  width: calc(var(--kexo-flag-w) + var(--kexo-flag-offset));
+}
+body[data-page="settings"] #settings-panel-cost-expenses .kexo-flag-stack--3 {
+  width: calc(var(--kexo-flag-w) + (2 * var(--kexo-flag-offset)));
+}
+body[data-page="settings"] #settings-panel-cost-expenses .kexo-flag-stack-item {
+  position: absolute;
+  top: 0;
+  width: var(--kexo-flag-w);
+  height: var(--kexo-flag-h);
+  border-radius: 3px;
+  overflow: hidden;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: var(--tblr-bg-surface, #fff);
+}
+body[data-page="settings"] #settings-panel-cost-expenses .kexo-flag-stack-item .flag,
+body[data-page="settings"] #settings-panel-cost-expenses .kexo-flag-stack-item .kexo-flag-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 3px;
+}
+body[data-page="settings"] #settings-panel-cost-expenses .kexo-flag-stack-item.is-1 {
+  left: 0;
+  z-index: 3;
+}
+body[data-page="settings"] #settings-panel-cost-expenses .kexo-flag-stack--2 .kexo-flag-stack-item.is-1 {
+  left: var(--kexo-flag-offset);
+}
+body[data-page="settings"] #settings-panel-cost-expenses .kexo-flag-stack--3 .kexo-flag-stack-item.is-1 {
+  left: calc(2 * var(--kexo-flag-offset));
+}
+body[data-page="settings"] #settings-panel-cost-expenses .kexo-flag-stack-item.is-2 {
+  left: 0;
+  z-index: 2;
+  transform: rotate(-7deg);
+}
+body[data-page="settings"] #settings-panel-cost-expenses .kexo-flag-stack--3 .kexo-flag-stack-item.is-2 {
+  left: var(--kexo-flag-offset);
+}
+body[data-page="settings"] #settings-panel-cost-expenses .kexo-flag-stack-item.is-3 {
+  left: 0;
+  z-index: 1;
+  transform: rotate(7deg);
+  opacity: 0.95;
+}
+body[data-page="settings"] #settings-panel-cost-expenses .kexo-flag-stack-item--globe {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--tblr-secondary, #66758c);
+}
+body[data-page="settings"] #settings-panel-cost-expenses .kexo-flags-popover {
+  max-width: 420px;
+}
+body[data-page="settings"] #settings-panel-cost-expenses .kexo-flags-popover .kexo-flag-stack-tooltip-flags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+body[data-page="settings"] #settings-panel-cost-expenses .kexo-flags-popover .kexo-flag-stack-tooltip-codes {
+  margin-top: 6px;
+  opacity: 0.85;
+  font-size: 12px;
+}
+
+/* Cost & Expenses: Shipping overrides layout + compact inputs. */
+body[data-page="settings"] #settings-panel-cost-expenses .kexo-ce-override-countries-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+body[data-page="settings"] #settings-panel-cost-expenses .kexo-ce-override-priority {
+  width: 76px;
+  max-width: 76px;
+}
+body[data-page="settings"] #settings-panel-cost-expenses .kexo-ce-override-price {
+  width: 120px;
+  max-width: 120px;
+}
+body[data-page="settings"] #settings-panel-cost-expenses .kexo-ce-override-label {
+  width: 180px;
+  max-width: 260px;
+}
+
+/* Cost & Expenses: Per-order modal inputs are too wide on desktop. */
+@media (min-width: 768px) {
+  body[data-page="settings"] #settings-panel-cost-expenses #cost-expenses-per-order-value,
+  body[data-page="settings"] #settings-panel-cost-expenses #cost-expenses-per-order-sort {
+    max-width: 180px;
+  }
+}
 body[data-page="settings"] #settings-panel-cost-expenses .kexo-country-suggest-item:hover,
 body[data-page="settings"] #settings-panel-cost-expenses .kexo-country-suggest-item:focus {
   background: rgba(0, 0, 0, 0.04);

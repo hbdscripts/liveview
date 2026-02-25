@@ -401,6 +401,8 @@
         worldwideDefaultGbp: Math.max(0, Number(raw.shipping.worldwideDefaultGbp) || 0),
         overrides: (Array.isArray(raw.shipping.overrides) ? raw.shipping.overrides : []).slice(0, 64).map(function (o, i) {
           var ov = o && typeof o === 'object' ? o : {};
+          var label = String(ov.label || '').trim();
+          if (label.length > 60) label = label.slice(0, 60);
           var countries = Array.isArray(ov.countries) ? ov.countries : [];
           var seen = {};
           var codes = [];
@@ -411,6 +413,7 @@
           return {
             priority: Math.max(1, Math.trunc(Number(ov.priority) || (i + 1))),
             enabled: ov.enabled !== false,
+            label: label,
             priceGbp: Math.max(0, Number(ov.priceGbp) || 0),
             countries: codes,
           };
@@ -490,6 +493,8 @@
     var html = '';
     overrides.forEach(function (ov, idx) {
       var countriesStr = (ov.countries || []).join(', ');
+      var labelStr = (ov.label || '').trim();
+      var countriesFlags = countryCodesToFlagStackHtml(ov.countries || [], (ov.countries && ov.countries.length) ? 'Countries' : 'All countries');
       html += '<tr data-override-idx="' + idx + '">' +
         '<td>' +
           '<input type="number" class="form-control form-control-sm kexo-ce-override-priority" min="1" value="' + (ov.priority || idx + 1) + '" data-override-priority placeholder="1" aria-label="Priority" />' +
@@ -500,10 +505,16 @@
           '</label>' +
         '</td>' +
         '<td>' +
+          '<input type="text" class="form-control form-control-sm kexo-ce-override-label" value="' + esc(labelStr) + '" data-override-label placeholder="e.g. UK shipping" aria-label="Label" />' +
+        '</td>' +
+        '<td>' +
           '<input type="number" class="form-control form-control-sm kexo-ce-override-price" min="0" step="0.01" value="' + (ov.priceGbp != null ? ov.priceGbp : 0) + '" data-override-price placeholder="e.g. 4.99" aria-label="Price (GBP)" />' +
         '</td>' +
         '<td>' +
-          '<input type="text" class="form-control form-control-sm kexo-ce-override-countries" value="' + esc(countriesStr) + '" data-override-countries placeholder="e.g. GB, IE, FR" aria-label="Countries" />' +
+          '<div class="kexo-ce-override-countries-wrap">' +
+            '<span class="kexo-ce-override-countries-preview" data-override-countries-preview>' + countriesFlags + '</span>' +
+            '<input type="text" class="form-control form-control-sm kexo-ce-override-countries" value="' + esc(countriesStr) + '" data-override-countries placeholder="e.g. GB, IE, FR" aria-label="Countries" />' +
+          '</div>' +
         '</td>' +
         '<td class="text-end">' +
           '<div class="d-inline-flex gap-1 flex-nowrap kexo-table-actions" aria-label="Override actions">' +
@@ -514,7 +525,8 @@
         '</td>' +
         '</tr>';
     });
-    wrap.innerHTML = html || '<tr><td colspan="5" class="text-muted small">No overrides yet.</td></tr>';
+    wrap.innerHTML = html || '<tr><td colspan="6" class="text-muted small">No overrides yet.</td></tr>';
+    bindFlagStackHoverTooltips(wrap);
   }
 
   function readShippingFromUi() {
@@ -523,13 +535,16 @@
     rows.forEach(function (row) {
       var pri = parseInt(row.querySelector('[data-override-priority]').value, 10) || 1;
       var en = row.querySelector('[data-override-enabled]').checked;
+      var label = '';
+      try { label = String((row.querySelector('[data-override-label]') || {}).value || '').trim(); } catch (_) { label = ''; }
+      if (label.length > 60) label = label.slice(0, 60);
       var price = parseFloat(row.querySelector('[data-override-price]').value, 10) || 0;
       var raw = (row.querySelector('[data-override-countries]').value || '').trim();
       var codes = raw.split(/[\s,]+/).map(normalizeCountryCode).filter(Boolean);
       var seen = {};
       var countries = [];
       codes.forEach(function (c) { if (!seen[c]) { seen[c] = true; countries.push(c); } });
-      overrides.push({ priority: pri, enabled: en, priceGbp: price, countries: countries });
+      overrides.push({ priority: pri, enabled: en, label: label, priceGbp: price, countries: countries });
     });
     overrides.sort(function (a, b) { return (a.priority || 0) - (b.priority || 0); });
     var worldwide = parseFloat(document.getElementById('cost-expenses-shipping-worldwide').value, 10) || 0;
@@ -567,32 +582,14 @@
 
   function scopeFlagsHtml(appliesTo) {
     var a = appliesTo && typeof appliesTo === 'object' ? appliesTo : {};
-    if (a.mode === 'countries' && Array.isArray(a.countries) && a.countries.length) {
-      var out = '';
-      a.countries.slice(0, 12).forEach(function (cc) {
-        var code = normalizeCountryCode(cc);
-        if (!code) return;
-        var name = regionDisplayName(code) || '';
-        out += countryCodeToFlagHtml(code, name || code);
-      });
-      return out;
-    }
-    return '<span class="kexo-flag-fallback" aria-hidden="true"><i class="fa-light fa-globe"></i></span>';
+    var codes = (a.mode === 'countries' && Array.isArray(a.countries) && a.countries.length) ? a.countries : [];
+    return '<span class="kexo-scope-flags">' + countryCodesToFlagStackHtml(codes, codes.length ? 'Countries' : 'All countries') + '</span>';
   }
 
   function perOrderScopeFlagsHtml(ruleLike) {
     var r = ruleLike && typeof ruleLike === 'object' ? ruleLike : {};
-    if (r.country_scope === 'ALL' || !Array.isArray(r.country_scope) || !r.country_scope.length) {
-      return '<span class="kexo-flag-fallback" aria-hidden="true"><i class="fa-light fa-globe"></i></span>';
-    }
-    var out = '';
-    r.country_scope.slice(0, 12).forEach(function (cc) {
-      var code = normalizeCountryCode(cc);
-      if (!code) return;
-      var name = regionDisplayName(code) || '';
-      out += countryCodeToFlagHtml(code, name || code);
-    });
-    return out;
+    var codes = (r.country_scope === 'ALL' || !Array.isArray(r.country_scope) || !r.country_scope.length) ? [] : r.country_scope;
+    return '<span class="kexo-scope-flags">' + countryCodesToFlagStackHtml(codes, codes.length ? 'Countries' : 'All countries') + '</span>';
   }
 
   function renderPerOrderRulesTable() {
@@ -638,6 +635,7 @@
       '</tr>';
     });
     tbody.innerHTML = html;
+    bindFlagStackHoverTooltips(tbody);
   }
 
   function overheadTypeLabel(kind) {
@@ -687,6 +685,7 @@
       '</tr>';
     });
     tbody.innerHTML = html;
+    bindFlagStackHoverTooltips(tbody);
   }
 
   function renderFixedCostsTable() {
@@ -911,6 +910,158 @@
     }
     var cdn = 'https://cdn.jsdelivr.net/npm/@tabler/core@1.4.0/dist/img/flags/' + raw + '.svg';
     return '<img class="kexo-flag-img kexo-flag-inline" src="' + escAttr(cdn) + '" alt="" loading="lazy" decoding="async"' + titleAttr + ' aria-hidden="true" />';
+  }
+
+  function normalizeCountryCodesList(list, limit) {
+    var max = Math.max(0, Math.min(128, parseInt(limit, 10) || 64));
+    var arr = Array.isArray(list) ? list : [];
+    var seen = {};
+    var out = [];
+    for (var i = 0; i < arr.length && out.length < max; i++) {
+      var cc = normalizeCountryCode(arr[i]);
+      if (!cc || seen[cc]) continue;
+      seen[cc] = true;
+      out.push(cc);
+    }
+    return out;
+  }
+
+  function buildCountryFlagsTooltipHtml(codes) {
+    var list = normalizeCountryCodesList(codes, 64);
+    if (!list.length) {
+      return '<div class="kexo-flag-stack-tooltip-title">All countries</div>';
+    }
+    var flags = '';
+    list.forEach(function (cc) {
+      var name = regionDisplayName(cc) || cc;
+      flags += countryCodeToFlagHtml(cc, name);
+    });
+    return '' +
+      '<div class="kexo-flag-stack-tooltip-flags">' + flags + '</div>' +
+      '<div class="kexo-flag-stack-tooltip-codes">' + esc(list.join(', ')) + '</div>';
+  }
+
+  function countryCodesToFlagStackHtml(codes, emptyAriaLabel) {
+    var list = normalizeCountryCodesList(codes, 64);
+    var show = list.slice(0, 3);
+    var aria = list.length ? list.join(', ') : (String(emptyAriaLabel || 'All countries') || 'All countries');
+    var cls = 'kexo-flag-stack kexo-flag-stack--' + (show.length || 0);
+    var html = '<span class="' + cls + '" data-kexo-flag-stack="1" data-kexo-country-codes="' + escAttr(list.join(',')) + '" role="img" aria-label="' + escAttr(aria) + '" tabindex="0">';
+    if (!show.length) {
+      html += '<span class="kexo-flag-stack-item kexo-flag-stack-item--globe" aria-hidden="true"><i class="fa-light fa-globe"></i></span>';
+      html += '</span>';
+      return html;
+    }
+    for (var i = 0; i < show.length; i++) {
+      var cc = show[i];
+      var name = regionDisplayName(cc) || cc;
+      var pos = (i === 0 ? 'is-1' : i === 1 ? 'is-2' : 'is-3');
+      html += '<span class="kexo-flag-stack-item ' + pos + '">' + countryCodeToFlagHtml(cc, name) + '</span>';
+    }
+    html += '</span>';
+    return html;
+  }
+
+  var _flagsPopoverEl = null;
+  var _flagsPopoverBound = false;
+  var _flagsPopoverTrigger = null;
+  var _flagsPopoverHideTimer = null;
+
+  function hideFlagsPopover() {
+    if (_flagsPopoverHideTimer) {
+      try { clearTimeout(_flagsPopoverHideTimer); } catch (_) {}
+      _flagsPopoverHideTimer = null;
+    }
+    if (!_flagsPopoverEl) return;
+    try { _flagsPopoverEl.hidden = true; } catch (_) {}
+    try { _flagsPopoverEl.setAttribute('aria-expanded', 'false'); } catch (_) {}
+    try { if (_flagsPopoverTrigger) _flagsPopoverTrigger.setAttribute('aria-expanded', 'false'); } catch (_) {}
+    _flagsPopoverTrigger = null;
+  }
+
+  function ensureFlagsPopoverEl() {
+    if (_flagsPopoverEl) return _flagsPopoverEl;
+    _flagsPopoverEl = document.createElement('div');
+    _flagsPopoverEl.id = 'kexo-flags-popover';
+    _flagsPopoverEl.className = 'kexo-help-popover kexo-flags-popover';
+    _flagsPopoverEl.setAttribute('role', 'tooltip');
+    _flagsPopoverEl.hidden = true;
+    _flagsPopoverEl.innerHTML = '<div class="kexo-help-popover-content"></div><button type="button" class="kexo-help-popover-close btn-close btn-close-white" aria-label="Close"></button>';
+    document.body.appendChild(_flagsPopoverEl);
+    try {
+      _flagsPopoverEl.querySelector('.kexo-help-popover-close').addEventListener('click', hideFlagsPopover);
+      _flagsPopoverEl.addEventListener('mouseenter', function () {
+        if (_flagsPopoverHideTimer) {
+          try { clearTimeout(_flagsPopoverHideTimer); } catch (_) {}
+          _flagsPopoverHideTimer = null;
+        }
+      });
+      _flagsPopoverEl.addEventListener('mouseleave', hideFlagsPopover);
+    } catch (_) {}
+    if (!_flagsPopoverBound) {
+      _flagsPopoverBound = true;
+      document.addEventListener('keydown', function (e) {
+        if (e && e.key === 'Escape') hideFlagsPopover();
+      });
+      window.addEventListener('resize', hideFlagsPopover);
+      document.addEventListener('scroll', hideFlagsPopover, true);
+      document.addEventListener('mousedown', function (e) {
+        if (!_flagsPopoverEl || _flagsPopoverEl.hidden) return;
+        if (_flagsPopoverEl.contains(e.target)) return;
+        if (_flagsPopoverTrigger && _flagsPopoverTrigger.contains && _flagsPopoverTrigger.contains(e.target)) return;
+        hideFlagsPopover();
+      });
+    }
+    return _flagsPopoverEl;
+  }
+
+  function showFlagsPopoverFor(triggerEl) {
+    if (!triggerEl || !triggerEl.getAttribute) return;
+    var raw = String(triggerEl.getAttribute('data-kexo-country-codes') || '').trim();
+    var codes = raw ? raw.split(',').map(normalizeCountryCode).filter(Boolean) : [];
+    ensureFlagsPopoverEl();
+    hideFlagsPopover();
+    if (!_flagsPopoverEl) return;
+    var content = _flagsPopoverEl.querySelector('.kexo-help-popover-content');
+    if (content) content.innerHTML = buildCountryFlagsTooltipHtml(codes);
+    _flagsPopoverEl.hidden = false;
+    _flagsPopoverEl.setAttribute('aria-expanded', 'true');
+    try { triggerEl.setAttribute('aria-expanded', 'true'); } catch (_) {}
+    _flagsPopoverTrigger = triggerEl;
+    try {
+      var rect = triggerEl.getBoundingClientRect();
+      var popRect = _flagsPopoverEl.getBoundingClientRect();
+      var top = rect.top - popRect.height - 6;
+      var left = rect.left + (rect.width / 2) - (popRect.width / 2);
+      if (top < 8) top = rect.bottom + 6;
+      if (left < 8) left = 8;
+      if (left + popRect.width > window.innerWidth - 8) left = window.innerWidth - popRect.width - 8;
+      _flagsPopoverEl.style.top = top + 'px';
+      _flagsPopoverEl.style.left = left + 'px';
+    } catch (_) {}
+  }
+
+  function scheduleHideFlagsPopover() {
+    if (_flagsPopoverHideTimer) {
+      try { clearTimeout(_flagsPopoverHideTimer); } catch (_) {}
+      _flagsPopoverHideTimer = null;
+    }
+    _flagsPopoverHideTimer = setTimeout(function () {
+      if (_flagsPopoverEl && !_flagsPopoverEl.matches(':hover')) hideFlagsPopover();
+    }, 120);
+  }
+
+  function bindFlagStackHoverTooltips(container) {
+    if (!container || !container.querySelectorAll) return;
+    container.querySelectorAll('[data-kexo-flag-stack="1"]').forEach(function (el) {
+      if (!el || !el.getAttribute || !el.addEventListener) return;
+      if (el.getAttribute('data-kexo-flag-stack-bound') === '1') return;
+      el.setAttribute('data-kexo-flag-stack-bound', '1');
+      el.addEventListener('mouseenter', function () { showFlagsPopoverFor(el); });
+      el.addEventListener('mouseleave', scheduleHideFlagsPopover);
+      el.addEventListener('focus', function () { showFlagsPopoverFor(el); });
+      el.addEventListener('blur', scheduleHideFlagsPopover);
+    });
   }
 
   var __kexoRegionDisplayNames = null;
@@ -1776,14 +1927,17 @@
     var addOverrideBtn = document.getElementById('cost-expenses-shipping-add-override');
     if (addOverrideBtn) addOverrideBtn.addEventListener('click', function () {
       state.config = state.config || defaultConfig();
-      if (!state.config.shipping) state.config.shipping = { enabled: false, worldwideDefaultGbp: 0, overrides: [] };
-      if (!state.config.shipping.overrides) state.config.shipping.overrides = [];
-      state.config.shipping.overrides.push({
-        priority: state.config.shipping.overrides.length + 1,
+      var sh = readShippingFromUi();
+      if (!sh || typeof sh !== 'object') sh = { enabled: false, worldwideDefaultGbp: 0, overrides: [] };
+      if (!Array.isArray(sh.overrides)) sh.overrides = [];
+      sh.overrides.push({
+        priority: sh.overrides.length + 1,
         enabled: true,
+        label: '',
         priceGbp: 0,
         countries: [],
       });
+      state.config.shipping = sh;
       renderShippingOverrides();
       markDraftChanged();
     });
@@ -1908,7 +2062,13 @@
       if (target && (target.id === 'cost-expenses-overhead-kind' || target.id === 'cost-expenses-overhead-frequency')) {
         syncOverheadFormUi();
       }
-      if (target && (target.getAttribute('data-override-priority') !== null || target.getAttribute('data-override-enabled') !== null || target.getAttribute('data-override-price') !== null || target.getAttribute('data-override-countries') !== null)) {
+      if (target && (
+        target.getAttribute('data-override-priority') !== null ||
+        target.getAttribute('data-override-enabled') !== null ||
+        target.getAttribute('data-override-label') !== null ||
+        target.getAttribute('data-override-price') !== null ||
+        target.getAttribute('data-override-countries') !== null
+      )) {
         state.config = state.config || defaultConfig();
         state.config.shipping = readShippingFromUi();
         renderShippingOverrides();
