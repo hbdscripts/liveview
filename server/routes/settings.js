@@ -62,6 +62,11 @@ const GOOGLE_ADS_PROFIT_DEDUCTIONS_V1_KEY = 'google_ads_profit_deductions_v1';
 const GOOGLE_ADS_ADD_TO_CART_VALUE_KEY = 'google_ads_add_to_cart_value';
 const GOOGLE_ADS_BEGIN_CHECKOUT_VALUE_KEY = 'google_ads_begin_checkout_value';
 const GOOGLE_ADS_POSTBACK_GOALS_KEY = 'google_ads_postback_goals';
+const GOOGLE_ADS_UPLOAD_CONFIDENCE_MIN_KEY = 'google_ads_upload_confidence_min';
+const GOOGLE_ADS_ALLOW_TIER_C_UPLOADS_KEY = 'google_ads_allow_tier_c_uploads';
+const GOOGLE_ADS_EVENT_UPLOAD_CONFIDENCE_MIN_KEY = 'google_ads_event_upload_confidence_min';
+const GOOGLE_ADS_ADJUSTMENTS_ENABLED_KEY = 'google_ads_adjustments_enabled';
+const GOOGLE_ADS_IDENTITY_ENRICHMENT_ENABLED_KEY = 'google_ads_identity_enrichment_enabled';
 const GOOGLE_ADS_CART_DATA_MERCHANT_ID_KEY = 'google_ads_cart_data_merchant_id';
 const GOOGLE_ADS_CART_DATA_FEED_COUNTRY_KEY = 'google_ads_cart_data_feed_country';
 const GOOGLE_ADS_CART_DATA_FEED_LANGUAGE_KEY = 'google_ads_cart_data_feed_language';
@@ -193,6 +198,11 @@ const SETTINGS_FIELD_PERMISSION = Object.freeze({
   googleAdsAddToCartValue: 'admin.only.google_ads_settings',
   googleAdsBeginCheckoutValue: 'admin.only.google_ads_settings',
   googleAdsPostbackGoals: 'admin.only.google_ads_settings',
+  googleAdsUploadConfidenceMin: 'admin.only.google_ads_settings',
+  googleAdsAllowTierCUploads: 'admin.only.google_ads_settings',
+  googleAdsEventUploadConfidenceMin: 'admin.only.google_ads_settings',
+  googleAdsAdjustmentsEnabled: 'admin.only.google_ads_settings',
+  googleAdsIdentityEnrichmentEnabled: 'admin.only.google_ads_settings',
   googleAdsPostbackEnabled: 'admin.only.google_ads_settings',
   googleAdsCartDataMerchantId: 'admin.only.google_ads_settings',
   googleAdsCartDataFeedCountry: 'admin.only.google_ads_settings',
@@ -1773,6 +1783,11 @@ async function readSettingsPayload(req) {
   let googleAdsAddToCartValue = 1;
   let googleAdsBeginCheckoutValue = 1;
   let googleAdsPostbackGoals = defaultGoogleAdsPostbackGoals();
+  let googleAdsUploadConfidenceMin = 'B';
+  let googleAdsAllowTierCUploads = false;
+  let googleAdsEventUploadConfidenceMin = 'B';
+  let googleAdsAdjustmentsEnabled = true;
+  let googleAdsIdentityEnrichmentEnabled = false;
   let googleAdsCartDataMerchantId = '';
   let googleAdsCartDataFeedCountry = 'GB';
   let googleAdsCartDataFeedLanguage = 'EN';
@@ -1803,6 +1818,11 @@ async function readSettingsPayload(req) {
       GOOGLE_ADS_ADD_TO_CART_VALUE_KEY,
       GOOGLE_ADS_BEGIN_CHECKOUT_VALUE_KEY,
       GOOGLE_ADS_POSTBACK_GOALS_KEY,
+      GOOGLE_ADS_UPLOAD_CONFIDENCE_MIN_KEY,
+      GOOGLE_ADS_ALLOW_TIER_C_UPLOADS_KEY,
+      GOOGLE_ADS_EVENT_UPLOAD_CONFIDENCE_MIN_KEY,
+      GOOGLE_ADS_ADJUSTMENTS_ENABLED_KEY,
+      GOOGLE_ADS_IDENTITY_ENRICHMENT_ENABLED_KEY,
       GOOGLE_ADS_CART_DATA_MERCHANT_ID_KEY,
       GOOGLE_ADS_CART_DATA_FEED_COUNTRY_KEY,
       GOOGLE_ADS_CART_DATA_FEED_LANGUAGE_KEY,
@@ -1904,6 +1924,31 @@ async function readSettingsPayload(req) {
     googleAdsPostbackGoals = normalizeGoogleAdsPostbackGoals(raw);
   } catch (_) {}
   try {
+    const raw = rawMap[GOOGLE_ADS_UPLOAD_CONFIDENCE_MIN_KEY];
+    const v = raw != null ? String(raw).trim().toUpperCase() : '';
+    googleAdsUploadConfidenceMin = v === 'A' || v === 'B' || v === 'C' ? v : 'B';
+  } catch (_) {}
+  try {
+    const raw = rawMap[GOOGLE_ADS_ALLOW_TIER_C_UPLOADS_KEY];
+    const v = raw != null ? String(raw).trim().toLowerCase() : '';
+    googleAdsAllowTierCUploads = v === 'true' || v === '1' || v === 'yes' || v === 'on';
+  } catch (_) {}
+  try {
+    const raw = rawMap[GOOGLE_ADS_EVENT_UPLOAD_CONFIDENCE_MIN_KEY];
+    const v = raw != null ? String(raw).trim().toUpperCase() : '';
+    googleAdsEventUploadConfidenceMin = v === 'A' || v === 'B' || v === 'C' ? v : 'B';
+  } catch (_) {}
+  try {
+    const raw = rawMap[GOOGLE_ADS_ADJUSTMENTS_ENABLED_KEY];
+    const v = raw != null ? String(raw).trim().toLowerCase() : '';
+    if (v) googleAdsAdjustmentsEnabled = !(v === 'false' || v === '0' || v === 'no' || v === 'off');
+  } catch (_) {}
+  try {
+    const raw = rawMap[GOOGLE_ADS_IDENTITY_ENRICHMENT_ENABLED_KEY];
+    const v = raw != null ? String(raw).trim().toLowerCase() : '';
+    googleAdsIdentityEnrichmentEnabled = v === 'true' || v === '1' || v === 'yes' || v === 'on';
+  } catch (_) {}
+  try {
     const raw = rawMap[GOOGLE_ADS_CART_DATA_MERCHANT_ID_KEY];
     if (raw != null && String(raw).trim() !== '') googleAdsCartDataMerchantId = String(raw).trim().slice(0, 64);
   } catch (_) {}
@@ -1962,6 +2007,11 @@ async function readSettingsPayload(req) {
     googleAdsAddToCartValue,
     googleAdsBeginCheckoutValue,
     googleAdsPostbackGoals,
+    googleAdsUploadConfidenceMin,
+    googleAdsAllowTierCUploads,
+    googleAdsEventUploadConfidenceMin,
+    googleAdsAdjustmentsEnabled,
+    googleAdsIdentityEnrichmentEnabled,
     googleAdsCartDataMerchantId,
     googleAdsCartDataFeedCountry,
     googleAdsCartDataFeedLanguage,
@@ -2140,6 +2190,72 @@ async function postSettings(req, res) {
       await store.setSetting('google_ads_postback_enabled', v ? 'true' : 'false');
     } catch (err) {
       return res.status(500).json({ ok: false, error: err && err.message ? String(err.message) : 'Failed to save postback setting' });
+    }
+  }
+
+  // Google Ads postback – confidence gating (A/B/C)
+  if (Object.prototype.hasOwnProperty.call(body, 'googleAdsUploadConfidenceMin')) {
+    if (!(await assertCanWriteSettingsField(req, 'googleAdsUploadConfidenceMin', res))) return;
+    try {
+      if (body.googleAdsUploadConfidenceMin == null || body.googleAdsUploadConfidenceMin === '') {
+        await store.setSetting(GOOGLE_ADS_UPLOAD_CONFIDENCE_MIN_KEY, '');
+      } else {
+        const raw = String(body.googleAdsUploadConfidenceMin).trim().toUpperCase();
+        const v = raw === 'A' || raw === 'B' || raw === 'C' ? raw : 'B';
+        await store.setSetting(GOOGLE_ADS_UPLOAD_CONFIDENCE_MIN_KEY, v);
+      }
+    } catch (err) {
+      return res.status(500).json({ ok: false, error: err && err.message ? String(err.message) : 'Failed to save upload confidence setting' });
+    }
+  }
+  if (Object.prototype.hasOwnProperty.call(body, 'googleAdsAllowTierCUploads')) {
+    if (!(await assertCanWriteSettingsField(req, 'googleAdsAllowTierCUploads', res))) return;
+    try {
+      const raw = body.googleAdsAllowTierCUploads;
+      const v = raw === true || raw === 'true' || raw === '1' || raw === 1;
+      await store.setSetting(GOOGLE_ADS_ALLOW_TIER_C_UPLOADS_KEY, v ? 'true' : 'false');
+    } catch (err) {
+      return res.status(500).json({ ok: false, error: err && err.message ? String(err.message) : 'Failed to save tier-C setting' });
+    }
+  }
+
+  // Google Ads event uploads – confidence gating
+  if (Object.prototype.hasOwnProperty.call(body, 'googleAdsEventUploadConfidenceMin')) {
+    if (!(await assertCanWriteSettingsField(req, 'googleAdsEventUploadConfidenceMin', res))) return;
+    try {
+      if (body.googleAdsEventUploadConfidenceMin == null || body.googleAdsEventUploadConfidenceMin === '') {
+        await store.setSetting(GOOGLE_ADS_EVENT_UPLOAD_CONFIDENCE_MIN_KEY, '');
+      } else {
+        const raw = String(body.googleAdsEventUploadConfidenceMin).trim().toUpperCase();
+        const v = raw === 'A' || raw === 'B' || raw === 'C' ? raw : 'B';
+        await store.setSetting(GOOGLE_ADS_EVENT_UPLOAD_CONFIDENCE_MIN_KEY, v);
+      }
+    } catch (err) {
+      return res.status(500).json({ ok: false, error: err && err.message ? String(err.message) : 'Failed to save event confidence setting' });
+    }
+  }
+
+  // Google Ads conversion adjustments (refunds/cancels)
+  if (Object.prototype.hasOwnProperty.call(body, 'googleAdsAdjustmentsEnabled')) {
+    if (!(await assertCanWriteSettingsField(req, 'googleAdsAdjustmentsEnabled', res))) return;
+    try {
+      const raw = body.googleAdsAdjustmentsEnabled;
+      const v = raw === true || raw === 'true' || raw === '1' || raw === 1;
+      await store.setSetting(GOOGLE_ADS_ADJUSTMENTS_ENABLED_KEY, v ? 'true' : 'false');
+    } catch (err) {
+      return res.status(500).json({ ok: false, error: err && err.message ? String(err.message) : 'Failed to save adjustments setting' });
+    }
+  }
+
+  // Google Ads identity enrichment (hashed email/phone scaffolding)
+  if (Object.prototype.hasOwnProperty.call(body, 'googleAdsIdentityEnrichmentEnabled')) {
+    if (!(await assertCanWriteSettingsField(req, 'googleAdsIdentityEnrichmentEnabled', res))) return;
+    try {
+      const raw = body.googleAdsIdentityEnrichmentEnabled;
+      const v = raw === true || raw === 'true' || raw === '1' || raw === 1;
+      await store.setSetting(GOOGLE_ADS_IDENTITY_ENRICHMENT_ENABLED_KEY, v ? 'true' : 'false');
+    } catch (err) {
+      return res.status(500).json({ ok: false, error: err && err.message ? String(err.message) : 'Failed to save identity enrichment setting' });
     }
   }
 

@@ -392,6 +392,80 @@ async function runAdsMigrations() {
         await db.exec('CREATE INDEX IF NOT EXISTS idx_aoa_source_campaign_last_created ON ads_orders_attributed(source, campaign_id_last_click, created_at_ms)').catch(() => null);
       },
     },
+    {
+      id: '021_ads_orders_attributed_attribution_confidence',
+      up: async () => {
+        await db.exec(`ALTER TABLE ads_orders_attributed ADD COLUMN IF NOT EXISTS attribution_confidence TEXT`);
+        await db.exec(`ALTER TABLE ads_orders_attributed ADD COLUMN IF NOT EXISTS attribution_source TEXT`);
+        await db.exec(`ALTER TABLE ads_orders_attributed ADD COLUMN IF NOT EXISTS attribution_debug TEXT`);
+        await db.exec('CREATE INDEX IF NOT EXISTS idx_aoa_shop_created_at_ms ON ads_orders_attributed(shop, created_at_ms)').catch(() => null);
+        await db.exec('CREATE INDEX IF NOT EXISTS idx_aoa_shop_confidence_created_at_ms ON ads_orders_attributed(shop, attribution_confidence, created_at_ms)').catch(() => null);
+      },
+    },
+    {
+      id: '022_ads_orders_attributed_profit_freeze',
+      up: async () => {
+        await db.exec(`ALTER TABLE ads_orders_attributed ADD COLUMN IF NOT EXISTS profit_gbp DOUBLE PRECISION`);
+        await db.exec(`ALTER TABLE ads_orders_attributed ADD COLUMN IF NOT EXISTS profit_version TEXT`);
+        await db.exec(`ALTER TABLE ads_orders_attributed ADD COLUMN IF NOT EXISTS profit_components TEXT`);
+        await db.exec(`ALTER TABLE ads_orders_attributed ADD COLUMN IF NOT EXISTS profit_computed_at_ms BIGINT`);
+        await db.exec('CREATE INDEX IF NOT EXISTS idx_aoa_shop_profit_computed_at_ms ON ads_orders_attributed(shop, profit_computed_at_ms)').catch(() => null);
+      },
+    },
+    {
+      id: '023_google_ads_conversion_adjustment_jobs',
+      up: async () => {
+        await db.exec(`
+          CREATE TABLE IF NOT EXISTS google_ads_conversion_adjustment_jobs (
+            id SERIAL PRIMARY KEY,
+            shop TEXT NOT NULL,
+            original_order_id TEXT NOT NULL,
+            goal_type TEXT NOT NULL,
+            conversion_action_resource_name TEXT NOT NULL,
+            adjustment_type TEXT NOT NULL,
+            adjustment_time_ms BIGINT NOT NULL,
+            new_value DOUBLE PRECISION,
+            currency_code TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'pending',
+            retry_count INTEGER NOT NULL DEFAULT 0,
+            last_error TEXT,
+            next_retry_at BIGINT,
+            created_at BIGINT NOT NULL,
+            updated_at BIGINT NOT NULL,
+            UNIQUE (shop, original_order_id, goal_type)
+          )
+        `);
+        await db.exec('CREATE INDEX IF NOT EXISTS idx_gacaj_shop_status ON google_ads_conversion_adjustment_jobs(shop, status)');
+        await db.exec('CREATE INDEX IF NOT EXISTS idx_gacaj_next_retry ON google_ads_conversion_adjustment_jobs(next_retry_at) WHERE status IN (\'pending\', \'retry\')');
+      },
+    },
+    {
+      id: '024_google_ads_conversion_adjustment_attempts',
+      up: async () => {
+        await db.exec(`
+          CREATE TABLE IF NOT EXISTS google_ads_conversion_adjustment_attempts (
+            id SERIAL PRIMARY KEY,
+            job_id INTEGER NOT NULL REFERENCES google_ads_conversion_adjustment_jobs(id),
+            attempt_number INTEGER NOT NULL,
+            http_status INTEGER,
+            response_body TEXT,
+            error_message TEXT,
+            attempted_at BIGINT NOT NULL
+          )
+        `);
+        await db.exec('CREATE INDEX IF NOT EXISTS idx_gacaa_job_id ON google_ads_conversion_adjustment_attempts(job_id)');
+      },
+    },
+    {
+      id: '025_ads_orders_attributed_identity_hashes',
+      up: async () => {
+        await db.exec(`ALTER TABLE ads_orders_attributed ADD COLUMN IF NOT EXISTS identity_hashes_present INTEGER`).catch(() => null);
+        await db.exec(`ALTER TABLE ads_orders_attributed ADD COLUMN IF NOT EXISTS identity_quality_score INTEGER`).catch(() => null);
+        await db.exec(`ALTER TABLE ads_orders_attributed ADD COLUMN IF NOT EXISTS identity_email_sha256 TEXT`).catch(() => null);
+        await db.exec(`ALTER TABLE ads_orders_attributed ADD COLUMN IF NOT EXISTS identity_phone_sha256 TEXT`).catch(() => null);
+        await db.exec('CREATE INDEX IF NOT EXISTS idx_aoa_shop_identity_present_created ON ads_orders_attributed(shop, identity_hashes_present, created_at_ms)').catch(() => null);
+      },
+    },
   ];
 
   let applied = 0;

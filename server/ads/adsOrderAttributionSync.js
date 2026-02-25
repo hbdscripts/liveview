@@ -1,9 +1,109 @@
 const fx = require('../fx');
+const crypto = require('crypto');
 const store = require('../store');
 const salesTruth = require('../salesTruth');
 const { getDb } = require('../db');
 const { getAdsDb } = require('./adsDb');
 const googleAdsClient = require('./googleAdsClient');
+const businessSnapshotService = require('../businessSnapshotService');
+const { normalizeProfitRulesConfigV1 } = require('../profitRulesConfig');
+
+const GOOGLE_ADS_PROFIT_DEDUCTIONS_V1_KEY = 'google_ads_profit_deductions_v1';
+const GOOGLE_ADS_IDENTITY_ENRICHMENT_ENABLED_KEY = 'google_ads_identity_enrichment_enabled';
+
+function normalizeBool(raw, fallback) {
+  if (raw == null) return !!fallback;
+  const v = String(raw).trim().toLowerCase();
+  if (v === '1' || v === 'true' || v === 'yes' || v === 'on') return true;
+  if (v === '0' || v === 'false' || v === 'no' || v === 'off') return false;
+  return !!fallback;
+}
+
+function sha256Hex(value) {
+  if (!value) return null;
+  try {
+    return crypto.createHash('sha256').update(String(value), 'utf8').digest('hex');
+  } catch (_) {
+    return null;
+  }
+}
+
+function normalizeEmailForHash(raw) {
+  const v = raw != null ? String(raw).trim().toLowerCase() : '';
+  if (!v || v.indexOf('@') < 1) return null;
+  return v;
+}
+
+function normalizePhoneForHash(raw) {
+  const v = raw != null ? String(raw).trim() : '';
+  if (!v) return null;
+  const digits = v.replace(/[^\d]/g, '');
+  if (digits.length < 7) return null;
+  return digits;
+}
+
+function hasOrderMarketingConsent(orderJson) {
+  try {
+    const buyer = orderJson && Object.prototype.hasOwnProperty.call(orderJson, 'buyer_accepts_marketing') ? orderJson.buyer_accepts_marketing : null;
+    if (buyer === true) return true;
+    const emailState = orderJson && orderJson.email_marketing_consent && orderJson.email_marketing_consent.state ? String(orderJson.email_marketing_consent.state).trim().toLowerCase() : '';
+    if (emailState === 'subscribed') return true;
+    const smsState = orderJson && orderJson.sms_marketing_consent && orderJson.sms_marketing_consent.state ? String(orderJson.sms_marketing_consent.state).trim().toLowerCase() : '';
+    if (smsState === 'subscribed') return true;
+    const cust = orderJson && orderJson.customer ? orderJson.customer : null;
+    const custAccepts = cust && Object.prototype.hasOwnProperty.call(cust, 'accepts_marketing') ? cust.accepts_marketing : null;
+    if (custAccepts === true) return true;
+  } catch (_) {}
+  return false;
+}
+
+async function recordAdsIssue(adsDb, shop, payload) {
+  const now = Date.now();
+  try {
+    const source = payload.source || 'attribution_sync';
+    const severity = payload.severity || 'warning';
+    const affectedGoal = payload.affected_goal || null;
+    const errorCode = payload.error_code || null;
+    const errorMessage = payload.error_message || null;
+    const suggestedFix = payload.suggested_fix || null;
+    const firstSeenAt = payload.first_seen_at || now;
+    const lastSeenAt = payload.last_seen_at || now;
+
+    const existing = await adsDb.get(
+      `SELECT id, first_seen_at
+       FROM google_ads_issues
+       WHERE shop = ?
+         AND status = 'open'
+         AND COALESCE(error_code, '') = COALESCE(?, '')
+         AND COALESCE(affected_goal, '') = COALESCE(?, '')
+         AND COALESCE(error_message, '') = COALESCE(?, '')
+       LIMIT 1`,
+      [shop, errorCode, affectedGoal, errorMessage]
+    );
+    if (existing && existing.id != null) {
+      const persistedFirst = existing.first_seen_at != null ? Number(existing.first_seen_at) : null;
+      const nextFirst = Number.isFinite(persistedFirst) ? Math.min(persistedFirst, firstSeenAt) : firstSeenAt;
+      await adsDb.run(
+        `UPDATE google_ads_issues
+         SET source = ?,
+             severity = ?,
+             suggested_fix = COALESCE(?, suggested_fix),
+             first_seen_at = ?,
+             last_seen_at = ?,
+             updated_at = ?
+         WHERE id = ?`,
+        [source, severity, suggestedFix, nextFirst, lastSeenAt, now, existing.id]
+      );
+      return;
+    }
+
+    await adsDb.run(
+      `INSERT INTO google_ads_issues (shop, source, severity, status, affected_goal, error_code, error_message, suggested_fix, first_seen_at, last_seen_at, created_at, updated_at)
+       VALUES (?, ?, ?, 'open', ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [shop, source, severity, affectedGoal, errorCode, errorMessage, suggestedFix, firstSeenAt, lastSeenAt, now, now]
+    );
+  } catch (_) {}
+}
 
 function normalizeSource(v) {
   const s = v != null ? String(v).trim().toLowerCase() : '';
@@ -72,6 +172,178 @@ function pickClickId(gclidLike) {
  */
 function looksLikeGoogleAds({ gclidLike } = {}) {
   return !!(gclidLike && (gclidLike.gclid || gclidLike.gbraid || gclidLike.wbraid));
+}
+
+function round2(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return 0;
+  return Math.round(n * 100) / 100;
+}
+
+function ymdInTimeZone(ts, timeZone) {
+  try {
+    const fmt = new Intl.DateTimeFormat('en-CA', {
+      timeZone: timeZone || 'UTC',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+    const ymd = fmt.format(new Date(Number(ts) || Date.now()));
+    if (/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return ymd;
+  } catch (_) {}
+  try {
+    return new Date(Number(ts) || Date.now()).toISOString().slice(0, 10);
+  } catch (_) {
+    return null;
+  }
+}
+
+function computeProfitForOrderAllocation(orderRevenueGbp, windowRevenueGbp, windowCostGbp) {
+  const rev = Number(orderRevenueGbp) || 0;
+  const wRev = Number(windowRevenueGbp) || 0;
+  const wCost = Number(windowCostGbp) || 0;
+  if (!Number.isFinite(rev) || rev <= 0) return 0;
+  if (!Number.isFinite(wRev) || wRev <= 0) return Math.max(0, round2(rev));
+  const allocatedCost = (rev / wRev) * wCost;
+  const profit = rev - (Number.isFinite(allocatedCost) ? allocatedCost : 0);
+  return Math.max(0, round2(Number.isFinite(profit) ? profit : rev));
+}
+
+function computeShippingCostForOrder(countryCode, shippingConfig) {
+  const cfg = shippingConfig && typeof shippingConfig === 'object' ? shippingConfig : {};
+  const overrides = Array.isArray(cfg.overrides) ? cfg.overrides : [];
+  const code = countryCode != null ? String(countryCode).trim().toUpperCase().slice(0, 2) : '';
+  for (const o of overrides) {
+    if (!o || o.enabled === false) continue;
+    const countries = Array.isArray(o.countries) ? o.countries : [];
+    if (code && countries.includes(code)) {
+      return Math.max(0, Number(o.priceGbp) || 0);
+    }
+  }
+  return Math.max(0, Number(cfg.worldwideDefaultGbp) || 0);
+}
+
+function parseYmdParts(ymd) {
+  const s = ymd != null ? String(ymd).trim() : '';
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return null;
+  const year = Number(m[1]);
+  const month = Number(m[2]);
+  const day = Number(m[3]);
+  if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) return null;
+  return { year, month, day };
+}
+
+function daysInMonth(year, month) {
+  const y = Number(year);
+  const m = Number(month);
+  if (!Number.isFinite(y) || !Number.isFinite(m)) return 30;
+  return new Date(Date.UTC(y, m, 0)).getUTCDate();
+}
+
+function isLeapYear(year) {
+  const y = Number(year);
+  if (!Number.isFinite(y)) return false;
+  if (y % 400 === 0) return true;
+  if (y % 100 === 0) return false;
+  return y % 4 === 0;
+}
+
+function overheadDailyAmountGbp(overhead, dayYmd) {
+  const o = overhead && typeof overhead === 'object' ? overhead : {};
+  const amount = Math.max(0, Number(o.amount) || 0);
+  if (!Number.isFinite(amount) || amount <= 0) return 0;
+  const ymd = dayYmd != null ? String(dayYmd).trim() : '';
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return 0;
+
+  const start = o.date != null ? String(o.date).trim() : '';
+  const end = o.end_date != null ? String(o.end_date).trim() : '';
+  if (!start || ymd < start) return 0;
+  if (end && ymd > end) return 0;
+
+  const kind = o.kind === 'one_off' ? 'one_off' : 'recurring';
+  if (kind === 'one_off') return ymd === start ? round2(amount) : 0;
+
+  const freq = o.frequency === 'daily' || o.frequency === 'weekly' || o.frequency === 'monthly' || o.frequency === 'yearly'
+    ? o.frequency
+    : 'monthly';
+  if (freq === 'daily') return round2(amount);
+  if (freq === 'weekly') return round2(amount / 7);
+  if (freq === 'yearly') {
+    const p = parseYmdParts(ymd);
+    if (!p) return 0;
+    const diy = isLeapYear(p.year) ? 366 : 365;
+    return round2(amount / diy);
+  }
+  // monthly
+  const monthlyAllocation = o.monthly_allocation === 'calendar' ? 'calendar' : 'prorate';
+  const p = parseYmdParts(ymd);
+  const sp = parseYmdParts(start);
+  if (!p || !sp) return 0;
+  if (monthlyAllocation === 'calendar') {
+    const billDay = sp.day || 1;
+    const maxDay = daysInMonth(p.year, p.month);
+    const occDay = Math.min(Math.max(1, billDay), maxDay);
+    return p.day === occDay ? round2(amount) : 0;
+  }
+  const dim = daysInMonth(p.year, p.month);
+  return dim > 0 ? round2(amount / dim) : 0;
+}
+
+function orderMatchesAppliesTo(appliesTo, countryCode) {
+  const a = appliesTo && typeof appliesTo === 'object' ? appliesTo : {};
+  const mode = a.mode != null ? String(a.mode).trim().toLowerCase() : 'all';
+  if (mode !== 'countries') return true;
+  const list = Array.isArray(a.countries) ? a.countries : [];
+  const code = countryCode != null ? String(countryCode).trim().toUpperCase().slice(0, 2) : '';
+  if (!code) return false;
+  return list.includes(code);
+}
+
+function orderRevenueForBasis(order, basis) {
+  const b = basis != null ? String(basis).trim().toLowerCase() : '';
+  const incl = Number(order && order.revenueGbp) || 0;
+  const tax = Number(order && order.taxGbp) || 0;
+  const exclTax = round2(incl - tax) || 0;
+  const subtotal = Number(order && order.subtotalGbp);
+  const exclShipping = Number.isFinite(subtotal) ? (round2(subtotal) || 0) : exclTax;
+  if (b === 'order_total_excl_tax' || b === 'excl_tax') return exclTax;
+  if (b === 'subtotal_excl_shipping' || b === 'excl_shipping') return exclShipping;
+  return incl;
+}
+
+function computePerOrderRulesAdjustmentGbp(order, rules, mode) {
+  const list = Array.isArray(rules) ? rules : [];
+  const matchMode = mode === 'first_match' ? 'first_match' : 'stack';
+  const dayYmd = order && order.orderYmd ? String(order.orderYmd) : '';
+  let total = 0;
+  for (const rule of list) {
+    if (!rule || rule.enabled !== true) continue;
+    const start = rule.effective_start || rule.start_date || '';
+    const end = rule.effective_end || rule.end_date || '';
+    if (start && dayYmd && String(dayYmd) < String(start)) continue;
+    if (end && dayYmd && String(dayYmd) > String(end)) continue;
+    if (!orderMatchesAppliesTo(rule.appliesTo, order && order.countryCode)) continue;
+    const value = Number(rule.value) || 0;
+    let amt = 0;
+    if (rule.type === 'percent_revenue') amt = orderRevenueForBasis(order, rule.revenue_basis) * (value / 100);
+    else if (rule.type === 'fixed_per_order') amt = value;
+    else if (rule.type === 'fixed_per_item') amt = (Number(order && order.itemsCount) || 0) * value;
+    if (!Number.isFinite(amt) || amt === 0) {
+      if (matchMode === 'first_match') continue;
+      else continue;
+    }
+    const direction = rule.direction != null ? String(rule.direction).trim().toLowerCase() : 'add';
+    if (direction === 'subtract') amt *= -1;
+    const rounded = round2(amt) || 0;
+    if (rounded === 0) {
+      if (matchMode === 'first_match') continue;
+      else continue;
+    }
+    total += rounded;
+    if (matchMode === 'first_match') break;
+  }
+  return round2(total) || 0;
 }
 
 function chunk(arr, size) {
@@ -210,6 +482,49 @@ async function syncAttributedOrdersToAdsDb(options = {}) {
 
   const ratesToGbp = await fx.getRatesToGbp();
   const gclidCache = new Map();
+  const timeZone = store.resolveAdminTimeZone();
+  let identityEnabled = false;
+  let identityConsentMissing = false;
+  try {
+    const raw = await store.getSetting(GOOGLE_ADS_IDENTITY_ENRICHMENT_ENABLED_KEY);
+    identityEnabled = normalizeBool(raw, false);
+  } catch (_) {}
+
+  let profitDeductions = null;
+  try {
+    const raw = await store.getSetting(GOOGLE_ADS_PROFIT_DEDUCTIONS_V1_KEY);
+    if (raw && typeof raw === 'object') profitDeductions = raw;
+    else if (typeof raw === 'string' && raw.trim()) {
+      const o = JSON.parse(raw);
+      if (o && typeof o === 'object') profitDeductions = o;
+    }
+  } catch (_) {}
+  const deductionToggles = profitDeductions && typeof profitDeductions === 'object' ? {
+    includeGoogleAdsSpend: profitDeductions.includeGoogleAdsSpend === true,
+    includePaymentFees: profitDeductions.includePaymentFees === true,
+    includeShopifyTaxes: profitDeductions.includeShopifyTaxes === true,
+    includeShopifyAppBills: profitDeductions.includeShopifyAppBills === true,
+    includeShipping: profitDeductions.includeShipping === true,
+    includeRules: profitDeductions.includeRules === true,
+  } : {};
+
+  let profitRules = null;
+  try {
+    const raw = await store.getSetting('profit_rules_v1');
+    profitRules = normalizeProfitRulesConfigV1(raw);
+  } catch (_) {
+    profitRules = normalizeProfitRulesConfigV1(null);
+  }
+  const shippingConfig = profitRules && profitRules.shipping && typeof profitRules.shipping === 'object'
+    ? profitRules.shipping
+    : { enabled: false, worldwideDefaultGbp: 0, overrides: [] };
+  const ce = profitRules && profitRules.cost_expenses && typeof profitRules.cost_expenses === 'object'
+    ? profitRules.cost_expenses
+    : { rule_mode: 'stack', per_order_rules: [], overheads: [], fixed_costs: [] };
+  const perOrderRules = Array.isArray(ce.per_order_rules) ? ce.per_order_rules.filter((r) => r && r.enabled === true) : [];
+  const overheads = Array.isArray(ce.overheads) ? ce.overheads.filter((o) => o && o.enabled === true) : [];
+  const fixedCosts = Array.isArray(ce.fixed_costs) ? ce.fixed_costs.filter((f) => f && f.enabled === true) : [];
+  const fixedPerDay = fixedCosts.reduce((acc, f) => acc + (Number(f && f.amount_per_day) || 0), 0);
 
   const parsed = [];
   const needEvidence = [];
@@ -228,6 +543,30 @@ async function syncAttributedOrdersToAdsDb(options = {}) {
 
     let orderJson = null;
     try { orderJson = row && typeof row.raw_json === 'string' ? JSON.parse(row.raw_json) : null; } catch (_) { orderJson = null; }
+    const orderYmd = ymdInTimeZone(createdAtMs, timeZone) || new Date(createdAtMs).toISOString().slice(0, 10);
+    const totalTaxRaw =
+      (orderJson && (orderJson.total_tax != null ? orderJson.total_tax : (orderJson.totalTax != null ? orderJson.totalTax : (orderJson.current_total_tax != null ? orderJson.current_total_tax : orderJson.currentTotalTax)))) != null
+        ? Number(orderJson.total_tax != null ? orderJson.total_tax : (orderJson.totalTax != null ? orderJson.totalTax : (orderJson.current_total_tax != null ? orderJson.current_total_tax : orderJson.currentTotalTax)))
+        : 0;
+    const taxGbpRaw = fx.convertToGbp(Number.isFinite(totalTaxRaw) ? totalTaxRaw : 0, currency, ratesToGbp);
+    const taxGbp = (typeof taxGbpRaw === 'number' && Number.isFinite(taxGbpRaw)) ? round2(taxGbpRaw) : 0;
+    const subtotalRaw =
+      (orderJson && (orderJson.subtotal_price != null ? orderJson.subtotal_price : (orderJson.subtotalPrice != null ? orderJson.subtotalPrice : (orderJson.current_subtotal_price != null ? orderJson.current_subtotal_price : orderJson.currentSubtotalPrice)))) != null
+        ? Number(orderJson.subtotal_price != null ? orderJson.subtotal_price : (orderJson.subtotalPrice != null ? orderJson.subtotalPrice : (orderJson.current_subtotal_price != null ? orderJson.current_subtotal_price : orderJson.currentSubtotalPrice)))
+        : null;
+    const subtotalGbpRaw = subtotalRaw != null ? fx.convertToGbp(Number.isFinite(subtotalRaw) ? subtotalRaw : 0, currency, ratesToGbp) : null;
+    const subtotalGbp = (typeof subtotalGbpRaw === 'number' && Number.isFinite(subtotalGbpRaw)) ? round2(subtotalGbpRaw) : null;
+    const itemsCount = (() => {
+      const items = orderJson && Array.isArray(orderJson.line_items) ? orderJson.line_items : [];
+      let count = 0;
+      for (const it of items) {
+        const q = parseInt(it && it.quantity != null ? it.quantity : 0, 10);
+        if (!Number.isFinite(q) || q <= 0) continue;
+        count += q;
+        if (count > 500000) break;
+      }
+      return count;
+    })();
     const landingSite = (orderJson && (orderJson.landing_site || orderJson.landingSite)) ? String(orderJson.landing_site || orderJson.landingSite).trim() : '';
     const params = safeUrlParams(landingSite);
 
@@ -268,6 +607,29 @@ async function syncAttributedOrdersToAdsDb(options = {}) {
       }
     }
 
+    let identityHashesPresent = null;
+    let identityQualityScore = null;
+    let identityEmailSha256 = null;
+    let identityPhoneSha256 = null;
+    if (identityEnabled) {
+      const hasConsent = hasOrderMarketingConsent(orderJson);
+      if (!hasConsent) {
+        identityConsentMissing = true;
+        identityHashesPresent = 0;
+        identityQualityScore = 0;
+      } else {
+        const emailRaw = (orderJson && orderJson.email) || (orderJson && orderJson.customer && orderJson.customer.email) || null;
+        const phoneRaw = (orderJson && orderJson.phone) || (orderJson && orderJson.customer && orderJson.customer.phone) || null;
+        const normEmail = normalizeEmailForHash(emailRaw);
+        const normPhone = normalizePhoneForHash(phoneRaw);
+        identityEmailSha256 = normEmail ? sha256Hex(normEmail) : null;
+        identityPhoneSha256 = normPhone ? sha256Hex(normPhone) : null;
+        const score = (identityEmailSha256 ? 1 : 0) + (identityPhoneSha256 ? 1 : 0);
+        identityQualityScore = score;
+        identityHashesPresent = score > 0 ? 1 : 0;
+      }
+    }
+
     const out = {
       shop,
       orderId,
@@ -275,6 +637,14 @@ async function syncAttributedOrdersToAdsDb(options = {}) {
       currency,
       totalPrice: Math.round(totalNum * 100) / 100,
       revenueGbp,
+      orderYmd,
+      taxGbp,
+      subtotalGbp,
+      itemsCount,
+      identityHashesPresent,
+      identityQualityScore,
+      identityEmailSha256,
+      identityPhoneSha256,
       // Source is established from landing_site when possible, otherwise evidence may fill it in later.
       source: isGoogleAds ? source : null,
       campaignId: campaignId || null,
@@ -285,6 +655,9 @@ async function syncAttributedOrdersToAdsDb(options = {}) {
       wbraid: wbraid || null,
       clickIdType: clickIdType || null,
       clickIdValue: clickIdValue || null,
+      attributionConfidence: clickIdValue ? 'A' : null,
+      attributionSource: clickIdValue ? 'order_landing_site' : null,
+      attributionDebug: clickIdValue ? 'click-id from landing_site' : null,
       countryCode: cc,
       sessionId: null,
       visitorCountryCode: null,
@@ -293,6 +666,10 @@ async function syncAttributedOrdersToAdsDb(options = {}) {
       attributionMethod: attributionMethod || (campaignId ? 'landing_site' : null),
       landingSite: landingSite || null,
       checkoutToken: row && row.checkout_token ? String(row.checkout_token).trim() : null,
+      profitGbp: null,
+      profitVersion: null,
+      profitComponents: null,
+      profitComputedAtMs: null,
     };
 
     parsed.push(out);
@@ -300,6 +677,172 @@ async function syncAttributedOrdersToAdsDb(options = {}) {
     // Limit lookups to checkout orders (best-effort proxy for online orders that have pixel evidence).
     if (out.checkoutToken && (out.source === source || !out.campaignId || !out.source)) needEvidence.push(out);
   }
+
+  if (identityEnabled && identityConsentMissing) {
+    try {
+      await recordAdsIssue(adsDb, String(shop || '').trim().toLowerCase(), {
+        source: 'attribution_sync',
+        severity: 'warning',
+        affected_goal: null,
+        error_code: 'IDENTITY_CONSENT_MISSING',
+        error_message: 'Identity enrichment enabled but Shopify order consent is missing; identity hashes were not stored.',
+        suggested_fix: 'Disable identity enrichment unless you have consent; otherwise ensure Shopify order marketing consent fields are present.',
+        first_seen_at: Date.now(),
+        last_seen_at: Date.now(),
+      });
+    } catch (_) {}
+  }
+
+  // Profit freeze: compute deterministic profit per order and store it on ads_orders_attributed.
+  // This must be fail-open and fast: allocate day-level costs by revenue share, and clamp at 0.
+  try {
+    const PROFIT_VERSION = 'v1';
+    const profitComputedAtMs = Date.now();
+    const revenueByYmd = new Map();
+    const dayKeys = new Set();
+    for (const o of parsed) {
+      if (!o || !o.orderYmd) continue;
+      const ymd = String(o.orderYmd);
+      dayKeys.add(ymd);
+      revenueByYmd.set(ymd, (Number(revenueByYmd.get(ymd)) || 0) + (Number(o.revenueGbp) || 0));
+    }
+
+    async function readAdsSpendByYmd(startMs, endMs, tz) {
+      const byYmd = new Map();
+      let rows = [];
+      try {
+        rows = await adsDb.all(
+          `
+            SELECT
+              (EXTRACT(EPOCH FROM DATE_TRUNC('day', hour_ts)) * 1000)::BIGINT AS day_ms,
+              COALESCE(SUM(spend_gbp), 0) AS spend_gbp
+            FROM google_ads_spend_hourly
+            WHERE provider = 'google_ads'
+              AND hour_ts >= TO_TIMESTAMP(?/1000.0) AND hour_ts < TO_TIMESTAMP(?/1000.0)
+            GROUP BY day_ms
+            ORDER BY day_ms ASC
+          `,
+          [Number(startMs), Number(endMs)]
+        );
+      } catch (_) {
+        return byYmd;
+      }
+      for (const r of rows || []) {
+        const ms = r && r.day_ms != null ? Number(r.day_ms) : NaN;
+        const spend = r && r.spend_gbp != null ? Number(r.spend_gbp) : 0;
+        if (!Number.isFinite(ms)) continue;
+        const ymd = ymdInTimeZone(ms, tz) || null;
+        if (!ymd) continue;
+        byYmd.set(ymd, (Number(byYmd.get(ymd)) || 0) + (Number.isFinite(spend) ? spend : 0));
+      }
+      return byYmd;
+    }
+
+    const startYmd = ymdInTimeZone(rangeStartTs, timeZone) || new Date(rangeStartTs).toISOString().slice(0, 10);
+    const endYmd = ymdInTimeZone(Math.max(rangeStartTs, rangeEndTs - 1), timeZone) || new Date(Math.max(rangeStartTs, rangeEndTs - 1)).toISOString().slice(0, 10);
+    const needShopifyCosts = !!(deductionToggles.includePaymentFees || deductionToggles.includeShopifyAppBills);
+    let shopifyCosts = { available: !needShopifyCosts, paymentFeesByYmd: new Map(), appBillsByYmd: new Map(), error: '' };
+    if (needShopifyCosts) {
+      const token = await salesTruth.getAccessToken(shop).catch(() => '');
+      shopifyCosts = await businessSnapshotService.readShopifyBalanceCostsGbp(shop, token, startYmd, endYmd, timeZone).catch(() => ({
+        available: false,
+        error: 'shopify_cost_lookup_failed',
+        paymentFeesByYmd: new Map(),
+        appBillsByYmd: new Map(),
+      }));
+    }
+
+    const adsSpendByYmd = deductionToggles.includeGoogleAdsSpend
+      ? await readAdsSpendByYmd(rangeStartTs, rangeEndTs, timeZone)
+      : new Map();
+
+    const overheadByYmd = new Map();
+    if (deductionToggles.includeRules && overheads.length) {
+      for (const ymd of dayKeys.values()) {
+        let total = 0;
+        for (const oh of overheads) total += overheadDailyAmountGbp(oh, ymd);
+        overheadByYmd.set(String(ymd), round2(total) || 0);
+      }
+    }
+
+    for (const o of parsed) {
+      if (!o) continue;
+      const ymd = o.orderYmd != null ? String(o.orderYmd) : '';
+      const dayRev = Number(revenueByYmd.get(ymd)) || 0;
+      const rev = Number(o.revenueGbp) || 0;
+      const share = dayRev > 0 && Number.isFinite(rev) ? (rev / dayRev) : 0;
+      if (!Number.isFinite(share) || share < 0) continue;
+
+      const components = {};
+      let cost = 0;
+
+      if (deductionToggles.includeGoogleAdsSpend) {
+        const daySpend = Number(adsSpendByYmd.get(ymd)) || 0;
+        const alloc = round2(daySpend * share) || 0;
+        components.google_ads_spend_alloc_gbp = alloc;
+        cost += alloc;
+      }
+      if (deductionToggles.includePaymentFees) {
+        if (!shopifyCosts || shopifyCosts.available !== true) {
+          o.profitGbp = null;
+          o.profitVersion = PROFIT_VERSION;
+          o.profitComponents = JSON.stringify({ ok: false, missing: 'payment_fees', error: shopifyCosts && shopifyCosts.error ? String(shopifyCosts.error).slice(0, 180) : 'shopify_costs_unavailable' });
+          o.profitComputedAtMs = profitComputedAtMs;
+          continue;
+        }
+        const dayFees = Number(shopifyCosts.paymentFeesByYmd && shopifyCosts.paymentFeesByYmd.get ? shopifyCosts.paymentFeesByYmd.get(ymd) : 0) || 0;
+        const alloc = round2(dayFees * share) || 0;
+        components.payment_fees_alloc_gbp = alloc;
+        cost += alloc;
+      }
+      if (deductionToggles.includeShopifyAppBills) {
+        if (!shopifyCosts || shopifyCosts.available !== true) {
+          o.profitGbp = null;
+          o.profitVersion = PROFIT_VERSION;
+          o.profitComponents = JSON.stringify({ ok: false, missing: 'shopify_app_bills', error: shopifyCosts && shopifyCosts.error ? String(shopifyCosts.error).slice(0, 180) : 'shopify_costs_unavailable' });
+          o.profitComputedAtMs = profitComputedAtMs;
+          continue;
+        }
+        const dayBills = Number(shopifyCosts.appBillsByYmd && shopifyCosts.appBillsByYmd.get ? shopifyCosts.appBillsByYmd.get(ymd) : 0) || 0;
+        const alloc = round2(dayBills * share) || 0;
+        components.shopify_app_bills_alloc_gbp = alloc;
+        cost += alloc;
+      }
+      if (deductionToggles.includeShopifyTaxes) {
+        const tax = Number(o.taxGbp) || 0;
+        components.shopify_tax_gbp = round2(tax) || 0;
+        cost += Number(components.shopify_tax_gbp) || 0;
+      }
+      if (deductionToggles.includeShipping) {
+        const ship = computeShippingCostForOrder(o.countryCode, shippingConfig);
+        components.shipping_cost_gbp = round2(ship) || 0;
+        cost += Number(components.shipping_cost_gbp) || 0;
+      }
+      if (deductionToggles.includeRules) {
+        const rulesAdj = computePerOrderRulesAdjustmentGbp(o, perOrderRules, ce && ce.rule_mode);
+        const overheadDay = Number(overheadByYmd.get(ymd)) || 0;
+        const overheadAlloc = round2(overheadDay * share) || 0;
+        const fixedAlloc = round2(Number(fixedPerDay || 0) * share) || 0;
+        components.rules_per_order_gbp = rulesAdj;
+        components.overhead_alloc_gbp = overheadAlloc;
+        components.fixed_costs_alloc_gbp = fixedAlloc;
+        cost += (Number(rulesAdj) || 0) + (Number(overheadAlloc) || 0) + (Number(fixedAlloc) || 0);
+      }
+
+      const profit = round2(rev - cost) || 0;
+      o.profitGbp = Math.max(0, Number.isFinite(profit) ? profit : 0);
+      o.profitVersion = PROFIT_VERSION;
+      o.profitComponents = JSON.stringify({
+        ok: true,
+        ymd,
+        revenue_gbp: round2(rev) || 0,
+        cost_gbp: round2(cost) || 0,
+        toggles: deductionToggles,
+        components,
+      }).slice(0, 4000);
+      o.profitComputedAtMs = profitComputedAtMs;
+    }
+  } catch (_) {}
 
   // 2) Evidence fallback: purchase_events (linked_order_id) -> sessions (bs_campaign_id).
   const orderIdToEvidence = new Map();
@@ -553,6 +1096,45 @@ async function syncAttributedOrdersToAdsDb(options = {}) {
     const ev = orderIdToEvidence.get(o.orderId);
     const sess = ev && ev.sessionId ? sessionMap.get(ev.sessionId) : null;
 
+    // Attribution confidence: prefer click-id on the order itself (handled earlier),
+    // then purchase_events.page_url (Tier A), then the linked session.entry_url (Tier B).
+    if (!o.clickIdValue && ev && ev.pageUrl) {
+      const params = safeUrlParams(ev.pageUrl);
+      const gl = params ? extractGclidLike(params) : null;
+      const picked = pickClickId(gl);
+      const gclid = gl && gl.gclid ? String(gl.gclid).trim() : null;
+      const gbraid = gl && gl.gbraid ? String(gl.gbraid).trim() : null;
+      const wbraid = gl && gl.wbraid ? String(gl.wbraid).trim() : null;
+      if (gclid) o.gclid = o.gclid || gclid;
+      if (gbraid) o.gbraid = o.gbraid || gbraid;
+      if (wbraid) o.wbraid = o.wbraid || wbraid;
+      if (picked && picked.id) {
+        o.clickIdValue = String(picked.id).trim();
+        o.clickIdType = picked && picked.kind ? String(picked.kind).trim() : null;
+        o.attributionConfidence = o.attributionConfidence || 'A';
+        o.attributionSource = o.attributionSource || 'purchase_event_page_url';
+        o.attributionDebug = o.attributionDebug || 'click-id from purchase_events.page_url';
+      }
+    }
+    if (!o.clickIdValue && sess && sess.entryUrl) {
+      const sp = safeUrlParams(sess.entryUrl);
+      const gl = extractGclidLike(sp);
+      const picked = pickClickId(gl);
+      const gclid = gl && gl.gclid ? String(gl.gclid).trim() : null;
+      const gbraid = gl && gl.gbraid ? String(gl.gbraid).trim() : null;
+      const wbraid = gl && gl.wbraid ? String(gl.wbraid).trim() : null;
+      if (gclid) o.gclid = o.gclid || gclid;
+      if (gbraid) o.gbraid = o.gbraid || gbraid;
+      if (wbraid) o.wbraid = o.wbraid || wbraid;
+      if (picked && picked.id) {
+        o.clickIdValue = String(picked.id).trim();
+        o.clickIdType = picked && picked.kind ? String(picked.kind).trim() : null;
+        o.attributionConfidence = o.attributionConfidence || 'B';
+        o.attributionSource = o.attributionSource || 'purchase_event_session';
+        o.attributionDebug = o.attributionDebug || 'click-id from purchase_events.session.entry_url';
+      }
+    }
+
     // Persist visitor-location geo when we can link to a session.
     if (ev && ev.sessionId && !o.sessionId) o.sessionId = ev.sessionId;
     if (sess && !o.visitorCountryCode) {
@@ -577,6 +1159,19 @@ async function syncAttributedOrdersToAdsDb(options = {}) {
       if (looksLikeGoogleAds({ gclidLike })) {
         o.source = source;
         if (!o.attributionMethod) o.attributionMethod = 'purchase_events.source';
+      }
+      if (!o.clickIdValue && gclidLike) {
+        const picked = pickClickId(gclidLike);
+        if (picked && picked.id) {
+          o.clickIdValue = String(picked.id).trim();
+          o.clickIdType = picked.kind ? String(picked.kind).trim() : null;
+          if (gclidLike.gclid) o.gclid = o.gclid || String(gclidLike.gclid).trim();
+          if (gclidLike.gbraid) o.gbraid = o.gbraid || String(gclidLike.gbraid).trim();
+          if (gclidLike.wbraid) o.wbraid = o.wbraid || String(gclidLike.wbraid).trim();
+          o.attributionConfidence = o.attributionConfidence || 'A';
+          o.attributionSource = o.attributionSource || 'purchase_event_page_url';
+          o.attributionDebug = o.attributionDebug || 'click-id from purchase_events.page_url';
+        }
       }
     }
 
@@ -608,6 +1203,9 @@ async function syncAttributedOrdersToAdsDb(options = {}) {
       if (!o.clickIdValue && picked && picked.id) {
         o.clickIdValue = String(picked.id).trim();
         o.clickIdType = picked && picked.kind ? String(picked.kind).trim() : null;
+        o.attributionConfidence = o.attributionConfidence || 'B';
+        o.attributionSource = o.attributionSource || 'purchase_event_session';
+        o.attributionDebug = o.attributionDebug || 'click-id from purchase_events.session.entry_url';
       }
       if (gclid) {
         const mapping = await getGclidMappingCached(adsDb, gclidCache, gclid);
@@ -624,11 +1222,35 @@ async function syncAttributedOrdersToAdsDb(options = {}) {
     // Carry-over (last Google Ads click): attribute direct/returning purchases that lost UTMs on the purchase session.
     if (!o.campaignId && sess && sess.visitorId) {
       const last = await findLastGoogleAdsClickForVisitor(sess.visitorId, o.createdAtMs);
-      if (last && last.bsCampaignId) {
+      if (last) {
+        const resolved = await resolveCampaignFromClickResult(last, adsDb, gclidCache);
         o.source = o.source || source;
-        o.campaignId = last.bsCampaignId;
-        o.adgroupId = last.bsAdgroupId || '_all_';
+        if (resolved && resolved.campaignId) {
+          o.campaignId = resolved.campaignId;
+          o.adgroupId = resolved.adgroupId || '_all_';
+        } else if (last.bsCampaignId) {
+          o.campaignId = last.bsCampaignId;
+          o.adgroupId = last.bsAdgroupId || '_all_';
+        }
         o.adId = last.bsAdId || null;
+        if (!o.clickIdValue && last.entryUrl) {
+          const params = safeUrlParams(last.entryUrl);
+          const gl = params ? extractGclidLike(params) : null;
+          const picked = pickClickId(gl);
+          const gclid = gl && gl.gclid ? String(gl.gclid).trim() : null;
+          const gbraid = gl && gl.gbraid ? String(gl.gbraid).trim() : null;
+          const wbraid = gl && gl.wbraid ? String(gl.wbraid).trim() : null;
+          if (gclid) o.gclid = o.gclid || gclid;
+          if (gbraid) o.gbraid = o.gbraid || gbraid;
+          if (wbraid) o.wbraid = o.wbraid || wbraid;
+          if (picked && picked.id) {
+            o.clickIdValue = String(picked.id).trim();
+            o.clickIdType = picked && picked.kind ? String(picked.kind).trim() : null;
+            o.attributionConfidence = o.attributionConfidence || 'C';
+            o.attributionSource = o.attributionSource || 'visitor_fallback';
+            o.attributionDebug = o.attributionDebug || 'click-id from visitor last ads click (30d)';
+          }
+        }
         if (last.sessionId && !o.sessionId) o.sessionId = last.sessionId;
         if (last.visitorCountryCode && !o.visitorCountryCode) o.visitorCountryCode = last.visitorCountryCode;
         if (last.visitorDeviceType && !o.visitorDeviceType) o.visitorDeviceType = last.visitorDeviceType;
@@ -813,14 +1435,34 @@ async function syncAttributedOrdersToAdsDb(options = {}) {
     await adsDb.run(
       `
         INSERT INTO ads_orders_attributed
-          (shop, order_id, created_at_ms, currency, total_price, revenue_gbp, source, campaign_id, adgroup_id, ad_id, gclid, gbraid, wbraid, click_id_type, click_id_value, country_code, attribution_method, landing_site, session_id, visitor_country_code, visitor_device_type, visitor_network, campaign_id_first_click, adgroup_id_first_click, campaign_id_last_click, adgroup_id_last_click, attribution_model_first_method, attribution_model_last_method, updated_at)
+          (shop, order_id, created_at_ms, currency, total_price, revenue_gbp, profit_gbp, profit_version, profit_components, profit_computed_at_ms, identity_hashes_present, identity_quality_score, identity_email_sha256, identity_phone_sha256, source, campaign_id, adgroup_id, ad_id, gclid, gbraid, wbraid, click_id_type, click_id_value, country_code, attribution_method, attribution_confidence, attribution_source, attribution_debug, landing_site, session_id, visitor_country_code, visitor_device_type, visitor_network, campaign_id_first_click, adgroup_id_first_click, campaign_id_last_click, adgroup_id_last_click, attribution_model_first_method, attribution_model_last_method, updated_at)
         VALUES
-          (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT (shop, order_id) DO UPDATE SET
           created_at_ms = EXCLUDED.created_at_ms,
           currency = EXCLUDED.currency,
           total_price = EXCLUDED.total_price,
           revenue_gbp = EXCLUDED.revenue_gbp,
+          profit_gbp = CASE
+            WHEN ads_orders_attributed.profit_gbp IS NOT NULL AND ads_orders_attributed.profit_version = EXCLUDED.profit_version THEN ads_orders_attributed.profit_gbp
+            ELSE EXCLUDED.profit_gbp
+          END,
+          profit_version = CASE
+            WHEN ads_orders_attributed.profit_gbp IS NOT NULL AND ads_orders_attributed.profit_version = EXCLUDED.profit_version THEN ads_orders_attributed.profit_version
+            ELSE EXCLUDED.profit_version
+          END,
+          profit_components = CASE
+            WHEN ads_orders_attributed.profit_gbp IS NOT NULL AND ads_orders_attributed.profit_version = EXCLUDED.profit_version THEN ads_orders_attributed.profit_components
+            ELSE EXCLUDED.profit_components
+          END,
+          profit_computed_at_ms = CASE
+            WHEN ads_orders_attributed.profit_gbp IS NOT NULL AND ads_orders_attributed.profit_version = EXCLUDED.profit_version THEN ads_orders_attributed.profit_computed_at_ms
+            ELSE EXCLUDED.profit_computed_at_ms
+          END,
+          identity_hashes_present = EXCLUDED.identity_hashes_present,
+          identity_quality_score = EXCLUDED.identity_quality_score,
+          identity_email_sha256 = EXCLUDED.identity_email_sha256,
+          identity_phone_sha256 = EXCLUDED.identity_phone_sha256,
           source = EXCLUDED.source,
           campaign_id = EXCLUDED.campaign_id,
           adgroup_id = EXCLUDED.adgroup_id,
@@ -842,6 +1484,9 @@ async function syncAttributedOrdersToAdsDb(options = {}) {
           attribution_model_first_method = EXCLUDED.attribution_model_first_method,
           attribution_model_last_method = EXCLUDED.attribution_model_last_method,
           attribution_method = EXCLUDED.attribution_method,
+          attribution_confidence = EXCLUDED.attribution_confidence,
+          attribution_source = EXCLUDED.attribution_source,
+          attribution_debug = EXCLUDED.attribution_debug,
           landing_site = EXCLUDED.landing_site,
           updated_at = EXCLUDED.updated_at
       `,
@@ -852,6 +1497,14 @@ async function syncAttributedOrdersToAdsDb(options = {}) {
         o.currency || null,
         o.totalPrice != null ? Number(o.totalPrice) : null,
         o.revenueGbp != null ? Number(o.revenueGbp) : 0,
+        o.profitGbp != null ? Number(o.profitGbp) : null,
+        o.profitVersion || null,
+        o.profitComponents || null,
+        o.profitComputedAtMs != null ? Number(o.profitComputedAtMs) : null,
+        o.identityHashesPresent != null ? Number(o.identityHashesPresent) : null,
+        o.identityQualityScore != null ? Number(o.identityQualityScore) : null,
+        o.identityEmailSha256 || null,
+        o.identityPhoneSha256 || null,
         o.source || null,
         o.campaignId || null,
         o.adgroupId || null,
@@ -863,6 +1516,9 @@ async function syncAttributedOrdersToAdsDb(options = {}) {
         o.clickIdValue || null,
         o.countryCode || null,
         o.attributionMethod || null,
+        o.attributionConfidence || null,
+        o.attributionSource || null,
+        o.attributionDebug || null,
         o.landingSite || null,
         o.sessionId || null,
         o.visitorCountryCode || null,

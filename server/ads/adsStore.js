@@ -114,20 +114,29 @@ function getMissingRefreshTokenError() {
 }
 
 async function getGoogleAdsConfig(shop) {
-  // Prefer env token whenever set (full revert from OAuth-only: env wins so spend/geo/gclid work even if GOOGLE_ADS_OAUTH_ENABLED was left true).
+  const stored = await getProviderConfig('google_ads', shop);
+  // Prefer env token whenever set (env token wins; config/meta can still be stored per shop).
   if (config.googleAdsRefreshToken) {
-    return {
-      refresh_token: config.googleAdsRefreshToken,
-      customer_id: config.googleAdsCustomerId || undefined,
-      login_customer_id: config.googleAdsLoginCustomerId || undefined,
-      conversion_customer_id: undefined,
-    };
+    const merged = (stored && typeof stored === 'object') ? { ...stored } : {};
+    merged.refresh_token = config.googleAdsRefreshToken;
+    if (!merged.customer_id && config.googleAdsCustomerId) merged.customer_id = config.googleAdsCustomerId;
+    if (!merged.login_customer_id && config.googleAdsLoginCustomerId) merged.login_customer_id = config.googleAdsLoginCustomerId;
+    return merged;
   }
-  return getProviderConfig('google_ads', shop);
+  return stored;
 }
 
 async function setGoogleAdsConfig(cfg, shop) {
   return setProviderConfig('google_ads', cfg, shop);
+}
+
+async function setGoogleAdsCustomerTimeZone(shop, timeZone) {
+  const tz = timeZone != null ? String(timeZone).trim() : '';
+  if (!tz) return false;
+  const existing = await getProviderConfig('google_ads', shop);
+  const next = (existing && typeof existing === 'object') ? { ...existing, customer_time_zone: tz } : { customer_time_zone: tz };
+  await setProviderConfig('google_ads', next, shop);
+  return true;
 }
 
 module.exports = {
@@ -136,6 +145,7 @@ module.exports = {
   setProviderConfig,
   getGoogleAdsConfig,
   setGoogleAdsConfig,
+  setGoogleAdsCustomerTimeZone,
   getResolvedCustomerIds,
   getMissingRefreshTokenError,
   normalizeShop,

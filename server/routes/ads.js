@@ -323,6 +323,18 @@ router.get('/google/diagnostics', async (req, res) => {
 router.get('/google/goal-health', async (req, res) => {
   res.setHeader('Cache-Control', 'private, max-age=60');
   try {
+    function normalizeTier(raw, fallback) {
+      const v = raw != null ? String(raw).trim().toUpperCase() : '';
+      if (v === 'A' || v === 'B' || v === 'C') return v;
+      return fallback || 'B';
+    }
+    function normalizeBool(raw, fallback) {
+      if (raw == null) return !!fallback;
+      const v = String(raw).trim().toLowerCase();
+      if (v === '1' || v === 'true' || v === 'yes' || v === 'on') return true;
+      if (v === '0' || v === 'false' || v === 'no' || v === 'off') return false;
+      return !!fallback;
+    }
     const shop = (req.query && req.query.shop) != null ? String(req.query.shop).trim() : salesTruth.resolveShopForSales('');
     const normShop = String(shop || '').trim().toLowerCase();
     const db = getAdsDb();
@@ -343,6 +355,30 @@ router.get('/google/goal-health', async (req, res) => {
     let uploadedOrders7d = 0;
     let eligibleOrders30d = 0;
     let uploadedOrders30d = 0;
+    let paidOrders24h = 0;
+    let paidOrders7d = 0;
+    let paidOrders30d = 0;
+    let attributedOrders24h = 0;
+    let attributedOrders7d = 0;
+    let attributedOrders30d = 0;
+    let uploadMinTier = 'B';
+    let allowTierCUploads = false;
+    let missingCustomerTimeZoneCount = 0;
+    let lowConfidenceSkippedCount = 0;
+    let profitNotComputableCount = 0;
+    let adjustmentFailedCount = 0;
+    let attributionTiers24h = { A: 0, B: 0, C: 0 };
+    let attributionTiers7d = { A: 0, B: 0, C: 0 };
+    let attributionTiers30d = { A: 0, B: 0, C: 0 };
+    let adjustmentsQueued = 0;
+    let adjustmentsLastRunAt = null;
+    let adjustmentsByStatus = { pending: 0, retry: 0, success: 0, failed: 0 };
+    try {
+      uploadMinTier = normalizeTier(await store.getSetting('google_ads_upload_confidence_min'), 'B');
+    } catch (_) {}
+    try {
+      allowTierCUploads = normalizeBool(await store.getSetting('google_ads_allow_tier_c_uploads'), false);
+    } catch (_) {}
     if (db && normShop) {
       const now = Date.now();
       const ms24h = 24 * 60 * 60 * 1000;
@@ -351,6 +387,44 @@ router.get('/google/goal-health', async (req, res) => {
       const cutoff24h = now - ms24h;
       const cutoff7d = now - ms7d;
       const cutoff30d = now - ms30d;
+
+      try {
+        const mainDb = require('../db').getDb();
+        if (mainDb) {
+          const paidRow = await mainDb.get(
+            `
+              SELECT
+                SUM(CASE WHEN created_at >= ? THEN 1 ELSE 0 END) AS c24,
+                SUM(CASE WHEN created_at >= ? THEN 1 ELSE 0 END) AS c7,
+                SUM(CASE WHEN created_at >= ? THEN 1 ELSE 0 END) AS c30
+              FROM orders_shopify
+              WHERE shop = ? AND created_at >= ?
+                AND (test IS NULL OR test = 0)
+                AND cancelled_at IS NULL
+                AND financial_status IN ('paid', 'partially_refunded')
+            `,
+            [cutoff24h, cutoff7d, cutoff30d, normShop, cutoff30d]
+          ).catch(() => null);
+          paidOrders24h = paidRow && paidRow.c24 != null ? Number(paidRow.c24) : 0;
+          paidOrders7d = paidRow && paidRow.c7 != null ? Number(paidRow.c7) : 0;
+          paidOrders30d = paidRow && paidRow.c30 != null ? Number(paidRow.c30) : 0;
+        }
+      } catch (_) {}
+
+      const attributedRow = await db.get(
+        `
+          SELECT
+            COUNT(DISTINCT CASE WHEN created_at_ms >= ? THEN order_id END) AS c24,
+            COUNT(DISTINCT CASE WHEN created_at_ms >= ? THEN order_id END) AS c7,
+            COUNT(DISTINCT CASE WHEN created_at_ms >= ? THEN order_id END) AS c30
+          FROM ads_orders_attributed
+          WHERE shop = ? AND created_at_ms >= ? AND source = 'googleads'
+        `,
+        [cutoff24h, cutoff7d, cutoff30d, normShop, cutoff30d]
+      ).catch(() => null);
+      attributedOrders24h = attributedRow && attributedRow.c24 != null ? Number(attributedRow.c24) : 0;
+      attributedOrders7d = attributedRow && attributedRow.c7 != null ? Number(attributedRow.c7) : 0;
+      attributedOrders30d = attributedRow && attributedRow.c30 != null ? Number(attributedRow.c30) : 0;
       const coverageRows = await db.all(
         `
           SELECT
@@ -393,6 +467,26 @@ router.get('/google/goal-health', async (req, res) => {
         [normShop]
       );
       missingClickIdCount = missingRow && missingRow.c != null ? Number(missingRow.c) : 0;
+      const missingTzRow = await db.get(
+        `SELECT COUNT(*) AS c FROM google_ads_issues WHERE shop = ? AND status = 'open' AND error_code = 'MISSING_CUSTOMER_TIME_ZONE'`,
+        [normShop]
+      );
+      missingCustomerTimeZoneCount = missingTzRow && missingTzRow.c != null ? Number(missingTzRow.c) : 0;
+      const lowConfRow = await db.get(
+        `SELECT COUNT(*) AS c FROM google_ads_issues WHERE shop = ? AND status = 'open' AND error_code = 'LOW_CONFIDENCE_ATTRIBUTION_SKIPPED'`,
+        [normShop]
+      );
+      lowConfidenceSkippedCount = lowConfRow && lowConfRow.c != null ? Number(lowConfRow.c) : 0;
+      const profitRow = await db.get(
+        `SELECT COUNT(*) AS c FROM google_ads_issues WHERE shop = ? AND status = 'open' AND error_code = 'PROFIT_NOT_COMPUTABLE'`,
+        [normShop]
+      );
+      profitNotComputableCount = profitRow && profitRow.c != null ? Number(profitRow.c) : 0;
+      const adjustmentFailRow = await db.get(
+        `SELECT COUNT(*) AS c FROM google_ads_issues WHERE shop = ? AND status = 'open' AND error_code = 'ADJUSTMENT_UPLOAD_FAILED'`,
+        [normShop]
+      );
+      adjustmentFailedCount = adjustmentFailRow && adjustmentFailRow.c != null ? Number(adjustmentFailRow.c) : 0;
       const failedRow = await db.get(
         `SELECT COUNT(*) AS c FROM google_ads_issues WHERE shop = ? AND status = 'open' AND error_code = 'UPLOAD_FAILED'`,
         [normShop]
@@ -415,7 +509,16 @@ router.get('/google/goal-health', async (req, res) => {
       );
       lastRunAt = lastRunRow && lastRunRow.ts != null ? Number(lastRunRow.ts) : null;
 
-      const eligibleRow = await db.get(
+      const allowedTiers = (() => {
+        const order = ['A', 'B', 'C'];
+        const idx = order.indexOf(uploadMinTier);
+        const slice = idx >= 0 ? order.slice(0, idx + 1) : ['A', 'B'];
+        if (!allowTierCUploads) return slice.filter((t) => t !== 'C');
+        return slice;
+      })();
+      const confidenceClause = allowedTiers.length ? `AND COALESCE(attribution_confidence, 'B') IN (${allowedTiers.map((t) => `'${t}'`).join(', ')})` : 'AND 1=0';
+
+      let eligibleRow = await db.get(
         `
           SELECT
             COUNT(DISTINCT CASE WHEN created_at_ms >= ? THEN order_id END) AS c24,
@@ -428,12 +531,57 @@ router.get('/google/goal-health', async (req, res) => {
               OR (gbraid IS NOT NULL AND TRIM(gbraid) != '')
               OR (wbraid IS NOT NULL AND TRIM(wbraid) != '')
             )
+            ${confidenceClause}
         `,
         [cutoff24h, cutoff7d, cutoff30d, normShop, cutoff30d]
-      );
+      ).catch(() => null);
+      if (!eligibleRow) {
+        eligibleRow = await db.get(
+          `
+            SELECT
+              COUNT(DISTINCT CASE WHEN created_at_ms >= ? THEN order_id END) AS c24,
+              COUNT(DISTINCT CASE WHEN created_at_ms >= ? THEN order_id END) AS c7,
+              COUNT(DISTINCT CASE WHEN created_at_ms >= ? THEN order_id END) AS c30
+            FROM ads_orders_attributed
+            WHERE shop = ? AND created_at_ms >= ?
+              AND (
+                (gclid IS NOT NULL AND TRIM(gclid) != '')
+                OR (gbraid IS NOT NULL AND TRIM(gbraid) != '')
+                OR (wbraid IS NOT NULL AND TRIM(wbraid) != '')
+              )
+          `,
+          [cutoff24h, cutoff7d, cutoff30d, normShop, cutoff30d]
+        ).catch(() => null);
+      }
       eligibleOrders24h = eligibleRow && eligibleRow.c24 != null ? Number(eligibleRow.c24) : 0;
       eligibleOrders7d = eligibleRow && eligibleRow.c7 != null ? Number(eligibleRow.c7) : 0;
       eligibleOrders30d = eligibleRow && eligibleRow.c30 != null ? Number(eligibleRow.c30) : 0;
+
+      const tierRow = await db.get(
+        `
+          SELECT
+            SUM(CASE WHEN created_at_ms >= ? AND COALESCE(attribution_confidence, 'B') = 'A' THEN 1 ELSE 0 END) AS a24,
+            SUM(CASE WHEN created_at_ms >= ? AND COALESCE(attribution_confidence, 'B') = 'B' THEN 1 ELSE 0 END) AS b24,
+            SUM(CASE WHEN created_at_ms >= ? AND COALESCE(attribution_confidence, 'B') = 'C' THEN 1 ELSE 0 END) AS c24,
+            SUM(CASE WHEN created_at_ms >= ? AND COALESCE(attribution_confidence, 'B') = 'A' THEN 1 ELSE 0 END) AS a7,
+            SUM(CASE WHEN created_at_ms >= ? AND COALESCE(attribution_confidence, 'B') = 'B' THEN 1 ELSE 0 END) AS b7,
+            SUM(CASE WHEN created_at_ms >= ? AND COALESCE(attribution_confidence, 'B') = 'C' THEN 1 ELSE 0 END) AS c7,
+            SUM(CASE WHEN created_at_ms >= ? AND COALESCE(attribution_confidence, 'B') = 'A' THEN 1 ELSE 0 END) AS a30,
+            SUM(CASE WHEN created_at_ms >= ? AND COALESCE(attribution_confidence, 'B') = 'B' THEN 1 ELSE 0 END) AS b30,
+            SUM(CASE WHEN created_at_ms >= ? AND COALESCE(attribution_confidence, 'B') = 'C' THEN 1 ELSE 0 END) AS c30
+          FROM ads_orders_attributed
+          WHERE shop = ? AND created_at_ms >= ?
+            AND (
+              (gclid IS NOT NULL AND TRIM(gclid) != '')
+              OR (gbraid IS NOT NULL AND TRIM(gbraid) != '')
+              OR (wbraid IS NOT NULL AND TRIM(wbraid) != '')
+            )
+        `,
+        [cutoff24h, cutoff24h, cutoff24h, cutoff7d, cutoff7d, cutoff7d, cutoff30d, cutoff30d, cutoff30d, normShop, cutoff30d]
+      ).catch(() => null);
+      attributionTiers24h = { A: tierRow && tierRow.a24 != null ? Number(tierRow.a24) : 0, B: tierRow && tierRow.b24 != null ? Number(tierRow.b24) : 0, C: tierRow && tierRow.c24 != null ? Number(tierRow.c24) : 0 };
+      attributionTiers7d = { A: tierRow && tierRow.a7 != null ? Number(tierRow.a7) : 0, B: tierRow && tierRow.b7 != null ? Number(tierRow.b7) : 0, C: tierRow && tierRow.c7 != null ? Number(tierRow.c7) : 0 };
+      attributionTiers30d = { A: tierRow && tierRow.a30 != null ? Number(tierRow.a30) : 0, B: tierRow && tierRow.b30 != null ? Number(tierRow.b30) : 0, C: tierRow && tierRow.c30 != null ? Number(tierRow.c30) : 0 };
 
       const uploadedRow = await db.get(
         `
@@ -442,13 +590,37 @@ router.get('/google/goal-health', async (req, res) => {
             COUNT(DISTINCT CASE WHEN created_at >= ? THEN order_id END) AS c7,
             COUNT(DISTINCT CASE WHEN created_at >= ? THEN order_id END) AS c30
           FROM google_ads_postback_jobs
-          WHERE shop = ? AND created_at >= ? AND status = 'success'
+          WHERE shop = ? AND created_at >= ? AND status = 'success' AND goal_type = 'revenue'
         `,
         [cutoff24h, cutoff7d, cutoff30d, normShop, cutoff30d]
       );
       uploadedOrders24h = uploadedRow && uploadedRow.c24 != null ? Number(uploadedRow.c24) : 0;
       uploadedOrders7d = uploadedRow && uploadedRow.c7 != null ? Number(uploadedRow.c7) : 0;
       uploadedOrders30d = uploadedRow && uploadedRow.c30 != null ? Number(uploadedRow.c30) : 0;
+
+      const adjQueuedRow = await db.get(
+        `SELECT COUNT(*) AS c FROM google_ads_conversion_adjustment_jobs WHERE shop = ? AND status IN ('pending', 'retry')`,
+        [normShop]
+      ).catch(() => null);
+      adjustmentsQueued = adjQueuedRow && adjQueuedRow.c != null ? Number(adjQueuedRow.c) : 0;
+      const adjStatusRows = await db.all(
+        `SELECT status, COUNT(*) AS c FROM google_ads_conversion_adjustment_jobs WHERE shop = ? GROUP BY status`,
+        [normShop]
+      ).catch(() => []);
+      for (const r of adjStatusRows || []) {
+        const st = r && r.status != null ? String(r.status) : '';
+        const c = r && r.c != null ? Number(r.c) : 0;
+        if (!st) continue;
+        if (st === 'pending' || st === 'retry' || st === 'success' || st === 'failed') adjustmentsByStatus[st] = c;
+      }
+      const adjLastRunRow = await db.get(
+        `SELECT MAX(a.attempted_at) AS ts
+         FROM google_ads_conversion_adjustment_attempts a
+         INNER JOIN google_ads_conversion_adjustment_jobs j ON j.id = a.job_id
+         WHERE j.shop = ?`,
+        [normShop]
+      ).catch(() => null);
+      adjustmentsLastRunAt = adjLastRunRow && adjLastRunRow.ts != null ? Number(adjLastRunRow.ts) : null;
     }
     const diagnostics = await getCachedDiagnostics(shop);
     const coveragePercent24h = eligibleOrders24h > 0 ? Math.round((uploadedOrders24h / eligibleOrders24h) * 1000) / 10 : null;
@@ -460,9 +632,28 @@ router.get('/google/goal-health', async (req, res) => {
       coverage_24h: coverage24h,
       coverage_7d: coverage7d,
       coverage_30d: coverage30d,
-      reconciliation: { missing_click_id_orders: missingClickIdCount, failed_uploads: failedUploadCount, rejected_uploads: rejectedUploadCount },
+      upload_policy: { confidence_min: uploadMinTier, allow_tier_c_uploads: allowTierCUploads },
+      attribution_tiers_24h: attributionTiers24h,
+      attribution_tiers_7d: attributionTiers7d,
+      attribution_tiers_30d: attributionTiers30d,
+      reconciliation: {
+        missing_click_id_orders: missingClickIdCount,
+        missing_customer_time_zone: missingCustomerTimeZoneCount,
+        low_confidence_skipped: lowConfidenceSkippedCount,
+        profit_not_computable: profitNotComputableCount,
+        failed_uploads: failedUploadCount,
+        rejected_uploads: rejectedUploadCount,
+        adjustment_upload_failed: adjustmentFailedCount,
+      },
       jobs_queued: jobsQueued,
       last_run_at: lastRunAt,
+      adjustments: { jobs_queued: adjustmentsQueued, by_status: adjustmentsByStatus, last_run_at: adjustmentsLastRunAt },
+      shopify_paid_orders_24h: paidOrders24h,
+      shopify_paid_orders_7d: paidOrders7d,
+      shopify_paid_orders_30d: paidOrders30d,
+      attributed_orders_24h: attributedOrders24h,
+      attributed_orders_7d: attributedOrders7d,
+      attributed_orders_30d: attributedOrders30d,
       coverage_percent_24h: coveragePercent24h,
       coverage_percent_7d: coveragePercent7d,
       coverage_percent_30d: coveragePercent30d,

@@ -6,7 +6,7 @@ const { getAdsDb } = require('./adsDb');
 const googleAdsClient = require('./googleAdsClient');
 
 const GOAL_TYPES = ['revenue', 'profit', 'add_to_cart', 'begin_checkout'];
-const GOAL_DISPLAY_NAMES = { revenue: 'KexoRevenue', profit: 'KexoProfit', add_to_cart: 'KexoAddToCart', begin_checkout: 'KexoBeginCheckout' };
+const GOAL_DISPLAY_NAMES = { revenue: 'KexoRevenue - Offline', profit: 'KexoProfit - Offline', add_to_cart: 'KexoAddToCart - Offline', begin_checkout: 'KexoBeginCheckout - Offline' };
 /** Category for Google Ads: PURCHASE for revenue/profit, ADD_TO_CART for add_to_cart, BEGIN_CHECKOUT for begin_checkout */
 const GOAL_CATEGORIES = { revenue: 'PURCHASE', profit: 'PURCHASE', add_to_cart: 'ADD_TO_CART', begin_checkout: 'BEGIN_CHECKOUT' };
 

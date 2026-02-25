@@ -146,10 +146,25 @@ async function setConversionActionPrimaryForGoal(shop, resourceName, primaryForG
   return { ok: true };
 }
 
+/**
+ * Fetch Google Ads customer timezone (IANA name), e.g. "Europe/London".
+ * @param {string} [shop]
+ * @returns {Promise<{ ok: boolean, timeZone?: string, error?: string }>}
+ */
+async function fetchCustomerTimeZone(shop) {
+  const out = await search(shop, 'SELECT customer.time_zone FROM customer LIMIT 1');
+  if (!out || !out.ok) return { ok: false, error: (out && out.error) || 'timezone query failed' };
+  const first = (out.results && out.results[0]) || null;
+  const tz = first && first.customer && first.customer.timeZone != null ? String(first.customer.timeZone).trim() : '';
+  if (!tz) return { ok: false, error: 'customer.time_zone not returned' };
+  return { ok: true, timeZone: tz };
+}
+
 module.exports = {
   getCredentials,
   search,
   mutateConversionActions,
   setConversionActionPrimaryForGoal,
+  fetchCustomerTimeZone,
   redactError,
 };
