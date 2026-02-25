@@ -3986,7 +3986,7 @@ body[data-dashboard-view="overview"] .kexo-ovw-tabs-row .btn {
   text-transform: none;
   letter-spacing: 0;
 }
-body[data-dashboard-view="overview"] .kexo-ovw-tabs-row .dropdown-menu {
+body[data-dashboard-view="overview"] .kexo-ovw-tabs-row .kexo-ovw-dropdown-menu {
   z-index: 2000;
 }
 
