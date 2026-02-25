@@ -2924,12 +2924,13 @@ async function getBusinessSnapshot(options = {}) {
   const includeFixedCosts = ceToggles ? (ceToggles.include_fixed_costs !== false) : true;
   const rulesEnabled = hasEnabledProfitRules(profitRules);
   const includeGoogleAdsSpend = !!(profitRules && profitRules.integrations && profitRules.integrations.includeGoogleAdsSpend === true);
+  const includeCostOfGoods = !!(profitRules && profitRules.integrations && profitRules.integrations.includeCostOfGoods === true);
   const includeShopifyAppBills = !!(profitRules && profitRules.integrations && profitRules.integrations.includeShopifyAppBills === true);
   const includePaymentFees = !!(profitRules && profitRules.integrations && profitRules.integrations.includePaymentFees === true);
   const includeKlarnaFees = !!(profitRules && profitRules.integrations && profitRules.integrations.includeKlarnaFees === true);
   const shippingEnabled = !!(profitRules && profitRules.shipping && profitRules.shipping.enabled === true);
   const includeShopifyTaxes = !!(profitRules && profitRules.integrations && profitRules.integrations.includeShopifyTaxes === true);
-  const anyCostSourceEnabled = includeGoogleAdsSpend || includeShopifyAppBills || includePaymentFees || includeKlarnaFees || includeShopifyTaxes || shippingEnabled;
+  const anyCostSourceEnabled = includeGoogleAdsSpend || includeCostOfGoods || includeShopifyAppBills || includePaymentFees || includeKlarnaFees || includeShopifyTaxes || shippingEnabled;
   const profitConfigured = !!(profitRules && profitRules.enabled === true && (rulesEnabled || anyCostSourceEnabled));
 
   const [
@@ -4005,7 +4006,7 @@ async function getCostBreakdown({ rangeKey, audit } = {}) {
     key: 'cogs',
     label: 'Cost of Goods',
     configured: cogsAmount != null,
-    active: cogsAmount != null,
+    active: includeCostOfGoods && cogsAmount != null,
     amount: cogsAmount != null ? cogsAmount : 0,
     currency: 'GBP',
     notes: cogsAmount == null ? 'Unavailable for this range' : '',
@@ -4228,7 +4229,7 @@ async function getCostBreakdown({ rangeKey, audit } = {}) {
  * @param {string} shop
  * @param {number} startMs
  * @param {number} endMs
- * @param {object} deductionToggles - { includeGoogleAdsSpend, includePaymentFees, includeShopifyTaxes, includeShopifyAppBills, includeShipping, includeRules }
+ * @param {object} deductionToggles - { includeGoogleAdsSpend, includeCostOfGoods, includePaymentFees, includeShopifyTaxes, includeShopifyAppBills, includeShipping, includeRules }
  * @returns {Promise<{ revenueGbp: number, costGbp: number }>}
  */
 async function getRevenueAndCostForGoogleAdsPostback(shop, startMs, endMs, deductionToggles) {
@@ -4239,7 +4240,8 @@ async function getRevenueAndCostForGoogleAdsPostback(shop, startMs, endMs, deduc
   const token = shop ? await salesTruth.getAccessToken(shop) : '';
 
   const needsSummary = !!(toggles.includeShipping || toggles.includeRules);
-  const [revenueGbp, ads, shopifyCosts, taxGbp, summary, profitRules] = await Promise.all([
+  const needsCogs = !!toggles.includeCostOfGoods;
+  const [revenueGbp, ads, shopifyCosts, taxGbp, summary, profitRules, cogsAmount] = await Promise.all([
     shop ? salesTruth.getTruthSalesTotalGbp(shop, startMs, endMs) : 0,
     readGoogleAdsSpendDailyGbp(startMs, endMs, timeZone).catch(() => ({ totalGbp: 0 })),
     (shop && token) ? readShopifyBalanceCostsGbp(shop, token, startYmd, endYmd, timeZone).catch(() => ({
@@ -4248,11 +4250,13 @@ async function getRevenueAndCostForGoogleAdsPostback(shop, startMs, endMs, deduc
     shop ? readTruthTaxTotalGbp(shop, startMs, endMs).catch(() => 0) : 0,
     needsSummary && shop ? readOrderCostSummary(shop, startMs, endMs, timeZone).catch(() => null) : null,
     readProfitRulesConfig().catch(() => null),
+    needsCogs && shop && token ? readCogsTotalGbpFromLineItems(shop, token, startMs, endMs).catch(() => 0) : 0,
   ]);
 
   const rev = round2(Number(revenueGbp) || 0) || 0;
   let costGbp = 0;
   if (toggles.includeGoogleAdsSpend) costGbp += round2(Number(ads && ads.totalGbp) || 0) || 0;
+  if (toggles.includeCostOfGoods) costGbp += round2(Number(cogsAmount) || 0) || 0;
   if (toggles.includePaymentFees) costGbp += round2(Number(shopifyCosts && shopifyCosts.paymentFeesTotalGbp) || 0) || 0;
   if (toggles.includeShopifyTaxes) costGbp += round2(Number(taxGbp) || 0) || 0;
   if (toggles.includeShopifyAppBills) costGbp += round2(Number(shopifyCosts && shopifyCosts.appBillsTotalGbp) || 0) || 0;

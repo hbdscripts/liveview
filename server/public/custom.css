@@ -8221,30 +8221,29 @@ body[data-page="snapshot"] #kexo-date-display { display: none !important; }
 
 /* Payment methods (Insights) */
 #payment-types-table {
-  --grid-cols: minmax(180px, 1.4fr) 64px repeat(7, minmax(64px, 0.65fr));
+  --grid-cols: minmax(220px, 1.4fr) repeat(7, minmax(64px, 0.65fr));
 }
 .payment-lg {
   height: 1.5rem;
 }
 .kexo-payment-method-icon {
-  width: 26px;
-  height: 18px;
+  width: 25px;
+  height: 25px;
   display: inline-block;
+  flex: 0 0 auto;
   object-fit: contain;
 }
-.kexo-payments-icon-col {
-  width: 64px !important;
-  min-width: 64px !important;
-  max-width: 64px !important;
-}
-.kexo-payment-method-icon-cell {
-  padding-top: 0 !important;
-  padding-bottom: 0 !important;
-  min-height: 44px;
-  text-align: center !important;
+.kexo-payment-method-cell {
   display: flex !important;
   align-items: center;
-  justify-content: center;
+  gap: 0.45rem;
+  min-width: 0;
+}
+.kexo-payment-method-cell span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .kexo-payment-method-icon--fill {
   width: 100% !important;
@@ -8253,7 +8252,8 @@ body[data-page="snapshot"] #kexo-date-display { display: none !important; }
   object-fit: contain;
 }
 .kexo-payment-method-fallback-icon {
-  width: 26px;
+  width: 25px;
+  height: 25px;
   display: inline-flex;
   align-items: center;
   justify-content: center;

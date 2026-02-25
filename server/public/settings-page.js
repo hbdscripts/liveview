@@ -2192,7 +2192,7 @@
       var token = String(a || '');
       if (!token) return '';
       return '' +
-        '<span class="badge bg-blue-lt text-blue-fg kexo-alias-chip" data-ts-item data-value="' + escapeHtml(token) + '">' +
+        '<span class="badge kexo-alias-chip" data-ts-item data-value="' + escapeHtml(token) + '">' +
           '<span class="kexo-alias-chip-text">' + escapeHtml(token) + '</span>' +
           '<button type="button" class="kexo-alias-chip-remove kexo-icon-action-btn" aria-label="Remove alias" data-action="remove-table-alias" data-table-idx="' + String(tableIdx) + '" data-alias="' + escapeHtml(token) + '"><i class="fa-light fa-xmark" data-icon-key="kpi-compare-close" aria-hidden="true"></i></button>' +
         '</span>';
@@ -2565,6 +2565,7 @@
       var legacyRules = d.includeRules === true;
       return {
         includeGoogleAdsSpend: d.includeGoogleAdsSpend === true,
+        includeCostOfGoods: d.includeCostOfGoods === true,
         includePaymentFees: d.includePaymentFees === true,
         includeShopifyTaxes: d.includeShopifyTaxes === true,
         includeShopifyAppBills: d.includeShopifyAppBills === true,
@@ -2620,6 +2621,7 @@
       var s = profitDeductionsState || normalizeProfitDeductions(null);
       var parts = [];
       if (s.includeGoogleAdsSpend) parts.push('Ads spend');
+      if (s.includeCostOfGoods) parts.push('COGS');
       if (s.includePaymentFees) parts.push('Fees');
       if (s.includeShopifyTaxes) parts.push('Taxes');
       if (s.includeShopifyAppBills) parts.push('App bills');
@@ -2694,6 +2696,7 @@
       var s = profitDeductionsState || normalizeProfitDeductions(null);
       var deductions = {
         includeGoogleAdsSpend: !!(document.getElementById('settings-ga-deduction-google-ads') && document.getElementById('settings-ga-deduction-google-ads').checked),
+        includeCostOfGoods: !!(document.getElementById('settings-ga-deduction-cost-of-goods') && document.getElementById('settings-ga-deduction-cost-of-goods').checked),
         includePaymentFees: !!(document.getElementById('settings-ga-deduction-payment-fees') && document.getElementById('settings-ga-deduction-payment-fees').checked),
         includeShopifyTaxes: !!(document.getElementById('settings-ga-deduction-tax') && document.getElementById('settings-ga-deduction-tax').checked),
         includeShopifyAppBills: !!(document.getElementById('settings-ga-deduction-app-bills') && document.getElementById('settings-ga-deduction-app-bills').checked),
@@ -2723,6 +2726,7 @@
         if (el) el.checked = !!val;
       }
       setChk('settings-ga-deduction-google-ads', d.includeGoogleAdsSpend);
+      setChk('settings-ga-deduction-cost-of-goods', d.includeCostOfGoods);
       setChk('settings-ga-deduction-payment-fees', d.includePaymentFees);
       setChk('settings-ga-deduction-tax', d.includeShopifyTaxes);
       setChk('settings-ga-deduction-app-bills', d.includeShopifyAppBills);
@@ -3296,6 +3300,7 @@
       try { renderProfitDeductionsUi(); } catch (_) {}
       var toSave = {
         includeGoogleAdsSpend: profitDeductionsState.includeGoogleAdsSpend,
+        includeCostOfGoods: profitDeductionsState.includeCostOfGoods,
         includePaymentFees: profitDeductionsState.includePaymentFees,
         includeShopifyTaxes: profitDeductionsState.includeShopifyTaxes,
         includeShopifyAppBills: profitDeductionsState.includeShopifyAppBills,
@@ -3361,7 +3366,7 @@
       });
     }
 
-    ['settings-ga-deduction-google-ads', 'settings-ga-deduction-payment-fees', 'settings-ga-deduction-tax', 'settings-ga-deduction-app-bills', 'settings-ga-deduction-shipping', 'settings-ga-deduction-per-order-rules-enabled', 'settings-ga-deduction-overheads-enabled', 'settings-ga-deduction-fixed-costs-enabled']
+    ['settings-ga-deduction-google-ads', 'settings-ga-deduction-cost-of-goods', 'settings-ga-deduction-payment-fees', 'settings-ga-deduction-tax', 'settings-ga-deduction-app-bills', 'settings-ga-deduction-shipping', 'settings-ga-deduction-per-order-rules-enabled', 'settings-ga-deduction-overheads-enabled', 'settings-ga-deduction-fixed-costs-enabled']
       .forEach(function (id) {
         var el = document.getElementById(id);
         if (el) el.addEventListener('change', saveProfitDeductions);
@@ -5962,10 +5967,10 @@
             '<div class="accordion-body">' +
               '<div data-layout-page-block="1" data-layout-page-key="' + escapeHtml(pageKey) + '">' +
                 (rowsHtml || '<div class="text-secondary small">No tables found.</div>') +
-              '</div>' +
             '</div>' +
           '</div>' +
-        '</div>';
+        '</div>' +
+      '</div>';
     });
 
     html += '</div>';
@@ -6901,6 +6906,7 @@
         '</h4>' +
         '<div id="' + collapseId + '" class="accordion-collapse collapse" data-bs-parent="#' + accordionId + '">' +
           '<div class="accordion-body">' +
+            '<div class="settings-panel-wrap">' +
             '<div class="row g-2 mb-3 align-items-end">' +
               '<div class="col-12 col-md-4">' +
                 '<label class="form-label mb-1">Table name</label>' +
@@ -6939,7 +6945,7 @@
                     : '';
                   return '<tr data-table-idx="' + String(tableIdx) + '" data-rule-idx="' + String(ruleIdx) + '">' +
                     '<td><input type="text" class="form-control form-control-sm" data-field="rule-label" data-table-idx="' + String(tableIdx) + '" data-rule-idx="' + String(ruleIdx) + '" value="' + escapeHtml(rule.label || '') + '"></td>' +
-                    '<td><textarea class="form-control form-control-sm settings-variants-rule-include" rows="2" placeholder="One per line (or comma-separated)" data-field="rule-include" data-table-idx="' + String(tableIdx) + '" data-rule-idx="' + String(ruleIdx) + '">' + escapeHtml((rule.include || []).join('\n')) + '</textarea></td>' +
+                    '<td><input type="text" class="form-control form-control-sm settings-variants-rule-include" placeholder="Comma-separated aliases" data-field="rule-include" data-table-idx="' + String(tableIdx) + '" data-rule-idx="' + String(ruleIdx) + '" value="' + escapeHtml((rule.include || []).join(',')) + '"></td>' +
                     '<td class="text-end">' +
                       '<div class="d-inline-flex align-items-center gap-1 kexo-table-actions">' +
                         mergeBtn +
@@ -7058,7 +7064,7 @@
         if (!tr) return;
         var rIdx = tr.getAttribute('data-rule-idx');
         var labelEl = tr.querySelector('input[data-field="rule-label"]');
-        var includeEl = tr.querySelector('textarea[data-field="rule-include"]');
+        var includeEl = tr.querySelector('input[data-field="rule-include"]');
         if (labelEl) updateDraftValue(tIdx, rIdx, 'rule-label', labelEl.value, false);
         if (includeEl) updateDraftValue(tIdx, rIdx, 'rule-include', includeEl.value, false);
       });

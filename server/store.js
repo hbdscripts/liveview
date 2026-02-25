@@ -4519,6 +4519,7 @@ async function getKexoScore(options = {}) {
       const shippingEnabled = !!(cfg.shipping && cfg.shipping.enabled === true);
       profitToggles = {
         includeGoogleAdsSpend: integ.includeGoogleAdsSpend === true,
+        includeCostOfGoods: integ.includeCostOfGoods === true,
         includePaymentFees: integ.includePaymentFees === true,
         includeShopifyTaxes: integ.includeShopifyTaxes === true,
         includeShopifyAppBills: integ.includeShopifyAppBills === true,

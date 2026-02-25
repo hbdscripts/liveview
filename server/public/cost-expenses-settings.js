@@ -161,6 +161,7 @@
         includePaymentFees: false,
         includeKlarnaFees: false,
         includeShopifyTaxes: false,
+        includeCostOfGoods: true,
       },
       cost_expenses: defaultCostExpensesModel(),
       rules: [], // legacy (kept for backwards compatibility)
@@ -320,6 +321,9 @@
         includePaymentFees: raw.integrations.includePaymentFees === true,
         includeKlarnaFees: raw.integrations.includeKlarnaFees === true,
         includeShopifyTaxes: raw.integrations.includeShopifyTaxes === true,
+        includeCostOfGoods: Object.prototype.hasOwnProperty.call(raw.integrations, 'includeCostOfGoods')
+          ? raw.integrations.includeCostOfGoods === true
+          : true,
       };
     }
     var ce = raw.cost_expenses && typeof raw.cost_expenses === 'object' ? raw.cost_expenses : null;
@@ -743,10 +747,12 @@
     var cfg = state.config ? JSON.parse(JSON.stringify(state.config)) : defaultConfig();
     cfg.integrations = cfg.integrations || {};
     var ga = document.getElementById('cost-expenses-google-ads');
+    var cogs = document.getElementById('cost-expenses-cost-of-goods');
     var pf = document.getElementById('cost-expenses-payment-fees');
     var ab = document.getElementById('cost-expenses-app-bills');
     var tax = document.getElementById('cost-expenses-tax');
     cfg.integrations.includeGoogleAdsSpend = !!(ga && ga.checked);
+    cfg.integrations.includeCostOfGoods = !!(cogs && cogs.checked);
     cfg.integrations.includePaymentFees = !!(pf && pf.checked);
     cfg.integrations.includeShopifyAppBills = !!(ab && ab.checked);
     cfg.integrations.includeShopifyTaxes = !!(tax && tax.checked);
@@ -764,6 +770,7 @@
     // (Historically this was coupled to a single "Custom Rules" toggle; we now derive it.)
     cfg.enabled = !!(
       cfg.integrations.includeGoogleAdsSpend ||
+      cfg.integrations.includeCostOfGoods ||
       cfg.integrations.includePaymentFees ||
       cfg.integrations.includeShopifyAppBills ||
       cfg.integrations.includeShopifyTaxes ||
@@ -779,10 +786,14 @@
     if (!state.config) return;
     var cfg = state.config;
     var googleAds = document.getElementById('cost-expenses-google-ads');
+    var cogs = document.getElementById('cost-expenses-cost-of-goods');
     var paymentFees = document.getElementById('cost-expenses-payment-fees');
     var appBills = document.getElementById('cost-expenses-app-bills');
     var taxEl = document.getElementById('cost-expenses-tax');
     if (googleAds) googleAds.checked = !!(cfg.integrations && cfg.integrations.includeGoogleAdsSpend);
+    if (cogs) cogs.checked = cfg.integrations && Object.prototype.hasOwnProperty.call(cfg.integrations, 'includeCostOfGoods')
+      ? !!cfg.integrations.includeCostOfGoods
+      : true;
     if (paymentFees) paymentFees.checked = !!(cfg.integrations && cfg.integrations.includePaymentFees);
     if (appBills) appBills.checked = !!(cfg.integrations && cfg.integrations.includeShopifyAppBills);
     if (taxEl) taxEl.checked = !!(cfg.integrations && cfg.integrations.includeShopifyTaxes);

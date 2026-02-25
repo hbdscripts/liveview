@@ -75,6 +75,7 @@ const GOOGLE_ADS_CART_DATA_GOALS_KEY = 'google_ads_cart_data_goals';
 function defaultGoogleAdsProfitDeductionsV1() {
   return {
     includeGoogleAdsSpend: false,
+    includeCostOfGoods: false,
     includePaymentFees: false,
     includeShopifyTaxes: false,
     includeShopifyAppBills: false,
@@ -105,6 +106,7 @@ function normalizeGoogleAdsProfitDeductionsV1(raw) {
   const out = defaultGoogleAdsProfitDeductionsV1();
   if (!parsed) return out;
   out.includeGoogleAdsSpend = parsed.includeGoogleAdsSpend === true;
+  out.includeCostOfGoods = parsed.includeCostOfGoods === true;
   out.includePaymentFees = parsed.includePaymentFees === true;
   out.includeShopifyTaxes = parsed.includeShopifyTaxes === true;
   out.includeShopifyAppBills = parsed.includeShopifyAppBills === true;

@@ -92,6 +92,7 @@ function defaultProfitRulesConfigV1() {
       includePaymentFees: false,
       includeKlarnaFees: false,
       includeShopifyTaxes: false,
+      includeCostOfGoods: true,
     },
     cost_expenses: {
       rule_mode: 'stack', // stack | first_match
@@ -466,6 +467,9 @@ function normalizeProfitRulesConfigV1(raw) {
       includePaymentFees: integ && integ.includePaymentFees === true,
       includeKlarnaFees: integ && integ.includeKlarnaFees === true,
       includeShopifyTaxes: integ && integ.includeShopifyTaxes === true,
+      includeCostOfGoods: Object.prototype.hasOwnProperty.call(integ, 'includeCostOfGoods')
+        ? integ.includeCostOfGoods === true
+        : true,
     };
   } catch (_) {
     out.integrations = {
@@ -474,6 +478,7 @@ function normalizeProfitRulesConfigV1(raw) {
       includePaymentFees: false,
       includeKlarnaFees: false,
       includeShopifyTaxes: false,
+      includeCostOfGoods: true,
     };
   }
 

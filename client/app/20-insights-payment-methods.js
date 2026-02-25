@@ -106,7 +106,10 @@
   function renderPaymentCell(iconSpec, iconSrc, iconAlt, label) {
     const safeLabel = label != null ? String(label) : 'Other';
     const iconInner = renderPaymentIconOnly(iconSpec, iconSrc, iconAlt, safeLabel);
-    return '<span class="d-inline-flex align-items-center gap-2">' + iconInner + '<span>' + escapeHtml(safeLabel) + '</span></span>';
+    return '<span class="d-inline-flex align-items-center gap-2 kexo-payment-method-cell">' +
+      iconInner +
+      '<span>' + escapeHtml(safeLabel) + '</span>' +
+    '</span>';
   }
 
   const CHART_KEY = 'payment-methods-chart';
@@ -197,18 +200,16 @@
       const iconSrc = r && r.iconSrc ? String(r.iconSrc) : '';
       const iconAlt = r && r.iconAlt ? String(r.iconAlt) : label;
       const payCell = renderPaymentCell(iconSpec, iconSrc, iconAlt, label);
-      const iconCell = renderPaymentIconOnly(iconSpec, iconSrc, iconAlt, label);
       return '' +
         '<div class="grid-row" role="row">' +
           '<div class="grid-cell" role="cell">' + payCell + '</div>' +
-          '<div class="grid-cell kexo-payments-icon-col kexo-payment-method-icon-cell" role="cell">' + iconCell + '</div>' +
           '<div class="grid-cell text-center" role="cell">' + escapeHtml(fmtInt(r.sessions)) + '</div>' +
-          '<div class="grid-cell text-end" role="cell">' + escapeHtml(fmtInt(r.carts)) + '</div>' +
-          '<div class="grid-cell text-end" role="cell">' + escapeHtml(fmtInt(r.orders)) + '</div>' +
-          '<div class="grid-cell text-end" role="cell">' + escapeHtml(fmtPct1(r.cr)) + '</div>' +
-          '<div class="grid-cell text-end" role="cell">' + escapeHtml(fmtMoneyGbp2(r.vpv)) + '</div>' +
-          '<div class="grid-cell text-end" role="cell">' + escapeHtml(fmtMoneyGbp2(r.revenue)) + '</div>' +
-          '<div class="grid-cell text-end" role="cell">' + escapeHtml(fmtMoneyGbp2(r.aov)) + '</div>' +
+          '<div class="grid-cell text-center" role="cell">' + escapeHtml(fmtInt(r.carts)) + '</div>' +
+          '<div class="grid-cell text-center" role="cell">' + escapeHtml(fmtInt(r.orders)) + '</div>' +
+          '<div class="grid-cell text-center" role="cell">' + escapeHtml(fmtPct1(r.cr)) + '</div>' +
+          '<div class="grid-cell text-center" role="cell">' + escapeHtml(fmtMoneyGbp2(r.vpv)) + '</div>' +
+          '<div class="grid-cell text-center" role="cell">' + escapeHtml(fmtMoneyGbp2(r.revenue)) + '</div>' +
+          '<div class="grid-cell text-center" role="cell">' + escapeHtml(fmtMoneyGbp2(r.aov)) + '</div>' +
         '</div>';
     }).join('');
   }
