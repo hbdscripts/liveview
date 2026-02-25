@@ -1268,23 +1268,98 @@
         return s || 'p';
       }
 
-      function buildPinAnnotationsForCategories(categoryLabels, pins) {
+      function hmFromTsInTz(ts, timeZone) {
+        var n = Number(ts);
+        if (!Number.isFinite(n) || n <= 0) return '';
+        var tz = timeZone != null ? String(timeZone).trim() : '';
+        try {
+          return new Date(n).toLocaleTimeString('en-GB', {
+            timeZone: tz || undefined,
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false,
+          });
+        } catch (_) {
+          try {
+            return new Date(n).toLocaleTimeString('en-GB', {
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: false,
+            });
+          } catch (_) {
+            return '';
+          }
+        }
+      }
+
+      function fracOfDayFromTsInTz(ts, timeZone) {
+        var n = Number(ts);
+        if (!Number.isFinite(n) || n <= 0) return null;
+        var tz = timeZone != null ? String(timeZone).trim() : '';
+        try {
+          var fmt = new Intl.DateTimeFormat('en-GB', {
+            timeZone: tz || undefined,
+            hourCycle: 'h23',
+            hour: '2-digit',
+            minute: '2-digit',
+          });
+          var parts = fmt.formatToParts(new Date(n));
+          var hh = 0;
+          var mm = 0;
+          for (var i = 0; i < parts.length; i++) {
+            if (parts[i].type === 'hour') hh = parseInt(parts[i].value, 10) || 0;
+            if (parts[i].type === 'minute') mm = parseInt(parts[i].value, 10) || 0;
+          }
+          var mins = Math.max(0, Math.min(1439, (hh * 60) + mm));
+          return mins / 1440;
+        } catch (_) {
+          return null;
+        }
+      }
+
+      function buildPinAnnotationsForCategories(categoryLabels, pins, ySeries) {
         var labels = Array.isArray(categoryLabels) ? categoryLabels : [];
         var list = Array.isArray(pins) ? pins : [];
-        if (!labels.length || !list.length) return { annotations: [], tooltips: [] };
+        if (!labels.length || !list.length) return { xaxis: [], points: [], pinMeta: [] };
+        var hasHourLabels = false;
+        for (var t = 0; t < labels.length; t++) {
+          var raw = labels[t] != null ? String(labels[t]).trim() : '';
+          if (raw && raw.indexOf(':') >= 0) { hasHourLabels = true; break; }
+        }
         var idx = new Map();
         for (var i = 0; i < labels.length; i++) {
           var key = labels[i] != null ? String(labels[i]) : '';
           if (!key) continue;
           if (!idx.has(key)) idx.set(key, i);
         }
-        var byLabel = new Map();
+        var byIndex = new Map();
         for (var j = 0; j < list.length; j++) {
           var p = list[j] || {};
           var ymd = p.event_ymd ? String(p.event_ymd) : '';
-          if (!ymd) continue;
-          var cands = [ymd];
-          try { cands.push(shortDate(ymd)); } catch (_) {}
+          var ts = p.event_ts != null ? Number(p.event_ts) : null;
+          var tz = p.event_tz != null ? String(p.event_tz) : '';
+          var cands = [];
+          if (hasHourLabels && Number.isFinite(ts) && ts > 0) {
+            var hm = hmFromTsInTz(ts, tz);
+            if (hm) {
+              cands.push(hm);
+              // Some sources may format hours without leading zeros (e.g. "9:05").
+              try {
+                var m = hm.match(/^(\d{2}):(\d{2})$/);
+                if (m) cands.push(String(parseInt(m[1], 10)) + ':' + m[2]);
+              } catch (_) {}
+            }
+          }
+          if (ymd) {
+            cands.push(ymd);
+            try {
+              var sd = shortDate(ymd);
+              if (sd) {
+                cands.push(sd);
+                cands.push('Wk ' + sd);
+              }
+            } catch (_) {}
+          }
           var matchedLabel = null;
           for (var k = 0; k < cands.length; k++) {
             var c = cands[k];
@@ -1292,78 +1367,137 @@
             if (idx.has(c)) { matchedLabel = c; break; }
           }
           if (!matchedLabel) continue;
-          if (!byLabel.has(matchedLabel)) byLabel.set(matchedLabel, []);
-          byLabel.get(matchedLabel).push(p);
+          var at = idx.get(matchedLabel);
+          if (!Number.isFinite(at) || at < 0 || at >= labels.length) continue;
+          if (!byIndex.has(at)) byIndex.set(at, []);
+          byIndex.get(at).push(p);
         }
-        var out = [];
-        var tooltips = [];
-        byLabel.forEach(function (pinsInBucket, matchedLabel) {
-          var titles = pinsInBucket.map(function (p) { return (p.title && String(p.title).trim()) || 'Pin'; });
-          var tooltipText = titles.map(function (t) { return 'Pin added: ' + t; }).join('\n');
-          var slug = slugForPinAnnotation(matchedLabel);
-          out.push({
-            x: matchedLabel,
-            borderColor: 'transparent',
-            strokeDashArray: 0,
-            label: {
-              text: '\uD83D\uDCCC',
-              borderColor: 'transparent',
-              style: {
-                background: 'transparent',
-                color: 'var(--tblr-body-color, #0f172a)',
-                fontSize: '12px',
-                fontWeight: 400,
-                cssClass: 'kexo-pin-annotation kexo-pin-annotation--' + slug,
-              },
-              offsetY: -4,
-            },
+        var points = [];
+        var pinMeta = [];
+        byIndex.forEach(function (pinsAtIndex, atIndex) {
+          var xLabel = labels[atIndex] != null ? String(labels[atIndex]) : '';
+          if (!xLabel) return;
+          var y = null;
+          try {
+            var yv = Array.isArray(ySeries) ? Number(ySeries[atIndex]) : null;
+            if (Number.isFinite(yv)) y = yv;
+          } catch (_) { y = null; }
+          // Fall back to 0 so the pin is still visible even if a value is missing.
+          if (y == null) y = 0;
+          var bucket = Array.isArray(pinsAtIndex) ? pinsAtIndex.slice() : [];
+          bucket.sort(function (a, b) {
+            var at = a && Number.isFinite(Number(a.event_ts)) ? Number(a.event_ts) : 0;
+            var bt = b && Number.isFinite(Number(b.event_ts)) ? Number(b.event_ts) : 0;
+            if (at !== bt) return at - bt;
+            var ai = a && Number.isFinite(Number(a.id)) ? Number(a.id) : 0;
+            var bi = b && Number.isFinite(Number(b.id)) ? Number(b.id) : 0;
+            return ai - bi;
           });
-          tooltips.push(tooltipText);
+          for (var n = 0; n < bucket.length; n++) {
+            var p = bucket[n] || {};
+            var title = (p.title && String(p.title).trim()) || 'Pin';
+            var pinId = (p.id != null && Number.isFinite(Number(p.id))) ? Math.trunc(Number(p.id)) : null;
+            var uniq = pinId != null ? ('pin-' + String(pinId)) : ('pin-x' + String(atIndex) + '-' + String(n));
+            var cls = 'kexo-pin-annotation--' + uniq;
+            var slug = slugForPinAnnotation(xLabel);
+            var offsetX = 0;
+            var offsetY = -6 - (n * 12);
+            // If the chart is day/week bucketed, nudge pins within the bucket based on time-of-day.
+            if (!hasHourLabels && p.event_ts != null) {
+              var frac = fracOfDayFromTsInTz(p.event_ts, p.event_tz);
+              if (typeof frac === 'number' && isFinite(frac)) {
+                offsetX = Math.round((Math.max(0, Math.min(1, frac)) - 0.5) * 18);
+                offsetX = Math.max(-12, Math.min(12, offsetX));
+              }
+            }
+            points.push({
+              x: xLabel,
+              y: y,
+              marker: { size: 0 },
+              label: {
+                text: '\uD83D\uDCCC',
+                borderColor: 'transparent',
+                offsetX: offsetX,
+                offsetY: offsetY,
+                style: {
+                  background: 'transparent',
+                  color: 'var(--tblr-body-color, #0f172a)',
+                  fontSize: '12px',
+                  fontWeight: 400,
+                  cssClass: 'kexo-pin-annotation ' + cls + ' kexo-pin-annotation--' + slug,
+                },
+              },
+            });
+            pinMeta.push({ cls: cls, title: title });
+          }
         });
-        return { annotations: out, tooltips: tooltips };
+        return { xaxis: [], points: points, pinMeta: pinMeta };
       }
 
-      function setPinAnnotationTooltips(chart, tooltips) {
-        if (!chart || !chart.el || !Array.isArray(tooltips) || !tooltips.length) return;
+      function setPinAnnotationTooltips(chart, pinMeta) {
+        if (!chart || !chart.el || !Array.isArray(pinMeta) || !pinMeta.length) return;
         try {
-          var nodes = chart.el.querySelectorAll ? chart.el.querySelectorAll('.kexo-pin-annotation') : [];
-          for (var i = 0; i < nodes.length && i < tooltips.length; i++) {
-            if (nodes[i] && tooltips[i]) nodes[i].setAttribute('title', tooltips[i]);
+          for (var i = 0; i < pinMeta.length; i++) {
+            var meta = pinMeta[i];
+            if (!meta || !meta.cls || !meta.title) continue;
+            var node = chart.el.querySelector ? chart.el.querySelector('.' + String(meta.cls)) : null;
+            if (!node) continue;
+            node.setAttribute('title', String(meta.title));
+            try { if (!node.getAttribute('tabindex')) node.setAttribute('tabindex', '0'); } catch (_) {}
+            try { if (!node.getAttribute('aria-label')) node.setAttribute('aria-label', String(meta.title)); } catch (_) {}
           }
         } catch (_) {}
       }
 
-      function applyChangePinsOverlayToChart(chartId, chart, categoryLabels) {
+      function applyChangePinsOverlayToChart(chartId, chart, categoryLabels, apexSeries) {
         if (!chart || !categoryLabels || !categoryLabels.length) return;
         if (typeof window === 'undefined') return;
+        var ySeries = null;
+        try {
+          ySeries = (Array.isArray(apexSeries) && apexSeries[0] && Array.isArray(apexSeries[0].data)) ? apexSeries[0].data : null;
+        } catch (_) { ySeries = null; }
+        function mergeAnnotations(nextPoints, nextPinMeta) {
+          var cur = null;
+          try { cur = chart.w && chart.w.config && chart.w.config.annotations ? chart.w.config.annotations : null; } catch (_) { cur = null; }
+          var base = (cur && typeof cur === 'object') ? cur : { xaxis: [], yaxis: [], points: [], texts: [], images: [] };
+          var keepX = Array.isArray(base.xaxis) ? base.xaxis.filter(function (a) {
+            var cls = '';
+            try { cls = a && a.label && a.label.style ? String(a.label.style.cssClass || '') : ''; } catch (_) { cls = ''; }
+            return cls.indexOf('kexo-pin-annotation') < 0;
+          }) : [];
+          var out = {
+            xaxis: keepX,
+            yaxis: Array.isArray(base.yaxis) ? base.yaxis : [],
+            points: Array.isArray(nextPoints) ? nextPoints : [],
+            texts: Array.isArray(base.texts) ? base.texts : [],
+            images: Array.isArray(base.images) ? base.images : [],
+          };
+          try {
+            if (dashCharts && dashCharts[chartId] !== chart) return;
+            chart.updateOptions({ annotations: out }, false, true);
+            setTimeout(function () { setPinAnnotationTooltips(chart, nextPinMeta || []); }, 80);
+          } catch (_) {}
+        }
         var cached = null;
         try {
           cached = (typeof window.__kexoReadChangePinsRecentCache === 'function') ? window.__kexoReadChangePinsRecentCache() : null;
         } catch (_) {}
-        var result = buildPinAnnotationsForCategories(categoryLabels, cached);
-        var ann = result && result.annotations;
-        var tooltips = result && result.tooltips ? result.tooltips : [];
-        if (ann && ann.length) {
-          try {
-            if (dashCharts && dashCharts[chartId] !== chart) return;
-            chart.updateOptions({ annotations: { xaxis: ann, yaxis: [], points: [], texts: [], images: [] } }, false, true);
-            setTimeout(function () { setPinAnnotationTooltips(chart, tooltips); }, 80);
-          } catch (_) {}
+        var result = buildPinAnnotationsForCategories(categoryLabels, cached, ySeries);
+        var points = result && result.points ? result.points : [];
+        var pinMeta = result && result.pinMeta ? result.pinMeta : [];
+        if (points && points.length) {
+          mergeAnnotations(points, pinMeta);
           return;
         }
         try {
           if (typeof window.__kexoGetChangePinsRecent !== 'function') return;
           window.__kexoGetChangePinsRecent(120, false).then(function (pins) {
             if (!pins) return;
-            var nextResult = buildPinAnnotationsForCategories(categoryLabels, pins);
-            var nextAnn = nextResult && nextResult.annotations;
-            var nextTooltips = nextResult && nextResult.tooltips ? nextResult.tooltips : [];
-            if (!nextAnn || !nextAnn.length) return;
-            try {
-              if (dashCharts && dashCharts[chartId] !== chart) return;
-              chart.updateOptions({ annotations: { xaxis: nextAnn, yaxis: [], points: [], texts: [], images: [] } }, false, true);
-              setTimeout(function () { setPinAnnotationTooltips(chart, nextTooltips); }, 80);
-            } catch (_) {}
+            var nextResult = buildPinAnnotationsForCategories(categoryLabels, pins, ySeries);
+            var nextPoints = nextResult && nextResult.points ? nextResult.points : [];
+            var nextPinMeta = nextResult && nextResult.pinMeta ? nextResult.pinMeta : [];
+            if (!nextPoints || !nextPoints.length) return;
+            mergeAnnotations(nextPoints, nextPinMeta);
           });
         } catch (_) {}
       }
@@ -1710,7 +1844,7 @@
           }
 
           return upsertDashboardApexChart(chartId, el, apexOpts, function(chart) {
-            try { applyChangePinsOverlayToChart(chartId, chart, labels || []); } catch (_) {}
+            try { applyChangePinsOverlayToChart(chartId, chart, labels || [], apexSeries || []); } catch (_) {}
           });
         } catch (err) {
           captureChartError(err, 'dashboardChartRender', { chartId: chartId });
