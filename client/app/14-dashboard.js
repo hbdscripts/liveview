@@ -1437,14 +1437,36 @@
       function setPinAnnotationTooltips(chart, pinMeta) {
         if (!chart || !chart.el || !Array.isArray(pinMeta) || !pinMeta.length) return;
         try {
+          function applyToNode(node, titleText) {
+            if (!node || !titleText) return;
+            // HTML fallback
+            try { node.setAttribute('title', String(titleText)); } catch (_) {}
+            // SVG: use <title> child (more reliable than attribute tooltips)
+            try {
+              var ns = node.namespaceURI ? String(node.namespaceURI) : '';
+              if (ns && ns.indexOf('svg') >= 0) {
+                var existing = null;
+                try { existing = node.querySelector ? node.querySelector('title[data-kexo-pin-title="1"]') : null; } catch (_) { existing = null; }
+                if (!existing) {
+                  var t = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+                  t.setAttribute('data-kexo-pin-title', '1');
+                  t.textContent = String(titleText);
+                  try { node.insertBefore(t, node.firstChild || null); } catch (_) { try { node.appendChild(t); } catch (_) {} }
+                } else {
+                  existing.textContent = String(titleText);
+                }
+              }
+            } catch (_) {}
+            try { if (!node.getAttribute('tabindex')) node.setAttribute('tabindex', '0'); } catch (_) {}
+            try { if (!node.getAttribute('aria-label')) node.setAttribute('aria-label', String(titleText)); } catch (_) {}
+          }
+
           for (var i = 0; i < pinMeta.length; i++) {
             var meta = pinMeta[i];
             if (!meta || !meta.cls || !meta.title) continue;
-            var node = chart.el.querySelector ? chart.el.querySelector('.' + String(meta.cls)) : null;
-            if (!node) continue;
-            node.setAttribute('title', String(meta.title));
-            try { if (!node.getAttribute('tabindex')) node.setAttribute('tabindex', '0'); } catch (_) {}
-            try { if (!node.getAttribute('aria-label')) node.setAttribute('aria-label', String(meta.title)); } catch (_) {}
+            var nodes = chart.el.querySelectorAll ? chart.el.querySelectorAll('.' + String(meta.cls)) : [];
+            if (!nodes || !nodes.length) continue;
+            for (var j = 0; j < nodes.length; j++) applyToNode(nodes[j], meta.title);
           }
         } catch (_) {}
       }
@@ -1475,7 +1497,10 @@
           try {
             if (dashCharts && dashCharts[chartId] !== chart) return;
             chart.updateOptions({ annotations: out }, false, true);
-            setTimeout(function () { setPinAnnotationTooltips(chart, nextPinMeta || []); }, 80);
+            var meta = nextPinMeta || [];
+            setTimeout(function () { setPinAnnotationTooltips(chart, meta); }, 80);
+            setTimeout(function () { setPinAnnotationTooltips(chart, meta); }, 250);
+            setTimeout(function () { setPinAnnotationTooltips(chart, meta); }, 800);
           } catch (_) {}
         }
         var cached = null;

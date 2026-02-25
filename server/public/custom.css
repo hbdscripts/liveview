@@ -120,6 +120,7 @@ html, body {
 .kexo-pin-annotation {
   cursor: help;
   opacity: 0.85;
+  pointer-events: auto;
 }
 
 .card.kexo-card-collapsed > :not(.card-header) {
