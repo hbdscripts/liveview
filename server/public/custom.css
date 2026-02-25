@@ -5214,18 +5214,12 @@ body[data-page="dashboard"] .kexo-overview-widget-card .kexo-widget-head-right {
 .page-body {
   flex: 1 0 auto;
   /* Override Tabler's .page-body flex+margin layout so app pages always start directly under the header stack. */
-  display: flex !important;
-  flex-direction: column !important;
+  display: block !important;
   margin-top: 0 !important;
   margin-bottom: 0 !important;
   overflow: visible !important;
   justify-content: flex-start !important;
   align-items: stretch !important;
-}
-
-/* Tabler adds a top margin to .page-header; remove it so content starts directly under the header stack. */
-.page-wrapper .page-header {
-  margin-top: 0 !important;
 }
 
 /* ── Layout alignment + top navbar ───────────────────────────────── */
