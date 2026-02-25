@@ -66,6 +66,33 @@
 
           // Dashboard Overview: Tabler tab switches + per-panel date ranges.
           if (typeof isDashboardOverviewPage === 'function' && isDashboardOverviewPage()) {
+            // If Bootstrap dropdown JS isn't available (or is blocked), fall back to a minimal dropdown toggle.
+            var rangeToggleBtn = t.closest('button[data-ovw-panel-range-btn]');
+            if (rangeToggleBtn) {
+              try {
+                if (window.bootstrap && window.bootstrap.Dropdown) return;
+              } catch (_) {}
+              e.preventDefault();
+              try {
+                var btn = rangeToggleBtn;
+                var menu = btn && btn.parentElement ? btn.parentElement.querySelector('.dropdown-menu') : null;
+                if (!menu) return;
+                var open = menu.classList.contains('show');
+                // Close all open menus first.
+                document.querySelectorAll('.dropdown-menu.show').forEach(function (m) {
+                  try { m.classList.remove('show'); } catch (_) {}
+                });
+                document.querySelectorAll('button.dropdown-toggle.show').forEach(function (b) {
+                  try { b.classList.remove('show'); } catch (_) {}
+                });
+                if (!open) {
+                  menu.classList.add('show');
+                  btn.classList.add('show');
+                }
+              } catch (_) {}
+              return;
+            }
+
             var tabBtn = t.closest('button[data-ovw-panel][data-ovw-tab]');
             if (tabBtn) {
               e.preventDefault();
@@ -77,21 +104,23 @@
               // Rerender panels that change data selection.
               if (p === 'trending') {
                 var rkT = getOverviewPanelRange('trending', OVW_PANEL_DEFAULT_RANGE);
+                setOvwPanelLoading('trending', true);
                 fetchOvwDashboardSeries(rkT, false).then(function (data) {
                   renderOverviewTrendingFromSeries(data, getOverviewPanelActiveTab('trending', 'up'));
-                }).catch(function () {});
+                }).catch(function () {}).finally(function () { setOvwPanelLoading('trending', false); });
               } else if (p === 'variant') {
                 var variantRk = getOverviewPanelRange('variant', OVW_PANEL_DEFAULT_RANGE);
                 var trafficRk = getOverviewPanelRange('traffic', OVW_PANEL_DEFAULT_RANGE);
                 var abandonedRk = getOverviewPanelRange('abandoned', OVW_PANEL_DEFAULT_RANGE);
                 var variantMode = getOverviewPanelActiveTab('variant', 'variant');
-                var finishesTableId = (variantMode === 'styles') ? 'styles' : 'finishes';
+                var finishesTableId = (variantMode === 'styles') ? 'idx:1' : 'idx:0';
                 try {
-                  refreshDashboardWidgetsNow({
+                  setOvwPanelLoading('variant', true);
+                  Promise.resolve(refreshDashboardWidgetsNow({
                     force: false,
                     ranges: { finishes: variantRk, attribution: trafficRk, devices: trafficRk, browsers: trafficRk, abandoned: abandonedRk },
                     tableIdOverrides: { finishes: finishesTableId },
-                  });
+                  })).finally(function () { setOvwPanelLoading('variant', false); });
                 } catch (_) {}
               }
               return;
@@ -109,36 +138,48 @@
               syncOverviewPanelRangeUi(panel);
 
               if (panel === 'main') {
-                fetchOverviewCardData('dash-chart-overview-30d', { force: true, rangeKey: nextRk, renderIfFresh: true });
-              } else if (panel === 'online') {
-                if (typeof window.refreshLiveOnlineChart === 'function') {
-                  try { window.refreshLiveOnlineChart({ force: true, rangeKey: nextRk, pageKey: 'dashboard' }); } catch (_) {}
-                }
+                setOvwPanelLoading('main', true);
+                Promise.resolve(fetchOverviewCardData('dash-chart-overview-30d', { force: true, rangeKey: nextRk, renderIfFresh: true }))
+                  .finally(function () { setOvwPanelLoading('main', false); });
               } else if (panel === 'kpis') {
+                setOvwPanelLoading('kpis', true);
                 fetchOvwKpis(nextRk, true).then(function (kpiPayload) {
                   renderOverviewKpiCard(kpiPayload, nextRk, null);
                   return fetchOvwKpiExtras(nextRk, false).then(function (extras) {
                     renderOverviewKpiCard(kpiPayload, nextRk, extras);
                     return extras;
                   });
-                }).catch(function () {});
+                }).catch(function () {}).finally(function () { setOvwPanelLoading('kpis', false); });
               } else if (panel === 'toplists') {
-                fetchOvwDashboardSeries(nextRk, true).then(function (data) { renderOverviewTopListsFromSeries(data); }).catch(function () {});
+                setOvwPanelLoading('toplists', true);
+                fetchOvwDashboardSeries(nextRk, true)
+                  .then(function (data) { renderOverviewTopListsFromSeries(data); })
+                  .catch(function () {})
+                  .finally(function () { setOvwPanelLoading('toplists', false); });
               } else if (panel === 'trending') {
-                fetchOvwDashboardSeries(nextRk, true).then(function (data) {
-                  renderOverviewTrendingFromSeries(data, getOverviewPanelActiveTab('trending', 'up'));
-                }).catch(function () {});
+                setOvwPanelLoading('trending', true);
+                fetchOvwDashboardSeries(nextRk, true)
+                  .then(function (data) { renderOverviewTrendingFromSeries(data, getOverviewPanelActiveTab('trending', 'up')); })
+                  .catch(function () {})
+                  .finally(function () { setOvwPanelLoading('trending', false); });
               } else if (panel === 'variant' || panel === 'traffic' || panel === 'abandoned') {
                 var variantRk2 = getOverviewPanelRange('variant', OVW_PANEL_DEFAULT_RANGE);
                 var trafficRk2 = getOverviewPanelRange('traffic', OVW_PANEL_DEFAULT_RANGE);
                 var abandonedRk2 = getOverviewPanelRange('abandoned', OVW_PANEL_DEFAULT_RANGE);
                 var variantMode2 = getOverviewPanelActiveTab('variant', 'variant');
-                var finishesTableId2 = (variantMode2 === 'styles') ? 'styles' : 'finishes';
+                var finishesTableId2 = (variantMode2 === 'styles') ? 'idx:1' : 'idx:0';
                 try {
-                  refreshDashboardWidgetsNow({
+                  setOvwPanelLoading('variant', true);
+                  setOvwPanelLoading('traffic', true);
+                  setOvwPanelLoading('abandoned', true);
+                  Promise.resolve(refreshDashboardWidgetsNow({
                     force: true,
                     ranges: { finishes: variantRk2, attribution: trafficRk2, devices: trafficRk2, browsers: trafficRk2, abandoned: abandonedRk2 },
                     tableIdOverrides: { finishes: finishesTableId2 },
+                  })).finally(function () {
+                    setOvwPanelLoading('variant', false);
+                    setOvwPanelLoading('traffic', false);
+                    setOvwPanelLoading('abandoned', false);
                   });
                 } catch (_) {}
               }
@@ -393,6 +434,9 @@
         if (!isDashboardOverviewPage()) return;
         ovwUiInitialized = true;
 
+        // Ensure tab + range click handlers are wired immediately on Overview.
+        try { bindDashDocumentClickOnce(); } catch (_) {}
+
         ['kpis', 'toplists', 'trending', 'variant', 'traffic'].forEach(function (key) {
           try {
             var group = document.querySelector('[data-ovw-tabs=\"' + key + '\"]');
@@ -510,6 +554,16 @@
         if (el) el.textContent = text != null ? String(text) : '\u2014';
       }
 
+      function setOvwPanelLoading(panelId, isLoading) {
+        if (!isDashboardOverviewPage || !isDashboardOverviewPage()) return;
+        var key = (panelId == null ? '' : String(panelId)).trim().toLowerCase();
+        if (!key) return;
+        var el = null;
+        try { el = document.querySelector('[data-ovw-loader=\"' + key + '\"]'); } catch (_) { el = null; }
+        if (!el) return;
+        el.classList.toggle('is-active', !!isLoading);
+      }
+
       function fmtPct1(v) {
         var n = (typeof v === 'number') ? v : Number(v);
         if (!Number.isFinite(n)) return '\u2014';
@@ -529,6 +583,7 @@
       function renderOverviewKpiCard(payload, rangeKey, extras) {
         var rk = normalizeOverviewPanelRangeKey(rangeKey, OVW_PANEL_DEFAULT_RANGE);
         var safe = payload && typeof payload === 'object' ? payload : {};
+        var cmp = (safe.compare && typeof safe.compare === 'object') ? safe.compare : {};
         function pick(obj) {
           try { return obj && typeof obj === 'object' ? obj[rk] : null; } catch (_) { return null; }
         }
@@ -559,6 +614,75 @@
         setTextById('ovw-kpi-aov', aov != null ? fmtGbp2(aov) : '\u2014');
         setTextById('ovw-kpi-bounce', bounce != null ? fmtPct1(bounce) : '\u2014');
         setTextById('ovw-kpi-returns', returnsAmount != null ? fmtCurrencySigned(returnsAmount) : '\u2014');
+
+        function setDeltaAndBar(key, current, previous, invertTone) {
+          var k = String(key || '').trim().toLowerCase();
+          if (!k) return;
+          var cur = (typeof current === 'number' && Number.isFinite(current)) ? Number(current) : null;
+          var prev = (typeof previous === 'number' && Number.isFinite(previous)) ? Number(previous) : null;
+          var deltaEl = document.getElementById('ovw-kpi-' + k + '-delta');
+          var barEl = document.getElementById('ovw-kpi-' + k + '-bar');
+          if (deltaEl) {
+            deltaEl.classList.remove('is-up', 'is-down');
+            deltaEl.textContent = '\u2014';
+          }
+          if (barEl) {
+            try { barEl.style.width = '0%'; } catch (_) {}
+            barEl.classList.remove('bg-green', 'bg-red');
+            if (!barEl.classList.contains('bg-secondary')) barEl.classList.add('bg-secondary');
+            try { barEl.setAttribute('aria-valuenow', '0'); } catch (_) {}
+            try { barEl.setAttribute('aria-label', '0% complete'); } catch (_) {}
+            try {
+              var vh = barEl.querySelector('.visually-hidden');
+              if (vh) vh.textContent = '0% complete';
+            } catch (_) {}
+          }
+          if (cur == null || prev == null) return;
+          var delta = cur - prev;
+          var denom = Math.abs(prev);
+          var pct = denom > 1e-9 ? (delta / denom) * 100 : null;
+          if (pct == null || !Number.isFinite(pct)) return;
+          var absPct = Math.min(100, Math.max(0, Math.abs(pct)));
+
+          var goodUp = invertTone ? (delta < 0) : (delta > 0);
+          var stable = Math.abs(pct) < 0.05;
+          if (deltaEl) {
+            deltaEl.textContent = stable ? '\u2014' : ((pct > 0 ? '+' : '') + (Math.round(pct * 10) / 10).toFixed(1).replace(/\\.0$/, '') + '%');
+            if (!stable) deltaEl.classList.add(goodUp ? 'is-up' : 'is-down');
+          }
+          if (barEl) {
+            try { barEl.style.width = String(absPct.toFixed(0)) + '%'; } catch (_) {}
+            barEl.classList.remove('bg-secondary');
+            barEl.classList.add(goodUp ? 'bg-green' : 'bg-red');
+            try { barEl.setAttribute('aria-valuenow', String(absPct.toFixed(0))); } catch (_) {}
+            try { barEl.setAttribute('aria-label', String(absPct.toFixed(0)) + '% complete'); } catch (_) {}
+            try {
+              var vh2 = barEl.querySelector('.visually-hidden');
+              if (vh2) vh2.textContent = String(absPct.toFixed(0)) + '% complete';
+            } catch (_) {}
+          }
+        }
+
+        var sessionsPrev = null;
+        try {
+          var tbPrev = (cmp && cmp.trafficBreakdown && typeof cmp.trafficBreakdown === 'object') ? cmp.trafficBreakdown : null;
+          sessionsPrev = tbPrev && typeof tbPrev.human_sessions === 'number' ? tbPrev.human_sessions : (tbPrev && typeof tbPrev.sessions === 'number' ? tbPrev.sessions : null);
+        } catch (_) { sessionsPrev = null; }
+        var returnsPrev = null;
+        try {
+          returnsPrev = (extras && extras.compare && typeof extras.compare.returns === 'number') ? extras.compare.returns : null;
+        } catch (_) { returnsPrev = null; }
+
+        setDeltaAndBar('revenue', revenue, cmp && typeof cmp.sales === 'number' ? cmp.sales : null, false);
+        setDeltaAndBar('profit', profit, cmp && typeof cmp.profit === 'number' ? cmp.profit : null, false);
+        setDeltaAndBar('conv', conv, cmp && typeof cmp.conversion === 'number' ? cmp.conversion : null, false);
+        setDeltaAndBar('vpv', vpv, cmp && typeof cmp.vpv === 'number' ? cmp.vpv : null, false);
+        setDeltaAndBar('returning', returningCustomers, cmp && typeof cmp.returningCustomerCount === 'number' ? cmp.returningCustomerCount : null, false);
+        setDeltaAndBar('sessions', sessions != null ? Number(sessions) : null, sessionsPrev, false);
+        setDeltaAndBar('orders', orders, cmp && typeof cmp.convertedCount === 'number' ? cmp.convertedCount : null, false);
+        setDeltaAndBar('aov', aov, cmp && typeof cmp.aov === 'number' ? cmp.aov : null, false);
+        setDeltaAndBar('bounce', bounce, cmp && typeof cmp.bounce === 'number' ? cmp.bounce : null, true);
+        setDeltaAndBar('returns', returnsAmount, returnsPrev, true);
       }
 
       function renderOverviewTopListsFromSeries(data) {
@@ -704,7 +828,6 @@
         var force = !!options.force;
 
         var mainRk = getOverviewPanelRange('main', OVW_PANEL_DEFAULT_RANGE);
-        var onlineRk = getOverviewPanelRange('online', OVW_PANEL_DEFAULT_RANGE);
         var kpisRk = getOverviewPanelRange('kpis', OVW_PANEL_DEFAULT_RANGE);
         var topRk = getOverviewPanelRange('toplists', OVW_PANEL_DEFAULT_RANGE);
         var trendingRk = getOverviewPanelRange('trending', OVW_PANEL_DEFAULT_RANGE);
@@ -714,63 +837,95 @@
 
         var trendingMode = getOverviewPanelActiveTab('trending', 'up');
         var variantMode = getOverviewPanelActiveTab('variant', 'variant');
-        var finishesTableId = (variantMode === 'styles') ? 'styles' : 'finishes';
+        var finishesTableId = (variantMode === 'styles') ? 'idx:1' : 'idx:0';
 
         var tasks = [];
 
         // Main overview chart card.
         tasks.push(Promise.resolve()
+          .then(function () { setOvwPanelLoading('main', true); })
           .then(function () { return fetchOverviewCardData('dash-chart-overview-30d', { force: force, rangeKey: mainRk, renderIfFresh: true }); })
           .catch(function () { return null; })
+          .finally(function () { setOvwPanelLoading('main', false); })
         );
 
         // Online map card.
         tasks.push(Promise.resolve()
           .then(function () {
             if (typeof window.refreshLiveOnlineChart !== 'function') return null;
-            return window.refreshLiveOnlineChart({ force: force, rangeKey: onlineRk, pageKey: 'dashboard' });
+            setOvwPanelLoading('online', true);
+            return window.refreshLiveOnlineChart({ force: force, pageKey: 'dashboard' });
           })
           .catch(function () { return null; })
+          .finally(function () { setOvwPanelLoading('online', false); })
         );
 
         // KPI card.
-        tasks.push(fetchOvwKpis(kpisRk, force).then(function (kpiPayload) {
-          renderOverviewKpiCard(kpiPayload, kpisRk, null);
-          return fetchOvwKpiExtras(kpisRk, false).then(function (extras) {
-            renderOverviewKpiCard(kpiPayload, kpisRk, extras);
-            return extras;
-          }).catch(function () { return null; });
-        }).catch(function () { return null; }));
+        tasks.push(Promise.resolve()
+          .then(function () { setOvwPanelLoading('kpis', true); })
+          .then(function () { return fetchOvwKpis(kpisRk, force); })
+          .then(function (kpiPayload) {
+            renderOverviewKpiCard(kpiPayload, kpisRk, null);
+            return fetchOvwKpiExtras(kpisRk, false).then(function (extras) {
+              renderOverviewKpiCard(kpiPayload, kpisRk, extras);
+              return extras;
+            }).catch(function () { return null; });
+          })
+          .catch(function () { return null; })
+          .finally(function () { setOvwPanelLoading('kpis', false); })
+        );
 
         // Top lists card.
-        tasks.push(fetchOvwDashboardSeries(topRk, force).then(function (data) {
-          renderOverviewTopListsFromSeries(data);
-          return data;
-        }).catch(function () { return null; }));
+        tasks.push(Promise.resolve()
+          .then(function () { setOvwPanelLoading('toplists', true); })
+          .then(function () { return fetchOvwDashboardSeries(topRk, force); })
+          .then(function (data) {
+            renderOverviewTopListsFromSeries(data);
+            return data;
+          })
+          .catch(function () { return null; })
+          .finally(function () { setOvwPanelLoading('toplists', false); })
+        );
 
         // Trending card.
-        tasks.push(fetchOvwDashboardSeries(trendingRk, force).then(function (data) {
-          renderOverviewTrendingFromSeries(data, trendingMode);
-          return data;
-        }).catch(function () { return null; }));
+        tasks.push(Promise.resolve()
+          .then(function () { setOvwPanelLoading('trending', true); })
+          .then(function () { return fetchOvwDashboardSeries(trendingRk, force); })
+          .then(function (data) {
+            renderOverviewTrendingFromSeries(data, trendingMode);
+            return data;
+          })
+          .catch(function () { return null; })
+          .finally(function () { setOvwPanelLoading('trending', false); })
+        );
 
         // Bottom widgets: use per-widget ranges.
-        tasks.push(Promise.resolve().then(function () {
-          refreshDashboardWidgetsNow({
-            force: force,
-            ranges: {
-              finishes: variantRk,
-              attribution: trafficRk,
-              devices: trafficRk,
-              browsers: trafficRk,
-              abandoned: abandonedRk,
-            },
-            tableIdOverrides: {
-              finishes: finishesTableId,
-            },
-          });
-          return null;
-        }).catch(function () { return null; }));
+        tasks.push(Promise.resolve()
+          .then(function () {
+            setOvwPanelLoading('variant', true);
+            setOvwPanelLoading('traffic', true);
+            setOvwPanelLoading('abandoned', true);
+            return refreshDashboardWidgetsNow({
+              force: force,
+              ranges: {
+                finishes: variantRk,
+                attribution: trafficRk,
+                devices: trafficRk,
+                browsers: trafficRk,
+                abandoned: abandonedRk,
+              },
+              tableIdOverrides: {
+                finishes: finishesTableId,
+              },
+            });
+          })
+          .catch(function () { return null; })
+          .finally(function () {
+            setOvwPanelLoading('variant', false);
+            setOvwPanelLoading('traffic', false);
+            setOvwPanelLoading('abandoned', false);
+          })
+        );
 
         return Promise.all(tasks);
       }
@@ -7061,9 +7216,18 @@
           if (key === 'finishes') {
             var tables = Array.isArray(payload.tables) ? payload.tables : [];
             var overrideId = (tableIdOverrides && tableIdOverrides.finishes != null) ? String(tableIdOverrides.finishes) : '';
-            var tableId = overrideId ? overrideId : (cfg && cfg.widgets && cfg.widgets.finishes && cfg.widgets.finishes.groupBy ? String(cfg.widgets.finishes.groupBy) : '');
-            tableId = String(tableId || '').trim().toLowerCase();
-            var table = (tableId ? tables.find(function (t) { return t && String(t.id || '').trim().toLowerCase() === tableId; }) : null) || tables[0] || null;
+            var overrideKey = String(overrideId || '').trim().toLowerCase();
+            var table = null;
+            var idxMatch = overrideKey ? overrideKey.match(/^idx:(\d+)$/) : null;
+            if (idxMatch) {
+              var idx = parseInt(idxMatch[1], 10);
+              table = (Number.isFinite(idx) && idx >= 0 && idx < tables.length) ? tables[idx] : null;
+            } else {
+              var tableId = overrideKey ? overrideKey : (cfg && cfg.widgets && cfg.widgets.finishes && cfg.widgets.finishes.groupBy ? String(cfg.widgets.finishes.groupBy) : '');
+              tableId = String(tableId || '').trim().toLowerCase();
+              table = (tableId ? tables.find(function (t) { return t && String(t.id || '').trim().toLowerCase() === tableId; }) : null) || null;
+            }
+            if (!table) table = tables[0] || null;
             var rows = table && Array.isArray(table.rows) ? table.rows : [];
             return rows.map(function (r) {
               var label = r && (r.variant || r.key) ? String(r.variant || r.key) : '—';

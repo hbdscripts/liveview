@@ -3970,6 +3970,47 @@ body[data-dashboard-view="overview"] .kexo-ovw-tabs-row .btn-group {
 body[data-dashboard-view="overview"] .kexo-ovw-date-tab {
   font-weight: 500;
 }
+body[data-dashboard-view="overview"] .kexo-widget-head {
+  height: auto;
+  overflow: visible;
+}
+body[data-dashboard-view="overview"] .kexo-widget-title {
+  overflow: visible;
+  white-space: normal;
+  text-overflow: clip;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--tblr-body-color, #182433);
+}
+body[data-dashboard-view="overview"] .kexo-ovw-tabs-row .btn {
+  text-transform: none;
+  letter-spacing: 0;
+}
+body[data-dashboard-view="overview"] .kexo-ovw-tabs-row .dropdown-menu {
+  z-index: 2000;
+}
+
+body[data-dashboard-view="overview"] .kexo-ovw-card-loader {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+body[data-dashboard-view="overview"] .kexo-ovw-card-loader.is-active {
+  opacity: 1;
+}
+body[data-dashboard-view="overview"] .kexo-ovw-card-loader .kpi-mini-spinner {
+  width: 22px;
+  height: 22px;
+}
+body[data-dashboard-view="overview"] .kexo-widget-card-body,
+body[data-dashboard-view="overview"] .kexo-overview-main-card-body {
+  position: relative;
+}
 body[data-dashboard-view="overview"] .kexo-ovw-kpi-list {
   display: flex;
   flex-direction: column;
@@ -3977,7 +4018,14 @@ body[data-dashboard-view="overview"] .kexo-ovw-kpi-list {
 }
 body[data-dashboard-view="overview"] .kexo-ovw-kpi-row {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  gap: .25rem;
+  min-width: 0;
+  padding: .15rem 0;
+}
+body[data-dashboard-view="overview"] .kexo-ovw-kpi-row-top {
+  display: flex;
+  align-items: baseline;
   gap: .55rem;
   min-width: 0;
 }
@@ -3999,6 +4047,23 @@ body[data-dashboard-view="overview"] .kexo-ovw-kpi-value {
   flex: 0 0 auto;
   margin-left: auto;
   font-weight: 600;
+}
+body[data-dashboard-view="overview"] .kexo-ovw-kpi-delta {
+  flex: 0 0 auto;
+  min-width: 44px;
+  text-align: right;
+  font-size: .75rem;
+  font-weight: 600;
+  color: var(--tblr-secondary);
+}
+body[data-dashboard-view="overview"] .kexo-ovw-kpi-delta.is-up {
+  color: var(--kexo-accent-2, #3eb3ab);
+}
+body[data-dashboard-view="overview"] .kexo-ovw-kpi-delta.is-down {
+  color: var(--kexo-accent-4, #e4644b);
+}
+body[data-dashboard-view="overview"] .kexo-ovw-kpi-progress {
+  margin-left: 26px;
 }
 body[data-dashboard-view="overview"] .kexo-ovw-panel-pagination {
   margin-top: .5rem;
