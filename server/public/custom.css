@@ -4032,9 +4032,13 @@ body[data-page="dashboard"] #dash-trending-down .dash-trend-delta.text-red {
   color: #dc2626;
 }
 .kexo-overview-running-total.is-profit .kexo-overview-running-total-value {
-  /* color: #16a34a; */
+  color: #16a34a;
 }
 .kexo-overview-running-total.is-profit.is-negative .kexo-overview-running-total-value {
+  color: #dc2626;
+}
+/* Dashboard KPI grid: profit value red when negative */
+#dash-kpi-profit.is-negative {
   color: #dc2626;
 }
 .kexo-overview-running-totals--main {
@@ -5212,6 +5216,10 @@ body[data-page="dashboard"] .kexo-overview-widget-card .kexo-widget-head-right {
 /* ── Layout: keep content pinned to top (avoid vertical centering on short pages) ── */
 .page-body {
   flex: 1 0 auto;
+  /* Override Tabler's .page-body flex+margin layout so app pages always start directly under the header stack. */
+  display: block !important;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
   overflow: visible !important;
   justify-content: flex-start !important;
   align-items: stretch !important;
@@ -5408,6 +5416,11 @@ body[data-page="dashboard"] .kexo-overview-widget-card .kexo-widget-head-right {
   color: #333;
   white-space: nowrap;
 }
+/* Profit KPI: red when negative (header strip chips) */
+.kexo-kpi-chip[data-cond-sparkline="profit"].is-negative .kexo-kpi-chip-value {
+  color: #dc2626;
+}
+/* COGS is neutral (no good/bad tone); keep default/teal styling. */
 .kexo-kpi-chip-delta {
   font-size: .68rem;
   font-weight: 500;

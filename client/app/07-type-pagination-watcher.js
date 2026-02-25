@@ -3868,6 +3868,8 @@
       if (condOrdersEl) condOrdersEl.textContent = orderCountVal != null ? formatSessions(orderCountVal) : '\u2014';
       if (condRevenueEl) condRevenueEl.textContent = revenueVal != null ? formatRevenue(revenueVal) : '\u2014';
       if (condProfitEl) condProfitEl.textContent = profitVal != null ? formatRevenue(profitVal) : '\u2014';
+      var profitChip = condProfitEl && condProfitEl.closest ? condProfitEl.closest('.kexo-kpi-chip') : null;
+      if (profitChip) profitChip.classList.toggle('is-negative', typeof profitVal === 'number' && Number.isFinite(profitVal) && profitVal < 0);
       if (condSessionsEl) condSessionsEl.textContent = sessionsVal != null ? formatSessions(sessionsVal) : '\u2014';
       if (condConvEl) condConvEl.textContent = convVal != null ? pct(convVal) : '\u2014';
       if (condVpvEl) condVpvEl.textContent = vpvVal != null ? formatRevenue(vpvVal) : '\u2014';
@@ -4203,6 +4205,8 @@
 
       setDashValueText('dash-kpi-revenue', salesVal != null ? formatRevenue0(salesVal) : '\u2014');
       setDashValueText('dash-kpi-profit', profitVal != null ? formatRevenue0(profitVal) : '\u2014');
+      var dashProfitEl = el('dash-kpi-profit');
+      if (dashProfitEl) dashProfitEl.classList.toggle('is-negative', typeof profitVal === 'number' && Number.isFinite(profitVal) && profitVal < 0);
       // Overview card Profit is set only by the chart (setOverviewSalesRunningTotals) so it stays in sync with the graph; do not overwrite from KPI.
       setDashValueText('dash-kpi-orders', ordersVal != null ? Math.round(ordersVal).toLocaleString() : '\u2014');
       setDashValueText('dash-kpi-sessions', sessionsVal != null ? formatSessions(sessionsVal) : '\u2014');
