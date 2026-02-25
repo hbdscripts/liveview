@@ -414,9 +414,16 @@ const ASSET_VERSION = (() => {
     const files = [
       'app.js',
       'custom.css',
+      'settings-ui.css',
       'tabler-theme.css',
       'theme-settings.js',
       'settings-page.js',
+      // Lazy-loaded Settings panels (must bump version when they change).
+      'admin-page.js',
+      'attribution-mapping-settings.js',
+      'attribution-tree-settings.js',
+      'cost-expenses-settings.js',
+      'cost-breakdown-settings.js',
       'diagnostics-modal.css',
       'sentry-helpers.js',
       'partials/head-theme.html',
