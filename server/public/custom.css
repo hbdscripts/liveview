@@ -566,6 +566,7 @@ a {
 
 /* jsVectorMap tooltip should match Tabler theme (avoid white tooltip in dark mode). */
 .jvm-container { background: transparent !important; }
+.jvm-region { pointer-events: all !important; }
 .jvm-tooltip {
   position: absolute !important;
   pointer-events: none !important;
@@ -4035,11 +4036,11 @@ body[data-page="dashboard"] #dash-trending-down .dash-trend-delta.text-red {
   color: #16a34a;
 }
 .kexo-overview-running-total.is-profit.is-negative .kexo-overview-running-total-value {
-  color: #dc2626;
+  color: var(--kexo-kpi-delta-down, var(--kexo-accent-4, #e4644b));
 }
-/* Dashboard KPI grid: profit value red when negative */
+/* Dashboard KPI grid: profit value uses KPI delta-down (negative) color */
 #dash-kpi-profit.is-negative {
-  color: #dc2626;
+  color: var(--kexo-dashboard-kpi-down, var(--kexo-kpi-delta-down, var(--kexo-accent-4, #e4644b)));
 }
 .kexo-overview-running-totals--main {
   margin-top: 0;
@@ -5416,12 +5417,12 @@ body[data-page="dashboard"] .kexo-overview-widget-card .kexo-widget-head-right {
   color: #333;
   white-space: nowrap;
 }
-/* Profit KPI: red when negative — header strip value (by ID) and chip fallback */
+/* Profit KPI: negative uses KPI color settings (delta-down / header down) */
 #cond-kpi-profit.is-negative {
-  color: #dc2626;
+  color: var(--kexo-header-kpi-down, var(--kexo-kpi-delta-down, var(--kexo-accent-4, #e4644b)));
 }
 .kexo-kpi-chip[data-cond-sparkline="profit"].is-negative .kexo-kpi-chip-value {
-  color: #dc2626;
+  color: var(--kexo-header-kpi-down, var(--kexo-kpi-delta-down, var(--kexo-accent-4, #e4644b)));
 }
 /* COGS is neutral (no good/bad tone); keep default/teal styling. */
 .kexo-kpi-chip-delta {
