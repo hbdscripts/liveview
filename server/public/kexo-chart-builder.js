@@ -243,6 +243,7 @@
       dashArray: num(src.dashArray, 0, 0, 20),
       markerSize: num(src.markerSize, 3, 0, 12),
       fillOpacity: num(src.fillOpacity, 0.18, 0, 1),
+      lineOpacity: num(src.lineOpacity, 1, 0, 1),
       gridDash: num(src.gridDash, 3, 0, 16),
       dataLabels: labelsMode,
       toolbar: !!src.toolbar,
@@ -384,6 +385,32 @@
     }
     if (chartStyle) {
       deepMergeInto(apexOpts, chartStyleOverride(chartStyle, chartType));
+      // Line opacity is applied via stroke RGBA colours (not fillOpacity).
+      if (chartType === 'line') {
+        (function () {
+          var lo = Number(chartStyle && chartStyle.lineOpacity);
+          if (!Number.isFinite(lo)) lo = 1;
+          lo = Math.max(0, Math.min(1, lo));
+          if (lo >= 0.999) return;
+          function colorToRgbaOrSame(color, alpha) {
+            var raw = color == null ? '' : String(color).trim();
+            if (!raw) return raw;
+            var hex = raw.replace(/^#/, '');
+            if (/^[0-9a-f]{6}$/i.test(hex)) return hexToRgba('#' + hex, alpha);
+            var m = raw.replace(/\s+/g, '').match(/^rgba?\((\d+),(\d+),(\d+)(?:,[0-9.]+)?\)$/i);
+            if (m) {
+              var r = Math.max(0, Math.min(255, parseInt(m[1], 10) || 0));
+              var g = Math.max(0, Math.min(255, parseInt(m[2], 10) || 0));
+              var b = Math.max(0, Math.min(255, parseInt(m[3], 10) || 0));
+              var a = typeof alpha === 'number' && Number.isFinite(alpha) ? Math.max(0, Math.min(1, alpha)) : 1;
+              return 'rgba(' + r + ',' + g + ',' + b + ',' + a + ')';
+            }
+            return raw;
+          }
+          apexOpts.stroke = apexOpts.stroke || {};
+          apexOpts.stroke.colors = (colors || []).map(function (c) { return colorToRgbaOrSame(c, lo); });
+        })();
+      }
     }
     if (advancedApexOverride && Object.keys(advancedApexOverride).length) {
       deepMergeInto(apexOpts, advancedApexOverride);

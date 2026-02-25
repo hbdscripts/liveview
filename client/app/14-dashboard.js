@@ -747,7 +747,7 @@
                 productUrl: productUrl
               };
             });
-            renderDashTopList('dash-top-products-body', prodRows, { accentCss: 'background: var(--kexo-accent-2);' });
+            renderDashTopList('dash-top-products-body', prodRows, { accentCss: 'background: var(--kexo-accent-1);' });
           }
         } catch (_) {}
 
@@ -845,7 +845,7 @@
             productUrl: productUrl
           };
         });
-        renderDashTopList('dash-trending-body', out, { accentCss: 'background: var(--kexo-accent-3);' });
+        renderDashTopList('dash-trending-body', out, { accentCss: 'background: var(--kexo-accent-2);' });
       }
 
       function refreshDashboardOverviewPage(opts) {
@@ -1509,6 +1509,7 @@
         var uiStyle = (typeof chartStyleFromUiConfig === 'function') ? chartStyleFromUiConfig(chartId) : null;
         var horizontal = !(opts && opts.horizontal === false);
         var fillOpacityVal = (uiStyle && Number.isFinite(Number(uiStyle.fillOpacity))) ? Math.max(0, Math.min(1, Number(uiStyle.fillOpacity))) : null;
+        var lineOpacityVal = (uiStyle && Number.isFinite(Number(uiStyle.lineOpacity))) ? Math.max(0, Math.min(1, Number(uiStyle.lineOpacity))) : 1;
         var areaOpacityFrom = (opts && typeof opts.areaOpacityFrom === 'number' && isFinite(opts.areaOpacityFrom)) ? opts.areaOpacityFrom : 0.15;
         var areaOpacityTo = (opts && typeof opts.areaOpacityTo === 'number' && isFinite(opts.areaOpacityTo)) ? opts.areaOpacityTo : 0.02;
         var chartHeight = (opts && Number.isFinite(Number(opts.height))) ? Number(opts.height) : 200;
@@ -1586,8 +1587,8 @@
           };
           if (customTooltip) tooltipConfig.custom = customTooltip;
 
-          var baseOpacity = fillOpacityVal != null ? fillOpacityVal : 1;
-          var fillConfig = chartType === 'line' ? { type: 'solid', opacity: baseOpacity }
+          var baseOpacity = (chartType === 'line') ? 1 : (fillOpacityVal != null ? fillOpacityVal : 1);
+          var fillConfig = chartType === 'line' ? { type: 'solid', opacity: 1 }
             : chartType === 'bar' ? { type: 'solid', opacity: baseOpacity }
             : { type: 'solid', opacity: baseOpacity, colors: colors.map(lightenHex50) };
           var animationsEnabled = !!(uiStyle && uiStyle.animations === true);
@@ -1606,6 +1607,17 @@
           var barColWidth = uiBarColumnWidth != null ? (String(uiBarColumnWidth) + '%') : (stacked ? '80%' : '60%');
           var gridDashVal = uiGridDash != null ? uiGridDash : 3;
           var gridShow = gridDashVal > 0;
+          var strokeColors = null;
+          try {
+            if (chartType === 'line') {
+              strokeColors = colors.map(function (c) {
+                var rgb = cssColorToRgbTriplet(c, _primaryRgbDash);
+                return 'rgba(' + rgb + ',' + String(lineOpacityVal) + ')';
+              });
+            }
+          } catch (_) { strokeColors = null; }
+          var strokeConfig = { show: true, width: strokeWidth, curve: 'smooth', lineCap: 'round' };
+          if (strokeColors && strokeColors.length) strokeConfig.colors = strokeColors;
           var apexOpts = {
             chart: {
               type: chartType,
@@ -1617,7 +1629,7 @@
             },
             series: apexSeries,
             colors: colors,
-            stroke: { show: true, width: strokeWidth, curve: 'smooth', lineCap: 'round' },
+            stroke: strokeConfig,
             fill: fillConfig,
             plotOptions: chartType === 'bar' ? { bar: { columnWidth: barColWidth, borderRadius: 3, stacked: stacked } } : (chartType === 'area' && stacked ? { area: { stacked: true } } : {}),
             xaxis: (function() {
@@ -4869,7 +4881,7 @@
               productUrl: productUrl
             };
           });
-          renderDashTopList('dash-top-products-body', prodRows, { accentCss: 'background: var(--kexo-accent-2);' });
+          renderDashTopList('dash-top-products-body', prodRows, { accentCss: 'background: var(--kexo-accent-1);' });
         }
 
         var countryBody = el('dash-top-countries-body');
@@ -4969,7 +4981,7 @@
                 productUrl: productUrl
               };
             });
-            renderDashTopList(tableId + '-body', listRows, { accentCss: 'background: var(--kexo-accent-3);' });
+            renderDashTopList(tableId + '-body', listRows, { accentCss: 'background: var(--kexo-accent-2);' });
             return;
           }
           var t = el(tableId);
