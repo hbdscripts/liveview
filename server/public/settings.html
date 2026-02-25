@@ -1050,19 +1050,39 @@
               <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
                 <h4 class="m-0">Cost Breakdown</h4>
               </div>
-              <div class="accordion settings-layout-accordion mb-3" id="cost-breakdown-summary-accordion">
+              <div class="btn-group mb-3" role="group" aria-label="Cost Breakdown date range" id="cost-breakdown-range-group">
+                <button type="button" class="btn btn-sm" data-cost-breakdown-range="today">Today</button>
+                <button type="button" class="btn btn-sm" data-cost-breakdown-range="yesterday">Yesterday</button>
+                <button type="button" class="btn btn-sm" data-cost-breakdown-range="7d">7 Days</button>
+                <button type="button" class="btn btn-sm" data-cost-breakdown-range="30d">30 Days</button>
+              </div>
+              <label class="form-check form-switch mb-2">
+                <input class="form-check-input" type="checkbox" id="cost-breakdown-hide-inactive" checked />
+                <span class="form-check-label" title="When on, hide inactive rows from the table (summary totals still include inactive).">Hide inactive</span>
+              </label>
+              <div id="cost-breakdown-msg" class="form-hint mb-2"></div>
+              <div class="table-responsive">
+                <table class="table table-sm align-middle">
+                  <thead>
+                    <tr>
+                      <th>Cost item</th>
+                      <th>Status</th>
+                      <th class="text-end">Amount</th>
+                      <th>Notes</th>
+                    </tr>
+                  </thead>
+                  <tbody id="cost-breakdown-table-body">
+                    <tr><td colspan="4" class="text-muted small">Select a date range to load a breakdown.</td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="accordion settings-layout-accordion mt-3" id="cost-breakdown-summary-accordion">
                 <div class="accordion-item">
                   <h4 class="accordion-header">
                     <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#cost-breakdown-summary-collapse" aria-expanded="false" aria-controls="cost-breakdown-summary-collapse"><span class="d-flex align-items-center w-100 gap-2"><span class="kexo-settings-accordion-chevron" aria-hidden="true"><i class="fa-regular fa-chevron-down" aria-hidden="true"></i></span><span class="me-auto">Cost Summary</span></span></button>
                   </h4>
                   <div id="cost-breakdown-summary-collapse" class="accordion-collapse collapse" data-bs-parent="#cost-breakdown-summary-accordion">
                     <div class="accordion-body">
-                      <div class="btn-group mb-3" role="group" aria-label="Cost Breakdown date range" id="cost-breakdown-range-group">
-                        <button type="button" class="btn btn-sm" data-cost-breakdown-range="today">Today</button>
-                        <button type="button" class="btn btn-sm" data-cost-breakdown-range="yesterday">Yesterday</button>
-                        <button type="button" class="btn btn-sm" data-cost-breakdown-range="7d">7 Days</button>
-                        <button type="button" class="btn btn-sm" data-cost-breakdown-range="30d">30 Days</button>
-                      </div>
                       <div class="settings-responsive-grid settings-cost-breakdown-totals-grid" data-settings-ui-row="1" aria-label="Cost Breakdown totals">
                         <div class="settings-cost-breakdown-total-tile" data-cost-breakdown-total-tile="active">
                           <div class="settings-cost-breakdown-total-tile-icon" aria-hidden="true">
@@ -1086,26 +1106,6 @@
                     </div>
                   </div>
                 </div>
-              </div>
-              <label class="form-check form-switch mb-2">
-                <input class="form-check-input" type="checkbox" id="cost-breakdown-hide-inactive" checked />
-                <span class="form-check-label" title="When on, hide inactive rows from the table (summary totals still include inactive).">Hide inactive</span>
-              </label>
-              <div id="cost-breakdown-msg" class="form-hint mb-2"></div>
-              <div class="table-responsive">
-                <table class="table table-sm align-middle">
-                  <thead>
-                    <tr>
-                      <th>Cost item</th>
-                      <th>Status</th>
-                      <th class="text-end">Amount</th>
-                      <th>Notes</th>
-                    </tr>
-                  </thead>
-                  <tbody id="cost-breakdown-table-body">
-                    <tr><td colspan="4" class="text-muted small">Select a date range to load a breakdown.</td></tr>
-                  </tbody>
-                </table>
               </div>
             </div>
             </div>
