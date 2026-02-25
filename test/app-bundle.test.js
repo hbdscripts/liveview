@@ -29,7 +29,9 @@ test('app.js checksum matches client/app sources (run npm run build:app if faile
   for (const file of manifest) {
     const full = path.join(clientAppDir, file);
     assert.ok(fs.existsSync(full), 'missing source: ' + file);
-    body += fs.readFileSync(full, 'utf8');
+    let src = fs.readFileSync(full, 'utf8');
+    src = src.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    body += src;
     if (!body.endsWith('\n')) body += '\n';
   }
   const expectedChecksum = crypto.createHash('sha256').update(body).digest('hex').slice(0, 16);

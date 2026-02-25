@@ -43,7 +43,10 @@ async function main() {
       console.error('[build-app-js] missing source:', full);
       process.exit(1);
     }
-    body += fs.readFileSync(full, 'utf8');
+    // Normalize line endings so checksums and output are stable across platforms and git autocrlf.
+    let src = fs.readFileSync(full, 'utf8');
+    src = src.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    body += src;
     if (!body.endsWith('\n')) body += '\n';
   }
 
