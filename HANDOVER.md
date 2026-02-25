@@ -60,6 +60,26 @@ Templates under `server/public/**`; served via `sendPage()` in `server/index.js`
 
 ---
 
+## Tiered retention roadmap (charts vs drilldowns)
+
+Authoritative policy/spec: **`docs/DATA_RETENTION_CONTRACT.md`**.
+
+- **Phase 1 (done; ok for alpha/single install)**:
+  - **Disable in-DB Postgres “backup tables” by default** (prevents Railway volume blowups).
+  - Add **daily rollups** (`daily_rollups`) so charts/KPIs can cover up to 3 years without keeping all raw events.
+  - Cleanup backfills rollups before deleting raw drilldown data; UI clamps ranges based on tier limits.
+
+- **Phase 2 (do before launch + multi-install billing tiers)**:
+  - Make retention **per-shop** (shop-scoped tier from billing), not “global effective tier”.
+  - Add `shop`/`shop_id` scoping to rollups + indexes, and run **per-shop** cleanup/backfill in safe batches.
+  - Rationale: without Phase 2, a single Max-tier shop can effectively force longer retention/storage behavior for everyone.
+
+- **When to start Phase 2 (timing guidance)**:
+  - **Before** enabling paid tiers / onboarding a second real store / doing a marketing push.
+  - If you’re in **alpha with a single install**, it’s reasonable to defer Phase 2 while you build product features.
+
+---
+
 ## Key paths
 
 - **Ingest:** `POST /api/ingest` → `server/store.js`

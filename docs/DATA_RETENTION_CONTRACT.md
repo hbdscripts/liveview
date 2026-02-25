@@ -34,3 +34,8 @@ Retention tiers are normalized to: `starter`, `growth`, `scale`, `max`.
 - **Phase 1**: single-install “effective tier” with daily rollups; not per-shop multi-tenant retention.
 - **Phase 2**: per-shop billing tier and per-shop retention windows (and `shop` scoping across raw + rollup tables).
 
+#### Timing guidance (alpha → launch)
+
+- If you’re in **alpha with a single install**, Phase 1 is usually enough while you build product features.
+- Start Phase 2 **before** enabling paid tiers / onboarding multiple stores / doing a marketing push, so tiers don’t behave “globally” across all shops.
+
