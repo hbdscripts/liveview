@@ -2793,6 +2793,41 @@
       };
     }
 
+    var gaConversionActionsCache = [];
+
+    function getConversionActionsTab() {
+      var active = document.querySelector('#settings-ga-actions-tabs .nav-link.active');
+      return (active && active.getAttribute('data-settings-ga-actions-tab') === 'removed') ? 'removed' : 'live';
+    }
+
+    function renderConversionActions(actions, tab) {
+      var body = document.getElementById('settings-ga-actions-body');
+      if (!body) return;
+      var isRemoved = tab === 'removed';
+      var filtered = actions.filter(function (a) {
+        var st = (a && a.status) ? String(a.status).toUpperCase() : '';
+        return isRemoved ? st === 'REMOVED' : st !== 'REMOVED';
+      });
+      if (!filtered.length) {
+        body.innerHTML = '<tr><td colspan="5" class="text-muted small">' + (isRemoved ? 'No removed conversion actions.' : 'No conversion actions found yet. Click "Create missing defaults".') + '</td></tr>';
+        return;
+      }
+      body.innerHTML = filtered.map(function (a) {
+        var name = a && a.name ? String(a.name) : '—';
+        var st = a && a.status ? String(a.status) : '—';
+        var cat = a && a.category ? String(a.category) : '—';
+        var primary = a && a.primary_for_goal === true;
+        var last = a && a.last_upload_date_time ? String(a.last_upload_date_time) : null;
+        return '<tr>' +
+          '<td>' + escapeHtml(name) + '</td>' +
+          '<td><span class="text-muted small">' + escapeHtml(st) + '</span></td>' +
+          '<td><span class="text-muted small">' + escapeHtml(cat || '—') + '</span></td>' +
+          '<td class="text-center"><span class="text-muted small">' + (primary ? 'On' : 'Off') + '</span></td>' +
+          '<td class="text-end"><span class="text-muted small">' + escapeHtml(last || '—') + '</span></td>' +
+          '</tr>';
+      }).join('');
+    }
+
     function loadConversionActions() {
       var body = document.getElementById('settings-ga-actions-body');
       if (!body) return Promise.resolve(false);
@@ -2803,31 +2838,16 @@
         .then(function (r) {
           if (!r || !r.ok || !r.json || !r.json.ok) {
             body.innerHTML = '<tr><td colspan="5" class="text-muted small">No data yet.</td></tr>';
+            gaConversionActionsCache = [];
             return false;
           }
-          var actions = Array.isArray(r.json.actions) ? r.json.actions : [];
-          if (!actions.length) {
-            body.innerHTML = '<tr><td colspan="5" class="text-muted small">No conversion actions found yet. Click “Create missing defaults”.</td></tr>';
-            return true;
-          }
-          body.innerHTML = actions.map(function (a) {
-            var name = a && a.name ? String(a.name) : '—';
-            var st = a && a.status ? String(a.status) : '—';
-            var cat = a && a.category ? String(a.category) : '—';
-            var primary = a && a.primary_for_goal === true;
-            var last = a && a.last_upload_date_time ? String(a.last_upload_date_time) : null;
-            return '<tr>' +
-              '<td>' + escapeHtml(name) + '</td>' +
-              '<td><span class="text-muted small">' + escapeHtml(st) + '</span></td>' +
-              '<td><span class="text-muted small">' + escapeHtml(cat || '—') + '</span></td>' +
-              '<td class="text-center"><span class="text-muted small">' + (primary ? 'On' : 'Off') + '</span></td>' +
-              '<td class="text-end"><span class="text-muted small">' + escapeHtml(last || '—') + '</span></td>' +
-              '</tr>';
-          }).join('');
+          gaConversionActionsCache = Array.isArray(r.json.actions) ? r.json.actions : [];
+          renderConversionActions(gaConversionActionsCache, getConversionActionsTab());
           return true;
         })
         .catch(function () {
           body.innerHTML = '<tr><td colspan="5" class="text-muted small">Failed to load conversion actions.</td></tr>';
+          gaConversionActionsCache = [];
           return false;
         });
     }
@@ -3296,6 +3316,18 @@
     if (issuesRefreshBtn) issuesRefreshBtn.addEventListener('click', function () { loadIssues(); });
     if (goalsRefreshBtn) goalsRefreshBtn.addEventListener('click', function () { refreshGoogleAds({ goals: true, actions: false, health: false, issues: false }); });
     if (actionsRefreshBtn) actionsRefreshBtn.addEventListener('click', function () { refreshGoogleAds({ goals: false, actions: true, health: false, issues: false }); });
+
+    document.addEventListener('click', function (e) {
+      var btn = e.target && e.target.closest ? e.target.closest('#settings-ga-actions-tabs [data-settings-ga-actions-tab]') : null;
+      var tab = btn ? (btn.getAttribute('data-settings-ga-actions-tab') || '') : null;
+      if (!tab || (tab !== 'live' && tab !== 'removed')) return;
+      var tabs = document.querySelectorAll('#settings-ga-actions-tabs .nav-link');
+      tabs.forEach(function (b) {
+        b.classList.toggle('active', (b.getAttribute('data-settings-ga-actions-tab') || '') === tab);
+        b.setAttribute('aria-selected', (b.getAttribute('data-settings-ga-actions-tab') || '') === tab);
+      });
+      renderConversionActions(gaConversionActionsCache, tab);
+    });
 
     try {
       window.__kexoApplyGoogleAdsProfitDeductions = function (d, v, b) { applyProfitDeductions(d, v != null ? v : 1, b != null ? b : 1); };
