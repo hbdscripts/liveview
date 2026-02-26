@@ -7193,7 +7193,7 @@
 
         var size = 180;
         var r = 72;
-        var strokeW = 12;
+        var strokeW = 4;
         var cx = Math.round(size / 2);
         var cy = Math.round(size / 2);
         var circ = Math.round(2 * Math.PI * r * 1000) / 1000;
@@ -7543,7 +7543,7 @@
           var tip = labelText + '\n' + valueText + '\n' + (metric === 'ctr' ? (ctrLabel + ': ' + valueText) : ('Share: ' + (Math.round(pct * 10) / 10).toFixed(1) + '%'));
           var size = 111;
           var r = 41;
-          var strokeW = 8;
+          var strokeW = 4;
           var cx = size / 2;
           var cy = size / 2;
           var circ = Math.round(2 * Math.PI * r * 1000) / 1000;
@@ -7777,6 +7777,15 @@
         try {
           if (typeof isDashboardOverviewPage === 'function' && isDashboardOverviewPage()) {
             dashLastRefreshAt = Date.now();
+            if (!force) {
+              // Light refresh: only map; cards stay as-is unless new sale
+              try {
+                if (typeof window.refreshLiveOnlineChart === 'function') {
+                  window.refreshLiveOnlineChart({ force: false, pageKey: 'dashboard' });
+                }
+              } catch (_) {}
+              return;
+            }
             return refreshDashboardOverviewPage(opts || {});
           }
         } catch (_) {}
