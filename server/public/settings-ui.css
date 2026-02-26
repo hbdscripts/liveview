@@ -1227,6 +1227,15 @@ body[data-page="settings"] #admin-panel-googleads .settings-ga-action-name-input
   min-width: 10rem;
 }
 
+/* Admin → Google Ads: Issues action bar – left-aligned, equal-width buttons */
+body[data-page="settings"] #admin-panel-googleads .settings-ga-actions-bar {
+  justify-content: flex-start;
+}
+body[data-page="settings"] #admin-panel-googleads .settings-ga-actions-bar .btn-group .btn,
+body[data-page="settings"] #admin-panel-googleads .settings-ga-actions-bar > .btn {
+  min-width: 5.5rem;
+}
+
 /* Admin → Google Ads: Live/Removed tabs must be clickable */
 body[data-page="settings"] #admin-panel-googleads #settings-ga-actions-tabs .nav-link {
   cursor: pointer;
