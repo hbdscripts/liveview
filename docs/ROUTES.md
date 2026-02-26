@@ -155,6 +155,9 @@ When adding a route, re-run this script so the doc stays in sync.
 | GET | `/settings/:tab` | (inline) |
 | GET | `/settings/:tab/:subtab` | (inline) |
 | GET | `/shipping-cr` | (inline) |
+| GET | `/site` | (inline) |
+| USE | `/site` | (mounted router) |
+| GET | `/site/` | (inline) |
 | GET | `/theme-custom-last.css` | server/routes/settings.js (getThemeCustomLastCss) |
 | GET | `/theme-vars.css` | server/routes/settings.js (getThemeVarsCss) |
 | GET | `/time-of-day` | (inline) |

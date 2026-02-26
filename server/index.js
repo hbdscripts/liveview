@@ -135,6 +135,27 @@ app.use('/api/ingest', express.json({ limit: config.maxEventPayloadBytes }));
 
 app.use('/api/ingest', ingestRouter);
 
+// Site (new front-end at kexo.io/site) – public, no dashboard auth; blocked by robots.txt while in development.
+// All site files live in repo root site/; colleague should only commit changes under site/.
+const siteDir = path.join(__dirname, '..', 'site');
+app.use('/site', express.static(siteDir, { index: false }));
+app.get('/site', (req, res) => {
+  const indexPath = path.join(siteDir, 'index.html');
+  if (fs.existsSync(indexPath)) {
+    res.type('html').sendFile(indexPath);
+  } else {
+    res.status(404).type('text/plain').send('Site not found');
+  }
+});
+app.get('/site/', (req, res) => {
+  const indexPath = path.join(siteDir, 'index.html');
+  if (fs.existsSync(indexPath)) {
+    res.type('html').sendFile(indexPath);
+  } else {
+    res.status(404).type('text/plain').send('Site not found');
+  }
+});
+
 // Mobile support is now enabled; keep route compatibility but do not gate by UA.
 
 // Protect dashboard + admin API: only from Shopify admin (Referer/Origin) or Google OAuth cookie (direct visits)

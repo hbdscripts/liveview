@@ -1,6 +1,9 @@
 # Block all crawlers – private dashboard, do not index
 User-agent: *
 Disallow: /
+# Block /site while the new front-end is being built (remove when ready to index)
+Disallow: /site
+Disallow: /site/
 
 # Block AI / LLM training bots
 User-agent: GPTBot

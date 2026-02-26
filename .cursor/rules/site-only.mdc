@@ -1,0 +1,14 @@
+---
+description: When working on the kexo.io/site front-end, only edit files under site/
+globs: site/**
+---
+
+# Site project only
+
+When editing or creating files for the **kexo.io/site** project (the new front-end at `/site`):
+
+- **Only create or modify files under the `site/` directory.**
+- Do not change `server/`, `client/`, `docs/` (unless explicitly asked), or root config files.
+- The main Kexo app (dashboard, API, ingest) must remain untouched.
+
+This rule applies when the user is working in or referring to the `site/` folder or "the site" / "kexo.io/site".
