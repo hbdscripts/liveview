@@ -343,18 +343,32 @@ body[data-page="settings"] #settings-panel-cost-expenses .kexo-flag-stack-item--
   justify-content: center;
   color: var(--tblr-secondary, #66758c);
 }
-body[data-page="settings"] #settings-panel-cost-expenses .kexo-flags-popover {
+body[data-page="settings"] #kexo-flags-popover,
+body[data-page="settings"] .kexo-flags-popover {
   max-width: 420px;
 }
-body[data-page="settings"] #settings-panel-cost-expenses .kexo-flags-popover .kexo-flag-stack-tooltip-flags {
+body[data-page="settings"] #kexo-flags-popover .kexo-flag-stack-tooltip-list,
+body[data-page="settings"] .kexo-flags-popover .kexo-flag-stack-tooltip-list {
   display: flex;
   flex-wrap: wrap;
+  gap: 12px 16px;
+}
+body[data-page="settings"] #kexo-flags-popover .kexo-flag-stack-tooltip-item,
+body[data-page="settings"] .kexo-flags-popover .kexo-flag-stack-tooltip-item {
+  display: inline-flex;
+  align-items: center;
   gap: 6px;
 }
-body[data-page="settings"] #settings-panel-cost-expenses .kexo-flags-popover .kexo-flag-stack-tooltip-codes {
-  margin-top: 6px;
-  opacity: 0.85;
-  font-size: 12px;
+body[data-page="settings"] #kexo-flags-popover .kexo-flag-stack-tooltip-item .flag,
+body[data-page="settings"] #kexo-flags-popover .kexo-flag-stack-tooltip-item .kexo-flag-img,
+body[data-page="settings"] .kexo-flags-popover .kexo-flag-stack-tooltip-item .flag,
+body[data-page="settings"] .kexo-flags-popover .kexo-flag-stack-tooltip-item .kexo-flag-img {
+  flex-shrink: 0;
+}
+body[data-page="settings"] #kexo-flags-popover .kexo-flag-stack-tooltip-name,
+body[data-page="settings"] .kexo-flags-popover .kexo-flag-stack-tooltip-name {
+  font-size: 13px;
+  white-space: nowrap;
 }
 
 /* Cost & Expenses: Shipping overrides layout + compact inputs. */
@@ -399,18 +413,22 @@ body[data-page="settings"] #settings-panel-cost-expenses #settings-cost-expenses
 body[data-page="settings"] #settings-panel-cost-expenses #settings-cost-expenses-panel-shipping .table th:nth-child(1),
 body[data-page="settings"] #settings-panel-cost-expenses #settings-cost-expenses-panel-shipping .table td:nth-child(1) {
   width: 56px;
+  text-align: center;
 }
 body[data-page="settings"] #settings-panel-cost-expenses #settings-cost-expenses-panel-shipping .table th:nth-child(2),
 body[data-page="settings"] #settings-panel-cost-expenses #settings-cost-expenses-panel-shipping .table td:nth-child(2) {
   width: 56px;
+  text-align: center;
 }
 body[data-page="settings"] #settings-panel-cost-expenses #settings-cost-expenses-panel-shipping .table th:nth-child(3),
 body[data-page="settings"] #settings-panel-cost-expenses #settings-cost-expenses-panel-shipping .table td:nth-child(3) {
   width: 140px;
+  text-align: center;
 }
 body[data-page="settings"] #settings-panel-cost-expenses #settings-cost-expenses-panel-shipping .table th:nth-child(4),
 body[data-page="settings"] #settings-panel-cost-expenses #settings-cost-expenses-panel-shipping .table td:nth-child(4) {
   width: 120px;
+  text-align: center;
 }
 body[data-page="settings"] #settings-panel-cost-expenses #settings-cost-expenses-panel-shipping .table th:nth-child(5),
 body[data-page="settings"] #settings-panel-cost-expenses #settings-cost-expenses-panel-shipping .table td:nth-child(5) {
@@ -423,9 +441,14 @@ body[data-page="settings"] #settings-panel-cost-expenses #settings-cost-expenses
   min-width: 80px;
 }
 
-/* Cost & Expenses: Shipping default input-group – input has min width for number entry. */
+/* Cost & Expenses: Shipping default input-group – input width, currency box square. */
 body[data-page="settings"] #settings-panel-cost-expenses #cost-expenses-shipping-worldwide {
   min-width: 100px;
+  max-width: 150px;
+}
+body[data-page="settings"] #settings-panel-cost-expenses #settings-cost-expenses-panel-shipping .input-group .btn-group,
+body[data-page="settings"] #settings-panel-cost-expenses #settings-cost-expenses-panel-shipping .input-group .btn-group .btn {
+  border-radius: 0;
 }
 body[data-page="settings"] #settings-panel-cost-expenses #cost-expenses-shipping-override-form-wrap fieldset {
   border: 1px solid var(--tblr-border-color, #e6e7e9);

@@ -1117,14 +1117,13 @@
     if (!list.length) {
       return '<div class="kexo-flag-stack-tooltip-title">All countries</div>';
     }
-    var flags = '';
+    var items = '';
     list.forEach(function (cc) {
       var name = regionDisplayName(cc) || cc;
-      flags += countryCodeToFlagHtml(cc, name);
+      var flagHtml = countryCodeToFlagHtml(cc, name);
+      items += '<div class="kexo-flag-stack-tooltip-item">' + flagHtml + '<span class="kexo-flag-stack-tooltip-name">' + esc(name) + '</span></div>';
     });
-    return '' +
-      '<div class="kexo-flag-stack-tooltip-flags">' + flags + '</div>' +
-      '<div class="kexo-flag-stack-tooltip-codes">' + esc(list.join(', ')) + '</div>';
+    return '<div class="kexo-flag-stack-tooltip-list">' + items + '</div>';
   }
 
   function countryCodesToFlagStackHtml(codes, emptyAriaLabel) {
@@ -1205,6 +1204,7 @@
     if (!triggerEl || !triggerEl.getAttribute) return;
     var raw = String(triggerEl.getAttribute('data-kexo-country-codes') || '').trim();
     var codes = raw ? raw.split(',').map(normalizeCountryCode).filter(Boolean) : [];
+    if (codes.length <= 1) return;
     ensureFlagsPopoverEl();
     hideFlagsPopover();
     if (!_flagsPopoverEl) return;
