@@ -718,10 +718,15 @@
                           <input type="number" id="cost-expenses-shipping-override-price" class="form-control" min="0" step="0.01" placeholder="e.g. 4.99" />
                         </div>
                       </div>
-                      <div class="mt-2">
-                        <label class="form-label" for="cost-expenses-shipping-override-countries">Countries (ISO2 codes, comma-separated)</label>
-                        <input type="text" id="cost-expenses-shipping-override-countries" class="form-control" placeholder="e.g. GB, IE, FR, CH" />
-                      </div>
+                      <fieldset class="mt-2">
+                        <legend class="form-label">Countries</legend>
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                          <input type="text" id="cost-expenses-shipping-override-country-input" class="form-control form-control-sm flex-grow-1" placeholder="Search country (e.g. GB, CH)" autocomplete="off" />
+                          <button type="button" class="btn btn-sm btn-primary" id="cost-expenses-shipping-override-country-add-btn">Add</button>
+                        </div>
+                        <div id="cost-expenses-shipping-override-country-suggest" class="kexo-country-suggest is-hidden" role="listbox" aria-label="Country suggestions"></div>
+                        <div class="d-flex gap-1 flex-wrap mt-2" id="cost-expenses-shipping-override-country-chips"></div>
+                      </fieldset>
                     </div>
                     <div class="modal-footer">
                       <button type="button" class="btn btn-md" data-bs-dismiss="modal">Cancel</button>

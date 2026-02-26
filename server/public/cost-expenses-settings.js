@@ -569,6 +569,92 @@
     return shippingOverrideModalApi;
   }
 
+  function renderShippingOverrideCountryChips(codes) {
+    var chips = document.getElementById('cost-expenses-shipping-override-country-chips');
+    if (!chips) return;
+    var list = Array.isArray(codes) ? codes : [];
+    var seen = {};
+    var html = '';
+    list.forEach(function (c) {
+      var code = normalizeCountryCode(c);
+      if (!code || seen[code]) return;
+      seen[code] = true;
+      var name = regionDisplayName(code) || '';
+      var title = name ? (name + ' (' + code + ')') : code;
+      html +=
+        '<span class="badge bg-secondary-lt text-secondary kexo-country-chip" data-country-code="' + esc(code) + '" title="' + esc(title) + '">' +
+          countryCodeToFlagHtml(code, name || code) +
+          '<span class="kexo-country-chip-code">' + esc(code) + '</span>' +
+          (name ? ('<span class="kexo-country-chip-name d-none d-md-inline">' + esc(name) + '</span>') : '') +
+          '<button type="button" class="btn-close ms-1 kexo-country-chip-remove" aria-label="Remove ' + esc(code) + '" data-shipping-override-country-remove="' + esc(code) + '"></button>' +
+        '</span>';
+    });
+    chips.innerHTML = html || '<span class="text-muted small">No countries selected.</span>';
+  }
+
+  function renderShippingOverrideCountrySuggest(query) {
+    var el = document.getElementById('cost-expenses-shipping-override-country-suggest');
+    if (!el) return;
+    var items = buildCountrySuggestions(query, 12);
+    try {
+      var chips = document.getElementById('cost-expenses-shipping-override-country-chips');
+      if (chips) {
+        var selected = {};
+        chips.querySelectorAll('[data-country-code]').forEach(function (chip) {
+          var cc = normalizeCountryCode(chip.getAttribute('data-country-code'));
+          if (cc) selected[cc] = true;
+        });
+        items = items.filter(function (it) { return it && it.code && !selected[it.code]; });
+      }
+    } catch (_) {}
+    if (!items.length) {
+      el.innerHTML = '';
+      el.classList.add('is-hidden');
+      return;
+    }
+    var html = '';
+    items.forEach(function (it) {
+      var label = (it.code || '') + (it.name ? (' — ' + it.name) : '');
+      var flagHtml = countryCodeToFlagHtml(it.code, it.name || it.code);
+      html +=
+        '<button type="button" class="kexo-country-suggest-item" role="option" data-shipping-override-country-suggest-code="' + esc(it.code) + '" title="' + esc(label) + '">' +
+          flagHtml +
+          '<span class="kexo-country-suggest-code">' + esc(it.code) + '</span>' +
+          (it.name ? ('<span class="kexo-country-suggest-name">' + esc(it.name) + '</span>') : '') +
+        '</button>';
+    });
+    el.innerHTML = html;
+    el.classList.remove('is-hidden');
+  }
+
+  function hideShippingOverrideCountrySuggest() {
+    var el = document.getElementById('cost-expenses-shipping-override-country-suggest');
+    if (el) { el.innerHTML = ''; el.classList.add('is-hidden'); }
+  }
+
+  function readShippingOverrideCountryCodesFromChips() {
+    var chips = document.getElementById('cost-expenses-shipping-override-country-chips');
+    var out = [];
+    if (!chips) return out;
+    chips.querySelectorAll('[data-country-code]').forEach(function (el) {
+      var code = normalizeCountryCode(el.getAttribute('data-country-code'));
+      if (code && out.indexOf(code) === -1) out.push(code);
+    });
+    return out;
+  }
+
+  function addShippingOverrideCountryFromText(rawText) {
+    var code = resolveCountryCodeFromFreeText(rawText);
+    if (!code) return { ok: false, error: 'Enter a valid country code or name (e.g. GB, CH, United Kingdom).' };
+    var existing = readShippingOverrideCountryCodesFromChips();
+    if (existing.indexOf(code) >= 0) return { ok: true };
+    if (existing.length >= 64) return { ok: false, error: 'Maximum 64 countries per override.' };
+    existing.push(code);
+    existing.sort(function (a, b) { return String(a).localeCompare(String(b)); });
+    renderShippingOverrideCountryChips(existing);
+    return { ok: true };
+  }
+
   function showShippingOverrideForm(idx) {
     state.config = state.config || defaultConfig();
     state.config.shipping = readShippingFromUi();
@@ -580,7 +666,10 @@
     document.getElementById('cost-expenses-shipping-override-enabled').checked = ov.enabled !== false;
     document.getElementById('cost-expenses-shipping-override-label').value = (ov.label || '').trim();
     document.getElementById('cost-expenses-shipping-override-price').value = ov.priceGbp != null ? ov.priceGbp : 0;
-    document.getElementById('cost-expenses-shipping-override-countries').value = (ov.countries || []).join(', ');
+    renderShippingOverrideCountryChips(ov.countries || []);
+    var input = document.getElementById('cost-expenses-shipping-override-country-input');
+    if (input) input.value = '';
+    hideShippingOverrideCountrySuggest();
     var modal = ensureShippingOverrideModal();
     if (modal) modal.show();
   }
@@ -603,11 +692,7 @@
     var en = document.getElementById('cost-expenses-shipping-override-enabled').checked !== false;
     var label = String((document.getElementById('cost-expenses-shipping-override-label').value || '').trim()).slice(0, 60);
     var price = parseFloat(document.getElementById('cost-expenses-shipping-override-price').value, 10) || 0;
-    var raw = (document.getElementById('cost-expenses-shipping-override-countries').value || '').trim();
-    var codes = raw.split(/[\s,]+/).map(normalizeCountryCode).filter(Boolean);
-    var seen = {};
-    var countries = [];
-    codes.forEach(function (c) { if (!seen[c]) { seen[c] = true; countries.push(c); } });
+    var countries = readShippingOverrideCountryCodesFromChips();
     ov.priority = pri;
     ov.enabled = en;
     ov.label = label;
@@ -2177,6 +2262,34 @@
     var shippingOverrideSaveBtn = document.getElementById('cost-expenses-shipping-override-save-btn');
     if (shippingOverrideSaveBtn) shippingOverrideSaveBtn.addEventListener('click', saveShippingOverrideFromForm);
 
+    var shippingCountryInput = document.getElementById('cost-expenses-shipping-override-country-input');
+    var shippingCountryAddBtn = document.getElementById('cost-expenses-shipping-override-country-add-btn');
+    if (shippingCountryInput && shippingCountryAddBtn) {
+      shippingCountryInput.addEventListener('focus', function () {
+        try { renderShippingOverrideCountrySuggest(shippingCountryInput.value || ''); } catch (_) {}
+      });
+      shippingCountryInput.addEventListener('input', function () {
+        try { renderShippingOverrideCountrySuggest(shippingCountryInput.value || ''); } catch (_) {}
+      });
+      shippingCountryInput.addEventListener('keydown', function (ev) {
+        if (ev && (ev.key === 'Enter' || ev.keyCode === 13)) {
+          try { ev.preventDefault(); } catch (_) {}
+          try { shippingCountryAddBtn.click(); } catch (_) {}
+          return;
+        }
+        if (ev && (ev.key === 'Escape' || ev.keyCode === 27)) {
+          try { ev.preventDefault(); } catch (_) {}
+          hideShippingOverrideCountrySuggest();
+        }
+      });
+      shippingCountryAddBtn.addEventListener('click', function () {
+        var raw = shippingCountryInput ? String(shippingCountryInput.value || '') : '';
+        var res = addShippingOverrideCountryFromText(raw);
+        if (!res.ok) return;
+        if (shippingCountryInput) shippingCountryInput.value = '';
+      });
+    }
+
     var addOverrideBtn = document.getElementById('cost-expenses-shipping-add-override');
     if (addOverrideBtn) addOverrideBtn.addEventListener('click', function () {
       state.config = state.config || defaultConfig();
@@ -2367,7 +2480,29 @@
       try {
         var countryWrap = document.getElementById('cost-expenses-per-order-country-selected-wrap');
         if (countryWrap && !countryWrap.contains(t)) hideCountrySuggestList();
+        var shippingFormWrap = document.getElementById('cost-expenses-shipping-override-form-wrap');
+        if (shippingFormWrap && !shippingFormWrap.contains(t)) hideShippingOverrideCountrySuggest();
       } catch (_) {}
+
+      var shippingOverrideSuggestBtn = t.closest ? t.closest('[data-shipping-override-country-suggest-code]') : null;
+      if (shippingOverrideSuggestBtn) {
+        var pick = shippingOverrideSuggestBtn.getAttribute('data-shipping-override-country-suggest-code');
+        var res = addShippingOverrideCountryFromText(pick);
+        if (res.ok) {
+          var input = document.getElementById('cost-expenses-shipping-override-country-input');
+          if (input) input.value = '';
+          hideShippingOverrideCountrySuggest();
+        }
+        return;
+      }
+      var shippingOverrideRemoveBtn = t.closest ? t.closest('[data-shipping-override-country-remove]') : null;
+      if (shippingOverrideRemoveBtn) {
+        var removeCode = normalizeCountryCode(shippingOverrideRemoveBtn.getAttribute('data-shipping-override-country-remove'));
+        var existing = readShippingOverrideCountryCodesFromChips();
+        var next = existing.filter(function (c2) { return c2 && c2 !== removeCode; });
+        renderShippingOverrideCountryChips(next);
+        return;
+      }
 
       var shippingOverrideEditBtn = t.closest ? t.closest('[data-shipping-override-edit]') : null;
       if (shippingOverrideEditBtn) {
