@@ -18,6 +18,7 @@ function parseReturnsRefundsAttribution(rawKpiConfig) {
 /**
  * Return refund totals by product_id in GBP for the given range.
  * attribution: 'processing_date' → refund_created_at, 'original_sale_date' → order_processed_at
+ * Excludes refunds for fully refunded orders (we never add those to gross, so subtracting would double-count).
  */
 async function getRefundTotalsByProductIdGbp(db, shop, startMs, endMs, attribution) {
   const useSaleDate = attribution === 'original_sale_date';
@@ -26,12 +27,18 @@ async function getRefundTotalsByProductIdGbp(db, shop, startMs, endMs, attributi
   if (!shop || !Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs <= startMs) return map;
   try {
     const sql = config.dbUrl
-      ? `SELECT product_id, currency, SUM(subtotal) AS total FROM orders_shopify_refund_line_items
-         WHERE shop = $1 AND ${tsCol} IS NOT NULL AND ${tsCol} >= $2 AND ${tsCol} < $3 AND product_id IS NOT NULL AND TRIM(product_id) != ''
-         GROUP BY product_id, currency`
-      : `SELECT product_id, currency, SUM(subtotal) AS total FROM orders_shopify_refund_line_items
-         WHERE shop = ? AND ${tsCol} IS NOT NULL AND ${tsCol} >= ? AND ${tsCol} < ? AND product_id IS NOT NULL AND TRIM(product_id) != ''
-         GROUP BY product_id, currency`;
+      ? `SELECT rli.product_id, rli.currency, SUM(rli.subtotal) AS total FROM orders_shopify_refund_line_items rli
+         INNER JOIN orders_shopify o ON o.shop = rli.shop AND o.order_id = rli.order_id
+         WHERE rli.shop = $1 AND rli.${tsCol} IS NOT NULL AND rli.${tsCol} >= $2 AND rli.${tsCol} < $3
+           AND rli.product_id IS NOT NULL AND TRIM(rli.product_id) != ''
+           AND (o.financial_status IS NULL OR LOWER(TRIM(o.financial_status)) != 'refunded')
+         GROUP BY rli.product_id, rli.currency`
+      : `SELECT rli.product_id, rli.currency, SUM(rli.subtotal) AS total FROM orders_shopify_refund_line_items rli
+         INNER JOIN orders_shopify o ON o.shop = rli.shop AND o.order_id = rli.order_id
+         WHERE rli.shop = ? AND rli.${tsCol} IS NOT NULL AND rli.${tsCol} >= ? AND rli.${tsCol} < ?
+           AND rli.product_id IS NOT NULL AND TRIM(rli.product_id) != ''
+           AND (o.financial_status IS NULL OR LOWER(TRIM(o.financial_status)) != 'refunded')
+         GROUP BY rli.product_id, rli.currency`;
     const rows = await db.all(sql, [shop, startMs, endMs]);
     const ratesToGbp = await fx.getRatesToGbp();
     for (const r of rows || []) {
@@ -49,6 +56,7 @@ async function getRefundTotalsByProductIdGbp(db, shop, startMs, endMs, attributi
 
 /**
  * Return refund totals by variant_id in GBP for the given range.
+ * Excludes refunds for fully refunded orders (we never add those to gross, so subtracting would double-count).
  */
 async function getRefundTotalsByVariantIdGbp(db, shop, startMs, endMs, attribution) {
   const useSaleDate = attribution === 'original_sale_date';
@@ -57,12 +65,18 @@ async function getRefundTotalsByVariantIdGbp(db, shop, startMs, endMs, attributi
   if (!shop || !Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs <= startMs) return map;
   try {
     const sql = config.dbUrl
-      ? `SELECT variant_id, currency, SUM(subtotal) AS total FROM orders_shopify_refund_line_items
-         WHERE shop = $1 AND ${tsCol} IS NOT NULL AND ${tsCol} >= $2 AND ${tsCol} < $3 AND variant_id IS NOT NULL AND TRIM(variant_id) != ''
-         GROUP BY variant_id, currency`
-      : `SELECT variant_id, currency, SUM(subtotal) AS total FROM orders_shopify_refund_line_items
-         WHERE shop = ? AND ${tsCol} IS NOT NULL AND ${tsCol} >= ? AND ${tsCol} < ? AND variant_id IS NOT NULL AND TRIM(variant_id) != ''
-         GROUP BY variant_id, currency`;
+      ? `SELECT rli.variant_id, rli.currency, SUM(rli.subtotal) AS total FROM orders_shopify_refund_line_items rli
+         INNER JOIN orders_shopify o ON o.shop = rli.shop AND o.order_id = rli.order_id
+         WHERE rli.shop = $1 AND rli.${tsCol} IS NOT NULL AND rli.${tsCol} >= $2 AND rli.${tsCol} < $3
+           AND rli.variant_id IS NOT NULL AND TRIM(rli.variant_id) != ''
+           AND (o.financial_status IS NULL OR LOWER(TRIM(o.financial_status)) != 'refunded')
+         GROUP BY rli.variant_id, rli.currency`
+      : `SELECT rli.variant_id, rli.currency, SUM(rli.subtotal) AS total FROM orders_shopify_refund_line_items rli
+         INNER JOIN orders_shopify o ON o.shop = rli.shop AND o.order_id = rli.order_id
+         WHERE rli.shop = ? AND rli.${tsCol} IS NOT NULL AND rli.${tsCol} >= ? AND rli.${tsCol} < ?
+           AND rli.variant_id IS NOT NULL AND TRIM(rli.variant_id) != ''
+           AND (o.financial_status IS NULL OR LOWER(TRIM(o.financial_status)) != 'refunded')
+         GROUP BY rli.variant_id, rli.currency`;
     const rows = await db.all(sql, [shop, startMs, endMs]);
     const ratesToGbp = await fx.getRatesToGbp();
     for (const r of rows || []) {

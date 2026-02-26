@@ -58,13 +58,13 @@ Single source of truth for core metric semantics so UI tables/charts stay consis
 
 ### Total sales (dashboard Revenue KPI)
 
-- **Total sales** = sum of order `total_price` for orders with sale date (`processed_at` or `created_at`) in range, **minus** refund amounts (from `orders_shopify_refunds`) bucketed by the **Returns & refunds attribution** setting.
+- **Total sales** = sum of order `total_price` for orders with sale date (`processed_at` or `created_at`) in range, **minus** refund amounts (from `orders_shopify_refunds`) bucketed by the **Returns & refunds attribution** setting. Refunds for fully refunded orders (`financial_status = 'refunded'`) are excluded from the subtraction, since those orders are never added to gross.
 - Refunds are attributed either to **processing date** (`refund_created_at`) or **original sale date** (order `processed_at`). Setting: `kpi_ui_config_v1.options.general.returnsRefundsAttribution` (`processing_date` | `original_sale_date`).
 - This matches Shopify-style “Total sales” (net of refunds). Display: 2 decimal places.
 
 ### Net sales (product / variant reports)
 
-- **Net sales** = `SUM(COALESCE(line_net, line_revenue))` on `orders_shopify_line_items` for sale date in range, **minus** refund line item subtotals (`orders_shopify_refund_line_items.subtotal`) bucketed by the same attribution setting.
+- **Net sales** = `SUM(COALESCE(line_net, line_revenue))` on `orders_shopify_line_items` for sale date in range, **minus** refund line item subtotals (`orders_shopify_refund_line_items.subtotal`) bucketed by the same attribution setting. Refunds for fully refunded orders are excluded (same as Total sales).
 - `line_net` = line gross − line discount (Shopify line item: `quantity * price − total_discount`). Used for product/variant revenue columns; labelled “Net sales” in UI where appropriate.
 - Display: 2 decimal places (GBP).
 

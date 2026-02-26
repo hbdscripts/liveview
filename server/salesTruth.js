@@ -1987,10 +1987,13 @@ async function getTruthTotalSalesNetOfRefunds(shop, startMs, endMs, attribution)
   try {
     const useSaleDate = attribution === 'original_sale_date';
     const tsCol = useSaleDate ? 'order_processed_at' : 'refund_created_at';
+    // Exclude refunds for fully refunded orders: we never add those to gross, so subtracting would double-count.
     const refundRows = await db.all(
-      `SELECT COALESCE(NULLIF(TRIM(currency), ''), 'GBP') AS currency, COALESCE(SUM(amount), 0) AS total
-       FROM orders_shopify_refunds
-       WHERE shop = ? AND ${tsCol} IS NOT NULL AND ${tsCol} >= ? AND ${tsCol} < ?
+      `SELECT COALESCE(NULLIF(TRIM(r.currency), ''), 'GBP') AS currency, COALESCE(SUM(r.amount), 0) AS total
+       FROM orders_shopify_refunds r
+       INNER JOIN orders_shopify o ON o.shop = r.shop AND o.order_id = r.order_id
+       WHERE r.shop = ? AND r.${tsCol} IS NOT NULL AND r.${tsCol} >= ? AND r.${tsCol} < ?
+         AND (o.financial_status IS NULL OR LOWER(TRIM(o.financial_status)) != 'refunded')
        GROUP BY currency`,
       [safeShop, startMs, endMs]
     );

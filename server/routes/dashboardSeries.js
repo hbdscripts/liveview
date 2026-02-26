@@ -240,7 +240,8 @@ function isReturningOrderRow(row) {
   return Number.isFinite(createdAt) && Number.isFinite(firstPaidOrderAt) && firstPaidOrderAt < createdAt;
 }
 
-/** Returns { [dayLabel]: amountGbp } for refunds in range, bucketed by attribution (processing_date → refund_created_at, original_sale_date → order_processed_at). */
+/** Returns { [dayLabel]: amountGbp } for refunds in range, bucketed by attribution (processing_date → refund_created_at, original_sale_date → order_processed_at).
+ * Excludes refunds for fully refunded orders (we never add those to gross, so subtracting would double-count). */
 async function fetchRefundsPerDay(db, shop, dayBounds, overallStart, overallEnd, attribution, ratesToGbp) {
   const out = {};
   for (const d of dayBounds) out[d.label] = 0;
@@ -250,8 +251,14 @@ async function fetchRefundsPerDay(db, shop, dayBounds, overallStart, overallEnd,
   let rows = [];
   try {
     const sql = config.dbUrl
-      ? `SELECT ${tsCol} AS ts, currency, amount FROM orders_shopify_refunds WHERE shop = $1 AND ${tsCol} IS NOT NULL AND ${tsCol} >= $2 AND ${tsCol} < $3`
-      : `SELECT ${tsCol} AS ts, currency, amount FROM orders_shopify_refunds WHERE shop = ? AND ${tsCol} IS NOT NULL AND ${tsCol} >= ? AND ${tsCol} < ?`;
+      ? `SELECT r.${tsCol} AS ts, r.currency, r.amount FROM orders_shopify_refunds r
+         INNER JOIN orders_shopify o ON o.shop = r.shop AND o.order_id = r.order_id
+         WHERE r.shop = $1 AND r.${tsCol} IS NOT NULL AND r.${tsCol} >= $2 AND r.${tsCol} < $3
+           AND (o.financial_status IS NULL OR LOWER(TRIM(o.financial_status)) != 'refunded')`
+      : `SELECT r.${tsCol} AS ts, r.currency, r.amount FROM orders_shopify_refunds r
+         INNER JOIN orders_shopify o ON o.shop = r.shop AND o.order_id = r.order_id
+         WHERE r.shop = ? AND r.${tsCol} IS NOT NULL AND r.${tsCol} >= ? AND r.${tsCol} < ?
+           AND (o.financial_status IS NULL OR LOWER(TRIM(o.financial_status)) != 'refunded')`;
     rows = await db.all(sql, [shop, overallStart, overallEnd]);
   } catch (_) {
     return out;
