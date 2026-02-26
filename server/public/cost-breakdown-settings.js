@@ -48,6 +48,11 @@
       .replace(/'/g, '&#39;');
   }
 
+  function syncHideInactiveTileClass() {
+    if (!panel || !panel.classList) return;
+    panel.classList.toggle('settings-cost-breakdown-hide-inactive-tile', state.hideInactive === true);
+  }
+
   function setMsg(text, tone) {
     var el = document.getElementById('cost-breakdown-msg');
     if (!el) return;
@@ -414,6 +419,7 @@
       state.hideInactive = hideInactiveToggle.checked === true;
       hideInactiveToggle.addEventListener('change', function () {
         state.hideInactive = hideInactiveToggle.checked === true;
+        syncHideInactiveTileClass();
         if (state.lastPayload) render(state.lastPayload);
       });
     }
@@ -493,6 +499,7 @@
 
   // Init
   bindUi();
+  syncHideInactiveTileClass();
   setRangeUi(state.range);
   state.audit = isAuditEnabled();
   state.active = panel.classList.contains('active');

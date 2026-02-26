@@ -171,10 +171,10 @@ body[data-page="settings"] #settings-cost-expenses-panel-breakdown .settings-cos
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px 12px;
-  border: 1px solid var(--tblr-border-color-translucent, rgba(0, 0, 0, 0.06));
-  border-radius: var(--tblr-border-radius, .75rem);
-  background: color-mix(in srgb, var(--tblr-bg-surface, #fff) 92%, var(--tblr-bg-surface-secondary, #f7f9fc));
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
 }
 body[data-page="settings"] #settings-cost-expenses-panel-breakdown .settings-cost-breakdown-total-tile-icon {
   width: 38px;
@@ -196,6 +196,9 @@ body[data-page="settings"] #settings-cost-expenses-panel-breakdown .settings-cos
 }
 body[data-page="settings"] #settings-cost-expenses-panel-breakdown [data-cost-breakdown-total-tile="inactive"] .settings-cost-breakdown-total-tile-body .h3 {
   color: var(--tblr-secondary, #66758c);
+}
+body[data-page="settings"] #settings-cost-expenses-panel-breakdown.settings-cost-breakdown-hide-inactive-tile [data-cost-breakdown-total-tile="inactive"] {
+  display: none;
 }
 
 /* Cost & Expenses: country chips (Per-order rules). */
