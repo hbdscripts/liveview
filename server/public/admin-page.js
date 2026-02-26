@@ -600,7 +600,7 @@
       if (isShopifySession) {
         actions = '<span class="badge bg-secondary-lt admin-users-badge" title="Session-only; no role/permissions to edit" aria-label="Session-only; no role/permissions to edit">Shopify session</span>';
       } else if (isSelf) {
-        actions = '<button type="button" class="btn btn-sm" disabled aria-label="Current user">Edit</button>';
+        actions = '<button type="button" class="btn btn-sm me-1" disabled aria-label="Current user">Edit</button>';
       } else if (isNumericUserId(row.id)) {
         actions =
           '<button type="button" class="btn btn-sm me-1" data-admin-action="edit" data-user-id="' + escapeHtml(row.id) + '" data-user-tier="' + escapeHtml(tier) + '">Edit</button>';
@@ -858,11 +858,17 @@
   }
 
   function bindActions() {
+    var modal = document.getElementById('admin-user-edit-modal');
+    if (modal && modal.parentNode && modal.parentNode !== document.body) {
+      document.body.appendChild(modal);
+    }
     function handler(e) {
       var t = e && e.target ? e.target : null;
       var btn = t && t.closest ? t.closest('[data-admin-action][data-user-id]') : null;
       if (!btn) return;
+      if (btn.disabled) return;
       e.preventDefault();
+      e.stopPropagation();
       var action = String(btn.getAttribute('data-admin-action') || '').trim();
       var id = String(btn.getAttribute('data-user-id') || '').trim();
       if (!action || !id) return;
@@ -911,7 +917,7 @@
         .then(function () { return refreshAll(); })
         .finally(function () { try { btn.disabled = false; } catch (_) {} });
     }
-    document.addEventListener('click', handler);
+    document.addEventListener('click', handler, true);
     bindEditModal();
   }
 

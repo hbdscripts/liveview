@@ -8146,7 +8146,7 @@ body[data-bs-theme="dark"] .kexo-upgrade-locked .kexo-upgrade-lock-overlay {
 .admin-users-table td { vertical-align: middle; }
 .admin-users-email { font-weight: 600; }
 .admin-users-meta { font-size: 12px; color: var(--tblr-secondary, #66758c); }
-.admin-users-actions { display: flex; gap: .4rem; flex-wrap: wrap; justify-content: flex-end; }
+.admin-users-actions { display: flex; gap: .4rem; flex-wrap: wrap; justify-content: flex-end; align-items: center; }
 .admin-users-badge { font-size: .7rem; letter-spacing: .02em; text-transform: uppercase; }
 .admin-users-pane { display: none; }
 .admin-users-pane.active { display: block; }
