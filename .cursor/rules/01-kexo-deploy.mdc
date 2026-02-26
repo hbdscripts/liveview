@@ -6,6 +6,7 @@ alwaysApply: true
 # Deployment (Kexo)
 
 - **Always deploy** once the task is complete (commit, land on `main`, push) unless the user explicitly says **don’t deploy**.
+- Treat task completion as standing approval to **commit + push**. Do not wait for an extra “commit/push now” prompt unless the user explicitly says to pause or skip deploy.
 - **Backend deploy (Railway)**: Railway auto-deploys from git. **Push to `main` is sufficient**. Do **not** run `railway up` manually.
 - **Frontend bundle**: if you changed `client/app/**`, run `npm run build:app` (never edit `server/public/app.js` directly).
 - **Shopify app/pixel deploy**: only when explicitly requested; use `npm run deploy` (or Actions → “Deploy to Shopify” workflow dispatch).

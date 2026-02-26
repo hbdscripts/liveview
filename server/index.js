@@ -202,6 +202,7 @@ app.delete('/api/attribution/rules/:id', requireMaster.middleware, attributionRo
 app.post('/api/attribution/icons', requireMaster.middleware, attributionRouter.postAttributionIcons);
 // Server-injected theme variables (prevents first-paint header flash).
 app.get('/theme-vars.css', settings.getThemeVarsCss);
+app.get('/theme-custom-last.css', settings.getThemeCustomLastCss);
 app.get('/icon-registry.js', (req, res) => {
   const payload = getBrowserRegistryPayload();
   const js =
@@ -502,12 +503,21 @@ function applySentryTemplate(html) {
   return String(html || '').replace(/\{\{SENTRY_DSN\}\}/g, dsnExpr);
 }
 
+function applyThemeCustomLastCssLink(html) {
+  const linkTag = '<link rel="stylesheet" href="/theme-custom-last.css" />';
+  let out = String(html || '');
+  out = out.replace(/\s*<link[^>]+href="\/theme-custom-last\.css(?:\?[^"]*)?"[^>]*>\s*/gi, '\n');
+  if (!/<\/head>/i.test(out)) return out;
+  return out.replace(/<\/head>/i, `  ${linkTag}\n</head>`);
+}
+
 function sendPage(res, filename) {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
   const filePath = path.join(__dirname, 'public', filename);
   const raw = fs.readFileSync(filePath, 'utf8');
   let html = resolveIncludes(raw);
   html = applySentryTemplate(html);
+  html = applyThemeCustomLastCssLink(html);
   res.type('html').send(applyAssetVersionToHtml(html));
 }
 

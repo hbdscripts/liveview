@@ -1140,6 +1140,19 @@ body[data-page="settings"] #admin-panel-googleads .settings-ga-action-name-input
   min-width: 10rem;
 }
 
+body[data-page="settings"] #admin-panel-googleads #settings-ga-signin-btn,
+body[data-page="settings"] #admin-panel-googleads #settings-ga-signin-btn:link,
+body[data-page="settings"] #admin-panel-googleads #settings-ga-signin-btn:visited,
+body[data-page="settings"] #admin-panel-googleads #settings-ga-signin-btn:hover,
+body[data-page="settings"] #admin-panel-googleads #settings-ga-signin-btn:focus {
+  color: #fff;
+}
+body[data-page="settings"] #admin-panel-googleads #settings-ga-signin-btn i,
+body[data-page="settings"] #admin-panel-googleads #settings-ga-signin-btn svg {
+  color: #fff;
+  fill: currentColor;
+}
+
 body[data-page="settings"] #admin-panel-googleads .settings-ga-profit-deductions-grid {
   grid-template-columns: minmax(0, 1fr);
   gap: 0.5rem;

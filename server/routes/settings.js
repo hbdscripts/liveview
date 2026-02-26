@@ -2696,6 +2696,7 @@ const THEME_BASE_KEYS = [
   'theme_menu_hover_color',
   'theme_header_strip_padding',
   'theme_custom_css',
+  'theme_custom_css_file_v1',
   'theme_icon_default',
   'theme_icon_topnav',
   'theme_icon_dropdown',
@@ -3291,6 +3292,22 @@ async function getThemeVarsCss(req, res) {
   res.type('text/css').send(css + (extraCss ? ('\n' + extraCss) : ''));
 }
 
+async function getThemeCustomLastCss(req, res) {
+  res.setHeader('Cache-Control', 'no-store');
+  let css = '';
+  try {
+    const raw = await store.getSetting('theme_theme_custom_css_file_v1');
+    css = raw != null ? String(raw) : '';
+  } catch (_) {
+    css = '';
+  }
+  const trimmed = css.trim();
+  if (!trimmed) {
+    return res.type('text/css').send('/* KEXO: theme custom last css */\n');
+  }
+  return res.type('text/css').send(['/* KEXO: theme custom last css */', trimmed, ''].join('\n'));
+}
+
 const CHART_SETTINGS_BODY_LIMIT = 80000;
 
 async function getChartSettings(req, res) {
@@ -3374,6 +3391,7 @@ module.exports = {
   getThemeDefaults,
   postThemeDefaults,
   getThemeVarsCss,
+  getThemeCustomLastCss,
   THEME_KEYS,
   THEME_ICON_GLYPH_KEYS,
   normalizeGoogleAdsCartDataGoals,

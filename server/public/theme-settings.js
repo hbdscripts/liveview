@@ -195,6 +195,7 @@
       '}',
       '',
     ].join('\n'),
+    'theme-custom-css-file-v1': '',
   };
   Object.keys(ICON_STYLE_DEFAULTS).forEach(function (k) { DEFAULTS[k] = ICON_STYLE_DEFAULTS[k]; });
   Object.keys(ICON_GLYPH_DEFAULTS).forEach(function (k) { DEFAULTS['theme-icon-glyph-' + k] = ICON_GLYPH_DEFAULTS[k]; });
@@ -237,7 +238,7 @@
   ];
   var ACCENT_OPACITY_KEYS = ['theme-menu-hover-opacity'];
   var HEADER_THEME_RADIO_KEYS = ['theme-menu-hover-color'];
-  var CUSTOM_CSS_KEYS = ['theme-custom-css'];
+  var CUSTOM_CSS_KEYS = ['theme-custom-css', 'theme-custom-css-file-v1'];
 
   /* Fallbacks from tabler-theme.css, custom.css, app.css, head-theme (slate) */
   var CSS_VAR_FALLBACKS = {
@@ -1535,6 +1536,16 @@
     });
   }
 
+  function ensureThemeCustomCssOrder() {
+    try {
+      if (!document.head) return;
+      var scratch = document.getElementById('kexo-theme-custom-css');
+      var finalCss = document.getElementById('kexo-theme-custom-css-file');
+      if (scratch) document.head.appendChild(scratch);
+      if (finalCss) document.head.appendChild(finalCss);
+    } catch (_) {}
+  }
+
   function applyThemeCustomCss(rawCss) {
     var css = rawCss == null ? '' : String(rawCss);
     try {
@@ -1546,12 +1557,22 @@
         document.head.appendChild(styleEl);
       }
       if (styleEl.textContent !== css) styleEl.textContent = css;
-      // Keep this style tag last in <head> (after other CSS includes).
-      try {
-        if (document.head && document.head.lastElementChild !== styleEl) {
-          document.head.appendChild(styleEl);
-        }
-      } catch (_) {}
+      ensureThemeCustomCssOrder();
+    } catch (_) {}
+  }
+
+  function applyThemeCustomCssFile(rawCss) {
+    var css = rawCss == null ? '' : String(rawCss);
+    try {
+      var styleEl = document.getElementById('kexo-theme-custom-css-file');
+      if (!styleEl) {
+        styleEl = document.createElement('style');
+        styleEl.id = 'kexo-theme-custom-css-file';
+        styleEl.type = 'text/css';
+        document.head.appendChild(styleEl);
+      }
+      if (styleEl.textContent !== css) styleEl.textContent = css;
+      ensureThemeCustomCssOrder();
     } catch (_) {}
   }
 
@@ -1672,6 +1693,8 @@
       applyHeaderLogoOverride(value);
     } else if (key === 'theme-custom-css') {
       applyThemeCustomCss(value);
+    } else if (key === 'theme-custom-css-file-v1') {
+      applyThemeCustomCssFile(value);
     } else if (key === ICON_OVERRIDES_JSON_KEY) {
       triggerIconThemeRefresh();
     } else if (ICON_GLYPH_ALL_KEYS.indexOf(key) >= 0) {
@@ -1789,7 +1812,7 @@
       }
       if (ACCENT_OPACITY_KEYS.indexOf(key) >= 0) val = normalizeOpacityFilter(val, DEFAULTS[key]);
       if (key === 'theme-header-strip-padding') val = normalizeStripPadding(val, DEFAULTS[key]);
-      if (key === 'theme-custom-css') {
+      if (CUSTOM_CSS_KEYS.indexOf(key) >= 0) {
         var cssInput = form.querySelector('[name="' + key + '"]');
         if (cssInput) cssInput.value = String(val == null ? '' : val);
         return;
@@ -2179,6 +2202,17 @@
       '<fieldset class="mb-4">' +
         '<legend class="form-label">Custom CSS' + helpTrigger('Injected inline into head after other stylesheets. Changes are global.') + '</legend>' +
         '<textarea class="form-control font-monospace" name="theme-custom-css" rows="9" spellcheck="false" placeholder="/* Custom CSS */"></textarea>' +
+        '<div class="d-flex align-items-center gap-2 flex-wrap mt-2">' +
+          '<button type="button" class="btn btn-primary btn-sm" id="theme-custom-css-promote-btn">Promote to CSS file + Clear editor</button>' +
+          '<button type="button" class="btn btn-sm" id="theme-custom-css-file-toggle" aria-expanded="false" aria-controls="theme-custom-css-file-wrap">Edit CSS file</button>' +
+          '<span class="form-hint" id="theme-custom-css-status"></span>' +
+        '</div>' +
+        '<div class="form-hint mt-2">Promoted CSS is served globally via <code>/theme-custom-last.css</code> and loaded last for highest priority.</div>' +
+        '<div id="theme-custom-css-file-wrap" class="mt-3" hidden>' +
+          '<label class="form-label" for="theme-custom-css-file">Loaded-last CSS file' + helpTrigger('This is the promoted global stylesheet content served by /theme-custom-last.css.') + '</label>' +
+          '<textarea class="form-control font-monospace" id="theme-custom-css-file" name="theme-custom-css-file-v1" rows="9" spellcheck="false" placeholder="/* Loaded-last CSS file */"></textarea>' +
+          '<div class="form-hint">Changes here auto-save and stay separate from the scratch editor above.</div>' +
+        '</div>' +
       '</fieldset>';
     return '<form id="theme-settings-form">' +
       '<ul class="nav nav-underline mb-3" id="theme-subtabs" role="tablist">' +
@@ -2759,10 +2793,78 @@
       /* Per-icon save buttons removed; use global Save Settings at bottom. */
     }
 
+    function setCustomCssStatus(message, isError) {
+      var statusEl = formEl.querySelector('#theme-custom-css-status');
+      if (!statusEl) return;
+      var msg = message != null ? String(message) : '';
+      statusEl.textContent = msg;
+      statusEl.classList.remove('text-danger', 'text-success', 'text-secondary');
+      if (!msg) return;
+      if (isError) statusEl.classList.add('text-danger');
+      else statusEl.classList.add('text-success');
+    }
+
+    function setCustomCssFileEditorOpen(isOpen) {
+      var wrap = formEl.querySelector('#theme-custom-css-file-wrap');
+      var toggleBtn = formEl.querySelector('#theme-custom-css-file-toggle');
+      if (!wrap || !toggleBtn) return;
+      if (isOpen) wrap.removeAttribute('hidden');
+      else wrap.setAttribute('hidden', 'hidden');
+      toggleBtn.textContent = isOpen ? 'Hide CSS file editor' : 'Edit CSS file';
+      toggleBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+    }
+
+    function wireCustomCssPromoteFlow() {
+      var promoteBtn = formEl.querySelector('#theme-custom-css-promote-btn');
+      var toggleBtn = formEl.querySelector('#theme-custom-css-file-toggle');
+      var scratchInput = formEl.querySelector('[name="theme-custom-css"]');
+      var fileInput = formEl.querySelector('[name="theme-custom-css-file-v1"]');
+
+      if (toggleBtn) {
+        toggleBtn.addEventListener('click', function (e) {
+          e.preventDefault();
+          var wrap = formEl.querySelector('#theme-custom-css-file-wrap');
+          var isOpen = !!(wrap && !wrap.hasAttribute('hidden'));
+          setCustomCssFileEditorOpen(!isOpen);
+        });
+      }
+
+      if (!promoteBtn || !scratchInput || !fileInput) return;
+      promoteBtn.addEventListener('click', function (e) {
+        e.preventDefault();
+        var scratchRaw = String(scratchInput.value || '');
+        var scratch = scratchRaw.trim();
+        if (!scratch) {
+          setCustomCssStatus('Nothing to promote — Custom CSS is empty.', true);
+          return;
+        }
+        var existing = String(fileInput.value || '').trim();
+        var merged = existing ? (existing + '\n\n' + scratch) : scratch;
+
+        fileInput.value = merged;
+        scratchInput.value = '';
+        setStored('theme-custom-css-file-v1', merged);
+        setStored('theme-custom-css', '');
+        applyTheme('theme-custom-css-file-v1', merged);
+        applyTheme('theme-custom-css', '');
+        setCustomCssFileEditorOpen(true);
+        setCustomCssStatus('Promoted to loaded-last CSS file and cleared editor. Saving…', false);
+
+        saveToServer({
+          theme_custom_css_file_v1: merged,
+          theme_custom_css: '',
+        }).then(function () {
+          setCustomCssStatus('Promoted to loaded-last CSS file and cleared editor.', false);
+        }).catch(function (err) {
+          setCustomCssStatus(err && err.message ? String(err.message) : 'Failed to save promoted CSS.', true);
+        });
+      });
+    }
+
     formEl.addEventListener('change', function (e) {
       var name = e && e.target ? e.target.name : '';
       var rawVal = e && e.target && e.target.value != null ? String(e.target.value) : '';
-      var val = name === 'theme-custom-css' ? rawVal : rawVal.trim();
+      var val = CUSTOM_CSS_KEYS.indexOf(name) >= 0 ? rawVal : rawVal.trim();
       if (!name) return;
       if (ICON_STYLE_KEYS.indexOf(name) >= 0) val = normalizeIconStyle(val, DEFAULTS[name]);
       if (ICON_GLYPH_KEYS.indexOf(name) >= 0) val = val ? normalizeIconGlyph(val, DEFAULTS[name]) : '';
@@ -2824,7 +2926,7 @@
       if (!input) return;
       input.addEventListener('input', function () {
         var rawVal = String(input.value || '');
-        var val = key === 'theme-custom-css' ? rawVal : rawVal.trim();
+        var val = CUSTOM_CSS_KEYS.indexOf(key) >= 0 ? rawVal : rawVal.trim();
         if (ICON_STYLE_KEYS.indexOf(key) >= 0) val = normalizeIconStyle(val, DEFAULTS[key]);
         // Icon glyph textareas should not normalise while typing (it causes “fighting”).
         // We normalise on change/blur instead.
@@ -2845,6 +2947,7 @@
 
     wireAccentHexInputs();
     wireIconEditModal();
+    wireCustomCssPromoteFlow();
 
     function wireIconHelpPopovers() {
       var triggers = formEl.querySelectorAll('[data-theme-icon-help-trigger]');
