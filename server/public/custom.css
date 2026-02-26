@@ -4007,6 +4007,11 @@ body[data-dashboard-view="overview"] .kexo-ovw-tabs-row .btn {
 body[data-dashboard-view="overview"] .kexo-ovw-tabs-row .kexo-ovw-dropdown-menu {
   z-index: 2000;
 }
+/* Allow date dropdown to extend below button (card overflow would clip it) */
+body[data-dashboard-view="overview"] .kexo-widget-card,
+body[data-dashboard-view="overview"] .kexo-overview-main-card {
+  overflow: visible;
+}
 
 /* Main chart header: date (left) + totals (center) + cog (right) on one line */
 body[data-dashboard-view="overview"] .kexo-overview-main-card .kexo-overview-card-head {
