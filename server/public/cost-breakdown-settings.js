@@ -311,7 +311,7 @@
         )
         : '';
       var baseLabel = isDetail
-        ? ('<div class="ps-4">' + esc(label) + '</div>')
+        ? ('<div class="ps-4 settings-cost-breakdown-child-label">' + esc(label) + '</div>')
         : (hasChildren
           ? ('<span class="settings-cost-breakdown-parent-label">' + toggleBtn + '<span>' + esc(label) + '</span></span>')
           : esc(label));
@@ -319,9 +319,9 @@
       var auditTxt = (auditOn && !isDetail && key) ? buildAuditDetailText(key) : '';
       var canAuditDetail = !!auditTxt;
       var btn = hasCustomDetails
-        ? (' <button type="button" class="btn btn-sm py-0 px-2 ms-2" data-cost-breakdown-detail-toggle="' + esc(key) + '" aria-expanded="false">View details</button>')
+        ? (' <button type="button" class="btn btn-sm btn-ghost-secondary py-0 px-1 ms-2 settings-cost-breakdown-detail-btn" data-cost-breakdown-detail-toggle="' + esc(key) + '" aria-expanded="false">View details</button>')
         : (canAuditDetail
-          ? (' <button type="button" class="btn btn-sm py-0 px-2 ms-2" data-cost-breakdown-detail-toggle="' + esc(key) + '" aria-expanded="false">Details</button>')
+          ? (' <button type="button" class="btn btn-sm btn-ghost-secondary py-0 px-1 ms-2 settings-cost-breakdown-detail-btn" data-cost-breakdown-detail-toggle="' + esc(key) + '" aria-expanded="false">Details</button>')
           : '');
       var labelHtml = isDetail ? (baseLabel.replace('</div>', btn + '</div>')) : (baseLabel + btn);
       html += '<tr class="' + rowCls + '"' + (isDetail && parentKey ? (' data-cost-breakdown-parent="' + esc(parentKey) + '"') : '') + '>' +
@@ -334,10 +334,10 @@
       if (hasCustomDetails) {
         var rows = Array.isArray(it.details) ? it.details : [];
         var inner = '';
-        inner += '<div class="small border rounded bg-light p-2 settings-cost-breakdown-detail-box">';
-        inner += '<div class="fw-semibold mb-2">Contributing rules</div>';
+        inner += '<div class="ps-4 settings-cost-breakdown-detail-inner">';
+        inner += '<div class="small fw-semibold mb-1">Contributing rules</div>';
         inner += '<div class="table-responsive">';
-        inner += '<table class="table table-sm table-vcenter mb-0 settings-cost-breakdown-detail-table">';
+        inner += '<table class="table table-sm table-borderless table-vcenter mb-0 settings-cost-breakdown-detail-table">';
         inner += '<thead><tr><th>Rule</th><th>Country</th><th>Dates</th><th>Value</th></tr></thead><tbody>';
         rows.slice(0, 50).forEach(function (r) {
           if (!r || typeof r !== 'object') return;
@@ -351,14 +351,14 @@
         inner += '</tbody></table></div></div>';
 
         html += '<tr class="d-none" data-cost-breakdown-detail-row="' + esc(key) + '">' +
-          '<td colspan="4">' + inner + '</td>' +
+          '<td colspan="4" class="border-0 bg-transparent pt-0">' + inner + '</td>' +
         '</tr>';
       } else if (canAuditDetail) {
         if (auditTxt) {
           html += '<tr class="d-none" data-cost-breakdown-detail-row="' + esc(key) + '">' +
-            '<td colspan="4">' +
-              '<div class="small border rounded bg-light p-2 settings-cost-breakdown-detail-box">' +
-                '<pre class="m-0 small" style="white-space:pre; tab-size:2;">' + esc(auditTxt) + '</pre>' +
+            '<td colspan="4" class="border-0 bg-transparent pt-0">' +
+              '<div class="ps-4 settings-cost-breakdown-detail-inner">' +
+                '<pre class="m-0 small settings-cost-breakdown-audit-pre">' + esc(auditTxt) + '</pre>' +
               '</div>' +
             '</td>' +
           '</tr>';

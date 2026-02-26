@@ -142,10 +142,25 @@ body[data-page="settings"] #settings-cost-expenses-panel-breakdown .settings-cos
   align-items: center;
 }
 
-/* Cost Breakdown: "View details" expansion box (rule contributions). */
-body[data-page="settings"] #settings-cost-expenses-panel-breakdown .settings-cost-breakdown-detail-box {
+/* Cost Breakdown: child row labels (e.g. UK VAT) smaller font. */
+body[data-page="settings"] #settings-cost-expenses-panel-breakdown .settings-cost-breakdown-child-label {
+  font-size: 0.8125rem;
+}
+
+/* Cost Breakdown: View details / Details button smaller. */
+body[data-page="settings"] #settings-cost-expenses-panel-breakdown .settings-cost-breakdown-detail-btn {
+  font-size: 0.75rem;
+  min-height: 1.5rem;
+}
+
+/* Cost Breakdown: detail expansion (rule contributions) - no border/background, indent aligns with child. */
+body[data-page="settings"] #settings-cost-expenses-panel-breakdown .settings-cost-breakdown-detail-inner {
   max-height: 240px;
   overflow: auto;
+}
+body[data-page="settings"] #settings-cost-expenses-panel-breakdown .settings-cost-breakdown-audit-pre {
+  white-space: pre;
+  tab-size: 2;
 }
 body[data-page="settings"] #settings-cost-expenses-panel-breakdown .settings-cost-breakdown-detail-table th,
 body[data-page="settings"] #settings-cost-expenses-panel-breakdown .settings-cost-breakdown-detail-table td {
