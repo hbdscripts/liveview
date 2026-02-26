@@ -4165,13 +4165,16 @@ body[data-dashboard-view="overview"] .kexo-ovw-kpi-progress {
   grid-column: 1 / -1;
   margin-top: 0.1rem;
   background: rgba(15, 23, 42, 0.08);
-  height: 1px;
+  height: 2px;
   border-radius: 999px;
 }
 body[data-dashboard-view="overview"] .kexo-ovw-kpi-progress .progress-bar {
   transition: width 520ms cubic-bezier(.2,.9,.2,1);
   height: 100%;
   border-radius: 999px;
+}
+body[data-dashboard-view="overview"] .kexo-ovw-kpi-progress .progress-bar.bg-secondary {
+  background-color: var(--kexo-accent-1, #4b94e4) !important;
 }
 body[data-dashboard-view="overview"] .kexo-ovw-panel-pagination {
   margin-top: .5rem;
@@ -4831,6 +4834,12 @@ body[data-page="dashboard"] .kexo-overview-widget-card .kexo-widget-head-right {
   background: rgba(15, 23, 42, 0.08);
   overflow: hidden;
 }
+body[data-dashboard-view="overview"] .kexo-widget-row-bar {
+  height: 2px;
+}
+body[data-dashboard-view="overview"] .kexo-widget-row-bar > span {
+  background: var(--kexo-accent-1, #4b94e4);
+}
 .kexo-widget-row-bar > span {
   display: block;
   height: 100%;
@@ -4957,6 +4966,9 @@ body[data-page="dashboard"] .kexo-overview-widget-card .kexo-widget-head-right {
   border-radius: 999px;
   background: rgba(15, 23, 42, 0.08);
   overflow: hidden;
+}
+body[data-dashboard-view="overview"] .kexo-dash-top-row-bar {
+  height: 2px;
 }
 .kexo-dash-top-row-bar > span {
   display: block;

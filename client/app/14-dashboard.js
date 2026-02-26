@@ -873,7 +873,7 @@
             productUrl: productUrl
           };
         });
-        renderDashTopList('dash-trending-body', out, { accentCss: 'background: var(--kexo-accent-2);' });
+        renderDashTopList('dash-trending-body', out, { accentCss: 'background: var(--kexo-accent-1);' });
       }
 
       function refreshDashboardOverviewPage(opts) {
@@ -5302,7 +5302,7 @@
                 productUrl: productUrl
               };
             });
-            renderDashTopList(tableId + '-body', listRows, { accentCss: 'background: var(--kexo-accent-2);' });
+            renderDashTopList(tableId + '-body', listRows, { accentCss: 'background: var(--kexo-accent-1);' });
             return;
           }
           var t = el(tableId);
@@ -6409,7 +6409,7 @@
           var col = grid.querySelector('[data-kexo-overview-widget-col="' + key + '"]');
           if (col) grid.appendChild(col);
         });
-        // Colours: position-based unless overridden.
+        // Colours: all overview cards use kexo-accent-1 (unless overridden).
         order.forEach(function (key, idx) {
           var col = grid.querySelector('[data-kexo-overview-widget-col="' + key + '"]');
           if (!col) return;
@@ -6417,9 +6417,7 @@
           if (!card || !card.style || !card.style.setProperty) return;
           var w = normalized.widgets && normalized.widgets[key] ? normalized.widgets[key] : null;
           var override = w && w.color ? String(w.color) : '';
-          /* Tables (Top Countries, Top Products, Trending) use accents 1–3; widgets continue 4–10, then repeat. */
-          var accentIdx = ((3 + idx) % 10) + 1;
-          var css = override ? override : ('var(--kexo-accent-' + accentIdx + ')');
+          var css = override ? override : 'var(--kexo-accent-1)';
           card.style.setProperty('--kexo-accent', css);
           card.setAttribute('data-kexo-overview-widget-position', String(idx + 1));
         });
@@ -7400,17 +7398,7 @@
         }
 
         function accentForWidget(widgetKey) {
-          var key = String(widgetKey || '').trim().toLowerCase();
-          var card = null;
-          try { card = document.querySelector('[data-kexo-overview-widget="' + key + '"]'); } catch (_) { card = null; }
-          var css = '';
-          try { css = card && card.style ? String(card.style.getPropertyValue('--kexo-accent') || '').trim() : ''; } catch (_) { css = ''; }
-          if (!css) {
-            var idx = (cfg && Array.isArray(cfg.order)) ? cfg.order.indexOf(key) : -1;
-            var accentIdx = ((3 + (idx >= 0 ? idx : 0)) % 10) + 1;
-            css = 'var(--kexo-accent-' + accentIdx + ')';
-          }
-          return resolveCssColor(css) || resolveRootCssVar('--kexo-accent-1', '#4b94e4') || '#4b94e4';
+          return resolveRootCssVar('--kexo-accent-1', '#4b94e4') || '#4b94e4';
         }
 
         function browserIconHtmlForKey(rawKey, label) {
