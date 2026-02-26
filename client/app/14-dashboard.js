@@ -7192,6 +7192,7 @@
         var size = 180;
         var r = 72;
         var strokeW = 6;
+        var strokeWProgress = 2;
         var cx = Math.round(size / 2);
         var cy = Math.round(size / 2);
         var circ = Math.round(2 * Math.PI * r * 1000) / 1000;
@@ -7208,7 +7209,7 @@
             '<div class="position-relative flex-shrink-0 kexo-widget-radial-wrap" title="' + escapeHtml(tip) + '">' +
               '<svg width="' + size + '" height="' + size + '" viewBox="0 0 ' + size + ' ' + size + '" aria-hidden="true">' +
                 '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="rgba(15,23,42,0.10)" stroke-width="' + strokeW + '"></circle>' +
-                '<circle class="kexo-widget-radial-progress" cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="' + escapeHtml(radialStroke) + '" stroke-width="' + strokeW + '" stroke-linecap="round"' +
+                '<circle class="kexo-widget-radial-progress" cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="' + escapeHtml(radialStroke) + '" stroke-width="' + strokeWProgress + '" stroke-linecap="round"' +
                   ' stroke-dasharray="' + escapeHtml(String(circ)) + '" stroke-dashoffset="' + escapeHtml(String(circ)) + '"' +
                   ' data-kexo-radial-pct="' + escapeHtml(String(placeholder ? 0 : pct)) + '" data-kexo-radial-circ="' + escapeHtml(String(circ)) + '"' +
                 '></circle>' +
@@ -7532,6 +7533,7 @@
           var size = 111;
           var r = 41;
           var strokeW = 6;
+          var strokeWProgress = 2;
           var cx = size / 2;
           var cy = size / 2;
           var circ = Math.round(2 * Math.PI * r * 1000) / 1000;
@@ -7542,7 +7544,7 @@
                 '<div class="kexo-ovw-ring">' +
                   '<svg width="' + size + '" height="' + size + '" viewBox="0 0 ' + size + ' ' + size + '" aria-hidden="true">' +
                     '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="rgba(15,23,42,0.10)" stroke-width="' + strokeW + '"></circle>' +
-                    '<circle class="kexo-widget-radial-progress" cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="var(--kexo-accent, var(--kexo-accent-1, #4b94e4))" stroke-width="' + strokeW + '" stroke-linecap="round"' +
+                    '<circle class="kexo-widget-radial-progress" cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="var(--kexo-accent, var(--kexo-accent-1, #4b94e4))" stroke-width="' + strokeWProgress + '" stroke-linecap="round"' +
                       ' stroke-dasharray="' + escapeHtml(String(circ)) + '" stroke-dashoffset="' + escapeHtml(String(dashOffset)) + '"' +
                       ' data-kexo-radial-pct="' + escapeHtml(String(pct)) + '" data-kexo-radial-circ="' + escapeHtml(String(circ)) + '"' +
                     '></circle>' +
