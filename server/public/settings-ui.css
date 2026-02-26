@@ -1227,6 +1227,11 @@ body[data-page="settings"] #admin-panel-googleads .settings-ga-action-name-input
   min-width: 10rem;
 }
 
+/* Admin → Google Ads: Live/Removed tabs must be clickable */
+body[data-page="settings"] #admin-panel-googleads #settings-ga-actions-tabs .nav-link {
+  cursor: pointer;
+}
+
 body[data-page="settings"] #admin-panel-googleads #settings-ga-signin-btn,
 body[data-page="settings"] #admin-panel-googleads #settings-ga-signin-btn:link,
 body[data-page="settings"] #admin-panel-googleads #settings-ga-signin-btn:visited,

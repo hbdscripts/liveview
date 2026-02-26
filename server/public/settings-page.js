@@ -3317,17 +3317,23 @@
     if (goalsRefreshBtn) goalsRefreshBtn.addEventListener('click', function () { refreshGoogleAds({ goals: true, actions: false, health: false, issues: false }); });
     if (actionsRefreshBtn) actionsRefreshBtn.addEventListener('click', function () { refreshGoogleAds({ goals: false, actions: true, health: false, issues: false }); });
 
-    document.addEventListener('click', function (e) {
-      var btn = e.target && e.target.closest ? e.target.closest('#settings-ga-actions-tabs [data-settings-ga-actions-tab]') : null;
-      var tab = btn ? (btn.getAttribute('data-settings-ga-actions-tab') || '') : null;
-      if (!tab || (tab !== 'live' && tab !== 'removed')) return;
-      var tabs = document.querySelectorAll('#settings-ga-actions-tabs .nav-link');
-      tabs.forEach(function (b) {
-        b.classList.toggle('active', (b.getAttribute('data-settings-ga-actions-tab') || '') === tab);
-        b.setAttribute('aria-selected', (b.getAttribute('data-settings-ga-actions-tab') || '') === tab);
+    var actionsTabsEl = document.getElementById('settings-ga-actions-tabs');
+    if (actionsTabsEl) {
+      actionsTabsEl.addEventListener('click', function (e) {
+        var btn = e.target && e.target.closest ? e.target.closest('[data-settings-ga-actions-tab]') : null;
+        if (!btn) return;
+        var tab = btn.getAttribute('data-settings-ga-actions-tab') || '';
+        if (tab !== 'live' && tab !== 'removed') return;
+        e.preventDefault();
+        var tabs = actionsTabsEl.querySelectorAll('.nav-link');
+        tabs.forEach(function (b) {
+          var t = b.getAttribute('data-settings-ga-actions-tab') || '';
+          b.classList.toggle('active', t === tab);
+          b.setAttribute('aria-selected', t === tab ? 'true' : 'false');
+        });
+        renderConversionActions(gaConversionActionsCache, tab);
       });
-      renderConversionActions(gaConversionActionsCache, tab);
-    });
+    }
 
     try {
       window.__kexoApplyGoogleAdsProfitDeductions = function (d, v, b) { applyProfitDeductions(d, v != null ? v : 1, b != null ? b : 1); };
