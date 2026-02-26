@@ -2874,14 +2874,14 @@
           var g = goals.find(function (x) { return x && x.goal_type === k; }) || null;
           var currentRn = (g && (g.custom_goal_resource_name || g.conversion_action_resource_name)) ? String(g.custom_goal_resource_name || g.conversion_action_resource_name) : '';
           var currentAction = currentRn ? actions.find(function (a) { return a && String(a.resourceName || '') === currentRn; }) : null;
-          var currentName = currentAction ? (currentAction.name || currentRn) : (currentRn ? (currentRn + ' (missing/removed)') : 'Not set');
-
-          var currentEl = document.getElementById('settings-ga-goal-' + k + '-current-action');
-          if (currentEl) currentEl.textContent = currentName;
 
           var sel = document.getElementById('settings-ga-goal-' + k + '-action-select');
           if (sel) {
-            sel.innerHTML = optionsHtml;
+            var opts = optionsHtml;
+            if (currentRn && !currentAction) {
+              opts += '<option value="' + escapeHtml(currentRn) + '">' + escapeHtml(currentRn + ' (missing/removed)') + '</option>';
+            }
+            sel.innerHTML = opts;
             if (currentRn) sel.value = currentRn;
           }
           var optSel = document.getElementById('settings-ga-optimization-' + k);
@@ -2913,8 +2913,8 @@
         return true;
       }).catch(function () {
         ['revenue', 'profit', 'add_to_cart', 'begin_checkout'].forEach(function (k) {
-          var currentEl = document.getElementById('settings-ga-goal-' + k + '-current-action');
-          if (currentEl) currentEl.textContent = 'Failed to load';
+          var sel = document.getElementById('settings-ga-goal-' + k + '-action-select');
+          if (sel) { sel.innerHTML = '<option value="">Failed to load</option>'; }
         });
         return false;
       });
