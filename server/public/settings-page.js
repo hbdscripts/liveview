@@ -2904,7 +2904,7 @@
             var attachBtn = actionsRow.querySelector('.settings-ga-goal-attach-btn');
             var clearBtn = actionsRow.querySelector('.settings-ga-goal-clear-btn');
             var provisionBtn = actionsRow.querySelector('.settings-ga-goal-provision-btn');
-            if (attachBtn) attachBtn.classList.toggle('d-none', false);
+            if (attachBtn) attachBtn.classList.toggle('d-none', !!currentRn);
             if (clearBtn) clearBtn.classList.toggle('d-none', !currentRn);
             if (provisionBtn) provisionBtn.classList.toggle('d-none', !!(currentRn && currentAction));
           }
