@@ -1335,3 +1335,8 @@ body[data-page="settings"] #theme-inline-edits-selector.form-control-plaintext {
   overflow-x: auto;
   text-overflow: unset;
 }
+
+/* Admin Users: Active/Pending tabs push the table down. */
+body[data-page="settings"] #settings-admin-users-tabs {
+  margin-bottom: 15px;
+}

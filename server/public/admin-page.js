@@ -600,7 +600,7 @@
       if (isShopifySession) {
         actions = '<span class="badge bg-secondary-lt admin-users-badge" title="Session-only; no role/permissions to edit" aria-label="Session-only; no role/permissions to edit">Shopify session</span>';
       } else if (isSelf) {
-        actions = '<span class="text-secondary small">You</span>';
+        actions = '<button type="button" class="btn btn-sm" disabled aria-label="Current user">Edit</button>';
       } else if (isNumericUserId(row.id)) {
         actions =
           '<button type="button" class="btn btn-sm me-1" data-admin-action="edit" data-user-id="' + escapeHtml(row.id) + '" data-user-tier="' + escapeHtml(tier) + '">Edit</button>';
@@ -892,6 +892,9 @@
           if (backendEl) renderPermissionList(backendEl, PERM_KEYS_BACKEND, {}, {});
         }
         if (typeof window.bootstrap !== 'undefined' && window.bootstrap.Modal && modal) {
+          if (modal.parentNode && modal.parentNode !== document.body) {
+            document.body.appendChild(modal);
+          }
           var m = new window.bootstrap.Modal(modal);
           m.show();
         }
