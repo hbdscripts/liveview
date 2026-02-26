@@ -523,6 +523,9 @@
         '</td>' +
         '<td class="text-end">' +
           '<div class="d-inline-flex gap-1 flex-nowrap kexo-table-actions" aria-label="Override actions">' +
+            '<button type="button" class="btn btn-sm kexo-icon-action-btn" data-shipping-override-edit data-override-idx="' + idx + '" aria-label="Edit override" title="Edit">' +
+              '<i data-icon-key="admin-tab-table-row-edit" aria-hidden="true"></i>' +
+            '</button>' +
             '<button type="button" class="btn btn-danger btn-sm kexo-icon-action-btn" data-override-remove aria-label="Remove override" title="Remove">' +
               '<i data-icon-key="admin-tab-table-row-delete" aria-hidden="true"></i>' +
             '</button>' +
@@ -549,6 +552,71 @@
       if (ref) tr.insertBefore(th, ref);
       else tr.appendChild(th);
     } catch (_) {}
+  }
+
+  var shippingOverrideModalApi = null;
+  function ensureShippingOverrideModal() {
+    if (shippingOverrideModalApi) return shippingOverrideModalApi;
+    var el = document.getElementById('cost-expenses-shipping-override-modal');
+    if (!el) return null;
+    var Bootstrap = window.bootstrap || (window.tabler && window.tabler.bootstrap);
+    if (!(Bootstrap && Bootstrap.Modal)) return null;
+    try {
+      shippingOverrideModalApi = Bootstrap.Modal.getOrCreateInstance(el, { backdrop: true, focus: true, keyboard: true });
+    } catch (_) {
+      shippingOverrideModalApi = null;
+    }
+    return shippingOverrideModalApi;
+  }
+
+  function showShippingOverrideForm(idx) {
+    state.config = state.config || defaultConfig();
+    state.config.shipping = readShippingFromUi();
+    var overrides = (state.config.shipping && state.config.shipping.overrides) ? state.config.shipping.overrides : [];
+    var ov = overrides[idx];
+    if (!ov) return;
+    document.getElementById('cost-expenses-shipping-override-idx').value = String(idx);
+    document.getElementById('cost-expenses-shipping-override-priority').value = ov.priority || idx + 1;
+    document.getElementById('cost-expenses-shipping-override-enabled').checked = ov.enabled !== false;
+    document.getElementById('cost-expenses-shipping-override-label').value = (ov.label || '').trim();
+    document.getElementById('cost-expenses-shipping-override-price').value = ov.priceGbp != null ? ov.priceGbp : 0;
+    document.getElementById('cost-expenses-shipping-override-countries').value = (ov.countries || []).join(', ');
+    var modal = ensureShippingOverrideModal();
+    if (modal) modal.show();
+  }
+
+  function hideShippingOverrideForm() {
+    var modal = ensureShippingOverrideModal();
+    if (modal) modal.hide();
+  }
+
+  function saveShippingOverrideFromForm() {
+    var idxEl = document.getElementById('cost-expenses-shipping-override-idx');
+    var idx = parseInt(idxEl && idxEl.value, 10);
+    if (!Number.isFinite(idx) || idx < 0) return;
+    state.config = state.config || defaultConfig();
+    if (!state.config.shipping) state.config.shipping = { enabled: false, worldwideDefaultGbp: 0, overrides: [] };
+    if (!Array.isArray(state.config.shipping.overrides)) state.config.shipping.overrides = [];
+    var ov = state.config.shipping.overrides[idx];
+    if (!ov) return;
+    var pri = parseInt(document.getElementById('cost-expenses-shipping-override-priority').value, 10) || 1;
+    var en = document.getElementById('cost-expenses-shipping-override-enabled').checked !== false;
+    var label = String((document.getElementById('cost-expenses-shipping-override-label').value || '').trim()).slice(0, 60);
+    var price = parseFloat(document.getElementById('cost-expenses-shipping-override-price').value, 10) || 0;
+    var raw = (document.getElementById('cost-expenses-shipping-override-countries').value || '').trim();
+    var codes = raw.split(/[\s,]+/).map(normalizeCountryCode).filter(Boolean);
+    var seen = {};
+    var countries = [];
+    codes.forEach(function (c) { if (!seen[c]) { seen[c] = true; countries.push(c); } });
+    ov.priority = pri;
+    ov.enabled = en;
+    ov.label = label;
+    ov.priceGbp = price;
+    ov.countries = countries;
+    state.config.shipping.overrides.sort(function (a, b) { return (a.priority || 0) - (b.priority || 0); });
+    hideShippingOverrideForm();
+    renderShippingOverrides();
+    markDraftChanged();
   }
 
   function readShippingFromUi() {
@@ -2093,10 +2161,14 @@
         try { hidePerOrderForm(); } catch (_) {}
         try { hideOverheadForm(); } catch (_) {}
         try { hideFixedCostForm(); } catch (_) {}
+        try { hideShippingOverrideForm(); } catch (_) {}
         state.loadInFlight = null;
         load();
       });
     }
+
+    var shippingOverrideSaveBtn = document.getElementById('cost-expenses-shipping-override-save-btn');
+    if (shippingOverrideSaveBtn) shippingOverrideSaveBtn.addEventListener('click', saveShippingOverrideFromForm);
 
     var addOverrideBtn = document.getElementById('cost-expenses-shipping-add-override');
     if (addOverrideBtn) addOverrideBtn.addEventListener('click', function () {
@@ -2290,6 +2362,12 @@
         if (countryWrap && !countryWrap.contains(t)) hideCountrySuggestList();
       } catch (_) {}
 
+      var shippingOverrideEditBtn = t.closest ? t.closest('[data-shipping-override-edit]') : null;
+      if (shippingOverrideEditBtn) {
+        var idx = parseInt(shippingOverrideEditBtn.getAttribute('data-override-idx'), 10);
+        if (Number.isFinite(idx) && idx >= 0) showShippingOverrideForm(idx);
+      }
+
       var overrideRemoveBtn = t.closest ? t.closest('[data-override-remove]') : null;
       if (overrideRemoveBtn) {
         var row = overrideRemoveBtn.closest('[data-override-idx]');
@@ -2444,6 +2522,7 @@
       hidePerOrderForm();
       hideOverheadForm();
       hideFixedCostForm();
+      hideShippingOverrideForm();
       syncExcludedHints();
       if (typeof window.__kexoSetSettingsDraftBaseline === 'function') window.__kexoSetSettingsDraftBaseline('cost-expenses', buildConfigFromDom());
       return { ok: true };
