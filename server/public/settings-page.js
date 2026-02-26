@@ -3546,37 +3546,28 @@
       if (Number.isFinite(cost)) {
         summaryRows.push({ label: 'Deducted costs', value: formatCurrencyAmount(cost, 'GBP') });
       }
-
-      var html = '';
-      html += '<div class="settings-ga-preview-summary-head">Preview summary</div>';
-      if (summaryRows.length) {
-        html += '<div class="table-responsive settings-ga-preview-table-wrap">';
-        html += '<table class="table table-sm table-vcenter card-table settings-ga-preview-table mb-2">';
-        html += '<tbody>';
-        summaryRows.forEach(function (row) {
-          html += '<tr><th scope="row">' + escapeHtml(row.label) + '</th><td class="text-end fw-semibold">' + escapeHtml(row.value) + '</td></tr>';
-        });
-        html += '</tbody>';
-        html += '</table>';
-        html += '</div>';
-      }
       if (Number.isFinite(rev) && Number.isFinite(cost) && Number.isFinite(profit)) {
-        html += '<div class="text-muted small mb-2">Formula: ' + escapeHtml(formatCurrencyAmount(rev, 'GBP')) + ' - ' + escapeHtml(formatCurrencyAmount(cost, 'GBP')) + ' = ' + escapeHtml(formatCurrencyAmount(profit, 'GBP')) + '.</div>';
+        summaryRows.push({ label: 'Formula', value: formatCurrencyAmount(rev, 'GBP') + ' − ' + formatCurrencyAmount(cost, 'GBP') + ' = ' + formatCurrencyAmount(profit, 'GBP') });
       }
       if (Number.isFinite(dayRevenue)) {
-        html += '<div class="text-muted small mb-1">Attributed revenue for this day: ' + escapeHtml(formatCurrencyAmount(dayRevenue, 'GBP')) + '.</div>';
+        summaryRows.push({ label: 'Attributed revenue for this day', value: formatCurrencyAmount(dayRevenue, 'GBP') });
       }
       if (Number.isFinite(sharePct)) {
-        html += '<div class="text-muted small mb-2">Order share of day revenue: ' + escapeHtml((sharePct * 100).toFixed(2)) + '%.</div>';
+        summaryRows.push({ label: 'Order share of day revenue', value: (sharePct * 100).toFixed(2) + '%' });
       }
-      html += '<div class="settings-ga-preview-breakdown">';
-      html += '<div class="settings-ga-preview-breakdown-title">Cost breakdown used in this preview</div>';
+
+      var html = '';
+      html += '<div class="table-responsive settings-ga-preview-table-wrap">';
+      html += '<table class="table table-sm table-vcenter card-table settings-ga-preview-table mb-0">';
+      html += '<thead><tr><th scope="col">Preview summary</th><th scope="col" class="text-end">Value</th></tr></thead>';
+      html += '<tbody>';
+      summaryRows.forEach(function (row) {
+        html += '<tr><th scope="row">' + escapeHtml(row.label) + '</th><td class="text-end fw-semibold">' + escapeHtml(row.value) + '</td></tr>';
+      });
       if (componentDetails.length) {
-        html += '<div class="table-responsive settings-ga-preview-breakdown-wrap">';
-        html += '<table class="table table-sm table-vcenter card-table settings-ga-preview-breakdown-table mb-0">';
-        html += '<thead><tr><th scope="col">Component</th><th scope="col" class="text-end">Amount</th></tr></thead><tbody>';
+        html += '<tr class="settings-ga-preview-breakdown-section"><th colspan="2" scope="col">Cost breakdown used in this preview</th></tr>';
         componentDetails.forEach(function (it) {
-          html += '<tr class="settings-ga-preview-breakdown-row-main"><td class="fw-semibold">' + escapeHtml(it.label) + '</td><td class="text-end fw-semibold">' + escapeHtml(formatCurrencyAmount(it.amount_gbp, 'GBP')) + '</td></tr>';
+          html += '<tr class="settings-ga-preview-breakdown-row-main"><th scope="row">' + escapeHtml(it.label) + '</th><td class="text-end fw-semibold">' + escapeHtml(formatCurrencyAmount(it.amount_gbp, 'GBP')) + '</td></tr>';
           if (Array.isArray(it.rows) && it.rows.length) {
             it.rows.forEach(function (r) {
               html += '<tr class="settings-ga-preview-breakdown-row-sub"><td><span class="settings-ga-preview-breakdown-subrow-label">— ' + escapeHtml(r.label) + '</span></td><td class="text-end">' + escapeHtml(formatCurrencyAmount(r.amount_gbp, 'GBP')) + '</td></tr>';
@@ -3586,27 +3577,24 @@
             html += '<tr class="settings-ga-preview-breakdown-row-note"><td colspan="2"><span class="settings-ga-preview-breakdown-note">' + escapeHtml(it.note) + '</span></td></tr>';
           }
         });
-        html += '</tbody></table>';
-        html += '</div>';
       } else {
         var componentKeys = Object.keys(components).filter(function (k) { return Number.isFinite(Number(components[k])); });
         componentKeys.sort(function (a, b) {
           return profitPreviewComponentLabel(a).localeCompare(profitPreviewComponentLabel(b));
         });
         if (componentKeys.length) {
-          html += '<div class="table-responsive settings-ga-preview-breakdown-wrap">';
-          html += '<table class="table table-sm table-vcenter card-table settings-ga-preview-breakdown-table mb-0">';
-          html += '<thead><tr><th scope="col">Component</th><th scope="col" class="text-end">Amount</th></tr></thead><tbody>';
+          html += '<tr class="settings-ga-preview-breakdown-section"><th colspan="2" scope="col">Cost breakdown used in this preview</th></tr>';
           componentKeys.forEach(function (k) {
             var amt = Number(components[k]);
-            html += '<tr class="settings-ga-preview-breakdown-row-main"><td class="fw-semibold">' + escapeHtml(profitPreviewComponentLabel(k)) + '</td><td class="text-end fw-semibold">' + escapeHtml(formatCurrencyAmount(amt, 'GBP')) + '</td></tr>';
+            html += '<tr class="settings-ga-preview-breakdown-row-main"><th scope="row">' + escapeHtml(profitPreviewComponentLabel(k)) + '</th><td class="text-end fw-semibold">' + escapeHtml(formatCurrencyAmount(amt, 'GBP')) + '</td></tr>';
           });
-          html += '</tbody></table>';
-          html += '</div>';
         } else {
-          html += '<div class="text-muted small">No deduction components were applied for this preview.</div>';
+          html += '<tr class="settings-ga-preview-breakdown-section"><th colspan="2" scope="col">Cost breakdown used in this preview</th></tr>';
+          html += '<tr><td colspan="2" class="text-muted small">No deduction components were applied for this preview.</td></tr>';
         }
       }
+      html += '</tbody>';
+      html += '</table>';
       html += '</div>';
       if (preview.ok === false && Array.isArray(preview.missing) && preview.missing.length) {
         html += '<div class="text-warning small mt-2">Missing components: ' + escapeHtml(preview.missing.join(', ')) + '.</div>';
