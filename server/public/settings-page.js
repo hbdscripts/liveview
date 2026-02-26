@@ -2870,6 +2870,25 @@
           if (currentRn && !currentAction) {
             setGoalHint(k, 'This action is missing/removed in Google Ads. Choose another action, or click “Use Kexo default”.', false);
           }
+
+          /* Conditional visibility: Attach, Clear, Use Kexo default */
+          var actionsRow = document.querySelector('[data-ga-goal-actions="' + k + '"]');
+          var createRow = document.querySelector('[data-ga-goal-create-row="' + k + '"]');
+          if (actionsRow) {
+            var attachBtn = actionsRow.querySelector('.settings-ga-goal-attach-btn');
+            var clearBtn = actionsRow.querySelector('.settings-ga-goal-clear-btn');
+            var provisionBtn = actionsRow.querySelector('.settings-ga-goal-provision-btn');
+            if (attachBtn) attachBtn.classList.toggle('d-none', false);
+            if (clearBtn) clearBtn.classList.toggle('d-none', !currentRn);
+            if (provisionBtn) provisionBtn.classList.toggle('d-none', !!(currentRn && currentAction));
+          }
+          if (createRow) {
+            createRow.classList.toggle('d-none', !!currentRn);
+          }
+          var createNewLink = document.querySelector('[data-ga-goal-create-new="' + k + '"]');
+          if (createNewLink) {
+            createNewLink.classList.toggle('d-none', !currentRn);
+          }
         });
         return true;
       }).catch(function () {
@@ -3788,6 +3807,13 @@
       goalGrid.addEventListener('click', function (e) {
         var target = e && e.target ? e.target : null;
         if (!target) return;
+        var createNewBtn = target.closest ? target.closest('[data-ga-goal-create-new]') : null;
+        if (createNewBtn) {
+          var goalType = createNewBtn.getAttribute('data-ga-goal-create-new');
+          var createRow = document.querySelector('[data-ga-goal-create-row="' + goalType + '"]');
+          if (createRow) { createRow.classList.remove('d-none'); createNewBtn.classList.add('d-none'); }
+          return;
+        }
         var btn = target.closest ? target.closest('[data-ga-goal-attach],[data-ga-goal-clear],[data-ga-goal-create],[data-ga-goal-provision]') : null;
         if (!btn) return;
         var goalType = btn.getAttribute('data-ga-goal-attach') || btn.getAttribute('data-ga-goal-clear') || btn.getAttribute('data-ga-goal-create') || btn.getAttribute('data-ga-goal-provision');

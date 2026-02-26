@@ -1157,6 +1157,22 @@ body[data-page="settings"] .kexo-settings-api-keys-list .kexo-settings-api-key-r
   border-bottom: 0;
 }
 
+/* Admin → Google Ads: goal tile spacing (labels, field groups) */
+body[data-page="settings"] #admin-panel-googleads .settings-ga-goal-tile .form-label {
+  margin-bottom: 0.25rem;
+}
+body[data-page="settings"] #admin-panel-googleads .settings-ga-goal-tile .card-body > .mb-2,
+body[data-page="settings"] #admin-panel-googleads .settings-ga-goal-tile .card-body > .mb-3,
+body[data-page="settings"] #admin-panel-googleads .settings-ga-goal-tile .settings-ga-goal-field-group {
+  margin-bottom: 0.5rem;
+}
+body[data-page="settings"] #admin-panel-googleads .settings-ga-goal-tile .settings-ga-goal-actions-row {
+  margin-top: 0.5rem;
+}
+body[data-page="settings"] #admin-panel-googleads .settings-ga-goal-tile .settings-ga-goal-create-row {
+  margin-top: 0.5rem;
+}
+
 /* Admin → Google Ads: goal tiles + responsive grids */
 body[data-page="settings"] #admin-panel-googleads .settings-ga-connection-grid {
   grid-template-columns: minmax(0, 1fr);

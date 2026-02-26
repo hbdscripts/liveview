@@ -1617,27 +1617,31 @@
                               <input class="form-check-input" type="checkbox" id="settings-ga-cart-data-revenue" />
                               <span class="form-check-label" title="Send line-item product IDs and quantities with this goal's uploads. Requires Merchant Center (cart data) in Diagnostics.">Include cart data <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></span>
                             </label>
-                            <div class="mb-2">
-                              <label class="form-label small mb-0" title="Primary: used for bidding and in Conversions. Secondary: reporting only. Default Secondary.">Optimization <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>
+                            <div class="settings-ga-goal-field-group mb-2">
+                              <label class="form-label small" for="settings-ga-optimization-revenue" title="Primary: used for bidding and in Conversions. Secondary: reporting only. Default Secondary.">Optimization <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>
                               <select class="form-select form-select-sm" id="settings-ga-optimization-revenue" aria-label="Revenue primary or secondary">
                                 <option value="secondary">Secondary</option>
                                 <option value="primary">Primary</option>
                               </select>
                             </div>
-                            <div class="mb-2">
-                              <div class="text-muted small">Uploads to</div>
+                            <div class="settings-ga-goal-field-group mb-2">
+                              <div class="text-muted small mb-1">Uploads to</div>
                               <div class="fw-semibold" id="settings-ga-goal-revenue-current-action">Loading…</div>
                             </div>
-                            <select class="form-select form-select-sm" id="settings-ga-goal-revenue-action-select" aria-label="Revenue conversion action"></select>
-                            <div class="d-flex align-items-center gap-2 flex-wrap mt-2">
-                              <button type="button" class="btn btn-sm" data-ga-goal-attach="revenue">Attach</button>
-                              <button type="button" class="btn btn-sm" data-ga-goal-clear="revenue">Clear</button>
-                              <button type="button" class="btn btn-sm" data-ga-goal-provision="revenue" title="Create the default Kexo action if missing, then use it">Use Kexo default</button>
+                            <div class="settings-ga-goal-field-group mb-2">
+                              <label class="form-label small visually-hidden" for="settings-ga-goal-revenue-action-select">Change action</label>
+                              <select class="form-select form-select-sm" id="settings-ga-goal-revenue-action-select" aria-label="Revenue conversion action"></select>
                             </div>
-                            <div class="d-flex align-items-center gap-2 flex-wrap mt-2">
+                            <div class="d-flex align-items-center gap-2 flex-wrap settings-ga-goal-actions-row" data-ga-goal-actions="revenue">
+                              <button type="button" class="btn btn-sm settings-ga-goal-attach-btn" data-ga-goal-attach="revenue">Attach</button>
+                              <button type="button" class="btn btn-sm settings-ga-goal-clear-btn" data-ga-goal-clear="revenue">Clear</button>
+                              <button type="button" class="btn btn-sm settings-ga-goal-provision-btn" data-ga-goal-provision="revenue" title="Create the default Kexo action if missing, then use it">Use Kexo default</button>
+                            </div>
+                            <div class="d-flex align-items-center gap-2 flex-wrap settings-ga-goal-create-row" data-ga-goal-create-row="revenue">
                               <input type="text" class="form-control form-control-sm settings-ga-action-name-input" id="settings-ga-goal-revenue-create-name" placeholder="New action name" autocomplete="off" />
                               <button type="button" class="btn btn-primary btn-sm" data-ga-goal-create="revenue">Create &amp; attach</button>
                             </div>
+                            <button type="button" class="btn btn-sm btn-link link-secondary p-0 mt-1 settings-ga-goal-create-new-link d-none" data-ga-goal-create-new="revenue">Create new action</button>
                             <div class="form-hint mt-2" id="settings-ga-goal-revenue-msg"></div>
                           </div>
                         </div>
@@ -1660,27 +1664,31 @@
                               <input class="form-check-input" type="checkbox" id="settings-ga-cart-data-profit" />
                               <span class="form-check-label" title="Send line-item product IDs and quantities with this goal's uploads. Requires Merchant Center (cart data) in Diagnostics.">Include cart data <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></span>
                             </label>
-                            <div class="mb-2">
-                              <label class="form-label small mb-0" title="Primary: used for bidding and in Conversions. Secondary: reporting only. Default Secondary.">Optimization <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>
+                            <div class="settings-ga-goal-field-group mb-2">
+                              <label class="form-label small" for="settings-ga-optimization-profit" title="Primary: used for bidding and in Conversions. Secondary: reporting only. Default Secondary.">Optimization <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>
                               <select class="form-select form-select-sm" id="settings-ga-optimization-profit" aria-label="Profit primary or secondary">
                                 <option value="secondary">Secondary</option>
                                 <option value="primary">Primary</option>
                               </select>
                             </div>
-                            <div class="mb-2">
-                              <div class="text-muted small">Uploads to</div>
+                            <div class="settings-ga-goal-field-group mb-2">
+                              <div class="text-muted small mb-1">Uploads to</div>
                               <div class="fw-semibold" id="settings-ga-goal-profit-current-action">Loading…</div>
                             </div>
-                            <select class="form-select form-select-sm" id="settings-ga-goal-profit-action-select" aria-label="Profit conversion action"></select>
-                            <div class="d-flex align-items-center gap-2 flex-wrap mt-2">
-                              <button type="button" class="btn btn-sm" data-ga-goal-attach="profit">Attach</button>
-                              <button type="button" class="btn btn-sm" data-ga-goal-clear="profit">Clear</button>
-                              <button type="button" class="btn btn-sm" data-ga-goal-provision="profit" title="Create the default Kexo action if missing, then use it">Use Kexo default</button>
+                            <div class="settings-ga-goal-field-group mb-2">
+                              <label class="form-label small visually-hidden" for="settings-ga-goal-profit-action-select">Change action</label>
+                              <select class="form-select form-select-sm" id="settings-ga-goal-profit-action-select" aria-label="Profit conversion action"></select>
                             </div>
-                            <div class="d-flex align-items-center gap-2 flex-wrap mt-2">
+                            <div class="d-flex align-items-center gap-2 flex-wrap settings-ga-goal-actions-row" data-ga-goal-actions="profit">
+                              <button type="button" class="btn btn-sm settings-ga-goal-attach-btn" data-ga-goal-attach="profit">Attach</button>
+                              <button type="button" class="btn btn-sm settings-ga-goal-clear-btn" data-ga-goal-clear="profit">Clear</button>
+                              <button type="button" class="btn btn-sm settings-ga-goal-provision-btn" data-ga-goal-provision="profit" title="Create the default Kexo action if missing, then use it">Use Kexo default</button>
+                            </div>
+                            <div class="d-flex align-items-center gap-2 flex-wrap settings-ga-goal-create-row" data-ga-goal-create-row="profit">
                               <input type="text" class="form-control form-control-sm settings-ga-action-name-input" id="settings-ga-goal-profit-create-name" placeholder="New action name" autocomplete="off" />
                               <button type="button" class="btn btn-primary btn-sm" data-ga-goal-create="profit">Create &amp; attach</button>
                             </div>
+                            <button type="button" class="btn btn-sm btn-link link-secondary p-0 mt-1 settings-ga-goal-create-new-link d-none" data-ga-goal-create-new="profit">Create new action</button>
                             <div class="form-hint mt-2" id="settings-ga-goal-profit-msg"></div>
                           </div>
                         </div>
@@ -1694,30 +1702,36 @@
                             </label>
                           </div>
                           <div class="card-body">
-                            <label class="form-label small" for="settings-ga-addtocart-value">Conversion value</label>
-                            <input type="number" class="form-control form-control-sm settings-ui-w-5rem" id="settings-ga-addtocart-value" min="0" step="0.01" value="1" />
-                            <div class="form-hint mb-3">Value sent for each Add to Cart conversion (usually 1).</div>
-                            <div class="mb-2">
-                              <label class="form-label small mb-0">Optimization</label>
+                            <div class="settings-ga-goal-field-group mb-2">
+                              <label class="form-label small" for="settings-ga-addtocart-value">Conversion value</label>
+                              <input type="number" class="form-control form-control-sm settings-ui-w-5rem" id="settings-ga-addtocart-value" min="0" step="0.01" value="1" />
+                              <div class="form-hint mt-1">Value sent for each Add to Cart conversion (usually 1).</div>
+                            </div>
+                            <div class="settings-ga-goal-field-group mb-2">
+                              <label class="form-label small" for="settings-ga-optimization-add_to_cart">Optimization</label>
                               <select class="form-select form-select-sm" id="settings-ga-optimization-add_to_cart" aria-label="Add to Cart primary or secondary">
                                 <option value="secondary">Secondary</option>
                                 <option value="primary">Primary</option>
                               </select>
                             </div>
-                            <div class="mb-2">
-                              <div class="text-muted small">Uploads to</div>
+                            <div class="settings-ga-goal-field-group mb-2">
+                              <div class="text-muted small mb-1">Uploads to</div>
                               <div class="fw-semibold" id="settings-ga-goal-add_to_cart-current-action">Loading…</div>
                             </div>
-                            <select class="form-select form-select-sm" id="settings-ga-goal-add_to_cart-action-select" aria-label="Add to Cart conversion action"></select>
-                            <div class="d-flex align-items-center gap-2 flex-wrap mt-2">
-                              <button type="button" class="btn btn-sm" data-ga-goal-attach="add_to_cart">Attach</button>
-                              <button type="button" class="btn btn-sm" data-ga-goal-clear="add_to_cart">Clear</button>
-                              <button type="button" class="btn btn-sm" data-ga-goal-provision="add_to_cart" title="Create the default Kexo action if missing, then use it">Use Kexo default</button>
+                            <div class="settings-ga-goal-field-group mb-2">
+                              <label class="form-label small visually-hidden" for="settings-ga-goal-add_to_cart-action-select">Change action</label>
+                              <select class="form-select form-select-sm" id="settings-ga-goal-add_to_cart-action-select" aria-label="Add to Cart conversion action"></select>
                             </div>
-                            <div class="d-flex align-items-center gap-2 flex-wrap mt-2">
+                            <div class="d-flex align-items-center gap-2 flex-wrap settings-ga-goal-actions-row" data-ga-goal-actions="add_to_cart">
+                              <button type="button" class="btn btn-sm settings-ga-goal-attach-btn" data-ga-goal-attach="add_to_cart">Attach</button>
+                              <button type="button" class="btn btn-sm settings-ga-goal-clear-btn" data-ga-goal-clear="add_to_cart">Clear</button>
+                              <button type="button" class="btn btn-sm settings-ga-goal-provision-btn" data-ga-goal-provision="add_to_cart" title="Create the default Kexo action if missing, then use it">Use Kexo default</button>
+                            </div>
+                            <div class="d-flex align-items-center gap-2 flex-wrap settings-ga-goal-create-row" data-ga-goal-create-row="add_to_cart">
                               <input type="text" class="form-control form-control-sm settings-ga-action-name-input" id="settings-ga-goal-add_to_cart-create-name" placeholder="New action name" autocomplete="off" />
                               <button type="button" class="btn btn-primary btn-sm" data-ga-goal-create="add_to_cart">Create &amp; attach</button>
                             </div>
+                            <button type="button" class="btn btn-sm btn-link link-secondary p-0 mt-1 settings-ga-goal-create-new-link d-none" data-ga-goal-create-new="add_to_cart">Create new action</button>
                             <div class="form-hint mt-2" id="settings-ga-goal-add_to_cart-msg"></div>
                           </div>
                         </div>
@@ -1731,30 +1745,36 @@
                             </label>
                           </div>
                           <div class="card-body">
-                            <label class="form-label small" for="settings-ga-begincheckout-value">Conversion value</label>
-                            <input type="number" class="form-control form-control-sm settings-ui-w-5rem" id="settings-ga-begincheckout-value" min="0" step="0.01" value="1" />
-                            <div class="form-hint mb-3">Value sent for each Begin Checkout conversion (usually 1).</div>
-                            <div class="mb-2">
-                              <label class="form-label small mb-0">Optimization</label>
+                            <div class="settings-ga-goal-field-group mb-2">
+                              <label class="form-label small" for="settings-ga-begincheckout-value">Conversion value</label>
+                              <input type="number" class="form-control form-control-sm settings-ui-w-5rem" id="settings-ga-begincheckout-value" min="0" step="0.01" value="1" />
+                              <div class="form-hint mt-1">Value sent for each Begin Checkout conversion (usually 1).</div>
+                            </div>
+                            <div class="settings-ga-goal-field-group mb-2">
+                              <label class="form-label small" for="settings-ga-optimization-begin_checkout">Optimization</label>
                               <select class="form-select form-select-sm" id="settings-ga-optimization-begin_checkout" aria-label="Begin Checkout primary or secondary">
                                 <option value="secondary">Secondary</option>
                                 <option value="primary">Primary</option>
                               </select>
                             </div>
-                            <div class="mb-2">
-                              <div class="text-muted small">Uploads to</div>
+                            <div class="settings-ga-goal-field-group mb-2">
+                              <div class="text-muted small mb-1">Uploads to</div>
                               <div class="fw-semibold" id="settings-ga-goal-begin_checkout-current-action">Loading…</div>
                             </div>
-                            <select class="form-select form-select-sm" id="settings-ga-goal-begin_checkout-action-select" aria-label="Begin Checkout conversion action"></select>
-                            <div class="d-flex align-items-center gap-2 flex-wrap mt-2">
-                              <button type="button" class="btn btn-sm" data-ga-goal-attach="begin_checkout">Attach</button>
-                              <button type="button" class="btn btn-sm" data-ga-goal-clear="begin_checkout">Clear</button>
-                              <button type="button" class="btn btn-sm" data-ga-goal-provision="begin_checkout" title="Create the default Kexo action if missing, then use it">Use Kexo default</button>
+                            <div class="settings-ga-goal-field-group mb-2">
+                              <label class="form-label small visually-hidden" for="settings-ga-goal-begin_checkout-action-select">Change action</label>
+                              <select class="form-select form-select-sm" id="settings-ga-goal-begin_checkout-action-select" aria-label="Begin Checkout conversion action"></select>
                             </div>
-                            <div class="d-flex align-items-center gap-2 flex-wrap mt-2">
+                            <div class="d-flex align-items-center gap-2 flex-wrap settings-ga-goal-actions-row" data-ga-goal-actions="begin_checkout">
+                              <button type="button" class="btn btn-sm settings-ga-goal-attach-btn" data-ga-goal-attach="begin_checkout">Attach</button>
+                              <button type="button" class="btn btn-sm settings-ga-goal-clear-btn" data-ga-goal-clear="begin_checkout">Clear</button>
+                              <button type="button" class="btn btn-sm settings-ga-goal-provision-btn" data-ga-goal-provision="begin_checkout" title="Create the default Kexo action if missing, then use it">Use Kexo default</button>
+                            </div>
+                            <div class="d-flex align-items-center gap-2 flex-wrap settings-ga-goal-create-row" data-ga-goal-create-row="begin_checkout">
                               <input type="text" class="form-control form-control-sm settings-ga-action-name-input" id="settings-ga-goal-begin_checkout-create-name" placeholder="New action name" autocomplete="off" />
                               <button type="button" class="btn btn-primary btn-sm" data-ga-goal-create="begin_checkout">Create &amp; attach</button>
                             </div>
+                            <button type="button" class="btn btn-sm btn-link link-secondary p-0 mt-1 settings-ga-goal-create-new-link d-none" data-ga-goal-create-new="begin_checkout">Create new action</button>
                             <div class="form-hint mt-2" id="settings-ga-goal-begin_checkout-msg"></div>
                           </div>
                         </div>
@@ -1830,6 +1850,14 @@
                         <button type="button" class="btn btn-sm" id="settings-ga-actions-refresh-btn" title="Refresh conversion actions table">Refresh</button>
                         <span class="text-muted small">Use this if you deleted/changed actions in Google Ads and want the UI to re-sync.</span>
                       </div>
+                      <ul class="nav nav-tabs nav-tabs-alt mb-2" id="settings-ga-actions-tabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                          <button type="button" class="nav-link active" id="settings-ga-actions-tab-live" data-settings-ga-actions-tab="live" role="tab" aria-selected="true" aria-controls="settings-ga-actions-body">Live</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                          <button type="button" class="nav-link" id="settings-ga-actions-tab-removed" data-settings-ga-actions-tab="removed" role="tab" aria-selected="false" aria-controls="settings-ga-actions-body">Removed</button>
+                        </li>
+                      </ul>
                       <div class="table-responsive">
                         <table class="table table-sm table-vcenter mb-0" aria-label="Google Ads conversion actions">
                           <thead>
