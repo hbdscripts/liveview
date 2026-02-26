@@ -3587,7 +3587,7 @@ html[data-bs-theme="dark"] .report-build-wrap {
   margin-bottom: 0.4rem;
 }
 .kexo-score-breakdown--overview .kexo-score-breakdown-row .progress {
-  height: 6px;
+  height: 1px;
   border-radius: 999px;
 }
 .kexo-score-breakdown--overview .kexo-score-breakdown-row .progress-bar {
@@ -4144,7 +4144,7 @@ body[data-dashboard-view="overview"] .kexo-ovw-kpi-progress {
   grid-column: 1 / -1;
   margin-top: 0.1rem;
   background: rgba(15, 23, 42, 0.08);
-  height: 6px;
+  height: 1px;
   border-radius: 999px;
 }
 body[data-dashboard-view="overview"] .kexo-ovw-kpi-progress .progress-bar {
