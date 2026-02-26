@@ -344,21 +344,59 @@ body[data-page="settings"] #settings-panel-cost-expenses .kexo-ce-override-count
   display: flex;
   align-items: center;
   gap: 6px;
+  width: 100%;
+}
+body[data-page="settings"] #settings-panel-cost-expenses .kexo-ce-override-countries-wrap .kexo-ce-override-countries-preview {
+  flex: 0 0 auto;
+}
+body[data-page="settings"] #settings-panel-cost-expenses .kexo-ce-override-countries-wrap .kexo-ce-override-countries {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 body[data-page="settings"] #settings-panel-cost-expenses .kexo-ce-override-priority {
-  width: 30px;
-  max-width: 30px;
-  padding-left: 2px;
-  padding-right: 2px;
+  width: 40px;
+  max-width: 40px;
+  min-width: 40px;
+  padding: 5px 0 5px 5px;
   text-align: center;
 }
 body[data-page="settings"] #settings-panel-cost-expenses .kexo-ce-override-price {
-  width: 90px;
-  max-width: 90px;
+  width: 40px;
+  max-width: 40px;
+  min-width: 40px;
 }
 body[data-page="settings"] #settings-panel-cost-expenses .kexo-ce-override-label {
+  width: 120px;
+  max-width: 140px;
+}
+body[data-page="settings"] #settings-panel-cost-expenses #settings-cost-expenses-panel-shipping .table {
+  table-layout: fixed;
+  width: 100%;
+}
+body[data-page="settings"] #settings-panel-cost-expenses #settings-cost-expenses-panel-shipping .table th,
+body[data-page="settings"] #settings-panel-cost-expenses #settings-cost-expenses-panel-shipping .table td {
+  padding-top: 0.35rem;
+  padding-bottom: 0.35rem;
+}
+body[data-page="settings"] #settings-panel-cost-expenses #settings-cost-expenses-panel-shipping .table th:nth-child(1),
+body[data-page="settings"] #settings-panel-cost-expenses #settings-cost-expenses-panel-shipping .table td:nth-child(1) {
+  width: 56px;
+}
+body[data-page="settings"] #settings-panel-cost-expenses #settings-cost-expenses-panel-shipping .table th:nth-child(2),
+body[data-page="settings"] #settings-panel-cost-expenses #settings-cost-expenses-panel-shipping .table td:nth-child(2) {
+  width: 56px;
+}
+body[data-page="settings"] #settings-panel-cost-expenses #settings-cost-expenses-panel-shipping .table th:nth-child(3),
+body[data-page="settings"] #settings-panel-cost-expenses #settings-cost-expenses-panel-shipping .table td:nth-child(3) {
   width: 140px;
-  max-width: 180px;
+}
+body[data-page="settings"] #settings-panel-cost-expenses #settings-cost-expenses-panel-shipping .table th:nth-child(4),
+body[data-page="settings"] #settings-panel-cost-expenses #settings-cost-expenses-panel-shipping .table td:nth-child(4) {
+  width: 72px;
+}
+body[data-page="settings"] #settings-panel-cost-expenses #settings-cost-expenses-panel-shipping .table th:nth-child(6),
+body[data-page="settings"] #settings-panel-cost-expenses #settings-cost-expenses-panel-shipping .table td:nth-child(6) {
+  width: 56px;
 }
 
 /* Cost & Expenses: Shipping "worldwide default" should not look like a card. */
