@@ -335,6 +335,14 @@ async function allowWithUserGate(req) {
   if (!email) return { ok: false, reason: 'unauthorized' };
   if (users.isBootstrapMasterEmail(email)) {
     try { await users.ensureBootstrapMaster(email); } catch (_) {}
+    try {
+      const row = await users.getUserByEmail(email);
+      const now = Date.now();
+      const lastAt = row && row.last_login_at != null ? Number(row.last_login_at) : 0;
+      if (!lastAt || now - lastAt > 3600000) {
+        await users.updateLoginMeta(email, {}, { now });
+      }
+    } catch (_) {}
     return { ok: true, reason: '' };
   }
   const row = await users.getUserByEmail(email);
@@ -346,6 +354,13 @@ async function allowWithUserGate(req) {
   const status = (row.status || '').toString().trim().toLowerCase();
   if (status === 'denied') return { ok: false, reason: 'denied' };
   if (status === 'pending') return { ok: false, reason: 'pending' };
+  try {
+    const now = Date.now();
+    const lastAt = row.last_login_at != null ? Number(row.last_login_at) : 0;
+    if (!lastAt || now - lastAt > 3600000) {
+      await users.updateLoginMeta(email, {}, { now });
+    }
+  } catch (_) {}
   return { ok: true, reason: '' };
 }
 

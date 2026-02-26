@@ -102,7 +102,8 @@ router.get('/users', async (req, res) => {
     const shopRows = await listShopifyAuthRows(20);
     rows = sortRowsByLastSeenDesc([...(rows || []), ...shopRows]);
   }
-  res.json({ ok: true, users: rows || [] });
+  const currentUser = req.adminUser || null;
+  res.json({ ok: true, users: rows || [], currentUser });
 });
 
 router.post('/users/:id/approve', async (req, res) => {
@@ -119,6 +120,7 @@ router.patch('/users/:id', async (req, res) => {
   const id = req.params && req.params.id;
   const userId = parseUserId(id);
   if (userId == null) return res.status(400).json({ ok: false, error: 'unsupported_user_id' });
+  if (isSelfModification(req, userId)) return res.status(403).json({ ok: false, error: 'cannot_modify_self' });
   const tier = req.body && req.body.tier != null ? req.body.tier : undefined;
   if (tier == null || String(tier).trim() === '') return res.status(400).json({ ok: false, error: 'tier_required' });
   const r = await users.updateUserTier(userId, tier, null, { now: Date.now() });
@@ -139,6 +141,7 @@ async function promoteAdmin(req, res) {
   const id = req.params && req.params.id;
   const userId = parseUserId(id);
   if (userId == null) return res.status(400).json({ ok: false, error: 'unsupported_user_id' });
+  if (isSelfModification(req, userId)) return res.status(403).json({ ok: false, error: 'cannot_modify_self' });
   const r = await users.promoteToAdmin(userId, null, { now: Date.now() });
   if (!r || r.ok !== true) return res.status(400).json({ ok: false, error: (r && r.error) || 'promote_failed' });
   res.json({ ok: true });
@@ -173,6 +176,12 @@ function parseUserId(id) {
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
+function isSelfModification(req, userId) {
+  const me = req.adminUser;
+  if (!me || !me.id) return false;
+  return Number(userId) === Number(me.id);
+}
+
 router.get('/users/:id/permissions', async (req, res) => {
   const userId = parseUserId(req.params && req.params.id);
   if (userId == null) return res.status(404).json({ ok: false, error: 'user_not_found' });
@@ -201,6 +210,7 @@ router.get('/users/:id/permissions', async (req, res) => {
 router.put('/users/:id/permissions', async (req, res) => {
   const userId = parseUserId(req.params && req.params.id);
   if (userId == null) return res.status(404).json({ ok: false, error: 'user_not_found' });
+  if (isSelfModification(req, userId)) return res.status(403).json({ ok: false, error: 'cannot_modify_self' });
   const user = await users.getUserById(userId);
   if (!user) return res.status(404).json({ ok: false, error: 'user_not_found' });
   const overrides = req.body && typeof req.body.overrides === 'object' ? req.body.overrides : {};

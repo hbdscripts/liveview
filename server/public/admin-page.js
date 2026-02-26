@@ -570,13 +570,15 @@
     return LOGIN_METHOD_LABELS[p] || (p ? escapeHtml(p) : '—');
   }
 
-  function renderActive(rows) {
+  function renderActive(rows, currentUser) {
     var body = document.getElementById('admin-users-active-body');
     if (!body) return;
     if (!rows || !rows.length) {
       body.innerHTML = '<tr><td colspan="8" class="text-secondary">No active users.</td></tr>';
       return;
     }
+    var currentId = currentUser && currentUser.id != null ? String(currentUser.id) : null;
+    var currentEmail = currentUser && currentUser.email ? String(currentUser.email).trim().toLowerCase() : '';
     var h = '';
     rows.forEach(function (row) {
       var email = row && row.email ? String(row.email) : '';
@@ -588,17 +590,23 @@
       var city = row && row.last_city ? String(row.last_city).trim() : '';
       var lastLogin = row && row.last_login_at != null ? Number(row.last_login_at) : 0;
       var isShopifySession = (provider === 'shopify' || role === 'shopify');
+      var isSelf = !isShopifySession && (
+        (currentId && row.id != null && String(row.id) === currentId) ||
+        (currentEmail && email && email.trim().toLowerCase() === currentEmail)
+      );
 
       var roleCell = isShopifySession ? '—' : (role === 'admin' || role === 'master' ? makeBadge('Admin', 'primary') : escapeHtml(tierLabel(tier)));
       var actions = '';
       if (isShopifySession) {
         actions = '<span class="badge bg-secondary-lt admin-users-badge" title="Session-only; no role/permissions to edit" aria-label="Session-only; no role/permissions to edit">Shopify session</span>';
-      } else if (role === 'admin' || role === 'master') {
-        actions = makeBadge('Admin', 'primary');
-      } else {
+      } else if (isSelf) {
+        actions = '<span class="text-secondary small">You</span>';
+      } else if (isNumericUserId(row.id)) {
         actions =
-          '<button type="button" class="btn btn-sm me-1" data-admin-action="edit" data-user-id="' + escapeHtml(row.id) + '" data-user-tier="' + escapeHtml(tier) + '">Edit</button>' +
-          '<button type="button" class="btn btn-sm" data-admin-action="promote" data-user-id="' + escapeHtml(row.id) + '">Promote to admin</button>';
+          '<button type="button" class="btn btn-sm me-1" data-admin-action="edit" data-user-id="' + escapeHtml(row.id) + '" data-user-tier="' + escapeHtml(tier) + '">Edit</button>';
+        if (role !== 'admin' && role !== 'master') {
+          actions += '<button type="button" class="btn btn-sm" data-admin-action="promote" data-user-id="' + escapeHtml(row.id) + '">Promote to admin</button>';
+        }
       }
 
       if (status && status !== 'active') {
@@ -674,7 +682,7 @@
   function loadUsers(status) {
     return kfetch('/api/admin/users?status=' + encodeURIComponent(status), { method: 'GET' })
       .then(function (r) {
-        if (!r) return { ok: false, status: 0, users: [], error: 'request_failed' };
+        if (!r) return { ok: false, status: 0, users: [], currentUser: null, error: 'request_failed' };
         return (r.json ? r.json().catch(function () { return null; }) : Promise.resolve(null))
           .then(function (d) {
             if (!r.ok) {
@@ -682,13 +690,19 @@
                 ok: false,
                 status: Number(r.status) || 0,
                 users: [],
+                currentUser: null,
                 error: (d && (d.error || d.message)) ? String(d.error || d.message) : 'request_failed',
               };
             }
-            return { ok: true, status: Number(r.status) || 200, users: (d && d.users) ? d.users : [] };
+            return {
+              ok: true,
+              status: Number(r.status) || 200,
+              users: (d && d.users) ? d.users : [],
+              currentUser: (d && d.currentUser) ? d.currentUser : null,
+            };
           });
       })
-      .catch(function () { return { ok: false, status: 0, users: [], error: 'network_error' }; });
+      .catch(function () { return { ok: false, status: 0, users: [], currentUser: null, error: 'network_error' }; });
   }
 
   function renderUsersLoadError(which, result) {
@@ -903,7 +917,7 @@
     setLoading('pending', 'Refreshing…');
     return Promise.all([
       loadUsers('active').then(function (res) {
-        if (res && res.ok) renderActive(res.users || []);
+        if (res && res.ok) renderActive(res.users || [], res.currentUser || null);
         else renderUsersLoadError('active', res);
       }),
       loadUsers('pending').then(function (res) {

@@ -48,13 +48,18 @@ async function middleware(req, res, next) {
 
     if (users.isBootstrapMasterEmail(email)) {
       try { await users.ensureBootstrapMaster(email); } catch (_) {}
+      const row = await users.getUserByEmail(email);
+      req.adminUser = row && row.id != null ? { id: row.id, email } : { id: null, email };
       return next();
     }
 
     const row = await users.getUserByEmail(email);
     const role = row && row.role != null ? String(row.role).trim().toLowerCase() : '';
     const status = row && row.status != null ? String(row.status).trim().toLowerCase() : '';
-    if ((role === 'admin' || role === 'master') && status === 'active') return next();
+    if ((role === 'admin' || role === 'master') && status === 'active') {
+      req.adminUser = row && row.id != null ? { id: row.id, email } : { id: null, email };
+      return next();
+    }
 
     if (isApi(req)) return res.status(403).json({ error: 'Forbidden' });
     return res.redirect(302, '/dashboard/overview');
