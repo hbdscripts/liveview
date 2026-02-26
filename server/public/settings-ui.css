@@ -361,9 +361,9 @@ body[data-page="settings"] #settings-panel-cost-expenses .kexo-ce-override-prior
   text-align: center;
 }
 body[data-page="settings"] #settings-panel-cost-expenses .kexo-ce-override-price {
-  width: 40px;
-  max-width: 40px;
-  min-width: 40px;
+  width: 100px;
+  max-width: 100px;
+  min-width: 100px;
 }
 body[data-page="settings"] #settings-panel-cost-expenses .kexo-ce-override-label {
   width: 120px;
@@ -392,7 +392,7 @@ body[data-page="settings"] #settings-panel-cost-expenses #settings-cost-expenses
 }
 body[data-page="settings"] #settings-panel-cost-expenses #settings-cost-expenses-panel-shipping .table th:nth-child(4),
 body[data-page="settings"] #settings-panel-cost-expenses #settings-cost-expenses-panel-shipping .table td:nth-child(4) {
-  width: 72px;
+  width: 120px;
 }
 body[data-page="settings"] #settings-panel-cost-expenses #settings-cost-expenses-panel-shipping .table th:nth-child(6),
 body[data-page="settings"] #settings-panel-cost-expenses #settings-cost-expenses-panel-shipping .table td:nth-child(6) {
@@ -458,6 +458,13 @@ body[data-page="settings"] #settings-panel-cost-expenses .kexo-icon-action-btn {
   align-items: center;
   justify-content: center;
   gap: 0;
+}
+/* Cost & Expenses: danger (trash) button – red icon by default, white on hover. */
+body[data-page="settings"] #settings-panel-cost-expenses .kexo-icon-action-btn.btn-danger {
+  color: var(--tblr-danger, #dc3545);
+}
+body[data-page="settings"] #settings-panel-cost-expenses .kexo-icon-action-btn.btn-danger:hover {
+  color: #fff;
 }
 
 /* Cost & Expenses: compact Per-order matching row (avoid inline styles). */
