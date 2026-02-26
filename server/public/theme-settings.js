@@ -1178,6 +1178,7 @@
     });
   }
   window.__kexoThemeFlushIconOverridesFromForm = flushIconOverridesFromForm;
+  window.__kexoThemeIconSpecToPreviewHtml = attributionIconSpecToPreviewHtml;
 
   function fetchPaymentMethodsCatalog() {
     var base = '';

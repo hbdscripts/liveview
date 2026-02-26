@@ -6989,9 +6989,63 @@
     return base + '-' + i;
   }
 
+  function getOpenInsightsVariantsAccordionIds(root) {
+    var ids = [];
+    if (!root || !root.querySelectorAll) return ids;
+    try {
+      root.querySelectorAll('.settings-insights-variants-accordion .accordion-collapse.show').forEach(function (el) {
+        if (!el || !el.id) return;
+        ids.push(String(el.id));
+      });
+    } catch (_) {}
+    return ids;
+  }
+
+  function restoreInsightsVariantsAccordionState(root, openIds) {
+    if (!root || !Array.isArray(openIds) || !openIds.length) return;
+    var seen = {};
+    openIds.forEach(function (rawId) {
+      var id = String(rawId || '').trim();
+      if (!id || seen[id]) return;
+      seen[id] = true;
+      var collapseEl = document.getElementById(id);
+      if (!collapseEl || !root.contains(collapseEl) || !collapseEl.classList || !collapseEl.classList.contains('accordion-collapse')) return;
+      collapseEl.classList.add('show');
+      var btn = root.querySelector('[data-bs-toggle="collapse"][data-bs-target="#' + id + '"]');
+      if (!btn) return;
+      btn.classList.remove('collapsed');
+      btn.setAttribute('aria-expanded', 'true');
+    });
+  }
+
+  function renderInsightsVariantsTableIconPreviewHtml(iconSpec, label) {
+    var spec = String(iconSpec == null ? '' : iconSpec).trim();
+    var safeLabel = String(label == null ? '' : label).trim();
+    if (!spec) return '<span class="text-muted small">—</span>';
+    try {
+      if (typeof window.__kexoThemeIconSpecToPreviewHtml === 'function') {
+        return String(window.__kexoThemeIconSpecToPreviewHtml(spec, safeLabel));
+      }
+    } catch (_) {}
+    if (/^(https?:\/\/|\/\/|\/)/i.test(spec)) return '<img src="' + escapeHtml(spec) + '" alt="" title="' + escapeHtml(safeLabel) + '">';
+    return '<i class="' + escapeHtml(spec) + '" aria-hidden="true" title="' + escapeHtml(safeLabel) + '"></i>';
+  }
+
+  function updateInsightsVariantsTableIconPreview(root, tableIdx, iconSpec) {
+    if (!root) return;
+    var idx = parseInt(String(tableIdx || ''), 10);
+    if (!Number.isFinite(idx) || idx < 0) return;
+    var previewEl = root.querySelector('[data-table-icon-preview][data-table-idx="' + String(idx) + '"]');
+    if (!previewEl) return;
+    var tableNameInput = root.querySelector('input[data-field="table-name"][data-table-idx="' + String(idx) + '"]');
+    var label = tableNameInput && tableNameInput.value != null ? String(tableNameInput.value) : ('Table ' + String(idx + 1));
+    previewEl.innerHTML = renderInsightsVariantsTableIconPreviewHtml(iconSpec, label);
+  }
+
   function renderInsightsVariantsPanel(cfg) {
     var root = document.getElementById('settings-insights-variants-root');
     if (!root) return;
+    var openAccordionIds = getOpenInsightsVariantsAccordionIds(root);
     var normalized = normalizeInsightsVariantsConfig(cfg || insightsVariantsConfigCache || defaultInsightsVariantsConfigV1());
     insightsVariantsDraft = deepClone(normalized);
     var tables = Array.isArray(insightsVariantsDraft.tables) ? insightsVariantsDraft.tables : [];
@@ -7090,8 +7144,9 @@
             '<div class="mt-3 d-flex justify-content-between align-items-center flex-wrap gap-2">' +
               '<div class="d-flex align-items-center gap-2 flex-wrap">' +
                 '<button type="button" class="btn btn-sm" data-action="add-rule" data-table-idx="' + String(tableIdx) + '">Add row mapping</button>' +
-                '<div class="d-flex align-items-center gap-2">' +
+                '<div class="d-flex align-items-center gap-2 settings-variants-icon-control">' +
                   '<label class="form-label mb-0 small text-muted">Icon</label>' +
+                  '<span class="settings-variants-icon-preview" data-table-icon-preview data-table-idx="' + String(tableIdx) + '" aria-hidden="true">' + renderInsightsVariantsTableIconPreviewHtml(iconValue, table.name || ('Table ' + String(tableIdx + 1))) + '</span>' +
                   '<input type="text" class="form-control form-control-sm settings-ui-maxw-260" data-field="table-icon" data-table-idx="' + String(tableIdx) + '" value="' + escapeHtml(iconValue) + '" placeholder="fa-solid fa-grid-round" aria-label="Table icon (Font Awesome classes)">' +
                 '</div>' +
               '</div>' +
@@ -7106,6 +7161,7 @@
     html += '</div>';
 
     root.innerHTML = html;
+    restoreInsightsVariantsAccordionState(root, openAccordionIds);
     wireInsightsVariantsTitleSync();
     renderInsightsVariantsErrors(null);
     setInsightsVariantsResetVariantsVisibility(insightsVariantsDraft);
@@ -7389,6 +7445,16 @@
       try { target.value = ''; } catch (_) {}
     });
 
+    root.addEventListener('input', function (e) {
+      var target = e && e.target ? e.target : null;
+      if (!target || !target.getAttribute) return;
+      var field = target.getAttribute('data-field') || '';
+      if (field !== 'table-icon') return;
+      var tableIdx = target.getAttribute('data-table-idx');
+      updateDraftValue(tableIdx, null, field, target.value, false);
+      updateInsightsVariantsTableIconPreview(root, tableIdx, target.value);
+    });
+
     root.addEventListener('change', function (e) {
       var target = e && e.target ? e.target : null;
       if (!target) return;
@@ -7400,6 +7466,8 @@
       if (field === 'table-name') {
         insightsVariantsDraft = normalizeInsightsVariantsConfig(insightsVariantsDraft);
         renderInsightsVariantsPanel(insightsVariantsDraft);
+      } else if (field === 'table-icon') {
+        updateInsightsVariantsTableIconPreview(root, tableIdx, target.value);
       }
     });
   }

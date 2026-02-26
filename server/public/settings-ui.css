@@ -559,6 +559,9 @@ body[data-page="settings"] #settings-category-tablist .settings-nav-child:hover 
 .settings-card-controls {
   justify-content: flex-end;
 }
+body[data-page="settings"] #admin-panel-diagnostics .settings-card-controls {
+  justify-content: flex-start;
+}
 
 /* Opening title in each settings/admin content block: one size for all. */
 .settings-panel-heading,
@@ -716,6 +719,31 @@ body[data-page="settings"] .settings-insights-variants-accordion .settings-varia
 }
 body[data-page="settings"] .settings-insights-variants-accordion .accordion-body > .settings-variants-accordion-wrap {
   padding: 0.75rem 1rem;
+}
+body[data-page="settings"] .settings-variants-icon-control .form-label {
+  white-space: nowrap;
+}
+body[data-page="settings"] .settings-variants-icon-preview {
+  width: 1.875rem;
+  height: 1.875rem;
+  border-radius: var(--tblr-border-radius, 0.375rem);
+  border: 1px solid var(--tblr-border-color-translucent, rgba(0, 0, 0, 0.08));
+  background: var(--tblr-bg-surface, #fff);
+  color: var(--tblr-secondary, #66758c);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+body[data-page="settings"] .settings-variants-icon-preview i {
+  font-size: 15px;
+}
+body[data-page="settings"] .settings-variants-icon-preview img,
+body[data-page="settings"] .settings-variants-icon-preview svg {
+  width: 1em;
+  height: 1em;
+  object-fit: contain;
+  display: inline-block;
 }
 body[data-page="settings"] .settings-insights-variants-accordion .accordion-button:not(.collapsed) .kexo-settings-accordion-chevron i {
   transform: rotate(180deg);
