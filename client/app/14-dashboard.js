@@ -7193,7 +7193,7 @@
 
         var size = 180;
         var r = 72;
-        var strokeW = 4;
+        var strokeW = 6;
         var cx = Math.round(size / 2);
         var cy = Math.round(size / 2);
         var circ = Math.round(2 * Math.PI * r * 1000) / 1000;
@@ -7543,7 +7543,7 @@
           var tip = labelText + '\n' + valueText + '\n' + (metric === 'ctr' ? (ctrLabel + ': ' + valueText) : ('Share: ' + (Math.round(pct * 10) / 10).toFixed(1) + '%'));
           var size = 111;
           var r = 41;
-          var strokeW = 4;
+          var strokeW = 6;
           var cx = size / 2;
           var cy = size / 2;
           var circ = Math.round(2 * Math.PI * r * 1000) / 1000;
