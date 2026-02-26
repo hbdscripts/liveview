@@ -2524,7 +2524,13 @@
         if (!Number.isFinite(n) && ts instanceof Date) n = ts.getTime();
         if (!Number.isFinite(n)) return '—';
         if (n > 0 && n < 1e12) n *= 1000;
-        return new Date(n).toISOString();
+        var d = new Date(n);
+        var day = String(d.getDate()).padStart(2, '0');
+        var month = String(d.getMonth() + 1).padStart(2, '0');
+        var year = d.getFullYear();
+        var hours = String(d.getHours()).padStart(2, '0');
+        var mins = String(d.getMinutes()).padStart(2, '0');
+        return day + '/' + month + '/' + year + ' - ' + hours + ':' + mins;
       } catch (_) { return '—'; }
     }
 
