@@ -1216,11 +1216,11 @@ body[data-page="settings"] #admin-panel-googleads #settings-ga-signin-btn:link,
 body[data-page="settings"] #admin-panel-googleads #settings-ga-signin-btn:visited,
 body[data-page="settings"] #admin-panel-googleads #settings-ga-signin-btn:hover,
 body[data-page="settings"] #admin-panel-googleads #settings-ga-signin-btn:focus {
-  color: #fff;
+  color: #fff !important;
 }
 body[data-page="settings"] #admin-panel-googleads #settings-ga-signin-btn i,
 body[data-page="settings"] #admin-panel-googleads #settings-ga-signin-btn svg {
-  color: #fff;
+  color: #fff !important;
   fill: currentColor;
 }
 
