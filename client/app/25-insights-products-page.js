@@ -185,7 +185,7 @@
       var cls = d >= 0 ? 'text-green' : 'text-red';
       var pct = (r && typeof r.pctGrowth === 'number' && isFinite(r.pctGrowth)) ? r.pctGrowth : null;
       var pctStr = pct != null ? (pct >= 999 ? ' new' : ' (' + (pct >= 0 ? '+' : '') + pct + '%)') : '';
-      return '<span class="dash-trend-delta ' + cls + '">' + escapeHtml(fmtSignedGbp(d) + pctStr) + '</span>';
+      return '<span class="dash-trend-delta ' + cls + '" title="Revenue change vs previous period">' + escapeHtml(fmtSignedGbp(d) + pctStr) + '</span>';
     }
     function deltaOrdersText(r) {
       var d = (r && typeof r.deltaOrders === 'number' && isFinite(r.deltaOrders)) ? r.deltaOrders : 0;
@@ -360,9 +360,17 @@
   function fetchGrossProfit() {
     var highCard = document.getElementById('stats-products-gross-profit-high');
     var lowCard = document.getElementById('stats-products-gross-profit-low');
-    var rangeKey = getRange();
-    var allowed = ['today', 'yesterday', '7d', '14d', '30d'];
-    var range = allowed.indexOf(rangeKey) !== -1 ? rangeKey : '30d';
+    var range = getRange();
+    try {
+      if (typeof normalizeRangeKeyForApi === 'function') {
+        range = normalizeRangeKeyForApi(range);
+      } else {
+        range = String(range || '').trim().toLowerCase();
+      }
+    } catch (_) {
+      range = String(range || '').trim().toLowerCase();
+    }
+    if (!range) range = '30d';
     var url = API + '/api/performance/gross-profit?range=' + encodeURIComponent(range);
     var shop = getShop();
     if (shop) url += '&shop=' + encodeURIComponent(shop);

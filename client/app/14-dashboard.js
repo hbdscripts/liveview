@@ -667,6 +667,8 @@
           var prev = (typeof previous === 'number' && Number.isFinite(previous)) ? Number(previous) : null;
           var deltaEl = document.getElementById('ovw-kpi-' + k + '-delta');
           var barEl = document.getElementById('ovw-kpi-' + k + '-bar');
+          var progressEl = (barEl && barEl.closest) ? barEl.closest('.progress') : null;
+          var srEl = (barEl && barEl.querySelector) ? barEl.querySelector('.visually-hidden') : null;
           if (deltaEl) {
             deltaEl.classList.remove('is-up', 'is-down');
             deltaEl.textContent = '\u2014';
@@ -676,16 +678,25 @@
             barEl.classList.remove('bg-green', 'bg-red');
             if (!barEl.classList.contains('bg-secondary')) barEl.classList.add('bg-secondary');
             try { barEl.setAttribute('aria-valuenow', '0'); } catch (_) {}
-            try { barEl.setAttribute('aria-label', '0% complete'); } catch (_) {}
-            try {
-              var vh = barEl.querySelector('.visually-hidden');
-              if (vh) vh.textContent = '0% complete';
-            } catch (_) {}
+            try { barEl.setAttribute('aria-label', 'No comparison available'); } catch (_) {}
+            if (srEl) srEl.textContent = 'No comparison available';
           }
-          if (cur == null || prev == null) return;
+          if (cur == null || prev == null) {
+            if (progressEl) progressEl.classList.add('is-hidden');
+            return;
+          }
+          if (progressEl) progressEl.classList.remove('is-hidden');
           var delta = cur - prev;
           var denom = Math.abs(prev);
-          var pct = denom > 1e-9 ? (delta / denom) * 100 : null;
+          var pct = null;
+          if (denom > 1e-9) {
+            pct = (delta / denom) * 100;
+          } else if (Math.abs(cur) <= 1e-9) {
+            pct = 0;
+          } else {
+            // Keep delta behavior consistent with other KPI surfaces when baseline is zero.
+            pct = delta > 0 ? 100 : -100;
+          }
           if (pct == null || !Number.isFinite(pct)) return;
           var absPct = Math.min(100, Math.max(0, Math.abs(pct)));
 
@@ -696,15 +707,13 @@
             if (!stable) deltaEl.classList.add(goodUp ? 'is-up' : 'is-down');
           }
           if (barEl) {
-            try { barEl.style.width = String(absPct.toFixed(0)) + '%'; } catch (_) {}
-            barEl.classList.remove('bg-secondary');
-            barEl.classList.add(goodUp ? 'bg-green' : 'bg-red');
-            try { barEl.setAttribute('aria-valuenow', String(absPct.toFixed(0))); } catch (_) {}
-            try { barEl.setAttribute('aria-label', String(absPct.toFixed(0)) + '% complete'); } catch (_) {}
-            try {
-              var vh2 = barEl.querySelector('.visually-hidden');
-              if (vh2) vh2.textContent = String(absPct.toFixed(0)) + '% complete';
-            } catch (_) {}
+            var absRounded = String(absPct.toFixed(0));
+            try { barEl.style.width = stable ? '0%' : (absRounded + '%'); } catch (_) {}
+            barEl.classList.remove('bg-green', 'bg-red', 'bg-secondary');
+            barEl.classList.add(stable ? 'bg-secondary' : (goodUp ? 'bg-green' : 'bg-red'));
+            try { barEl.setAttribute('aria-valuenow', stable ? '0' : absRounded); } catch (_) {}
+            try { barEl.setAttribute('aria-label', stable ? '0% change' : (absRounded + '% change')); } catch (_) {}
+            if (srEl) srEl.textContent = stable ? '0% change' : (absRounded + '% change');
           }
         }
 

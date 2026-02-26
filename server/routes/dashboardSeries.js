@@ -762,11 +762,27 @@ async function fetchSessionsAndBouncesHybrid(db, dayBounds, overallStart, overal
         `,
         [trafficMode, ymdStart, ymdEnd]
       );
+      const covered = new Set();
       for (const r of rows || []) {
         const ymd = r && r.ymd != null ? String(r.ymd) : '';
         if (!ymd || sessionsPerDay[ymd] == null) continue;
         sessionsPerDay[ymd] = Math.max(0, Math.trunc(Number(r.human_sessions) || 0));
         bouncePerDay[ymd] = Math.max(0, Math.trunc(Number(r.single_page_sessions) || 0));
+        covered.add(ymd);
+      }
+      // Rollups can be missing for parts of a window right after deploy/restart.
+      // Backfill uncovered days from raw tables so charts do not flatten to zero.
+      if (covered.size < oldDays.length) {
+        const oldStart = oldDays[0].start;
+        const oldEnd = oldDays[oldDays.length - 1].end;
+        const fallback = await fetchSessionsAndBouncesByDayBounds(db, oldDays, oldStart, oldEnd, filter);
+        const fallbackSessions = fallback && fallback.sessionsPerDay ? fallback.sessionsPerDay : {};
+        const fallbackBounce = fallback && fallback.bouncePerDay ? fallback.bouncePerDay : {};
+        for (const d of oldDays) {
+          if (!d || !d.label || covered.has(d.label)) continue;
+          sessionsPerDay[d.label] = Number(fallbackSessions[d.label]) || 0;
+          bouncePerDay[d.label] = Number(fallbackBounce[d.label]) || 0;
+        }
       }
     } catch (_) {}
   }

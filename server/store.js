@@ -3680,6 +3680,7 @@ async function getSessionCountsFromDailyRollups(start, end, options = {}) {
     const row = await db.get(
       `
         SELECT
+          COUNT(*) AS day_rows,
           COALESCE(SUM(total_sessions), 0) AS total_sessions,
           COALESCE(SUM(human_sessions), 0) AS human_sessions,
           COALESCE(SUM(known_bot_sessions), 0) AS known_bot_sessions
@@ -3691,6 +3692,10 @@ async function getSessionCountsFromDailyRollups(start, end, options = {}) {
       [mode, ymdStart, ymdEnd]
     );
     if (!row) return null;
+    const dayRows = row.day_rows != null ? Number(row.day_rows) || 0 : 0;
+    // Rollups can lag after deploys/restarts; fall back to source session queries
+    // when there is no rollup coverage for this window.
+    if (dayRows <= 0) return null;
     return {
       total_sessions: row.total_sessions != null ? Number(row.total_sessions) || 0 : 0,
       human_sessions: row.human_sessions != null ? Number(row.human_sessions) || 0 : 0,
@@ -3866,6 +3871,7 @@ async function getBounceRateFromDailyRollups(start, end, options = {}) {
     const row = await db.get(
       `
         SELECT
+          COUNT(*) AS day_rows,
           COALESCE(SUM(single_page_sessions), 0) AS single_page_sessions,
           COALESCE(SUM(human_sessions), 0) AS human_sessions
         FROM daily_rollups
@@ -3876,6 +3882,8 @@ async function getBounceRateFromDailyRollups(start, end, options = {}) {
       [mode, ymdStart, ymdEnd]
     );
     if (!row) return null;
+    const dayRows = row.day_rows != null ? Number(row.day_rows) || 0 : 0;
+    if (dayRows <= 0) return null;
     const singlePage = row.single_page_sessions != null ? Number(row.single_page_sessions) || 0 : 0;
     const human = row.human_sessions != null ? Number(row.human_sessions) || 0 : 0;
     if (human <= 0) return null;

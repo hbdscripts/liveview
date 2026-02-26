@@ -71,7 +71,7 @@
       bodyId: 'products-trending-body',
       columns: [
         { key: 'title', label: 'Product', cellClass: 'bs-product-col', iconKey: 'table-short-product' },
-        { key: 'rev', label: 'Revenue', iconKey: 'table-icon-revenue' },
+        { key: 'rev', label: 'Revenue Δ', iconKey: 'table-icon-revenue' },
         { key: 'orders', label: 'Orders', iconKey: 'table-icon-orders' },
         { key: 'cr', label: 'CR%', iconKey: 'table-icon-cr' },
         { key: 'vpv', label: 'VPV', iconKey: 'table-icon-vpv' }

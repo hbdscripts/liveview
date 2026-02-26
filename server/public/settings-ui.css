@@ -1168,89 +1168,85 @@ body[data-page="settings"] #admin-panel-googleads #settings-ga-profit-preview-su
   border: 1px solid var(--tblr-border-color-translucent, rgba(0, 0, 0, 0.06));
   border-radius: var(--tblr-border-radius, 0.5rem);
   background: var(--tblr-bg-surface, #fff);
-  padding: 0.5rem 0.625rem;
+  padding: 0.625rem 0.75rem;
   color: var(--tblr-body-color, #1f2937);
 }
 body[data-page="settings"] #admin-panel-googleads #settings-ga-profit-preview-summary .settings-ga-preview-summary-head {
   font-weight: 600;
-  margin-bottom: 0.4rem;
-}
-body[data-page="settings"] #admin-panel-googleads #settings-ga-profit-preview-summary .settings-ga-preview-metrics {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 0.4rem;
   margin-bottom: 0.5rem;
 }
-body[data-page="settings"] #admin-panel-googleads #settings-ga-profit-preview-summary .settings-ga-preview-metric {
+body[data-page="settings"] #admin-panel-googleads #settings-ga-profit-preview-summary .settings-ga-preview-table-wrap,
+body[data-page="settings"] #admin-panel-googleads #settings-ga-profit-preview-summary .settings-ga-preview-breakdown-wrap {
   border: 1px solid var(--tblr-border-color-translucent, rgba(0, 0, 0, 0.06));
   border-radius: 0.45rem;
-  background: color-mix(in srgb, var(--tblr-bg-surface, #fff) 88%, var(--tblr-bg-surface-secondary, #f7f9fc));
-  padding: 0.35rem 0.5rem;
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.75rem;
+  overflow: hidden;
+  background: var(--tblr-bg-surface, #fff);
 }
-body[data-page="settings"] #admin-panel-googleads #settings-ga-profit-preview-summary .settings-ga-preview-metric span {
-  color: var(--tblr-secondary, #66758c);
-  font-size: 0.78rem;
-}
-body[data-page="settings"] #admin-panel-googleads #settings-ga-profit-preview-summary .settings-ga-preview-metric strong {
-  font-size: 0.9rem;
-}
-body[data-page="settings"] #admin-panel-googleads #settings-ga-profit-preview-summary .settings-ga-preview-breakdown {
-  margin-top: 0.45rem;
-}
-body[data-page="settings"] #admin-panel-googleads #settings-ga-profit-preview-summary .settings-ga-preview-breakdown-title {
-  font-size: 0.78rem;
-  color: var(--tblr-secondary, #66758c);
-  margin-bottom: 0.35rem;
-}
-body[data-page="settings"] #admin-panel-googleads #settings-ga-profit-preview-summary .settings-ga-preview-breakdown-item {
-  border: 1px solid var(--tblr-border-color-translucent, rgba(0, 0, 0, 0.06));
-  border-radius: 0.45rem;
-  padding: 0.4rem 0.5rem;
-  background: #fff;
-  margin-bottom: 0.35rem;
-}
-body[data-page="settings"] #admin-panel-googleads #settings-ga-profit-preview-summary .settings-ga-preview-breakdown-item:last-child {
+body[data-page="settings"] #admin-panel-googleads #settings-ga-profit-preview-summary .settings-ga-preview-table,
+body[data-page="settings"] #admin-panel-googleads #settings-ga-profit-preview-summary .settings-ga-preview-breakdown-table {
   margin-bottom: 0;
 }
-body[data-page="settings"] #admin-panel-googleads #settings-ga-profit-preview-summary .settings-ga-preview-breakdown-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.75rem;
+body[data-page="settings"] #admin-panel-googleads #settings-ga-profit-preview-summary .settings-ga-preview-table > :not(caption) > * > * {
+  padding: 0.45rem 0.6rem;
+  font-size: 0.8rem;
 }
-body[data-page="settings"] #admin-panel-googleads #settings-ga-profit-preview-summary .settings-ga-preview-breakdown-head span {
-  font-size: 0.84rem;
-}
-body[data-page="settings"] #admin-panel-googleads #settings-ga-profit-preview-summary .settings-ga-preview-breakdown-head strong {
-  font-size: 0.84rem;
-}
-body[data-page="settings"] #admin-panel-googleads #settings-ga-profit-preview-summary .settings-ga-preview-breakdown-rows {
-  margin-top: 0.3rem;
-  padding-top: 0.25rem;
-  border-top: 1px dashed var(--tblr-border-color-translucent, rgba(0, 0, 0, 0.06));
-}
-body[data-page="settings"] #admin-panel-googleads #settings-ga-profit-preview-summary .settings-ga-preview-breakdown-subrow {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.75rem;
-  font-size: 0.78rem;
+body[data-page="settings"] #admin-panel-googleads #settings-ga-profit-preview-summary .settings-ga-preview-table > tbody > tr > th {
+  font-weight: 500;
   color: var(--tblr-secondary, #66758c);
-  padding: 0.08rem 0;
+  width: 68%;
+}
+body[data-page="settings"] #admin-panel-googleads #settings-ga-profit-preview-summary .settings-ga-preview-breakdown-table > :not(caption) > * > * {
+  padding: 0.45rem 0.6rem;
+  font-size: 0.79rem;
+}
+body[data-page="settings"] #admin-panel-googleads #settings-ga-profit-preview-summary .settings-ga-preview-breakdown-table thead th {
+  font-size: 0.72rem;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  color: var(--tblr-secondary, #66758c);
+}
+body[data-page="settings"] #admin-panel-googleads #settings-ga-profit-preview-summary .settings-ga-preview-breakdown {
+  margin-top: 0.5rem;
+}
+body[data-page="settings"] #admin-panel-googleads #settings-ga-profit-preview-summary .settings-ga-preview-breakdown-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--tblr-secondary, #66758c);
+  margin-bottom: 0.4rem;
+}
+body[data-page="settings"] #admin-panel-googleads #settings-ga-profit-preview-summary .settings-ga-preview-breakdown-row-sub td {
+  font-size: 0.76rem;
+  color: var(--tblr-secondary, #66758c);
+}
+body[data-page="settings"] #admin-panel-googleads #settings-ga-profit-preview-summary .settings-ga-preview-breakdown-subrow-label {
+  padding-left: 0.5rem;
+}
+body[data-page="settings"] #admin-panel-googleads #settings-ga-profit-preview-summary .settings-ga-preview-breakdown-row-note td {
+  background: var(--tblr-bg-surface-secondary, #f8fafc);
+  border-top: none;
 }
 body[data-page="settings"] #admin-panel-googleads #settings-ga-profit-preview-summary .settings-ga-preview-breakdown-note {
-  margin-top: 0.25rem;
-  font-size: 0.74rem;
+  display: inline-block;
+  font-size: 0.73rem;
   color: var(--tblr-secondary, #66758c);
+  font-style: italic;
+}
+
+body[data-page="settings"] #admin-panel-googleads .dm-json-pre {
+  --tblr-scrollbar-color: var(--tblr-light);
+  padding: 0.75rem 0.875rem;
+  background: var(--tblr-bg-surface-secondary, #fafafa);
+  border: 1px solid var(--tblr-border-color, #e1e1e1);
+  color: var(--tblr-body-color, #333) !important;
+  border-radius: var(--tblr-border-radius, 0.5rem);
+  border-left: 5px solid var(--tblr-border-color, #e1e1e1);
+  margin: 0.5rem 0 !important;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow: auto;
+  max-height: 320px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 }
 body[data-page="settings"] #admin-panel-googleads #settings-ga-profit-preview-output {
-  background: #fff;
-  border: 1px solid var(--tblr-border-color-translucent, rgba(0, 0, 0, 0.06));
-  border-radius: var(--tblr-border-radius, 0.5rem);
-  color: #111827 !important;
-  padding: 0.625rem 0.75rem;
+  max-height: 380px;
 }

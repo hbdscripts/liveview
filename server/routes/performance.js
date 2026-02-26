@@ -14,6 +14,7 @@ const businessSnapshotService = require('../businessSnapshotService');
 const fx = require('../fx');
 const { getDb } = require('../db');
 const { sleep } = require('../shared/sleep');
+const { normalizeRangeKey } = require('../rangeKey');
 
 const router = express.Router();
 const LIMIT = 25;
@@ -53,6 +54,44 @@ function parseYmd(s) {
   const d = parseInt(m[3], 10);
   if (!Number.isFinite(y) || !Number.isFinite(mo) || !Number.isFinite(d) || mo < 1 || mo > 12 || d < 1 || d > 31) return null;
   return `${m[1]}-${m[2]}-${m[3]}`;
+}
+
+function ymdInTimeZone(ts, timeZone) {
+  try {
+    const fmt = new Intl.DateTimeFormat('en-CA', {
+      timeZone: timeZone || 'UTC',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+    const ymd = fmt.format(new Date(Number(ts) || Date.now()));
+    if (/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return ymd;
+  } catch (_) {}
+  try {
+    return new Date(Number(ts) || Date.now()).toISOString().slice(0, 10);
+  } catch (_) {
+    return null;
+  }
+}
+
+function costBreakdownRangeKeyFrom(rangeKey, startMs, endMs, timeZone) {
+  const rk = String(rangeKey || '').trim().toLowerCase();
+  if (
+    rk === 'today' ||
+    rk === 'yesterday' ||
+    rk === '7d' ||
+    rk === '14d' ||
+    rk === '30d' ||
+    /^r:\d{4}-\d{2}-\d{2}:\d{4}-\d{2}-\d{2}$/.test(rk)
+  ) {
+    return rk;
+  }
+  const start = Number(startMs);
+  const end = Number(endMs);
+  const sinceYmd = ymdInTimeZone(start, timeZone);
+  const untilYmd = ymdInTimeZone(Math.max(start, end - 1), timeZone);
+  if (sinceYmd && untilYmd) return `r:${sinceYmd}:${untilYmd}`;
+  return '30d';
 }
 
 async function shopifyGraphqlWithRetry(shop, accessToken, query, variables, { maxRetries = 6 } = {}) {
@@ -154,9 +193,12 @@ router.get('/gross-profit', async (req, res) => {
     if (sinceYmd && untilYmd) {
       rangeKey = `r:${sinceYmd}:${untilYmd}`;
     } else {
-      const rangeRaw = (q.range != null) ? String(q.range).trim() : '30d';
-      const allowed = new Set(['today', 'yesterday', '7d', '14d', '30d']);
-      rangeKey = allowed.has(rangeRaw.toLowerCase()) ? rangeRaw.toLowerCase() : '30d';
+      rangeKey = normalizeRangeKey(q.range, {
+        defaultKey: '30d',
+        allowCustomDay: true,
+        allowCustomRange: true,
+        allowFriendlyDays: true,
+      });
     }
 
     const nowMs = Date.now();
@@ -167,10 +209,11 @@ router.get('/gross-profit', async (req, res) => {
     if (!(endMs > startMs)) {
       return res.status(400).json({ ok: false, error: 'invalid_range' });
     }
+    const costRangeKey = costBreakdownRangeKeyFrom(rangeKey, startMs, endMs, timeZone);
 
     const token = await salesTruth.getAccessToken(shop).catch(() => null);
     const [costBreakdown, lineRows] = await Promise.all([
-      businessSnapshotService.getCostBreakdown({ rangeKey }),
+      businessSnapshotService.getCostBreakdown({ rangeKey: costRangeKey }),
       getLineItemsInRange(shop, startMs, endMs),
     ]);
 
