@@ -23,6 +23,13 @@ function getInt(name, defaultValue) {
   return Number.isNaN(n) ? defaultValue : n;
 }
 
+function getOptionalInt(name) {
+  const v = process.env[name];
+  if (v === undefined || v === '') return null;
+  const n = parseInt(v, 10);
+  return Number.isNaN(n) ? null : n;
+}
+
 function getBool(name, defaultValue) {
   const v = process.env[name];
   if (v === undefined || v === '') return defaultValue;
@@ -68,6 +75,8 @@ const config = {
   sessionTtlMinutes: getInt('SESSION_TTL_MINUTES', 24 * 60),
   /** Retention in days for stats stability; cleanup deletes only when BOTH last_seen and started_at are older than this */
   sessionRetentionDays: getInt('SESSION_RETENTION_DAYS', 30),
+  /** Explicit legacy override for drilldown session retention; null means use retention policy tier defaults. */
+  sessionRetentionDaysOverride: getOptionalInt('SESSION_RETENTION_DAYS'),
   abandonedWindowMinutes: getInt('ABANDONED_WINDOW_MINUTES', 15),
   abandonedRetentionHours: getInt('ABANDONED_RETENTION_HOURS', 24),
   returningGapMinutes: getInt('RETURNING_GAP_MINUTES', 30),

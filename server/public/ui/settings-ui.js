@@ -18,7 +18,7 @@
       if (v == null) return;
       if (k === 'class') node.className = String(v);
       else if (k === 'text') node.textContent = String(v);
-      else if (k === 'html') node.innerHTML = String(v);
+      else if (k === 'html') node.textContent = String(v);
       else node.setAttribute(k, String(v));
     });
     (Array.isArray(children) ? children : (children ? [children] : [])).forEach(function (c) {

@@ -16,6 +16,7 @@ const apiKey = config.shopify.apiKey;
 const apiSecret = config.shopify.apiSecret;
 const appUrl = (config.shopify.appUrl || '').replace(/\/$/, '');
 const scopes = config.shopify.scopes || 'read_products,read_orders,read_all_orders,write_pixels,read_customer_events,read_reports';
+const OAUTH_TIMESTAMP_MAX_SKEW_SECONDS = 5 * 60;
 
 function parseScopeSet(scopeStr) {
   return new Set(
@@ -78,6 +79,23 @@ function stateDecode(str) {
   }
 }
 
+function parseShopifyTimestampSeconds(raw) {
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return null;
+  const i = Math.trunc(n);
+  // Some callers may send ms; normalize to seconds.
+  if (i > 1000000000000) return Math.trunc(i / 1000);
+  return i;
+}
+
+function isFreshShopifyTimestamp(rawTs, { nowMs = Date.now(), maxSkewSeconds = OAUTH_TIMESTAMP_MAX_SKEW_SECONDS } = {}) {
+  const tsSeconds = parseShopifyTimestampSeconds(rawTs);
+  if (tsSeconds == null) return false;
+  const nowSeconds = Math.trunc(nowMs / 1000);
+  const skew = Math.abs(nowSeconds - tsSeconds);
+  return skew <= Math.max(30, Math.trunc(maxSkewSeconds));
+}
+
 function isSafeRelativeRedirectPath(p) {
   if (!p || typeof p !== 'string') return false;
   if (!p.startsWith('/')) return false;
@@ -104,6 +122,10 @@ async function handleCallback(req, res) {
   }
   if (!code || !shop || !hmac || !timestamp) {
     res.status(400).send('Missing required query parameters (code, shop, hmac, timestamp).');
+    return;
+  }
+  if (!isFreshShopifyTimestamp(timestamp)) {
+    res.status(400).send('Expired or invalid OAuth timestamp.');
     return;
   }
   if (!verifyHmac(req.query)) {
@@ -254,11 +276,10 @@ async function isAccessTokenValid(shop, accessToken) {
     const res = await fetch(`https://${shop}/admin/api/2024-01/shop.json`, {
       headers: { 'X-Shopify-Access-Token': accessToken },
     });
-    if (res.status === 401 || res.status === 403) return false;
-    // Fail-open: treat other statuses as "valid enough" to avoid OAuth loops on transient errors.
-    return true;
-  } catch (_) {
-    return true;
+    return !!(res && res.ok);
+  } catch (err) {
+    console.warn('[auth] Access token validation request failed:', err && err.message ? String(err.message).slice(0, 200) : err);
+    return false;
   }
 }
 
@@ -269,6 +290,9 @@ async function handleAppUrl(req, res, next) {
     return res.redirect(302, '/');
   }
   if (shop && hmac && timestamp && !code) {
+    if (!isFreshShopifyTimestamp(timestamp)) {
+      return res.status(400).send('Expired or invalid OAuth timestamp.');
+    }
     if (!verifyHmac(req.query)) {
       return res.status(400).send('Invalid HMAC.');
     }

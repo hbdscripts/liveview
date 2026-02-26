@@ -4,7 +4,6 @@
  */
 
 const config = require('./config');
-const path = require('path');
 const { AsyncLocalStorage } = require('async_hooks');
 const dataPaths = require('./dataPaths');
 
@@ -13,8 +12,81 @@ let _pgPool = null;
 const _pgTxStorage = new AsyncLocalStorage();
 
 function toPg(sql, params) {
-  let i = 0;
-  const out = sql.replace(/\?/g, () => `$${++i}`);
+  const text = String(sql == null ? '' : sql);
+  let idx = 0;
+  let out = '';
+  let inSingle = false;
+  let inDouble = false;
+  let inLineComment = false;
+  let inBlockComment = false;
+  for (let i = 0; i < text.length; i += 1) {
+    const ch = text[i];
+    const next = i + 1 < text.length ? text[i + 1] : '';
+
+    if (inLineComment) {
+      out += ch;
+      if (ch === '\n') inLineComment = false;
+      continue;
+    }
+    if (inBlockComment) {
+      out += ch;
+      if (ch === '*' && next === '/') {
+        out += '/';
+        i += 1;
+        inBlockComment = false;
+      }
+      continue;
+    }
+    if (inSingle) {
+      out += ch;
+      if (ch === "'" && next === "'") {
+        out += "'";
+        i += 1;
+        continue;
+      }
+      if (ch === "'") inSingle = false;
+      continue;
+    }
+    if (inDouble) {
+      out += ch;
+      if (ch === '"' && next === '"') {
+        out += '"';
+        i += 1;
+        continue;
+      }
+      if (ch === '"') inDouble = false;
+      continue;
+    }
+
+    if (ch === '-' && next === '-') {
+      out += '--';
+      i += 1;
+      inLineComment = true;
+      continue;
+    }
+    if (ch === '/' && next === '*') {
+      out += '/*';
+      i += 1;
+      inBlockComment = true;
+      continue;
+    }
+    if (ch === "'") {
+      out += ch;
+      inSingle = true;
+      continue;
+    }
+    if (ch === '"') {
+      out += ch;
+      inDouble = true;
+      continue;
+    }
+    if (ch === '?') {
+      idx += 1;
+      out += `$${idx}`;
+      continue;
+    }
+    out += ch;
+  }
   return [out, params];
 }
 
@@ -31,7 +103,19 @@ function getDb() {
       run: (sql, params = []) => {
         const [q, p] = toPg(sql, params);
         const target = pgTarget();
-        return target.query(q, p).then(r => ({ lastID: r.rows[0]?.id, changes: r.rowCount }));
+        return target.query(q, p).then(r => {
+          const hasReturning = /\breturning\b/i.test(q);
+          let lastID = null;
+          if (hasReturning && Array.isArray(r.rows) && r.rows.length > 0 && r.rows[0] && typeof r.rows[0] === 'object') {
+            if (Object.prototype.hasOwnProperty.call(r.rows[0], 'id')) {
+              lastID = r.rows[0].id;
+            } else {
+              const keys = Object.keys(r.rows[0]);
+              lastID = keys.length ? r.rows[0][keys[0]] : null;
+            }
+          }
+          return { lastID, changes: r.rowCount };
+        });
       },
       get: (sql, params = []) => {
         const [q, p] = toPg(sql, params);

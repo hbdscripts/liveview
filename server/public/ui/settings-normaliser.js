@@ -429,6 +429,7 @@
         field.classList.add('form-control-plaintext', 'settings-readonly-plaintext');
         try { field.readOnly = true; } catch (_) {}
         try { field.setAttribute('aria-readonly', 'true'); } catch (_) {}
+        ensureReadOnlyHint(field);
       } else if (field.hasAttribute('disabled')) {
         // Disabled fields should look disabled; do not add redundant read-only hint text.
       }
@@ -453,7 +454,6 @@
 
       if (btn.classList.contains('btn-secondary-outline')) {
         btn.classList.remove('btn-secondary-outline');
-        btn.classList.add('btn-ghost-secondary');
       }
 
       // Contract: no outline buttons. Convert outline variants to solid.
@@ -461,8 +461,7 @@
         var outline = 'btn-outline-' + v;
         if (btn.classList.contains(outline)) {
           btn.classList.remove(outline);
-          if (v === 'secondary') btn.classList.add('btn-ghost-secondary');
-          else btn.classList.add('btn-' + v);
+          if (v !== 'secondary') btn.classList.add('btn-' + v);
         }
       });
 
@@ -480,6 +479,7 @@
           'btn-outline-light',
           'btn-outline-dark',
           'btn-secondary',
+          'btn-ghost-secondary',
           'btn-secondary-outline',
           'btn-success',
           'btn-danger'
@@ -487,10 +487,9 @@
         btn.classList.add('btn-primary');
       }
 
-      // Settings/Admin: no btn-secondary; use ghost-secondary instead.
+      // Settings/Admin: no btn-secondary class.
       if (btn.classList.contains('btn-secondary')) {
         btn.classList.remove('btn-secondary');
-        btn.classList.add('btn-ghost-secondary');
       }
 
       // Destructive actions: outlined style (transparent background) + custom colors.
@@ -513,17 +512,17 @@
         (aria.indexOf('delete') >= 0 || aria.indexOf('remove') >= 0) ||
         (title.indexOf('delete') >= 0 || title.indexOf('remove') >= 0);
       if (isDestructive) {
-        btn.classList.add('kexo-btn-danger-outline');
-        btn.classList.remove('btn-danger', 'btn-ghost-danger', 'btn-outline-danger');
+        btn.classList.remove('btn-ghost-danger', 'btn-outline-danger', 'kexo-btn-danger-outline');
+        btn.classList.add('btn-danger');
       }
 
-      // Settings/Admin: in-panel actions are btn-sm by default.
-      if (btn.classList.contains('btn-md')) {
-        btn.classList.remove('btn-md');
-        btn.classList.add('btn-sm');
+      // Settings/Admin: in-panel actions are btn-md by default.
+      if (btn.classList.contains('btn-sm')) {
+        btn.classList.remove('btn-sm');
+        btn.classList.add('btn-md');
       }
-      if (!btn.classList.contains('btn-sm') && !btn.classList.contains('btn-lg')) {
-        btn.classList.add('btn-sm');
+      if (!btn.classList.contains('btn-md') && !btn.classList.contains('btn-lg')) {
+        btn.classList.add('btn-md');
       }
     });
   }

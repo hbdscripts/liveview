@@ -1,6 +1,8 @@
     // Stable GETs: cache small TTL to reduce duplicate version/config reads.
     // Defer the first poll slightly so initial page load fetch/render completes first.
-      scheduleLiveSalesPoll(LIVE_SALES_POLL_MS);
+      if (typeof scheduleLiveSalesPoll === 'function') {
+        scheduleLiveSalesPoll(LIVE_SALES_POLL_MS);
+      }
     })();
 
     function onLiveAutoRefreshTick() {

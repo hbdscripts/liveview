@@ -107,31 +107,39 @@ router.get('/users', async (req, res) => {
 
 router.post('/users/:id/approve', async (req, res) => {
   const id = req.params && req.params.id;
+  const userId = parseUserId(id);
+  if (userId == null) return res.status(400).json({ ok: false, error: 'unsupported_user_id' });
   const tier = req.body && req.body.tier != null ? req.body.tier : undefined;
-  const r = await users.approveUser(id, null, { tier, now: Date.now() });
+  const r = await users.approveUser(userId, null, { tier, now: Date.now() });
   if (!r || r.ok !== true) return res.status(400).json({ ok: false, error: (r && r.error) || 'approve_failed' });
   res.json({ ok: true });
 });
 
 router.patch('/users/:id', async (req, res) => {
   const id = req.params && req.params.id;
+  const userId = parseUserId(id);
+  if (userId == null) return res.status(400).json({ ok: false, error: 'unsupported_user_id' });
   const tier = req.body && req.body.tier != null ? req.body.tier : undefined;
   if (tier == null || String(tier).trim() === '') return res.status(400).json({ ok: false, error: 'tier_required' });
-  const r = await users.updateUserTier(id, tier, null, { now: Date.now() });
+  const r = await users.updateUserTier(userId, tier, null, { now: Date.now() });
   if (!r || r.ok !== true) return res.status(400).json({ ok: false, error: (r && r.error) || 'update_failed' });
   res.json({ ok: true });
 });
 
 router.post('/users/:id/deny', async (req, res) => {
   const id = req.params && req.params.id;
-  const r = await users.denyUser(id, null, { now: Date.now() });
+  const userId = parseUserId(id);
+  if (userId == null) return res.status(400).json({ ok: false, error: 'unsupported_user_id' });
+  const r = await users.denyUser(userId, null, { now: Date.now() });
   if (!r || r.ok !== true) return res.status(400).json({ ok: false, error: (r && r.error) || 'deny_failed' });
   res.json({ ok: true });
 });
 
 async function promoteAdmin(req, res) {
   const id = req.params && req.params.id;
-  const r = await users.promoteToAdmin(id, null, { now: Date.now() });
+  const userId = parseUserId(id);
+  if (userId == null) return res.status(400).json({ ok: false, error: 'unsupported_user_id' });
+  const r = await users.promoteToAdmin(userId, null, { now: Date.now() });
   if (!r || r.ok !== true) return res.status(400).json({ ok: false, error: (r && r.error) || 'promote_failed' });
   res.json({ ok: true });
 }

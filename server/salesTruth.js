@@ -1578,6 +1578,10 @@ async function syncRefundsForRange(shop, startMs, endMs) {
         const refundId = extractNumericId(refund && refund.id);
         if (!refundId) continue;
         const refundCreatedAt = refund && refund.created_at != null ? parseMs(refund.created_at) : null;
+        const refundCreatedAtNum =
+          refundCreatedAt != null && Number.isFinite(refundCreatedAt)
+            ? Math.trunc(refundCreatedAt)
+            : (orderProcessedAt != null && Number.isFinite(orderProcessedAt) ? Math.trunc(orderProcessedAt) : Math.trunc(syncedAt));
         const amount = sumRefundAmount(refund);
         const refundIdStr = String(refundId);
         const orderIdStr = String(orderId);
@@ -1594,7 +1598,7 @@ async function syncRefundsForRange(shop, startMs, endMs) {
                  currency = EXCLUDED.currency,
                  amount = EXCLUDED.amount,
                  synced_at = EXCLUDED.synced_at`,
-              [safeShop, refundIdStr, orderIdStr, refundCreatedAt != null ? Math.trunc(refundCreatedAt) : null, orderProcessedAt != null ? Math.trunc(orderProcessedAt) : null, currency, amount, Math.trunc(syncedAt)]
+              [safeShop, refundIdStr, orderIdStr, refundCreatedAtNum, orderProcessedAt != null ? Math.trunc(orderProcessedAt) : null, currency, amount, Math.trunc(syncedAt)]
             );
           } else {
             await db.run(
@@ -1607,12 +1611,17 @@ async function syncRefundsForRange(shop, startMs, endMs) {
                  currency = excluded.currency,
                  amount = excluded.amount,
                  synced_at = excluded.synced_at`,
-              [safeShop, refundIdStr, orderIdStr, refundCreatedAt != null ? Math.trunc(refundCreatedAt) : null, orderProcessedAt != null ? Math.trunc(orderProcessedAt) : null, currency, amount, Math.trunc(syncedAt)]
+              [safeShop, refundIdStr, orderIdStr, refundCreatedAtNum, orderProcessedAt != null ? Math.trunc(orderProcessedAt) : null, currency, amount, Math.trunc(syncedAt)]
             );
           }
           refundsUpserted += 1;
         } catch (e) {
-          // fail-open for single refund
+          console.warn('[salesTruth] Refund upsert skipped:', {
+            shop: safeShop,
+            orderId: orderIdStr,
+            refundId: refundIdStr,
+            error: e && e.message ? String(e.message).slice(0, 240) : 'unknown_error',
+          });
         }
 
         const rlis = Array.isArray(refund && refund.refund_line_items) ? refund.refund_line_items : [];
@@ -1626,7 +1635,6 @@ async function syncRefundsForRange(shop, startMs, endMs) {
           const productId = meta.product_id || null;
           const variantId = meta.variant_id || null;
           const lineItemIdStr = String(lineItemId);
-          const refundCreatedAtNum = refundCreatedAt != null && Number.isFinite(refundCreatedAt) ? Math.trunc(refundCreatedAt) : null;
           const orderProcessedAtNum = orderProcessedAt != null && Number.isFinite(orderProcessedAt) ? Math.trunc(orderProcessedAt) : null;
 
           try {
@@ -1665,7 +1673,13 @@ async function syncRefundsForRange(shop, startMs, endMs) {
             }
             lineItemsUpserted += 1;
           } catch (e) {
-            // fail-open for single line
+            console.warn('[salesTruth] Refund line-item upsert skipped:', {
+              shop: safeShop,
+              orderId: orderIdStr,
+              refundId: refundIdStr,
+              lineItemId: lineItemIdStr,
+              error: e && e.message ? String(e.message).slice(0, 240) : 'unknown_error',
+            });
           }
         }
       }

@@ -18,6 +18,38 @@
     }
   }
 
+  function sanitizeHtml(html) {
+    if (html == null) return '';
+    var raw = String(html);
+    try {
+      var template = document.createElement('template');
+      template.innerHTML = raw;
+      var blocked = { script: true, style: true, iframe: true, object: true, embed: true, link: true, meta: true };
+      var nodes = template.content.querySelectorAll('*');
+      Array.prototype.forEach.call(nodes, function (node) {
+        var tag = String(node.tagName || '').toLowerCase();
+        if (blocked[tag]) {
+          node.remove();
+          return;
+        }
+        Array.prototype.slice.call(node.attributes || []).forEach(function (attr) {
+          var name = String(attr.name || '').toLowerCase();
+          var value = String(attr.value || '');
+          if (name.indexOf('on') === 0) {
+            node.removeAttribute(attr.name);
+            return;
+          }
+          if ((name === 'href' || name === 'src' || name === 'xlink:href' || name === 'formaction') && /^\s*javascript:/i.test(value)) {
+            node.removeAttribute(attr.name);
+          }
+        });
+      });
+      return template.innerHTML;
+    } catch (_) {
+      return escapeHtml(raw);
+    }
+  }
+
   /**
    * Build grid-table (data tables with sticky/resize).
    * config: { wrapClass, wrapId, tableId, tableClass, ariaLabel, columns, bodyId, emptyMessage, innerOnly }
@@ -66,7 +98,7 @@
         '</div>';
     });
 
-    var bodyContent = customBodyHtml != null ? customBodyHtml : (
+    var bodyContent = customBodyHtml != null ? sanitizeHtml(customBodyHtml) : (
       '<div class="grid-row" role="row"><div class="grid-cell empty span-all" role="cell">' + escapeHtml(emptyMessage) + '</div></div>'
     );
     var bodyHtml = '<div' + (bodyId ? ' id="' + escapeHtml(bodyId) + '"' : '') + ' class="grid-body" role="rowgroup">' +
@@ -104,7 +136,7 @@
       columns.forEach(function (col) {
         var hdr = col.header != null ? String(col.header) : '';
         var cls = col.headerClass != null ? ' class="' + escapeHtml(String(col.headerClass).trim()) + '"' : '';
-        thCells += '<th' + cls + '>' + escapeHtml(hdr) + '</th>';
+        thCells += '<th scope="col"' + cls + '>' + escapeHtml(hdr) + '</th>';
       });
       theadHtml = '<thead><tr>' + thCells + '</tr></thead>';
     }
@@ -142,16 +174,16 @@
     columns.forEach(function (col) {
       var hdr = col.header != null ? String(col.header) : '';
       var cls = col.headerClass != null ? ' class="' + escapeHtml(String(col.headerClass).trim()) + '"' : '';
-      thCells += '<th' + cls + '>' + escapeHtml(hdr) + '</th>';
+      thCells += '<th scope="col"' + cls + '>' + escapeHtml(hdr) + '</th>';
     });
 
     var bodyRows = '';
     if (renderRow) {
       rows.forEach(function (item) {
-        bodyRows += renderRow(item);
+        bodyRows += sanitizeHtml(renderRow(item));
       });
     } else if (c.bodyHtml) {
-      bodyRows = c.bodyHtml;
+      bodyRows = sanitizeHtml(c.bodyHtml);
     }
 
     return '<div class="' + escapeHtml(wrapClass) + '">' +

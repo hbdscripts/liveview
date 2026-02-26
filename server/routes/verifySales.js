@@ -109,7 +109,7 @@ async function verifySales(req, res) {
 
       // Pixel-derived totals (purchases table, deduped in query).
       try {
-        const p = await store.getPixelSalesSummary(start, end);
+        const p = await store.getPixelSalesSummary(start, end, shop);
         pixel = {
           orderCount: typeof p.orderCount === 'number' ? p.orderCount : null,
           revenueGbp: typeof p.revenueGbp === 'number' ? p.revenueGbp : null,

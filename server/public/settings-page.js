@@ -7813,7 +7813,7 @@
     } else {
       html = '<div class="table-responsive">' +
         '<table class="table table-sm table-vcenter mb-0">' +
-        '<thead><tr><th class="w-1">On</th><th>Label</th><th class="text-muted">Key</th><th class="text-end w-1">Order</th></tr></thead><tbody>';
+        '<thead><tr><th scope="col" class="w-1">On</th><th scope="col">Label</th><th scope="col" class="text-muted">Key</th><th scope="col" class="text-end w-1">Order</th></tr></thead><tbody>';
       rows.forEach(function (it) {
         if (!it) return;
         var key = String(it.key || '').trim().toLowerCase();
@@ -7884,7 +7884,7 @@
     } else {
       html = '<div class="table-responsive">' +
         '<table class="table table-sm table-vcenter mb-0">' +
-        '<thead><tr><th class="w-1">On</th><th>Label</th><th class="text-muted">Key</th><th class="text-end w-1">Order</th></tr></thead><tbody>';
+        '<thead><tr><th scope="col" class="w-1">On</th><th scope="col">Label</th><th scope="col" class="text-muted">Key</th><th scope="col" class="text-end w-1">Order</th></tr></thead><tbody>';
       rows.forEach(function (it) {
         if (!it) return;
         var key = String(it.key || '').trim().toLowerCase();

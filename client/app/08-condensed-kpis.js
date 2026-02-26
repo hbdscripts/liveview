@@ -28,10 +28,16 @@
         if (typeof registerCleanup === 'function') {
           registerCleanup(function () {
             try {
+              if (_condensedKpiOverflowOrientationHandler) {
+                window.removeEventListener('orientationchange', _condensedKpiOverflowOrientationHandler);
+              }
+            } catch (_) {}
+            try {
               if (_condensedStripResizeObserver && typeof _condensedStripResizeObserver.disconnect === 'function') _condensedStripResizeObserver.disconnect();
             } catch (_) {}
             _condensedStripResizeObserver = null;
             _condensedStripResizeObservedEl = null;
+            _condensedKpiOverflowOrientationHandler = null;
           });
         }
       } catch (_) {}

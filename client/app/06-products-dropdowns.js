@@ -5,7 +5,7 @@
       btn.addEventListener('click', function(e) {
         e.preventDefault();
         e.stopPropagation();
-        toggleProductsLeaderboardMenu();
+        if (typeof toggleProductsLeaderboardMenu === 'function') toggleProductsLeaderboardMenu();
       });
       menu.addEventListener('click', function(e) {
         const t = e && e.target ? e.target : null;
@@ -13,16 +13,18 @@
         if (!opt) return;
         e.preventDefault();
         e.stopPropagation();
-        setProductsLeaderboardView(opt.getAttribute('data-view') || '', { force: false });
+        if (typeof setProductsLeaderboardView === 'function') {
+          setProductsLeaderboardView(opt.getAttribute('data-view') || '', { force: false });
+        }
       });
       document.addEventListener('click', function(e) {
         const target = e && e.target ? e.target : null;
         if (target && root.contains && root.contains(target)) return;
-        closeProductsLeaderboardMenu();
+        if (typeof closeProductsLeaderboardMenu === 'function') closeProductsLeaderboardMenu();
       });
       document.addEventListener('keydown', function(e) {
         if (!e || e.key !== 'Escape') return;
-        closeProductsLeaderboardMenu();
+        if (typeof closeProductsLeaderboardMenu === 'function') closeProductsLeaderboardMenu();
       });
     })();
 
@@ -85,13 +87,14 @@
       try { sessionStorage.setItem(PRODUCTS_VARIANT_CARDS_VIEW_KEY, view); } catch (_) {}
       updateProductsVariantCardsDropdownUi();
       closeProductsVariantCardsMenu();
-      if (activeMainTab !== 'breakdown' && activeMainTab !== 'products') return;
+      var tab = (typeof activeMainTab !== 'undefined') ? activeMainTab : '';
+      if (tab !== 'breakdown' && tab !== 'products') return;
       if (view === 'lengths') {
-        if (lengthsCache) renderLengths(lengthsCache);
-        fetchLengths({ force }).catch(function() {});
+        if (typeof lengthsCache !== 'undefined' && lengthsCache && typeof renderLengths === 'function') renderLengths(lengthsCache);
+        if (typeof fetchLengths === 'function') fetchLengths({ force }).catch(function() {});
       } else {
-        if (finishesCache) renderFinishes(finishesCache);
-        fetchFinishes({ force }).catch(function() {});
+        if (typeof finishesCache !== 'undefined' && finishesCache && typeof renderFinishes === 'function') renderFinishes(finishesCache);
+        if (typeof fetchFinishes === 'function') fetchFinishes({ force }).catch(function() {});
       }
     }
 
@@ -127,7 +130,9 @@
 
     function fetchProductsLeaderboard(options = {}) {
       const force = !!options.force;
-      var shop = getShopParam() || shopForSalesFallback || null;
+      var shopFromFn = (typeof getShopParam === 'function') ? getShopParam() : '';
+      var fallbackShop = (typeof shopForSalesFallback !== 'undefined') ? shopForSalesFallback : '';
+      var shop = shopFromFn || fallbackShop || null;
       if (!shop) {
         leaderboardLoading = false;
         leaderboardCache = null;
@@ -136,10 +141,12 @@
       }
       leaderboardLoading = true;
       if (!leaderboardCache) renderProductsLeaderboard(null);
+      if (typeof fetchWithTimeout !== 'function') return Promise.resolve(null);
+      var rangeKey = (typeof getStatsRange === 'function') ? getStatsRange() : 'today';
       let url = API + '/api/shopify-leaderboard?shop=' + encodeURIComponent(shop) +
         '&topProducts=' + encodeURIComponent(String(PRODUCTS_LEADERBOARD_FETCH_LIMIT)) +
         '&topTypes=' + encodeURIComponent(String(PRODUCTS_LEADERBOARD_FETCH_LIMIT)) +
-        '&range=' + encodeURIComponent(getStatsRange());
+        '&range=' + encodeURIComponent(rangeKey);
       if (force) url += '&_=' + Date.now();
       return fetchWithTimeout(url, { credentials: 'same-origin', cache: force ? 'no-store' : 'default' }, 30000)
         .then(function(r) { return r.ok ? r.json() : null; })

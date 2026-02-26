@@ -7,6 +7,18 @@
 const Sentry = require('@sentry/node');
 const store = require('../store');
 const { normalizeRangeKey } = require('../rangeKey');
+const SESSION_ID_RE = /^[A-Za-z0-9._:-]{1,128}$/;
+
+function parseBoundedInt(raw, { min, max, fallback, field }) {
+  if (raw == null || raw === '') return { ok: true, value: fallback };
+  const s = String(raw).trim();
+  if (!/^\d+$/.test(s)) return { ok: false, error: `Invalid ${field}` };
+  const n = Number(s);
+  if (!Number.isFinite(n)) return { ok: false, error: `Invalid ${field}` };
+  const i = Math.trunc(n);
+  if (i < min || i > max) return { ok: false, error: `Invalid ${field}` };
+  return { ok: true, value: i };
+}
 
 function list(req, res, next) {
   const rangeRaw = req.query.range;
@@ -14,11 +26,13 @@ function list(req, res, next) {
   if (rangeRaw != null && rangeRaw !== '') {
     const range = normalizeRangeKey(rangeRaw, { defaultKey: 'today', allowed: rangeAllowed });
     const timezone = req.query.timezone || req.query.timeZone || '';
-    const limit = req.query.limit || '25';
-    const offset = req.query.offset || '0';
+    const limitParsed = parseBoundedInt(req.query.limit, { min: 1, max: 100, fallback: 25, field: 'limit' });
+    if (!limitParsed.ok) return res.status(400).json({ error: limitParsed.error });
+    const offsetParsed = parseBoundedInt(req.query.offset, { min: 0, max: 100000, fallback: 0, field: 'offset' });
+    if (!offsetParsed.ok) return res.status(400).json({ error: offsetParsed.error });
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
     Sentry.addBreadcrumb({ category: 'api', message: 'sessions.listByRange', data: { range } });
-    store.listSessionsByRange(range, timezone || undefined, limit, offset)
+    store.listSessionsByRange(range, timezone || undefined, limitParsed.value, offsetParsed.value)
       .then(({ sessions, total }) => res.json({ sessions, total }))
       .catch(err => {
         Sentry.captureException(err, { extra: { route: 'sessions', filter: 'range' } });
@@ -56,8 +70,13 @@ function list(req, res, next) {
 }
 
 function events(req, res, next) {
-  const sessionId = req.params.id;
-  const limit = Math.min(parseInt(req.query.limit, 10) || 20, 50);
+  const sessionId = req.params && req.params.id != null ? String(req.params.id).trim() : '';
+  if (!SESSION_ID_RE.test(sessionId)) {
+    return res.status(400).json({ error: 'Invalid session id' });
+  }
+  const limitParsed = parseBoundedInt(req.query.limit, { min: 1, max: 50, fallback: 20, field: 'limit' });
+  if (!limitParsed.ok) return res.status(400).json({ error: limitParsed.error });
+  const limit = limitParsed.value;
   Sentry.addBreadcrumb({ category: 'api', message: 'sessions.events', data: { sessionId } });
   store.getSessionEvents(sessionId, limit)
     .then(rows => res.json({ events: rows }))

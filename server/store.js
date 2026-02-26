@@ -2943,8 +2943,22 @@ function purchaseFilterExcludeTokenWhenOrderExists(alias) {
   )`;
 }
 
-async function getPixelSalesSummary(start, end) {
+async function getPixelSalesSummary(start, end, shop = '') {
   const db = getDb();
+  const scopedShop = salesTruth.resolveShopForSales(shop || '');
+  const scopeSql = scopedShop
+    ? `
+        AND EXISTS (
+          SELECT 1
+          FROM orders_shopify o
+          WHERE o.shop = ?
+            AND (
+              (NULLIF(TRIM(p.order_id), '') IS NOT NULL AND o.order_id = TRIM(p.order_id))
+              OR (NULLIF(TRIM(p.checkout_token), '') IS NOT NULL AND NULLIF(TRIM(o.checkout_token), '') = TRIM(p.checkout_token))
+            )
+        )
+      `
+    : '';
   const rows = await db.all(
     `
       SELECT
@@ -2954,9 +2968,10 @@ async function getPixelSalesSummary(start, end) {
       FROM purchases p
       WHERE purchased_at >= ? AND purchased_at < ?
         ${purchaseFilterExcludeDuplicateH('p')}
+        ${scopeSql}
       GROUP BY currency
     `,
-    [start, end]
+    scopedShop ? [start, end, scopedShop] : [start, end]
   );
   const ratesToGbp = await fx.getRatesToGbp();
   let orderCount = 0;
@@ -2976,13 +2991,13 @@ async function getPixelSalesSummary(start, end) {
   return { orderCount, revenueGbp, revenueByCurrency };
 }
 
-async function getPixelSalesTotalGbp(start, end) {
-  const s = await getPixelSalesSummary(start, end);
+async function getPixelSalesTotalGbp(start, end, shop = '') {
+  const s = await getPixelSalesSummary(start, end, shop);
   return s && typeof s.revenueGbp === 'number' ? s.revenueGbp : 0;
 }
 
-async function getPixelOrderCount(start, end) {
-  const s = await getPixelSalesSummary(start, end);
+async function getPixelOrderCount(start, end, shop = '') {
+  const s = await getPixelSalesSummary(start, end, shop);
   return s && typeof s.orderCount === 'number' ? s.orderCount : 0;
 }
 

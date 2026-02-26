@@ -45,6 +45,17 @@ function normalizeUserTier(raw) {
   return s;
 }
 
+function isMissingLastAuthProviderColumnError(err) {
+  const msg = String((err && err.message) || err || '').toLowerCase();
+  if (!msg.includes('last_auth_provider')) return false;
+  return (
+    msg.includes('no such column') ||
+    msg.includes('does not exist') ||
+    msg.includes('unknown column') ||
+    msg.includes('undefined column')
+  );
+}
+
 function isBootstrapMasterEmail(email) {
   const e = normalizeEmail(email);
   return !!(e && e === BOOTSTRAP_MASTER_EMAIL);
@@ -133,24 +144,27 @@ async function createPendingUser(email, passwordHash, meta = {}, { now = Date.no
 async function listUsers({ status } = {}) {
   const st = normalizeUserStatus(status);
   const db = getDb();
+  const selectWithAuthProvider =
+    'SELECT id, email, status, role, tier, created_at, last_login_at, last_country, last_city, last_device_type, last_platform, last_auth_provider FROM users';
+  const selectWithoutAuthProvider =
+    'SELECT id, email, status, role, tier, created_at, last_login_at, last_country, last_city, last_device_type, last_platform, NULL AS last_auth_provider FROM users';
+  const withStatusSuffix = ' WHERE status = ? ORDER BY COALESCE(last_login_at, created_at) DESC, id DESC';
+  const noStatusSuffix = ' ORDER BY COALESCE(last_login_at, created_at) DESC, id DESC';
   try {
     if (st) {
-      return await db.all(
-        `SELECT id, email, status, role, tier, created_at, last_login_at, last_country, last_city, last_device_type, last_platform, last_auth_provider
-         FROM users
-         WHERE status = ?
-         ORDER BY COALESCE(last_login_at, created_at) DESC, id DESC`,
-        [st]
-      );
+      return await db.all(selectWithAuthProvider + withStatusSuffix, [st]);
     }
-    return await db.all(
-      `SELECT id, email, status, role, tier, created_at, last_login_at, last_country, last_city, last_device_type, last_platform, last_auth_provider
-       FROM users
-       ORDER BY COALESCE(last_login_at, created_at) DESC, id DESC`,
-      []
-    );
-  } catch (_) {
-    return [];
+    return await db.all(selectWithAuthProvider + noStatusSuffix, []);
+  } catch (err) {
+    if (!isMissingLastAuthProviderColumnError(err)) return [];
+    try {
+      if (st) {
+        return await db.all(selectWithoutAuthProvider + withStatusSuffix, [st]);
+      }
+      return await db.all(selectWithoutAuthProvider + noStatusSuffix, []);
+    } catch (_) {
+      return [];
+    }
   }
 }
 
@@ -199,7 +213,7 @@ async function denyUser(id, actorEmail, { now = Date.now() } = {}) {
   if (!u) return { ok: false, error: 'not_found' };
   try {
     await db.run(
-      'UPDATE users SET status = ?, denied_at = ?, approved_at = COALESCE(approved_at, NULL) WHERE id = ?',
+      'UPDATE users SET status = ?, denied_at = ?, approved_at = NULL WHERE id = ?',
       ['denied', now, u.id]
     );
     void actor;
@@ -250,21 +264,39 @@ async function updateLoginMeta(email, meta = {}, { now = Date.now() } = {}) {
     const lastUserAgent = meta.last_user_agent != null ? String(meta.last_user_agent).trim().slice(0, 320) : null;
     const lastIp = meta.last_ip != null ? String(meta.last_ip).trim().slice(0, 64) : null;
     const lastAuthProvider = normalizeAuthProvider(meta.last_auth_provider);
-    await db.run(
-      `
-        UPDATE users SET
-          last_login_at = ?,
-          last_country = COALESCE(?, last_country),
-          last_city = COALESCE(?, last_city),
-          last_device_type = COALESCE(?, last_device_type),
-          last_platform = COALESCE(?, last_platform),
-          last_user_agent = COALESCE(?, last_user_agent),
-          last_ip = COALESCE(?, last_ip),
-          last_auth_provider = ?
-        WHERE email = ?
-      `,
-      [now, lastCountry, lastCity, lastDeviceType, lastPlatform, lastUserAgent, lastIp, lastAuthProvider, e]
-    );
+    try {
+      await db.run(
+        `
+          UPDATE users SET
+            last_login_at = ?,
+            last_country = COALESCE(?, last_country),
+            last_city = COALESCE(?, last_city),
+            last_device_type = COALESCE(?, last_device_type),
+            last_platform = COALESCE(?, last_platform),
+            last_user_agent = COALESCE(?, last_user_agent),
+            last_ip = COALESCE(?, last_ip),
+            last_auth_provider = ?
+          WHERE email = ?
+        `,
+        [now, lastCountry, lastCity, lastDeviceType, lastPlatform, lastUserAgent, lastIp, lastAuthProvider, e]
+      );
+    } catch (err) {
+      if (!isMissingLastAuthProviderColumnError(err)) throw err;
+      await db.run(
+        `
+          UPDATE users SET
+            last_login_at = ?,
+            last_country = COALESCE(?, last_country),
+            last_city = COALESCE(?, last_city),
+            last_device_type = COALESCE(?, last_device_type),
+            last_platform = COALESCE(?, last_platform),
+            last_user_agent = COALESCE(?, last_user_agent),
+            last_ip = COALESCE(?, last_ip)
+          WHERE email = ?
+        `,
+        [now, lastCountry, lastCity, lastDeviceType, lastPlatform, lastUserAgent, lastIp, e]
+      );
+    }
     return { ok: true };
   } catch (_) {
     return { ok: false, error: 'db_error' };

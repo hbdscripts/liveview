@@ -56,15 +56,16 @@ function migrateLegacySqliteIfNeeded(destPath) {
     const legacy = resolveLegacyRepoSqlitePath();
     if (!fs.existsSync(legacy)) return;
 
+    const legacyWal = legacy + '-wal';
+    const legacyShm = legacy + '-shm';
+    // Copying a live WAL database can produce inconsistent bootstrap state.
+    // Only migrate from the legacy path when there is no WAL/SHM sidecar.
+    if (fs.existsSync(legacyWal) || fs.existsSync(legacyShm)) {
+      console.warn('[dataPaths] Skipping legacy SQLite copy because WAL/SHM files are present. Stop the old process and retry to migrate safely.');
+      return;
+    }
+
     fs.copyFileSync(legacy, destPath);
-    // Copy WAL/SHM when present so the new DB starts consistent with previous WAL mode.
-    ['-wal', '-shm'].forEach((suffix) => {
-      try {
-        const src = legacy + suffix;
-        const dst = destPath + suffix;
-        if (fs.existsSync(src) && !fs.existsSync(dst)) fs.copyFileSync(src, dst);
-      } catch (_) {}
-    });
   } catch (_) {}
 }
 

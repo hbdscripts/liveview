@@ -142,9 +142,22 @@
         return;
       }
       const rows = data.bestVariants.slice();
+      function activityCountFromRow(r) {
+        var clicks = r && r.clicks != null ? Number(r.clicks) : 0;
+        var sessions = r && r.sessions != null ? Number(r.sessions) : 0;
+        if (Number.isFinite(clicks) && clicks > 0) return clicks;
+        if (Number.isFinite(sessions) && sessions > 0) return sessions;
+        return 0;
+      }
+      function vpvFromRow(r) {
+        if (r && typeof r.vpv === 'number' && Number.isFinite(r.vpv)) return r.vpv;
+        var rev = r && typeof r.revenue === 'number' ? r.revenue : null;
+        var activity = activityCountFromRow(r);
+        return (activity > 0 && rev != null) ? (rev / activity) : null;
+      }
       var hasSessions = false;
       for (var i = 0; i < rows.length; i++) {
-        if ((Number(rows[i] && rows[i].clicks) || 0) > 0) { hasSessions = true; break; }
+        if (activityCountFromRow(rows[i]) > 0) { hasSessions = true; break; }
       }
       setHiddenById('stats-best-variants', !hasSessions);
       if (!hasSessions) {
@@ -169,12 +182,6 @@
         else if (bvBy === 'cr') {
           primary = cmpNullableNumber(a && a.cr, b && b.cr, bvDir) ||
             cmpNullableNumber(a && a.orders, b && b.orders, 'desc');
-        }
-        function vpvFromRow(r) {
-          if (r && typeof r.vpv === 'number' && Number.isFinite(r.vpv)) return r.vpv;
-          var rev = r && typeof r.revenue === 'number' ? r.revenue : null;
-          var sess = r && (typeof r.clicks === 'number' || typeof r.sessions === 'number') ? (r.clicks != null ? r.clicks : r.sessions) : null;
-          return (sess != null && sess > 0 && rev != null) ? (rev / sess) : null;
         }
         return primary ||
           cmpNullableNumber(a && a.revenue, b && b.revenue, 'desc') ||
@@ -222,7 +229,7 @@
         const revenue = formatRevenueTableHtml(v && v.revenue != null ? v.revenue : null);
         const crVal = (v && typeof v.cr === 'number') ? v.cr : null;
         const cr = crVal != null ? pct(crVal) : '\u2014';
-        const vpvNum = (v && typeof v.vpv === 'number' && Number.isFinite(v.vpv)) ? v.vpv : ((v && v.clicks > 0 && v.revenue != null) ? (v.revenue / v.clicks) : null);
+        const vpvNum = vpvFromRow(v);
         const vpv = vpvNum != null ? formatRevenue(vpvNum) : '\u2014';
 
         return '<div class="grid-row" role="row">' +
@@ -508,9 +515,16 @@
         return;
       }
       const rows = data.bestSellers.slice();
+      function activityCountFromRow(r) {
+        var clicks = r && r.clicks != null ? Number(r.clicks) : 0;
+        var sessions = r && r.sessions != null ? Number(r.sessions) : 0;
+        if (Number.isFinite(clicks) && clicks > 0) return clicks;
+        if (Number.isFinite(sessions) && sessions > 0) return sessions;
+        return 0;
+      }
       var hasSessions = false;
       for (var i = 0; i < rows.length; i++) {
-        if ((Number(rows[i] && rows[i].clicks) || 0) > 0) { hasSessions = true; break; }
+        if (activityCountFromRow(rows[i]) > 0) { hasSessions = true; break; }
       }
       setHiddenById('stats-best-sellers', !hasSessions);
       if (!hasSessions) {
@@ -535,8 +549,8 @@
       function vpvFromRow(r) {
         if (r && typeof r.vpv === 'number' && Number.isFinite(r.vpv)) return r.vpv;
         var rev = r && typeof r.revenue === 'number' ? r.revenue : null;
-        var sess = r && (typeof r.clicks === 'number' || typeof r.sessions === 'number') ? (r.clicks != null ? r.clicks : r.sessions) : null;
-        return (sess != null && sess > 0 && rev != null) ? (rev / sess) : null;
+        var activity = activityCountFromRow(r);
+        return (activity > 0 && rev != null) ? (rev / activity) : null;
       }
       const pageSize = (data && typeof data.pageSize === 'number' && data.pageSize > 0)
         ? data.pageSize

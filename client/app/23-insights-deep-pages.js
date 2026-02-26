@@ -82,6 +82,8 @@
 
   var currentRange = getRange();
   var charts = { revenue: null, activity: null };
+  var inFlightLoadToken = 0;
+  var inFlightLoadController = null;
 
   function setStatus(msg) {
     var statusEl = document.getElementById(statusId);
@@ -97,6 +99,17 @@
     try { if (charts.activity) charts.activity.destroy(); } catch (_) {}
     charts.revenue = null;
     charts.activity = null;
+  }
+
+  function isAbortError(err) {
+    return !!(err && (err.name === 'AbortError' || err.code === 20));
+  }
+
+  function abortInFlightLoad() {
+    if (inFlightLoadController && typeof inFlightLoadController.abort === 'function') {
+      try { inFlightLoadController.abort(); } catch (_) {}
+    }
+    inFlightLoadController = null;
   }
 
   function syncRangeLabel() {
@@ -200,7 +213,8 @@
     }
   }
 
-  function renderProductPage(payload) {
+  function renderProductPage(payload, requestToken) {
+    if (requestToken !== inFlightLoadToken) return;
     var root = document.getElementById(rootId);
     if (!root) return;
     var prod = payload && payload.product ? payload.product : null;
@@ -286,16 +300,21 @@
     setStatus('');
 
     if (handle && openStoreUrl.indexOf('/products/') === 0) {
-      fetch(API + '/api/store-base-url', { credentials: 'same-origin', cache: 'default' })
+      var opts = { credentials: 'same-origin', cache: 'default' };
+      if (inFlightLoadController && inFlightLoadController.signal) opts.signal = inFlightLoadController.signal;
+      fetch(API + '/api/store-base-url', opts)
         .then(function(r) { return r.ok ? r.json() : null; })
         .then(function(d) {
+          if (requestToken !== inFlightLoadToken) return;
           var base = (d && d.mainBaseUrl) ? String(d.mainBaseUrl).trim() : '';
           if (base) {
             var link = root.querySelector('a[href^="/products/"]');
             if (link) link.href = base.replace(/\/+$/, '') + openStoreUrl;
           }
         })
-        .catch(function() {});
+        .catch(function(err) {
+          if (isAbortError(err)) return;
+        });
     }
     var mainImg = document.getElementById('product-insights-page-main-img');
     if (mainImg && mainImgUrl) mainImg.src = urlWithWidth(mainImgUrl, 900);
@@ -311,7 +330,8 @@
     renderCharts(payload, 'product-insights-page-');
   }
 
-  function renderPageInsights(payload) {
+  function renderPageInsights(payload, requestToken) {
+    if (requestToken !== inFlightLoadToken) return;
     var root = document.getElementById(rootId);
     if (!root) return;
     var pageData = payload && payload.page ? payload.page : null;
@@ -348,6 +368,11 @@
   }
 
   function load() {
+    abortInFlightLoad();
+    var requestToken = ++inFlightLoadToken;
+    inFlightLoadController = (typeof AbortController === 'function') ? new AbortController() : null;
+    var fetchOpts = { credentials: 'same-origin', cache: 'no-store' };
+    if (inFlightLoadController && inFlightLoadController.signal) fetchOpts.signal = inFlightLoadController.signal;
     var id = parseIdFromPath(window.location.pathname);
     if (!id) { setStatus('Invalid URL'); return; }
     setStatus('Loading…');
@@ -356,37 +381,49 @@
       var shop = getShop();
       var range = currentRange || getRange();
       var url = API + '/api/product-insights?product_id=' + encodeURIComponent(id) + '&range=' + encodeURIComponent(range) + (shop ? '&shop=' + encodeURIComponent(shop) : '');
-      fetch(url, { credentials: 'same-origin', cache: 'no-store' })
+      fetch(url, fetchOpts)
         .then(function(r) { return r.ok ? r.json() : null; })
         .then(function(data) {
+          if (requestToken !== inFlightLoadToken) return;
           if (!data || !data.ok) { setStatus('No data available for this product.'); return; }
-          renderProductPage(data);
+          renderProductPage(data, requestToken);
         })
-        .catch(function() { setStatus('Could not load product insights.'); });
+        .catch(function(err) {
+          if (requestToken !== inFlightLoadToken || isAbortError(err)) return;
+          setStatus('Could not load product insights.');
+        });
       return;
     }
 
     if (page === 'page-insights') {
       var shop2 = getShop();
       var metaUrl = API + '/api/page-meta?page_id=' + encodeURIComponent(id) + (shop2 ? '&shop=' + encodeURIComponent(shop2) : '');
-      fetch(metaUrl, { credentials: 'same-origin', cache: 'no-store' })
+      fetch(metaUrl, fetchOpts)
         .then(function(r) { return r.ok ? r.json() : null; })
         .then(function(meta) {
+          if (requestToken !== inFlightLoadToken) return null;
           if (!meta || !meta.ok || !meta.path) { setStatus('Page not found.'); return; }
           var range2 = currentRange || getRange();
           var insightsUrl = API + '/api/page-insights?path=' + encodeURIComponent(meta.path) + '&kind=entry&range=' + encodeURIComponent(range2);
-          return fetch(insightsUrl, { credentials: 'same-origin', cache: 'no-store' }).then(function(r) { return r.json(); });
+          return fetch(insightsUrl, fetchOpts).then(function(r) { return r.ok ? r.json() : null; });
         })
         .then(function(data) {
+          if (requestToken !== inFlightLoadToken) return;
           if (!data || !data.ok) { setStatus('No data available for this page.'); return; }
-          renderPageInsights(data);
+          renderPageInsights(data, requestToken);
         })
-        .catch(function() { setStatus('Could not load page insights.'); });
+        .catch(function(err) {
+          if (requestToken !== inFlightLoadToken || isAbortError(err)) return;
+          setStatus('Could not load page insights.');
+        });
     }
   }
 
   syncRangeLabel();
   bindRangeMenu();
   load();
-  window.addEventListener('pagehide', function() { destroyCharts(); });
+  window.addEventListener('pagehide', function() {
+    abortInFlightLoad();
+    destroyCharts();
+  });
 })();

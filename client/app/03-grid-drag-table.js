@@ -18,6 +18,7 @@
         });
       }
       function observeGridBodies() {
+        pruneGridLabelObservers();
         document.querySelectorAll('.grid-table .grid-body').forEach(function(body) {
           if (body._gridLabelsObserved) return;
           body._gridLabelsObserved = true;
@@ -26,7 +27,26 @@
             syncLabels(body.closest('.grid-table'));
           });
           mo.observe(body, { childList: true, subtree: true });
+          body._gridLabelsObserver = mo;
+          _gridLabelObservers.push({ body: body, observer: mo });
         });
+      }
+      var _gridLabelObservers = [];
+      function pruneGridLabelObservers() {
+        _gridLabelObservers = _gridLabelObservers.filter(function(entry) {
+          var body = entry && entry.body ? entry.body : null;
+          var observer = entry && entry.observer ? entry.observer : null;
+          if (body && document.contains(body)) return true;
+          try { if (observer && typeof observer.disconnect === 'function') observer.disconnect(); } catch (_) {}
+          return false;
+        });
+      }
+      function disconnectGridLabelObservers() {
+        _gridLabelObservers.forEach(function(entry) {
+          var observer = entry && entry.observer ? entry.observer : null;
+          try { if (observer && typeof observer.disconnect === 'function') observer.disconnect(); } catch (_) {}
+        });
+        _gridLabelObservers = [];
       }
       function run() {
         observeGridBodies();
@@ -38,10 +58,18 @@
       }
       setTimeout(run, 800);
       setTimeout(run, 2000);
+      try {
+        if (typeof kexoRegisterCleanup === 'function') {
+          kexoRegisterCleanup(function () { disconnectGridLabelObservers(); });
+        } else if (typeof registerCleanup === 'function') {
+          registerCleanup(function () { disconnectGridLabelObservers(); });
+        }
+      } catch (_) {}
     })();
 
     (function initHorizontalDragScroll() {
       var WRAP_SELECTOR = '.table-scroll-wrap, .country-table-wrap, .table-responsive, .tools-table-wrap';
+      var _observedDragWraps = [];
 
       function shouldIgnoreTarget(target) {
         if (!target || !target.closest) return false;
@@ -127,15 +155,26 @@
             });
             ro.observe(wrap);
             wrap._dragScrollObserver = ro;
+            if (_observedDragWraps.indexOf(wrap) === -1) _observedDragWraps.push(wrap);
           } catch (_) {}
         }
       }
 
+      function pruneDetachedDragObservers() {
+        _observedDragWraps = _observedDragWraps.filter(function(wrap) {
+          if (wrap && document.contains(wrap)) return true;
+          try { if (wrap && wrap._dragScrollObserver && typeof wrap._dragScrollObserver.disconnect === 'function') wrap._dragScrollObserver.disconnect(); } catch (_) {}
+          return false;
+        });
+      }
+
       function run() {
+        pruneDetachedDragObservers();
         document.querySelectorAll(WRAP_SELECTOR).forEach(function(wrap) { bind(wrap); });
       }
 
       function refreshAll() {
+        pruneDetachedDragObservers();
         document.querySelectorAll(WRAP_SELECTOR).forEach(function(wrap) {
           if (wrap.getAttribute('data-drag-scroll-bound') !== '1') return;
           setDragEnabledClass(wrap);
@@ -152,6 +191,10 @@
             kexoRegisterCleanup(function () {
               try { window.removeEventListener('resize', onResize); } catch (_) {}
               try { if (onResize && onResize.cancel) onResize.cancel(); } catch (_) {}
+              _observedDragWraps.forEach(function(wrap) {
+                try { if (wrap && wrap._dragScrollObserver && typeof wrap._dragScrollObserver.disconnect === 'function') wrap._dragScrollObserver.disconnect(); } catch (_) {}
+              });
+              _observedDragWraps = [];
             });
           }
         } catch (_) {}

@@ -168,7 +168,7 @@
     }
 
     var table = '<div class="table-responsive"><table class="table table-vcenter card-table table-sm">' +
-      '<thead><tr><th>Hour</th><th class="text-end">Sessions</th><th class="text-end">Orders</th><th>CR%</th></tr></thead><tbody>';
+      '<thead><tr><th scope="col">Hour</th><th scope="col" class="text-end">Sessions</th><th scope="col" class="text-end">Orders</th><th scope="col">CR%</th></tr></thead><tbody>';
     for (var i = 0; i < rows.length; i++) {
       var r = rows[i];
       var hour = r.hour != null ? Number(r.hour) : i;

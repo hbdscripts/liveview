@@ -369,11 +369,11 @@
         '<div class="table-responsive mt-2">' +
           '<table class="table table-sm table-vcenter card-table">' +
             '<thead><tr>' +
-              '<th style="width:120px" title="Token type: utm_*, referrer_host, param_name, param_pair, or kexo_attr.">Type</th>' +
-              '<th title="The actual value (e.g. utm_source=google, referrer_host=twitter.com).">Value</th>' +
-              '<th class="text-end" style="width:90px" title="How many sessions had this token.">Seen</th>' +
-              '<th style="width:180px" title="Most recent session timestamp.">Last seen</th>' +
-              '<th style="width:110px"></th>' +
+              '<th scope="col" style="width:120px" title="Token type: utm_*, referrer_host, param_name, param_pair, or kexo_attr.">Type</th>' +
+              '<th scope="col" title="The actual value (e.g. utm_source=google, referrer_host=twitter.com).">Value</th>' +
+              '<th scope="col" class="text-end" style="width:90px" title="How many sessions had this token.">Seen</th>' +
+              '<th scope="col" style="width:180px" title="Most recent session timestamp.">Last seen</th>' +
+              '<th scope="col" style="width:110px"></th>' +
             '</tr></thead>' +
             '<tbody id="am-observed-body">' +
               '<tr><td colspan="5" class="text-secondary">Loading…</td></tr>' +
@@ -388,7 +388,8 @@
           '<div class="row g-2">' +
             '<div class="col-12 col-md-4">' +
               '<label class="form-label" title="The token you selected from the table. Click Use on a row above to select.">Token <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>' +
-              '<input class="form-control" id="am-selected-token" type="text" value="Select a token above" readonly />' +
+              '<input class="form-control-plaintext settings-readonly-plaintext" id="am-selected-token" type="text" value="Select a token above" readonly aria-readonly="true" />' +
+              '<div class="form-hint settings-readonly-hint">Read-only — select a token above.</div>' +
             '</div>' +
             '<div class="col-12 col-md-4">' +
               '<label class="form-label" for="am-variant-key" title="Variant key (e.g. google_ads). This is the second tier under Channel.">Variant key <i class="fa-thin fa-circle-info text-secondary ms-1 am-tooltip-cue" aria-hidden="true"></i></label>' +
@@ -434,8 +435,8 @@
             '</div>' +
           '</div>' +
           '<div class="d-flex align-items-center gap-2 flex-wrap mt-3">' +
-            '<button type="button" class="btn btn-primary btn-sm" data-am-action="map-token" title="Save this rule. New sessions with the token will be attributed to the variant.">Create mapping</button>' +
-            '<button type="button" class="btn btn-sm" data-am-action="clear-selected" title="Deselect the current token.">Clear</button>' +
+            '<button type="button" class="btn btn-primary btn-md" data-am-action="map-token" title="Save this rule. New sessions with the token will be attributed to the variant.">Create mapping</button>' +
+            '<button type="button" class="btn btn-md" data-am-action="clear-selected" title="Deselect the current token.">Clear</button>' +
             '<span id="am-map-msg" class="form-hint"></span>' +
           '</div>' +
           '<div class="text-secondary small mt-2">' +
@@ -449,8 +450,8 @@
         '<div class="mt-2">' +
           '<textarea class="form-control font-monospace" id="am-config-json" rows="14" spellcheck="false" placeholder="{\\n  &quot;channels&quot;: [],\\n  &quot;sources&quot;: [],\\n  &quot;variants&quot;: [],\\n  &quot;tags&quot;: [],\\n  &quot;rules&quot;: [],\\n  &quot;allowlist&quot;: []\\n}"></textarea>' +
           '<div class="d-flex align-items-center gap-2 flex-wrap mt-2">' +
-            '<button type="button" class="btn btn-sm" data-am-action="reload-config" title="Discard JSON edits and reload from database.">Reload</button>' +
-            '<button type="button" class="btn btn-primary btn-sm" data-am-action="save-config" title="Replace the entire config with the JSON. Use with caution.">Save config</button>' +
+            '<button type="button" class="btn btn-md" data-am-action="reload-config" title="Discard JSON edits and reload from database.">Reload</button>' +
+            '<button type="button" class="btn btn-primary btn-md" data-am-action="save-config" title="Replace the entire config with the JSON. Use with caution.">Save config</button>' +
             '<span id="am-config-msg" class="form-hint"></span>' +
           '</div>' +
           '<div class="text-secondary small mt-2">Saving replaces the config tables with the submitted payload.</div>' +
@@ -620,7 +621,7 @@
           '<td class="text-end">' + escapeHtml(String(seen || 0)) + '</td>' +
           '<td>' + escapeHtml(lastTxt) + '</td>' +
           '<td class="text-end">' +
-            '<button type="button" class="btn btn-sm" data-am-action="select-token" data-token-type="' + escapeHtml(trimLower(t, 48)) + '" data-token-value="' + escapeHtml(trimLower(v, 256)) + '">Use</button>' +
+            '<button type="button" class="btn btn-md" data-am-action="select-token" data-token-type="' + escapeHtml(trimLower(t, 48)) + '" data-token-value="' + escapeHtml(trimLower(v, 256)) + '">Use</button>' +
           '</td>' +
         '</tr>';
     }).join('');

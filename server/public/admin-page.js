@@ -673,12 +673,40 @@
 
   function loadUsers(status) {
     return kfetch('/api/admin/users?status=' + encodeURIComponent(status), { method: 'GET' })
-      .then(function (r) { return r.json ? r.json() : null; })
-      .then(function (d) { return (d && d.users) ? d.users : []; })
-      .catch(function () { return []; });
+      .then(function (r) {
+        if (!r) return { ok: false, status: 0, users: [], error: 'request_failed' };
+        return (r.json ? r.json().catch(function () { return null; }) : Promise.resolve(null))
+          .then(function (d) {
+            if (!r.ok) {
+              return {
+                ok: false,
+                status: Number(r.status) || 0,
+                users: [],
+                error: (d && (d.error || d.message)) ? String(d.error || d.message) : 'request_failed',
+              };
+            }
+            return { ok: true, status: Number(r.status) || 200, users: (d && d.users) ? d.users : [] };
+          });
+      })
+      .catch(function () { return { ok: false, status: 0, users: [], error: 'network_error' }; });
+  }
+
+  function renderUsersLoadError(which, result) {
+    var id = which === 'pending' ? 'admin-users-pending-body' : 'admin-users-active-body';
+    var body = document.getElementById(id);
+    if (!body) return;
+    var cols = which === 'active' ? 8 : 7;
+    var status = result && Number(result.status) ? Number(result.status) : 0;
+    var detail = status ? (' (HTTP ' + String(status) + ')') : '';
+    var msg = 'Failed to load users' + detail + '.';
+    if (status === 403) {
+      msg = 'Access denied (HTTP 403). You need a real active Admin account to load users.';
+    }
+    body.innerHTML = '<tr><td colspan="' + cols + '" class="text-danger">' + escapeHtml(msg) + '</td></tr>';
   }
 
   function postAction(action, id, bodyObj) {
+    if (!isNumericUserId(id)) return Promise.resolve({ ok: false, error: 'unsupported_user_id' });
     var url = '';
     if (action === 'approve') url = '/api/admin/users/' + encodeURIComponent(id) + '/approve';
     else if (action === 'deny') url = '/api/admin/users/' + encodeURIComponent(id) + '/deny';
@@ -691,6 +719,7 @@
   }
 
   function patchUserTier(id, tier) {
+    if (!isNumericUserId(id)) return Promise.resolve({ ok: false, error: 'unsupported_user_id' });
     var url = '/api/admin/users/' + encodeURIComponent(id);
     return kfetch(url, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ tier: tier }) })
       .then(function (r) { return r && r.ok ? r.json().catch(function () { return { ok: true }; }) : null; })
@@ -823,6 +852,9 @@
       var action = String(btn.getAttribute('data-admin-action') || '').trim();
       var id = String(btn.getAttribute('data-user-id') || '').trim();
       if (!action || !id) return;
+      if ((action === 'approve' || action === 'deny' || action === 'promote') && !isNumericUserId(id)) {
+        return;
+      }
       if (action === 'edit') {
         var modal = document.getElementById('admin-user-edit-modal');
         var idEl = document.getElementById('admin-user-edit-id');
@@ -870,8 +902,14 @@
     setLoading('active', 'Refreshing…');
     setLoading('pending', 'Refreshing…');
     return Promise.all([
-      loadUsers('active').then(renderActive),
-      loadUsers('pending').then(renderPending),
+      loadUsers('active').then(function (res) {
+        if (res && res.ok) renderActive(res.users || []);
+        else renderUsersLoadError('active', res);
+      }),
+      loadUsers('pending').then(function (res) {
+        if (res && res.ok) renderPending(res.users || []);
+        else renderUsersLoadError('pending', res);
+      }),
     ]);
   }
 

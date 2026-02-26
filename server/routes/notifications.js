@@ -67,8 +67,14 @@ async function patchOne(req, res) {
     if (!id) return res.status(400).json({ ok: false, error: 'missing_id' });
 
     const body = req.body && typeof req.body === 'object' ? req.body : {};
-    const read = body.read === true || body.read === 'true';
-    const archived = body.archived === true || body.archived === 'true';
+    const hasRead = Object.prototype.hasOwnProperty.call(body, 'read');
+    const hasArchived = Object.prototype.hasOwnProperty.call(body, 'archived');
+    const read = body.read === true || body.read === 'true' || body.read === '1';
+    const archived = body.archived === true || body.archived === 'true' || body.archived === '1';
+
+    if (!((hasRead && read) || (hasArchived && archived))) {
+      return res.status(400).json({ ok: false, error: 'no_actionable_fields' });
+    }
 
     if (read) await notificationsService.markRead(id, userEmail);
     if (archived) await notificationsService.markArchived(id, userEmail);

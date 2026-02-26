@@ -1361,7 +1361,7 @@
           }
         })
       : (function () {
-          var h = '<table class="ads-modal-countries-table"><thead><tr><th>Country</th><th class="text-end">Clicks</th><th class="text-end">Spend</th><th class="text-end">Orders</th><th class="text-end">CR%</th><th class="text-end">VPV</th><th class="text-end">Revenue</th><th class="text-end">ROAS</th></tr></thead><tbody>';
+          var h = '<table class="ads-modal-countries-table"><thead><tr><th scope="col">Country</th><th scope="col" class="text-end">Clicks</th><th scope="col" class="text-end">Spend</th><th scope="col" class="text-end">Orders</th><th scope="col" class="text-end">CR%</th><th scope="col" class="text-end">VPV</th><th scope="col" class="text-end">Revenue</th><th scope="col" class="text-end">ROAS</th></tr></thead><tbody>';
           for (var i = 0; i < rows.length; i++) {
             var r = rows[i] || {};
             var code = r.country ? String(r.country).trim().toUpperCase() : '';
@@ -1453,7 +1453,7 @@
           }
         })
       : (function () {
-          var h = '<table class="ads-modal-devices-table"><thead><tr><th>Device</th><th class="text-end">Clicks</th><th class="text-end">Spend</th><th class="text-end">Orders</th><th class="text-end">CR%</th><th class="text-end">VPV</th><th class="text-end">Revenue</th><th class="text-end">ROAS</th></tr></thead><tbody>';
+          var h = '<table class="ads-modal-devices-table"><thead><tr><th scope="col">Device</th><th scope="col" class="text-end">Clicks</th><th scope="col" class="text-end">Spend</th><th scope="col" class="text-end">Orders</th><th scope="col" class="text-end">CR%</th><th scope="col" class="text-end">VPV</th><th scope="col" class="text-end">Revenue</th><th scope="col" class="text-end">ROAS</th></tr></thead><tbody>';
           for (var i = 0; i < rows.length; i++) {
             var r = rows[i] || {};
             var device = r.device ? String(r.device).trim() : '';
@@ -1549,7 +1549,7 @@
           }
         })
       : (function () {
-          var h = '<table class="ads-modal-networks-table"><thead><tr><th>Network</th><th class="text-end">Sessions</th><th class="text-end">Orders</th><th class="text-end">CR%</th><th class="text-end">VPV</th><th class="text-end">Revenue</th></tr></thead><tbody>';
+          var h = '<table class="ads-modal-networks-table"><thead><tr><th scope="col">Network</th><th scope="col" class="text-end">Sessions</th><th scope="col" class="text-end">Orders</th><th scope="col" class="text-end">CR%</th><th scope="col" class="text-end">VPV</th><th scope="col" class="text-end">Revenue</th></tr></thead><tbody>';
           for (var i = 0; i < rows.length; i++) {
             var r = rows[i] || {};
             var code = r.network ? String(r.network).trim().toLowerCase() : '';
@@ -1639,7 +1639,7 @@
           }
         })
       : (function () {
-          var h = '<table class="ads-modal-dayparting-table"><thead><tr><th>Hour</th><th class="text-end">Clicks</th><th class="text-end">Spend</th><th class="text-end">Orders</th><th class="text-end">CR%</th><th class="text-end">VPV</th><th class="text-end">Revenue</th><th class="text-end">ROAS</th></tr></thead><tbody>';
+          var h = '<table class="ads-modal-dayparting-table"><thead><tr><th scope="col">Hour</th><th scope="col" class="text-end">Clicks</th><th scope="col" class="text-end">Spend</th><th scope="col" class="text-end">Orders</th><th scope="col" class="text-end">CR%</th><th scope="col" class="text-end">VPV</th><th scope="col" class="text-end">Revenue</th><th scope="col" class="text-end">ROAS</th></tr></thead><tbody>';
           for (var i = 0; i < rows.length; i++) {
             var r = rows[i] || {};
             var label = r.label != null ? String(r.label) : (r.hour != null ? (String(r.hour).padStart(2, '0') + ':00') : '');
@@ -1677,7 +1677,7 @@
       el.innerHTML = '<div class="muted" style="padding:12px;text-align:center;">No attribution evidence in this period.</div>';
       return;
     }
-    var tableHtml = '<table class="ads-modal-attribution-evidence-table"><thead><tr><th>Method</th><th class="text-end">Orders</th><th class="text-end">Revenue</th></tr></thead><tbody>';
+    var tableHtml = '<table class="ads-modal-attribution-evidence-table"><thead><tr><th scope="col">Method</th><th scope="col" class="text-end">Orders</th><th scope="col" class="text-end">Revenue</th></tr></thead><tbody>';
     for (var i = 0; i < rows.length; i++) {
       var r = rows[i] || {};
       tableHtml += '<tr><td>' + esc(r.method || '—') + '</td><td class="text-end">' + esc(fmtNum(r.orders != null ? r.orders : 0)) + '</td><td class="text-end">' + esc(fmtMoney(r.revenueGbp != null ? r.revenueGbp : 0, currency || 'GBP')) + '</td></tr>';
@@ -1710,7 +1710,7 @@
           }
         })
       : (function () {
-          var h = '<table class="ads-modal-sales-table"><thead><tr><th>Country</th><th>Value</th><th>Time</th></tr></thead><tbody>';
+          var h = '<table class="ads-modal-sales-table"><thead><tr><th scope="col">Country</th><th scope="col">Value</th><th scope="col">Time</th></tr></thead><tbody>';
           for (var i = 0; i < sales.length; i++) {
             var s = sales[i];
             var cc = s.country ? s.country.toLowerCase() : '';

@@ -1,7 +1,7 @@
 /**
- * Settings ? Attribution ? Mapped tree
+ * Settings > Attribution > Mapped tree
  *
- * Shows Channel ? Source ? Variant ? Rule hierarchy with icon editing.
+ * Shows Channel > Source > Variant > Rule hierarchy with icon editing.
  * - GET  /api/attribution/config
  * - POST /api/attribution/icons (patch icon_spec for sources/variants)
  *
@@ -453,7 +453,7 @@
     var label = (rule && rule.label) ? String(rule.label) : '';
     var match = (rule && rule.match_json) ? rule.match_json : (rule && rule.match ? JSON.stringify(rule.match) : '{}');
     var matchStr = typeof match === 'string' ? match : JSON.stringify(match);
-    var summary = matchStr.length > 60 ? matchStr.slice(0, 57) + '?' : matchStr;
+    var summary = matchStr.length > 60 ? matchStr.slice(0, 57) + '...' : matchStr;
     var vk = normalizeBaseVariantKey(variantKey);
     var tk = tagKey != null ? normalizeTagKey(String(tagKey), 120) : '';
     var padClass = tk ? 'am-tree-pad-4' : 'am-tree-pad-3';
@@ -910,7 +910,7 @@
     }
     if (kindEl) kindEl.textContent = kind === 'source' ? 'Source' : 'Variant';
     if (keyEl) keyEl.textContent = key;
-    if (labelEl) labelEl.textContent = label ? ('? ' + label) : '';
+    if (labelEl) labelEl.textContent = label ? ('- ' + label) : '';
 
     var iconSpecEl = modalEl.querySelector('#am-assign-icon-spec');
     var iconPreviewEl = modalEl.querySelector('#am-assign-icon-preview');
@@ -1075,7 +1075,7 @@
             return;
           }
 
-          setMsg('Saving?', 'text-secondary');
+          setMsg('Saving...', 'text-secondary');
           try { confirmBtn.disabled = true; } catch (_) {}
           saveAttributionConfig(nextCfg).then(function (resp) {
             if (resp && resp.ok) {

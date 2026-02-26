@@ -23,7 +23,7 @@ async function reconcileSales(req, res) {
   const bounds = store.getRangeBounds(rangeKey, nowMs, timeZone);
   const scope = `manual_${rangeKey}`;
   const result = await salesTruth.reconcileRange(shop, bounds.start, bounds.end, scope);
-  const health = await salesTruth.getTruthHealth(shop, 'today');
+  const health = await salesTruth.getTruthHealth(shop, scope);
   res.setHeader('Cache-Control', 'no-store');
   res.setHeader('Vary', 'Cookie');
   res.json({ shop, range: { key: rangeKey, start: bounds.start, end: bounds.end }, result, health });

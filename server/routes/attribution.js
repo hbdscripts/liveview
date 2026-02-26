@@ -547,6 +547,14 @@ async function getAttributionConfig(req, res) {
 async function postAttributionConfig(req, res) {
   const body = req && req.body && typeof req.body === 'object' ? req.body : {};
   const cfg = body && body.config && typeof body.config === 'object' ? body.config : body;
+  const clearAllTables = !!(
+    cfg && (
+      cfg.clearAll === true ||
+      cfg.clear_all === true ||
+      cfg.replaceAll === true ||
+      cfg.clear === 'all'
+    )
+  );
   const now = Date.now();
 
   const nextChannels = Array.isArray(cfg.channels) ? cfg.channels : [];
@@ -667,9 +675,10 @@ async function postAttributionConfig(req, res) {
     }
   }
 
-  async function deleteRowsNotIn(table, col, keys) {
+  async function deleteRowsNotIn(table, col, keys, opts = {}) {
     const list = Array.isArray(keys) ? keys.map((k) => (k != null ? String(k) : '')).map((k) => k.trim()).filter(Boolean) : [];
     if (!list.length) {
+      if (!opts.allowClearAll) return;
       await db.run(`DELETE FROM ${table}`);
       return;
     }
@@ -724,12 +733,12 @@ async function postAttributionConfig(req, res) {
       );
 
       // Then remove stale rows that were not present in the submitted config.
-      await deleteRowsNotIn('attribution_allowlist', 'variant_key', allowlist.map((r) => r.variant_key));
-      await deleteRowsNotIn('attribution_rules', 'id', rules.map((r) => r.id));
-      await deleteRowsNotIn('attribution_variants', 'variant_key', variants.map((r) => r.variant_key));
-      await deleteRowsNotIn('attribution_tags', 'tag_key', tags.map((r) => r.tag_key));
-      await deleteRowsNotIn('attribution_sources', 'source_key', sources.map((r) => r.source_key));
-      await deleteRowsNotIn('attribution_channels', 'channel_key', channels.map((r) => r.channel_key));
+      await deleteRowsNotIn('attribution_allowlist', 'variant_key', allowlist.map((r) => r.variant_key), { allowClearAll: clearAllTables });
+      await deleteRowsNotIn('attribution_rules', 'id', rules.map((r) => r.id), { allowClearAll: clearAllTables });
+      await deleteRowsNotIn('attribution_variants', 'variant_key', variants.map((r) => r.variant_key), { allowClearAll: clearAllTables });
+      await deleteRowsNotIn('attribution_tags', 'tag_key', tags.map((r) => r.tag_key), { allowClearAll: clearAllTables });
+      await deleteRowsNotIn('attribution_sources', 'source_key', sources.map((r) => r.source_key), { allowClearAll: clearAllTables });
+      await deleteRowsNotIn('attribution_channels', 'channel_key', channels.map((r) => r.channel_key), { allowClearAll: clearAllTables });
     });
   } catch (err) {
     Sentry.captureException(err, { extra: { route: 'attribution.config.save' } });

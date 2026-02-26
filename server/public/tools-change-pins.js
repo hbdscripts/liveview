@@ -467,12 +467,12 @@
     html += '<div class="tools-table-wrap">';
     html += '<table class="tools-table table table-sm table-vcenter">';
     html += '<thead><tr>' +
-      '<th style="min-width:120px">Date</th>' +
-      '<th style="min-width:80px">Time</th>' +
-      '<th style="min-width:320px">Title</th>' +
-      '<th style="min-width:90px">Kind</th>' +
-      '<th style="min-width:90px">Status</th>' +
-      '<th class="text-end" style="min-width:110px">View Stats</th>' +
+      '<th scope="col" style="min-width:120px">Date</th>' +
+      '<th scope="col" style="min-width:80px">Time</th>' +
+      '<th scope="col" style="min-width:320px">Title</th>' +
+      '<th scope="col" style="min-width:90px">Kind</th>' +
+      '<th scope="col" style="min-width:90px">Status</th>' +
+      '<th scope="col" class="text-end" style="min-width:110px">View Stats</th>' +
     '</tr></thead><tbody>';
     for (var i = 0; i < list.length; i++) {
       var p = list[i] || {};

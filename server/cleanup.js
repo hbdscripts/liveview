@@ -89,17 +89,15 @@ async function getSetting(db, key) {
 }
 
 async function setSetting(db, key, value) {
-  try {
-    await db.run(
-      `
-        INSERT INTO settings (key, value)
-        VALUES (?, ?)
-        ON CONFLICT (key) DO UPDATE SET
-          value = EXCLUDED.value
-      `,
-      [key, value]
-    );
-  } catch (_) {}
+  await db.run(
+    `
+      INSERT INTO settings (key, value)
+      VALUES (?, ?)
+      ON CONFLICT (key) DO UPDATE SET
+        value = EXCLUDED.value
+    `,
+    [key, value]
+  );
 }
 
 async function pruneGrowthTables(db, now) {
@@ -161,31 +159,36 @@ async function pruneGrowthTables(db, now) {
     return { ok: false, skipped: true, reason: 'backup_missing' };
   }
 
-  await setSetting(db, GROWTH_RETENTION_SETTING_KEY, String(now));
-
   const deleted = {
     report_cache: null,
     audit_log: null,
     reconcile_snapshots: null,
   };
-
-  if (backedUpTables.has('report_cache')) {
+  try {
+    await db.transaction(async () => {
+      if (backedUpTables.has('report_cache')) {
+        const r = await db.run('DELETE FROM report_cache WHERE computed_at < ?', [cutoffs.reportCacheComputedAtLt]);
+        deleted.report_cache = r && r.changes != null ? Number(r.changes) || 0 : 0;
+      }
+      if (backedUpTables.has('audit_log')) {
+        const r = await db.run('DELETE FROM audit_log WHERE ts < ?', [cutoffs.auditLogTsLt]);
+        deleted.audit_log = r && r.changes != null ? Number(r.changes) || 0 : 0;
+      }
+      if (backedUpTables.has('reconcile_snapshots')) {
+        const r = await db.run('DELETE FROM reconcile_snapshots WHERE fetched_at < ?', [cutoffs.reconcileSnapshotsFetchedAtLt]);
+        deleted.reconcile_snapshots = r && r.changes != null ? Number(r.changes) || 0 : 0;
+      }
+      await setSetting(db, GROWTH_RETENTION_SETTING_KEY, String(now));
+    });
+  } catch (err) {
     try {
-      const r = await db.run('DELETE FROM report_cache WHERE computed_at < ?', [cutoffs.reportCacheComputedAtLt]);
-      deleted.report_cache = r && r.changes != null ? Number(r.changes) || 0 : 0;
+      await writeAudit('system', 'retention_prune_error', {
+        now,
+        cutoffs,
+        error: err && err.message ? String(err.message).slice(0, 220) : 'prune_failed',
+      });
     } catch (_) {}
-  }
-  if (backedUpTables.has('audit_log')) {
-    try {
-      const r = await db.run('DELETE FROM audit_log WHERE ts < ?', [cutoffs.auditLogTsLt]);
-      deleted.audit_log = r && r.changes != null ? Number(r.changes) || 0 : 0;
-    } catch (_) {}
-  }
-  if (backedUpTables.has('reconcile_snapshots')) {
-    try {
-      const r = await db.run('DELETE FROM reconcile_snapshots WHERE fetched_at < ?', [cutoffs.reconcileSnapshotsFetchedAtLt]);
-      deleted.reconcile_snapshots = r && r.changes != null ? Number(r.changes) || 0 : 0;
-    } catch (_) {}
+    return { ok: false, error: 'prune_failed' };
   }
 
   try {
@@ -213,8 +216,13 @@ async function runOnce() {
   const now = Date.now();
   const effectiveTier = await retentionPolicy.getEffectiveRetentionTier(config);
   const limits = retentionPolicy.getTierLimits(effectiveTier);
-  const drilldownRetentionMs = limits.drilldownRetentionDays * DAY_MS;
-  const chartsRetentionMs = limits.chartsRetentionDays * DAY_MS;
+  const sessionRetentionOverrideDays = Number.isFinite(Number(config.sessionRetentionDaysOverride))
+    ? clampDays(config.sessionRetentionDaysOverride, limits.drilldownRetentionDays)
+    : null;
+  const drilldownRetentionDays = sessionRetentionOverrideDays != null ? sessionRetentionOverrideDays : limits.drilldownRetentionDays;
+  const chartsRetentionDays = Math.max(limits.chartsRetentionDays, drilldownRetentionDays);
+  const drilldownRetentionMs = drilldownRetentionDays * DAY_MS;
+  const chartsRetentionMs = chartsRetentionDays * DAY_MS;
   const drilldownCutoff = now - drilldownRetentionMs;
   const chartsCutoff = now - chartsRetentionMs;
   let safeDeleteCutoff = drilldownCutoff;
@@ -271,34 +279,37 @@ async function runOnce() {
     }
   } catch (_) {}
 
-  // Delete only when BOTH last_seen and started_at are older than retention; except abandoned within retention
-  if (config.dbUrl) {
-    await db.run(`
-      DELETE FROM events WHERE session_id IN (
-        SELECT session_id FROM sessions
+  // Delete only when BOTH last_seen and started_at are older than retention; except abandoned within retention.
+  // Keep events/sessions deletion atomic so crashes cannot leave partial prune state.
+  await db.transaction(async () => {
+    if (config.dbUrl) {
+      await db.run(`
+        DELETE FROM events WHERE session_id IN (
+          SELECT session_id FROM sessions
+          WHERE last_seen < $1 AND started_at < $1
+          AND (is_abandoned = 0 OR abandoned_at IS NULL OR abandoned_at < $2)
+        )
+      `, [safeDeleteCutoff, abandonedCutoff]);
+      await db.run(`
+        DELETE FROM sessions
         WHERE last_seen < $1 AND started_at < $1
         AND (is_abandoned = 0 OR abandoned_at IS NULL OR abandoned_at < $2)
-      )
-    `, [safeDeleteCutoff, abandonedCutoff]);
-    await db.run(`
-      DELETE FROM sessions
-      WHERE last_seen < $1 AND started_at < $1
-      AND (is_abandoned = 0 OR abandoned_at IS NULL OR abandoned_at < $2)
-    `, [safeDeleteCutoff, abandonedCutoff]);
-  } else {
-    await db.run(`
-      DELETE FROM events WHERE session_id IN (
-        SELECT session_id FROM sessions
+      `, [safeDeleteCutoff, abandonedCutoff]);
+    } else {
+      await db.run(`
+        DELETE FROM events WHERE session_id IN (
+          SELECT session_id FROM sessions
+          WHERE last_seen < ? AND started_at < ?
+          AND (is_abandoned = 0 OR abandoned_at IS NULL OR abandoned_at < ?)
+        )
+      `, [safeDeleteCutoff, safeDeleteCutoff, abandonedCutoff]);
+      await db.run(`
+        DELETE FROM sessions
         WHERE last_seen < ? AND started_at < ?
         AND (is_abandoned = 0 OR abandoned_at IS NULL OR abandoned_at < ?)
-      )
-    `, [safeDeleteCutoff, safeDeleteCutoff, abandonedCutoff]);
-    await db.run(`
-      DELETE FROM sessions
-      WHERE last_seen < ? AND started_at < ?
-      AND (is_abandoned = 0 OR abandoned_at IS NULL OR abandoned_at < ?)
-    `, [safeDeleteCutoff, safeDeleteCutoff, abandonedCutoff]);
-  }
+      `, [safeDeleteCutoff, safeDeleteCutoff, abandonedCutoff]);
+    }
+  });
 
   const maxEvents = parseInt(String(config.maxEventsPerSession), 10);
   if (Number.isFinite(maxEvents) && maxEvents > 0) {

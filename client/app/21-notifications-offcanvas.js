@@ -17,6 +17,7 @@
 
   var currentTab = 'unread';
   var listData = null;
+  var _activeDetailRequestToken = 0;
 
   var TYPE_ICON_KEYS = {
     daily_report: 'notifications-type-daily-report',
@@ -222,6 +223,7 @@
   }
 
   function showListView() {
+    _activeDetailRequestToken += 1;
     if (listViewEl) listViewEl.classList.remove('d-none');
     if (listViewEl) listViewEl.classList.add('d-flex');
     if (detailViewEl) detailViewEl.classList.add('d-none');
@@ -236,12 +238,14 @@
   }
 
   function openDetail(id) {
+    var requestToken = ++_activeDetailRequestToken;
     var item = listEl.querySelector('.notification-item[data-id="' + CSS.escape(String(id)) + '"]');
     var alreadyRead = item && item.getAttribute('data-read') === '1';
     showDetailView();
     if (detailBodyEl) detailBodyEl.innerHTML = '<div class="text-muted">Loading…</div>';
     if (detailActionsEl) detailActionsEl.innerHTML = '';
     fetchDetail(id).then(function (res) {
+      if (requestToken !== _activeDetailRequestToken) return;
       if (!res || !res.notification) {
         if (detailBodyEl) detailBodyEl.innerHTML = '<div class="text-danger">Could not load notification.</div>';
         return;
@@ -271,7 +275,9 @@
             e.preventDefault();
             archiveBtn.disabled = true;
             patchNotification(id, { read: true, archived: true }).then(function () {
+              if (requestToken !== _activeDetailRequestToken) return;
               fetchList().then(function (d) {
+                if (requestToken !== _activeDetailRequestToken) return;
                 renderList(d);
                 showListView();
               });
@@ -284,7 +290,9 @@
             e.preventDefault();
             deleteBtn.disabled = true;
             deleteNotification(id).then(function () {
+              if (requestToken !== _activeDetailRequestToken) return;
               fetchList().then(function (d) {
+                if (requestToken !== _activeDetailRequestToken) return;
                 renderList(d);
                 showListView();
               });
@@ -295,7 +303,9 @@
 
       if (!alreadyRead) {
         patchNotification(id, { read: true }).then(function () {
+          if (requestToken !== _activeDetailRequestToken) return;
           fetchList().then(function (d) {
+            if (requestToken !== _activeDetailRequestToken) return;
             listData = d;
             updateTabCounts(d && d.ok ? d : null);
           });
@@ -305,6 +315,7 @@
   }
 
   offcanvasEl.addEventListener('shown.bs.offcanvas', function () {
+    _activeDetailRequestToken += 1;
     if (listEmptyEl) { listEmptyEl.textContent = 'Loading…'; listEmptyEl.classList.remove('d-none'); }
     currentTab = 'unread';
     setActiveTab('unread');

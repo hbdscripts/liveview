@@ -676,11 +676,11 @@
                 <table class="table table-sm align-middle">
                   <thead>
                     <tr>
-                      <th>Priority</th>
-                      <th class="text-center">On</th>
-                      <th>Price (GBP)</th>
-                      <th>Countries</th>
-                      <th class="text-end">Actions</th>
+                      <th scope="col">Priority</th>
+                      <th scope="col" class="text-center">On</th>
+                      <th scope="col">Price (GBP)</th>
+                      <th scope="col">Countries</th>
+                      <th scope="col" class="text-end">Actions</th>
                     </tr>
                   </thead>
                   <tbody id="cost-expenses-shipping-overrides-wrap"></tbody>
@@ -717,13 +717,13 @@
                         <table class="table table-sm align-middle">
                           <thead>
                             <tr>
-                              <th>Name <span class="am-tooltip-cue" title="Internal label for managing rules (e.g. ‘Stripe fees 2026’, ‘VAT GB’)." aria-label="Help: Name"></span></th>
-                              <th>Category <span class="am-tooltip-cue" title="Preset grouping for rules. This is also used to group items on Cost Breakdown." aria-label="Help: Category"></span></th>
-                              <th>Label <span class="am-tooltip-cue" title="This exact label appears on the Cost Breakdown page." aria-label="Help: Label"></span></th>
-                              <th>Summary <span class="am-tooltip-cue" title="Human-readable summary so you don’t have to interpret multiple fields." aria-label="Help: Summary"></span></th>
-                              <th class="text-end">Priority <span class="am-tooltip-cue" title="Lower numbers run first. When multiple rules match, they apply in this order." aria-label="Help: Priority"></span></th>
-                              <th class="text-center">Enabled <span class="am-tooltip-cue" title="When off, the rule is excluded from calculations but kept in the list." aria-label="Help: Enabled"></span></th>
-                              <th class="text-end">Actions</th>
+                              <th scope="col">Name <span class="am-tooltip-cue" title="Internal label for managing rules (e.g. ‘Stripe fees 2026’, ‘VAT GB’)." aria-label="Help: Name"></span></th>
+                              <th scope="col">Category <span class="am-tooltip-cue" title="Preset grouping for rules. This is also used to group items on Cost Breakdown." aria-label="Help: Category"></span></th>
+                              <th scope="col">Label <span class="am-tooltip-cue" title="This exact label appears on the Cost Breakdown page." aria-label="Help: Label"></span></th>
+                              <th scope="col">Summary <span class="am-tooltip-cue" title="Human-readable summary so you don’t have to interpret multiple fields." aria-label="Help: Summary"></span></th>
+                              <th scope="col" class="text-end">Priority <span class="am-tooltip-cue" title="Lower numbers run first. When multiple rules match, they apply in this order." aria-label="Help: Priority"></span></th>
+                              <th scope="col" class="text-center">Enabled <span class="am-tooltip-cue" title="When off, the rule is excluded from calculations but kept in the list." aria-label="Help: Enabled"></span></th>
+                              <th scope="col" class="text-end">Actions</th>
                             </tr>
                           </thead>
                           <tbody id="cost-expenses-per-order-table-body"></tbody>
@@ -901,15 +901,15 @@
                         <table class="table table-sm align-middle">
                           <thead>
                             <tr>
-                              <th>Overhead</th>
-                              <th>Type</th>
-                              <th class="text-end">Amount</th>
-                              <th>Date / start</th>
-                              <th>End</th>
-                              <th>Frequency</th>
-                              <th>Country</th>
-                              <th class="text-center">Enabled</th>
-                              <th class="text-end">Actions</th>
+                              <th scope="col">Overhead</th>
+                              <th scope="col">Type</th>
+                              <th scope="col" class="text-end">Amount</th>
+                              <th scope="col">Date / start</th>
+                              <th scope="col">End</th>
+                              <th scope="col">Frequency</th>
+                              <th scope="col">Country</th>
+                              <th scope="col" class="text-center">Enabled</th>
+                              <th scope="col" class="text-end">Actions</th>
                             </tr>
                           </thead>
                           <tbody id="cost-expenses-overheads-table-body"></tbody>
@@ -996,10 +996,10 @@
                         <table class="table table-sm align-middle">
                           <thead>
                             <tr>
-                              <th>Name</th>
-                              <th class="text-end">Amount</th>
-                              <th class="text-center">Enabled</th>
-                              <th class="text-end">Actions</th>
+                              <th scope="col">Name</th>
+                              <th scope="col" class="text-end">Amount</th>
+                              <th scope="col" class="text-center">Enabled</th>
+                              <th scope="col" class="text-end">Actions</th>
                             </tr>
                           </thead>
                           <tbody id="cost-expenses-fixed-costs-table-body"></tbody>
@@ -1065,10 +1065,10 @@
                 <table class="table table-sm align-middle">
                   <thead>
                     <tr>
-                      <th>Cost item</th>
-                      <th>Status</th>
-                      <th class="text-end">Amount</th>
-                      <th>Notes</th>
+                      <th scope="col">Cost item</th>
+                      <th scope="col">Status</th>
+                      <th scope="col" class="text-end">Amount</th>
+                      <th scope="col">Notes</th>
                     </tr>
                   </thead>
                   <tbody id="cost-breakdown-table-body">
@@ -1381,14 +1381,14 @@
                       <table class="table table-vcenter card-table table-sm admin-users-table">
                         <thead>
                           <tr>
-                            <th>Email</th>
-                            <th>Role</th>
-                            <th>Country</th>
-                            <th>City</th>
-                            <th>Device</th>
-                            <th>Login method</th>
-                            <th>Last login</th>
-                            <th class="text-end">Actions</th>
+                            <th scope="col">Email</th>
+                            <th scope="col">Role</th>
+                            <th scope="col">Country</th>
+                            <th scope="col">City</th>
+                            <th scope="col">Device</th>
+                            <th scope="col">Login method</th>
+                            <th scope="col">Last login</th>
+                            <th scope="col" class="text-end">Actions</th>
                           </tr>
                         </thead>
                         <tbody id="admin-users-active-body">
@@ -1403,13 +1403,13 @@
                       <table class="table table-vcenter card-table table-sm admin-users-table">
                         <thead>
                           <tr>
-                            <th>Email</th>
-                            <th>Assign role</th>
-                            <th>Country</th>
-                            <th>City</th>
-                            <th>Device</th>
-                            <th>Registered</th>
-                            <th class="text-end">Actions</th>
+                            <th scope="col">Email</th>
+                            <th scope="col">Assign role</th>
+                            <th scope="col">Country</th>
+                            <th scope="col">City</th>
+                            <th scope="col">Device</th>
+                            <th scope="col">Registered</th>
+                            <th scope="col" class="text-end">Actions</th>
                           </tr>
                         </thead>
                         <tbody id="admin-users-pending-body">
@@ -1779,11 +1779,11 @@
                         <table class="table table-sm table-vcenter mb-0" aria-label="Google Ads conversion actions">
                           <thead>
                             <tr>
-                              <th>Name</th>
-                              <th>Status</th>
-                              <th>Category</th>
-                              <th class="text-center">Primary for goal</th>
-                              <th class="text-end">Last upload</th>
+                              <th scope="col">Name</th>
+                              <th scope="col">Status</th>
+                              <th scope="col">Category</th>
+                              <th scope="col" class="text-center">Primary for goal</th>
+                              <th scope="col" class="text-end">Last upload</th>
                             </tr>
                           </thead>
                           <tbody id="settings-ga-actions-body">
@@ -1843,11 +1843,11 @@
                         <table class="table table-sm table-vcenter mb-0" aria-label="Google Ads issues">
                           <thead>
                             <tr>
-                              <th>Type</th>
-                              <th>Order</th>
-                              <th>Timestamp</th>
-                              <th>Status</th>
-                              <th class="text-end">Actions</th>
+                              <th scope="col">Type</th>
+                              <th scope="col">Order</th>
+                              <th scope="col">Timestamp</th>
+                              <th scope="col">Status</th>
+                              <th scope="col" class="text-end">Actions</th>
                             </tr>
                           </thead>
                           <tbody id="settings-ga-issues-body">

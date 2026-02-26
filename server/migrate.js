@@ -72,6 +72,7 @@ const { up: up066 } = require('./migrations/066_shop_oauth_identities');
 const { up: up067 } = require('./migrations/067_affiliate_attribution_ip_prefix');
 const { up: up068 } = require('./migrations/068_catalog_products');
 const { up: up069 } = require('./migrations/069_daily_rollups');
+const { up: up070 } = require('./migrations/070_users_last_auth_provider');
 const { runAdsMigrations } = require('./ads/adsMigrate');
 
 const APP_MIGRATIONS = [
@@ -144,6 +145,7 @@ const APP_MIGRATIONS = [
   ['067_affiliate_attribution_ip_prefix', up067],
   ['068_catalog_products', up068],
   ['069_daily_rollups', up069],
+  ['070_users_last_auth_provider', up070],
 ];
 
 async function ensureAppMigrationsTable(db) {
@@ -171,10 +173,12 @@ async function markAppMigrationApplied(db, id) {
 async function runAppMigrations(db) {
   await ensureAppMigrationsTable(db);
   for (const [id, up] of APP_MIGRATIONS) {
-    const applied = await isAppMigrationApplied(db, id);
-    if (applied) continue;
-    await up();
-    await markAppMigrationApplied(db, id);
+    await db.transaction(async () => {
+      const applied = await isAppMigrationApplied(db, id);
+      if (applied) return;
+      await up();
+      await markAppMigrationApplied(db, id);
+    });
   }
 }
 
