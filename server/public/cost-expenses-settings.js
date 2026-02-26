@@ -623,13 +623,18 @@
     var overrides = [];
     var rows = root.querySelectorAll('[data-override-idx]');
     rows.forEach(function (row) {
-      var pri = parseInt(row.querySelector('[data-override-priority]').value, 10) || 1;
-      var en = row.querySelector('[data-override-enabled]').checked;
+      var priEl = row.querySelector('[data-override-priority]');
+      var enEl = row.querySelector('[data-override-enabled]');
+      var priceEl = row.querySelector('[data-override-price]');
+      var countriesEl = row.querySelector('[data-override-countries]');
+      if (!priEl || !enEl || !priceEl || !countriesEl) return;
+      var pri = parseInt(priEl.value, 10) || 1;
+      var en = enEl.checked;
       var label = '';
       try { label = String((row.querySelector('[data-override-label]') || {}).value || '').trim(); } catch (_) { label = ''; }
       if (label.length > 60) label = label.slice(0, 60);
-      var price = parseFloat(row.querySelector('[data-override-price]').value, 10) || 0;
-      var raw = (row.querySelector('[data-override-countries]').value || '').trim();
+      var price = parseFloat(priceEl.value, 10) || 0;
+      var raw = (countriesEl.value || '').trim();
       var codes = raw.split(/[\s,]+/).map(normalizeCountryCode).filter(Boolean);
       var seen = {};
       var countries = [];
@@ -637,8 +642,10 @@
       overrides.push({ priority: pri, enabled: en, label: label, priceGbp: price, countries: countries });
     });
     overrides.sort(function (a, b) { return (a.priority || 0) - (b.priority || 0); });
-    var worldwide = parseFloat(document.getElementById('cost-expenses-shipping-worldwide').value, 10) || 0;
-    var enabled = document.getElementById('cost-expenses-shipping-enabled').checked === true;
+    var worldwideEl = document.getElementById('cost-expenses-shipping-worldwide');
+    var shippingEnabledEl = document.getElementById('cost-expenses-shipping-enabled');
+    var worldwide = worldwideEl ? parseFloat(worldwideEl.value, 10) || 0 : 0;
+    var enabled = shippingEnabledEl ? shippingEnabledEl.checked === true : false;
     return { enabled: enabled, worldwideDefaultGbp: Math.max(0, worldwide), overrides: overrides };
   }
 
