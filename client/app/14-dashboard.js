@@ -7005,12 +7005,16 @@
       function animateWidgetFills(root) {
         if (!root || !root.querySelectorAll) return;
         try {
-          if (root._kexoWidgetFillsRaf) return;
+          if (root._kexoWidgetFillsRaf) {
+            cancelAnimationFrame(root._kexoWidgetFillsRaf);
+            root._kexoWidgetFillsRaf = 0;
+          }
           var fills = root.querySelectorAll('[data-kexo-bar-fill]');
           if (!fills || !fills.length) return;
           root._kexoWidgetFillsRaf = requestAnimationFrame(function () {
             root._kexoWidgetFillsRaf = 0;
-            Array.prototype.forEach.call(fills, function (el) {
+            var currentFills = root.querySelectorAll('[data-kexo-bar-fill]');
+            Array.prototype.forEach.call(currentFills, function (el) {
               var pct = Number(el.getAttribute('data-kexo-bar-fill') || 0);
               if (!Number.isFinite(pct)) pct = 0;
               pct = Math.max(0, Math.min(100, pct));
