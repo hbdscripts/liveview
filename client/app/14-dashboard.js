@@ -22,6 +22,7 @@
       var overviewMiniCacheShopKey = '';
       var overviewMiniPayloadSignature = '';
       var overviewMiniResizeTimer = null;
+      var overviewMiniResumeSkipUntil = 0;
       var overviewHeightSyncObserver = null;
       var overviewHeightSyncTimer = null;
       var overviewHeightSyncResizeBound = false;
@@ -2325,6 +2326,14 @@
           overviewMiniResizeScheduled = false;
           if (!overviewCardCache || !Object.keys(overviewCardCache).length) return;
           var sig = computeOverviewMiniSizeSignature();
+          var now = Date.now();
+          if (overviewMiniResumeSkipUntil && now >= overviewMiniResumeSkipUntil) {
+            overviewMiniResumeSkipUntil = 0;
+          }
+          if (overviewMiniResumeSkipUntil && now < overviewMiniResumeSkipUntil) {
+            if (sig) overviewMiniSizeSignature = sig;
+            return;
+          }
           if (sig && sig === overviewMiniSizeSignature) return;
           overviewMiniSizeSignature = sig;
           rerenderOverviewCardsFromCache({ reason: 'resize' });
@@ -2378,6 +2387,7 @@
         overviewHeightSyncObserver = null;
         overviewHeightSyncTimer = null;
         overviewMiniResizeScheduled = false;
+        overviewMiniResumeSkipUntil = 0;
         overviewMiniSizeSignature = '';
         overviewMiniCacheShopKey = '';
         overviewMiniPayloadSignature = '';
@@ -7780,11 +7790,25 @@
         fetchDashboardData(rk, force, { silent: silent, rerender: rerender, reason: reason });
       };
 
+      function hasOverviewNewSaleSinceLastSeen(options) {
+        var opts = options && typeof options === 'object' ? options : {};
+        var forceNew = !!opts.forceNew;
+        try {
+          if (window && typeof window.kexoHasNewSaleSinceKnownLastSale === 'function') {
+            return Promise.resolve(window.kexoHasNewSaleSinceKnownLastSale({ forceNew: forceNew }))
+              .then(function(v) { return !!v; })
+              .catch(function() { return false; });
+          }
+        } catch (_) {}
+        return Promise.resolve(false);
+      }
+
       function createDashboardController() {
         var pollTimer = null;
         var lifecycleResumeUnsub = null;
         var lifecycleHiddenUnsub = null;
         var mainTabBound = false;
+        var overviewResumeObserverTimer = null;
         var lastResumeAt = 0;
         var lastResumePerfAt = 0;
         var POLL_MS = 120000;
@@ -7829,6 +7853,19 @@
           if (!isVisible()) return;
           pollTimer = setInterval(pollTick, POLL_MS);
         }
+        function scheduleOverviewObserverResume(delayMs, isOverview) {
+          if (overviewResumeObserverTimer) {
+            try { clearTimeout(overviewResumeObserverTimer); } catch (_) {}
+            overviewResumeObserverTimer = null;
+          }
+          var delay = Number(delayMs);
+          if (!Number.isFinite(delay) || delay < 0) delay = 0;
+          if (isOverview) overviewMiniResumeSkipUntil = Date.now() + 550;
+          overviewResumeObserverTimer = setTimeout(function() {
+            overviewResumeObserverTimer = null;
+            try { if (typeof resumeOverviewResizeObservers === 'function') resumeOverviewResizeObservers(); } catch (_) {}
+          }, delay);
+        }
         function refreshOnceAndResume(reason, forceRefresh) {
           // Use performance.now() for throttling: on iOS/Safari bfcache resume Date.now() can be stale.
           var pn = 0;
@@ -7847,28 +7884,44 @@
         }
         function onLifecycleHidden() {
           stopPolling();
+          if (overviewResumeObserverTimer) {
+            try { clearTimeout(overviewResumeObserverTimer); } catch (_) {}
+            overviewResumeObserverTimer = null;
+          }
           try { if (typeof pauseOverviewResizeObservers === 'function') pauseOverviewResizeObservers(); } catch (_) {}
         }
         function onLifecycleResume(ctx) {
           if (!isVisible()) return;
           if (!isDashboardActive()) return;
-          try { if (typeof resumeOverviewResizeObservers === 'function') resumeOverviewResizeObservers(); } catch (_) {}
+          var isOverview = false;
+          try { isOverview = !!(typeof isDashboardOverviewPage === 'function' && isDashboardOverviewPage()); } catch (_) { isOverview = false; }
+          scheduleOverviewObserverResume(isOverview ? 260 : 0, isOverview);
           var idleMs = 0;
           try { idleMs = ctx && ctx.idleMs != null ? Number(ctx.idleMs) : 0; } catch (_) { idleMs = 0; }
           if (!Number.isFinite(idleMs)) idleMs = 0;
           if (idleMs < 30000) return startPolling();
           // Overview page: keep cards stable on resume (avoid heavy rerenders/animations),
           // but refresh the live Online map so it stays current.
-          try {
-            if (typeof isDashboardOverviewPage === 'function' && isDashboardOverviewPage()) {
-              try {
-                if (typeof window.refreshLiveOnlineChart === 'function') {
-                  window.refreshLiveOnlineChart({ force: true, pageKey: 'dashboard' });
-                }
-              } catch (_) {}
-              return startPolling();
-            }
-          } catch (_) {}
+          if (isOverview) {
+            try {
+              if (typeof window.refreshLiveOnlineChart === 'function') {
+                window.refreshLiveOnlineChart({ force: true, pageKey: 'dashboard' });
+              }
+            } catch (_) {}
+            try {
+              hasOverviewNewSaleSinceLastSeen({ forceNew: false }).then(function(hasNewSale) {
+                if (!hasNewSale) return;
+                if (!isVisible()) return;
+                if (!isDashboardActive()) return;
+                try {
+                  if (typeof window.refreshDashboard === 'function') {
+                    window.refreshDashboard({ force: true, silent: true, reason: 'new-sale' });
+                  }
+                } catch (_) {}
+              });
+            } catch (_) {}
+            return startPolling();
+          }
           // Do NOT refresh dashboard on tab return - cards (Trending, Top countries, Attribution)
           // should only update on new sale. Just resume polling.
           return startPolling();
@@ -7876,10 +7929,16 @@
         function onMainTabChanged(ev) {
           var next = ev && ev.detail && ev.detail.tab != null ? String(ev.detail.tab).trim().toLowerCase() : '';
           if (next && next !== 'dashboard') {
+            if (overviewResumeObserverTimer) {
+              try { clearTimeout(overviewResumeObserverTimer); } catch (_) {}
+              overviewResumeObserverTimer = null;
+            }
             try { if (typeof pauseOverviewResizeObservers === 'function') pauseOverviewResizeObservers(); } catch (_) {}
             return;
           }
-          try { if (typeof resumeOverviewResizeObservers === 'function') resumeOverviewResizeObservers(); } catch (_) {}
+          var isOverview = false;
+          try { isOverview = !!(typeof isDashboardOverviewPage === 'function' && isDashboardOverviewPage()); } catch (_) { isOverview = false; }
+          scheduleOverviewObserverResume(isOverview ? 180 : 0, isOverview);
         }
         function init() {
           startPolling();
@@ -7904,6 +7963,10 @@
         }
         function destroy() {
           stopPolling();
+          if (overviewResumeObserverTimer) {
+            try { clearTimeout(overviewResumeObserverTimer); } catch (_) {}
+            overviewResumeObserverTimer = null;
+          }
           if (lifecycleResumeUnsub) {
             try { lifecycleResumeUnsub(); } catch (_) {}
             lifecycleResumeUnsub = null;

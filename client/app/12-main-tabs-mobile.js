@@ -293,6 +293,19 @@
           syncPageHeaderCategoryIcon();
         }
 
+        function hasNewSaleSinceKnownLastSale(options) {
+          var opts = options && typeof options === 'object' ? options : {};
+          var forceNew = !!opts.forceNew;
+          try {
+            if (window && typeof window.kexoHasNewSaleSinceKnownLastSale === 'function') {
+              return Promise.resolve(window.kexoHasNewSaleSinceKnownLastSale({ forceNew: forceNew }))
+                .then(function(v) { return !!v; })
+                .catch(function() { return false; });
+            }
+          } catch (_) {}
+          return Promise.resolve(false);
+        }
+
         function runTabWork(tab) {
           // Keep condensed KPI strip fitted to available width.
           try { scheduleCondensedKpiOverflowUpdate(); } catch (_) {}
@@ -331,11 +344,33 @@
             var rangeKey = '';
             try { rangeKey = getStatsRange(); } catch (_) { rangeKey = ''; }
             var isLiveRange = rangeKey === 'today' || rangeKey === '1h';
+            var isOverview = false;
+            try { isOverview = !!(typeof isDashboardOverviewPage === 'function' && isDashboardOverviewPage()); } catch (_) { isOverview = false; }
             if (isLiveRange) {
-              try { if (typeof window.refreshDashboard === 'function') window.refreshDashboard({ force: true, silent: true, reason: 'visit' }); } catch (_) {}
-              refreshKpis({ force: true }).then(function(data) {
-                if (data) renderDashboardKpisFromApi(data);
-              });
+              if (isOverview) {
+                hasNewSaleSinceKnownLastSale({ forceNew: false })
+                  .then(function(hasNewSale) {
+                    var forceDash = !!hasNewSale;
+                    try {
+                      if (typeof window.refreshDashboard === 'function') {
+                        window.refreshDashboard({ force: forceDash, silent: true, reason: forceDash ? 'new-sale' : 'visit' });
+                      }
+                    } catch (_) {}
+                    return refreshKpis({ force: forceDash, skipDashboardRefresh: true });
+                  })
+                  .catch(function() {
+                    try { if (typeof window.refreshDashboard === 'function') window.refreshDashboard({ force: false, silent: true, reason: 'visit' }); } catch (_) {}
+                    return refreshKpis({ force: false, skipDashboardRefresh: true });
+                  })
+                  .then(function(data) {
+                    if (data) renderDashboardKpisFromApi(data);
+                  });
+              } else {
+                try { if (typeof window.refreshDashboard === 'function') window.refreshDashboard({ force: true, silent: true, reason: 'visit' }); } catch (_) {}
+                refreshKpis({ force: true }).then(function(data) {
+                  if (data) renderDashboardKpisFromApi(data);
+                });
+              }
             } else {
               try { if (typeof window.refreshDashboard === 'function') window.refreshDashboard({ force: false }); } catch (_) {}
               refreshKpis({ force: false }).then(function(data) {

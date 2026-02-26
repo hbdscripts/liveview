@@ -1019,6 +1019,48 @@
       }
     }
 
+    function getLastSaleAt() {
+      return lastSaleAt == null ? null : toMs(lastSaleAt);
+    }
+
+    function hasNewSaleSinceKnownLastSale(options) {
+      var opts = options && typeof options === 'object' ? options : {};
+      var forceNew = !!opts.forceNew;
+      var known = getLastSaleAt();
+
+      function fallbackFetchLatestSale() {
+        var url = API + '/api/latest-sale?_=' + Date.now();
+        return fetch(url, { credentials: 'same-origin', cache: 'no-store' })
+          .then(function(r) { return (r && r.ok) ? r.json() : null; })
+          .then(function(json) { return (json && json.ok && json.sale) ? json.sale : null; })
+          .catch(function() { return null; });
+      }
+
+      var req = null;
+      try {
+        if (typeof fetchLatestSaleForToast === 'function') {
+          req = fetchLatestSaleForToast({ forceNew: forceNew });
+        }
+      } catch (_) {
+        req = null;
+      }
+      if (!req) req = fallbackFetchLatestSale();
+
+      return Promise.resolve(req)
+        .then(function(sale) {
+          if (!sale || sale.createdAt == null) return false;
+          var createdAt = Number(sale.createdAt);
+          if (!Number.isFinite(createdAt) || createdAt <= 0) return false;
+          setLastSaleAt(createdAt);
+          if (known == null) return true;
+          return createdAt > known;
+        })
+        .catch(function() { return false; });
+    }
+
+    try { window.getLastSaleAt = getLastSaleAt; } catch (_) {}
+    try { window.kexoHasNewSaleSinceKnownLastSale = hasNewSaleSinceKnownLastSale; } catch (_) {}
+
     function formatDuration(startMs) {
       const n = toMs(startMs);
       if (n == null) return '';
