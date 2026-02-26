@@ -500,27 +500,15 @@
       var countriesStr = (ov.countries || []).join(', ');
       var labelStr = (ov.label || '').trim();
       var countriesFlags = countryCodesToFlagStackHtml(ov.countries || [], (ov.countries && ov.countries.length) ? 'Countries' : 'All countries');
+      var pri = ov.priority || idx + 1;
+      var price = ov.priceGbp != null ? ov.priceGbp : 0;
+      var en = ov.enabled !== false;
       html += '<tr data-override-idx="' + idx + '">' +
-        '<td>' +
-          '<input type="number" class="form-control form-control-sm kexo-ce-override-priority" min="1" value="' + (ov.priority || idx + 1) + '" data-override-priority placeholder="1" aria-label="Priority" />' +
-        '</td>' +
-        '<td class="text-center">' +
-          '<label class="form-check form-switch mb-0 d-inline-flex align-items-center justify-content-center" aria-label="Override enabled">' +
-            '<input type="checkbox" class="form-check-input" data-override-enabled ' + (ov.enabled !== false ? 'checked' : '') + ' />' +
-          '</label>' +
-        '</td>' +
-        '<td>' +
-          '<input type="text" class="form-control form-control-sm kexo-ce-override-label" value="' + esc(labelStr) + '" data-override-label placeholder="e.g. UK shipping" aria-label="Label" />' +
-        '</td>' +
-        '<td>' +
-          '<input type="number" class="form-control form-control-sm kexo-ce-override-price" min="0" step="0.01" value="' + (ov.priceGbp != null ? ov.priceGbp : 0) + '" data-override-price placeholder="e.g. 4.99" aria-label="Price (GBP)" />' +
-        '</td>' +
-        '<td>' +
-          '<div class="kexo-ce-override-countries-wrap">' +
-            '<span class="kexo-ce-override-countries-preview" data-override-countries-preview>' + countriesFlags + '</span>' +
-            '<input type="text" class="form-control form-control-sm kexo-ce-override-countries" value="' + esc(countriesStr) + '" data-override-countries placeholder="e.g. GB, IE, FR" aria-label="Countries" />' +
-          '</div>' +
-        '</td>' +
+        '<td>' + esc(String(pri)) + '</td>' +
+        '<td class="text-center">' + (en ? 'On' : 'Off') + '</td>' +
+        '<td>' + esc(labelStr || '—') + '</td>' +
+        '<td>' + esc(formatMoneyGbp(price)) + '</td>' +
+        '<td><span class="kexo-ce-override-countries-display">' + countriesFlags + (countriesStr ? (' <span class="text-secondary">' + esc(countriesStr) + '</span>') : '') + '</span></td>' +
         '<td class="text-end">' +
           '<div class="d-inline-flex gap-1 flex-nowrap kexo-table-actions" aria-label="Override actions">' +
             '<button type="button" class="btn btn-sm kexo-icon-action-btn" data-shipping-override-edit data-override-idx="' + idx + '" aria-label="Edit override" title="Edit">' +
@@ -705,26 +693,15 @@
   }
 
   function readShippingFromUi() {
-    var overrides = [];
-    var rows = root.querySelectorAll('[data-override-idx]');
-    rows.forEach(function (row) {
-      var priEl = row.querySelector('[data-override-priority]');
-      var enEl = row.querySelector('[data-override-enabled]');
-      var priceEl = row.querySelector('[data-override-price]');
-      var countriesEl = row.querySelector('[data-override-countries]');
-      if (!priEl || !enEl || !priceEl || !countriesEl) return;
-      var pri = parseInt(priEl.value, 10) || 1;
-      var en = enEl.checked;
-      var label = '';
-      try { label = String((row.querySelector('[data-override-label]') || {}).value || '').trim(); } catch (_) { label = ''; }
-      if (label.length > 60) label = label.slice(0, 60);
-      var price = parseFloat(priceEl.value, 10) || 0;
-      var raw = (countriesEl.value || '').trim();
-      var codes = raw.split(/[\s,]+/).map(normalizeCountryCode).filter(Boolean);
-      var seen = {};
-      var countries = [];
-      codes.forEach(function (c) { if (!seen[c]) { seen[c] = true; countries.push(c); } });
-      overrides.push({ priority: pri, enabled: en, label: label, priceGbp: price, countries: countries });
+    var configOverrides = (state.config && state.config.shipping && state.config.shipping.overrides) ? state.config.shipping.overrides : [];
+    var overrides = configOverrides.map(function (ov, idx) {
+      return {
+        priority: ov.priority || idx + 1,
+        enabled: ov.enabled !== false,
+        label: String(ov.label || '').trim().slice(0, 60),
+        priceGbp: ov.priceGbp != null ? ov.priceGbp : 0,
+        countries: Array.isArray(ov.countries) ? ov.countries.slice() : []
+      };
     });
     overrides.sort(function (a, b) { return (a.priority || 0) - (b.priority || 0); });
     var worldwideEl = document.getElementById('cost-expenses-shipping-worldwide');
@@ -2427,17 +2404,6 @@
       }
       if (target && (target.id === 'cost-expenses-overhead-kind' || target.id === 'cost-expenses-overhead-frequency')) {
         syncOverheadFormUi();
-      }
-      if (target && (
-        target.getAttribute('data-override-priority') !== null ||
-        target.getAttribute('data-override-enabled') !== null ||
-        target.getAttribute('data-override-label') !== null ||
-        target.getAttribute('data-override-price') !== null ||
-        target.getAttribute('data-override-countries') !== null
-      )) {
-        state.config = state.config || defaultConfig();
-        state.config.shipping = readShippingFromUi();
-        renderShippingOverrides();
       }
       if (target && target.getAttribute('data-per-order-enabled') !== null) {
         var id = target.getAttribute('data-per-order-id');
