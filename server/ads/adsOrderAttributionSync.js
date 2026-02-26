@@ -537,6 +537,7 @@ async function syncAttributedOrdersToAdsDb(options = {}) {
     : [];
   const deductionToggles = profitDeductions && typeof profitDeductions === 'object' ? {
     includeGoogleAdsSpend: profitDeductions.includeGoogleAdsSpend === true,
+    includeCostOfGoods: profitDeductions.includeCostOfGoods === true,
     includePaymentFees: profitDeductions.includePaymentFees === true,
     includeShopifyTaxes: profitDeductions.includeShopifyTaxes === true,
     includeShopifyAppBills: profitDeductions.includeShopifyAppBills === true,
@@ -804,6 +805,37 @@ async function syncAttributedOrdersToAdsDb(options = {}) {
       ? await readAdsSpendByYmd(rangeStartTs, rangeEndTs, timeZone)
       : new Map();
 
+    const cogsByYmd = new Map();
+    if (deductionToggles.includeCostOfGoods && dayKeys.size) {
+      for (const ymd of dayKeys.values()) {
+        try {
+          const dayBounds = store.getRangeBounds(`d:${String(ymd)}`, Date.now(), timeZone);
+          if (!dayBounds || !Number.isFinite(Number(dayBounds.start)) || !Number.isFinite(Number(dayBounds.end)) || !(Number(dayBounds.end) > Number(dayBounds.start))) {
+            cogsByYmd.set(String(ymd), null);
+            continue;
+          }
+          const cogsOnly = await businessSnapshotService.getRevenueAndCostForGoogleAdsPostback(
+            shop,
+            Number(dayBounds.start),
+            Number(dayBounds.end),
+            {
+              includeGoogleAdsSpend: false,
+              includeCostOfGoods: true,
+              includePaymentFees: false,
+              includeShopifyTaxes: false,
+              includeShopifyAppBills: false,
+              includeShipping: false,
+              includeRules: false,
+            }
+          );
+          const dayCogs = cogsOnly && cogsOnly.costGbp != null ? Number(cogsOnly.costGbp) : NaN;
+          cogsByYmd.set(String(ymd), Number.isFinite(dayCogs) ? (round2(dayCogs) || 0) : null);
+        } catch (_) {
+          cogsByYmd.set(String(ymd), null);
+        }
+      }
+    }
+
     const overheadByYmd = new Map();
     if (deductionToggles.includeOverheads && overheads.length) {
       for (const ymd of dayKeys.values()) {
@@ -841,6 +873,19 @@ async function syncAttributedOrdersToAdsDb(options = {}) {
         const daySpend = Number(adsSpendByYmd.get(ymd)) || 0;
         const alloc = round2(daySpend * share) || 0;
         components.google_ads_spend_alloc_gbp = alloc;
+        cost += alloc;
+      }
+      if (deductionToggles.includeCostOfGoods) {
+        const dayCogs = cogsByYmd.has(ymd) ? cogsByYmd.get(ymd) : null;
+        if (!Number.isFinite(Number(dayCogs))) {
+          o.profitGbp = null;
+          o.profitVersion = PROFIT_VERSION;
+          o.profitComponents = JSON.stringify({ ok: false, missing: 'cost_of_goods', error: 'cogs_unavailable' });
+          o.profitComputedAtMs = profitComputedAtMs;
+          continue;
+        }
+        const alloc = round2(Number(dayCogs) * share) || 0;
+        components.cost_of_goods_alloc_gbp = alloc;
         cost += alloc;
       }
       if (deductionToggles.includePaymentFees) {

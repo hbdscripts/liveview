@@ -42,15 +42,28 @@ function ymdInTimeZone(ts, timeZone) {
 }
 
 function computeShippingCostForOrder(countryCode, shippingConfig) {
+  const out = computeShippingCostForOrderDetail(countryCode, shippingConfig);
+  return Number(out && out.amount) || 0;
+}
+
+function computeShippingCostForOrderDetail(countryCode, shippingConfig) {
   const cfg = shippingConfig && typeof shippingConfig === 'object' ? shippingConfig : {};
   const overrides = Array.isArray(cfg.overrides) ? cfg.overrides : [];
   const code = countryCode != null ? String(countryCode).trim().toUpperCase().slice(0, 2) : '';
   for (const o of overrides) {
     if (!o || o.enabled === false) continue;
     const countries = Array.isArray(o.countries) ? o.countries : [];
-    if (code && countries.includes(code)) return Math.max(0, Number(o.priceGbp) || 0);
+    if (code && countries.includes(code)) {
+      return {
+        amount: Math.max(0, Number(o.priceGbp) || 0),
+        label: (o.label != null && String(o.label).trim()) ? String(o.label).trim() : 'Shipping country override',
+      };
+    }
   }
-  return Math.max(0, Number(cfg.worldwideDefaultGbp) || 0);
+  return {
+    amount: Math.max(0, Number(cfg.worldwideDefaultGbp) || 0),
+    label: 'Worldwide default',
+  };
 }
 
 function parseYmdParts(ymd) {
@@ -144,10 +157,25 @@ function orderRevenueForBasis(order, basis) {
 }
 
 function computePerOrderRulesAdjustmentGbp(order, rules, mode) {
+  return computePerOrderRulesBreakdownGbp(order, rules, mode).total;
+}
+
+function ruleDisplayLabel(rule) {
+  if (!rule || typeof rule !== 'object') return 'Rule';
+  const label = rule.label != null ? String(rule.label).trim() : '';
+  if (label) return label;
+  const name = rule.name != null ? String(rule.name).trim() : '';
+  if (name) return name;
+  const id = rule.id != null ? String(rule.id).trim() : '';
+  return id ? (`Rule ${id}`) : 'Rule';
+}
+
+function computePerOrderRulesBreakdownGbp(order, rules, mode) {
   const list = Array.isArray(rules) ? rules : [];
   const matchMode = mode === 'first_match' ? 'first_match' : 'stack';
   const dayYmd = order && order.orderYmd ? String(order.orderYmd) : '';
   let total = 0;
+  const rows = [];
   for (const rule of list) {
     if (!rule || rule.enabled !== true) continue;
     const start = rule.effective_start || rule.start_date || '';
@@ -166,9 +194,14 @@ function computePerOrderRulesAdjustmentGbp(order, rules, mode) {
     const rounded = round2(amt) || 0;
     if (rounded === 0) continue;
     total += rounded;
+    rows.push({
+      id: rule.id != null ? String(rule.id) : '',
+      label: ruleDisplayLabel(rule),
+      amount_gbp: rounded,
+    });
     if (matchMode === 'first_match') break;
   }
-  return round2(total) || 0;
+  return { total: round2(total) || 0, rows };
 }
 
 router.get('/google/connect', async (req, res) => {
@@ -552,6 +585,7 @@ router.post('/google/profit-preview', async (req, res) => {
       const legacyRules = d.includeRules === true;
       return {
         includeGoogleAdsSpend: d.includeGoogleAdsSpend === true,
+        includeCostOfGoods: d.includeCostOfGoods === true,
         includePaymentFees: d.includePaymentFees === true,
         includeShopifyTaxes: d.includeShopifyTaxes === true,
         includeShopifyAppBills: d.includeShopifyAppBills === true,
@@ -740,6 +774,26 @@ router.post('/google/profit-preview', async (req, res) => {
       : [];
 
     const components = {};
+    const componentDetails = [];
+    function pushComponentDetail(key, label, amountGbp, rows, note) {
+      const amount = round2(Number(amountGbp) || 0) || 0;
+      const out = {
+        key: key != null ? String(key) : '',
+        label: label != null ? String(label) : 'Cost component',
+        amount_gbp: amount,
+      };
+      const safeRows = Array.isArray(rows) ? rows : [];
+      if (safeRows.length) {
+        out.rows = safeRows
+          .map((r) => ({
+            label: r && r.label != null ? String(r.label) : '',
+            amount_gbp: round2(Number(r && r.amount_gbp) || 0) || 0,
+          }))
+          .filter((r) => r.label || r.amount_gbp !== 0);
+      }
+      if (note) out.note = String(note);
+      componentDetails.push(out);
+    }
     let cost = 0;
 
     if (deductions.includeGoogleAdsSpend) {
@@ -748,6 +802,41 @@ router.post('/google/profit-preview', async (req, res) => {
       const alloc = round2(daySpend * share) || 0;
       components.google_ads_spend_alloc_gbp = alloc;
       cost += alloc;
+      pushComponentDetail('google_ads_spend_alloc_gbp', 'Ads spend allocation', alloc, [], `Allocated from ${orderYmd} total spend.`);
+    }
+
+    if (deductions.includeCostOfGoods) {
+      let cogsDayTotal = null;
+      try {
+        const dayBounds = store.getRangeBounds(`d:${orderYmd}`, Date.now(), timeZone);
+        if (dayBounds && Number.isFinite(Number(dayBounds.start)) && Number.isFinite(Number(dayBounds.end)) && Number(dayBounds.end) > Number(dayBounds.start)) {
+          const cogsOnly = await businessSnapshotService.getRevenueAndCostForGoogleAdsPostback(
+            shop,
+            Number(dayBounds.start),
+            Number(dayBounds.end),
+            {
+              includeGoogleAdsSpend: false,
+              includeCostOfGoods: true,
+              includePaymentFees: false,
+              includeShopifyTaxes: false,
+              includeShopifyAppBills: false,
+              includeShipping: false,
+              includeRules: false,
+            }
+          );
+          const cogsTotal = cogsOnly && cogsOnly.costGbp != null ? Number(cogsOnly.costGbp) : NaN;
+          cogsDayTotal = Number.isFinite(cogsTotal) ? cogsTotal : null;
+        }
+      } catch (_) {
+        cogsDayTotal = null;
+      }
+      if (cogsDayTotal == null) missing.push('cost_of_goods');
+      else {
+        const alloc = round2(cogsDayTotal * share) || 0;
+        components.cost_of_goods_alloc_gbp = alloc;
+        cost += alloc;
+        pushComponentDetail('cost_of_goods_alloc_gbp', 'Cost of goods allocation', alloc, [], `Allocated from ${orderYmd} total COGS.`);
+      }
     }
 
     const needShopifyCosts = !!(deductions.includePaymentFees || deductions.includeShopifyAppBills);
@@ -770,6 +859,7 @@ router.post('/google/profit-preview', async (req, res) => {
         const alloc = round2(dayFees * share) || 0;
         components.payment_fees_alloc_gbp = alloc;
         cost += alloc;
+        pushComponentDetail('payment_fees_alloc_gbp', 'Payment fees allocation', alloc, [], `Allocated from ${orderYmd} payout fees.`);
       }
     }
     if (deductions.includeShopifyAppBills) {
@@ -779,23 +869,37 @@ router.post('/google/profit-preview', async (req, res) => {
         const alloc = round2(dayBills * share) || 0;
         components.shopify_app_bills_alloc_gbp = alloc;
         cost += alloc;
+        pushComponentDetail('shopify_app_bills_alloc_gbp', 'Shopify app bills allocation', alloc, [], `Allocated from ${orderYmd} app bills.`);
       }
     }
 
     if (deductions.includeShopifyTaxes) {
       components.shopify_tax_gbp = round2(taxGbp) || 0;
       cost += Number(components.shopify_tax_gbp) || 0;
+      pushComponentDetail('shopify_tax_gbp', 'Shopify tax', components.shopify_tax_gbp, [], null);
     }
     if (deductions.includeShipping) {
-      const ship = computeShippingCostForOrder(countryCode, shippingConfig);
+      const shipDetail = computeShippingCostForOrderDetail(countryCode, shippingConfig);
+      const ship = Number(shipDetail && shipDetail.amount) || 0;
       components.shipping_cost_gbp = round2(ship) || 0;
       cost += Number(components.shipping_cost_gbp) || 0;
+      pushComponentDetail('shipping_cost_gbp', 'Shipping cost', components.shipping_cost_gbp, [
+        { label: shipDetail && shipDetail.label ? String(shipDetail.label) : 'Shipping cost', amount_gbp: components.shipping_cost_gbp },
+      ], null);
     }
     const orderForRules = { revenueGbp: rev, taxGbp, subtotalGbp, itemsCount, countryCode, orderYmd };
     if (deductions.includePerOrderRules) {
-      const rulesAdj = computePerOrderRulesAdjustmentGbp(orderForRules, perOrderRules, ce && ce.rule_mode);
+      const rulesBreakdown = computePerOrderRulesBreakdownGbp(orderForRules, perOrderRules, ce && ce.rule_mode);
+      const rulesAdj = rulesBreakdown && Number.isFinite(Number(rulesBreakdown.total)) ? Number(rulesBreakdown.total) : 0;
       components.rules_per_order_gbp = rulesAdj;
       cost += (Number(rulesAdj) || 0);
+      pushComponentDetail(
+        'rules_per_order_gbp',
+        'Per-order rules',
+        rulesAdj,
+        Array.isArray(rulesBreakdown && rulesBreakdown.rows) ? rulesBreakdown.rows : [],
+        null
+      );
     }
     if (deductions.includeOverheads) {
       let overheadDay = 0;
@@ -803,17 +907,37 @@ router.post('/google/profit-preview', async (req, res) => {
       const overheadAlloc = round2(overheadDay * share) || 0;
       components.overhead_alloc_gbp = overheadAlloc;
       cost += (Number(overheadAlloc) || 0);
+      const overheadRows = [];
+      for (const oh of overheads) {
+        const dayAmt = overheadDailyAmountGbp(oh, orderYmd);
+        const alloc = round2(Number(dayAmt) * share) || 0;
+        if (!Number.isFinite(alloc) || alloc === 0) continue;
+        overheadRows.push({
+          label: (oh && oh.name != null && String(oh.name).trim()) ? String(oh.name).trim() : ((oh && oh.id != null) ? `Overhead ${String(oh.id)}` : 'Overhead'),
+          amount_gbp: alloc,
+        });
+      }
+      pushComponentDetail('overhead_alloc_gbp', 'Overheads allocation', overheadAlloc, overheadRows, null);
     }
     if (deductions.includeFixedCosts) {
       let fixedDay = 0;
+      const fixedRows = [];
       for (const f of fixedCosts) {
         const start = (f && (f.effective_start || f.start_date)) ? String(f.effective_start || f.start_date) : '';
         if (start && String(orderYmd) < start) continue;
-        fixedDay += (Number(f && f.amount_per_day) || 0);
+        const perDay = Number(f && f.amount_per_day) || 0;
+        fixedDay += perDay;
+        const alloc = round2(perDay * share) || 0;
+        if (!Number.isFinite(alloc) || alloc === 0) continue;
+        fixedRows.push({
+          label: (f && f.name != null && String(f.name).trim()) ? String(f.name).trim() : ((f && f.id != null) ? `Fixed cost ${String(f.id)}` : 'Fixed cost'),
+          amount_gbp: alloc,
+        });
       }
       const fixedAlloc = round2(fixedDay * share) || 0;
       components.fixed_costs_alloc_gbp = fixedAlloc;
       cost += (Number(fixedAlloc) || 0);
+      pushComponentDetail('fixed_costs_alloc_gbp', 'Fixed costs allocation', fixedAlloc, fixedRows, null);
     }
 
     const preview = (() => {
@@ -827,6 +951,7 @@ router.post('/google/profit-preview', async (req, res) => {
           day_revenue_gbp: dayRev,
           revenue_share: Number.isFinite(share) ? share : null,
           components,
+          component_details: componentDetails,
         };
       }
       const costGbp = round2(cost) || 0;
@@ -839,6 +964,7 @@ router.post('/google/profit-preview', async (req, res) => {
         day_revenue_gbp: dayRev,
         revenue_share: Number.isFinite(share) ? share : null,
         components,
+        component_details: componentDetails,
       };
     })();
 

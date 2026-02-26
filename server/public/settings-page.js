@@ -3436,20 +3436,45 @@
       var dayRevenue = preview.day_revenue_gbp != null ? Number(preview.day_revenue_gbp) : null;
       var sharePct = Number(preview.revenue_share);
       var components = preview.components && typeof preview.components === 'object' ? preview.components : {};
-      var componentKeys = Object.keys(components).filter(function (k) { return Number.isFinite(Number(components[k])); });
-      componentKeys.sort(function (a, b) {
-        return profitPreviewComponentLabel(a).localeCompare(profitPreviewComponentLabel(b));
-      });
+      var componentDetailsRaw = Array.isArray(preview.component_details) ? preview.component_details : [];
+      var componentDetails = componentDetailsRaw
+        .map(function (it) {
+          if (!it || typeof it !== 'object') return null;
+          var key = it.key != null ? String(it.key).trim() : '';
+          var label = it.label != null ? String(it.label).trim() : '';
+          var amount = Number(it.amount_gbp);
+          if (!Number.isFinite(amount)) return null;
+          var rows = Array.isArray(it.rows)
+            ? it.rows
+              .map(function (r) {
+                if (!r || typeof r !== 'object') return null;
+                var rLabel = r.label != null ? String(r.label).trim() : '';
+                var rAmount = Number(r.amount_gbp);
+                if (!rLabel && !Number.isFinite(rAmount)) return null;
+                return { label: rLabel || 'Cost item', amount_gbp: Number.isFinite(rAmount) ? rAmount : 0 };
+              })
+              .filter(Boolean)
+            : [];
+          return { key: key, label: label || profitPreviewComponentLabel(key), amount_gbp: amount, rows: rows, note: it.note != null ? String(it.note) : '' };
+        })
+        .filter(Boolean);
+      componentDetails.sort(function (a, b) { return String(a.label || '').localeCompare(String(b.label || '')); });
 
       var html = '';
-      html += '<div class="fw-semibold mb-1">Preview summary</div>';
+      html += '<div class="settings-ga-preview-summary-head">Preview summary</div>';
+      html += '<div class="settings-ga-preview-metrics">';
       if (Number.isFinite(profit)) {
-        html += '<div class="mb-1">Google receives <strong>' + escapeHtml(formatCurrencyAmount(profit, 'GBP')) + '</strong> as the Profit conversion value for this click ID.</div>';
+        html += '<div class="settings-ga-preview-metric"><span>Google Profit value</span><strong>' + escapeHtml(formatCurrencyAmount(profit, 'GBP')) + '</strong></div>';
       }
-      if (Number.isFinite(rev) && Number.isFinite(cost)) {
-        html += '<div class="mb-1">Formula: Revenue <strong>' + escapeHtml(formatCurrencyAmount(rev, 'GBP')) + '</strong> − Deducted costs <strong>' + escapeHtml(formatCurrencyAmount(cost, 'GBP')) + '</strong>.</div>';
-      } else if (Number.isFinite(rev)) {
-        html += '<div class="mb-1">Revenue used: <strong>' + escapeHtml(formatCurrencyAmount(rev, 'GBP')) + '</strong>. Some costs could not be allocated for this preview.</div>';
+      if (Number.isFinite(rev)) {
+        html += '<div class="settings-ga-preview-metric"><span>Revenue used</span><strong>' + escapeHtml(formatCurrencyAmount(rev, 'GBP')) + '</strong></div>';
+      }
+      if (Number.isFinite(cost)) {
+        html += '<div class="settings-ga-preview-metric"><span>Deducted costs</span><strong>' + escapeHtml(formatCurrencyAmount(cost, 'GBP')) + '</strong></div>';
+      }
+      html += '</div>';
+      if (Number.isFinite(rev) && Number.isFinite(cost) && Number.isFinite(profit)) {
+        html += '<div class="text-muted small mb-2">Formula: ' + escapeHtml(formatCurrencyAmount(rev, 'GBP')) + ' - ' + escapeHtml(formatCurrencyAmount(cost, 'GBP')) + ' = ' + escapeHtml(formatCurrencyAmount(profit, 'GBP')) + '.</div>';
       }
       if (Number.isFinite(dayRevenue)) {
         html += '<div class="text-muted small mb-1">Attributed revenue for this day: ' + escapeHtml(formatCurrencyAmount(dayRevenue, 'GBP')) + '.</div>';
@@ -3457,17 +3482,37 @@
       if (Number.isFinite(sharePct)) {
         html += '<div class="text-muted small mb-2">Order share of day revenue: ' + escapeHtml((sharePct * 100).toFixed(2)) + '%.</div>';
       }
-      if (componentKeys.length) {
-        html += '<div class="text-muted small mb-1">Cost breakdown used in this preview</div>';
-        html += '<div class="small">';
-        componentKeys.forEach(function (k) {
-          var amt = Number(components[k]);
-          html += '<div>' + escapeHtml(profitPreviewComponentLabel(k)) + ': <strong>' + escapeHtml(formatCurrencyAmount(amt, 'GBP')) + '</strong></div>';
+      html += '<div class="settings-ga-preview-breakdown">';
+      html += '<div class="settings-ga-preview-breakdown-title">Cost breakdown used in this preview</div>';
+      if (componentDetails.length) {
+        componentDetails.forEach(function (it) {
+          html += '<div class="settings-ga-preview-breakdown-item">';
+          html += '<div class="settings-ga-preview-breakdown-head"><span>' + escapeHtml(it.label) + '</span><strong>' + escapeHtml(formatCurrencyAmount(it.amount_gbp, 'GBP')) + '</strong></div>';
+          if (Array.isArray(it.rows) && it.rows.length) {
+            html += '<div class="settings-ga-preview-breakdown-rows">';
+            it.rows.forEach(function (r) {
+              html += '<div class="settings-ga-preview-breakdown-subrow"><span>' + escapeHtml(r.label) + '</span><span>' + escapeHtml(formatCurrencyAmount(r.amount_gbp, 'GBP')) + '</span></div>';
+            });
+            html += '</div>';
+          }
+          if (it.note) html += '<div class="settings-ga-preview-breakdown-note">' + escapeHtml(it.note) + '</div>';
+          html += '</div>';
         });
-        html += '</div>';
       } else {
-        html += '<div class="text-muted small">No deduction components were applied for this preview.</div>';
+        var componentKeys = Object.keys(components).filter(function (k) { return Number.isFinite(Number(components[k])); });
+        componentKeys.sort(function (a, b) {
+          return profitPreviewComponentLabel(a).localeCompare(profitPreviewComponentLabel(b));
+        });
+        if (componentKeys.length) {
+          componentKeys.forEach(function (k) {
+            var amt = Number(components[k]);
+            html += '<div class="settings-ga-preview-breakdown-item"><div class="settings-ga-preview-breakdown-head"><span>' + escapeHtml(profitPreviewComponentLabel(k)) + '</span><strong>' + escapeHtml(formatCurrencyAmount(amt, 'GBP')) + '</strong></div></div>';
+          });
+        } else {
+          html += '<div class="text-muted small">No deduction components were applied for this preview.</div>';
+        }
       }
+      html += '</div>';
       if (preview.ok === false && Array.isArray(preview.missing) && preview.missing.length) {
         html += '<div class="text-warning small mt-2">Missing components: ' + escapeHtml(preview.missing.join(', ')) + '.</div>';
       }
