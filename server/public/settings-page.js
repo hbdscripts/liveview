@@ -2405,6 +2405,7 @@
     var profitPreviewClickIdEl = document.getElementById('settings-ga-profit-preview-clickid');
     var profitPreviewBtn = document.getElementById('settings-ga-profit-preview-btn');
     var profitPreviewMsgEl = document.getElementById('settings-ga-profit-preview-msg');
+    var profitPreviewSummaryEl = document.getElementById('settings-ga-profit-preview-summary');
     var profitPreviewOutputEl = document.getElementById('settings-ga-profit-preview-output');
     var profitPreviewSamplesEl = document.getElementById('settings-ga-profit-preview-samples');
     var profitPreviewSamplesMsgEl = document.getElementById('settings-ga-profit-preview-samples-msg');
@@ -3396,6 +3397,83 @@
       return s.charAt(0).toUpperCase() + s.slice(1);
     }
 
+    function profitPreviewComponentLabel(key) {
+      var k = key != null ? String(key).trim().toLowerCase() : '';
+      if (k === 'google_ads_spend_alloc_gbp') return 'Ads spend allocation';
+      if (k === 'payment_fees_alloc_gbp') return 'Payment fees allocation';
+      if (k === 'shopify_app_bills_alloc_gbp') return 'Shopify app bills allocation';
+      if (k === 'shopify_tax_gbp') return 'Shopify tax';
+      if (k === 'shipping_cost_gbp') return 'Shipping cost';
+      if (k === 'rules_per_order_gbp') return 'Per-order rules';
+      if (k === 'overhead_alloc_gbp') return 'Overheads allocation';
+      if (k === 'fixed_costs_alloc_gbp') return 'Fixed costs allocation';
+      if (k === 'cost_of_goods_alloc_gbp' || k === 'cogs_alloc_gbp' || k === 'cost_of_goods_gbp') return 'Cost of goods';
+      return k ? k.replace(/_/g, ' ') : 'Cost component';
+    }
+
+    function setProfitPreviewSummaryHtml(html) {
+      if (!profitPreviewSummaryEl) return;
+      if (!html) {
+        profitPreviewSummaryEl.innerHTML = '';
+        profitPreviewSummaryEl.classList.add('d-none');
+        return;
+      }
+      profitPreviewSummaryEl.innerHTML = html;
+      profitPreviewSummaryEl.classList.remove('d-none');
+    }
+
+    function renderProfitPreviewSummary(payload) {
+      if (!profitPreviewSummaryEl) return;
+      var data = payload && typeof payload === 'object' ? payload : null;
+      var preview = data && data.preview && typeof data.preview === 'object' ? data.preview : null;
+      if (!preview) {
+        setProfitPreviewSummaryHtml('');
+        return;
+      }
+      var rev = Number(preview.revenue_gbp);
+      var cost = preview.cost_gbp != null ? Number(preview.cost_gbp) : null;
+      var profit = preview.profit_gbp != null ? Number(preview.profit_gbp) : null;
+      var dayRevenue = preview.day_revenue_gbp != null ? Number(preview.day_revenue_gbp) : null;
+      var sharePct = Number(preview.revenue_share);
+      var components = preview.components && typeof preview.components === 'object' ? preview.components : {};
+      var componentKeys = Object.keys(components).filter(function (k) { return Number.isFinite(Number(components[k])); });
+      componentKeys.sort(function (a, b) {
+        return profitPreviewComponentLabel(a).localeCompare(profitPreviewComponentLabel(b));
+      });
+
+      var html = '';
+      html += '<div class="fw-semibold mb-1">Preview summary</div>';
+      if (Number.isFinite(profit)) {
+        html += '<div class="mb-1">Google receives <strong>' + escapeHtml(formatCurrencyAmount(profit, 'GBP')) + '</strong> as the Profit conversion value for this click ID.</div>';
+      }
+      if (Number.isFinite(rev) && Number.isFinite(cost)) {
+        html += '<div class="mb-1">Formula: Revenue <strong>' + escapeHtml(formatCurrencyAmount(rev, 'GBP')) + '</strong> − Deducted costs <strong>' + escapeHtml(formatCurrencyAmount(cost, 'GBP')) + '</strong>.</div>';
+      } else if (Number.isFinite(rev)) {
+        html += '<div class="mb-1">Revenue used: <strong>' + escapeHtml(formatCurrencyAmount(rev, 'GBP')) + '</strong>. Some costs could not be allocated for this preview.</div>';
+      }
+      if (Number.isFinite(dayRevenue)) {
+        html += '<div class="text-muted small mb-1">Attributed revenue for this day: ' + escapeHtml(formatCurrencyAmount(dayRevenue, 'GBP')) + '.</div>';
+      }
+      if (Number.isFinite(sharePct)) {
+        html += '<div class="text-muted small mb-2">Order share of day revenue: ' + escapeHtml((sharePct * 100).toFixed(2)) + '%.</div>';
+      }
+      if (componentKeys.length) {
+        html += '<div class="text-muted small mb-1">Cost breakdown used in this preview</div>';
+        html += '<div class="small">';
+        componentKeys.forEach(function (k) {
+          var amt = Number(components[k]);
+          html += '<div>' + escapeHtml(profitPreviewComponentLabel(k)) + ': <strong>' + escapeHtml(formatCurrencyAmount(amt, 'GBP')) + '</strong></div>';
+        });
+        html += '</div>';
+      } else {
+        html += '<div class="text-muted small">No deduction components were applied for this preview.</div>';
+      }
+      if (preview.ok === false && Array.isArray(preview.missing) && preview.missing.length) {
+        html += '<div class="text-warning small mt-2">Missing components: ' + escapeHtml(preview.missing.join(', ')) + '.</div>';
+      }
+      setProfitPreviewSummaryHtml(html);
+    }
+
     function renderProfitPreviewSamples(samples) {
       if (!profitPreviewSamplesEl) return;
       var list = Array.isArray(samples) ? samples : [];
@@ -3453,6 +3531,7 @@
         return;
       }
       setProfitPreviewHint('Loading…', null);
+      setProfitPreviewSummaryHtml('');
       try { if (profitPreviewOutputEl) profitPreviewOutputEl.classList.add('d-none'); } catch (_) {}
       var shop = getShopParam();
       var draft = readProfitDeductionsDraft();
@@ -3460,15 +3539,20 @@
         .then(function (r) {
           if (!r || !r.ok || !r.json || !r.json.ok) {
             setProfitPreviewHint((r && r.json && (r.json.error || r.json.message)) ? String(r.json.error || r.json.message) : 'Preview failed.', false);
+            setProfitPreviewSummaryHtml('');
             return;
           }
           setProfitPreviewHint('Preview ready.', true);
+          renderProfitPreviewSummary(r.json);
           if (profitPreviewOutputEl) {
             profitPreviewOutputEl.textContent = JSON.stringify(r.json, null, 2);
             profitPreviewOutputEl.classList.remove('d-none');
           }
         })
-        .catch(function () { setProfitPreviewHint('Preview failed.', false); });
+        .catch(function () {
+          setProfitPreviewHint('Preview failed.', false);
+          setProfitPreviewSummaryHtml('');
+        });
     }
     if (profitPreviewBtn) profitPreviewBtn.addEventListener('click', runProfitPreview);
     if (profitPreviewSamplesEl) {

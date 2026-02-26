@@ -4088,13 +4088,13 @@ body[data-dashboard-view="overview"] .kexo-ovw-kpi-delta {
   text-align: right;
   font-size: .75rem;
   font-weight: 600;
-  color: var(--tblr-secondary);
+  color: var(--kexo-kpi-delta-same, var(--kexo-accent-1, #4b94e4));
 }
 body[data-dashboard-view="overview"] .kexo-ovw-kpi-delta.is-up {
-  color: var(--kexo-accent-2, #3eb3ab);
+  color: var(--kexo-kpi-delta-up, var(--kexo-accent-2, #3eb3ab));
 }
 body[data-dashboard-view="overview"] .kexo-ovw-kpi-delta.is-down {
-  color: var(--kexo-accent-4, #e4644b);
+  color: var(--kexo-kpi-delta-down, var(--kexo-accent-4, #e4644b));
 }
 body[data-dashboard-view="overview"] .kexo-ovw-kpi-progress {
   margin-left: 0;

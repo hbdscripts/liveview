@@ -185,11 +185,11 @@ body[data-page="settings"] #settings-cost-expenses-panel-breakdown .settings-cos
   justify-content: center;
   flex-shrink: 0;
   background: var(--tblr-bg-surface, #fff);
-  border: 1px solid var(--tblr-border-color-translucent, rgba(0, 0, 0, 0.06));
+  border: 0;
   color: var(--tblr-secondary, #66758c);
 }
 body[data-page="settings"] #settings-cost-expenses-panel-breakdown .settings-cost-breakdown-total-tile-icon i {
-  font-size: 16px;
+  font-size: 33px;
 }
 body[data-page="settings"] #settings-cost-expenses-panel-breakdown .settings-cost-breakdown-total-tile-body .h3 {
   color: var(--tblr-body-color, #1f2937);
@@ -1135,4 +1135,18 @@ body[data-page="settings"] #admin-panel-googleads .settings-ga-health-grid {
   body[data-page="settings"] #admin-panel-googleads .settings-ga-health-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
+}
+body[data-page="settings"] #admin-panel-googleads #settings-ga-profit-preview-summary {
+  border: 1px solid var(--tblr-border-color-translucent, rgba(0, 0, 0, 0.06));
+  border-radius: var(--tblr-border-radius, 0.5rem);
+  background: var(--tblr-bg-surface, #fff);
+  padding: 0.5rem 0.625rem;
+  color: var(--tblr-body-color, #1f2937);
+}
+body[data-page="settings"] #admin-panel-googleads #settings-ga-profit-preview-output {
+  background: #fff;
+  border: 1px solid var(--tblr-border-color-translucent, rgba(0, 0, 0, 0.06));
+  border-radius: var(--tblr-border-radius, 0.5rem);
+  color: #111827 !important;
+  padding: 0.625rem 0.75rem;
 }
