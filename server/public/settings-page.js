@@ -7019,7 +7019,7 @@
 
       html += '<div class="accordion-item" data-table-idx="' + String(tableIdx) + '">' +
         '<h4 class="accordion-header">' +
-          '<button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#' + collapseId + '" aria-expanded="false" aria-controls="' + collapseId + '" data-bs-parent="#' + accordionId + '">' +
+          '<button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#' + collapseId + '" aria-expanded="false" aria-controls="' + collapseId + '">' +
             '<span class="d-flex align-items-center w-100 gap-2">' +
               '<span class="kexo-settings-accordion-chevron" aria-hidden="true"><i class="fa-regular fa-chevron-down" aria-hidden="true"></i></span>' +
               '<span class="me-auto settings-variants-accordion-title" data-variant-title>' + tableName + '</span>' +
@@ -7035,7 +7035,7 @@
         '</h4>' +
         '<div id="' + collapseId + '" class="accordion-collapse collapse" data-bs-parent="#' + accordionId + '">' +
           '<div class="accordion-body">' +
-            '<div class="settings-panel-wrap">' +
+            '<div class="settings-variants-accordion-wrap">' +
             '<div class="row g-2 mb-3 align-items-end">' +
               '<div class="col-12 col-md-4">' +
                 '<label class="form-label mb-1">Table name</label>' +
@@ -7059,8 +7059,9 @@
               ];
               var rowsData = rules.length ? rules.map(function (r, i) { return { rule: r, ruleIdx: i }; }) : [{ _empty: true }];
               return buildKexoSettingsTable({
-                tableClass: 'table table-sm table-vcenter mb-0',
+                tableClass: 'table table-sm table-vcenter mb-0 settings-variants-rules-table',
                 columns: cols,
+                noHeader: true,
                 rows: rowsData,
                 renderRow: function (item) {
                   if (item && item._empty) {

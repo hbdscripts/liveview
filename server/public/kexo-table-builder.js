@@ -124,7 +124,7 @@
 
   /**
    * Build settings config table (Charts, KPIs, Date ranges).
-   * config: { tableClass, columns, renderRow }
+   * config: { tableClass, columns, renderRow, noHeader }
    * columns: [{ header, headerClass }]
    * renderRow(item) returns <tr>...</tr> HTML for each row
    */
@@ -136,6 +136,7 @@
     var rows = Array.isArray(c.rows) ? c.rows : [];
     var rowKey = c.rowKey || 'key';
     var renderRow = typeof c.renderRow === 'function' ? c.renderRow : null;
+    var noHeader = !!c.noHeader;
 
     var thCells = '';
     columns.forEach(function (col) {
@@ -155,7 +156,7 @@
 
     return '<div class="' + escapeHtml(wrapClass) + '">' +
       '<table class="' + escapeHtml(tableClass) + '">' +
-        '<thead><tr>' + thCells + '</tr></thead>' +
+        (noHeader ? '' : '<thead><tr>' + thCells + '</tr></thead>') +
         '<tbody>' + bodyRows + '</tbody>' +
       '</table>' +
     '</div>';

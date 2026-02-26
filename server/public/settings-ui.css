@@ -714,7 +714,7 @@ body[data-page="settings"] .settings-insights-variants-accordion .accordion-butt
 body[data-page="settings"] .settings-insights-variants-accordion .settings-variants-accordion-title {
   min-width: 0;
 }
-body[data-page="settings"] .settings-insights-variants-accordion .accordion-body > .settings-panel-wrap {
+body[data-page="settings"] .settings-insights-variants-accordion .accordion-body > .settings-variants-accordion-wrap {
   padding: 0.75rem 1rem;
 }
 body[data-page="settings"] .settings-insights-variants-accordion .accordion-button:not(.collapsed) .kexo-settings-accordion-chevron i {
