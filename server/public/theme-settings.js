@@ -196,6 +196,7 @@
       '',
     ].join('\n'),
     'theme-custom-css-file-v1': '',
+    'theme-inline-edits-v1': '',
   };
   Object.keys(ICON_STYLE_DEFAULTS).forEach(function (k) { DEFAULTS[k] = ICON_STYLE_DEFAULTS[k]; });
   Object.keys(ICON_GLYPH_DEFAULTS).forEach(function (k) { DEFAULTS['theme-icon-glyph-' + k] = ICON_GLYPH_DEFAULTS[k]; });
@@ -239,6 +240,8 @@
   var ACCENT_OPACITY_KEYS = ['theme-menu-hover-opacity'];
   var HEADER_THEME_RADIO_KEYS = ['theme-menu-hover-color'];
   var CUSTOM_CSS_KEYS = ['theme-custom-css', 'theme-custom-css-file-v1'];
+  var INLINE_EDITS_KEY = 'theme-inline-edits-v1';
+  var RAW_TEXT_KEYS = CUSTOM_CSS_KEYS.concat([INLINE_EDITS_KEY]);
 
   /* Fallbacks from tabler-theme.css, custom.css, app.css, head-theme (slate) */
   var CSS_VAR_FALLBACKS = {
@@ -1695,6 +1698,13 @@
       applyThemeCustomCss(value);
     } else if (key === 'theme-custom-css-file-v1') {
       applyThemeCustomCssFile(value);
+    } else if (key === INLINE_EDITS_KEY) {
+      try {
+        var inlineEditsApi = window.KexoSettingsInlineEdits;
+        if (inlineEditsApi && typeof inlineEditsApi.setDraftFromRaw === 'function') {
+          inlineEditsApi.setDraftFromRaw(value, { source: 'theme', applyNow: true, skipNotify: true });
+        }
+      } catch (_) {}
     } else if (key === ICON_OVERRIDES_JSON_KEY) {
       triggerIconThemeRefresh();
     } else if (ICON_GLYPH_ALL_KEYS.indexOf(key) >= 0) {
@@ -1812,7 +1822,7 @@
       }
       if (ACCENT_OPACITY_KEYS.indexOf(key) >= 0) val = normalizeOpacityFilter(val, DEFAULTS[key]);
       if (key === 'theme-header-strip-padding') val = normalizeStripPadding(val, DEFAULTS[key]);
-      if (CUSTOM_CSS_KEYS.indexOf(key) >= 0) {
+      if (RAW_TEXT_KEYS.indexOf(key) >= 0) {
         var cssInput = form.querySelector('[name="' + key + '"]');
         if (cssInput) cssInput.value = String(val == null ? '' : val);
         return;
@@ -2212,6 +2222,34 @@
           '<label class="form-label" for="theme-custom-css-file">Loaded-last CSS file' + helpTrigger('This is the promoted global stylesheet content served by /theme-custom-last.css.') + '</label>' +
           '<textarea class="form-control font-monospace" id="theme-custom-css-file" name="theme-custom-css-file-v1" rows="9" spellcheck="false" placeholder="/* Loaded-last CSS file */"></textarea>' +
           '<div class="form-hint">Changes here auto-save and stay separate from the scratch editor above.</div>' +
+        '</div>' +
+        '<hr class="my-3" />' +
+        '<div id="theme-inline-edits-wrap">' +
+          '<label class="form-label">Inline class/style capture (Settings/Admin)</label>' +
+          '<div class="form-check form-switch mb-2">' +
+            '<input class="form-check-input" type="checkbox" id="theme-inline-edits-enable" />' +
+            '<label class="form-check-label" for="theme-inline-edits-enable">Enable edit mode</label>' +
+          '</div>' +
+          '<div class="d-flex align-items-center gap-2 flex-wrap">' +
+            '<button type="button" class="btn btn-md" id="theme-inline-edits-start">Start capture</button>' +
+            '<button type="button" class="btn btn-md" id="theme-inline-edits-stop">Stop capture</button>' +
+            '<button type="button" class="btn btn-md" id="theme-inline-edits-clear">Clear captured edits</button>' +
+            '<span class="form-hint" id="theme-inline-edits-status"></span>' +
+          '</div>' +
+          '<div id="theme-inline-edits-editor" class="mt-3" hidden>' +
+            '<label class="form-label" for="theme-inline-edits-selector">Selected selector</label>' +
+            '<input type="text" class="form-control form-control-plaintext" id="theme-inline-edits-selector" readonly />' +
+            '<label class="form-label mt-2" for="theme-inline-edits-class">Class list</label>' +
+            '<textarea class="form-control font-monospace" id="theme-inline-edits-class" rows="2" spellcheck="false" placeholder="btn btn-primary btn-md"></textarea>' +
+            '<label class="form-label mt-2" for="theme-inline-edits-style">Style declarations</label>' +
+            '<textarea class="form-control font-monospace" id="theme-inline-edits-style" rows="3" spellcheck="false" placeholder="gap: 0.75rem;"></textarea>' +
+            '<div class="mt-2">' +
+              '<button type="button" class="btn btn-primary btn-md" id="theme-inline-edits-apply">Capture edit</button>' +
+            '</div>' +
+          '</div>' +
+          '<label class="form-label mt-3" for="theme-inline-edits-draft">Captured draft (JSON)</label>' +
+          '<textarea class="form-control font-monospace" id="theme-inline-edits-draft" name="theme-inline-edits-v1" rows="8" spellcheck="false" readonly placeholder="{&quot;v&quot;:1,&quot;scope&quot;:&quot;settings&quot;,&quot;ops&quot;:[]}"></textarea>' +
+          '<div class="form-hint mt-2">Click Start capture, select a Settings/Admin element, adjust class/style, then capture the edit into this draft.</div>' +
         '</div>' +
       '</fieldset>';
     return '<form id="theme-settings-form">' +
@@ -2861,10 +2899,47 @@
       });
     }
 
+    function wireInlineEditsCaptureFlow() {
+      var runtime = window.KexoSettingsInlineEdits;
+      if (!runtime || typeof runtime.init !== 'function') return;
+
+      var root = formEl.querySelector('#theme-inline-edits-wrap');
+      var draftInput = formEl.querySelector('[name="' + INLINE_EDITS_KEY + '"]');
+      if (!root || !draftInput) return;
+
+      var initialDraft = String(draftInput.value || getStored(INLINE_EDITS_KEY) || '');
+      runtime.init({
+        root: root,
+        enableInput: root.querySelector('#theme-inline-edits-enable'),
+        startBtn: root.querySelector('#theme-inline-edits-start'),
+        stopBtn: root.querySelector('#theme-inline-edits-stop'),
+        clearBtn: root.querySelector('#theme-inline-edits-clear'),
+        applyBtn: root.querySelector('#theme-inline-edits-apply'),
+        selectorInput: root.querySelector('#theme-inline-edits-selector'),
+        classInput: root.querySelector('#theme-inline-edits-class'),
+        styleInput: root.querySelector('#theme-inline-edits-style'),
+        editorWrap: root.querySelector('#theme-inline-edits-editor'),
+        draftTextarea: draftInput,
+        statusEl: root.querySelector('#theme-inline-edits-status'),
+        initialDraft: initialDraft,
+        onDraftChange: function (rawDraft, meta) {
+          var next = rawDraft != null ? String(rawDraft) : '';
+          draftInput.value = next;
+          setStored(INLINE_EDITS_KEY, next);
+          if (meta && meta.skipSave) return;
+          queueGlobalSaveKey(INLINE_EDITS_KEY);
+        },
+      });
+
+      if (typeof runtime.setDraftFromRaw === 'function') {
+        runtime.setDraftFromRaw(initialDraft, { source: 'theme-init', applyNow: true, skipNotify: true });
+      }
+    }
+
     formEl.addEventListener('change', function (e) {
       var name = e && e.target ? e.target.name : '';
       var rawVal = e && e.target && e.target.value != null ? String(e.target.value) : '';
-      var val = CUSTOM_CSS_KEYS.indexOf(name) >= 0 ? rawVal : rawVal.trim();
+      var val = RAW_TEXT_KEYS.indexOf(name) >= 0 ? rawVal : rawVal.trim();
       if (!name) return;
       if (ICON_STYLE_KEYS.indexOf(name) >= 0) val = normalizeIconStyle(val, DEFAULTS[name]);
       if (ICON_GLYPH_KEYS.indexOf(name) >= 0) val = val ? normalizeIconGlyph(val, DEFAULTS[name]) : '';
@@ -2921,12 +2996,12 @@
       });
     }
 
-    ICON_STYLE_KEYS.concat(ICON_GLYPH_KEYS).concat(HEADER_THEME_TEXT_KEYS).concat(ACCENT_OPACITY_KEYS).concat(CUSTOM_CSS_KEYS).forEach(function (key) {
+    ICON_STYLE_KEYS.concat(ICON_GLYPH_KEYS).concat(HEADER_THEME_TEXT_KEYS).concat(ACCENT_OPACITY_KEYS).concat(RAW_TEXT_KEYS).forEach(function (key) {
       var input = formEl.querySelector('[name="' + key + '"]');
       if (!input) return;
       input.addEventListener('input', function () {
         var rawVal = String(input.value || '');
-        var val = CUSTOM_CSS_KEYS.indexOf(key) >= 0 ? rawVal : rawVal.trim();
+        var val = RAW_TEXT_KEYS.indexOf(key) >= 0 ? rawVal : rawVal.trim();
         if (ICON_STYLE_KEYS.indexOf(key) >= 0) val = normalizeIconStyle(val, DEFAULTS[key]);
         // Icon glyph textareas should not normalise while typing (it causes “fighting”).
         // We normalise on change/blur instead.
@@ -2948,6 +3023,7 @@
     wireAccentHexInputs();
     wireIconEditModal();
     wireCustomCssPromoteFlow();
+    wireInlineEditsCaptureFlow();
 
     function wireIconHelpPopovers() {
       var triggers = formEl.querySelectorAll('[data-theme-icon-help-trigger]');

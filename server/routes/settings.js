@@ -2697,6 +2697,7 @@ const THEME_BASE_KEYS = [
   'theme_header_strip_padding',
   'theme_custom_css',
   'theme_custom_css_file_v1',
+  'theme_inline_edits_v1',
   'theme_icon_default',
   'theme_icon_topnav',
   'theme_icon_dropdown',

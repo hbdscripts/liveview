@@ -1263,3 +1263,21 @@ body[data-page="settings"] #admin-panel-googleads .dm-json-pre {
 body[data-page="settings"] #admin-panel-googleads #settings-ga-profit-preview-output {
   max-height: 380px;
 }
+
+body[data-page="settings"].kexo-inline-capture-active #settings-main,
+body[data-page="settings"].kexo-inline-capture-active #settings-theme-panel {
+  cursor: crosshair;
+}
+body[data-page="settings"].kexo-inline-capture-active #theme-inline-edits-wrap,
+body[data-page="settings"].kexo-inline-capture-active #theme-inline-edits-wrap * {
+  cursor: auto !important;
+}
+body[data-page="settings"] .kexo-inline-capture-selected {
+  outline: 2px dashed var(--tblr-primary, #4b94e4);
+  outline-offset: 2px;
+}
+body[data-page="settings"] #theme-inline-edits-selector.form-control-plaintext {
+  white-space: nowrap;
+  overflow-x: auto;
+  text-overflow: unset;
+}
