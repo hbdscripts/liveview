@@ -3482,7 +3482,7 @@
         setProfitPreviewSamplesHint('No recent click IDs found yet.', null);
         return;
       }
-      setProfitPreviewSamplesHint('Pick one to preview, or paste a specific click ID below.', null);
+      setProfitPreviewSamplesHint('', null);
       profitPreviewSamplesEl.innerHTML = list.slice(0, 10).map(function (s) {
         var clickId = s && s.click_id_value != null ? String(s.click_id_value).trim() : '';
         if (!clickId) return '';
@@ -3542,7 +3542,7 @@
             setProfitPreviewSummaryHtml('');
             return;
           }
-          setProfitPreviewHint('Preview ready.', true);
+          setProfitPreviewHint('', null);
           renderProfitPreviewSummary(r.json);
           if (profitPreviewOutputEl) {
             profitPreviewOutputEl.textContent = JSON.stringify(r.json, null, 2);
