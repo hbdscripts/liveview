@@ -394,9 +394,15 @@ body[data-page="settings"] #settings-panel-cost-expenses #settings-cost-expenses
 body[data-page="settings"] #settings-panel-cost-expenses #settings-cost-expenses-panel-shipping .table td:nth-child(4) {
   width: 120px;
 }
+body[data-page="settings"] #settings-panel-cost-expenses #settings-cost-expenses-panel-shipping .table th:nth-child(5),
+body[data-page="settings"] #settings-panel-cost-expenses #settings-cost-expenses-panel-shipping .table td:nth-child(5) {
+  min-width: 0;
+  width: 1%;
+}
 body[data-page="settings"] #settings-panel-cost-expenses #settings-cost-expenses-panel-shipping .table th:nth-child(6),
 body[data-page="settings"] #settings-panel-cost-expenses #settings-cost-expenses-panel-shipping .table td:nth-child(6) {
-  width: 56px;
+  width: 80px;
+  min-width: 80px;
 }
 
 /* Cost & Expenses: Shipping "worldwide default" should not look like a card. */

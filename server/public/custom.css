@@ -8080,7 +8080,8 @@ body[data-bs-theme="dark"] .kexo-upgrade-locked .kexo-upgrade-lock-overlay {
   min-width: 9rem;
 }
 .kexo-ce-override-countries {
-  min-width: 16rem;
+  min-width: 0;
+  max-width: 100%;
   text-transform: uppercase;
 }
 .settings-layout-panel { display: none; }
