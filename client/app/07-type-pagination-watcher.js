@@ -3236,6 +3236,16 @@
       updateNextUpdateUi();
 
       if (showTimeframeOverlay) {
+        try {
+          if (typeof window.__kexoSetCardLoading === 'function') {
+            if (activeMainTab === 'stats') window.__kexoSetCardLoading('stats', true);
+            else if (activeMainTab === 'products') window.__kexoSetCardLoading('products', true);
+            else if (activeMainTab === 'attribution') window.__kexoSetCardLoading('attribution', true);
+            else if (activeMainTab === 'devices') window.__kexoSetCardLoading('devices', true);
+            else if (activeMainTab === 'browsers') window.__kexoSetCardLoading('browsers', true);
+            else if (activeMainTab === 'abandoned-carts') window.__kexoSetCardLoading('abandoned-carts', true);
+          }
+        } catch (_) {}
         var overlayEnabledForTimeframe = false;
         try { if (typeof window.__kexoIsPageOverlayLoaderEnabled === 'function') overlayEnabledForTimeframe = window.__kexoIsPageOverlayLoaderEnabled(PAGE); } catch (_) {}
         timeframeOverlayToken += 1;

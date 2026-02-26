@@ -187,6 +187,16 @@
       return { titleEl: titleEl, stepEl: stepEl };
     }
 
+    function setCardLoading(loaderKey, isLoading) {
+      var key = (loaderKey == null ? '' : String(loaderKey)).trim();
+      if (!key) return;
+      var el = null;
+      try { el = document.querySelector('[data-kexo-loader="' + key + '"]'); } catch (_) { el = null; }
+      if (!el) return;
+      el.classList.toggle('is-active', !!isLoading);
+    }
+    try { window.__kexoSetCardLoading = setCardLoading; } catch (_) {}
+
     function resolveReportBuildOverlay(opts, key) {
       const sharedOverlay = document.getElementById('page-body-loader');
       if (sharedOverlay) return { overlayId: 'page-body-loader', overlayEl: sharedOverlay };
@@ -649,6 +659,7 @@
       const force = !!options.force;
       if (statsRefreshInFlight) return statsRefreshInFlight;
 
+      setCardLoading('stats', true);
       const build = startReportBuild({
         key: 'stats',
         overlayId: 'stats-loading-overlay',
@@ -669,6 +680,7 @@
         })
         .finally(function() {
           statsRefreshInFlight = null;
+          setCardLoading('stats', false);
           build.finish();
         });
       return statsRefreshInFlight;
@@ -680,6 +692,7 @@
       var shop = getShopParam() || shopForSalesFallback || null;
       if (!shop) return Promise.resolve(null);
 
+      setCardLoading('products', true);
       const build = startReportBuild({
         key: 'products',
         overlayId: 'products-loading-overlay',
@@ -729,6 +742,7 @@
         })
         .finally(function() {
           productsRefreshInFlight = null;
+          setCardLoading('products', false);
           build.finish();
         });
       return productsRefreshInFlight;
@@ -1095,11 +1109,13 @@
     function refreshAttribution(options = {}) {
       const force = !!options.force;
       if (attributionRefreshInFlight) return attributionRefreshInFlight;
+      setCardLoading('attribution', true);
       const build = startReportBuild({ key: 'attribution', title: 'Preparing attribution report', showOverlay: !lastAttributionFetchedAt });
       build.step('Loading attribution performance');
       attributionRefreshInFlight = fetchAttributionData({ force })
         .finally(function() {
           attributionRefreshInFlight = null;
+          setCardLoading('attribution', false);
           build.finish();
         });
       return attributionRefreshInFlight;
@@ -1363,11 +1379,13 @@
     function refreshDevices(options = {}) {
       const force = !!options.force;
       if (devicesRefreshInFlight) return devicesRefreshInFlight;
+      setCardLoading('devices', true);
       const build = startReportBuild({ key: 'devices', title: 'Preparing devices report', showOverlay: !lastDevicesFetchedAt });
       build.step('Loading device performance');
       devicesRefreshInFlight = fetchDevicesData({ force })
         .finally(function() {
           devicesRefreshInFlight = null;
+          setCardLoading('devices', false);
           build.finish();
         });
       return devicesRefreshInFlight;
@@ -1620,11 +1638,13 @@
     function refreshBrowsers(options = {}) {
       const force = !!options.force;
       if (browsersRefreshInFlight) return browsersRefreshInFlight;
+      setCardLoading('browsers', true);
       const build = startReportBuild({ key: 'browsers', title: 'Preparing browsers report', showOverlay: !lastBrowsersFetchedAt });
       build.step('Loading browser performance');
       browsersRefreshInFlight = fetchBrowsersData({ force })
         .finally(function() {
           browsersRefreshInFlight = null;
+          setCardLoading('browsers', false);
           build.finish();
         });
       return browsersRefreshInFlight;
@@ -2929,12 +2949,15 @@
       if (PAGE !== 'abandoned-carts') return Promise.resolve(null);
       options = options || {};
       syncAbandonedModeUi();
+      setCardLoading('abandoned-carts', true);
       return Promise.all([
         refreshAbandonedCartsChart(options),
         refreshAbandonedCartsTopTables(options),
         fetchSessions(),
         refreshCheckoutFunnel(options),
-      ]);
+      ]).finally(function() {
+        setCardLoading('abandoned-carts', false);
+      });
     }
 
     function refreshCheckoutFunnel(options) {

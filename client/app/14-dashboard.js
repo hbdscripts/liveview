@@ -882,6 +882,15 @@
         var options = opts && typeof opts === 'object' ? opts : {};
         var force = !!options.force;
 
+        setOvwPanelLoading('main', true);
+        setOvwPanelLoading('online', true);
+        setOvwPanelLoading('kpis', true);
+        setOvwPanelLoading('toplists', true);
+        setOvwPanelLoading('trending', true);
+        setOvwPanelLoading('variant', true);
+        setOvwPanelLoading('traffic', true);
+        setOvwPanelLoading('abandoned', true);
+
         var mainRk = getOverviewPanelRange('main', OVW_PANEL_DEFAULT_RANGE);
         var kpisRk = getOverviewPanelRange('kpis', OVW_PANEL_DEFAULT_RANGE);
         var topRk = getOverviewPanelRange('toplists', OVW_PANEL_DEFAULT_RANGE);

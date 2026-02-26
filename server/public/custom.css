@@ -4040,14 +4040,42 @@ body[data-dashboard-view="overview"] .kexo-ovw-card-loader {
 }
 body[data-dashboard-view="overview"] .kexo-ovw-card-loader.is-active {
   opacity: 1;
+  background: rgba(255, 255, 255, 0.75);
+}
+html[data-bs-theme="dark"] body[data-dashboard-view="overview"] .kexo-ovw-card-loader.is-active {
+  background: rgba(15, 23, 42, 0.75);
 }
 body[data-dashboard-view="overview"] .kexo-ovw-card-loader .kpi-mini-spinner {
-  width: 22px;
-  height: 22px;
+  width: 28px;
+  height: 28px;
 }
 body[data-dashboard-view="overview"] .kexo-widget-card-body,
 body[data-dashboard-view="overview"] .kexo-overview-main-card-body {
   position: relative;
+}
+
+/* Reusable card loader for Stats, Products, Attribution, Devices, etc. */
+.kexo-card-loader {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 120ms ease;
+  z-index: 8;
+}
+.kexo-card-loader.is-active {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.75);
+}
+html[data-bs-theme="dark"] .kexo-card-loader.is-active {
+  background: rgba(15, 23, 42, 0.75);
+}
+.kexo-card-loader .kpi-mini-spinner {
+  width: 28px;
+  height: 28px;
 }
 body[data-dashboard-view="overview"] .kexo-ovw-kpi-list {
   display: flex;
