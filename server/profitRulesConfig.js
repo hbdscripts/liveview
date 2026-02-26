@@ -42,10 +42,14 @@ const PER_ORDER_RULE_REVENUE_BASIS = Object.freeze({
 });
 const PER_ORDER_RULE_REVENUE_BASIS_SET = new Set(Object.values(PER_ORDER_RULE_REVENUE_BASIS));
 
+const SUPPORTED_WORLDWIDE_CURRENCIES = ['GBP', 'EUR', 'USD'];
+
 function defaultShippingConfig() {
   return {
     enabled: false,
     worldwideDefaultGbp: 0,
+    worldwideDefaultAmount: 0,
+    worldwideDefaultCurrency: 'GBP',
     overrides: [],
   };
 }
@@ -75,9 +79,24 @@ function normalizeShippingConfig(raw) {
   const overrides = Array.isArray(raw.overrides) ? raw.overrides : [];
   const normalized = overrides.slice(0, 64).map((o, i) => normalizeShippingOverride(o, i));
   normalized.sort((a, b) => (a.priority || 0) - (b.priority || 0));
+
+  let amount;
+  let currency;
+  if (raw.worldwideDefaultAmount != null && raw.worldwideDefaultCurrency) {
+    amount = Math.max(0, Number(raw.worldwideDefaultAmount) || 0);
+    const cur = String(raw.worldwideDefaultCurrency).trim().toUpperCase().slice(0, 8);
+    currency = SUPPORTED_WORLDWIDE_CURRENCIES.includes(cur) ? cur : 'GBP';
+  } else {
+    amount = Math.max(0, Number(raw.worldwideDefaultGbp) || 0);
+    currency = 'GBP';
+  }
+  const worldwideDefaultGbp = currency === 'GBP' ? amount : Math.max(0, Number(raw.worldwideDefaultGbp) || 0);
+
   return {
     enabled: raw.enabled === true,
-    worldwideDefaultGbp: Math.max(0, Number(raw.worldwideDefaultGbp) || 0),
+    worldwideDefaultGbp,
+    worldwideDefaultAmount: amount,
+    worldwideDefaultCurrency: currency,
     overrides: normalized,
   };
 }

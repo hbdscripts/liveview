@@ -1710,9 +1710,19 @@ async function readOrderCostSummary(shop, startMs, endMs, timeZone) {
   return out;
 }
 
+async function resolveWorldwideDefaultGbp(shippingConfig) {
+  if (!shippingConfig) return 0;
+  const amount = Number(shippingConfig.worldwideDefaultAmount ?? shippingConfig.worldwideDefaultGbp ?? 0) || 0;
+  const currency = (shippingConfig.worldwideDefaultCurrency || 'GBP').trim().toUpperCase().slice(0, 8);
+  if (currency === 'GBP') return Math.max(0, amount);
+  const rates = await fx.getRatesToGbp();
+  const gbp = fx.convertToGbp(amount, currency, rates);
+  return Math.max(0, gbp || 0);
+}
+
 function computeShippingCostFromSummary(summary, shippingConfig) {
   if (!shippingConfig || shippingConfig.enabled !== true || !summary || !summary.byCountry || !summary.byCountry.size) return 0;
-  const defaultGbp = Math.max(0, Number(shippingConfig.worldwideDefaultGbp) || 0);
+  const defaultGbp = (shippingConfig._defaultGbp != null ? Number(shippingConfig._defaultGbp) : Number(shippingConfig.worldwideDefaultGbp)) || 0;
   const overrides = Array.isArray(shippingConfig.overrides) ? shippingConfig.overrides : [];
   let total = 0;
   for (const [countryCode, data] of summary.byCountry) {
@@ -1736,7 +1746,7 @@ function computeShippingCostFromSummary(summary, shippingConfig) {
 function computeShippingCostAuditFromSummary(summary, shippingConfig, { assertSingleSource } = {}) {
   const res = { totalGbp: 0, lines: [] };
   if (!shippingConfig || shippingConfig.enabled !== true || !summary || !summary.byCountry || !summary.byCountry.size) return res;
-  const defaultGbp = Math.max(0, Number(shippingConfig.worldwideDefaultGbp) || 0);
+  const defaultGbp = (shippingConfig._defaultGbp != null ? Number(shippingConfig._defaultGbp) : Number(shippingConfig.worldwideDefaultGbp)) || 0;
   const overrides = Array.isArray(shippingConfig.overrides) ? shippingConfig.overrides : [];
   let total = 0;
   for (const [countryCode, data] of summary.byCountry) {
@@ -2933,6 +2943,11 @@ async function getBusinessSnapshot(options = {}) {
   const anyCostSourceEnabled = includeGoogleAdsSpend || includeCostOfGoods || includeShopifyAppBills || includePaymentFees || includeKlarnaFees || includeShopifyTaxes || shippingEnabled;
   const profitConfigured = !!(profitRules && profitRules.enabled === true && (rulesEnabled || anyCostSourceEnabled));
 
+  const resolvedShippingDefaultGbp = shippingEnabled ? await resolveWorldwideDefaultGbp(profitRules.shipping) : 0;
+  const shippingConfigWithDefault = shippingEnabled && profitRules.shipping
+    ? { ...profitRules.shipping, _defaultGbp: resolvedShippingDefaultGbp }
+    : profitRules.shipping;
+
   const [
     sessionsNowTs,
     sessionsPrevTs,
@@ -3196,8 +3211,8 @@ async function getBusinessSnapshot(options = {}) {
   const paymentFeesPrevCost = includePaymentFees ? paymentFeesPrevAll : 0;
   const shopifyFeesNowCost = includeKlarnaFees ? shopifyFeesNowAll : 0;
   const shopifyFeesPrevCost = includeKlarnaFees ? shopifyFeesPrevAll : 0;
-  const shippingNowCost = shippingEnabled && summaryNow ? computeShippingCostFromSummary(summaryNow, profitRules.shipping) : 0;
-  const shippingPrevCost = shippingEnabled && summaryPrev ? computeShippingCostFromSummary(summaryPrev, profitRules.shipping) : 0;
+  const shippingNowCost = shippingEnabled && summaryNow ? computeShippingCostFromSummary(summaryNow, shippingConfigWithDefault) : 0;
+  const shippingPrevCost = shippingEnabled && summaryPrev ? computeShippingCostFromSummary(summaryPrev, shippingConfigWithDefault) : 0;
   const taxesNowAll = sumNumeric(dailyNow.taxGbp);
   const taxesPrevAll = sumNumeric(dailyPrev.taxGbp);
   const taxesNowCost = includeShopifyTaxes ? taxesNowAll : 0;
@@ -3634,9 +3649,9 @@ async function getCostBreakdown({ rangeKey, audit } = {}) {
 
   const shippingCfg = profitRules && profitRules.shipping && typeof profitRules.shipping === 'object'
     ? profitRules.shipping
-    : { enabled: false, worldwideDefaultGbp: 0, overrides: [] };
+    : { enabled: false, worldwideDefaultGbp: 0, worldwideDefaultAmount: 0, worldwideDefaultCurrency: 'GBP', overrides: [] };
   const overrides = Array.isArray(shippingCfg.overrides) ? shippingCfg.overrides : [];
-  const shippingConfigured = (Number(shippingCfg.worldwideDefaultGbp) || 0) > 0 || overrides.length > 0;
+  const shippingConfigured = (Number(shippingCfg.worldwideDefaultAmount ?? shippingCfg.worldwideDefaultGbp) || 0) > 0 || overrides.length > 0;
 
   const includeGoogleAdsSpend = !!(profitRules && profitRules.integrations && profitRules.integrations.includeGoogleAdsSpend === true);
   const includeCostOfGoods = !!(profitRules && profitRules.integrations && profitRules.integrations.includeCostOfGoods === true);
@@ -3710,6 +3725,9 @@ async function getCostBreakdown({ rangeKey, audit } = {}) {
     taxPromise,
   ]);
 
+  const resolvedDefaultGbp = shippingConfigured ? await resolveWorldwideDefaultGbp(shippingCfg) : 0;
+  const shippingCfgWithDefault = shippingConfigured ? { ...shippingCfg, _defaultGbp: resolvedDefaultGbp } : shippingCfg;
+
   const cogsAmount = auditEnabled
     ? (cogsRaw && typeof cogsRaw === 'object' && Number.isFinite(Number(cogsRaw.totalGbp)) ? (round2(Number(cogsRaw.totalGbp)) || 0) : null)
     : ((cogsRaw != null && Number.isFinite(Number(cogsRaw))) ? (round2(Number(cogsRaw)) || 0) : null);
@@ -3760,12 +3778,12 @@ async function getCostBreakdown({ rangeKey, audit } = {}) {
   }
 
   const shippingAmount = (summary && shippingConfigured)
-    ? computeShippingCostFromSummary(summary, { ...shippingCfg, enabled: true })
+    ? computeShippingCostFromSummary(summary, { ...shippingCfgWithDefault, enabled: true })
     : 0;
 
   const shippingDetails = [];
   if (summary && shippingConfigured) {
-    const defaultGbp = Math.max(0, Number(shippingCfg.worldwideDefaultGbp) || 0);
+    const defaultGbp = resolvedDefaultGbp;
     const enabledOverrides = (Array.isArray(overrides) ? overrides : [])
       .filter((o) => o && o.enabled !== false)
       .map((o, idx) => {
@@ -4056,7 +4074,7 @@ async function getCostBreakdown({ rangeKey, audit } = {}) {
     amount: round2(Number(shippingAmount) || 0) || 0,
     currency: 'GBP',
     notes: shippingConfigured
-      ? ((Number(shippingCfg.worldwideDefaultGbp) || 0) > 0 ? 'Using worldwide default' : (overrides.length ? 'Using country overrides' : ''))
+      ? (resolvedDefaultGbp > 0 ? 'Using worldwide default' : (overrides.length ? 'Using country overrides' : ''))
       : 'Not configured',
   });
   shippingDetails.forEach((d) => items.push(d));
@@ -4068,7 +4086,7 @@ async function getCostBreakdown({ rangeKey, audit } = {}) {
 
   const auditDebug = auditEnabled ? (() => {
     const shippingAudit = (summary && shippingConfigured)
-      ? computeShippingCostAuditFromSummary(summary, { ...shippingCfg, enabled: true }, { assertSingleSource: true })
+      ? computeShippingCostAuditFromSummary(summary, { ...shippingCfgWithDefault, enabled: true }, { assertSingleSource: true })
       : { totalGbp: 0, lines: [] };
     const rulesAudit = (summary && rulesConfigured)
       ? computeProfitDeductionsAudit(summary, profitRules)
@@ -4185,7 +4203,7 @@ async function getCostBreakdown({ rangeKey, audit } = {}) {
         ? { rows: taxRows }
         : { rows: [] },
       shipping: {
-        worldwide_default_gbp: round2(Number(shippingCfg.worldwideDefaultGbp) || 0) || 0,
+        worldwide_default_gbp: round2(resolvedDefaultGbp) || 0,
         overrides_enabled: (Array.isArray(shippingCfg.overrides) ? shippingCfg.overrides : [])
           .filter((o) => o && o.enabled !== false)
           .map((o) => ({
@@ -4262,7 +4280,8 @@ async function getRevenueAndCostForGoogleAdsPostback(shop, startMs, endMs, deduc
   if (toggles.includeShopifyTaxes) costGbp += round2(Number(taxGbp) || 0) || 0;
   if (toggles.includeShopifyAppBills) costGbp += round2(Number(shopifyCosts && shopifyCosts.appBillsTotalGbp) || 0) || 0;
   if (toggles.includeShipping && summary && profitRules && profitRules.shipping) {
-    costGbp += round2(computeShippingCostFromSummary(summary, { ...profitRules.shipping, enabled: true }) || 0) || 0;
+    const resolvedDefaultGbp = await resolveWorldwideDefaultGbp(profitRules.shipping);
+    costGbp += round2(computeShippingCostFromSummary(summary, { ...profitRules.shipping, enabled: true, _defaultGbp: resolvedDefaultGbp }) || 0) || 0;
   }
   if (toggles.includeRules && summary && profitRules) {
     // Admin/Google Ads uploads should be controlled by the Admin toggles, not Settings app-only group toggles.
@@ -4327,6 +4346,7 @@ module.exports = {
   previewPerOrderRuleImpact,
   resolveSnapshotWindows,
   readShopifyBalanceCostsGbp,
+  resolveWorldwideDefaultGbp,
   // Exposed for unit tests / audits.
   computeShippingCostFromSummary,
   computeCostBreakdownTotals,

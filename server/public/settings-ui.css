@@ -423,18 +423,9 @@ body[data-page="settings"] #settings-panel-cost-expenses #settings-cost-expenses
   min-width: 80px;
 }
 
-/* Cost & Expenses: Shipping "worldwide default" should not look like a card. */
-body[data-page="settings"] #settings-panel-cost-expenses #settings-cost-expenses-panel-shipping > .card {
-  border: 0;
-  box-shadow: none;
-  background: transparent;
-}
-body[data-page="settings"] #settings-panel-cost-expenses #settings-cost-expenses-panel-shipping > .card > .card-body {
-  padding: 0;
-}
+/* Cost & Expenses: Shipping default input-group – input has min width for number entry. */
 body[data-page="settings"] #settings-panel-cost-expenses #cost-expenses-shipping-worldwide {
-  width: 100px;
-  max-width: 100px;
+  min-width: 100px;
 }
 body[data-page="settings"] #settings-panel-cost-expenses #cost-expenses-shipping-override-form-wrap fieldset {
   border: 1px solid var(--tblr-border-color, #e6e7e9);

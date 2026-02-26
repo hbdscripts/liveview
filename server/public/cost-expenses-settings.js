@@ -165,7 +165,7 @@
       },
       cost_expenses: defaultCostExpensesModel(),
       rules: [], // legacy (kept for backwards compatibility)
-      shipping: { enabled: false, worldwideDefaultGbp: 0, overrides: [] },
+      shipping: { enabled: false, worldwideDefaultGbp: 0, worldwideDefaultAmount: 0, worldwideDefaultCurrency: 'GBP', overrides: [] },
     };
   }
 
@@ -400,10 +400,16 @@
       };
     });
     if (raw.shipping && typeof raw.shipping === 'object') {
+      var sh = raw.shipping;
+      var amount = sh.worldwideDefaultAmount != null ? Math.max(0, Number(sh.worldwideDefaultAmount) || 0) : Math.max(0, Number(sh.worldwideDefaultGbp) || 0);
+      var currency = (sh.worldwideDefaultCurrency && String(sh.worldwideDefaultCurrency).trim()) ? String(sh.worldwideDefaultCurrency).trim().toUpperCase().slice(0, 8) : 'GBP';
+      if (['GBP', 'EUR', 'USD'].indexOf(currency) === -1) currency = 'GBP';
       c.shipping = {
-        enabled: raw.shipping.enabled === true,
-        worldwideDefaultGbp: Math.max(0, Number(raw.shipping.worldwideDefaultGbp) || 0),
-        overrides: (Array.isArray(raw.shipping.overrides) ? raw.shipping.overrides : []).slice(0, 64).map(function (o, i) {
+        enabled: sh.enabled === true,
+        worldwideDefaultGbp: currency === 'GBP' ? amount : 0,
+        worldwideDefaultAmount: amount,
+        worldwideDefaultCurrency: currency,
+        overrides: (Array.isArray(sh.overrides) ? sh.overrides : []).slice(0, 64).map(function (o, i) {
           var ov = o && typeof o === 'object' ? o : {};
           var label = String(ov.label || '').trim();
           if (label.length > 60) label = label.slice(0, 60);
@@ -672,7 +678,7 @@
     var idx = parseInt(idxEl && idxEl.value, 10);
     if (!Number.isFinite(idx) || idx < 0) return;
     state.config = state.config || defaultConfig();
-    if (!state.config.shipping) state.config.shipping = { enabled: false, worldwideDefaultGbp: 0, overrides: [] };
+    if (!state.config.shipping) state.config.shipping = { enabled: false, worldwideDefaultGbp: 0, worldwideDefaultAmount: 0, worldwideDefaultCurrency: 'GBP', overrides: [] };
     if (!Array.isArray(state.config.shipping.overrides)) state.config.shipping.overrides = [];
     var ov = state.config.shipping.overrides[idx];
     if (!ov) return;
@@ -705,10 +711,19 @@
     });
     overrides.sort(function (a, b) { return (a.priority || 0) - (b.priority || 0); });
     var worldwideEl = document.getElementById('cost-expenses-shipping-worldwide');
+    var currencyBtn = document.getElementById('cost-expenses-shipping-currency-btn');
     var shippingEnabledEl = document.getElementById('cost-expenses-shipping-enabled');
-    var worldwide = worldwideEl ? parseFloat(worldwideEl.value, 10) || 0 : 0;
+    var amount = worldwideEl ? parseFloat(worldwideEl.value, 10) || 0 : 0;
+    var currency = (currencyBtn && currencyBtn.textContent) ? String(currencyBtn.textContent).trim().toUpperCase().slice(0, 8) : 'GBP';
+    if (['GBP', 'EUR', 'USD'].indexOf(currency) === -1) currency = 'GBP';
     var enabled = shippingEnabledEl ? shippingEnabledEl.checked === true : false;
-    return { enabled: enabled, worldwideDefaultGbp: Math.max(0, worldwide), overrides: overrides };
+    return {
+      enabled: enabled,
+      worldwideDefaultGbp: currency === 'GBP' ? Math.max(0, amount) : (state.config && state.config.shipping && state.config.shipping.worldwideDefaultGbp != null ? state.config.shipping.worldwideDefaultGbp : 0),
+      worldwideDefaultAmount: Math.max(0, amount),
+      worldwideDefaultCurrency: currency,
+      overrides: overrides
+    };
   }
 
   function formatMoneyGbp(amount) {
@@ -942,8 +957,13 @@
     if (fixedEl) fixedEl.checked = !!(cfg.cost_expenses && cfg.cost_expenses.include_fixed_costs);
 
     var worldwideEl = document.getElementById('cost-expenses-shipping-worldwide');
+    var currencyBtn = document.getElementById('cost-expenses-shipping-currency-btn');
     var shippingEnabledEl = document.getElementById('cost-expenses-shipping-enabled');
-    if (worldwideEl) worldwideEl.value = (cfg.shipping && cfg.shipping.worldwideDefaultGbp != null) ? cfg.shipping.worldwideDefaultGbp : 0;
+    var amount = (cfg.shipping && cfg.shipping.worldwideDefaultAmount != null) ? cfg.shipping.worldwideDefaultAmount : ((cfg.shipping && cfg.shipping.worldwideDefaultGbp != null) ? cfg.shipping.worldwideDefaultGbp : 0);
+    var currency = (cfg.shipping && cfg.shipping.worldwideDefaultCurrency) ? String(cfg.shipping.worldwideDefaultCurrency).trim().toUpperCase().slice(0, 8) : 'GBP';
+    if (['GBP', 'EUR', 'USD'].indexOf(currency) === -1) currency = 'GBP';
+    if (worldwideEl) worldwideEl.value = amount;
+    if (currencyBtn) currencyBtn.textContent = currency;
     if (shippingEnabledEl) shippingEnabledEl.checked = !!(cfg.shipping && cfg.shipping.enabled);
     var modeEl = document.getElementById('cost-expenses-rule-mode');
     if (modeEl) modeEl.value = (cfg.cost_expenses && cfg.cost_expenses.rule_mode === 'first_match') ? 'first_match' : 'stack';
@@ -2271,7 +2291,7 @@
     if (addOverrideBtn) addOverrideBtn.addEventListener('click', function () {
       state.config = state.config || defaultConfig();
       var sh = readShippingFromUi();
-      if (!sh || typeof sh !== 'object') sh = { enabled: false, worldwideDefaultGbp: 0, overrides: [] };
+      if (!sh || typeof sh !== 'object') sh = { enabled: false, worldwideDefaultGbp: 0, worldwideDefaultAmount: 0, worldwideDefaultCurrency: 'GBP', overrides: [] };
       if (!Array.isArray(sh.overrides)) sh.overrides = [];
       sh.overrides.push({
         priority: sh.overrides.length + 1,
@@ -2441,6 +2461,20 @@
       var t = e.target;
       if (t && t.nodeType !== 1) t = t.parentElement;
       if (!t) return;
+
+      var currencyItem = t.closest ? t.closest('a[data-currency]') : null;
+      if (currencyItem && currencyItem.closest('#settings-cost-expenses-panel-shipping')) {
+        var currency = currencyItem.getAttribute('data-currency');
+        if (currency && ['GBP', 'EUR', 'USD'].indexOf(currency) !== -1) {
+          try { e.preventDefault(); } catch (_) {}
+          var btn = document.getElementById('cost-expenses-shipping-currency-btn');
+          if (btn) {
+            btn.textContent = currency;
+            markDraftChanged();
+          }
+        }
+        return;
+      }
 
       // Country suggest list: click outside closes it.
       try {

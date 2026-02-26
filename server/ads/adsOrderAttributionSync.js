@@ -220,7 +220,8 @@ function computeShippingCostForOrder(countryCode, shippingConfig) {
       return Math.max(0, Number(o.priceGbp) || 0);
     }
   }
-  return Math.max(0, Number(cfg.worldwideDefaultGbp) || 0);
+  const defaultGbp = cfg._defaultGbp != null ? Number(cfg._defaultGbp) : Number(cfg.worldwideDefaultGbp);
+  return Math.max(0, defaultGbp || 0);
 }
 
 function parseYmdParts(ymd) {
@@ -556,9 +557,11 @@ async function syncAttributedOrdersToAdsDb(options = {}) {
   } catch (_) {
     profitRules = normalizeProfitRulesConfigV1(null);
   }
-  const shippingConfig = profitRules && profitRules.shipping && typeof profitRules.shipping === 'object'
+  let shippingConfig = profitRules && profitRules.shipping && typeof profitRules.shipping === 'object'
     ? profitRules.shipping
     : { enabled: false, worldwideDefaultGbp: 0, overrides: [] };
+  const resolvedDefaultGbp = await businessSnapshotService.resolveWorldwideDefaultGbp(shippingConfig);
+  shippingConfig = { ...shippingConfig, _defaultGbp: resolvedDefaultGbp };
   const ce = profitRules && profitRules.cost_expenses && typeof profitRules.cost_expenses === 'object'
     ? profitRules.cost_expenses
     : { rule_mode: 'stack', per_order_rules: [], overheads: [], fixed_costs: [] };
