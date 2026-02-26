@@ -458,6 +458,15 @@ body[data-page="settings"] #settings-panel-cost-expenses #settings-cost-expenses
 body[data-page="settings"] #settings-panel-cost-expenses #settings-cost-expenses-panel-shipping > .d-flex.align-items-center.justify-content-between.mb-2 h5 {
   font-size: 1rem;
 }
+/* Cost & Expenses: Shipping – remove border/shadow under Default Worldwide Shipping block. */
+body[data-page="settings"] #settings-panel-cost-expenses #settings-cost-expenses-panel-shipping > .mb-3 {
+  border-bottom: none;
+  box-shadow: none;
+}
+body[data-page="settings"] #settings-panel-cost-expenses #settings-cost-expenses-panel-shipping > .mb-3 .input-group .form-control:not(:focus),
+body[data-page="settings"] #settings-panel-cost-expenses #settings-cost-expenses-panel-shipping > .mb-3 .input-group .btn:not(:focus) {
+  box-shadow: none;
+}
 body[data-page="settings"] #settings-panel-cost-expenses #cost-expenses-shipping-override-form-wrap fieldset {
   border: 1px solid var(--tblr-border-color, #e6e7e9);
   border-radius: 0.375rem;
