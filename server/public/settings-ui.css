@@ -441,14 +441,22 @@ body[data-page="settings"] #settings-panel-cost-expenses #settings-cost-expenses
   min-width: 80px;
 }
 
-/* Cost & Expenses: Shipping default input-group – input width, currency box square. */
+/* Cost & Expenses: Shipping default input-group – input width, rounded input left / dropdown right. */
 body[data-page="settings"] #settings-panel-cost-expenses #cost-expenses-shipping-worldwide {
   min-width: 100px;
   max-width: 150px;
+  border-radius: var(--tblr-border-radius, 0.375rem) 0 0 var(--tblr-border-radius, 0.375rem);
 }
-body[data-page="settings"] #settings-panel-cost-expenses #settings-cost-expenses-panel-shipping .input-group .btn-group,
 body[data-page="settings"] #settings-panel-cost-expenses #settings-cost-expenses-panel-shipping .input-group .btn-group .btn {
   border-radius: 0;
+}
+body[data-page="settings"] #settings-panel-cost-expenses #settings-cost-expenses-panel-shipping .input-group .btn-group .dropdown-toggle-split {
+  border-radius: 0 var(--tblr-border-radius, 0.375rem) var(--tblr-border-radius, 0.375rem) 0;
+}
+/* Cost & Expenses: Shipping – same font size for Default Worldwide Shipping label and Country Overrides heading. */
+body[data-page="settings"] #settings-panel-cost-expenses #settings-cost-expenses-panel-shipping .mb-3 > .form-label,
+body[data-page="settings"] #settings-panel-cost-expenses #settings-cost-expenses-panel-shipping > .d-flex.align-items-center.justify-content-between.mb-2 h5 {
+  font-size: 1rem;
 }
 body[data-page="settings"] #settings-panel-cost-expenses #cost-expenses-shipping-override-form-wrap fieldset {
   border: 1px solid var(--tblr-border-color, #e6e7e9);
